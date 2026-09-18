@@ -21,13 +21,6 @@ export interface WorkoutPlaybackRestTimer {
   target_exercise_index?: number;
   target_set_index?: number;
 }
-
-export interface WorkoutPlaybackSetDraft extends WorkoutPresetSet {
-  completed: boolean;
-  /** ISO timestamp of when the set was checked off; null while incomplete. */
-  completed_at: string | null;
-}
-
 export interface WorkoutPlaybackExerciseDraft {
   exercise_id: string;
   exercise_name: string;
@@ -36,7 +29,20 @@ export interface WorkoutPlaybackExerciseDraft {
   notes: string | null;
   started_at?: string | null;
   ended_at?: string | null;
+  // Progression fields
+  progression_mode?:
+    'rep_goal' | 'fixed' | 'step_load' | 'manual' | string | null;
+  rep_goal?: number | null;
+  increment_type?: 'weight' | 'reps' | string | null;
+  increment_value?: number | null;
+  equipment_brand?: string | null;
   sets: WorkoutPlaybackSetDraft[];
+}
+
+export interface WorkoutPlaybackSetDraft extends WorkoutPresetSet {
+  completed: boolean;
+  /** ISO timestamp of when the set was checked off; null while incomplete. */
+  completed_at: string | null;
 }
 
 export interface WorkoutPlaybackDraft {
@@ -300,34 +306,75 @@ export function createWorkoutPlaybackDraftFromPreset(
   const createdAt = nowIso();
 
   const exercises: WorkoutPlaybackExerciseDraft[] = preset.exercises.map(
-    (exercise, exerciseIndex) => ({
-      exercise_id: exercise.exercise_id,
-      exercise_name:
-        exercise.exercise_name ||
-        exercise.exercise?.name ||
-        `Exercise ${exerciseIndex + 1}`,
-      image_url: exercise.image_url || exercise.exercise?.images?.[0],
-      modality: resolveExerciseModality(
-        exercise.modality ?? exercise.exercise?.modality,
-        exercise.category ?? exercise.exercise?.category
-      ),
-      notes: null,
-      started_at: null,
-      ended_at: null,
-      sets: exercise.sets.map((set, setIndex) => ({
-        set_number: set.set_number ?? setIndex + 1,
-        set_type: set.set_type ?? 'Working Set',
-        reps: set.reps ?? null,
-        weight: set.weight ?? null,
-        duration: set.duration ?? null,
-        distance: set.distance ?? null,
-        rest_time: set.rest_time ?? DEFAULT_REST_SECONDS,
-        notes: set.notes ?? null,
-        rpe: set.rpe ?? null,
-        completed: false,
-        completed_at: null,
-      })),
-    })
+    (exercise, exerciseIndex) => {
+      return {
+        exercise_id: exercise.exercise_id,
+        exercise_name:
+          exercise.exercise_name ||
+          exercise.exercise?.name ||
+          `Exercise ${exerciseIndex + 1}`,
+        image_url: exercise.image_url || exercise.exercise?.images?.[0],
+        modality: resolveExerciseModality(
+          exercise.modality ?? exercise.exercise?.modality,
+          exercise.category ?? exercise.exercise?.category
+        ),
+        notes:
+          'notes' in exercise
+            ? ((exercise as { notes?: string | null }).notes ?? null)
+            : null,
+        started_at: null,
+        ended_at: null,
+        // Preserve progression settings
+        ...('progression_mode' in exercise
+          ? {
+              progression_mode: (exercise as { progression_mode?: string })
+                .progression_mode,
+            }
+          : {}),
+        ...('rep_goal' in exercise
+          ? { rep_goal: (exercise as { rep_goal?: number }).rep_goal }
+          : {}),
+        ...('increment_type' in exercise
+          ? {
+              increment_type: (
+                exercise as { increment_type?: 'weight' | 'reps' }
+              ).increment_type,
+            }
+          : {}),
+        ...('increment_value' in exercise
+          ? {
+              increment_value: Number(
+                (exercise as { increment_value?: number }).increment_value
+              ),
+            }
+          : {}),
+        ...('equipment_brand' in exercise
+          ? {
+              equipment_brand: (exercise as { equipment_brand?: string })
+                .equipment_brand,
+            }
+          : {}),
+        sets: exercise.sets.map((set, setIndex) => {
+          const initialWeight = set.weight ?? null;
+          // Initialize with the preset's programmed reps so un-typed sets don't submit as null
+          const initialReps = set.reps;
+
+          return {
+            set_number: set.set_number ?? setIndex + 1,
+            set_type: set.set_type ?? 'Working Set',
+            reps: initialReps,
+            weight: initialWeight,
+            duration: set.duration ?? null,
+            distance: set.distance ?? null,
+            rest_time: set.rest_time ?? DEFAULT_REST_SECONDS,
+            notes: set.notes ?? null,
+            rpe: set.rpe ?? null,
+            completed: false,
+            completed_at: null,
+          };
+        }),
+      };
+    }
   );
 
   const draft: WorkoutPlaybackDraft = {

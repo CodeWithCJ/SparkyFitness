@@ -37,10 +37,8 @@ try {
 // the dotenv/loadSecrets calls above and freeze the pools with empty config.
 // This is the same reason the server module below is imported dynamically.
 try {
-  const { applyMigrations } = await import('./utils/dbMigrations.js');
-  const { applyRlsPolicies } = await import('./utils/applyRlsPolicies.js');
-  await applyMigrations();
-  await applyRlsPolicies();
+  const { initializeDatabase } = await import('./utils/initializeDatabase.js');
+  await initializeDatabase();
 } catch (error) {
   console.error('Failed to apply database migrations:', error);
   // eslint-disable-next-line n/no-process-exit

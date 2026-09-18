@@ -1613,7 +1613,22 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
   startDate: string,
   endDate: string,
   entrySource: string,
-  excludedExerciseName?: string
+  excludedExerciseName?: string,
+  // source_ids present in the payload that triggered this cleanup. Those rows
+  // are about to be updated in place by the dedupe in
+  // _createExerciseEntryWithClient, which merges over the existing row and so
+  // keeps the telemetry columns the payload omits. Deleting them first would
+  // instead cascade away exercise_entry_gps_points / _laps / _hr_zones and
+  // re-insert a summary, silently dropping a workout's route and heart rate on
+  // the next sync that re-sends it without telemetry — which is exactly what
+  // the enriched-session reuse cache makes every sync do once a session has
+  // been collected once (#2191, #2300).
+  //
+  // Everything else in the span is still deleted, so a workout removed upstream
+  // still disappears here. The client splits workout chunks on day boundaries,
+  // so one request always carries every workout for the days it covers and this
+  // exclusion cannot strand another chunk's rows.
+  keepSourceIds?: string[]
 ) {
   await acquireExerciseEntrySyncLockWithClient(client, userId, entrySource);
   // Get IDs of exercise entries to be deleted
@@ -1630,8 +1645,20 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
            WHERE e.id = exercise_entries.exercise_id
              AND e.name = $5
          )
+       )
+       AND (
+         $6::text[] IS NULL
+         OR source_id IS NULL
+         OR NOT (source_id = ANY($6::text[]))
        )`,
-    [userId, startDate, endDate, entrySource, excludedExerciseName ?? null]
+    [
+      userId,
+      startDate,
+      endDate,
+      entrySource,
+      excludedExerciseName ?? null,
+      keepSourceIds && keepSourceIds.length > 0 ? keepSourceIds : null,
+    ]
   );
   const entryIds = entryIdsResult.rows.map((row: { id: string }) => row.id);
   if (entryIds.length > 0) {
@@ -1676,7 +1703,8 @@ async function deleteExerciseEntriesByEntrySourceAndDate(
   startDate: string,
   endDate: string,
   entrySource: string,
-  excludedExerciseName?: string
+  excludedExerciseName?: string,
+  keepSourceIds?: string[]
 ) {
   const client = await getClient(userId);
   try {
@@ -1688,7 +1716,8 @@ async function deleteExerciseEntriesByEntrySourceAndDate(
         startDate,
         endDate,
         entrySource,
-        excludedExerciseName
+        excludedExerciseName,
+        keepSourceIds
       );
     await client.query('COMMIT');
     return deletedCount;

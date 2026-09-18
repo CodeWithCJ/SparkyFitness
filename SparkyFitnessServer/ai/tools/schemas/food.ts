@@ -18,6 +18,13 @@ import {
 // bound as the editors on web and mobile.
 const notesSchema = z.string().max(NOTES_MAX_LENGTH).optional();
 
+// Keep barcode as a string so leading zeroes survive. This matches the existing
+// barcode lookup contract rather than assuming a single barcode standard.
+const foodBarcodeSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{8,14}$/, 'Barcode must be 8-14 digits');
+
 // Mirrors the web/mobile "Quick Add" checkbox (foods.is_quick_food). Shared by
 // the strict create_food union member and the flat published input schema so
 // both carry the same opt-in-only wording.
@@ -93,7 +100,7 @@ const logFoodSchema = z
       .max(50)
       .optional()
       .describe(
-        "Unit of measurement (e.g., 'g', 'piece', 'serving'); defaults to the food's serving unit"
+        "Consumed unit. Use a concrete matching unit such as 'g' or 'ml', or explicit 'serving' (for example quantity:0.75). Do not put a reference size such as '100 g' in unit."
       ),
     meal_type: mealTypeEnum
       .optional()
@@ -173,6 +180,11 @@ const createFoodSchema = z
         'Short, concise food name (2-4 words max, e.g. "Chicken Burrito", "Greek Salad"). Do NOT write sentences or full visual descriptions in food_name.'
       ),
     brand: z.string().max(200).optional().describe('Brand name of the food'),
+    barcode: foodBarcodeSchema
+      .optional()
+      .describe(
+        'Product barcode; stored as a string, including leading zeroes'
+      ),
     notes: notesSchema.describe(
       'Optional markdown reference note for recipes, preparation details, or ingredients. Keep food_name short and put extra details here.'
     ),
@@ -458,6 +470,16 @@ const updateEntrySchema = z
     }
   );
 
+const setFoodBarcodeSchema = z
+  .object({
+    action: z.literal('set_food_barcode'),
+    food_id: uuidSchema.describe('Food UUID whose product metadata is updated'),
+    barcode: foodBarcodeSchema.describe(
+      'Product barcode; stored as a string, including leading zeroes'
+    ),
+  })
+  .strict();
+
 const updateFoodVariantSchema = z
   .object({
     action: z.literal('update_food_variant'),
@@ -717,6 +739,7 @@ export const manageFoodSchema = z.discriminatedUnion('action', [
   setFoodNotesSchema,
   deleteFoodSchema,
   updateEntrySchema,
+  setFoodBarcodeSchema,
   updateFoodVariantSchema,
   copyFromYesterdaySchema,
   saveAsMealTemplateSchema,
@@ -747,6 +770,7 @@ export const manageFoodInput = z.object({
       'delete_food',
       'update_entry',
       'set_food_notes',
+      'set_food_barcode',
       'update_food_variant',
       'copy_from_yesterday',
       'save_as_meal_template',
@@ -811,6 +835,9 @@ export const manageFoodInput = z.object({
     .max(200)
     .optional()
     .describe('Brand name — for create_food'),
+  barcode: foodBarcodeSchema
+    .optional()
+    .describe('Product barcode for create_food or set_food_barcode'),
   // serving
   quantity: z.coerce
     .number()

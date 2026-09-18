@@ -4716,7 +4716,12 @@ CREATE TABLE public.workout_preset_exercises (
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
     sort_order integer DEFAULT 0,
-    superset_group integer
+    superset_group integer,
+    progression_mode character varying(30) DEFAULT 'rep_goal'::character varying,
+    rep_goal integer,
+    increment_type character varying(20) DEFAULT 'weight'::character varying,
+    increment_value numeric(6,2) DEFAULT 2.5,
+    equipment_brand character varying(100) DEFAULT NULL::character varying
 );
 
 

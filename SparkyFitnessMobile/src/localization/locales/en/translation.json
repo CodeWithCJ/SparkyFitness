@@ -208,7 +208,8 @@
       "medicationReminders": "Medication reminders",
       "workoutTimer": "Workout timer",
       "workoutTimerAlarm": "Workout timer (silent mode)",
-      "fasting": "Fasting"
+      "fasting": "Fasting",
+      "hydration": "Hydration reminders"
     },
     "actions": {
       "completeSet": "Complete Set",
@@ -236,9 +237,32 @@
     "fasting": {
       "title": "Fasting goal reached",
       "body": "You've hit your fasting goal. Great work!"
+    },
+    "hydration": {
+      "title": "Time to hydrate 💧",
+      "body": "You haven't logged any water in a while."
     }
   },
   "activeWorkout": {
+    "progression": {
+      "toggleSettings": "Toggle progression settings",
+      "title": "Progression",
+      "manualOff": "Manual (Off)",
+      "fixedSummary": "Fixed Target · +{{value}} {{unit}}",
+      "stepLoadSummary": "Step-Load · {{reps}} reps · +{{value}} reps",
+      "repGoalSummary": "Rep Goal · {{reps}} reps · +{{value}} {{unit}}",
+      "overloadMode": "Overload Mode",
+      "modeRepGoal": "Rep Goal",
+      "modeFixed": "Fixed",
+      "modeStepLoad": "Step-Load",
+      "modeOff": "Off",
+      "targetRepsPerSet": "Target Reps / Set",
+      "targetRepsTotal": "Target Reps (Total)",
+      "incrementReps": "Increment (Reps)",
+      "incrementWeight": "Increment ({{unit}})",
+      "equipmentBrand": "Equipment / Machine Brand",
+      "equipmentBrandPlaceholder": "e.g. Hammer Strength, Cable Stack"
+    },
     "liveActivity": {
       "rest": "Rest",
       "paused": "Paused",
@@ -958,10 +982,20 @@
     "repeatRemindersSubtitle": "Repeat each reminder every 10 minutes, up to 3 times, until the dose is logged.",
     "hideMedicationNames": "Hide Medication Names",
     "hideMedicationNamesSubtitle": "Show a generic reminder instead of the medication name and dose.",
+    "hydration": "Hydration",
+    "waterReminders": "Water Reminders",
+    "waterRemindersSubtitle": "Remind you to drink when you haven't logged water in a while.",
+    "waterReminderInterval": "Remind After",
+    "waterReminderIntervalOption": "{{hours}}h",
+    "waterReminderStart": "Start Time",
+    "waterReminderStartAccessibility": "Start time, {{time}}",
+    "waterReminderEnd": "End Time",
+    "waterReminderEndAccessibility": "End time, {{time}}",
+    "waterReminderInvalidWindow": "End time must be after start time.",
     "enableNotifications": "Enable Notifications",
     "openSettings": "Open Settings",
     "permissionTitle": "Grant permissions",
-    "permissionBody": "SparkyFitness alerts (rest timers, fasting goals, medication reminders) won't fire.",
+    "permissionBody": "SparkyFitness alerts (rest timers, fasting goals, medication and hydration reminders) won't fire.",
     "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}."
   },
   "workoutSettings": {

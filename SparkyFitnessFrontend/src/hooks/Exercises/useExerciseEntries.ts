@@ -4,6 +4,7 @@ import {
   fetchExerciseEntries,
   createExerciseEntry,
   updateExerciseEntry,
+  fetchExerciseProgressionStats,
   deleteExerciseEntry,
   createPresetSession,
   logWorkoutPreset,
@@ -196,3 +197,4 @@ export const exerciseDetailsOptions = (exerciseId: string) => ({
     ),
   },
 });
+export { fetchExerciseProgressionStats };

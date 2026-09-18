@@ -1,7 +1,17 @@
 import { getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import NodeCache from 'node-cache';
+import type { OidcProviderUpdate } from '../schemas/oidcProviderSchemas.js';
 const discoveryCache = new NodeCache({ stdTTL: 3600 });
+
+/** Falls back to Better Auth's configuration when the legacy client ID column is unset. */
+function getStoredClientId(row: {
+  client_id: string | null;
+  oidc_config?: { clientId?: string } | null;
+}): string | null {
+  return row.client_id ?? row.oidc_config?.clientId ?? null;
+}
+
 /**
  * Returns the frontend base URL with protocol and no trailing slash (for OIDC redirect URIs).
  * @returns {string}
@@ -70,7 +80,7 @@ async function getOidcProviders() {
         provider_id: row.provider_id,
         issuer_url: row.issuer,
         domain: row.domain,
-        client_id: row.client_id,
+        client_id: getStoredClientId(row),
         scope: row.scopes,
         is_active: config.is_active !== undefined ? config.is_active : true,
         redirect_uris: config.redirect_uris || [],
@@ -94,8 +104,8 @@ async function getOidcProviders() {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getOidcProviderById(id: any) {
+/** Resolve a provider by row ID, exact provider ID, or a legacy prefix alias. */
+async function getOidcProviderById(id: string) {
   if (!id) return null;
   const client = await getSystemClient();
   try {
@@ -107,7 +117,13 @@ async function getOidcProviderById(id: any) {
        WHERE id::text = $1 
           OR provider_id = $1 
           OR provider_id = $2 
-          OR provider_id = $3`,
+          OR provider_id = $3
+       ORDER BY CASE
+         WHEN id::text = $1 THEN 0
+         WHEN provider_id = $1 THEN 1
+         ELSE 2
+       END
+       LIMIT 1`,
       [id, cleanId, prefixedId]
     );
     const row = result.rows[0];
@@ -121,7 +137,7 @@ async function getOidcProviderById(id: any) {
       provider_id: row.provider_id,
       issuer_url: row.issuer,
       domain: row.domain,
-      client_id: row.client_id,
+      client_id: getStoredClientId(row),
       client_secret: row.client_secret,
       scope: row.scopes,
       is_active: config.is_active !== undefined ? config.is_active : true,
@@ -256,11 +272,21 @@ async function createOidcProvider(providerData: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateOidcProvider(id: any, providerData: any) {
+/** Update the resolved provider, retaining its provider ID unless explicitly replaced. */
+async function updateOidcProvider(
+  id: string,
+  providerData: OidcProviderUpdate
+) {
   const client = await getSystemClient();
   try {
     const existing = await getOidcProviderById(id);
+    if (!existing) {
+      throw new Error('OIDC provider not found');
+    }
+    const clientId = providerData.client_id ?? existing.client_id;
+    if (typeof clientId !== 'string' || clientId.length === 0) {
+      throw new Error('OIDC client ID is required');
+    }
     const config = JSON.stringify({
       display_name: providerData.display_name,
       logo_url: providerData.logo_url,
@@ -293,10 +319,10 @@ async function updateOidcProvider(id: any, providerData: any) {
     // Construct native oidcConfig for Better Auth (same base as auth.baseURL; JSONB)
     const baseUrl = getBaseUrl();
     const callbackBase = `${baseUrl}/api/auth`;
-    const providerIdToUse = providerData.provider_id || id;
+    const providerIdToUse = providerData.provider_id || existing.provider_id;
     const oidcConfig = {
       issuer: endpoints.issuer || providerData.issuer_url,
-      clientId: providerData.client_id,
+      clientId,
       clientSecret: clientSecret,
       scopes: (providerData.scope || 'openid email profile')
         .split(' ')
@@ -317,12 +343,12 @@ async function updateOidcProvider(id: any, providerData: any) {
             SET issuer=$1, domain=$2, client_id=$3, client_secret=$4, scopes=$5, discovery_endpoint=$6, 
                 authorization_endpoint=$7, token_endpoint=$8, jwks_endpoint=$9, userinfo_endpoint=$10,
                 additional_config=$11, oidc_config=$12::jsonb, provider_id=$13, updated_at=NOW() 
-            WHERE id::text=$14 OR provider_id=$14
+            WHERE id::text=$14
             RETURNING id`;
     const result = await client.query(query, [
       endpoints.issuer || providerData.issuer_url,
-      providerData.domain,
-      providerData.client_id,
+      providerData.domain === undefined ? existing.domain : providerData.domain,
+      clientId,
       clientSecret,
       providerData.scope || 'openid email profile',
       discoveryEndpoint,
@@ -333,7 +359,7 @@ async function updateOidcProvider(id: any, providerData: any) {
       config,
       oidcConfig,
       providerIdToUse,
-      id,
+      existing.id,
     ]);
     // Refresh Better Auth trusted providers after update
     try {

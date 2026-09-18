@@ -83,6 +83,14 @@ async function upsertEnvOidcProvider() {
     }
     return;
   }
+  const existing = await oidcProviderRepository.getOidcProviderById(
+    config.provider_id
+  );
+  if (existing && existing.provider_id !== config.provider_id) {
+    throw new Error(
+      `Configured OIDC provider "${config.provider_id}" matches "${existing.provider_id}" only through a legacy alias. Use the existing provider ID "${existing.provider_id}" in SPARKY_FITNESS_OIDC_PROVIDER_SLUG.`
+    );
+  }
   // removes env configured providers if slug doesn't match
   const client = await getSystemClient();
   try {
@@ -103,9 +111,6 @@ async function upsertEnvOidcProvider() {
     client.release();
   }
   // create or update the current env provider
-  const existing = await oidcProviderRepository.getOidcProviderById(
-    config.provider_id
-  );
   if (existing) {
     await oidcProviderRepository.updateOidcProvider(config.provider_id, config);
     log(

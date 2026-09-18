@@ -113,4 +113,43 @@ describe('TimeSheet', () => {
 
     expect(onSelectTime).toHaveBeenLastCalledWith('14:45');
   });
+
+  it("with commitOn='done', reports only the final time when Done is pressed", () => {
+    mockedUsePreferences.mockReturnValue({
+      preferences: { time_format: 'HH:mm' },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const onSelectTime = jest.fn();
+    const ref = React.createRef<TimeSheetRef>();
+    const queries = render(
+      <TimeSheet
+        ref={ref}
+        value="13:30"
+        onSelectTime={onSelectTime}
+        commitOn="done"
+      />
+    );
+
+    act(() => {
+      ref.current?.present();
+    });
+
+    act(() => {
+      pickerProps(queries).onChange({ date: new Date(2026, 0, 1, 23, 0, 0) });
+    });
+    act(() => {
+      pickerProps(queries).onChange({ date: new Date(2026, 0, 1, 14, 45, 0) });
+    });
+
+    expect(onSelectTime).not.toHaveBeenCalled();
+
+    fireEvent.press(queries.getByText('Done'));
+
+    expect(onSelectTime).toHaveBeenCalledTimes(1);
+    expect(onSelectTime).toHaveBeenCalledWith('14:45');
+  });
 });

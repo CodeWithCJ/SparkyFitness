@@ -266,3 +266,10 @@ export const getActivityDetails = async (
     }
   );
 };
+export async function fetchExerciseProgressionStats(exerciseId: string) {
+  const response = await fetch(`/api/v2/exercises/${exerciseId}/stats`, {
+    credentials: 'include',
+  });
+  if (!response.ok) return null;
+  return response.json();
+}

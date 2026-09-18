@@ -1,10 +1,12 @@
+import type { PoolClient } from 'pg';
 import { getSystemClient } from './poolManager.js';
 import { log } from '../config/logging.js';
-async function grantPermissions() {
-  const client = await getSystemClient();
-  // @ts-expect-error TS(2532): Object is possibly 'undefined'.
-  const appUser = `"${process.env.SPARKY_FITNESS_APP_DB_USER.replace(/"/g, '""')}"`;
+/** Grants application database permissions; the caller retains any supplied client. */
+async function grantPermissions(existingClient: PoolClient | null = null) {
+  const client = existingClient || (await getSystemClient());
   try {
+    // @ts-expect-error TS(2532): Object is possibly 'undefined'.
+    const appUser = `"${process.env.SPARKY_FITNESS_APP_DB_USER.replace(/"/g, '""')}"`;
     log('info', `Ensuring permissions for role: ${appUser}`);
     // Grant usage on schemas
     await client.query(`GRANT USAGE ON SCHEMA public TO ${appUser}`);
@@ -52,9 +54,9 @@ async function grantPermissions() {
     log('info', `Successfully ensured permissions for role: ${appUser}`);
   } catch (error) {
     log('error', 'Error granting permissions:', error);
-    process.exit(1); // Exit if permissions cannot be granted
+    throw error;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 export { grantPermissions };

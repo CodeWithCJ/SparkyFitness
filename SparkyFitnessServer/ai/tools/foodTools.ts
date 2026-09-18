@@ -1,6 +1,11 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { addDays, prefillEntryTime, todayInZone } from '@workspace/shared';
+import {
+  addDays,
+  getConversionFactor,
+  prefillEntryTime,
+  todayInZone,
+} from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import foodCoreService from '../../services/foodCoreService.js';
 import foodEntryService from '../../services/foodEntryService.js';
@@ -44,6 +49,7 @@ import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
 import {
   normalizeServingUnit,
   reconcileEntryUnitToVariant,
+  scaleNutritionForConsumedAmount,
 } from '../../utils/foodUtils.js';
 
 const VALID_ACTIONS = [
@@ -59,6 +65,7 @@ const VALID_ACTIONS = [
   'delete_entry',
   'delete_food',
   'update_entry',
+  'set_food_barcode',
   'update_food_variant',
   'copy_from_yesterday',
   'save_as_meal_template',
@@ -229,6 +236,35 @@ function normalizeFoodUnit(unit: unknown): string {
   return aliases[normalized] ?? normalized;
 }
 
+// A numeric prefix in a stored unit (for example "100 g") historically
+// overloaded the unit with a reference serving. It cannot tell us whether a
+// quantity is grams or a number of portions, so MCP must not reinterpret it.
+function isAmbiguousLegacyFoodUnit(unit: unknown): boolean {
+  return /^\s*\d+(?:\.\d+)?\s+\S/.test(String(unit ?? ''));
+}
+
+function formatConsumedNutrition(
+  quantity: number,
+  servingSize: number | string | null | undefined,
+  nutrients: {
+    calories?: number | string | null;
+    protein?: number | string | null;
+    carbs?: number | string | null;
+    fat?: number | string | null;
+  }
+): string {
+  const scaled = scaleNutritionForConsumedAmount(
+    quantity,
+    servingSize,
+    nutrients
+  );
+  const present = (name: 'calories' | 'protein' | 'carbs' | 'fat') => {
+    const value = scaled[name];
+    return typeof value === 'number' ? Number(value.toFixed(3)) : 'unknown';
+  };
+  return `Consumed: ${present('calories')} kcal | P ${present('protein')}g | C ${present('carbs')}g | F ${present('fat')}g.`;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function dedupeVariantsById(variants: any[]) {
   const seen = new Set<string>();
@@ -255,6 +291,16 @@ function resolveQuantityForVariantUnit(args: {
   if (requestedUnit && requestedUnit === variantUnit) {
     return {
       quantity: args.requestedQuantity,
+      unit: args.variant.serving_unit,
+    };
+  }
+
+  // Shared conversion factors handle compatible mass or volume units only.
+  // A null factor deliberately rejects g↔ml and count-unit guesses.
+  const conversionFactor = getConversionFactor(variantUnit, requestedUnit);
+  if (conversionFactor !== null) {
+    return {
+      quantity: args.requestedQuantity * conversionFactor,
       unit: args.variant.serving_unit,
     };
   }
@@ -297,8 +343,15 @@ async function resolveFoodLogVariantAndQuantity(args: {
   );
 
   const requestedUnit = args.unit;
+  if (requestedUnit && isAmbiguousLegacyFoodUnit(requestedUnit)) {
+    return {
+      ok: false as const,
+      message: `Unit "${requestedUnit}" is ambiguous because it includes a reference serving size. Use a consumed unit such as {"quantity":75,"unit":"g"}, or an explicit serving count such as {"quantity":0.75,"unit":"serving"}.`,
+    };
+  }
+
   let matchingVariant: any | undefined;
-  if (requestedUnit) {
+  if (requestedUnit && normalizeFoodUnit(requestedUnit) !== 'serving') {
     matchingVariant = candidates.find((variant) =>
       resolveQuantityForVariantUnit({
         requestedQuantity: args.quantity,
@@ -309,17 +362,40 @@ async function resolveFoodLogVariantAndQuantity(args: {
   }
 
   const variant = explicitVariant ?? matchingVariant ?? defaultVariant;
-  const unitToResolve = requestedUnit || variant?.serving_unit || 'serving';
-  const resolved = resolveQuantityForVariantUnit({
-    requestedQuantity: args.quantity,
-    requestedUnit: unitToResolve,
-    variant,
-  });
-
-  if (!variant?.id || !resolved) {
+  if (!variant?.id) {
     return {
       ok: false as const,
       message: `Cannot safely log ${args.quantity} ${requestedUnit || 'serving'} for this food because no matching serving variant is available.`,
+    };
+  }
+
+  // A serving count is explicit and therefore safe: normalize it to the
+  // variant's concrete reference unit before persisting. This makes 0.75
+  // servings of a 100 g food exactly the same entry as 75 g.
+  if (!requestedUnit || normalizeFoodUnit(requestedUnit) === 'serving') {
+    const reconciled = reconcileEntryUnitToVariant(
+      args.quantity,
+      requestedUnit || 'serving',
+      variant
+    );
+    return {
+      ok: true as const,
+      variantId: variant.id,
+      quantity: reconciled.quantity,
+      unit: reconciled.unit,
+      variant,
+    };
+  }
+
+  const resolved = resolveQuantityForVariantUnit({
+    requestedQuantity: args.quantity,
+    requestedUnit,
+    variant,
+  });
+  if (!resolved) {
+    return {
+      ok: false as const,
+      message: `Cannot safely convert ${args.quantity} ${requestedUnit} to this food's ${variant.serving_size} ${variant.serving_unit} reference serving. Use the matching unit or an explicit "serving" count; grams and millilitres are never converted automatically.`,
     };
   }
 
@@ -328,6 +404,7 @@ async function resolveFoodLogVariantAndQuantity(args: {
     variantId: variant.id,
     quantity: resolved.quantity,
     unit: resolved.unit,
+    variant,
   };
 }
 
@@ -709,6 +786,10 @@ export async function getNutritionalSummaryRows(
       vitamin_c: Number(row.vitamin_c || 0),
       calcium: Number(row.calcium || 0),
       iron: Number(row.iron || 0),
+      nutrition_warning:
+        Number(row.legacy_ambiguous_entry_count || 0) > 0
+          ? 'Totals exclude legacy entries with ambiguous units. Correct those entries explicitly before treating this day as complete.'
+          : undefined,
       energy_unit: energyUnit,
     };
   });
@@ -781,14 +862,22 @@ async function lookupFoodNutrition(
 }
 
 // Standalone domain tools.
+const foodPaginationSchema = z.object({
+  limit: z.number().int().min(1).max(500).optional(),
+  offset: z.number().int().min(0).optional(),
+});
+
 const foodDateRangeSchema = z.object({
   date: optionalDateSchema,
   start_date: optionalDateSchema,
   end_date: optionalDateSchema,
 });
 
-const foodPaginationSchema = z.object({
-  limit: z.number().int().min(1).max(500).optional(),
+// Diary payloads contain nested entries and can hit MCP response limits much
+// sooner than catalog lists. Keep their public page size conservative without
+// narrowing unrelated list/search/usage tools.
+const foodDiaryDateRangeSchema = foodDateRangeSchema.extend({
+  limit: z.number().int().min(1).max(50).optional(),
   offset: z.number().int().min(0).optional(),
 });
 
@@ -823,7 +912,8 @@ Actions:
 - list_meal_types() — lists the user's built-in and custom meal types with IDs, names, and sort order.
 - log_food(quantity, meal_type_id?|meal_type?, food_name?|food_id?, unit?, entry_date?, variant_id?) — use meal_type_id for custom meal types; the legacy meal_type fallback accepts "breakfast"|"lunch"|"dinner"|"snacks". meal_type_id takes precedence when both are supplied. Provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
 - log_external_food(food_name, meal_type_id?|meal_type?, quantity?, unit?, entry_date?, external_id?, provider_type?, is_quick_food?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. quantity is in servings and defaults to 1. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list.
-- create_food(food_name, calories, protein, carbs, fat, brand?, notes?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — MANDATORY: You must run lookup_food_nutrition first. Call only when lookup returns source='ai_estimate' (no match anywhere) or for custom/homemade foods, using AI-estimated values; for external lookup matches use log_external_food instead. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
+- create_food(food_name, calories, protein, carbs, fat, brand?, barcode?, notes?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — MANDATORY: You must run lookup_food_nutrition first. Call only when lookup returns source='ai_estimate' (no match anywhere) or for custom/homemade foods, using AI-estimated values; for external lookup matches use log_external_food instead. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
+- set_food_barcode(food_id, barcode) — updates product metadata only; it never changes variants or diary history.
 - search_meal(meal_name)
 - log_meal(meal_type_id?|meal_type?, entry_date, meal_id?, meal_name?, quantity?)
 - list_diary(entry_date?)
@@ -918,6 +1008,9 @@ Actions:
             // field: a model may add target_date/source_date to an
             // update/delete call, and the salvage logic would otherwise strip
             // the id fields and run a full-day copy instead.
+            if (args.food_id && args.barcode) {
+              return 'set_food_barcode';
+            }
             if (args.food_id) {
               return 'delete_food';
             }
@@ -1294,6 +1387,9 @@ Actions:
                 }
               );
               let loggedMsg = `Logged "${entry.food_name}" (${resolvedLog.quantity} ${resolvedLog.unit}) for ${mealType.name} on ${entryDate}.`;
+              if (entry.id) {
+                loggedMsg += ` Entry ID: ${entry.id}. Reference: ${resolvedLog.variant.serving_size} ${resolvedLog.variant.serving_unit}. ${formatConsumedNutrition(resolvedLog.quantity, resolvedLog.variant.serving_size, resolvedLog.variant)}`;
+              }
               // log_food only ever logs a food already in the database, so
               // Quick Add can never apply here.
               if (args.is_quick_food) loggedMsg += QUICK_ADD_NOT_APPLIED;
@@ -1313,6 +1409,11 @@ Actions:
               }
               const entryDate = args.entry_date || todayInZone(tz);
               const quantity = args.quantity ?? 1;
+              if (args.unit && isAmbiguousLegacyFoodUnit(args.unit)) {
+                return ERRORS.VALIDATION(
+                  `Unit "${args.unit}" is ambiguous because it includes a reference serving size. Use a consumed unit such as {"quantity":75,"unit":"g"}, or an explicit serving count such as {"quantity":0.75,"unit":"serving"}.`
+                );
+              }
               const result = await lookupFoodNutrition(
                 userId,
                 args.food_name,
@@ -1650,6 +1751,7 @@ Actions:
                 user_id: userId,
                 name: cleanedName,
                 brand: args.brand || null,
+                barcode: args.barcode,
                 notes,
                 serving_size: targetQuantity,
                 serving_unit: targetUnit,
@@ -1825,49 +1927,55 @@ Actions:
 
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const foodEntries = foodRows.map((row: any) => {
-                const servingSize = Number(row.serving_size) || 1;
-                const servingUnit = (
-                  row.serving_unit || 'serving'
-                ).toLowerCase();
-                const unit = (row.unit || 'serving').toLowerCase();
                 const quantity = Number(row.quantity);
-
-                // Unit-compatibility multiplier: "serving" or a unit other
-                // than the variant's is treated as absolute servings.
-                const multiplier =
-                  unit === 'serving' || unit !== servingUnit
-                    ? quantity
-                    : quantity / servingSize;
-
-                const scale = (val: unknown) => {
-                  const n = Number(val);
-                  return isNaN(n) ? 0 : Math.round(n * multiplier * 10) / 10;
-                };
-
-                const scaledCalories = scale(row.calories);
+                const storedUnit = row.unit || 'g';
+                const isLegacyAmbiguous = isAmbiguousLegacyFoodUnit(storedUnit);
+                const isServingCount =
+                  normalizeFoodUnit(storedUnit) === 'serving';
+                const compatibleUnit =
+                  isServingCount ||
+                  normalizeServingUnit(storedUnit) ===
+                    normalizeServingUnit(row.serving_unit);
+                const consumedQuantity = isServingCount
+                  ? quantity * Number(row.serving_size)
+                  : quantity;
+                const scaled =
+                  !isLegacyAmbiguous && compatibleUnit
+                    ? scaleNutritionForConsumedAmount(
+                        consumedQuantity,
+                        row.serving_size,
+                        row
+                      )
+                    : null;
+                const calories = scaled?.calories;
                 const displayCalories =
-                  eUnit === 'kJ'
-                    ? convertEnergy(scaledCalories, 'kcal', 'kJ')
-                    : scaledCalories;
+                  calories !== null && calories !== undefined && eUnit === 'kJ'
+                    ? convertEnergy(calories, 'kcal', 'kJ')
+                    : calories;
 
                 return {
                   id: row.id,
                   food_name: row.food_name,
                   quantity,
-                  unit: row.unit || 'g',
+                  unit: storedUnit,
                   meal_type: row.meal_type ? String(row.meal_type) : 'snacks',
                   meal_type_id: row.meal_type_id
                     ? String(row.meal_type_id)
                     : undefined,
                   entry_type: 'food_entry' as const,
-                  nutritional_values: isSet(row.calories)
-                    ? {
-                        calories: Math.round(displayCalories),
-                        protein: scale(row.protein),
-                        carbs: scale(row.carbs),
-                        fat: scale(row.fat),
-                      }
-                    : undefined,
+                  nutrition_warning:
+                    isLegacyAmbiguous || !compatibleUnit
+                      ? 'Nutrition is not included because this legacy entry has an ambiguous unit. Correct it explicitly with quantity and unit.'
+                      : undefined,
+                  nutritional_values:
+                    scaled && isSet(row.calories)
+                      ? {
+                          calories: Math.round(Number(displayCalories)),
+                          protein: Number(scaled.protein?.toFixed(3)),
+                          carbs: Number(scaled.carbs?.toFixed(3)),
+                          fat: Number(scaled.fat?.toFixed(3)),
+                        }
+                      : undefined,
                 };
               });
 
@@ -1903,9 +2011,11 @@ Actions:
                   for (const entry of entries) {
                     if (entry.entry_type === 'food_entry') {
                       text += `- **${entry.food_name}** — ${entry.quantity} ${entry.unit}`;
-                      if (entry.nutritional_values?.calories) {
+                      if (entry.nutritional_values?.calories !== undefined) {
                         text += ` (${entry.nutritional_values.calories} ${eUnit})`;
                         totalEnergy += entry.nutritional_values.calories;
+                      } else if (entry.nutrition_warning) {
+                        text += `\n  Warning: ${entry.nutrition_warning}`;
                       }
                       text += `\n  ID: ${entry.id} | Type: food_entry`;
                       if (entry.meal_type_id) {
@@ -2137,8 +2247,66 @@ Actions:
               const mealTypeUpdate = mealType
                 ? { meal_type_id: mealType.id }
                 : {};
-              let quantityChanged = args.quantity !== undefined;
-              let unitChanged = args.unit !== undefined;
+              let entryQuantity = args.quantity;
+              let entryUnit = args.unit;
+              if (entryType === 'food_entry' && entryUnit !== undefined) {
+                if (isAmbiguousLegacyFoodUnit(entryUnit)) {
+                  return ERRORS.VALIDATION(
+                    `Unit "${entryUnit}" is ambiguous because it includes a reference serving size. Use a consumed unit such as {"quantity":75,"unit":"g"}, or an explicit serving count such as {"quantity":0.75,"unit":"serving"}.`
+                  );
+                }
+                const existingEntry = await foodRepository.getFoodEntryById(
+                  entryId,
+                  userId
+                );
+                if (!existingEntry) return ERRORS.NOT_FOUND('Entry', entryId);
+                let requestedQuantity =
+                  entryQuantity ?? Number(existingEntry.quantity);
+                // With no supplied quantity, changing the unit must preserve
+                // the consumed amount. Convert the stored canonical amount
+                // into the requested representation before reconciling it
+                // back to the variant unit.
+                if (entryQuantity === undefined) {
+                  if (normalizeFoodUnit(entryUnit) === 'serving') {
+                    const servingSize = Number(existingEntry.serving_size);
+                    if (Number.isFinite(servingSize) && servingSize > 0) {
+                      requestedQuantity /= servingSize;
+                    }
+                  } else {
+                    const conversionFactor = getConversionFactor(
+                      normalizeFoodUnit(existingEntry.serving_unit),
+                      normalizeFoodUnit(entryUnit)
+                    );
+                    if (conversionFactor !== null) {
+                      requestedQuantity /= conversionFactor;
+                    }
+                  }
+                }
+                if (normalizeFoodUnit(entryUnit) === 'serving') {
+                  const reconciled = reconcileEntryUnitToVariant(
+                    requestedQuantity,
+                    entryUnit,
+                    existingEntry
+                  );
+                  entryQuantity = reconciled.quantity;
+                  entryUnit = reconciled.unit;
+                } else {
+                  const reconciled = resolveQuantityForVariantUnit({
+                    requestedQuantity,
+                    requestedUnit: entryUnit,
+                    variant: existingEntry,
+                  });
+                  if (!reconciled) {
+                    return ERRORS.VALIDATION(
+                      `Cannot safely convert ${requestedQuantity} ${entryUnit} to this entry's ${existingEntry.serving_size} ${existingEntry.serving_unit} reference serving. Use a compatible mass or volume unit, or an explicit "serving" count; grams and millilitres are never converted automatically.`
+                    );
+                  }
+                  entryQuantity = reconciled.quantity;
+                  entryUnit = reconciled.unit;
+                }
+              }
+              let quantityChanged = entryQuantity !== undefined;
+              let unitChanged = entryUnit !== undefined;
               // For a food_entry the type is written whenever a selector is
               // present; for a food_entry_meal it is refined below against the
               // container's current meal_type_id so unchanged categories are
@@ -2151,10 +2319,11 @@ Actions:
                     userId,
                     entryId,
                     {
-                      quantity: args.quantity,
-                      unit: args.unit,
+                      quantity: entryQuantity,
+                      unit: entryUnit,
                       ...mealTypeUpdate,
-                    }
+                    },
+                    { preserveSnapshot: true }
                   );
                 } else {
                   // Lightweight parent read (no components) to decide whether
@@ -2238,17 +2407,28 @@ Actions:
                 throw error;
               }
               const updates = [
-                quantityChanged ? `quantity to ${args.quantity}` : '',
-                unitChanged ? `unit to ${args.unit}` : '',
+                quantityChanged ? `quantity to ${entryQuantity}` : '',
+                unitChanged ? `unit to ${entryUnit}` : '',
                 mealTypeChanged ? `meal type to ${mealType?.name}` : '',
               ].filter(Boolean);
               if (quantityChanged && unitChanged && !mealTypeChanged) {
                 return formatConfirmation(
-                  `Entry updated to ${args.quantity} ${args.unit}.`
+                  `Entry updated to ${entryQuantity} ${entryUnit}.`
                 );
               }
               return formatConfirmation(
                 `Entry updated: ${updates.join(', ')}.`
+              );
+            }
+
+            case 'set_food_barcode': {
+              const updatedFood = await foodCoreService.updateFood(
+                userId,
+                args.food_id,
+                { barcode: args.barcode }
+              );
+              return formatConfirmation(
+                `Barcode for "${updatedFood.name}" updated to ${args.barcode}.`
               );
             }
 
@@ -2465,6 +2645,9 @@ Actions:
                   if (s.saturated_fat || s.cholesterol || s.potassium) {
                     text += `  Other: SatFat: ${s.saturated_fat}g | Chol: ${s.cholesterol}mg | Potas: ${s.potassium}mg`;
                   }
+                  if (s.nutrition_warning) {
+                    text += `\n  Warning: ${s.nutrition_warning}`;
+                  }
                   return text;
                 }
               );
@@ -2493,7 +2676,11 @@ Actions:
           }
         } catch (error) {
           log('error', '[Food Tool] Error:', error);
-          if (error instanceof Error && error.message.includes('not found')) {
+          if (
+            error instanceof Error &&
+            (error.message.includes('not found') ||
+              error.message.includes('Forbidden'))
+          ) {
             return ERRORS.VALIDATION(error.message);
           }
           return ERRORS.DB_ERROR(error);
@@ -2633,9 +2820,9 @@ Actions:
     sparky_get_food_diary: tool({
       description:
         'Returns entry-level food diary data for a specific date or date range.',
-      inputSchema: foodDateRangeSchema,
+      inputSchema: foodDiaryDateRangeSchema,
       execute: async (rawArgs) => {
-        const parsed = foodDateRangeSchema.safeParse(
+        const parsed = foodDiaryDateRangeSchema.safeParse(
           normalizeDayKeywords(rawArgs, tz)
         );
         if (!parsed.success) {
@@ -2643,6 +2830,10 @@ Actions:
         }
         try {
           const { startDate, endDate } = foodDateRange(parsed.data, tz);
+          const { limit, offset } = normalizePagination(
+            parsed.data.limit,
+            parsed.data.offset
+          );
           const foodEntries = await foodEntryService.getFoodEntriesByDateRange(
             userId,
             userId,
@@ -2655,15 +2846,35 @@ Actions:
               startDate,
               endDate
             );
+          const ordered = [
+            ...foodEntries.map((entry: Record<string, unknown>) => ({
+              kind: 'food' as const,
+              entry,
+            })),
+            ...mealEntries.map((entry: Record<string, unknown>) => ({
+              kind: 'meal' as const,
+              entry,
+            })),
+          ].sort((left, right) => {
+            const leftKey = `${left.entry.entry_date ?? ''}|${left.entry.entry_time ?? ''}|${left.entry.id ?? ''}`;
+            const rightKey = `${right.entry.entry_date ?? ''}|${right.entry.entry_time ?? ''}|${right.entry.id ?? ''}`;
+            return leftKey.localeCompare(rightKey);
+          });
+          const page = ordered.slice(offset, offset + limit);
+          const hasMore = offset + page.length < ordered.length;
           const data = {
             start_date: startDate,
             end_date: endDate,
-            food_entries: foodEntries.map((e: Record<string, unknown>) =>
-              compactRecord(e, DIARY_ENTRY_DROP)
-            ),
-            meal_entries: mealEntries.map((m: Record<string, unknown>) =>
-              compactRecord(m, DIARY_MEAL_DROP)
-            ),
+            food_entries: page
+              .filter((item) => item.kind === 'food')
+              .map((item) => compactRecord(item.entry, DIARY_ENTRY_DROP)),
+            meal_entries: page
+              .filter((item) => item.kind === 'meal')
+              .map((item) => compactRecord(item.entry, DIARY_MEAL_DROP)),
+            total_count: ordered.length,
+            has_more: hasMore,
+            next_offset: hasMore ? offset + page.length : null,
+            totals_scope: 'page',
           };
           return formatJsonResult(data);
         } catch (error) {

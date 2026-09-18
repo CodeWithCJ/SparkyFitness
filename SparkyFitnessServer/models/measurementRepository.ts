@@ -976,6 +976,36 @@ async function getLatestManualCustomEntriesOnOrBeforeDate(
   }
 }
 
+async function getCustomMeasurementEntriesByDateRange(
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT cm.id, cm.category_id, cm.value, cm.notes, cm.source,
+              cm.entry_date::TEXT, cm.entry_hour, cm.entry_timestamp,
+              json_build_object(
+                'id', cc.id,
+                'name', cc.name,
+                'display_name', cc.display_name,
+                'measurement_type', cc.measurement_type,
+                'data_type', cc.data_type
+              ) AS custom_categories
+       FROM custom_measurements cm
+       JOIN custom_categories cc ON cm.category_id = cc.id
+       WHERE cm.user_id = $1
+         AND cm.entry_date BETWEEN $2 AND $3
+       ORDER BY cm.entry_date ASC, cm.entry_timestamp ASC, cm.id ASC`,
+      [userId, startDate, endDate]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 async function getCheckInMeasurementsByDateRange(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -1628,6 +1658,7 @@ export { updateCustomCategory };
 export { deleteCustomCategory };
 export { getCustomMeasurementEntries };
 export { getCustomMeasurementEntriesByDate };
+export { getCustomMeasurementEntriesByDateRange };
 export { getLatestManualCustomEntriesOnOrBeforeDate };
 export { getCheckInMeasurementsByDateRange };
 export { getCustomMeasurementsByDateRange };
@@ -2167,6 +2198,7 @@ export default {
   deleteCustomCategory,
   getCustomMeasurementEntries,
   getCustomMeasurementEntriesByDate,
+  getCustomMeasurementEntriesByDateRange,
   getLatestManualCustomEntriesOnOrBeforeDate,
   getCheckInMeasurementsByDateRange,
   getCustomMeasurementsByDateRange,

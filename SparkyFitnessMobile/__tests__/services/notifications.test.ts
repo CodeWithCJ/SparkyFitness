@@ -16,6 +16,7 @@ import {
   maybePromptForExactAlarmPermission,
   scheduleFastGoalNotification,
   scheduleRestNotification,
+  scheduleWaterReminderNotifications,
   setNotificationsEnabled,
   setRestTimerNotificationsEnabled,
 } from '../../src/services/notifications';
@@ -77,6 +78,13 @@ const mockDismiss =
   >;
 const mockToastShow = Toast.show as jest.MockedFunction<typeof Toast.show>;
 
+function setAppState(state: string): void {
+  Object.defineProperty(AppState, 'currentState', {
+    get: () => state,
+    configurable: true,
+  });
+}
+
 describe('notifications service', () => {
   beforeEach(async () => {
     await initializeI18n('en');
@@ -96,6 +104,7 @@ describe('notifications service', () => {
     mockGetPresented.mockReset().mockResolvedValue([]);
     mockDismiss.mockReset().mockResolvedValue(undefined as any);
     mockToastShow.mockClear();
+    setAppState('active');
     Object.defineProperty(Platform, 'OS', {
       get: () => 'ios',
       configurable: true,
@@ -187,6 +196,18 @@ describe('notifications service', () => {
       );
     });
 
+    it('creates a dedicated hydration Android channel', async () => {
+      Object.defineProperty(Platform, 'OS', {
+        get: () => 'android',
+        configurable: true,
+      });
+      await initNotifications();
+      expect(mockSetChannel).toHaveBeenCalledWith(
+        'hydration',
+        expect.objectContaining({ name: 'Hydration reminders' })
+      );
+    });
+
     it('registers the rest-complete category with a background Complete Set action', async () => {
       await initNotifications();
       expect(mockSetCategory).toHaveBeenCalledWith('rest-complete', [
@@ -225,6 +246,23 @@ describe('notifications service', () => {
       const handler = await getHandler();
       const result = await handler(notificationWith('rest-complete'));
       expect(result.shouldPlaySound).toBe(true);
+    });
+
+    it('hides the rest ping while the app is on screen', async () => {
+      const handler = await getHandler();
+      const result = await handler(notificationWith('rest-complete'));
+      expect(result.shouldShowBanner).toBe(false);
+      expect(result.shouldShowList).toBe(false);
+    });
+
+    it('sounds and shows the rest ping when the app is only inactive', async () => {
+      // The chime is foreground-only, so here the ping is the only cue left.
+      setAppState('inactive');
+      const handler = await getHandler();
+      const result = await handler(notificationWith('rest-complete'));
+      expect(result.shouldPlaySound).toBe(true);
+      expect(result.shouldShowBanner).toBe(true);
+      expect(result.shouldShowList).toBe(true);
     });
 
     it('keeps sound for non-rest notifications regardless of the chime preference', async () => {
@@ -282,7 +320,9 @@ describe('notifications service', () => {
         content: expect.objectContaining({
           title: 'Rest complete',
           body: 'Bench Press',
+          sound: true,
           categoryIdentifier: 'rest-complete',
+          interruptionLevel: 'timeSensitive',
         }),
         trigger: expect.objectContaining({
           type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -379,6 +419,87 @@ describe('notifications service', () => {
 
     it('returns null on an invalid date string', async () => {
       expect(await scheduleFastGoalNotification('not-a-date')).toBeNull();
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('scheduleWaterReminderNotifications', () => {
+    const inHours = (hours: number) =>
+      new Date(Date.now() + hours * 60 * 60 * 1000);
+
+    beforeEach(() => {
+      useAppPreferencesStore.getState().setWaterReminderEnabled(true);
+    });
+
+    it('schedules each future time as a DATE notification on the hydration channel', async () => {
+      mockSchedule
+        .mockResolvedValueOnce('water-1' as any)
+        .mockResolvedValueOnce('water-2' as any);
+
+      const ids = await scheduleWaterReminderNotifications([
+        inHours(1),
+        inHours(3),
+      ]);
+
+      expect(ids).toEqual(['water-1', 'water-2']);
+      expect(mockSchedule).toHaveBeenCalledTimes(2);
+      expect(mockSchedule).toHaveBeenCalledWith({
+        content: expect.objectContaining({
+          title: 'Time to hydrate 💧',
+          body: "You haven't logged any water in a while.",
+        }),
+        trigger: expect.objectContaining({
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          channelId: 'hydration',
+        }),
+      });
+    });
+
+    it('skips times that are already in the past', async () => {
+      const ids = await scheduleWaterReminderNotifications([
+        new Date(Date.now() - 60 * 1000),
+        inHours(1),
+      ]);
+      expect(ids).toEqual(['notif-id']);
+      expect(mockSchedule).toHaveBeenCalledTimes(1);
+    });
+
+    it('cancels what it scheduled when a later reminder fails', async () => {
+      mockSchedule
+        .mockResolvedValueOnce('water-1' as any)
+        .mockRejectedValueOnce(new Error('scheduling unavailable'));
+
+      const ids = await scheduleWaterReminderNotifications([
+        inHours(1),
+        inHours(2),
+      ]);
+
+      expect(ids).toEqual([]);
+      expect(mockCancel).toHaveBeenCalledWith('water-1');
+    });
+
+    it('schedules nothing while the water reminder toggle is off', async () => {
+      useAppPreferencesStore.getState().setWaterReminderEnabled(false);
+      expect(await scheduleWaterReminderNotifications([inHours(1)])).toEqual(
+        []
+      );
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+
+    it('schedules nothing while the master notifications toggle is off', async () => {
+      useAppPreferencesStore.getState().setNotificationsEnabled(false);
+      expect(await scheduleWaterReminderNotifications([inHours(1)])).toEqual(
+        []
+      );
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+
+    it('never prompts and schedules nothing without OS permission', async () => {
+      mockGetPerms.mockResolvedValue({ status: 'undetermined' } as any);
+      expect(await scheduleWaterReminderNotifications([inHours(1)])).toEqual(
+        []
+      );
+      expect(mockRequestPerms).not.toHaveBeenCalled();
       expect(mockSchedule).not.toHaveBeenCalled();
     });
   });

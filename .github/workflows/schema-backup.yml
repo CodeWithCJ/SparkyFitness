@@ -21,6 +21,7 @@ on:
       - "SparkyFitnessServer/db/grantPermissions.ts"
       - "SparkyFitnessServer/utils/dbMigrations.ts"
       - "SparkyFitnessServer/utils/applyRlsPolicies.ts"
+      - "SparkyFitnessServer/utils/initializeDatabase.ts"
       - "SparkyFitnessServer/tests/migrate.script.ts"
       - "SparkyFitnessServer/package.json"
       - ".github/workflows/schema-backup.yml"

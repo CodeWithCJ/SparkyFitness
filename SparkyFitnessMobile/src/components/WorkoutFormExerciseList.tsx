@@ -99,6 +99,7 @@ interface WorkoutFormExerciseListProps {
   onAddSet: (exerciseClientId: string) => void;
   onRemoveExercise: (exercise: WorkoutDraftExercise) => void;
   setExerciseRest: (exerciseClientId: string, seconds: number) => void;
+  setExerciseProgression?: (exerciseClientId: string, patch: any) => void;
   /**
    * Enables the per-exercise inline calories field (workout edit). Absent for
    * the create and preset forms, which have no stored calories to override.
@@ -192,6 +193,7 @@ const WorkoutFormExerciseList = forwardRef<
     onAddSet,
     onRemoveExercise,
     setExerciseRest,
+    setExerciseProgression,
     setExerciseCalories,
     setExerciseNotes,
     onReplaceExercise,
@@ -740,6 +742,7 @@ const WorkoutFormExerciseList = forwardRef<
             onToggleComplete={showCompletion ? handleToggleComplete : undefined}
             onEditFieldChange={handleEditFieldChange}
             onRegisterAccessoryHandle={onRegisterAccessoryHandle}
+            onUpdateProgression={setExerciseProgression}
           />
         );
 

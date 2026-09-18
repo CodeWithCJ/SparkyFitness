@@ -7,7 +7,10 @@ import {
   changeWaterIntake,
 } from '../../src/services/api/measurementsApi';
 import type { DailySummaryRawData } from '../../src/hooks/useDailySummary';
-import { dailySummaryQueryKey } from '../../src/hooks/queryKeys';
+import {
+  dailySummaryQueryKey,
+  waterIntakeLogQueryKey,
+} from '../../src/hooks/queryKeys';
 import {
   createTestQueryClient,
   createQueryWrapper,
@@ -429,6 +432,62 @@ describe('useWaterIntakeMutation', () => {
         text2: 'Failed to update water intake. Please try again.',
       });
 
+      invalidateSpy.mockRestore();
+    });
+
+    test("invalidates the day's water log after a drink is logged", async () => {
+      mockChangeWaterIntake.mockResolvedValue({
+        id: '1',
+        water_ml: 750,
+        entry_date: testDate,
+      });
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true);
+      });
+
+      await act(async () => {
+        result.current.increment();
+      });
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: waterIntakeLogQueryKey(testDate),
+        });
+      });
+      invalidateSpy.mockRestore();
+    });
+
+    test("invalidates the day's water log after a preset is logged", async () => {
+      mockChangeWaterIntake.mockResolvedValue({
+        id: '1',
+        water_ml: 750,
+        entry_date: testDate,
+      });
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await waitFor(() => {
+        expect(result.current.isReady).toBe(true);
+      });
+
+      await act(async () => {
+        result.current.logPreset(1);
+      });
+
+      await waitFor(() => {
+        expect(invalidateSpy).toHaveBeenCalledWith({
+          queryKey: waterIntakeLogQueryKey(testDate),
+        });
+      });
       invalidateSpy.mockRestore();
     });
 

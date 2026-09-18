@@ -13,10 +13,17 @@ import { buildChatbotTools } from '../ai/tools/index.js';
 import { buildDevTools } from '../ai/tools/devTools.js';
 import goalService from '../services/goalService.js';
 import userRepository from '../models/userRepository.js';
+import foodEntryService from '../services/foodEntryService.js';
+import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
 
 // buildChatbotTools loads every domain builder; real foodEntryService trips on
 // a deep '@workspace/shared' subpath import at load and isn't exercised here.
-vi.mock('../services/foodEntryService', () => ({ default: {} }));
+vi.mock('../services/foodEntryService', () => ({
+  default: { getFoodEntriesByDateRange: vi.fn() },
+}));
+vi.mock('../models/foodEntryMealRepository', () => ({
+  default: { getFoodEntryMealsByDateRange: vi.fn() },
+}));
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
 // Pin the user's timezone so day-defaults are deterministic and no DB is hit.
 vi.mock('../utils/timezoneLoader', () => ({
@@ -159,6 +166,97 @@ describe('POST /mcp', () => {
       // tool() identity passthrough → bare zod-4 object → JSON-Schema object.
       expect(t.inputSchema.type, `${t.name} inputSchema`).toBe('object');
     }
+  });
+
+  it('publishes diary pagination and advances after a truncated mixed page', async () => {
+    const listed = await request(app)
+      .post('/mcp')
+      .set(MCP_HEADERS)
+      .set('Authorization', 'Bearer valid')
+      .send({ jsonrpc: '2.0', id: 1, method: 'tools/list' });
+    const diaryTool = listed.body.result.tools.find(
+      (tool: { name: string }) => tool.name === 'sparky_get_food_diary'
+    );
+    expect(diaryTool.inputSchema.properties).toHaveProperty('limit');
+    expect(diaryTool.inputSchema.properties).toHaveProperty('offset');
+    const nutritionSummaryTool = listed.body.result.tools.find(
+      (tool: { name: string }) => tool.name === 'sparky_get_nutrition_summary'
+    );
+    expect(nutritionSummaryTool.inputSchema.properties).not.toHaveProperty(
+      'limit'
+    );
+    expect(nutritionSummaryTool.inputSchema.properties).not.toHaveProperty(
+      'offset'
+    );
+
+    const foodEntries = Array.from({ length: 25 }, (_, index) => ({
+      id: `food-${String(index).padStart(2, '0')}`,
+      entry_date: '2026-09-15',
+      entry_time:
+        index === 0 ? '12:00' : `14:${String(index).padStart(2, '0')}`,
+      food_name: `Food ${index} ${'x'.repeat(500)}`,
+    }));
+    const mealEntries = Array.from({ length: 2 }, (_, index) => ({
+      id: `meal-${index}`,
+      entry_date: '2026-09-15',
+      entry_time: index === 0 ? '12:30' : '13:30',
+      name: `Meal ${index}`,
+    }));
+    vi.mocked(foodEntryService.getFoodEntriesByDateRange).mockResolvedValue(
+      foodEntries
+    );
+    vi.mocked(
+      foodEntryMealRepository.getFoodEntryMealsByDateRange
+    ).mockResolvedValue(mealEntries);
+
+    const first = await request(app)
+      .post('/mcp')
+      .set(MCP_HEADERS)
+      .set('Authorization', 'Bearer valid')
+      .send({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: {
+          name: 'sparky_get_food_diary',
+          arguments: { date: '2026-09-15', limit: 25, offset: 0 },
+        },
+      });
+    expect(first.status).toBe(200);
+    const firstText = first.body.result.content[0].text as string;
+    const firstPage = JSON.parse(firstText.split('\n\n---')[0] ?? '');
+    expect(firstPage.next_offset).toBeGreaterThan(0);
+    expect(firstPage.next_offset).toBeLessThan(25);
+
+    const second = await request(app)
+      .post('/mcp')
+      .set(MCP_HEADERS)
+      .set('Authorization', 'Bearer valid')
+      .send({
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: {
+          name: 'sparky_get_food_diary',
+          arguments: {
+            date: '2026-09-15',
+            limit: 25,
+            offset: firstPage.next_offset,
+          },
+        },
+      });
+    const secondPage = JSON.parse(
+      (second.body.result.content[0].text as string).split('\n\n---')[0] ?? ''
+    );
+    const ids = [
+      ...firstPage.food_entries,
+      ...firstPage.meal_entries,
+      ...secondPage.food_entries,
+      ...secondPage.meal_entries,
+    ].map((entry: { id: string }) => entry.id);
+    expect(new Set(ids)).toHaveLength(ids.length);
+    expect(ids).toContain('meal-0');
+    expect(ids).toContain('meal-1');
   });
 
   it('tools/call dispatches to the registry handler and returns its text', async () => {

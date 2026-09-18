@@ -760,11 +760,18 @@ async function createFoodEntry(
     throw error;
   }
 }
+interface FoodEntryUpdateOptions {
+  // MCP normalizes a quantity/unit edit without choosing a new catalog
+  // variant, so it must preserve the historical nutrition reference.
+  preserveSnapshot?: boolean;
+}
+
 async function updateFoodEntry(
   authenticatedUserId: string,
   actingUserId: string,
   entryId: string,
-  entryData: FoodEntryInput
+  entryData: FoodEntryInput,
+  options: FoodEntryUpdateOptions = {}
 ) {
   try {
     const entryOwnerId = await foodRepository.getFoodEntryOwnerId(
@@ -800,8 +807,15 @@ async function updateFoodEntry(
           )
         : null;
 
+    // MCP quantity, unit and meal-type edits preserve the entry snapshot: the
+    // catalog can change after logging, and MCP did not choose a new variant.
+    // The web/mobile update path retains its existing refresh-on-edit behavior.
+    const shouldRefreshSnapshot =
+      !options.preserveSnapshot ||
+      (entryData.variant_id !== undefined &&
+        entryData.variant_id !== existingEntry.variant_id);
     let newSnapshotData;
-    if (food && variant) {
+    if (shouldRefreshSnapshot && food && variant) {
       newSnapshotData = {
         food_name: food.name,
         brand_name: food.brand,

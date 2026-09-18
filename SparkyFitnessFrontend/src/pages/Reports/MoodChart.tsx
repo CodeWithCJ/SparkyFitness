@@ -12,14 +12,15 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { getMoodDisplay } from '@/utils/moodUtils';
-import { BUILT_IN_MOODS } from '@workspace/shared';
+import { moodByName } from '@workspace/shared';
 import type { MoodEntry } from '@/types';
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getTimeXAxisProps, prepareTimeChartData } from '@/utils/chartUtils';
 
+/** A built-in mood as "<emoji> <name>", or the raw tag for a user's own mood. */
 function moodTagLabel(tag: string): string {
-  const def = BUILT_IN_MOODS.find((m) => m.name === tag);
+  const def = moodByName(tag);
   return def ? `${def.emoji} ${def.displayName}` : tag;
 }
 

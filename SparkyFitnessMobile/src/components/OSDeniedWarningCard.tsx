@@ -16,7 +16,7 @@ const OSDeniedWarningCard: React.FC<Props> = ({ onPress, actionLabel }) => {
   const title = t('notificationSettings.permissionTitle', 'Grant permissions');
   const body = t(
     'notificationSettings.permissionBody',
-    "SparkyFitness alerts (rest timers, fasting goals, medication reminders) won't fire."
+    "SparkyFitness alerts (rest timers, fasting goals, medication and hydration reminders) won't fire."
   );
 
   return (

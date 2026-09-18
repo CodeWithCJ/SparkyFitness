@@ -32,6 +32,11 @@ type LegacyKey = keyof typeof LEGACY_KEYS;
 /** Which stat the active-workout log shows in its per-set metric column. */
 export type ActiveWorkoutMetricColumn = 'rpe' | 'volume' | 'e1rm' | 'tenrm';
 
+/** Hours without a water log before a hydration reminder fires. */
+export const WATER_REMINDER_INTERVAL_OPTIONS = [1, 2, 3, 4] as const;
+export type WaterReminderIntervalHours =
+  (typeof WATER_REMINDER_INTERVAL_OPTIONS)[number];
+
 /** Factory default rest period between sets, in seconds. */
 export const DEFAULT_REST_SEC = 90;
 
@@ -51,6 +56,10 @@ export const PREFERENCE_DEFAULTS = {
   medicationRemindersEnabled: true,
   medicationReminderRepeats: true,
   medicationReminderHideNames: false,
+  waterReminderEnabled: false,
+  waterReminderIntervalHours: 2 as WaterReminderIntervalHours,
+  waterReminderWindowStart: '08:00' as string,
+  waterReminderWindowEnd: '22:00' as string,
   liquidGlassTabBarEnabled: false,
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
   diarySummaryVisible: false,
@@ -87,6 +96,10 @@ export type AppPreferencesData = {
   medicationRemindersEnabled: boolean;
   medicationReminderRepeats: boolean;
   medicationReminderHideNames: boolean;
+  waterReminderEnabled: boolean;
+  waterReminderIntervalHours: WaterReminderIntervalHours;
+  waterReminderWindowStart: string;
+  waterReminderWindowEnd: string;
   liquidGlassTabBarEnabled: boolean;
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
   diarySummaryVisible: boolean;
@@ -123,6 +136,9 @@ export interface AppPreferencesState extends AppPreferencesData {
   setMedicationRemindersEnabled: (value: boolean) => void;
   setMedicationReminderRepeats: (value: boolean) => void;
   setMedicationReminderHideNames: (value: boolean) => void;
+  setWaterReminderEnabled: (value: boolean) => void;
+  setWaterReminderIntervalHours: (value: WaterReminderIntervalHours) => void;
+  setWaterReminderWindow: (start: string, end: string) => void;
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
   setDiarySummaryVisible: (value: boolean) => void;
@@ -210,6 +226,11 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ medicationReminderRepeats: value }),
       setMedicationReminderHideNames: (value) =>
         set({ medicationReminderHideNames: value }),
+      setWaterReminderEnabled: (value) => set({ waterReminderEnabled: value }),
+      setWaterReminderIntervalHours: (value) =>
+        set({ waterReminderIntervalHours: value }),
+      setWaterReminderWindow: (start, end) =>
+        set({ waterReminderWindowStart: start, waterReminderWindowEnd: end }),
       setLiquidGlassTabBarEnabled: (value) =>
         set({ liquidGlassTabBarEnabled: value }),
       setActiveWorkoutMetricColumn: (value) =>
@@ -261,6 +282,10 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         medicationRemindersEnabled: state.medicationRemindersEnabled,
         medicationReminderRepeats: state.medicationReminderRepeats,
         medicationReminderHideNames: state.medicationReminderHideNames,
+        waterReminderEnabled: state.waterReminderEnabled,
+        waterReminderIntervalHours: state.waterReminderIntervalHours,
+        waterReminderWindowStart: state.waterReminderWindowStart,
+        waterReminderWindowEnd: state.waterReminderWindowEnd,
         liquidGlassTabBarEnabled: state.liquidGlassTabBarEnabled,
         // Older persisted blobs without these keys backfill via the default
         // shallow merge — no version bump needed.

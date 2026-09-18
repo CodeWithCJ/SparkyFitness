@@ -1,0 +1,30 @@
+{
+  "sourceLocale": "en",
+  "fallbackLocale": "en",
+  "locales": {
+    "en": {
+      "languageCode": "en",
+      "intlLocale": "en-US",
+      "displayNameKey": "settings.language.english",
+      "defaultDisplayName": "English"
+    },
+    "pl": {
+      "languageCode": "pl",
+      "intlLocale": "pl-PL",
+      "displayNameKey": "settings.language.polish",
+      "defaultDisplayName": "Polski"
+    },
+    "es": {
+      "languageCode": "es",
+      "intlLocale": "es-ES",
+      "displayNameKey": "settings.language.spanish",
+      "defaultDisplayName": "Español"
+    },
+    "de": {
+      "languageCode": "de",
+      "intlLocale": "de-DE",
+      "displayNameKey": "settings.language.german",
+      "defaultDisplayName": "Deutsch"
+    }
+  }
+}

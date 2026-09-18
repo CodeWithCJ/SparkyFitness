@@ -4,8 +4,10 @@ import {
   _resetEnrichedSessionCacheForTests,
   clearEnrichedSessions,
   hasEnrichedSession,
+  hasHeartRateTelemetry,
   markEnrichedSessions,
   sessionTelemetryKey,
+  shouldCacheEnrichedSession,
 } from '../../../src/services/shared/enrichedSessionCache';
 import { getActiveServerConfigId } from '../../../src/services/storage';
 
@@ -14,7 +16,8 @@ jest.mock('../../../src/services/storage', () => ({
 }));
 
 const mockActiveConfig = getActiveServerConfigId as jest.Mock;
-const keyFor = (scope: string) => `@SparkyFitness/enrichedSessions:${scope}`;
+const keyFor = (scope: string) => `@SparkyFitness/enrichedSessions.v2:${scope}`;
+const v1KeyFor = (scope: string) => `@SparkyFitness/enrichedSessions:${scope}`;
 
 describe('enrichedSessionCache', () => {
   beforeEach(async () => {
@@ -71,6 +74,43 @@ describe('enrichedSessionCache', () => {
       expect(
         await AsyncStorage.getItem('@SparkyFitness/enrichedSessions')
       ).toBeNull();
+    });
+
+    it('never reads v1 entries, so a session cached before the heart-rate gate is re-collected (#2300)', async () => {
+      // v1 entries mean "some telemetry was found", which is what left workouts
+      // stranded without their heart rate. They must not suppress collection.
+      await AsyncStorage.setItem(
+        v1KeyFor('server-a'),
+        JSON.stringify(['rec-1:m'])
+      );
+
+      expect(await hasEnrichedSession('rec-1:m')).toBe(false);
+    });
+
+    it('sweeps the v1 per-server keys so they do not linger', async () => {
+      await AsyncStorage.setItem(
+        v1KeyFor('server-a'),
+        JSON.stringify(['rec-1:m'])
+      );
+      await AsyncStorage.setItem(
+        v1KeyFor('server-b'),
+        JSON.stringify(['rec-2:m'])
+      );
+
+      await hasEnrichedSession('anything');
+
+      expect(await AsyncStorage.getItem(v1KeyFor('server-a'))).toBeNull();
+      expect(await AsyncStorage.getItem(v1KeyFor('server-b'))).toBeNull();
+    });
+
+    it('leaves unrelated app keys alone while sweeping', async () => {
+      await AsyncStorage.setItem('@SparkyFitness/app-preferences', '{"a":1}');
+
+      await hasEnrichedSession('anything');
+
+      expect(await AsyncStorage.getItem('@SparkyFitness/app-preferences')).toBe(
+        '{"a":1}'
+      );
     });
 
     it('falls back to an unscoped bucket when no server is configured', async () => {
@@ -154,5 +194,103 @@ describe('enrichedSessionCache', () => {
 
     expect(await hasEnrichedSession('rec-1:m')).toBe(false);
     expect(await AsyncStorage.getItem(keyFor('server-a'))).toBeNull();
+  });
+
+  describe('hasHeartRateTelemetry', () => {
+    it('is true for an hr series or a device-reported average', () => {
+      expect(
+        hasHeartRateTelemetry({ hr_samples: [{ t: 't', bpm: 120 }] })
+      ).toBe(true);
+      expect(
+        hasHeartRateTelemetry({ telemetry: { avg_heart_rate: 118 } })
+      ).toBe(true);
+    });
+
+    it('is false for non-HR telemetry, which is the #2300 case', () => {
+      // A Google Fit walk yields Speed and StepsCadence from its own summary
+      // long before the ring's heart rate lands. Treating that as "collected"
+      // is what locked the session out for good.
+      expect(
+        hasHeartRateTelemetry({
+          telemetry: { avg_speed_mps: 1.4, avg_cadence: 108 },
+          gps_points: [{ t: 't', lat: 1, lon: 2 }],
+        })
+      ).toBe(false);
+    });
+
+    it('is false for an empty bundle or none at all', () => {
+      expect(hasHeartRateTelemetry({})).toBe(false);
+      expect(hasHeartRateTelemetry({ hr_samples: [] })).toBe(false);
+      expect(hasHeartRateTelemetry(null)).toBe(false);
+      expect(hasHeartRateTelemetry(undefined)).toBe(false);
+    });
+  });
+
+  describe('shouldCacheEnrichedSession', () => {
+    const baseNow = Date.parse('2026-09-17T12:00:00Z');
+    const withHr = { hr_samples: [{ t: 't', bpm: 120 }] };
+    const noHr = {};
+
+    it('caches a session that carries heart rate, regardless of age', () => {
+      expect(
+        shouldCacheEnrichedSession(withHr, '2026-09-17T11:30:00Z', baseNow)
+      ).toBe(true);
+      expect(
+        shouldCacheEnrichedSession(withHr, '2026-09-10T12:00:00Z', baseNow)
+      ).toBe(true);
+    });
+
+    it('does not cache a recent session that has telemetry but no heart rate (#2300)', () => {
+      // The regression the grace window exists for: speed/cadence present,
+      // HR still to arrive from the wearable.
+      expect(
+        shouldCacheEnrichedSession(
+          { telemetry: { avg_speed_mps: 1.4, avg_cadence: 108 } },
+          '2026-09-17T11:00:00Z',
+          baseNow
+        )
+      ).toBe(false);
+    });
+
+    it('does not cache a session without heart rate inside the 24h grace window', () => {
+      // 1 hour ago
+      expect(
+        shouldCacheEnrichedSession(noHr, '2026-09-17T11:00:00Z', baseNow)
+      ).toBe(false);
+
+      // 23 hours ago
+      expect(
+        shouldCacheEnrichedSession(noHr, '2026-09-16T13:00:00Z', baseNow)
+      ).toBe(false);
+
+      // Date instance
+      expect(
+        shouldCacheEnrichedSession(
+          noHr,
+          new Date('2026-09-17T10:00:00Z'),
+          baseNow
+        )
+      ).toBe(false);
+    });
+
+    it('caches a session without heart rate once it is older than the grace window', () => {
+      // Exactly 24 hours ago
+      expect(
+        shouldCacheEnrichedSession(noHr, '2026-09-16T12:00:00Z', baseNow)
+      ).toBe(true);
+
+      // 48 hours ago
+      expect(
+        shouldCacheEnrichedSession(noHr, '2026-09-15T12:00:00Z', baseNow)
+      ).toBe(true);
+    });
+
+    it('caches as a safe fallback when the session end time is missing or invalid', () => {
+      expect(shouldCacheEnrichedSession(noHr, null, baseNow)).toBe(true);
+      expect(shouldCacheEnrichedSession(noHr, undefined, baseNow)).toBe(true);
+      expect(shouldCacheEnrichedSession(noHr, 'invalid-date', baseNow)).toBe(
+        true
+      );
+    });
   });
 });

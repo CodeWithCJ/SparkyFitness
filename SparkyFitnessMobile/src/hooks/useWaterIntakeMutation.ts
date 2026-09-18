@@ -10,7 +10,11 @@ import {
 import { getServingVolume } from '../utils/unitConversions';
 import type { DailySummaryRawData } from './useDailySummary';
 import type { WaterContainer } from '../types/measurements';
-import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
+import {
+  dailySummaryQueryKey,
+  waterContainersQueryKey,
+  waterIntakeLogQueryKey,
+} from './queryKeys';
 import { navigationRef as rootNavigationRef } from '../components/ActiveWorkoutBar';
 
 /**
@@ -187,6 +191,8 @@ export function useWaterIntakeMutation({
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(date) });
+      // The itemized log backs hydration reminders and the watch's log view.
+      queryClient.invalidateQueries({ queryKey: waterIntakeLogQueryKey(date) });
     },
   });
 
@@ -236,6 +242,9 @@ export function useWaterIntakeMutation({
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: dailySummaryQueryKey(date),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: waterIntakeLogQueryKey(date),
       });
     },
     onError: () => {

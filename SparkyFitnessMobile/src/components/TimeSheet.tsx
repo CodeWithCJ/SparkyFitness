@@ -54,10 +54,16 @@ interface TimeSheetProps {
   value: string; // '' or 'HH:MM'
   onSelectTime: (time: string) => void;
   timeFormat?: EntryTimeFormat | null;
+  /**
+   * 'change' (default) reports every wheel movement; 'done' reports only when
+   * Done is pressed, for callers that validate the value and must not react to
+   * intermediate positions mid-scroll.
+   */
+  commitOn?: 'change' | 'done';
 }
 
 const TimeSheet = forwardRef<TimeSheetRef, TimeSheetProps>(
-  ({ value, onSelectTime, timeFormat }, ref) => {
+  ({ value, onSelectTime, timeFormat, commitOn = 'change' }, ref) => {
     const { t } = useTranslation();
     const { preferences } = usePreferences();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
@@ -96,10 +102,10 @@ const TimeSheet = forwardRef<TimeSheetRef, TimeSheetProps>(
         if (js && !Number.isNaN(js.getTime())) {
           const time = dateToTimeString(js);
           setDisplayed(time);
-          onSelectTime(time);
+          if (commitOn === 'change') onSelectTime(time);
         }
       },
-      [onSelectTime]
+      [commitOn, onSelectTime]
     );
 
     const handleDone = useCallback(() => {

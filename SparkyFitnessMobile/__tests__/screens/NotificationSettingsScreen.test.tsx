@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import Toast from 'react-native-toast-message';
 
 import NotificationSettingsScreen from '../../src/screens/NotificationSettingsScreen';
 import {
@@ -38,6 +39,39 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
+
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({ preferences: { time_format: 'HH:mm' } }),
+}));
+
+type MockTimeSheetProps = {
+  value: string;
+  onSelectTime: (time: string) => void;
+};
+const mockTimeSheetRenders: MockTimeSheetProps[] = [];
+jest.mock('../../src/components/TimeSheet', () => {
+  const ReactModule = require('react');
+  const MockTimeSheet = ReactModule.forwardRef(
+    (props: MockTimeSheetProps, ref: unknown) => {
+      ReactModule.useImperativeHandle(ref, () => ({
+        present: jest.fn(),
+        dismiss: jest.fn(),
+      }));
+      mockTimeSheetRenders.push(props);
+      return null;
+    }
+  );
+  MockTimeSheet.displayName = 'MockTimeSheet';
+  return { __esModule: true, default: MockTimeSheet };
+});
+
+/** The most recently rendered time sheet currently showing `value`. */
+function latestTimeSheet(value: string): MockTimeSheetProps {
+  const matches = mockTimeSheetRenders.filter((p) => p.value === value);
+  const match = matches[matches.length - 1];
+  if (!match) throw new Error(`No time sheet rendered with value ${value}`);
+  return match;
+}
 
 const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn() } as never;
 jest.mock('@react-navigation/native', () => ({
@@ -85,6 +119,7 @@ describe('NotificationSettingsScreen', () => {
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
     mockRequestPermission.mockResolvedValue('granted');
+    mockTimeSheetRenders.length = 0;
   });
 
   it('hides category rows while the master toggle is off', () => {
@@ -201,6 +236,110 @@ describe('NotificationSettingsScreen', () => {
       });
       expect(mockRequestPermission).not.toHaveBeenCalled();
       expect(mockMaybePrompt).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('water reminders', () => {
+    // Found by label rather than index so the Hydration group's position
+    // cannot shift it, and via role so the row's own label cannot collide.
+    function waterSwitch(
+      getAllByRole: ReturnType<typeof renderScreen>['getAllByRole']
+    ) {
+      const match = getAllByRole('switch').find(
+        (element) => element.props.accessibilityLabel === 'Water Reminders'
+      );
+      if (!match) throw new Error('Water Reminders switch not rendered');
+      return match;
+    }
+
+    it('hides the reminder options until water reminders are on', () => {
+      const { queryByText } = renderScreen();
+      expect(queryByText('Remind After')).toBeNull();
+      expect(queryByText('Start Time')).toBeNull();
+    });
+
+    it('turns reminders on only after permission is granted', async () => {
+      const { getAllByRole } = renderScreen();
+
+      fireEvent(waterSwitch(getAllByRole), 'valueChange', true);
+
+      await waitFor(() => {
+        expect(useAppPreferencesStore.getState().waterReminderEnabled).toBe(
+          true
+        );
+      });
+      expect(mockRequestPermission).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves reminders off when permission is not granted', async () => {
+      mockRequestPermission.mockResolvedValue('denied');
+      const { getAllByRole } = renderScreen();
+
+      fireEvent(waterSwitch(getAllByRole), 'valueChange', true);
+
+      await waitFor(() => {
+        expect(mockRequestPermission).toHaveBeenCalled();
+      });
+      expect(useAppPreferencesStore.getState().waterReminderEnabled).toBe(
+        false
+      );
+    });
+
+    it('turns reminders off without requesting permission', async () => {
+      useAppPreferencesStore.setState({ waterReminderEnabled: true });
+      const { getAllByRole } = renderScreen();
+
+      fireEvent(waterSwitch(getAllByRole), 'valueChange', false);
+
+      await waitFor(() => {
+        expect(useAppPreferencesStore.getState().waterReminderEnabled).toBe(
+          false
+        );
+      });
+      expect(mockRequestPermission).not.toHaveBeenCalled();
+    });
+
+    it('selects the reminder interval', () => {
+      useAppPreferencesStore.setState({ waterReminderEnabled: true });
+      const { getByText } = renderScreen();
+
+      fireEvent.press(getByText('3h'));
+
+      expect(useAppPreferencesStore.getState().waterReminderIntervalHours).toBe(
+        3
+      );
+    });
+
+    it('saves a start time that stays before the end time', () => {
+      useAppPreferencesStore.setState({ waterReminderEnabled: true });
+      renderScreen();
+
+      act(() => {
+        latestTimeSheet('08:00').onSelectTime('07:00');
+      });
+
+      const state = useAppPreferencesStore.getState();
+      expect(state.waterReminderWindowStart).toBe('07:00');
+      expect(state.waterReminderWindowEnd).toBe('22:00');
+    });
+
+    it('rejects an end time that is not after the start time', () => {
+      useAppPreferencesStore.setState({ waterReminderEnabled: true });
+      renderScreen();
+
+      act(() => {
+        latestTimeSheet('22:00').onSelectTime('08:00');
+      });
+
+      expect(useAppPreferencesStore.getState().waterReminderWindowEnd).toBe(
+        '22:00'
+      );
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          text1: 'End time must be after start time.',
+        })
+      );
     });
   });
 

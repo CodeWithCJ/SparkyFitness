@@ -2660,11 +2660,113 @@ describe('enrichExerciseSessions bounded fan-out and reuse (#2191)', () => {
     expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(false);
   });
 
-  test('a session that genuinely had nothing beyond its summary IS cached', async () => {
+  test('an old session (>24h) that had nothing beyond its summary IS cached', async () => {
     // The reads that established there is nothing are exactly what must not
-    // repeat every sync — this is the case the cache exists for.
+    // repeat every sync after the grace period expires.
     mockReadRecords.mockResolvedValue({ records: [] });
     const s1 = session('s1', '2024-01-10T10:00:00.000Z');
+
+    await enrichAndUpload([s1], createTelemetryRunContext());
+
+    expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(true);
+  });
+
+  test('a recent session (<24h) that had nothing beyond its summary is NOT cached yet (#2300)', async () => {
+    // Recent empty sessions must not be cached permanently so late-arriving
+    // wearable HR data (e.g. via Gadgetbridge) can be picked up on subsequent syncs.
+    mockReadRecords.mockResolvedValue({ records: [] });
+    const recentStartTime = new Date(
+      Date.now() - 2 * 60 * 60 * 1000
+    ).toISOString();
+    const s1 = session('s1', recentStartTime);
+
+    await enrichAndUpload([s1], createTelemetryRunContext());
+
+    expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(false);
+  });
+
+  test('a recent session (<24h) that found telemetry IS cached (#2300)', async () => {
+    const recentStartTime = new Date(
+      Date.now() - 2 * 60 * 60 * 1000
+    ).toISOString();
+    mockReadRecords.mockImplementation(async (type) => {
+      if (type === 'HeartRate') {
+        return {
+          records: [
+            {
+              samples: [
+                {
+                  time: recentStartTime,
+                  beatsPerMinute: 140,
+                },
+              ],
+            },
+          ],
+        };
+      }
+      return { records: [] };
+    });
+    const s1 = session('s1', recentStartTime);
+
+    await enrichAndUpload([s1], createTelemetryRunContext());
+
+    expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(true);
+  });
+
+  test('a recent session with speed but no heart rate is NOT cached (#2300)', async () => {
+    // The reported case: Google Fit writes the walk with its own speed and
+    // cadence, and the ring's heart rate lands in Health Connect hours later.
+    // Caching on "any telemetry" locked that session out for good, so the
+    // gate has to be heart rate specifically.
+    const recentStartTime = new Date(
+      Date.now() - 2 * 60 * 60 * 1000
+    ).toISOString();
+    mockReadRecords.mockImplementation(async (type) => {
+      if (type === 'Speed') {
+        return {
+          records: [
+            {
+              samples: [
+                {
+                  time: recentStartTime,
+                  speed: { inMetersPerSecond: 1.4 },
+                },
+              ],
+            },
+          ],
+        };
+      }
+      return { records: [] };
+    });
+    const s1 = session('s1', recentStartTime);
+
+    await enrichAndUpload([s1], createTelemetryRunContext());
+
+    expect(await hasEnrichedSession(sessionCacheKey(s1))).toBe(false);
+  });
+
+  test('an old session with speed but no heart rate IS cached (#2300)', async () => {
+    // Past the grace window the answer is final: a phone-only walk genuinely
+    // has no heart rate, and re-reading it every sync is what #2191 fixed.
+    const oldStartTime = '2024-01-10T10:00:00.000Z';
+    mockReadRecords.mockImplementation(async (type) => {
+      if (type === 'Speed') {
+        return {
+          records: [
+            {
+              samples: [
+                {
+                  time: oldStartTime,
+                  speed: { inMetersPerSecond: 1.4 },
+                },
+              ],
+            },
+          ],
+        };
+      }
+      return { records: [] };
+    });
+    const s1 = session('s1', oldStartTime);
 
     await enrichAndUpload([s1], createTelemetryRunContext());
 

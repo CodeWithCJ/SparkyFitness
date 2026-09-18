@@ -1,5 +1,24 @@
 import { vi, afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { getEnvOidcConfig } from '../utils/oidcEnvConfig.js';
+import {
+  getEnvOidcConfig,
+  upsertEnvOidcProvider,
+} from '../utils/oidcEnvConfig.js';
+
+const { repository, client } = vi.hoisted(() => ({
+  repository: {
+    getOidcProviderById: vi.fn(),
+    updateOidcProvider: vi.fn(),
+    createOidcProvider: vi.fn(),
+    deleteOidcProvider: vi.fn(),
+  },
+  client: { query: vi.fn(), release: vi.fn() },
+}));
+vi.mock('../models/oidcProviderRepository.js', () => ({ default: repository }));
+vi.mock('../db/poolManager.js', () => ({
+  getSystemClient: async () => client,
+}));
+vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+
 describe('oidcEnvConfig', () => {
   const originalEnv = process.env;
   beforeEach(() => {
@@ -23,6 +42,67 @@ describe('oidcEnvConfig', () => {
   afterAll(() => {
     process.env = originalEnv;
   });
+  describe('upsertEnvOidcProvider', () => {
+    beforeEach(() => {
+      vi.resetAllMocks();
+      process.env.SPARKY_FITNESS_OIDC_AUTH_ENABLED = 'true';
+      process.env.SPARKY_FITNESS_OIDC_ISSUER_URL =
+        'https://identity.example.com';
+      process.env.SPARKY_FITNESS_OIDC_CLIENT_ID = 'sparky';
+      process.env.SPARKY_FITNESS_OIDC_CLIENT_SECRET = 'test-secret';
+      process.env.SPARKY_FITNESS_OIDC_PROVIDER_SLUG = 'authentik';
+      client.query.mockResolvedValue({ rows: [{ provider_id: 'obsolete' }] });
+    });
+
+    it.each([
+      ['authentik', 'oidc-authentik'],
+      ['oidc-authentik', 'authentik'],
+    ])(
+      'rejects alias-only match for %s before cleanup',
+      async (slug, existingId) => {
+        process.env.SPARKY_FITNESS_OIDC_PROVIDER_SLUG = slug;
+        repository.getOidcProviderById.mockResolvedValue({
+          provider_id: existingId,
+        });
+
+        await expect(upsertEnvOidcProvider()).rejects.toThrow(
+          `Use the existing provider ID "${existingId}"`
+        );
+
+        expect(client.query).not.toHaveBeenCalled();
+        expect(repository.deleteOidcProvider).not.toHaveBeenCalled();
+        expect(repository.updateOidcProvider).not.toHaveBeenCalled();
+        expect(repository.createOidcProvider).not.toHaveBeenCalled();
+      }
+    );
+
+    it('updates an exact match and removes obsolete environment providers', async () => {
+      repository.getOidcProviderById.mockResolvedValue({
+        provider_id: 'authentik',
+      });
+
+      await upsertEnvOidcProvider();
+
+      expect(repository.deleteOidcProvider).toHaveBeenCalledWith('obsolete');
+      expect(repository.updateOidcProvider).toHaveBeenCalledWith(
+        'authentik',
+        expect.objectContaining({ provider_id: 'authentik' })
+      );
+      expect(repository.createOidcProvider).not.toHaveBeenCalled();
+    });
+
+    it('creates the configured provider when no match exists', async () => {
+      repository.getOidcProviderById.mockResolvedValue(null);
+
+      await upsertEnvOidcProvider();
+
+      expect(repository.createOidcProvider).toHaveBeenCalledWith(
+        expect.objectContaining({ provider_id: 'authentik' })
+      );
+      expect(repository.updateOidcProvider).not.toHaveBeenCalled();
+    });
+  });
+
   describe('getEnvOidcConfig', () => {
     it('should return null if required env vars are missing', () => {
       process.env.SPARKY_FITNESS_OIDC_ISSUER_URL = 'http://issuer.com';

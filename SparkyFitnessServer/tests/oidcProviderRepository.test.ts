@@ -67,6 +67,85 @@ describe('oidcProviderRepository', () => {
     });
   });
   describe('updateOidcProvider', () => {
+    it.each([
+      ['authentik', 'oidc-authentik'],
+      ['oidc-authentik', 'authentik'],
+      ['00000000-0000-4000-8000-000000000001', 'oidc-authentik'],
+    ])(
+      'updates the resolved provider for lookup %s',
+      async (lookupId, providerId) => {
+        const rowId = '00000000-0000-4000-8000-000000000001';
+        mockClient.query.mockResolvedValueOnce({
+          rows: [
+            { id: rowId, provider_id: providerId, client_secret: 'old-secret' },
+          ],
+        });
+        mockClient.query.mockResolvedValueOnce({ rows: [{ id: rowId }] });
+        vi.mocked(fetch).mockResolvedValue({
+          ok: true,
+          json: async () => ({}),
+        } as Response);
+
+        await oidcProviderRepository.updateOidcProvider(lookupId, {
+          issuer_url: 'https://identity.example.com',
+          client_id: 'sparky',
+        });
+
+        const parameters = mockClient.query.mock.calls[1][1];
+        expect(parameters[13]).toBe(rowId);
+        expect(parameters[12]).toBe(providerId);
+        expect(
+          parameters[11].redirectURI.endsWith(`/sso/callback/${providerId}`)
+        ).toBe(true);
+        expect(parameters[3]).toBe('old-secret');
+      }
+    );
+
+    it('retains an explicitly supplied replacement provider ID', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'row-id',
+            provider_id: 'old-provider',
+            client_secret: 'old-secret',
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [{ id: 'row-id' }] });
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({}),
+      } as Response);
+
+      await oidcProviderRepository.updateOidcProvider('old-provider', {
+        issuer_url: 'https://identity.example.com',
+        client_id: 'sparky',
+        provider_id: 'replacement-provider',
+      });
+
+      const parameters = mockClient.query.mock.calls[1][1];
+      expect(parameters[13]).toBe('row-id');
+      expect(parameters[12]).toBe('replacement-provider');
+      expect(parameters[11].redirectURI).toContain(
+        '/sso/callback/replacement-provider'
+      );
+    });
+
+    it('rejects a missing provider without issuing an update', async () => {
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      await expect(
+        oidcProviderRepository.updateOidcProvider('missing', {
+          issuer_url: 'https://identity.example.com',
+          client_id: 'sparky',
+          client_secret: 'new-secret',
+        })
+      ).rejects.toThrow('OIDC provider not found');
+
+      expect(mockClient.query).toHaveBeenCalledTimes(1);
+      expect(mockClient.release).toHaveBeenCalledTimes(2);
+    });
+
     it('should update is_env_configured in additional_config', async () => {
       const providerId = 'test-id';
       const providerData = {
@@ -76,7 +155,13 @@ describe('oidcProviderRepository', () => {
         is_env_configured: true,
       };
       mockClient.query.mockResolvedValueOnce({
-        rows: [{ client_secret: 'old-secret' }],
+        rows: [
+          {
+            id: 'test-row-id',
+            provider_id: providerId,
+            client_secret: 'old-secret',
+          },
+        ],
       }); // for getOidcProviderById inside update
       mockClient.query.mockResolvedValueOnce({ rows: [] }); // for update
       // Mock fetch for discovery document

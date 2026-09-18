@@ -25,6 +25,8 @@ import {
   manageExerciseSchema,
   manageExerciseInput,
   type ManageExerciseInput,
+  type PresetExerciseInput,
+  presetExerciseSchema,
 } from './schemas/exercise.js';
 import { optionalDateSchema } from './schemas/common.js';
 import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
@@ -35,13 +37,33 @@ const VALID_ACTIONS = [
   'log_exercise',
   'list_exercise_diary',
   'get_workout_presets',
+  'get_workout_preset',
   'log_workout_preset',
   'update_exercise_entry',
   'delete_exercise_entry',
   'get_exercise_details',
   'create_workout_preset',
+  'update_workout_preset',
+  'delete_workout_preset',
   'get_exercise_progress',
 ];
+
+type WorkoutPresetSetRow = {
+  reps?: number | null;
+  weight?: number | null;
+  duration?: number | null;
+  distance?: number | null;
+  rest_time?: number | null;
+  notes?: string | null;
+  set_type?: string | null;
+};
+
+type WorkoutPresetExerciseRow = {
+  exercise_name?: string;
+  exercise_id?: string;
+  superset_group?: number | null;
+  sets?: WorkoutPresetSetRow[] | null;
+};
 
 // Optional inputs and nullable DB columns are treated alike: absent.
 function isSet<T>(value: T | null | undefined): value is T {
@@ -96,6 +118,62 @@ function toRepoSets(sets: ExerciseSetInput[]) {
     rpe: s.rpe ?? null,
     notes: s.notes ?? null,
   }));
+}
+
+// Maps create/update_workout_preset's exercise input into the shape
+// workoutPresetRepository expects: sort_order from array position, sets run
+// through toRepoSets (rpe is silently dropped — presets have no rpe column).
+function toPresetExercises(exercises: PresetExerciseInput[]) {
+  return exercises.map((ex, i) => ({
+    exercise_id: ex.exercise_id,
+    sort_order: i,
+    superset_group: ex.superset_group ?? null,
+    sets: ex.sets ? toRepoSets(ex.sets) : undefined,
+  }));
+}
+
+function parsePresetExercises(
+  raw: unknown
+):
+  | { ok: true; exercises: PresetExerciseInput[] }
+  | { ok: false; error: string } {
+  let parsed: unknown = raw;
+  if (typeof raw === 'string') {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return {
+        ok: false,
+        error: ERRORS.VALIDATION('Invalid JSON format for exercises'),
+      };
+    }
+  }
+  if (!Array.isArray(parsed)) {
+    return {
+      ok: false,
+      error: ERRORS.VALIDATION('exercises must be a JSON array'),
+    };
+  }
+  const result = z.array(presetExerciseSchema).safeParse(parsed);
+  if (!result.success) {
+    return { ok: false, error: formatZodError(result.error) };
+  }
+  return { ok: true, exercises: result.data };
+}
+
+// Trusted gate for update/delete. The tool description is not enough — without
+// this, one call mutates. confirmed must be boolean true; otherwise return a
+// prompt and do not call the service.
+function presetMutationConfirmPrompt(
+  confirmed: boolean | undefined,
+  action: 'update' | 'delete',
+  presetId: number
+): string | null {
+  if (confirmed === true) return null;
+  if (action === 'delete') {
+    return `Deleting workout preset ${presetId} is permanent. Confirm with the user first. If they agree, call delete_workout_preset again with preset_id=${presetId} and confirmed=true. Nothing was deleted.`;
+  }
+  return `Updating workout preset ${presetId} can overwrite its exercise list. Confirm with the user first. If they agree, call update_workout_preset again with the same fields and confirmed=true. Nothing was changed.`;
 }
 
 // MCP's date-range defaults: a single `date` overrides start/end; otherwise
@@ -359,11 +437,14 @@ Actions:
 - log_exercise(entry_date, exercise_id?|exercise_name?, duration_minutes?, calories_burned?, notes?, distance?, avg_heart_rate?, steps?, sets?:JSON string or array of [{reps,weight,duration,distance,rest_time,set_type,rpe,notes}]) — distance/avg_heart_rate/steps are for cardio
 - list_exercise_diary(entry_date)
 - get_workout_presets()
-- log_workout_preset(entry_date, preset_id?|preset_name?)
+- get_workout_preset(preset_id?|preset_name?) — full detail for one preset: every exercise's ID, its sets, and its superset_group. Call this BEFORE update_workout_preset so you know the current exercise list. preset_name resolves own or family-shared presets only; public presets must use preset_id.
+- log_workout_preset(entry_date, preset_id?|preset_name?) — preset_name is own or family-shared only; public presets must use preset_id.
 - update_exercise_entry(entry_id, entry_date?, duration_minutes?, calories_burned?, notes?, distance?, avg_heart_rate?, steps?, sets?) — only the provided fields change; sets, when provided, replace all existing sets
 - delete_exercise_entry(entry_id)
 - get_exercise_details(exercise_id?|exercise_name?)
-- create_workout_preset(name, exercise_ids)
+- create_workout_preset(name, exercises, description?, is_public?) — exercises: array or JSON string of [{exercise_id, sets?:[{reps,weight,duration,distance,rest_time,set_type,notes}], superset_group?}]; items sharing the same superset_group are grouped as a superset
+- update_workout_preset(preset_id, confirmed, name?, description?, is_public?, exercises?) — only the provided fields change; exercises, when provided, REPLACES the entire exercise list (same shape as create_workout_preset), so call get_workout_preset first and include every exercise that should remain, not just the ones being changed. confirmed=true is required to apply; without it the tool returns a prompt and does not change anything. Get the user's go-ahead first, especially if YOU decided what to change (e.g. "review my workouts and improve them").
+- delete_workout_preset(preset_id, confirmed) — permanently deletes the preset. confirmed=true is required; without it the tool returns a prompt and does not delete. Confirm with the user first.
 - get_exercise_progress(exercise_id?|exercise_name?, start_date?, end_date?, limit?, offset?) — returns paginated performance history`,
       inputSchema: manageExerciseInput,
       execute: async (rawArgs) => {
@@ -374,6 +455,12 @@ Actions:
           (args) => {
             if (args.searchTerm) {
               return 'search_exercises';
+            }
+            if (args.exercises && args.preset_id) {
+              return 'update_workout_preset';
+            }
+            if (args.exercises) {
+              return 'create_workout_preset';
             }
             if (args.sets || args.duration_minutes || args.calories_burned) {
               return 'log_exercise';
@@ -603,6 +690,71 @@ Actions:
               );
             }
 
+            case 'get_workout_preset': {
+              if (!args.preset_id && !args.preset_name) {
+                return ERRORS.VALIDATION(
+                  'Either preset_id or preset_name must be provided'
+                );
+              }
+              let presetId = args.preset_id;
+              if (!presetId && args.preset_name) {
+                const found =
+                  await workoutPresetRepository.getWorkoutPresetByName(
+                    userId,
+                    args.preset_name
+                  );
+                if (!found) {
+                  return ERRORS.NOT_FOUND('Resource', 'unknown');
+                }
+                presetId = found.id;
+              }
+              let preset;
+              try {
+                preset = await workoutPresetService.getWorkoutPresetById(
+                  userId,
+                  presetId
+                );
+              } catch (error) {
+                if (
+                  error instanceof Error &&
+                  error.message.includes('not found')
+                ) {
+                  return ERRORS.NOT_FOUND('Workout preset', String(presetId));
+                }
+                throw error;
+              }
+              let text = `### ${preset.name} (ID: ${preset.id})\n\n`;
+              if (preset.description) text += `${preset.description}\n\n`;
+              text += `Public: ${preset.is_public ? 'yes' : 'no'}\n\n`;
+              if (!preset.exercises || preset.exercises.length === 0) {
+                return `${text}_No exercises in this preset._`;
+              }
+              preset.exercises.forEach(
+                (ex: WorkoutPresetExerciseRow, i: number) => {
+                  const superset = ex.superset_group
+                    ? ` [superset group ${ex.superset_group}]`
+                    : '';
+                  text += `${i + 1}. **${ex.exercise_name}**${superset}\n   exercise_id: ${ex.exercise_id}\n`;
+                  if (ex.sets && ex.sets.length > 0) {
+                    ex.sets.forEach((s: WorkoutPresetSetRow, si: number) => {
+                      const details: string[] = [];
+                      if (isSet(s.reps)) details.push(`${s.reps} reps`);
+                      if (isSet(s.weight)) details.push(`${s.weight}kg`);
+                      if (isSet(s.duration)) details.push(`${s.duration}s`);
+                      if (isSet(s.distance)) details.push(`${s.distance}km`);
+                      if (isSet(s.rest_time))
+                        details.push(`rest ${s.rest_time}s`);
+                      if (s.notes) details.push(s.notes);
+                      text += `   Set ${si + 1} (${s.set_type || 'Working Set'}): ${details.join(', ') || 'no detail'}\n`;
+                    });
+                  } else {
+                    text += '   No sets recorded\n';
+                  }
+                }
+              );
+              return text;
+            }
+
             case 'log_workout_preset': {
               if (!args.preset_id && !args.preset_name) {
                 return ERRORS.VALIDATION(
@@ -713,22 +865,92 @@ Actions:
             }
 
             case 'create_workout_preset': {
+              const parsed = parsePresetExercises(args.exercises);
+              if (!parsed.ok) return parsed.error;
               const preset = await workoutPresetService.createWorkoutPreset(
                 userId,
                 {
                   user_id: userId,
                   name: args.name,
-                  description: null,
-                  is_public: false,
-                  exercises: args.exercise_ids.map((exerciseId, i) => ({
-                    exercise_id: exerciseId,
-                    sort_order: i,
-                  })),
+                  description: args.description ?? null,
+                  is_public: args.is_public ?? false,
+                  exercises: toPresetExercises(parsed.exercises),
                 }
               );
               return formatConfirmation(
                 `Workout preset "${preset.name}" created with ${preset.exercises.length} exercises.`
               );
+            }
+
+            case 'update_workout_preset': {
+              const blocked = presetMutationConfirmPrompt(
+                args.confirmed,
+                'update',
+                args.preset_id
+              );
+              if (blocked) return blocked;
+              let exercises: PresetExerciseInput[] | undefined;
+              if (args.exercises !== undefined) {
+                const parsed = parsePresetExercises(args.exercises);
+                if (!parsed.ok) return parsed.error;
+                exercises = parsed.exercises;
+              }
+              try {
+                const preset = await workoutPresetService.updateWorkoutPreset(
+                  userId,
+                  args.preset_id,
+                  {
+                    name: args.name,
+                    description: args.description,
+                    is_public: args.is_public,
+                    exercises: exercises
+                      ? toPresetExercises(exercises)
+                      : undefined,
+                  }
+                );
+                return formatConfirmation(
+                  `Workout preset "${preset.name}" updated.`
+                );
+              } catch (error) {
+                if (
+                  error instanceof Error &&
+                  error.message.includes('Forbidden')
+                ) {
+                  return ERRORS.NOT_FOUND(
+                    'Workout preset',
+                    String(args.preset_id)
+                  );
+                }
+                throw error;
+              }
+            }
+
+            case 'delete_workout_preset': {
+              const blocked = presetMutationConfirmPrompt(
+                args.confirmed,
+                'delete',
+                args.preset_id
+              );
+              if (blocked) return blocked;
+              try {
+                await workoutPresetService.deleteWorkoutPreset(
+                  userId,
+                  args.preset_id
+                );
+              } catch (error) {
+                if (
+                  error instanceof Error &&
+                  (error.message.includes('Forbidden') ||
+                    error.message.includes('not found'))
+                ) {
+                  return ERRORS.NOT_FOUND(
+                    'Workout preset',
+                    String(args.preset_id)
+                  );
+                }
+                throw error;
+              }
+              return formatConfirmation('Workout preset deleted.');
             }
 
             case 'get_exercise_progress': {

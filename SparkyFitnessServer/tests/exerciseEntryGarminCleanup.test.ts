@@ -46,12 +46,15 @@ describe('Garmin exercise cleanup', () => {
     )!;
     expect(selectSql).toContain('NOT EXISTS');
     expect(selectSql).toContain('exercises');
+    // $6 is the keep-list of source_ids the caller is about to re-insert; null
+    // here, so this delete is unchanged — Garmin passes no payload ids.
     expect(params).toEqual([
       'user-1',
       '2026-08-02',
       '2026-08-02',
       'garmin',
       'Active Calories',
+      null,
     ]);
   });
 });

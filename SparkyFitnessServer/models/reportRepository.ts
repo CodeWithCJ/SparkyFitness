@@ -672,10 +672,12 @@ async function getDailyNutritionTotalsRange(
     // trends include supplements too. The date set is the UNION of food and taken-supplement
     // dates, so a day with only supplements logged still yields a row rather than
     // disappearing from the range.
-    const rangeSelects = RANGE_COLS.map(
+    let rangeSelects = RANGE_COLS.map(
       ([col, alias]) =>
         `COALESCE(SUM(fe.${col} * fe.quantity / NULLIF(fe.serving_size, 0)), 0) + ${supplementFixedSubquery(col, '$1', 'd.entry_date')} as ${alias}`
     ).join(',\n              ');
+    const legacyAmbiguousEntryCount = String.raw`COUNT(fe.id) FILTER (WHERE fe.unit ~ '^\s*[0-9]+(?:\.[0-9]+)?\s+\S') AS legacy_ambiguous_entry_count`;
+    rangeSelects += `,\n              ${legacyAmbiguousEntryCount}`;
     const result = await client.query(
       `SELECT d.entry_date,
               ${rangeSelects}

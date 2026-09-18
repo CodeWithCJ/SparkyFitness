@@ -6,7 +6,10 @@ import measurementService from '../services/measurementService.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
 import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
-import { getResolvedExerciseCaloriesRange } from '../services/exerciseCalorieRangeService.js';
+import {
+  getResolvedExerciseCaloriesRange,
+  type ResolvedExerciseCalorieDay,
+} from '../services/exerciseCalorieRangeService.js';
 import { toolOpts } from './helpers/toolExecutionOptions.js';
 
 // Stubs for foodTools/checkinTools imports the report tools never call;
@@ -241,6 +244,7 @@ describe('sparky_get_daily_report', () => {
       JSON.stringify({
         start_date: '2026-06-10',
         end_date: '2026-06-10',
+        energy_unit: 'kcal',
         nutrition: [
           {
             entry_date: '2026-06-10',
@@ -267,6 +271,48 @@ describe('sparky_get_daily_report', () => {
       '2026-06-10',
       '2026-06-10'
     );
+  });
+
+  it('uses the report energy unit for resolved exercise calories', async () => {
+    vi.mocked(preferenceService.getUserPreferences).mockResolvedValue({
+      ...PREFS,
+      energy_unit: 'kJ',
+    });
+    vi.mocked(reportRepository.getDailyNutritionTotalsRange).mockResolvedValue([
+      { entry_date: '2026-06-10', calories: 100, protein: 1, carbs: 1, fat: 1 },
+    ]);
+    vi.mocked(exerciseEntryDb.getDailyExerciseTotalsRange).mockResolvedValue([
+      {
+        entry_date: '2026-06-10',
+        calories_burned: 400,
+        duration_minutes: 45,
+        steps: 8000,
+      },
+    ]);
+    const resolvedDay: ResolvedExerciseCalorieDay = {
+      date: '2026-06-10',
+      calories: 400,
+      source: 'logged',
+      stepCalories: 0,
+      loggedCalories: 400,
+      activeCalories: 0,
+    };
+    vi.mocked(getResolvedExerciseCaloriesRange).mockResolvedValue(
+      new Map([['2026-06-10', resolvedDay]])
+    );
+    vi.mocked(
+      measurementRepository.getWaterTotalsByDateRange
+    ).mockResolvedValue([]);
+
+    const result = await tools.sparky_get_daily_report.execute!(
+      { date: '2026-06-10' },
+      opts
+    );
+    const report = JSON.parse(String(result));
+
+    expect(report.energy_unit).toBe('kJ');
+    expect(report.nutrition[0].calories).toBeCloseTo(418.4);
+    expect(report.exercise[0].exercise_calories).toBeCloseTo(1673.6);
   });
 
   it('renders pg local-midnight Date rows as calendar-day strings in all three sets', async () => {
@@ -305,6 +351,7 @@ describe('sparky_get_daily_report', () => {
       JSON.stringify({
         start_date: '2026-06-10',
         end_date: '2026-06-10',
+        energy_unit: 'kcal',
         nutrition: [
           {
             entry_date: '2026-06-10',

@@ -1264,6 +1264,15 @@ const handleWorkout: RecordHandler = async (
         // reads that established that are exactly what must not repeat. A bundle
         // that came back `incomplete` is a failed read, not an empty one, and is
         // left uncached so the next sync retries it.
+        //
+        // No grace window here, unlike Health Connect. The #2300 case is heart
+        // rate written by another app and joined to the session by time overlap,
+        // which HealthKit cannot express: collectWorkoutSeries queries
+        // `filter: { workout }`, so a sample not associated with this workout is
+        // invisible however often it is re-read. The two cases that do arrive
+        // late are already covered — a workout still being written moves its
+        // endDate and so its cache key, and a failed or locked read comes back
+        // `incomplete`. Retrying here would cost every sync and buy nothing.
         if (!bundle.incomplete) ctx.stageCollected(workoutCacheKey(w));
       }
 

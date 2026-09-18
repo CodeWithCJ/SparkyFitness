@@ -211,6 +211,16 @@ const getBiometricsHistorySchema = z
   })
   .strict();
 
+const getCustomMetricsHistorySchema = z
+  .object({
+    action: z.literal('get_custom_metrics_history'),
+    start_date: dateSchema
+      .optional()
+      .describe('Start date for the history range'),
+    end_date: dateSchema.optional().describe('End date for the history range'),
+  })
+  .strict();
+
 export const manageCheckinSchema = z.discriminatedUnion('action', [
   logBiometricsSchema,
   logCustomMetricSchema,
@@ -222,6 +232,7 @@ export const manageCheckinSchema = z.discriminatedUnion('action', [
   listCheckinDiarySchema,
   getFastingStatusSchema,
   getBiometricsHistorySchema,
+  getCustomMetricsHistorySchema,
 ]);
 
 export type ManageCheckinInput = z.infer<typeof manageCheckinSchema>;
@@ -242,6 +253,7 @@ export const manageCheckinInput = z.object({
       'list_checkin_diary',
       'get_fasting_status',
       'get_biometrics_history',
+      'get_custom_metrics_history',
     ])
     .optional()
     .describe('Action to perform; see tool description for per-action fields.'),

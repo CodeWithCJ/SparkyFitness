@@ -1,13 +1,16 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import NotificationPermissionBanner, {
   type NotificationPermissionBannerHandle,
 } from '../components/NotificationPermissionBanner';
+import SegmentedControl from '../components/SegmentedControl';
+import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import Switch from '../components/ui/Switch';
 import {
   maybePromptForExactAlarmPermission,
@@ -15,10 +18,19 @@ import {
   setNotificationsEnabled,
   setRestTimerNotificationsEnabled,
 } from '../services/notifications';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import {
+  WATER_REMINDER_INTERVAL_OPTIONS,
+  useAppPreferencesStore,
+  type WaterReminderIntervalHours,
+} from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { usePreferences } from '../hooks/usePreferences';
+import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import { isValidReminderWindow } from '../utils/hydrationReminder';
 import type { RootStackScreenProps } from '../types/navigation';
+
+type IntervalKey = `${WaterReminderIntervalHours}`;
 
 type NotificationSettingsScreenProps =
   RootStackScreenProps<'NotificationSettings'>;
@@ -59,6 +71,30 @@ const NotificationSettingsScreen: React.FC<
   const setMedicationReminderHideNames = useAppPreferencesStore(
     (s) => s.setMedicationReminderHideNames
   );
+  const waterReminderEnabled = useAppPreferencesStore(
+    (s) => s.waterReminderEnabled
+  );
+  const setWaterReminderEnabled = useAppPreferencesStore(
+    (s) => s.setWaterReminderEnabled
+  );
+  const waterReminderIntervalHours = useAppPreferencesStore(
+    (s) => s.waterReminderIntervalHours
+  );
+  const setWaterReminderIntervalHours = useAppPreferencesStore(
+    (s) => s.setWaterReminderIntervalHours
+  );
+  const waterReminderWindowStart = useAppPreferencesStore(
+    (s) => s.waterReminderWindowStart
+  );
+  const waterReminderWindowEnd = useAppPreferencesStore(
+    (s) => s.waterReminderWindowEnd
+  );
+  const setWaterReminderWindow = useAppPreferencesStore(
+    (s) => s.setWaterReminderWindow
+  );
+  const { preferences } = usePreferences();
+  const startTimeSheetRef = useRef<TimeSheetRef>(null);
+  const endTimeSheetRef = useRef<TimeSheetRef>(null);
   const usesNativeHeader = useNativeIOSHeadersActive();
   const bannerRef = useRef<NotificationPermissionBannerHandle>(null);
 
@@ -92,6 +128,78 @@ const NotificationSettingsScreen: React.FC<
     },
     [setMedicationRemindersEnabled]
   );
+
+  const handleWaterRemindersToggle = useCallback(
+    async (value: boolean) => {
+      if (!value) {
+        setWaterReminderEnabled(false);
+        return;
+      }
+      const status = await requestNotificationPermission();
+      bannerRef.current?.refresh();
+      // Same rule as medication reminders: never show "on" while the OS would
+      // silently drop every reminder.
+      if (status === 'granted') setWaterReminderEnabled(true);
+    },
+    [setWaterReminderEnabled]
+  );
+
+  const intervalSegments = useMemo(
+    () =>
+      WATER_REMINDER_INTERVAL_OPTIONS.map((hours) => ({
+        key: String(hours) as IntervalKey,
+        label: t('notificationSettings.waterReminderIntervalOption', {
+          defaultValue: '{{hours}}h',
+          hours,
+        }),
+      })),
+    [t]
+  );
+
+  const handleIntervalSelect = useCallback(
+    (key: IntervalKey) => {
+      setWaterReminderIntervalHours(Number(key) as WaterReminderIntervalHours);
+    },
+    [setWaterReminderIntervalHours]
+  );
+
+  const showInvalidWindowToast = useCallback(() => {
+    Toast.show({
+      type: 'error',
+      text1: t('notificationSettings.waterReminderInvalidWindow', {
+        defaultValue: 'End time must be after start time.',
+      }),
+    });
+  }, [t]);
+
+  const handleStartTimeSelect = useCallback(
+    (time: string) => {
+      if (!isValidReminderWindow(time, waterReminderWindowEnd)) {
+        showInvalidWindowToast();
+        return;
+      }
+      setWaterReminderWindow(time, waterReminderWindowEnd);
+    },
+    [waterReminderWindowEnd, setWaterReminderWindow, showInvalidWindowToast]
+  );
+
+  const handleEndTimeSelect = useCallback(
+    (time: string) => {
+      if (!isValidReminderWindow(waterReminderWindowStart, time)) {
+        showInvalidWindowToast();
+        return;
+      }
+      setWaterReminderWindow(waterReminderWindowStart, time);
+    },
+    [waterReminderWindowStart, setWaterReminderWindow, showInvalidWindowToast]
+  );
+
+  const startTimeLabel =
+    formatTimeLabel(waterReminderWindowStart, preferences?.time_format) ??
+    waterReminderWindowStart;
+  const endTimeLabel =
+    formatTimeLabel(waterReminderWindowEnd, preferences?.time_format) ??
+    waterReminderWindowEnd;
 
   const header = useScreenHeader({
     title: t('notificationSettings.title', { defaultValue: 'Notifications' }),
@@ -254,7 +362,100 @@ const NotificationSettingsScreen: React.FC<
             )}
           </SettingsRowGroup>
         )}
+
+        {notificationsEnabled && (
+          <SettingsRowGroup
+            title={t('notificationSettings.hydration', {
+              defaultValue: 'Hydration',
+            })}
+          >
+            <SettingsRow
+              title={t('notificationSettings.waterReminders', {
+                defaultValue: 'Water Reminders',
+              })}
+              subtitle={t('notificationSettings.waterRemindersSubtitle', {
+                defaultValue:
+                  "Remind you to drink when you haven't logged water in a while.",
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  accessibilityLabel={t('notificationSettings.waterReminders', {
+                    defaultValue: 'Water Reminders',
+                  })}
+                  value={waterReminderEnabled}
+                  onValueChange={handleWaterRemindersToggle}
+                />
+              }
+            />
+            {waterReminderEnabled && (
+              <SettingsRow
+                title={t('notificationSettings.waterReminderInterval', {
+                  defaultValue: 'Remind After',
+                })}
+                subtitle={
+                  <View className="mt-2">
+                    <SegmentedControl
+                      segments={intervalSegments}
+                      activeKey={
+                        String(waterReminderIntervalHours) as IntervalKey
+                      }
+                      onSelect={handleIntervalSelect}
+                    />
+                  </View>
+                }
+              />
+            )}
+            {waterReminderEnabled && (
+              <SettingsRow
+                title={t('notificationSettings.waterReminderStart', {
+                  defaultValue: 'Start Time',
+                })}
+                onPress={() => startTimeSheetRef.current?.present()}
+                accessibilityLabel={t(
+                  'notificationSettings.waterReminderStartAccessibility',
+                  { defaultValue: 'Start time, {{time}}', time: startTimeLabel }
+                )}
+                rightAccessory={
+                  <Text className="text-sm text-text-secondary">
+                    {startTimeLabel}
+                  </Text>
+                }
+              />
+            )}
+            {waterReminderEnabled && (
+              <SettingsRow
+                title={t('notificationSettings.waterReminderEnd', {
+                  defaultValue: 'End Time',
+                })}
+                onPress={() => endTimeSheetRef.current?.present()}
+                accessibilityLabel={t(
+                  'notificationSettings.waterReminderEndAccessibility',
+                  { defaultValue: 'End time, {{time}}', time: endTimeLabel }
+                )}
+                rightAccessory={
+                  <Text className="text-sm text-text-secondary">
+                    {endTimeLabel}
+                  </Text>
+                }
+              />
+            )}
+          </SettingsRowGroup>
+        )}
       </ScrollView>
+
+      <TimeSheet
+        ref={startTimeSheetRef}
+        value={waterReminderWindowStart}
+        onSelectTime={handleStartTimeSelect}
+        commitOn="done"
+      />
+      <TimeSheet
+        ref={endTimeSheetRef}
+        value={waterReminderWindowEnd}
+        onSelectTime={handleEndTimeSelect}
+        commitOn="done"
+      />
     </View>
   );
 };

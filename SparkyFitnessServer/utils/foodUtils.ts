@@ -225,6 +225,42 @@ function normalizeServingUnit(unit: any) {
 // 1 serving == the variant's serving_size, convert the serving count into the variant's
 // own unit. Mirrors the convention already used for meal components in foodEntryService
 // (unit === 'serving' => quantity * serving_size).
+export interface NutritionReferenceValues {
+  [nutrient: string]: number | string | null | undefined;
+}
+
+/**
+ * Scales nutrition stored per reference serving to a concrete consumed amount.
+ * Callers must first normalize the entry unit to the reference serving unit;
+ * this function deliberately has no cross-dimension conversion.
+ */
+function scaleNutritionForConsumedAmount(
+  quantity: number,
+  servingSize: number | string | null | undefined,
+  nutrients: NutritionReferenceValues
+): Record<string, number | null> {
+  const parsedServingSize = Number(servingSize);
+  const multiplier =
+    Number.isFinite(parsedServingSize) && parsedServingSize > 0
+      ? quantity / parsedServingSize
+      : null;
+
+  return Object.fromEntries(
+    Object.entries(nutrients).map(([name, value]) => {
+      if (value === null || value === undefined || value === '') {
+        return [name, null];
+      }
+      const numeric = Number(value);
+      return [
+        name,
+        multiplier !== null && Number.isFinite(numeric)
+          ? numeric * multiplier
+          : null,
+      ];
+    })
+  );
+}
+
 function reconcileEntryUnitToVariant(
   quantity: number,
   requestedUnit: string | null | undefined,
@@ -276,6 +312,7 @@ function altBarcode(barcode: string): string | null {
 export { sanitizeCustomNutrients };
 export { normalizeServingUnit };
 export { reconcileEntryUnitToVariant };
+export { scaleNutritionForConsumedAmount };
 export { normalizeBarcode };
 export { altBarcode };
 export { buildAliasIndex };
@@ -284,6 +321,7 @@ export default {
   sanitizeCustomNutrients,
   normalizeServingUnit,
   reconcileEntryUnitToVariant,
+  scaleNutritionForConsumedAmount,
   normalizeBarcode,
   altBarcode,
   buildAliasIndex,

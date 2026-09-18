@@ -20,8 +20,15 @@ import {
   isClientUnavailableError,
   isQuotaExceededError,
 } from '../shared/quotaError';
-import { type TelemetryRunContext } from '../shared/telemetryBudget';
-import { hasEnrichedSession } from '../shared/enrichedSessionCache';
+import {
+  createGraceWindowClaimLimiter,
+  type TelemetryRunContext,
+} from '../shared/telemetryBudget';
+import {
+  hasEnrichedSession,
+  isWithinTelemetryGracePeriod,
+  shouldCacheEnrichedSession,
+} from '../shared/enrichedSessionCache';
 import {
   createConcurrencyLimiter,
   runTasksInBatches,
@@ -1453,6 +1460,8 @@ export const enrichExerciseSessions = async (
   const startedAtMs = Date.now();
   let skippedInvalid = 0;
   let skippedAlreadyCollected = 0;
+  const allowGraceWindowClaim = createGraceWindowClaimLimiter(ctx.budget);
+  const deferredGraceSessions: unknown[] = [];
   for (const record of byNewest) {
     const rec = record as Record<string, unknown>;
     if (typeof rec.startTime !== 'string' || typeof rec.endTime !== 'string') {
@@ -1478,6 +1487,26 @@ export const enrichExerciseSessions = async (
       skippedAlreadyCollected++;
       continue;
     }
+    // Sessions inside the grace window come back every sync until their heart
+    // rate lands (#2300), and this loop runs newest-first — so they are capped
+    // at a share of the budget rather than allowed to take all of it, or the
+    // older backlog behind them would never advance (#2191). Deferred, not
+    // dropped: the second pass below returns the reservation if the backlog it
+    // was held for turned out to be empty.
+    if (!allowGraceWindowClaim(isWithinTelemetryGracePeriod(rec.endTime))) {
+      deferredGraceSessions.push(record);
+      continue;
+    }
+    if (!ctx.claim()) break;
+    telemetryAllowed.add(record);
+  }
+
+  // The reservation is a floor for the backlog, not a ceiling on the run. Once
+  // the walk above has offered every backlog session a slot, anything still
+  // unspent goes back to the sessions the cap deferred — otherwise a user with
+  // a drained backlog would collect fewer per run than before the cap existed.
+  // Still newest-first, since that is the order they were deferred in.
+  for (const record of deferredGraceSessions) {
     if (!ctx.claim()) break;
     telemetryAllowed.add(record);
   }
@@ -1656,9 +1685,10 @@ export const enrichExerciseSessions = async (
           if (kcal != null) telemetry.active_calories = kcal;
           enrichedFields.telemetry = telemetry;
         }
-        // Recorded even when the session turned out to have nothing beyond its
-        // summary: the reads that established that are exactly what we must not
-        // repeat every sync. A later edit to the record changes its cache key.
+        // Recorded when the session has telemetry, or when an empty session has
+        // aged past the grace period (so manual/summary-only workouts are not
+        // checked infinitely). Recent empty sessions remain uncached so late-arriving
+        // wearable samples (e.g. from Gadgetbridge, Zepp, etc.) can be collected (#2300).
         //
         // Not recorded when the bundle came back `incomplete` — a failed read is
         // not the same answer as an empty one, and this cache has no expiry, so
@@ -1668,7 +1698,11 @@ export const enrichExerciseSessions = async (
         // route-consent dialog, so collectSessionRoute returns no route for a
         // session awaiting consent — caching that would make the next foreground
         // sync skip it and the route would never be collected at all.
-        if (ctx.interactive && !bundle.incomplete) {
+        const canCache = shouldCacheEnrichedSession(
+          bundle,
+          rec.endTime as string
+        );
+        if (ctx.interactive && !bundle.incomplete && canCache) {
           ctx.stageCollected(sessionCacheKey(record));
         }
       }

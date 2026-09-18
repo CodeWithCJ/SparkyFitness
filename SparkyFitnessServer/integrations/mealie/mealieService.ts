@@ -206,8 +206,6 @@ class MealieService {
       JSON.stringify(mealieRecipe, null, 2)
     );
     const nutrition = mealieRecipe.nutrition || {};
-    const defaultServing = mealieRecipe.recipeServings || 1;
-    const servingUnit = mealieRecipe.recipeYield || 'serving';
     return {
       food: {
         name: mealieRecipe.name,
@@ -239,8 +237,11 @@ class MealieService {
             : null,
       },
       variant: {
-        serving_size: defaultServing,
-        serving_unit: servingUnit,
+        // Mealie's nutrition block is per serving, and `recipeServings` is how
+        // many servings the recipe makes, so it is not a serving size. Food
+        // variants represent one serving, same as the Tandoor import.
+        serving_size: 1,
+        serving_unit: 'serving',
         calories:
           typeof nutrition.calories === 'number'
             ? nutrition.calories

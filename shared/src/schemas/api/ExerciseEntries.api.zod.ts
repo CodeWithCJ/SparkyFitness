@@ -106,6 +106,12 @@ export const exerciseEntrySetResponseSchema = z
     is_pr: z.boolean(),
     // Km. Optional: pre-distance servers omit it.
     distance: z.number().nullable().optional(),
+    // Progression & Equipment Fields
+    progression_mode: z.enum(["rep_goal", "fixed", "step_load", "manual"]).nullable().optional(),
+    rep_goal: z.number().int().nullable().optional(),
+    increment_type: z.enum(["weight", "reps"]).nullable().optional(),
+    increment_value: z.number().nullable().optional(),
+    equipment_brand: z.string().nullable().optional(),
   })
   .strict();
 
@@ -156,20 +162,34 @@ export const presetSessionExerciseRequestSchema = z
     calories_burned: z.number().min(0).optional(),
     notes: z.string().nullable().optional(),
     superset_group: z.number().int().nullable().optional(),
+    // Progression & Equipment Fields
+    progression_mode: z
+      .enum(["rep_goal", "fixed", "step_load", "manual"])
+      .nullable()
+      .optional(),
+    rep_goal: z.number().int().positive().nullable().optional(),
+    increment_type: z.enum(["weight", "reps"]).nullable().optional(),
+    increment_value: z.number().positive().nullable().optional(),
+    equipment_brand: z.string().nullable().optional(),
     sets: z.array(exerciseEntrySetRequestSchema).default([]),
     entry_time: timeStringSchema.nullish(),
   })
   .strict();
 
+// A workout session can be started in two ways:
+// 1. From a stored preset blueprint (workout_preset_id provided; exercises optional)
+// 2. As a freeform workout (no workout_preset_id; non-empty name and at least one exercise required)
+// Both sources can also be provided together (e.g. client starts from a preset with client-supplied sets).
 export const createPresetSessionRequestSchema = z
   .object({
     workout_preset_id: z.number().int().nullable().optional(),
     entry_date: dateStringSchema,
-    name: z.string().min(1).optional(),
+    name: z.string().nullable().optional(),
     description: z.string().nullable().optional(),
     notes: z.string().nullable().optional(),
     source: z.string().default("manual"),
-    exercises: z.array(presetSessionExerciseRequestSchema).min(1).optional(),
+    exercises: z.array(presetSessionExerciseRequestSchema).optional(),
+    workoutPlanAssignmentId: z.number().int().nullable().optional(),
   })
   .strict()
   .superRefine((data, ctx) => {
@@ -177,28 +197,30 @@ export const createPresetSessionRequestSchema = z
       data.workout_preset_id !== undefined && data.workout_preset_id !== null;
     const hasExercises = data.exercises !== undefined;
 
-    // workout_preset_id alone means "copy this preset's own stored
-    // structure"; exercises alone means a freeform/individual session;
-    // both together means "tag this session as started from a preset, but
-    // use the client-supplied (e.g. live-workout) exercise/set structure
-    // instead of the preset's stored one." Only rule out neither.
-    if (!hasPresetId && !hasExercises) {
+    // Freeform workouts require a non-empty name
+    if (!hasPresetId) {
+      if (!data.name || data.name.trim().length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Name is required when creating a freeform workout",
+          path: ["name"],
+        });
+      }
+    }
+
+    if (hasPresetId && !hasExercises) {
+      return;
+    }
+
+    if (!hasExercises || !data.exercises || data.exercises.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Provide a workout source: workout_preset_id or exercises.",
+        message:
+          "Workout session must include at least one exercise when not started from a stored preset.",
         path: ["exercises"],
       });
     }
-
-    if (!hasPresetId && !data.name) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Name is required when creating a freeform workout.",
-        path: ["name"],
-      });
-    }
   });
-
 export const updatePresetSessionRequestSchema = z
   .object({
     name: z.string().min(1).optional(),

@@ -3,6 +3,7 @@ import { log } from '../config/logging.js';
 import { isAdmin } from '../middleware/authMiddleware.js';
 import oidcLogoUpload from '../middleware/oidcLogoUpload.js';
 import oidcProviderRepository from '../models/oidcProviderRepository.js';
+import { oidcProviderUpdateSchema } from '../schemas/oidcProviderSchemas.js';
 const router = express.Router();
 /**
  * @swagger
@@ -71,13 +72,35 @@ router.post('/', isAdmin, async (req, res) => {
  * /admin/oidc-settings/{id}:
  *   put:
  *     summary: Update an OIDC Provider (Admin Only)
+ *     responses:
+ *       200:
+ *         description: OIDC provider updated successfully.
+ *       400:
+ *         description: Invalid OIDC provider settings.
+ *       404:
+ *         description: OIDC provider not found.
+ *       500:
+ *         description: Error updating OIDC provider.
  */
 router.put('/:id', isAdmin, async (req, res) => {
+  const parsed = oidcProviderUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Invalid OIDC provider settings.' });
+  }
   try {
-    await oidcProviderRepository.updateOidcProvider(req.params.id, req.body);
+    await oidcProviderRepository.updateOidcProvider(req.params.id, parsed.data);
     log('info', `[OIDC SETTINGS] Provider ${req.params.id} updated.`);
     res.status(200).json({ message: 'OIDC provider updated successfully' });
   } catch (error) {
+    if (error instanceof Error && error.message === 'OIDC provider not found') {
+      return res.status(404).json({ message: error.message });
+    }
+    if (
+      error instanceof Error &&
+      error.message === 'OIDC client ID is required'
+    ) {
+      return res.status(400).json({ message: error.message });
+    }
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     log('error', `[OIDC SETTINGS] PUT Error: ${error.message}`);
     res

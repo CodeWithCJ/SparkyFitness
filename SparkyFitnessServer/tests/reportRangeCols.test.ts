@@ -71,7 +71,7 @@ describe('getDailyNutritionTotalsRange select list', () => {
     );
   });
 
-  it('emits one output column per shared nutrient field and no others', async () => {
+  it('emits every shared nutrient field plus legacy completeness metadata', async () => {
     const sql = await sqlOf();
     const aliases = [...sql.matchAll(/\bas (\w+),?$/gim)].map((m) => m[1]);
     // The NAMES, not just the count. Counting and de-duplicating alone accepts any renaming
@@ -79,9 +79,16 @@ describe('getDailyNutritionTotalsRange select list', () => {
     // names, so the query would publish that name and no `calories` at all with this test
     // green. Expected names are spelled out here rather than derived from the alias map
     // under test, because a guard that imports the thing it guards proves nothing.
-    const expected = FOOD_VARIANT_NUTRIENT_FIELDS.map((field) =>
-      field === 'dietary_fiber' ? 'fiber' : field === 'sugars' ? 'sugar' : field
-    );
+    const expected = [
+      ...FOOD_VARIANT_NUTRIENT_FIELDS.map((field) =>
+        field === 'dietary_fiber'
+          ? 'fiber'
+          : field === 'sugars'
+            ? 'sugar'
+            : field
+      ),
+      'legacy_ambiguous_entry_count',
+    ];
     expect(aliases).toEqual(expected);
     expect(new Set(aliases).size).toBe(aliases.length);
   });
@@ -89,6 +96,11 @@ describe('getDailyNutritionTotalsRange select list', () => {
   // Two fields are published under a different name than their column, and the consumers read
   // the alias: foodTools maps row.fiber and row.sugar. Renaming a column without carrying the
   // alias would hand those consumers undefined, which they coerce to 0.
+  it('recognizes legacy units that embed a reference serving size', async () => {
+    const sql = await sqlOf();
+    expect(sql).toContain("fe.unit ~ '^\\s*[0-9]+(?:\\.[0-9]+)?\\s+\\S'");
+  });
+
   it('publishes dietary_fiber as fiber and sugars as sugar', async () => {
     const sql = await sqlOf();
     expect(sql).toMatch(/\bas fiber,?$/m);

@@ -175,8 +175,8 @@ export function useWorkoutPresetForm({
     (
       exerciseIndex: number,
       setIndex: number,
-      field: keyof WorkoutPresetSet,
-      value: WorkoutPresetSet[keyof WorkoutPresetSet]
+      field: string,
+      value: unknown
     ) => {
       setExercises((prev) =>
         prev.map((exercise, eIndex) => {
@@ -338,7 +338,16 @@ export function useWorkoutPresetForm({
       return newExercises;
     });
   };
-
+  const handleExerciseFieldChange = useCallback(
+    (exerciseIndex: number, field: string, value: unknown) => {
+      setExercises((prev) =>
+        prev.map((ex, idx) =>
+          idx === exerciseIndex ? { ...ex, [field]: value } : ex
+        )
+      );
+    },
+    []
+  );
   const handleSubmit = () => {
     if (!name.trim()) {
       toast({
@@ -412,6 +421,7 @@ export function useWorkoutPresetForm({
     handleAddExercise,
     handleOpenAddExercise,
     handleOpenReplaceExercise,
+    handleExerciseFieldChange,
     handleRemoveExercise,
     handleDuplicateExercise,
     handleSetChange,

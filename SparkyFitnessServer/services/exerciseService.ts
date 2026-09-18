@@ -1928,10 +1928,11 @@ async function createGroupedWorkoutSession(
       exercises,
       workoutPlanAssignmentId = null,
     } = sessionData;
-    let presetEntry;
-    let exerciseDefinitions;
+    let presetEntry: any;
+    let exerciseDefinitions: any;
     let childEntrySource = source;
     let preserveLegacyPresetDurationFallback = false;
+
     if (workout_preset_id !== undefined && workout_preset_id !== null) {
       const workoutPreset = await workoutPresetRepository.getWorkoutPresetById(
         workout_preset_id,
@@ -1957,16 +1958,17 @@ async function createGroupedWorkoutSession(
           },
           actingUserId
         );
-      if (exercises !== undefined) {
-        // Client supplied its own exercise/set structure (e.g. a live
-        // workout's Hevy-style placeholders) — use it verbatim. The entry is
-        // still tagged to the preset (for recentSessions stats scoping), but
-        // keeps its own source and stays nested-edit-able like any other
-        // client-authored session, unlike a pure workout_preset_id start
-        // (source 'Workout Preset', not in EDITABLE_SOURCES).
-        exerciseDefinitions = exercises;
-      } else {
-        exerciseDefinitions = workoutPreset.exercises || [];
+
+      // Client supplied its own exercise/set structure (e.g. a live
+      // workout's Hevy-style placeholders) — use it verbatim. The entry is
+      // still tagged to the preset (for recentSessions stats scoping), but
+      // keeps its own source and stays nested-edit-able like any other
+      // client-authored session, unlike a pure workout_preset_id start
+      // (source 'Workout Preset', not in EDITABLE_SOURCES).
+      exerciseDefinitions =
+        exercises !== undefined ? exercises : workoutPreset.exercises || [];
+
+      if (exercises === undefined) {
         childEntrySource = 'Workout Preset';
         preserveLegacyPresetDurationFallback = true;
       }
@@ -1987,6 +1989,7 @@ async function createGroupedWorkoutSession(
         );
       exerciseDefinitions = exercises || [];
     }
+
     await createGroupedExerciseEntriesWithClient(
       client,
       userId,

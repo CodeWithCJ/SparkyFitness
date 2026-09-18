@@ -44,6 +44,11 @@ export interface TelemetryRunContext {
    */
   readonly interactive: boolean;
   /**
+   * The slot count this run started with, for callers that must reserve part
+   * of it rather than spend it first-come. Infinite when uncapped.
+   */
+  readonly budget: number;
+  /**
    * Claims one unit of budget, returning whether the caller may collect.
    * Callers that skip collection do not consume budget.
    */
@@ -76,6 +81,7 @@ export const createTelemetryRunContext = (options?: {
   let collected: string[] = [];
   return {
     interactive: options?.interactive ?? true,
+    budget: options?.budget ?? Number.POSITIVE_INFINITY,
     claim: (): boolean => {
       if (remaining <= 0) return false;
       remaining -= 1;
@@ -89,5 +95,43 @@ export const createTelemetryRunContext = (options?: {
       collected = [];
       return staged;
     },
+  };
+};
+
+/**
+ * Caps how much of a run's budget may go to sessions still inside the
+ * telemetry grace window.
+ *
+ * Those sessions are re-read on every sync until their heart rate arrives or
+ * the window closes (#2300), and the claim loop takes sessions newest-first —
+ * so without a cap a handful of recent heart-rate-less workouts would take the
+ * whole budget every run and the older backlog behind them would never advance,
+ * which is the starvation the reuse cache was added to end (#2191).
+ *
+ * Half, not a fixed count, because the two budgets differ by an order of
+ * magnitude. It is a ceiling with a floor of one: a background run of 3 still
+ * spends 2 on recent sessions and keeps 1 for the backlog. Recent sessions keep
+ * their newest-first priority within that share — capping them without
+ * reordering is what keeps the #2300 fix working for a user who also has a
+ * large backlog, since a backlog-first rule would defer the retry past the
+ * 24h window it has to happen in.
+ *
+ * The share is a floor for the backlog, not a ceiling on the run: callers defer
+ * the sessions this denies and offer them the budget again once every backlog
+ * session has had its chance, so a drained backlog does not leave slots unspent
+ * and collect fewer sessions per run than before the cap existed.
+ */
+export const createGraceWindowClaimLimiter = (
+  budget: number
+): ((withinGraceWindow: boolean) => boolean) => {
+  const cap = Number.isFinite(budget)
+    ? Math.max(1, Math.ceil(budget / 2))
+    : Number.POSITIVE_INFINITY;
+  let used = 0;
+  return (withinGraceWindow: boolean): boolean => {
+    if (!withinGraceWindow) return true;
+    if (used >= cap) return false;
+    used += 1;
+    return true;
   };
 };
