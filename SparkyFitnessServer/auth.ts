@@ -98,9 +98,8 @@ const dynamicTrustedProviders = [];
  * whole list is rejected with `discovery_untrusted_origin` and SSO sign-in
  * fails with a 400.
  *
- * Kept in the same persistent-reference style as dynamicTrustedProviders, and
- * refreshed by the same syncTrustedProviders() call, so the getter Better Auth
- * holds always sees current data.
+ * Used when Better Auth resolves options without an HTTP request, including
+ * during initialization. HTTP requests load their own current origin snapshot.
  */
 const dynamicTrustedSsoOrigins: string[] = [];
 /**
@@ -115,6 +114,47 @@ function originOf(url: unknown): string | null {
     return null;
   }
 }
+/** Load provider origins used to validate OIDC discovery and endpoint requests. */
+async function loadTrustedSsoOrigins(): Promise<string[]> {
+  const repoPath = './models/oidcProviderRepository.js';
+  const { default: oidcProviderRepository } = await import(repoPath);
+  // Collect each provider's own origin so 1.7's discovery SSRF guard allows
+  // fetching its well-known document and the endpoints that document names.
+  const rows = await oidcProviderRepository.getOidcProviders();
+  const ssoOrigins = new Set<string>();
+  for (const row of rows ?? []) {
+    // getOidcProviders() renames the columns on the way out: the issuer is
+    // `issuer_url` and the endpoints are camelCase. Reading the raw column
+    // names here would silently collect nothing but the discovery origin,
+    // which only happens to work while every endpoint shares one host.
+    for (const candidate of [
+      row?.issuer_url,
+      row?.discoveryEndpoint,
+      row?.authorizationEndpoint,
+      row?.tokenEndpoint,
+      row?.userInfoEndpoint,
+      row?.jwksEndpoint,
+    ]) {
+      const origin = originOf(candidate);
+      if (origin) ssoOrigins.add(origin);
+    }
+  }
+  return [...ssoOrigins];
+}
+
+const requestSsoOrigins = new WeakMap<Request, Promise<string[]>>();
+
+/** Share one origin snapshot across repeated checks of the same request. */
+async function getTrustedSsoOrigins(request?: Request): Promise<string[]> {
+  if (!request) return dynamicTrustedSsoOrigins;
+  let origins = requestSsoOrigins.get(request);
+  if (!origins) {
+    origins = loadTrustedSsoOrigins();
+    requestSsoOrigins.set(request, origins);
+  }
+  return origins;
+}
+
 // Function to sync trusted providers from database
 async function syncTrustedProviders() {
   try {
@@ -129,27 +169,7 @@ async function syncTrustedProviders() {
       // @ts-expect-error
       dynamicTrustedProviders
     );
-    // Collect each provider's own origin so 1.7's discovery SSRF guard allows
-    // fetching its well-known document and the endpoints that document names.
-    const rows = await oidcProviderRepository.getOidcProviders();
-    const ssoOrigins = new Set<string>();
-    for (const row of rows ?? []) {
-      // getOidcProviders() renames the columns on the way out: the issuer is
-      // `issuer_url` and the endpoints are camelCase. Reading the raw column
-      // names here would silently collect nothing but the discovery origin,
-      // which only happens to work while every endpoint shares one host.
-      for (const candidate of [
-        row?.issuer_url,
-        row?.discoveryEndpoint,
-        row?.authorizationEndpoint,
-        row?.tokenEndpoint,
-        row?.userInfoEndpoint,
-        row?.jwksEndpoint,
-      ]) {
-        const origin = originOf(candidate);
-        if (origin) ssoOrigins.add(origin);
-      }
-    }
+    const ssoOrigins = await loadTrustedSsoOrigins();
     dynamicTrustedSsoOrigins.length = 0;
     dynamicTrustedSsoOrigins.push(...ssoOrigins);
     log(
@@ -487,13 +507,13 @@ const auth = betterAuth({
   },
   // Trust proxy (for Docker/Nginx deployments)
   // NOTE: Better Auth calls this with the raw Request object directly (not a context wrapper)
-  trustedOrigins: (request) => {
+  trustedOrigins: async (request) => {
     const cleanOrigins = [
       ...getBaseTrustedOrigins(),
       'sparkyfitnessmobile://',
       // IdP origins -- required since 1.7 validates OIDC discovery URLs against
       // this list before fetching them.
-      ...dynamicTrustedSsoOrigins,
+      ...(await getTrustedSsoOrigins(request)),
     ];
     const { origin: originHeader, referer: refererHeader } =
       extractRequestHeaders(request);
