@@ -1,4 +1,8 @@
 import { log } from '../config/logging.js';
+import {
+  rankProviderMatches,
+  type ProviderFoodItem,
+} from './providerFoodRanking.js';
 import externalProviderService from './externalProviderService.js';
 import preferenceService from './preferenceService.js';
 import {
@@ -442,5 +446,17 @@ export async function searchProviderFoods(
     }
   }
 
-  return { foods, pagination };
+  // Whole foods before branded SKUs, for every provider and every caller of
+  // this function — the web search UI, the mobile per-provider search and its
+  // Top Matches aggregation, and the lookup cascade. The rule already existed
+  // and was wired only into the chatbot path, so the screen people actually
+  // search on never benefited from it (#2418).
+  //
+  // Within the page the provider returned, not across pages: reordering cannot
+  // reach a whole food that a provider put on page three. That is the
+  // provider's own filtering problem — #2417 is the USDA half of it.
+  return {
+    foods: rankProviderMatches(foods as ProviderFoodItem[], query),
+    pagination,
+  };
 }

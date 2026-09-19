@@ -42,7 +42,10 @@ vi.mock('../integrations/swissfood/swissFoodService.js', () => ({
 
 import externalProviderService from '../services/externalProviderService.js';
 import preferenceService from '../services/preferenceService.js';
-import { searchOpenFoodFacts } from '../integrations/openfoodfacts/openFoodFactsService.js';
+import {
+  searchOpenFoodFacts,
+  mapOpenFoodFactsProduct,
+} from '../integrations/openfoodfacts/openFoodFactsService.js';
 import {
   resolveOpenFoodFactsProviderId,
   searchProviderFoods,
@@ -168,5 +171,51 @@ describe('searchProviderFoods OpenFoodFacts pagination', () => {
       7,
       'global'
     );
+  });
+});
+
+// #2418: the ranking that put whole foods ahead of branded SKUs was wired only
+// into the chatbot lookup. searchProviderFoods is what the web search UI and
+// the mobile app call, and it returned each provider's raw order.
+describe('searchProviderFoods ranks what it returns', () => {
+  it('puts the whole food first, whatever order the provider gave', async () => {
+    // @ts-expect-error test doubles only need the fields the code under test reads
+    mockGetDetails.mockResolvedValue({
+      is_active: true,
+      is_public: true,
+      provider_type: 'openfoodfacts',
+    });
+    vi.mocked(preferenceService.getUserPreferences).mockResolvedValue({
+      language: 'en',
+    });
+    vi.mocked(mapOpenFoodFactsProduct).mockImplementation(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (p: any) => ({ name: p.product_name, brand: p.brands || null })
+    );
+    vi.mocked(searchOpenFoodFacts).mockResolvedValue({
+      products: [
+        { product_name: 'EGG (SNICKERS)', brands: 'Snickers', nutriments: {} },
+        { product_name: 'Egg, whole, raw, fresh', nutriments: {} },
+      ],
+      pagination: { page: 1, pageSize: 20, totalCount: 2, hasMore: false },
+    });
+
+    const result = await searchProviderFoods(USER_ID, 'openfoodfacts', 'egg', {
+      providerId: PROVIDER_ID,
+    });
+
+    expect(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (result.foods as any[]).map((f) => f.name)
+    ).toEqual(['Egg, whole, raw, fresh', 'EGG (SNICKERS)']);
+    // Ranking reorders; it must not drop or invent a row, and the provider's
+    // own pagination is untouched.
+    expect(result.foods).toHaveLength(2);
+    expect(result.pagination).toEqual({
+      page: 1,
+      pageSize: 20,
+      totalCount: 2,
+      hasMore: false,
+    });
   });
 });
