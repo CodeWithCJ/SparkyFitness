@@ -142,16 +142,6 @@ config:
     windowMs: ""
     maxRequests: ""
 
-  # -- Developer / mock data sources (for development only)
-  developer:
-    fitbitDataSource: ""
-    withingsDataSource: ""
-    garminDataSource: ""
-    polarDataSource: ""
-    hevyDataSource: ""
-    googleHealthDataSource: ""
-    saveMockData: false
-
 # ========================== 3. NETWORKING ====================================
 # -- If enabling this network policy, you should also set `postgresql.networkPolicy.enabled=true`
 # to use HelmForge's built-in NetworkPolicy for the database.

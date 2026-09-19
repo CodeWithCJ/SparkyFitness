@@ -49,6 +49,11 @@ vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
 }));
 
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../models/globalSettingsRepository.js', () => ({
+  // The mock-data options are off unless an admin turned them on; these route
+  // tests exercise the normal path, so the options never reach the service.
+  isMockDataEnabled: vi.fn().mockResolvedValue(false),
+}));
 
 import googleHealthIntegrationService from '../integrations/googlehealth/googleHealthService.js';
 import googleHealthService from '../services/googleHealthService.js';
@@ -224,7 +229,9 @@ describe('POST /api/integrations/googlehealth/sync', () => {
       'test-user-id',
       'manual',
       undefined,
-      undefined
+      undefined,
+      undefined,
+      false
     );
   });
 
@@ -241,7 +248,9 @@ describe('POST /api/integrations/googlehealth/sync', () => {
       'test-user-id',
       'manual',
       '2026-06-01',
-      '2026-06-07'
+      '2026-06-07',
+      undefined,
+      false
     );
   });
 

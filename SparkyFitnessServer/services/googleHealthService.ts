@@ -1,3 +1,4 @@
+import { setMockDataContext } from '../utils/mockDataContext.js';
 import { log } from '../config/logging.js';
 import googleHealthIntegrationService from '../integrations/googlehealth/googleHealthService.js';
 import googleHealthDataProcessor from '../integrations/googlehealth/googleHealthDataProcessor.js';
@@ -6,23 +7,24 @@ import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone, addDays } from '@workspace/shared';
 import { loadRawBundle } from '../utils/diagnosticLogger.js';
 
-const GOOGLE_HEALTH_DATA_SOURCE =
-  process.env.SPARKY_FITNESS_GOOGLE_HEALTH_DATA_SOURCE || 'googlehealth';
-log(
-  'info',
-  `[googleHealthService] Google Health data source: ${GOOGLE_HEALTH_DATA_SOURCE}`
-);
-
 /**
  * Orchestrate a full Google Health data sync for a user.
  * Mirrors the shape of syncFitbitData for consistency.
+ *
+ * `dataSource` and `saveMockData` are the per-sync mock-data options. The route
+ * only forwards them while the admin `mock_data_enabled` setting is on, so they
+ * arrive undefined on a normal instance.
  */
 async function syncGoogleHealthData(
   userId: string,
   syncType = 'manual',
   customStartDate: string | null = null,
-  customEndDate: string | null = null
+  customEndDate: string | null = null,
+  dataSource?: string,
+  saveMockData?: boolean
 ) {
+  const googleHealthDataSource = dataSource || 'googlehealth';
+  setMockDataContext({ dataSource, saveMockData });
   let startDate: string, endDate: string;
   const tz = await loadUserTimezone(userId);
   const today = todayInZone(tz);
@@ -45,7 +47,7 @@ async function syncGoogleHealthData(
     `[googleHealthService] Starting sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}.`
   );
 
-  if (GOOGLE_HEALTH_DATA_SOURCE === 'local') {
+  if (googleHealthDataSource === 'local') {
     log(
       'info',
       `[googleHealthService] Replaying Google Health sync from raw diagnostic bundle for user ${userId}`
@@ -53,8 +55,7 @@ async function syncGoogleHealthData(
     const bundle = loadRawBundle('googlehealth');
     if (!bundle || !bundle.responses) {
       throw new Error(
-        'Raw diagnostic bundle not found. Please run a sync with SPARKY_FITNESS_GOOGLE_HEALTH_DATA_SOURCE unset (or set to "googlehealth") ' +
-          'and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.'
+        'Raw diagnostic bundle not found. Run a sync with "Save provider responses locally" ticked first to capture raw API responses.'
       );
     }
     const r = bundle.responses as Record<string, { data: unknown }>;

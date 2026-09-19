@@ -43,6 +43,11 @@ vi.mock('../services/ouraService.js', () => ({
     }),
   },
 }));
+vi.mock('../models/globalSettingsRepository.js', () => ({
+  // The mock-data options are off unless an admin turned them on; these route
+  // tests exercise the normal path, so the options never reach the service.
+  isMockDataEnabled: vi.fn().mockResolvedValue(false),
+}));
 
 import ouraRoutes from '../routes/ouraRoutes.js';
 import ouraIntegrationService from '../integrations/oura/ouraService.js';
@@ -98,7 +103,9 @@ describe('POST /oura/sync', () => {
       'user-1',
       'manual',
       '2026-07-01',
-      '2026-07-10'
+      '2026-07-10',
+      undefined,
+      false
     );
   });
 
@@ -109,7 +116,9 @@ describe('POST /oura/sync', () => {
       'user-1',
       'manual',
       undefined,
-      undefined
+      undefined,
+      undefined,
+      false
     );
   });
 

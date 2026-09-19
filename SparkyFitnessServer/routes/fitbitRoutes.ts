@@ -1,3 +1,4 @@
+import { resolveMockDataOptions } from '../utils/mockDataOptions.js';
 import express from 'express';
 import fitbitIntegrationService from '../integrations/fitbit/fitbitService.js';
 import fitbitService from '../services/fitbitService.js';
@@ -106,11 +107,22 @@ router.post(
     try {
       const userId = req.userId;
       const { startDate, endDate } = req.body;
+      const { dataSource, saveMockData } = await resolveMockDataOptions(
+        req.body,
+        req.authenticatedUserId
+      );
       log(
         'info',
-        `[fitbitRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
+        `[fitbitRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}${dataSource ? ` (Source: ${dataSource})` : ''}`
       );
-      await fitbitService.syncFitbitData(userId, 'manual', startDate, endDate);
+      await fitbitService.syncFitbitData(
+        userId,
+        'manual',
+        startDate,
+        endDate,
+        dataSource,
+        saveMockData
+      );
       res
         .status(200)
         .json({ message: 'Fitbit data sync completed successfully.' });

@@ -1,0 +1,151 @@
+# External Database Setup
+
+If you are using your own PostgreSQL instance (e.g., AWS RDS, Azure Database, CloudNativePG, or a local installation) instead of the provided Docker Compose setup, follow these steps to ensure the database is correctly configured.
+
+> [!WARNING]
+> **Community Supported Only**
+> External and managed database configurations are not officially tested or supported by the core application maintainers. Use this guide at your own risk.
+
+## 1. Database and Users
+
+The application uses two database roles:
+
+1.  **SPARKY_FITNESS_DB_USER**: Used for migrations and schema management.
+2.  **SPARKY_FITNESS_APP_DB_USER**: Used by the application components with restricted permissions.
+
+> [!IMPORTANT]
+> The application automatically creates the **App User** (`SPARKY_FITNESS_APP_DB_USER`) and grants it all necessary permissions on first startup. The **DB User** (`SPARKY_FITNESS_DB_USER`) must have `CREATEROLE` to do this.
+
+### Option A — Standard Setup (SparkyFitness creates the SPARKY_FITNESS_APP_DB_USER User automatically)
+
+Run the following as a database superuser:
+
+```sql
+-- 1. Create the Database
+CREATE DATABASE sparkyfitness_db;
+
+-- 2. Create the DB Owner user (referenced in .env as SPARKY_FITNESS_DB_USER)
+CREATE USER sparky_admin WITH PASSWORD 'your_secure_password';
+
+-- 3. Grant database ownership so sparky_admin can create schemas and tables
+ALTER DATABASE sparkyfitness_db OWNER TO sparky_admin;
+
+-- 4. Grant Role Creation privilege
+-- Required so the app can automatically create SPARKY_FITNESS_APP_DB_USER
+-- on first startup (see utils/dbMigrations.ts)
+ALTER USER sparky_admin CREATEROLE;
+
+-- 5. PostgreSQL 15+ only: the default public schema permissions changed in PG 15.
+-- Explicitly grant create rights to the owner:
+GRANT ALL ON SCHEMA public TO sparky_admin;
+```
+
+### Option B — Reduced Privilege Setup (you create the SPARKY_FITNESS_APP_DB_USER User manually)
+
+If your environment does not allow `CREATEROLE` (e.g., strict managed databases), you can pre-create the App User yourself. The application checks whether the role already exists before attempting to create it — if it finds it, `CREATE ROLE` is skipped entirely and `CREATEROLE` is **not required**.
+
+```sql
+-- 1. Create the Database
+CREATE DATABASE sparkyfitness_db;
+
+-- 2. Create the DB Owner user (referenced in .env as SPARKY_FITNESS_DB_USER)
+CREATE USER sparky_admin WITH PASSWORD 'your_secure_password';
+
+-- 3. Grant database ownership
+ALTER DATABASE sparkyfitness_db OWNER TO sparky_admin;
+
+-- 4. PostgreSQL 15+ only
+GRANT ALL ON SCHEMA public TO sparky_admin;
+
+-- 5. Pre-create the App User (referenced in .env as SPARKY_FITNESS_APP_DB_USER)
+--    The app detects this role already exists and skips CREATE ROLE,
+--    so sparky_admin does NOT need CREATEROLE.
+CREATE USER sparky_app WITH PASSWORD 'another_secure_password';
+```
+
+Set both users in your `.env`:
+```bash
+SPARKY_FITNESS_DB_USER=sparky_admin
+SPARKY_FITNESS_DB_PASSWORD=your_secure_password
+SPARKY_FITNESS_APP_DB_USER=sparky_app
+SPARKY_FITNESS_APP_DB_PASSWORD=another_secure_password
+```
+
+> [!NOTE]
+> With Option B, `sparky_admin` still needs database ownership to run migrations (create tables, schemas, functions, indexes). The only privilege that is no longer required is `CREATEROLE`.
+
+## 2. PostgreSQL Extensions
+
+> [!NOTE]
+> **No extensions required.** As of v0.17.0 release, SparkyFitness no longer depends on `uuid-ossp`, `pgcrypto`, or `pg_stat_statements`.
+>
+> - UUID generation uses the built-in `gen_random_uuid()` (PostgreSQL 13+), which requires no extension.
+> - Encryption is handled entirely in application code (AES-256-GCM via Node.js `crypto`), not via database functions.
+>
+> If you are upgrading an existing installation that has these extensions installed, the `20260618000000_remove_superuser_extensions.sql` migration will attempt to remove them automatically. Non-superuser environments will skip the `DROP EXTENSION` step gracefully — the extensions are unused and harmless if left in place.
+
+## 3. Row Level Security (RLS)
+
+The `sparky_admin` user must be the **owner** of the tables to enable and manage RLS policies. Setting `ALTER DATABASE ... OWNER TO sparky_admin` ensures that any tables created during migrations are automatically owned by `sparky_admin`.
+
+## 4. Environment Configuration
+
+In your `.env` file, ensure you point to your external database:
+
+```bash
+SPARKY_FITNESS_DB_HOST=your-db-host
+SPARKY_FITNESS_DB_NAME=sparkyfitness_db
+SPARKY_FITNESS_DB_USER=sparky_admin
+SPARKY_FITNESS_DB_PASSWORD=your_secure_password
+SPARKY_FITNESS_DB_PORT=5432
+
+# App user — created automatically (Option A) or pre-created by you (Option B)
+SPARKY_FITNESS_APP_DB_USER=sparky_app
+SPARKY_FITNESS_APP_DB_PASSWORD=another_secure_password
+```
+
+> If connecting through PgBouncer, use **session pooling**. Transaction and statement pooling are incompatible with SparkyFitness’s session-based user permissions and startup migration lock. Both the application and migration connections need to retain their PostgreSQL session.
+
+If a server node fails during database initialization without closing its connection, other instances wait until PostgreSQL detects the lost connection and releases the startup lock. With default Linux TCP keepalive settings, an idle connection can take about two hours to detect. Configure PostgreSQL’s [TCP keepalive settings](https://www.postgresql.org/docs/current/runtime-config-connection.html#GUC-TCP-KEEPALIVES-IDLE) for your recovery requirements; `client_connection_check_interval` helps running queries notice a detected disconnect. [`idle_session_timeout`](https://www.postgresql.org/docs/current/runtime-config-client.html#GUC-IDLE-SESSION-TIMEOUT) can end abandoned sessions idle outside a transaction, but does not cover running queries or idle transactions, and needs care with connection pools. When using a proxy, also configure its detection of lost client connections.
+
+::: warning Set both values for an external database
+`SPARKY_FITNESS_APP_DB_USER` and `SPARKY_FITNESS_APP_DB_PASSWORD` are optional for a standard Docker Compose install, where the server picks `sparky_app` and generates a password on each start. **For an external database you should set both explicitly**, because you control the role's lifecycle.
+
+- **Option A**: the app creates this role automatically using these values.
+- **Option B**: the role already exists, and the password in `.env` must match the one you set when creating it. The server verifies this by connecting as that role at startup; because the check succeeds, it issues no `ALTER ROLE` and your owner still does not need `CREATEROLE`.
+
+If the password in `.env` stops matching the role, the server updates the role to match — which does require `CREATEROLE`. On a database where you deliberately withheld that privilege, keep the two in sync yourself, or the server will stop with an error telling you which `ALTER ROLE` to run.
+:::
+
+### Connecting over a Unix socket
+
+If PostgreSQL runs on the same host, you can connect through a Unix domain socket instead of TCP. Set `SPARKY_FITNESS_DB_HOST` to the socket **directory** (any value starting with `/` is treated as a socket path, not a hostname):
+
+```bash
+SPARKY_FITNESS_DB_HOST=/var/run/postgresql
+SPARKY_FITNESS_DB_PORT=5432
+```
+
+The driver appends `.s.PGSQL.<port>` to that directory, so `SPARKY_FITNESS_DB_PORT` still matters — it selects the socket filename rather than a TCP port. This works for the application connection pools and for the built-in backup/restore, which shell out to `pg_dump`, `psql`, `dropdb`, and `createdb`.
+
+> [!IMPORTANT]
+> `SPARKY_FITNESS_DB_PASSWORD` and `SPARKY_FITNESS_APP_DB_PASSWORD` remain **mandatory** — the server refuses to start without them, even when your `pg_hba.conf` uses `peer` or `trust` for local connections and no password is actually sent. Either set placeholder values, or use `scram-sha-256` on the `local` line and set real passwords.
+
+> [!NOTE]
+> **Docker:** `peer` authentication cannot work from a container, because the container's UID will not match the database role. Use `scram-sha-256` on the `local` line in `pg_hba.conf` and bind-mount the socket directory into the container, e.g. `- /var/run/postgresql:/var/run/postgresql`.
+
+## 5. Security Hardening (applies only to Option A)
+
+The `CREATEROLE` privilege is only required during the **initial installation** or when a future update needs to create a new specialized database role.
+
+### Revoking CREATEROLE
+
+Once the application has successfully started for the first time and you see the log `Successfully created role`, you can revoke this privilege:
+
+```sql
+ALTER USER sparky_admin NOCREATEROLE;
+```
+
+> [!CAUTION]
+> **Potential Issues with NOCREATEROLE**
+> If you revoke this privilege, future application updates that require creating new database roles will fail. If you encounter a "Permission Denied" error during a future upgrade, temporarily re-grant `CREATEROLE` or manually create the required role as a superuser, then revoke it again.

@@ -1823,6 +1823,8 @@
         "description": "Global AI service settings are shared across all users. Users can override these with their own settings.",
         "allowUserConfig": "Allow Users to Configure AI Services",
         "allowUserConfigDescription": "When enabled, users can add and manage their own AI service configurations. When disabled, users can only use the global AI service settings.",
+        "allowPrivateNetworkAi": "Allow Private Network Endpoints (e.g. Local Ollama/vLLM)",
+        "allowPrivateNetworkAiDescription": "Permit connecting to AI endpoints hosted on private IP addresses (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, localhost).",
         "syncFromEnv": "Sync from Environment",
         "addNewService": "Add New Global AI Service",
         "addService": "Add Service",
@@ -2397,6 +2399,10 @@
     "authenticationSettings": {
       "title": "Authentication Settings",
       "description": "Manage authentication methods and OIDC providers.",
+      "publicApiDocs": "Public API Documentation",
+      "publicApiDocsDescription": "Allow Swagger API docs (/api/api-docs) to be accessed without requiring user authentication.",
+      "devTools": "Developer Diagnostic Tools",
+      "devToolsDescription": "Enable MCP and diagnostic database inspection tools for admins.",
       "loginManagement": {
         "title": "Login Management",
         "description": "Enable or disable different methods for users to log in.",
@@ -5492,6 +5498,9 @@
   },
   "success": "Success",
   "syncRangeDialog": {
+    "troubleshooting": "Troubleshooting",
+    "saveMockData": "Save this sync's raw responses to a file on the server",
+    "useLocalData": "Sync from the previously saved file instead of {{provider}}",
     "description": "Choose the date range you would like to synchronize from {{provider}}.",
     "endDate": "End Date",
     "last180Days": "Last 180 Days",

@@ -1,3 +1,7 @@
+import {
+  getMockDataSource,
+  isMockCaptureEnabled,
+} from '../../utils/mockDataContext.js';
 import http from 'http';
 import https from 'https';
 import { log } from '../../config/logging.js';
@@ -275,6 +279,23 @@ async function getDecryptedGarminTokens(userId: string): Promise<string> {
 /**
  * Fetches a single chunk of Health and Wellness data from the Garmin microservice.
  */
+/**
+ * The microservice takes the mock-data options per request rather than from its
+ * own env, so each call forwards whatever the current sync's context holds.
+ * Both are absent on a normal sync.
+ */
+function mockDataPayload(): {
+  data_source?: string;
+  save_mock_data?: boolean;
+} {
+  const dataSource = getMockDataSource();
+  const saveMockData = isMockCaptureEnabled();
+  return {
+    ...(dataSource ? { data_source: dataSource } : {}),
+    ...(saveMockData ? { save_mock_data: true } : {}),
+  };
+}
+
 async function fetchGarminHealthAndWellnessChunk(
   userId: string,
   startDate: string,
@@ -295,6 +316,7 @@ async function fetchGarminHealthAndWellnessChunk(
       start_date: startDate,
       end_date: endDate,
       metric_types: metricTypes || [],
+      ...mockDataPayload(),
     });
 
     const result = response.data;
@@ -348,6 +370,7 @@ async function fetchGarminActivitiesAndWorkoutsChunk(
       start_date: startDate,
       end_date: endDate,
       activity_type: activityType,
+      ...mockDataPayload(),
     });
 
     const result = response.data;
@@ -398,6 +421,7 @@ async function fetchGarminNutritionDiaryChunk(
       tokens,
       start_date: startDate,
       end_date: endDate,
+      ...mockDataPayload(),
     });
 
     const result = response.data;

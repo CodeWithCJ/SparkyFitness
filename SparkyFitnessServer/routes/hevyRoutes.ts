@@ -1,3 +1,4 @@
+import { resolveMockDataOptions } from '../utils/mockDataOptions.js';
 import express from 'express';
 import hevyService from '../integrations/hevy/hevyService.js';
 import { log } from '../config/logging.js';
@@ -16,6 +17,10 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
 
     const createdByUserId = req.userId;
     const { providerId, startDate, endDate } = req.body;
+    const { dataSource, saveMockData } = await resolveMockDataOptions(
+      req.body,
+      req.authenticatedUserId
+    );
     const fullSync =
       req.query.fullSync === 'true' || req.body.fullSync === true;
     log(
@@ -28,7 +33,9 @@ router.post('/sync', authMiddleware.authenticate, async (req, res) => {
       fullSync,
       providerId,
       startDate,
-      endDate
+      endDate,
+      dataSource,
+      saveMockData
     );
     res.status(200).json(result);
   } catch (error) {

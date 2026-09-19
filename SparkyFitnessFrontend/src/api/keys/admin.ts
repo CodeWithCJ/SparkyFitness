@@ -33,3 +33,7 @@ export const userPreferencesKeys = {
 export const userAiConfigKeys = {
   all: ['userAiConfigAllowed'] as const,
 };
+
+export const mockDataKeys = {
+  all: ['mockDataEnabled'] as const,
+};

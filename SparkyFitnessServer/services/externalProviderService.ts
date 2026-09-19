@@ -18,7 +18,7 @@ import {
 } from './openFoodFactsProviderCredentials.js';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
-  deriveFoodProviderNetworkPolicy,
+  resolveFoodProviderNetworkPolicy,
   resolveHostnameForOutboundConnection,
   isOutboundUrlBlockedError,
   OutboundUrlShapeError,
@@ -37,7 +37,9 @@ const BASE_URL_FETCHING_PROVIDER_TYPES = new Set([
 // Reject a private/internal base_url for the self-hosted recipe providers.
 // Admins may point at a private/LAN address (a single-user self-host is an
 // admin, so no config is needed); a non-admin on a multi-user server is
-// blocked unless the operator sets ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS=true.
+// blocked unless the operator opts in, either with the admin
+// `allow_private_network_food_providers` toggle or
+// ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS=true.
 // Reuses the same guard the AI-service URLs use, but surfaces a food-specific
 // message so the user isn't told about "AI service URL".
 async function validateFoodProviderBaseUrl(
@@ -62,7 +64,7 @@ async function validateFoodProviderBaseUrl(
     normalized = `https://${normalized}`;
   }
   const isAdmin = await resolveIsAdminByUserId(authenticatedUserId);
-  const policy = deriveFoodProviderNetworkPolicy(isAdmin);
+  const policy = await resolveFoodProviderNetworkPolicy(isAdmin);
   try {
     const url = assertOutboundUrlShapeAndLiteralAllowed(normalized, policy);
     // Resolve the hostname too, not just literal-IP shape: a non-admin could
@@ -74,7 +76,7 @@ async function validateFoodProviderBaseUrl(
   } catch (error) {
     if (isOutboundUrlBlockedError(error)) {
       throw badRequest(
-        'Provider base URL resolves to a private or internal address. Only admins can use a local/self-hosted address by default; to allow all users, set ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS=true in your server environment configuration.'
+        'Provider base URL resolves to a private or internal address. Only admins can use a local/self-hosted address by default; to allow all users, enable "Allow Private / LAN Recipe Providers" in Admin > Global Provider Settings (or set ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS=true in your server environment).'
       );
     }
     if (error instanceof OutboundUrlShapeError) {

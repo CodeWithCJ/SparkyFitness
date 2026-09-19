@@ -324,6 +324,40 @@ const GlobalAISettings = () => {
             </div>
           )}
 
+          {/* Allow Non-Admin Private Network AI Toggle */}
+          {globalSettings && (
+            <div className="flex items-center justify-between p-4 border rounded-md mb-4">
+              <div className="flex-1">
+                <Label
+                  htmlFor="allow_private_network_ai"
+                  className="font-medium"
+                >
+                  {t(
+                    'settings.aiService.globalSettings.allowPrivateNetworkAi',
+                    'Allow Private / LAN AI Endpoints'
+                  )}
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {t(
+                    'settings.aiService.globalSettings.allowPrivateNetworkAiDescription',
+                    'Allow non-admin users to connect custom AI services (e.g. Ollama) to private LAN IP addresses.'
+                  )}
+                </p>
+              </div>
+              <Switch
+                id="allow_private_network_ai"
+                checked={globalSettings.allow_private_network_ai === true}
+                onCheckedChange={(checked) => {
+                  updateSettings({
+                    ...globalSettings,
+                    allow_private_network_ai: checked,
+                  });
+                }}
+                disabled={settingsLoading}
+              />
+            </div>
+          )}
+
           {/* Global vision default: writes default_vision_ai_service_id, the
               service the server routes vision tasks to for users who are on the
               global default (no personal service configured). "None" clears it

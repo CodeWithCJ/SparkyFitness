@@ -5,6 +5,10 @@ import { extractNutritionFromLabel } from '../services/labelScanService.js';
 
 vi.mock('../models/chatRepository');
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
+vi.mock('../models/globalSettingsRepository.js', () => ({
+  isPrivateNetworkAiAllowed: vi.fn().mockResolvedValue(false),
+  isPrivateNetworkFoodProvidersAllowed: vi.fn().mockResolvedValue(false),
+}));
 
 // Mock the undici Agent so the Ollama path never constructs a real agent.
 // (global.fetch is mocked per-test; the dispatcher option is ignored by it.)

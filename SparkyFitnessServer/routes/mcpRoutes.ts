@@ -16,6 +16,7 @@ import { resolveIsAdmin } from '../utils/adminCheck.js';
 import versionService from '../services/versionService.js';
 import chatService from '../services/chatService.js';
 import { TtlCache } from '../utils/ttlCache.js';
+import { isDevToolsEnabled } from '../models/globalSettingsRepository.js';
 
 const router = express.Router();
 
@@ -182,7 +183,8 @@ router.post('/', async (req, res) => {
     // Admin-only dev tools, off by default; gating at registration keeps them
     // out of non-admins' tools/list. authenticate already populated req.user.
     const devToolsAllowed =
-      process.env.DEV_TOOLS_ENABLED === 'true' &&
+      ((await isDevToolsEnabled()) ||
+        process.env.DEV_TOOLS_ENABLED === 'true') &&
       (await resolveIsAdmin(req.user, req.authenticatedUserId));
     if (devToolsAllowed) {
       registerDevTools(mcpServer, userId);

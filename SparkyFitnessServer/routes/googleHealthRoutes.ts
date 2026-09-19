@@ -1,3 +1,4 @@
+import { resolveMockDataOptions } from '../utils/mockDataOptions.js';
 import express from 'express';
 import googleHealthIntegrationService from '../integrations/googlehealth/googleHealthService.js';
 import googleHealthService from '../services/googleHealthService.js';
@@ -137,13 +138,24 @@ router.post(
         return;
       }
       const { startDate, endDate } = bodyResult.data;
+      const { dataSource, saveMockData } = await resolveMockDataOptions(
+        req.body,
+        req.authenticatedUserId
+      );
       const userId = req.userId;
       log(
         'info',
         `[googleHealthRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
       );
       googleHealthService
-        .syncGoogleHealthData(userId, 'manual', startDate, endDate)
+        .syncGoogleHealthData(
+          userId,
+          'manual',
+          startDate,
+          endDate,
+          dataSource,
+          saveMockData
+        )
         .catch((err: Error) => {
           log(
             'error',

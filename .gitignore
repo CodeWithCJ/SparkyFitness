@@ -19,6 +19,10 @@ dist
 dist-ssr
 *.local
 .env
+.vitepress/dist
+.vitepress/cache
+.nuxt
+.output
 
 # Private folder contents
 private/

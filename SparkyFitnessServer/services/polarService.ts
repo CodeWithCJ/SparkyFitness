@@ -1,15 +1,10 @@
+import { setMockDataContext } from '../utils/mockDataContext.js';
 import { log } from '../config/logging.js';
 import polarIntegrationService from '../integrations/polar/polarService.js';
 import polarDataProcessor from '../integrations/polar/polarDataProcessor.js';
 import { getSystemClient } from '../db/poolManager.js';
 import { loadRawBundle } from '../utils/diagnosticLogger.js';
-// Configuration for data mocking/caching
-const POLAR_DATA_SOURCE =
-  process.env.SPARKY_FITNESS_POLAR_DATA_SOURCE || 'polar';
-log(
-  'info',
-  `[polarService] Polar data source configured to: ${POLAR_DATA_SOURCE}`
-);
+
 /**
  * Orchestrate a full Polar data sync for a user
  * @param {number} userId - The ID of the user to sync data for
@@ -17,6 +12,8 @@ log(
  * @param {string} providerId - Optional provider ID
  * @param {string} [startDate] - Optional custom start date (YYYY-MM-DD)
  * @param {string} [endDate] - Optional custom end date (YYYY-MM-DD)
+ * @param {string} [dataSource] - Optional data source ('local' vs 'polar')
+ * @param {boolean} [saveMockData] - Optional flag to capture raw API responses
  */
 async function syncPolarData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,13 +22,17 @@ async function syncPolarData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   providerId: any,
   startDate = null,
-  endDate = null
+  endDate = null,
+  dataSource: string | null = null,
+  saveMockData = false
 ) {
+  const polarDataSource = dataSource || 'polar';
+  setMockDataContext({ dataSource, saveMockData });
   log(
     'info',
-    `[polarService] Starting Polar sync (${syncType}) for user ${userId}${providerId ? ` (Provider ID: ${providerId})` : ''}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}. ENV_SAVE_MOCK_DATA=${process.env.SPARKY_FITNESS_SAVE_MOCK_DATA}`
+    `[polarService] Starting Polar sync (${syncType}) for user ${userId}${providerId ? ` (Provider ID: ${providerId})` : ''}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}. Loading from: ${polarDataSource}`
   );
-  if (POLAR_DATA_SOURCE === 'local') {
+  if (polarDataSource === 'local') {
     log(
       'info',
       `[polarService] Replaying Polar sync from raw diagnostic bundle for user ${userId}`
@@ -39,8 +40,8 @@ async function syncPolarData(
     const bundle = loadRawBundle('polar');
     if (!bundle || !bundle.responses) {
       throw new Error(
-        'Raw diagnostic bundle not found. Please run a sync with SPARKY_FITNESS_POLAR_DATA_SOURCE unset (or set to "polar") ' +
-          'and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.'
+        'Raw diagnostic bundle not found. Please run a sync with live API ' +
+          'and "Capture Mock Data" enabled to capture raw API responses first.'
       );
     }
     const responses = bundle.responses;

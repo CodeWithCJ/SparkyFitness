@@ -7,6 +7,8 @@ node_modules
 .DS_Store
 coverage
 dist
+.output
+.vitepress/dist
+.vitepress/cache
 sw.*
 .env
-.output

@@ -1,0 +1,38 @@
+:root {
+  --vp-c-brand-1: #3b82f6;
+  --vp-c-brand-2: #2563eb;
+  --vp-c-brand-3: #1d4ed8;
+  --vp-c-brand-soft: rgba(59, 130, 246, 0.14);
+}
+
+.dark {
+  --vp-c-brand-1: #60a5fa;
+  --vp-c-brand-2: #3b82f6;
+  --vp-c-brand-3: #2563eb;
+  --vp-c-brand-soft: rgba(96, 165, 250, 0.16);
+}
+
+/* Ensure full width for interactive generator */
+.vp-doc .env-generator-container {
+  margin: 1.5rem 0;
+}
+
+/*
+ * The .env generator is a two-column form, not prose: the default 688px doc
+ * column squeezes each field below the width of its variable-name badge
+ * (e.g. SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS), so adjacent columns
+ * collide. The page sets `aside: false`, and these rules take back the width
+ * the TOC would have used. Selectors are prefixed with the page class both to
+ * scope them and to outrank the theme's scoped-attribute specificity.
+ */
+.env-generator-page .VPDoc .container,
+.env-generator-page .VPDoc:not(.has-sidebar) .container {
+  max-width: 1200px;
+}
+
+.env-generator-page .VPDoc .content,
+.env-generator-page .VPDoc:not(.has-sidebar) .content,
+.env-generator-page .VPDoc .content-container,
+.env-generator-page .VPDoc.has-aside .content-container {
+  max-width: 100%;
+}

@@ -59,11 +59,12 @@ export const syncHevyData = async (
   fullSync: boolean = false,
   providerId?: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  mock?: { saveMockData?: boolean; dataSource?: string }
 ): Promise<void> => {
   return apiCall(`/integrations/hevy/sync${fullSync ? '?fullSync=true' : ''}`, {
     method: 'POST',
-    body: JSON.stringify({ providerId, startDate, endDate }),
+    body: JSON.stringify({ providerId, startDate, endDate, ...mock }),
   });
 };
 

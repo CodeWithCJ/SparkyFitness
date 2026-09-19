@@ -1,3 +1,4 @@
+import { resolveMockDataOptions } from '../utils/mockDataOptions.js';
 import express from 'express';
 import withingsService from '../integrations/withings/withingsService.js';
 import { log } from '../config/logging.js';
@@ -167,11 +168,17 @@ router.post(
     try {
       const userId = req.userId;
       const { startDate, endDate } = req.body || {};
+      const { dataSource, saveMockData } = await resolveMockDataOptions(
+        req.body,
+        req.authenticatedUserId
+      );
       const result = await withingsServiceCentral.syncWithingsData(
         userId,
         'manual',
         startDate,
-        endDate
+        endDate,
+        dataSource,
+        saveMockData
       );
       log(
         'info',

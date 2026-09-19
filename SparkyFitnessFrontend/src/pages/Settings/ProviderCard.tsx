@@ -11,6 +11,7 @@ import { Trash2, Edit, Lock, RefreshCw, Link2Off } from 'lucide-react';
 import { decodeYazioAppId } from '@/utils/settings';
 import { useExternalProviderTypesQuery } from '@/hooks/Settings/useExternalProviderSettings';
 import SyncRangeDialog from './SyncRangeDialog';
+import type { SyncMockOptions } from './SyncRangeDialog';
 
 import {
   useConnectFitbitMutation,
@@ -191,28 +192,40 @@ export const ProviderCard = ({
   const { mutateAsync: deleteGlobalProvider, isPending: globalDeletePending } =
     useDeleteGlobalProvider();
 
-  const executeSync = (startDate: string, endDate: string) => {
+  const executeSync = (
+    startDate: string,
+    endDate: string,
+    // Present only while an admin has enabled the mock-data options; the server
+    // ignores them otherwise.
+    mockOptions?: SyncMockOptions
+  ) => {
+    const mock = mockOptions ?? {};
     switch (provider.provider_type) {
       case 'withings':
-        handleManualSync({ startDate, endDate });
+        handleManualSync({ startDate, endDate, ...mock });
         break;
       case 'fitbit':
-        handleManualSyncFitbit({ startDate, endDate });
+        handleManualSyncFitbit({ startDate, endDate, ...mock });
         break;
       case 'oura':
-        handleManualSyncOura({ startDate, endDate });
+        handleManualSyncOura({ startDate, endDate, ...mock });
         break;
       case 'polar':
-        handleManualSyncPolar({ providerId: provider.id, startDate, endDate });
+        handleManualSyncPolar({
+          providerId: provider.id,
+          startDate,
+          endDate,
+          ...mock,
+        });
         break;
       case 'strava':
-        handleManualSyncStrava({ startDate, endDate });
+        handleManualSyncStrava({ startDate, endDate, ...mock });
         break;
       case 'garmin':
-        handleManualSyncGarmin({ startDate, endDate });
+        handleManualSyncGarmin({ startDate, endDate, ...mock });
         break;
       case 'googlehealth':
-        handleManualSyncGoogleHealth({ startDate, endDate });
+        handleManualSyncGoogleHealth({ startDate, endDate, ...mock });
         break;
       case 'hevy':
         syncHevyData({
@@ -220,6 +233,7 @@ export const ProviderCard = ({
           providerId: provider.id,
           startDate,
           endDate,
+          ...mock,
         });
         break;
       case 'liftosaur':

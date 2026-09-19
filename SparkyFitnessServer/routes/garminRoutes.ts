@@ -1,3 +1,4 @@
+import { resolveMockDataOptions } from '../utils/mockDataOptions.js';
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
@@ -431,6 +432,10 @@ router.post(
     try {
       const userId = req.userId;
       const { startDate, endDate } = req.body;
+      const { dataSource, saveMockData } = await resolveMockDataOptions(
+        req.body,
+        req.authenticatedUserId
+      );
       log(
         'info',
         `[garminRoutes] Manual full sync requested for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
@@ -439,7 +444,9 @@ router.post(
         userId,
         'manual',
         startDate,
-        endDate
+        endDate,
+        dataSource,
+        saveMockData
       );
       const failedPhases = getGarminSyncPhaseErrors(result);
       // Update the last sync timestamp

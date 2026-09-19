@@ -1,3 +1,4 @@
+import { setMockDataContext } from '../utils/mockDataContext.js';
 import { log } from '../config/logging.js';
 import stravaIntegrationService from '../integrations/strava/stravaService.js';
 import stravaDataProcessor from '../integrations/strava/stravaDataProcessor.js';
@@ -5,26 +6,24 @@ import { getSystemClient } from '../db/poolManager.js';
 import { loadRawBundle } from '../utils/diagnosticLogger.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone, addDays, dayRangeToUtcRange } from '@workspace/shared';
-// Configuration for data mocking/caching
-const STRAVA_DATA_SOURCE =
-  process.env.SPARKY_FITNESS_STRAVA_DATA_SOURCE || 'strava';
-log(
-  'info',
-  `[stravaService] Strava data source configured to: ${STRAVA_DATA_SOURCE}`
-);
+
 /**
  * Orchestrate a full Strava data sync for a user
  * @param {number} userId - The ID of the user to sync data for
  * @param {string} syncType - 'manual' or 'scheduled'
  * @param {string} [customStartDate] - Optional start date (YYYY-MM-DD)
  * @param {string} [customEndDate] - Optional end date (YYYY-MM-DD)
+ * @param {string} [dataSource] - Optional data source ('local' vs 'strava')
+ * @param {boolean} [saveMockData] - Optional flag to capture raw API responses
  */
 async function syncStravaData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
   syncType = 'manual',
   customStartDate = null,
-  customEndDate = null
+  customEndDate = null,
+  dataSource: string | null = null,
+  saveMockData = false
 ) {
   let startDate, endDate;
   const tz = await loadUserTimezone(userId);
@@ -45,11 +44,13 @@ async function syncStravaData(
   const { start, end } = dayRangeToUtcRange(startDate, endDate, tz);
   const afterEpoch = Math.floor(start.valueOf() / 1000);
   const beforeEpoch = Math.floor(end.valueOf() / 1000);
+  const stravaDataSource = dataSource || 'strava';
+  setMockDataContext({ dataSource, saveMockData });
   log(
     'info',
-    `[stravaService] Starting Strava sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}. ENV_SAVE_MOCK_DATA=${process.env.SPARKY_FITNESS_SAVE_MOCK_DATA}`
+    `[stravaService] Starting Strava sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}. Loading from: ${stravaDataSource}`
   );
-  if (STRAVA_DATA_SOURCE === 'local') {
+  if (stravaDataSource === 'local') {
     log(
       'info',
       `[stravaService] Replaying Strava sync from raw diagnostic bundle for user ${userId}`
@@ -57,8 +58,8 @@ async function syncStravaData(
     const bundle = loadRawBundle('strava');
     if (!bundle || !bundle.responses) {
       throw new Error(
-        'Raw diagnostic bundle not found. Please run a sync with SPARKY_FITNESS_STRAVA_DATA_SOURCE unset (or set to "strava") ' +
-          'and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.'
+        'Raw diagnostic bundle not found. Please run a sync with live API ' +
+          'and "Capture Mock Data" enabled to capture raw API responses first.'
       );
     }
     const responses = bundle.responses;

@@ -165,6 +165,8 @@ export const usePolarFlowMutation = () => {
 };
 
 interface SyncHevyVariables {
+  saveMockData?: boolean;
+  dataSource?: string;
   fullSync?: boolean;
   providerId?: string;
   startDate?: string;
@@ -180,8 +182,9 @@ export const useSyncHevyMutation = () => {
       providerId,
       startDate,
       endDate,
+      ...mock
     }: SyncHevyVariables) =>
-      syncHevyData(fullSync, providerId, startDate, endDate),
+      syncHevyData(fullSync, providerId, startDate, endDate, mock),
     meta: {
       successMessage: t(
         'integrations.hevySyncSuccess',
@@ -300,14 +303,17 @@ export const useDisconnectWithingsMutation = () => {
 interface SyncVariables {
   startDate?: string;
   endDate?: string;
+  // Troubleshooting options, only present when an admin enabled them.
+  saveMockData?: boolean;
+  dataSource?: string;
 }
 
 export const useManualSyncWithingsMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: ({ startDate, endDate }: SyncVariables) =>
-      handleManualSync(startDate, endDate),
+    mutationFn: ({ startDate, endDate, ...mock }: SyncVariables) =>
+      handleManualSync(startDate, endDate, mock),
     onSuccess: () => {
       invalidateSyncData();
     },
@@ -324,8 +330,8 @@ export const useManualSyncGarminMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: ({ startDate, endDate }: SyncVariables) =>
-      handleManualSyncGarmin(startDate, endDate),
+    mutationFn: ({ startDate, endDate, ...mock }: SyncVariables) =>
+      handleManualSyncGarmin(startDate, endDate, mock),
     onSuccess: () => {
       invalidateSyncData();
     },
@@ -348,8 +354,8 @@ export const useManualSyncFitbitMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: ({ startDate, endDate }: SyncVariables) =>
-      handleManualSyncFitbit(startDate, endDate),
+    mutationFn: ({ startDate, endDate, ...mock }: SyncVariables) =>
+      handleManualSyncFitbit(startDate, endDate, mock),
     onSuccess: () => {
       invalidateSyncData();
     },
@@ -372,8 +378,8 @@ export const useManualSyncOuraMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: ({ startDate, endDate }: SyncVariables) =>
-      handleManualSyncOura(startDate, endDate),
+    mutationFn: ({ startDate, endDate, ...mock }: SyncVariables) =>
+      handleManualSyncOura(startDate, endDate, mock),
     onSuccess: () => {
       invalidateSyncData();
     },
@@ -400,8 +406,13 @@ export const useManualSyncPolarMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: ({ providerId, startDate, endDate }: SyncPolarVariables) =>
-      handleManualSyncPolar(providerId, startDate, endDate),
+    mutationFn: ({
+      providerId,
+      startDate,
+      endDate,
+      ...mock
+    }: SyncPolarVariables) =>
+      handleManualSyncPolar(providerId, startDate, endDate, mock),
     onSuccess: () => {
       invalidateSyncData();
     },
@@ -424,8 +435,8 @@ export const useManualSyncStravaMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: ({ startDate, endDate }: SyncVariables) =>
-      handleManualSyncStrava(startDate, endDate),
+    mutationFn: ({ startDate, endDate, ...mock }: SyncVariables) =>
+      handleManualSyncStrava(startDate, endDate, mock),
     onSuccess: () => {
       invalidateSyncData();
     },
@@ -448,8 +459,8 @@ export const useManualSyncGoogleHealthMutation = () => {
   const invalidateSyncData = useDiaryInvalidation();
 
   return useMutation({
-    mutationFn: ({ startDate, endDate }: SyncVariables) =>
-      handleManualSyncGoogleHealth(startDate, endDate),
+    mutationFn: ({ startDate, endDate, ...mock }: SyncVariables) =>
+      handleManualSyncGoogleHealth(startDate, endDate, mock),
     onSuccess: () => {
       invalidateSyncData();
     },

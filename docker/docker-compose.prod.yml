@@ -7,8 +7,13 @@ services:
     # ports:
     #   - "${SPARKY_FITNESS_DB_PORT:-5432}:5432"
     environment:
-      POSTGRES_DB: ${SPARKY_FITNESS_DB_NAME:?Variable is required and must be set}
-      POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:?Variable is required and must be set}
+      # These two are only read the first time the database initialises, so the
+      # defaults below are what an install that never set them is already using.
+      # Do not change them on an existing instance: PostgreSQL ignores the new
+      # value and the server then authenticates with credentials that no longer
+      # match. See docs/src/install/environment-variables.md.
+      POSTGRES_DB: ${SPARKY_FITNESS_DB_NAME:-sparkyfitness_db}
+      POSTGRES_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
       POSTGRES_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:-}
       # Uncomment the line below and comment the line above to use a file-based secret
       # POSTGRES_PASSWORD_FILE: /run/secrets/sparkyfitness_db_password
@@ -36,12 +41,12 @@ services:
       # --- Database Connection ---
       SPARKY_FITNESS_DB_HOST: ${SPARKY_FITNESS_DB_HOST:-sparkyfitness-db} # Use the service name 'sparkyfitness-db' for inter-container communication
       SPARKY_FITNESS_DB_PORT: 5432 # Uses internal container port. Do NOT change this if SPARKY_FITNESS_DB_HOST is using container name.
-      SPARKY_FITNESS_DB_NAME: ${SPARKY_FITNESS_DB_NAME:?Variable is required and must be set}
+      SPARKY_FITNESS_DB_NAME: ${SPARKY_FITNESS_DB_NAME:-sparkyfitness_db}
       SPARKY_FITNESS_DB_USER: ${SPARKY_FITNESS_DB_USER:-sparky}
       SPARKY_FITNESS_DB_PASSWORD: ${SPARKY_FITNESS_DB_PASSWORD:-}
       # Uncomment the line below and comment the line above to use a file-based secret
       # SPARKY_FITNESS_DB_PASSWORD_FILE: /run/secrets/sparkyfitness_db_password
-      SPARKY_FITNESS_APP_DB_USER: ${SPARKY_FITNESS_APP_DB_USER:-sparkyapp}
+      SPARKY_FITNESS_APP_DB_USER: ${SPARKY_FITNESS_APP_DB_USER:-sparky_app}
       SPARKY_FITNESS_APP_DB_PASSWORD: ${SPARKY_FITNESS_APP_DB_PASSWORD:-}
       # Uncomment the line below and comment the line above to use a file-based secret
       # SPARKY_FITNESS_APP_DB_PASSWORD_FILE: /run/secrets/sparkyfitness_app_db_password
@@ -55,19 +60,30 @@ services:
       # Uncomment the line below and comment the line above to use a file-based secret
       # BETTER_AUTH_SECRET_FILE: /run/secrets/sparkyfitness_better_auth_secret
 
-      # --- Server Runtime & Admin ---
+      # --- Server Runtime, Admin & Demo Mode ---
       NODE_ENV: ${NODE_ENV:-production}
       TZ: ${TZ:-Etc/UTC}
       SPARKY_FITNESS_LOG_LEVEL: ${SPARKY_FITNESS_LOG_LEVEL:-ERROR}
-      SPARKY_FITNESS_PUBLIC_API_DOCS: ${SPARKY_FITNESS_PUBLIC_API_DOCS:-false}
       SPARKY_FITNESS_DISABLE_SIGNUP: ${SPARKY_FITNESS_DISABLE_SIGNUP:-false}
       SPARKY_FITNESS_ADMIN_EMAIL: ${SPARKY_FITNESS_ADMIN_EMAIL:-} # User with this email can access the admin panel
+      SPARKY_FITNESS_DEMO_MODE: ${SPARKY_FITNESS_DEMO_MODE:-false}
+      SPARKY_FITNESS_DEMO_EMAIL: ${SPARKY_FITNESS_DEMO_EMAIL:-}
+      SPARKY_FITNESS_DEMO_PASSWORD: ${SPARKY_FITNESS_DEMO_PASSWORD:-}
 
-      # --- Network & CORS ---
+      # --- Admin policy toggles (optional ENV override) ---
+      # Also settable in the Admin UI, which stores them in global_settings.
+      # Setting any of these to 'true' here forces it on regardless of the
+      # stored value; leaving them empty defers to the Admin UI.
+      SPARKY_FITNESS_PUBLIC_API_DOCS: ${SPARKY_FITNESS_PUBLIC_API_DOCS:-}
+      DEV_TOOLS_ENABLED: ${DEV_TOOLS_ENABLED:-}
+      ALLOW_PRIVATE_NETWORK_AI: ${ALLOW_PRIVATE_NETWORK_AI:-}
+      ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS: ${ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS:-}
+
+      # --- Network, Reverse Proxy & CORS ---
       ALLOW_PRIVATE_NETWORK_CORS: ${ALLOW_PRIVATE_NETWORK_CORS:-false}
-      ALLOW_PRIVATE_NETWORK_AI: ${ALLOW_PRIVATE_NETWORK_AI:-false}
-      ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS: ${ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS:-false}
       SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS: ${SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS:-}
+      SPARKY_FITNESS_REAL_IP_HEADER: ${SPARKY_FITNESS_REAL_IP_HEADER:-}
+      SPARKY_FITNESS_TRUSTED_PROXY_HOPS: ${SPARKY_FITNESS_TRUSTED_PROXY_HOPS:-}
 
       # --- Email Settings (optional) ---
       SPARKY_FITNESS_EMAIL_HOST: ${SPARKY_FITNESS_EMAIL_HOST:-}
@@ -115,12 +131,12 @@ services:
       SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY: ${SPARKY_FITNESS_CUSTOM_UPLOADS_DIRECTORY:-}
       SPARKY_FITNESS_CUSTOM_BACKUP_DIRECTORY: ${SPARKY_FITNESS_CUSTOM_BACKUP_DIRECTORY:-}
 
-      # --- API Key Rate Limiting (optional) ---
+      # --- Rate Limiting (optional) ---
+      SPARKY_FITNESS_SIGN_IN_RATELIMIT_MAX: ${SPARKY_FITNESS_SIGN_IN_RATELIMIT_MAX:-}
+      SPARKY_FITNESS_SIGN_IN_RATELIMIT_WINDOW: ${SPARKY_FITNESS_SIGN_IN_RATELIMIT_WINDOW:-}
       SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS: ${SPARKY_FITNESS_API_KEY_RATELIMIT_WINDOW_MS:-}
       SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS: ${SPARKY_FITNESS_API_KEY_RATELIMIT_MAX_REQUESTS:-}
 
-      # --- Dev Tools (optional) ---
-      DEV_TOOLS_ENABLED: ${DEV_TOOLS_ENABLED:-false}
       PUID: 1000
       GUID: 1000
     networks:

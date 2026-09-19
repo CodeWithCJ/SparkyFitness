@@ -6,6 +6,10 @@ node_modules
 .pnpm-store
 pnpm-store
 dist
+.vitepress/dist
+.vitepress/cache
+.nuxt
+.output
 docker/postgresql
 .git
 .gitignore

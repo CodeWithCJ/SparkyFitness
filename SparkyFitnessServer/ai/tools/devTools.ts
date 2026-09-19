@@ -44,12 +44,16 @@ const executeSqlInput = z.object({
 
 const emptyInput = z.object({});
 
+import { isDevToolsEnabled } from '../../models/globalSettingsRepository.js';
+
 // Defense-in-depth gate re-checked on every call (the route already gates
 // registration). Re-verifies the env flag and admin role via the DB lookup,
 // since the handler closes over only a userId. Returns an ERRORS.* string when
 // denied, null when allowed.
 async function assertDevAccess(userId: string): Promise<string | null> {
-  if (process.env.DEV_TOOLS_ENABLED !== 'true') {
+  const isEnabled =
+    (await isDevToolsEnabled()) || process.env.DEV_TOOLS_ENABLED === 'true';
+  if (!isEnabled) {
     return ERRORS.FORBIDDEN('Dev tools are disabled');
   }
   if (!(await resolveIsAdmin(undefined, userId))) {

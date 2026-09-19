@@ -39,10 +39,17 @@ onlyBuiltDependencies:
 
 overrides:
   "@babel/core": "7.29.0"
-  react: "19.2.3"
-  react-dom: "19.2.3"
   "@expo/dom-webview": "57.0.1"
   assistant-cloud: "0.2.0"
+  # 7.1 turns on the React Compiler rule set (set-state-in-effect, refs,
+  # immutability). Both apps lint with --max-warnings 0, so adopting it is a
+  # refactor, not an upgrade. Pinned until that work is scheduled.
+  eslint-plugin-react-hooks: "7.0.1"
+  react: "19.2.3"
+  react-dom: "19.2.3"
+  side-channel: "1.0.6"
+  tailwindcss: "4.3.3"
+  "tsx>esbuild": "0.28.1"
   # vite's and tsx's own esbuild dependency both resolve to 0.28.2, whose
   # published @esbuild/linux-x64 binary reports "0.27.4" to its own
   # wrapper's version check — failing postinstall on every GitHub Actions
@@ -54,13 +61,6 @@ overrides:
   # unrelated pins other packages need. Pinned one patch back until it's
   # resolved upstream.
   "vite>esbuild": "0.28.1"
-  "tsx>esbuild": "0.28.1"
-  # 7.1 turns on the React Compiler rule set (set-state-in-effect, refs,
-  # immutability). Both apps lint with --max-warnings 0, so adopting it is a
-  # refactor, not an upgrade. Pinned until that work is scheduled.
-  eslint-plugin-react-hooks: "7.0.1"
-  side-channel: "1.0.6"
-  tailwindcss: "4.3.3"
   zustand: "5.0.15"
 
 packageExtensions:

@@ -1,3 +1,4 @@
+import { resolveMockDataOptions } from '../utils/mockDataOptions.js';
 import express from 'express';
 import polarIntegrationService from '../integrations/polar/polarService.js';
 import polarService from '../services/polarService.js';
@@ -190,16 +191,22 @@ router.post(
     try {
       const userId = req.userId;
       const { providerId, startDate, endDate } = req.body;
+      const { dataSource, saveMockData } = await resolveMockDataOptions(
+        req.body,
+        req.authenticatedUserId
+      );
       log(
         'info',
-        `[polarRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
+        `[polarRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}${dataSource ? ` (Source: ${dataSource})` : ''}`
       );
       await polarService.syncPolarData(
         userId,
         'manual',
         providerId,
         startDate,
-        endDate
+        endDate,
+        dataSource,
+        saveMockData
       );
       res
         .status(200)

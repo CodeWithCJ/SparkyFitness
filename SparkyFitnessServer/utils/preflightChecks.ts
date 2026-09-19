@@ -1,5 +1,9 @@
 import crypto from 'crypto';
 import { log } from '../config/logging.js';
+
+/** Matches the docker-compose default and the tracked .env templates. */
+export const DEFAULT_APP_DB_USER = 'sparky_app';
+
 function runPreflightChecks() {
   const mandatoryVars = {
     SPARKY_FITNESS_DB_HOST:
@@ -9,9 +13,6 @@ function runPreflightChecks() {
     SPARKY_FITNESS_DB_USER:
       'Required for database connection. This is super user with default is often "sparky".',
     SPARKY_FITNESS_DB_PASSWORD: 'Required for database connection.',
-    SPARKY_FITNESS_APP_DB_USER:
-      'Required for database connection. This is regular user without any admin access and default is often "sparkyapp".',
-    SPARKY_FITNESS_APP_DB_PASSWORD: 'Required for database connection.',
     SPARKY_FITNESS_FRONTEND_URL:
       'Required for CORS security. E.g. https://sparkyfitness.domain.com  or http://localhost:8080 for development.',
     SPARKY_FITNESS_API_ENCRYPTION_KEY:
@@ -37,6 +38,31 @@ function runPreflightChecks() {
     );
     throw new Error(
       'Preflight checks failed: Missing mandatory environment variables.'
+    );
+  }
+  // The application database role is provisioned by the server itself, so both
+  // of these are soft requirements: when absent we pick a default name and mint
+  // a password, and `applyMigrations` creates or updates the role to match.
+  //
+  // This must happen here, before `db/poolManager.ts` is ever imported, because
+  // that module builds both pools at module load and freezes whatever it reads.
+  // `tests/bootOrder.test.ts` guards the ordering that makes this safe.
+  if (!process.env.SPARKY_FITNESS_APP_DB_USER) {
+    process.env.SPARKY_FITNESS_APP_DB_USER = DEFAULT_APP_DB_USER;
+    log(
+      'info',
+      `SPARKY_FITNESS_APP_DB_USER was not set; using "${DEFAULT_APP_DB_USER}".`
+    );
+  }
+  if (!process.env.SPARKY_FITNESS_APP_DB_PASSWORD) {
+    process.env.SPARKY_FITNESS_APP_DB_PASSWORD = crypto
+      .randomBytes(32)
+      .toString('hex');
+    log(
+      'info',
+      'SPARKY_FITNESS_APP_DB_PASSWORD was not set; generated one for this run ' +
+        'and the application role will be updated to match. Set it explicitly ' +
+        'if more than one server shares this database.'
     );
   }
   // Handle BETTER_AUTH_SECRET as a soft requirement

@@ -1,3 +1,4 @@
+import { resolveMockDataOptions } from '../utils/mockDataOptions.js';
 import express from 'express';
 import authMiddleware from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
@@ -68,15 +69,21 @@ router.post('/sync', async (req, res) => {
   try {
     const userId = req.userId;
     const { startDate, endDate } = req.body;
+    const { dataSource, saveMockData } = await resolveMockDataOptions(
+      req.body,
+      req.authenticatedUserId
+    );
     log(
       'info',
-      `[stravaRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}`
+      `[stravaRoutes] Manual sync triggered for user ${userId}${startDate ? ` from ${startDate}` : ''}${endDate ? ` to ${endDate}` : ''}${dataSource ? ` (Source: ${dataSource})` : ''}`
     );
     const result = await stravaService.syncStravaData(
       userId,
       'manual',
       startDate,
-      endDate
+      endDate,
+      dataSource,
+      saveMockData
     );
     res.json(result);
   } catch (error) {

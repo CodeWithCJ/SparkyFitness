@@ -6,7 +6,7 @@ import {
   type JsonSchemaNode,
   type ProviderConfig,
 } from '../ai/providerDispatch.js';
-import { deriveAiNetworkPolicy } from '../utils/outboundUrlPolicy.js';
+import { resolveAiNetworkPolicy } from '../utils/outboundUrlPolicy.js';
 import { attachFoodMatches } from './foodPhotoMatchService.js';
 import {
   foodPhotoEstimateResponseSchema,
@@ -688,7 +688,7 @@ async function estimateFoodPhotoNutrition(
 
   const result = await dispatchAiRequest({
     provider,
-    networkPolicy: deriveAiNetworkPolicy(
+    networkPolicy: await resolveAiNetworkPolicy(
       aiService,
       Boolean(input.actorIsAdmin)
     ),

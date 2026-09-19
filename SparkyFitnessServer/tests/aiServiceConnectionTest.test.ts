@@ -20,6 +20,10 @@ vi.mock('../models/globalSettingsRepository.js', () => ({
   default: {
     isUserAiConfigAllowed: vi.fn(),
   },
+  // Named exports read by utils/outboundUrlPolicy's resolve* wrappers. Default
+  // false keeps these cases on the env/admin-only path the assertions expect.
+  isPrivateNetworkAiAllowed: vi.fn().mockResolvedValue(false),
+  isPrivateNetworkFoodProvidersAllowed: vi.fn().mockResolvedValue(false),
 }));
 vi.mock('../middleware/authMiddleware.js', () => ({
   authenticate: vi.fn((req, _res, next) => {

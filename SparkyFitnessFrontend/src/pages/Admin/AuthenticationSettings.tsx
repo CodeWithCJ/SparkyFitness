@@ -156,6 +156,52 @@ const AuthenticationSettings: React.FC = () => {
                   }
                 />
               </div>
+              <div className="flex items-center justify-between p-4 border rounded-md">
+                <div className="flex flex-col">
+                  <Label htmlFor="public_api_docs" className="font-medium">
+                    {t(
+                      'admin.authenticationSettings.publicApiDocs',
+                      'Public API Documentation'
+                    )}
+                  </Label>
+                  <span className="text-sm text-muted-foreground mt-1">
+                    {t(
+                      'admin.authenticationSettings.publicApiDocsDescription',
+                      'Allow Swagger API docs (/api/api-docs) to be accessed without requiring user authentication.'
+                    )}
+                  </span>
+                </div>
+                <Switch
+                  id="public_api_docs"
+                  checked={settings.public_api_docs === true}
+                  onCheckedChange={(checked) =>
+                    handleSwitchChange('public_api_docs', checked)
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between p-4 border rounded-md">
+                <div className="flex flex-col">
+                  <Label htmlFor="dev_tools_enabled" className="font-medium">
+                    {t(
+                      'admin.authenticationSettings.devTools',
+                      'Developer Diagnostic Tools'
+                    )}
+                  </Label>
+                  <span className="text-sm text-muted-foreground mt-1">
+                    {t(
+                      'admin.authenticationSettings.devToolsDescription',
+                      'Enable MCP and diagnostic database inspection tools for admins.'
+                    )}
+                  </span>
+                </div>
+                <Switch
+                  id="dev_tools_enabled"
+                  checked={settings.dev_tools_enabled === true}
+                  onCheckedChange={(checked) =>
+                    handleSwitchChange('dev_tools_enabled', checked)
+                  }
+                />
+              </div>
             </>
           )}
           <div className="flex items-start p-4 mt-2 text-sm text-muted-foreground bg-secondary/20 border border-secondary/40 rounded-lg">

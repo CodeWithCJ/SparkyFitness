@@ -22,6 +22,10 @@ vi.mock('undici', () => {
   const buildConnector = vi.fn(() => vi.fn());
   return { default: { Agent, buildConnector }, Agent, buildConnector };
 });
+vi.mock('../models/globalSettingsRepository.js', () => ({
+  isPrivateNetworkAiAllowed: vi.fn().mockResolvedValue(false),
+  isPrivateNetworkFoodProvidersAllowed: vi.fn().mockResolvedValue(false),
+}));
 
 const mockGetBackendSetting = vi.mocked(
   chatRepository.getAiServiceSettingForBackend

@@ -2,6 +2,10 @@ import dns from 'node:dns/promises';
 import net from 'node:net';
 import ipaddr from 'ipaddr.js';
 import undici from 'undici';
+import {
+  isPrivateNetworkAiAllowed,
+  isPrivateNetworkFoodProvidersAllowed,
+} from '../models/globalSettingsRepository.js';
 
 const { Agent, buildConnector } = undici;
 
@@ -9,7 +13,7 @@ const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
 
 export interface AiNetworkPolicy {
   allowPrivateNetwork: boolean;
-  reason: 'admin' | 'global' | 'env' | 'public-only';
+  reason: 'admin' | 'global' | 'env' | 'settings' | 'public-only';
 }
 
 interface AiServicePolicySource {
@@ -27,7 +31,7 @@ export class OutboundUrlBlockedError extends Error {
   code = 'private_network_forbidden';
 
   constructor(
-    message = 'Private or internal AI service URLs are not allowed. To allow connections to local services (e.g., local Ollama), set ALLOW_PRIVATE_NETWORK_AI=true in your server environment configuration.'
+    message = 'Private or internal AI service URLs are not allowed. To allow connections to local services (e.g., local Ollama), enable "Allow Private Network Endpoints" in Admin > Global AI Settings (or set ALLOW_PRIVATE_NETWORK_AI=true in your server environment).'
   ) {
     super(message);
     this.name = 'OutboundUrlBlockedError';
@@ -61,7 +65,8 @@ export function requiresUserSuppliedAiUrl(serviceType: string): boolean {
 
 export function deriveAiNetworkPolicy(
   aiService: AiServicePolicySource | null | undefined,
-  isAdmin: boolean
+  isAdmin: boolean,
+  allowPrivateNetworkSetting?: boolean
 ): AiNetworkPolicy {
   if (isAdmin) {
     return { allowPrivateNetwork: true, reason: 'admin' };
@@ -69,29 +74,80 @@ export function deriveAiNetworkPolicy(
   if (aiService?.is_public || aiService?.source === 'global') {
     return { allowPrivateNetwork: true, reason: 'global' };
   }
-  if (process.env.ALLOW_PRIVATE_NETWORK_AI === 'true') {
-    return { allowPrivateNetwork: true, reason: 'env' };
+  if (
+    allowPrivateNetworkSetting === true ||
+    process.env.ALLOW_PRIVATE_NETWORK_AI === 'true'
+  ) {
+    return {
+      allowPrivateNetwork: true,
+      reason: allowPrivateNetworkSetting ? 'settings' : 'env',
+    };
   }
   return PUBLIC_ONLY_AI_NETWORK_POLICY;
+}
+
+/**
+ * The form callers should use: `deriveAiNetworkPolicy` plus the admin
+ * `allow_private_network_ai` toggle. The sync derive already covers every case
+ * that grants private access without touching the database (admin, global
+ * service, env opt-in), so the settings lookup only runs when the answer would
+ * otherwise be a denial — the common paths cost no extra query.
+ */
+export async function resolveAiNetworkPolicy(
+  aiService: AiServicePolicySource | null | undefined,
+  isAdmin: boolean
+): Promise<AiNetworkPolicy> {
+  const policy = deriveAiNetworkPolicy(aiService, isAdmin);
+  if (policy.allowPrivateNetwork) {
+    return policy;
+  }
+  return deriveAiNetworkPolicy(
+    aiService,
+    isAdmin,
+    await isPrivateNetworkAiAllowed()
+  );
 }
 
 // Outbound policy for user-configured self-hosted food providers (Mealie,
 // Tandoor, Norish). Mirrors the AI policy: admins may point at a private/LAN
 // address (a single-user self-host IS an admin, so their local recipe server
 // works with no extra config), while a non-admin user on a multi-user server
-// is blocked unless the operator opts in with
-// ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS=true. Separate from the AI toggle by
-// design (least privilege, matching the existing _CORS / _AI per-concern flags).
+// is blocked unless the operator opts in via Admin settings or env fallback.
 export function deriveFoodProviderNetworkPolicy(
-  isAdmin: boolean
+  isAdmin: boolean,
+  allowPrivateNetworkSetting?: boolean
 ): AiNetworkPolicy {
   if (isAdmin) {
     return { allowPrivateNetwork: true, reason: 'admin' };
   }
-  if (process.env.ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS === 'true') {
-    return { allowPrivateNetwork: true, reason: 'env' };
+  if (
+    allowPrivateNetworkSetting === true ||
+    process.env.ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS === 'true'
+  ) {
+    return {
+      allowPrivateNetwork: true,
+      reason: allowPrivateNetworkSetting ? 'settings' : 'env',
+    };
   }
   return { allowPrivateNetwork: false, reason: 'public-only' };
+}
+
+/**
+ * The form callers should use: `deriveFoodProviderNetworkPolicy` plus the admin
+ * `allow_private_network_food_providers` toggle. Same lazy lookup as
+ * `resolveAiNetworkPolicy` — only queried when the sync derive would deny.
+ */
+export async function resolveFoodProviderNetworkPolicy(
+  isAdmin: boolean
+): Promise<AiNetworkPolicy> {
+  const policy = deriveFoodProviderNetworkPolicy(isAdmin);
+  if (policy.allowPrivateNetwork) {
+    return policy;
+  }
+  return deriveFoodProviderNetworkPolicy(
+    isAdmin,
+    await isPrivateNetworkFoodProvidersAllowed()
+  );
 }
 
 function stripIpv6Brackets(hostname: string): string {

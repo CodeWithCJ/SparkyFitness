@@ -1,22 +1,16 @@
 {
-  "name": "docus-starter",
+  "name": "sparky-fitness-docs",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "nuxi dev",
-    "build": "NUXT_APP_BASE_URL=/SparkyFitness/ nuxt build --preset github_pages",
-    "generate": "nuxi generate",
-    "preview": "nuxi preview",
-    "clean": "nuxi cleanup",
-    "lint": "eslint ."
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
   },
   "devDependencies": {
-    "@nuxt-themes/docus": "^1.15.1",
-    "@nuxt/devtools": "latest",
-    "@nuxt/eslint-config": "^0.3.13",
-    "@nuxtjs/plausible": "^1.0.0",
-    "@types/node": "^20.12.12",
-    "eslint": "^9.3.0",
-    "nuxt": "^3.17.7"
+    "@types/node": "^22.13.10",
+    "vitepress": "^1.6.3",
+    "vue": "^3.5.13"
   }
 }

@@ -13,11 +13,13 @@ logger = logging.getLogger(__name__)
 MOCK_DATA_DIR = "mock_data"
 os.makedirs(MOCK_DATA_DIR, exist_ok=True)
 IS_CN = bool(os.getenv("GARMIN_SERVICE_IS_CN", "false").lower() == "true")
-GARMIN_DATA_SOURCE = os.getenv("SPARKY_FITNESS_GARMIN_DATA_SOURCE", "garmin").lower()
-SAVE_MOCK_DATA = os.getenv("SPARKY_FITNESS_SAVE_MOCK_DATA", "false").lower() == "true"
 
-logger.info(f"Garmin data source configured to: {GARMIN_DATA_SOURCE}")
-logger.info(f"Garmin mock data saving enabled: {SAVE_MOCK_DATA}")
+# Defaults for the mock-data options. They are no longer configured by env:
+# the main server sends them per request, and only does so while an admin has
+# turned on the `mock_data_enabled` global setting.
+GARMIN_DATA_SOURCE = "garmin"
+SAVE_MOCK_DATA = False
+
 if IS_CN:
     logger.info("Configured for Garmin China (CN) region.")
 

@@ -1,3 +1,4 @@
+import { setMockDataContext } from '../utils/mockDataContext.js';
 import { log } from '../config/logging.js';
 import ouraIntegrationService from '../integrations/oura/ouraService.js';
 import ouraDataProcessor from '../integrations/oura/ouraDataProcessor.js';
@@ -6,24 +7,22 @@ import { loadRawBundle } from '../utils/diagnosticLogger.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone, addDays, dayRangeToUtcRange } from '@workspace/shared';
 
-const OURA_DATA_SOURCE = process.env.SPARKY_FITNESS_OURA_DATA_SOURCE || 'oura';
-log(
-  'info',
-  `[ouraService] Oura data source configured to: ${OURA_DATA_SOURCE}`
-);
-
 /**
  * Orchestrate a full Oura data sync for a user
  * @param {string} userId - The ID of the user to sync data for
  * @param {string} syncType - 'manual' or 'scheduled'
  * @param {string} [customStartDate] - Optional start date (YYYY-MM-DD)
  * @param {string} [customEndDate] - Optional end date (YYYY-MM-DD)
+ * @param {string} [dataSource] - Optional data source ('local' vs 'oura')
+ * @param {boolean} [saveMockData] - Optional flag to capture raw API responses
  */
 async function syncOuraData(
   userId: string,
   syncType = 'manual',
   customStartDate: string | null = null,
-  customEndDate: string | null = null
+  customEndDate: string | null = null,
+  dataSource: string | null = null,
+  saveMockData = false
 ) {
   let startDate: string, endDate: string;
   const tz = await loadUserTimezone(userId);
@@ -55,11 +54,13 @@ async function syncOuraData(
   const heartRateEnd = new Date(
     Math.min(endDateUtc.getTime(), Date.now())
   ).toISOString();
+  const ouraDataSource = dataSource || 'oura';
+  setMockDataContext({ dataSource, saveMockData });
   log(
     'info',
-    `[ouraService] Starting Oura sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}. Loading from: ${OURA_DATA_SOURCE}`
+    `[ouraService] Starting Oura sync (${syncType}) for user ${userId} from ${startDate} to ${endDate}. Loading from: ${ouraDataSource}`
   );
-  if (OURA_DATA_SOURCE === 'local') {
+  if (ouraDataSource === 'local') {
     log(
       'info',
       `[ouraService] Replaying Oura sync from raw diagnostic bundle for user ${userId}`
@@ -67,8 +68,8 @@ async function syncOuraData(
     const bundle = loadRawBundle('oura');
     if (!bundle || !bundle.responses) {
       throw new Error(
-        'Raw diagnostic bundle not found. Please run a sync with SPARKY_FITNESS_OURA_DATA_SOURCE unset (or set to "oura") ' +
-          'and SPARKY_FITNESS_SAVE_MOCK_DATA=true to capture raw API responses first.'
+        'Raw diagnostic bundle not found. Please run a sync with live API ' +
+          'and "Capture Mock Data" enabled to capture raw API responses first.'
       );
     }
     const responses = bundle.responses;

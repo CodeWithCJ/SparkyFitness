@@ -11,6 +11,8 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'must be YYYY-MM-DD');
 export const SyncBodySchema = z.object({
   startDate: isoDate.optional(),
   endDate: isoDate.optional(),
+  dataSource: z.string().optional(),
+  saveMockData: z.boolean().optional(),
 });
 
 export type SyncBody = z.infer<typeof SyncBodySchema>;

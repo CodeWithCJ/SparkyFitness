@@ -1,17 +1,22 @@
 import { useState } from 'react';
+import { Database } from 'lucide-react';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { Database } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 import AddExternalProviderForm from '../Settings/AddExternalProviderForm';
 import ExternalProviderList from '../Settings/ExternalProviderList';
 import { OpenFoodFactsAdminContributionSettings } from './OpenFoodFactsAdminContributionSettings';
 
 const GlobalProviderSettings = () => {
   const [showAddForm, setShowAddForm] = useState(false);
+  const { data: globalSettings, isLoading: settingsLoading } = useSettings();
+  const { mutate: updateSettings } = useUpdateSettings();
 
   const handleAddSuccess = () => {
     setShowAddForm(false);
@@ -38,6 +43,65 @@ const GlobalProviderSettings = () => {
             keys. OAuth-based connections with personal user accounts (e.g.
             Garmin, Strava) cannot be added globally.
           </div>
+
+          {globalSettings && (
+            <div className="flex items-center justify-between p-4 border rounded-md">
+              <div className="flex-1">
+                <Label
+                  htmlFor="allow_private_network_food_providers"
+                  className="font-medium"
+                >
+                  Allow Private / LAN Recipe Providers
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Allow non-admin users to connect custom recipe providers (e.g.
+                  Mealie, Tandoor) to private LAN IP addresses.
+                </p>
+              </div>
+              <Switch
+                id="allow_private_network_food_providers"
+                checked={
+                  globalSettings.allow_private_network_food_providers === true
+                }
+                onCheckedChange={(checked) => {
+                  updateSettings({
+                    ...globalSettings,
+                    allow_private_network_food_providers: checked,
+                  });
+                }}
+                disabled={settingsLoading}
+              />
+            </div>
+          )}
+
+          {globalSettings && (
+            <div className="flex items-center justify-between p-4 border rounded-md">
+              <div className="flex-1">
+                <Label htmlFor="mock_data_enabled" className="font-medium">
+                  Allow Local Provider Response Capture
+                </Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Adds two options to the provider sync dialog, for admins only:
+                  save a provider&apos;s raw responses to a JSON file on the
+                  server, and replay that file instead of calling the provider.
+                  Intended for collecting a sample to share when troubleshooting
+                  a sync. The captured file is stored per provider rather than
+                  per user, so turn this back off once you have what you need.
+                </p>
+              </div>
+              <Switch
+                id="mock_data_enabled"
+                checked={globalSettings.mock_data_enabled === true}
+                onCheckedChange={(checked) => {
+                  updateSettings({
+                    ...globalSettings,
+                    mock_data_enabled: checked,
+                  });
+                }}
+                disabled={settingsLoading}
+              />
+            </div>
+          )}
 
           <OpenFoodFactsAdminContributionSettings />
 

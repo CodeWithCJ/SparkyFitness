@@ -1,0 +1,28 @@
+---
+title: Development and Debugging Tools
+description: Utility tools for developers to inspect the database, check server status, and run internal tests.
+---
+
+# Development and Debugging Tools
+
+The development tools are a collection of utility functions designed to aid developers in inspecting the system, debugging issues, and performing internal tasks. These tools provide access to database schema, user information, and server stats.
+
+**Tool Names:** `sparky_inspect_schema`, `sparky_get_user_info`, `sparky_get_db_stats`, `sparky_query_table`, `sparky_execute_read_only_sql` (a group of separate tools, not a single one)
+
+::: warning
+These tools are **off by default**. The in-process `/mcp` server only exposes them when `DEV_TOOLS_ENABLED=true` **and** the request authenticates with an **admin** API key. They run with elevated database access (the owner pool, bypassing Row Level Security), so keep them disabled outside of active debugging.
+:::
+## Tools within Development
+
+### `sparky_inspect_schema`
+- **Description:** Inspect the database schema to understand available tables and columns.
+- **Parameters:**
+    - `table` (string): Name of the table to inspect (e.g., `foods`, `exercise_entries`).
+
+### `sparky_get_user_info`
+- **Description:** Get information about the current user authenticated by the MCP API key.
+- **Parameters:** None.
+
+### `sparky_get_db_stats`
+- **Description:** Get current database connection pool statistics (total, idle, and waiting connection counts).
+- **Parameters:** None.

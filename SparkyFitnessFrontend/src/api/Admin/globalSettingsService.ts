@@ -19,6 +19,13 @@ const globalSettingsService = {
     )) as { allow_user_ai_config: boolean };
     return response.allow_user_ai_config;
   },
+
+  isMockDataEnabled: async (): Promise<boolean> => {
+    const response = (await apiCall('/global-settings/mock-data-enabled')) as {
+      mock_data_enabled: boolean;
+    };
+    return response.mock_data_enabled;
+  },
 };
 
 export { globalSettingsService };

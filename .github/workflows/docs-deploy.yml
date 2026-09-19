@@ -20,11 +20,11 @@ jobs:
       - run: |
           cd docs
           pnpm install --frozen-lockfile
-          NUXT_APP_BASE_URL=/SparkyFitness/ pnpm exec nuxt build --preset github_pages
+          pnpm run build
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs/.output/public
+          path: ./docs/.vitepress/dist
   # Deployment job
   deploy:
     # Add a dependency to the build job

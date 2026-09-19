@@ -13,6 +13,8 @@ class HealthAndWellnessRequest(BaseModel):
     start_date: str
     end_date: str
     metric_types: list[str] = []
+    data_source: str | None = None
+    save_mock_data: bool | None = None
 
 
 class ActivitiesAndWorkoutsRequest(BaseModel):
@@ -21,6 +23,8 @@ class ActivitiesAndWorkoutsRequest(BaseModel):
     start_date: str
     end_date: str
     activity_type: str | None = None
+    data_source: str | None = None
+    save_mock_data: bool | None = None
 
 
 class NutritionDiaryRequest(BaseModel):
@@ -28,3 +32,5 @@ class NutritionDiaryRequest(BaseModel):
     tokens: str
     start_date: str
     end_date: str
+    data_source: str | None = None
+    save_mock_data: bool | None = None

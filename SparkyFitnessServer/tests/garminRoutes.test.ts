@@ -69,6 +69,11 @@ vi.mock('../integrations/garminconnect/garminMeasurementMapping.js', () => ({
 }));
 
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../models/globalSettingsRepository.js', () => ({
+  // The mock-data options are off unless an admin turned them on; these route
+  // tests exercise the normal path, so the options never reach the service.
+  isMockDataEnabled: vi.fn().mockResolvedValue(false),
+}));
 
 const app = express();
 app.use(express.json());
@@ -134,7 +139,9 @@ describe('POST /integrations/garmin/sync', () => {
       'user-123',
       'manual',
       '2026-06-01',
-      '2026-06-07'
+      '2026-06-07',
+      undefined,
+      false
     );
     expect(
       externalProviderRepository.updateProviderLastSync

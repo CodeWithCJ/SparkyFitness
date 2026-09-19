@@ -7,7 +7,7 @@ import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
-  deriveAiNetworkPolicy,
+  resolveAiNetworkPolicy,
   OutboundUrlBlockedError,
 } from '../utils/outboundUrlPolicy.js';
 import {
@@ -102,11 +102,12 @@ router.post('/', authenticate, async (req, res, next) => {
       // AI request at a private/internal address (localhost, RFC1918, link-local,
       // cloud metadata). The admin is the trusted operator, so their own
       // self-hosted URLs (e.g. local Ollama) are allowed; an operator who wants
-      // regular users to reach a shared private AI service opts in explicitly
-      // with ALLOW_PRIVATE_NETWORK_AI=true.
+      // regular users to reach a shared private AI service opts in explicitly,
+      // either with the admin `allow_private_network_ai` toggle or
+      // ALLOW_PRIVATE_NETWORK_AI=true.
       if (service_data.custom_url) {
         const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
-        const networkPolicy = deriveAiNetworkPolicy(
+        const networkPolicy = await resolveAiNetworkPolicy(
           { source: 'user' },
           isAdmin
         );

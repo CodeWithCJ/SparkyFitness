@@ -80,7 +80,20 @@ describe('globalSettingsRepository', () => {
       // 6th is the existence flag, false here so the CASE WHEN leaves it untouched.
       expect(mockClient.query).toHaveBeenCalledWith(
         expect.stringContaining('UPDATE global_settings'),
-        [true, false, true, false, null, false, null]
+        [
+          true,
+          false,
+          true,
+          false,
+          null,
+          false,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+        ]
       );
       expect(result).toEqual({
         ...savedSettings,

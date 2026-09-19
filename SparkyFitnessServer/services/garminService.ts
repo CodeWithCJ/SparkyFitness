@@ -1,3 +1,4 @@
+import { setMockDataContext } from '../utils/mockDataContext.js';
 import { log } from '../config/logging.js';
 import garminConnectService from '../integrations/garminconnect/garminConnectService.js';
 import { parseGarminHealthMeasurements } from '../integrations/garminconnect/garminMeasurementMapping.js';
@@ -85,8 +86,11 @@ async function syncGarminData(
   userId: string,
   syncType = 'manual',
   customStartDate: string | null = null,
-  customEndDate: string | null = null
+  customEndDate: string | null = null,
+  dataSource?: string,
+  saveMockData?: boolean
 ) {
+  setMockDataContext({ dataSource, saveMockData });
   let startDate: string, endDate: string;
   const tz = await loadUserTimezone(userId);
   const today = todayInZone(tz);

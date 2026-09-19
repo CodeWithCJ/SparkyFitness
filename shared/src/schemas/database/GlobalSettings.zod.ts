@@ -16,6 +16,11 @@ export const globalSettingsSchema = z.object({
   allow_user_ai_config: z.boolean(),
   allow_openfoodfacts_contributions: z.boolean(),
   default_vision_ai_service_id: z.string().uuid().nullable().optional(),
+  allow_private_network_ai: z.boolean().optional(),
+  allow_private_network_food_providers: z.boolean().optional(),
+  public_api_docs: z.boolean().optional(),
+  dev_tools_enabled: z.boolean().optional(),
+  mock_data_enabled: z.boolean().optional(),
 });
 
 export const globalSettingsInitializerSchema = z.object({
@@ -27,6 +32,11 @@ export const globalSettingsInitializerSchema = z.object({
   allow_user_ai_config: z.boolean().optional(),
   allow_openfoodfacts_contributions: z.boolean().optional(),
   default_vision_ai_service_id: z.string().uuid().nullable().optional(),
+  allow_private_network_ai: z.boolean().optional(),
+  allow_private_network_food_providers: z.boolean().optional(),
+  public_api_docs: z.boolean().optional(),
+  dev_tools_enabled: z.boolean().optional(),
+  mock_data_enabled: z.boolean().optional(),
 });
 
 export const globalSettingsMutatorSchema = z.object({
@@ -38,6 +48,11 @@ export const globalSettingsMutatorSchema = z.object({
   allow_user_ai_config: z.boolean().optional(),
   allow_openfoodfacts_contributions: z.boolean().optional(),
   default_vision_ai_service_id: z.string().uuid().nullable().optional(),
+  allow_private_network_ai: z.boolean().optional(),
+  allow_private_network_food_providers: z.boolean().optional(),
+  public_api_docs: z.boolean().optional(),
+  dev_tools_enabled: z.boolean().optional(),
+  mock_data_enabled: z.boolean().optional(),
 });
 
 export type GlobalSettings = z.infer<typeof globalSettingsSchema>;

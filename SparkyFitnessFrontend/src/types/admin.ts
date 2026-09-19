@@ -5,6 +5,11 @@ export interface GlobalSettings {
   allow_openfoodfacts_contributions: boolean;
   allow_user_ai_config?: boolean;
   default_vision_ai_service_id?: string | null;
+  allow_private_network_ai?: boolean;
+  allow_private_network_food_providers?: boolean;
+  public_api_docs?: boolean;
+  dev_tools_enabled?: boolean;
+  mock_data_enabled?: boolean;
   is_email_login_env_configured?: boolean;
   is_oidc_active_env_configured?: boolean;
 }

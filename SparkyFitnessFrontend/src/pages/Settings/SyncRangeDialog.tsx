@@ -20,11 +20,24 @@ import { cn } from '@/lib/utils';
 import { format, subDays } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useMockDataEnabled } from '@/hooks/Admin/useSettings';
+
+export interface SyncMockOptions {
+  /** Write this sync's raw provider responses to a JSON file on the server. */
+  saveMockData?: boolean;
+  /** 'local' replays the saved file instead of calling the provider. */
+  dataSource?: string;
+}
 
 interface SyncRangeDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSync: (startDate: string, endDate: string) => void;
+  onSync: (
+    startDate: string,
+    endDate: string,
+    mockOptions?: SyncMockOptions
+  ) => void;
   providerType: string;
 }
 
@@ -39,10 +52,24 @@ const SyncRangeDialog = ({
     subDays(new Date(), 7)
   );
   const [endDate, setEndDate] = useState<Date | undefined>(new Date());
+  // Only rendered when an admin has turned the capability on; the server
+  // ignores both options otherwise, so this is presentation only.
+  const { data: mockDataEnabled } = useMockDataEnabled();
+  const [saveMockData, setSaveMockData] = useState(false);
+  const [useLocalData, setUseLocalData] = useState(false);
 
   const handleSyncClick = () => {
     if (startDate && endDate) {
-      onSync(format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd'));
+      onSync(
+        format(startDate, 'yyyy-MM-dd'),
+        format(endDate, 'yyyy-MM-dd'),
+        mockDataEnabled
+          ? {
+              saveMockData,
+              dataSource: useLocalData ? 'local' : undefined,
+            }
+          : undefined
+      );
       onClose();
     }
   };
@@ -243,6 +270,41 @@ const SyncRangeDialog = ({
             </div>
           </div>
         </div>
+
+        {mockDataEnabled && (
+          <div className="grid gap-3 rounded-md border border-dashed p-3">
+            <p className="text-xs font-semibold text-muted-foreground">
+              {t('syncRangeDialog.troubleshooting', 'Troubleshooting')}
+            </p>
+            <label className="flex items-start gap-2 text-xs cursor-pointer">
+              <Checkbox
+                checked={saveMockData}
+                onCheckedChange={(checked) => setSaveMockData(checked === true)}
+                className="mt-0.5"
+              />
+              <span>
+                {t(
+                  'syncRangeDialog.saveMockData',
+                  "Save this sync's raw responses to a file on the server"
+                )}
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-xs cursor-pointer">
+              <Checkbox
+                checked={useLocalData}
+                onCheckedChange={(checked) => setUseLocalData(checked === true)}
+                className="mt-0.5"
+              />
+              <span>
+                {t(
+                  'syncRangeDialog.useLocalData',
+                  'Sync from the previously saved file instead of {{provider}}',
+                  { provider: providerName }
+                )}
+              </span>
+            </label>
+          </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>

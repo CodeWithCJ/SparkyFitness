@@ -114,14 +114,24 @@ export const handleDisconnectWithings = async () => {
   }
 };
 
+/**
+ * Per-sync troubleshooting options. Only sent when an admin has enabled the
+ * mock-data capability; the server ignores them otherwise.
+ */
+export interface SyncMockOptions {
+  saveMockData?: boolean;
+  dataSource?: string;
+}
+
 export const handleManualSync = async (
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  mock?: SyncMockOptions
 ) => {
   try {
     await apiCall(`/withings/sync`, {
       method: 'POST',
-      body: JSON.stringify({ startDate, endDate }),
+      body: JSON.stringify({ startDate, endDate, ...mock }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual sync:', error);
@@ -150,13 +160,14 @@ export const handleDisconnectGarmin = async () => {
 
 export const handleManualSyncGarmin = async (
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  mock?: SyncMockOptions
 ) => {
   try {
     // Call the simplified sync endpoint.
     await apiCall(`/integrations/garmin/sync`, {
       method: 'POST',
-      body: JSON.stringify({ startDate, endDate }),
+      body: JSON.stringify({ startDate, endDate, ...mock }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual Garmin sync:', error);
@@ -200,12 +211,13 @@ export const handleDisconnectFitbit = async () => {
 
 export const handleManualSyncFitbit = async (
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  mock?: SyncMockOptions
 ) => {
   try {
     await apiCall(`/integrations/fitbit/sync`, {
       method: 'POST',
-      body: JSON.stringify({ startDate, endDate }),
+      body: JSON.stringify({ startDate, endDate, ...mock }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual Fitbit sync:', error);
@@ -249,12 +261,13 @@ export const handleDisconnectOura = async () => {
 
 export const handleManualSyncOura = async (
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  mock?: SyncMockOptions
 ) => {
   try {
     await apiCall(`/integrations/oura/sync`, {
       method: 'POST',
-      body: JSON.stringify({ startDate, endDate }),
+      body: JSON.stringify({ startDate, endDate, ...mock }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual Oura sync:', error);
@@ -301,12 +314,13 @@ export const handleDisconnectPolar = async (providerId: string) => {
 export const handleManualSyncPolar = async (
   providerId: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  mock?: SyncMockOptions
 ) => {
   try {
     await apiCall(`/integrations/polar/sync`, {
       method: 'POST',
-      body: JSON.stringify({ providerId, startDate, endDate }),
+      body: JSON.stringify({ providerId, startDate, endDate, ...mock }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual Polar sync:', error);
@@ -350,12 +364,13 @@ export const handleDisconnectStrava = async () => {
 
 export const handleManualSyncStrava = async (
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  mock?: SyncMockOptions
 ) => {
   try {
     await apiCall(`/integrations/strava/sync`, {
       method: 'POST',
-      body: JSON.stringify({ startDate, endDate }),
+      body: JSON.stringify({ startDate, endDate, ...mock }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual Strava sync:', error);
@@ -399,12 +414,13 @@ export const handleDisconnectGoogleHealth = async () => {
 
 export const handleManualSyncGoogleHealth = async (
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  mock?: SyncMockOptions
 ) => {
   try {
     await apiCall(`/integrations/googlehealth/sync`, {
       method: 'POST',
-      body: JSON.stringify({ startDate, endDate }),
+      body: JSON.stringify({ startDate, endDate, ...mock }),
     });
   } catch (error: unknown) {
     console.error('Error initiating manual Google Health sync:', error);

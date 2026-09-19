@@ -128,19 +128,26 @@ Get a SparkyFitness server running in minutes using Docker Compose:
 # 1. Create a new folder
 mkdir sparkyfitness && cd sparkyfitness
 
-# 2. Download Docker files only
-curl -L -o docker-compose.yml https://github.com/CodeWithCJ/SparkyFitness/releases/latest/download/docker-compose.prod.yml
-curl -L -o .env https://github.com/CodeWithCJ/SparkyFitness/releases/latest/download/default.env.example
+# 2. Download docker-compose.yml
+curl -L -o docker-compose.yml https://raw.githubusercontent.com/CodeWithCJ/SparkyFitness/main/docker/docker-compose.prod.yml
 
-# 3. (Optional) Edit .env to customize database credentials, ports, etc.
+# 3. Set up your .env configuration (Choose one option):
+# Option A (Recommended): Generate custom .env with 1-click secure keys in browser:
+# 👉 https://codewithcj.github.io/SparkyFitness/install/env-generator
+
+# Option B: Download the minimal 5-variable starter template:
+curl -L -o .env https://raw.githubusercontent.com/CodeWithCJ/SparkyFitness/main/docker/.env.simple.example
+
+# Option C: Download the full reference template:
+# curl -L -o .env https://raw.githubusercontent.com/CodeWithCJ/SparkyFitness/main/docker/.env.example
 
 # 4. Start the app
 docker compose pull && docker compose up -d
 
-# Access application at http://localhost:8080
+# Access application at http://localhost:3004
 ```
 
-_Note: For other self-hosted installation methods, refer to the documentation at [https://codewithcj.github.io/SparkyFitness/](https://codewithcj.github.io/SparkyFitness/)._
+_Note: For complete configuration options, reverse proxies, and alternative install methods, visit the [Documentation Site](https://codewithcj.github.io/SparkyFitness/)._
 
 ### 2. Cloud (for non-technical users)
 
@@ -171,6 +178,7 @@ For full installation guides, configuration options, and development docs, pleas
 ### Quick Links
 
 - **[Installation Guide](https://codewithcj.github.io/SparkyFitness/install/docker-compose)** - Deployment and configurations
+- **[Interactive .env Generator](https://codewithcj.github.io/SparkyFitness/install/env-generator)** - Client-side `.env` configuration builder
 - **[Features Overview](https://codewithcj.github.io/SparkyFitness/features)** - Complete feature documentation
 - **[Development Workflow](https://codewithcj.github.io/SparkyFitness/developer/getting-started)** - Developer guide and contribution process
 - **[iOS App Info](https://github.com/CodeWithCJ/SparkyFitness/wiki/Apple-Health-Integration)** and **[Android App Info](https://github.com/CodeWithCJ/SparkyFitness/wiki/Android-Mobile-App)**

@@ -25,4 +25,4 @@ jobs:
       - run: |
           cd docs
           pnpm install --frozen-lockfile
-          NUXT_APP_BASE_URL=/SparkyFitness/ pnpm exec nuxt build --preset github_pages
+          pnpm run build
