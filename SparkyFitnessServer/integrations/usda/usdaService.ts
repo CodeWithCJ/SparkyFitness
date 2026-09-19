@@ -19,6 +19,17 @@ function scaleProviderNutrients(
 // Using native fetch (standard in Node 22+)
 const USDA_API_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
 
+// FoodData Central mixes its Branded dataset — one row per manufacturer SKU,
+// and by far the largest of the four — in with the generic sets, with no bias
+// toward either. A plain "chicken breast" came back 8/8 Branded (Giant Eagle,
+// Tyson, Jennie-O) and never surfaced "Chicken, breast, boneless, skinless,
+// raw", which exists and ranks first the moment these types are named (#2417).
+//
+// Searched first rather than exclusively: a query that is about a brand has no
+// generic answer, and silently returning nothing for "oreo" would trade one
+// gap for another. See searchUsdaFoods for that fallback.
+const USDA_GENERIC_DATA_TYPES = ['Foundation', 'SR Legacy', 'Survey (FNDDS)'];
+
 const STANDARD_UNITS = new Set([
   'g',
   'ml',
@@ -105,8 +116,11 @@ async function searchUsdaFoods(
     };
   }
 > {
-  try {
-    const searchUrl = `${USDA_API_BASE_URL}/foods/search?query=${encodeURIComponent(query)}&pageNumber=${page}&pageSize=${pageSize}&api_key=${apiKey || ''}`;
+  const request = async (dataTypes?: string[]) => {
+    const dataTypeParam = dataTypes
+      ? `&dataType=${encodeURIComponent(dataTypes.join(','))}`
+      : '';
+    const searchUrl = `${USDA_API_BASE_URL}/foods/search?query=${encodeURIComponent(query)}&pageNumber=${page}&pageSize=${pageSize}${dataTypeParam}&api_key=${apiKey || ''}`;
     const response = await fetch(searchUrl, { method: 'GET' });
     log('debug', 'USDA API Search Response Status:', response.status);
     if (!response.ok) {
@@ -114,7 +128,22 @@ async function searchUsdaFoods(
       log('error', 'USDA Food Search API error:', errorText);
       throw new Error(`USDA API error: ${errorText}`);
     }
-    const data = await response.json();
+    return await response.json();
+  };
+
+  try {
+    // Generic first. One request in the ordinary case; the unfiltered retry
+    // only happens when the generic sets have nothing to say about this query,
+    // which is what a brand name looks like from here. Pagination stays the
+    // API's own, because exactly one response is ever returned to the caller.
+    let data = await request(USDA_GENERIC_DATA_TYPES);
+    if (!Array.isArray(data?.foods) || data.foods.length === 0) {
+      log(
+        'debug',
+        `USDA generic datasets had no match for "${query}"; retrying unfiltered`
+      );
+      data = await request();
+    }
     log('debug', 'USDA API Search Response Data:', data);
     return {
       ...data,
