@@ -1,5 +1,6 @@
 import { getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import { getAuthEnvOverrides } from '../utils/authEnvOverrides.js';
 async function getGlobalSettings() {
   const client = await getSystemClient(); // System-level operation
   try {
@@ -10,19 +11,13 @@ async function getGlobalSettings() {
     // Map mandatory MFA
     settings.is_mfa_mandatory = !!settings.mfa_mandatory;
     // Environment variable overrides
-    const forceEmailLogin =
-      process.env.SPARKY_FITNESS_FORCE_EMAIL_LOGIN === 'true';
-    const disableEmailLogin =
-      process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN === 'true';
-    const oidcAuthEnabledEnv =
-      process.env.SPARKY_FITNESS_OIDC_AUTH_ENABLED === 'true';
+    const overrides = getAuthEnvOverrides(process.env);
     // Manage enable_email_password_login
     settings.is_email_login_env_configured =
-      forceEmailLogin || disableEmailLogin;
-    if (forceEmailLogin) {
-      settings.enable_email_password_login = true;
-    } else if (disableEmailLogin) {
-      settings.enable_email_password_login = false;
+      overrides.enable_email_password_login !== null;
+    if (overrides.enable_email_password_login !== null) {
+      settings.enable_email_password_login =
+        overrides.enable_email_password_login;
     } else if (
       settings.enable_email_password_login === undefined ||
       settings.enable_email_password_login === null
@@ -30,9 +25,9 @@ async function getGlobalSettings() {
       settings.enable_email_password_login = true;
     }
     // Manage is_oidc_active
-    settings.is_oidc_active_env_configured = oidcAuthEnabledEnv;
-    if (oidcAuthEnabledEnv) {
-      settings.is_oidc_active = true;
+    settings.is_oidc_active_env_configured = overrides.is_oidc_active !== null;
+    if (overrides.is_oidc_active !== null) {
+      settings.is_oidc_active = overrides.is_oidc_active;
     } else if (
       settings.is_oidc_active === undefined ||
       settings.is_oidc_active === null

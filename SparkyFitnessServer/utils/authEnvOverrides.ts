@@ -3,7 +3,10 @@ export interface AuthEnvOverrides {
   is_oidc_active: true | null;
 }
 
-/** Null leaves the saved admin value in effect instead of forcing it off. */
+/**
+ * Interpret environment input without deciding whether to accept or apply it.
+ * Null leaves the saved admin value in effect instead of forcing it off.
+ */
 export function getAuthEnvOverrides(env: NodeJS.ProcessEnv): AuthEnvOverrides {
   const forceEmailLogin = env.SPARKY_FITNESS_FORCE_EMAIL_LOGIN === 'true';
   const disableEmailLogin = env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN === 'true';

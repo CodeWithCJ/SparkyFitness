@@ -1,4 +1,4 @@
-import { vi, beforeEach, describe, expect, it } from 'vitest';
+import { vi, beforeEach, afterEach, describe, expect, it } from 'vitest';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import { getSystemClient } from '../db/poolManager.js';
 // Mock dependencies
@@ -56,6 +56,96 @@ describe('globalSettingsRepository', () => {
         globalSettingsRepository.getGlobalSettings()
       ).rejects.toThrow('DB Error');
       expect(mockClient.release).toHaveBeenCalled();
+    });
+  });
+  describe('environment overrides', () => {
+    beforeEach(() => {
+      vi.stubEnv('SPARKY_FITNESS_FORCE_EMAIL_LOGIN', undefined);
+      vi.stubEnv('SPARKY_FITNESS_DISABLE_EMAIL_LOGIN', undefined);
+      vi.stubEnv('SPARKY_FITNESS_OIDC_AUTH_ENABLED', undefined);
+    });
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it.each([
+      [true, false, true, false],
+      [false, true, false, true],
+      [null, null, true, false],
+      [undefined, undefined, true, false],
+    ])(
+      'preserves saved email=%s and OIDC=%s with no override',
+      async (email, oidc, expectedEmail, expectedOidc) => {
+        mockClient.query.mockResolvedValue({
+          rows: [{ enable_email_password_login: email, is_oidc_active: oidc }],
+        });
+        expect(
+          await globalSettingsRepository.getGlobalSettings()
+        ).toMatchObject({
+          enable_email_password_login: expectedEmail,
+          is_oidc_active: expectedOidc,
+          is_email_login_env_configured: false,
+          is_oidc_active_env_configured: false,
+        });
+      }
+    );
+
+    it.each([
+      ['true', 'true', true],
+      ['false', 'true', false],
+      ['true', 'false', true],
+    ])(
+      'applies FORCE=%s and DISABLE=%s with the email ownership indicator',
+      async (force, disable, expected) => {
+        vi.stubEnv('SPARKY_FITNESS_FORCE_EMAIL_LOGIN', force);
+        vi.stubEnv('SPARKY_FITNESS_DISABLE_EMAIL_LOGIN', disable);
+        mockClient.query.mockResolvedValue({
+          rows: [{ enable_email_password_login: !expected }],
+        });
+        expect(
+          await globalSettingsRepository.getGlobalSettings()
+        ).toMatchObject({
+          enable_email_password_login: expected,
+          is_email_login_env_configured: true,
+        });
+      }
+    );
+
+    it('forces OIDC on and exposes its ownership indicator', async () => {
+      vi.stubEnv('SPARKY_FITNESS_OIDC_AUTH_ENABLED', 'true');
+      mockClient.query.mockResolvedValue({ rows: [{ is_oidc_active: false }] });
+      expect(await globalSettingsRepository.getGlobalSettings()).toMatchObject({
+        is_oidc_active: true,
+        is_oidc_active_env_configured: true,
+      });
+    });
+
+    it('reveals saved values when environment overrides are removed', async () => {
+      mockClient.query.mockImplementation(async () => ({
+        rows: [{ enable_email_password_login: false, is_oidc_active: true }],
+      }));
+      vi.stubEnv('SPARKY_FITNESS_FORCE_EMAIL_LOGIN', 'true');
+      vi.stubEnv('SPARKY_FITNESS_OIDC_AUTH_ENABLED', 'true');
+      expect(await globalSettingsRepository.getGlobalSettings()).toMatchObject({
+        enable_email_password_login: true,
+        is_email_login_env_configured: true,
+        is_oidc_active_env_configured: true,
+      });
+      vi.stubEnv('SPARKY_FITNESS_FORCE_EMAIL_LOGIN', 'false');
+      vi.stubEnv('SPARKY_FITNESS_DISABLE_EMAIL_LOGIN', 'false');
+      vi.stubEnv('SPARKY_FITNESS_OIDC_AUTH_ENABLED', 'false');
+      expect(await globalSettingsRepository.getGlobalSettings()).toMatchObject({
+        enable_email_password_login: false,
+        is_oidc_active: true,
+        is_email_login_env_configured: false,
+        is_oidc_active_env_configured: false,
+      });
+      expect(
+        mockClient.query.mock.calls.every(
+          ([sql]: [string]) =>
+            sql === 'SELECT * FROM global_settings WHERE id = 1'
+        )
+      ).toBe(true);
     });
   });
   describe('saveGlobalSettings', () => {
