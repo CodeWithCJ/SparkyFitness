@@ -58,6 +58,11 @@ export const FooterSaveBar: React.FC<FooterSaveBarProps> = ({
         onPress={handlePress}
         disabled={disabled}
         loading={busy}
+        accessibilityRole="button"
+        // Button's loading branch renders only a spinner and discards
+        // children, so the label must be carried explicitly or the action
+        // is silent to assistive tech while busy.
+        accessibilityLabel={busy ? resolvedBusyLabel : resolvedLabel}
         className="py-3"
         textClassName="text-sm text-center"
       >

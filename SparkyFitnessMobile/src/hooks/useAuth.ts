@@ -11,6 +11,7 @@ import {
 import { clearServerConfigCache } from '../services/storage';
 import type { ServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
+import { useFoodSearchSelectionStore } from '../stores/foodSearchSelectionStore';
 
 export type AuthModalReason = 'session_expired' | 'no_configs' | null;
 
@@ -41,6 +42,13 @@ export function useAuth() {
     // reads it until each query happens to refetch.
     setOnIdentityChanged(async () => {
       queryClient.clear();
+      // The multi-select food basket store is the same kind of identity-
+      // carrying global as the caches and the cookie jar below: it holds the
+      // previous account's food ids, meal-type ids, and batch outcomes, and
+      // would happily submit them under the new account. cancelBatch also
+      // invalidates any submission still in flight — its outcomes are
+      // discarded rather than reconciled into the cleared basket.
+      useFoodSearchSelectionStore.getState().cancelBatch();
       // The cookie jar is the third thing carrying identity, and the only one
       // that survives dropping every cache: it belongs to the native HTTP
       // client and is keyed by host, not by configured server, so two accounts

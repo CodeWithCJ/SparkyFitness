@@ -4,6 +4,7 @@ import {
   View,
   Text,
   Pressable,
+  TouchableOpacity,
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
@@ -12,9 +13,33 @@ import BottomSheetPicker from '../BottomSheetPicker';
 import type { PickerOption } from '../BottomSheetPicker';
 import type { ResultSection } from './types';
 
-export const SectionTitleHeader: React.FC<{ title: string }> = ({ title }) => (
-  <View className="px-4 py-1 bg-background">
+export interface SectionTitleHeaderAction {
+  label: string;
+  onPress: () => void;
+  color: string;
+}
+
+export const SectionTitleHeader: React.FC<{
+  title: string;
+  action?: SectionTitleHeaderAction;
+}> = ({ title, action }) => (
+  <View className="px-4 py-1 bg-background flex-row items-center justify-between">
     <Text className="text-text-muted text-xs font-bold uppercase">{title}</Text>
+    {action ? (
+      <TouchableOpacity
+        onPress={action.onPress}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel={action.label}
+      >
+        <Text
+          className="text-xs font-bold uppercase"
+          style={{ color: action.color }}
+        >
+          {action.label}
+        </Text>
+      </TouchableOpacity>
+    ) : null}
   </View>
 );
 

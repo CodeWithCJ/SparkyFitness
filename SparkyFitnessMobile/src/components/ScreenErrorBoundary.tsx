@@ -151,6 +151,12 @@ export class SectionErrorBoundary extends React.Component<
 
 interface ErrorBoundaryOptions {
   canGoBack?: boolean;
+  /**
+   * Screen-specific veto for the error-boundary Go Back; returning false
+   * blocks the callback. Opt-in per screen so one flow's concerns never
+   * dead-end another screen's crash recovery.
+   */
+  goBackGuard?: () => boolean;
 }
 
 export function withErrorBoundary<P extends object>(
@@ -160,7 +166,10 @@ export function withErrorBoundary<P extends object>(
 ) {
   const Wrapped = (props: P) => {
     const onGoBack = options?.canGoBack
-      ? () => (props as Record<string, any>).navigation?.goBack()
+      ? () => {
+          if (options.goBackGuard?.() === false) return;
+          (props as Record<string, any>).navigation?.goBack();
+        }
       : undefined;
 
     return (

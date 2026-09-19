@@ -1,6 +1,7 @@
 import React from 'react';
 import MealLibraryRow from '../MealLibraryRow';
 import FoodResultRow from './FoodResultRow';
+import type { FoodRowSelection } from './FoodResultRow';
 import { landingKey } from '../../utils/landingLists';
 import type { LandingEntry } from '../../utils/landingLists';
 import { mealToFoodInfo } from '../../types/foodInfo';
@@ -12,6 +13,12 @@ interface LandingEntryRowProps {
   favoriteKeys: Set<string>;
   favoriteGold: string;
   onSelect: (item: FoodInfoItem) => void;
+  /**
+   * Basket selection for multi-add (#1980). Food rows only — a meal row
+   * keeps its normal single-tap navigation even while the surrounding list
+   * is selecting, so logging a meal stays one tap.
+   */
+  selection?: FoodRowSelection;
 }
 
 // A landing row is either a food or a saved meal (tagged with a "Meal" badge
@@ -22,6 +29,7 @@ const LandingEntryRow: React.FC<LandingEntryRowProps> = ({
   favoriteKeys,
   favoriteGold,
   onSelect,
+  selection,
 }) => {
   if (entry.kind === 'meal') {
     return (
@@ -41,6 +49,7 @@ const LandingEntryRow: React.FC<LandingEntryRowProps> = ({
       isFavorite={favoriteKeys.has(landingKey('food', entry.food.id))}
       favoriteGold={favoriteGold}
       onSelect={onSelect}
+      selection={selection}
     />
   );
 };

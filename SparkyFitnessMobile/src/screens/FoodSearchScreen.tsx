@@ -65,6 +65,8 @@ import { useProviderColor } from '../utils/providerColor';
 import { interleaveTopMatches } from '../utils/topMatches';
 import { mergeRecent, mergeFrequent, landingKey } from '../utils/landingLists';
 import type { LandingEntry } from '../utils/landingLists';
+import { useFoodSearchSelection } from '../hooks/useFoodSearchSelection';
+import { MULTI_ADD_MAX_ITEMS } from '../utils/multiAddFoodEntries';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   createNativeHeaderAccentBadge,
@@ -195,6 +197,83 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   const addButtonRef = useRef<View>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<AnchorRect | null>(null);
+
+  // Multi-select basket (#1980). Diary logging only — picker modes (meal
+  // builder, meal plan, container link) emit single selections and stay
+  // untouched. The basket is deliberately independent of select MODE: mode
+  // only switches the row affordances, so a basket survives typing a search
+  // and single-tap adds; only Clear or a completed batch empties it.
+  const multiSelectAvailable = pickerMode === 'log-entry';
+  const {
+    count: selectionCount,
+    maxItems: selectionMaxItems,
+    isSelected: isFoodSelected,
+    toggle: toggleFoodSelection,
+    addMany: addFoodsToSelection,
+    clear: clearSelection,
+  } = useFoodSearchSelection(MULTI_ADD_MAX_ITEMS, mealTypeId);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  // Measured basket-bar height (onLayout) so the lists can reserve exactly
+  // the room it needs — a fixed clearance breaks at larger text sizes, and
+  // the explicit contentContainerStyle replaces (not adds to) the
+  // safe-area padding the className provides, so the inset is added here.
+  const [basketBarHeight, setBasketBarHeight] = useState(64);
+  // Gated on availability too: picker modes hide the bar, and reserving its
+  // space there would leave a dead gap above the fold.
+  const basketListPadding =
+    multiSelectAvailable && selectionCount > 0
+      ? { paddingBottom: basketBarHeight + insets.bottom + 24 }
+      : undefined;
+
+  const handleToggleFoodSelection = useCallback(
+    (food: FoodItem) => {
+      // toggle() returns false only for an over-cap add (removals always
+      // succeed), so this toast never fires for a deselect.
+      if (!toggleFoodSelection(food)) {
+        Toast.show({
+          type: 'error',
+          text1: t('foodSearch.multiSelect.limitReached', {
+            defaultValue: 'You can select up to {{limit}} foods',
+            limit: selectionMaxItems,
+          }),
+        });
+      }
+    },
+    [toggleFoodSelection, t, selectionMaxItems]
+  );
+
+  const openMultiAddReview = useCallback(() => {
+    navigation.navigate('FoodEntryMultiAdd', { date, mealTypeId });
+  }, [navigation, date, mealTypeId]);
+
+  const handleSelectAllInSection = useCallback(
+    (entries: LandingEntry[]) => {
+      const foods = entries
+        .filter((entry) => entry.kind === 'food')
+        .map((entry) => entry.food);
+      const { truncated } = addFoodsToSelection(foods);
+      if (truncated) {
+        Toast.show({
+          type: 'error',
+          text1: t('foodSearch.multiSelect.limitReached', {
+            defaultValue: 'You can select up to {{limit}} foods',
+            limit: selectionMaxItems,
+          }),
+        });
+      }
+    },
+    [addFoodsToSelection, selectionMaxItems, t]
+  );
+
+  // Single-tap flows launched while a basket exists must return here (depth
+  // 1), or their success pop unmounts this screen and silently drops the
+  // basket. Gate on the basket, not on select mode — the basket deliberately
+  // outlives Cancel.
+  const basketTapReturnDepth = selectionPickerMode
+    ? 2
+    : isSelectMode || selectionCount > 0
+      ? 1
+      : undefined;
 
   // Local foods: the hook itself only fetches once the query is >= 2 chars.
   const { searchResults, isSearching, isSearchActive } = useFoodSearch(
@@ -358,12 +437,21 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
         item,
         date,
         pickerMode: selectionPickerMode,
-        returnDepth: selectionPickerMode ? 2 : undefined,
+        // basketTapReturnDepth keeps a basket alive across a single add;
+        // picker modes keep their existing depth-2 return past this screen.
+        returnDepth: basketTapReturnDepth,
         mealTypeId,
         mealPlanTarget,
       });
     },
-    [navigation, date, mealPlanTarget, mealTypeId, selectionPickerMode]
+    [
+      navigation,
+      date,
+      mealPlanTarget,
+      mealTypeId,
+      selectionPickerMode,
+      basketTapReturnDepth,
+    ]
   );
 
   const openCreateFood = useCallback(() => {
@@ -371,10 +459,16 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       mode: 'create-food',
       date,
       pickerMode: selectionPickerMode,
-      returnDepth: selectionPickerMode ? 2 : undefined,
+      returnDepth: basketTapReturnDepth,
       mealPlanTarget,
     });
-  }, [navigation, date, mealPlanTarget, selectionPickerMode]);
+  }, [
+    navigation,
+    date,
+    mealPlanTarget,
+    selectionPickerMode,
+    basketTapReturnDepth,
+  ]);
 
   const openMealAdd = useCallback(() => {
     navigation.navigate('MealAdd');
@@ -384,7 +478,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     navigation.navigate('FoodScan', {
       date,
       pickerMode: selectionPickerMode,
-      returnDepth: selectionPickerMode ? 2 : undefined,
+      returnDepth: basketTapReturnDepth,
       // Preserve the originating meal type (MealTypeDetail → FoodSearch → scan).
       mealTypeId: mealTypeId ?? undefined,
       mealPlanTarget,
@@ -394,7 +488,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       // user's Barcode Scanning setting. Let the server resolve the preference,
       // matching the "+" → Scan Food entry point.
     });
-  }, [navigation, date, mealPlanTarget, mealTypeId, selectionPickerMode]);
+  }, [
+    navigation,
+    date,
+    mealPlanTarget,
+    mealTypeId,
+    selectionPickerMode,
+    basketTapReturnDepth,
+  ]);
 
   // Only the custom-header path opens the JS menu; on the native path the
   // system presents a UIMenu from the header item directly.
@@ -974,6 +1075,19 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   const renderResultRow = ({ item }: { item: ResultRow }) => (
     <FoodSearchResultRow
       row={item}
+      // Local search results join the multi-select basket (#1980 request 2);
+      // meals stay single-tap and online provider results are out of scope
+      // until the import workflow can feed the basket.
+      selection={
+        isSelectMode && item.type === 'food'
+          ? {
+              isSelected: isFoodSelected(item.food),
+              onToggle: () => handleToggleFoodSelection(item.food),
+              accentColor,
+              inactiveColor: textMuted,
+            }
+          : undefined
+      }
       profileId={profile?.id}
       favoriteKeys={favoriteKeys}
       favoriteGold={favoriteGold}
@@ -1128,6 +1242,29 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
         )}
       </View>
 
+      {multiSelectAvailable && (
+        <Button
+          variant="ghost"
+          onPress={() => setIsSelectMode((prev) => !prev)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          className="p-0"
+          accessibilityLabel={
+            isSelectMode
+              ? t('foodSearch.multiSelect.cancel', { defaultValue: 'Cancel' })
+              : t('foodSearch.multiSelect.select', { defaultValue: 'Select' })
+          }
+        >
+          <Text
+            className="text-sm font-semibold"
+            style={{ color: headerActionColor }}
+          >
+            {isSelectMode
+              ? t('foodSearch.multiSelect.cancel', { defaultValue: 'Cancel' })
+              : t('foodSearch.multiSelect.select', { defaultValue: 'Select' })}
+          </Text>
+        </Button>
+      )}
+
       {!usesNativeHeader && (
         <View ref={addButtonRef} collapsable={false}>
           <Button
@@ -1194,6 +1331,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             contentContainerClassName="pb-safe-or-4"
+            contentContainerStyle={basketListPadding}
           />
         </View>
       );
@@ -1260,15 +1398,40 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
               favoriteKeys={favoriteKeys}
               favoriteGold={favoriteGold}
               onSelect={showFoodInfo}
+              selection={
+                isSelectMode && item.kind === 'food'
+                  ? {
+                      isSelected: isFoodSelected(item.food),
+                      onToggle: () => handleToggleFoodSelection(item.food),
+                      accentColor,
+                      inactiveColor: textMuted,
+                    }
+                  : undefined
+              }
             />
           )}
           renderSectionHeader={({ section }) => (
-            <SectionTitleHeader title={section.title} />
+            <SectionTitleHeader
+              title={section.title}
+              action={
+                isSelectMode &&
+                section.data.some((entry) => entry.kind === 'food')
+                  ? {
+                      label: t('foodSearch.multiSelect.selectAll', {
+                        defaultValue: 'Select all',
+                      }),
+                      onPress: () => handleSelectAllInSection(section.data),
+                      color: accentColor,
+                    }
+                  : undefined
+              }
+            />
           )}
           stickySectionHeadersEnabled
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           contentContainerClassName="pb-safe-or-4"
+          contentContainerStyle={basketListPadding}
         />
       </View>
     );
@@ -1281,6 +1444,68 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     >
       {renderHeaderBar()}
       {renderBody()}
+      {/* Basket bar: visible whenever anything is selected in a
+          diary-logging context, in or out of select mode, so a basket built
+          on the landing list is not silently lost after Cancel or while
+          searching. The availability gate matters because the store is
+          global: without it a basket built in the diary flow survives
+          backing out and reappears — with Review — inside the meal-builder /
+          meal-plan / container-link pickers, where Review would write diary
+          entries. Same leak class FoodScanScreen guards for photo scans. */}
+      {multiSelectAvailable && selectionCount > 0 && (
+        <View
+          className="absolute left-4 right-4 rounded-xl bg-raised border border-border-subtle flex-row items-center justify-between px-4 py-3"
+          style={{ bottom: insets.bottom + 12 }}
+          onLayout={(event) =>
+            setBasketBarHeight(event.nativeEvent.layout.height)
+          }
+        >
+          <Text
+            className="text-text-primary text-sm font-semibold"
+            accessibilityLabel={t('foodSearch.multiSelect.selected', {
+              defaultValue: '{{count}} selected',
+              count: selectionCount,
+            })}
+          >
+            {t('foodSearch.multiSelect.selected', {
+              defaultValue: '{{count}} selected',
+              count: selectionCount,
+            })}
+          </Text>
+          <View className="flex-row items-center gap-4">
+            <Button
+              variant="ghost"
+              onPress={clearSelection}
+              className="p-0"
+              accessibilityLabel={t('foodSearch.multiSelect.clear', {
+                defaultValue: 'Clear',
+              })}
+            >
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: accentColor }}
+              >
+                {t('foodSearch.multiSelect.clear', { defaultValue: 'Clear' })}
+              </Text>
+            </Button>
+            <Button
+              variant="ghost"
+              onPress={openMultiAddReview}
+              className="p-0"
+              accessibilityLabel={t('foodSearch.multiSelect.review', {
+                defaultValue: 'Review',
+              })}
+            >
+              <Text
+                className="text-sm font-semibold"
+                style={{ color: accentColor }}
+              >
+                {t('foodSearch.multiSelect.review', { defaultValue: 'Review' })}
+              </Text>
+            </Button>
+          </View>
+        </View>
+      )}
       <AnchoredMenu
         visible={menuVisible}
         anchor={menuAnchor}

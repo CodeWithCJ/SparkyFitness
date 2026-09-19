@@ -145,6 +145,11 @@ export type RootStackParamList = {
     mealTypeId?: string;
     mealPlanTarget?: MealPlanPickerTarget;
   };
+  /** Multi-select batch review (#1980): the basket lives in
+   * useFoodSearchSelectionStore, not route params, so no selection data
+   * travels here — only the diary date/meal-type context FoodSearchScreen
+   * had when the user tapped Review. */
+  FoodEntryMultiAdd: { date?: string; mealTypeId?: string } | undefined;
   EditLoggedMeal: { foodEntryMealId: string; initialMeal?: FoodEntryMeal };
   FoodEntryView: {
     entry: FoodEntry;

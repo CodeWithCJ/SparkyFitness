@@ -38,6 +38,14 @@ afterEach(() => {
   (console.error as jest.Mock).mockRestore();
 });
 
+let submittingFlag = true;
+function getSubmittingFlag(): boolean {
+  return submittingFlag;
+}
+function setSubmittingFlag(v: boolean): void {
+  submittingFlag = v;
+}
+
 describe('ScreenErrorBoundary', () => {
   it('renders children normally when no error', () => {
     const { getByText } = render(
@@ -143,6 +151,52 @@ describe('withErrorBoundary HOC', () => {
     const { getByText } = render(<SafeCrash navigation={{ goBack }} />);
     fireEvent.press(getByText('Go Back'));
     expect(goBack).toHaveBeenCalled();
+  });
+
+  it('a live goBackGuard unblocks Go Back once its condition clears', () => {
+    const goBack = jest.fn();
+
+    function CrashScreen(): React.ReactElement {
+      throw new Error('crash');
+    }
+
+    const SafeCrash = withErrorBoundary(CrashScreen, 'CrashLive', {
+      canGoBack: true,
+      goBackGuard: () => !getSubmittingFlag(),
+    });
+    const { getByText } = render(<SafeCrash navigation={{ goBack }} />);
+
+    fireEvent.press(getByText('Go Back'));
+    expect(goBack).not.toHaveBeenCalled();
+
+    setSubmittingFlag(false);
+    fireEvent.press(getByText('Go Back'));
+    expect(goBack).toHaveBeenCalled();
+  });
+
+  it('a goBackGuard returning false blocks Go Back; true (or unset) allows it', () => {
+    const blockedGoBack = jest.fn();
+    const allowedGoBack = jest.fn();
+
+    function CrashScreen(): React.ReactElement {
+      throw new Error('crash');
+    }
+
+    const Blocked = withErrorBoundary(CrashScreen, 'CrashBlocked', {
+      canGoBack: true,
+      goBackGuard: () => false,
+    });
+    const blocked = render(<Blocked navigation={{ goBack: blockedGoBack }} />);
+    fireEvent.press(blocked.getByText('Go Back'));
+    expect(blockedGoBack).not.toHaveBeenCalled();
+
+    const Allowed = withErrorBoundary(CrashScreen, 'CrashAllowed', {
+      canGoBack: true,
+      goBackGuard: () => true,
+    });
+    const allowed = render(<Allowed navigation={{ goBack: allowedGoBack }} />);
+    fireEvent.press(allowed.getByText('Go Back'));
+    expect(allowedGoBack).toHaveBeenCalled();
   });
 });
 

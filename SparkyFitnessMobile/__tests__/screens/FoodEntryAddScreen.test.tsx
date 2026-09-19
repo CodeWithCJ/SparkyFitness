@@ -432,11 +432,14 @@ describe('FoodEntryAddScreen', () => {
       isPending: false,
       invalidateCache: mockInvalidateCache,
     }));
-    mockUseAddFoodEntryMeal.mockReturnValue({
-      addMeal: mockAddMeal,
+    mockUseAddFoodEntryMeal.mockImplementation((options) => ({
+      addMeal: (input: any) => {
+        mockAddMeal(input);
+        options?.onSuccess?.();
+      },
       isPending: false,
       invalidateCache: mockInvalidateMealCache,
-    });
+    }));
   });
 
   it('stores a pending ingredient and pops back for local foods in meal-builder mode', async () => {
@@ -994,6 +997,62 @@ describe('FoodEntryAddScreen', () => {
       },
     });
     expect(mockSetPendingMealIngredientSelection).not.toHaveBeenCalled();
+  });
+
+  it('returns to the diary root after a plain log-entry add', () => {
+    // Regression: the log-entry success handler must fall through to
+    // popToTop when no returnDepth param is set — reading the defaulted
+    // `returnDepth` local (?? 1) instead turned every plain add into a
+    // one-screen pop.
+    const screen = renderScreen({
+      item: baseLocalItem,
+      date: '2026-04-23',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(mockPopToTop).toHaveBeenCalledTimes(1);
+    expect(mockPop).not.toHaveBeenCalled();
+    expect(navigation.dispatch).toHaveBeenCalledWith({ type: 'POP_TO_TOP' });
+  });
+
+  it('pops back one screen after an add launched with a basket returnDepth', () => {
+    const screen = renderScreen({
+      item: baseLocalItem,
+      date: '2026-04-23',
+      returnDepth: 1,
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(mockPop).toHaveBeenCalledWith(1);
+    expect(mockPopToTop).not.toHaveBeenCalled();
+  });
+
+  it('returns to the diary root after a plain meal add', () => {
+    const screen = renderScreen({
+      item: baseMealItem,
+      date: '2026-04-23',
+    });
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockInvalidateMealCache).toHaveBeenCalled();
+    expect(mockPopToTop).toHaveBeenCalledTimes(1);
+    expect(mockPop).not.toHaveBeenCalled();
+  });
+
+  it('pops back one screen after a meal add launched with a basket returnDepth', () => {
+    const screen = renderScreen({
+      item: baseMealItem,
+      date: '2026-04-23',
+      returnDepth: 1,
+    });
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(mockPop).toHaveBeenCalledWith(1);
+    expect(mockPopToTop).not.toHaveBeenCalled();
   });
 
   it('shows grams for a grouped local portion instead of only the named unit', () => {

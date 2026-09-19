@@ -153,6 +153,7 @@ export function useActiveWorkoutBarPadding(
 const HIDDEN_ROUTES = new Set<string>([
   'FoodSearch',
   'FoodEntryAdd',
+  'FoodEntryMultiAdd',
   'FoodForm',
   'FoodScan',
   'FoodPhotoIntro',

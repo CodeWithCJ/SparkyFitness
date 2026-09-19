@@ -134,7 +134,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
 
   // Photo estimation always logs to the diary; hide it for meal-builder
   // scans so we don't drop the user into a flow that ignores pickerMode.
-  // capture-barcode mode is barcode-only.
+  // Same for basket-origin scans: the photo flow's success pop goes to the
+  // diary root, which would unmount FoodSearchScreen and silently drop the
+  // in-progress multi-select basket. capture-barcode mode is barcode-only.
+  const isBasketOriginScan = pickerMode === 'log-entry' && returnDepth != null;
   const scanSegments = useMemo(() => {
     if (isCaptureBarcodeMode) {
       return SCAN_SEGMENTS.filter((key) => key === 'barcode').map((key) => ({
@@ -143,7 +146,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
       }));
     }
     return (
-      isSelectionMode
+      isSelectionMode || isBasketOriginScan
         ? SCAN_SEGMENTS.filter((key) => key !== 'photo')
         : SCAN_SEGMENTS
     ).map((key) => ({
@@ -155,7 +158,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
             ? t('foodScan.segment.label', { defaultValue: 'Label' })
             : t('foodScan.segment.photo', { defaultValue: 'Photo' }),
     }));
-  }, [isCaptureBarcodeMode, isSelectionMode, t]);
+  }, [isCaptureBarcodeMode, isSelectionMode, isBasketOriginScan, t]);
 
   const aiSettingQuery = useActiveAiServiceSetting({
     // Skip the AI gating fetch in capture-barcode mode — Photo segment is
@@ -613,6 +616,15 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   // with `initialMode: 'photo'` still hit the gate.
   useEffect(() => {
     if (isCaptureBarcodeMode) return;
+    if (isBasketOriginScan) {
+      // Basket-origin scans cannot use photo mode at all (its flow pops to
+      // the diary root and would drop the basket): hide the gate, snap the
+      // segment back to barcode, and never reach the availability fetch —
+      // including deep-link photo entries the filtered segments can't stop.
+      setPhotoGateVisible(false);
+      setScanMode('barcode');
+      return;
+    }
     if (scanMode !== 'photo') return;
     if (aiSettingQuery.isLoading) return;
 
@@ -638,6 +650,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
     scanMode,
     aiSettingQuery.isLoading,
     photoModeAvailable,
+    isBasketOriginScan,
     navigation,
     date,
     mealTypeId,
