@@ -219,6 +219,7 @@
     "channels": {
       "medicationReminders": "Medication reminders",
       "workoutTimer": "Workout timer",
+      "workoutTimerAlarm": "Workout timer (silent mode)",
       "fasting": "Fasting",
       "hydration": "Hydration reminders"
     },
@@ -1025,9 +1026,15 @@
     "defaultRestAccessibility": "Default rest period, {{duration}}",
     "restSound": "Rest timer sound",
     "restSoundSubtitle": "Play a sound when the rest timer ends while the app is open.",
+    "restSoundSilent": "Play in silent mode",
+    "restSoundSilentSubtitleAndroid": "Sound the rest timer even with the ringer muted, including while the app is closed. It uses the alarm channel, so it plays at alarm volume.",
+    "restSoundSilentSubtitleIos": "Let the rest chime sound while the app is open even with the ringer muted. Alerts that arrive with the app closed still follow your silent mode.",
+    "restNotifications": "Rest timer notifications",
+    "restNotificationsSubtitle": "Alerts when a rest period ends while the app is closed are set up in Notifications.",
     "keepAwake": "Keep screen awake",
     "keepAwakeSubtitle": "Prevent the screen from sleeping while a workout is active.",
     "restSoundAccessibility": "Rest timer sound",
+    "restSoundSilentAccessibility": "Play rest timer sound in silent mode",
     "keepAwakeAccessibility": "Keep screen awake"
   },
   "restPeriod": {

@@ -66,6 +66,7 @@ export const PREFERENCE_DEFAULTS = {
   diarySummaryExpanded: false,
   defaultRestSec: DEFAULT_REST_SEC as number,
   restTimerSoundEnabled: true,
+  restTimerSoundInSilentMode: false,
   workoutKeepAwakeEnabled: false,
   languagePreference: 'system' as LanguagePreference,
   healthTrendOrder: [...HEALTH_TREND_KEYS] as HealthTrendKey[],
@@ -105,6 +106,7 @@ export type AppPreferencesData = {
   diarySummaryExpanded: boolean;
   defaultRestSec: number;
   restTimerSoundEnabled: boolean;
+  restTimerSoundInSilentMode: boolean;
   workoutKeepAwakeEnabled: boolean;
   languagePreference: LanguagePreference;
   healthTrendOrder: HealthTrendKey[];
@@ -143,6 +145,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setDiarySummaryExpanded: (value: boolean) => void;
   setDefaultRestSec: (value: number) => void;
   setRestTimerSoundEnabled: (value: boolean) => void;
+  setRestTimerSoundInSilentMode: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
   setLanguagePreference: (value: LanguagePreference) => void;
   setHealthTrendLayout: (
@@ -237,6 +240,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
       setRestTimerSoundEnabled: (value) =>
         set({ restTimerSoundEnabled: value }),
+      setRestTimerSoundInSilentMode: (value) =>
+        set({ restTimerSoundInSilentMode: value }),
       setWorkoutKeepAwakeEnabled: (value) =>
         set({ workoutKeepAwakeEnabled: value }),
       setLanguagePreference: (value) => set({ languagePreference: value }),
@@ -289,6 +294,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         diarySummaryExpanded: state.diarySummaryExpanded,
         defaultRestSec: state.defaultRestSec,
         restTimerSoundEnabled: state.restTimerSoundEnabled,
+        restTimerSoundInSilentMode: state.restTimerSoundInSilentMode,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
         languagePreference: state.languagePreference,
         healthTrendOrder: state.healthTrendOrder,

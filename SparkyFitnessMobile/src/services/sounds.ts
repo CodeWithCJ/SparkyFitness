@@ -8,7 +8,7 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { addLog } from './LogService';
 
 let restChimePlayer: AudioPlayer | null = null;
-let audioModeConfigured = false;
+let configuredSilentModePlayback: boolean | null = null;
 
 /**
  * Whether the rest-timer chime should play. Also consulted by the foreground
@@ -40,15 +40,20 @@ export function playRestCompleteSound(): void {
   if (!willPlayRestCompleteSound()) return;
   void (async () => {
     try {
-      if (!audioModeConfigured) {
+      // Opt-in; left off, the ringer's mute switch still wins and the rest
+      // flip is carried by the haptic alone.
+      const playsInSilentMode =
+        useAppPreferencesStore.getState().restTimerSoundInSilentMode;
+      // Keyed on that preference, not a one-shot flag, so flipping the toggle
+      // reaches the next rest instead of waiting for an app restart.
+      if (configuredSilentModePlayback !== playsInSilentMode) {
         try {
-          // Short UI cue: mix with (never duck) the user's music, and stay
-          // silent when the ringer/silent switch is off — the haptic still fires.
+          // Short UI cue: mix with (never duck) the user's music.
           await setAudioModeAsync({
-            playsInSilentMode: false,
+            playsInSilentMode,
             interruptionMode: 'mixWithOthers',
           });
-          audioModeConfigured = true;
+          configuredSilentModePlayback = playsInSilentMode;
         } catch (err) {
           // Retry on the next chime; a config failure must not mute the cue.
           addLog(
@@ -73,8 +78,8 @@ export function playRestCompleteSound(): void {
   })();
 }
 
-/** Test-only helper — drops the cached player and audio-mode flag. */
+/** Test-only helper — drops the cached player and audio-mode state. */
 export function __resetSoundsForTests(): void {
   restChimePlayer = null;
-  audioModeConfigured = false;
+  configuredSilentModePlayback = null;
 }
