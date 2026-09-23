@@ -19,9 +19,13 @@ export const foodKeys = {
     filter: MealFilter,
     page: number,
     limit: number,
-    sort: string
+    sort: string,
+    providerType: string
   ) =>
-    [...foodKeys.lists(), { searchTerm, filter, page, limit, sort }] as const,
+    [
+      ...foodKeys.lists(),
+      { searchTerm, filter, page, limit, sort, providerType },
+    ] as const,
   recentTop: (limit: number, mealType?: string) =>
     [...foodKeys.all, 'recentTop', limit, mealType] as const,
   databaseSearch: (term: string, pageSize: number, filter: MealFilter) =>

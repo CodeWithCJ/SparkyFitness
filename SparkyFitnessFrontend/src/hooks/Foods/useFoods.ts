@@ -13,6 +13,7 @@ import {
   importFoodsFromCsv,
   loadFoods,
   lookupFoodsByName,
+  refreshFoodFromSource,
   togglePublicSharing,
   updateFoodEntriesSnapshot,
 } from '@/api/Foods/foodService';
@@ -36,9 +37,11 @@ export const useFoods = (
   foodFilter: MealFilter,
   currentPage: number,
   itemsPerPage: number,
-  sortOrder: string
+  sortOrder: string,
+  providerFilter?: string
 ) => {
   const { t } = useTranslation();
+  const providerType = providerFilter ?? 'all';
 
   return useQuery({
     queryKey: foodKeys.list(
@@ -46,10 +49,19 @@ export const useFoods = (
       foodFilter,
       currentPage,
       itemsPerPage,
-      sortOrder
+      sortOrder,
+      providerType
     ),
     queryFn: () =>
-      loadFoods(searchTerm, foodFilter, currentPage, itemsPerPage, sortOrder),
+      loadFoods(
+        searchTerm,
+        foodFilter,
+        currentPage,
+        itemsPerPage,
+        sortOrder,
+        undefined,
+        providerType
+      ),
     placeholderData: keepPreviousData,
     meta: {
       errorMessage: t(
@@ -210,6 +222,28 @@ export const useUpdateFoodEntriesSnapshotMutation = () => {
       successMessage: t(
         'foodDatabaseManager.foodSnapshotUpdatedSuccessfully',
         'Food entries snapshot updated successfully.'
+      ),
+    },
+  });
+};
+
+/**
+ * Re-fetches a food's data from its external source. No cache invalidation:
+ * the server is only *reading* the source, and nothing is written until the
+ * user applies the data to the form and saves.
+ */
+export const useRefreshFoodFromSourceMutation = () => {
+  const { t } = useTranslation();
+  return useMutation({
+    mutationFn: (foodId: string) => refreshFoodFromSource(foodId),
+    meta: {
+      errorMessage: t(
+        'foodDatabaseManager.failedToRefreshFoodFromSource',
+        'Failed to refresh food data from source.'
+      ),
+      successMessage: t(
+        'foodDatabaseManager.foodRefreshedFromSource',
+        'Food data refreshed from source. Review and save to apply.'
       ),
     },
   });

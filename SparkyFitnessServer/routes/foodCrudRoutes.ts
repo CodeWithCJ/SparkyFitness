@@ -1,7 +1,17 @@
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import { log } from '../config/logging.js';
 import foodService from '../services/foodService.js';
+import preferenceService from '../services/preferenceService.js';
+import externalProviderService from '../services/externalProviderService.js';
+import {
+  fetchProviderFoodDetails,
+  enrichWithCustomNutrients,
+  normalizeFoodForResponse,
+} from '../services/foodProviderDetailService.js';
+import { NormalizedFoodSchema } from '../schemas/foodSchemas.js';
+import { FoodWithProviderNutrients } from '../utils/foodUtils.js';
 import labelScanService, {
   type LabelScanErrorCategory,
 } from '../services/labelScanService.js';
@@ -285,6 +295,15 @@ router.post('/', authenticate, uploadImages, async (req, res, next) => {
  *         schema:
  *           type: string
  *         description: The field to sort by.
+ *       - in: query
+ *         name: providerType
+ *         schema:
+ *           type: string
+ *         description: >
+ *           Optional filter by data source. A valid provider type (e.g.
+ *           'openfoodfacts', 'usda') matches foods imported from that source;
+ *           'manual' matches foods without a data source; omit or use 'all'
+ *           for no filtering.
  *     responses:
  *       200:
  *         description: A paginated list of foods.
@@ -301,8 +320,14 @@ router.post('/', authenticate, uploadImages, async (req, res, next) => {
  *                   type: integer
  */
 router.get('/foods-paginated', authenticate, async (req, res, next) => {
-  const { searchTerm, foodFilter, currentPage, itemsPerPage, sortBy } =
-    req.query;
+  const {
+    searchTerm,
+    foodFilter,
+    currentPage,
+    itemsPerPage,
+    sortBy,
+    providerType,
+  } = req.query;
   try {
     const { foods, totalCount } = await foodService.getFoodsWithPagination(
       req.userId,
@@ -310,7 +335,8 @@ router.get('/foods-paginated', authenticate, async (req, res, next) => {
       String(foodFilter ?? ''),
       String(currentPage ?? ''),
       String(itemsPerPage ?? ''),
-      String(sortBy ?? '')
+      String(sortBy ?? ''),
+      String(providerType ?? '')
     );
     res.status(200).json({ foods, totalCount });
   } catch (error) {
@@ -1179,6 +1205,142 @@ router.delete('/:id', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /foods/{id}/refresh-from-source:
+ *   post:
+ *     summary: Refresh food data from its source
+ *     tags: [Nutrition & Meals]
+ *     description: >
+ *       Re-fetches the food's details from the external data source it was
+ *       originally imported from (identified by the food's provider_type and
+ *       provider_external_id) and returns the updated data. Nothing is saved:
+ *       the client applies the data to the open form and persists it on save.
+ *       Only the owning user's own foods can be refreshed.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         required: true
+ *         description: The ID of the food to refresh.
+ *     responses:
+ *       200:
+ *         description: The refreshed food data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 food:
+ *                   $ref: '#/components/schemas/Food'
+ *       400:
+ *         description: Food ID is required, the food has no external source, or no active provider is configured.
+ *       403:
+ *         description: User does not own this food.
+ *       404:
+ *         description: Food not found or no longer available at its source.
+ */
+router.post(
+  '/:id/refresh-from-source',
+  authenticate,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: 'Food ID is required.' });
+    }
+    try {
+      // RLS-scoped fetch; null means the food is invisible to this data context.
+      const food = await foodService.getFoodById(req.userId, id);
+      if (!food || !food.provider_type || !food.provider_external_id) {
+        return res.status(404).json({ error: 'Food not found.' });
+      }
+      // Only the owner can refresh their own foods. The fetch above is
+      // RLS-scoped, so user_id is present for owned foods and null for
+      // system foods, which stay out of scope (no provider_external_id).
+      if (food.user_id !== req.userId) {
+        return res
+          .status(403)
+          .json({ error: 'Forbidden: You do not own this food.' });
+      }
+
+      const userPrefs = await preferenceService.getUserPreferences(
+        req.userId,
+        req.userId
+      );
+      const language = userPrefs?.language || 'en';
+
+      // The foods table only stores the source type and external id, so resolve
+      // the caller's active provider row for that type to pass along as providerId.
+      const providers =
+        await externalProviderService.getExternalDataProvidersForUser(
+          req.authenticatedUserId,
+          req.authenticatedUserId
+        );
+      const activeProvider = providers.find(
+        (p) => p.provider_type === food.provider_type && p.is_active
+      );
+      const providerId =
+        typeof activeProvider?.id === 'string' ? activeProvider.id : undefined;
+      if (
+        food.provider_type !== 'openfoodfacts' &&
+        food.provider_type !== 'swissfood' &&
+        !providerId
+      ) {
+        return res.status(400).json({
+          error: `No active ${food.provider_type} provider is configured.`,
+        });
+      }
+
+      const refreshed = await fetchProviderFoodDetails({
+        credentialUserId: req.authenticatedUserId,
+        dataUserId: req.userId,
+        providerType: food.provider_type,
+        externalId: food.provider_external_id,
+        providerId,
+        language,
+      });
+      if (!refreshed) {
+        return res.status(404).json({ error: 'Food not found at source.' });
+      }
+
+      await enrichWithCustomNutrients(req.userId, [
+        refreshed,
+      ] as FoodWithProviderNutrients[]);
+
+      const normalized = NormalizedFoodSchema.parse(
+        normalizeFoodForResponse(refreshed)
+      );
+      res.status(200).json({ food: normalized });
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === 'Food not found.') {
+        return res.status(404).json({ error: 'Food not found.' });
+      }
+      if (error instanceof Error && error.name === 'ZodError') {
+        log('error', 'refresh-from-source response validation failed:', error);
+        next(
+          Object.assign(new Error('Internal response validation failed'), {
+            status: 500,
+          })
+        );
+        return;
+      }
+      if (
+        error instanceof Error &&
+        typeof (error as unknown as Record<string, unknown>).status === 'number'
+      ) {
+        res
+          .status(
+            (error as unknown as Record<string, unknown>).status as number
+          )
+          .json({ error: error.message });
+        return;
+      }
+      next(error);
+    }
+  }
+);
 /**
  * @swagger
  * /foods/import-from-csv:

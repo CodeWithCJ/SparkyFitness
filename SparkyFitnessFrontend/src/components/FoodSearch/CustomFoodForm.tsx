@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-import { Plus, Camera } from 'lucide-react';
+import { Plus, Camera, RefreshCw, Loader2 } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
@@ -19,6 +19,8 @@ import type { Food, FoodVariant } from '@/types/food';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { VariantCard } from './VariantCard';
 import { useCustomFoodForm } from '@/hooks/Foods/useFoodForm';
+import { useRefreshFoodFromSourceMutation } from '@/hooks/Foods/useFoods';
+import { getProviderDisplayName } from '@/utils/foodProviderLabels';
 import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 import { UNIT_GROUPS } from '@/constants/foodForm';
@@ -85,6 +87,7 @@ const CustomFoodForm = ({
     manualUnitConversionPending,
     aiEstimatedUnits,
     updateField,
+    applyProviderRefresh,
     addVariant,
     duplicateVariant,
     removeVariant,
@@ -116,6 +119,25 @@ const CustomFoodForm = ({
     },
     aiEstimatesAvailable,
   });
+
+  const {
+    mutateAsync: refreshFoodFromSource,
+    isPending: isRefreshingFromSource,
+  } = useRefreshFoodFromSourceMutation();
+
+  const handleRefreshFromSource = async () => {
+    if (!food?.id) return;
+    try {
+      const result = await refreshFoodFromSource(food.id);
+      if (result) {
+        // Applies the fresh data to the open form; nothing lands in the DB
+        // until the user saves (which also offers syncing logged entries).
+        applyProviderRefresh(result.food);
+      }
+    } catch {
+      // Toasted by the global mutation error handler.
+    }
+  };
 
   // Only already-saved photos can be embedded in a note: a staged file exists
   // solely in the browser until the food is saved, so it has no path to link.
@@ -283,6 +305,40 @@ const CustomFoodForm = ({
                   )}
                 </p>
               </div>
+              {food?.provider_type ? (
+                <div>
+                  <Label htmlFor="dataSource">
+                    {t('customFoodForm.dataSource', 'Data source')}
+                  </Label>
+                  <Input
+                    id="dataSource"
+                    readOnly
+                    value={getProviderDisplayName(food.provider_type)}
+                    className="mt-1"
+                  />
+                  {food.provider_external_id && food.id ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleRefreshFromSource}
+                      disabled={isRefreshingFromSource}
+                      className="flex items-center gap-1.5 shrink-0 mt-1 w-full"
+                    >
+                      {isRefreshingFromSource ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4" />
+                      )}
+                      <span>
+                        {t(
+                          'customFoodForm.refreshFromSource',
+                          'Refresh from source'
+                        )}
+                      </span>
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="pt-2">

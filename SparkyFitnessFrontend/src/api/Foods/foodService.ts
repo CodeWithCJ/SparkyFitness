@@ -54,7 +54,8 @@ export const loadFoods = async (
   currentPage: number,
   itemsPerPage: number,
   sortBy: string = 'name:asc', // Default sort by name ascending
-  userId?: string
+  userId?: string,
+  providerType?: string
 ): Promise<LoadFoodsResponse> => {
   const params = new URLSearchParams();
   if (searchTerm) {
@@ -66,6 +67,9 @@ export const loadFoods = async (
   params.append('itemsPerPage', itemsPerPage.toString());
   if (userId) params.append('userId', userId);
   params.append('sortBy', sortBy); // Add sortBy parameter
+  if (providerType && providerType !== 'all') {
+    params.append('providerType', providerType);
+  }
   const response = await apiCall(
     `/foods/foods-paginated?${params.toString()}`,
     {
@@ -133,6 +137,19 @@ export const updateFoodEntriesSnapshot = async (
   return apiCall(`/foods/update-snapshot`, {
     method: 'POST',
     body: { foodId, syncImages },
+  });
+};
+
+/**
+ * Re-fetches a food's details from the external source it was imported from.
+ * Returns the refreshed data without saving anything — the caller applies it
+ * to the open form and persists it on save.
+ */
+export const refreshFoodFromSource = async (
+  foodId: string
+): Promise<{ food: Food }> => {
+  return apiCall(`/foods/${foodId}/refresh-from-source`, {
+    method: 'POST',
   });
 };
 

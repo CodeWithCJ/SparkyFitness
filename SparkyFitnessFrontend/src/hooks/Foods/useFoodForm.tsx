@@ -1120,6 +1120,75 @@ export function useCustomFoodForm({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  /**
+   * Applies freshly fetched source data to the open form in place: the food's
+   * name/brand and the default variant's serving and nutrition. Nothing is
+   * persisted until the user saves; saving then routes through the normal
+   * post-save sync prompt so logged diary entries can optionally be updated.
+   */
+  const applyProviderRefresh = useCallback(
+    (refreshed: Food) => {
+      setFormData((prev) => ({
+        ...prev,
+        name: refreshed.name || prev.name,
+        brand: refreshed.brand || prev.brand,
+      }));
+
+      const incoming = refreshed.default_variant;
+      if (!incoming) return;
+
+      const incomingForm = foodVariantToFormVariant(incoming);
+      const patch: Partial<GroupedFormFoodVariant> = {
+        serving_size: incoming.serving_size,
+        serving_unit: incoming.serving_unit,
+      };
+      for (const nutrient of nutrientFields) {
+        const value = incomingForm[nutrient];
+        if (value !== undefined) {
+          patch[nutrient] = value;
+        }
+      }
+      if (incoming.glycemic_index) {
+        patch.glycemic_index = sanitizeGlycemicIndexFrontend(
+          incoming.glycemic_index
+        );
+      }
+
+      let defaultIndex = -1;
+      const nextVariants = variants.map((variant, index) => {
+        if (!variant.is_default) return variant;
+        defaultIndex = index;
+        return {
+          ...variant,
+          ...patch,
+          // Refreshed values replace any AI estimate on this variant.
+          ...(variant.source === 'ai_estimate'
+            ? { source: 'imported' as const, ai_confidence: null }
+            : {}),
+        };
+      });
+      if (defaultIndex === -1) return;
+
+      const merged = nextVariants[defaultIndex];
+      setVariants(nextVariants);
+      setOriginalVariants((orig) =>
+        orig.map((o, i) => (i === defaultIndex ? { ...o, ...merged } : o))
+      );
+      setLoadedVariants((loaded) =>
+        loaded.map((l, i) =>
+          i === defaultIndex && l ? { ...l, ...merged } : l
+        )
+      );
+      // Refreshed values are no longer an AI estimate, so drop its unit badge.
+      setVariantMeta((meta) =>
+        meta.map((m, i) =>
+          i === defaultIndex ? { ...m, aiEstimatedUnit: null } : m
+        )
+      );
+    },
+    [variants]
+  );
+
   const validateBeforeSave = useCallback(() => {
     const newVariantErrors = variants.map((v) =>
       isNaN(Number(v.serving_size)) || Number(v.serving_size) <= 0
@@ -1337,6 +1406,7 @@ export function useCustomFoodForm({
     aiEstimatedUnits,
     platform,
     updateField,
+    applyProviderRefresh,
     addVariant,
     duplicateVariant,
     removeVariant,

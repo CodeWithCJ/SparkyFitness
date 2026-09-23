@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import {
   flexRender,
   useTable,
@@ -36,6 +36,7 @@ interface DataTableProps<TData extends RowData> {
   onSortingChange?: (sorting: SortingState) => void;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
   onRowDoubleClick?: (row: TData) => void;
+  onRowClick?: (row: TData) => void;
   getRowId?: (row: TData) => string;
   manualPagination?: boolean;
   manualSorting?: boolean;
@@ -72,6 +73,7 @@ export function DataTable<TData extends RowData>({
   onSortingChange,
   onRowSelectionChange,
   onRowDoubleClick,
+  onRowClick,
   getRowId,
   manualPagination = false,
   manualSorting = false,
@@ -135,6 +137,19 @@ export function DataTable<TData extends RowData>({
       pagination,
     },
   });
+
+  // Single-click handler that ignores clicks originating on interactive
+  // elements (checkboxes, buttons, links, inputs) so row actions keep working.
+  const handleRowClick = (event: ReactMouseEvent, row: TData) => {
+    if (!onRowClick) return;
+    if (
+      event.target instanceof HTMLElement &&
+      event.target.closest('button, a, input')
+    ) {
+      return;
+    }
+    onRowClick(row);
+  };
 
   const resolvedTitleColumnId = useMemo(() => {
     const visibleColumns = table.getVisibleFlatColumns();
@@ -240,8 +255,9 @@ export function DataTable<TData extends RowData>({
                     key={row.id}
                     data-state={row.getIsSelected() && 'selected'}
                     onDoubleClick={() => onRowDoubleClick?.(row.original)}
+                    onClick={(event) => handleRowClick(event, row.original)}
                     className={cn(
-                      onRowDoubleClick &&
+                      (onRowClick || onRowDoubleClick) &&
                         'cursor-pointer select-none transition-colors hover:bg-muted/50',
                       isLoading && 'opacity-70 grayscale-[0.3]'
                     )}
@@ -295,11 +311,12 @@ export function DataTable<TData extends RowData>({
               <Card
                 key={row.id}
                 onDoubleClick={() => onRowDoubleClick?.(row.original)}
+                onClick={(event) => handleRowClick(event, row.original)}
                 className={`transition-all duration-200 border-2 overflow-hidden shadow-sm ${
                   row.getIsSelected()
                     ? 'border-blue-500 bg-blue-50/30 dark:bg-blue-900/10'
                     : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900'
-                } ${onRowDoubleClick ? 'active:scale-[0.98]' : ''} ${
+                } ${onRowClick || onRowDoubleClick ? 'active:scale-[0.98]' : ''} ${
                   isLoading ? 'opacity-70 grayscale-[0.3]' : ''
                 }`}
               >
@@ -318,10 +335,7 @@ export function DataTable<TData extends RowData>({
                           : null;
                       })()}
 
-                      <div
-                        className="truncate font-bold text-gray-900 dark:text-gray-100 text-sm flex-1"
-                        onClick={() => onRowDoubleClick?.(row.original)}
-                      >
+                      <div className="truncate font-bold text-gray-900 dark:text-gray-100 text-sm flex-1">
                         {(() => {
                           const titleCell = row
                             .getVisibleCells()

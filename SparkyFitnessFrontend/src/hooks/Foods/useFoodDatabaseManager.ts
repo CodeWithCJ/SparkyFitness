@@ -55,6 +55,7 @@ export function useFoodDatabaseManager() {
   const [itemsPerPage, setItemsPerPage] = useState(isMobile ? 5 : 10);
   const [currentPage, setCurrentPage] = useState(1);
   const [foodFilter, setFoodFilter] = useState<MealFilter>('all');
+  const [providerFilter, setProviderFilter] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<string>('name:asc');
 
   const [showFoodSearchDialog, setShowFoodSearchDialog] = useState(false);
@@ -77,7 +78,8 @@ export function useFoodDatabaseManager() {
     foodFilter,
     currentPage,
     itemsPerPage,
-    sortOrder
+    sortOrder,
+    providerFilter
   );
   const { mutate: togglePublicSharing } = useToggleFoodPublicMutation();
   const { mutateAsync: deleteFood } = useDeleteFoodMutation();
@@ -91,6 +93,11 @@ export function useFoodDatabaseManager() {
 
   const handleSearchChange = (term: string) => {
     setSearchTerm(term);
+    setCurrentPage(1);
+  };
+
+  const handleProviderFilterChange = (value: string) => {
+    setProviderFilter(value);
     setCurrentPage(1);
   };
 
@@ -269,6 +276,8 @@ export function useFoodDatabaseManager() {
     setCurrentPage,
     foodFilter,
     setFoodFilter,
+    providerFilter,
+    setProviderFilter: handleProviderFilterChange,
     sortOrder,
     setSortOrder,
     foodData,
