@@ -956,7 +956,10 @@ const options = {
             user_id: { type: 'string', format: 'uuid' },
             mood_value: {
               type: 'integer',
-              description: 'Mood value (e.g., 1-5 or 0-10)',
+              description:
+                'Mood intensity on a 10-100 scale, banded 10-15 Sad, 16-25 Angry, ' +
+                '26-35 Worried, 36-45 Neutral, 46-55 Thoughtful, 56-65 Calm, ' +
+                '66-75 Confident, 76-85 Happy, 86-100 Excited',
             },
             notes: { type: 'string', nullable: true },
             entry_date: { type: 'string', format: 'date' },
