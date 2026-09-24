@@ -137,7 +137,17 @@ async function searchUsdaFoods(
     // which is what a brand name looks like from here. Pagination stays the
     // API's own, because exactly one response is ever returned to the caller.
     let data = await request(USDA_GENERIC_DATA_TYPES);
-    if (!Array.isArray(data?.foods) || data.foods.length === 0) {
+    // Decided on `totalHits`, the size of the whole filtered result set, not
+    // on `foods`, which is only the requested page. A page past the last
+    // generic row comes back with `foods: []` and a positive `totalHits`, and
+    // retrying that unfiltered would serve branded rows on page N of a generic
+    // search. `foods` is the fallback only for a response that omits
+    // `totalHits` altogether.
+    const nothingGeneric =
+      typeof data?.totalHits === 'number'
+        ? data.totalHits === 0
+        : !Array.isArray(data?.foods) || data.foods.length === 0;
+    if (nothingGeneric) {
       log(
         'debug',
         `USDA generic datasets had no match for "${query}"; retrying unfiltered`

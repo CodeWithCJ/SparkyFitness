@@ -45,6 +45,23 @@ describe('USDA search prefers the generic datasets (#2417)', () => {
     expect(result.foods[0].description).toContain('Chicken, breast');
   });
 
+  it('does not fall back on an empty page when the generic set has results', async () => {
+    // FoodData Central reports the whole filtered set in `totalHits` and only
+    // the requested page in `foods`. A page past the last generic row is empty
+    // while `totalHits` is positive; retrying that unfiltered would serve
+    // branded rows on page N of a generic search.
+    mockFetch.mockResolvedValueOnce(
+      ok({ foods: [], currentPage: 3, totalPages: 2, totalHits: 60 })
+    );
+
+    const result = await searchUsdaFoods('chicken breast', 'key', 3);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(result.foods).toEqual([]);
+    expect(result.pagination.totalCount).toBe(60);
+    expect(result.pagination.hasMore).toBe(false);
+  });
+
   it('falls back to the unfiltered search when nothing generic matches', async () => {
     // A brand name has no generic answer, and answering "no such food" would
     // trade one gap for another.
