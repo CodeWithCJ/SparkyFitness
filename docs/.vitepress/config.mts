@@ -57,6 +57,7 @@ export default defineConfig({
           { text: 'NixOS', link: '/install/nixos' },
           { text: 'Coolify', link: '/install/coolify' },
           { text: 'TrueNAS', link: '/install/truenas' },
+          { text: 'Umbrel', link: '/install/umbrel' },
         ],
       },
       {
@@ -108,6 +109,7 @@ export default defineConfig({
             { text: 'NixOS', link: '/install/nixos' },
             { text: 'Coolify', link: '/install/coolify' },
             { text: 'TrueNAS', link: '/install/truenas' },
+            { text: 'Umbrel', link: '/install/umbrel' },
           ],
         },
       ],

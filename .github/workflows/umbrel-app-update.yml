@@ -1,0 +1,224 @@
+name: Update Umbrel App
+
+# Keeps the Umbrel App Store package in step with releases.
+#
+# Runs after Publish Docker Images succeeds, because the package pins image
+# digests and those images do not exist until that workflow has pushed them.
+# It refreshes umbrel/sparkyfitness/, opens a PR here, and — since the package
+# is submitted unattended — opens the App Store PR against getumbrel/umbrel-apps
+# as well.
+#
+# There is no human review step before the upstream PR, so the automated gates
+# stand in for one: update-package.mjs refuses any tag that is not a multi-arch
+# manifest list, and the official Umbrel linter must pass (it checks image
+# pinning, public pullability, and host-port uniqueness across the whole store).
+# Either failure stops the job before anything reaches upstream.
+
+on:
+  workflow_run:
+    workflows: ["Publish Docker Images"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag to package (defaults to the latest published release)"
+        required: false
+        type: string
+      submit_upstream:
+        description: "Open the PR against getumbrel/umbrel-apps"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: umbrel-app-update
+  cancel-in-progress: false
+
+env:
+  UPSTREAM: getumbrel/umbrel-apps
+
+jobs:
+  update:
+    name: Refresh package and lint
+    runs-on: ubuntu-latest
+    # workflow_run fires on failure too; only package images that actually built.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    outputs:
+      changed: ${{ steps.update.outputs.changed }}
+      version: ${{ steps.update.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Refresh Umbrel package
+        id: update
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Via env, not ${{ }} inline: this is dispatch input reaching a shell.
+          VERSION_INPUT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -n "${VERSION_INPUT:-}" ]; then
+            node umbrel/update-package.mjs --version "${VERSION_INPUT}"
+          else
+            node umbrel/update-package.mjs
+          fi
+          version=$(sed -n 's/^version: "\(.*\)"$/\1/p' umbrel/sparkyfitness/umbrel-app.yml)
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          if git diff --quiet -- umbrel/sparkyfitness; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "Package already matches ${version}; nothing to do."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The real gate. A package that fails here never reaches the App Store,
+      # and port uniqueness can only be checked against the full store checkout.
+      - name: Lint against the Umbrel App Store
+        if: steps.update.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          git clone --depth 1 "https://github.com/${UPSTREAM}.git" /tmp/umbrel-apps
+          rm -rf /tmp/umbrel-apps/sparkyfitness
+          cp -r umbrel/sparkyfitness /tmp/umbrel-apps/sparkyfitness
+          cd /tmp/umbrel-apps
+          npm install --no-audit --no-fund
+          npm run lint:apps -- sparkyfitness --check-images
+
+      - name: Upload package
+        if: steps.update.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: umbrel-package
+          path: umbrel/sparkyfitness
+          # data/*/.gitkeep are the committed bind-mount source directories.
+          # v4 drops dotfiles by default, which would ship a package whose
+          # postgres, uploads and backup directories do not exist.
+          include-hidden-files: true
+          retention-days: 7
+
+      - name: Create Pull Request
+        if: steps.update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          add-paths: umbrel/sparkyfitness
+          commit-message: "chore(umbrel): update app package to ${{ steps.update.outputs.version }}"
+          branch: umbrel/update-app-package
+          delete-branch: true
+          base: main
+          title: "chore(umbrel): update app package to ${{ steps.update.outputs.version }}"
+          body: |
+            This pull request was automatically created by the **Update Umbrel App** workflow after `${{ steps.update.outputs.version }}` was published and its Docker images were pushed.
+
+            It refreshes `umbrel/sparkyfitness/`:
+
+            - `umbrel-app.yml` — `version` and `releaseNotes`
+            - `docker-compose.yml` — re-pinned multi-arch image digests
+
+            The package passed `npm run lint:apps -- sparkyfitness --check-images` against a fresh `${{ env.UPSTREAM }}` checkout, which verifies digest pinning, public pullability, and that the host port is still unique across the App Store.
+          labels: |
+            umbrel
+
+  submit:
+    name: Submit to the Umbrel App Store
+    runs-on: ubuntu-latest
+    needs: update
+    if: >-
+      needs.update.outputs.changed == 'true' &&
+      (github.event_name != 'workflow_dispatch' || inputs.submit_upstream)
+
+    steps:
+      - name: Check for the App Store token
+        id: token
+        env:
+          UMBREL_APPS_TOKEN: ${{ secrets.UMBREL_APPS_TOKEN }}
+        run: |
+          if [ -z "${UMBREL_APPS_TOKEN}" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::UMBREL_APPS_TOKEN is not set; skipping the App Store submission. The in-repo PR still has the updated package."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download package
+        if: steps.token.outputs.present == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: umbrel-package
+          path: package
+
+      - name: Open or update the App Store pull request
+        if: steps.token.outputs.present == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.UMBREL_APPS_TOKEN }}
+          VERSION: ${{ needs.update.outputs.version }}
+        run: |
+          set -euo pipefail
+          fork_owner=$(gh api user --jq .login)
+          branch="sparkyfitness-${VERSION}"
+
+          # Idempotent: prints a notice and succeeds if the fork already exists.
+          # --remote is rejected when a repository argument is given, so it is
+          # omitted rather than set to false.
+          gh repo fork "${UPSTREAM}" --clone=false || true
+
+          # Branch from current upstream main every run so the PR never carries
+          # unrelated drift or conflicts.
+          git clone --depth 1 "https://x-access-token:${GH_TOKEN}@github.com/${UPSTREAM}.git" upstream
+          cd upstream
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "${branch}"
+          rm -rf sparkyfitness
+          cp -r ../package sparkyfitness
+
+          git add sparkyfitness
+          if git diff --cached --quiet; then
+            echo "Upstream already carries this package; nothing to submit."
+            exit 0
+          fi
+          git commit -m "sparkyfitness: update to ${VERSION}"
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${fork_owner}/umbrel-apps.git" "${branch}"
+
+          existing=$(gh pr list --repo "${UPSTREAM}" --head "${fork_owner}:${branch}" --state open --json url --jq '.[0].url // empty')
+          if [ -n "${existing}" ]; then
+            echo "Reusing existing pull request ${existing}"
+            pr_url="${existing}"
+          else
+            pr_url=$(gh pr create --repo "${UPSTREAM}" \
+              --head "${fork_owner}:${branch}" \
+              --base master \
+              --title "sparkyfitness: update to ${VERSION}" \
+              --body "Updates the SparkyFitness package to [\`${VERSION}\`](https://github.com/CodeWithCJ/SparkyFitness/releases/tag/${VERSION}).
+
+          - Upstream project: https://github.com/CodeWithCJ/SparkyFitness
+          - Images: \`codewithcj/sparkyfitness\` and \`codewithcj/sparkyfitness_server\` on Docker Hub, built for \`linux/amd64\` and \`linux/arm64\` by the project's release workflow
+          - Changes: \`version\`, \`releaseNotes\`, and re-pinned image digests
+
+          Opened automatically by the project's release automation. \`npm run lint:apps -- sparkyfitness --check-images\` passes.")
+            echo "Opened ${pr_url}"
+          fi
+
+          # submission: must point at this PR, which only has a URL once it exists.
+          sed -i "s|^submission:.*|submission: ${pr_url}|" sparkyfitness/umbrel-app.yml
+          sed -i "/^# Replace with this package's own PR URL once the pull request is opened\.$/d" sparkyfitness/umbrel-app.yml
+          if ! git diff --quiet -- sparkyfitness/umbrel-app.yml; then
+            git add sparkyfitness/umbrel-app.yml
+            git commit -m "sparkyfitness: record submission URL"
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${fork_owner}/umbrel-apps.git" "${branch}"
+          fi
+
+          echo "App Store pull request: ${pr_url}" >> "$GITHUB_STEP_SUMMARY"
