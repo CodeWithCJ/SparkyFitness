@@ -304,6 +304,17 @@ User ──► Chat Interface ──► AI Router ──┬──► OpenAI GPT
 - **Environment Variables**: Secure configuration management
 - **Logging Strategy**: Centralized logging with structured log formats
 
+### Shared Settings Across Instances
+
+Several server instances can share one database. Settings that change how Sparky behaves for users, such as the login overrides, must then match on every instance. Each instance proposes the values from its own environment, and those values take effect once every running instance proposes the same ones. Until then, the previously agreed values stay in force. A single server always agrees with itself, so an all-in-one deployment behaves exactly as before.
+
+When adding an environment variable, ask whether it changes how Sparky behaves for users:
+
+- **Yes:** add it as a field in `SHARED_GROUP_SCHEMAS` (`SparkyFitnessServer/services/sharedSettingsService.ts`) and read the agreed value where it is used, not once at startup.
+- **No** (connections, secrets, ports, paths, logging): read it from the environment as usual.
+
+Shared fields are nullable, and null means no override from the environment. Add fields freely, but never change an existing field's type or meaning: during a rolling update, another release may still read the saved record.
+
 ## Integration Points
 
 ### Frontend-Backend Communication

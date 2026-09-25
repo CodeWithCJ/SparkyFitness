@@ -247,6 +247,7 @@ const userRepository = {
 - [ ] **Database migrations** included if schema changes
 - [ ] **Documentation updated** if new features or API changes
 - [ ] **Environment variables** documented if new ones added
+- [ ] **Shared settings**: a new environment variable that changes user-facing behavior is added to `SHARED_GROUP_SCHEMAS` (see Architecture)
 - [ ] **Backend Code Standards** (if applicable):
   - [ ] New backend files are written in TypeScript
   - [ ] New endpoints include Zod schemas for validation
