@@ -7,6 +7,10 @@ import type {
   MembershipCount,
 } from '../services/sharedSettingsService.js';
 
+// Bounds every statement, including the wait for the lock, so a stuck check-in
+// fails and the next heartbeat retries instead of the heartbeat stopping.
+const CHECK_IN_STATEMENT_TIMEOUT = '10s';
+
 export interface CheckInSnapshot {
   members: LiveMember[];
   membership: MembershipCount | null;
@@ -26,6 +30,9 @@ async function inCheckInTransaction<T>(
   let rollbackFailed = false;
   try {
     await client.query('BEGIN');
+    await client.query(
+      `SET LOCAL statement_timeout = '${CHECK_IN_STATEMENT_TIMEOUT}'`
+    );
     await client.query(
       "SELECT pg_advisory_xact_lock(hashtext('shared_settings_check_in'))"
     );

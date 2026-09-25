@@ -166,6 +166,24 @@ describe.skipIf(!RUN)('sharedSettingsRepository (native PostgreSQL)', () => {
     }
   });
 
+  it('gives up when the lock is held past the statement timeout', async () => {
+    const id = await joinMembers('1.7.2', { identity }, 60_000);
+    const holder = await getSystemClient();
+    try {
+      await holder.query('BEGIN');
+      await holder.query(
+        "SELECT pg_advisory_xact_lock(hashtext('shared_settings_check_in'))"
+      );
+
+      await expect(
+        checkIn(id, { identity }, '1.7.2', 60_000, decide)
+      ).rejects.toMatchObject({ code: '57014' });
+    } finally {
+      await holder.query('ROLLBACK').catch(() => {});
+      holder.release();
+    }
+  }, 20_000);
+
   it('agrees once when two instances check in at the same moment', async () => {
     const first = await joinMembers('1.7.2', { identity }, EXPIRY_MS);
     const second = await joinMembers('1.7.2', { identity }, EXPIRY_MS);

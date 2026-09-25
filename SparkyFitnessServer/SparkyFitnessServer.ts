@@ -132,6 +132,10 @@ import { cleanupSessions } from './auth.js';
 import { deleteExpiredTickets } from './services/passkeyTicketService.js';
 import withingsServiceCentral from './services/withingsService.js';
 import { upsertEnvOidcProvider } from './utils/oidcEnvConfig.js';
+import {
+  startSharedSettings,
+  stopSharedSettings,
+} from './services/sharedSettingsService.js';
 import userRepository from './models/userRepository.js';
 import genericHealthRoutes from './routes/genericHealthRoutes.js';
 
@@ -1048,6 +1052,7 @@ const scheduleLiftosaurSyncs = async () => {
 // imported, so that Better Auth's eager schema validation (run at auth.ts
 // module scope) sees the migrated schema. Do not move them back in here.
 (async () => {
+  await startSharedSettings();
   // Upsert OIDC provider from env when SPARKY_FITNESS_OIDC_ISSUER_URL + CLIENT_ID + SECRET + PROVIDER_SLUG are set
   try {
     await upsertEnvOidcProvider();
@@ -1135,6 +1140,7 @@ const scheduleLiftosaurSyncs = async () => {
     log('info', `${signal} received, shutting down gracefully...`);
     server.close(async () => {
       log('info', 'HTTP server closed, draining database pools...');
+      await stopSharedSettings();
       try {
         await endPool();
         log('info', 'Database pools closed. Exiting.');
