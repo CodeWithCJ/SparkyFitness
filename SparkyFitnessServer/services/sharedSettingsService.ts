@@ -1,4 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
+import { z } from 'zod';
 import { log } from '../config/logging.js';
 import {
   checkIn,
@@ -6,7 +7,10 @@ import {
   joinMembers,
   withdrawMember,
 } from '../models/sharedSettingsRepository.js';
-import { getAuthEnvOverrides } from '../utils/authEnvOverrides.js';
+import {
+  getAuthEnvOverrides,
+  type AuthEnvOverrides,
+} from '../utils/authEnvOverrides.js';
 import { getAppVersion } from './versionService.js';
 
 /** How long a different live instance count must hold before it becomes the expected count. */
@@ -16,7 +20,76 @@ export const HEARTBEAT_MS = 10_000;
 /** How long a membership lasts without renewal: three missed heartbeats. */
 export const MEMBER_EXPIRY_MS = 30_000;
 
-const SHARED_GROUPS = ['identity'] as const;
+/**
+ * Settings that every instance must agree on, by group. Every field is
+ * nullable, and null means its environment variable is unset. Add fields
+ * freely; never change an existing field's type or meaning, because another
+ * release may still read the saved record during a rolling update.
+ */
+export const SHARED_GROUP_SCHEMAS = {
+  identity: z.strictObject({
+    enable_email_password_login: z.boolean().nullable(),
+    is_oidc_active: z.literal(true).nullable(),
+  }) satisfies z.ZodType<AuthEnvOverrides>,
+};
+
+type SharedGroup = keyof typeof SHARED_GROUP_SCHEMAS;
+const SHARED_GROUPS = Object.keys(SHARED_GROUP_SCHEMAS) as SharedGroup[];
+
+export interface SavedGroup {
+  payload: unknown;
+  releaseVersion: string;
+}
+
+export type ReadResult<T> =
+  | { status: 'ok'; settings: T; unknownFields: string[] }
+  | { status: 'invalid'; settings: T | null; unknownFields: string[] };
+
+/**
+ * Turns a group's saved record into settings this release can use.
+ *
+ * No record reads as every field unset. A missing field reads as unset,
+ * because the release that wrote the record did not have it; unknown fields
+ * are ignored and reported so the caller can warn. A record written by this
+ * same release that lacks a field, or holds a wrongly typed field, is damaged:
+ * the last good settings are kept instead of silently switching anything off.
+ */
+export function readSharedGroup<S extends z.ZodObject>(
+  schema: S,
+  saved: SavedGroup | undefined,
+  currentVersion: string,
+  lastGood: z.infer<S> | null
+): ReadResult<z.infer<S>> {
+  const fields = Object.keys(schema.shape);
+  const unset = Object.fromEntries(
+    fields.map((field) => [field, null])
+  ) as z.infer<S>;
+  if (!saved) return { status: 'ok', settings: unset, unknownFields: [] };
+
+  const { payload } = saved;
+  if (
+    typeof payload !== 'object' ||
+    payload === null ||
+    Array.isArray(payload)
+  ) {
+    return { status: 'invalid', settings: lastGood, unknownFields: [] };
+  }
+  const unknownFields = Object.keys(payload).filter(
+    (key) => !fields.includes(key)
+  );
+  const damaged =
+    saved.releaseVersion === currentVersion &&
+    fields.some((field) => !(field in payload));
+  const parsed = z.object(schema.shape).partial().safeParse(payload);
+  if (damaged || !parsed.success) {
+    return { status: 'invalid', settings: lastGood, unknownFields };
+  }
+  return {
+    status: 'ok',
+    settings: { ...unset, ...parsed.data },
+    unknownFields,
+  };
+}
 
 export interface LiveMember {
   id: string;
