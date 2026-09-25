@@ -1,5 +1,6 @@
 import { log } from '../config/logging.js';
 import oidcProviderRepository from '../models/oidcProviderRepository.js';
+import { getAgreedIdentitySettings } from './agreedSharedSettings.js';
 const ENV_ISSUER = 'SPARKY_FITNESS_OIDC_ISSUER_URL';
 const ENV_CLIENT_ID = 'SPARKY_FITNESS_OIDC_CLIENT_ID';
 const ENV_CLIENT_SECRET = 'SPARKY_FITNESS_OIDC_CLIENT_SECRET';
@@ -71,7 +72,7 @@ async function upsertEnvOidcProvider() {
   const config = getEnvOidcConfig();
   const { getSystemClient } = await import('../db/poolManager.js');
   // if oidc is disabled or env config missing -> delete env configured oidc provider
-  if (!config || process.env.SPARKY_FITNESS_OIDC_AUTH_ENABLED !== 'true') {
+  if (!config || getAgreedIdentitySettings().is_oidc_active !== true) {
     const client = await getSystemClient();
     try {
       await client.query(

@@ -6,6 +6,7 @@ import {
   withdrawMember,
 } from '../models/sharedSettingsRepository.js';
 import { log } from '../config/logging.js';
+import { getAgreedIdentitySettings } from '../utils/agreedSharedSettings.js';
 import {
   HEARTBEAT_MS,
   startSharedSettings,
@@ -64,7 +65,7 @@ describe('shared settings membership loop', () => {
   });
 
   it('serves without waiting when a group has no saved settings yet', async () => {
-    vi.mocked(getSharedSettings).mockResolvedValueOnce({});
+    vi.mocked(getSharedSettings).mockResolvedValue({});
 
     await startSharedSettings();
 
@@ -73,6 +74,80 @@ describe('shared settings membership loop', () => {
       'warn',
       expect.stringContaining('No agreed settings yet for identity')
     );
+  });
+
+  it('serves the agreed settings instead of its own environment', async () => {
+    vi.stubEnv('SPARKY_FITNESS_OIDC_AUTH_ENABLED', '');
+    vi.mocked(getSharedSettings).mockResolvedValue({
+      identity: {
+        payload: { enable_email_password_login: false, is_oidc_active: true },
+        releaseVersion: '1.7.2',
+      },
+    });
+
+    await startSharedSettings();
+
+    expect(getAgreedIdentitySettings()).toEqual({
+      enable_email_password_login: false,
+      is_oidc_active: true,
+    });
+  });
+
+  it('warns once about a field this release does not support', async () => {
+    vi.mocked(getSharedSettings).mockResolvedValue({
+      identity: {
+        payload: { ...identity, disable_passkey_login: true },
+        releaseVersion: '1.9.0',
+      },
+    });
+
+    await startSharedSettings();
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_MS * 2);
+
+    const warnings = vi
+      .mocked(log)
+      .mock.calls.filter(([, message]) =>
+        String(message).includes('disable_passkey_login')
+      );
+    expect(warnings).toHaveLength(1);
+    expect(getAgreedIdentitySettings()).toEqual(identity);
+  });
+
+  it('holds startup until a damaged record is repaired', async () => {
+    vi.mocked(getSharedSettings)
+      .mockResolvedValueOnce({
+        identity: { payload: {}, releaseVersion: '1.7.2' },
+      })
+      .mockResolvedValue({
+        identity: { payload: identity, releaseVersion: '1.7.2' },
+      });
+    let started = false;
+    const pending = startSharedSettings().then(() => {
+      started = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_MS - 1);
+    expect(started).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    await pending;
+
+    expect(getAgreedIdentitySettings()).toEqual(identity);
+  });
+
+  it('keeps the last good settings when a record is damaged later', async () => {
+    await startSharedSettings();
+    vi.stubEnv('SPARKY_FITNESS_OIDC_AUTH_ENABLED', '');
+    vi.mocked(getSharedSettings).mockResolvedValue({
+      identity: { payload: {}, releaseVersion: '1.7.2' },
+    });
+
+    await vi.advanceTimersByTimeAsync(HEARTBEAT_MS * 2);
+
+    expect(getAgreedIdentitySettings()).toEqual(identity);
+    const errors = vi
+      .mocked(log)
+      .mock.calls.filter(([level]) => level === 'error');
+    expect(errors).toHaveLength(1);
   });
 
   it('renews membership on every heartbeat', async () => {

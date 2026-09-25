@@ -3,6 +3,7 @@ import {
   getEnvOidcConfig,
   upsertEnvOidcProvider,
 } from '../utils/oidcEnvConfig.js';
+import { setAgreedSharedSettings } from '../utils/agreedSharedSettings.js';
 
 const { repository, client } = vi.hoisted(() => ({
   repository: {
@@ -102,6 +103,38 @@ describe('oidcEnvConfig', () => {
         expect.objectContaining({ provider_id: 'authentik' })
       );
       expect(repository.updateOidcProvider).not.toHaveBeenCalled();
+    });
+
+    describe('with agreed shared settings', () => {
+      afterAll(() => {
+        setAgreedSharedSettings(null);
+      });
+
+      it('keeps the provider when everyone agreed OIDC is on', async () => {
+        process.env.SPARKY_FITNESS_OIDC_AUTH_ENABLED = 'false';
+        setAgreedSharedSettings({
+          identity: { enable_email_password_login: null, is_oidc_active: true },
+        });
+        repository.getOidcProviderById.mockResolvedValue(null);
+
+        await upsertEnvOidcProvider();
+
+        expect(client.query).not.toHaveBeenCalled();
+        expect(repository.upsertEnvOidcProvider).toHaveBeenCalled();
+      });
+
+      it('removes the provider when the agreed flag is unset', async () => {
+        setAgreedSharedSettings({
+          identity: { enable_email_password_login: null, is_oidc_active: null },
+        });
+
+        await upsertEnvOidcProvider();
+
+        expect(client.query).toHaveBeenCalledWith(
+          expect.stringContaining('DELETE FROM "sso_provider"')
+        );
+        expect(repository.upsertEnvOidcProvider).not.toHaveBeenCalled();
+      });
     });
   });
 

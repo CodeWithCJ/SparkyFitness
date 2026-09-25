@@ -12,6 +12,7 @@ import {
   type AuthEnvOverrides,
 } from '../utils/authEnvOverrides.js';
 import { getAppVersion } from './versionService.js';
+import { setAgreedSharedSettings } from '../utils/agreedSharedSettings.js';
 
 /** How long a different live instance count must hold before it becomes the expected count. */
 export const MEMBERSHIP_GRACE_MS = 5 * 60_000;
@@ -35,6 +36,10 @@ export const SHARED_GROUP_SCHEMAS = {
 
 type SharedGroup = keyof typeof SHARED_GROUP_SCHEMAS;
 const SHARED_GROUPS = Object.keys(SHARED_GROUP_SCHEMAS) as SharedGroup[];
+
+export type SharedSettings = {
+  [G in SharedGroup]: z.infer<(typeof SHARED_GROUP_SCHEMAS)[G]>;
+};
 
 export interface SavedGroup {
   payload: unknown;
@@ -194,6 +199,7 @@ function currentProposals(): Record<string, unknown> {
 }
 
 let memberId: string | null = null;
+let agreedCopy: Partial<SharedSettings> = {};
 let heartbeat: NodeJS.Timeout | null = null;
 let inFlight: Promise<void> | null = null;
 let stopped = false;
@@ -217,8 +223,57 @@ function logOutcomes(result: AgreementResult): void {
   }
 }
 
+const reported = new Set<string>();
+
+/** Logs a read problem once until it clears, so a heartbeat does not repeat it. */
+function reportOnce(key: string, message: string, level: 'warn' | 'error') {
+  if (reported.has(key)) return;
+  reported.add(key);
+  log(level, `[SHARED SETTINGS] ${message}`);
+}
+
+/**
+ * Reads every group's saved record into this instance's agreed copy.
+ * Returns false while a damaged record leaves a group with nothing usable.
+ */
+async function refreshAgreedSettings(): Promise<boolean> {
+  const saved = await getSharedSettings();
+  const version = getAppVersion();
+  const next: Partial<SharedSettings> = {};
+  let usable = true;
+  for (const group of SHARED_GROUPS) {
+    const result = readSharedGroup(
+      SHARED_GROUP_SCHEMAS[group],
+      saved[group],
+      version,
+      agreedCopy[group] ?? null
+    );
+    for (const field of result.unknownFields) {
+      reportOnce(
+        `unknown:${group}.${field}`,
+        `${group}: ignoring ${field}, which this release does not support.`,
+        'warn'
+      );
+    }
+    if (result.status === 'invalid') {
+      reportOnce(
+        `invalid:${group}`,
+        `${group}: saved settings are damaged; keeping the last good copy until every instance agrees again.`,
+        'error'
+      );
+    } else {
+      reported.delete(`invalid:${group}`);
+    }
+    if (result.settings) next[group] = result.settings;
+    else usable = false;
+  }
+  agreedCopy = next;
+  setAgreedSharedSettings(next);
+  return usable;
+}
+
 /** Renews membership and applies agreement once, rejoining if the membership expired. */
-async function checkInOnce(): Promise<void> {
+async function checkInOnce(): Promise<boolean> {
   const proposals = currentProposals();
   const version = getAppVersion();
   const decide = (snapshot: Omit<AgreementInput, 'groups'>) =>
@@ -243,21 +298,25 @@ async function checkInOnce(): Promise<void> {
     );
   }
   if (result) logOutcomes(result);
+  return refreshAgreedSettings();
 }
 
 /**
  * Joins the shared settings membership before the server starts serving.
  *
- * Checks in once and never waits: an all-in-one server saves its own settings
- * on that first check-in, and a group that has no saved record yet reads as
- * unset until every instance agrees, so a release that adds a group cannot
- * stall a rolling update. Afterwards a heartbeat renews membership in the
- * background; a failed heartbeat is logged and the server keeps serving the
- * settings it already has.
+ * Never waits for agreement: an all-in-one server saves its own settings on
+ * the first check-in, and a group with no saved record reads as unset until
+ * every instance agrees, so a release that adds a group cannot stall a
+ * rolling update. Only a damaged record with no earlier good copy holds
+ * startup, until the next agreement rewrites it. Afterwards a heartbeat
+ * renews membership in the background; a failed heartbeat is logged and the
+ * server keeps serving the settings it already has.
  */
 async function startSharedSettings(): Promise<void> {
   stopped = false;
-  await checkInOnce();
+  while (!(await checkInOnce())) {
+    await new Promise((resolve) => setTimeout(resolve, HEARTBEAT_MS));
+  }
   const saved = await getSharedSettings();
   const unsaved = SHARED_GROUPS.filter((group) => !(group in saved));
   if (unsaved.length > 0) {
@@ -269,6 +328,7 @@ async function startSharedSettings(): Promise<void> {
   heartbeat = setInterval(() => {
     if (inFlight) return;
     inFlight = checkInOnce()
+      .then(() => undefined)
       .catch((error: unknown) =>
         log('error', '[SHARED SETTINGS] Check-in failed:', error)
       )
@@ -288,6 +348,8 @@ async function stopSharedSettings(): Promise<void> {
   await inFlight;
   const id = memberId;
   memberId = null;
+  agreedCopy = {};
+  reported.clear();
   if (!id) return;
   try {
     await withdrawMember(id);

@@ -15,6 +15,7 @@ import {
 } from '../../services/passkeyTicketService.js';
 import { isDemoMode } from '../../middleware/demoGuardMiddleware.js';
 import { getClientIp } from '../../utils/clientIp.js';
+import { getAgreedIdentitySettings } from '../../utils/agreedSharedSettings.js';
 import {
   getDemoCredentials,
   seedDemoUser,
@@ -131,16 +132,13 @@ router.get('/settings', async (req, res) => {
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     log('error', `[AUTH CORE] Settings Error: ${error.message}`);
-    // Fallback safety, considering potential env override
-    const forceEmailLogin =
-      process.env.SPARKY_FITNESS_FORCE_EMAIL_LOGIN === 'true';
-    const disableEmailLogin =
-      process.env.SPARKY_FITNESS_DISABLE_EMAIL_LOGIN === 'true';
+    // Fallback safety, considering the agreed overrides
+    const overrides = getAgreedIdentitySettings();
     res.json({
       trusted_origin: null,
-      email: { enabled: forceEmailLogin || !disableEmailLogin },
+      email: { enabled: overrides.enable_email_password_login !== false },
       oidc: {
-        enabled: process.env.SPARKY_FITNESS_OIDC_AUTH_ENABLED === 'true',
+        enabled: overrides.is_oidc_active === true,
         providers: [],
         auto_redirect: false,
       },

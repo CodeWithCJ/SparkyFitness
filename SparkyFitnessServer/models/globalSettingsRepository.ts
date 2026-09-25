@@ -1,6 +1,7 @@
 import { getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
-import { getAuthEnvOverrides } from '../utils/authEnvOverrides.js';
+import { getAgreedIdentitySettings } from '../utils/agreedSharedSettings.js';
+/** Reads saved admin settings with the agreed environment overrides applied. */
 async function getGlobalSettings() {
   const client = await getSystemClient(); // System-level operation
   try {
@@ -11,7 +12,7 @@ async function getGlobalSettings() {
     // Map mandatory MFA
     settings.is_mfa_mandatory = !!settings.mfa_mandatory;
     // Environment variable overrides
-    const overrides = getAuthEnvOverrides(process.env);
+    const overrides = getAgreedIdentitySettings();
     // Manage enable_email_password_login
     settings.is_email_login_env_configured =
       overrides.enable_email_password_login !== null;

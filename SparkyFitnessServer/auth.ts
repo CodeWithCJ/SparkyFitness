@@ -343,7 +343,10 @@ const auth = betterAuth({
     // the *public* route instead; SparkyFitnessServer.ts refuses
     // /api/auth/sign-in/email and /sign-up/email with the identical response
     // Better Auth would have sent, so nothing outside can tell the difference.
-    enabled: isDemoMode() || !isEmailLoginDisabled(),
+    // Read on every sign-in, so an agreed change applies without a restart.
+    get enabled() {
+      return isDemoMode() || !isEmailLoginDisabled();
+    },
     requireEmailVerification: false,
     minPasswordLength: 8,
     sendResetPassword: async ({ user, url }) => {
