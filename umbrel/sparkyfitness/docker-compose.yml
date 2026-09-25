@@ -8,6 +8,11 @@ services:
       # ever call. None of them can carry an Umbrel auth cookie, so they are
       # whitelisted and left to Better Auth and the app's own API-key checks.
       # The web UI itself stays behind Umbrel auth.
+      # Caveat: /uploads is served as static files ahead of the app's auth
+      # middleware, so whitelisting it makes ordinary upload URLs reachable
+      # without any login. The server already blocks the check-in and pregnancy
+      # subtrees outright. That is upstream behaviour on every deployment; the
+      # whitelist only removes Umbrel's outer gate in front of it.
       PROXY_AUTH_WHITELIST: "/api,/api/*,/health-data,/health-data/*,/uploads/*,/mcp,/mcp/*"
 
   db:
@@ -57,8 +62,13 @@ services:
       # --- Origins and proxying ---
       # Primary browser origin, used for CORS and Better Auth trusted origins.
       SPARKY_FITNESS_FRONTEND_URL: http://${DEVICE_DOMAIN_NAME}:${APP_PROXY_PORT}
-      # Also accept the app's Tor hidden service when remote access is enabled.
-      SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS: http://${APP_HIDDEN_SERVICE}
+      # umbrelOS serves every app port over both HTTP and TLS, and the mobile
+      # app refuses a plain-HTTP server, so the HTTPS origin has to be trusted
+      # too. ALLOW_PRIVATE_NETWORK_CORS below does not cover it: that check only
+      # recognises IP literals and localhost, never a .local name.
+      # The Tor origin is appended only when a hidden service exists — an empty
+      # APP_HIDDEN_SERVICE would otherwise yield a bare "http://".
+      SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS: https://${DEVICE_DOMAIN_NAME}:${APP_PROXY_PORT}${APP_HIDDEN_SERVICE:+,http://}${APP_HIDDEN_SERVICE}
       # Umbrel is reached over plain HTTP on the LAN, commonly by IP rather than
       # by .local name. This trusts private-network origins and drops the Secure
       # cookie flag, without which sign-in fails on every non-HTTPS origin.

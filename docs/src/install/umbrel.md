@@ -20,7 +20,7 @@ anyone else.
 
 | Setting | Value on Umbrel |
 | --- | --- |
-| App URL | `http://umbrel.local:3019` |
+| App URL | `http://umbrel.local:3019` (also reachable over `https://`) |
 | Database | Bundled PostgreSQL 18, no setup needed |
 | Secrets | Derived from the device seed; never regenerated |
 | Data | `~/umbrel/app-data/sparkyfitness/data/` (database, uploads, backups) |
@@ -36,13 +36,29 @@ settings does.
 The web UI sits behind your Umbrel login, so anyone already signed in to Umbrel
 opens it without a second prompt.
 
-The API (`/api`, `/health-data`, `/uploads`, `/mcp`) is exempt from the Umbrel
-login, because the SparkyFitness mobile app, Apple Health and Google Fit sync,
-and API-key clients cannot send an Umbrel session cookie. Those routes are
-protected by SparkyFitness's own authentication and API keys.
+`/api`, `/health-data` and `/mcp` are exempt from the Umbrel login, because the
+SparkyFitness mobile app, Apple Health and Google Fit sync, and API-key clients
+cannot send an Umbrel session cookie. Protected handlers on those paths still
+require a SparkyFitness session or API key.
 
-To connect the mobile app, point it at `http://umbrel.local:3019` (or your
-Umbrel's LAN IP) and sign in with your SparkyFitness account.
+`/uploads` is exempt too, and it is **not** behind SparkyFitness authentication.
+The server serves it as static files, so anyone who can reach your Umbrel on
+port 3019 can fetch an upload whose URL they know. Check-in photos and pregnancy
+uploads are the exception — those subtrees are blocked outright. This is how
+SparkyFitness serves images on every deployment, not something the Umbrel
+package changes, but the whitelist does mean your Umbrel login is not a second
+gate in front of them.
+
+### Connecting the mobile app
+
+Use **`https://umbrel.local:3019`**, or `https://<your-Umbrel-LAN-IP>:3019`.
+
+Release builds of the mobile app reject a plain-HTTP server, because HTTPS is
+required to register passkeys, use the camera, and satisfy Apple Health and
+Health Connect policy. umbrelOS serves every app port over both HTTP and TLS, so
+the HTTPS URL works on the same port — but the certificate comes from Umbrel's
+own local authority, so your phone will not trust it until you install and trust
+that certificate.
 
 ## Limitations
 

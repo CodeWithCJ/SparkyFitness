@@ -31,6 +31,7 @@ const MANIFEST_ACCEPT = [
   'application/vnd.docker.distribution.manifest.list.v2+json',
 ].join(',');
 
+/** Parse CLI flags into `{version, postgres, help}`, rejecting a malformed tag early. */
 function parseArgs(argv) {
   const args = { version: null, postgres: true };
   for (let i = 0; i < argv.length; i += 1) {
@@ -52,6 +53,7 @@ function parseArgs(argv) {
   return args;
 }
 
+/** GET a path under this repo's GitHub API, authenticating when a token is present. */
 async function githubJson(path) {
   const headers = { Accept: 'application/vnd.github+json' };
   // Anonymous works for a public repo, but Actions runners share an IP pool and
@@ -62,6 +64,7 @@ async function githubJson(path) {
   return res.json();
 }
 
+/** Resolve the release to package: an explicit tag, else the newest published one. */
 async function getRelease(version) {
   if (version) return githubJson(`/releases/tags/${version}`);
   // Deliberately not /releases/latest: this must agree with the tag that
@@ -136,10 +139,12 @@ const NOISE = [
   /^update (weblate|locales|translations)\b/i,
 ];
 
+/** True when a bullet is routine housekeeping that does not belong in store copy. */
 function isNoise(text) {
   return NOISE.some((re) => re.test(text));
 }
 
+/** Strip changelog noise from one bullet: PR attribution, links, and commit-type prefixes. */
 function cleanBullet(text) {
   return text
     .replace(/\s+by\s+@[\w-]+\s+in\s+https?:\/\/\S+$/i, '') // "by @user in <pr url>"
@@ -187,6 +192,7 @@ export async function resolveDigest(repo, tag) {
   return { digest, platforms };
 }
 
+/** Repin one `image:` line to a new tag and digest, erroring if that image is absent. */
 function replaceImage(source, repo, tagAndDigest, file) {
   // The trailing ':' keeps "codewithcj/sparkyfitness:" from also matching
   // "codewithcj/sparkyfitness_server:".
@@ -195,6 +201,7 @@ function replaceImage(source, repo, tagAndDigest, file) {
   return source.replace(pattern, `$1${tagAndDigest}`);
 }
 
+/** Rewrite `version` and the `releaseNotes` block, returning the old and new manifest text. */
 function updateManifest(version, noteLines) {
   const source = readFileSync(MANIFEST, 'utf8');
   let out = source.replace(/^version:.*$/m, `version: "${version}"`);
@@ -212,6 +219,7 @@ function updateManifest(version, noteLines) {
   return { source, out };
 }
 
+/** Resolve the release, repin every image, and write the package only when something changed. */
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {

@@ -29,7 +29,17 @@ sparkyfitness/
   opens `/api`, `/health-data`, `/uploads` and `/mcp`, which are the only paths
   the mobile app, Health/Google Fit sync, and API-key clients use. None of them
   can carry an Umbrel auth cookie; Better Auth and the app's API-key checks
-  guard those routes.
+  guard the protected handlers. `/uploads` is the exception — the server serves
+  it statically, ahead of its auth middleware, so those URLs are reachable
+  without a login on any deployment. Only the check-in and pregnancy subtrees
+  are blocked outright.
+- **The HTTPS origin is trusted as well as the HTTP one.** umbrelOS serves each
+  app port over both HTTP and TLS, and release builds of the mobile app refuse a
+  plain-HTTP server. `ALLOW_PRIVATE_NETWORK_CORS` does not cover the HTTPS
+  origin, because that check only recognises IP literals and localhost, never a
+  `.local` name — so the HTTPS origin is passed explicitly in
+  `SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS`, alongside the Tor origin when one
+  exists.
 - **`ALLOW_PRIVATE_NETWORK_CORS: "true"`.** Umbrel is reached over plain HTTP
   and often by LAN IP rather than by `.local` name. This trusts private-network
   origins and drops the `Secure` cookie flag, without which sign-in fails on
