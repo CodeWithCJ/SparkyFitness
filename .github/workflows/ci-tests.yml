@@ -62,6 +62,8 @@ jobs:
               - 'SparkyFitnessServer/tests/stravaActivityDetailCleanup.integration.test.ts'
               - 'SparkyFitnessServer/tests/oidcProviderRepository.integration.test.ts'
               - 'SparkyFitnessServer/models/oidcProviderRepository.ts'
+              - 'SparkyFitnessServer/tests/sharedSettingsRepository.integration.test.ts'
+              - 'SparkyFitnessServer/models/sharedSettingsRepository.ts'
               - 'SparkyFitnessServer/package.json'
               - '.github/workflows/ci-tests.yml'
 
@@ -264,9 +266,9 @@ jobs:
       # The schema + RLS policies are now applied and the non-superuser app role
       # exists, so the permission matrix can verify every table's real RLS
       # behaviour as the app role (superuser DB user seeds, app role is enforced).
-      - name: Verify RLS, Strava cleanup, OIDC providers, Better Auth schema and startup locking
+      - name: Verify RLS, Strava cleanup, OIDC providers, shared settings, Better Auth schema and startup locking
         run: |
-          pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts tests/stravaActivityDetailCleanup.integration.test.ts tests/betterAuthSchemaCheck.integration.test.ts tests/oidcProviderRepository.integration.test.ts
+          pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts tests/stravaActivityDetailCleanup.integration.test.ts tests/betterAuthSchemaCheck.integration.test.ts tests/oidcProviderRepository.integration.test.ts tests/sharedSettingsRepository.integration.test.ts
           # Initialization reapplies policies, so run it after the other database tests.
           RUN_DATABASE_INITIALIZATION_TEST=1 pnpm exec vitest run tests/initializeDatabase.integration.test.ts
         env:
