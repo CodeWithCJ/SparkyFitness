@@ -1,4 +1,4 @@
-import { volumeFromMl, weightFromKg } from './unitConversions';
+import { weightFromKg } from './unitConversions';
 
 /**
  * `target_weight` is a NUMERIC(5,2) column, so node-postgres serializes it as a numeric
@@ -17,13 +17,15 @@ export function resolveWeightGoal(
   return weightFromKg(targetWeightKg, unit);
 }
 
-export function resolveHydrationGoal(
-  waterGoalMl: number,
-  unit: string
-): number | undefined {
+/**
+ * `HydrationBarChart` expects `goal` in raw millilitres (matching `data`'s unit) and
+ * converts it to the display unit itself, the same way it converts each plotted point —
+ * converting here too would double-convert it.
+ */
+export function resolveHydrationGoal(waterGoalMl: number): number | undefined {
   if (waterGoalMl <= 0) {
     return undefined;
   }
 
-  return volumeFromMl(waterGoalMl, unit);
+  return waterGoalMl;
 }

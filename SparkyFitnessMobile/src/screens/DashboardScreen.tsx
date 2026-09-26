@@ -278,10 +278,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   // The hydration card and the hydration trend must agree on the unit, so both read it
   // from here rather than each resolving the fallback chain themselves.
   const waterDisplayUnit = waterUnit || preferences?.water_display_unit || 'ml';
-  const hydrationGoal = resolveHydrationGoal(
-    summary?.waterGoal ?? 0,
-    waterDisplayUnit
-  );
+  const hydrationGoal = resolveHydrationGoal(summary?.waterGoal ?? 0);
 
   // The chart is a single-axis line graph; if the user picked stones+lbs, plot lbs.
   const weightUnit: 'kg' | 'lbs' =

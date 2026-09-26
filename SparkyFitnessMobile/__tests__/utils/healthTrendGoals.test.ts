@@ -24,15 +24,18 @@ describe('resolveWeightGoal', () => {
 });
 
 describe('resolveHydrationGoal', () => {
-  test('converts a millilitre water goal into the display unit', () => {
-    expect(resolveHydrationGoal(2500, 'oz')).toBeCloseTo(84.5351, 3);
-  });
-
-  test('leaves a millilitre water goal unconverted for the ml display unit', () => {
-    expect(resolveHydrationGoal(2500, 'ml')).toBe(2500);
+  // `HydrationBarChart` expects `goal` in raw millilitres (matching `data`'s unit) and
+  // converts it to the display unit itself, the same way it converts each plotted point —
+  // converting here too would double-convert it.
+  test('returns the millilitre water goal unchanged', () => {
+    expect(resolveHydrationGoal(2500)).toBe(2500);
   });
 
   test('returns undefined when the water goal is zero', () => {
-    expect(resolveHydrationGoal(0, 'ml')).toBeUndefined();
+    expect(resolveHydrationGoal(0)).toBeUndefined();
+  });
+
+  test('returns undefined for a negative water goal', () => {
+    expect(resolveHydrationGoal(-1)).toBeUndefined();
   });
 });
