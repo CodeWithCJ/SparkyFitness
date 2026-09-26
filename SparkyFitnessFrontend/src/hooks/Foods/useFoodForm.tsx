@@ -1142,17 +1142,18 @@ export function useCustomFoodForm({
         serving_size: incoming.serving_size,
         serving_unit: incoming.serving_unit,
       };
+      // Mirror a fresh import: overwrite every source field, including the
+      // ones the source does not provide. foodVariantToFormVariant maps 0
+      // (the server's "not provided" marker) to undefined, so assigning
+      // unconditionally also clears values that predate this refresh —
+      // previously those kept their stale values because the undefined
+      // check below would have skipped them.
       for (const nutrient of nutrientFields) {
-        const value = incomingForm[nutrient];
-        if (value !== undefined) {
-          patch[nutrient] = value;
-        }
+        patch[nutrient] = incomingForm[nutrient];
       }
-      if (incoming.glycemic_index) {
-        patch.glycemic_index = sanitizeGlycemicIndexFrontend(
-          incoming.glycemic_index
-        );
-      }
+      patch.glycemic_index = sanitizeGlycemicIndexFrontend(
+        incoming.glycemic_index
+      );
 
       let defaultIndex = -1;
       const nextVariants = variants.map((variant, index) => {

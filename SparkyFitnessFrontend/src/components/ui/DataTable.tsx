@@ -140,11 +140,17 @@ export function DataTable<TData extends RowData>({
 
   // Single-click handler that ignores clicks originating on interactive
   // elements (checkboxes, buttons, links, inputs) so row actions keep working.
+  // Radix menus render through a Portal, but React synthetic events still
+  // bubble to the row's onClick, so menu items (divs with role="menuitem")
+  // must be excluded explicitly or a menu click also triggers the row action
+  // (e.g. the foods row opened the edit dialog before the chosen action ran).
   const handleRowClick = (event: ReactMouseEvent, row: TData) => {
     if (!onRowClick) return;
     if (
       event.target instanceof HTMLElement &&
-      event.target.closest('button, a, input')
+      event.target.closest(
+        'button, a, input, [role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [role="menu"], [data-radix-popper-content-wrapper]'
+      )
     ) {
       return;
     }
