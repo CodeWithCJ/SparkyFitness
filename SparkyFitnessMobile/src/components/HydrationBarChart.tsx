@@ -19,6 +19,8 @@ type HydrationBarChartProps = {
   range: HealthTrendDateRange;
   /** The user's `water_display_unit`. Points arrive from the server in millilitres. */
   unit: string;
+  /** The user's daily water goal, in millilitres, matching `data`'s unit. */
+  goal?: number | null;
 };
 
 /** A point already converted out of millilitres, so the plot and its labels agree. */
@@ -64,6 +66,7 @@ const HydrationBarChart: React.FC<HydrationBarChartProps> = ({
   isError,
   range,
   unit,
+  goal,
 }) => {
   const { t } = useTranslation();
 
@@ -74,6 +77,11 @@ const HydrationBarChart: React.FC<HydrationBarChartProps> = ({
         volume: volumeFromMl(point.milliliters, unit),
       })),
     [data, unit]
+  );
+
+  const convertedGoal = useMemo(
+    () => (goal != null ? volumeFromMl(goal, unit) : goal),
+    [goal, unit]
   );
 
   const formatTooltip = useCallback(
@@ -91,6 +99,7 @@ const HydrationBarChart: React.FC<HydrationBarChartProps> = ({
       title={t('charts.hydration.title', { defaultValue: 'Hydration' })}
       getValue={getVolume}
       formatTooltip={formatTooltip}
+      goalValue={convertedGoal}
       errorText={t('charts.hydration.loadFailed', {
         defaultValue: 'Failed to load hydration data',
       })}

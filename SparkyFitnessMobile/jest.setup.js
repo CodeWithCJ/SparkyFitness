@@ -544,6 +544,8 @@ jest.mock('@shopify/react-native-skia', () => {
     Rect: () => null,
     RoundedRect: () => null,
     Path: () => null,
+    Line: () => null,
+    DashPathEffect: () => null,
     Group: ({ children }) => children,
     Skia: {
       Path: {

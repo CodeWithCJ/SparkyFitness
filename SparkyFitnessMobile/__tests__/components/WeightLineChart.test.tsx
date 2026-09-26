@@ -15,9 +15,13 @@ jest.mock('victory-native', () => {
     CartesianChart: ({
       children,
       data,
+      domain,
+      yAxis,
     }: {
       children: (arg: unknown) => React.ReactNode;
       data: { day: string; weight: number }[];
+      domain?: { y?: [number, number] };
+      yAxis?: unknown;
     }) => {
       // Stable identity across renders: `ChartLayoutReporter` reports the render arg through
       // an effect keyed on it, so fresh objects each render would spin the chart's layout state.
@@ -32,13 +36,15 @@ jest.mock('victory-native', () => {
             })),
           },
           chartBounds: { left: 0, right: 100, top: 0, bottom: 100 },
+          // Identity scale: simple enough for a test to hand-verify a goal line's position.
+          yScale: (value: number) => value,
         }),
         [data]
       );
 
       return ReactModule.createElement(
         View,
-        { testID: 'cartesian-chart' },
+        { testID: 'cartesian-chart', domain, yAxis },
         children(renderArg)
       );
     },
@@ -49,13 +55,28 @@ jest.mock('victory-native', () => {
   };
 });
 
+jest.mock('@shopify/react-native-skia', () => {
+  const ReactModule: typeof import('react') = require('react');
+  const { View }: typeof import('react-native') = require('react-native');
+  return {
+    Line: ({ children, ...props }: Record<string, unknown>) =>
+      ReactModule.createElement(
+        View,
+        { testID: 'goal-line', ...props },
+        children
+      ),
+    DashPathEffect: () => null,
+    matchFont: jest.fn(() => null),
+  };
+});
+
 const weightSeries = (count: number): WeightDataPoint[] =>
   Array.from({ length: count }, (_, index) => ({
     day: `2026-06-0${index + 1}`,
     weight: 80 + index,
   }));
 
-const renderChart = (data: WeightDataPoint[]) =>
+const renderChart = (data: WeightDataPoint[], goal?: number | null) =>
   render(
     <WeightLineChart
       data={data}
@@ -63,6 +84,7 @@ const renderChart = (data: WeightDataPoint[]) =>
       isError={false}
       range="7d"
       unit="kg"
+      goal={goal}
     />
   );
 
@@ -102,5 +124,62 @@ describe('WeightLineChart', () => {
     expect(screen.getByText('No weight data for this period')).toBeTruthy();
     expect(screen.getByText('Weight')).toBeTruthy();
     expect(screen.queryByTestId('cartesian-chart')).toBeNull();
+  });
+
+  it('expands the y-domain to a nice round range that includes a goal outside the plotted range', () => {
+    // weightSeries(3) plots 80, 81, 82.
+    renderChart(weightSeries(3), 65);
+
+    expect(screen.getByTestId('cartesian-chart').props.domain).toEqual({
+      y: [65, 85],
+    });
+  });
+
+  it('labels a nice round whole-number range from the data alone when there is no goal', () => {
+    renderChart(weightSeries(3));
+
+    expect(screen.getByTestId('cartesian-chart').props.domain).toEqual({
+      y: [80, 82],
+    });
+  });
+
+  it('renders a dashed goal line at the goal value', () => {
+    renderChart(weightSeries(3), 65);
+
+    expect(screen.getByTestId('goal-line').props.p1).toEqual({ x: 0, y: 65 });
+  });
+
+  it('renders no goal line when there is no goal', () => {
+    renderChart(weightSeries(3));
+
+    expect(screen.queryByTestId('goal-line')).toBeNull();
+  });
+
+  it('labels the y-axis in nice round whole numbers up to a goal outside the plotted range', () => {
+    // weightSeries(3) plots 80, 81, 82.
+    renderChart(weightSeries(3), 65);
+
+    const [yAxisConfig] = screen.getByTestId('cartesian-chart').props.yAxis;
+    expect(yAxisConfig.tickValues).toEqual([65, 70, 75, 80, 85]);
+  });
+
+  it('labels the y-axis in whole numbers from the data alone when there is no goal', () => {
+    renderChart(weightSeries(3));
+
+    const [yAxisConfig] = screen.getByTestId('cartesian-chart').props.yAxis;
+    expect(yAxisConfig.tickValues).toEqual([80, 81, 82]);
+  });
+
+  // A `tickCount` smaller than `tickValues.length` makes victory-native re-sample the array
+  // by index (`downsampleTicks`), which can silently skip an interior value — e.g. 6 values
+  // downsampled to 5 drops index 2 because `Math.round(2.5)` rounds up to index 3.
+  it('sets tickCount to match tickValues.length so no interior tick is silently dropped', () => {
+    // A 60-65 range labels in 6 whole-number steps (60,61,62,63,64,65) — one more than the
+    // default 5-tick target.
+    renderChart([{ day: '2026-06-01', weight: 65 }], 60);
+
+    const [yAxisConfig] = screen.getByTestId('cartesian-chart').props.yAxis;
+    expect(yAxisConfig.tickValues).toEqual([60, 61, 62, 63, 64, 65]);
+    expect(yAxisConfig.tickCount).toBe(yAxisConfig.tickValues.length);
   });
 });

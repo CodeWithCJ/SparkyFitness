@@ -6,4 +6,6 @@ export interface UserProfile {
   bio: string | null;
   avatar_url: string | null;
   gender: 'male' | 'female' | null;
+  /** A NUMERIC(5,2) column, so node-postgres serializes it as a numeric string. */
+  target_weight: string | number | null;
 }
