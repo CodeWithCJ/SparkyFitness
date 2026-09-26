@@ -6,6 +6,7 @@ import {
   buildSqlSearch,
   buildSqlExactMatchOrder,
 } from '../utils/dbSearchHelper.js';
+import { isValidProviderType } from '../constants/foodProviders.js';
 import {
   localizeImages,
   toImageArray,
@@ -691,13 +692,40 @@ async function deleteFood(id: string, userId: string) {
     client.release();
   }
 }
+/**
+ * Appends a data-source (provider_type) filter to a WHERE clause list.
+ *
+ * `manual` matches foods without any data source (provider_type IS NULL),
+ * a valid provider type matches foods imported from that source, and
+ * `'all'` / empty / unknown values apply no filtering.
+ */
+function appendProviderTypeClause(
+  whereClauses: string[],
+  params: SqlParam[],
+  providerType: string | null | undefined,
+  tablePrefix: 'f.' | ''
+): void {
+  if (!providerType || providerType === 'all') {
+    return;
+  }
+  if (providerType === 'manual') {
+    whereClauses.push(`${tablePrefix}provider_type IS NULL`);
+    return;
+  }
+  if (isValidProviderType(providerType)) {
+    whereClauses.push(`${tablePrefix}provider_type = $${params.length + 1}`);
+    params.push(providerType);
+  }
+}
+
 async function getFoodsWithPagination(
   searchTerm: string | null | undefined,
   foodFilter: string | null | undefined,
   authenticatedUserId: string | null | undefined,
   limit: number,
   offset: number,
-  sortBy: string | null | undefined
+  sortBy: string | null | undefined,
+  providerType?: string
 ) {
   const client = await getClient(authenticatedUserId); // User-specific operation
   try {
@@ -727,6 +755,12 @@ async function getFoodsWithPagination(
     } else if (foodFilter === 'system') {
       whereClauses.push('f.user_id IS NULL');
     }
+
+    // Handle data-source filtering
+    appendProviderTypeClause(whereClauses, queryParams, providerType, 'f.');
+    // The helper may have appended a bind parameter; re-sync the index so
+    // later LIMIT/OFFSET/exact-match placeholders don't collide with it.
+    paramIndex = queryParams.length + 1;
 
     let query = `
       SELECT
@@ -779,7 +813,8 @@ async function getFoodsWithPagination(
 async function countFoods(
   searchTerm: string | null | undefined,
   foodFilter: string | null | undefined,
-  authenticatedUserId: string | null | undefined
+  authenticatedUserId: string | null | undefined,
+  providerType?: string
 ) {
   const client = await getClient(authenticatedUserId); // User-specific operation
   try {
@@ -806,6 +841,9 @@ async function countFoods(
     } else if (foodFilter === 'system') {
       whereClauses.push('user_id IS NULL');
     }
+
+    // Handle data-source filtering
+    appendProviderTypeClause(whereClauses, countQueryParams, providerType, '');
 
     const countQuery = `
       SELECT COUNT(*)

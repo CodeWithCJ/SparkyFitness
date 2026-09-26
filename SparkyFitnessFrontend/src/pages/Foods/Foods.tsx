@@ -83,6 +83,10 @@ import ImageLightbox from '@/components/ImageLightbox';
 import { useOpenFoodFactsContributionAvailability } from '@/hooks/Foods/useOpenFoodFactsContribution';
 import { isOpenFoodFactsContributionCandidate } from '@/utils/openFoodFactsContribution';
 import OpenFoodFactsContributionDialog from './OpenFoodFactsContributionDialog';
+import {
+  FOOD_PROVIDER_TYPES,
+  getProviderDisplayName,
+} from '@/utils/foodProviderLabels';
 
 const FoodDatabaseManager = () => {
   const { t } = useTranslation();
@@ -112,6 +116,8 @@ const FoodDatabaseManager = () => {
     currentPage,
     foodFilter,
     setFoodFilter,
+    providerFilter,
+    setProviderFilter,
     sortOrder,
     setSortOrder,
     foodData,
@@ -600,6 +606,37 @@ const FoodDatabaseManager = () => {
                 </Select>
               </div>
 
+              {/* Data source dropdown */}
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                <Select
+                  value={providerFilter}
+                  onValueChange={(value) => {
+                    setProviderFilter(value);
+                    clearSelection();
+                    setRowSelection({});
+                  }}
+                >
+                  <SelectTrigger className="w-44">
+                    <SelectValue
+                      placeholder={t('common.source', 'Data source')}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      {t('foodDatabaseManager.all', 'All')}
+                    </SelectItem>
+                    {FOOD_PROVIDER_TYPES.map((providerType) => (
+                      <SelectItem key={providerType} value={providerType}>
+                        {getProviderDisplayName(providerType)}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="manual">
+                      {t('foodDatabaseManager.manual', 'Manual')}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="flex gap-2 shrink-0 ml-auto">
                 <Button
                   variant="outline"
@@ -648,7 +685,11 @@ const FoodDatabaseManager = () => {
           <DataTable
             titleColumnId="name"
             getRowId={(row) => row.id}
-            onRowDoubleClick={setViewingFood}
+            onRowClick={(food) => {
+              if (!isEditMode && canEdit(food)) {
+                handleEdit(food);
+              }
+            }}
             onSortingChange={(sorting) => {
               if (sorting.length > 0) {
                 const sort = sorting[0];

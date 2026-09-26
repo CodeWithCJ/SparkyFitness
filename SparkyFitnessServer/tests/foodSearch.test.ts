@@ -54,6 +54,111 @@ describe('food model search query builder', () => {
       );
       expect(sql).toContain('LIMIT $5 OFFSET $6');
     });
+
+    describe('provider (data source) filtering', () => {
+      it('binds a valid provider type as a parameter after limit/offset ordering is intact', async () => {
+        await foodDb.getFoodsWithPagination(
+          'whey protein',
+          null,
+          'user-1',
+          10,
+          0,
+          null,
+          'usda'
+        );
+
+        const [sql, params] = mockClient.query.mock.calls[0];
+
+        expect(params).toEqual([
+          '%whey%',
+          '%protein%',
+          'usda',
+          '%whey protein%',
+          10,
+          0,
+        ]);
+        expect(sql).toContain('f.provider_type = $3');
+        expect(sql).toContain(
+          "ORDER BY (CASE WHEN CONCAT(f.brand, ' ', f.name) ILIKE $4::text THEN 0 ELSE 1 END)"
+        );
+        expect(sql).toContain('LIMIT $5 OFFSET $6');
+      });
+
+      it('filters manual foods with IS NULL and adds no parameter', async () => {
+        await foodDb.getFoodsWithPagination(
+          null,
+          null,
+          'user-1',
+          10,
+          0,
+          null,
+          'manual'
+        );
+
+        const [sql, params] = mockClient.query.mock.calls[0];
+
+        expect(params).toEqual([10, 0]);
+        expect(sql).toContain('f.provider_type IS NULL');
+        expect(sql).toContain('LIMIT $1 OFFSET $2');
+      });
+
+      it('ignores unknown provider values and applies no filter', async () => {
+        await foodDb.getFoodsWithPagination(
+          null,
+          null,
+          'user-1',
+          10,
+          0,
+          null,
+          'mystery'
+        );
+
+        const [sql, params] = mockClient.query.mock.calls[0];
+
+        expect(params).toEqual([10, 0]);
+        expect(sql).not.toContain('provider_type =');
+        expect(sql).not.toContain('provider_type IS NULL');
+      });
+
+      it('applies no provider filter for "all" or omitted values', async () => {
+        for (const providerType of ['all', undefined]) {
+          mockClient.query.mockClear();
+          await foodDb.getFoodsWithPagination(
+            null,
+            null,
+            'user-1',
+            10,
+            0,
+            null,
+            providerType
+          );
+
+          const [sql, params] = mockClient.query.mock.calls[0];
+          expect(params).toEqual([10, 0]);
+          expect(sql).not.toContain('provider_type =');
+          expect(sql).not.toContain('provider_type IS NULL');
+        }
+      });
+
+      it('re-syncs param indices when the mine filter and provider filter combine', async () => {
+        await foodDb.getFoodsWithPagination(
+          null,
+          'mine',
+          'user-1',
+          10,
+          0,
+          null,
+          'fatsecret'
+        );
+
+        const [sql, params] = mockClient.query.mock.calls[0];
+
+        expect(params).toEqual(['user-1', 'fatsecret', 10, 0]);
+        expect(sql).toContain('f.user_id = $1');
+        expect(sql).toContain('f.provider_type = $2');
+        expect(sql).toContain('LIMIT $3 OFFSET $4');
+      });
+    });
   });
 
   describe('countFoods', () => {
@@ -75,6 +180,39 @@ describe('food model search query builder', () => {
       expect(sql).toContain("CONCAT(brand, ' ', name) ILIKE $2");
       expect(sql).toContain("CONCAT(brand, ' ', name) ILIKE $3");
       expect(count).toBe(15);
+    });
+
+    it('appends the provider filter last for a valid provider type', async () => {
+      mockClient.query.mockResolvedValueOnce({ rows: [{ count: '3' }] });
+
+      const count = await foodDb.countFoods('whey', null, 'user-1', 'usda');
+
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(params).toEqual(['%whey%', 'usda']);
+      expect(sql).toContain('provider_type = $2');
+      expect(count).toBe(3);
+    });
+
+    it('uses IS NULL for manual foods without adding a parameter', async () => {
+      mockClient.query.mockResolvedValueOnce({ rows: [{ count: '2' }] });
+
+      const count = await foodDb.countFoods(null, null, 'user-1', 'manual');
+
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(params).toEqual([]);
+      expect(sql).toContain('provider_type IS NULL');
+      expect(count).toBe(2);
+    });
+
+    it('ignores unknown provider values in the count', async () => {
+      mockClient.query.mockResolvedValueOnce({ rows: [{ count: '7' }] });
+
+      const count = await foodDb.countFoods(null, null, 'user-1', 'mystery');
+
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(params).toEqual([]);
+      expect(sql).not.toContain('provider_type');
+      expect(count).toBe(7);
     });
   });
 });
