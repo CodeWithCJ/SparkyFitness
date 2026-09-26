@@ -26,6 +26,8 @@ type HealthTrendsPagerProps = {
   range: HealthTrendDateRange;
   weightUnit: string;
   waterUnit: string;
+  weightGoal?: number | null;
+  hydrationGoal?: number | null;
   visibleTrends: readonly HealthTrendKey[];
   activePage: number;
   onPageSelected: (page: number) => void;
@@ -54,6 +56,8 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
   range,
   weightUnit,
   waterUnit,
+  weightGoal,
+  hydrationGoal,
   visibleTrends,
   activePage,
   onPageSelected,
@@ -63,11 +67,21 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
   const renderTrend: Record<HealthTrendKey, () => React.ReactElement> = {
     steps: () => <StepsBarChart {...steps} range={range} />,
     weight: () => (
-      <WeightLineChart {...weight} range={range} unit={weightUnit} />
+      <WeightLineChart
+        {...weight}
+        range={range}
+        unit={weightUnit}
+        goal={weightGoal}
+      />
     ),
     sleep: () => <SleepTimelineChart {...sleep} range={range} />,
     hydration: () => (
-      <HydrationBarChart {...hydration} range={range} unit={waterUnit} />
+      <HydrationBarChart
+        {...hydration}
+        range={range}
+        unit={waterUnit}
+        goal={hydrationGoal}
+      />
     ),
   };
 

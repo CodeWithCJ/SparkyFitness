@@ -10,8 +10,10 @@ import {
   formatXLabel7d,
   formatXLabel30d90d,
   formatTooltipDate,
+  computeNiceYAxisScale,
 } from './charts/chartFormatting';
 import LineSeriesMark from './charts/LineSeriesMark';
+import TrendGoalLine from './charts/TrendGoalLine';
 import type { WeightDataPoint } from '../hooks/useMeasurementsRange';
 import type { HealthTrendDateRange } from '../types/healthTrends';
 import ChartTouchOverlay, {
@@ -27,6 +29,8 @@ type WeightLineChartProps = {
   isError: boolean;
   range: HealthTrendDateRange;
   unit: string;
+  /** The user's target weight, already converted to `unit`. */
+  goal?: number | null;
 };
 
 const X_TICK_COUNT: Record<HealthTrendDateRange, number> = {
@@ -69,6 +73,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
   isError,
   range,
   unit,
+  goal,
 }) => {
   const { t } = useTranslation();
   const [accentColor, textMuted] = useCSSVariable([
@@ -81,6 +86,31 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
   );
 
   const hasData = useMemo(() => data.length > 0, [data]);
+
+  // A nice round scale, not just an auto-fit one, so the axis labels in whole units instead
+  // of whatever decimal fraction a narrow week-over-week weight range happens to fall on.
+  const yAxisScale = useMemo(() => {
+    if (data.length === 0) {
+      return undefined;
+    }
+    const weightValues = data.map((point) => point.weight);
+    const hasGoal = goal != null && goal > 0;
+    const min = hasGoal
+      ? Math.min(...weightValues, goal)
+      : Math.min(...weightValues);
+    const max = hasGoal
+      ? Math.max(...weightValues, goal)
+      : Math.max(...weightValues);
+    return computeNiceYAxisScale(min, max);
+  }, [data, goal]);
+
+  const domain = useMemo(
+    () =>
+      yAxisScale
+        ? { y: [yAxisScale.min, yAxisScale.max] as [number, number] }
+        : undefined,
+    [yAxisScale]
+  );
 
   const formatXLabel = range === '7d' ? formatXLabel7d : formatXLabel30d90d;
 
@@ -171,7 +201,8 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
             data={data}
             xKey="day"
             yKeys={['weight']}
-            domainPadding={{ left: 25, right: 25 }}
+            domain={domain}
+            domainPadding={{ left: 25, right: 25, top: 12, bottom: 12 }}
             xAxis={{
               font,
               tickCount: X_TICK_COUNT[range],
@@ -181,12 +212,16 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
             yAxis={[
               {
                 font,
-                tickCount: 5,
+                // Must match tickValues.length exactly: a smaller tickCount makes
+                // victory-native re-sample the array by index and can silently skip a
+                // value in the middle.
+                tickCount: yAxisScale?.tickValues.length ?? 5,
                 labelColor: textMuted,
+                tickValues: yAxisScale?.tickValues,
               },
             ]}
           >
-            {({ points, chartBounds }) => (
+            {({ points, chartBounds, yScale }) => (
               <>
                 <ChartLayoutReporter
                   chartBounds={chartBounds}
@@ -200,6 +235,12 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
                   animate={{ type: 'timing', duration: 300 }}
                   curveType="cardinal"
                   connectMissingData
+                />
+                <TrendGoalLine
+                  chartBounds={chartBounds}
+                  yScale={yScale}
+                  goal={goal}
+                  color={textMuted}
                 />
               </>
             )}

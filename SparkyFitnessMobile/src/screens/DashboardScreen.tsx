@@ -55,6 +55,7 @@ import {
   useMeasurements,
   useNutrientDisplayPreferences,
   usePreferences,
+  useProfile,
   useServerConnection,
   useWaterIntakeMutation,
   useWidgetSync,
@@ -77,6 +78,10 @@ import {
 } from '../utils/nativeHeaderDatePicker';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { weightFromKg } from '../utils/unitConversions';
+import {
+  resolveHydrationGoal,
+  resolveWeightGoal,
+} from '../utils/healthTrendGoals';
 
 const RANGE_SEGMENTS = (
   t: (key: string, options: { defaultValue: string }) => string
@@ -179,6 +184,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected,
   });
+  const { profile } = useProfile();
   const {
     preferences,
     isLoading: isPreferencesLoading,
@@ -272,6 +278,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   // The hydration card and the hydration trend must agree on the unit, so both read it
   // from here rather than each resolving the fallback chain themselves.
   const waterDisplayUnit = waterUnit || preferences?.water_display_unit || 'ml';
+  const hydrationGoal = resolveHydrationGoal(
+    summary?.waterGoal ?? 0,
+    waterDisplayUnit
+  );
 
   // The chart is a single-axis line graph; if the user picked stones+lbs, plot lbs.
   const weightUnit: 'kg' | 'lbs' =
@@ -286,6 +296,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       })),
     };
   }, [trends.weight, weightUnit]);
+  const weightGoal = resolveWeightGoal(profile?.target_weight, weightUnit);
 
   // CSS variable macro colors are theme-aware (lower saturation than hardcoded hex)
   const [
@@ -743,6 +754,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           range={trendsRange}
           weightUnit={weightUnit}
           waterUnit={waterDisplayUnit}
+          hydrationGoal={hydrationGoal}
+          weightGoal={weightGoal}
           visibleTrends={visibleTrends}
           activePage={chartPage}
           onPageSelected={setChartPage}
