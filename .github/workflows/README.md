@@ -99,6 +99,27 @@ hasUIChanges = .tsx/.jsx/.css files in components/screens/pages/
 
 ---
 
+#### `umbrel-app-update.yml`
+
+**Purpose**: Keep the [Umbrel App Store](https://github.com/getumbrel/umbrel-apps) package in `umbrel/sparkyfitness/` in step with releases, and submit it upstream.
+
+**Triggers**: Completion of `Publish Docker Images`, and manual workflow dispatch (optional `version`, `submit_upstream` inputs)
+
+**What it does**:
+
+- Runs `umbrel/update-package.mjs`, which re-pins the frontend, server, and PostgreSQL images to their current multi-arch manifest-list digests and rewrites `version` and `releaseNotes` from the GitHub release body
+- Lints the result against a fresh `getumbrel/umbrel-apps` checkout with `npm run lint:apps -- sparkyfitness --check-images`
+- Opens a PR here on `umbrel/update-app-package`
+- Pushes to the `umbrel-apps` fork and opens the App Store PR, then backfills `submission:` with that PR's URL
+
+It runs after `Publish Docker Images` rather than on `release: published` because the package pins image digests, and those images do not exist until that workflow has pushed them.
+
+**No human reviews the upstream PR**, so two automated gates stand in for one: the script refuses any tag that is not a multi-arch manifest list covering `linux/amd64` and `linux/arm64`, and the Umbrel linter must pass (it checks digest pinning, public pullability, and host-port uniqueness across the whole store). Either failure stops the job before anything reaches upstream.
+
+**Requires**: the `UMBREL_APPS_TOKEN` secret (a PAT with `public_repo` scope). Without it, the upstream step is skipped with a warning and the in-repo PR still lands. The fork is created on first run.
+
+---
+
 ### Documentation Workflows
 
 #### `docs-test.yml`
@@ -170,6 +191,8 @@ Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json
 #### `auto-merge-bot-prs.yml`
 
 **Purpose**: Automatically and safely merges clean automated PRs for Translations (`i18n/*`) and Nix hashes (`nix/*`) once all CI checks pass. If there are any merge conflicts, the PR is held untouched for manual review.
+
+Umbrel package PRs (`umbrel/*`) are **not** in the allowlist. Add `'umbrel/'` to `ALLOWED_BRANCH_PREFIXES` and `'umbrel'` to `ALLOWED_LABELS` if those should merge themselves too.
 
 **Triggers**: Pull requests (opened, synchronize, labeled, ready_for_review), Check suites completed, and manual workflow dispatch
 
@@ -262,4 +285,4 @@ This document should be updated when:
 - Trigger conditions change
 - Validation rules change
 
-Last updated: 2026-04-05
+Last updated: 2026-09-25

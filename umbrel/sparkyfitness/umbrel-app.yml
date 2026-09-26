@@ -1,0 +1,55 @@
+manifestVersion: 1
+id: sparkyfitness
+category: files
+name: SparkyFitness
+version: "v1.7.2"
+tagline: Self-hosted nutrition, exercise, and body metrics tracker
+description: >-
+  🥗 SparkyFitness is a self-hosted alternative to MyFitnessPal for tracking
+  what you eat, how you train, and how your body responds — with all of it
+  staying on your own Umbrel.
+
+
+  The first account you create becomes the administrator, so create yours
+  before sharing the app. Additional members can then sign up and, if they
+  choose, share individual data categories with a coach, partner, or family
+  member at a granularity they control.
+
+
+  - Food diary with barcode scanning, custom foods and recipes, meal presets,
+  and optional online food databases such as OpenFoodFacts, Nutritionix, and
+  FatSecret
+
+  - Exercise logging with a searchable library, workout presets, and repeatable
+  weekly workout plans
+
+  - Body measurements, custom trackers, progress photos, and water intake
+
+  - Goals and dashboards for calories, macros, weight trends, and step counts
+
+  - Optional AI nutrition coach you can point at your own local or hosted model
+
+  - Health app sync from iOS and Android via the companion SparkyFitness mobile
+  app, plus an API for your own integrations
+
+
+  Online food databases and AI features are off until you add your own
+  credentials in the app's settings; nothing is sent anywhere by default.
+releaseNotes: ""
+
+developer: CodeWithCJ
+website: https://codewithcj.github.io/SparkyFitness/
+dependencies: []
+repo: https://github.com/CodeWithCJ/SparkyFitness
+support: https://github.com/CodeWithCJ/SparkyFitness/issues
+
+port: 3019
+gallery: []
+path: ""
+
+defaultUsername: ""
+defaultPassword: ""
+
+submitter: Rishikesh Anand
+# Replace with this package's own PR URL once the pull request is opened.
+submission: https://github.com/getumbrel/umbrel-apps/pulls
