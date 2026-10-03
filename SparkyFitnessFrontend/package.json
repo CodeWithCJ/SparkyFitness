@@ -29,7 +29,9 @@
       "\\.(css|less|sass|scss)$": "identity-obj-proxy",
       "^@/(.*)$": "<rootDir>/src/$1",
       "^@workspace/shared$": "<rootDir>/../shared/src/index.ts",
-      "^@workspace/shared/(.*)$": "<rootDir>/../shared/src/$1"
+      "^@workspace/shared/(.*)$": "<rootDir>/../shared/src/$1",
+      "^react-markdown$": "<rootDir>/src/tests/stubs/reactMarkdown.tsx",
+      "^remark-gfm$": "<rootDir>/src/tests/stubs/remarkGfm.ts"
     },
     "transform": {
       "^.+\\.tsx?$": [
@@ -51,11 +53,29 @@
             "isolatedModules": true
           }
         }
+      ],
+      "^.+\\.jsx?$": [
+        "ts-jest",
+        {
+          "useESM": true,
+          "tsconfig": {
+            "allowJs": true,
+            "esModuleInterop": true,
+            "module": "ESNext",
+            "moduleResolution": "node",
+            "ignoreDeprecations": "6.0",
+            "rootDir": ".",
+            "isolatedModules": true
+          }
+        }
       ]
     },
     "extensionsToTreatAsEsm": [
       ".ts",
       ".tsx"
+    ],
+    "transformIgnorePatterns": [
+      "node_modules/(?!(?:\\.pnpm/[^/]+/node_modules/)?@tanstack/)"
     ]
   },
   "dependencies": {

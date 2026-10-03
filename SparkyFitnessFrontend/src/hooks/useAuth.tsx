@@ -12,6 +12,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '../lib/auth-client';
 import { fetchIdentityUser, switchUserContext } from '@/api/Auth/auth';
 import { apiCall, clearDemoRestrictions } from '@/api/api';
+import { getRouterBasename } from '@/utils/basePath';
 
 export interface User {
   id: string;
@@ -282,7 +283,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     identityLookupRef.current = null;
     clearDemoRestrictions();
     queryClient.clear();
-    window.location.href = '/';
+    window.location.href = getRouterBasename();
   }, [queryClient]);
 
   const signIn = useCallback(

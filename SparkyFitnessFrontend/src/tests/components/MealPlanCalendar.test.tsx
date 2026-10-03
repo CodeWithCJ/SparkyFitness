@@ -3,6 +3,12 @@ import '@testing-library/jest-dom';
 import MealPlanCalendar from '../../pages/Foods/MealPlanCalendar';
 import { renderWithClient } from '../test-utils';
 
+jest.mock('@/lib/auth-client', () => ({
+  authClient: {
+    useSession: () => ({ refetch: jest.fn() }),
+  },
+}));
+
 // Mock react-i18next
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({

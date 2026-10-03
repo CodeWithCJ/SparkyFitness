@@ -62,8 +62,9 @@ export default defineConfig(({ mode }) => {
         VitePWA({
           registerType: 'autoUpdate',
           manifest: {
+            id: '/',
             name: 'SparkyFitness',
-            short_name: 'SparkyFitness',
+            short_name: 'SparkyFit',
             description: 'Your personal fitness companion',
             theme_color: '#000000',
             icons: [
@@ -82,7 +83,7 @@ export default defineConfig(({ mode }) => {
           workbox: {
             maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB
             navigateFallback: './index.html',
-            navigateFallbackDenylist: [/^\/api/, /^\/uploads/], // Don't serve index.html for API or Uploads
+            navigateFallbackDenylist: [/\/api\//, /\/uploads\//], // Not anchored to '^' so this still matches under any SPARKY_BASE_PATH prefix, since the exact prefix isn't known at build time.
           },
         }),
     ].filter(Boolean),

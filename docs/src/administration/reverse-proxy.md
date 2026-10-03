@@ -24,7 +24,7 @@ SparkyFitness has its own login, so Cloudflare Access simply adds an extra authe
 
 1. **Set a generous Access session duration.** In your Cloudflare Access application settings, increase "Session Duration" (e.g. to 1 week or 1 month). In a browser, Access always uses its interactive login redirect the first time and after this duration expires — that's expected and can't be skipped for browser traffic. A longer duration just makes it infrequent.
 2. **For the mobile app or any other non-browser client** (scripts, monitoring, backend integrations) that calls the API directly without a browser to complete Access's login redirect, create a Cloudflare Access **service token** and have the client send `CF-Access-Client-Id` and `CF-Access-Client-Secret` headers with the token's values on every request. This does not apply to Chrome or other browsers — service tokens are for clients that can attach fixed headers, which an interactive browser session cannot do.
-3. **If your frontend and backend are on different hostnames** (a split-origin setup, not the default single-container deployment), set `SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS` on the server to the public frontend hostname so the backend's CORS check accepts it — see [Environment Variables](/install/environment-variables). The frontend's nginx also sends `Access-Control-Allow-Origin` for `manifest.json` and `/locales/*` based on `SPARKY_FITNESS_FRONTEND_URL`.
+3. **If your frontend and backend are on different hostnames** (a split-origin setup, not the default single-container deployment), set `SPARKY_FITNESS_EXTRA_TRUSTED_ORIGINS` on the server to the public frontend hostname so the backend's CORS check accepts it — see [Environment Variables](/install/environment-variables). The frontend's nginx also sends `Access-Control-Allow-Origin` for `manifest.webmanifest` and `/locales/*` based on `SPARKY_FITNESS_FRONTEND_URL`.
 
 ## Deploying at a sub-path
 
@@ -51,9 +51,26 @@ handle_path /sparky/* {
 
 `BETTER_AUTH_URL` must **not** include the sub-path: since the proxy strips
 `/sparky` before forwarding, the server only ever sees `/api/auth/...`, and
-Better Auth derives its routing base path from `BETTER_AUTH_URL`. Setting it to
-the unprefixed `https://homeserver.example.com/api/auth` corrects this — without
-it, all auth endpoints 404.
+Better Auth's internal request routing is matched against that unprefixed
+path. Setting `BETTER_AUTH_URL` to the unprefixed
+`https://homeserver.example.com/api/auth` corrects this — without it, all auth
+endpoints 404.
+
+That unprefixed base is only used for routing, not for the links Better Auth
+sends to users. The server separately reads the sub-path out of
+`SPARKY_FITNESS_FRONTEND_URL` and re-inserts it into password-reset emails,
+magic-link emails, and the OIDC/SSO redirect URI, so those still point at
+`https://homeserver.example.com/sparky/...` and correctly round-trip through
+the proxy. No extra configuration is needed for this beyond the variables
+already listed above.
+
+If you configure an OIDC/SSO provider while running at a sub-path, the
+redirect URI it registers is a single shared callback,
+`https://homeserver.example.com/sparky/api/auth/sso/callback`, instead of
+the root deployment's per-provider `.../api/auth/sso/callback/<providerId>`.
+Register that shared URL with your identity provider. If you later move an
+existing root deployment to a sub-path (or the reverse), update the redirect
+URI registered with the identity provider to match.
 
 Mobile app users don't need to configure anything beyond setting the server URL
 in Settings to `https://homeserver.example.com/sparky`.

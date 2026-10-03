@@ -1,5 +1,6 @@
 import type { Food, FoodEntry } from '@/types/food';
 import type { Meal } from '@/types/meal';
+import { withBasePath } from '@/utils/basePath';
 
 /**
  * Resolves a stored image reference to something an `<img src>` can load.
@@ -25,7 +26,7 @@ export function resolveFoodImageSrc(
     return trimmed;
   }
   // A bare filename means an upload stored without its directory prefix.
-  return `/uploads/foods/${trimmed}`;
+  return withBasePath(`/uploads/foods/${trimmed}`);
 }
 
 /** Returns only the entries of `images` that resolve to a usable src. */

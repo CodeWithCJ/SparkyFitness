@@ -1,6 +1,7 @@
 import type React from 'react';
 import { useEffect, useState, useMemo, useId } from 'react';
 import { cn } from '@/lib/utils';
+import { svgFragmentUrl } from '@/utils/basePath';
 import { Flame } from 'lucide-react';
 
 import { useTranslation } from 'react-i18next';
@@ -130,14 +131,14 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={`url(#${gradId})`}
+          stroke={svgFragmentUrl(gradId)}
           strokeWidth={14}
           strokeLinecap="round"
           strokeDasharray={`${dash} ${Math.max(1, circumference - dash)}`}
           strokeDashoffset={0}
           fill="none"
           style={{ transition: 'stroke-dasharray 600ms linear, stroke 300ms' }}
-          filter={`url(#${shadowId})`}
+          filter={svgFragmentUrl(shadowId)}
         />
 
         {/* Milestone ticks + labels */}
@@ -211,7 +212,7 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
             cx={0}
             cy={0}
             fill="#fff"
-            stroke={`url(#${gradId})`}
+            stroke={svgFragmentUrl(gradId)}
             strokeWidth={3}
           />
         </g>

@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { svgFragmentUrl } from '@/utils/basePath';
 import type { Medication } from '@/types/medications';
 import FastingTimer from './FastingTimer';
 import Glp1LogInjection from './Glp1LogInjection';
@@ -226,7 +227,7 @@ export default function Glp1Coach({ med }: Glp1CoachProps) {
                     type="monotone"
                     dataKey="pct"
                     stroke="#3b82f6"
-                    fill="url(#pk)"
+                    fill={svgFragmentUrl('pk')}
                   />
                 </AreaChart>
               </ResponsiveContainer>

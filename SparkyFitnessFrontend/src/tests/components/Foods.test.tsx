@@ -5,6 +5,11 @@ import { renderWithClient } from '../test-utils';
 import { apiCall } from '@/api/api';
 
 jest.mock('@/api/api', () => ({ apiCall: jest.fn() }));
+jest.mock('@/lib/auth-client', () => ({
+  authClient: {
+    useSession: () => ({ refetch: jest.fn() }),
+  },
+}));
 let mockActiveUserId = 'test-user-id';
 jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({

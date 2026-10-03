@@ -3,6 +3,12 @@ import '@testing-library/jest-dom';
 import MealManagement from '@/pages/Foods/MealManagement';
 import { renderWithClient } from '../test-utils';
 
+jest.mock('@/lib/auth-client', () => ({
+  authClient: {
+    useSession: () => ({ refetch: jest.fn() }),
+  },
+}));
+
 // mock i18 directly for calls outside of hooks
 jest.mock('@/i18n', () => ({
   __esModule: true, // Dies behebt den "default.t is not a function" Fehler

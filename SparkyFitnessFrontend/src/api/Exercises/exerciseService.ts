@@ -274,7 +274,9 @@ export const getBodyMapSvg = async (
   figure: BodyFigure = 'male'
 ): Promise<string> => {
   const response = await fetch(
-    withBasePath(`/images/muscle-${figure}.svg?v=${BODY_MAP_SVG_VERSION[figure]}`)
+    withBasePath(
+      `/images/muscle-${figure}.svg?v=${BODY_MAP_SVG_VERSION[figure]}`
+    )
   );
   if (!response.ok) {
     throw new Error('Failed to fetch SVG');
