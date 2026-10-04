@@ -1,5 +1,5 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
-import { todayInZone } from '@workspace/shared';
+import { todayInZone, moodValueToTag } from '@workspace/shared';
 import { buildCheckinTools } from '../ai/tools/checkinTools.js';
 import measurementService from '../services/measurementService.js';
 import preferenceService from '../services/preferenceService.js';
@@ -486,10 +486,11 @@ describe('log_mood', () => {
       opts
     );
 
+    // Spoken as 8/10, stored on the 10-100 scale the column holds.
     expect(result).toBe('✅ Mood logged for 2026-06-01: 8/10 — Feeling good.');
     expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
       'user-1',
-      8,
+      80,
       'Feeling good',
       '2026-06-01',
       null
@@ -509,7 +510,7 @@ describe('log_mood', () => {
     expect(result).toBe('✅ Mood logged for 2026-06-01: 5/10.');
     expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
       'user-1',
-      5,
+      50,
       null,
       '2026-06-01',
       null
@@ -530,11 +531,51 @@ describe('log_mood', () => {
     expect(result).toBe(`✅ Mood logged for ${today}: 8/10.`);
     expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
       'user-1',
-      8,
+      80,
       null,
       today,
       null
     );
+  });
+
+  // The reported bug: the tool validated 1-10 and stored it verbatim into a
+  // 10-100 column. The `sad` band runs to 15, so all ten scores landed in it
+  // and every mood logged through chat read back as Sad.
+  it.each([
+    [1, 'sad'],
+    [4, 'neutral'],
+    [5, 'thoughtful'],
+    [8, 'happy'],
+    [10, 'excited'],
+  ])('stores a score of %i in the %s band', async (score, band) => {
+    vi.mocked(moodRepository.createOrUpdateMoodEntry).mockResolvedValue({
+      id: 'mood-1',
+    });
+
+    await tools.sparky_manage_checkin.execute!(
+      { action: 'log_mood', mood_value: score, entry_date: '2026-06-01' },
+      opts
+    );
+
+    const stored = vi.mocked(moodRepository.createOrUpdateMoodEntry).mock
+      .calls[0]![1] as number;
+    expect(moodValueToTag(stored)).toBe(band);
+  });
+
+  it('defaults an omitted score to the middle of the scale, not to sad', async () => {
+    vi.mocked(moodRepository.createOrUpdateMoodEntry).mockResolvedValue({
+      id: 'mood-1',
+    });
+
+    await tools.sparky_manage_checkin.execute!(
+      { action: 'log_mood', entry_date: '2026-06-01' } as any,
+      opts
+    );
+
+    const stored = vi.mocked(moodRepository.createOrUpdateMoodEntry).mock
+      .calls[0]![1] as number;
+    expect(stored).toBe(50);
+    expect(moodValueToTag(stored)).toBe('thoughtful');
   });
 });
 
@@ -761,7 +802,8 @@ describe('list_checkin_diary', () => {
     ]);
     vi.mocked(moodRepository.getMoodEntryByDate).mockResolvedValue({
       id: 'mood-1',
-      mood_value: 8,
+      // Stored on the 10-100 scale the column holds; read back as 8/10.
+      mood_value: 80,
       notes: 'Good',
       entry_date: '2026-06-01',
     });
@@ -869,7 +911,7 @@ describe('list_checkin_diary', () => {
     mockEmptyDiary();
     vi.mocked(moodRepository.getMoodEntryByDate).mockResolvedValue({
       id: 'mood-1',
-      mood_value: 7,
+      mood_value: 70,
       notes: 'Feeling okay',
       mood_tags: ['anxious', 'worried'],
       entry_date: '2026-06-01',
@@ -1094,7 +1136,7 @@ describe('error handling', () => {
     expect(result).toBe('✅ Mood logged for 2026-06-01: 5/10 — Anxious today.');
     expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
       'user-1',
-      5,
+      50,
       'Anxious today',
       '2026-06-01',
       null
@@ -1114,7 +1156,7 @@ describe('error handling', () => {
     expect(result).toBe('✅ Mood logged for 2026-06-01: 5/10 — Anxious today.');
     expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
       'user-1',
-      5,
+      50,
       'Anxious today',
       '2026-06-01',
       null
@@ -1142,7 +1184,7 @@ describe('error handling', () => {
     );
     expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
       'user-1',
-      8,
+      80,
       'Feeling good',
       '2026-06-01',
       ['anxious', 'tired']

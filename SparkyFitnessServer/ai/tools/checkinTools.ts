@@ -4,6 +4,8 @@ import {
   todayInZone,
   utcOffsetMinutesFromIsoString,
   BUILT_IN_MOODS,
+  chatScoreToMoodValue,
+  moodValueToChatScore,
 } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import measurementService from '../../services/measurementService.js';
@@ -421,7 +423,8 @@ Actions:
             case 'log_mood': {
               await moodRepository.createOrUpdateMoodEntry(
                 userId,
-                args.mood_value,
+                // The tool speaks in 1-10; the column holds 10-100.
+                chatScoreToMoodValue(args.mood_value),
                 args.notes || null,
                 args.entry_date,
                 args.mood_tags || null
@@ -661,7 +664,7 @@ Actions:
                 text += '## Mood\n';
                 for (const m of moods) {
                   const tagsStr = formatMoodTags(m.mood_tags);
-                  text += `- ${m.mood_value}/10${tagsStr}`;
+                  text += `- ${moodValueToChatScore(m.mood_value)}/10${tagsStr}`;
                   if (m.notes) text += ` — ${m.notes}`;
                   text += '\n';
                 }
