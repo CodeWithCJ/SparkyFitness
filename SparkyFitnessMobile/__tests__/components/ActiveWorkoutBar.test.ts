@@ -8,6 +8,15 @@ describe('shouldSuppressActiveWorkoutBar', () => {
     expect(shouldSuppressActiveWorkoutBar('MealPlans')).toBe(true);
     expect(shouldSuppressActiveWorkoutBar('MealPlanForm')).toBe(true);
   });
+
+  // Regression: the floating HUD collided with these screens' sticky
+  // FooterSaveBar/FooterActionBar, covering the Save/Add button (#2245).
+  it('keeps the HUD off other routes with sticky bottom actions', () => {
+    expect(shouldSuppressActiveWorkoutBar('MealAdd')).toBe(true);
+    expect(shouldSuppressActiveWorkoutBar('CycleLogModal')).toBe(true);
+    expect(shouldSuppressActiveWorkoutBar('WaterContainerEdit')).toBe(true);
+    expect(shouldSuppressActiveWorkoutBar('WaterContainers')).toBe(true);
+  });
 });
 
 // Root stack [Tabs, ActiveWorkout]: the top route is suppressed and sits
