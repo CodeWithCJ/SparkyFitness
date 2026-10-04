@@ -783,7 +783,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               ) : null;
             case 'healthTrends':
               return healthTrendsCardVisible ? (
-                <React.Fragment key="healthTrends">
+                <View key="healthTrends" className="mb-3">
                   <Text className="text-text-primary text-xl font-bold mb-2">
                     {t('dashboard.healthTrends', {
                       defaultValue: 'Health Trends',
@@ -812,7 +812,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                     activePage={chartPage}
                     onPageSelected={setChartPage}
                   />
-                </React.Fragment>
+                </View>
               ) : null;
             default:
               return null;
