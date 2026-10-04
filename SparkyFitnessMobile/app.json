@@ -50,14 +50,18 @@
           }
         }
       ],
-      ["expo-notifications"],
+      [
+        "expo-notifications"
+      ],
       [
         "expo-navigation-bar",
         {
           "enforceContrast": false
         }
       ],
-      ["@bacons/apple-targets"]
+      [
+        "@bacons/apple-targets"
+      ]
     ],
     "experiments": {
       "reactCompiler": true,
@@ -69,6 +73,6 @@
       },
       "APP_VARIANT": "production"
     },
-    "version": "1.7.3"
+    "version": "1.8.0"
   }
 }
