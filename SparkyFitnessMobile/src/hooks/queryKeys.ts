@@ -301,6 +301,9 @@ export const nutritionTrendsQueryKey = (startDate: string, endDate: string) =>
 export const exerciseDashboardQueryKey = (startDate: string, endDate: string) =>
   ['exerciseDashboard', startDate, endDate] as const;
 
+export const trainingConsistencyQueryKey = () =>
+  ['trainingConsistency'] as const;
+
 export const cardioSessionsQueryKey = (
   startDate: string,
   endDate: string,

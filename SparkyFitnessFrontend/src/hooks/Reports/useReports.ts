@@ -4,6 +4,7 @@ import { checkInKeys } from '@/api/keys/checkin';
 import { reportKeys } from '@/api/keys/reports';
 import {
   getExerciseDashboardData,
+  getTrainingConsistency,
   getAlcoholWeekReport,
   getHydrationNutritionRange,
   getWorkoutDays,
@@ -133,6 +134,21 @@ export const useExerciseDashboardData = (
       errorMessage: t(
         'reports.failedToLoadExerciseDashboard',
         'Failed to load exercise dashboard data.'
+      ),
+    },
+  });
+};
+
+export const useTrainingConsistency = (userId?: string | null) => {
+  const { t } = useTranslation();
+  return useQuery({
+    queryKey: reportKeys.trainingConsistency(userId ?? undefined),
+    queryFn: () => getTrainingConsistency(userId ?? undefined),
+    enabled: !!userId,
+    meta: {
+      errorMessage: t(
+        'trainingConsistency.loadFailed',
+        'Failed to load training consistency.'
       ),
     },
   });

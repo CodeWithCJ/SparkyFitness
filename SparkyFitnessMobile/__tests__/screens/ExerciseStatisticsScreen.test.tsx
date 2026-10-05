@@ -18,6 +18,14 @@ jest.mock('../../src/hooks/useProfile', () => ({
   useProfile: () => ({ profile: { gender: mockGender } }),
 }));
 
+jest.mock('../../src/hooks/useTrainingConsistency', () => ({
+  useTrainingConsistency: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 jest.mock('../../src/hooks/useCardioSessions', () => ({
   useCardioSessions: jest.fn(),
 }));

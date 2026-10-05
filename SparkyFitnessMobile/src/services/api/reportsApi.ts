@@ -1,4 +1,7 @@
-import type { ExerciseDashboardSummary } from '@workspace/shared';
+import type {
+  ExerciseDashboardSummary,
+  TrainingConsistency,
+} from '@workspace/shared';
 import { apiFetch } from './apiClient';
 
 export interface NutritionTrendPoint {
@@ -48,4 +51,11 @@ export const fetchExerciseDashboard = (
     )}&endDate=${encodeURIComponent(endDate)}`,
     serviceName: 'Reports API',
     operation: 'fetch exercise dashboard',
+  });
+
+export const fetchTrainingConsistency = (): Promise<TrainingConsistency> =>
+  apiFetch<TrainingConsistency>({
+    endpoint: '/api/reports/training-consistency',
+    serviceName: 'Reports API',
+    operation: 'fetch training consistency',
   });

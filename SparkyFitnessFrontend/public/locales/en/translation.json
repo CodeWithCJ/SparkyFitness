@@ -6784,5 +6784,22 @@
         "menstrual_phase": "During the menstrual phase"
       }
     }
+  },
+  "trainingConsistency": {
+    "title": "Training Consistency",
+    "streak": "Week streak",
+    "longest": "Longest",
+    "thisWeek": "This week",
+    "lastWeek": "Last week",
+    "weeks_one": "{{count}} week",
+    "weeks_other": "{{count}} weeks",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "daysPerWeek_one": "Workout days per week, last {{count}} week",
+    "daysPerWeek_other": "Workout days per week, last {{count}} weeks",
+    "chartLabel": "Workout days per week",
+    "setsTitle": "Sets per muscle",
+    "noSets": "No sets logged this week or last.",
+    "loadFailed": "Failed to load training consistency."
   }
 }

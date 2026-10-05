@@ -158,9 +158,13 @@ export const runProviderSync = async (
 export const scheduleProviderSync = (
   config: ProviderSyncConfig
 ): ScheduledTask => {
-  return cron.schedule(config.cronExpression ?? '0 * * * *', () => {
-    void runProviderSync(config);
-  });
+  // Returning the run lets noOverlap skip a tick while the previous pass over
+  // every user is still going, so two passes never sync the same account at once.
+  return cron.schedule(
+    config.cronExpression ?? '0 * * * *',
+    () => runProviderSync(config),
+    { noOverlap: true }
+  );
 };
 
 export const startProviderSyncSchedulers = (): ScheduledTask[] => {

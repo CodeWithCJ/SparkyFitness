@@ -12,6 +12,7 @@ import {
 
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useExerciseDashboard } from '../hooks/useExerciseDashboard';
+import { useTrainingConsistency } from '../hooks/useTrainingConsistency';
 import { useCardioSessions } from '../hooks/useCardioSessions';
 import { usePreferences } from '../hooks/usePreferences';
 import { useProfile } from '../hooks/useProfile';
@@ -23,6 +24,7 @@ import SegmentedControl from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CardioSessionList from '../components/exerciseStats/CardioSessionList';
+import TrainingConsistencyCard from '../components/exerciseStats/TrainingConsistencyCard';
 import MuscleFigure, {
   MUSCLE_HEAT_COLORS,
 } from '../components/exerciseStats/MuscleFigure';
@@ -120,6 +122,7 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   });
 
   const { data, isLoading } = useExerciseDashboard(range);
+  const consistency = useTrainingConsistency();
   const cardio = useCardioSessions(range, view === 'cardio');
   const { preferences } = usePreferences();
   const weightUnit: 'kg' | 'lbs' =
@@ -447,6 +450,12 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
             </View>
           ) : null}
         </View>
+
+        <TrainingConsistencyCard
+          data={consistency.data}
+          isLoading={consistency.isLoading}
+          isError={consistency.isError}
+        />
 
         <Text className="text-text-primary text-base font-bold mt-2">
           {t('exerciseStatistics.analysis.title', {

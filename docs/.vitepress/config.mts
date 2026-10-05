@@ -164,6 +164,7 @@ export default defineConfig({
             { text: 'Progression & Per-Set Ramp', link: '/features/exercises/progression-and-per-set-ramp' },
             { text: 'Bodyweight Exercises', link: '/features/exercises/bodyweight-exercises' },
             { text: 'Adaptive Coaching', link: '/features/exercises/adaptive-coaching' },
+            { text: 'Training Consistency', link: '/features/exercises/training-consistency' },
           ],
         },
         {

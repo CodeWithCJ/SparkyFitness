@@ -29,10 +29,13 @@ export interface CalendarPresentation {
  * Localized short weekday names (e.g. "Pn", "Wt", ...) for the current app
  * locale, indexed by JS getDay() semantics (0 = Sunday).
  */
-export function getCalendarWeekdayShortNames(appLocale: string): string[] {
+export function getCalendarWeekdayShortNames(
+  appLocale: string,
+  style: 'short' | 'long' = 'short'
+): string[] {
   const base = new Date(2026, 0, 4); // a Sunday
   return Array.from({ length: 7 }, (_, i) =>
-    new Intl.DateTimeFormat(appLocale, { weekday: 'short' }).format(
+    new Intl.DateTimeFormat(appLocale, { weekday: style }).format(
       new Date(base.getFullYear(), base.getMonth(), base.getDate() + i)
     )
   );
@@ -41,9 +44,12 @@ export function getCalendarWeekdayShortNames(appLocale: string): string[] {
 /**
  * Localized month names for the current app locale, indexed by month (0 = Jan).
  */
-export function getCalendarMonthNames(appLocale: string): string[] {
+export function getCalendarMonthNames(
+  appLocale: string,
+  style: 'short' | 'long' = 'long'
+): string[] {
   return Array.from({ length: 12 }, (_, i) =>
-    new Intl.DateTimeFormat(appLocale, { month: 'long' }).format(
+    new Intl.DateTimeFormat(appLocale, { month: style }).format(
       new Date(2026, i, 1)
     )
   );

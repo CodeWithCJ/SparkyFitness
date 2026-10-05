@@ -9,6 +9,7 @@ import hevyService from '../integrations/hevy/hevyService.js';
 import {
   PROVIDER_SYNC_CONFIGS,
   runProviderSync,
+  scheduleProviderSync,
   startProviderSyncSchedulers,
   type ProviderSyncConfig,
 } from '../services/providerSyncScheduler.js';
@@ -245,7 +246,31 @@ describe('providerSyncScheduler', () => {
     expect(cron.schedule).toHaveBeenCalledTimes(10);
     expect(cron.schedule).toHaveBeenCalledWith(
       '0 * * * *',
-      expect.any(Function)
+      expect.any(Function),
+      { noOverlap: true }
     );
+  });
+
+  it('hands node-cron the running sync so noOverlap can see it', async () => {
+    let finishSync = () => {};
+    vi.mocked(externalProviderRepository.getProvidersByType).mockReturnValue(
+      new Promise((resolve) => {
+        finishSync = () => resolve([]);
+      })
+    );
+    const fitbit = PROVIDER_SYNC_CONFIGS.find((c) => c.name === 'Fitbit')!;
+    scheduleProviderSync(fitbit);
+    const onTick = vi.mocked(cron.schedule).mock.calls[0][1] as () => unknown;
+
+    let settled = false;
+    const run = Promise.resolve(onTick()).then(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+
+    finishSync();
+    await run;
+    expect(settled).toBe(true);
   });
 });

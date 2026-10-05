@@ -288,4 +288,49 @@ router.get('/exercise-dashboard', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /reports/training-consistency:
+ *   get:
+ *     summary: Get training consistency (training days, weekly streak, weekly sets per muscle)
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema: { type: 'string', format: 'uuid' }
+ *     responses:
+ *       200:
+ *         description: Training consistency over the last 26 weeks.
+ */
+router.get('/training-consistency', authenticate, async (req, res, next) => {
+  const { userId } = req.query;
+  const targetUserId = userId || req.userId;
+  if (!targetUserId) {
+    return res.status(400).json({ error: 'Target User ID is required.' });
+  }
+  if (userId && userId !== req.userId) {
+    const hasPermission = await canAccessUserData(
+      userId,
+      'reports',
+      req.authenticatedUserId || req.userId
+    );
+    if (!hasPermission) {
+      return res.status(403).json({
+        error:
+          'Forbidden: You do not have permission to view reports for this user.',
+      });
+    }
+  }
+  try {
+    const data = await reportService.getTrainingConsistency(
+      req.userId,
+      String(targetUserId)
+    );
+    res.status(200).json(data);
+  } catch (error) {
+    next(error);
+  }
+});
 export default router;

@@ -26,6 +26,10 @@ import {
   effectiveLoadKg,
   epleyOneRepMaxKg,
   resolveExerciseModality,
+  buildTrainingConsistency,
+  weekStartOf,
+  TRAINING_CONSISTENCY_WEEKS,
+  type TrainingConsistency,
 } from '@workspace/shared';
 import { userAge } from '../utils/dateHelpers.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
@@ -913,13 +917,64 @@ async function getExerciseDashboardData(
     throw error;
   }
 }
+/**
+ * Training days, weekly streak and this-vs-last-week sets per muscle, for the
+ * consistency view. Looks back a fixed `TRAINING_CONSISTENCY_WEEKS` weeks from
+ * today in the user's timezone, independent of the dashboard's chosen range.
+ */
+async function getTrainingConsistency(
+  authenticatedUserId: string,
+  targetUserId: string
+): Promise<TrainingConsistency> {
+  try {
+    const timezone = await loadUserTimezone(targetUserId);
+    const today = todayInZone(timezone);
+    // The account's first day of the week (0 = Sunday), like the calendars.
+    const preferences =
+      await preferenceRepository.getUserPreferences(targetUserId);
+    const rawFirstDay = preferences?.first_day_of_week;
+    const firstDayOfWeek =
+      rawFirstDay !== null && rawFirstDay !== undefined
+        ? Number(rawFirstDay)
+        : 0;
+    const startDate = addDays(
+      weekStartOf(today, firstDayOfWeek),
+      -7 * (TRAINING_CONSISTENCY_WEEKS - 1)
+    );
+    const entries = await reportRepository.getExerciseEntries(
+      targetUserId,
+      startDate,
+      today
+    );
+    // Synced calorie summaries are logged as exercise entries but are not
+    // workouts, the same exclusion the exercise dashboard makes.
+    return buildTrainingConsistency(
+      entries.filter(
+        (entry: { exercise_name?: string }) =>
+          entry.exercise_name !== 'Active Calories'
+      ),
+      today,
+      TRAINING_CONSISTENCY_WEEKS,
+      firstDayOfWeek
+    );
+  } catch (error) {
+    log(
+      'error',
+      `Error building training consistency for user ${targetUserId} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
 export { getReportsData };
 export { getMiniNutritionTrends };
 export { getNutritionTrendsWithGoals };
 export { getExerciseDashboardData };
+export { getTrainingConsistency };
 export default {
   getReportsData,
   getMiniNutritionTrends,
   getNutritionTrendsWithGoals,
   getExerciseDashboardData,
+  getTrainingConsistency,
 };

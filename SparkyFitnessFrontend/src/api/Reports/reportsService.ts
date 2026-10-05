@@ -3,6 +3,7 @@ import { ExerciseDashboardData, ReportResponse } from '@/types/reports';
 import type {
   AlcoholWeekResponse,
   HydrationNutritionRangeResponse,
+  TrainingConsistency,
   WorkoutDaysResponse,
 } from '@workspace/shared';
 
@@ -45,6 +46,17 @@ export const getExerciseDashboardData = async (
     }
   );
   return response;
+};
+
+export const getTrainingConsistency = async (
+  userId?: string
+): Promise<TrainingConsistency> => {
+  const params = new URLSearchParams();
+  if (userId) params.append('userId', userId);
+  const query = params.toString();
+  return apiCall(`/reports/training-consistency${query ? `?${query}` : ''}`, {
+    method: 'GET',
+  });
 };
 
 export const getAlcoholWeekReport = async (

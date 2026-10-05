@@ -5840,6 +5840,27 @@
       "zoneFrom": "from {{bpm}} bpm",
       "minutesAxis": "Minutes from start",
       "underOneMinute": "<1 min"
+    },
+    "consistency": {
+      "title": "Training Consistency",
+      "subtitle_one": "Last {{formattedCount}} week, {{first}} to {{last}}",
+      "subtitle_other": "Last {{formattedCount}} weeks, {{first}} to {{last}}",
+      "legendTrained": "Workout day",
+      "legendRest": "No workout",
+      "legendHelp": "Each square is a day and each column is a week.",
+      "streak": "Week streak",
+      "longest": "Longest",
+      "thisWeek": "This week",
+      "lastWeek": "Last week",
+      "weeks_one": "{{formattedCount}} week",
+      "weeks_other": "{{formattedCount}} weeks",
+      "days_one": "{{formattedCount}} day",
+      "days_other": "{{formattedCount}} days",
+      "calendarA11y_one": "Training calendar: {{count}} workout day in the last {{weeks}} weeks",
+      "calendarA11y_other": "Training calendar: {{count}} workout days in the last {{weeks}} weeks",
+      "setsTitle": "Sets per muscle",
+      "noSets": "No sets logged this week or last.",
+      "loadFailed": "Could not load your training consistency."
     }
   }
 }

@@ -4,7 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LayoutDashboard, Dumbbell, Activity, ChevronDown } from 'lucide-react';
 import WorkoutHeatmap from './WorkoutHeatmap';
 import { workoutHeatmapWindow } from '@/utils/workoutHeatmap';
-import { useWorkoutDays } from '@/hooks/Reports/useReports';
+import {
+  useTrainingConsistency,
+  useWorkoutDays,
+} from '@/hooks/Reports/useReports';
+import TrainingConsistencyCard from './TrainingConsistencyCard';
 import MuscleGroupRecoveryTracker from './MuscleGroupRecoveryTracker';
 import { PrProgressionChart } from './PrProgressionChart';
 import ExerciseVarietyScore from './ExerciseVarietyScore';
@@ -152,6 +156,7 @@ const ExerciseReportsDashboard = ({
     activeUserId
   );
   const workoutDays = workoutDaysData?.days ?? [];
+  const { data: trainingConsistency } = useTrainingConsistency(activeUserId);
 
   const { data: statsSummary } = useExerciseStatsSummary(
     statsInterval,
@@ -833,6 +838,7 @@ const ExerciseReportsDashboard = ({
             weightUnit={weightUnit}
           />
           <CardioPRBadgesWidget prData={prMatrix} viewMode={viewMode} />
+          <TrainingConsistencyCard data={trainingConsistency} />
         </div>
 
         {/* Right Side: Workout Heatmap Calendar */}
