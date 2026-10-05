@@ -53,4 +53,7 @@ export interface UserPreferences {
   /** AI-Assisted Unit Conversions toggle (server default: true). Gates the AI
    *  estimate path inside the unit selector sheet for cross-category swaps. */
   ai_assisted_conversions?: boolean;
+  /** NULL uses free platform dictation; an ID selects a server-side audio model. */
+  active_voice_ai_service_id?: string | null;
+  voice_input_enabled?: boolean;
 }

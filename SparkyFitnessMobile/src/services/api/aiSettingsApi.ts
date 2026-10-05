@@ -1,11 +1,26 @@
 import { addLog } from '../LogService';
-import { normalizeUrl } from './apiClient';
+import { normalizeUrl, apiFetch } from './apiClient';
+import {
+  voiceServiceOptionsSchema,
+  type VoiceServiceOption,
+} from '@workspace/shared';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import {
   DEFAULT_API_TIMEOUT_MS,
   fetchWithTimeout,
 } from '../../utils/concurrency';
+
+export async function fetchVoiceServiceOptions(): Promise<
+  VoiceServiceOption[]
+> {
+  const response = await apiFetch<unknown>({
+    endpoint: '/api/chat/ai-service-settings',
+    serviceName: 'AI Settings',
+    operation: 'fetch voice configurations',
+  });
+  return voiceServiceOptionsSchema.parse(response);
+}
 
 export interface ActiveAiServiceSetting {
   id: string;

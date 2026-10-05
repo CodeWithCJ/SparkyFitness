@@ -273,6 +273,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               )}
               {isConnected && (
                 <SettingsRow
+                  icon="microphone"
+                  title={t('voiceSettings.open', {
+                    defaultValue: 'Voice settings',
+                  })}
+                  onPress={() => navigation.navigate('ChatSettings')}
+                  iconColor={catBlue}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
                   icon="food-search-settings"
                   title={t('settings.rows.food', { defaultValue: 'Food' })}
                   onPress={() => navigation.navigate('FoodSettings')}

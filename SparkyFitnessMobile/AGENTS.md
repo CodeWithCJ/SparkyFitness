@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-09-30_
+_Last updated: 2026-10-05_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -48,7 +48,7 @@ pnpm run test:coverage -- --watchman=false --runInBand
 npx expo prebuild --clean
 ```
 
-- `pnpm run validate` runs i18n generate check, typecheck, lint, i18n audit, Knip (`pnpm run knip` for unused files and exports), and native locales check together.
+- `pnpm run validate` runs i18n and muscle-figure generation checks, typecheck, lint, i18n audit, Knip (`pnpm run knip` for unused files and exports), native locales check, and Prettier check together.
 - Use Watchman-disabled Jest commands in agent/sandbox runs; bare Jest often fails on macOS.
 - `collectCoverage` is enabled in Jest config, so expect coverage output from normal test runs.
 - Run `npx expo prebuild --clean` after native dependency changes, permissions, app group or widget target changes, Expo plugin changes, native config edits, or patching native modules.
@@ -232,6 +232,8 @@ npx expo prebuild --clean
 - Auth and proxy headers are resolved per request through an async `headers` callback; `service_config_id` (the user's active AI provider) is merged into the request body and required by the server.
 - `chatApi.ts` is history persistence only: `GET /api/chat/sparky-chat-history` and `POST /api/chat/clear-all-history`. `useChatHistory` seeds the runtime with prior messages and uses `staleTime`/`gcTime` of 0 because the runtime ignores `messages` changes after mount — every chat open must re-seed cold.
 - Chat UI lives in `components/chat/`: `MarkdownMessage` (`react-native-enriched-markdown` + `remend` to repair unclosed streamed markdown), `ToolCallCard` (derives running/complete/error from `result`/`isError`), `TypingIndicator`. Tool-name display mapping lives in `constants/chat.ts`.
+- `ChatSettings` (`src/screens/ChatSettingsScreen.tsx`) is a root-stack settings route reached from Settings → Voice settings. `voice_input_enabled` and `active_voice_ai_service_id` are server-backed preferences shared with web, not local Zustand settings. Disabling voice hides the microphone without erasing the model. Null selects System; compatible Chat models are suggestions and AI always requires explicit selection. `useVoicePreferencesRefresh` refreshes choices on screen focus and foreground return.
+- Voice dictation defaults to platform recognition in `ChatScreen.tsx`. `active_voice_ai_service_id` selects optional server transcription via `components/chat/AiVoiceDictationButton.tsx` and `services/api/voiceTranscriptionApi.ts`. `useVoiceInputLifecycle` cancels work on blur/background/unmount; temporary recordings are deleted, and the composer stays locked until processing finishes. `VoiceWaveform` uses a shared microphone level (no per-sample chat re-renders) and respects Reduce Motion. Sending always remains manual.
 - There is no chat Zustand store; thread state lives in the assistant-ui runtime and history seeding in React Query.
 
 ## Auth, Networking, And Settings
@@ -369,6 +371,7 @@ const androidService = require('../../src/services/healthConnectService.ts');
 - Scan/photo bug: inspect food scan/search, `FoodPhotoFlow`, photo screens, AI setting hook/API, estimate hook/API, intro persistence, haptics, icon usage, and route params.
 - Widget/deep-link bug: inspect `useWidgetSync`, `CalorieWidgetBridge`, widget targets, widget plugins, `app.config.ts`, `app.identifiers.js`, `App.tsx`, and dashboard.
 - Widget string shows as a raw key: inspect `targets/widget/en.lproj/Localizable.strings`, the `fallbackWidgetString` map in `SharedHelpers.swift`, and the derived-key contract in `__tests__/config/helpers/widgetSwiftKeys.ts`.
+- Chat/voice settings bug: inspect `ChatScreen`, `ChatSettingsScreen`, `components/chat/`, `useVoicePreferencesRefresh`, `aiSettingsApi`, `preferencesApi`, and `voiceTranscriptionApi`; settings and contracts also have web/server consumers.
 - Settings/diagnostics bug: inspect settings screens, `SettingsRow`, haptics/theme/sounds/notification services, diagnostics services, `DevTools`, and screen error boundaries.
 
 ## Priority Rule

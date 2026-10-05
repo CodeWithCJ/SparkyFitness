@@ -1185,6 +1185,19 @@ const options = {
           type: 'object',
           properties: {
             user_id: { type: 'string', format: 'uuid' },
+            voice_input_enabled: {
+              type: 'boolean',
+              default: true,
+              description:
+                'Show voice dictation in web and mobile chat. Turning this off preserves the selected voice configuration. Omitted values are unchanged on update.',
+            },
+            active_voice_ai_service_id: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description:
+                'Explicit audio-capable AI configuration for voice transcription. Null selects system recognition, never the chat provider. Omitted values are unchanged on update.',
+            },
             language: { type: 'string' },
             theme: { type: 'string' },
             timezone: { type: 'string' },

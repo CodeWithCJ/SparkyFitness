@@ -3948,6 +3948,25 @@
     "uploadFailed": "Could not upload photo",
     "removeFailed": "Could not remove photo"
   },
+  "voiceSettings": {
+    "title": "Voice input",
+    "open": "Voice settings",
+    "recognition": "Recognition",
+    "system": "System (default)",
+    "ai": "AI transcription",
+    "model": "Voice model",
+    "chooseModel": "Choose a model",
+    "chatModel": "Used for chat",
+    "syncHint": "These settings apply to web and mobile. Turning voice input off hides the microphone without changing your model selection.",
+    "systemHint": "Uses your device or browser speech recognizer without a Sparky AI transcription charge. Availability and online processing depend on your device or browser.",
+    "aiHint": "Audio is sent to the selected AI provider through your server. Provider charges may apply. Choose a model to enable AI transcription.",
+    "noModels": "No compatible voice models are enabled. Configure an audio-capable model in AI Service Settings in the web app, then refresh.",
+    "unavailable": "The selected voice model is unavailable. Choose another model or switch to System.",
+    "manualSend": "Dictation fills your draft. Review or edit it, then send it yourself.",
+    "saveFailed": "Could not save voice settings. Please try again.",
+    "loadFailed": "Could not load voice settings.",
+    "modelsFailed": "Could not load voice models."
+  },
   "chat": {
     "title": "Sparky",
     "error": "Chat error",
@@ -3976,7 +3995,20 @@
       "goals": "Goals",
       "lookedUp": "Looked up {{name}}"
     },
-    "typing": "Sparky is typing"
+    "typing": "Sparky is typing",
+    "voice": {
+      "label": "Dictate message",
+      "aiLabel": "Dictate with AI",
+      "stop": "Stop dictation",
+      "listening": "Listening",
+      "permissionTitle": "Voice input needs the microphone",
+      "permissionMessage": "Allow microphone and speech recognition in system settings to dictate messages.",
+      "errorTitle": "Voice input failed",
+      "aiErrorTitle": "AI voice transcription failed",
+      "aiErrorMessage": "Check the selected Voice provider and try again.",
+      "noSpeechTitle": "No speech detected",
+      "noSpeechMessage": "Try again and speak closer to the microphone."
+    }
   },
   "foodImagePicker": {
     "photos": "Photos",

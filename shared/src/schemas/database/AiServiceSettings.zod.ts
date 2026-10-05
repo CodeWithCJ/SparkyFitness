@@ -4,6 +4,7 @@ import { z } from "zod";
 // Database
 
 export const aiServiceSettingsSchema = z.object({
+  supports_audio_input: z.boolean().optional(),
   id: z.string(),
   user_id: z.string().nullable().optional(),
   service_type: z.string(),
@@ -22,6 +23,7 @@ export const aiServiceSettingsSchema = z.object({
 });
 
 export const aiServiceSettingsInitializerSchema = z.object({
+  supports_audio_input: z.boolean().optional(),
   id: z.string().optional(),
   user_id: z.string().optional().nullable(),
   service_type: z.string(),
@@ -40,6 +42,7 @@ export const aiServiceSettingsInitializerSchema = z.object({
 });
 
 export const aiServiceSettingsMutatorSchema = z.object({
+  supports_audio_input: z.boolean().optional(),
   id: z.string().optional(),
   user_id: z.string().optional().nullable(),
   service_type: z.string().optional(),

@@ -178,6 +178,21 @@ async function handleAiServiceSettings(
         }
       }
 
+      // Removing audio eligibility from the selected Voice configuration must
+      // immediately restore free System recognition on mobile. Otherwise the
+      // stale pointer would keep uploading audio only for the server guard to
+      // reject it.
+      if (serviceData.supports_audio_input === false) {
+        const currentPrefs =
+          await preferenceRepository.getUserPreferences(authenticatedUserId);
+        if (currentPrefs?.active_voice_ai_service_id === result.id) {
+          await preferenceRepository.updateUserPreferences(
+            authenticatedUserId,
+            { active_voice_ai_service_id: null }
+          );
+        }
+      }
+
       const {
         encrypted_api_key: _encrypted_api_key,
         api_key_iv: _api_key_iv,
