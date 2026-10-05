@@ -53,6 +53,7 @@ const NATIVE_TABS_ROUTE_EXCLUSIONS = {
   MeasurementsAdd: 'Root-stack measurement modal presented from the tab host.',
   CalorieSettings: 'Root-stack settings route presented above the tab host.',
   FoodSettings: 'Root-stack settings route presented above the tab host.',
+  ChatSettings: 'Root-stack voice settings route presented above the tab host.',
   DashboardSettings: 'Root-stack settings route presented above the tab host.',
   WorkoutSettings: 'Root-stack settings route presented above the tab host.',
   ServerSettings: 'Root-stack settings route presented above the tab host.',

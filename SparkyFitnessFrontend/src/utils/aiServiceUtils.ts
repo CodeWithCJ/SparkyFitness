@@ -39,6 +39,8 @@ export const requiresApiKey = (serviceType: string | undefined): boolean =>
   serviceType !== 'openai_compatible' &&
   serviceType !== 'custom';
 
+export { supportsVoiceTranscriptionServiceType } from '@workspace/shared';
+
 // The first entry in each list is the recommended default — the cheapest model
 // that handles SparkyFitness's tasks well. Keep that ordering when refreshing,
 // since ServiceForm surfaces modelOptions[0] as the recommendation.

@@ -54,6 +54,17 @@ describe('apiCall gateway interception handling', () => {
     global.fetch = jest.fn();
   });
 
+  it('preserves cancellation without displaying a network-error toast', async () => {
+    const controller = new AbortController();
+    const error = new DOMException('Aborted', 'AbortError');
+    controller.abort();
+    jest.mocked(global.fetch).mockRejectedValue(error);
+    await expect(
+      apiCall('/chat/transcribe', { signal: controller.signal })
+    ).rejects.toBe(error);
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
   it('returns parsed JSON on a normal success response without reloading', async () => {
     jest
       .mocked(global.fetch)

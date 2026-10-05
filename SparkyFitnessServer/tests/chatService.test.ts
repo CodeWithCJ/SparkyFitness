@@ -106,6 +106,31 @@ describe('chatService', () => {
         setting: savedSetting,
       });
     });
+    it('clears the selected Voice pointer when audio eligibility is removed', async () => {
+      const serviceData = {
+        service_type: 'google',
+        supports_audio_input: false,
+      };
+      const savedSetting = { id: 'setting-1', ...serviceData };
+      vi.mocked(chatRepository.upsertAiServiceSetting).mockResolvedValue(
+        savedSetting
+      );
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        active_voice_ai_service_id: 'setting-1',
+      });
+
+      await chatService.handleAiServiceSettings(
+        'save_ai_service_settings',
+        serviceData,
+        mockUserId
+      );
+
+      expect(preferenceRepository.updateUserPreferences).toHaveBeenCalledWith(
+        mockUserId,
+        { active_voice_ai_service_id: null }
+      );
+    });
+
     it('should throw error for unsupported action', async () => {
       await expect(
         chatService.handleAiServiceSettings('unknown_action', {}, mockUserId)
