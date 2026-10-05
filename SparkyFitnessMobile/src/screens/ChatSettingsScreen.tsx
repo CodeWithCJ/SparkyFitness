@@ -127,6 +127,7 @@ export default function ChatSettingsScreen(
                 title={t('voiceSettings.title', {
                   defaultValue: 'Voice input',
                 })}
+                subtitleNumberOfLines={0}
                 subtitle={t('voiceSettings.syncHint', {
                   defaultValue:
                     'These settings apply to web and mobile. Turning voice input off hides the microphone without changing your model selection.',

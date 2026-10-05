@@ -60,6 +60,8 @@ jest.mock('@assistant-ui/react-ai-sdk', () => ({
   },
 }));
 
+const mockAuiListeners = new Map<string, Set<() => void>>();
+
 jest.mock('@assistant-ui/react-native', () => {
   const React = require('react');
   const { View, Text, Pressable } = require('react-native');
@@ -82,7 +84,16 @@ jest.mock('@assistant-ui/react-native', () => {
         },
       }),
     }),
-    useAuiEvent: () => undefined,
+    useAuiEvent: (event: string, handler: () => void) => {
+      React.useEffect(() => {
+        const listeners = mockAuiListeners.get(event) ?? new Set<() => void>();
+        mockAuiListeners.set(event, listeners);
+        listeners.add(handler);
+        return () => {
+          listeners.delete(handler);
+        };
+      }, [event, handler]);
+    },
     useAuiState: (selector: (s: any) => any) =>
       selector({
         thread: { isRunning: !!(global as any).__mockChatIsRunning },
@@ -256,13 +267,15 @@ function renderScreen() {
   // A real QueryClient backs the screen's useQueryClient() call; useChatHistory
   // is mocked so no actual queries run through it.
   const queryClient = new QueryClient();
-  return render(
+  const tree = () => (
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider initialMetrics={initialMetrics}>
         <ChatScreen navigation={navigation} route={route} />
       </SafeAreaProvider>
     </QueryClientProvider>
   );
+  const screen = render(tree());
+  return { ...screen, rerenderThread: () => screen.rerender(tree()) };
 }
 
 const SERVER_CONFIG = {
@@ -274,6 +287,7 @@ const ACTIVE_SETTING = { id: 'svc-1', service_type: 'openai' } as any;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockAuiListeners.clear();
   mockVoicePreferences.enabled = true;
   (global as any).__mockChatIsRunning = false;
   (global as any).__mockChatIsEmpty = true;
@@ -788,7 +802,104 @@ async function startAiRecording() {
   return screen;
 }
 
+function beginExternalChatRun(screen: ReturnType<typeof renderScreen>) {
+  act(() => {
+    // Quick replies and retries start a run without a composer.send event.
+    [...(mockAuiListeners.get('thread.runStart') ?? [])].forEach((listener) =>
+      listener()
+    );
+    voiceTestState.__mockChatIsRunning = true;
+    screen.rerenderThread();
+  });
+}
+
+function finishExternalChatRun(screen: ReturnType<typeof renderScreen>) {
+  act(() => {
+    voiceTestState.__mockChatIsRunning = false;
+    screen.rerenderThread();
+  });
+}
+
 describe('voice recording lifecycle', () => {
+  it('cancels System dictation on a quick-reply run and leaves an editable draft afterwards', async () => {
+    voiceTestState.__mockComposerText = 'Draft to keep';
+    const screen = renderScreen();
+    await screen.findByPlaceholderText('Message Sparky…');
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Dictate message'));
+    });
+    expect(screen.getByLabelText('Listening')).toBeTruthy();
+    beginExternalChatRun(screen);
+    const speech = jest.requireMock<{
+      ExpoSpeechRecognitionModule: { abort: jest.Mock };
+    }>('expo-speech-recognition');
+    expect(speech.ExpoSpeechRecognitionModule.abort).toHaveBeenCalled();
+    expect(screen.queryByLabelText('Listening')).toBeNull();
+    expect(screen.queryByLabelText('Dictate message')).toBeNull();
+    act(() =>
+      voiceTestState.__mockSpeechHandlers.result?.({
+        isFinal: true,
+        results: [{ transcript: 'late words' }],
+      })
+    );
+    finishExternalChatRun(screen);
+    expect(screen.getByPlaceholderText('Message Sparky…').props.value).toBe(
+      'Draft to keep'
+    );
+    expect(screen.getByPlaceholderText('Message Sparky…').props.editable).toBe(
+      true
+    );
+    expect(
+      screen.getByTestId('composer-send').props.accessibilityState.disabled
+    ).toBe(false);
+    expect(voiceTestState.__mockComposerSetText).not.toHaveBeenCalled();
+  });
+
+  it('stops AI capture without uploading when a quick reply starts a run', async () => {
+    const screen = await startAiRecording();
+    const audio = jest.requireMock<{
+      useAudioRecorder: jest.Mock<MockRecorder>;
+    }>('expo-audio');
+    const recorder = audio.useAudioRecorder.mock.results[0]
+      ?.value as MockRecorder;
+    beginExternalChatRun(screen);
+    await act(async () => {});
+    expect(recorder.stop).toHaveBeenCalled();
+    expect(mockTranscribe).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('Listening')).toBeNull();
+    finishExternalChatRun(screen);
+    expect(
+      screen.getByTestId('composer-send').props.accessibilityState.disabled
+    ).toBe(false);
+  });
+
+  it('aborts an AI upload on an external run and ignores its late result without leaving the composer locked', async () => {
+    voiceTestState.__mockComposerText = 'Draft to keep';
+    const pending = deferred<{ text: string; model: string }>();
+    mockTranscribe.mockReturnValueOnce(pending.promise);
+    const screen = await startAiRecording();
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText('Stop dictation'));
+    });
+    const signal = mockTranscribe.mock.calls[0]?.[0].signal;
+    beginExternalChatRun(screen);
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      pending.resolve({ text: 'late transcript', model: 'voice-model' });
+    });
+    finishExternalChatRun(screen);
+    expect(voiceTestState.__mockComposerSetText).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText('Message Sparky…').props.value).toBe(
+      'Draft to keep'
+    );
+    expect(screen.getByPlaceholderText('Message Sparky…').props.editable).toBe(
+      true
+    );
+    expect(
+      screen.getByTestId('composer-send').props.accessibilityState.disabled
+    ).toBe(false);
+  });
+
   it('locks editing and Send until the transcript has been appended to the original draft', async () => {
     voiceTestState.__mockComposerText = 'For lunch';
     const pending = deferred<{ text: string; model: string }>();

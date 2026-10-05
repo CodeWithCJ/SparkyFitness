@@ -106,6 +106,15 @@ it('defaults to System without inheriting an audio-capable chat provider', async
   expect(update).not.toHaveBeenCalled();
 });
 
+it('shows the complete synchronization and model-retention explanation', () => {
+  const screen = renderScreen();
+  expect(
+    screen.getByText(
+      'These settings apply to web and mobile. Turning voice input off hides the microphone without changing your model selection.'
+    ).props.numberOfLines
+  ).toBe(0);
+});
+
 it('requires an explicit AI model choice and suggests the compatible chat model first', async () => {
   const screen = renderScreen();
   fireEvent.press(screen.getByText('AI transcription'));

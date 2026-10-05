@@ -647,6 +647,7 @@ function Composer({
   const { t } = useTranslation();
   const [recording, setRecording] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
+  const running = useAuiState((state) => state.thread.isRunning);
   const voiceLevel = useSharedValue(0);
   const handleVoiceVolume = useCallback(
     (volume: number) => {
@@ -714,7 +715,9 @@ function Composer({
         />
       )}
       {voiceInputEnabled && (
-        <ThreadPrimitive.If running={false}>
+        // Keep the controller mounted while run-start cancellation finishes;
+        // unmounting here would strand the parent's recording/busy state.
+        <View style={running ? { display: 'none' } : undefined}>
           {voiceServiceConfigId ? (
             <AiVoiceDictationButton
               serviceConfigId={voiceServiceConfigId}
@@ -734,9 +737,9 @@ function Composer({
               onVolumeChange={handleVoiceVolume}
             />
           )}
-        </ThreadPrimitive.If>
+        </View>
       )}
-      {/* Keep the arrow visible like Gemini, but disable it until recording has
+      {/* Keep the arrow visible, but disable it until recording has
           stopped so recognition can never continue invisibly after a send. */}
       <ThreadPrimitive.If running={false}>
         <ComposerPrimitive.Send disabled={recording || voiceBusy}>
