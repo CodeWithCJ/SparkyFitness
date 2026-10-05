@@ -44,13 +44,14 @@ Certain tables contain private user data that is **never** accessible to any fam
 * API Keys (`api_key` table)
 * OIDC SSO Connections (`user_oidc_links` table)
 * Personal AI Assistant Chat History (`sparky_chat_history` table)
+* Voice recordings are transient and are never shared or stored as diary entries. AI transcription uses only the signed-in user's accessible AI configuration, never credentials from a switched family profile.
 * Personal Fasting Preferences and auto-calculation configuration (`user_fasting_preferences` table)
 * Cycle & Pregnancy hub data (`cycle_settings`, `cycle_daily_entries`, `cycles`, `user_cycle_display_preferences`, `cycle_test_entries`, `pregnancies`, `pregnancy_kick_sessions`, `pregnancy_contractions`, `pregnancy_photos`, `pregnancy_checklist_state`, `health_appointments` tables) — this reproductive-health data is **never** shared or delegated, even with `can_view_reports`. It is strictly owner-only. Bump photo *files* are owner-only too: they are excluded from the public uploads URLs and can only be fetched through an authenticated request by their owner.
 
 ### 2. Tier 2: Read-Only Profile & Settings Data
 The following data can be **read** by delegates who hold at least one of `can_manage_diary`, `can_manage_checkin`, `can_manage_medications`, `can_manage_symptoms`, or `can_view_reports` — but **only the account owner can modify it**:
 * Profile information (`profiles` table — name, date of birth, height, avatar, etc.)
-* General preferences (`user_preferences` table — themes, units, calculation methods, calorie safety-floor settings, and report chart scaling)
+* General preferences (`user_preferences` table — themes, units, calculation methods, calorie safety-floor settings, report chart scaling, and Chat/Vision/Voice selections). Voice visibility and the System/AI selection sync across web and mobile. Only the owner can change them; disabling voice preserves the selected model.
 * Nutrient column display preferences (`user_nutrient_display_preferences`)
 * Dashboard widget layout (`user_dashboard_layouts`)
 * Onboarding data and completion status (`onboarding_data`, `onboarding_status`)

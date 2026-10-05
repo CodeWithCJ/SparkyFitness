@@ -70,6 +70,8 @@ export const UserServiceListItem = ({
       custom_model_name: editData.custom_model_name ?? service.model_name ?? '',
       chat_tool_profile:
         editData.chat_tool_profile ?? service.chat_tool_profile ?? 'full',
+      supports_audio_input:
+        editData.supports_audio_input ?? service.supports_audio_input ?? false,
     };
 
     return (

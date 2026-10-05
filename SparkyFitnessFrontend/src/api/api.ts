@@ -332,7 +332,9 @@ export async function apiCall<T = any>(
     //console.log(`API Call: Returning JSON response for ${url}:`, jsonResponse); // Added console.log
     return jsonResponse;
   } catch (err: unknown) {
-    if (err instanceof HttpApiError) {
+    // Cancellation (navigation, dismissed recording, etc.) is not a network
+    // failure. Preserve AbortError and let the caller handle timeouts locally.
+    if (options?.signal?.aborted || err instanceof HttpApiError) {
       throw err;
     }
 

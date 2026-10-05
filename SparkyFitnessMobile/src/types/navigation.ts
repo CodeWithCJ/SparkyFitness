@@ -323,6 +323,7 @@ export type RootStackParamList = {
   FastingDetail: undefined;
   SleepDetail: { entryId: string; day: string };
   Chat: undefined;
+  ChatSettings: undefined;
   Logs: undefined;
   Sync: undefined;
   ImportHistory: undefined;

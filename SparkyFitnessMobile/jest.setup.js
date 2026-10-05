@@ -198,16 +198,37 @@ jest.mock('expo-haptics', () => ({
 }));
 
 // Mock expo-audio
-jest.mock('expo-audio', () => ({
-  createAudioPlayer: jest.fn(() => ({
-    play: jest.fn(),
-    pause: jest.fn(),
-    seekTo: jest.fn().mockResolvedValue(undefined),
-    remove: jest.fn(),
-  })),
-  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
-  setIsAudioActiveAsync: jest.fn().mockResolvedValue(undefined),
-}));
+jest.mock('expo-audio', () => {
+  const recorder = {
+    isRecording: false,
+    uri: 'file:///voice.m4a',
+    prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
+    record: jest.fn(),
+    stop: jest.fn().mockResolvedValue(undefined),
+  };
+  return {
+    createAudioPlayer: jest.fn(() => ({
+      play: jest.fn(),
+      pause: jest.fn(),
+      seekTo: jest.fn().mockResolvedValue(undefined),
+      remove: jest.fn(),
+    })),
+    RecordingPresets: { HIGH_QUALITY: {} },
+    getRecordingPermissionsAsync: jest
+      .fn()
+      .mockResolvedValue({ granted: false }),
+    requestRecordingPermissionsAsync: jest
+      .fn()
+      .mockResolvedValue({ granted: true }),
+    setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+    setIsAudioActiveAsync: jest.fn().mockResolvedValue(undefined),
+    useAudioRecorder: jest.fn(() => recorder),
+    useAudioRecorderState: jest.fn(() => ({
+      isRecording: false,
+      metering: -160,
+    })),
+  };
+});
 
 // Mock expo-speech (guided workout narration)
 jest.mock('expo-speech', () => ({

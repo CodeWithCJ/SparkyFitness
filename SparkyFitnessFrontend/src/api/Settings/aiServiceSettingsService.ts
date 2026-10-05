@@ -113,7 +113,7 @@ export const testAIServiceConnection = async (
 };
 
 export const updateUserPreferences = async (
-  preferences: UserPreferencesChat
+  preferences: Partial<UserPreferencesChat>
 ): Promise<UserPreferencesChat> => {
   return apiCall(`/user-preferences`, {
     method: 'PUT',

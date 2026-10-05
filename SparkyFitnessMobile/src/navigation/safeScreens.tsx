@@ -56,6 +56,7 @@ import ProgressPhotosScreen from '../screens/ProgressPhotosScreen';
 import ProgressPhotoCompareScreen from '../screens/ProgressPhotoCompareScreen';
 import ProgressPhotoTimelapseScreen from '../screens/ProgressPhotoTimelapseScreen';
 import ChatScreen from '../screens/ChatScreen';
+import ChatSettingsScreen from '../screens/ChatSettingsScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import CycleSettingsScreen from '../screens/CycleSettingsScreen';
 import CycleOnboardingScreen from '../screens/CycleOnboardingScreen';
@@ -135,6 +136,7 @@ export const SafeProgressPhotos = withErrorBoundary(ProgressPhotosScreen, 'Progr
 export const SafeProgressPhotoCompare = withErrorBoundary(ProgressPhotoCompareScreen, 'ProgressPhotoCompare', { canGoBack: true });
 export const SafeProgressPhotoTimelapse = withErrorBoundary(ProgressPhotoTimelapseScreen, 'ProgressPhotoTimelapse', { canGoBack: true });
 export const SafeChat = withErrorBoundary(ChatScreen, 'Chat', { canGoBack: true });
+export const SafeChatSettings = withErrorBoundary(ChatSettingsScreen, 'ChatSettings', { canGoBack: true });
 export const SafeCalorieSettings = withErrorBoundary(CalorieSettingsScreen, 'CalorieSettings', { canGoBack: true });
 export const SafeMealTypeSettings = withErrorBoundary(MealTypeSettingsScreen, 'MealTypeSettings', { canGoBack: true });
 export const SafeFoodSettings = withErrorBoundary(FoodSettingsScreen, 'FoodSettings', { canGoBack: true });

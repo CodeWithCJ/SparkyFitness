@@ -1,5 +1,6 @@
 export * from "./schemas/api/AiServiceSettings.api.zod.ts";
 export * from "./schemas/api/AlcoholWeek.api.zod.ts";
+export * from "./schemas/api/VoiceTranscription.api.zod.ts";
 export * from "./schemas/api/Backup.api.zod.ts";
 export * from "./schemas/api/CaffeineKinetics.api.zod.ts";
 export * from "./schemas/api/CanadianNutrientFile.api.zod.ts";

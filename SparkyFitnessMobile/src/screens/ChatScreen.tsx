@@ -14,13 +14,19 @@ import {
   FlatList,
   KeyboardAvoidingView as RNKeyboardAvoidingView,
   Platform,
+  Pressable,
   TextInput,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type TextInputProps,
 } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from 'expo-speech-recognition';
 import { KeyboardAvoidingView as KeyboardControllerAvoidingView } from 'react-native-keyboard-controller';
+import { Easing, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
@@ -48,6 +54,13 @@ import AskUserToolCard from '../components/chat/AskUserToolCard';
 import ToolCallCard from '../components/chat/ToolCallCard';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import MarkdownMessage from '../components/chat/MarkdownMessage';
+import VoiceWaveform from '../components/chat/VoiceWaveform';
+import AiVoiceDictationButton from '../components/chat/AiVoiceDictationButton';
+import { useVoicePreferencesRefresh } from '../hooks/useVoicePreferencesRefresh';
+import {
+  useVoiceInputLifecycle,
+  type VoiceCancellationReason,
+} from '../hooks/useVoiceInputLifecycle';
 import { CHAT_SUGGESTIONS } from '../constants/chat';
 import {
   getActiveServerConfig,
@@ -61,6 +74,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   useActiveAiServiceSetting,
   useChatHistory,
+  usePreferences,
   chatHistoryQueryKey,
 } from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -392,44 +406,340 @@ function LocalComposerInput({
   );
 }
 
+/**
+ * System dictation button: taps the platform speech recognizer (Google/Samsung
+ * on Android, SFSpeechRecognizer on iOS) and streams the transcript into the
+ * composer. The OS recognizer may use its own cloud service; no configured
+ * Sparky AI provider is called. Sending stays manual for proofreading.
+ */
+function SystemVoiceDictationButton({
+  textPrimary,
+  recording,
+  busy,
+  onRecordingChange,
+  onBusyChange,
+  onVolumeChange,
+}: {
+  textPrimary: string;
+  recording: boolean;
+  busy: boolean;
+  onRecordingChange: (recording: boolean) => void;
+  onBusyChange: (busy: boolean) => void;
+  onVolumeChange: (volume: number) => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const aui = useAui();
+  // Text already present when dictation starts; final segments are appended.
+  const baseTextRef = useRef('');
+  const finalTranscriptRef = useRef('');
+  // Latest composer text kept in a ref, so press callbacks can capture it
+  // as the base that dictation appends to.
+  const composerText = useAuiState((s) => s.composer.text);
+  const composerTextRef = useRef(composerText);
+  useEffect(() => {
+    composerTextRef.current = composerText;
+  }, [composerText]);
+
+  const activeRef = useRef(false);
+  const pendingRef = useRef(false);
+  const sessionRef = useRef(0);
+  const finish = useCallback(() => {
+    activeRef.current = false;
+    pendingRef.current = false;
+    onRecordingChange(false);
+    onBusyChange(false);
+    onVolumeChange(0);
+  }, [onBusyChange, onRecordingChange, onVolumeChange]);
+  const cancel = useCallback(
+    (reason: VoiceCancellationReason) => {
+      ++sessionRef.current;
+      activeRef.current = false;
+      pendingRef.current = false;
+      ExpoSpeechRecognitionModule.abort();
+      if (reason !== 'unmount') finish();
+    },
+    [finish]
+  );
+  useVoiceInputLifecycle(cancel);
+
+  useSpeechRecognitionEvent('result', (event) => {
+    if (!activeRef.current) return;
+    const transcript = event.results[0]?.transcript?.trim() ?? '';
+    if (!transcript) return;
+
+    if (event.isFinal) {
+      finalTranscriptRef.current = [finalTranscriptRef.current, transcript]
+        .filter(Boolean)
+        .join(' ');
+    }
+    const recognized = event.isFinal
+      ? finalTranscriptRef.current
+      : [finalTranscriptRef.current, transcript].filter(Boolean).join(' ');
+    aui
+      .composer()
+      .setText([baseTextRef.current, recognized].filter(Boolean).join(' '));
+  });
+
+  useSpeechRecognitionEvent('volumechange', (event) => {
+    if (activeRef.current)
+      onVolumeChange(Math.max(0, Math.min(1, (event.value + 2) / 12)));
+  });
+
+  useSpeechRecognitionEvent('nomatch', () => {
+    if (!activeRef.current) return;
+    finish();
+    Toast.show({
+      type: 'info',
+      text1: t('chat.voice.noSpeechTitle', {
+        defaultValue: 'No speech detected',
+      }),
+      text2: t('chat.voice.noSpeechMessage', {
+        defaultValue: 'Try again and speak closer to the microphone.',
+      }),
+    });
+  });
+
+  useSpeechRecognitionEvent('error', (event) => {
+    if (!activeRef.current) return;
+    finish();
+    if (event.error === 'aborted') return;
+
+    const noSpeech =
+      event.error === 'no-speech' || event.error === 'speech-timeout';
+    Toast.show({
+      type: noSpeech ? 'info' : 'error',
+      text1: noSpeech
+        ? t('chat.voice.noSpeechTitle', { defaultValue: 'No speech detected' })
+        : t('chat.voice.errorTitle', { defaultValue: 'Voice input failed' }),
+      text2: noSpeech
+        ? t('chat.voice.noSpeechMessage', {
+            defaultValue: 'Try again and speak closer to the microphone.',
+          })
+        : event.message,
+    });
+  });
+
+  useSpeechRecognitionEvent('end', () => {
+    if (activeRef.current) finish();
+  });
+
+  const toggleDictation = useCallback(async () => {
+    if (pendingRef.current) return;
+    if (activeRef.current) {
+      pendingRef.current = true;
+      onBusyChange(true);
+      onRecordingChange(false);
+      onVolumeChange(0);
+      try {
+        ExpoSpeechRecognitionModule.stop();
+      } catch {
+        finish();
+      }
+      // Wait for the final transcript/end event before allowing Send or editing.
+      return;
+    }
+    const session = ++sessionRef.current;
+    pendingRef.current = true;
+    onBusyChange(true);
+    try {
+      const currentPermission =
+        await ExpoSpeechRecognitionModule.getPermissionsAsync();
+      if (sessionRef.current !== session) return;
+      const permission = currentPermission.granted
+        ? currentPermission
+        : await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (sessionRef.current !== session) return;
+      if (!permission.granted) {
+        finish();
+        Alert.alert(
+          t('chat.voice.permissionTitle', {
+            defaultValue: 'Voice input needs the microphone',
+          }),
+          t('chat.voice.permissionMessage', {
+            defaultValue:
+              'Allow microphone and speech recognition in system settings to dictate messages.',
+          })
+        );
+        return;
+      }
+      baseTextRef.current = composerTextRef.current.trim();
+      finalTranscriptRef.current = '';
+      activeRef.current = true;
+      ExpoSpeechRecognitionModule.start({
+        lang: i18n.language,
+        interimResults: true,
+        maxAlternatives: 1,
+        continuous: false,
+        addsPunctuation: true,
+        volumeChangeEventOptions: { enabled: true, intervalMillis: 80 },
+        ...(Platform.OS === 'android'
+          ? {
+              androidIntentOptions: {
+                EXTRA_ENABLE_LANGUAGE_SWITCH: 'balanced' as const,
+              },
+            }
+          : {}),
+      });
+      pendingRef.current = false;
+      onBusyChange(false);
+      onVolumeChange(0);
+      onRecordingChange(true);
+    } catch (error) {
+      if (sessionRef.current !== session) return;
+      finish();
+      addLog(
+        'chat.voice.start',
+        'ERROR',
+        error instanceof Error ? [error.message] : [String(error)]
+      );
+      Toast.show({
+        type: 'error',
+        text1: t('chat.voice.errorTitle', {
+          defaultValue: 'Voice input failed',
+        }),
+      });
+    }
+  }, [
+    finish,
+    onBusyChange,
+    onRecordingChange,
+    onVolumeChange,
+    t,
+    i18n.language,
+  ]);
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={
+        recording
+          ? t('chat.voice.stop', { defaultValue: 'Stop dictation' })
+          : t('chat.voice.label', { defaultValue: 'Dictate message' })
+      }
+      accessibilityState={{ selected: recording, disabled: busy }}
+      disabled={busy}
+      onPress={toggleDictation}
+      className={
+        recording
+          ? 'bg-border-subtle rounded-full w-10 h-10 items-center justify-center'
+          : 'rounded-full w-10 h-10 items-center justify-center'
+      }
+    >
+      <Icon
+        name={recording ? 'stop' : 'microphone'}
+        size={recording ? 17 : 20}
+        color={textPrimary}
+      />
+    </Pressable>
+  );
+}
+
 /** The bottom input row. Send/Cancel stay on assistant-ui actions. */
-function Composer({ autoFocusReady }: { autoFocusReady: boolean }) {
+function Composer({
+  autoFocusReady,
+  voiceServiceConfigId,
+  voiceInputEnabled,
+}: {
+  autoFocusReady: boolean;
+  voiceServiceConfigId?: string | null;
+  voiceInputEnabled: boolean;
+}) {
   const { t } = useTranslation();
-  const [muted, raised, textPrimary] = useCSSVariable([
+  const [recording, setRecording] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const voiceLevel = useSharedValue(0);
+  const handleVoiceVolume = useCallback(
+    (volume: number) => {
+      const normalized = Number.isFinite(volume)
+        ? Math.max(0, Math.min(1, volume))
+        : 0;
+      // Suppress low-level room noise. Follow speech quickly, then settle slowly
+      // between syllables instead of shifting an entire row on every meter tick.
+      const target = Math.max(0, (normalized - 0.08) / 0.92);
+      // Reanimated shared values are intentionally mutable outside React renders.
+      // eslint-disable-next-line react-hooks/immutability
+      voiceLevel.value = withTiming(target, {
+        duration: target > voiceLevel.value ? 100 : 280,
+        easing: Easing.out(Easing.cubic),
+      });
+    },
+    [voiceLevel]
+  );
+  const handleRecordingChange = useCallback(
+    (nextRecording: boolean) => {
+      setRecording(nextRecording);
+      // Reset the UI-thread meter without re-rendering for each audio sample.
+      // eslint-disable-next-line react-hooks/immutability
+      voiceLevel.value = 0;
+    },
+    [voiceLevel]
+  );
+  const [muted, raised, textPrimary, accent] = useCSSVariable([
     '--color-text-muted',
     '--color-raised',
     '--color-text-primary',
-  ]) as [string, string, string];
+    '--color-accent-primary',
+  ]) as [string, string, string, string];
 
   return (
     <ComposerPrimitive.Root
       style={{
         flexDirection: 'row',
-        alignItems: 'flex-end',
-        padding: 12,
+        alignItems: 'center',
+        margin: 12,
         gap: 8,
       }}
     >
-      <LocalComposerInput
-        autoFocusReady={autoFocusReady}
-        placeholder={t('chat.placeholder', { defaultValue: 'Message Sparky…' })}
-        placeholderTextColor={muted}
-        multiline
-        style={{
-          flex: 1,
-          color: textPrimary,
-          backgroundColor: raised,
-          borderRadius: 20,
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          maxHeight: 120,
-          fontSize: 16,
-        }}
-      />
-      {/* ThreadPrimitive.If is the running-aware conditional (ComposerPrimitive.If
-          is not): show Send when idle, swap to a Stop button while streaming. */}
+      {recording ? (
+        <VoiceWaveform level={voiceLevel} raised={raised} accent={accent} />
+      ) : (
+        <LocalComposerInput
+          autoFocusReady={autoFocusReady && !voiceBusy}
+          editable={!voiceBusy}
+          placeholder={t('chat.placeholder', {
+            defaultValue: 'Message Sparky…',
+          })}
+          placeholderTextColor={muted}
+          multiline
+          style={{
+            flex: 1,
+            color: textPrimary,
+            backgroundColor: raised,
+            borderRadius: 20,
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            maxHeight: 120,
+            fontSize: 16,
+          }}
+        />
+      )}
+      {voiceInputEnabled && (
+        <ThreadPrimitive.If running={false}>
+          {voiceServiceConfigId ? (
+            <AiVoiceDictationButton
+              serviceConfigId={voiceServiceConfigId}
+              textPrimary={textPrimary}
+              recording={recording}
+              onRecordingChange={handleRecordingChange}
+              onBusyChange={setVoiceBusy}
+              onVolumeChange={handleVoiceVolume}
+            />
+          ) : (
+            <SystemVoiceDictationButton
+              textPrimary={textPrimary}
+              recording={recording}
+              busy={voiceBusy}
+              onRecordingChange={handleRecordingChange}
+              onBusyChange={setVoiceBusy}
+              onVolumeChange={handleVoiceVolume}
+            />
+          )}
+        </ThreadPrimitive.If>
+      )}
+      {/* Keep the arrow visible like Gemini, but disable it until recording has
+          stopped so recognition can never continue invisibly after a send. */}
       <ThreadPrimitive.If running={false}>
-        <ComposerPrimitive.Send>
+        <ComposerPrimitive.Send disabled={recording || voiceBusy}>
           <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
             <Icon name="arrow-up" size={20} color="#ffffff" />
           </View>
@@ -494,12 +804,16 @@ function getLocalizedSuggestionLabel(
 function ChatThread({
   baseUrl,
   serviceConfigId,
+  voiceServiceConfigId,
+  voiceInputEnabled,
   initialMessages,
   onRunningChange,
   autoFocusReady,
 }: {
   baseUrl: string;
   serviceConfigId: string;
+  voiceServiceConfigId?: string | null;
+  voiceInputEnabled: boolean;
   initialMessages: InitialMessages;
   onRunningChange: (running: boolean) => void;
   autoFocusReady: boolean;
@@ -631,7 +945,12 @@ function ChatThread({
           </ThreadMessages>
         </View>
 
-        <Composer autoFocusReady={autoFocusReady} />
+        <Composer
+          key={`${voiceInputEnabled}:${voiceServiceConfigId ?? 'system'}`}
+          autoFocusReady={autoFocusReady}
+          voiceServiceConfigId={voiceServiceConfigId}
+          voiceInputEnabled={voiceInputEnabled}
+        />
       </ThreadPrimitive.Root>
     </AssistantRuntimeProvider>
   );
@@ -672,6 +991,10 @@ export default function ChatScreen({
   const [threadKey, setThreadKey] = useState(0);
   const { data: setting, isLoading: loadingSetting } =
     useActiveAiServiceSetting();
+  const { preferences, refetch: refetchPreferences } = usePreferences({
+    enabled: !!baseUrl,
+  });
+  useVoicePreferencesRefresh(refetchPreferences, !!baseUrl);
 
   // Gate the composer's autofocus on the push transition finishing so the
   // keyboard doesn't animate in over the still-sliding screen (which renders it
@@ -821,6 +1144,10 @@ export default function ChatScreen({
             key={threadKey}
             baseUrl={baseUrl}
             serviceConfigId={serviceConfigId}
+            voiceServiceConfigId={preferences?.active_voice_ai_service_id}
+            voiceInputEnabled={
+              !!preferences && preferences.voice_input_enabled !== false
+            }
             initialMessages={initialMessages}
             onRunningChange={setRunning}
             autoFocusReady={transitionComplete}

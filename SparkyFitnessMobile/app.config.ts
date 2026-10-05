@@ -216,14 +216,24 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       ...(config.plugins ?? []),
       'expo-image',
       [
-        // No mic permission and no Android record/foreground-service perms.
-        // iOS background audio for the rest chime comes from `UIBackgroundModes`
-        // above; the plugin flag would also add Android's media-playback
-        // foreground service, which the chime doesn't use.
+        // System voice input (Android/iOS speech recognition) for chat dictation.
+        'expo-speech-recognition',
+        {
+          microphonePermission:
+            'SparkyFitness uses the microphone so you can dictate messages in Chat.',
+          speechRecognitionPermission:
+            'SparkyFitness uses speech recognition to turn voice input into chat text.',
+        },
+      ],
+      [
+        // Foreground-only voice capture for optional server-side transcription.
+        // Keep the existing iOS background playback for workout cues; this
+        // plugin must not enable Android's media-playback foreground service.
         'expo-audio',
         {
-          microphonePermission: false,
-          recordAudioAndroid: false,
+          microphonePermission:
+            'SparkyFitness uses the microphone so you can dictate messages in Chat.',
+          recordAudioAndroid: true,
           enableBackgroundPlayback: false,
         },
       ],

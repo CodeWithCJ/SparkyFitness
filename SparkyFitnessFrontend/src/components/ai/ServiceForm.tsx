@@ -16,6 +16,7 @@ import {
   getServiceTypes,
   getModelOptions,
   requiresApiKey,
+  supportsVoiceTranscriptionServiceType,
 } from '@/utils/aiServiceUtils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -56,6 +57,9 @@ export const ServiceForm = ({
   const { toast } = useToast();
   const serviceTypes = getServiceTypes(t);
   const modelOptions = getModelOptions(formData.service_type ?? '');
+  const voiceRoutingSupported = supportsVoiceTranscriptionServiceType(
+    formData.service_type
+  );
 
   // The effective model is whichever input is active for this service type.
   const selectedModel = (
@@ -120,6 +124,7 @@ export const ServiceForm = ({
                 // Users can manually select 'core' if they wish to optimize
                 // their local system performance, and are guided by warnings.
                 chat_tool_profile: 'full',
+                supports_audio_input: false,
               })
             }
           >
@@ -310,6 +315,30 @@ export const ServiceForm = ({
             placeholder={t(`${translationPrefix}.customModelNamePlaceholder`)}
           />
         </div>
+      )}
+
+      {voiceRoutingSupported ? (
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="supports_audio_input"
+              checked={formData.supports_audio_input ?? false}
+              onCheckedChange={(checked) =>
+                onFormDataChange({ supports_audio_input: checked })
+              }
+            />
+            <Label htmlFor="supports_audio_input">
+              {t(`${translationPrefix}.supportsAudioInput`)}
+            </Label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {t(`${translationPrefix}.supportsAudioInputDescription`)}
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          {t(`${translationPrefix}.audioInputProviderUnsupported`)}
+        </p>
       )}
 
       <div>

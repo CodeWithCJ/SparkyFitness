@@ -37,7 +37,7 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `sparky_chat_history` | AI Assistant chat messages and history | Owner-Only | Owner-Only |
 | `user_ignored_updates` | Records of skipped release updates | Owner-Only | Owner-Only |
 | `admin_activity_logs` | Admin action audits | Admin-Only | Admin-Only |
-| `ai_service_settings` | User-defined custom assistant configurations | Owner-Only | Owner-Only (Public configs readable by all) |
+| `ai_service_settings` | AI configurations and credentials, including the per-model `supports_audio_input` opt-in | Owner-Only | Owner-Only (Public configs readable by all) |
 | `cycle_settings` | Cycle & pregnancy hub settings (mode, cycle parameters, birth control, conditions) | Owner-Only | Owner-Only |
 | `cycle_daily_entries` | Per-day cycle logs (flow, period products, BBT, cervical mucus, moods, libido, notes) | Owner-Only | Owner-Only |
 | `cycles` | Derived/manually-corrected period & cycle history records | Owner-Only | Owner-Only |
@@ -63,7 +63,7 @@ These tables contain user profiles, layouts, display settings, and custom databa
 | Table Name | Description | Write (insert/update/delete) | Read (select) |
 | :--- | :--- | :--- | :--- |
 | `profiles` | User full name, height, and display metrics | **Owner-Only** (`authenticated_user_id()`) | Switched Delegate (`current_user_id()`) |
-| `user_preferences` | Unit, calculation-method, calorie safety-floor, and chart-scale preferences | **Owner-Only** (`authenticated_user_id()`) | Switched Delegate |
+| `user_preferences` | Unit, calculation-method, calorie safety-floor, chart-scale, and Chat/Vision/Voice configuration preferences (`active_voice_ai_service_id` is nullable; NULL means system recognition, never the Chat provider; `voice_input_enabled` defaults to true and controls microphone visibility on web/mobile without clearing the selection) | **Owner-Only** (`authenticated_user_id()`) | Switched Delegate |
 | `user_nutrient_display_preferences` | Rearranged nutrient column preferences | **Owner-Only** | Switched Delegate |
 | `user_medication_display_preferences` | Private preference on GLP-1/Medication display | **Owner-Only** | Delegate with `can_manage_medications` or `can_view_reports` |
 | `user_dashboard_layouts` | Rearranged dashboard widget positions | **Owner-Only** | Switched Delegate |
