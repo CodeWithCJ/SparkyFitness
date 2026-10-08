@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-02_
+_Last updated: 2026-10-08_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -47,6 +47,8 @@ Features are organized by domain, and the same domain folder name appears in `sr
 - Example: a Medications bug lives in `src/pages/Medications/` + `src/api/Medications/` + `src/hooks/` medication hooks. Start there, not with a repo-wide search.
 
 ## Source Map
+
+- Food assistant state: owner-only preferences, recoverable tasks and operation history use `FoodAssistant.api.zod.ts` / `FoodAssistant.zod.ts` in shared. Server: `routes/v2/foodAssistantRoutes.ts`, `services/foodAssistantService.ts`, `models/foodAssistantRepository.ts`, `ai/tools/foodAssistantTools.ts`. Recipes: `ai/tools/recipeTools.ts`, `services/foodAssistantRecipeService.ts` and `services/recipeImageService.ts` implement resumable source imports, exact provider portions, atomic publication/readback and conflict-safe undo. Web: `src/components/ai/FoodAssistantState.tsx`, `src/api/Chatbot/foodAssistantService.ts`.
 
 - `src/main.tsx` - app bootstrap; creates the shared `QueryClient` with global `QueryCache`/`MutationCache` handlers that render toasts from query/mutation `meta` (`errorTitle`, `errorMessage`, `successMessage`).
 - `src/App.tsx` - route registry via `createBrowserRouter`, plus `PrivateRoute` and `PermissionRoute` wrappers (permission-gated areas include `reports` and `admin`).

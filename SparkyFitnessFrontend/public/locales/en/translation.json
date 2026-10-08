@@ -2137,6 +2137,15 @@
         "perplexity": "Perplexity AI",
         "meta": "Meta",
         "custom": "Custom"
+      },
+      "reasoningEffort": {
+        "label": "Reasoning effort",
+        "low": "Low",
+        "medium": "Medium (recommended)",
+        "high": "High",
+        "xhigh": "Extra high",
+        "max": "Maximum",
+        "description": "Higher effort gives complex food and meal tasks more reasoning time and can increase response time and cost."
       }
     },
     "apiKeyManagement": {
@@ -6855,5 +6864,28 @@
     "setsTitle": "Sets per muscle",
     "noSets": "No sets logged this week or last.",
     "loadFailed": "Failed to load training consistency."
+  },
+  "foodAssistant": {
+    "state": "Food preferences and tasks",
+    "error": "Could not update assistant state. Refresh to read the latest version.",
+    "memoryHelp": "Lasting food preferences are saved separately from chat history. A request for today can override them without changing them.",
+    "preference": "Preference",
+    "forget": "Forget",
+    "noPreferences": "No saved food preferences.",
+    "resume": "Resume in chat",
+    "noTasks": "No saved food tasks.",
+    "status": {
+      "draft": "Draft",
+      "running": "In progress",
+      "awaiting_input": "Needs input",
+      "complete": "Complete",
+      "cancelled": "Cancelled",
+      "failed": "Failed"
+    },
+    "ingredient": {
+      "unresolved": "Needs matching",
+      "selected": "Selected",
+      "verified": "Verified"
+    }
   }
 }

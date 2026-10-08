@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-07_
+_Last updated: 2026-10-08_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -237,6 +237,7 @@ npx expo prebuild --clean
 - Auth and proxy headers are resolved per request through an async `headers` callback; `service_config_id` (the user's active AI provider) is merged into the request body and required by the server.
 - `chatApi.ts` is history persistence only: `GET /api/chat/sparky-chat-history` and `POST /api/chat/clear-all-history`. `useChatHistory` seeds the runtime with prior messages and uses `staleTime`/`gcTime` of 0 because the runtime ignores `messages` changes after mount — every chat open must re-seed cold.
 - Chat UI lives in `components/chat/`: `MarkdownMessage` (`react-native-enriched-markdown` + `remend` to repair unclosed streamed markdown), `ToolCallCard` (derives running/complete/error from `result`/`isError`), `TypingIndicator`. Tool-name display mapping lives in `constants/chat.ts`.
+- `FoodAssistantStatePanel`, `useFoodAssistantState` and `foodAssistantApi` expose private preferences and task checkpoints/history, versioned edit/forget/cancel/resume and resume as a normal user chat message. They remain separate from chat history.
 - There is no chat Zustand store; thread state lives in the assistant-ui runtime and history seeding in React Query.
 
 ## Auth, Networking, And Settings
@@ -329,6 +330,7 @@ All endpoints require auth headers, and proxy headers are injected before auth h
 - `fastingApi.ts` - `POST /api/fasting/start`, `POST /api/fasting/end`, and current/stats/history reads.
 - `authService.ts`, `profileApi.ts`, `externalProvidersApi.ts`, `customNutrientsApi.ts` - auth/session/MFA, profile, configured providers, custom nutrient definitions.
 - `ChatScreen.tsx` (transport) + `chatApi.ts` - streaming chat via `POST /api/chat/stream`, history load/clear.
+- `hooks/invalidateAssistantFoodCaches.ts` - refresh diary, library, recipe, meal-plan and assistant-state caches after a chat turn; reuses the ordinary food and meal invalidation helpers.
 
 When reviewing an API issue, trace screen/hook -> API client -> server route -> service/repository -> shared schema before judging the fix. Deeper endpoint docs live in mobile `docs/` (`food_api.md`, `sync_api.md`, `measurements_api.md`, `external_providers.md`, `healthkit.md`, `bg_sync.md`).
 

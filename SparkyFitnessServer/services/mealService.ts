@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import mealRepository from '../models/mealRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import foodEntryRepository from '../models/foodEntry.js';
@@ -416,12 +417,18 @@ async function resolveMealTypeId(userId: string, mealTypeName: string) {
     return null;
   }
 }
-async function createMeal(userId: string, mealData: CreateMealData) {
+async function createMeal(
+  userId: string,
+  mealData: CreateMealData,
+  transactionClient?: PoolClient
+) {
   try {
     mealData.user_id = userId;
     normalizeServingFields(mealData, { mode: 'create' });
     await validateMealIngredients(userId, mealData.foods, null);
-    const newMeal = await mealRepository.createMeal(mealData);
+    const newMeal = await (transactionClient
+      ? mealRepository.createMeal(mealData, transactionClient)
+      : mealRepository.createMeal(mealData));
     log(
       'info',
       `Meal ${newMeal.id} created with serving: ${newMeal.serving_size} ${newMeal.serving_unit}, total_servings: ${newMeal.total_servings}`
