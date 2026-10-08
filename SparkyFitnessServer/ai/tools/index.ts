@@ -25,6 +25,7 @@ import { buildBarcodeTools } from './barcodeTools.js';
 import { buildDashboardTools } from './dashboardTools.js';
 import { buildFavoritesTools } from './favoritesTools.js';
 import { buildFoodTools } from './foodTools.js';
+import { buildFoodAssistantTools } from './foodAssistantTools.js';
 import { buildGoalTools } from './goalTools.js';
 import { buildHabitTools } from './habitTools.js';
 import { buildMealPlanTools } from './mealPlansTools.js';
@@ -63,6 +64,8 @@ type ToolMap = Record<string, Tool>;
  * and logged verbatim); every other builder ignores the argument.
  */
 export interface ToolBuildContext {
+  /** Trusted text from the current user turn, used to authorize lasting memory. */
+  latestUserText?: string;
   foodPhotoEstimateSink?: FoodPhotoEstimateSink;
   /**
    * The image attached to this turn, as a data URL.
@@ -93,6 +96,7 @@ const CATEGORY_BUILDERS: Record<
     (_u, _tz, ctx): ToolMap =>
       ctx?.foodResearchTool ? { web_search: ctx.foodResearchTool } : {},
     (u, tz) => buildFoodTools(u, tz),
+    (u, _tz, ctx) => buildFoodAssistantTools(u, ctx),
     (u, tz) => buildFavoritesTools(u, tz),
     (u, tz) => buildMealPlanTools(u, tz),
     (u, tz) => buildCustomNutrientTools(u, tz),

@@ -21,6 +21,14 @@
 - **Meal Context**: Understand meal timing and context for accurate logging
 - **Brand Recognition**: Identify specific food brands and products
 
+## Food Preferences and Saved Tasks
+
+The web chat's **Food preferences and tasks** panel shows lasting food preferences and saved work. Tell Sparky explicitly what to remember, or edit and forget preferences in the panel. A choice for one meal does not replace a lasting preference. These preferences are stored separately from conversation history.
+
+Multi-step food tasks keep their ingredient selections, portion variants, source evidence and next step. Ingredients that still need matching remain in the draft with incomplete nutrition. Saving a draft does not publish a recipe or add food to the diary. Select a task to inspect its checkpoint and operation history, cancel remaining work, or resume it in chat. Resume does not start a background job.
+
+This information belongs to the signed-in person and is not shared with family diary viewers.
+
 ## Troubleshooting AI Providers
 
 Most "OpenAI Compatible / OpenRouter isn't working" reports come from provider configuration, not from SparkyFitness itself. The most common cases:

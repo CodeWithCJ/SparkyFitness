@@ -181,6 +181,9 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | Table | Purpose |
 |-------|---------|
 | `sparky_chat_history` | AI Assistant chat messages and history |
+| `food_assistant_preferences` | Explicit lasting food preferences, independently editable and forgettable |
+| `food_assistant_tasks` | Versioned food tasks, recoverable recipe ingredients and source evidence |
+| `food_assistant_operations` | Idempotent task operations and before/after checkpoints |
 | `ai_service_settings` | User-defined custom assistant configurations |
 
 ### Admin & System (Tier 1: Admin-Only or Public)

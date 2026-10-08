@@ -523,7 +523,8 @@ async function prepareChatContext(
   serviceSystemPrompt?: string | null,
   latestImageDataUrl?: string | null,
   serviceConfigId?: string | null,
-  foodResearchTool?: Tool
+  foodResearchTool?: Tool,
+  latestUserText?: string
 ) {
   const { chatTz, customCategoriesList } =
     await chatContextInputsCache.getOrLoad(authenticatedUserId, async () => {
@@ -586,6 +587,7 @@ async function prepareChatContext(
     latestImageDataUrl,
     serviceConfigId,
     foodResearchTool,
+    latestUserText,
   };
 
   if (categoriesAreManual) {
@@ -2062,7 +2064,13 @@ async function processChatMessage(
         ? createOpenAI({ apiKey: aiService.api_key }).tools.webSearch({
             searchContextSize: 'high',
           })
-        : undefined
+        : undefined,
+      extractMessageText(
+        [...messages].reverse().find((message) => message.role === 'user') ?? {
+          role: 'user',
+          content: '',
+        }
+      )
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -2583,7 +2591,13 @@ async function processChatMessageStream(
         ? createOpenAI({ apiKey: aiService.api_key }).tools.webSearch({
             searchContextSize: 'high',
           })
-        : undefined
+        : undefined,
+      extractMessageText(
+        [...messages].reverse().find((message) => message.role === 'user') ?? {
+          role: 'user',
+          content: '',
+        }
+      )
     );
 
     const chatProviderOptions = buildChatProviderOptions(
