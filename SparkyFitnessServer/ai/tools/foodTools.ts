@@ -22,8 +22,16 @@ import {
   lookupFoodFromProviders,
   pickBestVariant,
   IMPLAUSIBLE_SERVING_UNITS,
+  type ProviderFoodItem,
+  type ProviderFoodVariant,
 } from '../../services/foodProviderLookupService.js';
-import { cleanMealSummary } from '../../services/foodPhotoEstimationService.js';
+import { fetchProviderFoodDetails } from '../../services/foodProviderDetailService.js';
+import {
+  resolveFoodPortion,
+  validateNutritionReference,
+  nutrientNumber,
+  type PortionVariant,
+} from '../../utils/foodPortionResolver.js';
 import { ERRORS, formatZodError } from './errors.js';
 import {
   compactRecord,
@@ -48,7 +56,6 @@ import { optionalDateSchema, uuidSchema } from './schemas/common.js';
 import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
 import {
   normalizeServingUnit,
-  reconcileEntryUnitToVariant,
   scaleNutritionForConsumedAmount,
 } from '../../utils/foodUtils.js';
 
@@ -123,9 +130,7 @@ function isSet<T>(value: T | null | undefined): value is T {
 // Provider nutrition values arrive as strings or numbers; absent/blank/NaN
 // all normalize to null so createFood stores them as empty, not 0.
 function toNutrientNumber(value: unknown): number | null {
-  if (value === null || value === undefined || value === '') return null;
-  const n = Number(value);
-  return isNaN(n) ? null : n;
+  return nutrientNumber(value);
 }
 
 // Placeholder values for corrective retry examples (see
@@ -258,89 +263,63 @@ function formatConsumedNutrition(
     servingSize,
     nutrients
   );
-  const present = (name: 'calories' | 'protein' | 'carbs' | 'fat') => {
+  const present = (
+    name: 'calories' | 'protein' | 'carbs' | 'fat',
+    unit = ''
+  ) => {
     const value = scaled[name];
-    return typeof value === 'number' ? Number(value.toFixed(3)) : 'unknown';
+    return typeof value === 'number'
+      ? `${Number(value.toFixed(3))}${unit}`
+      : 'unknown';
   };
-  return `Consumed: ${present('calories')} kcal | P ${present('protein')}g | C ${present('carbs')}g | F ${present('fat')}g.`;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function dedupeVariantsById(variants: any[]) {
-  const seen = new Set<string>();
-  return variants.filter((variant) => {
-    if (!variant?.id) return true;
-    if (seen.has(variant.id)) return false;
-    seen.add(variant.id);
-    return true;
-  });
-}
-
-function resolveQuantityForVariantUnit(args: {
-  requestedQuantity: number;
-  requestedUnit: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  variant: any;
-}): { quantity: number; unit: string } | null {
-  if (!args.variant) {
-    return null;
-  }
-
-  const requestedUnit = normalizeFoodUnit(args.requestedUnit);
-  const variantUnit = normalizeFoodUnit(args.variant.serving_unit);
-  if (requestedUnit && requestedUnit === variantUnit) {
-    return {
-      quantity: args.requestedQuantity,
-      unit: args.variant.serving_unit,
-    };
-  }
-
-  // Shared conversion factors handle compatible mass or volume units only.
-  // A null factor deliberately rejects g↔ml and count-unit guesses.
-  const conversionFactor = getConversionFactor(variantUnit, requestedUnit);
-  if (conversionFactor !== null) {
-    return {
-      quantity: args.requestedQuantity * conversionFactor,
-      unit: args.variant.serving_unit,
-    };
-  }
-
-  return null;
+  return `Consumed: ${present('calories')} kcal | P ${present('protein', 'g')} | C ${present('carbs', 'g')} | F ${present('fat', 'g')}.`;
 }
 
 async function resolveFoodLogVariantAndQuantity(args: {
   userId: string;
   foodId: string;
   variantId?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  foodRow?: any;
+  foodRow?: {
+    default_variant?: PortionVariant | null;
+    variants?: PortionVariant[];
+  };
   quantity: number;
   unit?: string;
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let explicitVariant: any | undefined;
+  let explicitVariant: PortionVariant | undefined;
   if (args.variantId) {
     explicitVariant = await foodRepository.getFoodVariantById(
       args.variantId,
       args.userId
     );
+    if (
+      !explicitVariant ||
+      (explicitVariant.food_id && explicitVariant.food_id !== args.foodId)
+    ) {
+      return {
+        ok: false as const,
+        message: 'The selected variant does not belong to this food.',
+      };
+    }
   }
 
   const food =
     args.foodRow ??
     (await foodRepository.getFoodById(args.foodId, args.userId));
-  const defaultVariant = food?.default_variant;
+  const defaultVariant =
+    food?.default_variant ??
+    food?.variants?.find((variant: PortionVariant) => variant.is_default) ??
+    food?.variants?.[0];
   const variantsFromDb = await foodRepository.getFoodVariantsByFoodId(
     args.foodId,
     args.userId
   );
-  const candidates = dedupeVariantsById(
-    [
-      explicitVariant,
-      defaultVariant,
-      ...(Array.isArray(variantsFromDb) ? variantsFromDb : []),
-    ].filter(Boolean)
-  );
+  const candidates: PortionVariant[] = [
+    explicitVariant,
+    defaultVariant,
+    ...(food?.variants ?? []),
+    ...(Array.isArray(variantsFromDb) ? variantsFromDb : []),
+  ].filter((v): v is PortionVariant => Boolean(v));
 
   const requestedUnit = args.unit;
   if (requestedUnit && isAmbiguousLegacyFoodUnit(requestedUnit)) {
@@ -350,61 +329,23 @@ async function resolveFoodLogVariantAndQuantity(args: {
     };
   }
 
-  let matchingVariant: any | undefined;
-  if (requestedUnit && normalizeFoodUnit(requestedUnit) !== 'serving') {
-    matchingVariant = candidates.find((variant) =>
-      resolveQuantityForVariantUnit({
-        requestedQuantity: args.quantity,
-        requestedUnit,
-        variant,
-      })
-    );
-  }
-
-  const variant = explicitVariant ?? matchingVariant ?? defaultVariant;
-  if (!variant?.id) {
-    return {
-      ok: false as const,
-      message: `Cannot safely log ${args.quantity} ${requestedUnit || 'serving'} for this food because no matching serving variant is available.`,
-    };
-  }
-
-  // A serving count is explicit and therefore safe: normalize it to the
-  // variant's concrete reference unit before persisting. This makes 0.75
-  // servings of a 100 g food exactly the same entry as 75 g.
-  if (!requestedUnit || normalizeFoodUnit(requestedUnit) === 'serving') {
-    const reconciled = reconcileEntryUnitToVariant(
-      args.quantity,
-      requestedUnit || 'serving',
-      variant
-    );
-    return {
-      ok: true as const,
-      variantId: variant.id,
-      quantity: reconciled.quantity,
-      unit: reconciled.unit,
-      variant,
-    };
-  }
-
-  const resolved = resolveQuantityForVariantUnit({
-    requestedQuantity: args.quantity,
-    requestedUnit,
-    variant,
+  const resolved = resolveFoodPortion({
+    quantity: args.quantity,
+    unit: requestedUnit,
+    variants: candidates,
+    preferredVariant: defaultVariant,
+    explicitVariant,
   });
-  if (!resolved) {
+  if (!resolved.ok) return resolved;
+  if (!resolved.variant.id) {
     return {
       ok: false as const,
-      message: `Cannot safely convert ${args.quantity} ${requestedUnit} to this food's ${variant.serving_size} ${variant.serving_unit} reference serving. Use the matching unit or an explicit "serving" count; grams and millilitres are never converted automatically.`,
+      message: 'The resolved portion has no saved variant ID.',
     };
   }
-
   return {
-    ok: true as const,
-    variantId: variant.id,
-    quantity: resolved.quantity,
-    unit: resolved.unit,
-    variant,
+    ...resolved,
+    variantId: resolved.variant.id,
   };
 }
 
@@ -919,6 +860,37 @@ export async function getWaterHistoryRows(
  * configured external providers (sort_order first), then free OpenFoodFacts.
  * `source: 'ai_estimate'` with a null food signals the AI-estimation fallback.
  */
+async function fetchVerifiedProviderFood(
+  userId: string,
+  providerType: string,
+  externalId: string
+): Promise<ProviderFoodItem | null> {
+  try {
+    const detail = await fetchProviderFoodDetails({
+      credentialUserId: userId,
+      dataUserId: userId,
+      providerType,
+      externalId,
+    });
+    if (
+      !detail ||
+      typeof detail !== 'object' ||
+      !('name' in detail) ||
+      typeof detail.name !== 'string' ||
+      !('provider_external_id' in detail) ||
+      String(detail.provider_external_id) !== externalId
+    )
+      return null;
+    return detail as ProviderFoodItem;
+  } catch {
+    log(
+      'warn',
+      `[Food Tool] Full details unavailable from ${providerType}; refusing to estimate.`
+    );
+    return null;
+  }
+}
+
 async function lookupFoodNutrition(
   userId: string,
   foodName: string,
@@ -1006,7 +978,7 @@ Actions:
 - list_meal_types() — lists the user's built-in and custom meal types with IDs, names, and sort order.
 - log_food(quantity, meal_type_id?|meal_type?, food_name?|food_id?, unit?, entry_date?, variant_id?) — use meal_type_id for custom meal types; the legacy meal_type fallback accepts "breakfast"|"lunch"|"dinner"|"snacks". meal_type_id takes precedence when both are supplied. Provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
 - log_external_food(food_name, meal_type_id?|meal_type?, quantity?, unit?, entry_date?, external_id?, provider_type?, is_quick_food?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. quantity is in servings and defaults to 1. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list.
-- create_food(food_name, calories, protein, carbs, fat, brand?, barcode?, notes?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — MANDATORY: You must run lookup_food_nutrition first. Call only when lookup returns source='ai_estimate' (no match anywhere) or for custom/homemade foods, using AI-estimated values; for external lookup matches use log_external_food instead. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Populate as many micro-nutrients, GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
+- create_food(food_name, calories, protein, carbs, fat, brand?, barcode?, notes?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — MANDATORY: You must run lookup_food_nutrition first. Use verified label/source values for custom foods, or estimates only when the user explicitly requests an estimate; for external lookup matches use log_external_food instead. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Include source-supported nutrients and omit unknown values; never replace unknown with zero. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
 - set_food_barcode(food_id, barcode) — updates product metadata only; it never changes variants or diary history.
 - search_meal(meal_name)
 - log_meal(meal_type_id?|meal_type?, entry_date, meal_id?, meal_name?, quantity?)
@@ -1308,8 +1280,8 @@ Actions:
                 args.provider_type
               );
 
-              if (result.source === 'ai_estimate') {
-                return `No matches found in internal DB or configured external databases/OpenFoodFacts for "${args.food_name}". You may estimate the nutrition using AI and save it using create_food.`;
+              if (!result.food) {
+                return `No verified match is available for "${args.food_name}"${result.source === 'unavailable' ? '; one or more providers failed' : ''}. Try another provider or official source (up to three candidates), then ask for the label or portion weight. Do not invent nutrition.`;
               }
               if (!result.food) {
                 // MCP quirk: an explicit provider_type='internal' miss
@@ -1438,7 +1410,7 @@ Actions:
                 foodRow = await findFoodByExactName(userId, args.food_name);
                 if (!foodRow) {
                   return ERRORS.VALIDATION(
-                    `Food "${args.food_name}" not found in the database. Call lookup_food_nutrition first to search external providers, for example: {"action":"lookup_food_nutrition","food_name":"${args.food_name}"}. If it returns an external match, log it with log_external_food; otherwise call create_food with estimated macros.`
+                    `Food "${args.food_name}" not found in the database. Call lookup_food_nutrition first to search external providers, for example: {"action":"lookup_food_nutrition","food_name":"${args.food_name}"}. If it returns an external match, log it with log_external_food; otherwise research a verified source or ask for the label.`
                   );
                 }
                 foodId = foodRow.id;
@@ -1508,87 +1480,65 @@ Actions:
                   `Unit "${args.unit}" is ambiguous because it includes a reference serving size. Use a consumed unit such as {"quantity":75,"unit":"g"}, or an explicit serving count such as {"quantity":0.75,"unit":"serving"}.`
                 );
               }
-              const result = await lookupFoodNutrition(
-                userId,
-                args.food_name,
-                args.provider_type
+              const pinnedDetails = Boolean(
+                args.external_id && args.provider_type === 'fatsecret'
               );
+              const result = pinnedDetails
+                ? {
+                    source: 'fatsecret',
+                    food: await fetchVerifiedProviderFood(
+                      userId,
+                      'fatsecret',
+                      args.external_id!
+                    ),
+                    alternatives: [],
+                  }
+                : await lookupFoodNutrition(
+                    userId,
+                    args.food_name,
+                    args.provider_type
+                  );
               if (result.source === 'ai_estimate' || !result.food) {
-                // Preserve the caller's meal selector in the retry example: a
-                // custom meal_type_id must not be silently replaced with the
-                // lunch fallback (that is exactly the kind of category
-                // substitution issue #1959 is about).
-                const mealSelector = args.meal_type_id
-                  ? { meal_type_id: args.meal_type_id }
-                  : { meal_type: args.meal_type ?? 'lunch' };
-                const exampleCall = JSON.stringify({
-                  action: 'create_food',
-                  food_name: args.food_name,
-                  calories: 300,
-                  protein: 15,
-                  carbs: 40,
-                  fat: 5,
-                  ...mealSelector,
-                  entry_date: entryDate,
-                  // Carry Quick Add into the retry example too. Dropping it
-                  // here would silently save a visible food after the user
-                  // explicitly asked not to — the same way the caller's meal
-                  // selector must survive above.
-                  ...(args.is_quick_food ? { is_quick_food: true } : {}),
-                });
                 return ERRORS.VALIDATION(
-                  `No external match found for "${args.food_name}". Please estimate the nutrition yourself and call create_food (include meal_type_id (or meal_type) and entry_date to save and log in one step), for example: ${exampleCall}`
+                  `No verified external match is available for "${args.food_name}". Nothing was logged. Try another provider or official product source (up to three candidates), then ask for the label or portion weight. A provider outage is not permission to invent nutrition.`
                 );
               }
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const candidates: any[] = [
+              const candidates: ProviderFoodItem[] = [
                 result.food,
                 ...(result.alternatives ?? []),
               ];
-              const match =
-                (args.external_id &&
-                  candidates.find(
+              let match = args.external_id
+                ? candidates.find(
                     (c) =>
                       String(c.provider_external_id ?? '') ===
                       String(args.external_id)
-                  )) ||
-                result.food;
+                  )
+                : candidates[0];
+              if (!match) {
+                return ERRORS.VALIDATION(
+                  `Selected external ID "${args.external_id}" was not returned by ${result.source}. Nothing was logged. Look up that exact item again; do not substitute another result.`
+                );
+              }
 
               if (result.source === 'internal') {
                 // Already saved: log it directly against the existing food.
-                const variants = await foodRepository.getFoodVariantsByFoodId(
-                  match.id,
-                  userId
-                );
-                let chosenVariant: any =
-                  match.default_variant ||
-                  match.variants?.[0] ||
-                  (Array.isArray(variants) ? variants[0] : undefined);
-                if (args.unit && Array.isArray(variants)) {
-                  const normalizedReqUnit = normalizeServingUnit(args.unit);
-                  const matchedVariant = variants.find(
-                    (v: any) =>
-                      normalizeServingUnit(v.serving_unit) === normalizedReqUnit
-                  );
-                  if (matchedVariant) {
-                    chosenVariant = matchedVariant;
-                  }
-                }
-                // Keep the stored entry's unit aligned with the variant's own
-                // serving_unit so the diary math does not read a whole-serving
-                // count as a gram/ml amount.
-                const logged = reconcileEntryUnitToVariant(
+                if (!match.id)
+                  return ERRORS.VALIDATION('The saved food has no ID.');
+                const logged = await resolveFoodLogVariantAndQuantity({
+                  userId,
+                  foodId: match.id,
+                  foodRow: match,
                   quantity,
-                  args.unit,
-                  chosenVariant
-                );
+                  unit: args.unit,
+                });
+                if (!logged.ok) return ERRORS.VALIDATION(logged.message);
                 const entry = await foodEntryService.createFoodEntry(
                   userId,
                   userId,
                   {
                     user_id: userId,
                     food_id: match.id,
-                    variant_id: chosenVariant?.id,
+                    variant_id: logged.variantId,
                     entry_date: entryDate,
                     quantity: logged.quantity,
                     unit: logged.unit,
@@ -1601,7 +1551,7 @@ Actions:
                     ),
                   }
                 );
-                let existingMsg = `"${entry.food_name}" was already in the food database — logged ${logged.quantity} ${logged.unit} for ${mealType.name} on ${entryDate}.`;
+                let existingMsg = `"${entry.food_name}" was already in the food database — logged ${logged.quantity} ${logged.unit} for ${mealType.name} on ${entryDate}. ${formatConsumedNutrition(logged.quantity, logged.variant.serving_size, logged.variant)}`;
                 if (args.is_quick_food) {
                   // Never flip an existing library food to quick: the user
                   // already has it saved, and hiding it would remove a food
@@ -1611,22 +1561,63 @@ Actions:
                 return formatConfirmation(existingMsg);
               }
 
-              const v = pickBestVariant(match);
-              if (!v) {
+              // FatSecret search summaries are not a serving reference. Fetch
+              // the exact selected ID, including household/metric equivalents.
+              if (result.source === 'fatsecret' && !pinnedDetails) {
+                const externalId = match.provider_external_id;
+                if (!externalId)
+                  return ERRORS.VALIDATION(
+                    'FatSecret returned no food ID; nothing was logged.'
+                  );
+                const detail = await fetchVerifiedProviderFood(
+                  userId,
+                  result.source,
+                  externalId
+                );
+                if (
+                  !detail ||
+                  String(detail.provider_external_id) !== String(externalId)
+                ) {
+                  return ERRORS.VALIDATION(
+                    'Full details for the selected FatSecret item are unavailable; nothing was logged. Retry or ask for the label.'
+                  );
+                }
+                match = detail;
+              }
+              const providerVariants = match.variants?.length
+                ? match.variants
+                : match.default_variant
+                  ? [match.default_variant]
+                  : [];
+              const portion = resolveFoodPortion({
+                quantity,
+                unit: args.unit,
+                variants: providerVariants,
+                preferredVariant: pickBestVariant(match),
+              });
+              if (!portion.ok) return ERRORS.VALIDATION(portion.message);
+              const v = portion.variant;
+              const nutritionIssue = validateNutritionReference(v);
+              if (
+                nutritionIssue ||
+                [v.calories ?? v.energy, v.protein, v.carbs, v.fat].some(
+                  (value) => toNutrientNumber(value) === null
+                )
+              ) {
                 return ERRORS.VALIDATION(
-                  `Provider result for "${match.name}" has no nutrition data. Use create_food with estimated nutrition values instead.`
+                  `Provider result for "${match.name}" needs verification: ${nutritionIssue || 'core nutrition is incomplete'}. Nothing was saved or logged. Try up to three verified candidates, then ask for the label.`
                 );
               }
               const food = await foodCoreService.createFood(userId, {
                 user_id: userId,
                 name: match.name,
                 brand: match.brand || null,
-                serving_size: toNutrientNumber(v.serving_size) ?? 100,
-                serving_unit: v.serving_unit || 'g',
-                calories: toNutrientNumber(v.calories ?? v.energy) ?? 0,
-                protein: toNutrientNumber(v.protein) ?? 0,
-                carbs: toNutrientNumber(v.carbs) ?? 0,
-                fat: toNutrientNumber(v.fat) ?? 0,
+                serving_size: Number(v.serving_size),
+                serving_unit: v.serving_unit!,
+                calories: toNutrientNumber(v.calories ?? v.energy),
+                protein: toNutrientNumber(v.protein),
+                carbs: toNutrientNumber(v.carbs),
+                fat: toNutrientNumber(v.fat),
                 saturated_fat: toNutrientNumber(v.saturated_fat),
                 polyunsaturated_fat: toNutrientNumber(v.polyunsaturated_fat),
                 monounsaturated_fat: toNutrientNumber(v.monounsaturated_fat),
@@ -1657,8 +1648,12 @@ Actions:
                 // createFood funnels this through resolveImageInput and
                 // localizes it after commit, so a food logged through the
                 // assistant gets the same image as one added from the UI.
-                image_url: match.image_url ?? null,
-                image_source_url: match.image_source_url ?? null,
+                image_url:
+                  typeof match.image_url === 'string' ? match.image_url : null,
+                image_source_url:
+                  typeof match.image_source_url === 'string'
+                    ? match.image_source_url
+                    : null,
                 // Quick Add applies here too: this branch saves a brand-new
                 // library food, which is exactly what the user is opting out
                 // of. createFood's provider dedup can't flip an existing food
@@ -1669,54 +1664,58 @@ Actions:
 
               // Create the other variants returned by the provider
               const otherVariants = (match.variants || []).filter(
-                (varOpt: any) =>
+                (varOpt: ProviderFoodVariant) =>
                   varOpt !== v &&
+                  !validateNutritionReference(varOpt) &&
                   (varOpt.serving_size !== v.serving_size ||
                     varOpt.serving_unit !== v.serving_unit)
               );
-              let createdVariants: any[] = [];
+              let createdVariants: PortionVariant[] = [];
               if (otherVariants.length > 0) {
-                const variantsToSave = otherVariants.map((varOpt: any) => ({
-                  food_id: food.id,
-                  serving_size: toNutrientNumber(varOpt.serving_size) ?? 100,
-                  serving_unit: varOpt.serving_unit || 'g',
-                  calories:
-                    toNutrientNumber(varOpt.calories ?? varOpt.energy) ?? 0,
-                  protein: toNutrientNumber(varOpt.protein) ?? 0,
-                  carbs: toNutrientNumber(varOpt.carbs) ?? 0,
-                  fat: toNutrientNumber(varOpt.fat) ?? 0,
-                  saturated_fat: toNutrientNumber(varOpt.saturated_fat),
-                  polyunsaturated_fat: toNutrientNumber(
-                    varOpt.polyunsaturated_fat
-                  ),
-                  monounsaturated_fat: toNutrientNumber(
-                    varOpt.monounsaturated_fat
-                  ),
-                  trans_fat: toNutrientNumber(varOpt.trans_fat),
-                  cholesterol: toNutrientNumber(varOpt.cholesterol),
-                  sodium: toNutrientNumber(varOpt.sodium),
-                  potassium: toNutrientNumber(varOpt.potassium),
-                  dietary_fiber: toNutrientNumber(varOpt.dietary_fiber),
-                  sugars: toNutrientNumber(varOpt.sugars),
-                  vitamin_a: toNutrientNumber(varOpt.vitamin_a),
-                  vitamin_c: toNutrientNumber(varOpt.vitamin_c),
-                  calcium: toNutrientNumber(varOpt.calcium),
-                  iron: toNutrientNumber(varOpt.iron),
-                  caffeine_mg: toNutrientNumber(varOpt.caffeine_mg),
-                  alcohol_g: toNutrientNumber(varOpt.alcohol_g),
-                  water_ml: toNutrientNumber(varOpt.water_ml),
-                  abv_percent: toNutrientNumber(varOpt.abv_percent),
-                  glycemic_index: varOpt.glycemic_index || null,
-                  is_default: false,
-                  // Same CHECK constraint as the default variant above: the
-                  // provider name is not a valid source. This insert is
-                  // best-effort (failures are only warned about), so the bad
-                  // value silently cost the food every alternative serving unit
-                  // the provider returned — including the count units ("1
-                  // fruit", "1 slice") whose absence forces a gram
-                  // clarification at log time.
-                  source: 'imported',
-                }));
+                const variantsToSave = otherVariants.map(
+                  (varOpt: ProviderFoodVariant) => ({
+                    food_id: food.id,
+                    serving_size: toNutrientNumber(varOpt.serving_size) ?? 100,
+                    serving_unit: varOpt.serving_unit || 'g',
+                    calories: toNutrientNumber(
+                      varOpt.calories ?? varOpt.energy
+                    ),
+                    protein: toNutrientNumber(varOpt.protein),
+                    carbs: toNutrientNumber(varOpt.carbs),
+                    fat: toNutrientNumber(varOpt.fat),
+                    saturated_fat: toNutrientNumber(varOpt.saturated_fat),
+                    polyunsaturated_fat: toNutrientNumber(
+                      varOpt.polyunsaturated_fat
+                    ),
+                    monounsaturated_fat: toNutrientNumber(
+                      varOpt.monounsaturated_fat
+                    ),
+                    trans_fat: toNutrientNumber(varOpt.trans_fat),
+                    cholesterol: toNutrientNumber(varOpt.cholesterol),
+                    sodium: toNutrientNumber(varOpt.sodium),
+                    potassium: toNutrientNumber(varOpt.potassium),
+                    dietary_fiber: toNutrientNumber(varOpt.dietary_fiber),
+                    sugars: toNutrientNumber(varOpt.sugars),
+                    vitamin_a: toNutrientNumber(varOpt.vitamin_a),
+                    vitamin_c: toNutrientNumber(varOpt.vitamin_c),
+                    calcium: toNutrientNumber(varOpt.calcium),
+                    iron: toNutrientNumber(varOpt.iron),
+                    caffeine_mg: toNutrientNumber(varOpt.caffeine_mg),
+                    alcohol_g: toNutrientNumber(varOpt.alcohol_g),
+                    water_ml: toNutrientNumber(varOpt.water_ml),
+                    abv_percent: toNutrientNumber(varOpt.abv_percent),
+                    glycemic_index: varOpt.glycemic_index || null,
+                    is_default: false,
+                    // Same CHECK constraint as the default variant above: the
+                    // provider name is not a valid source. This insert is
+                    // best-effort (failures are only warned about), so the bad
+                    // value silently cost the food every alternative serving unit
+                    // the provider returned — including the count units ("1
+                    // fruit", "1 slice") whose absence forces a gram
+                    // clarification at log time.
+                    source: 'imported',
+                  })
+                );
                 try {
                   createdVariants =
                     await foodCoreService.bulkCreateFoodVariants(
@@ -1733,41 +1732,24 @@ Actions:
               }
 
               const dv = food.default_variant;
-              let variantId = dv?.id;
-              let chosenVariant: any = dv;
-
-              if (args.unit) {
-                const normalizedReqUnit = normalizeServingUnit(args.unit);
-                const matchedAlt = createdVariants.find(
-                  (cv: any) =>
-                    normalizeServingUnit(cv.serving_unit) === normalizedReqUnit
-                );
-                if (matchedAlt) {
-                  variantId = matchedAlt.id;
-                  chosenVariant = matchedAlt;
-                } else if (
-                  dv &&
-                  normalizeServingUnit(dv.serving_unit) === normalizedReqUnit
-                ) {
-                  variantId = dv.id;
-                  chosenVariant = dv;
-                }
-              }
-
-              // Align the stored entry's unit with the chosen variant's own
-              // serving_unit. Newly imported foods are usually gram/ml denominated,
-              // so logging a bare "serving" count here made the diary math treat
-              // "1 serving" as "1 gram".
-              const logged = reconcileEntryUnitToVariant(
+              const logged = resolveFoodPortion({
                 quantity,
-                args.unit,
-                chosenVariant
-              );
+                unit: args.unit,
+                variants: [dv, ...createdVariants].filter(
+                  (variant): variant is PortionVariant => Boolean(variant)
+                ),
+                preferredVariant: dv,
+              });
+              if (!logged.ok) return ERRORS.VALIDATION(logged.message);
+              if (!logged.variant.id)
+                return ERRORS.VALIDATION(
+                  'The imported food has no saved reference variant; nothing was logged.'
+                );
 
               await foodEntryService.createFoodEntry(userId, userId, {
                 user_id: userId,
                 food_id: food.id,
-                variant_id: variantId,
+                variant_id: logged.variant.id,
                 entry_date: entryDate,
                 quantity: logged.quantity,
                 unit: logged.unit,
@@ -1779,7 +1761,7 @@ Actions:
                   tz
                 ),
               });
-              let savedMsg = `Saved "${food.name}" from ${result.source} (${dv?.calories || 0} kcal per ${dv?.serving_size || 100}${dv?.serving_unit || 'g'}) and logged ${logged.quantity} ${logged.unit} to ${mealType.name} on ${entryDate}.`;
+              let savedMsg = `Saved "${food.name}" from ${result.source} and logged ${logged.quantity} ${logged.unit} to ${mealType.name} on ${entryDate}. Reference: ${logged.variant.serving_size} ${logged.variant.serving_unit}. ${formatConsumedNutrition(logged.quantity, logged.variant.serving_size, logged.variant)}`;
               if (args.is_quick_food) {
                 savedMsg +=
                   ' Saved as Quick Add — hidden from your food list and search.';
@@ -1832,18 +1814,11 @@ Actions:
                   'Quick Add foods are hidden from the food list and search, so they must be logged in the same call. Add meal_type_id (or meal_type) to this create_food call, or drop is_quick_food to save it to the food list.'
                 );
               }
-              // The `|| null` on optional fields is MCP's storage quirk
-              // (an explicit 0 is stored as null), ported as-is.
               const rawFoodName = args.food_name?.trim() || 'Food';
-              const isNameTooLong =
-                rawFoodName.length > 50 || /[.!?\n]/.test(rawFoodName);
-              const cleanedName = isNameTooLong
-                ? cleanMealSummary(rawFoodName)
-                : rawFoodName;
-              const notes = args.notes || (isNameTooLong ? rawFoodName : null);
+              const notes = args.notes ?? null;
               const food = await foodCoreService.createFood(userId, {
                 user_id: userId,
-                name: cleanedName,
+                name: rawFoodName,
                 brand: args.brand || null,
                 barcode: args.barcode,
                 notes,
@@ -1853,22 +1828,22 @@ Actions:
                 protein: args.protein,
                 carbs: args.carbs,
                 fat: args.fat,
-                saturated_fat: args.saturated_fat || null,
-                polyunsaturated_fat: args.polyunsaturated_fat || null,
-                monounsaturated_fat: args.monounsaturated_fat || null,
-                trans_fat: args.trans_fat || null,
-                cholesterol: args.cholesterol || null,
-                sodium: args.sodium || null,
-                potassium: args.potassium || null,
-                dietary_fiber: args.fiber || null,
-                sugars: args.sugar || null,
-                vitamin_a: args.vitamin_a || null,
-                vitamin_c: args.vitamin_c || null,
-                calcium: args.calcium || null,
-                iron: args.iron || null,
-                caffeine_mg: args.caffeine_mg || null,
-                alcohol_g: args.alcohol_g || null,
-                water_ml: args.water_ml || null,
+                saturated_fat: args.saturated_fat ?? null,
+                polyunsaturated_fat: args.polyunsaturated_fat ?? null,
+                monounsaturated_fat: args.monounsaturated_fat ?? null,
+                trans_fat: args.trans_fat ?? null,
+                cholesterol: args.cholesterol ?? null,
+                sodium: args.sodium ?? null,
+                potassium: args.potassium ?? null,
+                dietary_fiber: args.fiber ?? null,
+                sugars: args.sugar ?? null,
+                vitamin_a: args.vitamin_a ?? null,
+                vitamin_c: args.vitamin_c ?? null,
+                calcium: args.calcium ?? null,
+                iron: args.iron ?? null,
+                caffeine_mg: args.caffeine_mg ?? null,
+                alcohol_g: args.alcohol_g ?? null,
+                water_ml: args.water_ml ?? null,
                 glycemic_index: args.gi || null,
                 // Not `|| null`: that quirk is for numerics, and it would turn
                 // an explicit false into null.
@@ -2376,28 +2351,16 @@ Actions:
                     }
                   }
                 }
-                if (normalizeFoodUnit(entryUnit) === 'serving') {
-                  const reconciled = reconcileEntryUnitToVariant(
-                    requestedQuantity,
-                    entryUnit,
-                    existingEntry
-                  );
-                  entryQuantity = reconciled.quantity;
-                  entryUnit = reconciled.unit;
-                } else {
-                  const reconciled = resolveQuantityForVariantUnit({
-                    requestedQuantity,
-                    requestedUnit: entryUnit,
-                    variant: existingEntry,
-                  });
-                  if (!reconciled) {
-                    return ERRORS.VALIDATION(
-                      `Cannot safely convert ${requestedQuantity} ${entryUnit} to this entry's ${existingEntry.serving_size} ${existingEntry.serving_unit} reference serving. Use a compatible mass or volume unit, or an explicit "serving" count; grams and millilitres are never converted automatically.`
-                    );
-                  }
-                  entryQuantity = reconciled.quantity;
-                  entryUnit = reconciled.unit;
-                }
+                const reconciled = resolveFoodPortion({
+                  quantity: requestedQuantity,
+                  unit: entryUnit,
+                  variants: [existingEntry],
+                  explicitVariant: existingEntry,
+                });
+                if (!reconciled.ok)
+                  return ERRORS.VALIDATION(reconciled.message);
+                entryQuantity = reconciled.quantity;
+                entryUnit = reconciled.unit;
               }
               let quantityChanged = entryQuantity !== undefined;
               let unitChanged = entryUnit !== undefined;
