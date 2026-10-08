@@ -1,8 +1,10 @@
 import { getClient, getSystemClient } from '../db/poolManager.js';
+import type { PoolClient } from 'pg';
 import { encrypt, decrypt, ENCRYPTION_KEY } from '../security/encryption.js';
 import { log } from '../config/logging.js';
 import {
   AiServiceSettings,
+  aiServiceSettingsSchema,
   SparkyChatHistory,
   SparkyChatHistoryMutator,
 } from '@workspace/shared';
@@ -123,10 +125,23 @@ async function getAiServiceSettingForBackend(id: string, userId: string) {
 // inactive service too. The user-scoped client preserves RLS: a user reads only
 // their own private rows plus `is_public` global rows, so this serves both the
 // per-user and admin/global test contexts without leaking other users' keys.
-async function getDecryptedAiServiceSettingById(id: string, userId: string) {
-  const client = await getClient(userId); // User-specific operation (RLS-scoped)
+async function getDecryptedAiServiceSettingById(
+  id: string,
+  userId: string
+): Promise<
+  | (Pick<
+      AiServiceSettings,
+      | 'service_type'
+      | 'custom_url'
+      | 'model_name'
+      | 'is_public'
+      | 'reasoning_effort'
+    > & { api_key: string | null })
+  | null
+> {
+  const client: PoolClient = await getClient(userId); // User-specific operation (RLS-scoped)
   try {
-    const result = await client.query(
+    const result = await client.query<AiServiceSettings>(
       'SELECT * FROM ai_service_settings WHERE id = $1',
       [id]
     );
@@ -155,6 +170,9 @@ async function getDecryptedAiServiceSettingById(id: string, userId: string) {
       custom_url: setting.custom_url,
       model_name: setting.model_name,
       is_public: setting.is_public,
+      reasoning_effort: aiServiceSettingsSchema.shape.reasoning_effort.parse(
+        setting.reasoning_effort ?? 'medium'
+      ),
     };
   } finally {
     client.release();

@@ -436,6 +436,7 @@ const GlobalAISettings = () => {
                     api_key: newService.api_key,
                     custom_url: newService.custom_url ?? undefined,
                     model_name: model,
+                    reasoning_effort: newService.reasoning_effort ?? undefined,
                   })
                 }
                 testing={isTesting}
@@ -467,6 +468,10 @@ const GlobalAISettings = () => {
                 api_key: editData.api_key,
                 custom_url: editData.custom_url ?? undefined,
                 model_name: model,
+                reasoning_effort:
+                  editData.reasoning_effort ??
+                  original?.reasoning_effort ??
+                  undefined,
               });
             }}
             testing={isTesting}

@@ -67,6 +67,7 @@ export const testAiServiceConnectionRequestSchema = z.object({
   api_key: z.string().optional(),
   custom_url: z.string().optional(),
   model_name: z.string().optional(),
+  reasoning_effort: aiServiceSettingsMutatorSchema.shape.reasoning_effort,
 });
 
 export const testAiServiceConnectionResponseSchema = z.object({

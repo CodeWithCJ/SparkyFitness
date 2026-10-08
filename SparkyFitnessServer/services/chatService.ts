@@ -2362,6 +2362,7 @@ async function testAiServiceConnection(
   let apiKey = payload.api_key?.trim() || undefined;
   let customUrl = payload.custom_url?.trim() || undefined;
   let modelName = payload.model_name?.trim() || undefined;
+  let reasoningEffort = payload.reasoning_effort;
 
   // Stored-key fallback: the api_key field is blank by design on edit (the key
   // is encrypted server-side and never sent to the browser), so a test on a
@@ -2390,6 +2391,8 @@ async function testAiServiceConnection(
         apiKey = stored.api_key ?? undefined;
         customUrl = customUrl ?? stored.custom_url ?? undefined;
         modelName = modelName ?? stored.model_name ?? undefined;
+        reasoningEffort =
+          reasoningEffort ?? stored.reasoning_effort ?? undefined;
       }
     }
   }
@@ -2430,6 +2433,7 @@ async function testAiServiceConnection(
     api_key: apiKey,
     model_name: modelName,
     custom_url: customUrl,
+    reasoning_effort: reasoningEffort,
   };
 
   const result = await dispatchAiRequest({
