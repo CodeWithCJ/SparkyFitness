@@ -280,8 +280,12 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             ):
                 steps_value = None
                 summary_data = None
+                summary_captured_at = None
                 try:
                     summary_data = garmin.get_user_summary(current_date)
+                    # Instant the cumulative snapshot was fetched; the Node
+                    # side orders total_calories writes on it.
+                    summary_captured_at = datetime.now(timezone.utc)
                     logger.info(
                         f"[GARMIN_SYNC] get_user_summary({current_date}) RAW RESPONSE KEYS: {list(summary_data.keys()) if summary_data else None}"
                     )
@@ -413,6 +417,11 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                     "total_calories": total_kcal,
                                     "active_calories": active_kcal,
                                     "bmr_calories": bmr_kcal,
+                                    "captured_at": summary_captured_at.isoformat(
+                                        timespec="milliseconds"
+                                    )
+                                    if summary_captured_at
+                                    else None,
                                     "resting_heart_rate": resting_hr,
                                     "avg_stress_level": avg_stress,
                                     "max_stress_level": max_stress,
