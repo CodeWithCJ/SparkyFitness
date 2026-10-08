@@ -154,7 +154,7 @@ export function FoodAssistantState({
               <p>{selected.checkpoint.next_step}</p>
               {selected.checkpoint.ingredients.map((ingredient) => (
                 <p key={ingredient.id}>
-                  {ingredient.quantity} {ingredient.unit}{' '}
+                  {ingredient.quantity ?? '?'} {ingredient.unit ?? ''}{' '}
                   {ingredient.description} —{' '}
                   {t(
                     `foodAssistant.ingredient.${ingredient.status}`,

@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   foodAssistantCheckpointSchema,
   foodAssistantTaskStatusSchema,
+  foodAssistantTaskOriginSchema,
 } from "../api/FoodAssistant.api.zod.ts";
 
 export const foodAssistantPreferenceSchema = z.object({
@@ -19,6 +20,7 @@ export const foodAssistantTaskSchema = z.object({
   kind: z.enum(["recipe", "meal_plan", "diary", "shopping", "analysis"]),
   title: z.string(),
   creation_hash: z.string(),
+  origin: foodAssistantTaskOriginSchema.default({ type: "user_draft" }),
   status: foodAssistantTaskStatusSchema,
   checkpoint: foodAssistantCheckpointSchema,
   result: z.json().nullable(),

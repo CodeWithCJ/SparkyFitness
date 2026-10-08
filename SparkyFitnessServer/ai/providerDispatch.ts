@@ -51,11 +51,11 @@ export interface DispatchImage {
 
 /** A minimal JSON Schema node. */
 export interface JsonSchemaNode {
-  type?: string;
-  properties?: Record<string, JsonSchemaNode>;
+  type?: string | string[];
+  properties?: Record<string, JsonSchemaNode | boolean>;
   required?: string[];
-  items?: JsonSchemaNode;
-  additionalProperties?: boolean;
+  items?: JsonSchemaNode | boolean | (JsonSchemaNode | boolean)[];
+  additionalProperties?: boolean | JsonSchemaNode;
   propertyOrdering?: string[];
   [k: string]: unknown;
 }
@@ -398,10 +398,16 @@ function stripCodeFences(content: string): string {
  */
 export function toStrictJsonSchema(input: unknown): JsonSchemaNode {
   const clone: JsonSchemaNode = JSON.parse(JSON.stringify(input));
-  const walk = (node: JsonSchemaNode): void => {
+  const walk = (
+    node: JsonSchemaNode | boolean | (JsonSchemaNode | boolean)[]
+  ): void => {
     if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
     delete node.propertyOrdering;
-    if (node.type === 'object') {
+    if (node.type === 'object' || node.type?.includes('object')) {
       node.additionalProperties = false;
       if (node.properties) {
         for (const child of Object.values(node.properties)) {
@@ -410,6 +416,12 @@ export function toStrictJsonSchema(input: unknown): JsonSchemaNode {
       }
     }
     if (node.items) walk(node.items);
+    for (const keyword of ['anyOf', 'allOf', 'oneOf', '$defs', 'definitions']) {
+      const children = node[keyword];
+      if (children && typeof children === 'object') {
+        for (const child of Object.values(children)) walk(child);
+      }
+    }
   };
   walk(clone);
   return clone;
@@ -422,8 +434,14 @@ export function toStrictJsonSchema(input: unknown): JsonSchemaNode {
  */
 function stripAdditionalProperties(input: JsonSchemaNode): JsonSchemaNode {
   const clone: JsonSchemaNode = JSON.parse(JSON.stringify(input));
-  const walk = (node: JsonSchemaNode): void => {
+  const walk = (
+    node: JsonSchemaNode | boolean | (JsonSchemaNode | boolean)[]
+  ): void => {
     if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
     delete node.additionalProperties;
     if (node.properties) {
       for (const child of Object.values(node.properties)) {
@@ -431,6 +449,12 @@ function stripAdditionalProperties(input: JsonSchemaNode): JsonSchemaNode {
       }
     }
     if (node.items) walk(node.items);
+    for (const keyword of ['anyOf', 'allOf', 'oneOf', '$defs', 'definitions']) {
+      const children = node[keyword];
+      if (children && typeof children === 'object') {
+        for (const child of Object.values(children)) walk(child);
+      }
+    }
   };
   walk(clone);
   return clone;

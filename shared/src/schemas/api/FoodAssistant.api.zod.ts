@@ -2,6 +2,23 @@ import { z } from "zod";
 
 const uuid = z.string().uuid();
 const text = z.string().trim().min(1).max(2000);
+export const foodAssistantTaskOriginSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("user_draft") }).strict(),
+  z
+    .object({
+      type: z.literal("recipe_url"),
+      url: z.string().url(),
+      card_index: z.number().int().min(0).max(9),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("recipe_image"),
+      image_hash: z.string().regex(/^[a-f0-9]{64}$/),
+    })
+    .strict(),
+  z.object({ type: z.literal("saved_recipe"), meal_id: uuid }).strict(),
+]);
 export const foodAssistantTaskStatusSchema = z.enum([
   "draft",
   "running",
@@ -32,8 +49,8 @@ export const foodAssistantIngredientSchema = z
   .object({
     id: uuid,
     description: text,
-    quantity: z.number().positive().finite(),
-    unit: z.string().trim().min(1).max(100),
+    quantity: z.number().positive().finite().nullable().default(null),
+    unit: z.string().trim().min(1).max(100).nullable().default(null),
     food_id: uuid.optional(),
     variant_id: uuid.optional(),
     status: z.enum(["unresolved", "selected", "verified"]),
@@ -42,6 +59,16 @@ export const foodAssistantIngredientSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
+    if (
+      value.status !== "unresolved" &&
+      (value.quantity === null || value.unit === null)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message:
+          "A selected ingredient requires an explicit quantity and unit.",
+      });
+    }
     if (value.status !== "unresolved" && !value.food_id) {
       ctx.addIssue({
         code: "custom",
@@ -61,7 +88,8 @@ export const foodAssistantCheckpointSchema = z
     recipe: z
       .object({
         name: text,
-        servings: z.number().positive().finite(),
+        servings: z.number().positive().finite().nullable().default(null),
+        source_yield: z.string().max(1000).optional(),
         instructions: z.string().max(20000).optional(),
         source_url: z
           .string()
@@ -76,6 +104,7 @@ export const foodAssistantCheckpointSchema = z
 
 export const createFoodAssistantTaskSchema = z
   .object({
+    origin: foodAssistantTaskOriginSchema.default({ type: "user_draft" }),
     id: uuid.describe(
       "Stable request ID. Reuse it when retrying the same task creation.",
     ),

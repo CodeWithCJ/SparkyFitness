@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   useChatInvalidation,
   useDiaryInvalidation,
+  useMealInvalidation,
 } from '@/hooks/useInvalidateKeys';
 import {
   useChatPreferencesQuery,
@@ -42,6 +43,7 @@ const SparkyChatInner = ({
   history,
 }: SparkyChatInnerProps) => {
   const invalidateDiary = useDiaryInvalidation();
+  const invalidateMeals = useMealInvalidation();
   const invalidateChat = useChatInvalidation();
   const queryClient = useQueryClient();
   const userDate = formatDateToYYYYMMDD(new Date());
@@ -152,6 +154,7 @@ const SparkyChatInner = ({
     onFinish: () => {
       // Invalidate queries to refresh diary nutrition and check-ins in real-time
       invalidateDiary();
+      invalidateMeals();
       invalidateChat();
       void queryClient.invalidateQueries({ queryKey: ['foodAssistant'] });
     },

@@ -26,6 +26,7 @@ import { buildDashboardTools } from './dashboardTools.js';
 import { buildFavoritesTools } from './favoritesTools.js';
 import { buildFoodTools } from './foodTools.js';
 import { buildFoodAssistantTools } from './foodAssistantTools.js';
+import { buildRecipeTools } from './recipeTools.js';
 import { buildGoalTools } from './goalTools.js';
 import { buildHabitTools } from './habitTools.js';
 import { buildMealPlanTools } from './mealPlansTools.js';
@@ -97,6 +98,7 @@ const CATEGORY_BUILDERS: Record<
       ctx?.foodResearchTool ? { web_search: ctx.foodResearchTool } : {},
     (u, tz) => buildFoodTools(u, tz),
     (u, _tz, ctx) => buildFoodAssistantTools(u, ctx),
+    (u, _tz, ctx) => buildRecipeTools(u, ctx),
     (u, tz) => buildFavoritesTools(u, tz),
     (u, tz) => buildMealPlanTools(u, tz),
     (u, tz) => buildCustomNutrientTools(u, tz),

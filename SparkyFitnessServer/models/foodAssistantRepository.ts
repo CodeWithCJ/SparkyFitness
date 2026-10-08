@@ -132,12 +132,25 @@ export async function createTask(
 ) {
   const client = await getClient(userId, userId);
   const creationHash = createHash('sha256')
-    .update(canonicalJson(input))
+    // Preserve the original creation fingerprint for tasks made before origin
+    // metadata was introduced. Structured imports include their source identity.
+    .update(
+      canonicalJson(
+        input.origin.type === 'user_draft'
+          ? {
+              id: input.id,
+              kind: input.kind,
+              title: input.title,
+              checkpoint: input.checkpoint,
+            }
+          : input
+      )
+    )
     .digest('hex');
   try {
     const result = await client.query(
-      `INSERT INTO food_assistant_tasks(id, user_id, kind, title, checkpoint, creation_hash)
-       VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING RETURNING *`,
+      `INSERT INTO food_assistant_tasks(id, user_id, kind, title, checkpoint, creation_hash, origin)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO NOTHING RETURNING *`,
       [
         input.id,
         userId,
@@ -145,6 +158,7 @@ export async function createTask(
         input.title,
         JSON.stringify(input.checkpoint),
         creationHash,
+        JSON.stringify(input.origin),
       ]
     );
     if (result.rows[0]) return foodAssistantTaskSchema.parse(result.rows[0]);
@@ -182,11 +196,48 @@ export async function listOperations(userId: string, taskId: string) {
 }
 
 interface TaskMutation {
+  allowComplete?: boolean;
   taskId: string;
   operationId: string;
   expectedVersion: number;
   kind: string;
   request: unknown;
+}
+
+function mutationHash(command: TaskMutation): string {
+  return createHash('sha256')
+    .update(
+      canonicalJson({
+        taskId: command.taskId,
+        kind: command.kind,
+        request: command.request,
+      })
+    )
+    .digest('hex');
+}
+
+/** Check committed work before repeating an external lookup. mutateTask also
+ * checks under its lock, so concurrent callers still commit at most once. */
+export async function replayTaskMutation(
+  userId: string,
+  command: TaskMutation
+) {
+  const client = await getClient(userId, userId);
+  try {
+    const result = await client.query(
+      'SELECT * FROM food_assistant_operations WHERE user_id = $1 AND id = $2',
+      [userId, command.operationId]
+    );
+    if (!result.rows[0]) return null;
+    const saved = foodAssistantOperationSchema.parse(result.rows[0]);
+    if (saved.request_hash !== mutationHash(command))
+      throw new FoodAssistantConflict(
+        'This operation ID was already used for a different request.'
+      );
+    return saved;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -203,15 +254,7 @@ export async function mutateTask(
   ) => Promise<FoodAssistantTask>
 ): Promise<FoodAssistantOperation> {
   const client = await getClient(userId, userId);
-  const requestHash = createHash('sha256')
-    .update(
-      canonicalJson({
-        taskId: command.taskId,
-        kind: command.kind,
-        request: command.request,
-      })
-    )
-    .digest('hex');
+  const requestHash = mutationHash(command);
   try {
     await client.query('BEGIN');
     // Operation locks serialize the same key even when it targets two tasks.
@@ -240,7 +283,10 @@ export async function mutateTask(
     const task = foodAssistantTaskSchema.parse(current.rows[0]);
     if (task.version !== command.expectedVersion)
       throw new FoodAssistantConflict();
-    if (task.status === 'complete' || task.status === 'cancelled')
+    if (
+      (task.status === 'complete' && !command.allowComplete) ||
+      task.status === 'cancelled'
+    )
       throw new FoodAssistantConflict(
         'This task has finished or was cancelled. Start a new task.'
       );
@@ -249,6 +295,8 @@ export async function mutateTask(
       next.id !== task.id ||
       next.user_id !== userId ||
       next.kind !== task.kind ||
+      next.creation_hash !== task.creation_hash ||
+      canonicalJson(next.origin) !== canonicalJson(task.origin) ||
       next.version !== task.version
     )
       throw new FoodAssistantConflict('Invalid task transition.');

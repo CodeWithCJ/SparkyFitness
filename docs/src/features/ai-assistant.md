@@ -29,6 +29,14 @@ Multi-step food tasks keep their ingredient selections, portion variants, source
 
 This information belongs to the signed-in person and is not shared with family diary viewers.
 
+## Saved Recipe Drafts
+
+Ask Sparky to import an original recipe URL, transcribe an attached recipe image, or edit a saved recipe. Each ingredient remains in a saved draft while its product, portion and nutrition are verified. A source yield such as “2 loaves” stays visible until the number of servings is confirmed. Missing ingredients or nutrition remain unresolved; partial subtotals are not shown as complete recipe totals.
+
+Provider ingredients use full details for the exact selected product. Importing an ingredient saves it to the food library without logging it. Publishing a complete draft creates a private saved recipe, or edits your selected recipe after checking that it has not changed. The assistant verifies the saved ingredient quantities and nutrient snapshots before reporting success. Existing diary entries keep their logged nutrition.
+
+You can ask to undo a recipe publication. Undo checks for later edits and refuses to overwrite newer work. Undoing recipe creation also requires that nobody uses it in a diary, meal plan, another recipe or favorite. Import, publication and undo retries reuse their request IDs and operation IDs, preventing duplicate saves.
+
 ## Troubleshooting AI Providers
 
 Most "OpenAI Compatible / OpenRouter isn't working" reports come from provider configuration, not from SparkyFitness itself. The most common cases:

@@ -74,6 +74,53 @@ beforeEach(() => {
 });
 
 describe('durable food task operations', () => {
+  it('does not let a generic task claim a server-verified source import identity', () => {
+    expect(() =>
+      service.createTask(userId, {
+        id: taskId,
+        kind: 'recipe',
+        title: 'Recipe',
+        checkpoint,
+        origin: {
+          type: 'recipe_url',
+          url: 'https://example.com/recipe',
+          card_index: 0,
+        },
+      })
+    ).toThrow('Source imports');
+    expect(getClient).not.toHaveBeenCalled();
+  });
+  it('checks committed retries before external work and rejects a different request with the same key', async () => {
+    query.mockResolvedValue({ rows: [operation] });
+    expect((await repository.replayTaskMutation(userId, command))?.id).toBe(
+      operationId
+    );
+    await expect(
+      repository.replayTaskMutation(userId, {
+        ...command,
+        request: { value: 'different' },
+      })
+    ).rejects.toThrow('different request');
+  });
+  it('rejects a checkpoint that silently drops an unresolved ingredient', async () => {
+    query.mockImplementation(async (sql: string) => ({
+      rows: sql.includes('SELECT * FROM food_assistant_tasks') ? [task] : [],
+    }));
+    await expect(
+      service.checkpointTask(userId, taskId, {
+        operation_id: operationId,
+        expected_version: 2,
+        status: 'draft',
+        checkpoint: { ...checkpoint, ingredients: [] },
+      })
+    ).rejects.toThrow('silently drop');
+    expect(query).toHaveBeenCalledWith('ROLLBACK');
+    expect(
+      query.mock.calls.some(([sql]) =>
+        String(sql).startsWith('UPDATE food_assistant_tasks')
+      )
+    ).toBe(false);
+  });
   it('a retried task creation finds the same task even after its checkpoint advanced', async () => {
     let creationHash: string;
     query.mockImplementation(async (sql: string, values: unknown[]) => {
@@ -97,6 +144,7 @@ describe('durable food task operations', () => {
       kind: 'recipe',
       title: 'Bread',
       checkpoint,
+      origin: { type: 'user_draft' },
     });
     expect(saved.version).toBe(3);
     expect(saved.checkpoint.summary).toBe('More progress');

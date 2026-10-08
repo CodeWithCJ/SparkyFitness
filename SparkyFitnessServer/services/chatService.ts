@@ -1684,7 +1684,9 @@ function toCoreMessages(messages: ChatMessage[]): LlmMessage[] {
  * Extracts the latest image data URL or base64 payload from the most recent
  * user turn in the conversation history, if any.
  */
-function extractLatestImageDataUrl(messages: ChatMessage[]): string | null {
+export function extractLatestImageDataUrl(
+  messages: ChatMessage[]
+): string | null {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     const msg = messages[i];
     if (msg.role !== 'user') continue;
@@ -1693,7 +1695,7 @@ function extractLatestImageDataUrl(messages: ChatMessage[]): string | null {
       : Array.isArray(msg.content)
         ? (msg.content as ChatMessagePart[])
         : null;
-    if (!partsSource) continue;
+    if (!partsSource) return null;
     for (const part of partsSource) {
       if (
         part.type === 'image' ||
@@ -1709,6 +1711,7 @@ function extractLatestImageDataUrl(messages: ChatMessage[]): string | null {
         }
       }
     }
+    return null;
   }
   return null;
 }

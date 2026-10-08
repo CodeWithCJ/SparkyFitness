@@ -5,9 +5,13 @@ import {
   checkpointFoodAssistantTaskSchema,
   changeFoodAssistantTaskSchema,
   editFoodAssistantPreferenceSchema,
+  publishFoodAssistantRecipeSchema,
+  importFoodAssistantProviderFoodSchema,
+  undoFoodAssistantRecipeSchema,
 } from '@workspace/shared';
 import { authenticate } from '../../middleware/authMiddleware.js';
 import * as service from '../../services/foodAssistantService.js';
+import * as recipeService from '../../services/foodAssistantRecipeService.js';
 import { FoodAssistantConflict } from '../../models/foodAssistantRepository.js';
 
 const router = express.Router();
@@ -19,6 +23,100 @@ router.use((req, _res, next) => {
   next();
 });
 const uuid = z.string().uuid();
+
+router.get('/recipes/:id', async (req, res, next) => {
+  const id = uuid.safeParse(req.params.id);
+  if (!id.success) return res.status(400).json({ error: 'Invalid recipe ID.' });
+  try {
+    res.json(await recipeService.getRecipe(req.userId, id.data));
+  } catch (error) {
+    next(error);
+  }
+});
+router.post('/recipes/draft', async (req, res, next) => {
+  const data = z
+    .object({ meal_id: uuid, request_id: uuid })
+    .strict()
+    .safeParse(req.body);
+  if (!data.success)
+    return res.status(400).json({ error: 'Invalid recipe draft request.' });
+  try {
+    res.json(
+      await recipeService.draftFromRecipe(
+        req.userId,
+        data.data.meal_id,
+        data.data.request_id
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+router.get('/tasks/:id/recipe-preview', async (req, res, next) => {
+  const id = uuid.safeParse(req.params.id);
+  if (!id.success) return res.status(400).json({ error: 'Invalid task ID.' });
+  try {
+    res.json(await recipeService.previewRecipe(req.userId, id.data));
+  } catch (error) {
+    next(error);
+  }
+});
+router.post('/recipes/publish/:id', async (req, res, next) => {
+  const id = uuid.safeParse(req.params.id);
+  const data = publishFoodAssistantRecipeSchema.safeParse(req.body);
+  if (!id.success || !data.success)
+    return res
+      .status(400)
+      .json({ error: 'Invalid recipe publication request.' });
+  try {
+    res.json(
+      await recipeService.publishRecipe(
+        req.userId,
+        id.data,
+        data.data,
+        data.data.estimate_source_quote
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/recipes/import-ingredient/:id', async (req, res, next) => {
+  const id = uuid.safeParse(req.params.id);
+  const data = importFoodAssistantProviderFoodSchema.safeParse(req.body);
+  if (!id.success || !data.success)
+    return res.status(400).json({ error: 'Invalid ingredient import.' });
+  try {
+    res.json(
+      await recipeService.importProviderIngredient(
+        req.userId,
+        id.data,
+        data.data
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+router.post('/recipes/undo/:id', async (req, res, next) => {
+  const id = uuid.safeParse(req.params.id);
+  const data = undoFoodAssistantRecipeSchema.safeParse(req.body);
+  if (!id.success || !data.success)
+    return res.status(400).json({ error: 'Invalid recipe undo.' });
+  try {
+    res.json(
+      await recipeService.undoRecipe(
+        req.userId,
+        id.data,
+        data.data,
+        data.data.source_quote
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get('/preferences', async (req, res, next) => {
   try {

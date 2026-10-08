@@ -3,6 +3,8 @@ import type { Server } from 'node:http';
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import router from '../routes/v2/foodAssistantRoutes.js';
 import * as service from '../services/foodAssistantService.js';
+import * as recipeService from '../services/foodAssistantRecipeService.js';
+import { foodAssistantOperationSchema } from '@workspace/shared';
 import { FoodAssistantConflict } from '../models/foodAssistantRepository.js';
 
 vi.mock('../middleware/authMiddleware.js', () => ({
@@ -26,6 +28,14 @@ vi.mock('../services/foodAssistantService.js', () => ({
   changeTask: vi.fn(),
   rememberPreference: vi.fn(),
   forgetPreference: vi.fn(),
+}));
+vi.mock('../services/foodAssistantRecipeService.js', () => ({
+  getRecipe: vi.fn(),
+  draftFromRecipe: vi.fn(),
+  previewRecipe: vi.fn(),
+  publishRecipe: vi.fn(),
+  importProviderIngredient: vi.fn(),
+  undoRecipe: vi.fn(),
 }));
 const app = express();
 app.use(express.json());
@@ -56,6 +66,68 @@ async function request(method: string, path: string, body?: unknown) {
 }
 const id = '35a166e9-bcd1-45ba-a5bd-f5a6959aab7b';
 beforeEach(() => vi.clearAllMocks());
+it('validates recipe mutation commands and keeps their owner fixed to the signed-in actor', async () => {
+  const payload = {
+    operation_id: id,
+    expected_version: 1,
+    ingredient_id: id,
+    provider_type: 'fatsecret',
+    external_id: '38820',
+  };
+  expect(
+    (
+      await request('POST', `/recipes/import-ingredient/${id}`, {
+        ...payload,
+        user_id: id,
+      })
+    ).status
+  ).toBe(400);
+  expect(recipeService.importProviderIngredient).not.toHaveBeenCalled();
+  const operation = foodAssistantOperationSchema.parse({
+    id,
+    user_id: id,
+    task_id: id,
+    kind: 'import_recipe_ingredient',
+    request_hash: 'hash',
+    before_state: {},
+    after_state: {},
+    created_at: new Date(),
+  });
+  vi.mocked(recipeService.importProviderIngredient).mockResolvedValue(
+    operation
+  );
+  expect(
+    (await request('POST', `/recipes/import-ingredient/${id}`, payload)).status
+  ).toBe(200);
+  expect(recipeService.importProviderIngredient).toHaveBeenCalledWith(
+    'signed-in-owner',
+    id,
+    payload
+  );
+  expect(
+    (
+      await request('POST', `/recipes/publish/${id}`, {
+        operation_id: id,
+        expected_version: 1,
+        meal_id: id,
+      })
+    ).status
+  ).toBe(400);
+  expect(recipeService.publishRecipe).not.toHaveBeenCalled();
+});
+it('reports recipe conflicts without a success response', async () => {
+  vi.mocked(recipeService.undoRecipe).mockRejectedValue(
+    new FoodAssistantConflict('Recipe changed')
+  );
+  const response = await request('POST', `/recipes/undo/${id}`, {
+    operation_id: id,
+    expected_version: 2,
+    publication_operation_id: id,
+    source_quote: 'Undo this recipe',
+  });
+  expect(response.status).toBe(409);
+  expect(response.text).toContain('Recipe changed');
+});
 it('uses the signed-in owner while viewing a family diary', async () => {
   vi.mocked(service.listPreferences).mockResolvedValue([]);
   const response = await request('GET', '/preferences');

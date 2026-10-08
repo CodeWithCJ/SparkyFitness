@@ -174,6 +174,10 @@ Symptoms are their own domain (they used to share the medications permission). P
 
 ---
 
+## Recipe Undo Dependency Check
+
+`assistant_recipe_has_dependants(uuid)` is a narrow security-definer helper for assistant undo. It requires the authenticated actor to own the recipe and returns only whether any diary entry, logged meal, meal plan, plan-template assignment, linked recipe or favorite references it. It does not return rows, counts or other user identities. Checking across RLS boundaries prevents an undo from cascading into hidden references belonging to another person. It sets a fixed search path and `row_security=off`, so a function owner that cannot bypass RLS fails rather than returning an incomplete dependency check. The caller holds the recipe row lock and performs any deletion with the ordinary owner-scoped transaction client.
+
 ## System & Global Reference Tables (Public Read, Admin Write)
 These tables store global configuration settings, lookup values, and reference metadata. They do not contain user-specific data and do not have Row-Level Security enabled. All authenticated users can read them, but only administrators can update them.
 

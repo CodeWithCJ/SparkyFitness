@@ -15,6 +15,7 @@ vi.mock('../config/logging', () => ({
 // which are intentionally not ported.
 const EXPECTED_TOOLS = [
   'sparky_food_assistant_state',
+  'sparky_manage_recipes',
   'sparky_analyze_food_image',
   'sparky_analyze_trends',
   'sparky_check_engagement',
@@ -78,6 +79,7 @@ const EXPECTED_TOOLS = [
 // photos, sleep science, etc.) since those now live inside those categories.
 const EXPECTED_CORE_TOOLS = [
   'sparky_food_assistant_state',
+  'sparky_manage_recipes',
   'sparky_get_barcode',
   'sparky_get_caffeine_kinetics',
   'sparky_get_daily_exercise_totals',

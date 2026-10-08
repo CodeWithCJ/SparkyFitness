@@ -16,10 +16,12 @@ export {
 } from '../models/foodAssistantRepository.js';
 
 export function createTask(userId: string, input: unknown) {
-  return repository.createTask(
-    userId,
-    createFoodAssistantTaskSchema.parse(input)
-  );
+  const data = createFoodAssistantTaskSchema.parse(input);
+  if (data.origin.type !== 'user_draft')
+    throw new repository.FoodAssistantConflict(
+      'Source imports must use the recipe import actions so their original ingredient list is retained.'
+    );
+  return repository.createTask(userId, data);
 }
 
 export function checkpointTask(
@@ -37,11 +39,22 @@ export function checkpointTask(
       kind: 'checkpoint',
       request: data,
     },
-    async (task) => ({
-      ...task,
-      status: data.status,
-      checkpoint: data.checkpoint,
-    })
+    async (task) => {
+      if (
+        task.kind === 'recipe' &&
+        task.checkpoint.ingredients.some(
+          (ingredient) =>
+            !data.checkpoint.ingredients.some(
+              (next) => next.id === ingredient.id
+            )
+        )
+      ) {
+        throw new repository.FoodAssistantConflict(
+          'A recipe checkpoint cannot silently drop ingredients. Use the explicit ingredient-removal action for a requested removal.'
+        );
+      }
+      return { ...task, status: data.status, checkpoint: data.checkpoint };
+    }
   );
 }
 

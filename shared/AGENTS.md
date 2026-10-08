@@ -12,7 +12,7 @@ _Last updated: 2026-10-08_
 
 ## Food Assistant State
 
-`schemas/api/FoodAssistant.api.zod.ts` and `schemas/database/FoodAssistant.zod.ts` define lasting preferences, versioned tasks, unresolved ingredients and idempotent operation records. All state is owner-only; these additive contracts do not change existing chat clients.
+`schemas/api/FoodAssistant.api.zod.ts` and `schemas/database/FoodAssistant.zod.ts` define lasting preferences, versioned tasks, unresolved ingredients and idempotent operation records. `schemas/api/FoodAssistantRecipes.api.zod.ts` adds exact provider ingredient import, versioned publication and undo contracts. Task origins stay immutable while ingredient quantities and source yields may remain unresolved. All state is owner-only; these additive contracts do not change existing chat clients.
 
 ## Structure
 

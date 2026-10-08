@@ -46,8 +46,14 @@ These additive routes are authenticated and owner-only, using the signed-in acto
 | `/api/v2/food-assistant/tasks/:id` | GET / PATCH | Read a full checkpoint or save one with an operation ID and expected version |
 | `/api/v2/food-assistant/tasks/:id/operations` | GET | Read committed before/after operation records |
 | `/api/v2/food-assistant/tasks/:id/:action` | POST | Cancel or resume remaining work; `action` is `cancel` or `resume` |
+| `/api/v2/food-assistant/recipes/:id` | GET | Read an accessible saved recipe and its version |
+| `/api/v2/food-assistant/recipes/draft` | POST | Copy a saved recipe into an owner-only task with an immutable source identity |
+| `/api/v2/food-assistant/tasks/:id/recipe-preview` | GET | Resolve all ingredient references and return batch/per-serving nutrition, missing fields and unresolved issues |
+| `/api/v2/food-assistant/recipes/import-ingredient/:id` | POST | Verify exact provider details and atomically import the ingredient into the library and draft |
+| `/api/v2/food-assistant/recipes/publish/:id` | POST | Atomically publish a complete recipe, verify readback and record before/after snapshots |
+| `/api/v2/food-assistant/recipes/undo/:id` | POST | Undo a specific publication with conflict and dependency checks |
 
-Task changes require `operation_id` and `expected_version`. Repeating an identical operation returns its stored result. Reusing an ID for different work, stale versions, and attempts to change a completed or cancelled task return HTTP 409. Domain writes must share the repository's operation transaction; the operation record and checkpoint commit together. Draft endpoints cannot mark a task complete or mutate diary/library records. Older chat clients do not need to send these new fields.
+Task changes require `operation_id` and `expected_version`. Repeating an identical operation returns its stored result. Reusing an ID for different work, stale versions, and unsupported transitions return HTTP 409. General task actions cannot change completed or cancelled tasks; recipe undo is a specific audited operation on a completed publication. Domain writes must share the repository's operation transaction; the operation record and checkpoint commit together. Draft endpoints cannot mark a task complete or mutate diary/library records. Older chat clients do not need to send these new fields.
 
 ### Authentication
 

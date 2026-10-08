@@ -404,6 +404,10 @@ WHERE tablename = 'table_name';
 
 ---
 
+## Food Assistant Recipe State
+
+Food-assistant tasks include an immutable `origin` describing the original saved recipe, URL/card or image digest. Editable checkpoints retain unresolved ingredients and their original yield. Recipe publication and undo share the task operation transaction with domain writes and readback. The owner-checked `assistant_recipe_has_dependants(uuid)` helper returns only a dependency boolean across all users, preventing cascading deletion during undo.
+
 ## Database Maintenance
 
 ### Performance Monitoring
