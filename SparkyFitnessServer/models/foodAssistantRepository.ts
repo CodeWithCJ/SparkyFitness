@@ -99,8 +99,13 @@ export async function listTasks(userId: string) {
   }
 }
 
-export async function getTask(userId: string, taskId: string) {
-  const client = await getClient(userId, userId);
+export async function getTask(
+  userId: string,
+  taskId: string,
+  externalClient?: PoolClient
+) {
+  const client: PoolClient =
+    externalClient ?? (await getClient(userId, userId));
   try {
     const result = await client.query(
       'SELECT * FROM food_assistant_tasks WHERE user_id = $1 AND id = $2',
@@ -110,8 +115,23 @@ export async function getTask(userId: string, taskId: string) {
       ? foodAssistantTaskSchema.parse(result.rows[0])
       : null;
   } finally {
-    client.release();
+    if (!externalClient) client.release();
   }
+}
+
+export async function getOperation(
+  userId: string,
+  taskId: string,
+  operationId: string,
+  client: PoolClient
+) {
+  const result = await client.query(
+    'SELECT * FROM food_assistant_operations WHERE user_id=$1 AND task_id=$2 AND id=$3',
+    [userId, taskId, operationId]
+  );
+  return result.rows[0]
+    ? foodAssistantOperationSchema.parse(result.rows[0])
+    : null;
 }
 
 export async function createTask(

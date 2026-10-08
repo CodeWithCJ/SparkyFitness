@@ -7,6 +7,7 @@ import {
   editFoodAssistantPreference,
   forgetFoodAssistantPreference,
   changeFoodAssistantTask,
+  markFoodAssistantShopping,
 } from '@/api/Chatbot/foodAssistantService';
 import {
   executeFoodAssistantStateAction,
@@ -42,6 +43,7 @@ export function useFoodAssistantState(
         edit: editFoodAssistantPreference,
         forget: forgetFoodAssistantPreference,
         change: changeFoodAssistantTask,
+        markShopping: markFoodAssistantShopping,
       }),
     onError: async () => {
       await client.invalidateQueries({ queryKey: key });

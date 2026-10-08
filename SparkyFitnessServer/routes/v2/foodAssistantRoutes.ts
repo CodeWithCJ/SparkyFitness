@@ -11,11 +11,19 @@ import {
   foodAssistantDiaryScopeSchema,
   applyFoodAssistantDiarySchema,
   undoFoodAssistantDiarySchema,
+  publishFoodAssistantPlanSchema,
+  undoFoodAssistantPlanSchema,
+  buildFoodAssistantShoppingSchema,
+  changeFoodAssistantShoppingSchema,
+  undoFoodAssistantShoppingSchema,
 } from '@workspace/shared';
 import { authenticate } from '../../middleware/authMiddleware.js';
 import * as service from '../../services/foodAssistantService.js';
 import * as recipeService from '../../services/foodAssistantRecipeService.js';
 import * as diaryService from '../../services/foodAssistantDiaryService.js';
+import * as planService from '../../services/foodAssistantPlanService.js';
+import * as shoppingService from '../../services/foodAssistantShoppingService.js';
+import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import { FoodAssistantConflict } from '../../models/foodAssistantRepository.js';
 
 const router = express.Router();
@@ -27,6 +35,112 @@ router.use((req, _res, next) => {
   next();
 });
 const uuid = z.string().uuid();
+router.get('/planning/plans/:id', async (req, res, next) => {
+  const id = uuid.safeParse(req.params.id);
+  if (!id.success) return res.status(400).json({ error: 'Invalid plan ID.' });
+  try {
+    res.json(await planService.inspectPlan(req.userId, id.data));
+  } catch (error) {
+    next(error);
+  }
+});
+router.get('/planning/preview/:id', async (req, res, next) => {
+  const id = uuid.safeParse(req.params.id);
+  if (!id.success) return res.status(400).json({ error: 'Invalid task ID.' });
+  try {
+    res.json(await planService.previewPlan(req.userId, id.data));
+  } catch (error) {
+    next(error);
+  }
+});
+const planningCommands = {
+  publish_plan: publishFoodAssistantPlanSchema,
+  undo_plan: undoFoodAssistantPlanSchema,
+  build_shopping_list: buildFoodAssistantShoppingSchema,
+  change_shopping_list: changeFoodAssistantShoppingSchema,
+  undo_shopping_list: undoFoodAssistantShoppingSchema,
+};
+router.post('/planning/:action/:id', async (req, res, next) => {
+  const id = uuid.safeParse(req.params.id),
+    action = z
+      .enum([
+        'publish_plan',
+        'undo_plan',
+        'build_shopping_list',
+        'change_shopping_list',
+        'undo_shopping_list',
+      ])
+      .safeParse(req.params.action);
+  if (!id.success || !action.success)
+    return res.status(400).json({ error: 'Invalid planning action.' });
+  const data = planningCommands[action.data].safeParse(req.body);
+  if (!data.success)
+    return res.status(400).json({ error: 'Invalid planning command.' });
+  const quotes = [
+    'source_quote',
+    'confirmation_quote',
+    'estimate_source_quote',
+  ].flatMap((key) =>
+    key in data.data
+      ? [String((data.data as Record<string, unknown>)[key])]
+      : []
+  );
+  if ('change' in data.data && data.data.change.type === 'remove')
+    quotes.push(data.data.change.source_quote);
+  const currentText = quotes.join('\n');
+  try {
+    switch (action.data) {
+      case 'publish_plan':
+        res.json(
+          await planService.publishPlan(
+            req.userId,
+            await loadUserTimezone(req.userId),
+            id.data,
+            data.data,
+            currentText
+          )
+        );
+        break;
+      case 'undo_plan':
+        res.json(
+          await planService.undoPlan(
+            req.userId,
+            id.data,
+            data.data,
+            currentText
+          )
+        );
+        break;
+      case 'build_shopping_list':
+        res.json(
+          await shoppingService.buildShopping(req.userId, id.data, data.data)
+        );
+        break;
+      case 'change_shopping_list':
+        res.json(
+          await shoppingService.changeShopping(
+            req.userId,
+            id.data,
+            data.data,
+            currentText
+          )
+        );
+        break;
+      case 'undo_shopping_list':
+        res.json(
+          await shoppingService.undoShopping(
+            req.userId,
+            id.data,
+            data.data,
+            currentText
+          )
+        );
+        break;
+    }
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.post('/diary/inspect', async (req, res, next) => {
   const data = foodAssistantDiaryScopeSchema.safeParse(req.body);
@@ -262,7 +376,14 @@ router.patch('/tasks/:id', async (req, res, next) => {
   if (!id.success || !data.success)
     return res.status(400).json({ error: 'Invalid checkpoint.' });
   try {
-    res.json(await service.checkpointTask(req.userId, id.data, data.data));
+    res.json(
+      await service.checkpointTask(
+        req.userId,
+        id.data,
+        data.data,
+        data.data.removal_source_quote
+      )
+    );
   } catch (error) {
     next(error);
   }

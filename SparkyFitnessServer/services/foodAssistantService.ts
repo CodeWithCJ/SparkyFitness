@@ -27,7 +27,8 @@ export function createTask(userId: string, input: unknown) {
 export function checkpointTask(
   userId: string,
   taskId: string,
-  input: CheckpointFoodAssistantTask
+  input: CheckpointFoodAssistantTask,
+  currentText?: string
 ) {
   const data = checkpointFoodAssistantTaskSchema.parse(input);
   return repository.mutateTask(
@@ -51,6 +52,28 @@ export function checkpointTask(
       ) {
         throw new repository.FoodAssistantConflict(
           'A recipe checkpoint cannot silently drop ingredients. Use the explicit ingredient-removal action for a requested removal.'
+        );
+      }
+      if (
+        task.kind === 'meal_plan' &&
+        (task.checkpoint.ingredients.some(
+          (row) =>
+            !data.checkpoint.ingredients.some((next) => next.id === row.id)
+        ) ||
+          task.checkpoint.plan?.assignments.some(
+            (row) =>
+              !data.checkpoint.plan?.assignments.some(
+                (next) => next.id === row.id
+              )
+          )) &&
+        (!data.removal_source_quote ||
+          !currentText?.includes(data.removal_source_quote) ||
+          !/\b(remove|delete|drop|replace|swap)\b/i.test(
+            data.removal_source_quote
+          ))
+      ) {
+        throw new repository.FoodAssistantConflict(
+          'A plan checkpoint cannot silently drop ingredients or assignments. Quote the explicit current user request for the removal or replacement.'
         );
       }
       return { ...task, status: data.status, checkpoint: data.checkpoint };

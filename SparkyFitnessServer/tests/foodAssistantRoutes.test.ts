@@ -5,6 +5,8 @@ import router from '../routes/v2/foodAssistantRoutes.js';
 import * as service from '../services/foodAssistantService.js';
 import * as recipeService from '../services/foodAssistantRecipeService.js';
 import * as diaryService from '../services/foodAssistantDiaryService.js';
+import * as planningService from '../services/foodAssistantPlanService.js';
+import * as shoppingService from '../services/foodAssistantShoppingService.js';
 import { foodAssistantOperationSchema } from '@workspace/shared';
 import { FoodAssistantConflict } from '../models/foodAssistantRepository.js';
 
@@ -43,6 +45,20 @@ vi.mock('../services/foodAssistantDiaryService.js', () => ({
   inspectDiary: vi.fn(),
   applyDiary: vi.fn(),
   undoDiary: vi.fn(),
+}));
+vi.mock('../services/foodAssistantPlanService.js', () => ({
+  inspectPlan: vi.fn(),
+  previewPlan: vi.fn(),
+  publishPlan: vi.fn(),
+  undoPlan: vi.fn(),
+}));
+vi.mock('../services/foodAssistantShoppingService.js', () => ({
+  buildShopping: vi.fn(),
+  changeShopping: vi.fn(),
+  undoShopping: vi.fn(),
+}));
+vi.mock('../utils/timezoneLoader.js', () => ({
+  loadUserTimezone: vi.fn().mockResolvedValue('Europe/London'),
 }));
 app.use(express.json());
 app.use('/api/v2/food-assistant', router);
@@ -215,4 +231,58 @@ it('returns a conflict on stale edits rather than reporting success', async () =
   const response = await request('DELETE', '/preferences/bread?version=2');
   expect(response.status).toBe(409);
   expect(response.text).toContain('changed');
+});
+it('validates planning writes and binds publication and shopping checks to the signed-in actor', async () => {
+  const command = { operation_id: id, expected_version: 3, schedule: true };
+  expect(
+    (
+      await request('POST', `/planning/publish_plan/${id}`, {
+        ...command,
+        user_id: 'other',
+      })
+    ).status
+  ).toBe(400);
+  expect(
+    (
+      await request('POST', `/planning/publish_plan/${id}`, {
+        operation_id: id,
+        schedule: true,
+      })
+    ).status
+  ).toBe(400);
+  expect(planningService.publishPlan).not.toHaveBeenCalled();
+  vi.mocked(planningService.publishPlan).mockRejectedValue(
+    new FoodAssistantConflict('Plan changed')
+  );
+  expect(
+    (await request('POST', `/planning/publish_plan/${id}`, command)).status
+  ).toBe(409);
+  expect(planningService.publishPlan).toHaveBeenCalledWith(
+    'signed-in-owner',
+    'Europe/London',
+    id,
+    command,
+    ''
+  );
+  const check = {
+    operation_id: id,
+    expected_version: 4,
+    change: { type: 'mark', item_id: id, purchased: true },
+  };
+  vi.mocked(shoppingService.changeShopping).mockRejectedValue(
+    new FoodAssistantConflict('Shopping list changed')
+  );
+  expect(
+    (await request('POST', `/planning/change_shopping_list/${id}`, check))
+      .status
+  ).toBe(409);
+  expect(shoppingService.changeShopping).toHaveBeenCalledWith(
+    'signed-in-owner',
+    id,
+    check,
+    ''
+  );
+  expect((await request('POST', `/planning/unknown/${id}`, check)).status).toBe(
+    400
+  );
 });

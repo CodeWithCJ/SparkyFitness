@@ -7,7 +7,18 @@ import {
   foodAssistantPreferenceSchema,
 } from '@workspace/shared';
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (_key: string, fallback: string) => fallback }),
+  useTranslation: () => ({
+    i18n: { language: 'en' },
+    t: (
+      _key: string,
+      fallback:
+        | string
+        | { defaultValue: string; quantity: string; unit: string; name: string }
+    ) =>
+      typeof fallback === 'string'
+        ? fallback
+        : `${fallback.quantity} ${fallback.unit} ${fallback.name}`,
+  }),
 }));
 
 jest.mock('@/hooks/useAuth', () => ({
@@ -20,6 +31,7 @@ jest.mock('@/api/Chatbot/foodAssistantService', () => ({
   editFoodAssistantPreference: jest.fn(),
   forgetFoodAssistantPreference: jest.fn(),
   changeFoodAssistantTask: jest.fn(),
+  markFoodAssistantShopping: jest.fn(),
 }));
 const id = 'd3ebfc08-7f2e-4736-8b08-b8a0cbac2d17';
 const owner = '191d765e-f283-4b98-ae69-011e9c33759e';
@@ -105,4 +117,46 @@ it('does not continue a task when a version conflict is returned', async () => {
   fireEvent.click(await screen.findByText('Resume in chat'));
   await screen.findByRole('alert');
   expect(onResume).not.toHaveBeenCalled();
+});
+it('shows persisted shopping quantities and marks the exact item with the current version', async () => {
+  const shopping = foodAssistantTaskSchema.parse({
+    ...task,
+    kind: 'shopping',
+    status: 'complete',
+    title: 'Groceries',
+    result: {
+      kind: 'shopping',
+      publication_operation_id: id,
+      plan_id: null,
+      plan_task_id: null,
+      items: [
+        {
+          id,
+          food_id: null,
+          name: 'White bread',
+          quantity: 2,
+          unit: 'slice',
+          required_quantity: 2,
+          pantry_quantity: 0,
+          purchased: false,
+        },
+      ],
+    },
+  });
+  jest.mocked(api.loadFoodAssistantTasks).mockResolvedValue([shopping]);
+  renderWithClient(<FoodAssistantState onResume={jest.fn()} />);
+  fireEvent.click(screen.getByText('Food preferences and tasks'));
+  fireEvent.click(await screen.findByText('Groceries'));
+  const checkbox = await screen.findByRole('checkbox', {
+    name: '2 slice White bread',
+  });
+  expect((checkbox as HTMLInputElement).checked).toBe(false);
+  fireEvent.click(checkbox);
+  await waitFor(() =>
+    expect(api.markFoodAssistantShopping).toHaveBeenCalledWith(
+      shopping,
+      id,
+      true
+    )
+  );
 });

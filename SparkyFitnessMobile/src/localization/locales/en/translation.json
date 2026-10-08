@@ -6024,6 +6024,8 @@
     }
   },
   "foodAssistant": {
+    "shoppingList": "Shopping list",
+    "shoppingItem": "{{quantity}} {{unit}} {{name}}",
     "state": "Food preferences and tasks",
     "error": "Could not update assistant state. Refresh to read the latest version.",
     "memoryHelp": "Lasting food preferences are saved separately from chat history. A request for today can override them without changing them.",

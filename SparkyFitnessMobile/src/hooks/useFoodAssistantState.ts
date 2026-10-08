@@ -10,6 +10,7 @@ import {
   editAssistantPreference,
   forgetAssistantPreference,
   changeAssistantTask,
+  markAssistantShopping,
 } from '../services/api/foodAssistantApi';
 const key = ['foodAssistant'];
 export function useFoodAssistantState(
@@ -45,6 +46,7 @@ export function useFoodAssistantState(
         edit: editAssistantPreference,
         forget: forgetAssistantPreference,
         change: changeAssistantTask,
+        markShopping: markAssistantShopping,
       }),
     onSuccess: async (_data, input) => {
       await client.invalidateQueries({ queryKey: key });

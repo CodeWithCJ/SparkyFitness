@@ -1,5 +1,7 @@
 ## Sparky Buddy (AI Assistant)
+
 ### Core AI Features
+
 - **Food Recognition**: Analyze food photos for automatic logging and nutrition extraction
 - **Nutrition Analysis**: Intelligent nutrition information extraction from text and images
 - **Meal Suggestions**: AI-powered meal recommendations and recipe generation
@@ -9,6 +11,7 @@
 - **Water Intake Logging**: Track daily water consumption
 
 ### Chat Interface
+
 - **Image Upload**: Send photos for food analysis
 - **Text Input**: Natural language food descriptions, questions, and commands
 - **History**: Persistent chat conversation history with session grouping
@@ -16,6 +19,7 @@
 - **Settings**: Direct access to AI service configuration
 
 ### Food Integration
+
 - **Auto-Logging**: Directly add recognized foods to diary with confirmation
 - **Nutrition Confirmation**: Review and edit AI suggestions before logging
 - **Meal Context**: Understand meal timing and context for accurate logging
@@ -42,6 +46,14 @@ You can ask to undo a recipe publication. Undo checks for later edits and refuse
 Ask Sparky to replace, resize, scale, move, copy or delete logged foods or a whole meal. Replacements keep the same diary entry and group while updating the selected food, portion and nutrition together. Resizing, moving and copying retain the logged snapshot, including notes, photos and custom nutrients, rather than refreshing an old entry from today's catalog. Linked drink records and daily water totals change in the same transaction.
 
 The assistant inspects the current selection before applying it. Ambiguous food names require choosing the intended entry. Bulk and whole-meal deletions show a preview and require explicit confirmation. You can ask to undo a completed action; undo restores its prior snapshots only if later edits would not be overwritten. Copy undo removes the copies and leaves the source meal intact. A provider reference claiming implausible energy per bread slice triggers source verification instead of a guessed calorie correction.
+
+## Meal Plans and Shopping Lists
+
+Ask Sparky to build a meal plan around your goals, lasting preferences and confirmed leftovers. The draft retains every food and saved recipe assignment, date window and portion. Preview shows actual daily nutrition and current goals; incomplete ingredients remain visible and block publication. Saving creates a normal meal-plan template. Scheduling also writes its verified future diary entries in the same transaction, preserving historical entries. Replacing an existing future schedule requires a preview and explicit confirmation. Undo checks both the template and its diary entries before restoring the prior state.
+
+Saved recipe logging expands every linked recipe using its confirmed yield. Missing components, cycles, incompatible units or implausible nutrition stop the entire log. Recorded unknown nutrients stay unknown when the food catalog changes.
+
+Shopping lists can use a completed plan's captured quantities, an existing saved plan or explicit items. Quantities combine only when food identity and units are compatible. Confirmed pantry amounts reduce the required amount; item counts are never converted to weights without a verified reference. Select the shopping task in **Food preferences and tasks** to mark purchases in web or mobile. The list, checks and operation history persist across chats. Ask to add or remove items, or undo the latest change; undo refuses to overwrite later edits.
 
 ## Troubleshooting AI Providers
 
@@ -106,6 +118,6 @@ Small local models (roughly 3B–8B, e.g. an 8 GB Mac) can drive the chatbot's t
    - Set `OLLAMA_CONTEXT_LENGTH=16384` on the Ollama server (e.g. `launchctl setenv OLLAMA_CONTEXT_LENGTH 16384` on macOS, then restart Ollama), **or**
    - Bake `PARAMETER num_ctx 16384` into a Modelfile (`ollama create my-model -f Modelfile`) and point the service at that model.
    - On an 8 GB machine, start at `8192` — context uses VRAM — and only go higher if responses stay fast.
-2. **Use the `core` tool profile.** When you add an Ollama service, SparkyFitness now preselects the **core** tool profile (in the service's settings). Core exposes the everyday logging tools plus goals (~20 tools) instead of the full ~35, which small models select from far more reliably and which fits a smaller context window. Pick **full** only on a strong local machine with a raised context window.
+2. **Use the `core` tool profile.** When you add an Ollama service, SparkyFitness now preselects the **core** tool profile (in the service's settings). Core exposes the everyday logging tools plus goals instead of the full tool set, which small models select from far more reliably and which fits a smaller context window. Pick **full** only on a strong local machine with a raised context window.
 
 The server logs a warning when an Ollama service runs the `full` profile, since that combination most often overflows the default context. Also prefer models trained for tool calling (e.g. `qwen2.5:7b-instruct`, `llama3.1:8b`) — plain small chat models make unreliable tool calls.

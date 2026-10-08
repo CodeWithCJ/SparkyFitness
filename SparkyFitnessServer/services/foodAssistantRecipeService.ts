@@ -29,6 +29,7 @@ import {
   foodSchema,
   resolveFoodSelection,
   validateNamedFoodReference,
+  assertFoodEstimateAccepted,
 } from '../utils/foodNutritionSnapshot.js';
 
 const providerVariantSchema = variantSchema.omit({ id: true, food_id: true });
@@ -289,8 +290,14 @@ const mealSchema = z
   })
   .passthrough();
 
-export async function getRecipe(userId: string, mealId: string) {
-  const row = await mealRepository.getMealById(mealId, userId);
+export async function getRecipe(
+  userId: string,
+  mealId: string,
+  client?: PoolClient
+) {
+  const row = client
+    ? await mealRepository.getMealById(mealId, userId, client, false)
+    : await mealRepository.getMealById(mealId, userId);
   if (!row)
     throw new FoodAssistantConflict('Recipe not found or inaccessible.');
   return mealSchema.parse(row);
@@ -449,16 +456,11 @@ export async function publishRecipe(
         task.checkpoint,
         client
       );
-      if (
-        resolved.nutrition.estimated_ingredients.length &&
-        (!input.estimate_source_quote ||
-          !latestUserText?.includes(input.estimate_source_quote) ||
-          !/\bestimat(?:e|es|ed|ion)\b/i.test(input.estimate_source_quote))
-      ) {
-        throw new FoodAssistantConflict(
-          'Some ingredient nutrition is an estimate. Ask whether estimates are acceptable before publishing, or verify those ingredients.'
-        );
-      }
+      assertFoodEstimateAccepted(
+        resolved.nutrition.estimated_ingredients.length > 0,
+        input.estimate_source_quote,
+        latestUserText
+      );
       if (resolved.issues.length)
         throw new FoodAssistantConflict(
           `Recipe remains incomplete: ${resolved.issues.map((issue) => `${issue.description}: ${issue.message}`).join(' ')} Nothing was published.`

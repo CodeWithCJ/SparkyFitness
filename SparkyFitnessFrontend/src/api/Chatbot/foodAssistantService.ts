@@ -51,3 +51,21 @@ export const changeFoodAssistantTask = async (
     body: { operation_id: crypto.randomUUID(), expected_version: task.version },
   });
 };
+export const markFoodAssistantShopping = async (
+  task: FoodAssistantTask,
+  itemId: string,
+  purchased: boolean
+) =>
+  foodAssistantOperationSchema.parse(
+    await apiCall(
+      `/v2/food-assistant/planning/change_shopping_list/${task.id}`,
+      {
+        method: 'POST',
+        body: {
+          operation_id: crypto.randomUUID(),
+          expected_version: task.version,
+          change: { type: 'mark', item_id: itemId, purchased },
+        },
+      }
+    )
+  );

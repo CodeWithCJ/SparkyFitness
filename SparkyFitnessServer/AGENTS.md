@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-08_
+_Last updated: 2026-10-09_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -226,6 +226,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - **OAuth linking (`/authorize`, `/callback`) is self-only, and `state` is a server-issued single-use nonce.** Never derive a user id from a callback request body, and never gate an authorize route with `checkPermissionMiddleware('diary')` — on GET that resolves to `diary_read`, which would hand a read-only delegate the owner's decrypted OAuth client id. Use `requireSelfActor` plus `utils/oauthState.ts`. Withings and Polar follow this pattern; Oura, Fitbit and Strava are self-only but still send `state = userId` and ignore it on callback (tracked follow-up)
 
 ### AI Services
+
+- Verified meal plans and shopping: `foodAssistantPlanService.ts` / `foodAssistantPlanRepository.ts` publish templates and future diary in the task transaction; `foodAssistantShoppingService.ts` aggregates captured portions and persists editable lists. `utils/savedMealExpansion.ts` resolves all nested recipes for plans and diary logging, retaining recorded unknown nutrients. `ai/tools/foodPlanningTools.ts` and the owner-only `/api/v2/food-assistant/planning/` routes expose these actions. Undo dependency checks use `assistant_plan_has_external_dependants(uuid)` with the authenticated actor's owner gate.
 
 - AI calls go through the Vercel `ai` SDK (v6) with provider adapters for OpenAI, Anthropic, and Google, plus OpenAI-compatible, Mistral, Groq, OpenRouter, and Ollama service types
 - `ai/config.ts` holds default model and vision-model selection per provider; `ai/providerDispatch.ts` is the unified dispatch helper used by chat, food-photo analysis, nutrition-label scan, and unit conversion

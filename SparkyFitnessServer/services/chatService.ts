@@ -754,6 +754,12 @@ export function getSystemPrompt(
     if (existsSync(foodPath)) {
       content += '\n\n' + readFileSync(foodPath, 'utf-8').trim();
     }
+    content +=
+      '\n\n' +
+      readFileSync(
+        path.join(__dirname, '../prompts/chatbot-food-planning.md'),
+        'utf-8'
+      ).trim();
   }
 
   if (categories.has('vision') && suffix === 'full') {

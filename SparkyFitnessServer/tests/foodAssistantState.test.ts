@@ -281,6 +281,65 @@ describe('durable food task operations', () => {
       }).success
     ).toBe(false);
   });
+  it('rejects repeated ingredient identities instead of resolving only the first row', () => {
+    expect(
+      foodAssistantCheckpointSchema.safeParse({
+        ...checkpoint,
+        ingredients: [checkpoint.ingredients[0], checkpoint.ingredients[0]],
+      }).success
+    ).toBe(false);
+  });
+  it('cannot silently remove a plan ingredient or assignment through a checkpoint', async () => {
+    const planTask = foodAssistantTaskSchema.parse({
+      ...task,
+      kind: 'meal_plan',
+      checkpoint: {
+        ...checkpoint,
+        plan: {
+          name: 'Bread plan',
+          start_date: '2026-10-09',
+          end_date: '2026-10-16',
+          assignments: [
+            {
+              id: ingredientId,
+              item_type: 'food',
+              ingredient_id: ingredientId,
+              day_of_week: 5,
+              meal_type_id: ingredientId,
+            },
+          ],
+        },
+      },
+    });
+    query.mockImplementation(async (sql: string) => ({
+      rows: sql.includes('FOR UPDATE') ? [planTask] : [],
+    }));
+    await expect(
+      service.checkpointTask(userId, taskId, {
+        operation_id: operationId,
+        expected_version: 2,
+        status: 'draft',
+        checkpoint: { ...planTask.checkpoint, ingredients: [] },
+      })
+    ).rejects.toThrow('silently drop');
+    expect(query).toHaveBeenCalledWith('ROLLBACK');
+    query.mockClear();
+    await expect(
+      service.checkpointTask(
+        userId,
+        taskId,
+        {
+          operation_id: operationId,
+          expected_version: 2,
+          status: 'draft',
+          checkpoint: { ...planTask.checkpoint, ingredients: [] },
+          removal_source_quote: 'Remove flour',
+        },
+        'Keep flour'
+      )
+    ).rejects.toThrow('current user');
+    expect(query).not.toHaveBeenCalledWith('COMMIT');
+  });
 });
 
 describe('lasting food preferences', () => {

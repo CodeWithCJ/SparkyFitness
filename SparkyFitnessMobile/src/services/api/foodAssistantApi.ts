@@ -65,3 +65,16 @@ export async function changeAssistantTask(
     })
   );
 }
+export async function markAssistantShopping(
+  task: FoodAssistantTask,
+  itemId: string,
+  purchased: boolean
+) {
+  return foodAssistantOperationSchema.parse(
+    await request(`/planning/change_shopping_list/${task.id}`, 'POST', {
+      operation_id: newUuid(),
+      expected_version: task.version,
+      change: { type: 'mark', item_id: itemId, purchased },
+    })
+  );
+}

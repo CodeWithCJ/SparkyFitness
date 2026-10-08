@@ -46,6 +46,9 @@ import { localizeImages, toImageArray } from '../utils/imageLocalizer.js';
 const MEAL_FOODS_SELECT = `
   SELECT mf.id, mf.meal_id, mf.food_id, mf.child_meal_id, mf.item_type,
          mf.variant_id, mf.quantity, mf.unit,
+         fv.source AS nutrition_source,
+         to_jsonb(mf) AS nutrition_snapshot,
+         fv.allergens, fv.traces, f.images,
          f.name AS food_name, f.brand,
          cm.name AS child_meal_name,
          cm.serving_size AS child_meal_serving_size,
@@ -283,13 +286,14 @@ async function searchMeals(
 async function getMealById(
   mealId: string,
   userId: string,
-  transactionClient?: PoolClient
+  transactionClient?: PoolClient,
+  lock = true
 ) {
   const client = transactionClient ?? (await getClient(userId)); // User-specific operation (RLS will handle access)
   try {
     const mealResult = await client.query(
       `SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, notes, created_at, updated_at
-       FROM meals WHERE id = $1 ${transactionClient ? 'FOR UPDATE' : ''}`,
+       FROM meals WHERE id = $1 ${transactionClient && lock ? 'FOR UPDATE' : ''}`,
       [mealId]
     );
     const meal = mealResult.rows[0];

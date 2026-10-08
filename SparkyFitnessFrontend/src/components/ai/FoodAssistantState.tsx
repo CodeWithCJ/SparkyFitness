@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFoodAssistantState } from '@/hooks/AI/useFoodAssistantState';
+import { foodAssistantShoppingResultSchema } from '@workspace/shared';
 
 export function FoodAssistantState({
   onResume,
 }: {
   onResume: (taskId: string) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string>();
   const [editing, setEditing] = useState<string>();
@@ -20,6 +21,9 @@ export function FoodAssistantState({
     onResume
   );
   const selected = tasks.data?.find((task) => task.id === selectedId);
+  const shopping = foodAssistantShoppingResultSchema.safeParse(
+    selected?.result
+  );
 
   return (
     <div className="border-b px-3 py-2 text-sm">
@@ -152,6 +156,38 @@ export function FoodAssistantState({
             <div className="rounded border p-2 space-y-2">
               <p>{selected.checkpoint.summary}</p>
               <p>{selected.checkpoint.next_step}</p>
+              {shopping.success && (
+                <fieldset className="space-y-2">
+                  <legend>
+                    {t('foodAssistant.shoppingList', 'Shopping list')}
+                  </legend>
+                  {shopping.data.items.map((item) => (
+                    <label key={item.id} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={item.purchased}
+                        disabled={mutation.isPending}
+                        onChange={(event) =>
+                          mutation.mutate({
+                            action: 'mark_shopping',
+                            task: selected,
+                            itemId: item.id,
+                            purchased: event.target.checked,
+                          })
+                        }
+                      />
+                      <span>
+                        {t('foodAssistant.shoppingItem', {
+                          defaultValue: '{{quantity}} {{unit}} {{name}}',
+                          quantity: item.quantity.toLocaleString(i18n.language),
+                          unit: item.unit,
+                          name: item.name,
+                        })}
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
+              )}
               {selected.checkpoint.ingredients.map((ingredient) => (
                 <p key={ingredient.id}>
                   {ingredient.quantity ?? '?'} {ingredient.unit ?? ''}{' '}
@@ -178,7 +214,8 @@ export function FoodAssistantState({
                 ))}
               {operations.data?.map((operation) => (
                 <p key={operation.id} className="text-muted-foreground">
-                  {operation.kind} · {operation.created_at.toLocaleString()}
+                  {operation.kind} ·{' '}
+                  {operation.created_at.toLocaleString(i18n.language)}
                 </p>
               ))}
             </div>

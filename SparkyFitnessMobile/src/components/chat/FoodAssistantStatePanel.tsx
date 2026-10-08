@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useAui, useAuiState } from '@assistant-ui/react-native';
 import { useFoodAssistantState } from '../../hooks/useFoodAssistantState';
+import { foodAssistantShoppingResultSchema } from '@workspace/shared';
 
 export default function FoodAssistantStatePanel() {
   const { t, i18n } = useTranslation();
@@ -65,6 +66,9 @@ export default function FoodAssistantStatePanel() {
     }
   );
   const selected = tasks.data?.find((task) => task.id === selectedId);
+  const shopping = foodAssistantShoppingResultSchema.safeParse(
+    selected?.result
+  );
   const disabled = running || mutation.isPending;
   return (
     <View className="border-b border-border-subtle px-4 py-2">
@@ -247,6 +251,44 @@ export default function FoodAssistantStatePanel() {
                 <Text className="text-text-secondary">
                   {selected.checkpoint.next_step}
                 </Text>
+              )}
+              {shopping.success && (
+                <View className="gap-2">
+                  <Text className="text-text-primary font-medium">
+                    {t('foodAssistant.shoppingList', {
+                      defaultValue: 'Shopping list',
+                    })}
+                  </Text>
+                  {shopping.data.items.map((item) => (
+                    <Pressable
+                      key={item.id}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: item.purchased, disabled }}
+                      disabled={disabled}
+                      onPress={() =>
+                        mutation.mutate({
+                          action: 'mark_shopping',
+                          task: selected,
+                          itemId: item.id,
+                          purchased: !item.purchased,
+                        })
+                      }
+                      className="flex-row items-center gap-2 py-1"
+                    >
+                      <Text className="text-text-primary" aria-hidden>
+                        {item.purchased ? '☑' : '☐'}
+                      </Text>
+                      <Text className="text-text-primary">
+                        {t('foodAssistant.shoppingItem', {
+                          defaultValue: '{{quantity}} {{unit}} {{name}}',
+                          quantity: item.quantity.toLocaleString(i18n.language),
+                          unit: item.unit,
+                          name: item.name,
+                        })}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
               )}
               {selected.checkpoint.ingredients.map((ingredient) => (
                 <Text key={ingredient.id} className="text-text-secondary">

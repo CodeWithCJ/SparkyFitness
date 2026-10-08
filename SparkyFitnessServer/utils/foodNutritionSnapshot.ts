@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
+import { FoodAssistantConflict } from '../models/foodAssistantRepository.js';
 import {
   nutrientNumber,
   resolveFoodPortion,
@@ -13,6 +14,21 @@ export const nutrientFields = [
   'water_ml',
 ] as const;
 export type Nutrient = (typeof nutrientFields)[number];
+export function assertFoodEstimateAccepted(
+  estimated: boolean,
+  quote?: string,
+  currentText?: string
+) {
+  if (
+    estimated &&
+    (!quote ||
+      !currentText?.includes(quote) ||
+      !/\bestimat(?:e|es|ed|ion)\b/i.test(quote))
+  )
+    throw new FoodAssistantConflict(
+      'Some ingredient nutrition is an estimate. Ask whether estimates are acceptable before saving, or verify the original source.'
+    );
+}
 const numeric = z.union([z.number().finite(), z.string(), z.null()]).optional();
 const nutrientShape = Object.fromEntries(
   nutrientFields.map((field) => [field, numeric])

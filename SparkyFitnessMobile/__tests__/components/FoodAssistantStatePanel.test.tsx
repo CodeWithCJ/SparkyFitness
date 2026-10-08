@@ -21,6 +21,7 @@ jest.mock('../../src/services/api/foodAssistantApi', () => ({
   editAssistantPreference: jest.fn(),
   forgetAssistantPreference: jest.fn(),
   changeAssistantTask: jest.fn(),
+  markAssistantShopping: jest.fn(),
 }));
 const preference = foodAssistantPreferenceSchema.parse({
   user_id: 'f2567f49-14ae-4c4e-af61-fa60293b78a4',
@@ -101,6 +102,48 @@ it('forgets the actual preference version and resumes the current task in chat',
           expect.objectContaining({ text: expect.stringContaining(task.id) }),
         ],
       })
+    )
+  );
+});
+it('renders saved shopping quantities and marks only the selected item', async () => {
+  const itemId = '63fb8f2b-d77d-4b15-b248-e016e28c55d9';
+  const shopping = foodAssistantTaskSchema.parse({
+    ...task,
+    kind: 'shopping',
+    status: 'complete',
+    title: 'Groceries',
+    result: {
+      kind: 'shopping',
+      publication_operation_id: itemId,
+      plan_id: null,
+      plan_task_id: null,
+      items: [
+        {
+          id: itemId,
+          food_id: null,
+          name: 'White bread',
+          quantity: 2,
+          unit: 'slice',
+          required_quantity: 2,
+          pantry_quantity: 0,
+          purchased: false,
+        },
+      ],
+    },
+  });
+  jest.mocked(api.loadAssistantTasks).mockResolvedValue([shopping]);
+  const view = mount();
+  fireEvent.press(view.getByText('Food preferences and tasks'));
+  fireEvent.press(await view.findByText('Groceries'));
+  const checkbox = await view.findByRole('checkbox');
+  expect(view.getByText('2 slice White bread')).toBeTruthy();
+  expect(checkbox.props.accessibilityState.checked).toBe(false);
+  fireEvent.press(checkbox);
+  await waitFor(() =>
+    expect(api.markAssistantShopping).toHaveBeenCalledWith(
+      shopping,
+      itemId,
+      true
     )
   );
 });

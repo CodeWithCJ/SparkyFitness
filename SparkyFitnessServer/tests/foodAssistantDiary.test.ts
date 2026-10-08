@@ -13,6 +13,7 @@ import * as tasks from '../models/foodAssistantRepository.js';
 import foodRepository from '../models/foodRepository.js';
 import * as meals from '../models/foodEntryMealRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
+import mealRepository from '../models/mealRepository.js';
 
 vi.mock('../models/foodAssistantDiaryRepository.js', async (original) => ({
   ...(await original<
@@ -39,6 +40,9 @@ vi.mock('../models/foodEntryMealRepository.js', () => ({
 }));
 vi.mock('../models/measurementRepository.js', () => ({
   default: { recomputeWaterAggregate: vi.fn() },
+}));
+vi.mock('../models/mealRepository.js', () => ({
+  default: { getMealById: vi.fn() },
 }));
 const userId = randomUUID(),
   taskId = randomUUID(),
@@ -252,6 +256,148 @@ beforeEach(() => {
 });
 
 describe('verified diary changes', () => {
+  it('logs an entire saved recipe with its confirmed yield and retained unknown nutrients', async () => {
+    const recipeId = randomUUID();
+    vi.mocked(mealRepository.getMealById).mockResolvedValue({
+      id: recipeId,
+      user_id: userId,
+      name: 'Bread recipe',
+      serving_size: 1,
+      serving_unit: 'serving',
+      total_servings: 2,
+      updated_at: now,
+      images: ['/uploads/recipe.jpg'],
+      foods: [
+        {
+          id: randomUUID(),
+          food_id: foodId,
+          variant_id: variantId,
+          food_name: 'White bread',
+          quantity: 4,
+          unit: 'slice',
+          serving_size: 1,
+          serving_unit: 'slice',
+          calories: 80,
+          protein: 3,
+          carbs: 15,
+          fat: 1,
+          sodium: null,
+        },
+      ],
+    });
+    vi.mocked(meals.createFoodEntryMealWithClient).mockImplementation(
+      async (_client, data) => {
+        const parent = { ...data, id: randomUUID(), user_id: userId };
+        db.food_entry_meals.set(
+          parent.id,
+          z
+            .record(z.string(), z.json())
+            .parse(JSON.parse(JSON.stringify(parent)))
+        );
+        return parent;
+      }
+    );
+    await apply({
+      type: 'log_recipe',
+      meal_id: recipeId,
+      expected_recipe_updated_at: now,
+      quantity: 1,
+      unit: 'serving',
+      destination,
+    });
+    const added = rows('food_entries').filter((row) => row.id !== oldId);
+    expect(added).toHaveLength(1);
+    expect(added[0]).toMatchObject({ quantity: 2, calories: 80, sodium: null });
+    expect(task.result).toMatchObject({
+      nutrition: { calories: 160, sodium: null },
+    });
+    expect(
+      db.food_entry_meals.get(String(added[0]!.food_entry_meal_id))
+    ).toMatchObject({
+      quantity: 1,
+      entry_total_servings: 2,
+      images: ['/uploads/recipe.jpg'],
+    });
+  });
+  it('does not log a partial saved recipe when a component is missing', async () => {
+    vi.mocked(mealRepository.getMealById).mockResolvedValue({
+      id: foodId,
+      user_id: userId,
+      name: 'Incomplete recipe',
+      serving_size: 1,
+      serving_unit: 'serving',
+      total_servings: 1,
+      updated_at: now,
+      foods: [
+        {
+          id: randomUUID(),
+          food_id: foodId,
+          variant_id: variantId,
+          food_name: 'Bread',
+          quantity: 4,
+          unit: 'slice',
+          serving_size: 1,
+          serving_unit: 'slice',
+          calories: null,
+          protein: 3,
+          carbs: 15,
+          fat: 1,
+        },
+      ],
+    });
+    await expect(
+      apply({
+        type: 'log_recipe',
+        meal_id: foodId,
+        expected_recipe_updated_at: now,
+        quantity: 1,
+        unit: 'serving',
+        destination,
+      })
+    ).rejects.toThrow('Core nutrition');
+    expect(rows('food_entries')).toHaveLength(1);
+    expect(task.status).toBe('draft');
+    expect(meals.createFoodEntryMealWithClient).not.toHaveBeenCalled();
+  });
+  it('refuses to overwrite a recreated water identity during deletion undo', async () => {
+    const waterId = randomUUID();
+    db.water_intake_entries.set(waterId, {
+      id: waterId,
+      user_id: userId,
+      food_entry_id: oldId,
+      water_ml: 100,
+      entry_date: '2026-10-08',
+      source: 'container',
+    });
+    const result = await apply({
+      type: 'delete',
+      scope,
+      expected_fingerprint: await observed(),
+    });
+    db.water_intake_entries.set(waterId, {
+      id: waterId,
+      user_id: userId,
+      food_entry_id: null,
+      water_ml: 200,
+      entry_date: '2026-10-09',
+      source: 'manual',
+    });
+    await expect(
+      service.undoDiary(
+        userId,
+        taskId,
+        {
+          operation_id: randomUUID(),
+          expected_version: task.version,
+          diary_operation_id: result.id,
+          source_quote: 'Undo deletion',
+        },
+        'Undo deletion'
+      )
+    ).rejects.toThrow('recreated');
+    expect(db.water_intake_entries.get(waterId)?.water_ml).toBe(200);
+    expect(rows('food_entries')).toHaveLength(0);
+  });
   it('logs several verified foods in one meal and accepts database-normalized numeric fields and time', async () => {
     vi.mocked(meals.createFoodEntryMealWithClient).mockImplementation(
       async (_client, data) => {

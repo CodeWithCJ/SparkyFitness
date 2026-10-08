@@ -20,7 +20,9 @@ import measurementRepository from '../models/measurementRepository.js';
 import {
   resolveFoodSelection,
   nutrientFields,
+  assertFoodEstimateAccepted,
 } from '../utils/foodNutritionSnapshot.js';
+import { expandSavedMeal } from '../utils/savedMealExpansion.js';
 import {
   nutrientNumber,
   resolveFoodPortion,
@@ -51,7 +53,10 @@ function jsonSnapshot(value: unknown): DiarySnapshot {
 function stringField(row: DiarySnapshot, field: string) {
   return z.string().parse(row[field]);
 }
-function assertReadback(expected: DiarySnapshot[], actual: DiarySnapshot[]) {
+export function assertDiaryReadback(
+  expected: DiarySnapshot[],
+  actual: DiarySnapshot[]
+) {
   if (expected.length !== actual.length)
     throw new FoodAssistantConflict(
       'Diary readback count did not match. Nothing was committed.'
@@ -89,7 +94,7 @@ function assertReadback(expected: DiarySnapshot[], actual: DiarySnapshot[]) {
       );
   }
 }
-async function readManifest(
+export async function readDiaryManifest(
   client: PoolClient,
   userId: string,
   manifest: DiarySelection,
@@ -118,7 +123,7 @@ async function readManifest(
     ),
   };
 }
-async function recomputeWater(
+export async function recomputeDiaryWater(
   client: PoolClient,
   userId: string,
   ...selections: DiarySelection[]
@@ -139,20 +144,25 @@ async function recomputeWater(
       source
     );
 }
-function acceptedEstimate(
-  estimated: boolean,
-  quote: string | undefined,
-  currentText: string | undefined
+export async function assertAbsentDiaryIdentities(
+  client: PoolClient,
+  userId: string,
+  before: DiarySelection,
+  after: DiarySelection
 ) {
-  if (
-    estimated &&
-    (!quote ||
-      !currentText?.includes(quote) ||
-      !/\bestimat(?:e|es|ed|ion)\b/i.test(quote))
-  )
-    throw new FoodAssistantConflict(
-      'Verify the original nutrition source or ask whether an estimate is acceptable.'
-    );
+  for (const [table, key] of [
+    ['food_entry_meals', 'meals'],
+    ['food_entries', 'entries'],
+    ['water_intake_entries', 'water'],
+  ] as const) {
+    const ids = before[key]
+      .filter((row) => !after[key].some((other) => other.id === row.id))
+      .map(diary.snapshotId);
+    if ((await diary.readSnapshots(client, table, userId, ids, true)).length)
+      throw new FoodAssistantConflict(
+        'A deleted diary item was recreated. Inspect it before undoing.'
+      );
+  }
 }
 async function selectFood(
   userId: string,
@@ -176,7 +186,7 @@ async function selectFood(
     throw new FoodAssistantConflict('Selected food is no longer accessible.');
   const result = resolveFoodSelection(food, selection);
   if (!result.ok) throw new FoodAssistantConflict(result.message);
-  acceptedEstimate(result.estimated, quote, currentText);
+  assertFoodEstimateAccepted(result.estimated, quote, currentText);
   return result.snapshot;
 }
 export async function inspectDiary(userId: string, rawScope: unknown) {
@@ -188,10 +198,10 @@ export async function inspectDiary(userId: string, rawScope: unknown) {
     ...selection,
     confirmation_required_for_delete:
       scope.type !== 'entries' || selection.entries.length > 1,
-    nutrition: nutritionTotals(selection.entries),
+    nutrition: diaryNutritionTotals(selection.entries),
   };
 }
-function nutritionTotals(entries: DiarySnapshot[]) {
+export function diaryNutritionTotals(entries: DiarySnapshot[]) {
   return Object.fromEntries(
     nutrientFields.map((field) => {
       let total = 0;
@@ -229,11 +239,12 @@ export async function applyDiary(
         throw new FoodAssistantConflict('Use a diary task for diary changes.');
       const action = input.action;
       const before =
-        action.type === 'log'
+        action.type === 'log' || action.type === 'log_recipe'
           ? empty()
           : await diary.readSelection(userId, action.scope, client, true);
       if (
         action.type !== 'log' &&
+        action.type !== 'log_recipe' &&
         (diaryFingerprint(before) !== action.expected_fingerprint ||
           (!before.entries.length && !before.meals.length))
       )
@@ -253,71 +264,63 @@ export async function applyDiary(
           'Show the selected meal and entries, then obtain confirmation before deleting this bulk selection.'
         );
       const expected: DiarySelection = structuredClone(before);
-      if (action.type === 'log') {
-        await mealEntryRepository.resolveMealTypeIdWithClient(
-          client,
-          action.destination.meal_type_id,
-          undefined
-        );
-        const now = new Date().toISOString();
-        let parentId: string | null = null;
-        if (action.meal_name) {
-          const parent = jsonSnapshot(
-            await mealEntryRepository.createFoodEntryMealWithClient(
-              client,
-              {
-                user_id: userId,
-                name: action.meal_name,
-                entry_date: action.destination.date,
-                entry_time: action.destination.time,
-                meal_type_id: action.destination.meal_type_id,
-                quantity: 1,
-                unit: 'serving',
-                entry_total_servings: 1,
-              },
-              userId
-            )
-          );
-          const persisted = (
-            await diary.readSnapshots(client, 'food_entry_meals', userId, [
-              diary.snapshotId(parent),
-            ])
-          )[0];
-          if (!persisted)
-            throw new FoodAssistantConflict(
-              'Logged meal parent readback failed.'
-            );
-          expected.meals.push(persisted);
-          parentId = diary.snapshotId(parent);
-        }
-        for (const selected of action.foods) {
-          const resolved = await selectFood(
-            userId,
-            client,
-            selected,
+      if (action.type === 'log' || action.type === 'log_recipe') {
+        const saved =
+          action.type === 'log_recipe'
+            ? await expandSavedMeal(
+                userId,
+                {
+                  meal_id: action.meal_id,
+                  quantity: action.quantity,
+                  unit: action.unit,
+                  expected_updated_at: action.expected_recipe_updated_at,
+                },
+                client
+              )
+            : undefined;
+        if (saved)
+          assertFoodEstimateAccepted(
+            saved.estimated.length > 0,
             input.estimate_source_quote,
             currentText
           );
-          const row = jsonSnapshot({
-            ...resolved,
-            id: randomUUID(),
-            user_id: userId,
-            meal_id: null,
-            meal_plan_template_id: null,
-            food_entry_meal_id: parentId,
-            meal_type_id: action.destination.meal_type_id,
-            entry_date: action.destination.date,
-            entry_time: action.destination.time ?? null,
-            created_at: now,
-            created_by_user_id: userId,
-            updated_by_user_id: userId,
-            source: null,
-            source_id: null,
-            notes: null,
-          });
-          await diary.insertSnapshot(client, 'food_entries', userId, row);
-          expected.entries.push(row);
-        }
+        const snapshots = saved
+          ? saved.leaves
+          : await Promise.all(
+              (action.type === 'log' ? action.foods : []).map((food) =>
+                selectFood(
+                  userId,
+                  client,
+                  food,
+                  input.estimate_source_quote,
+                  currentText
+                )
+              )
+            );
+        const logged = await writeVerifiedDiaryLog(userId, client, {
+          snapshots,
+          destination: action.destination,
+          parent: saved
+            ? {
+                name: saved.meal.name,
+                meal_template_id: saved.meal.id,
+                description: saved.meal.description,
+                images: saved.meal.images,
+                quantity: saved.portion.quantity,
+                unit: saved.portion.unit,
+                entry_total_servings:
+                  saved.meal.serving_size * saved.meal.total_servings,
+              }
+            : action.type === 'log' && action.meal_name
+              ? {
+                  name: action.meal_name,
+                  quantity: 1,
+                  unit: 'serving',
+                  entry_total_servings: 1,
+                }
+              : undefined,
+        });
+        Object.assign(expected, logged);
       } else if (action.type === 'replace' || action.type === 'resize') {
         if (before.entries.length !== 1)
           throw new FoodAssistantConflict(
@@ -569,10 +572,10 @@ export async function applyDiary(
           expected.water.push(target);
         }
       }
-      const after = await readManifest(client, userId, expected);
-      assertReadback(expected.entries, after.entries);
-      assertReadback(expected.meals, after.meals);
-      assertReadback(expected.water, after.water);
+      const after = await readDiaryManifest(client, userId, expected);
+      assertDiaryReadback(expected.entries, after.entries);
+      assertDiaryReadback(expected.meals, after.meals);
+      assertDiaryReadback(expected.water, after.water);
       if (action.type === 'delete') {
         const remaining = await diary.readSnapshots(
           client,
@@ -585,7 +588,7 @@ export async function applyDiary(
             'Deleted entries remain in the diary. Nothing was committed.'
           );
       }
-      await recomputeWater(client, userId, before, after);
+      await recomputeDiaryWater(client, userId, before, after);
       return {
         ...task,
         status: 'complete',
@@ -596,12 +599,91 @@ export async function applyDiary(
           before: action.type === 'copy' ? empty() : before,
           source_snapshot: action.type === 'copy' ? before : null,
           after,
-          nutrition: nutritionTotals(after.entries),
+          nutrition: diaryNutritionTotals(after.entries),
           estimate_acceptance_quote: input.estimate_source_quote ?? null,
         }),
       };
     }
   );
+}
+
+/** Domain callers resolve nutrition before this write. A plan and a normal
+ * diary log use identical grouping, metadata and persisted readback rules. */
+export async function writeVerifiedDiaryLog(
+  userId: string,
+  client: PoolClient,
+  input: {
+    snapshots: DiarySnapshot[];
+    destination: { date: string; meal_type_id: string; time?: string | null };
+    template_id?: string;
+    parent?: {
+      name: string;
+      meal_template_id?: string;
+      description?: string | null;
+      images?: string[];
+      quantity: number;
+      unit: string;
+      entry_total_servings: number;
+    };
+  }
+): Promise<DiarySelection> {
+  if (!input.snapshots.length)
+    throw new FoodAssistantConflict(
+      'A meal needs at least one resolved ingredient.'
+    );
+  await mealEntryRepository.resolveMealTypeIdWithClient(
+    client,
+    input.destination.meal_type_id,
+    undefined
+  );
+  const expected = empty();
+  let parentId: string | null = null;
+  if (input.parent) {
+    const parent = await mealEntryRepository.createFoodEntryMealWithClient(
+      client,
+      {
+        ...input.parent,
+        user_id: userId,
+        entry_date: input.destination.date,
+        entry_time: input.destination.time ?? null,
+        meal_type_id: input.destination.meal_type_id,
+      },
+      userId
+    );
+    parentId = z.string().uuid().parse(parent.id);
+    const stored = (
+      await diary.readSnapshots(client, 'food_entry_meals', userId, [parentId])
+    )[0];
+    if (!stored)
+      throw new FoodAssistantConflict('Logged meal parent readback failed.');
+    expected.meals.push(stored);
+  }
+  const now = new Date().toISOString();
+  for (const snapshot of input.snapshots) {
+    const row = jsonSnapshot({
+      ...snapshot,
+      id: randomUUID(),
+      user_id: userId,
+      meal_id: null,
+      meal_plan_template_id: input.template_id ?? null,
+      food_entry_meal_id: parentId,
+      meal_type_id: input.destination.meal_type_id,
+      entry_date: input.destination.date,
+      entry_time: input.destination.time ?? null,
+      created_at: now,
+      created_by_user_id: userId,
+      updated_by_user_id: userId,
+      source: null,
+      source_id: null,
+      notes: null,
+    });
+    await diary.insertSnapshot(client, 'food_entries', userId, row);
+    expected.entries.push(row);
+  }
+  const after = await readDiaryManifest(client, userId, expected);
+  assertDiaryReadback(expected.entries, after.entries);
+  assertDiaryReadback(expected.meals, after.meals);
+  return after;
 }
 
 export async function undoDiary(
@@ -648,31 +730,12 @@ export async function undoDiary(
           'That operation is not the current completed diary task.'
         );
       const { before, after } = result.data;
-      const current = await readManifest(client, userId, after, true);
+      const current = await readDiaryManifest(client, userId, after, true);
       if (diaryFingerprint(current) !== diaryFingerprint(after))
         throw new FoodAssistantConflict(
           'The diary changed after this operation. Undo would overwrite newer work.'
         );
-      const absent: DiarySelection = {
-        entries: before.entries.filter(
-          (row) => !after.entries.some((other) => other.id === row.id)
-        ),
-        meals: before.meals.filter(
-          (row) => !after.meals.some((other) => other.id === row.id)
-        ),
-        water: before.water.filter(
-          (row) => !after.water.some((other) => other.id === row.id)
-        ),
-      };
-      const reappeared = await readManifest(client, userId, absent, true);
-      if (
-        reappeared.entries.length ||
-        reappeared.meals.length ||
-        reappeared.water.length
-      )
-        throw new FoodAssistantConflict(
-          'A deleted diary item was recreated. Inspect it before undoing.'
-        );
+      await assertAbsentDiaryIdentities(client, userId, before, after);
       const addedEntries = after.entries.filter(
         (row) => !before.entries.some((other) => other.id === row.id)
       );
@@ -724,11 +787,11 @@ export async function undoDiary(
           else await diary.insertSnapshot(client, table, userId, row);
         }
       }
-      const restored = await readManifest(client, userId, before);
-      assertReadback(before.entries, restored.entries);
-      assertReadback(before.meals, restored.meals);
-      assertReadback(before.water, restored.water);
-      await recomputeWater(client, userId, before, after);
+      const restored = await readDiaryManifest(client, userId, before);
+      assertDiaryReadback(before.entries, restored.entries);
+      assertDiaryReadback(before.meals, restored.meals);
+      assertDiaryReadback(before.water, restored.water);
+      await recomputeDiaryWater(client, userId, before, after);
       return {
         ...task,
         result: z.json().parse({

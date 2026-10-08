@@ -1,16 +1,8 @@
 import { z } from "zod";
 import { changeFoodAssistantTaskSchema } from "./FoodAssistant.api.zod.ts";
+import { foodAssistantDateSchema } from "./FoodAssistantPlanDraft.api.zod.ts";
 const uuid = z.string().uuid();
-const date = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/)
-  .refine((value) => {
-    const parsed = new Date(`${value}T12:00:00Z`);
-    return (
-      Number.isFinite(parsed.getTime()) &&
-      parsed.toISOString().slice(0, 10) === value
-    );
-  }, "Use a valid calendar date.");
+const date = foodAssistantDateSchema;
 const time = z
   .string()
   .regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/)
@@ -46,6 +38,15 @@ const observed = {
   expected_fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
 };
 export const foodAssistantDiaryActionSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("log_recipe"),
+      meal_id: uuid,
+      expected_recipe_updated_at: z.string().datetime(),
+      ...portion.shape,
+      destination,
+    })
+    .strict(),
   z
     .object({
       type: z.literal("log"),

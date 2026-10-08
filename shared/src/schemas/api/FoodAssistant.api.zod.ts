@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { foodAssistantPlanDraftSchema } from "./FoodAssistantPlanDraft.api.zod.ts";
 
 const uuid = z.string().uuid();
 const text = z.string().trim().min(1).max(2000);
@@ -83,9 +84,17 @@ export const foodAssistantCheckpointSchema = z
   .object({
     summary: text,
     next_step: text.optional(),
-    ingredients: z.array(foodAssistantIngredientSchema).max(100).default([]),
+    ingredients: z
+      .array(foodAssistantIngredientSchema)
+      .max(100)
+      .refine(
+        (rows) => new Set(rows.map((row) => row.id)).size === rows.length,
+        "Ingredient IDs must be unique.",
+      )
+      .default([]),
     evidence: z.array(foodAssistantEvidenceSchema).max(100).default([]),
     selected_ids: z.array(uuid).max(200).default([]),
+    plan: foodAssistantPlanDraftSchema.optional(),
     recipe: z
       .object({
         name: text,
@@ -116,6 +125,7 @@ export const createFoodAssistantTaskSchema = z
   .strict();
 export const checkpointFoodAssistantTaskSchema = z
   .object({
+    removal_source_quote: text.optional(),
     operation_id: uuid,
     expected_version: z.number().int().positive(),
     status: z.enum(["draft", "running", "awaiting_input", "failed"]),

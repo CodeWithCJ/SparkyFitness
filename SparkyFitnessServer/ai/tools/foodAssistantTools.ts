@@ -127,7 +127,8 @@ export function buildFoodAssistantTools(
                 await service.checkpointTask(
                   userId,
                   args.task_id,
-                  args.checkpoint
+                  args.checkpoint,
+                  ctx?.latestUserText
                 )
               );
             case 'cancel_task':
