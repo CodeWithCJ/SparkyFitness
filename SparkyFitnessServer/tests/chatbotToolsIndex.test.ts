@@ -14,6 +14,8 @@ vi.mock('../config/logging', () => ({
 // (sparky_inspect_schema, sparky_get_user_info, sparky_get_db_stats),
 // which are intentionally not ported.
 const EXPECTED_TOOLS = [
+  'sparky_food_assistant_state',
+  'sparky_manage_recipes',
   'sparky_analyze_food_image',
   'sparky_analyze_trends',
   'sparky_check_engagement',
@@ -66,7 +68,7 @@ const EXPECTED_TOOLS = [
   'sparky_scan_label',
   'sparky_search_exercises',
   'sparky_search_foods',
-];
+].sort();
 
 // The 'core' profile (used for Ollama and other small/local models): the
 // food, exercise, and measurement logging the system prompt centers on, plus
@@ -76,6 +78,8 @@ const EXPECTED_TOOLS = [
 // helpers (favorites, meal plans, water containers, workout plans, progress
 // photos, sleep science, etc.) since those now live inside those categories.
 const EXPECTED_CORE_TOOLS = [
+  'sparky_food_assistant_state',
+  'sparky_manage_recipes',
   'sparky_get_barcode',
   'sparky_get_caffeine_kinetics',
   'sparky_get_daily_exercise_totals',
@@ -108,7 +112,7 @@ const EXPECTED_CORE_TOOLS = [
   'sparky_manage_workout_plans',
   'sparky_search_exercises',
   'sparky_search_foods',
-];
+].sort();
 
 describe('buildChatbotTools', () => {
   it('exposes exactly the MCP chat-visible tool surface', () => {

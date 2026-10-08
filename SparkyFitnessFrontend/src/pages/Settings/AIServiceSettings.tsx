@@ -171,6 +171,7 @@ const AIServiceSettings = () => {
         is_active: true,
         model_name: globalSetting.model_name || undefined,
         chat_tool_profile: globalSetting.chat_tool_profile ?? 'full',
+        reasoning_effort: globalSetting.reasoning_effort ?? 'medium',
       };
       await addService(overrideData);
       // Success toast is handled by the mutation meta
@@ -567,6 +568,7 @@ const AIServiceSettings = () => {
       showCustomModelInput: isCustomModel,
       custom_model_name: service.model_name ?? '',
       chat_tool_profile: service.chat_tool_profile ?? 'full',
+      reasoning_effort: service.reasoning_effort ?? 'medium',
     });
   };
 
@@ -653,6 +655,7 @@ const AIServiceSettings = () => {
                     api_key: newService.api_key,
                     custom_url: newService.custom_url ?? undefined,
                     model_name: model,
+                    reasoning_effort: newService.reasoning_effort ?? undefined,
                   })
                 }
                 testing={isTesting}
@@ -797,6 +800,10 @@ const AIServiceSettings = () => {
                             api_key: editData.api_key,
                             custom_url: editData.custom_url ?? undefined,
                             model_name: model,
+                            reasoning_effort:
+                              editData.reasoning_effort ??
+                              service.reasoning_effort ??
+                              undefined,
                           })
                         }
                         testing={isTesting}

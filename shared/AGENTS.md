@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-09-29*
+_Last updated: 2026-10-08_
 
 `@workspace/shared` is a source-first TypeScript workspace library package for schemas, constants, and timezone/day helpers consumed by SparkyFitnessServer, SparkyFitnessFrontend, and SparkyFitnessMobile.
 
@@ -9,6 +9,10 @@
 - This package defines contracts and shared logic, not an app.
 - Validate changes from consuming packages (server, frontend, mobile), not in isolation.
 - Every schema change here potentially touches three packages.
+
+## Food Assistant State
+
+`schemas/api/FoodAssistant.api.zod.ts` and `schemas/database/FoodAssistant.zod.ts` define lasting preferences, versioned tasks, unresolved ingredients and idempotent operation records. `schemas/api/FoodAssistantRecipes.api.zod.ts` adds exact provider ingredient import, versioned publication and undo contracts. Task origins stay immutable while ingredient quantities and source yields may remain unresolved. All state is owner-only; these additive contracts do not change existing chat clients.
 
 ## Structure
 

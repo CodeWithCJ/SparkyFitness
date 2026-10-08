@@ -35,9 +35,12 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `passkey_registration_tickets` | Short-lived (~60s), single-use tickets bridging the mobile→browser passkey registration handoff (transient session material) | System-Only (RLS on, no policies; `getSystemClient` only) | System-Only |
 | `account` | Auth credentials and email accounts | Owner-Only | Owner-Only |
 | `sparky_chat_history` | AI Assistant chat messages and history | Owner-Only | Owner-Only |
+| `food_assistant_preferences` | Explicit lasting food preferences | Owner-Only | Owner-Only |
+| `food_assistant_tasks` | Recoverable food tasks, ingredient drafts and source evidence | Owner-Only | Owner-Only |
+| `food_assistant_operations` | Idempotent operations and before/after audit records | Owner-Only | Owner-Only |
 | `user_ignored_updates` | Records of skipped release updates | Owner-Only | Owner-Only |
 | `admin_activity_logs` | Admin action audits | Admin-Only | Admin-Only |
-| `ai_service_settings` | User-defined custom assistant configurations | Owner-Only | Owner-Only (Public configs readable by all) |
+| `ai_service_settings` | User-defined custom assistant configurations, including optional reasoning effort (medium by default) | Owner-Only | Owner-Only (Public configs readable by all) |
 | `cycle_settings` | Cycle & pregnancy hub settings (mode, cycle parameters, birth control, conditions) | Owner-Only | Owner-Only |
 | `cycle_daily_entries` | Per-day cycle logs (flow, period products, BBT, cervical mucus, moods, libido, notes) | Owner-Only | Owner-Only |
 | `cycles` | Derived/manually-corrected period & cycle history records | Owner-Only | Owner-Only |
@@ -170,6 +173,10 @@ Symptoms are their own domain (they used to share the medications permission). P
 | `daily_health_metrics` | Daily automated wearable summary, scores, total calories, and the total-calorie source capture time | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 
 ---
+
+## Recipe Undo Dependency Check
+
+`assistant_recipe_has_dependants(uuid)` is a narrow security-definer helper for assistant undo. It requires the authenticated actor to own the recipe and returns only whether any diary entry, logged meal, meal plan, plan-template assignment, linked recipe or favorite references it. It does not return rows, counts or other user identities. Checking across RLS boundaries prevents an undo from cascading into hidden references belonging to another person. It sets a fixed search path and `row_security=off`, so a function owner that cannot bypass RLS fails rather than returning an incomplete dependency check. The caller holds the recipe row lock and performs any deletion with the ordinary owner-scoped transaction client.
 
 ## System & Global Reference Tables (Public Read, Admin Write)
 These tables store global configuration settings, lookup values, and reference metadata. They do not contain user-specific data and do not have Row-Level Security enabled. All authenticated users can read them, but only administrators can update them.

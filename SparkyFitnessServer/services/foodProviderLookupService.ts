@@ -128,6 +128,7 @@ export interface ProviderLookupResult {
   source: string;
   food: ProviderFoodItem | null;
   alternatives?: ProviderFoodItem[];
+  failed_providers?: string[];
 }
 
 /**
@@ -140,6 +141,7 @@ export async function lookupFoodFromProviders(
   foodName: string,
   targets: ProviderLookupTarget[]
 ): Promise<ProviderLookupResult> {
+  const failedProviders: string[] = [];
   for (const provider of targets) {
     try {
       log(
@@ -164,6 +166,7 @@ export async function lookupFoodFromProviders(
         };
       }
     } catch (error) {
+      failedProviders.push(provider.provider_type);
       log(
         'warn',
         `[foodProviderLookup] provider ${provider.provider_name} failed:`,
@@ -171,7 +174,11 @@ export async function lookupFoodFromProviders(
       );
     }
   }
-  return { source: 'ai_estimate', food: null };
+  return {
+    source: failedProviders.length ? 'unavailable' : 'not_found',
+    food: null,
+    failed_providers: failedProviders,
+  };
 }
 
 export default {

@@ -117,6 +117,7 @@ describe('chatRepository.getDecryptedAiServiceSettingById', () => {
       custom_url: null,
       model_name: 'gpt-4o',
       is_public: false,
+      reasoning_effort: 'medium',
     });
   });
 

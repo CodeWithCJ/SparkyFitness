@@ -1,8 +1,10 @@
 import { getClient, getSystemClient } from '../db/poolManager.js';
+import type { PoolClient } from 'pg';
 import { encrypt, decrypt, ENCRYPTION_KEY } from '../security/encryption.js';
 import { log } from '../config/logging.js';
 import {
   AiServiceSettings,
+  aiServiceSettingsSchema,
   SparkyChatHistory,
   SparkyChatHistoryMutator,
 } from '@workspace/shared';
@@ -34,8 +36,9 @@ async function upsertAiServiceSetting(
           api_key_iv = COALESCE($8, api_key_iv),
           api_key_tag = COALESCE($9, api_key_tag),
           chat_tool_profile = COALESCE($10, chat_tool_profile),
+          reasoning_effort = COALESCE($11, reasoning_effort),
           updated_at = now()
-        WHERE id = $11 RETURNING *`,
+        WHERE id = $12 RETURNING *`,
         [
           settingData.service_name,
           settingData.service_type,
@@ -47,6 +50,7 @@ async function upsertAiServiceSetting(
           apiKeyIv,
           apiKeyTag,
           settingData.chat_tool_profile ?? null,
+          settingData.reasoning_effort ?? null,
           settingData.id,
         ]
       );
@@ -56,8 +60,8 @@ async function upsertAiServiceSetting(
       const result = await client.query(
         `INSERT INTO ai_service_settings (
           user_id, service_name, service_type, custom_url, system_prompt,
-          is_active, model_name, encrypted_api_key, api_key_iv, api_key_tag, chat_tool_profile, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now()) RETURNING *`,
+          is_active, model_name, encrypted_api_key, api_key_iv, api_key_tag, chat_tool_profile, reasoning_effort, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now(), now()) RETURNING *`,
         [
           settingData.user_id,
           settingData.service_name,
@@ -70,6 +74,7 @@ async function upsertAiServiceSetting(
           apiKeyIv,
           apiKeyTag,
           settingData.chat_tool_profile ?? 'full',
+          settingData.reasoning_effort ?? 'medium',
         ]
       );
       return result.rows[0];
@@ -120,10 +125,23 @@ async function getAiServiceSettingForBackend(id: string, userId: string) {
 // inactive service too. The user-scoped client preserves RLS: a user reads only
 // their own private rows plus `is_public` global rows, so this serves both the
 // per-user and admin/global test contexts without leaking other users' keys.
-async function getDecryptedAiServiceSettingById(id: string, userId: string) {
-  const client = await getClient(userId); // User-specific operation (RLS-scoped)
+async function getDecryptedAiServiceSettingById(
+  id: string,
+  userId: string
+): Promise<
+  | (Pick<
+      AiServiceSettings,
+      | 'service_type'
+      | 'custom_url'
+      | 'model_name'
+      | 'is_public'
+      | 'reasoning_effort'
+    > & { api_key: string | null })
+  | null
+> {
+  const client: PoolClient = await getClient(userId); // User-specific operation (RLS-scoped)
   try {
-    const result = await client.query(
+    const result = await client.query<AiServiceSettings>(
       'SELECT * FROM ai_service_settings WHERE id = $1',
       [id]
     );
@@ -152,6 +170,9 @@ async function getDecryptedAiServiceSettingById(id: string, userId: string) {
       custom_url: setting.custom_url,
       model_name: setting.model_name,
       is_public: setting.is_public,
+      reasoning_effort: aiServiceSettingsSchema.shape.reasoning_effort.parse(
+        setting.reasoning_effort ?? 'medium'
+      ),
     };
   } finally {
     client.release();
@@ -186,12 +207,12 @@ async function getAiServiceSettingsByUserId(userId: string) {
   try {
     // Get user-specific settings
     const userResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile FROM ai_service_settings WHERE is_public = FALSE AND user_id = $1 ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile, reasoning_effort FROM ai_service_settings WHERE is_public = FALSE AND user_id = $1 ORDER BY created_at DESC',
       [userId]
     );
     // Get global settings (admin-created, all authenticated users can read)
     const globalResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile, reasoning_effort FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
       []
     );
     // Combine results: user settings first, then global settings
@@ -219,7 +240,7 @@ async function getActiveAiServiceSetting(userId: string) {
     if (prefResult.rows.length > 0 && prefResult.rows[0].active_ai_service_id) {
       const activeId = prefResult.rows[0].active_ai_service_id;
       const settingResult = await client.query(
-        `SELECT ai.id, ai.service_name, ai.service_type, ai.custom_url, ai.is_active, ai.model_name, ai.is_public, ai.system_prompt, ai.user_id, ai.chat_tool_profile, u.name as creator_name
+        `SELECT ai.id, ai.service_name, ai.service_type, ai.custom_url, ai.is_active, ai.model_name, ai.is_public, ai.system_prompt, ai.user_id, ai.chat_tool_profile, ai.reasoning_effort, u.name as creator_name
          FROM ai_service_settings ai
          LEFT JOIN public."user" u ON ai.user_id = u.id
          WHERE ai.id = $1 AND ai.is_active = TRUE`,
@@ -238,7 +259,7 @@ async function getActiveAiServiceSetting(userId: string) {
 
     // Priority 1: User-specific active setting
     const userResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile FROM ai_service_settings WHERE is_active = TRUE AND is_public = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile, reasoning_effort FROM ai_service_settings WHERE is_active = TRUE AND is_public = FALSE AND user_id = $1 ORDER BY created_at DESC LIMIT 1',
       [userId]
     );
     if (userResult.rows.length > 0) {
@@ -251,7 +272,7 @@ async function getActiveAiServiceSetting(userId: string) {
     }
     // Priority 2: Database global active setting
     const globalResult = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile FROM ai_service_settings WHERE is_active = TRUE AND is_public = TRUE ORDER BY created_at DESC LIMIT 1',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, user_id, chat_tool_profile, reasoning_effort FROM ai_service_settings WHERE is_active = TRUE AND is_public = TRUE ORDER BY created_at DESC LIMIT 1',
       []
     );
     if (globalResult.rows.length > 0) {
@@ -289,7 +310,7 @@ async function getActiveVisionAiServiceSetting(userId: string) {
     if (prefs && prefs.active_vision_ai_service_id) {
       const visionId = prefs.active_vision_ai_service_id;
       const settingResult = await client.query(
-        `SELECT ai.id, ai.service_name, ai.service_type, ai.custom_url, ai.is_active, ai.model_name, ai.is_public, ai.system_prompt, ai.user_id, ai.chat_tool_profile, u.name as creator_name
+        `SELECT ai.id, ai.service_name, ai.service_type, ai.custom_url, ai.is_active, ai.model_name, ai.is_public, ai.system_prompt, ai.user_id, ai.chat_tool_profile, ai.reasoning_effort, u.name as creator_name
          FROM ai_service_settings ai
          LEFT JOIN public."user" u ON ai.user_id = u.id
          WHERE ai.id = $1 AND ai.is_active = TRUE`,
@@ -511,8 +532,9 @@ async function upsertGlobalAiServiceSetting(
           api_key_iv = COALESCE($8, api_key_iv),
           api_key_tag = COALESCE($9, api_key_tag),
           chat_tool_profile = COALESCE($10, chat_tool_profile),
+          reasoning_effort = COALESCE($11, reasoning_effort),
           updated_at = now()
-        WHERE id = $11 AND is_public = TRUE RETURNING *`,
+        WHERE id = $12 AND is_public = TRUE RETURNING *`,
         [
           settingData.service_name,
           settingData.service_type,
@@ -524,6 +546,7 @@ async function upsertGlobalAiServiceSetting(
           apiKeyIv,
           apiKeyTag,
           settingData.chat_tool_profile ?? null,
+          settingData.reasoning_effort ?? null,
           settingData.id,
         ]
       );
@@ -533,8 +556,8 @@ async function upsertGlobalAiServiceSetting(
       const result = await client.query(
         `INSERT INTO ai_service_settings (
           user_id, is_public, service_name, service_type, custom_url, system_prompt,
-          is_active, model_name, encrypted_api_key, api_key_iv, api_key_tag, chat_tool_profile, created_at, updated_at
-        ) VALUES (NULL, TRUE, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now(), now()) RETURNING *`,
+          is_active, model_name, encrypted_api_key, api_key_iv, api_key_tag, chat_tool_profile, reasoning_effort, created_at, updated_at
+        ) VALUES (NULL, TRUE, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now(), now()) RETURNING *`,
         [
           settingData.service_name,
           settingData.service_type,
@@ -546,6 +569,7 @@ async function upsertGlobalAiServiceSetting(
           apiKeyIv,
           apiKeyTag,
           settingData.chat_tool_profile ?? 'full',
+          settingData.reasoning_effort ?? 'medium',
         ]
       );
       return result.rows[0];
@@ -558,7 +582,7 @@ async function getGlobalAiServiceSettings() {
   const client = await getSystemClient(); // Use system client for global operations
   try {
     const result = await client.query(
-      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, created_at, updated_at, chat_tool_profile FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
+      'SELECT id, service_name, service_type, custom_url, is_active, model_name, is_public, system_prompt, created_at, updated_at, chat_tool_profile, reasoning_effort FROM ai_service_settings WHERE is_public = TRUE ORDER BY created_at DESC',
       []
     );
     return result.rows;
