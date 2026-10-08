@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
 import router from '../routes/v2/foodAssistantRoutes.js';
 import * as service from '../services/foodAssistantService.js';
 import * as recipeService from '../services/foodAssistantRecipeService.js';
+import * as diaryService from '../services/foodAssistantDiaryService.js';
 import { foodAssistantOperationSchema } from '@workspace/shared';
 import { FoodAssistantConflict } from '../models/foodAssistantRepository.js';
 
@@ -38,6 +39,11 @@ vi.mock('../services/foodAssistantRecipeService.js', () => ({
   undoRecipe: vi.fn(),
 }));
 const app = express();
+vi.mock('../services/foodAssistantDiaryService.js', () => ({
+  inspectDiary: vi.fn(),
+  applyDiary: vi.fn(),
+  undoDiary: vi.fn(),
+}));
 app.use(express.json());
 app.use('/api/v2/food-assistant', router);
 let server: Server;
@@ -66,6 +72,52 @@ async function request(method: string, path: string, body?: unknown) {
 }
 const id = '35a166e9-bcd1-45ba-a5bd-f5a6959aab7b';
 beforeEach(() => vi.clearAllMocks());
+it('keeps diary commands actor-owned and rejects unversioned or invalid calendar requests', async () => {
+  vi.mocked(diaryService.inspectDiary).mockResolvedValue({
+    scope: { type: 'entries', ids: [id] },
+    entries: [],
+    meals: [],
+    water: [],
+    nutrition: {},
+    fingerprint: 'a'.repeat(64),
+    confirmation_required_for_delete: false,
+  });
+  expect(
+    (
+      await request('POST', '/diary/inspect', {
+        type: 'meal_slot',
+        date: '2026-02-30',
+        meal_type_id: id,
+      })
+    ).status
+  ).toBe(400);
+  expect(
+    (
+      await request('POST', '/diary/inspect', {
+        type: 'entries',
+        ids: [id],
+        user_id: 'another-person',
+      })
+    ).status
+  ).toBe(400);
+  expect(
+    (await request('POST', '/diary/inspect', { type: 'entries', ids: [id] }))
+      .status
+  ).toBe(200);
+  expect(diaryService.inspectDiary).toHaveBeenCalledWith('signed-in-owner', {
+    type: 'entries',
+    ids: [id],
+  });
+  expect(
+    (
+      await request('POST', `/diary/apply/${id}`, {
+        operation_id: id,
+        action: { type: 'delete', scope: { type: 'entries', ids: [id] } },
+      })
+    ).status
+  ).toBe(400);
+  expect(diaryService.applyDiary).not.toHaveBeenCalled();
+});
 it('validates recipe mutation commands and keeps their owner fixed to the signed-in actor', async () => {
   const payload = {
     operation_id: id,

@@ -46,6 +46,7 @@ import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import Icon from '../components/Icon';
 import AskUserToolCard from '../components/chat/AskUserToolCard';
 import ToolCallCard from '../components/chat/ToolCallCard';
+import FoodAssistantStatePanel from '../components/chat/FoodAssistantStatePanel';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import MarkdownMessage from '../components/chat/MarkdownMessage';
 import { CHAT_SUGGESTIONS } from '../constants/chat';
@@ -590,6 +591,7 @@ function ChatThread({
     <AssistantRuntimeProvider runtime={runtime}>
       <RunningReporter onRunningChange={handleRunningChange} />
       <ThreadPrimitive.Root style={{ flex: 1 }}>
+        <FoodAssistantStatePanel />
         <View style={{ flex: 1 }}>
           <ThreadPrimitive.Empty>
             <View className="flex-1 items-center justify-center p-8">

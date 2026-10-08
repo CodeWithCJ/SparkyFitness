@@ -1,6 +1,7 @@
 import { log } from '../../config/logging.js';
 import { altBarcode } from '../../utils/foodUtils.js';
 import { nutrientNumber } from '../../utils/foodPortionResolver.js';
+import type { ProviderFoodVariant } from '../../utils/foodRanking.js';
 
 interface FatSecretServing {
   serving_id?: string;
@@ -123,7 +124,7 @@ const FATSECRET_OAUTH_TOKEN_URL = 'https://oauth.fatsecret.com/connect/token';
 const FATSECRET_API_BASE_URL = 'https://platform.fatsecret.com/rest';
 const MAX_REASONABLE_METRIC_SERVING_SIZE = 1000;
 // Placeholder for serving unit aliases. In a real application, this would be more comprehensive.
-const SERVING_UNIT_ALIASES = {
+const SERVING_UNIT_ALIASES: Readonly<Record<string, string>> = {
   g: 'g',
   gram: 'g',
   grams: 'g',
@@ -187,16 +188,18 @@ const SERVING_UNIT_ALIASES = {
 };
 function normalizeServingUnit(unit?: string): string {
   if (!unit) return 'g';
-  // Strip anything in parentheses at the end: "serving (237g)" -> "serving"
+  // Remove only an explicit metric equivalent; qualifiers such as large,
+  // thin or crustless distinguish different household references.
   const clean = unit
-    .replace(/\s*\([^)]*\)\s*$/i, '')
+    .replace(
+      /\s*\(\s*[\d\s./]+\s*(?:g|grams?|ml|millilit(?:er|re)s?|oz)\s*\)\s*$/i,
+      ''
+    )
     .toLowerCase()
     .trim();
-  const cleanFirstWord = clean.split(/\s+/)[0];
   const result =
     SERVING_UNIT_ALIASES[clean as keyof typeof SERVING_UNIT_ALIASES] ||
-    SERVING_UNIT_ALIASES[cleanFirstWord as keyof typeof SERVING_UNIT_ALIASES] ||
-    clean;
+    clean.replace(/^\S+/, (word) => SERVING_UNIT_ALIASES[word] ?? word);
   return result;
 }
 
@@ -408,7 +411,14 @@ function mapFatSecretFood(data: FatSecretFoodResponse) {
     : food.servings?.serving
       ? [food.servings.serving]
       : [];
-  const variantsMap = new Map();
+  const variantsMap = new Map<
+    string,
+    ProviderFoodVariant & {
+      serving_size: number;
+      serving_unit: string;
+      is_default: boolean;
+    }
+  >();
   servingsList.forEach((serving: FatSecretServing) => {
     // We will attempt to create TWO variants per FatSecret serving:
     // 1. Household variant (e.g., "1 serving", "1/4 cup")
@@ -436,7 +446,8 @@ function mapFatSecretFood(data: FatSecretFoodResponse) {
     const addVariant = (size: number, unit: string, isDefault: boolean) => {
       if (!Number.isFinite(size) || size <= 0 || !unit) return;
       const normalizedUnit = normalizeServingUnit(unit);
-      const key = `${size}_${normalizedUnit}`.toLowerCase();
+      const key =
+        `${serving.serving_id ?? ''}_${size}_${normalizedUnit}_${JSON.stringify(rawNutrients)}`.toLowerCase();
       if (!variantsMap.has(key) || isDefault) {
         log(
           'info',
@@ -447,6 +458,7 @@ function mapFatSecretFood(data: FatSecretFoodResponse) {
           serving_unit: normalizedUnit,
           ...baseNutrients,
           provider_nutrients: rawNutrients,
+          provider_serving_id: serving.serving_id,
           is_default: isDefault,
         });
       }
@@ -487,7 +499,7 @@ function mapFatSecretFood(data: FatSecretFoodResponse) {
     }
   });
   const mappedVariants = Array.from(variantsMap.values());
-  // Ensure exactly one default
+  // Household and metric equivalents can share the provider's default marker.
   let defaultVariant = mappedVariants.find((v) => v.is_default);
   if (!defaultVariant && mappedVariants.length > 0) {
     defaultVariant = mappedVariants[0];

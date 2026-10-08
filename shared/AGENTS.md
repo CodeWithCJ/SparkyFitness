@@ -34,6 +34,7 @@ _Last updated: 2026-10-08_
 - Changes to `src/schemas/api/` usually affect server routes and both frontend/mobile API clients.
 - Changes to `src/schemas/database/` require a matching migration in the server (`SparkyFitnessServer/db/migrations/`), RLS policies, and the schema backup.
 - Timezone/day-string helpers prevent bugs; prefer them over `toISOString().split('T')[0]`.
+- Food assistant diary commands use `FoodAssistantDiary.api.zod.ts`; state action dispatch shared by web/mobile lives in `utils/foodAssistantState.ts`.
 - Test any shared change from the consumer packages (`pnpm run validate` in SparkyFitnessServer, SparkyFitnessFrontend, and SparkyFitnessMobile after modifying shared).
 
 ## Working Rules

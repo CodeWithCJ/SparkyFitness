@@ -12,6 +12,7 @@ import foodRepository from '../models/foodRepository.js';
 import mealRepository from '../models/mealRepository.js';
 import mealService from '../services/mealService.js';
 import { fetchProviderFoodDetails } from '../services/foodProviderDetailService.js';
+import { mapFatSecretFood } from '../integrations/fatsecret/fatsecretService.js';
 
 vi.mock('../models/foodRepository.js', () => ({
   default: {
@@ -473,6 +474,71 @@ describe('conflict-safe recipe undo', () => {
 });
 
 describe('exact provider ingredient imports', () => {
+  it('imports two large slices using the actual FatSecret mapper and retains its serving ID', async () => {
+    const source = mapFatSecretFood({
+      food: {
+        food_id: 'selected-123',
+        food_name: 'White bread',
+        servings: {
+          serving: {
+            serving_id: '38632',
+            serving_description: '1 large slice',
+            measurement_description: 'slice large',
+            number_of_units: '1',
+            metric_serving_amount: '30',
+            metric_serving_unit: 'g',
+            calories: '80',
+            protein: '3',
+            carbohydrate: '15',
+            fat: '1',
+            is_default: '1',
+          },
+        },
+      },
+    });
+    if (!source) throw new Error('Expected full FatSecret details');
+    vi.mocked(fetchProviderFoodDetails).mockResolvedValue(source);
+    vi.mocked(tasks.getTask).mockResolvedValue(
+      task(checkpoint([{ ...ingredient, unit: 'large slices' }]))
+    );
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      ...food,
+      variants: [{ ...variant, serving_unit: 'slice large' }],
+    });
+    await recipes.importProviderIngredient(userId, taskId, {
+      ...providerCommand,
+      serving_id: '38632',
+    });
+    const after = await invokeMutation();
+    expect(after.checkpoint.ingredients[0]).toMatchObject({
+      quantity: 2,
+      unit: 'slice large',
+      evidence: [
+        expect.objectContaining({
+          serving_id: '38632',
+          external_id: 'selected-123',
+        }),
+      ],
+    });
+    expect(foodRepository.createFoodWithClient).toHaveBeenCalledWith(
+      client,
+      expect.objectContaining({
+        serving_size: 1,
+        serving_unit: 'slice large',
+        calories: 80,
+      })
+    );
+  });
+  it('rejects an unavailable serving ID before any library or checkpoint write', async () => {
+    await expect(
+      recipes.importProviderIngredient(userId, taskId, {
+        ...providerCommand,
+        serving_id: 'missing',
+      })
+    ).rejects.toThrow('serving is no longer available');
+    expect(tasks.mutateTask).not.toHaveBeenCalled();
+    expect(foodRepository.createFoodWithClient).not.toHaveBeenCalled();
+  });
   it('replays committed work without contacting the provider or repeating a library write', async () => {
     const replay = { id: operationId } as Awaited<
       ReturnType<typeof tasks.mutateTask>

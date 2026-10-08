@@ -39,6 +39,7 @@ export const importFoodAssistantProviderFoodSchema =
       ]),
       provider_id: z.string().uuid().optional(),
       external_id: z.string().min(1).max(200),
+      serving_id: z.string().min(1).max(200).optional(),
     })
     .strict();
 export type PublishFoodAssistantRecipe = z.infer<

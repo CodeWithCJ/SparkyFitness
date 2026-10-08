@@ -221,3 +221,5 @@ export * from "./constants/corosSportTypes.ts";
 export * from "./schemas/api/FoodAssistant.api.zod.ts";
 export * from "./schemas/database/FoodAssistant.zod.ts";
 export * from "./schemas/api/FoodAssistantRecipes.api.zod.ts";
+export * from "./schemas/api/FoodAssistantDiary.api.zod.ts";
+export * from "./utils/foodAssistantState.ts";

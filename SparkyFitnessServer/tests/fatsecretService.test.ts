@@ -165,6 +165,76 @@ describe('FatSecret Service Mapping', () => {
     });
   });
   describe('mapFatSecretFood', () => {
+    it('preserves the exact large-slice reference and provider serving identity', () => {
+      const result = mapFatSecretFood({
+        food: {
+          food_name: 'White Bread',
+          food_id: '38820',
+          servings: {
+            serving: [
+              {
+                serving_id: 'regular',
+                number_of_units: '1',
+                measurement_description: 'slice',
+                calories: '69',
+                protein: '2.0',
+                carbohydrate: '13',
+                fat: '1',
+              },
+              {
+                serving_id: '38632',
+                number_of_units: '1',
+                measurement_description: 'slice large',
+                serving_description: '1 large slice (30 g)',
+                metric_serving_amount: '30',
+                metric_serving_unit: 'g',
+                calories: '80',
+                protein: '2.4',
+                carbohydrate: '15',
+                fat: '1',
+                is_default: '1',
+              },
+              {
+                serving_id: 'other',
+                number_of_units: '1',
+                measurement_description: 'slice',
+                calories: '100',
+                protein: '3',
+                carbohydrate: '19',
+                fat: '1.2',
+              },
+            ],
+          },
+        },
+      });
+      expect(result?.variants).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            provider_serving_id: '38632',
+            serving_unit: 'slice large',
+            serving_size: 1,
+            calories: 80,
+          }),
+          expect.objectContaining({
+            provider_serving_id: '38632',
+            serving_unit: 'g',
+            serving_size: 30,
+            calories: 80,
+          }),
+          expect.objectContaining({
+            provider_serving_id: 'regular',
+            serving_unit: 'slice',
+            calories: 69,
+          }),
+          expect.objectContaining({
+            provider_serving_id: 'other',
+            serving_unit: 'slice',
+            calories: 100,
+          }),
+        ])
+      );
+      expect(result?.variants).toHaveLength(4);
+    });
     it('should map detailed food with multiple variants', () => {
       const data = {
         food: {
@@ -278,6 +348,8 @@ describe('FatSecret Service Mapping', () => {
       const hh = result.variants.find((v) => v.serving_unit === 'cup');
       // @ts-expect-error TS(2531): Object is possibly 'null'.
       const m = result.variants.find((v) => v.serving_unit === 'g');
+      if (!hh || !m)
+        throw new Error('Both household and metric references must be present');
       expect(hh.serving_size).toBe(1);
       expect(hh.serving_unit).toBe('cup');
       expect(m.serving_size).toBe(237);

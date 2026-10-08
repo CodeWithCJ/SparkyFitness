@@ -8,10 +8,14 @@ import {
   publishFoodAssistantRecipeSchema,
   importFoodAssistantProviderFoodSchema,
   undoFoodAssistantRecipeSchema,
+  foodAssistantDiaryScopeSchema,
+  applyFoodAssistantDiarySchema,
+  undoFoodAssistantDiarySchema,
 } from '@workspace/shared';
 import { authenticate } from '../../middleware/authMiddleware.js';
 import * as service from '../../services/foodAssistantService.js';
 import * as recipeService from '../../services/foodAssistantRecipeService.js';
+import * as diaryService from '../../services/foodAssistantDiaryService.js';
 import { FoodAssistantConflict } from '../../models/foodAssistantRepository.js';
 
 const router = express.Router();
@@ -23,6 +27,60 @@ router.use((req, _res, next) => {
   next();
 });
 const uuid = z.string().uuid();
+
+router.post('/diary/inspect', async (req, res, next) => {
+  const data = foodAssistantDiaryScopeSchema.safeParse(req.body);
+  if (!data.success)
+    return res.status(400).json({ error: 'Invalid diary selection.' });
+  try {
+    res.json(await diaryService.inspectDiary(req.userId, data.data));
+  } catch (error) {
+    next(error);
+  }
+});
+router.post('/diary/apply/:id', async (req, res, next) => {
+  const id = uuid.safeParse(req.params.id),
+    data = applyFoodAssistantDiarySchema.safeParse(req.body);
+  if (!id.success || !data.success)
+    return res.status(400).json({ error: 'Invalid diary action.' });
+  try {
+    res.json(
+      await diaryService.applyDiary(
+        req.userId,
+        id.data,
+        data.data,
+        [
+          data.data.estimate_source_quote,
+          data.data.action.type === 'delete'
+            ? data.data.action.confirmation_quote
+            : undefined,
+        ]
+          .filter(Boolean)
+          .join('\n')
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+});
+router.post('/diary/undo/:id', async (req, res, next) => {
+  const id = uuid.safeParse(req.params.id),
+    data = undoFoodAssistantDiarySchema.safeParse(req.body);
+  if (!id.success || !data.success)
+    return res.status(400).json({ error: 'Invalid diary undo.' });
+  try {
+    res.json(
+      await diaryService.undoDiary(
+        req.userId,
+        id.data,
+        data.data,
+        data.data.source_quote
+      )
+    );
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get('/recipes/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);

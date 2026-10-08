@@ -28,10 +28,10 @@ import {
 import { fetchProviderFoodDetails } from '../../services/foodProviderDetailService.js';
 import {
   resolveFoodPortion,
-  validateNutritionReference,
   nutrientNumber,
   type PortionVariant,
 } from '../../utils/foodPortionResolver.js';
+import { validateNamedFoodReference } from '../../utils/foodNutritionSnapshot.js';
 import { ERRORS, formatZodError } from './errors.js';
 import {
   compactRecord,
@@ -280,6 +280,7 @@ async function resolveFoodLogVariantAndQuantity(args: {
   foodId: string;
   variantId?: string;
   foodRow?: {
+    name?: string;
     default_variant?: PortionVariant | null;
     variants?: PortionVariant[];
   };
@@ -337,6 +338,11 @@ async function resolveFoodLogVariantAndQuantity(args: {
     explicitVariant,
   });
   if (!resolved.ok) return resolved;
+  const nutritionIssue = validateNamedFoodReference(
+    typeof food?.name === 'string' ? food.name : '',
+    resolved.variant
+  );
+  if (nutritionIssue) return { ok: false as const, message: nutritionIssue };
   if (!resolved.variant.id) {
     return {
       ok: false as const,
@@ -1597,7 +1603,7 @@ Actions:
               });
               if (!portion.ok) return ERRORS.VALIDATION(portion.message);
               const v = portion.variant;
-              const nutritionIssue = validateNutritionReference(v);
+              const nutritionIssue = validateNamedFoodReference(match.name, v);
               if (
                 nutritionIssue ||
                 [v.calories ?? v.energy, v.protein, v.carbs, v.fat].some(
@@ -1666,7 +1672,7 @@ Actions:
               const otherVariants = (match.variants || []).filter(
                 (varOpt: ProviderFoodVariant) =>
                   varOpt !== v &&
-                  !validateNutritionReference(varOpt) &&
+                  !validateNamedFoodReference(match.name, varOpt) &&
                   (varOpt.serving_size !== v.serving_size ||
                     varOpt.serving_unit !== v.serving_unit)
               );

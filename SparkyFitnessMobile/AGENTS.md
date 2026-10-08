@@ -237,6 +237,7 @@ npx expo prebuild --clean
 - Auth and proxy headers are resolved per request through an async `headers` callback; `service_config_id` (the user's active AI provider) is merged into the request body and required by the server.
 - `chatApi.ts` is history persistence only: `GET /api/chat/sparky-chat-history` and `POST /api/chat/clear-all-history`. `useChatHistory` seeds the runtime with prior messages and uses `staleTime`/`gcTime` of 0 because the runtime ignores `messages` changes after mount — every chat open must re-seed cold.
 - Chat UI lives in `components/chat/`: `MarkdownMessage` (`react-native-enriched-markdown` + `remend` to repair unclosed streamed markdown), `ToolCallCard` (derives running/complete/error from `result`/`isError`), `TypingIndicator`. Tool-name display mapping lives in `constants/chat.ts`.
+- `FoodAssistantStatePanel`, `useFoodAssistantState` and `foodAssistantApi` expose private preferences and task checkpoints/history, versioned edit/forget/cancel/resume and resume as a normal user chat message. They remain separate from chat history.
 - There is no chat Zustand store; thread state lives in the assistant-ui runtime and history seeding in React Query.
 
 ## Auth, Networking, And Settings

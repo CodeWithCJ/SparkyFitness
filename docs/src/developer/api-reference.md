@@ -52,6 +52,9 @@ These additive routes are authenticated and owner-only, using the signed-in acto
 | `/api/v2/food-assistant/recipes/import-ingredient/:id` | POST | Verify exact provider details and atomically import the ingredient into the library and draft |
 | `/api/v2/food-assistant/recipes/publish/:id` | POST | Atomically publish a complete recipe, verify readback and record before/after snapshots |
 | `/api/v2/food-assistant/recipes/undo/:id` | POST | Undo a specific publication with conflict and dependency checks |
+| `/api/v2/food-assistant/diary/inspect` | POST | Read owner-only entry, logged-meal or meal-slot snapshots, fingerprint and nutrition |
+| `/api/v2/food-assistant/diary/apply/:id` | POST | Apply versioned atomic log, replace, resize, scale, move, copy or delete with readback |
+| `/api/v2/food-assistant/diary/undo/:id` | POST | Explicitly restore a completed diary operation without overwriting later edits |
 
 Task changes require `operation_id` and `expected_version`. Repeating an identical operation returns its stored result. Reusing an ID for different work, stale versions, and unsupported transitions return HTTP 409. General task actions cannot change completed or cancelled tasks; recipe undo is a specific audited operation on a completed publication. Domain writes must share the repository's operation transaction; the operation record and checkpoint commit together. Draft endpoints cannot mark a task complete or mutate diary/library records. Older chat clients do not need to send these new fields.
 

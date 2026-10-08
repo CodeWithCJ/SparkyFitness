@@ -1367,6 +1367,10 @@ describe('log_food', () => {
         ...eggsRow.default_variant,
         serving_size: 1,
         serving_unit: 'g',
+        calories: Number(eggsRow.default_variant.calories) / 100,
+        protein: Number(eggsRow.default_variant.protein) / 100,
+        carbs: Number(eggsRow.default_variant.carbs) / 100,
+        fat: Number(eggsRow.default_variant.fat) / 100,
       },
     };
     const thirtyGrams = {
@@ -1375,6 +1379,10 @@ describe('log_food', () => {
         ...eggsRow.default_variant,
         serving_size: 30,
         serving_unit: 'g',
+        calories: Number(eggsRow.default_variant.calories) * 0.3,
+        protein: Number(eggsRow.default_variant.protein) * 0.3,
+        carbs: Number(eggsRow.default_variant.carbs) * 0.3,
+        fat: Number(eggsRow.default_variant.fat) * 0.3,
       },
     };
     vi.mocked(foodRepository.getFoodById)
@@ -1804,6 +1812,35 @@ describe('entry_time defaults when the model omits one', () => {
 });
 
 describe('log_external_food', () => {
+  it('does not import a provider reference claiming five calories for two bread slices', async () => {
+    vi.mocked(fetchProviderFoodDetails).mockResolvedValue({
+      name: 'White bread',
+      provider_external_id: 'bread-1',
+      default_variant: {
+        serving_size: 1,
+        serving_unit: 'slice',
+        calories: 2.5,
+        protein: 0.1,
+        carbs: 0.2,
+        fat: 0.1,
+      },
+    });
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_external_food',
+        food_name: 'White bread',
+        provider_type: 'fatsecret',
+        external_id: 'bread-1',
+        quantity: 2,
+        unit: 'slice',
+        meal_type: 'lunch',
+      },
+      opts
+    );
+    expect(result).toContain('implausible');
+    expect(foodCoreService.createFood).not.toHaveBeenCalled();
+    expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
+  });
   it('fetches the pinned FatSecret food and logs two verified slices as 200 kcal', async () => {
     const breadSlice = {
       serving_size: 1,

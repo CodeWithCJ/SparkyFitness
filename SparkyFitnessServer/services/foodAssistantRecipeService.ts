@@ -2,7 +2,6 @@ import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
 import type { PoolClient } from 'pg';
 import {
-  FOOD_VARIANT_NUTRIENT_FIELDS,
   type FoodAssistantCheckpoint,
   publishFoodAssistantRecipeSchema,
   importFoodAssistantProviderFoodSchema,
@@ -17,41 +16,21 @@ import { FoodAssistantConflict } from '../models/foodAssistantRepository.js';
 import {
   resolveFoodPortion,
   nutrientNumber,
-  validateNutritionReference,
   normalizePortionUnit,
 } from '../utils/foodPortionResolver.js';
 import type { MealFoodInput } from '../types/nutrition.js';
 import { fetchProviderFoodDetails } from './foodProviderDetailService.js';
 import { sanitizeGlycemicIndex } from '../models/food.js';
 
-const nutrientFields = [...FOOD_VARIANT_NUTRIENT_FIELDS, 'water_ml'] as const;
-type Nutrient = (typeof nutrientFields)[number];
-const numeric = z.union([z.number().finite(), z.string(), z.null()]).optional();
-const nutrientShape = Object.fromEntries(
-  nutrientFields.map((field) => [field, numeric])
-) as Record<Nutrient, typeof numeric>;
-const variantSchema = z.object({
-  id: z.string().uuid(),
-  food_id: z.string().uuid().optional(),
-  serving_size: numeric,
-  serving_unit: z.string().nullable().optional(),
-  is_default: z.boolean().optional(),
-  source: z.string().nullable().optional(),
-  allergens: z.array(z.string()).nullable().optional(),
-  traces: z.array(z.string()).nullable().optional(),
-  glycemic_index: z.string().nullable().optional(),
-  custom_nutrients: z
-    .record(z.string(), z.union([z.number().finite(), z.string()]))
-    .nullable()
-    .optional(),
-  ...nutrientShape,
-});
-const foodSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  brand: z.string().nullable().optional(),
-  variants: z.array(variantSchema),
-});
+import {
+  nutrientFields,
+  type Nutrient,
+  variantSchema,
+  foodSchema,
+  resolveFoodSelection,
+  validateNamedFoodReference,
+} from '../utils/foodNutritionSnapshot.js';
+
 const providerVariantSchema = variantSchema.omit({ id: true, food_id: true });
 const providerFoodSchema = z.object({
   name: z.string().min(1),
@@ -84,13 +63,13 @@ export async function importProviderIngredient(
   );
   if (
     !draft ||
-    draft.kind !== 'recipe' ||
+    !['recipe', 'diary', 'meal_plan'].includes(draft.kind) ||
     !ingredient ||
     draft.version !== input.expected_version ||
     ['complete', 'cancelled'].includes(draft.status)
   )
     throw new FoodAssistantConflict(
-      'Read the current recipe draft before selecting an ingredient.'
+      'Read the current food task before selecting an ingredient.'
     );
   if (ingredient.quantity === null || !ingredient.unit)
     throw new FoodAssistantConflict(
@@ -109,18 +88,30 @@ export async function importProviderIngredient(
       'Full details for that exact provider item are unavailable. Nothing was imported.'
     );
   const source = parsed.data;
+  const allVariants = source.variants?.length
+    ? source.variants
+    : source.default_variant
+      ? [source.default_variant]
+      : [];
+  const candidates = input.serving_id
+    ? allVariants.filter(
+        (variant) => variant.provider_serving_id === input.serving_id
+      )
+    : allVariants;
+  if (input.serving_id && !candidates.length)
+    throw new FoodAssistantConflict(
+      'The selected provider serving is no longer available. Inspect its full details again.'
+    );
   const portion = resolveFoodPortion({
     quantity: ingredient.quantity,
     unit: ingredient.unit,
-    variants: source.variants?.length
-      ? source.variants
-      : source.default_variant
-        ? [source.default_variant]
-        : [],
-    preferredVariant: source.default_variant,
+    variants: candidates,
+    preferredVariant: input.serving_id
+      ? (candidates.find((variant) => variant.is_default) ?? candidates[0])
+      : source.default_variant,
   });
   if (!portion.ok) throw new FoodAssistantConflict(portion.message);
-  const issue = validateNutritionReference(portion.variant);
+  const issue = validateNamedFoodReference(source.name, portion.variant);
   const nutrients = Object.fromEntries(
     nutrientFields.map((field) => [
       field,
@@ -257,6 +248,7 @@ export async function importProviderIngredient(
                     title: source.name,
                     provider: input.provider_type,
                     external_id: input.external_id,
+                    serving_id: portion.variant.provider_serving_id,
                     food_id: selectedFood.id,
                     variant_id: selectedVariant.id,
                   },
@@ -359,80 +351,26 @@ export async function resolveRecipeCheckpoint(
       food = foodSchema.parse(row);
       foods.set(food.id, food);
     }
-    const explicitVariant = ingredient.variant_id
-      ? food.variants.find((variant) => variant.id === ingredient.variant_id)
-      : undefined;
-    if (ingredient.variant_id && !explicitVariant) {
-      issues.push({
-        ingredient_id: ingredient.id,
-        description: ingredient.description,
-        message: 'The selected variant does not belong to this food.',
-      });
-      continue;
-    }
-    const portion = resolveFoodPortion({
+    const resolved = resolveFoodSelection(food, {
       quantity: ingredient.quantity,
       unit: ingredient.unit,
-      variants: food.variants,
-      explicitVariant,
-      preferredVariant: food.variants.find((variant) => variant.is_default),
+      variant_id: ingredient.variant_id,
     });
-    if (!portion.ok) {
+    if (!resolved.ok) {
       issues.push({
         ingredient_id: ingredient.id,
         description: ingredient.description,
-        message: portion.message,
+        message: resolved.message,
       });
       continue;
     }
-    const nutritionIssue = validateNutritionReference(portion.variant);
-    if (nutritionIssue) {
-      issues.push({
-        ingredient_id: ingredient.id,
-        description: ingredient.description,
-        message: nutritionIssue,
-      });
-      continue;
-    }
-    const snapshot = Object.fromEntries(
-      nutrientFields.map((field) => [
-        field,
-        nutrientNumber(portion.variant[field]),
-      ])
-    ) as Record<Nutrient, number | null>;
-    if (
-      snapshot.calories === null ||
-      snapshot.protein === null ||
-      snapshot.carbs === null ||
-      snapshot.fat === null
-    ) {
-      issues.push({
-        ingredient_id: ingredient.id,
-        description: ingredient.description,
-        message:
-          'Core nutrition is incomplete. Verify the source instead of filling it with zero.',
-      });
-      continue;
-    }
-    const reference = nutrientNumber(portion.variant.serving_size)!;
-    if (portion.variant.source === 'ai_estimate')
-      estimatedIngredients.push(ingredient.description);
-    ingredients.push({
-      ...snapshot,
-      food_id: food.id,
-      variant_id: portion.variant.id,
-      food_name: food.name,
-      item_type: 'food',
-      quantity: portion.quantity,
-      unit: portion.unit,
-      serving_size: reference,
-      serving_unit: portion.variant.serving_unit,
-      glycemic_index: portion.variant.glycemic_index,
-      custom_nutrients: portion.variant.custom_nutrients,
-    });
+    const snapshot = resolved.snapshot;
+    const reference = snapshot.serving_size;
+    if (resolved.estimated) estimatedIngredients.push(ingredient.description);
+    ingredients.push({ ...snapshot, item_type: 'food' });
     for (const field of nutrientFields) {
       if (snapshot[field] === null) missing.add(field);
-      else known[field] += (snapshot[field]! * portion.quantity) / reference;
+      else known[field] += (snapshot[field]! * snapshot.quantity) / reference;
     }
   }
   if (!checkpoint.recipe?.servings)

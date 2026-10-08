@@ -3,6 +3,7 @@ import {
   resolveFoodPortion,
   validateNutritionReference,
   nutrientNumber,
+  normalizePortionUnit,
 } from '../utils/foodPortionResolver.js';
 import { scaleNutritionForConsumedAmount } from '../utils/foodUtils.js';
 
@@ -27,6 +28,53 @@ const slice = {
 };
 
 describe('verified food portions', () => {
+  it.each(['large slices', 'slice large', 'slice, large', ' LARGE  SLICES '])(
+    'preserves the size qualifier in %s',
+    (unit) => {
+      expect(normalizePortionUnit(unit)).toBe('slice large');
+    }
+  );
+  it('keeps ordinary and large slices distinct and never invents a size equivalence', () => {
+    const large = { ...slice, serving_unit: 'slice large', calories: 120 };
+    expect(
+      resolveFoodPortion({
+        quantity: 2,
+        unit: 'large slices',
+        variants: [slice, large],
+      })
+    ).toMatchObject({ ok: true, variant: large });
+    expect(
+      resolveFoodPortion({ quantity: 2, unit: 'slices', variants: [large] }).ok
+    ).toBe(false);
+  });
+  it('requires an exact selection when two references for the same unit disagree', () => {
+    const other = { ...slice, id: 'other', calories: 160 };
+    expect(
+      resolveFoodPortion({
+        quantity: 2,
+        unit: 'slice',
+        variants: [slice, other],
+      })
+    ).toMatchObject({
+      ok: false,
+      message: expect.stringContaining('exact serving ID'),
+    });
+    expect(
+      resolveFoodPortion({
+        quantity: 2,
+        unit: 'slice',
+        variants: [slice, other],
+        explicitVariant: other,
+      })
+    ).toMatchObject({ ok: true, variant: other });
+    expect(
+      resolveFoodPortion({
+        quantity: 2,
+        unit: 'slice',
+        variants: [slice, { ...slice, calories: 101 }],
+      }).ok
+    ).toBe(true);
+  });
   it('logs two white bread slices as 200 calories, never two grams / five calories', () => {
     const result = resolveFoodPortion({
       quantity: 2,

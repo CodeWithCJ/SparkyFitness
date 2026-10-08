@@ -19,19 +19,7 @@ export class FoodAssistantConflict extends Error {
   }
 }
 
-// Key order must not turn a semantically identical retry into a new command.
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
-  if (value instanceof Date) return JSON.stringify(value.toISOString());
-  if (value && typeof value === 'object') {
-    return `{${Object.entries(value)
-      .filter(([, v]) => v !== undefined)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value) ?? 'null';
-}
+import { canonicalJson } from '../utils/canonicalJson.js';
 
 export async function listPreferences(userId: string) {
   const client = await getClient(userId, userId);

@@ -52,7 +52,22 @@ const aliases: Readonly<Record<string, string>> = {
 };
 
 export function normalizePortionUnit(value: unknown): string {
-  const unit = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  const unit =
+    typeof value === 'string'
+      ? value.trim().toLowerCase().replace(/\s+/g, ' ')
+      : '';
+  const suffix = unit.match(
+    /^(slices?|pieces?)[,\s]+(extra[ -]large|small|medium|large|regular|thin|thick)$/
+  );
+  const prefix = unit.match(
+    /^(extra[ -]large|small|medium|large|regular|thin|thick)\s+(slices?|pieces?)$/
+  );
+  const count = suffix?.[1] ?? prefix?.[2],
+    qualifier = suffix?.[2] ?? prefix?.[1];
+  if (count && qualifier) {
+    // Both "large slices" and FatSecret's "slice large" retain the qualifier.
+    return `${aliases[count] ?? count} ${qualifier.replace('-', ' ')}`;
+  }
   return aliases[unit] ?? unit;
 }
 
@@ -162,6 +177,34 @@ export function resolveFoodPortion<T extends PortionVariant>(args: {
     args.explicitVariant ??
     args.preferredVariant ??
     candidates.find((v) => v.is_default);
+  const exact = candidates.filter(
+    (variant) =>
+      normalizePortionUnit(variant.serving_unit) === requested &&
+      convert(variant)
+  );
+  if (!args.explicitVariant && requested !== 'serving' && exact.length > 1) {
+    const totals = exact.map((variant) => {
+      const factor = args.quantity / Number(variant.serving_size);
+      return ['calories', 'protein', 'carbs', 'fat'].map((field) => {
+        const value = nutrientNumber(variant[field as keyof PortionVariant]);
+        return value === null ? null : value * factor;
+      });
+    });
+    const differs = totals.slice(1).some((values) =>
+      values.some((value, index) => {
+        const first = totals[0][index];
+        return value === null || first === null
+          ? value !== first
+          : Math.abs(value - first) >
+              Math.max(index === 0 ? 2 : 0.5, Math.max(value, first) * 0.1);
+      })
+    );
+    if (differs)
+      return {
+        ok: false,
+        message: `Several verified references for ${args.unit} have different nutrition. Select the exact serving ID or ask which portion the user means before saving.`,
+      };
+  }
   // Prefer an exact count unit over any metric conversion; a provider's slice
   // reference already includes its verified weight and nutrient equivalents.
   const selected =

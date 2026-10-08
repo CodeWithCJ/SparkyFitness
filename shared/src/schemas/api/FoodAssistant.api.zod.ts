@@ -38,6 +38,7 @@ export const foodAssistantEvidenceSchema = z
       .optional(),
     provider: z.string().max(100).optional(),
     external_id: z.string().max(200).optional(),
+    serving_id: z.string().max(200).optional(),
     food_id: uuid.optional(),
     variant_id: uuid.optional(),
   })

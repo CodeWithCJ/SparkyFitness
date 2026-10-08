@@ -2,6 +2,8 @@ import { vi, describe, expect, it } from 'vitest';
 import { buildChatbotTools, buildChatToolSurface } from '../ai/tools/index.js';
 import { ENABLE_TOOLS_TOOL_NAME } from '../ai/tools/metaTools.js';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 
 // Loading the real foodEntryService trips on a deep '@workspace/shared'
 // subpath import; the registry surface test never executes handlers.
@@ -16,6 +18,7 @@ vi.mock('../config/logging', () => ({
 const EXPECTED_TOOLS = [
   'sparky_food_assistant_state',
   'sparky_manage_recipes',
+  'sparky_manage_diary',
   'sparky_analyze_food_image',
   'sparky_analyze_trends',
   'sparky_check_engagement',
@@ -80,6 +83,7 @@ const EXPECTED_TOOLS = [
 const EXPECTED_CORE_TOOLS = [
   'sparky_food_assistant_state',
   'sparky_manage_recipes',
+  'sparky_manage_diary',
   'sparky_get_barcode',
   'sparky_get_caffeine_kinetics',
   'sparky_get_daily_exercise_totals',
@@ -219,6 +223,41 @@ describe('buildChatbotTools', () => {
     expect(parsed.success).toBe(true);
     expect(parsed.data.external_id).toBeUndefined();
     expect(parsed.data.food_name).toBe('egg');
+  });
+  it('keeps an explicit diary time clear while removing an invalid optional variant null', () => {
+    const tools = buildChatbotTools('user-clear-time', 'UTC');
+    const schema = tools.sparky_manage_diary.inputSchema as z.ZodType;
+    const parsed = schema.parse({
+      action: 'apply',
+      task_id: randomUUID(),
+      command: {
+        operation_id: randomUUID(),
+        expected_version: 1,
+        action: {
+          type: 'log',
+          foods: [
+            {
+              food_id: randomUUID(),
+              variant_id: null,
+              quantity: 2,
+              unit: 'slice',
+            },
+          ],
+          destination: {
+            date: '2026-10-08',
+            meal_type_id: randomUUID(),
+            time: null,
+          },
+        },
+      },
+    });
+    expect(parsed).toMatchObject({
+      command: { action: { destination: { time: null } } },
+    });
+    expect(
+      (parsed as { command: { action: { foods: { variant_id?: string }[] } } })
+        .command.action.foods[0].variant_id
+    ).toBeUndefined();
   });
 
   // The MCP surface strips nulls upstream (routes/mcpRoutes.ts), so its
