@@ -70,7 +70,7 @@ describe('GPT-6 food research protocol', () => {
         },
       });
       expect(endpoint).toBe('https://api.openai.com/v1/responses');
-    expect(request.reasoning).toMatchObject({ effort: 'high' });
+      expect(request.reasoning).toMatchObject({ effort: 'high' });
       expect(request.prompt_cache_options).toEqual({ ttl: '30m' });
       expect(request.prompt_cache_retention).toBeUndefined();
       expect(request.temperature).toBeUndefined();
