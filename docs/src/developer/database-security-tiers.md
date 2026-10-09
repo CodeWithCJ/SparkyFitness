@@ -36,7 +36,7 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `account` | Auth credentials and email accounts | Owner-Only | Owner-Only |
 | `sparky_chat_history` | AI Assistant chat messages and history | Owner-Only | Owner-Only |
 | `food_assistant_preferences` | Explicit lasting food preferences | Owner-Only | Owner-Only |
-| `food_assistant_tasks` | Recoverable food tasks, ingredient drafts and source evidence | Owner-Only | Owner-Only |
+| `food_assistant_tasks` | Recoverable food tasks, ingredient/serving drafts and source evidence | Owner-Only | Owner-Only |
 | `food_assistant_operations` | Idempotent operations and before/after audit records | Owner-Only | Owner-Only |
 | `user_ignored_updates` | Records of skipped release updates | Owner-Only | Owner-Only |
 | `admin_activity_logs` | Admin action audits | Admin-Only | Admin-Only |

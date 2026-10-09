@@ -58,6 +58,10 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 
 - Food assistant state: owner-only preferences, recoverable tasks and operation history use `FoodAssistant.api.zod.ts` / `FoodAssistant.zod.ts` in shared. Server: `routes/v2/foodAssistantRoutes.ts`, `services/foodAssistantService.ts`, `models/foodAssistantRepository.ts`, `ai/tools/foodAssistantTools.ts`. Diary: `ai/tools/diaryTools.ts`, `services/foodAssistantDiaryService.ts` and `models/foodAssistantDiaryRepository.ts` implement actor-owned, atomic diary changes with full snapshot fingerprints, linked-water propagation and conflict-safe undo. Recipes: `ai/tools/recipeTools.ts`, `services/foodAssistantRecipeService.ts` and `services/recipeImageService.ts` implement resumable source imports, exact provider portions, atomic publication/readback and conflict-safe undo. Web: `src/components/ai/FoodAssistantState.tsx`, `src/api/Chatbot/foodAssistantService.ts`.
 
+- Food library publication: `ai/tools/foodLibraryTools.ts`, `services/foodAssistantLibraryService.ts` and `models/foodAssistantLibraryRepository.ts` handle verified food/variant drafts, full readback and guarded undo. `utils/ownedSnapshotWriter.ts` preserves catalog-defined metadata and insert defaults for both library and diary snapshots.
+
+- Nutrition analysis: `ai/tools/foodAnalysisTools.ts`, `services/foodAssistantAnalysisService.ts` and `models/foodAssistantAnalysisRepository.ts` capture owner-only historical diary evidence with missing-data coverage, calendar goals and period comparisons. Completed results and audits must match explicit in-transaction readback. Full-profile food turns allow 48 steps/15 minutes; other turns retain their existing bounds.
+
 - `index.ts` - real dev entrypoint; loads env, secrets, and preflight checks before booting the app
 - `SparkyFitnessServer.ts` - Express app shell, route mounting, Swagger/ReDoc, startup, graceful shutdown
 - `services/backgroundJobScheduler.ts` - starts every scheduled background job at startup, including the demo reset; provider syncs are listed in `services/providerSyncScheduler.ts`; `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` skips them all

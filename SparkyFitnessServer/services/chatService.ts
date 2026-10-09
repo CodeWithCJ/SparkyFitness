@@ -101,6 +101,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const MAX_AGENTIC_STEPS = 15;
+// Verified recipe/plan work can require several source lookups, checkpoints
+// and readbacks. Full-profile food turns get room to finish those workflows.
+const FOOD_WORKFLOW_MAX_AGENTIC_STEPS = 48;
 // Tighter agent-loop ceiling for the 'core' profile (small/local models with
 // no prompt cache): every step re-processes the full prefix from scratch, so
 // 15 runaway steps on a confused 3B model is pure token burn. Core-profile
@@ -130,6 +133,7 @@ const CORE_PROFILE_MAX_PROVIDER_RETRIES = 1;
 // providerDispatch.ts). Generous: a slow local model streaming a long answer
 // with several tool round-trips can legitimately take minutes.
 const CHAT_REQUEST_TIMEOUT_MS = 5 * 60_000;
+const FOOD_WORKFLOW_TIMEOUT_MS = 15 * 60_000;
 
 async function handleAiServiceSettings(
   action: string,
@@ -462,13 +466,37 @@ const chatContextInputsCache = new TtlCache<{
 //   turn is over — without this the echoed tool result would come straight back
 //   and the model would answer its own question. Harmless on the non-streaming
 //   path (no chip UI there): the question simply degrades to plain text.
-export function buildChatStopConditions(toolProfile: ChatToolProfile) {
+function chatWorkflowBudget(
+  toolProfile: ChatToolProfile,
+  foodWorkflows: boolean
+) {
+  return toolProfile === 'full' && foodWorkflows
+    ? {
+        steps: FOOD_WORKFLOW_MAX_AGENTIC_STEPS,
+        timeout: FOOD_WORKFLOW_TIMEOUT_MS,
+      }
+    : {
+        steps:
+          toolProfile === 'core'
+            ? CORE_PROFILE_MAX_AGENTIC_STEPS
+            : MAX_AGENTIC_STEPS,
+        timeout: CHAT_REQUEST_TIMEOUT_MS,
+      };
+}
+function hasFoodWorkflows(
+  activeTools: readonly string[] | undefined,
+  tools: Record<string, unknown>
+) {
+  return (activeTools ?? Object.keys(tools)).includes(
+    'sparky_food_assistant_state'
+  );
+}
+export function buildChatStopConditions(
+  toolProfile: ChatToolProfile,
+  foodWorkflows = false
+) {
   return [
-    stepCountIs(
-      toolProfile === 'core'
-        ? CORE_PROFILE_MAX_AGENTIC_STEPS
-        : MAX_AGENTIC_STEPS
-    ),
+    stepCountIs(chatWorkflowBudget(toolProfile, foodWorkflows).steps),
     hasToolCall(ASK_USER_TOOL_NAME),
   ];
 }
@@ -2126,12 +2154,20 @@ async function processChatMessage(
             }),
           // Tighter retry ceiling for cache-less core-profile backends, where every
           // retry re-processes the full prefix.
-          stopWhen: buildChatStopConditions(toolProfile),
+          stopWhen: buildChatStopConditions(
+            toolProfile,
+            hasFoodWorkflows(activeToolNames, tools)
+          ),
           maxRetries:
             toolProfile === 'core'
               ? CORE_PROFILE_MAX_PROVIDER_RETRIES
               : MAX_PROVIDER_RETRIES,
-          abortSignal: AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
+          abortSignal: AbortSignal.timeout(
+            chatWorkflowBudget(
+              toolProfile,
+              hasFoodWorkflows(activeToolNames, tools)
+            ).timeout
+          ),
           onStepFinish({ toolCalls, toolResults }) {
             if (toolCalls && toolCalls.length > 0) {
               toolCalls.forEach((call) => {
@@ -2673,12 +2709,20 @@ async function processChatMessageStream(
       },
       // Tighter retry ceiling for cache-less core-profile backends, where every
       // retry re-processes the full prefix.
-      stopWhen: buildChatStopConditions(toolProfile),
+      stopWhen: buildChatStopConditions(
+        toolProfile,
+        hasFoodWorkflows(activeToolNames, tools)
+      ),
       maxRetries:
         toolProfile === 'core'
           ? CORE_PROFILE_MAX_PROVIDER_RETRIES
           : MAX_PROVIDER_RETRIES,
-      abortSignal: AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
+      abortSignal: AbortSignal.timeout(
+        chatWorkflowBudget(
+          toolProfile,
+          hasFoodWorkflows(activeToolNames, tools)
+        ).timeout
+      ),
       onStepFinish({ toolResults }) {
         if (toolResults && toolResults.length > 0) {
           const sizes = toolResults

@@ -224,4 +224,7 @@ export * from "./schemas/api/FoodAssistantRecipes.api.zod.ts";
 export * from "./schemas/api/FoodAssistantDiary.api.zod.ts";
 export * from "./schemas/api/FoodAssistantPlanDraft.api.zod.ts";
 export * from "./schemas/api/FoodAssistantPlanning.api.zod.ts";
+export * from "./schemas/api/FoodAssistantFoodDraft.api.zod.ts";
+export * from "./schemas/api/FoodAssistantLibrary.api.zod.ts";
+export * from "./schemas/api/FoodAssistantAnalysis.api.zod.ts";
 export * from "./utils/foodAssistantState.ts";

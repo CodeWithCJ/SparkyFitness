@@ -13,6 +13,13 @@ import mealRepository from '../models/mealRepository.js';
 import mealService from '../services/mealService.js';
 import { fetchProviderFoodDetails } from '../services/foodProviderDetailService.js';
 import { mapFatSecretFood } from '../integrations/fatsecret/fatsecretService.js';
+import * as library from '../models/foodAssistantLibraryRepository.js';
+vi.mock('../models/foodAssistantLibraryRepository.js', async (original) => ({
+  ...(await original<
+    typeof import('../models/foodAssistantLibraryRepository.js')
+  >()),
+  readFoodLibrary: vi.fn(),
+}));
 
 vi.mock('../models/foodRepository.js', () => ({
   default: {
@@ -149,6 +156,75 @@ async function invokeMutation() {
   const callback = vi.mocked(tasks.mutateTask).mock.calls.at(-1)![2];
   return callback((await tasks.getTask(userId, taskId))!, client);
 }
+describe('exact provider library import', () => {
+  it('completes a single-food task with the verified source receipt and reversible full snapshots', async () => {
+    const current = { ...task(), kind: 'food' as const };
+    vi.mocked(tasks.getTask).mockResolvedValue(current);
+    const after = {
+      food: {
+        id: foodId,
+        user_id: userId,
+        name: food.name,
+        shared_with_public: false,
+      },
+      variants: [{ ...variant, food_id: foodId }],
+    };
+    vi.mocked(library.readFoodLibrary).mockResolvedValue(after);
+    await recipes.importProviderIngredient(userId, taskId, providerCommand);
+    const result = await invokeMutation();
+    expect(result.status).toBe('complete');
+    expect(result.result).toMatchObject({
+      kind: 'food_import',
+      publication_operation_id: operationId,
+      food_id: foodId,
+      before: null,
+      after,
+      source: { provider: 'fatsecret', external_id: 'selected-123' },
+      selected_variant_id: variantId,
+    });
+    expect(result.checkpoint.ingredients[0]).toMatchObject({
+      quantity: 2,
+      unit: 'slice',
+      food_id: foodId,
+      variant_id: variantId,
+      status: 'verified',
+    });
+  });
+  it('captures and locks existing owned variants before importing an additional source serving', async () => {
+    vi.mocked(tasks.getTask).mockResolvedValue({ ...task(), kind: 'food' });
+    vi.mocked(foodRepository.findFoodByProviderExternalId).mockResolvedValue({
+      id: foodId,
+    });
+    const before = {
+      food: { id: foodId, user_id: userId, name: food.name },
+      variants: [variant],
+    };
+    vi.mocked(library.readFoodLibrary).mockResolvedValue(before);
+    await recipes.importProviderIngredient(userId, taskId, providerCommand);
+    const result = await invokeMutation();
+    expect(library.readFoodLibrary).toHaveBeenCalledWith(
+      userId,
+      foodId,
+      client,
+      true
+    );
+    expect(result.result).toMatchObject({ before });
+  });
+  it('refuses incomplete multi-food library tasks and failed persisted readback', async () => {
+    vi.mocked(tasks.getTask).mockResolvedValue({
+      ...task(checkpoint([ingredient, { ...ingredient, id: randomUUID() }])),
+      kind: 'food',
+    });
+    await expect(
+      recipes.importProviderIngredient(userId, taskId, providerCommand)
+    ).rejects.toThrow(/exactly one/);
+    expect(fetchProviderFoodDetails).not.toHaveBeenCalled();
+    vi.mocked(tasks.getTask).mockResolvedValue({ ...task(), kind: 'food' });
+    vi.mocked(library.readFoodLibrary).mockResolvedValue(null);
+    await recipes.importProviderIngredient(userId, taskId, providerCommand);
+    await expect(invokeMutation()).rejects.toThrow(/readback/);
+  });
+});
 describe('recipe calculation and publication', () => {
   it('uses the verified slice reference for two slices and divides the batch by the confirmed yield', async () => {
     const result = await recipes.resolveRecipeCheckpoint(userId, checkpoint());

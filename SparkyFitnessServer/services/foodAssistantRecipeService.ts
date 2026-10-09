@@ -21,6 +21,10 @@ import {
 import type { MealFoodInput } from '../types/nutrition.js';
 import { fetchProviderFoodDetails } from './foodProviderDetailService.js';
 import { sanitizeGlycemicIndex } from '../models/food.js';
+import {
+  readFoodLibrary,
+  type FoodLibrarySnapshot,
+} from '../models/foodAssistantLibraryRepository.js';
 
 import {
   nutrientFields,
@@ -64,13 +68,17 @@ export async function importProviderIngredient(
   );
   if (
     !draft ||
-    !['recipe', 'diary', 'meal_plan'].includes(draft.kind) ||
+    !['recipe', 'diary', 'meal_plan', 'food'].includes(draft.kind) ||
     !ingredient ||
     draft.version !== input.expected_version ||
     ['complete', 'cancelled'].includes(draft.status)
   )
     throw new FoodAssistantConflict(
       'Read the current food task before selecting an ingredient.'
+    );
+  if (draft.kind === 'food' && draft.checkpoint.ingredients.length !== 1)
+    throw new FoodAssistantConflict(
+      'A library import needs exactly one selected product. Use a separate task for each food.'
     );
   if (ingredient.quantity === null || !ingredient.unit)
     throw new FoodAssistantConflict(
@@ -154,6 +162,14 @@ export async function importProviderIngredient(
       input.provider_type,
       client
     );
+    const before: FoodLibrarySnapshot | null =
+      task.kind === 'food' && existing
+        ? await readFoodLibrary(userId, existing.id, client, true)
+        : null;
+    if (task.kind === 'food' && existing && !before)
+      throw new FoodAssistantConflict(
+        'The existing provider food is no longer owned by you. Inspect it again.'
+      );
     let selectedFood: z.infer<typeof foodSchema>;
     let selectedVariant: z.infer<typeof variantSchema>;
     if (existing) {
@@ -226,9 +242,40 @@ export async function importProviderIngredient(
       throw new FoodAssistantConflict(
         'Imported nutrition readback did not match the source. Nothing was saved.'
       );
+    const after =
+      task.kind === 'food'
+        ? await readFoodLibrary(userId, selectedFood.id, client)
+        : null;
+    if (task.kind === 'food' && (!after || after.food.user_id !== userId))
+      throw new FoodAssistantConflict(
+        'Imported food readback failed. Nothing was saved.'
+      );
     return {
       ...task,
-      status: 'draft',
+      status: task.kind === 'food' ? 'complete' : 'draft',
+      ...(after
+        ? {
+            result: z
+              .json()
+              .parse(
+                JSON.parse(
+                  JSON.stringify({
+                    kind: 'food_import',
+                    publication_operation_id: input.operation_id,
+                    food_id: selectedFood.id,
+                    before,
+                    after,
+                    source: {
+                      provider: input.provider_type,
+                      external_id: input.external_id,
+                      serving_id: portion.variant.provider_serving_id ?? null,
+                    },
+                    selected_variant_id: selectedVariant.id,
+                  })
+                )
+              ),
+          }
+        : {}),
       checkpoint: {
         ...task.checkpoint,
         ingredients: task.checkpoint.ingredients.map((row) =>

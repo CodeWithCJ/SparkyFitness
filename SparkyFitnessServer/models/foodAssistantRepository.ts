@@ -42,6 +42,7 @@ export async function rememberPreference(
 ) {
   const client = await getClient(userId, userId);
   try {
+    await client.query('BEGIN');
     const result =
       input.expected_version === 0
         ? await client.query(
@@ -61,7 +62,34 @@ export async function rememberPreference(
             ]
           );
     if (!result.rows[0]) throw new FoodAssistantConflict();
-    return foodAssistantPreferenceSchema.parse(result.rows[0]);
+    const saved = foodAssistantPreferenceSchema.parse(result.rows[0]);
+    if (
+      saved.user_id !== userId ||
+      saved.key !== input.key ||
+      saved.value !== input.value ||
+      saved.source_quote !== input.source_quote ||
+      saved.version !== input.expected_version + 1
+    )
+      throw new FoodAssistantConflict(
+        'Persisted preference did not match the request. Nothing was committed.'
+      );
+    const readback = await client.query(
+      'SELECT * FROM food_assistant_preferences WHERE user_id=$1 AND key=$2',
+      [userId, input.key]
+    );
+    if (
+      !readback.rows[0] ||
+      canonicalJson(foodAssistantPreferenceSchema.parse(readback.rows[0])) !==
+        canonicalJson(saved)
+    )
+      throw new FoodAssistantConflict(
+        'Preference readback changed. Nothing was committed.'
+      );
+    await client.query('COMMIT');
+    return saved;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }
@@ -74,11 +102,24 @@ export async function forgetPreference(
 ) {
   const client = await getClient(userId, userId);
   try {
+    await client.query('BEGIN');
     const result = await client.query(
       'DELETE FROM food_assistant_preferences WHERE user_id = $1 AND key = $2 AND version = $3 RETURNING key',
       [userId, key, version]
     );
     if (!result.rows[0]) throw new FoodAssistantConflict();
+    const remaining = await client.query(
+      'SELECT key FROM food_assistant_preferences WHERE user_id=$1 AND key=$2',
+      [userId, key]
+    );
+    if (remaining.rows.length)
+      throw new FoodAssistantConflict(
+        'Preference deletion readback failed. Nothing was committed.'
+      );
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }
@@ -156,6 +197,7 @@ export async function createTask(
     )
     .digest('hex');
   try {
+    await client.query('BEGIN');
     const result = await client.query(
       `INSERT INTO food_assistant_tasks(id, user_id, kind, title, checkpoint, creation_hash, origin)
        VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO NOTHING RETURNING *`,
@@ -169,7 +211,31 @@ export async function createTask(
         JSON.stringify(input.origin),
       ]
     );
-    if (result.rows[0]) return foodAssistantTaskSchema.parse(result.rows[0]);
+    if (result.rows[0]) {
+      const saved = foodAssistantTaskSchema.parse(result.rows[0]);
+      if (
+        saved.id !== input.id ||
+        saved.user_id !== userId ||
+        saved.kind !== input.kind ||
+        saved.title !== input.title ||
+        saved.creation_hash !== creationHash ||
+        saved.version !== 1 ||
+        saved.status !== 'draft' ||
+        saved.result !== null ||
+        canonicalJson(saved.origin) !== canonicalJson(input.origin) ||
+        canonicalJson(saved.checkpoint) !== canonicalJson(input.checkpoint)
+      )
+        throw new FoodAssistantConflict(
+          'Persisted draft did not match the requested task. Nothing was committed.'
+        );
+      const readback = await getTask(userId, input.id, client);
+      if (!readback || canonicalJson(readback) !== canonicalJson(saved))
+        throw new FoodAssistantConflict(
+          'Draft readback changed. Nothing was committed.'
+        );
+      await client.query('COMMIT');
+      return saved;
+    }
     const existing = await client.query(
       'SELECT * FROM food_assistant_tasks WHERE id = $1 AND user_id = $2',
       [input.id, userId]
@@ -182,7 +248,11 @@ export async function createTask(
         'That request ID belongs to different work. Use a new ID for a different request.'
       );
     }
+    await client.query('COMMIT');
     return task;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }
@@ -303,6 +373,8 @@ export async function mutateTask(
       next.id !== task.id ||
       next.user_id !== userId ||
       next.kind !== task.kind ||
+      next.title !== task.title ||
+      canonicalJson(next.created_at) !== canonicalJson(task.created_at) ||
       next.creation_hash !== task.creation_hash ||
       canonicalJson(next.origin) !== canonicalJson(task.origin) ||
       next.version !== task.version
@@ -324,6 +396,18 @@ export async function mutateTask(
       ]
     );
     const after = foodAssistantTaskSchema.parse(updated.rows[0]);
+    const expected = {
+      ...task,
+      status: next.status,
+      checkpoint: next.checkpoint,
+      result: next.result,
+      version: task.version + 1,
+      updated_at: after.updated_at,
+    };
+    if (canonicalJson(after) !== canonicalJson(expected))
+      throw new FoodAssistantConflict(
+        'Persisted task readback did not match the requested result. Nothing was committed.'
+      );
     const operation = await client.query(
       `INSERT INTO food_assistant_operations(id, user_id, task_id, kind, request_hash, before_state, after_state)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
@@ -338,8 +422,38 @@ export async function mutateTask(
       ]
     );
     const saved = foodAssistantOperationSchema.parse(operation.rows[0]);
+    const assertAudit = (value: FoodAssistantOperation | null) => {
+      if (
+        !value ||
+        value.id !== command.operationId ||
+        value.user_id !== userId ||
+        value.task_id !== task.id ||
+        value.kind !== command.kind ||
+        value.request_hash !== requestHash ||
+        canonicalJson(value.before_state) !== canonicalJson(task) ||
+        canonicalJson(value.after_state) !== canonicalJson(after)
+      )
+        throw new FoodAssistantConflict(
+          'Persisted operation audit did not match the task result. Nothing was committed.'
+        );
+    };
+    assertAudit(saved);
+    // RETURNING sees BEFORE-trigger changes. Explicit reads also catch later
+    // trigger writes to the task or audit before any domain work commits.
+    const persistedAudit = await getOperation(
+      userId,
+      task.id,
+      command.operationId,
+      client
+    );
+    assertAudit(persistedAudit);
+    const persistedTask = await getTask(userId, task.id, client);
+    if (!persistedTask || canonicalJson(persistedTask) !== canonicalJson(after))
+      throw new FoodAssistantConflict(
+        'Persisted task changed during audit readback. Nothing was committed.'
+      );
     await client.query('COMMIT');
-    return saved;
+    return persistedAudit!;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

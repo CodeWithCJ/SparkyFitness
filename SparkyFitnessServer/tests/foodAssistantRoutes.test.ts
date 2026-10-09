@@ -7,6 +7,8 @@ import * as recipeService from '../services/foodAssistantRecipeService.js';
 import * as diaryService from '../services/foodAssistantDiaryService.js';
 import * as planningService from '../services/foodAssistantPlanService.js';
 import * as shoppingService from '../services/foodAssistantShoppingService.js';
+import * as libraryService from '../services/foodAssistantLibraryService.js';
+import * as analysisService from '../services/foodAssistantAnalysisService.js';
 import { foodAssistantOperationSchema } from '@workspace/shared';
 import { FoodAssistantConflict } from '../models/foodAssistantRepository.js';
 
@@ -57,6 +59,17 @@ vi.mock('../services/foodAssistantShoppingService.js', () => ({
   changeShopping: vi.fn(),
   undoShopping: vi.fn(),
 }));
+vi.mock('../services/foodAssistantLibraryService.js', () => ({
+  inspectFood: vi.fn(),
+  previewFood: vi.fn(),
+  publishFood: vi.fn(),
+  undoFood: vi.fn(),
+  importLibraryFood: vi.fn(),
+}));
+vi.mock('../services/foodAssistantAnalysisService.js', () => ({
+  analyzeNutrition: vi.fn(),
+  saveNutritionAnalysis: vi.fn(),
+}));
 vi.mock('../utils/timezoneLoader.js', () => ({
   loadUserTimezone: vi.fn().mockResolvedValue('Europe/London'),
 }));
@@ -88,6 +101,91 @@ async function request(method: string, path: string, body?: unknown) {
 }
 const id = '35a166e9-bcd1-45ba-a5bd-f5a6959aab7b';
 beforeEach(() => vi.clearAllMocks());
+it('keeps nutrition analysis actor-owned and saves only versioned requests', async () => {
+  const analysis = {
+    start_date: '2020-01-01',
+    end_date: '2020-01-07',
+    nutrients: ['calories'],
+  };
+  expect((await request('POST', '/analysis', analysis)).status).toBe(200);
+  expect(analysisService.analyzeNutrition).toHaveBeenCalledWith(
+    'signed-in-owner',
+    'Europe/London',
+    analysis
+  );
+  expect(
+    (
+      await request('POST', '/analysis', {
+        ...analysis,
+        user_id: 'family-member',
+      })
+    ).status
+  ).toBe(400);
+  expect(
+    (await request('POST', `/analysis/save/${id}`, { operation_id: id })).status
+  ).toBe(400);
+  const command = { operation_id: id, expected_version: 1 };
+  expect((await request('POST', `/analysis/save/${id}`, command)).status).toBe(
+    200
+  );
+  expect(analysisService.saveNutritionAnalysis).toHaveBeenCalledWith(
+    'signed-in-owner',
+    'Europe/London',
+    id,
+    command
+  );
+});
+it('pins library inspection, publication and undo to the signed-in actor and validates version/fingerprint contracts', async () => {
+  expect((await request('GET', `/library/foods/${id}`)).status).toBe(200);
+  expect(libraryService.inspectFood).toHaveBeenCalledWith(
+    'signed-in-owner',
+    id
+  );
+  expect(
+    (
+      await request('POST', `/library/publish/${id}`, {
+        operation_id: id,
+        expected_version: 1,
+        food_id: id,
+      })
+    ).status
+  ).toBe(400);
+  const publish = {
+    operation_id: id,
+    expected_version: 1,
+    source_quote: 'Label values supplied',
+  };
+  expect(
+    (await request('POST', `/library/publish/${id}`, publish)).status
+  ).toBe(200);
+  expect(libraryService.publishFood).toHaveBeenCalledWith(
+    'signed-in-owner',
+    id,
+    publish,
+    'Label values supplied'
+  );
+  const undo = {
+    operation_id: id,
+    expected_version: 2,
+    publication_operation_id: id,
+    source_quote: 'Undo this food',
+  };
+  expect((await request('POST', `/library/undo/${id}`, undo)).status).toBe(200);
+  expect(libraryService.undoFood).toHaveBeenCalledWith(
+    'signed-in-owner',
+    id,
+    undo,
+    'Undo this food'
+  );
+  expect(
+    (
+      await request('POST', `/library/publish/${id}`, {
+        ...publish,
+        user_id: 'family-member',
+      })
+    ).status
+  ).toBe(400);
+});
 it('keeps diary commands actor-owned and rejects unversioned or invalid calendar requests', async () => {
   vi.mocked(diaryService.inspectDiary).mockResolvedValue({
     scope: { type: 'entries', ids: [id] },

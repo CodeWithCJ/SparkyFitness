@@ -17,7 +17,14 @@ export const foodAssistantPreferenceSchema = z.object({
 export const foodAssistantTaskSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
-  kind: z.enum(["recipe", "meal_plan", "diary", "shopping", "analysis"]),
+  kind: z.enum([
+    "recipe",
+    "meal_plan",
+    "diary",
+    "shopping",
+    "analysis",
+    "food",
+  ]),
   title: z.string(),
   creation_hash: z.string(),
   origin: foodAssistantTaskOriginSchema.default({ type: "user_draft" }),

@@ -30,6 +30,8 @@ import { buildFoodAssistantTools } from './foodAssistantTools.js';
 import { buildRecipeTools } from './recipeTools.js';
 import { buildDiaryTools } from './diaryTools.js';
 import { buildFoodPlanningTools } from './foodPlanningTools.js';
+import { buildFoodLibraryTools } from './foodLibraryTools.js';
+import { buildFoodAnalysisTools } from './foodAnalysisTools.js';
 import { buildGoalTools } from './goalTools.js';
 import { buildHabitTools } from './habitTools.js';
 import { buildMealPlanTools } from './mealPlansTools.js';
@@ -104,6 +106,8 @@ const CATEGORY_BUILDERS: Record<
     (u, _tz, ctx) => buildRecipeTools(u, ctx),
     (u, _tz, ctx) => buildDiaryTools(u, ctx),
     (u, tz, ctx) => buildFoodPlanningTools(u, tz, ctx),
+    (u, _tz, ctx) => buildFoodLibraryTools(u, ctx),
+    (u, tz) => buildFoodAnalysisTools(u, tz),
     (u, tz) => buildFavoritesTools(u, tz),
     (u, tz) => buildMealPlanTools(u, tz),
     (u, tz) => buildCustomNutrientTools(u, tz),

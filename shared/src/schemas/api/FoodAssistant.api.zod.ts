@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { foodAssistantPlanDraftSchema } from "./FoodAssistantPlanDraft.api.zod.ts";
+import { foodAssistantFoodDraftSchema } from "./FoodAssistantFoodDraft.api.zod.ts";
+import { foodAssistantAnalysisDraftSchema } from "./FoodAssistantAnalysis.api.zod.ts";
 
 const uuid = z.string().uuid();
 const text = z.string().trim().min(1).max(2000);
@@ -95,6 +97,8 @@ export const foodAssistantCheckpointSchema = z
     evidence: z.array(foodAssistantEvidenceSchema).max(100).default([]),
     selected_ids: z.array(uuid).max(200).default([]),
     plan: foodAssistantPlanDraftSchema.optional(),
+    food: foodAssistantFoodDraftSchema.optional(),
+    analysis: foodAssistantAnalysisDraftSchema.optional(),
     recipe: z
       .object({
         name: text,
@@ -118,7 +122,14 @@ export const createFoodAssistantTaskSchema = z
     id: uuid.describe(
       "Stable request ID. Reuse it when retrying the same task creation.",
     ),
-    kind: z.enum(["recipe", "meal_plan", "diary", "shopping", "analysis"]),
+    kind: z.enum([
+      "recipe",
+      "meal_plan",
+      "diary",
+      "shopping",
+      "analysis",
+      "food",
+    ]),
     title: z.string().trim().min(1).max(200),
     checkpoint: foodAssistantCheckpointSchema,
   })

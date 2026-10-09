@@ -74,6 +74,50 @@ beforeEach(() => {
 });
 
 describe('durable food task operations', () => {
+  it.each(['insert', 'read'] as const)(
+    'rolls back a new draft when %s changes its original ingredients',
+    async (fault) => {
+      let saved = task;
+      query.mockImplementation(async (sql: string, values?: unknown[]) => {
+        if (sql.startsWith('INSERT INTO food_assistant_tasks')) {
+          saved = {
+            ...task,
+            title: 'Bread',
+            status: 'draft',
+            version: 1,
+            creation_hash: String(values![5]),
+          };
+          return {
+            rows: [
+              fault === 'insert'
+                ? { ...saved, checkpoint: { ...checkpoint, ingredients: [] } }
+                : saved,
+            ],
+          };
+        }
+        return {
+          rows: sql.startsWith('SELECT * FROM food_assistant_tasks')
+            ? [
+                fault === 'read'
+                  ? { ...saved, checkpoint: { ...checkpoint, ingredients: [] } }
+                  : saved,
+              ]
+            : [],
+        };
+      });
+      await expect(
+        repository.createTask(userId, {
+          id: taskId,
+          kind: 'recipe',
+          title: 'Bread',
+          checkpoint,
+          origin: { type: 'user_draft' },
+        })
+      ).rejects.toThrow(/Persisted draft|readback/);
+      expect(query).toHaveBeenCalledWith('ROLLBACK');
+      expect(query).not.toHaveBeenCalledWith('COMMIT');
+    }
+  );
   it('does not let a generic task claim a server-verified source import identity', () => {
     expect(() =>
       service.createTask(userId, {
@@ -245,9 +289,14 @@ describe('durable food task operations', () => {
         ? [task]
         : sql.includes('UPDATE food_assistant_tasks')
           ? [{ ...task, version: 3 }]
-          : sql.includes('INSERT INTO food_assistant_operations')
+          : sql.includes('INSERT INTO food_assistant_operations') ||
+              sql.includes(
+                'SELECT * FROM food_assistant_operations WHERE user_id=$1'
+              )
             ? [operation]
-            : [],
+            : sql.includes('SELECT * FROM food_assistant_tasks')
+              ? [{ ...task, version: 3 }]
+              : [],
     }));
     const saved = await repository.mutateTask(
       userId,
@@ -261,6 +310,76 @@ describe('durable food task operations', () => {
     expect(foodAssistantTaskSchema.parse(saved.after_state).version).toBe(3);
     expect(query).toHaveBeenCalledWith('COMMIT');
   });
+  it.each(['task_return', 'task_read', 'audit_return', 'audit_read'] as const)(
+    'rolls back all domain writes when %s is semantically corrupted',
+    async (fault) => {
+      const after = { ...task, version: 3 };
+      query.mockImplementation(async (sql: string) => {
+        if (sql.includes('FOR UPDATE')) return { rows: [task] };
+        if (sql.includes('UPDATE food_assistant_tasks'))
+          return {
+            rows: [
+              fault === 'task_return'
+                ? {
+                    ...after,
+                    checkpoint: { ...checkpoint, summary: 'Altered' },
+                  }
+                : after,
+            ],
+          };
+        if (sql.includes('INSERT INTO food_assistant_operations'))
+          return {
+            rows: [
+              fault === 'audit_return'
+                ? {
+                    ...operation,
+                    after_state: {
+                      ...operation.after_state,
+                      result: { quantity: 9 },
+                    },
+                  }
+                : operation,
+            ],
+          };
+        if (
+          sql.includes(
+            'SELECT * FROM food_assistant_operations WHERE user_id=$1'
+          )
+        )
+          return {
+            rows: [
+              fault === 'audit_read'
+                ? {
+                    ...operation,
+                    after_state: {
+                      ...operation.after_state,
+                      result: { quantity: 9 },
+                    },
+                  }
+                : operation,
+            ],
+          };
+        if (sql.includes('SELECT * FROM food_assistant_tasks'))
+          return {
+            rows: [
+              fault === 'task_read'
+                ? { ...after, result: { quantity: 9 } }
+                : after,
+            ],
+          };
+        return { rows: [] };
+      });
+      await expect(
+        repository.mutateTask(userId, command, async (current) => {
+          await query('domain write');
+          return current;
+        })
+      ).rejects.toThrow(/readback|audit/);
+      expect(query).toHaveBeenCalledWith('domain write');
+      expect(query).toHaveBeenCalledWith('ROLLBACK');
+      expect(query).not.toHaveBeenCalledWith('COMMIT');
+    }
+  );
   it('cannot mark work complete with an absent result', async () => {
     query.mockImplementation(async (sql: string) => ({
       rows: sql.includes('FOR UPDATE') ? [task] : [],
@@ -349,6 +468,49 @@ describe('lasting food preferences', () => {
     source_quote: 'Remember I prefer white bread',
     expected_version: 0,
   };
+  it.each(['return', 'read'] as const)(
+    'rolls back a preference when %s changes the lasting quote or value',
+    async (fault) => {
+      const saved = {
+        user_id: userId,
+        key: preference.key,
+        value: preference.value,
+        source_quote: preference.source_quote,
+        version: 1,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+      query.mockImplementation(async (sql: string) => ({
+        rows: sql.startsWith('INSERT')
+          ? [fault === 'return' ? { ...saved, value: 'Wrong food' } : saved]
+          : sql.startsWith('SELECT')
+            ? [
+                fault === 'read'
+                  ? { ...saved, source_quote: 'Invented quote' }
+                  : saved,
+              ]
+            : [],
+      }));
+      await expect(
+        repository.rememberPreference(userId, preference)
+      ).rejects.toThrow(/Persisted preference|readback/);
+      expect(query).toHaveBeenCalledWith('ROLLBACK');
+      expect(query).not.toHaveBeenCalledWith('COMMIT');
+    }
+  );
+  it('does not report a forgotten preference if an after-delete write restores it', async () => {
+    query.mockImplementation(async (sql: string) => ({
+      rows:
+        sql.startsWith('DELETE') || sql.startsWith('SELECT')
+          ? [{ key: preference.key }]
+          : [],
+    }));
+    await expect(
+      repository.forgetPreference(userId, preference.key, 1)
+    ).rejects.toThrow(/deletion readback/);
+    expect(query).toHaveBeenCalledWith('ROLLBACK');
+    expect(query).not.toHaveBeenCalledWith('COMMIT');
+  });
   it('accepts a verbatim explicit memory instruction', async () => {
     query.mockResolvedValue({
       rows: [

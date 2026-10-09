@@ -121,3 +121,13 @@ Small local models (roughly 3B–8B, e.g. an 8 GB Mac) can drive the chatbot's t
 2. **Use the `core` tool profile.** When you add an Ollama service, SparkyFitness now preselects the **core** tool profile (in the service's settings). Core exposes the everyday logging tools plus goals instead of the full tool set, which small models select from far more reliably and which fits a smaller context window. Pick **full** only on a strong local machine with a raised context window.
 
 The server logs a warning when an Ollama service runs the `full` profile, since that combination most often overflows the default context. Also prefer models trained for tool calling (e.g. `qwen2.5:7b-instruct`, `llama3.1:8b`) — plain small chat models make unreliable tool calls.
+
+### Food and serving corrections
+
+The assistant can create private foods from labels or supplied nutrition, edit individual serving variants and choose a default. It checks the serving basis and nutrient plausibility, keeps unknown micronutrients empty, and preserves variants you did not ask to change. Exact provider imports retain the selected external item and serving identifiers. Corrections clear stale provider verification. AI estimates need your explicit acceptance. Saved task receipts show the actual food and variants; undo stops if newer edits or dependencies would be overwritten. Library corrections preserve existing diary snapshots.
+
+### Recorded nutrition analysis
+
+Ask for recorded nutrient totals, goal comparisons or differences between two date ranges. The assistant reads historical diary snapshots and distinguishes logged days, unlogged days and missing nutrient references. It can save the analysis with its dates, source fingerprint and capture time for later review. A logged day may still be incomplete; goal gaps describe recorded food compared with app targets. The report does not infer causes or diagnoses. Each analysis period supports up to 90 calendar days.
+
+Full-profile food chats allow up to 48 steps and 15 minutes for source research, checkpoints and verified publication. Smaller local/core profiles retain their shorter bounds. Longer work stays in saved tasks that can be resumed.

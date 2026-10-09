@@ -3,6 +3,10 @@ import type { PoolClient } from 'pg';
 import type { FoodAssistantDiaryScope } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 import { FoodAssistantConflict } from './foodAssistantRepository.js';
+import {
+  insertOwnedSnapshot,
+  updateOwnedSnapshot,
+} from '../utils/ownedSnapshotWriter.js';
 
 const snapshotSchema = z.record(z.string(), z.json());
 export type DiarySnapshot = z.infer<typeof snapshotSchema>;
@@ -84,39 +88,13 @@ export async function readSelection(
   }
 }
 
-/** Exact columns come from the installed table, never caller identifiers.
- * This also preserves snapshot metadata added by later migrations. */
-async function writableColumns(
-  client: PoolClient,
-  table: DiaryTable,
-  keys?: string[]
-) {
-  const result = await client.query<{ name: string }>(
-    'SELECT attname AS name FROM pg_attribute WHERE attrelid = $1::regclass AND attnum > 0 AND NOT attisdropped AND attgenerated = $2 AND ($3::text[] IS NULL OR attname = ANY($3::text[])) ORDER BY attnum',
-    [`public.${table}`, '', keys ?? null]
-  );
-  if (!result.rows.length)
-    throw new FoodAssistantConflict('Diary table is unavailable.');
-  return result.rows.map((row) => `"${row.name.replaceAll('"', '""')}"`);
-}
 export async function insertSnapshot(
   client: PoolClient,
   table: DiaryTable,
   userId: string,
   snapshot: DiarySnapshot
 ) {
-  if (snapshot.user_id !== userId)
-    throw new FoodAssistantConflict('Invalid diary owner.');
-  rowId(snapshot);
-  // Omitted fields on a new entry retain their database defaults. Restores
-  // carry all fields and therefore preserve the complete original snapshot.
-  const columns = await writableColumns(client, table, Object.keys(snapshot));
-  const result = await client.query(
-    `INSERT INTO public.${table} (${columns.join(',')}) SELECT ${columns.join(',')} FROM jsonb_populate_record(NULL::public.${table}, $1::jsonb) RETURNING id`,
-    [JSON.stringify(snapshot)]
-  );
-  if (result.rowCount !== 1)
-    throw new FoodAssistantConflict('Diary insertion failed.');
+  await insertOwnedSnapshot(client, table, userId, snapshot);
 }
 export async function updateSnapshot(
   client: PoolClient,
@@ -124,20 +102,7 @@ export async function updateSnapshot(
   userId: string,
   snapshot: DiarySnapshot
 ) {
-  if (snapshot.user_id !== userId)
-    throw new FoodAssistantConflict('Invalid diary owner.');
-  const columns = (await writableColumns(client, table)).filter(
-    (column) =>
-      !['"id"', '"user_id"', '"created_at"', '"created_by_user_id"'].includes(
-        column
-      )
-  );
-  const result = await client.query(
-    `UPDATE public.${table} SET (${columns.join(',')}) = (SELECT ${columns.join(',')} FROM jsonb_populate_record(NULL::public.${table}, $1::jsonb)) WHERE id = $2 AND user_id = $3 RETURNING id`,
-    [JSON.stringify(snapshot), rowId(snapshot), userId]
-  );
-  if (result.rowCount !== 1)
-    throw new FoodAssistantConflict('Diary update failed.');
+  await updateOwnedSnapshot(client, table, userId, snapshot);
 }
 export async function deleteSnapshots(
   client: PoolClient,

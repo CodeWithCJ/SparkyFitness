@@ -16,6 +16,10 @@ _Last updated: 2026-10-09_
 
 `schemas/api/FoodAssistant.api.zod.ts` and `schemas/database/FoodAssistant.zod.ts` define lasting preferences, versioned tasks, unresolved ingredients and idempotent operation records. `schemas/api/FoodAssistantRecipes.api.zod.ts` adds exact provider ingredient import, versioned publication and undo contracts. Task origins stay immutable while ingredient quantities and source yields may remain unresolved. All state is owner-only; these additive contracts do not change existing chat clients.
 
+`FoodAssistantFoodDraft.api.zod.ts` and `FoodAssistantLibrary.api.zod.ts` define partial serving-variant edits, atomic private food publication and conflict-safe undo. The food task kind stays owner-only; imported variants use exact provider source data. Historical diary snapshots remain independent.
+
+`FoodAssistantAnalysis.api.zod.ts` adds calendar ranges, nutrient selection and optional comparison periods to recoverable analysis checkpoints. Results retain unknown days/nutrients and source fingerprints.
+
 ## Structure
 
 - `src/schemas/database/` - one Zod file per table (`Foods.zod.ts`, `Exercises.zod.ts`, ~60 files). Agent shortcut: to learn a table shape, read the matching file here instead of the SQL dump.
