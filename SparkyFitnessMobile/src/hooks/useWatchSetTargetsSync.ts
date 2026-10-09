@@ -166,6 +166,10 @@ export function useWatchSetTargetsSync(enabled: boolean): void {
           newest = [setId, startedAt];
       }
       if (newest != null) setTimers[newest[0]] = newest[1];
+      // Only PRs among the logged sets: a PR flag outlives an un-log.
+      const prSetIds = Object.keys(state.prSetIds)
+        .filter((id) => state.completedSetIds[id] != null)
+        .sort();
       const rest =
         state.rest.state === 'resting' && state.rest.endsAt != null
           ? {
@@ -184,6 +188,7 @@ export function useWatchSetTargetsSync(enabled: boolean): void {
         targets,
         completedSetIds,
         setTimers,
+        prSetIds,
         rest,
       ]);
       if (lastSent?.sessionId === session.id && lastSent.key === key) return;
@@ -198,6 +203,7 @@ export function useWatchSetTargetsSync(enabled: boolean): void {
         targets,
         completedSetIds,
         setTimers,
+        prSetIds,
         ...rest,
       });
     };
@@ -208,6 +214,7 @@ export function useWatchSetTargetsSync(enabled: boolean): void {
         state.session === prev.session &&
         state.completedSetIds === prev.completedSetIds &&
         state.setTimerStartedAt === prev.setTimerStartedAt &&
+        state.prSetIds === prev.prSetIds &&
         state.watchArmedAt === prev.watchArmedAt &&
         state.rest === prev.rest &&
         state.previousSessionSets === prev.previousSessionSets &&

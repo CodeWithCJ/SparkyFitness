@@ -603,6 +603,11 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
      */
     setTimers?: Record<string, number>;
     /**
+     * Logged sets the phone has flagged as personal records. The watch
+     * celebrates one it logged itself, once.
+     */
+    prSetIds?: string[];
+    /**
      * The phone's rest timer. The watch's rest follows it (+15s, pause,
      * Skip), except from an update that does not yet list a set logged on
      * the wrist: that one predates the rest the wrist just started.

@@ -65,12 +65,39 @@ struct WorkoutView: View {
         Group {
             if store.isActive {
                 ActiveWorkoutView()
+                    .overlay(alignment: .top) {
+                        if let exercise = store.prBannerExercise {
+                            PersonalRecordBanner(exercise: exercise)
+                                .onTapGesture { store.dismissPrBanner() }
+                                .transition(.move(edge: .top).combined(with: .opacity))
+                        }
+                    }
+                    .animation(.easeOut(duration: 0.25), value: store.prBannerExercise)
             } else if let summary = store.lastSummary {
                 WorkoutSummaryView(summary: summary)
             } else {
                 WaitingForWorkoutView()
             }
         }
+    }
+}
+
+/// Banner over the active workout when a set logged on the wrist is a record.
+private struct PersonalRecordBanner: View {
+    let exercise: String
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Label("New PR!", systemImage: "trophy.fill")
+                .font(.caption.weight(.bold))
+            if !exercise.isEmpty {
+                Text(exercise).font(.caption2).lineLimit(1)
+            }
+        }
+        .foregroundStyle(.black)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(Color.yellow))
     }
 }
 

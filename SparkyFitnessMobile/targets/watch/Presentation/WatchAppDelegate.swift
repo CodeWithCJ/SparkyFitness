@@ -18,6 +18,13 @@ final class WatchAppDelegate: NSObject, WKApplicationDelegate, UNUserNotificatio
     func applicationDidFinishLaunching() {
         UNUserNotificationCenter.current().delegate = self
         Task { @MainActor in
+            WorkoutSessionStore.shared.onPersonalRecord = {
+                MainActor.assumeIsolated {
+                    guard CheckInStore.shared.context.effectiveHapticsEnabled else { return }
+                    // Distinct from the plain success tick of a logged set.
+                    WKInterfaceDevice.current().play(.notification)
+                }
+            }
             WorkoutSessionStore.shared.onRestFinished = {
                 // Called by the main-actor workout store. Silent when the
                 // phone has haptics or its rest-complete alert switched off.
