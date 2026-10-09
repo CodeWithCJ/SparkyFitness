@@ -345,7 +345,9 @@ export async function processGarminHealthAndWellnessData(
         // scheduled and manual syncs interleave — the same reasoning Polar
         // uses end_time for. Microservices predating the field omit it and an
         // unparseable value degrades the same way, so fall back to sync time.
-        const summaryCapturedAtMs = Date.parse(String(summaryItem.captured_at));
+        const summaryCapturedAtMs = summaryItem.captured_at
+          ? Date.parse(String(summaryItem.captured_at))
+          : NaN;
         const totalCalories = summaryItem.total_calories ?? null;
         const totalCaloriesCapturedAt =
           totalCalories !== null
