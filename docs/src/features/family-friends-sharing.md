@@ -86,5 +86,7 @@ When you delete a food or exercise from your library you are offered up to three
 
 If someone else still uses the item — they have logged it, or it sits in their meals, meal plans, presets or workout plans — **Hide is the only option offered**. Meals, meal plans, presets and workout plans are linked to the library item itself rather than snapshotted, so genuinely deleting it would silently strip the item out of their templates too. Hiding removes it from search for everyone from that point on while leaving all existing history and templates intact.
 
+You can copy an old diary entry after its original food has been deleted. The copy keeps the recorded nutrition and drops unavailable library links; the original entry stays unchanged. Owners and delegates with **Manage Diary** can make these copies, while report-only viewers cannot write diary entries.
+
 ### 7. Meal-to-Meal Composition
 A meal's ingredient list can link another reusable meal (e.g. a sauce or side) instead of a plain food. Linking a sub-meal into a parent meal requires the same library access to the sub-meal that reading it directly would require — you cannot link a sub-meal you cannot otherwise view. This check applies independently of, and in addition to, owning the parent meal.

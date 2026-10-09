@@ -103,11 +103,12 @@ describe.runIf(run)(
         'INSERT INTO food_entries (user_id,food_id,variant_id,quantity,unit,food_name,calories,meal_type_id) VALUES ($1,$2,$3,2,$4,$5,80,(SELECT id FROM meal_types WHERE user_id IS NULL AND name=$6)) RETURNING id',
         [other, foodId, variant, 'slice', 'Recorded bread', 'breakfast']
       );
-    it('refuses both variant and food undo for a hidden independent variant link', async () => {
-      const reader: pg.PoolClient = await getClient(other, other),
-        writer: pg.PoolClient = await getClient(owner, owner);
+    it('refuses both variant and food undo for a hidden historical independent variant link', async () => {
+      const writer: pg.PoolClient = await getClient(owner, owner);
       try {
-        await insertEntry(reader, null);
+        // Reproduce retained historical links, not an ordinary actor insert:
+        // INSERT RLS intentionally rejects independent serving references.
+        await insertEntry(system, null);
         expect(
           (
             await writer.query('SELECT id FROM food_entries WHERE user_id=$1', [
@@ -126,7 +127,6 @@ describe.runIf(run)(
       } finally {
         await writer.query('ROLLBACK');
         writer.release();
-        reader.release();
       }
     });
     it('refuses food undo rather than cascading queued contribution state', async () => {
@@ -294,6 +294,27 @@ describe.runIf(run)(
           quantity: 2,
           unit: 'slice',
         });
+      } finally {
+        reader.release();
+      }
+    });
+    it('allows unlinked snapshot copies only with diary access and rejects independent serving pointers', async () => {
+      const reader: pg.PoolClient = await getClient(other, other);
+      try {
+        await expect(insertEntry(reader, null)).rejects.toMatchObject({
+          code: '42501',
+        });
+        const result = await reader.query<{ id: string }>(
+          'INSERT INTO food_entries (user_id,quantity,unit,food_name,calories,meal_type_id) VALUES ($1,2,$2,$3,80,(SELECT id FROM meal_types WHERE user_id IS NULL AND name=$4)) RETURNING id',
+          [other, 'slice', 'Recorded bread', 'breakfast']
+        );
+        expect(result.rowCount).toBe(1);
+        await expect(
+          reader.query(
+            'INSERT INTO food_entries (user_id,quantity,unit,food_name,calories,meal_type_id) VALUES ($1,2,$2,$3,80,(SELECT id FROM meal_types WHERE user_id IS NULL AND name=$4))',
+            [owner, 'slice', 'Recorded bread', 'breakfast']
+          )
+        ).rejects.toMatchObject({ code: '42501' });
       } finally {
         reader.release();
       }

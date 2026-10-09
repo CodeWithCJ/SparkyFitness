@@ -39,3 +39,14 @@ it('aborts a copy when its source-reference lookup fails', async () => {
     ])
   ).rejects.toThrow('Source lock failed');
 });
+it('detaches an independent historical serving link when its parent food is gone', async () => {
+  const query = vi.fn();
+  const original = { food_id: null, variant_id: 'retained', calories: 80 };
+  expect(
+    await prepareCopiedFoodSnapshots({ query } as unknown as PoolClient, [
+      original,
+    ])
+  ).toEqual([{ ...original, variant_id: null }]);
+  expect(original.variant_id).toBe('retained');
+  expect(query).not.toHaveBeenCalled();
+});
