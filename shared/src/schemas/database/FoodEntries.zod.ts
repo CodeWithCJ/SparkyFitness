@@ -22,6 +22,8 @@ export const foodEntriesSchema = z.object({
   entry_date: z.date(),
   entry_time: z.string().nullable(),
   created_at: z.date().nullable(),
+  // New references have an FK with ON DELETE SET NULL. Legacy orphan IDs
+  // remain readable: the constraint is NOT VALID and snapshots stay intact.
   variant_id: z.string().nullable(),
   meal_plan_template_id: mealPlanTemplatesIdSchema.nullable(),
   created_by_user_id: userIdSchema.nullable(),

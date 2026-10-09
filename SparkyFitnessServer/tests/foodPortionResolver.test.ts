@@ -28,6 +28,33 @@ const slice = {
 };
 
 describe('verified food portions', () => {
+  it('accepts source-reported alcohol energy without changing the label values', () => {
+    const spirits = {
+      serving_size: 50,
+      serving_unit: 'ml',
+      calories: 110,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      alcohol_g: 15.8,
+    };
+    expect(validateNutritionReference(spirits)).toBeNull();
+    expect(spirits.calories).toBe(110);
+    expect(validateNutritionReference({ ...spirits, calories: 5 })).toContain(
+      'disagree'
+    );
+    expect(
+      validateNutritionReference({ ...spirits, alcohol_g: null })
+    ).toContain('disagree');
+  });
+  it.each([-1, Infinity, 'invalid'])(
+    'rejects invalid source-reported alcohol %s',
+    (alcohol_g) => {
+      expect(validateNutritionReference({ ...grams, alcohol_g })).toContain(
+        'negative or non-finite'
+      );
+    }
+  );
   it.each(['large slices', 'slice large', 'slice, large', ' LARGE  SLICES '])(
     'preserves the size qualifier in %s',
     (unit) => {

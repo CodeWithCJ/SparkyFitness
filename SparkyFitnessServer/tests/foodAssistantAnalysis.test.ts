@@ -172,6 +172,31 @@ it('returns null averages and goal gaps for a period without food records', () =
     },
   });
 });
+it('retains source-reported alcohol and calories without a false macro-energy warning', () => {
+  const result = service.summarizeNutrition(
+    [
+      {
+        ...row,
+        food_name: 'Vodka',
+        quantity: 50,
+        unit: 'ml',
+        serving_size: 50,
+        serving_unit: 'ml',
+        calories: 110,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        alcohol_g: 15.8,
+      },
+    ],
+    range,
+    ['calories', 'alcohol_g'],
+    {}
+  );
+  expect(result.nutrients.calories!.total).toBe(110);
+  expect(result.nutrients.alcohol_g!.total).toBe(15.8);
+  expect(result.issues).toEqual([]);
+});
 it('captures source fingerprints, corresponding goals and descriptive comparison coverage', async () => {
   vi.mocked(data.readAnalysisEntries)
     .mockResolvedValueOnce([row])
@@ -189,6 +214,7 @@ it('captures source fingerprints, corresponding goals and descriptive comparison
   });
   expect(result.current.evidence.fingerprint).toMatch(/^[a-f0-9]{64}$/);
   expect(result.current.evidence.entry_ids).toEqual([row.id]);
+  expect(result.goal_basis).toBe('Calendar goals before exercise adjustments.');
   expect(goalService.getUserGoalsForRange).toHaveBeenCalledWith(
     user,
     range.start_date,

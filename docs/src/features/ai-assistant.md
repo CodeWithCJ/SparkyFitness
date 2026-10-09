@@ -128,6 +128,6 @@ The assistant can create private foods from labels or supplied nutrition, edit i
 
 ### Recorded nutrition analysis
 
-Ask for recorded nutrient totals, goal comparisons or differences between two date ranges. The assistant reads historical diary snapshots and distinguishes logged days, unlogged days and missing nutrient references. It can save the analysis with its dates, source fingerprint and capture time for later review. A logged day may still be incomplete; goal gaps describe recorded food compared with app targets. The report does not infer causes or diagnoses. Each analysis period supports up to 90 calendar days.
+Ask for recorded nutrient totals, goal comparisons or differences between two date ranges. The assistant reads historical diary snapshots and distinguishes logged days, unlogged days and missing nutrient references. It can save the analysis with its dates, source fingerprint and capture time for later review. A logged day may still be incomplete; goal gaps compare recorded food with calendar targets before exercise adjustments. The report states this goal basis and does not infer causes or diagnoses. Each analysis period supports up to 90 calendar days.
 
 Full-profile food chats allow up to 48 steps and 15 minutes for source research, checkpoints and verified publication. Smaller local/core profiles retain their shorter bounds. Longer work stays in saved tasks that can be resumed.

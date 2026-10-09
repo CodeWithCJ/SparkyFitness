@@ -95,6 +95,8 @@ These tables contain user profiles, layouts, display settings, and custom databa
 
 `exercise_entries` and `food_entries` are **snapshots, not pointers**. Each row carries its own copy of the display and nutrition data, so it stays readable after the library row it was logged from is gone. `exercise_id` and `food_id` are nullable and `ON DELETE SET NULL` (`20260912150000_preserve_data_on_user_and_library_deletes.sql`), so deleting a library item blanks the link and keeps the entry.
 
+New `food_entries.variant_id` writes also have an `ON DELETE SET NULL` foreign key, added `NOT VALID` to preserve legacy orphan IDs and nutrition snapshots while enforcing new references and concurrent-delete locking. Library undo checks independent variant references across RLS and queued Open Food Facts contribution state; only an ownership-gated boolean leaves the dependency function. Tier 2 diary sharing and Tier 1 assistant-state permissions remain unchanged.
+
 Key rules that must be maintained:
 
 1. **Past and today's logged entries survive library delete.** Historical diary entries carry their own snapshot (`exercise_name`, category, modality, instructions, sets, images, or full food nutrition) so they remain readable. `deleteExerciseAndDependencies` (`models/exercise.ts`) and `deleteFoodAndDependencies` (`models/food.ts`) preserve completed diary logs. Only explicit `delete_with_history` (force delete) purges a user's logged entries (`deleteExerciseEntriesForUser` / `deleteFoodEntriesForUser`), scoped strictly to `user_id`.

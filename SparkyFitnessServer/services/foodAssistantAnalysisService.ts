@@ -73,6 +73,7 @@ export function summarizeNutrition(
         protein: nutrientNumber(row.protein),
         carbs: nutrientNumber(row.carbs),
         fat: nutrientNumber(row.fat),
+        alcohol_g: nutrientNumber(row.alcohol_g),
       });
       if (issue)
         issues.push({
@@ -271,6 +272,7 @@ export async function analyzeNutrition(
     kind: 'nutrition_analysis' as const,
     captured_at: new Date().toISOString(),
     timezone: tz,
+    goal_basis: 'Calendar goals before exercise adjustments.',
     current,
     comparison,
     changes,
@@ -279,7 +281,7 @@ export async function analyzeNutrition(
     limitations: [
       'Unlogged days are unknown, never zero intake.',
       'Logged days are not confirmed complete intake. Missing reference nutrients remain unknown.',
-      'Goal gaps compare recorded food with app goals, not assessed adequacy or an energy deficit.',
+      'Goal gaps compare recorded food with calendar goals before exercise adjustments, not assessed adequacy or an energy deficit.',
       'Patterns are descriptive; they do not establish causes or diagnoses.',
       'water_ml covers food snapshots only. Drinking-water history is separate.',
     ],
