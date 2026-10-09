@@ -255,25 +255,23 @@ export async function importProviderIngredient(
       status: task.kind === 'food' ? 'complete' : 'draft',
       ...(after
         ? {
-            result: z
-              .json()
-              .parse(
-                JSON.parse(
-                  JSON.stringify({
-                    kind: 'food_import',
-                    publication_operation_id: input.operation_id,
-                    food_id: selectedFood.id,
-                    before,
-                    after,
-                    source: {
-                      provider: input.provider_type,
-                      external_id: input.external_id,
-                      serving_id: portion.variant.provider_serving_id ?? null,
-                    },
-                    selected_variant_id: selectedVariant.id,
-                  })
-                )
-              ),
+            result: z.json().parse(
+              JSON.parse(
+                JSON.stringify({
+                  kind: 'food_import',
+                  publication_operation_id: input.operation_id,
+                  food_id: selectedFood.id,
+                  before,
+                  after,
+                  source: {
+                    provider: input.provider_type,
+                    external_id: input.external_id,
+                    serving_id: portion.variant.provider_serving_id ?? null,
+                  },
+                  selected_variant_id: selectedVariant.id,
+                })
+              )
+            ),
           }
         : {}),
       checkpoint: {
