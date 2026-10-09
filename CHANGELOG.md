@@ -1,5 +1,65 @@
 # Changelog
 
+## [1.9.0](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.8.0...v1.9.0) (2026-10-09)
+
+
+### Features
+
+* **exercises:** add a warm-up set generator to the active workout ([e0b6527](https://github.com/CodeWithCJ/SparkyFitness/commit/e0b6527a79ee1c1575bc78649ec43e1e04e73656))
+* fill in a supplement from a photo of its label ([cf4a899](https://github.com/CodeWithCJ/SparkyFitness/commit/cf4a89984727b4fc2f57391b4e2e19040b23cffb))
+* **mobile:** add an iOS water widget with a log-a-drink button ([5d442b3](https://github.com/CodeWithCJ/SparkyFitness/commit/5d442b3f20875e299d33eb592714b959cc84e34f))
+* **mobile:** add an iOS water widget with a log-a-drink button ([e1122f3](https://github.com/CodeWithCJ/SparkyFitness/commit/e1122f32820b4b8edbe77d0d519cef2a294c6979))
+* **mobile:** add Lock Screen widgets and controls for calories, water, fasting and food- [#133](https://github.com/CodeWithCJ/SparkyFitness/issues/133) ([667598f](https://github.com/CodeWithCJ/SparkyFitness/commit/667598f014f99c97fb920df857ebee5324f32d73))
+* **mobile:** fill in a supplement from a photo of its label ([90bfb0a](https://github.com/CodeWithCJ/SparkyFitness/commit/90bfb0adfd0e32722838b484384ad1470edb284a))
+* **mobile:** log a mood check-in and show it on the dashboard ([b5ff848](https://github.com/CodeWithCJ/SparkyFitness/commit/b5ff848cbf689ab0e9052082de2a57793869570d))
+* **mobile:** show a loading overlay while a supplement label is read ([828536f](https://github.com/CodeWithCJ/SparkyFitness/commit/828536f6b67c3cd425bf3fcf112d698ab91fa7de))
+* **mobile:** supplement barcode scanning ([db82271](https://github.com/CodeWithCJ/SparkyFitness/commit/db82271ffb21a25af1b1444ab06657e81d3a3700))
+
+
+### Bug Fixes
+
+* bound a supplement barcode lookup to one deadline ([7a28337](https://github.com/CodeWithCJ/SparkyFitness/commit/7a28337247fddc69b730bff597f3b9d7d6f4b87e))
+* **ci:** ensure newline when appending gradle caching property ([485c265](https://github.com/CodeWithCJ/SparkyFitness/commit/485c2658bd71b70284cd0cef8c94ede0a6c9c2b3))
+* close the demo gap on supplement label scans ([e89e2de](https://github.com/CodeWithCJ/SparkyFitness/commit/e89e2de4764bd49bb7aa4c38a51fd7b4b09e6ce1))
+* deny demo accounts the supplement label scan ([81bd34f](https://github.com/CodeWithCJ/SparkyFitness/commit/81bd34facda6f76bbbcb9ae3ae258478e34c774e))
+* do not wipe nutrients or treat a blank amount as zero ([889c62a](https://github.com/CodeWithCJ/SparkyFitness/commit/889c62a99ad792b8d3cb128909e99c16f23bc07f))
+* fall back when an on-device supplement reading exceeds the map schema ([a3825b7](https://github.com/CodeWithCJ/SparkyFitness/commit/a3825b70159e1087adb8e0327a41116f6a0e52b9))
+* **frontend:** constrain calendar month and year dropdowns ([abbb76b](https://github.com/CodeWithCJ/SparkyFitness/commit/abbb76bc3018980e36b157ff0bd3e2c9a8e315ad))
+* **goals:** edit goal weight from the Goals page ([9f0ec8c](https://github.com/CodeWithCJ/SparkyFitness/commit/9f0ec8cabffc9fef43b1265226258cc69e53b957))
+* **goals:** reject a goal weight the server would round to zero ([50183c1](https://github.com/CodeWithCJ/SparkyFitness/commit/50183c1fb0f25adae9674dc1f9e77b2ebbc73c00))
+* ground a supplement line only when its name, amount, and unit match ([a2aa920](https://github.com/CodeWithCJ/SparkyFitness/commit/a2aa9201be95308ca6d8a2529312d47b03f7d293))
+* ground each supplement amount against its own slice of the line ([9315a53](https://github.com/CodeWithCJ/SparkyFitness/commit/9315a5344c4223ac9f65c5061d7a54a22115116d))
+* ignore a barcode lookup result after the supplement switch is off, read the latest saved values, and list label rows whose unit cannot be read ([5036fb3](https://github.com/CodeWithCJ/SparkyFitness/commit/5036fb3c5c382c2df1023720f089e8712fc51923))
+* **integrations:** make sleep, custom category and check-in writes safe when they overlap ([e2b527c](https://github.com/CodeWithCJ/SparkyFitness/commit/e2b527c956f05ed06472b23b44303a5bd5f60120))
+* keep a label scan that only has a name or unmatched lines ([1bf9125](https://github.com/CodeWithCJ/SparkyFitness/commit/1bf9125a5eb8a2cc97fc611342f1c86891fa2152))
+* keep a space-grouped amount whole and reject mixed units on one line ([e73b612](https://github.com/CodeWithCJ/SparkyFitness/commit/e73b61237f174ac63b73ce542c267bcb7e339369))
+* **mobile:** add the Log water control name to the widget fallback strings ([0a8c0e9](https://github.com/CodeWithCJ/SparkyFitness/commit/0a8c0e905a1e4a25a41f7614283c728741a3feab))
+* **mobile:** align placeholders and plural forms in German locale ([9c224b1](https://github.com/CodeWithCJ/SparkyFitness/commit/9c224b11c8d8d229b6273ccee8ab37fe7846f6c8))
+* **mobile:** align placeholders and plural forms in German locale ([313a0ae](https://github.com/CodeWithCJ/SparkyFitness/commit/313a0aeaad8583527b0928716ffc8d38e197abee))
+* **mobile:** drop the leftover shortcut file and name the lock-screen macros ([1e13282](https://github.com/CodeWithCJ/SparkyFitness/commit/1e13282c55f2eab98bb068ce90a72fd8d54aab05))
+* **mobile:** include the calorie count and macro names in the lock-screen labels ([01ab83d](https://github.com/CodeWithCJ/SparkyFitness/commit/01ab83d14632b50283abdb33aaf6f8cb3d8927d2))
+* **mobile:** keep a mood save from overwriting an entry that is still loading ([26311f9](https://github.com/CodeWithCJ/SparkyFitness/commit/26311f9c8b4209dd9aa028c26f13a2a2b27f6d1a))
+* **mobile:** keep warm-up inserts aligned with the sets they belong to ([22ed85b](https://github.com/CodeWithCJ/SparkyFitness/commit/22ed85b76734d7f80dd6abb35ae31dec406bd976))
+* **mobile:** name lock-screen macros for VoiceOver and migrate the shortcut keychain in the app ([3da0443](https://github.com/CodeWithCJ/SparkyFitness/commit/3da0443dea4e6daa89af74dc552066fbf67b3b78))
+* **mobile:** only ask to update a preset when its structure changed, and ask on the watch when Finish is tapped ([3b93a8a](https://github.com/CodeWithCJ/SparkyFitness/commit/3b93a8a477578c6236a812d611410de9277c8898))
+* **mobile:** only ask to update a preset when its structure changed, and ask on the watch when Finish is tapped ([eb6780c](https://github.com/CodeWithCJ/SparkyFitness/commit/eb6780c0f156f861416616d9c4810ff599bce097))
+* **mobile:** open the app from the Calories left control without a URL ([27b5728](https://github.com/CodeWithCJ/SparkyFitness/commit/27b5728c15994f4381a1cb542634784d3d72ed22))
+* **mobile:** refresh mood entries with the dashboard ([8044160](https://github.com/CodeWithCJ/SparkyFitness/commit/80441608f3809b6c86a84ad36525090746a7dce6))
+* **mobile:** reload the Control Center number controls with the widgets, and keep the app-only login when the shared group is refused ([ea8b013](https://github.com/CodeWithCJ/SparkyFitness/commit/ea8b013f87aca22e96781686dc08ac82b63a4872))
+* **mobile:** reload the Log water control after a drink ([996486d](https://github.com/CodeWithCJ/SparkyFitness/commit/996486d0ac734411fb43d74952fe1087ea820738))
+* require a supplement amount and name on the same OCR line ([b8eb81e](https://github.com/CodeWithCJ/SparkyFitness/commit/b8eb81eafa0c36578f8af3ed43d09e0185c3aae6))
+* **server:** type the preset rows passed to the warm-up parser ([e167e57](https://github.com/CodeWithCJ/SparkyFitness/commit/e167e579d2fbfcc647f643a9d2a4ed818df38952))
+* **workout-plans:** keep generated entries the user edited and skip days that already have one ([b2d0eb2](https://github.com/CodeWithCJ/SparkyFitness/commit/b2d0eb24238038d7b0784c13f58e0fd6d0042271))
+* **workout-plans:** keep workouts logged from a plan when it is edited or toggled ([f2c49f9](https://github.com/CodeWithCJ/SparkyFitness/commit/f2c49f98cd5aa8ce455aa251b65cdc973d0c6cd0))
+
+
+### Documentation
+
+* add Swagger for the supplement label scan and map routes ([b761c0f](https://github.com/CodeWithCJ/SparkyFitness/commit/b761c0f7fa6bb5076c80b88c5130f7cf8c425e94))
+* **mobile:** point the background water module's comments at the shared intents file ([39aa907](https://github.com/CodeWithCJ/SparkyFitness/commit/39aa90761b9c0318eeae2e2550e425e2e579332c))
+* restore medication routes and add supplement-label Swagger ([65d011a](https://github.com/CodeWithCJ/SparkyFitness/commit/65d011a745d5792d0922ae7acee74ac7b0f1af2c))
+* **workout-plans:** document the functions this fix touches ([ea39161](https://github.com/CodeWithCJ/SparkyFitness/commit/ea3916190260fd2a5f4f4ca3e50f76da3686416f))
+
 ## [1.8.0](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.7.3...v1.8.0) (2026-10-08)
 
 
