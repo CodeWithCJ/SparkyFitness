@@ -36,6 +36,7 @@ import { activeAiServiceSettingQueryKey } from '../hooks/queryKeys';
 import { addLog } from '../services/LogService';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
 import { mapEstimateError } from '../utils/foodPhotoEstimate';
+import { pickImagesFromLibrary } from '../utils/pickImage';
 
 type Props = FoodPhotoFlowScreenProps<'Improve'>;
 
@@ -252,15 +253,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     pickerLock.current = true;
     try {
       const remaining = MAX_IMAGES - images.length;
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images',
-        quality: 0.7,
-        allowsMultipleSelection: true,
-        selectionLimit: Math.max(1, remaining),
-      });
-      if (result.canceled) return;
-      for (const asset of result.assets ?? []) {
-        if (asset?.uri) appendImage(asset.uri, asset.mimeType);
+      for (const picked of await pickImagesFromLibrary(remaining)) {
+        appendImage(picked.uri, picked.mimeType);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

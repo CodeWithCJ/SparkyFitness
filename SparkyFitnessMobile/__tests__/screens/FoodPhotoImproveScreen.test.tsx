@@ -5,6 +5,7 @@ import Toast from 'react-native-toast-message';
 import FoodPhotoImproveScreen from '../../src/screens/FoodPhotoImproveScreen';
 import { useEstimateFoodPhoto } from '../../src/hooks/useEstimateFoodPhoto';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
+import { pickImagesFromLibrary } from '../../src/utils/pickImage';
 
 jest.mock('../../src/hooks/useEstimateFoodPhoto', () => ({
   useEstimateFoodPhoto: jest.fn(),
@@ -16,6 +17,10 @@ jest.mock('expo-file-system', () => ({
     base64: mockBase64,
   })),
   Paths: { cache: { uri: 'file:///mock/' } },
+}));
+
+jest.mock('../../src/utils/pickImage', () => ({
+  pickImagesFromLibrary: jest.fn(),
 }));
 
 jest.mock('react-native-toast-message', () => ({
@@ -140,6 +145,35 @@ describe('FoodPhotoImproveScreen', () => {
       })
     );
     expect(input.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('adds library photos as their downscaled JPEGs and sends them as image/jpeg', async () => {
+    const mockPickImagesFromLibrary =
+      pickImagesFromLibrary as jest.MockedFunction<
+        typeof pickImagesFromLibrary
+      >;
+    mockPickImagesFromLibrary.mockResolvedValue([
+      { uri: 'file:///cache/downscaled', mimeType: 'image/jpeg' },
+    ]);
+    const screen = renderScreen();
+
+    fireEvent.press(screen.getByLabelText('Add another image'));
+    await act(async () => {
+      fireEvent.press(screen.getByText('Choose from library'));
+    });
+
+    // One photo is already staged, so the picker may add up to five more.
+    expect(mockPickImagesFromLibrary).toHaveBeenCalledWith(5);
+    fireEvent.press(screen.getByText('Generate estimate'));
+
+    await waitFor(() => {
+      expect(mockMutate).toHaveBeenCalledTimes(1);
+    });
+    const [input] = mockMutate.mock.calls[0];
+    expect(input.images).toEqual([
+      { base64Image: 'AAAA-base64', mimeType: 'image/jpeg' },
+      { base64Image: 'AAAA-base64', mimeType: 'image/jpeg' },
+    ]);
   });
 
   it('shows the pending state (spinner, status message, cancel) while estimating', () => {

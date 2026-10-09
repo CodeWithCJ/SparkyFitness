@@ -47,6 +47,7 @@ import {
   type LabelScanSource,
 } from '../services/labelScanSession';
 import { labelScanToInitialFood } from '../utils/labelScanFood';
+import { pickImagesFromLibrary } from '../utils/pickImage';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useActiveAiServiceSetting } from '../hooks/useActiveAiServiceSetting';
 import { isFoodPhotoAvailable } from '../services/api/aiSettingsApi';
@@ -706,29 +707,16 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
     if (pickerLock.current) return;
     pickerLock.current = true;
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images',
-        quality: 0.7,
-        allowsMultipleSelection: false,
-      });
-      if (result.canceled) return;
-      const asset = result.assets?.[0];
-      if (!asset?.uri) {
-        Toast.show({
-          type: 'error',
-          text1: t('common.error', { defaultValue: 'Error' }),
-          text2: t('foodScan.errors.noPhoto', {
-            defaultValue: 'No photo returned by picker.',
-          }),
-        });
-        return;
-      }
+      // Downscaled and re-encoded as JPEG, so a library HEIC (the iOS default)
+      // reaches the estimate as the same format the camera produces.
+      const [photo] = await pickImagesFromLibrary(1);
+      if (!photo) return;
       await markFoodPhotoIntroSeen();
       navigation.replace('FoodPhotoFlow', {
         screen: 'Improve',
         params: {
           date,
-          photo: { uri: asset.uri },
+          photo,
           mealTypeId: mealTypeId ?? undefined,
         },
       });
