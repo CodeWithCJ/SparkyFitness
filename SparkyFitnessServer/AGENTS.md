@@ -62,7 +62,7 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 
 - Nutrition analysis: `ai/tools/foodAnalysisTools.ts`, `services/foodAssistantAnalysisService.ts` and `models/foodAssistantAnalysisRepository.ts` capture owner-only historical diary evidence with missing-data coverage, calendar goals before exercise adjustments (explicit `goal_basis`) and period comparisons. Completed results and audits must match explicit in-transaction readback. Full-profile food turns allow 48 steps/15 minutes; other turns retain their existing bounds.
 
-- Unlinked diary copies: `20261009020000_allow_unlinked_food_snapshot_copies.sql` and canonical INSERT RLS permit self-contained snapshots with null food/meal/variant links under existing diary access. Copy preparation detaches independent legacy serving links whose parent food is gone, without changing the historical source.
+- Unlinked diary copies: `20261009020000_allow_unlinked_food_snapshot_copies.sql` and canonical INSERT RLS permit self-contained snapshots with null food/meal/variant links under existing diary access. Copy preparation uses SELECT-only checks for both parent foods and servings, detaching inaccessible or deleted sources and independent legacy serving links without changing the historical source.
 
 - `index.ts` - real dev entrypoint; loads env, secrets, and preflight checks before booting the app
 - `SparkyFitnessServer.ts` - Express app shell, route mounting, Swagger/ReDoc, startup, graceful shutdown

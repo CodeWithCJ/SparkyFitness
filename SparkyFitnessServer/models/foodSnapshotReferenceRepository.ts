@@ -15,22 +15,47 @@ export async function prepareCopiedFoodSnapshots<
       ? { ...row, variant_id: null }
       : row
   );
-  const ids = [
+  const foodIds = [
+    ...new Set(
+      copies.flatMap((row) =>
+        typeof row.food_id === 'string' ? [row.food_id] : []
+      )
+    ),
+  ];
+  const variantIds = [
     ...new Set(
       copies.flatMap((row) =>
         typeof row.variant_id === 'string' ? [row.variant_id] : []
       )
     ),
   ];
-  if (!ids.length) return copies;
-  const references = await client.query<{ id: string }>(
-    'SELECT id FROM public.food_variants WHERE id=ANY($1::uuid[]) ORDER BY id',
-    [ids]
+  if (!foodIds.length && !variantIds.length) return copies;
+  const references = await client.query<{
+    reference_kind: 'food' | 'variant';
+    id: string;
+  }>(
+    `SELECT 'food' AS reference_kind,id FROM public.foods WHERE id=ANY($1::uuid[])
+     UNION ALL
+     SELECT 'variant' AS reference_kind,id FROM public.food_variants WHERE id=ANY($2::uuid[])
+     ORDER BY reference_kind,id`,
+    [foodIds, variantIds]
   );
-  const available = new Set(references.rows.map((row) => row.id));
+  const availableFoods = new Set(
+    references.rows
+      .filter((row) => row.reference_kind === 'food')
+      .map((row) => row.id)
+  );
+  const availableVariants = new Set(
+    references.rows
+      .filter((row) => row.reference_kind === 'variant')
+      .map((row) => row.id)
+  );
   return copies.map((row) =>
-    typeof row.variant_id === 'string' && !available.has(row.variant_id)
-      ? { ...row, variant_id: null }
-      : row
+    typeof row.food_id === 'string' && !availableFoods.has(row.food_id)
+      ? { ...row, food_id: null, variant_id: null }
+      : typeof row.variant_id === 'string' &&
+          !availableVariants.has(row.variant_id)
+        ? { ...row, variant_id: null }
+        : row
   );
 }

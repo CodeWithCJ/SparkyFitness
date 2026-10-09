@@ -3,7 +3,9 @@ import { expect, it, vi } from 'vitest';
 import { prepareCopiedFoodSnapshots } from '../models/foodSnapshotReferenceRepository.js';
 
 it('retains available references and drops unavailable links only from new copies', async () => {
-  const query = vi.fn().mockResolvedValue({ rows: [{ id: 'available' }] });
+  const query = vi.fn().mockResolvedValue({
+    rows: [{ reference_kind: 'variant', id: 'available' }],
+  });
   const client = { query } as unknown as PoolClient;
   const rows = [
     { variant_id: 'available', calories: 80, notes: 'Original' },
@@ -19,9 +21,29 @@ it('retains available references and drops unavailable links only from new copie
   expect(rows[1]!.variant_id).toBe('missing');
   expect(query).toHaveBeenCalledOnce();
   expect(query).toHaveBeenCalledWith(
-    expect.stringContaining('SELECT id FROM public.food_variants'),
-    [['available', 'missing']]
+    expect.stringContaining('FROM public.food_variants'),
+    [[], ['available', 'missing']]
   );
+});
+it('preserves recorded nutrition while detaching inaccessible parent foods only from new copies', async () => {
+  const query = vi
+    .fn()
+    .mockResolvedValue({ rows: [{ reference_kind: 'food', id: 'visible' }] });
+  const original = {
+    food_id: 'hidden',
+    variant_id: 'hidden-serving',
+    calories: 80,
+    notes: 'Original source',
+  };
+  const visible = { food_id: 'visible', variant_id: null, calories: 100 };
+  expect(
+    await prepareCopiedFoodSnapshots({ query } as unknown as PoolClient, [
+      original,
+      visible,
+    ])
+  ).toEqual([{ ...original, food_id: null, variant_id: null }, visible]);
+  expect(original.food_id).toBe('hidden');
+  expect(original.variant_id).toBe('hidden-serving');
 });
 it('does not query for unlinked history and never replaces unknown nutrition', async () => {
   const query = vi.fn();

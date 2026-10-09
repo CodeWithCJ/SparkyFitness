@@ -205,9 +205,11 @@ describe.runIf(run)(
       try {
         await reader.query('BEGIN');
         const copied = await prepareCopiedFoodSnapshots(reader, [
-          { variant_id: variant, calories: 80 },
+          { food_id: food, variant_id: variant, calories: 80 },
         ]);
-        expect(copied).toEqual([{ variant_id: variant, calories: 80 }]);
+        expect(copied).toEqual([
+          { food_id: food, variant_id: variant, calories: 80 },
+        ]);
         expect(
           (
             await reader.query(
@@ -316,6 +318,48 @@ describe.runIf(run)(
           )
         ).rejects.toMatchObject({ code: '42501' });
       } finally {
+        reader.release();
+      }
+    });
+    it('copies recorded nutrition after the original food stops being public without changing the source', async () => {
+      const reader: pg.PoolClient = await getClient(other, other);
+      try {
+        const source = (await insertEntry(reader)).rows[0]!.id;
+        await system.query(
+          'UPDATE foods SET shared_with_public=false WHERE id=$1',
+          [food]
+        );
+        await reader.query('BEGIN');
+        const original = (
+          await reader.query<{ snapshot: DiarySnapshot }>(
+            'SELECT to_jsonb(e) AS snapshot FROM food_entries e WHERE id=$1',
+            [source]
+          )
+        ).rows[0]!.snapshot;
+        const copied = randomUUID();
+        const [copy] = await prepareCopiedFoodSnapshots<DiarySnapshot>(reader, [
+          { ...original, id: copied },
+        ]);
+        await insertSnapshot(reader, 'food_entries', other, copy!);
+        await reader.query('COMMIT');
+        expect(
+          (
+            await reader.query(
+              'SELECT food_id,variant_id,calories FROM food_entries WHERE id=$1',
+              [copied]
+            )
+          ).rows[0]
+        ).toEqual({ food_id: null, variant_id: null, calories: 80 });
+        expect(
+          (
+            await reader.query<{ snapshot: unknown }>(
+              'SELECT to_jsonb(e) AS snapshot FROM food_entries e WHERE id=$1',
+              [source]
+            )
+          ).rows[0]!.snapshot
+        ).toEqual(original);
+      } finally {
+        await reader.query('ROLLBACK');
         reader.release();
       }
     });
