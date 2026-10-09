@@ -403,7 +403,7 @@ export type SaveMode = 'ingredients_and_meal' | 'ingredients_only' | 'one_food';
 export type FoodPhotoFlowParamList = {
   Improve: {
     date?: string;
-    photo: { uri: string };
+    photo: { uri: string; mimeType?: string };
     initialDescription?: string;
     initialTotalWeight?: string;
     initialWeightUnit?: 'g' | 'oz';
