@@ -146,7 +146,9 @@ describe('copyReviewedFoodEntriesFromUser repository transaction', () => {
       query
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [firstRow, secondRow] })
-        .mockResolvedValueOnce({ rows: existingTargetRows })
+        .mockResolvedValueOnce({ rows: existingTargetRows });
+      if (variantId) query.mockResolvedValueOnce({ rows: [{ id: variantId }] });
+      query
         .mockResolvedValueOnce({ rows: [{ id: 'copy-1' }] })
         .mockResolvedValueOnce({ rows: [{ id: 'copy-2' }] })
         .mockResolvedValueOnce({ rows: [] });

@@ -14,6 +14,11 @@ import foodRepository from '../models/foodRepository.js';
 import * as meals from '../models/foodEntryMealRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import mealRepository from '../models/mealRepository.js';
+import { prepareCopiedFoodSnapshots } from '../models/foodSnapshotReferenceRepository.js';
+
+vi.mock('../models/foodSnapshotReferenceRepository.js', () => ({
+  prepareCopiedFoodSnapshots: vi.fn(),
+}));
 
 vi.mock('../models/foodAssistantDiaryRepository.js', async (original) => ({
   ...(await original<
@@ -128,6 +133,9 @@ function rows(table: Table) {
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(prepareCopiedFoodSnapshots).mockImplementation(
+    async (_client, rows) => [...rows]
+  );
   db = {
     food_entries: new Map([[oldId, entry()]]),
     food_entry_meals: new Map([
@@ -578,6 +586,27 @@ describe('verified diary changes', () => {
       '2026-10-08',
       'manual'
     );
+  });
+  it('detaches an unavailable serving only on the new copy and keeps the original nutrition and reference', async () => {
+    const original = structuredClone(rows('food_entries'));
+    vi.mocked(prepareCopiedFoodSnapshots).mockImplementation(
+      async (_client, rows) => rows.map((row) => ({ ...row, variant_id: null }))
+    );
+    await apply({
+      type: 'copy',
+      scope,
+      expected_fingerprint: await observed(),
+      destination,
+    });
+    expect(db.food_entries.get(oldId)).toEqual(original[0]);
+    expect(rows('food_entries').filter((row) => row.id !== oldId)).toEqual([
+      expect.objectContaining({
+        variant_id: null,
+        quantity: 60,
+        calories: 250,
+        notes: 'Toasted',
+      }),
+    ]);
   });
   it('copies every snapshot to new identities and undo removes only the copies', async () => {
     const original = structuredClone(rows('food_entries'));

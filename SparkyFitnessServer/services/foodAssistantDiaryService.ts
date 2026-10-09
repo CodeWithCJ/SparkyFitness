@@ -8,6 +8,7 @@ import {
   foodVolumeToMl,
 } from '@workspace/shared';
 import * as diary from '../models/foodAssistantDiaryRepository.js';
+import { prepareCopiedFoodSnapshots } from '../models/foodSnapshotReferenceRepository.js';
 import type {
   DiarySelection,
   DiarySnapshot,
@@ -507,7 +508,10 @@ export async function applyDiary(
         }
         const entryIds = new Map<string, string>();
         expected.entries = [];
-        for (const row of before.entries) {
+        const copyRows = copying
+          ? await prepareCopiedFoodSnapshots(client, before.entries)
+          : before.entries;
+        for (const row of copyRows) {
           const target = jsonSnapshot({
             ...row,
             id: copying ? randomUUID() : row.id,

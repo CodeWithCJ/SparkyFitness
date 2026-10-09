@@ -1365,7 +1365,8 @@ async function copyFoodEntries(
     }
     const newEntries = await foodRepository.bulkCreateFoodEntries(
       entriesToCreate,
-      authenticatedUserId
+      authenticatedUserId,
+      { copiedSnapshots: true }
     );
     return newEntries;
   } catch (error) {
@@ -1522,7 +1523,8 @@ async function copyFoodEntriesFromUser(
     }
     const newEntries = await foodRepository.bulkCreateFoodEntries(
       entriesToCreate,
-      authenticatedUserId
+      authenticatedUserId,
+      { copiedSnapshots: true }
     );
     return newEntries;
   } catch (error) {
@@ -1659,7 +1661,9 @@ async function copySelectedFoodEntriesFromUser(
 
   return entriesToCreate.length === 0
     ? []
-    : foodRepository.bulkCreateFoodEntries(entriesToCreate, targetUserId);
+    : foodRepository.bulkCreateFoodEntries(entriesToCreate, targetUserId, {
+        copiedSnapshots: true,
+      });
 }
 
 async function copyReviewedFoodEntriesFromUser(
@@ -1870,7 +1874,8 @@ async function copyFoodEntriesToUser(
     }
     const newEntries = await foodRepository.bulkCreateFoodEntries(
       entriesToCreate,
-      targetUserId
+      targetUserId,
+      { copiedSnapshots: true }
     );
     return newEntries;
   } catch (error) {

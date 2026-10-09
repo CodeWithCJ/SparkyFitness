@@ -95,7 +95,7 @@ These tables contain user profiles, layouts, display settings, and custom databa
 
 `exercise_entries` and `food_entries` are **snapshots, not pointers**. Each row carries its own copy of the display and nutrition data, so it stays readable after the library row it was logged from is gone. `exercise_id` and `food_id` are nullable and `ON DELETE SET NULL` (`20260912150000_preserve_data_on_user_and_library_deletes.sql`), so deleting a library item blanks the link and keeps the entry.
 
-New `food_entries.variant_id` writes also have an `ON DELETE SET NULL` foreign key, added `NOT VALID` to preserve legacy orphan IDs and nutrition snapshots while enforcing new references and concurrent-delete locking. Library undo checks independent variant references across RLS and queued Open Food Facts contribution state; only an ownership-gated boolean leaves the dependency function. Tier 2 diary sharing and Tier 1 assistant-state permissions remain unchanged.
+New `food_entries.variant_id` writes also have an `ON DELETE SET NULL` foreign key, added `NOT VALID` to preserve legacy orphan IDs and nutrition snapshots while enforcing new references and concurrent-delete locking. Diary copies retain recorded nutrition and detach unavailable variant links only on the new copies, using SELECT-only source inspection so public servings require no mutation permission. Library undo checks independent variant references across RLS and queued Open Food Facts contribution state; only an ownership-gated boolean leaves the dependency function. Tier 2 diary sharing and Tier 1 assistant-state permissions remain unchanged.
 
 Key rules that must be maintained:
 

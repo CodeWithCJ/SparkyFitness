@@ -132,7 +132,8 @@ describe('foodEntryService symmetrical cross-user copy tests', () => {
             food_name: 'Banana',
           }),
         ]),
-        ACTOR_A
+        ACTOR_A,
+        { copiedSnapshots: true }
       );
       expect(result).toEqual(mockResult);
     });
@@ -246,7 +247,8 @@ describe('foodEntryService symmetrical cross-user copy tests', () => {
             food_name: 'Apple',
           }),
         ]),
-        MEMBER_B
+        MEMBER_B,
+        { copiedSnapshots: true }
       );
       expect(result).toEqual(mockResult);
     });
@@ -406,7 +408,8 @@ describe('copy flows resolve custom meal types by name (shared service contract)
       expect.arrayContaining([
         expect.objectContaining({ meal_type_id: CUSTOM_MEAL_TYPE_ID }),
       ]),
-      'user-1'
+      'user-1',
+      { copiedSnapshots: true }
     );
   });
 
@@ -510,7 +513,8 @@ describe('copy flows resolve custom meal types by name (shared service contract)
       expect.arrayContaining([
         expect.objectContaining({ meal_type_id: CUSTOM_LUNCH_ID }),
       ]),
-      'user-1'
+      'user-1',
+      { copiedSnapshots: true }
     );
   });
 
@@ -556,7 +560,8 @@ describe('copy flows resolve custom meal types by name (shared service contract)
       expect.arrayContaining([
         expect.objectContaining({ meal_type_id: SYSTEM_LUNCH_ID }),
       ]),
-      'user-1'
+      'user-1',
+      { copiedSnapshots: true }
     );
   });
 

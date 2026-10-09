@@ -13,6 +13,11 @@ import {
   it,
 } from 'vitest';
 import { endPool, getClient, getSystemClient } from '../db/poolManager.js';
+import { prepareCopiedFoodSnapshots } from '../models/foodSnapshotReferenceRepository.js';
+import {
+  insertSnapshot,
+  type DiarySnapshot,
+} from '../models/foodAssistantDiaryRepository.js';
 import {
   deleteUnusedFood,
   deleteUnusedVariant,
@@ -195,6 +200,80 @@ describe.runIf(run)(
         reader.release();
       }
     });
+    it('keeps a public serving reference when the copying actor has no library mutation access', async () => {
+      const reader: pg.PoolClient = await getClient(other, other);
+      try {
+        await reader.query('BEGIN');
+        const copied = await prepareCopiedFoodSnapshots(reader, [
+          { variant_id: variant, calories: 80 },
+        ]);
+        expect(copied).toEqual([{ variant_id: variant, calories: 80 }]);
+        expect(
+          (
+            await reader.query(
+              'UPDATE food_variants SET serving_size=2 WHERE id=$1 RETURNING id',
+              [variant]
+            )
+          ).rowCount
+        ).toBe(0);
+      } finally {
+        await reader.query('ROLLBACK');
+        reader.release();
+      }
+    });
+    it('copies a legacy orphan snapshot without repairing or changing the historical source', async () => {
+      const missing = randomUUID(),
+        source = randomUUID(),
+        copied = randomUUID();
+      // Reproduce a row that existed before the NOT VALID FK. This is a
+      // synthetic fixture on an isolated DB, never a production repair.
+      await system.query('BEGIN');
+      try {
+        await system.query('SET LOCAL session_replication_role=replica');
+        await system.query(
+          'INSERT INTO food_entries (id,user_id,food_id,variant_id,quantity,unit,food_name,calories,meal_type_id) VALUES ($1,$2,NULL,$3,2,$4,$5,80,(SELECT id FROM meal_types WHERE user_id IS NULL AND name=$6))',
+          [source, other, missing, 'slice', 'Recorded bread', 'breakfast']
+        );
+        await system.query('COMMIT');
+      } catch (error) {
+        await system.query('ROLLBACK');
+        throw error;
+      }
+      const reader: pg.PoolClient = await getClient(other, other);
+      try {
+        await reader.query('BEGIN');
+        const original = (
+          await reader.query<{ snapshot: DiarySnapshot }>(
+            'SELECT to_jsonb(e) AS snapshot FROM food_entries e WHERE id=$1',
+            [source]
+          )
+        ).rows[0]!.snapshot;
+        const [copy] = await prepareCopiedFoodSnapshots<DiarySnapshot>(reader, [
+          { ...original, id: copied },
+        ]);
+        await insertSnapshot(reader, 'food_entries', other, copy!);
+        await reader.query('COMMIT');
+        expect(
+          (
+            await reader.query<{ variant_id: string | null; calories: number }>(
+              'SELECT variant_id,calories FROM food_entries WHERE id=$1',
+              [copied]
+            )
+          ).rows[0]
+        ).toEqual({ variant_id: null, calories: 80 });
+        expect(
+          (
+            await reader.query<{ snapshot: unknown }>(
+              'SELECT to_jsonb(e) AS snapshot FROM food_entries e WHERE id=$1',
+              [source]
+            )
+          ).rows[0]!.snapshot
+        ).toEqual(original);
+      } finally {
+        await reader.query('ROLLBACK');
+        reader.release();
+      }
+    });
     it('preserves historical nutrition when an ordinary library deletion clears its links', async () => {
       const reader: pg.PoolClient = await getClient(other, other);
       try {
@@ -211,8 +290,8 @@ describe.runIf(run)(
           food_id: null,
           variant_id: null,
           food_name: 'Recorded bread',
-          calories: '80',
-          quantity: '2',
+          calories: 80,
+          quantity: 2,
           unit: 'slice',
         });
       } finally {
