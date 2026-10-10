@@ -1,5 +1,7 @@
 import {
   buildWorkoutLiveActivityLabels,
+  formatNextSubtitle,
+  formatSetProgress,
   isWorkoutLiveActivityLocale,
   resolveWorkoutLiveActivityLocale,
 } from '../../src/services/workoutLiveActivityLabels';
@@ -19,6 +21,10 @@ const EN_EXPECTED = {
   exercise: 'Exercise',
   set: 'Set',
   setOf: 'of',
+  subtractFifteenSeconds: 'Subtract 15 seconds',
+  subtractFifteenSecondsShort: '-15s',
+  skip: 'Skip',
+  next: 'Next',
 };
 
 const PL_EXPECTED = {
@@ -34,6 +40,10 @@ const PL_EXPECTED = {
   exercise: 'Ćwiczenie',
   set: 'Seria',
   setOf: 'z',
+  subtractFifteenSeconds: 'Subtract 15 seconds',
+  subtractFifteenSecondsShort: '-15s',
+  skip: 'Skip',
+  next: 'Next',
 };
 
 const ES_EXPECTED = {
@@ -49,6 +59,10 @@ const ES_EXPECTED = {
   exercise: 'Ejercicio',
   set: 'Serie',
   setOf: 'de',
+  subtractFifteenSeconds: 'Subtract 15 seconds',
+  subtractFifteenSecondsShort: '-15s',
+  skip: 'Skip',
+  next: 'Next',
 };
 
 describe('workoutLiveActivityLabels', () => {
@@ -183,6 +197,18 @@ describe('workoutLiveActivityLabels', () => {
       expect(
         isWorkoutLiveActivityLocale('activeWorkout.liveActivity.rest')
       ).toBe(false);
+    });
+  });
+
+  describe('subtitle templates', () => {
+    it('formats set progress and the resting line from placeholders', () => {
+      expect(formatSetProgress(2, 4, 'en')).toBe('Set 2 of 4');
+      expect(formatNextSubtitle('Set 2 of 4', null, 'en')).toBe(
+        'Next: Set 2 of 4'
+      );
+      expect(formatNextSubtitle('Set 2 of 4', '65 lbs × 12 reps', 'en')).toBe(
+        'Next: Set 2 of 4 (65 lbs × 12 reps)'
+      );
     });
   });
 });

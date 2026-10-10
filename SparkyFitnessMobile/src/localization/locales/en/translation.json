@@ -339,7 +339,16 @@
       "workout": "Workout",
       "exercise": "Exercise",
       "set": "Set",
-      "setOf": "of"
+      "setOf": "of",
+      "subtractFifteenSeconds": "Subtract 15 seconds",
+      "subtractFifteenSecondsShort": "-15s",
+      "skip": "Skip",
+      "next": "Next",
+      "setProgress": "Set {{number}} of {{total}}",
+      "nextSet": "Next: {{set}}",
+      "nextSetWithTarget": "Next: {{set}} ({{target}})",
+      "repCount_one": "{{count}} rep",
+      "repCount_other": "{{count}} reps"
     },
     "bar": {
       "clearWorkout": "Clear workout",

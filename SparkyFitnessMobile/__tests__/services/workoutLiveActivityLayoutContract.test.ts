@@ -67,6 +67,9 @@ describe('WorkoutLiveActivityLayout contract', () => {
       'props.labels.addFifteenSeconds',
       'props.labels.addFifteenSecondsShort',
       'props.labels.skipRest',
+      'props.labels.subtractFifteenSeconds',
+      'props.labels.subtractFifteenSecondsShort',
+      'props.labels.skip',
     ];
     for (const ref of labelRefs) {
       expect(LAYOUT_SRC).toContain(ref);
@@ -81,6 +84,7 @@ describe('WorkoutLiveActivityLayout contract', () => {
 
   it('keeps action target ids unchanged', () => {
     expect(LAYOUT_SRC).toContain('target="rest-add-15"');
+    expect(LAYOUT_SRC).toContain('target="rest-subtract-15"');
     expect(LAYOUT_SRC).toContain('target="rest-skip"');
     expect(LAYOUT_SRC).toContain('target="complete-set"');
   });

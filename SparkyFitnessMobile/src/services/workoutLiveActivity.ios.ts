@@ -11,14 +11,20 @@ import {
   type ActiveWorkoutState,
 } from '../stores/activeWorkoutStore';
 import {
-  describeActiveSet,
+  describeActiveSetAssumed,
+  formatDurationSeconds,
   formatElapsed,
   formatRestCountdown,
+  type ActiveSetDescription,
 } from '../utils/workoutSession';
+import { formatWeightDisplay } from '../utils/unitConversions';
 import { createConcurrencyLimiter } from '../utils/concurrency';
 import { addLog } from './LogService';
 import {
   buildWorkoutLiveActivityLabels,
+  formatNextSubtitle,
+  formatRepCount,
+  formatSetProgress,
   resolveWorkoutLiveActivityLocale,
   type WorkoutLiveActivityLabels,
   type WorkoutLiveActivityLocale,
@@ -57,6 +63,7 @@ let lastSentProps: WorkoutLiveActivityProps | null = null;
  * in sync by hand.
  */
 const REST_ADD_15_TARGET = 'rest-add-15';
+const REST_SUBTRACT_15_TARGET = 'rest-subtract-15';
 const REST_SKIP_TARGET = 'rest-skip';
 const COMPLETE_SET_TARGET = 'complete-set';
 
@@ -127,6 +134,10 @@ function handleUserInteraction(event: UserInteractionEvent): void {
     case REST_ADD_15_TARGET:
       store.adjustRest(15);
       break;
+    case REST_SUBTRACT_15_TARGET:
+      // Trimming past zero ends the rest, same as the in-app control.
+      store.adjustRest(-15);
+      break;
     case REST_SKIP_TARGET:
       store.dismissRest();
       break;
@@ -136,6 +147,26 @@ function handleUserInteraction(event: UserInteractionEvent): void {
       store.completeActiveSetIfReady();
       break;
   }
+}
+
+/**
+ * The set's target as the headline reads it: "65 lbs × 12 reps", "12 reps",
+ * "65 lbs" or a duration, in the user's weight unit. Null when the set has no
+ * target at all yet.
+ */
+function formatSetTarget(
+  desc: ActiveSetDescription,
+  weightUnit: 'kg' | 'lbs',
+  locale: WorkoutLiveActivityLocale
+): string | null {
+  if (desc.durationSec != null) return formatDurationSeconds(desc.durationSec);
+  const weight =
+    desc.weightKg != null && desc.weightKg > 0
+      ? formatWeightDisplay(desc.weightKg, weightUnit)
+      : null;
+  const reps = desc.reps != null ? formatRepCount(desc.reps, locale) : null;
+  if (weight != null && reps != null) return `${weight} × ${reps}`;
+  return weight ?? reps;
 }
 
 /**
@@ -157,6 +188,13 @@ export function computeWorkoutLiveActivityProps(
     | 'completedSetIds'
     | 'activeSetId'
     | 'rest'
+    | 'previousSessionSets'
+    | 'plannedSetValues'
+    | 'exerciseConfigs'
+    | 'coachingSignals'
+    | 'declinedAdaptive'
+    | 'weightUnit'
+    | 'workoutFormat'
   >,
   locale: WorkoutLiveActivityLocale = resolveWorkoutLiveActivityLocale(
     i18n.resolvedLanguage
@@ -194,13 +232,36 @@ export function computeWorkoutLiveActivityProps(
       pausedRemainingLabel: null,
       setLine: null,
       elapsedLabel: formatElapsed(startedAt, frozenAt),
+      exerciseName: null,
+      setProgress: null,
+      targetLine: null,
+      subtitleText: null,
     };
   }
 
-  const desc = describeActiveSet(session, activeSetId);
-  const setLine = desc
-    ? `${desc.exerciseName ?? labels.exercise} · ${labels.set} ${desc.setNumber} ${labels.setOf} ${desc.setCount}`
+  // Assumed-aware so a set with empty fields shows the same grayed-in target
+  // the live row does, which is also what logging it untouched records.
+  const desc = describeActiveSetAssumed(session, activeSetId, state);
+  const setProgress = desc
+    ? formatSetProgress(desc.setNumber, desc.setCount, locale)
     : null;
+  const setLine = desc
+    ? `${desc.exerciseName ?? labels.exercise} · ${setProgress}`
+    : null;
+  const targetLine = desc
+    ? formatSetTarget(desc, state.weightUnit, locale)
+    : null;
+  const setDetails = {
+    exerciseName: desc ? (desc.exerciseName ?? labels.exercise) : null,
+    setProgress,
+    targetLine,
+  };
+  const subtitleText = (phase: 'active' | 'resting' | 'paused') =>
+    setProgress == null
+      ? null
+      : phase === 'active'
+        ? setProgress
+        : formatNextSubtitle(setProgress, targetLine, locale);
 
   if (rest.state === 'resting' && rest.endsAt != null) {
     return {
@@ -214,6 +275,8 @@ export function computeWorkoutLiveActivityProps(
       pausedRemainingLabel: null,
       setLine,
       elapsedLabel: null,
+      ...setDetails,
+      subtitleText: subtitleText('resting'),
     };
   }
 
@@ -229,6 +292,8 @@ export function computeWorkoutLiveActivityProps(
       pausedRemainingLabel: formatRestCountdown(rest.pausedRemainingMs),
       setLine,
       elapsedLabel: null,
+      ...setDetails,
+      subtitleText: subtitleText('paused'),
     };
   }
 
@@ -243,6 +308,8 @@ export function computeWorkoutLiveActivityProps(
     pausedRemainingLabel: null,
     setLine,
     elapsedLabel: null,
+    ...setDetails,
+    subtitleText: subtitleText('active'),
   };
 }
 
@@ -262,7 +329,11 @@ function labelsEqual(
     a.workout === b.workout &&
     a.exercise === b.exercise &&
     a.set === b.set &&
-    a.setOf === b.setOf
+    a.setOf === b.setOf &&
+    a.subtractFifteenSeconds === b.subtractFifteenSeconds &&
+    a.subtractFifteenSecondsShort === b.subtractFifteenSecondsShort &&
+    a.skip === b.skip &&
+    a.next === b.next
   );
 }
 
@@ -281,6 +352,10 @@ function propsEqual(
     a.pausedRemainingLabel === b.pausedRemainingLabel &&
     a.setLine === b.setLine &&
     a.elapsedLabel === b.elapsedLabel &&
+    a.exerciseName === b.exerciseName &&
+    a.setProgress === b.setProgress &&
+    a.targetLine === b.targetLine &&
+    a.subtitleText === b.subtitleText &&
     a.appIconUri === b.appIconUri
   );
 }
@@ -390,7 +465,18 @@ export async function initWorkoutLiveActivity(): Promise<void> {
       state.startedAt === prevState.startedAt &&
       state.activeSetId === prevState.activeSetId &&
       state.rest === prevState.rest &&
-      state.completedSetIds === prevState.completedSetIds
+      state.completedSetIds === prevState.completedSetIds &&
+      state.weightUnit === prevState.weightUnit &&
+      state.previousSessionSets === prevState.previousSessionSets &&
+      state.plannedSetValues === prevState.plannedSetValues &&
+      // The target line goes through the same progression, adaptive and
+      // ramp resolution as the live row, so these reach it too. The configs
+      // load after the workout starts; without them here the Lock Screen
+      // kept the weight from before the progression bump.
+      state.exerciseConfigs === prevState.exerciseConfigs &&
+      state.coachingSignals === prevState.coachingSignals &&
+      state.declinedAdaptive === prevState.declinedAdaptive &&
+      state.workoutFormat === prevState.workoutFormat
     ) {
       return;
     }

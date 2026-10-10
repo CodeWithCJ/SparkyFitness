@@ -28,6 +28,14 @@ export type WorkoutLiveActivityLabels = {
   set: string;
   /** Connector joining set number and count, e.g. "of" (en) / "z" (pl). */
   setOf: string;
+  /** Accessibility label of the -15s rest button. */
+  subtractFifteenSeconds: string;
+  /** Compact "-15s" button label. */
+  subtractFifteenSecondsShort: string;
+  /** Visible label of the skip-rest button. */
+  skip: string;
+  /** Prefix for the upcoming set while resting, e.g. "Next". */
+  next: string;
 };
 
 const LABEL_KEYS: readonly (keyof WorkoutLiveActivityLabels)[] = [
@@ -43,6 +51,10 @@ const LABEL_KEYS: readonly (keyof WorkoutLiveActivityLabels)[] = [
   'exercise',
   'set',
   'setOf',
+  'subtractFifteenSeconds',
+  'subtractFifteenSecondsShort',
+  'skip',
+  'next',
 ];
 
 /** English fallback used when i18n is not yet initialized or a key is missing. */
@@ -59,6 +71,10 @@ const EN_FALLBACK: WorkoutLiveActivityLabels = {
   exercise: 'Exercise',
   set: 'Set',
   setOf: 'of',
+  subtractFifteenSeconds: 'Subtract 15 seconds',
+  subtractFifteenSecondsShort: '-15s',
+  skip: 'Skip',
+  next: 'Next',
 };
 
 export function isWorkoutLiveActivityLocale(
@@ -104,4 +120,64 @@ export function buildWorkoutLiveActivityLabels(
       typeof value === 'string' && value.length > 0 ? value : EN_FALLBACK[key];
   }
   return labels;
+}
+
+/**
+ * "12 reps" / "1 rep" for the Live Activity's target line, in the locale the
+ * labels were built for. A count rather than a pair of "rep" / "reps" labels,
+ * because the plural rules differ by language (Polish has three forms), which
+ * only i18next's count handling gets right.
+ */
+export function formatRepCount(
+  reps: number,
+  locale: WorkoutLiveActivityLocale
+): string {
+  if (!i18n.isInitialized) return reps === 1 ? '1 rep' : `${reps} reps`;
+  const fixedT = i18n.getFixedT(locale, 'translation');
+  return fixedT('activeWorkout.liveActivity.repCount', {
+    count: reps,
+    defaultValue_one: '{{count}} rep',
+    defaultValue_other: '{{count}} reps',
+  });
+}
+
+/** "Set 2 of 4". `total` rather than `count`: i18next treats `count` as a plural. */
+export function formatSetProgress(
+  number: number,
+  total: number,
+  locale: WorkoutLiveActivityLocale
+): string {
+  if (!i18n.isInitialized) return `Set ${number} of ${total}`;
+  const fixedT = i18n.getFixedT(locale, 'translation');
+  return fixedT('activeWorkout.liveActivity.setProgress', {
+    number,
+    total,
+    defaultValue: 'Set {{number}} of {{total}}',
+  });
+}
+
+/**
+ * Resting subtitle. With a target: "Next: Set 2 of 4 (65 lbs × 12 reps)".
+ * Without one: "Next: Set 2 of 4".
+ */
+export function formatNextSubtitle(
+  set: string,
+  target: string | null,
+  locale: WorkoutLiveActivityLocale
+): string {
+  if (!i18n.isInitialized) {
+    return target != null ? `Next: ${set} (${target})` : `Next: ${set}`;
+  }
+  const fixedT = i18n.getFixedT(locale, 'translation');
+  if (target != null) {
+    return fixedT('activeWorkout.liveActivity.nextSetWithTarget', {
+      set,
+      target,
+      defaultValue: 'Next: {{set}} ({{target}})',
+    });
+  }
+  return fixedT('activeWorkout.liveActivity.nextSet', {
+    set,
+    defaultValue: 'Next: {{set}}',
+  });
 }

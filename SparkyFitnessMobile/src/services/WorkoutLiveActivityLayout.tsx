@@ -64,6 +64,18 @@ export type WorkoutLiveActivityProps = {
   setLine: string | null;
   /** Static elapsed clock captured when the last set completed — freezes the timer. */
   elapsedLabel: string | null;
+  /** Exercise of the current (or, while resting, upcoming) set: the headline. */
+  exerciseName?: string | null;
+  /** Localized "Set 2 of 4" for that set. */
+  setProgress?: string | null;
+  /** That set's target in the user's unit, e.g. "65 lbs × 12 reps". */
+  targetLine?: string | null;
+  /**
+   * Precomputed subtitle. "Set 1 of 3" during a set, or
+   * "Next: Set 2 of 3 (65 lbs × 12 reps)" while resting. Built in the app
+   * from translation templates; this body cannot call i18next.
+   */
+  subtitleText?: string | null;
   /**
    * file:// URI of the app icon in the shared app group container. The widget
    * process can't read the app's asset catalog or bundle, so the service
@@ -290,52 +302,224 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
   // process; workoutLiveActivity.ios.ts matches on these target strings and
   // pushes the repaint, so the targets must stay in sync with that file.
   //
-  // Bare tinted buttons — no background wash. The add-rest label is text
-  // ("+15s", matching the in-app rest bar) because SF Symbols' goforward.15
+  // Text labels ("-15s", "+15s") rather than SF Symbols: the goforward.15
   // family means media seek, which reads as skipping rest, not extending it.
-  const restButtonModifiers = (label: string) => [
-    buttonStyle('borderless'),
-    controlSize('large'),
-    accessibilityLabel(label),
+  const restButtonFont = font({ weight: 'semibold', size: 15 });
+  const restStepModifiers = (a11y: string) => [
+    buttonStyle('bordered'),
+    buttonBorderShape('capsule'),
+    controlSize('regular'),
+    accessibilityLabel(a11y),
   ];
-  // Both labels share one font so the SF Symbol scales to match the text.
-  const restButtonFont = font({ weight: 'semibold', size: 17 });
+  const addButton = () => (
+    <Button
+      target="rest-add-15"
+      modifiers={restStepModifiers(props.labels.addFifteenSeconds)}
+    >
+      <Text modifiers={[restButtonFont, monospacedDigit()]}>
+        {props.labels.addFifteenSecondsShort}
+      </Text>
+    </Button>
+  );
+  const subtractButton = () => (
+    <Button
+      target="rest-subtract-15"
+      modifiers={restStepModifiers(props.labels.subtractFifteenSeconds)}
+    >
+      <Text modifiers={[restButtonFont, monospacedDigit()]}>
+        {props.labels.subtractFifteenSecondsShort}
+      </Text>
+    </Button>
+  );
+  const skipButton = () => (
+    <Button
+      target="rest-skip"
+      modifiers={[
+        buttonStyle('borderedProminent'),
+        buttonBorderShape('capsule'),
+        controlSize('regular'),
+        accessibilityLabel(props.labels.skipRest),
+      ]}
+    >
+      <Text modifiers={[restButtonFont]}>{props.labels.skip}</Text>
+    </Button>
+  );
+  const completeButton = () => (
+    <Button
+      target="complete-set"
+      modifiers={[
+        buttonStyle('bordered'),
+        buttonBorderShape('capsule'),
+        controlSize('regular'),
+        accessibilityLabel(props.labels.complete),
+      ]}
+    >
+      <Image
+        systemName="checkmark"
+        modifiers={[font({ weight: 'bold', size: 20 })]}
+      />
+    </Button>
+  );
+
+  // Compact controls for the Dynamic Island, where the full rest row won't fit.
   const actionButtons = () => {
     if (restInterval) {
       return (
         <HStack spacing={8}>
-          <Button
-            target="rest-add-15"
-            modifiers={restButtonModifiers(props.labels.addFifteenSeconds)}
-          >
-            <Text modifiers={[restButtonFont, monospacedDigit()]}>
-              {props.labels.addFifteenSecondsShort}
-            </Text>
-          </Button>
-          <Button
-            target="rest-skip"
-            modifiers={restButtonModifiers(props.labels.skipRest)}
-          >
-            <Image systemName="forward.end.fill" modifiers={[restButtonFont]} />
-          </Button>
+          {addButton()}
+          {skipButton()}
         </HStack>
       );
     }
     if (props.phase === 'active' && props.setLine != null) {
-      return (
-        <Button
-          label={props.labels.complete}
-          systemImage="checkmark"
-          target="complete-set"
-          modifiers={[
-            buttonStyle('bordered'),
-            buttonBorderShape('capsule'),
-            controlSize('regular'),
-          ]}
-        />
-      );
+      return completeButton();
     }
     return null;
+  };
+
+  // "Next: Set 2 of 4 (65 lbs × 12 reps)" while resting, "Set 1 of 3" while
+  // the set is up. Already translated in the app; do not join fragments here.
+  const subtitle = () => {
+    if (props.subtitleText == null) return null;
+    return (
+      <Text modifiers={[secondaryText(), font({ size: 14 }), lineLimit(1)]}>
+        {props.subtitleText}
+      </Text>
+    );
+  };
+
+  // Small caption row: app identity + workout name, elapsed clock trailing.
+  const header = () => (
+    <HStack spacing={6}>
+      {appIcon(16)}
+      <Text modifiers={[secondaryText(), font({ size: 13 }), lineLimit(1)]}>
+        {props.workoutName}
+      </Text>
+      <Spacer />
+      <HStack modifiers={[layoutPriority(1)]}>
+        {props.phase === 'complete' ? (
+          <Text
+            modifiers={[secondaryText(), font({ size: 13 }), monospacedDigit()]}
+          >
+            {props.elapsedLabel ?? ''}
+          </Text>
+        ) : (
+          <Text
+            date={new Date(props.startedAt)}
+            dateStyle="timer"
+            modifiers={[
+              secondaryText(),
+              font({ size: 13 }),
+              monospacedDigit(),
+              multilineTextAlignment('trailing'),
+              frame({ maxWidth: 64, alignment: 'trailing' }),
+            ]}
+          />
+        )}
+      </HStack>
+    </HStack>
+  );
+
+  // Rest row: -15s, a large centered countdown, +15s and Skip. Paused shows
+  // the frozen remainder without controls (resume lives in the app).
+  const restRow = () => {
+    if (restInterval) {
+      const cap =
+        (props.restEndsAt ?? 0) - (props.restStartedAt ?? 0) >= 600_000
+          ? 110
+          : 90;
+      return (
+        <HStack spacing={8}>
+          {subtractButton()}
+          <Spacer />
+          <Text
+            timerInterval={restInterval}
+            countsDown
+            modifiers={[
+              font({ weight: 'semibold', size: 26 }),
+              monospacedDigit(),
+              multilineTextAlignment('center'),
+              minimumScaleFactor(0.8),
+              frame({ maxWidth: cap }),
+            ]}
+          />
+          <Spacer />
+          {addButton()}
+          {skipButton()}
+        </HStack>
+      );
+    }
+    return (
+      <HStack spacing={6}>
+        <Text modifiers={[secondaryText(), font({ size: 17 })]}>
+          {props.labels.paused}
+        </Text>
+        <Spacer />
+        <Text
+          modifiers={[
+            font({ weight: 'semibold', size: 26 }),
+            monospacedDigit(),
+          ]}
+        >
+          {props.pausedRemainingLabel ?? ''}
+        </Text>
+        <Spacer />
+      </HStack>
+    );
+  };
+
+  const bannerBody = () => {
+    if (props.phase === 'complete' || props.exerciseName == null) {
+      return (
+        <Text
+          modifiers={[font({ weight: 'semibold', size: 17 }), lineLimit(1)]}
+        >
+          {props.phase === 'complete'
+            ? props.labels.workoutComplete
+            : props.workoutName}
+        </Text>
+      );
+    }
+    const titleBlock = (
+      <VStack alignment="leading" spacing={2}>
+        <Text
+          modifiers={[font({ weight: 'semibold', size: 17 }), lineLimit(1)]}
+        >
+          {props.exerciseName}
+        </Text>
+        {subtitle()}
+      </VStack>
+    );
+    if (props.phase === 'resting' || props.phase === 'paused') {
+      return (
+        <VStack alignment="leading" spacing={6}>
+          {titleBlock}
+          {restProgress()}
+          {restRow()}
+        </VStack>
+      );
+    }
+    return (
+      <VStack alignment="leading" spacing={6}>
+        {titleBlock}
+        <HStack>
+          {props.targetLine != null ? (
+            <Text
+              modifiers={[
+                font({ weight: 'semibold', size: 24 }),
+                monospacedDigit(),
+                lineLimit(1),
+                minimumScaleFactor(0.7),
+              ]}
+            >
+              {props.targetLine}
+            </Text>
+          ) : null}
+          <Spacer />
+          {completeButton()}
+        </HStack>
+      </VStack>
+    );
   };
 
   return {
@@ -343,21 +527,10 @@ const WorkoutLiveActivity = (props: WorkoutLiveActivityProps) => {
       <VStack
         alignment="leading"
         spacing={6}
-        modifiers={[padding({ all: 16 })]}
+        modifiers={[padding({ horizontal: 16, vertical: 12 })]}
       >
-        <HStack>
-          <Text modifiers={[font({ weight: 'bold', size: 16 }), lineLimit(1)]}>
-            {props.workoutName}
-          </Text>
-          <Spacer />
-          {labeledTimer()}
-        </HStack>
-        <HStack>
-          {statusLine()}
-          <Spacer />
-          {actionButtons()}
-        </HStack>
-        {restProgress()}
+        {header()}
+        {bannerBody()}
       </VStack>
     ),
     // Watch Smart Stack (watchOS 11+) and CarPlay. No buttons: the layout can
