@@ -14,12 +14,15 @@ const getHealthMetricSampleRowForUpdateWithClient = vi
   .fn()
   .mockResolvedValue(null);
 const bulkUpsertVitals = vi.fn().mockResolvedValue([]);
+const upsertDailyHealthMetrics = vi.fn().mockResolvedValue({});
 vi.mock('../models/genericHealthRepository.js', () => ({
   upsertHealthMetricSamplesWithClient: (...args: unknown[]) =>
     upsertHealthMetricSamplesWithClient(...args),
   getHealthMetricSampleRowForUpdateWithClient: (...args: unknown[]) =>
     getHealthMetricSampleRowForUpdateWithClient(...args),
   bulkUpsertVitals: (...args: unknown[]) => bulkUpsertVitals(...args),
+  upsertDailyHealthMetrics: (...args: unknown[]) =>
+    upsertDailyHealthMetrics(...args),
 }));
 
 vi.mock('../db/poolManager.js', () => ({
@@ -68,6 +71,7 @@ beforeEach(() => {
   upsertHealthMetricSamplesWithClient.mockClear();
   getHealthMetricSampleRowForUpdateWithClient.mockClear();
   bulkUpsertVitals.mockClear();
+  upsertDailyHealthMetrics.mockClear();
 });
 
 describe('processGarminHealthAndWellnessData - HRV', () => {
@@ -266,6 +270,94 @@ describe('processGarminHealthAndWellnessData - respiration', () => {
       (c) => (c[2] as { metric?: string })?.metric === 'respiration'
     );
     expect((call?.[2] as { entry_date: string }).entry_date).toBe('2026-08-02');
+  });
+});
+
+describe('processGarminHealthAndWellnessData - daily summary calories', () => {
+  interface DailyMetricsPayload {
+    entry_date: string;
+    total_calories: number | null;
+    total_calories_captured_at: Date | null;
+  }
+  const dailyMetricsPayload = (): DailyMetricsPayload =>
+    upsertDailyHealthMetrics.mock.calls[0]?.[2] as DailyMetricsPayload;
+
+  it('persists total_calories stamped with the microservice fetch instant', async () => {
+    // routes.py sends captured_at as the get_user_summary fetch instant; the
+    // total_calories gate orders on it, so the newest provider snapshot wins
+    // however scheduled and manual syncs interleave.
+    await processGarminHealthAndWellnessData(
+      'user-1',
+      'user-1',
+      {
+        daily_summary: [
+          {
+            date: '2026-08-01',
+            total_calories: 4594,
+            active_calories: 2180,
+            bmr_calories: 2414,
+            captured_at: '2026-08-01T20:12:34.123+00:00',
+          },
+        ],
+      },
+      '2026-08-01',
+      '2026-08-01'
+    );
+
+    expect(upsertDailyHealthMetrics).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        entry_date: '2026-08-01',
+        source_provider: 'garmin',
+        active_calories: 2180,
+        bmr_calories: 2414,
+        total_calories: 4594,
+      })
+    );
+    expect(
+      dailyMetricsPayload().total_calories_captured_at?.toISOString()
+    ).toBe('2026-08-01T20:12:34.123Z');
+  });
+
+  it('falls back to sync time when the microservice sends no captured_at', async () => {
+    // Microservices predating the field still persist total_calories, stamped
+    // at processing time — ordering is then arrival order, which is strictly
+    // better than dropping the value entirely.
+    await processGarminHealthAndWellnessData(
+      'user-1',
+      'user-1',
+      { daily_summary: [{ date: '2026-08-01', total_calories: 4594 }] },
+      '2026-08-01',
+      '2026-08-01'
+    );
+
+    const stamp = dailyMetricsPayload().total_calories_captured_at;
+    expect(stamp).toBeInstanceOf(Date);
+    expect(Math.abs((stamp as Date).getTime() - Date.now())).toBeLessThan(
+      60_000
+    );
+  });
+
+  it('keeps the value/stamp pair null together when Garmin sent no total', async () => {
+    // The gate advances only on a non-null value + non-null stamp pair, so a
+    // day without totalKilocalories must not push a bare stamp.
+    await processGarminHealthAndWellnessData(
+      'user-1',
+      'user-1',
+      { daily_summary: [{ date: '2026-08-01', bmr_calories: 2414 }] },
+      '2026-08-01',
+      '2026-08-01'
+    );
+
+    expect(upsertDailyHealthMetrics).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({
+        total_calories: null,
+        total_calories_captured_at: null,
+      })
+    );
   });
 });
 
