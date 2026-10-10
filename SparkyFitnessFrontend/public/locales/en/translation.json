@@ -2137,6 +2137,15 @@
         "perplexity": "Perplexity AI",
         "meta": "Meta",
         "custom": "Custom"
+      },
+      "reasoningEffort": {
+        "label": "Reasoning effort",
+        "low": "Low",
+        "medium": "Medium (recommended)",
+        "high": "High",
+        "xhigh": "Extra high",
+        "max": "Maximum",
+        "description": "Higher effort gives complex food and meal tasks more reasoning time and can increase response time and cost."
       }
     },
     "apiKeyManagement": {

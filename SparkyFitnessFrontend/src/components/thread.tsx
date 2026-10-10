@@ -24,7 +24,10 @@ import {
   ThreadPrimitive,
   useAuiState,
 } from '@assistant-ui/react';
-import type { AssistantRuntime } from '@assistant-ui/react';
+import type {
+  AssistantRuntime,
+  SourceMessagePartProps,
+} from '@assistant-ui/react';
 import { getThreadMessageTokenUsage } from '@assistant-ui/react-ai-sdk';
 import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
 import { ChatToolCategoriesSelector } from '@/components/ai/ChatToolCategoriesSelector';
@@ -326,6 +329,20 @@ export const SessionTokenUsage: FC = () => {
   );
 };
 
+const FoodResearchSource: FC<SourceMessagePartProps> = ({ url, title }) => {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block text-sm text-primary underline"
+    >
+      {title || url}
+    </a>
+  );
+};
+
 const AssistantMessage: FC = () => {
   return (
     <MessagePrimitive.Root
@@ -341,6 +358,7 @@ const AssistantMessage: FC = () => {
           components={{
             Text: MarkdownText,
             Reasoning: Reasoning,
+            Source: FoodResearchSource,
             tools: {
               by_name: {
                 [ASK_USER_TOOL_NAME]: AskUserToolUI,

@@ -19,7 +19,10 @@ describe('getModelOptions', () => {
 
   it('still returns the OpenAI list for openai (unchanged)', () => {
     const options = getModelOptions('openai');
-    expect(options[0]).toBe('gpt-4o-mini');
+    expect(options[0]).toBe('gpt-6-astra');
+    expect(options).toEqual(
+      expect.arrayContaining(['gpt-6.1-sol', 'gpt-6-sol', 'gpt-4o-mini'])
+    );
     expect(options.length).toBeGreaterThan(1);
   });
 

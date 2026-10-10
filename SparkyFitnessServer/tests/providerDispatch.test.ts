@@ -520,6 +520,47 @@ describe('dispatchAiRequest — preconditions', () => {
 });
 
 describe('dispatchAiRequest — text-only structured request shapes', () => {
+  it.each(['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-sol'])(
+    'uses Responses with strict structured output for %s',
+    async (model) => {
+      const m = mockFetch({
+        status: 'completed',
+        output: [
+          {
+            type: 'message',
+            content: [{ type: 'output_text', text: JSON.stringify(SAMPLE) }],
+          },
+        ],
+      });
+      const result = await dispatchAiRequest(
+        baseRequest({
+          provider: makeProvider({ model_name: model }),
+          temperature: 0,
+        })
+      );
+      const { url, body } = captured(m);
+      expect(url).toBe('https://api.openai.com/v1/responses');
+      expect(body.reasoning).toEqual({ effort: 'medium' });
+      expect(body.temperature).toBeUndefined();
+      expect(body.messages).toBeUndefined();
+      expect(body.text).toMatchObject({
+        format: { type: 'json_schema', name: SCHEMA_NAME, strict: true },
+      });
+      expect(result).toMatchObject({ ok: true, json: SAMPLE });
+    }
+  );
+
+  it('does not parse partial Responses output as a successful result', async () => {
+    mockFetch({
+      status: 'incomplete',
+      incomplete_details: { reason: 'max_output_tokens' },
+      output_text: JSON.stringify(SAMPLE),
+    });
+    const result = await dispatchAiRequest(
+      baseRequest({ provider: makeProvider({ model_name: 'gpt-6-astra' }) })
+    );
+    expect(result).toMatchObject({ ok: false, category: 'truncated' });
+  });
   it('openai sends strict json_schema with a strict-transformed schema', async () => {
     const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(baseRequest());
