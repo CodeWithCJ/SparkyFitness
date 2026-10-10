@@ -46,6 +46,9 @@ import { localizeImages, toImageArray } from '../utils/imageLocalizer.js';
 const MEAL_FOODS_SELECT = `
   SELECT mf.id, mf.meal_id, mf.food_id, mf.child_meal_id, mf.item_type,
          mf.variant_id, mf.quantity, mf.unit,
+         fv.source AS nutrition_source,
+         to_jsonb(mf) AS nutrition_snapshot,
+         fv.allergens, fv.traces, f.images,
          f.name AS food_name, f.brand,
          cm.name AS child_meal_name,
          cm.serving_size AS child_meal_serving_size,
@@ -144,10 +147,10 @@ function buildMealFoodValues(mealId: string) {
   };
 }
 // --- Meal Template CRUD Operations ---
-async function createMeal(mealData: MealInput) {
-  const client = await getClient(mealData.user_id); // User-specific operation
+async function createMeal(mealData: MealInput, transactionClient?: PoolClient) {
+  const client = transactionClient ?? (await getClient(mealData.user_id)); // User-specific operation
   try {
-    await client.query('BEGIN');
+    if (!transactionClient) await client.query('BEGIN');
     const mealResult = await client.query(
       `INSERT INTO meals (user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, notes, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, now(), now()) RETURNING id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, notes, created_at, updated_at`,
@@ -181,35 +184,36 @@ async function createMeal(mealData: MealInput) {
       );
       await client.query(mealFoodsQuery);
     }
-    await client.query('COMMIT');
+    if (!transactionClient) await client.query('COMMIT');
 
     // Pull any externally-hosted images local once the meal has an id. Runs
     // after COMMIT so network latency never holds the transaction open.
-    try {
-      const localizedImages = await localizeImages(
-        newMeal.images,
-        newMeal.id,
-        'meals'
-      );
-      if (localizedImages) {
-        await client.query(
-          'UPDATE meals SET images = $1::jsonb WHERE id = $2',
-          [JSON.stringify(localizedImages), newMeal.id]
+    if (!transactionClient)
+      try {
+        const localizedImages = await localizeImages(
+          newMeal.images,
+          newMeal.id,
+          'meals'
         );
-        newMeal.images = localizedImages;
+        if (localizedImages) {
+          await client.query(
+            'UPDATE meals SET images = $1::jsonb WHERE id = $2',
+            [JSON.stringify(localizedImages), newMeal.id]
+          );
+          newMeal.images = localizedImages;
+        }
+      } catch (imageError) {
+        // The meal is already committed; keep it and leave the remote URLs.
+        log('warn', 'Error localizing meal images:', imageError);
       }
-    } catch (imageError) {
-      // The meal is already committed; keep it and leave the remote URLs.
-      log('warn', 'Error localizing meal images:', imageError);
-    }
 
     return newMeal;
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (!transactionClient) await client.query('ROLLBACK');
     log('error', 'Error creating meal:', error);
     throw error;
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
 }
 async function getMeals(userId: string, filter = 'all') {
@@ -279,12 +283,17 @@ async function searchMeals(
     client.release();
   }
 }
-async function getMealById(mealId: string, userId: string) {
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
+async function getMealById(
+  mealId: string,
+  userId: string,
+  transactionClient?: PoolClient,
+  lock = true
+) {
+  const client = transactionClient ?? (await getClient(userId)); // User-specific operation (RLS will handle access)
   try {
     const mealResult = await client.query(
       `SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, notes, created_at, updated_at
-       FROM meals WHERE id = $1`,
+       FROM meals WHERE id = $1 ${transactionClient && lock ? 'FOR UPDATE' : ''}`,
       [mealId]
     );
     const meal = mealResult.rows[0];
@@ -293,17 +302,18 @@ async function getMealById(mealId: string, userId: string) {
     }
     return meal;
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
 }
 async function updateMeal(
   mealId: string,
   userId: string,
-  updateData: MealInput
+  updateData: MealInput,
+  transactionClient?: PoolClient
 ) {
-  const client = await getClient(userId); // User-specific operation
+  const client = transactionClient ?? (await getClient(userId)); // User-specific operation
   try {
-    await client.query('BEGIN');
+    if (!transactionClient) await client.query('BEGIN');
     const notesKeyPresent = Object.prototype.hasOwnProperty.call(
       updateData,
       'notes'
@@ -365,34 +375,50 @@ async function updateMeal(
         await client.query(mealFoodsQuery);
       }
     }
-    await client.query('COMMIT');
+    if (!transactionClient) await client.query('COMMIT');
     return updatedMeal;
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (!transactionClient) await client.query('ROLLBACK');
     log('error', `Error updating meal ${mealId}:`, error);
     throw error;
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
 }
-async function deleteMeal(mealId: string, userId: string) {
-  const client = await getClient(userId); // User-specific operation
+async function deleteMeal(
+  mealId: string,
+  userId: string,
+  transactionClient?: PoolClient
+) {
+  const client: PoolClient = transactionClient ?? (await getClient(userId));
   try {
-    await client.query('BEGIN');
+    if (!transactionClient) await client.query('BEGIN');
     // meal_foods will be cascade deleted due to ON DELETE CASCADE on meal_id
     const result = await client.query(
       'DELETE FROM meals WHERE id = $1 RETURNING id',
       [mealId]
     );
-    await client.query('COMMIT');
-    return result.rowCount > 0;
+    if (!transactionClient) await client.query('COMMIT');
+    return (result.rowCount ?? 0) > 0;
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (!transactionClient) await client.query('ROLLBACK');
     log('error', `Error deleting meal ${mealId}:`, error);
     throw error;
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
+}
+
+async function recipeHasDependants(
+  client: PoolClient,
+  mealId: string
+): Promise<boolean> {
+  const result = await client.query<{ used: boolean }>(
+    'SELECT public.assistant_recipe_has_dependants($1) AS used',
+    [mealId]
+  );
+  // A failed/malformed check must never permit a cascading delete.
+  return result.rows[0]?.used !== false;
 }
 // --- Meal Plan CRUD Operations ---
 async function createMealPlanEntry(planData: MealPlanInput) {
@@ -1069,6 +1095,7 @@ export { getMeals };
 export { getMealById };
 export { updateMeal };
 export { deleteMeal };
+export { recipeHasDependants };
 export { createMealPlanEntry };
 export { getMealPlanEntries };
 export { getMealPlanEntryById };
@@ -1098,6 +1125,7 @@ export default {
   getMealById,
   updateMeal,
   deleteMeal,
+  recipeHasDependants,
   createMealPlanEntry,
   getMealPlanEntries,
   getMealPlanEntryById,

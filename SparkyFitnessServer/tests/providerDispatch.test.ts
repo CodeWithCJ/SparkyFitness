@@ -520,6 +520,47 @@ describe('dispatchAiRequest — preconditions', () => {
 });
 
 describe('dispatchAiRequest — text-only structured request shapes', () => {
+  it.each(['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-sol'])(
+    'uses Responses with strict structured output for %s',
+    async (model) => {
+      const m = mockFetch({
+        status: 'completed',
+        output: [
+          {
+            type: 'message',
+            content: [{ type: 'output_text', text: JSON.stringify(SAMPLE) }],
+          },
+        ],
+      });
+      const result = await dispatchAiRequest(
+        baseRequest({
+          provider: makeProvider({ model_name: model }),
+          temperature: 0,
+        })
+      );
+      const { url, body } = captured(m);
+      expect(url).toBe('https://api.openai.com/v1/responses');
+      expect(body.reasoning).toEqual({ effort: 'medium' });
+      expect(body.temperature).toBeUndefined();
+      expect(body.messages).toBeUndefined();
+      expect(body.text).toMatchObject({
+        format: { type: 'json_schema', name: SCHEMA_NAME, strict: true },
+      });
+      expect(result).toMatchObject({ ok: true, json: SAMPLE });
+    }
+  );
+
+  it('does not parse partial Responses output as a successful result', async () => {
+    mockFetch({
+      status: 'incomplete',
+      incomplete_details: { reason: 'max_output_tokens' },
+      output_text: JSON.stringify(SAMPLE),
+    });
+    const result = await dispatchAiRequest(
+      baseRequest({ provider: makeProvider({ model_name: 'gpt-6-astra' }) })
+    );
+    expect(result).toMatchObject({ ok: false, category: 'truncated' });
+  });
   it('openai sends strict json_schema with a strict-transformed schema', async () => {
     const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(baseRequest());
@@ -535,9 +576,9 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     expect(rf.json_schema.strict).toBe(true);
     // Strict transform: additionalProperties:false everywhere, propertyOrdering gone.
     expect(rf.json_schema.schema.additionalProperties).toBe(false);
-    expect(rf.json_schema.schema.properties?.nested?.additionalProperties).toBe(
-      false
-    );
+    expect(rf.json_schema.schema.properties?.nested).toMatchObject({
+      additionalProperties: false,
+    });
     expect(rf.json_schema.schema.propertyOrdering).toBeUndefined();
     // Text-only: content is a plain string, not an array of blocks.
     const messages = body.messages as Array<{ content: unknown }>;
@@ -792,9 +833,9 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     expect(tools[0].name).toBe(SCHEMA_NAME);
     expect(tools[0].strict).toBe(true);
     expect(tools[0].input_schema.additionalProperties).toBe(false);
-    expect(tools[0].input_schema.properties?.nested?.additionalProperties).toBe(
-      false
-    );
+    expect(tools[0].input_schema.properties?.nested).toMatchObject({
+      additionalProperties: false,
+    });
   });
 
   it('ollama asks for JSON and carries the schema in the prompt', async () => {
@@ -1761,10 +1802,48 @@ describe('dispatchAiRequest — 429 rate-limit retry', () => {
 });
 
 describe('toStrictJsonSchema', () => {
+  it('strictly transforms nested unions, definitions and tuple items while retaining boolean schemas', () => {
+    const strict = toStrictJsonSchema({
+      type: 'object',
+      properties: {
+        choice: {
+          anyOf: [
+            {
+              type: 'object',
+              properties: { allowed: true },
+              propertyOrdering: ['allowed'],
+            },
+            { type: 'null' },
+          ],
+        },
+        list: {
+          type: 'array',
+          items: [{ type: ['object', 'null'], properties: {} }, false],
+        },
+      },
+      $defs: { nested: { type: 'object', properties: {} } },
+    });
+    expect(strict).toMatchObject({
+      additionalProperties: false,
+      properties: {
+        choice: {
+          anyOf: [
+            { additionalProperties: false, properties: { allowed: true } },
+            { type: 'null' },
+          ],
+        },
+        list: { items: [{ additionalProperties: false }, false] },
+      },
+      $defs: { nested: { additionalProperties: false } },
+    });
+    expect(JSON.stringify(strict)).not.toContain('propertyOrdering');
+  });
   it('adds additionalProperties:false to every object node and strips propertyOrdering', () => {
     const strict = toStrictJsonSchema(SCHEMA);
     expect(strict.additionalProperties).toBe(false);
-    expect(strict.properties?.nested?.additionalProperties).toBe(false);
+    expect(strict.properties?.nested).toMatchObject({
+      additionalProperties: false,
+    });
     expect(strict.propertyOrdering).toBeUndefined();
   });
 

@@ -1,5 +1,6 @@
 import { Tool } from 'ai';
 import { z } from 'zod';
+import { normalizeToolInput } from '../../utils/toolInputNormalization.js';
 import {
   CHAT_TOOL_CATEGORY_SLUGS,
   CORE_CHAT_TOOL_CATEGORY_SLUGS,
@@ -25,6 +26,10 @@ import { buildBarcodeTools } from './barcodeTools.js';
 import { buildDashboardTools } from './dashboardTools.js';
 import { buildFavoritesTools } from './favoritesTools.js';
 import { buildFoodTools } from './foodTools.js';
+import { buildFoodAssistantTools } from './foodAssistantTools.js';
+import { buildRecipeTools } from './recipeTools.js';
+import { buildDiaryTools } from './diaryTools.js';
+import { buildFoodPlanningTools } from './foodPlanningTools.js';
 import { buildGoalTools } from './goalTools.js';
 import { buildHabitTools } from './habitTools.js';
 import { buildMealPlanTools } from './mealPlansTools.js';
@@ -63,6 +68,8 @@ type ToolMap = Record<string, Tool>;
  * and logged verbatim); every other builder ignores the argument.
  */
 export interface ToolBuildContext {
+  /** Trusted text from the current user turn, used to authorize lasting memory. */
+  latestUserText?: string;
   foodPhotoEstimateSink?: FoodPhotoEstimateSink;
   /**
    * The image attached to this turn, as a data URL.
@@ -76,6 +83,8 @@ export interface ToolBuildContext {
   latestImageDataUrl?: string | null;
   /** The active AI service config ID from the current chat session, if known. */
   serviceConfigId?: string | null;
+  /** Provider-executed web research, offered within the food category only. */
+  foodResearchTool?: Tool;
 }
 
 const CATEGORY_BUILDERS: Record<
@@ -88,7 +97,13 @@ const CATEGORY_BUILDERS: Record<
     (u, tz) => buildWorkoutPlanTools(u, tz),
   ],
   food: [
+    (_u, _tz, ctx): ToolMap =>
+      ctx?.foodResearchTool ? { web_search: ctx.foodResearchTool } : {},
     (u, tz) => buildFoodTools(u, tz),
+    (u, _tz, ctx) => buildFoodAssistantTools(u, ctx),
+    (u, _tz, ctx) => buildRecipeTools(u, ctx),
+    (u, _tz, ctx) => buildDiaryTools(u, ctx),
+    (u, tz, ctx) => buildFoodPlanningTools(u, tz, ctx),
     (u, tz) => buildFavoritesTools(u, tz),
     (u, tz) => buildMealPlanTools(u, tz),
     (u, tz) => buildCustomNutrientTools(u, tz),
@@ -204,26 +219,6 @@ function composeAllToolsWithIndex(
   return { tools, toolNamesByCategory };
 }
 
-// Recursively drops null-valued keys so a model that emits an optional field
-// as `null` (small local models do this constantly) doesn't trip the AI SDK's
-// pre-execute input validation, which rejects null against `.optional()` and
-// surfaces a raw "Type validation failed" the model rarely recovers from. The
-// MCP surface does the same via stripNulls() in routes/mcpRoutes.ts before it
-// reaches the tool, so this is the chat-path equivalent.
-function stripNullValues(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(stripNullValues);
-  }
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
-    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
-      if (val !== null) out[key] = stripNullValues(val);
-    }
-    return out;
-  }
-  return value;
-}
-
 // Applies chat-provider tuning that only matters when the tools are sent to an
 // LLM provider through the AI SDK. The MCP surface skips this — MCP publishes
 // the schemas over JSON-RPC where strict-mode flags and Anthropic cache
@@ -236,9 +231,10 @@ function applyChatProviderTuning(tools: ToolMap): void {
   for (const name of Object.keys(tools)) {
     const t = tools[name] as Tool & { inputSchema?: unknown };
     if (t.inputSchema) {
+      const schema = t.inputSchema as z.ZodType;
       t.inputSchema = z.preprocess(
-        stripNullValues,
-        t.inputSchema as z.ZodType
+        (value) => normalizeToolInput(value, schema),
+        schema
       ) as unknown as typeof t.inputSchema;
     }
   }

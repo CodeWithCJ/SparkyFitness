@@ -170,14 +170,14 @@ const createFoodSchema = z
     action: z
       .literal('create_food')
       .describe(
-        "Create a food. AI clients: you MUST search the web and populate as many micro-nutrients (fat details, fiber, sugar, sodium, potassium, calcium, iron, vitamins), GI classification, and brand ('Homemade' or 'Traditional' if generic) as possible rather than just core macros."
+        'Create a food from verified label/source values or an explicitly requested estimate. Preserve unknown nutrients as omitted fields; never invent micros or use an estimate to hide a provider outage.'
       ),
     food_name: z
       .string()
       .min(1)
       .max(200)
       .describe(
-        'Short, concise food name (2-4 words max, e.g. "Chicken Burrito", "Greek Salad"). Do NOT write sentences or full visual descriptions in food_name.'
+        'Exact product or recipe name, preserving brand, variety and raw/cooked distinctions.'
       ),
     brand: z.string().max(200).optional().describe('Brand name of the food'),
     barcode: foodBarcodeSchema
@@ -197,105 +197,105 @@ const createFoodSchema = z
       .min(0)
       .optional()
       .describe(
-        'Saturated fat (g). MANDATORY: Estimate and populate this if total fat > 0 based on typical profile (e.g. animal fats vs plant oils); do not default to 0/empty.'
+        'Saturated fat (g). Include only when supported by the source; omit when unknown.'
       ),
     polyunsaturated_fat: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Polyunsaturated fat (g). MANDATORY: Estimate and populate this if total fat > 0 based on typical profile; do not default to 0/empty.'
+        'Polyunsaturated fat (g). Include only when supported by the source; omit when unknown.'
       ),
     monounsaturated_fat: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Monounsaturated fat (g). MANDATORY: Estimate and populate this if total fat > 0 based on typical profile; do not default to 0/empty.'
+        'Monounsaturated fat (g). Include only when supported by the source; omit when unknown.'
       ),
     trans_fat: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Trans fat (g). MANDATORY: Estimate and populate this if total fat > 0 based on typical profile; do not default to 0/empty.'
+        'Trans fat (g). Include only when supported by the source; omit when unknown.'
       ),
     cholesterol: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Cholesterol (mg). MANDATORY: Estimate and populate this if food is animal-based or has fat; do not default to 0/empty.'
+        'Cholesterol (mg). Include only when supported by the source; omit when unknown.'
       ),
     sodium: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Sodium (mg). MANDATORY: Estimate and populate based on food type and processing; do not default to 0/empty.'
+        'Sodium (mg). Include only when supported by the source; omit when unknown.'
       ),
     potassium: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Potassium (mg). MANDATORY: Estimate and populate based on typical food composition; do not default to 0/empty.'
+        'Potassium (mg). Include only when supported by the source; omit when unknown.'
       ),
     fiber: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Dietary fiber (g). MANDATORY: Estimate and populate if plant-based or contains carbs; do not default to 0/empty.'
+        'Dietary fiber (g). Include only when supported by the source; omit when unknown.'
       ),
     sugar: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Sugars (g). MANDATORY: Estimate and populate if food contains carbs; do not default to 0/empty.'
+        'Sugars (g). Include only when supported by the source; omit when unknown.'
       ),
     vitamin_a: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Vitamin A (% Daily Value). MANDATORY: Estimate and populate based on typical food composition; do not default to 0/empty.'
+        'Vitamin A (% Daily Value). Include only when supported by the source; omit when unknown.'
       ),
     vitamin_c: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Vitamin C (% Daily Value). MANDATORY: Estimate and populate based on typical food composition; do not default to 0/empty.'
+        'Vitamin C (% Daily Value). Include only when supported by the source; omit when unknown.'
       ),
     calcium: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Calcium (% Daily Value). MANDATORY: Estimate and populate based on typical food composition; do not default to 0/empty.'
+        'Calcium (% Daily Value). Include only when supported by the source; omit when unknown.'
       ),
     iron: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Iron (% Daily Value). MANDATORY: Estimate and populate based on typical food composition; do not default to 0/empty.'
+        'Iron (% Daily Value). Include only when supported by the source; omit when unknown.'
       ),
     caffeine_mg: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Caffeine (mg) per serving_size. MANDATORY: Estimate and populate for coffee, tea, soda, energy drinks, and chocolate; do not default to 0/empty.'
+        'Caffeine (mg) per serving_size. Include only when supported by the source; omit when unknown.'
       ),
     alcohol_g: z.coerce
       .number()
       .min(0)
       .optional()
       .describe(
-        'Alcohol / pure ethanol (g) per serving_size. MANDATORY: Estimate and populate for beer, wine, and spirits. Informational only — calories already include ethanol calories, so this is never added to the calorie total.'
+        'Alcohol / pure ethanol (g) per serving_size. Include only when supported by the source; omit when unknown.'
       ),
     water_ml: z.coerce
       .number()
@@ -307,7 +307,7 @@ const createFoodSchema = z
     gi: giIndexEnum
       .optional()
       .describe(
-        'Glycemic Index classification. MANDATORY: Classify as low, medium, or high based on carb composition.'
+        'Glycemic Index classification. Include only when supported by the source; omit when unknown.'
       ),
     quantity: z.coerce
       .number()

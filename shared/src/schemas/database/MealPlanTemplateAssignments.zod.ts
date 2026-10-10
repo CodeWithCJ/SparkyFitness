@@ -17,6 +17,10 @@ const foodVariantsIdSchema = z.any();
 
 const mealTypesIdSchema = z.any();
 
+// Unrestricted PostgreSQL numeric retains fractional portions without rounding
+// to two decimal places (20261009003000_food_assistant_plan_dependencies).
+const quantitySchema = z.number().finite();
+
 export const mealPlanTemplateAssignmentsSchema = z.object({
   id: mealPlanTemplateAssignmentsIdSchema,
   template_id: mealPlanTemplatesIdSchema,
@@ -25,7 +29,7 @@ export const mealPlanTemplateAssignmentsSchema = z.object({
   item_type: z.string(),
   food_id: foodsIdSchema.nullable(),
   variant_id: foodVariantsIdSchema.nullable(),
-  quantity: z.number().nullable(),
+  quantity: quantitySchema.nullable(),
   unit: z.string().nullable(),
   meal_type_id: mealTypesIdSchema,
 });
@@ -38,7 +42,7 @@ export const mealPlanTemplateAssignmentsInitializerSchema = z.object({
   item_type: z.string().optional(),
   food_id: foodsIdSchema.optional().nullable(),
   variant_id: foodVariantsIdSchema.optional().nullable(),
-  quantity: z.number().optional().nullable(),
+  quantity: quantitySchema.optional().nullable(),
   unit: z.string().optional().nullable(),
   meal_type_id: mealTypesIdSchema,
 });
@@ -51,7 +55,7 @@ export const mealPlanTemplateAssignmentsMutatorSchema = z.object({
   item_type: z.string().optional(),
   food_id: foodsIdSchema.optional().nullable(),
   variant_id: foodVariantsIdSchema.optional().nullable(),
-  quantity: z.number().optional().nullable(),
+  quantity: quantitySchema.optional().nullable(),
   unit: z.string().optional().nullable(),
   meal_type_id: mealTypesIdSchema.optional(),
 });

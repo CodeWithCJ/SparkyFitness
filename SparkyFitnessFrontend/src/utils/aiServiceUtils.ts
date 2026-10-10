@@ -39,8 +39,8 @@ export const requiresApiKey = (serviceType: string | undefined): boolean =>
   serviceType !== 'openai_compatible' &&
   serviceType !== 'custom';
 
-// The first entry in each list is the recommended default — the cheapest model
-// that handles SparkyFitness's tasks well. Keep that ordering when refreshing,
+// The first entry in each list is the recommended default. OpenAI prioritizes
+// food/meal reasoning quality; cheaper models remain selectable. Keep the ordering,
 // since ServiceForm surfaces modelOptions[0] as the recommendation.
 export const getModelOptions = (serviceType: string): string[] => {
   switch (serviceType) {
@@ -49,6 +49,9 @@ export const getModelOptions = (serviceType: string): string[] => {
       // detects that and omits the parameter (ai/modelCapabilities.ts), so
       // they are safe to offer here.
       return [
+        'gpt-6-astra',
+        'gpt-6.1-sol',
+        'gpt-6-sol',
         'gpt-4o-mini',
         'gpt-5.6-luna',
         'gpt-5.6-terra',

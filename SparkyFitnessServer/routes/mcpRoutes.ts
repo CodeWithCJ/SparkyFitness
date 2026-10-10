@@ -1,4 +1,7 @@
 import express from 'express';
+import { z } from 'zod';
+import { buildChatbotTools } from '../ai/tools/index.js';
+import { normalizeToolInput } from '../utils/toolInputNormalization.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import {
@@ -93,34 +96,6 @@ const mcpContextCache = new TtlCache<{
 const SERVER_VERSION = versionService.getAppVersion();
 
 /**
- * Recursively strips keys with null values from an object or array.
- * This is used to normalize optional parameters sent as null by LLM clients
- * (e.g. start_date: null) into undefined (omitted) so they satisfy Zod's .optional() validation.
- */
-function stripNulls(val: unknown): unknown {
-  if (Array.isArray(val)) {
-    return val.map((item: unknown) =>
-      item && typeof item === 'object' ? stripNulls(item) : item
-    );
-  }
-  if (val && typeof val === 'object') {
-    const obj = val as Record<string, unknown>;
-    const clean: Record<string, unknown> = {};
-    for (const key of Object.keys(obj)) {
-      const cleanedVal = obj[key];
-      if (cleanedVal !== null) {
-        clean[key] =
-          cleanedVal && typeof cleanedVal === 'object'
-            ? stripNulls(cleanedVal)
-            : cleanedVal;
-      }
-    }
-    return clean;
-  }
-  return val;
-}
-
-/**
  * Stateless StreamableHTTP MCP endpoint; auth has already run by here.
  *
  * Scope to authenticatedUserId (the logged-in actor) to match the in-process
@@ -154,6 +129,7 @@ router.post('/', async (req, res) => {
       }
     );
 
+    const tools = buildChatbotTools(userId, tz, profile, false);
     // Normalize null arguments to undefined (omitted) for tools/call requests.
     // This prevents validation errors (MCP -32602) on optional schema fields.
     if (req.body) {
@@ -168,7 +144,10 @@ router.post('/', async (req, res) => {
           r.params.arguments &&
           typeof r.params.arguments === 'object'
         ) {
-          r.params.arguments = stripNulls(r.params.arguments);
+          const schema = tools[r.params.name]?.inputSchema;
+          if (schema instanceof z.ZodType) {
+            r.params.arguments = normalizeToolInput(r.params.arguments, schema);
+          }
         }
       }
     }

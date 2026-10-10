@@ -4,6 +4,8 @@ Family & Friends Sharing in SparkyFitness allows you to connect with family memb
 
 The system is built with **least-privilege boundary isolation** using PostgreSQL Row-Level Security (RLS), ensuring that your private credentials and account settings are never shared.
 
+AI service model and reasoning settings remain private to their owner. An administrator can publish a shared configuration; family diary access does not grant access to personal AI credentials or settings.
+
 ---
 
 ## How to Set Up Sharing
@@ -44,6 +46,8 @@ Certain tables contain private user data that is **never** accessible to any fam
 * API Keys (`api_key` table)
 * OIDC SSO Connections (`user_oidc_links` table)
 * Personal AI Assistant Chat History (`sparky_chat_history` table)
+* Lasting food preferences, food task drafts, shopping checklists and their operation history (`food_assistant_preferences`, `food_assistant_tasks`, `food_assistant_operations`). These belong to the signed-in person and are never delegated while viewing a family diary. Assistant meal-plan publication and undo also act only on that person’s templates and scheduled diary. A dependency check can refuse undo when another person references a template, without exposing their rows or identity.
+  Recipe drafts and source evidence follow this same rule. Published recipes retain the normal food-library sharing permissions. Undoing a recipe creation checks references across all users and refuses to remove a recipe used in someone else's diary, plans, recipes or favorites.
 * Personal Fasting Preferences and auto-calculation configuration (`user_fasting_preferences` table)
 * Cycle & Pregnancy hub data (`cycle_settings`, `cycle_daily_entries`, `cycles`, `user_cycle_display_preferences`, `cycle_test_entries`, `pregnancies`, `pregnancy_kick_sessions`, `pregnancy_contractions`, `pregnancy_photos`, `pregnancy_checklist_state`, `health_appointments` tables) — this reproductive-health data is **never** shared or delegated, even with `can_view_reports`. It is strictly owner-only. Bump photo *files* are owner-only too: they are excluded from the public uploads URLs and can only be fetched through an authenticated request by their owner.
 

@@ -181,6 +181,9 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | Table | Purpose |
 |-------|---------|
 | `sparky_chat_history` | AI Assistant chat messages and history |
+| `food_assistant_preferences` | Explicit lasting food preferences, independently editable and forgettable |
+| `food_assistant_tasks` | Versioned food tasks, recoverable recipe ingredients and source evidence |
+| `food_assistant_operations` | Idempotent task operations and before/after checkpoints |
 | `ai_service_settings` | User-defined custom assistant configurations |
 
 ### Admin & System (Tier 1: Admin-Only or Public)
@@ -400,6 +403,10 @@ WHERE tablename = 'table_name';
 ```
 
 ---
+
+## Food Assistant Recipe State
+
+Food-assistant tasks include an immutable `origin` describing the original saved recipe, URL/card or image digest. Editable checkpoints retain unresolved ingredients and their original yield. Recipe publication and undo share the task operation transaction with domain writes and readback. The owner-checked `assistant_recipe_has_dependants(uuid)` helper returns only a dependency boolean across all users, preventing cascading deletion during undo.
 
 ## Database Maintenance
 

@@ -98,7 +98,8 @@
     "notNow": "Not now",
     "undo": "Undo",
     "all": "All",
-    "builtIn": "Built-in"
+    "builtIn": "Built-in",
+    "refresh": "Refresh"
   },
   "settings": {
     "app": "App Settings",
@@ -6106,5 +6107,31 @@
       "resume": "Resume",
       "finishAndSave": "Finish & Save"
     }
+  },
+  "foodAssistant": {
+    "shoppingList": "Shopping list",
+    "shoppingItem": "{{quantity}} {{unit}} {{name}}",
+    "state": "Food preferences and tasks",
+    "error": "Could not update assistant state. Refresh to read the latest version.",
+    "memoryHelp": "Lasting food preferences are saved separately from chat history. A request for today can override them without changing them.",
+    "preference": "Preference",
+    "forget": "Forget",
+    "noPreferences": "No saved food preferences.",
+    "resume": "Resume in chat",
+    "noTasks": "No saved food tasks.",
+    "status": {
+      "draft": "Draft",
+      "running": "In progress",
+      "awaiting_input": "Needs input",
+      "complete": "Complete",
+      "cancelled": "Cancelled",
+      "failed": "Failed"
+    },
+    "ingredient": {
+      "unresolved": "Needs matching",
+      "selected": "Selected",
+      "verified": "Verified"
+    },
+    "resumePrompt": "Resume food task {{id}}. Read its current checkpoint and continue the remaining work."
   }
 }
