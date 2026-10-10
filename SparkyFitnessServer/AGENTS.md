@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-07_
+_Last updated: 2026-10-09_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -55,6 +55,16 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - For targeted test runs, prefer `pnpm exec vitest run tests/<name>.test.ts`
 
 ## Source Map
+
+- Food assistant state: owner-only preferences, recoverable tasks and operation history use `FoodAssistant.api.zod.ts` / `FoodAssistant.zod.ts` in shared. Server: `routes/v2/foodAssistantRoutes.ts`, `services/foodAssistantService.ts`, `models/foodAssistantRepository.ts`, `ai/tools/foodAssistantTools.ts`. Diary: `ai/tools/diaryTools.ts`, `services/foodAssistantDiaryService.ts` and `models/foodAssistantDiaryRepository.ts` implement actor-owned, atomic diary changes with full snapshot fingerprints, linked-water propagation and conflict-safe undo. Recipes: `ai/tools/recipeTools.ts`, `services/foodAssistantRecipeService.ts` and `services/recipeImageService.ts` implement resumable source imports, exact provider portions, atomic publication/readback and conflict-safe undo. Web: `src/components/ai/FoodAssistantState.tsx`, `src/api/Chatbot/foodAssistantService.ts`.
+
+- Food library publication: `ai/tools/foodLibraryTools.ts`, `services/foodAssistantLibraryService.ts` and `models/foodAssistantLibraryRepository.ts` handle verified food/variant drafts, full readback and guarded undo. Variant dependency checks use the variant ID independently of a snapshot's food ID; queued Open Food Facts contribution state blocks food undo. `food_entries_variant_id_fkey` is deliberately NOT VALID to enforce new references and concurrent-delete locking without rewriting legacy snapshots. `models/foodSnapshotReferenceRepository.ts` uses SELECT-only source inspection and detaches unavailable links only on new diary copies; their INSERT foreign key handles concurrent-delete locking. `utils/ownedSnapshotWriter.ts` preserves catalog-defined metadata and insert defaults for both library and diary snapshots.
+
+- Nutrition analysis: `ai/tools/foodAnalysisTools.ts`, `services/foodAssistantAnalysisService.ts` and `models/foodAssistantAnalysisRepository.ts` capture owner-only historical diary evidence with missing-data coverage, calendar goals before exercise adjustments (explicit `goal_basis`) and period comparisons. Completed results and audits must match explicit in-transaction readback. Full-profile food turns allow 48 steps/15 minutes; other turns retain their existing bounds.
+
+- Unlinked diary copies: `20261009020000_allow_unlinked_food_snapshot_copies.sql` and canonical INSERT RLS permit self-contained snapshots with null food/meal/variant links under existing diary access. Copy preparation uses SELECT-only checks for both parent foods and servings, detaching inaccessible or deleted sources and independent legacy serving links without changing the historical source.
+
+- Saved recipe quantities: `utils/savedMealIngredientQuantity.ts` distinguishes explicit zero from missing/invalid quantities. Recipe reads preserve zero rows; expansion keeps them in the source but adds only positive quantities to consumed foods. Editing drafts retain zero rows as unresolved with their original quantity in evidence. Recipe schema failures are validation errors rather than database errors; unexpected recipe tool failures log their action and diagnostic.
 
 - `index.ts` - real dev entrypoint; loads env, secrets, and preflight checks before booting the app
 - `SparkyFitnessServer.ts` - Express app shell, route mounting, Swagger/ReDoc, startup, graceful shutdown
@@ -224,6 +234,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - **OAuth linking (`/authorize`, `/callback`) is self-only, and `state` is a server-issued single-use nonce.** Never derive a user id from a callback request body, and never gate an authorize route with `checkPermissionMiddleware('diary')` — on GET that resolves to `diary_read`, which would hand a read-only delegate the owner's decrypted OAuth client id. Use `requireSelfActor` plus `utils/oauthState.ts`. Withings and Polar follow this pattern; Oura, Fitbit and Strava are self-only but still send `state = userId` and ignore it on callback (tracked follow-up)
 
 ### AI Services
+
+- Verified meal plans and shopping: `foodAssistantPlanService.ts` / `foodAssistantPlanRepository.ts` publish templates and future diary in the task transaction; `foodAssistantShoppingService.ts` aggregates captured portions and persists editable lists. `utils/savedMealExpansion.ts` resolves all nested recipes for plans and diary logging, retaining recorded unknown nutrients. `ai/tools/foodPlanningTools.ts` and the owner-only `/api/v2/food-assistant/planning/` routes expose these actions. Undo dependency checks use `assistant_plan_has_external_dependants(uuid)` with the authenticated actor's owner gate.
 
 - AI calls go through the Vercel `ai` SDK (v6) with provider adapters for OpenAI, Anthropic, and Google, plus OpenAI-compatible, Mistral, Groq, OpenRouter, and Ollama service types
 - `ai/config.ts` holds default model and vision-model selection per provider; `ai/providerDispatch.ts` is the unified dispatch helper used by chat, food-photo analysis, nutrition-label scan, and unit conversion

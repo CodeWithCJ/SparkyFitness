@@ -6,6 +6,7 @@ import type { UIMessageChunk } from 'ai';
 import chatService, {
   mapUsageToMetadata,
   buildChatStopConditions,
+  extractLatestImageDataUrl,
 } from '../services/chatService.js';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import chatRepository from '../models/chatRepository.js';
@@ -78,6 +79,30 @@ vi.mock('@ai-sdk/openai', () => ({
   ),
 }));
 describe('chatService', () => {
+  it('does not attach an earlier image to a later text-only request', () => {
+    const earlier = {
+      role: 'user',
+      parts: [{ type: 'image', image: 'data:image/png;base64,old' }],
+    };
+    expect(
+      extractLatestImageDataUrl([
+        earlier,
+        { role: 'user', content: 'Import this recipe' },
+      ])
+    ).toBeNull();
+    expect(
+      extractLatestImageDataUrl([
+        earlier,
+        { role: 'user', parts: [{ type: 'text', text: 'Import this recipe' }] },
+      ])
+    ).toBeNull();
+    expect(
+      extractLatestImageDataUrl([
+        earlier,
+        { role: 'assistant', content: 'Ready' },
+      ])
+    ).toBe('data:image/png;base64,old');
+  });
   const mockUserId = 'user-123';
   const mockTargetUserId = 'user-456';
   beforeEach(() => {
@@ -652,7 +677,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 33\/54 active tools for chatbot \(profile=core/
+          /Loaded 39\/60 active tools for chatbot \(profile=core/
         )
       );
       // The core profile is the mitigation, so no context-window warning.
@@ -734,7 +759,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 54\/54 active tools for chatbot \(profile=full/
+          /Loaded 60\/60 active tools for chatbot \(profile=full/
         )
       );
       // Ollama + full profile is the risky combo, so warn about the 4096 default.
@@ -767,7 +792,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 54\/54 active tools for chatbot \(profile=full/
+          /Loaded 60\/60 active tools for chatbot \(profile=full/
         )
       );
     });
@@ -795,7 +820,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 54\/54 active tools for chatbot \(profile=full/
+          /Loaded 60\/60 active tools for chatbot \(profile=full/
         )
       );
       // The context-window warning is Ollama-only; cloud providers never see it.
@@ -1058,6 +1083,23 @@ describe('chatService', () => {
   // echoed tool result feeds straight back and the model answers its own
   // question instead of waiting for the user's tap.
   describe('buildChatStopConditions', () => {
+    it('gives full food workflows enough steps for source research and publication while bounding local loops', () => {
+      const check = (
+        profile: 'full' | 'core',
+        food: boolean,
+        count: number
+      ) => {
+        const [stop] = buildChatStopConditions(profile, food);
+        return stop({
+          steps: Array.from({ length: count }, () => ({ toolCalls: [] })),
+        } as unknown as Parameters<typeof stop>[0]);
+      };
+      expect(check('full', true, 15)).toBe(false);
+      expect(check('full', true, 47)).toBe(false);
+      expect(check('full', true, 48)).toBe(true);
+      expect(check('full', false, 15)).toBe(true);
+      expect(check('core', true, 8)).toBe(true);
+    });
     const askCallStep = {
       steps: [{ toolCalls: [{ toolName: ASK_USER_TOOL_NAME }] }],
     };

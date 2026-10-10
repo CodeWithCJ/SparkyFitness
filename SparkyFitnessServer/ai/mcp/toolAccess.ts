@@ -59,6 +59,12 @@ export const MCP_TOOL_READ_ACCESS: Readonly<Record<string, ToolReadAccess>> = {
   sparky_get_food_usage: 'read',
   sparky_manage_favorites: ['list_favorites'],
   sparky_manage_meal_plans: ['list_meal_plans', 'get_meal_plan'],
+  sparky_food_assistant_state: ['list_preferences', 'list_tasks', 'get_task'],
+  sparky_manage_recipes: ['get_recipe', 'preview_recipe'],
+  sparky_manage_diary: ['inspect'],
+  sparky_food_planning: ['inspect_plan', 'preview_plan'],
+  sparky_food_library: ['inspect_food', 'preview_food'],
+  sparky_food_analysis: ['analyze'],
   sparky_manage_custom_nutrients: [
     'list_custom_nutrients',
     'get_custom_nutrient',

@@ -60,7 +60,7 @@ export function buildMealPlanTools(userId: string, tz: string) {
 
 This tool takes a FLAT object with an "action" field. Do NOT nest fields under the action name.
 
-Authoring a plan's day-by-day assignments is done in the app UI, not here.
+Use sparky_food_planning to author, edit, schedule or undo verified assignments and to create shopping lists. Its task publication keeps the entire schedule and audit in one transaction.
 
 Actions:
 - action: 'list_meal_plans' — returns every saved meal plan template (name, active state, assignment count, ID)

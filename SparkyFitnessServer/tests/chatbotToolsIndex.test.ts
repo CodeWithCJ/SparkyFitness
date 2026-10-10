@@ -2,6 +2,8 @@ import { vi, describe, expect, it } from 'vitest';
 import { buildChatbotTools, buildChatToolSurface } from '../ai/tools/index.js';
 import { ENABLE_TOOLS_TOOL_NAME } from '../ai/tools/metaTools.js';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { z } from 'zod';
+import { randomUUID } from 'node:crypto';
 
 // Loading the real foodEntryService trips on a deep '@workspace/shared'
 // subpath import; the registry surface test never executes handlers.
@@ -14,6 +16,12 @@ vi.mock('../config/logging', () => ({
 // (sparky_inspect_schema, sparky_get_user_info, sparky_get_db_stats),
 // which are intentionally not ported.
 const EXPECTED_TOOLS = [
+  'sparky_food_assistant_state',
+  'sparky_manage_recipes',
+  'sparky_manage_diary',
+  'sparky_food_planning',
+  'sparky_food_library',
+  'sparky_food_analysis',
   'sparky_analyze_food_image',
   'sparky_analyze_trends',
   'sparky_check_engagement',
@@ -66,7 +74,7 @@ const EXPECTED_TOOLS = [
   'sparky_scan_label',
   'sparky_search_exercises',
   'sparky_search_foods',
-];
+].sort();
 
 // The 'core' profile (used for Ollama and other small/local models): the
 // food, exercise, and measurement logging the system prompt centers on, plus
@@ -76,6 +84,12 @@ const EXPECTED_TOOLS = [
 // helpers (favorites, meal plans, water containers, workout plans, progress
 // photos, sleep science, etc.) since those now live inside those categories.
 const EXPECTED_CORE_TOOLS = [
+  'sparky_food_assistant_state',
+  'sparky_manage_recipes',
+  'sparky_manage_diary',
+  'sparky_food_planning',
+  'sparky_food_library',
+  'sparky_food_analysis',
   'sparky_get_barcode',
   'sparky_get_caffeine_kinetics',
   'sparky_get_daily_exercise_totals',
@@ -108,7 +122,7 @@ const EXPECTED_CORE_TOOLS = [
   'sparky_manage_workout_plans',
   'sparky_search_exercises',
   'sparky_search_foods',
-];
+].sort();
 
 describe('buildChatbotTools', () => {
   it('exposes exactly the MCP chat-visible tool surface', () => {
@@ -215,6 +229,41 @@ describe('buildChatbotTools', () => {
     expect(parsed.success).toBe(true);
     expect(parsed.data.external_id).toBeUndefined();
     expect(parsed.data.food_name).toBe('egg');
+  });
+  it('keeps an explicit diary time clear while removing an invalid optional variant null', () => {
+    const tools = buildChatbotTools('user-clear-time', 'UTC');
+    const schema = tools.sparky_manage_diary.inputSchema as z.ZodType;
+    const parsed = schema.parse({
+      action: 'apply',
+      task_id: randomUUID(),
+      command: {
+        operation_id: randomUUID(),
+        expected_version: 1,
+        action: {
+          type: 'log',
+          foods: [
+            {
+              food_id: randomUUID(),
+              variant_id: null,
+              quantity: 2,
+              unit: 'slice',
+            },
+          ],
+          destination: {
+            date: '2026-10-08',
+            meal_type_id: randomUUID(),
+            time: null,
+          },
+        },
+      },
+    });
+    expect(parsed).toMatchObject({
+      command: { action: { destination: { time: null } } },
+    });
+    expect(
+      (parsed as { command: { action: { foods: { variant_id?: string }[] } } })
+        .command.action.foods[0].variant_id
+    ).toBeUndefined();
   });
 
   // The MCP surface strips nulls upstream (routes/mcpRoutes.ts), so its

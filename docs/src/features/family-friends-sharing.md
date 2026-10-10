@@ -4,6 +4,8 @@ Family & Friends Sharing in SparkyFitness allows you to connect with family memb
 
 The system is built with **least-privilege boundary isolation** using PostgreSQL Row-Level Security (RLS), ensuring that your private credentials and account settings are never shared.
 
+AI service model and reasoning settings remain private to their owner. An administrator can publish a shared configuration; family diary access does not grant access to personal AI credentials or settings.
+
 ---
 
 ## How to Set Up Sharing
@@ -44,6 +46,8 @@ Certain tables contain private user data that is **never** accessible to any fam
 * API Keys (`api_key` table)
 * OIDC SSO Connections (`user_oidc_links` table)
 * Personal AI Assistant Chat History (`sparky_chat_history` table)
+* Lasting food preferences, food task drafts, shopping checklists and their operation history (`food_assistant_preferences`, `food_assistant_tasks`, `food_assistant_operations`). Food-library drafts, publication receipts and undo also belong to the signed-in person. Library edits preserve past diary snapshots and keep unmentioned serving variants. Undo refuses newer edits or dependent foods/variants, including references hidden by sharing permissions, independent serving links and queued Open Food Facts contributions. New diary serving links are protected against concurrent serving deletion; existing nutrition snapshots are preserved. These belong to the signed-in person and are never delegated while viewing a family diary. Assistant meal-plan publication and undo also act only on that person’s templates and scheduled diary. A dependency check can refuse undo when another person references a template, without exposing their rows or identity.
+  Recipe drafts and source evidence follow this same rule. Published recipes retain the normal food-library sharing permissions. Undoing a recipe creation checks references across all users and refuses to remove a recipe used in someone else's diary, plans, recipes or favorites.
 * Personal Fasting Preferences and auto-calculation configuration (`user_fasting_preferences` table)
 * Cycle & Pregnancy hub data (`cycle_settings`, `cycle_daily_entries`, `cycles`, `user_cycle_display_preferences`, `cycle_test_entries`, `pregnancies`, `pregnancy_kick_sessions`, `pregnancy_contractions`, `pregnancy_photos`, `pregnancy_checklist_state`, `health_appointments` tables) — this reproductive-health data is **never** shared or delegated, even with `can_view_reports`. It is strictly owner-only. Bump photo *files* are owner-only too: they are excluded from the public uploads URLs and can only be fetched through an authenticated request by their owner.
 
@@ -81,6 +85,8 @@ When you delete a food or exercise from your library you are offered up to three
 **Another person's diary is never affected by your delete**, in any of the three modes. "Delete including history" removes only *your* logged entries; a family member who logged the same item keeps theirs in full.
 
 If someone else still uses the item — they have logged it, or it sits in their meals, meal plans, presets or workout plans — **Hide is the only option offered**. Meals, meal plans, presets and workout plans are linked to the library item itself rather than snapshotted, so genuinely deleting it would silently strip the item out of their templates too. Hiding removes it from search for everyone from that point on while leaving all existing history and templates intact.
+
+You can copy an old diary entry after its original food has been deleted or stops being visible to you. The copy keeps the recorded nutrition and drops unavailable library links; the original entry stays unchanged. Owners and delegates with **Manage Diary** can make these copies, while report-only viewers cannot write diary entries.
 
 ### 7. Meal-to-Meal Composition
 A meal's ingredient list can link another reusable meal (e.g. a sauce or side) instead of a plain food. Linking a sub-meal into a parent meal requires the same library access to the sub-meal that reading it directly would require — you cannot link a sub-meal you cannot otherwise view. This check applies independently of, and in addition to, owning the parent meal.

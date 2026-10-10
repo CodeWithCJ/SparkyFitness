@@ -35,9 +35,12 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `passkey_registration_tickets` | Short-lived (~60s), single-use tickets bridging the mobile→browser passkey registration handoff (transient session material) | System-Only (RLS on, no policies; `getSystemClient` only) | System-Only |
 | `account` | Auth credentials and email accounts | Owner-Only | Owner-Only |
 | `sparky_chat_history` | AI Assistant chat messages and history | Owner-Only | Owner-Only |
+| `food_assistant_preferences` | Explicit lasting food preferences | Owner-Only | Owner-Only |
+| `food_assistant_tasks` | Recoverable food tasks, ingredient/serving drafts and source evidence | Owner-Only | Owner-Only |
+| `food_assistant_operations` | Idempotent operations and before/after audit records | Owner-Only | Owner-Only |
 | `user_ignored_updates` | Records of skipped release updates | Owner-Only | Owner-Only |
 | `admin_activity_logs` | Admin action audits | Admin-Only | Admin-Only |
-| `ai_service_settings` | User-defined custom assistant configurations | Owner-Only | Owner-Only (Public configs readable by all) |
+| `ai_service_settings` | User-defined custom assistant configurations, including optional reasoning effort (medium by default) | Owner-Only | Owner-Only (Public configs readable by all) |
 | `cycle_settings` | Cycle & pregnancy hub settings (mode, cycle parameters, birth control, conditions) | Owner-Only | Owner-Only |
 | `cycle_daily_entries` | Per-day cycle logs (flow, period products, BBT, cervical mucus, moods, libido, notes) | Owner-Only | Owner-Only |
 | `cycles` | Derived/manually-corrected period & cycle history records | Owner-Only | Owner-Only |
@@ -91,6 +94,8 @@ These tables contain user profiles, layouts, display settings, and custom databa
 ### Library deletes vs. diary history
 
 `exercise_entries` and `food_entries` are **snapshots, not pointers**. Each row carries its own copy of the display and nutrition data, so it stays readable after the library row it was logged from is gone. `exercise_id` and `food_id` are nullable and `ON DELETE SET NULL` (`20260912150000_preserve_data_on_user_and_library_deletes.sql`), so deleting a library item blanks the link and keeps the entry.
+
+New `food_entries.variant_id` writes also have an `ON DELETE SET NULL` foreign key, added `NOT VALID` to preserve legacy orphan IDs and nutrition snapshots while enforcing new references and concurrent-delete locking. Diary copies retain recorded nutrition and detach unavailable variant links only on the new copies, using SELECT-only source inspection so public servings require no mutation permission. Copies with deleted parent foods also detach independent legacy serving links. INSERT permits self-contained snapshots with null food, meal and variant links only when `has_diary_access(user_id)` allows the destination diary; ordinary independent serving pointers still require a visible food or meal. Library undo checks independent variant references across RLS and queued Open Food Facts contribution state; only an ownership-gated boolean leaves the dependency function. Tier 2 diary sharing and Tier 1 assistant-state permissions remain unchanged.
 
 Key rules that must be maintained:
 
@@ -170,6 +175,14 @@ Symptoms are their own domain (they used to share the medications permission). P
 | `daily_health_metrics` | Daily automated wearable summary, scores, total calories, and the total-calorie source capture time | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 
 ---
+
+## Recipe Undo Dependency Check
+
+`assistant_recipe_has_dependants(uuid)` is a narrow security-definer helper for assistant undo. It requires the authenticated actor to own the recipe and returns only whether any diary entry, logged meal, meal plan, plan-template assignment, linked recipe or favorite references it. It does not return rows, counts or other user identities. Checking across RLS boundaries prevents an undo from cascading into hidden references belonging to another person. It sets a fixed search path and `row_security=off`, so a function owner that cannot bypass RLS fails rather than returning an incomplete dependency check. The caller holds the recipe row lock and performs any deletion with the ordinary owner-scoped transaction client.
+
+## Plan Undo Dependency Check
+
+`assistant_plan_has_external_dependants(uuid)` requires the authenticated actor to own the template and returns only whether any `food_entries` reference it, including references hidden by RLS. It uses a fixed search path and `row_security=off`, with no row or identity disclosure. Publication and undo hold the template lock and use ordinary owner-scoped transactions. `meal_plan_template_assignments.quantity` retains full numeric precision. Existing Tier 2 plan/diary permissions are unchanged; assistant endpoints remain pinned to the signed-in actor.
 
 ## System & Global Reference Tables (Public Read, Admin Write)
 These tables store global configuration settings, lookup values, and reference metadata. They do not contain user-specific data and do not have Row-Level Security enabled. All authenticated users can read them, but only administrators can update them.

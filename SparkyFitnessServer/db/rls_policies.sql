@@ -55,6 +55,9 @@ BEGIN
     'profiles',
     'rate_limit',
     'sparky_chat_history',
+    'food_assistant_preferences',
+    'food_assistant_tasks',
+    'food_assistant_operations',
     'admin_activity_logs',
     'api_key',
     'user_goals',
@@ -611,6 +614,9 @@ USING (
 SELECT create_owner_policy('api_key', 'reference_id');
 SELECT create_owner_policy('user_oidc_links');
 SELECT create_owner_policy('sparky_chat_history');
+SELECT create_owner_policy('food_assistant_preferences');
+SELECT create_owner_policy('food_assistant_tasks');
+SELECT create_owner_policy('food_assistant_operations');
 
 -- Profiles: delegates can read (with any meaningful permission) but only owner can write.
 -- Delegates do not need to modify another user's profile to manage their diary.
@@ -841,7 +847,9 @@ CREATE POLICY insert_policy ON public.food_entries FOR INSERT TO PUBLIC
 WITH CHECK (
   has_diary_access(user_id) AND (
     (food_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.foods f WHERE f.id = food_entries.food_id)) OR
-    (meal_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.meals m WHERE m.id = food_entries.meal_id))
+    (meal_id IS NOT NULL AND EXISTS (SELECT 1 FROM public.meals m WHERE m.id = food_entries.meal_id)) OR
+    -- Diary copies can preserve recorded nutrition after library deletion.
+    (food_id IS NULL AND meal_id IS NULL AND variant_id IS NULL)
   )
 );
 CREATE POLICY update_policy ON public.food_entries FOR UPDATE TO PUBLIC
@@ -1035,3 +1043,70 @@ CREATE POLICY deny_all_policy ON public.openfoodfacts_product_read_rate_limit FO
 -- own owner pool, which bypasses RLS; the rows hold client addresses, so the
 -- app role is denied entirely.
 CREATE POLICY deny_all_policy ON public.rate_limit FOR ALL TO PUBLIC USING (false) WITH CHECK (false);
+
+-- A recipe undo must not cascade into another person's plans or favorites.
+-- Return only a boolean for a recipe owned by the authenticated actor. RLS on
+-- the referencing tables would otherwise hide other people's references.
+CREATE OR REPLACE FUNCTION public.assistant_recipe_has_dependants(recipe_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+SET row_security = off AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.meals m WHERE m.id = recipe_id
+    AND m.user_id = public.authenticated_user_id()) THEN
+    RAISE EXCEPTION 'Recipe not found or not owned by the current actor.' USING ERRCODE = '42501';
+  END IF;
+  RETURN EXISTS (SELECT 1 FROM public.food_entries WHERE meal_id = recipe_id)
+    OR EXISTS (SELECT 1 FROM public.food_entry_meals WHERE meal_template_id = recipe_id)
+    OR EXISTS (SELECT 1 FROM public.meal_plans WHERE meal_id = recipe_id)
+    OR EXISTS (SELECT 1 FROM public.meal_plan_template_assignments WHERE meal_id = recipe_id)
+    OR EXISTS (SELECT 1 FROM public.meal_foods WHERE child_meal_id = recipe_id)
+    OR EXISTS (SELECT 1 FROM public.food_favorites WHERE meal_id = recipe_id);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.assistant_recipe_has_dependants(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.assistant_recipe_has_dependants(uuid) TO PUBLIC;
+
+-- Plan creation undo may delete only its own unused template. This boolean
+-- guard includes references hidden by RLS and never exposes their identities.
+CREATE OR REPLACE FUNCTION public.assistant_plan_has_external_dependants(plan_id uuid)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+SET row_security = off AS $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.meal_plan_templates t WHERE t.id = plan_id
+    AND t.user_id = public.authenticated_user_id()) THEN
+    RAISE EXCEPTION 'Plan not found or not owned by the current actor.' USING ERRCODE = '42501';
+  END IF;
+  RETURN EXISTS (SELECT 1 FROM public.food_entries WHERE meal_plan_template_id = plan_id);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.assistant_plan_has_external_dependants(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.assistant_plan_has_external_dependants(uuid) TO PUBLIC;
+
+-- Only a boolean leaves this function. The actor must own the food, including
+-- when checking references hidden by RLS before undo removes a new variant.
+CREATE OR REPLACE FUNCTION public.assistant_food_has_dependants(target_food uuid, target_variant uuid DEFAULT NULL)
+RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = pg_catalog, public
+SET row_security = off AS $$
+DECLARE
+  target_variants uuid[];
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.foods f WHERE f.id=target_food AND f.user_id=public.authenticated_user_id())
+    OR (target_variant IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.food_variants v WHERE v.id=target_variant AND v.food_id=target_food)) THEN
+    RAISE EXCEPTION 'Food or serving variant not owned by the current actor.' USING ERRCODE = '42501';
+  END IF;
+  SELECT array_agg(id) INTO target_variants FROM public.food_variants
+    WHERE food_id=target_food AND (target_variant IS NULL OR id=target_variant);
+  RETURN EXISTS (SELECT 1 FROM public.food_entries WHERE (target_variant IS NULL AND food_id=target_food) OR variant_id=ANY(target_variants))
+    OR EXISTS (SELECT 1 FROM public.meal_foods WHERE (target_variant IS NULL AND food_id=target_food) OR variant_id=ANY(target_variants))
+    OR EXISTS (SELECT 1 FROM public.meal_plans WHERE (target_variant IS NULL AND food_id=target_food) OR variant_id=ANY(target_variants))
+    OR EXISTS (SELECT 1 FROM public.meal_plan_template_assignments WHERE (target_variant IS NULL AND food_id=target_food) OR variant_id=ANY(target_variants))
+    OR EXISTS (SELECT 1 FROM public.food_favorites WHERE food_id=target_food AND target_variant IS NULL)
+    OR EXISTS (SELECT 1 FROM public.user_water_containers WHERE (target_variant IS NULL AND linked_food_id=target_food) OR linked_variant_id=ANY(target_variants))
+    OR EXISTS (SELECT 1 FROM public.openfoodfacts_sync_queue WHERE food_id=target_food AND target_variant IS NULL);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.assistant_food_has_dependants(uuid,uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.assistant_food_has_dependants(uuid,uuid) TO PUBLIC;

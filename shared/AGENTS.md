@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-09-29*
+_Last updated: 2026-10-09_
 
 `@workspace/shared` is a source-first TypeScript workspace library package for schemas, constants, and timezone/day helpers consumed by SparkyFitnessServer, SparkyFitnessFrontend, and SparkyFitnessMobile.
 
@@ -9,6 +9,16 @@
 - This package defines contracts and shared logic, not an app.
 - Validate changes from consuming packages (server, frontend, mobile), not in isolation.
 - Every schema change here potentially touches three packages.
+
+## Food Assistant State
+
+`FoodAssistantPlanDraft.api.zod.ts` and `FoodAssistantPlanning.api.zod.ts` add explicit plan assignments, versioned atomic scheduling/undo and persisted shopping checklists. Shopping checks use the shared state dispatcher in both apps. The plan dependency helper migration changes no table permissions; assignment quantities use unrestricted numeric to preserve fractional portions.
+
+`schemas/api/FoodAssistant.api.zod.ts` and `schemas/database/FoodAssistant.zod.ts` define lasting preferences, versioned tasks, unresolved ingredients and idempotent operation records. `schemas/api/FoodAssistantRecipes.api.zod.ts` adds exact provider ingredient import, versioned publication and undo contracts. Task origins stay immutable while ingredient quantities and source yields may remain unresolved. All state is owner-only; these additive contracts do not change existing chat clients.
+
+`FoodAssistantFoodDraft.api.zod.ts` and `FoodAssistantLibrary.api.zod.ts` define partial serving-variant edits, atomic private food publication and conflict-safe undo. The food task kind stays owner-only; imported variants use exact provider source data. Historical diary snapshots remain independent.
+
+`FoodAssistantAnalysis.api.zod.ts` adds calendar ranges, nutrient selection and optional comparison periods to recoverable analysis checkpoints. Results retain unknown days/nutrients and source fingerprints.
 
 ## Structure
 
@@ -30,6 +40,7 @@
 - Changes to `src/schemas/api/` usually affect server routes and both frontend/mobile API clients.
 - Changes to `src/schemas/database/` require a matching migration in the server (`SparkyFitnessServer/db/migrations/`), RLS policies, and the schema backup.
 - Timezone/day-string helpers prevent bugs; prefer them over `toISOString().split('T')[0]`.
+- Food assistant diary commands use `FoodAssistantDiary.api.zod.ts`; state action dispatch shared by web/mobile lives in `utils/foodAssistantState.ts`.
 - Test any shared change from the consumer packages (`pnpm run validate` in SparkyFitnessServer, SparkyFitnessFrontend, and SparkyFitnessMobile after modifying shared).
 
 ## Working Rules
