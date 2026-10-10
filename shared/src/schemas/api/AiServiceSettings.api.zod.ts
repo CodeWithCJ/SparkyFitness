@@ -26,6 +26,7 @@ export const createAiServiceSettingsRequestSchema =
   aiServiceSettingsInitializerSchema
     .pick({
       chat_tool_profile: true,
+      reasoning_effort: true,
       custom_url: true,
       is_active: true,
       model_name: true,
@@ -41,6 +42,7 @@ export const updateAiServiceSettingsRequestSchema =
   aiServiceSettingsMutatorSchema
     .pick({
       chat_tool_profile: true,
+      reasoning_effort: true,
       custom_url: true,
       id: true,
       is_active: true,

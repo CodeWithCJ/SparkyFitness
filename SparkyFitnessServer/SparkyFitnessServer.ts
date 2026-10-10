@@ -46,6 +46,7 @@ import dashboardLayoutRoutes from './routes/dashboardLayoutRoutes.js';
 import nutrientDisplayPreferenceRoutes from './routes/nutrientDisplayPreferenceRoutes.js';
 import nutrientGoalPreferenceRoutes from './routes/nutrientGoalPreferenceRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import foodAssistantRoutes from './routes/v2/foodAssistantRoutes.js';
 import measurementRoutes from './routes/measurementRoutes.js';
 import checkInPhotoRoutes from './routes/checkInPhotoRoutes.js';
 import goalRoutes from './routes/goalRoutes.js';
@@ -723,6 +724,7 @@ app.get('/api/ping', (_req, res) =>
 );
 // Mounting all API routes
 app.use('/api/chat', chatRoutes);
+app.use('/api/v2/food-assistant', foodAssistantRoutes);
 app.use('/api/ai', aiUnitConversionRoutes);
 app.use('/api/foods', foodRoutes);
 app.use('/api/favorites', favoritesRoutes);

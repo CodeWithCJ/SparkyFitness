@@ -35,9 +35,12 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `passkey_registration_tickets` | Short-lived (~60s), single-use tickets bridging the mobile→browser passkey registration handoff (transient session material) | System-Only (RLS on, no policies; `getSystemClient` only) | System-Only |
 | `account` | Auth credentials and email accounts | Owner-Only | Owner-Only |
 | `sparky_chat_history` | AI Assistant chat messages and history | Owner-Only | Owner-Only |
+| `food_assistant_preferences` | Explicit lasting food preferences | Owner-Only | Owner-Only |
+| `food_assistant_tasks` | Recoverable food tasks, ingredient drafts and source evidence | Owner-Only | Owner-Only |
+| `food_assistant_operations` | Idempotent operations and before/after audit records | Owner-Only | Owner-Only |
 | `user_ignored_updates` | Records of skipped release updates | Owner-Only | Owner-Only |
 | `admin_activity_logs` | Admin action audits | Admin-Only | Admin-Only |
-| `ai_service_settings` | User-defined custom assistant configurations | Owner-Only | Owner-Only (Public configs readable by all) |
+| `ai_service_settings` | User-defined custom assistant configurations, including optional reasoning effort (medium by default) | Owner-Only | Owner-Only (Public configs readable by all) |
 | `cycle_settings` | Cycle & pregnancy hub settings (mode, cycle parameters, birth control, conditions) | Owner-Only | Owner-Only |
 | `cycle_daily_entries` | Per-day cycle logs (flow, period products, BBT, cervical mucus, moods, libido, notes) | Owner-Only | Owner-Only |
 | `cycles` | Derived/manually-corrected period & cycle history records | Owner-Only | Owner-Only |

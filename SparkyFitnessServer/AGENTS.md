@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-07_
+_Last updated: 2026-10-08_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -55,6 +55,8 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - For targeted test runs, prefer `pnpm exec vitest run tests/<name>.test.ts`
 
 ## Source Map
+
+- Food assistant state: owner-only preferences, recoverable tasks and operation history use `FoodAssistant.api.zod.ts` / `FoodAssistant.zod.ts` in shared. Server: `routes/v2/foodAssistantRoutes.ts`, `services/foodAssistantService.ts`, `models/foodAssistantRepository.ts`, `ai/tools/foodAssistantTools.ts`. Web: `src/components/ai/FoodAssistantState.tsx`, `src/api/Chatbot/foodAssistantService.ts`.
 
 - `index.ts` - real dev entrypoint; loads env, secrets, and preflight checks before booting the app
 - `SparkyFitnessServer.ts` - Express app shell, route mounting, Swagger/ReDoc, startup, graceful shutdown
