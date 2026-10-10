@@ -197,6 +197,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   const { preferences } = usePreferences();
   // Device-local settings the watch's haptics follow.
   const hapticsEnabled = useAppPreferencesStore((s) => s.hapticsEnabled);
+  const watchRpeEnabled = useAppPreferencesStore((s) => s.watchRpeEnabled);
   const watchDoubleTapEnabled = useAppPreferencesStore(
     (s) => s.watchDoubleTapEnabled
   );
@@ -585,6 +586,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         hapticsEnabled,
         restAlertsEnabled,
         doubleTapEnabled: watchDoubleTapEnabled,
+        rpeEnabled: watchRpeEnabled,
         startableWorkouts,
         // Built for `summaryDate`; a push that has crossed midnight before the
         // hook re-rendered must not carry yesterday's plan.
@@ -618,6 +620,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     hapticsEnabled,
     restAlertsEnabled,
     watchDoubleTapEnabled,
+    watchRpeEnabled,
     startableWorkouts,
     scheduledWorkouts,
     waterGoalMl,

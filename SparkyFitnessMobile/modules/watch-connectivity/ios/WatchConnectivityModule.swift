@@ -294,6 +294,7 @@ public class WatchConnectivityModule: Module {
                     // clearing a planned one — same rule as body fat above.
                     "weightKg": payload["weightKg"] as? Double,
                     "reps": payload["reps"] as? Double,
+                    "rpe": (payload["rpe"] as? NSNumber)?.doubleValue,
                     "duration": (payload["duration"] as? NSNumber)?.intValue,
                     "distanceKm": payload["distanceKm"] as? Double,
                     "completedAt": payload["completedAt"] as? String,

@@ -141,6 +141,8 @@ export interface WatchContextPayload {
    * double-tap gesture while this is off. Missing reads as on.
    */
   doubleTapEnabled?: boolean | null;
+  /** Whether the watch asks for an RPE after each logged set. */
+  rpeEnabled?: boolean | null;
   /**
    * Settings → Apple Watch: the watch app's pages in swipe order, and the ones
    * turned off (`WATCH_PAGE_KEYS` names). Missing reads as the factory order
@@ -383,6 +385,8 @@ export interface WatchSetCompletedPayload {
   duration?: number | null;
   /** A carry's distance in km, as entered on the watch (metres there). */
   distanceKm?: number | null;
+  /** Effort (RPE) the wearer picked, 6 to 10. Omitted when skipped. */
+  rpe?: number | null;
   /**
    * When the wearer tapped the set on the watch, ISO 8601. The phone stamps
    * its own clock when this is absent (an older watch build, or a set logged

@@ -1234,13 +1234,28 @@ function startRestForStep(
   steps: WorkoutStep[],
   setId: string,
   session: PresetSessionResponse | null,
-  durationSecOverride?: number
+  durationSecOverride?: number,
+  /**
+   * When the rest began, if before now: a set the watch logged is only
+   * reported once the wearer picks an effort, and the watch's rest has been
+   * running since the tap. Starting this one from "now" would put its end
+   * later than the watch's and restart the watch's timer.
+   */
+  startedAtMs?: number
 ): Rest {
   const step = steps.find((s) => s.setId === setId);
   const durationSec =
     durationSecOverride ?? step?.restSec ?? getDefaultRestSec();
+  const now = Date.now();
+  const startedAt =
+    startedAtMs != null && Number.isFinite(startedAtMs) && startedAtMs < now
+      ? startedAtMs
+      : now;
+  const endsAt = startedAt + durationSec * 1000;
+  // The break is already over: nothing to count down.
+  if (endsAt <= now) return READY_REST;
+  const remainingSec = Math.max(1, Math.ceil((endsAt - now) / 1000));
   const token = ++restInstanceCounter;
-  const endsAt = Date.now() + durationSec * 1000;
 
   const rest: Rest = {
     state: 'resting',
@@ -1258,7 +1273,7 @@ function startRestForStep(
     setId,
     exerciseName
   );
-  scheduleGuardedRestNotification(exerciseName, durationSec, token, content);
+  scheduleGuardedRestNotification(exerciseName, remainingSec, token, content);
 
   return rest;
 }
@@ -1774,7 +1789,13 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // of 0) advances straight to ready — no timer flash.
           rest:
             restSec > 0
-              ? startRestForStep(state.steps, nextStep.setId, session, restSec)
+              ? startRestForStep(
+                  state.steps,
+                  nextStep.setId,
+                  session,
+                  restSec,
+                  completedSetIds[setId]
+                )
               : READY_REST,
           sessionRevision: state.sessionRevision + 1,
           hasUnsavedChanges: true,

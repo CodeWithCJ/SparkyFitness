@@ -251,6 +251,8 @@ struct CompletedSet: Codable, Equatable {
     var duration: Int? = nil
     /// A carry's distance in km, entered in metres on the watch.
     var distanceKm: Double? = nil
+    /// Effort (6 to 10) the wearer picked. Nil when skipped.
+    var rpe: Double? = nil
     /// When the wearer tapped the set, not when the phone received it.
     let completedAt: Date
 }

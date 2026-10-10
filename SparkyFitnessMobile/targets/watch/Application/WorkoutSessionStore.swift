@@ -344,6 +344,7 @@ final class WorkoutSessionStore: ObservableObject {
         lastSummary = nil
         askingPresetUpdate = false
         baselineStructure = Self.structure(of: plan)
+        pendingSetCompletion = nil
         resetHeartRateStats()
         stopRestTimer()
         clearHold()
@@ -465,6 +466,7 @@ final class WorkoutSessionStore: ObservableObject {
         targetRevision = 0
         planRevision = 0
         pendingUnknownCompletions = []
+        pendingSetCompletion = nil
         lastPhoneRest = nil
         latestBpm = nil
         activeEnergyKcal = nil
@@ -751,9 +753,17 @@ final class WorkoutSessionStore: ObservableObject {
     /// Marks the current set done, starts the next set's rest, and advances
     /// the cursor. Returns the step that was completed so the caller can
     /// report it — the store never talks to the phone itself.
+    ///
+    /// `holdForEffort` records the completion, including the values and the
+    /// tick time, in the snapshot before returning. The set is sent only
+    /// after Save or Skip, and `clearPendingSetCompletion` drops that record.
     @discardableResult
-    func completeCurrentSet() -> WorkoutStep? {
+    func completeCurrentSet(holdForEffort: Bool = false) -> WorkoutStep? {
         guard let step = currentStep, !isCompleted(step) else { return nil }
+        let logged = values(for: step)
+        // Captured at the tick. A countdown measures from `now`, so reading it
+        // again at Save would count the time spent on the effort screen.
+        var loggedDuration: Int?
         // Stop the buzz. The deadline stays so the caller can still read
         // how long the hold ran.
         // Only when this is the set the timer belongs to: logging another set
@@ -761,6 +771,7 @@ final class WorkoutSessionStore: ObservableObject {
         // timer alone.
         if holdSetId == step.plannedSet.setId {
             if holdStartedAt != nil, holdStoppedAt == nil { holdStoppedAt = Date() }
+            loggedDuration = holdLoggedSeconds(for: step.plannedSet.setId)
             holdLoggedHere = true
             stopHoldTimer()
         }
@@ -783,8 +794,34 @@ final class WorkoutSessionStore: ObservableObject {
             // "Workout complete" instead of a rest timer with no way out.
             currentStepIndex = steps.count
         }
+        if holdForEffort {
+            pendingSetCompletion = PendingSetCompletion(
+                setId: step.plannedSet.setId,
+                values: logged,
+                completedAt: Date(),
+                durationSeconds: loggedDuration
+            )
+        }
         persistSnapshot(reportedEnergyKcal: nil)
         return step
+    }
+
+    /// Drops the held completion. Call only after the send was accepted by
+    /// an activated Watch Connectivity session.
+    func clearPendingSetCompletion() {
+        guard pendingSetCompletion != nil else { return }
+        pendingSetCompletion = nil
+        persistSnapshot(reportedEnergyKcal: nil)
+    }
+
+    /// Records Save or Skip on the held completion before the send is tried,
+    /// so a relaunch can still deliver that choice.
+    func markPendingReadyToSend(rpe: Double?) {
+        guard var pending = pendingSetCompletion else { return }
+        pending.rpe = rpe
+        pending.readyToSend = true
+        pendingSetCompletion = pending
+        persistSnapshot(reportedEnergyKcal: nil)
     }
 
     /// How many of an exercise's sets are logged, for the picker's subtitle.
@@ -947,7 +984,69 @@ final class WorkoutSessionStore: ObservableObject {
         /// still knows whether it changed. Optional so older snapshots still
         /// decode.
         var baselineStructure: [String]?
+        /// A set logged here that has not been sent yet because the wearer is
+        /// still picking an effort. Optional so older snapshots still decode.
+        var pendingSetCompletion: PendingSetCompletion?
     }
+
+    /// A completed set waiting on the effort screen. Kept in the snapshot so
+    /// a relaunch can still send it. Cleared only after the send is accepted
+    /// by Watch Connectivity, not while it is sitting in memory.
+    struct PendingSetCompletion: Codable, Equatable {
+        var setId: String
+        var values: SetValues
+        var completedAt: Date
+        /// Seconds the hold had run at the tick. Nil when it was never
+        /// started. Kept so time spent on the effort screen is not logged.
+        var durationSeconds: Int?
+        /// Set when the wearer taps Save. Nil with `readyToSend` means Skip.
+        var rpe: Double?
+        /// The wearer already chose Save or Skip. The send may still be
+        /// waiting for the session to activate.
+        var readyToSend: Bool
+
+        init(
+            setId: String,
+            values: SetValues,
+            completedAt: Date,
+            durationSeconds: Int?,
+            rpe: Double? = nil,
+            readyToSend: Bool = false
+        ) {
+            self.setId = setId
+            self.values = values
+            self.completedAt = completedAt
+            self.durationSeconds = durationSeconds
+            self.rpe = rpe
+            self.readyToSend = readyToSend
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case setId, values, completedAt, durationSeconds, rpe, readyToSend
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            setId = try container.decode(String.self, forKey: .setId)
+            values = try container.decode(SetValues.self, forKey: .values)
+            completedAt = try container.decode(Date.self, forKey: .completedAt)
+            durationSeconds = try container.decodeIfPresent(Int.self, forKey: .durationSeconds)
+            rpe = try container.decodeIfPresent(Double.self, forKey: .rpe)
+            readyToSend = try container.decodeIfPresent(Bool.self, forKey: .readyToSend) ?? false
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(setId, forKey: .setId)
+            try container.encode(values, forKey: .values)
+            try container.encode(completedAt, forKey: .completedAt)
+            try container.encodeIfPresent(durationSeconds, forKey: .durationSeconds)
+            try container.encodeIfPresent(rpe, forKey: .rpe)
+            try container.encode(readyToSend, forKey: .readyToSend)
+        }
+    }
+
+    private(set) var pendingSetCompletion: PendingSetCompletion?
 
     /// A set timer as stored in the snapshot.
     struct HoldState: Codable, Equatable {
@@ -1077,7 +1176,8 @@ final class WorkoutSessionStore: ObservableObject {
             heartRateCount: heartRateCount,
             heartRateMax: heartRateMax,
             countedHeartRateSeconds: Array(countedHeartRateSeconds),
-            baselineStructure: baselineStructure
+            baselineStructure: baselineStructure,
+            pendingSetCompletion: pendingSetCompletion
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             defaults.set(data, forKey: snapshotKey)
@@ -1117,6 +1217,7 @@ final class WorkoutSessionStore: ObservableObject {
         // `start(with:)` took the baseline from the plan as it was saved, which
         // may already include changes; the stored one is the real starting plan.
         if let stored = snapshot.baselineStructure { baselineStructure = stored }
+        pendingSetCompletion = snapshot.pendingSetCompletion
         persistSnapshot(reportedEnergyKcal: snapshot.reportedEnergyKcal)
         return snapshot
     }

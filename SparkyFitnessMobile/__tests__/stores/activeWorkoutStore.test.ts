@@ -1459,6 +1459,47 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('completeSet rest for a set the watch logged earlier', () => {
+    it('counts the rest from when the set was ticked, so it ends with the watch rest', async () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].rest_time = 90;
+      useActiveWorkoutStore.getState().startWorkout(session);
+
+      // The wearer ticked the set 20 s ago and has only now saved its effort.
+      useActiveWorkoutStore.getState().completeSet('101', FIXED_NOW - 20_000);
+
+      const { rest } = useActiveWorkoutStore.getState();
+      expect(rest.state).toBe('resting');
+      expect(rest.durationSec).toBe(90);
+      expect(rest.endsAt).toBe(FIXED_NOW - 20_000 + 90_000);
+      await flushPromises();
+    });
+
+    it('is ready when the break ran out while the effort was being picked', async () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].rest_time = 30;
+      useActiveWorkoutStore.getState().startWorkout(session);
+
+      useActiveWorkoutStore.getState().completeSet('101', FIXED_NOW - 45_000);
+
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+      await flushPromises();
+    });
+
+    it('starts the rest now when the set was logged on the phone', async () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].rest_time = 60;
+      useActiveWorkoutStore.getState().startWorkout(session);
+
+      useActiveWorkoutStore.getState().completeSet('101');
+
+      expect(useActiveWorkoutStore.getState().rest.endsAt).toBe(
+        FIXED_NOW + 60_000
+      );
+      await flushPromises();
+    });
+  });
+
   describe('completeSet rest (supersets)', () => {
     // Steps: 301(90), 401(0), 302(90), 402(0).
     beforeEach(() => {

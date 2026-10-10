@@ -45,6 +45,10 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   const watchDoubleTapEnabled = useAppPreferencesStore(
     (s) => s.watchDoubleTapEnabled
   );
+  const watchRpeEnabled = useAppPreferencesStore((s) => s.watchRpeEnabled);
+  const setWatchRpeEnabled = useAppPreferencesStore(
+    (s) => s.setWatchRpeEnabled
+  );
   const setWatchDoubleTapEnabled = useAppPreferencesStore(
     (s) => s.setWatchDoubleTapEnabled
   );
@@ -133,6 +137,23 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
               testID="watch-double-tap-switch"
               value={watchDoubleTapEnabled}
               onValueChange={setWatchDoubleTapEnabled}
+            />
+          }
+        />
+        <SettingsRow
+          title={t('watchSettings.rpeTitle', {
+            defaultValue: 'Ask for effort (RPE) after each set',
+          })}
+          subtitle={t('watchSettings.rpeSubtitle', {
+            defaultValue:
+              'After you log a set on the watch, turn the Digital Crown to pick how hard it was, from 1 to 10, then tap Save, or tap Skip.',
+          })}
+          subtitleNumberOfLines={0}
+          rightAccessory={
+            <Switch
+              testID="watch-rpe-switch"
+              value={watchRpeEnabled}
+              onValueChange={setWatchRpeEnabled}
             />
           }
         />

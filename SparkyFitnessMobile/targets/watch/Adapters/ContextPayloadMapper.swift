@@ -76,7 +76,8 @@ enum ContextPayloadMapper {
                 ? payload["workoutServerId"] as? String
                 : previous.workoutServerId,
             distanceUnit: payload["distanceUnit"] as? String ?? previous.distanceUnit,
-            doubleTapEnabled: payload["doubleTapEnabled"] as? Bool ?? previous.doubleTapEnabled
+            doubleTapEnabled: payload["doubleTapEnabled"] as? Bool ?? previous.doubleTapEnabled,
+            rpeEnabled: payload["rpeEnabled"] as? Bool ?? previous.rpeEnabled
         )
     }
 

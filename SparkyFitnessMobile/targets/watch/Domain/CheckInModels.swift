@@ -356,6 +356,8 @@ struct WatchContext: Codable, Equatable {
     /// The phone's Settings → Apple Watch → Double-tap switch. Defaulted so the
     /// existing initializer calls need not pass it; nil reads as on.
     var doubleTapEnabled: Bool? = nil
+    /// Phone's Settings → Apple Watch → effort (RPE) switch. Nil reads as off.
+    var rpeEnabled: Bool? = nil
 
     static let empty = WatchContext(
         today: nil,
@@ -436,6 +438,8 @@ struct WatchContext: Codable, Equatable {
     /// Whether the double-tap gesture logs a set. On until the phone says
     /// otherwise.
     var effectiveDoubleTapEnabled: Bool { doubleTapEnabled ?? true }
+
+    var effectiveRpeEnabled: Bool { rpeEnabled ?? false }
 
     /// Stale seeds are worse than no seed: every morning would start from a lie
     /// and the delta line would reassure falsely.

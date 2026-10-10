@@ -1107,19 +1107,59 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// Sends one completed set, carrying whatever the wearer typed. Queued
     /// like a check-in — a hole in the diary from a dropped delivery is not an
     /// acceptable loss, unlike a stretch of missing heart rate.
-    func sendSetCompleted(_ step: WorkoutStep, values: SetValues) {
-        guard let sessionId = workoutStore.plan?.sessionId else { return }
+    ///
+    /// Returns whether Watch Connectivity accepted the payload. `false` before
+    /// the session activates: with `requireDurable` the payload is not parked
+    /// in memory, so the caller can keep its own persisted copy and retry.
+    @discardableResult
+    func sendSetCompleted(
+        _ step: WorkoutStep,
+        values: SetValues,
+        rpe: Double? = nil,
+        completedAt: Date = Date(),
+        durationSeconds: Int? = nil,
+        useCapturedDuration: Bool = false,
+        requireDurable: Bool = false
+    ) -> Bool {
+        guard let sessionId = workoutStore.plan?.sessionId else { return false }
+        if requireDurable, !isActivated { return false }
         let completed = CompletedSet(
             clientId: UUID().uuidString,
             sessionId: sessionId,
             setId: step.plannedSet.setId,
             weightKg: values.weightKg,
             reps: values.reps,
-            duration: workoutStore.holdLoggedSeconds(for: step.plannedSet.setId),
+            duration: useCapturedDuration
+                ? durationSeconds
+                : workoutStore.holdLoggedSeconds(for: step.plannedSet.setId),
             distanceKm: step.plannedSet.carry == true ? values.distanceKm : nil,
-            completedAt: Date()
+            rpe: rpe,
+            completedAt: completedAt
         )
         transfer(OutboundPayloads.setCompleted(completed))
+        return isActivated
+    }
+
+    /// Sends a Save or Skip that was stored because the session was not
+    /// active yet. No-op until activation, and until the wearer has chosen.
+    func retryPendingSetCompletion() {
+        guard isActivated,
+              let pending = workoutStore.pendingSetCompletion,
+              pending.readyToSend,
+              let step = workoutStore.steps.first(where: {
+                  $0.plannedSet.setId == pending.setId
+              })
+        else { return }
+        let sent = sendSetCompleted(
+            step,
+            values: pending.values,
+            rpe: pending.rpe,
+            completedAt: pending.completedAt,
+            durationSeconds: pending.durationSeconds,
+            useCapturedDuration: true,
+            requireDurable: true
+        )
+        if sent { workoutStore.clearPendingSetCompletion() }
     }
 
     /// Sends one heart-rate batch for whichever exercise is current right now.
@@ -1353,6 +1393,7 @@ extension WatchSessionManager: WCSessionDelegate {
             self.adoptReceivedContext()
             self.retryPending()
             self.recoverLiveWorkoutIfNeeded()
+            self.retryPendingSetCompletion()
             self.resendQueuedWaterTaps()
             self.resendQueuedWaterDeletes()
             self.requestContext()
