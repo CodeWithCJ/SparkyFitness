@@ -210,7 +210,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
               >
                 {t('reports.activityReportLapTable.lap', 'Lap')}
                 <FaFlag className="block text-blue-500 mx-auto" />
-                {getSortIndicator('lapIndex')}
+                <span>{getSortIndicator('lapIndex')}</span>
               </th>
               <th
                 className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
@@ -218,7 +218,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
               >
                 {t('reports.activityReportLapTable.time', 'Time')}
                 <FaClock className="block text-green-500 mx-auto" />
-                {getSortIndicator('lapDurationSeconds')}
+                <span>{getSortIndicator('lapDurationSeconds')}</span>
               </th>
               <th
                 className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
@@ -229,7 +229,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                   'Cumulative Time'
                 )}
                 <FaHourglassHalf className="block text-green-500 mx-auto" />
-                {getSortIndicator('cumulativeDuration')}
+                <span>{getSortIndicator('cumulativeDuration')}</span>
               </th>
 
               {/* Distance-dependent columns */}
@@ -242,7 +242,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     {t('reports.activityReportLapTable.distance', 'Distance')} (
                     {distanceUnit})
                     <FaRoute className="block text-blue-500 mx-auto" />
-                    {getSortIndicator('lapDistance')}
+                    <span>{getSortIndicator('lapDistance')}</span>
                   </th>
                   <th
                     className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
@@ -254,7 +254,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     )}{' '}
                     ({distanceUnit})
                     <FaRoad className="block text-blue-500 mx-auto" />
-                    {getSortIndicator('cumulativeDistance')}
+                    <span>{getSortIndicator('cumulativeDistance')}</span>
                   </th>
                 </>
               )}
@@ -272,7 +272,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                       : t('reports.activityReportLapTable.minPerMi', 'min/mi')}
                     )
                     <FaWalking className="block text-purple-500 mx-auto" />
-                    {getSortIndicator('avgPace')}
+                    <span>{getSortIndicator('avgPace')}</span>
                   </th>
                   {showMovingPace && (
                     <th
@@ -292,7 +292,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                           )}
                       )
                       <FaWalking className="block text-purple-500 mx-auto" />
-                      {getSortIndicator('avgMovingPace')}
+                      <span>{getSortIndicator('avgMovingPace')}</span>
                     </th>
                   )}
                 </>
@@ -308,7 +308,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     {t('reports.activityReportLapTable.avgHR', 'Avg HR')} (
                     {t('reports.activityReportLapTable.bpm', 'bpm')})
                     <FaHeartbeat className="block text-pink-500 mx-auto" />
-                    {getSortIndicator('averageHR')}
+                    <span>{getSortIndicator('averageHR')}</span>
                   </th>
                   <th
                     className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
@@ -317,7 +317,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     {t('reports.activityReportLapTable.maxHR', 'Max HR')} (
                     {t('reports.activityReportLapTable.bpm', 'bpm')})
                     <FaHeartbeat className="block text-pink-500 mx-auto" />
-                    {getSortIndicator('maxHR')}
+                    <span>{getSortIndicator('maxHR')}</span>
                   </th>
                 </>
               )}
@@ -335,7 +335,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     )}{' '}
                     ({t('reports.activityReportLapTable.spm', 'spm')})
                     <FaRunning className="block text-orange-500 mx-auto" />
-                    {getSortIndicator('averageRunCadence')}
+                    <span>{getSortIndicator('averageRunCadence')}</span>
                   </th>
                   <th
                     className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
@@ -347,7 +347,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     )}{' '}
                     ({t('reports.activityReportLapTable.spm', 'spm')})
                     <FaRunning className="block text-orange-500 mx-auto" />
-                    {getSortIndicator('maxRunCadence')}
+                    <span>{getSortIndicator('maxRunCadence')}</span>
                   </th>
                 </>
               )}
@@ -363,7 +363,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     'Moving Time'
                   )}
                   <FaClock className="block text-green-500 mx-auto" />
-                  {getSortIndicator('movingDurationSeconds')}
+                  <span>{getSortIndicator('movingDurationSeconds')}</span>
                 </th>
               )}
 
@@ -375,7 +375,7 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                 >
                   {t('reports.activityReportLapTable.calories', 'Calories')}
                   <FaFire className="block text-red-500 mx-auto" />
-                  {getSortIndicator('calories')}
+                  <span>{getSortIndicator('calories')}</span>
                 </th>
               )}
             </tr>

@@ -128,11 +128,14 @@ export function CnfBulkImportDialog({
               <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                 <div>
                   {t('settings.cnf.processed', 'Processed')}:{' '}
-                  {status?.processed} / {status?.total}
+                  <span>{status?.processed}</span> /{' '}
+                  <span>{status?.total}</span>
                 </div>
                 <div className="text-right">
-                  {t('settings.cnf.imported', 'Imported')}: {status?.imported} |{' '}
-                  {t('settings.cnf.updated', 'Updated')}: {status?.updated}
+                  {t('settings.cnf.imported', 'Imported')}:{' '}
+                  <span>{status?.imported}</span> |{' '}
+                  {t('settings.cnf.updated', 'Updated')}:{' '}
+                  <span>{status?.updated}</span>
                 </div>
               </div>
             </div>

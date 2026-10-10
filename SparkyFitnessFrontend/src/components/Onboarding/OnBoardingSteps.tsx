@@ -254,7 +254,9 @@ export const OnboardingSteps = ({
                   className={`w-[240px] pl-3 text-left font-normal h-14 text-lg rounded-xl justify-start ${!formData.birthDate && 'text-muted-foreground'}`}
                 >
                   {formData.birthDate ? (
-                    format(parseISO(formData.birthDate), localDateFormat)
+                    <span>
+                      {format(parseISO(formData.birthDate), localDateFormat)}
+                    </span>
                   ) : (
                     <span className="text-muted-foreground">Pick a date</span>
                   )}

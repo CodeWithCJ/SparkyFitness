@@ -178,7 +178,7 @@ const MoodChart = ({ data, title }: MoodChartProps) => {
                         dominantBaseline="middle"
                         className="custom-chart-emoji"
                       >
-                        {payload.moodDisplay.emoji}{' '}
+                        <tspan>{payload.moodDisplay.emoji}</tspan>{' '}
                         {/* Use emoji from moodDisplay */}
                       </text>
                     );

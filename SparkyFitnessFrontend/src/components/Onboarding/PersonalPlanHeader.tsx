@@ -98,8 +98,11 @@ export const PersonalPlanHeader = ({
         <div className="mt-6 pt-6 border-t border-border flex justify-between text-sm text-muted-foreground">
           <span>
             Base BMR:{' '}
-            {plan?.bmr &&
-              Math.round(convertEnergy(plan.bmr, 'kcal', localEnergyUnit))}
+            {!!plan?.bmr && (
+              <span>
+                {Math.round(convertEnergy(plan.bmr, 'kcal', localEnergyUnit))}
+              </span>
+            )}
             ) {getEnergyUnitString(localEnergyUnit)}
           </span>
 

@@ -360,7 +360,7 @@ export default function DailyLogPanel(props: DailyLogPanelProps) {
                           <span className="flex items-center gap-2">
                             <span className="inline-block h-2 w-2 rounded-full bg-rose-400 dark:bg-rose-500" />
                             <span>
-                              {cp.displayName} ({cp.capacityMl}ml)
+                              {cp.displayName} (<span>{cp.capacityMl}</span>ml)
                             </span>
                           </span>
                           <span className="flex items-center gap-1">

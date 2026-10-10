@@ -247,10 +247,11 @@ const MealCard = ({
               </CardTitle>
               <span className="text-xs sm:text-sm text-gray-500">
                 {Math.round(convertEnergy(totals.calories, 'kcal', energyUnit))}
-                {!!meal.targetCalories &&
-                  ` / ${Math.round(
+                {!!meal.targetCalories && (
+                  <span>{` / ${Math.round(
                     convertEnergy(meal.targetCalories, 'kcal', energyUnit)
-                  )}`}
+                  )}`}</span>
+                )}
                 {getEnergyUnitString(energyUnit)}
               </span>
             </div>

@@ -239,8 +239,9 @@ export default function ManageSymptomsDialog({
                       <span className="font-medium">{c.displayName}</span>
                       <span className="ml-2 text-xs text-muted-foreground">
                         {t(`symptoms.templates.${c.template}`, c.template)}
-                        {c.isEpisodic &&
-                          ` · ${t('symptoms.manage.episodeTag', 'episodes')}`}
+                        {c.isEpisodic && (
+                          <span>{` · ${t('symptoms.manage.episodeTag', 'episodes')}`}</span>
+                        )}
                       </span>
                     </span>
                     <span className="flex shrink-0 items-center">

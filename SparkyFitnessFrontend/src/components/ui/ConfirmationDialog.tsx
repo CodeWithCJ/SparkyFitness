@@ -42,7 +42,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
           <DialogTitle>{title}</DialogTitle>
           <div className="text-sm text-muted-foreground">{description}</div>
         </DialogHeader>
-        {warning && (
+        {!!warning && (
           <Alert variant="destructive">
             <Terminal className="h-4 w-4" />
             <AlertTitle>Warning</AlertTitle>

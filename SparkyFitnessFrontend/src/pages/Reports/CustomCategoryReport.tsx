@@ -199,7 +199,7 @@ export const CustomCategoryReport = ({
                                         {t('reports.notApplicable', 'N/A')}
                                       </p>
                                     )}
-                                    {data.notes && (
+                                    {!!data.notes && (
                                       <p
                                         className="desc"
                                         style={{ marginTop: '5px' }}

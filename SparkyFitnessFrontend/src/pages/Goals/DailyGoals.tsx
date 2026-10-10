@@ -279,8 +279,9 @@ export const DailyGoals = ({
               >
                 {t('goals.mealDistribution.total', 'Total')}:{' '}
                 {currentMacroTotal}%{' '}
-                {!isMacroValid &&
-                  `(${t('goals.mealDistribution.mustBe100', 'Must be 100% to save')})`}
+                {!isMacroValid && (
+                  <span>{`(${t('goals.mealDistribution.mustBe100', 'Must be 100% to save')})`}</span>
+                )}
               </div>
               <div className="p-3 bg-muted/50 rounded-md text-xs text-muted-foreground grid grid-cols-3 gap-2">
                 <span>

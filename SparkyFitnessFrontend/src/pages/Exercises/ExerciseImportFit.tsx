@@ -127,12 +127,21 @@ const ExerciseImportFit = () => {
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusVariant(result.status)}>
-                        {result.status === 'created' &&
-                          t('exercise.importFit.statusCreated', 'Imported')}
-                        {result.status === 'updated' &&
-                          t('exercise.importFit.statusUpdated', 'Updated')}
-                        {result.status === 'failed' &&
-                          t('exercise.importFit.statusFailed', 'Failed')}
+                        {result.status === 'created' && (
+                          <span>
+                            {t('exercise.importFit.statusCreated', 'Imported')}
+                          </span>
+                        )}
+                        {result.status === 'updated' && (
+                          <span>
+                            {t('exercise.importFit.statusUpdated', 'Updated')}
+                          </span>
+                        )}
+                        {result.status === 'failed' && (
+                          <span>
+                            {t('exercise.importFit.statusFailed', 'Failed')}
+                          </span>
+                        )}
                       </Badge>
                     </TableCell>
                     <TableCell>{result.activityName ?? '—'}</TableCell>

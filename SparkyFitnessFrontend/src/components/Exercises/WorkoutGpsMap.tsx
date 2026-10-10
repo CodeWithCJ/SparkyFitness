@@ -100,7 +100,7 @@ export const WorkoutGpsMap: React.FC<WorkoutGpsMapProps> = ({
           </h3>
         </div>
         <div className="flex items-center gap-3 text-xs text-slate-400 font-mono">
-          {avgHr && (
+          {!!avgHr && (
             <span className="text-rose-400">
               <Heart className="inline h-3.5 w-3.5 mr-1" />
               {avgHr} avg bpm {maxHr ? `(${maxHr} max)` : ''}

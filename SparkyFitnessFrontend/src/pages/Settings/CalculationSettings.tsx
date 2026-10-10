@@ -1545,12 +1545,13 @@ const CalculationSettings = () => {
                   }`}
                 >
                   {/* No sign at zero: "-0 kcal (0%)" reads as an error. */}
-                  {previewResult.appliedDeficit === 0
-                    ? ''
-                    : previewResult.isGainGoal
-                      ? '+'
-                      : '-'}
-                  {Math.abs(
+                  {`${
+                    previewResult.appliedDeficit === 0
+                      ? ''
+                      : previewResult.isGainGoal
+                        ? '+'
+                        : '-'
+                  }${Math.abs(
                     Math.round(
                       convertEnergy(
                         previewResult.appliedDeficit,
@@ -1558,7 +1559,7 @@ const CalculationSettings = () => {
                         energyUnit
                       )
                     )
-                  )}{' '}
+                  )}`}{' '}
                   {getEnergyUnitString(energyUnit)} (
                   {Math.abs(
                     Math.round(

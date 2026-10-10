@@ -144,7 +144,7 @@ export default function MonthCalendar({
             </Button>
           </div>
 
-          {headerRight && (
+          {!!headerRight && (
             <div className="flex items-center gap-2">{headerRight}</div>
           )}
         </CardContent>

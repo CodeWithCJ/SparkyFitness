@@ -148,7 +148,7 @@ const DayNavigator = ({
                 )}
               />
               {selectedPickerDate ? (
-                formatDate(selectedPickerDate)
+                <span>{formatDate(selectedPickerDate)}</span>
               ) : (
                 <span className="text-muted-foreground">
                   {t('foodDiary.pickADate', 'Pick a Date')}

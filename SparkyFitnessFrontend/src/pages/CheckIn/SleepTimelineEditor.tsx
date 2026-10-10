@@ -364,7 +364,7 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
               {entryDetails.timeAsleep}
             </p>
           )}
-          {entryDetails.sleepScore && (
+          {!!entryDetails.sleepScore && (
             <p>
               <b>{t('sleepTimelineEditor.sleepScore', 'Sleep Score')}:</b>{' '}
               {entryDetails.sleepScore}

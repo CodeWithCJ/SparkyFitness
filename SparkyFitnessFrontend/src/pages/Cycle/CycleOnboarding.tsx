@@ -135,36 +135,60 @@ export default function CycleOnboarding() {
             </span>
           </div>
           <CardTitle className="text-xl font-bold">
-            {step === 1 &&
-              t('cycle.onboarding.step1Title', 'Choose Your Tracking Goal')}
-            {step === 2 &&
-              t('cycle.onboarding.step2Title', 'Cycle Dates & Lengths')}
-            {step === 3 &&
-              t('cycle.onboarding.step3Title', 'Your Health Profile')}
-            {step === 4 &&
-              t('cycle.onboarding.step4Title', 'Disclaimer & Confirmation')}
+            {step === 1 && (
+              <span>
+                {t('cycle.onboarding.step1Title', 'Choose Your Tracking Goal')}
+              </span>
+            )}
+            {step === 2 && (
+              <span>
+                {t('cycle.onboarding.step2Title', 'Cycle Dates & Lengths')}
+              </span>
+            )}
+            {step === 3 && (
+              <span>
+                {t('cycle.onboarding.step3Title', 'Your Health Profile')}
+              </span>
+            )}
+            {step === 4 && (
+              <span>
+                {t('cycle.onboarding.step4Title', 'Disclaimer & Confirmation')}
+              </span>
+            )}
           </CardTitle>
           <CardDescription>
-            {step === 1 &&
-              t(
-                'cycle.onboarding.step1Desc',
-                'Select the primary mode for your tracker.'
-              )}
-            {step === 2 &&
-              t(
-                'cycle.onboarding.step2Desc',
-                'Tell us about your typical cycle properties.'
-              )}
-            {step === 3 &&
-              t(
-                'cycle.onboarding.step3Desc',
-                'Optional information to customize predictions (skippable).'
-              )}
-            {step === 4 &&
-              t(
-                'cycle.onboarding.step4Desc',
-                'Read and acknowledge before finalizing.'
-              )}
+            {step === 1 && (
+              <span>
+                {t(
+                  'cycle.onboarding.step1Desc',
+                  'Select the primary mode for your tracker.'
+                )}
+              </span>
+            )}
+            {step === 2 && (
+              <span>
+                {t(
+                  'cycle.onboarding.step2Desc',
+                  'Tell us about your typical cycle properties.'
+                )}
+              </span>
+            )}
+            {step === 3 && (
+              <span>
+                {t(
+                  'cycle.onboarding.step3Desc',
+                  'Optional information to customize predictions (skippable).'
+                )}
+              </span>
+            )}
+            {step === 4 && (
+              <span>
+                {t(
+                  'cycle.onboarding.step4Desc',
+                  'Read and acknowledge before finalizing.'
+                )}
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
 

@@ -283,8 +283,9 @@ export const GoalPresetDialog = ({
                 >
                   {t('goals.mealDistribution.total', 'Total')}:{' '}
                   {currentMacroTotal}%{' '}
-                  {currentMacroTotal !== 100 &&
-                    `(${t('goals.mealDistribution.mustBe100', 'Must be 100% to save')})`}
+                  {currentMacroTotal !== 100 && (
+                    <span>{`(${t('goals.mealDistribution.mustBe100', 'Must be 100% to save')})`}</span>
+                  )}
                 </div>
 
                 <div className="mt-3 p-3 bg-muted/50 rounded-md text-sm text-muted-foreground grid grid-cols-1 sm:grid-cols-3 gap-2 text-center sm:text-left">

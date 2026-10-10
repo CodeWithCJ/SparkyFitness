@@ -461,7 +461,7 @@ export const ProviderSpecificFields = ({
               {t(providerDashboard.labelKey)}
             </a>
           ) : (
-            t(`${OAUTH_DASHBOARD_LABELS}.fallback`)
+            <span>{t(`${OAUTH_DASHBOARD_LABELS}.fallback`)}</span>
           )}
           , you must set your callback URL to:
           <strong className="flex items-center mt-1">

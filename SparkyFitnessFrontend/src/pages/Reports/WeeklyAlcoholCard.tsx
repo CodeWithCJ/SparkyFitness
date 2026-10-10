@@ -81,7 +81,7 @@ export const WeeklyAlcoholCard = ({ date, userId }: WeeklyAlcoholCardProps) => {
             <div className="flex items-center space-x-2">
               <span className="text-sm text-muted-foreground">
                 {t('reports.alcohol.limit', 'Limit')}: {limit_standard_drinks} (
-                {limit_g}g)
+                <span>{limit_g}</span>g)
               </span>
               {over_limit ? (
                 <Badge

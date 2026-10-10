@@ -302,7 +302,7 @@ const CopyFamilyEntryDialog = ({
                       >
                         <CalendarIcon className="mr-2 h-3.5 w-3.5" />
                         {sourceDate ? (
-                          formatDate(sourceDate)
+                          <span>{formatDate(sourceDate)}</span>
                         ) : (
                           <span>{t('common.pickADate', 'Pick a date')}</span>
                         )}
@@ -376,7 +376,7 @@ const CopyFamilyEntryDialog = ({
                       >
                         <CalendarIcon className="mr-2 h-3.5 w-3.5" />
                         {targetDate ? (
-                          formatDate(targetDate)
+                          <span>{formatDate(targetDate)}</span>
                         ) : (
                           <span>{t('common.pickADate', 'Pick a date')}</span>
                         )}
