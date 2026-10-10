@@ -283,6 +283,9 @@ export const fastingCurrentQueryKey = ['fasting', 'current'] as const;
 export const fastingStatsQueryKey = ['fasting', 'stats'] as const;
 export const fastingHistoryQueryKey = (limit: number, offset: number) =>
   ['fasting', 'history', limit, offset] as const;
+export const fastingPreferencesQueryKey = ['fasting', 'preferences'] as const;
+export const fastingRangeQueryKey = (startDate: string, endDate: string) =>
+  ['fasting', 'range', startDate, endDate] as const;
 
 export const customNutrientsQueryKey = ['customNutrients'] as const;
 export const nutrientDisplayPreferencesQueryKey = [

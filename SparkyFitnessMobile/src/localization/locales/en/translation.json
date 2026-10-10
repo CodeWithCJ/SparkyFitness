@@ -151,7 +151,8 @@
       "about": "About",
       "shareReport": "Share Diagnostic Report",
       "watch": "Apple Watch",
-      "ai": "AI"
+      "ai": "AI",
+      "fasting": "Fasting"
     },
     "theme": {
       "title": "Theme",
@@ -592,6 +593,8 @@
     "cardioSession": "Cardio Session",
     "watchSettings": "Apple Watch",
     "aiSettings": "AI",
+    "fastingSettings": "Fasting Settings",
+    "fasting": "Fasting",
     "warmupSettings": "Warm-up Calculator"
   },
   "healthMetrics": {
@@ -3066,7 +3069,8 @@
     "title": "Fasting",
     "tabs": {
       "fasting": "Fasting",
-      "history": "History"
+      "history": "History",
+      "report": "Report"
     },
     "startedAt": "Started {{time}}",
     "targetAt": "Target {{time}}",
@@ -3134,7 +3138,8 @@
         "name": "Deep ketosis",
         "description": "A stage often associated with increased autophagy"
       }
-    }
+    },
+    "settings": "Fasting settings"
   },
   "exerciseDetail": {
     "duplicate": "Duplicate exercise",
@@ -5971,6 +5976,51 @@
         "description": "Read nutrition labels with Apple Intelligence on this device. If it cannot read a label, the server AI provider is used instead."
       }
     }
+  },
+  "fastingSettings": {
+    "title": "Fasting Settings",
+    "loadFailed": "Could not load fasting settings.",
+    "autoCalculate": "Auto-calculate fasting from meals",
+    "autoCalculateHint": "Detect when your last meal ended and compute your fasting window and history automatically, without start and stop buttons.",
+    "protocol": "Default fasting protocol",
+    "protocolOption": "{{name}} ({{fast}}h fast / {{eat}}h eating)",
+    "customProtocol": "Custom hours",
+    "customProtocolHint": "Set your own fasting and eating hours.",
+    "targetFastingHours": "Target fasting hours",
+    "targetEatingHours": "Target eating hours",
+    "fastingHoursRange": "Enter 0.5 to 168 hours.",
+    "eatingHoursRange": "Enter 0 to 24 hours.",
+    "calorieThreshold": "Calorie threshold (kcal)",
+    "calorieThresholdHint": "Snacks or drinks below this value (black coffee, water, electrolytes) will not break your fast.",
+    "calorieThresholdRange": "Enter a whole number from 0 to 500.",
+    "preEndAlert": "Pre-goal warning (minutes)",
+    "preEndAlertHint": "How long before your fasting goal to send a reminder. Use 0 to turn it off.",
+    "preEndAlertRange": "Enter a whole number from 0 to 180.",
+    "eatingWindowAlert": "Goal & eating window alerts",
+    "eatingWindowAlertHint": "Alert when your fasting goal is reached and when your eating window opens.",
+    "save": "Save fasting settings",
+    "saved": "Fasting settings saved",
+    "saveFailed": "Failed to save fasting settings"
+  },
+  "fastingReport": {
+    "range": {
+      "7d": "7 days",
+      "30d": "30 days",
+      "90d": "90 days"
+    },
+    "loadFailed": "Could not load your fasting report.",
+    "totalFasts": "Total fasts",
+    "totalHours": "Total hours",
+    "avgDuration": "Avg fast",
+    "longestFast": "Longest",
+    "dailyDuration": "Daily fasting duration",
+    "dailyDurationA11y": "Bar chart of hours fasted per day",
+    "peakHours": "Peak {{hours}}h",
+    "zoneDistribution": "Fasting stages reached",
+    "heatmap": "Consistency (last 90 days)",
+    "heatmapA11y": "Heatmap of days with a fast",
+    "less": "Less",
+    "more": "More"
   },
   "warmupSettings": {
     "title": "Warm-up Calculator",

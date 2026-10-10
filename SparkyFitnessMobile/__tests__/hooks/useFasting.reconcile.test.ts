@@ -76,7 +76,34 @@ describe('reconcileFastGoalNotification', () => {
       target: fast.target_end_time,
       notificationId: 'notif-1',
       preEndNotificationId: 'notif-pre-1',
+      preEndMinutes: 30,
     });
+  });
+
+  test('uses the saved pre-goal minutes and reschedules when they change', async () => {
+    const fast = activeFast();
+    await reconcileFastGoalNotification(fast, undefined, 45);
+    expect(mockSchedulePreEnd).toHaveBeenLastCalledWith(
+      fast.target_end_time,
+      45
+    );
+
+    await reconcileFastGoalNotification(fast, undefined, 45);
+    expect(mockSchedulePreEnd).toHaveBeenCalledTimes(1);
+
+    await reconcileFastGoalNotification(fast, undefined, 10);
+    expect(mockSchedulePreEnd).toHaveBeenCalledTimes(2);
+    expect(mockSchedulePreEnd).toHaveBeenLastCalledWith(
+      fast.target_end_time,
+      10
+    );
+  });
+
+  test('skips the pre-goal reminder when the minutes are 0', async () => {
+    const fast = activeFast();
+    await reconcileFastGoalNotification(fast, undefined, 0);
+    expect(mockSchedule).toHaveBeenCalledTimes(1);
+    expect(mockSchedulePreEnd).not.toHaveBeenCalled();
   });
 
   test('is idempotent across repeated reconciles for the same fast', async () => {
@@ -125,6 +152,7 @@ describe('reconcileFastGoalNotification', () => {
       target: secondFast.target_end_time,
       notificationId: 'notif-2',
       preEndNotificationId: 'notif-pre-2',
+      preEndMinutes: 30,
     });
   });
 
@@ -151,6 +179,7 @@ describe('reconcileFastGoalNotification', () => {
       target: newTarget,
       notificationId: 'notif-2',
       preEndNotificationId: 'notif-pre-2',
+      preEndMinutes: 30,
     });
   });
 

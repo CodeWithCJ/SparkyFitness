@@ -321,6 +321,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   iconColor={catPink}
                 />
               )}
+              {isConnected && (
+                <SettingsRow
+                  icon="timer"
+                  title={t('settings.rows.fasting', {
+                    defaultValue: 'Fasting',
+                  })}
+                  onPress={() => navigation.navigate('FastingSettings')}
+                  iconColor={catOrange}
+                />
+              )}
               <SettingsRow
                 icon="workout-settings"
                 title={t('settings.rows.workout', { defaultValue: 'Workout' })}

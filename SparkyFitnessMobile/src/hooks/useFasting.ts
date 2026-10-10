@@ -8,6 +8,9 @@ import {
   fetchCurrentFast,
   fetchFastingHistory,
   fetchFastingStats,
+  fetchFastingPreferences,
+  fetchFastingRange,
+  updateFastingPreferences,
   startFast,
   endFast,
   updateFast,
@@ -24,10 +27,12 @@ import { useRefetchOnFocus } from './useRefetchOnFocus';
 import {
   fastingCurrentQueryKey,
   fastingHistoryQueryKey,
+  fastingPreferencesQueryKey,
+  fastingRangeQueryKey,
   fastingRootQueryKey,
   fastingStatsQueryKey,
 } from './queryKeys';
-import type { FastingLog } from '../types/fasting';
+import type { FastingLog, FastingPreferencesUpdate } from '../types/fasting';
 
 // Fasting changes can shift the calorie picture, so mutations also nudge the
 // dashboard's daily summary. `dailySummaryQueryKey` is `['dailySummary', date]`,
@@ -73,6 +78,42 @@ export function useFastingHistory(
   });
   useRefetchOnFocus(query.refetch, enabled);
   return query;
+}
+
+export function useFastingRange(
+  startDate: string,
+  endDate: string,
+  options?: QueryOptions
+) {
+  const enabled = options?.enabled ?? true;
+  return useQuery({
+    queryKey: fastingRangeQueryKey(startDate, endDate),
+    queryFn: () => fetchFastingRange(startDate, endDate),
+    enabled,
+  });
+}
+
+export function useFastingPreferences(options?: QueryOptions) {
+  return useQuery({
+    queryKey: fastingPreferencesQueryKey,
+    queryFn: fetchFastingPreferences,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+export function useUpdateFastingPreferences() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (updates: FastingPreferencesUpdate) =>
+      updateFastingPreferences(updates),
+    onSuccess: (saved) => {
+      queryClient.setQueryData(fastingPreferencesQueryKey, saved);
+      // Turning auto-calculate on/off or changing the protocol/threshold
+      // changes what `/current`, history, stats and the report return.
+      queryClient.invalidateQueries({ queryKey: fastingRootQueryKey });
+      queryClient.invalidateQueries({ queryKey: dailySummaryRootKey });
+    },
+  });
 }
 
 export function useStartFast() {
@@ -148,6 +189,7 @@ export function useDeleteFast() {
 // schedule path against concurrent calls.
 // ---------------------------------------------------------------------------
 
+const DEFAULT_PRE_END_ALERT_MINUTES = 30;
 const GOAL_NOTIF_STORAGE_KEY = '@Fasting:goalNotificationId';
 const schedulingLock = new Set<string>();
 
@@ -156,6 +198,7 @@ interface StoredGoalNotification {
   target: string | null;
   notificationId: string;
   preEndNotificationId?: string | null;
+  preEndMinutes?: number | null;
   language?: string | null;
 }
 
@@ -178,6 +221,10 @@ async function readStoredGoalNotification(): Promise<StoredGoalNotification | nu
         preEndNotificationId:
           typeof parsed.preEndNotificationId === 'string'
             ? parsed.preEndNotificationId
+            : null,
+        preEndMinutes:
+          typeof parsed.preEndMinutes === 'number'
+            ? parsed.preEndMinutes
             : null,
         language: typeof parsed.language === 'string' ? parsed.language : null,
       };
@@ -225,7 +272,8 @@ export async function cancelFastGoalNotification(): Promise<void> {
  */
 export async function reconcileFastGoalNotification(
   currentFast: FastingLog | null,
-  language?: string
+  language?: string,
+  preEndMinutes: number = DEFAULT_PRE_END_ALERT_MINUTES
 ): Promise<void> {
   // Callers fire this with `void`, so a thrown error (from notification
   // scheduling or AsyncStorage) would surface as an unhandled rejection.
@@ -274,9 +322,13 @@ export async function reconcileFastGoalNotification(
     // A stored notification whose target no longer matches the active fast's
     // target (e.g. the goal was edited on web / another device) is stale — drop
     // it so we reschedule for the new target time.
+    // Changing the pre-goal warning in Fasting Settings reschedules the same way.
     if (
       stored &&
-      (stored.target !== target || stored.language !== (language ?? null))
+      (stored.target !== target ||
+        stored.language !== (language ?? null) ||
+        (stored.preEndMinutes ?? DEFAULT_PRE_END_ALERT_MINUTES) !==
+          preEndMinutes)
     ) {
       await clearStoredGoalNotification(
         stored.notificationId,
@@ -294,7 +346,9 @@ export async function reconcileFastGoalNotification(
     try {
       const [notificationId, preEndNotificationId] = await Promise.all([
         scheduleFastGoalNotification(target),
-        scheduleFastPreEndNotification(target, 30),
+        preEndMinutes > 0
+          ? scheduleFastPreEndNotification(target, preEndMinutes)
+          : Promise.resolve(null),
       ]);
       if (notificationId || preEndNotificationId) {
         await AsyncStorage.setItem(
@@ -304,6 +358,7 @@ export async function reconcileFastGoalNotification(
             target,
             notificationId: notificationId ?? '',
             preEndNotificationId: preEndNotificationId ?? null,
+            preEndMinutes,
             ...(language !== undefined ? { language } : {}),
           })
         );
@@ -325,7 +380,8 @@ export async function reconcileFastGoalNotification(
 export function useFastingGoalReconciler(
   currentFast: FastingLog | null | undefined,
   isLoading: boolean,
-  refetch: () => void
+  refetch: () => void,
+  preEndMinutes: number = DEFAULT_PRE_END_ALERT_MINUTES
 ): void {
   const notificationsEnabled = useAppPreferencesStore(
     (s) => s.notificationsEnabled
@@ -345,7 +401,11 @@ export function useFastingGoalReconciler(
       void cancelFastGoalNotification();
       return;
     }
-    void reconcileFastGoalNotification(currentFast ?? null, appLocale);
+    void reconcileFastGoalNotification(
+      currentFast ?? null,
+      appLocale,
+      preEndMinutes
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isLoading,
@@ -355,6 +415,7 @@ export function useFastingGoalReconciler(
     currentFast?.status,
     currentFast?.is_eating_window,
     appLocale,
+    preEndMinutes,
   ]);
 
   // On resume, refetch so a fast started/edited on another device is seen. The

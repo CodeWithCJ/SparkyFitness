@@ -1,5 +1,10 @@
 import { apiFetch } from './apiClient';
-import type { FastingLog, FastingStats } from '../../types/fasting';
+import type {
+  FastingLog,
+  FastingPreferences,
+  FastingPreferencesUpdate,
+  FastingStats,
+} from '../../types/fasting';
 
 const SERVICE_NAME = 'Fasting API';
 
@@ -116,3 +121,34 @@ export const fetchFastingHistory = async ({
   });
   return result ?? [];
 };
+
+/** Completed fasts whose start falls within `[startDate, endDate]` (YYYY-MM-DD, inclusive). */
+export const fetchFastingRange = async (
+  startDate: string,
+  endDate: string
+): Promise<FastingLog[]> => {
+  const result = await apiFetch<FastingLog[] | null>({
+    endpoint: `/api/fasting/history/range/${startDate}/${endDate}`,
+    serviceName: SERVICE_NAME,
+    operation: 'fetch fasting range',
+  });
+  return result ?? [];
+};
+
+export const fetchFastingPreferences = (): Promise<FastingPreferences> =>
+  apiFetch<FastingPreferences>({
+    endpoint: '/api/fasting/preferences',
+    serviceName: SERVICE_NAME,
+    operation: 'fetch fasting preferences',
+  });
+
+export const updateFastingPreferences = (
+  updates: FastingPreferencesUpdate
+): Promise<FastingPreferences> =>
+  apiFetch<FastingPreferences>({
+    endpoint: '/api/fasting/preferences',
+    serviceName: SERVICE_NAME,
+    operation: 'update fasting preferences',
+    method: 'PUT',
+    body: updates,
+  });

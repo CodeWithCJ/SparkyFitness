@@ -20,6 +20,7 @@ import { FastingTimerRing } from '../components/FastingTimerRing';
 import { FastingZoneBar } from '../components/FastingZoneBar';
 import { EatingWindowZoneBar } from '../components/EatingWindowZoneBar';
 import StatusView from '../components/StatusView';
+import FastingReport from '../components/FastingReport';
 import FastingProtocolSheet, {
   type FastingProtocolSheetRef,
 } from '../components/FastingProtocolSheet';
@@ -85,7 +86,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
 
-  type TabKey = 'fasting' | 'history';
+  type TabKey = 'fasting' | 'history' | 'report';
   const [activeTab, setActiveTab] = useState<TabKey>('fasting');
   const [historyLimit, setHistoryLimit] = useState(25);
 
@@ -194,8 +195,17 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
       <Text className="flex-1 text-center text-lg font-semibold text-text-primary">
         {t('fastingDetail.title', { defaultValue: 'Fasting' })}
       </Text>
-      {/* Spacer to balance the back button so the title stays centered. */}
-      <View style={{ width: 22 }} />
+      <Button
+        variant="ghost"
+        onPress={() => navigation.navigate('FastingSettings')}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        className="py-0 px-0"
+        accessibilityLabel={t('fastingDetail.settings', {
+          defaultValue: 'Fasting settings',
+        })}
+      >
+        <Icon name="settings" size={22} color={backColor} />
+      </Button>
     </View>
   );
 
@@ -307,6 +317,12 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                 defaultValue: 'History',
               }),
             },
+            {
+              key: 'report',
+              label: t('fastingDetail.tabs.report', {
+                defaultValue: 'Report',
+              }),
+            },
           ]}
           activeKey={activeTab}
           onSelect={setActiveTab}
@@ -320,7 +336,9 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
         }}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === 'history' ? (
+        {activeTab === 'report' ? (
+          <FastingReport />
+        ) : activeTab === 'history' ? (
           <View className="pt-2">
             <Text className="text-center text-text-muted text-xs mb-4">
               {t('fastingHistory.hint', {
