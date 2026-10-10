@@ -8,6 +8,7 @@ import {
 import { FoodAssistantConflict } from '../models/foodAssistantRepository.js';
 import mealRepository from '../models/mealRepository.js';
 import type { DiarySnapshot } from '../models/foodAssistantDiaryRepository.js';
+import { savedMealIngredientQuantitySchema } from './savedMealIngredientQuantity.js';
 
 const componentSchema = z
   .object({
@@ -16,7 +17,7 @@ const componentSchema = z
     variant_id: z.string().uuid().nullable(),
     child_meal_id: z.string().uuid().nullable().optional(),
     item_type: z.string().optional(),
-    quantity: z.coerce.number().positive().finite(),
+    quantity: savedMealIngredientQuantitySchema,
     unit: z.string().nullable(),
     food_name: z.string().nullable(),
     brand: z.string().nullable().optional(),
@@ -105,6 +106,9 @@ export async function expandSavedMeal(
         'The recipe portion needs clarification.'
       );
     for (const component of meal.foods) {
+      // Explicit zero rows remain in the returned recipe but add no consumed
+      // food. Do not resolve a unit, nutrient reference or child for that row.
+      if (component.quantity === 0) continue;
       if (!component.unit)
         throw new FoodAssistantConflict(
           'A recipe component has no confirmed unit.'
@@ -196,6 +200,10 @@ export async function expandSavedMeal(
     }
   };
   await walk(root, selection.quantity, selection.unit, 1, []);
+  if (leaves.length === 0)
+    throw new FoodAssistantConflict(
+      'The saved recipe has no positive-quantity ingredients. Confirm its ingredients before logging or planning it.'
+    );
   return {
     meal: root,
     leaves,

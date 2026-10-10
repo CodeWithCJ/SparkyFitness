@@ -152,6 +152,71 @@ beforeEach(() => {
   vi.mocked(mealService.createMeal).mockResolvedValue({ id: mealId });
   vi.mocked(mealRepository.getMealById).mockResolvedValue(savedRecipe);
 });
+describe('saved recipe quantity compatibility', () => {
+  it('reads zero-quantity ingredients without dropping rows or changing the saved recipe', async () => {
+    const rows = [
+      savedRecipe.foods[0],
+      { ...savedRecipe.foods[0], id: randomUUID(), quantity: 0 },
+      { ...savedRecipe.foods[0], id: randomUUID(), quantity: '0' },
+    ];
+    const source = { ...savedRecipe, foods: rows };
+    const before = structuredClone(source);
+    vi.mocked(mealRepository.getMealById).mockResolvedValue(source);
+    const recipe = await recipes.getRecipe(userId, mealId);
+    expect(recipe.foods.map((row) => row.quantity)).toEqual([2, 0, 0]);
+    expect(recipe.foods.map((row) => row.id)).toEqual(
+      rows.map((row) => row.id)
+    );
+    expect(source).toEqual(before);
+    expect(mealRepository.updateMeal).not.toHaveBeenCalled();
+  });
+  it.each([null, undefined, '', ' ', false, -1, Infinity, NaN])(
+    'does not interpret invalid saved quantity %s as an omitted ingredient',
+    async (quantity) => {
+      vi.mocked(mealRepository.getMealById).mockResolvedValue({
+        ...savedRecipe,
+        foods: [{ ...savedRecipe.foods[0], quantity }],
+      });
+      await expect(recipes.getRecipe(userId, mealId)).rejects.toThrow();
+    }
+  );
+  it('keeps zero-quantity rows in an editing draft and requires clarification before publication', async () => {
+    vi.mocked(tasks.getTask).mockResolvedValue(null);
+    const zero = { ...savedRecipe.foods[0], id: randomUUID(), quantity: 0 };
+    vi.mocked(mealRepository.getMealById).mockResolvedValue({
+      ...savedRecipe,
+      foods: [...savedRecipe.foods, zero],
+    });
+    await recipes.draftFromRecipe(userId, mealId, taskId);
+    const created = vi.mocked(tasks.createTask).mock.calls[0][1];
+    expect(created.checkpoint.ingredients).toHaveLength(2);
+    expect(created.checkpoint.ingredients[1]).toMatchObject({
+      id: zero.id,
+      food_id: foodId,
+      variant_id: variantId,
+      quantity: null,
+      unit: 'slice',
+      status: 'unresolved',
+      issue: expect.stringContaining('quantity 0'),
+      evidence: [
+        expect.objectContaining({
+          source: 'recipe',
+          title: expect.stringContaining('0 slice'),
+        }),
+      ],
+    });
+    const preview = await recipes.resolveRecipeCheckpoint(
+      userId,
+      created.checkpoint
+    );
+    expect(preview.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ ingredient_id: zero.id }),
+      ])
+    );
+    expect(mealRepository.updateMeal).not.toHaveBeenCalled();
+  });
+});
 async function invokeMutation() {
   const callback = vi.mocked(tasks.mutateTask).mock.calls.at(-1)![2];
   return callback((await tasks.getTask(userId, taskId))!, client);

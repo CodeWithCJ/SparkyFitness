@@ -64,6 +64,8 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 
 - Unlinked diary copies: `20261009020000_allow_unlinked_food_snapshot_copies.sql` and canonical INSERT RLS permit self-contained snapshots with null food/meal/variant links under existing diary access. Copy preparation uses SELECT-only checks for both parent foods and servings, detaching inaccessible or deleted sources and independent legacy serving links without changing the historical source.
 
+- Saved recipe quantities: `utils/savedMealIngredientQuantity.ts` distinguishes explicit zero from missing/invalid quantities. Recipe reads preserve zero rows; expansion keeps them in the source but adds only positive quantities to consumed foods. Editing drafts retain zero rows as unresolved with their original quantity in evidence. Recipe schema failures are validation errors rather than database errors; unexpected recipe tool failures log their action and diagnostic.
+
 - `index.ts` - real dev entrypoint; loads env, secrets, and preflight checks before booting the app
 - `SparkyFitnessServer.ts` - Express app shell, route mounting, Swagger/ReDoc, startup, graceful shutdown
 - `services/backgroundJobScheduler.ts` - starts every scheduled background job at startup, including the demo reset; provider syncs are listed in `services/providerSyncScheduler.ts`; `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` skips them all

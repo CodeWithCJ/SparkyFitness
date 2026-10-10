@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import { z } from 'zod';
 import { foodAssistantTaskSchema } from '@workspace/shared';
 import { buildRecipeTools } from '../ai/tools/recipeTools.js';
 import * as repository from '../models/foodAssistantRepository.js';
@@ -53,6 +54,21 @@ function existingTask() {
   });
 }
 beforeEach(() => vi.resetAllMocks());
+it('reports a saved-recipe schema failure as validation rather than a database failure', async () => {
+  const parsed = z
+    .object({ quantity: z.number().nonnegative() })
+    .safeParse({ quantity: -1 });
+  if (parsed.success) throw new Error('Expected an invalid fixture');
+  vi.mocked(recipes.getRecipe).mockRejectedValue(parsed.error);
+  const result = await buildRecipeTools(owner).sparky_manage_recipes.execute!(
+    { action: 'get_recipe', meal_id: requestId },
+    toolOpts
+  );
+  expect(String(result)).toContain('Error [VALIDATION]');
+  expect(String(result)).toContain('quantity');
+  expect(String(result)).not.toContain('DB_ERROR');
+  expect(repository.createTask).not.toHaveBeenCalled();
+});
 it('returns the persisted URL draft on retry without another page fetch, even after checkpoint edits', async () => {
   vi.mocked(repository.getTask).mockResolvedValue(existingTask());
   const tool = buildRecipeTools(owner).sparky_manage_recipes;

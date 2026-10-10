@@ -54,6 +54,51 @@ beforeEach(() => {
   vi.mocked(mealRepository.getMealById).mockResolvedValue(meal());
 });
 describe('verified saved meal expansion', () => {
+  it('preserves explicit zero rows in the source while expanding only quantities that contribute', async () => {
+    const zero = {
+      ...ingredient,
+      id: randomUUID(),
+      quantity: 0,
+      calories: null,
+    };
+    const disabledChild = {
+      ...zero,
+      id: randomUUID(),
+      item_type: 'meal',
+      child_meal_id: childId,
+      food_id: null,
+      variant_id: null,
+      food_name: null,
+      unit: null,
+    };
+    const source = meal(rootId, [ingredient, zero, disabledChild]);
+    const before = structuredClone(source);
+    vi.mocked(mealRepository.getMealById).mockResolvedValue(source);
+    const value = await expandSavedMeal(userId, selection);
+    expect(value.meal.foods).toHaveLength(3);
+    expect(value.meal.foods.map((row) => row.quantity)).toEqual([8, 0, 0]);
+    expect(value.leaves).toHaveLength(1);
+    expect(diaryNutritionTotals(value.leaves).calories).toBe(320);
+    expect(mealRepository.getMealById).toHaveBeenCalledTimes(1);
+    expect(source).toEqual(before);
+  });
+  it.each([null, '', ' ', -1, Infinity, NaN])(
+    'rejects invalid component quantity %s instead of treating it as zero',
+    async (quantity) => {
+      vi.mocked(mealRepository.getMealById).mockResolvedValue(
+        meal(rootId, [{ ...ingredient, quantity }])
+      );
+      await expect(expandSavedMeal(userId, selection)).rejects.toThrow();
+    }
+  );
+  it('does not log or plan a recipe made entirely of zero-quantity ingredients', async () => {
+    vi.mocked(mealRepository.getMealById).mockResolvedValue(
+      meal(rootId, [{ ...ingredient, quantity: 0 }])
+    );
+    await expect(expandSavedMeal(userId, selection)).rejects.toThrow(
+      'no positive-quantity ingredients'
+    );
+  });
   it('uses the actual yield and keeps metadata and unknown micronutrients', async () => {
     const value = await expandSavedMeal(userId, selection);
     expect(value.leaves[0]).toMatchObject({

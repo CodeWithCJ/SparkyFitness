@@ -19,6 +19,8 @@ import { readRecipeImage } from '../../services/recipeImageService.js';
 import { v5 as uuidv5 } from 'uuid';
 import type { ToolBuildContext } from './index.js';
 import { ERRORS, formatZodError } from './errors.js';
+import { log } from '../../config/logging.js';
+import { describeError } from '../../utils/errors.js';
 
 const actions = [
   'get_recipe',
@@ -93,6 +95,7 @@ export function buildRecipeTools(userId: string, ctx?: ToolBuildContext) {
   return {
     sparky_manage_recipes: tool({
       description:
+        'Saved zero-quantity ingredient rows are preserved and contribute nothing to the recorded recipe totals. Do not invent positive quantities or count them as consumed. Editing drafts retain them for clarification before publication. ' +
         'Create and edit saved recipes using persisted ingredient drafts. get_recipe reads an accessible recipe and its updated_at version. draft_from_recipe copies EVERY ingredient into a new task for substitutions, resizing or yield changes. import_recipe_url reads the original page and saves an unresolved draft; when several recipe cards exist, inspect their names and choose card_index. import_recipe_image transcribes the image actually attached to this turn and saves all ingredient lines, including unreadable placeholders. Reuse request_id when retrying an import. Pasted recipes can be saved with sparky_food_assistant_state start_task. Resolve saved-food ingredients through lookup and checkpoint their IDs. For provider ingredients, first checkpoint the confirmed quantity/unit then use import_provider_ingredient with the exact provider ID: it verifies full details and atomically saves the library food, portion and draft row without logging anything. Use serving_id from the full provider details when choosing a particular household reference. Preserve qualifiers such as large slice; ask which serving when matching references disagree. Reuse operation_id for a retry. Never guess a per-item weight or turn an unresolved ingredient into zero. Do not remove ingredients unless requested: remove_recipe_ingredient requires the exact current user quote. preview_recipe recalculates batch/per-serving nutrition and reports missing fields; known_subtotal is only the resolved portion. publish_recipe creates a private saved recipe, or updates meal_id with expected_meal_updated_at. It publishes nothing when ingredients, portions or yield remain unresolved. undo_recipe reverts the publication_operation_id only on an explicit current user undo request and only when the recipe has not changed since publication. Undoing creation is blocked if anyone uses the recipe in a diary, plan, another recipe or favorite. Existing diary snapshots keep their logged nutrition. Only say a recipe was saved after the publication result includes persisted readback. This tool does not log the recipe to the diary; use sparky_manage_diary log_recipe with its current recipe version only when requested.',
       inputSchema: z.object({
         action: z.enum(actions),
@@ -310,6 +313,21 @@ export function buildRecipeTools(userId: string, ctx?: ToolBuildContext) {
             }
           }
         } catch (error) {
+          if (error instanceof z.ZodError) return formatZodError(error);
+          if (
+            !(error instanceof FoodAssistantConflict) &&
+            !(error instanceof RecipeSourceError)
+          ) {
+            const code =
+              error && typeof error === 'object' && 'code' in error
+                ? error.code
+                : undefined;
+            log('error', 'Recipe tool failed', {
+              action: args.action,
+              message: describeError(error),
+              sqlstate: typeof code === 'string' ? code : undefined,
+            });
+          }
           return error instanceof FoodAssistantConflict ||
             error instanceof RecipeSourceError
             ? ERRORS.VALIDATION(error.message)

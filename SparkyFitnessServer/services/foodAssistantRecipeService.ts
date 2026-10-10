@@ -11,6 +11,7 @@ import {
 import foodRepository from '../models/foodRepository.js';
 import mealRepository from '../models/mealRepository.js';
 import mealService from './mealService.js';
+import { savedMealIngredientQuantitySchema } from '../utils/savedMealIngredientQuantity.js';
 import * as taskRepository from '../models/foodAssistantRepository.js';
 import { FoodAssistantConflict } from '../models/foodAssistantRepository.js';
 import {
@@ -325,7 +326,7 @@ const mealSchema = z
           food_id: z.string().uuid().nullable(),
           variant_id: z.string().uuid().nullable(),
           food_name: z.string().nullable(),
-          quantity: z.coerce.number().positive(),
+          quantity: savedMealIngredientQuantitySchema,
           unit: z.string().nullable(),
           child_meal_id: z.string().uuid().nullable().optional(),
           child_meal_name: z.string().nullable().optional(),
@@ -813,16 +814,27 @@ export async function draftFromRecipe(
       food.food_name ?? food.child_meal_name ?? 'Unlinked ingredient',
     food_id: food.child_meal_id ? undefined : (food.food_id ?? undefined),
     variant_id: food.variant_id ?? undefined,
-    quantity: food.quantity,
+    quantity: food.quantity === 0 ? null : food.quantity,
     unit: food.unit,
     status:
-      food.food_id && !food.child_meal_id && food.unit
+      food.quantity > 0 && food.food_id && !food.child_meal_id && food.unit
         ? ('selected' as const)
         : ('unresolved' as const),
-    issue: food.child_meal_id
-      ? 'This ingredient is a linked recipe. Resolve its component foods before publishing this draft.'
-      : undefined,
-    evidence: [],
+    issue:
+      food.quantity === 0
+        ? 'This saved ingredient has quantity 0. Confirm whether to leave it omitted or supply a positive quantity before publishing; do not guess a quantity.'
+        : food.child_meal_id
+          ? 'This ingredient is a linked recipe. Resolve its component foods before publishing this draft.'
+          : undefined,
+    evidence:
+      food.quantity === 0
+        ? [
+            {
+              source: 'recipe' as const,
+              title: `Saved ingredient quantity: 0 ${food.unit ?? '(unit not recorded)'}`,
+            },
+          ]
+        : [],
   }));
   const input = createFoodAssistantTaskSchema.parse({
     id: requestId,
