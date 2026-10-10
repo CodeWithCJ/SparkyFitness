@@ -1594,7 +1594,7 @@ export function buildSessionExercisesPayload(
   prSetIds: PrSetMap,
   startedAtMs?: number | null
 ): PresetSessionExerciseRequest[] {
-  const durationByEntryId = buildSessionDurationMinutes(
+  const timing = buildSessionExerciseTiming(
     session,
     completedSetIds,
     startedAtMs
@@ -1608,7 +1608,11 @@ export function buildSessionExercisesPayload(
       resolveSnapshotModality(exercise.exercise_snapshot)
     )
       ? setsDurationMinutes(exercise.sets)
-      : (durationByEntryId?.get(exercise.id) ?? exercise.duration_minutes ?? 0),
+      : (timing?.durations.get(exercise.id) ?? exercise.duration_minutes ?? 0),
+    // Omitted when nothing was completed yet, so the server keeps what it has.
+    ...(timing?.startTimes.has(exercise.id)
+      ? { entry_time: timing.startTimes.get(exercise.id) }
+      : {}),
     notes: exercise.notes ?? null,
     superset_group: exercise.superset_group ?? null,
     sets: exercise.sets.map((set, setIndex) => {
@@ -1638,12 +1642,47 @@ export function buildSessionDurationMinutes(
   completedSetIds: CompletedSetMap,
   startedAtMs?: number | null
 ): Map<string, number> | null {
+  return (
+    buildSessionExerciseTiming(session, completedSetIds, startedAtMs)
+      ?.durations ?? null
+  );
+}
+
+export interface SessionExerciseTiming {
+  /** Minutes per non-cardio entry; entries absent here keep their stored value. */
+  durations: Map<string, number>;
+  /** Local wall-clock 'HH:MM' at which each entry's first timed span began. */
+  startTimes: Map<string, string>;
+}
+
+/** Local wall-clock 'HH:MM' for an instant, the format entry_time expects. */
+export function toEntryTimeString(ms: number): string {
+  const date = new Date(ms);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+/**
+ * Walks the completed strength sets in the order they were ticked off and
+ * gives each gap (previous completion, or the workout start, up to this
+ * completion) to the exercise the set belongs to. That is the time spent on
+ * that exercise's set plus the rest before it, so supersets and exercises
+ * done out of order each get their own share. The per-entry durations still
+ * add up to start→last completion.
+ *
+ * An entry's start time is the beginning of its first gap. Cardio entries
+ * are left out: their duration is the sum of their set durations.
+ */
+export function buildSessionExerciseTiming(
+  session: PresetSessionResponse,
+  completedSetIds: CompletedSetMap,
+  startedAtMs?: number | null
+): SessionExerciseTiming | null {
   if (startedAtMs == null) return null;
 
-  let lastCompletedMs = 0;
-  let totalCompleted = 0;
   let anyCompletedAfterStart = false;
   const completedCountByEntryId = new Map<string, number>();
+  const timeline: { ms: number; entryId: string }[] = [];
   for (const exercise of session.exercises) {
     const cardio = isCardioModality(
       resolveSnapshotModality(exercise.exercise_snapshot)
@@ -1655,28 +1694,34 @@ export function buildSessionDurationMinutes(
       if (ms > startedAtMs) anyCompletedAfterStart = true;
       if (cardio) continue;
       count++;
-      totalCompleted++;
-      if (ms > lastCompletedMs) lastCompletedMs = ms;
+      // Completions before the start (a resumed session) can't be placed on
+      // this clock; their entry keeps its stored duration.
+      if (ms > startedAtMs) timeline.push({ ms, entryId: exercise.id });
     }
     if (!cardio) completedCountByEntryId.set(exercise.id, count);
   }
-  if (totalCompleted === 0 || lastCompletedMs <= startedAtMs) {
-    if (!anyCompletedAfterStart) return null;
-    const zeroed = new Map<string, number>();
-    for (const [entryId, count] of completedCountByEntryId) {
-      if (count === 0) zeroed.set(entryId, 0);
-    }
-    return zeroed;
+  if (!anyCompletedAfterStart) return null;
+
+  const durations = new Map<string, number>();
+  const startTimes = new Map<string, string>();
+  for (const [entryId, count] of completedCountByEntryId) {
+    if (count === 0) durations.set(entryId, 0);
   }
 
-  const totalMinutes = (lastCompletedMs - startedAtMs) / 60_000;
-  const byEntryId = new Map<string, number>();
-  for (const exercise of session.exercises) {
-    const count = completedCountByEntryId.get(exercise.id) ?? 0;
-    const share = (totalMinutes * count) / totalCompleted;
-    byEntryId.set(exercise.id, Math.round(share * 10) / 10);
+  timeline.sort((a, b) => a.ms - b.ms);
+  const spanMs = new Map<string, number>();
+  let previousMs = startedAtMs;
+  for (const { ms, entryId } of timeline) {
+    spanMs.set(entryId, (spanMs.get(entryId) ?? 0) + (ms - previousMs));
+    if (!startTimes.has(entryId)) {
+      startTimes.set(entryId, toEntryTimeString(previousMs));
+    }
+    previousMs = ms;
   }
-  return byEntryId;
+  for (const [entryId, ms] of spanMs) {
+    durations.set(entryId, Math.round((ms / 60_000) * 10) / 10);
+  }
+  return { durations, startTimes };
 }
 
 export const WORKOUT_LONG_GAP_MINUTES = 30;

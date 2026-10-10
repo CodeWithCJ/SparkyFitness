@@ -1349,6 +1349,69 @@ describe('exerciseService grouped workouts', () => {
       expect(updateCalls[1][3]).toMatchObject({ superset_group: null });
     });
 
+    it('passes entry_time through the reconcile path', async () => {
+      setupExistingSession();
+
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'entry-a',
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 12,
+              entry_time: '15:59',
+              sets: [],
+            },
+            {
+              id: 'entry-b',
+              exercise_id: exerciseBId,
+              sort_order: 1,
+              duration_minutes: 0,
+              entry_time: null,
+              sets: [],
+            },
+          ],
+        }
+      );
+
+      const updateCalls = vi.mocked(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).mock.calls;
+      expect(updateCalls[0][3]).toMatchObject({ entry_time: '15:59' });
+      expect(updateCalls[1][3]).toMatchObject({ entry_time: null });
+    });
+
+    it('leaves entry_time undefined when the reconcile payload omits it', async () => {
+      setupExistingSession();
+
+      await exerciseService.updateGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        'preset-entry-1',
+        {
+          exercises: [
+            {
+              id: 'entry-a',
+              exercise_id: exerciseAId,
+              sort_order: 0,
+              duration_minutes: 0,
+              sets: [],
+            },
+          ],
+        }
+      );
+
+      // undefined makes _updateExerciseEntryWithClient keep the stored time.
+      const updateCalls = vi.mocked(
+        exerciseEntryDb._updateExerciseEntryWithClient
+      ).mock.calls;
+      expect(updateCalls[0][3].entry_time).toBeUndefined();
+    });
+
     it('carries superset_group through the delete-and-recreate path', async () => {
       setupExistingSession();
       // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
