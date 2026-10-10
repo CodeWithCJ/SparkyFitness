@@ -39,6 +39,18 @@ describe('detectRejectedParam', () => {
     expect(detectRejectedParam(400, body)).toBe('temperature');
   });
 
+  // What the Anthropic API actually returns for Claude Opus 4.7 and later.
+  it('names temperature from Anthropic\'s "is deprecated for this model" body', () => {
+    const body = JSON.stringify({
+      type: 'error',
+      error: {
+        type: 'invalid_request_error',
+        message: '`temperature` is deprecated for this model.',
+      },
+    });
+    expect(detectRejectedParam(400, body)).toBe('temperature');
+  });
+
   it('names top_p, the other droppable sampling hint', () => {
     const body = JSON.stringify({
       error: {
@@ -115,9 +127,12 @@ describe('supportsTemperature — static gate', () => {
 
   it.each([
     ['claude-opus-5', false],
+    ['claude-opus-5-5', false],
     ['claude-opus-4-7', false],
     ['claude-opus-4-8', false],
     ['claude-sonnet-5', false],
+    ['claude-sonnet-5-5', false],
+    ['claude-haiku-5-5', false],
     ['claude-fable-5', false],
     ['claude-mythos-5', false],
     ['claude-sonnet-4-6', true],

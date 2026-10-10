@@ -67,7 +67,7 @@ export interface DispatchRequest {
   images?: DispatchImage[];
   /** Presence => structured output requested. */
   jsonSchema?: JsonSchemaNode;
-  /** OpenAI `json_schema` name / Anthropic tool name. */
+  /** OpenAI `json_schema` name. */
   schemaName?: string;
   /** Unstructured-but-JSON callers (label scan): populate `json` without a schema. */
   parseJson?: boolean;
@@ -110,10 +110,10 @@ const LOCAL_MODEL_TIMEOUT_MS = 5 * 60_000;
 // only the first request in a session pays the cold start rather than every
 // request that follows a short pause.
 const OLLAMA_KEEP_ALIVE = '30m';
-// On Claude Opus 5 and Sonnet 5, omitting the `thinking` parameter runs
-// adaptive thinking by default, and max_tokens caps thinking *and* the visible
-// response together. At 2048 with a forced tool call, reasoning could consume
-// the budget and truncate the tool response, surfacing as stop_reason
+// On Claude Opus 5+, Sonnet 5+ and Haiku 5.5, omitting the `thinking`
+// parameter runs adaptive thinking by default, and max_tokens caps thinking
+// *and* the visible response together. At 2048, reasoning could consume the
+// budget and truncate the structured response, surfacing as stop_reason
 // 'max_tokens'. 2048 was also tight for a structured nutrition payload even
 // without thinking. Every Claude model in the catalog supports 8192 output
 // tokens, so it is a safe floor across the board.
@@ -390,8 +390,8 @@ function stripCodeFences(content: string): string {
 
 /**
  * Convert a Gemini-shaped schema into a strict-mode JSON Schema accepted by
- * both OpenAI `response_format.json_schema` (strict: true) and Anthropic tool
- * `input_schema` (strict: true). Deep clones, recursively strips
+ * both OpenAI `response_format.json_schema` (strict: true) and Anthropic
+ * `output_config.format` (JSON outputs). Deep clones, recursively strips
  * `propertyOrdering` (non-standard, rejected in strict mode) and adds
  * `additionalProperties: false` to every object node.
  */
@@ -633,15 +633,16 @@ function buildAnthropicRequest(ctx: BuildContext): BuiltRequest {
     body.temperature = ctx.temperature;
   }
   if (ctx.jsonSchema) {
-    body.tools = [
-      {
-        name: ctx.toolName,
-        description: 'Return the structured result via this tool.',
-        input_schema: toStrictJsonSchema(ctx.jsonSchema),
-        strict: true,
+    // JSON outputs rather than a forced tool call: Claude Opus 5.5, Sonnet 5.5
+    // and Fable 5.1 reject `tool_choice` `tool`/`any` with a 400, while
+    // `output_config.format` is supported by every model that supported the
+    // strict tool it replaces.
+    body.output_config = {
+      format: {
+        type: 'json_schema',
+        schema: toStrictJsonSchema(ctx.jsonSchema),
       },
-    ];
-    body.tool_choice = { type: 'tool', name: ctx.toolName };
+    };
   }
   return {
     url: 'https://api.anthropic.com/v1/messages',
@@ -822,17 +823,11 @@ function extractOpenAiFamily(data: unknown): ExtractResult {
   return { kind: 'text', text: content };
 }
 
-function extractAnthropic(
-  data: unknown,
-  hasSchema: boolean,
-  toolName: string
-): ExtractResult {
+function extractAnthropic(data: unknown, hasSchema: boolean): ExtractResult {
   const d = data as {
     stop_reason?: string;
     content?: Array<{
       type?: string;
-      name?: string;
-      input?: unknown;
       text?: string;
     }>;
   };
@@ -851,48 +846,32 @@ function extractAnthropic(
       detail: 'AI service truncated the response (stop_reason: max_tokens).',
     };
   }
-  if (hasSchema) {
-    const toolUseBlock = d?.content?.find(
-      (block) => block?.type === 'tool_use' && block?.name === toolName
-    );
-    if (stopReason === 'tool_use') {
-      if (
-        !toolUseBlock ||
-        typeof toolUseBlock.input !== 'object' ||
-        toolUseBlock.input === null
-      ) {
-        return {
-          kind: 'error',
-          category: 'upstream_error',
-          detail: 'AI service returned a malformed tool_use block.',
-        };
-      }
-      // tool_use input arrives already parsed as an object; pass it through
-      // verbatim rather than re-stringifying then re-parsing.
-      return { kind: 'object', value: toolUseBlock.input };
-    }
-    if (stopReason === 'end_turn') {
-      return {
-        kind: 'error',
-        category: 'no_content',
-        detail: 'AI service returned no tool call (likely safety-blocked).',
-      };
-    }
-    return {
-      kind: 'error',
-      category: 'upstream_error',
-      detail: `AI service returned unexpected stop_reason '${stopReason ?? '<missing>'}'.`,
-    };
-  }
-  const text = d?.content?.find(
-    (block) => typeof block?.text === 'string'
-  )?.text;
-  if (typeof text !== 'string' || text.trim() === '') {
+  // Models that think by default (Claude Opus 5+, Sonnet 5+, Haiku 5.5) can
+  // open the response with `thinking` blocks, so read the answer by block type
+  // rather than position.
+  const text = (d?.content ?? [])
+    .filter((block) => block?.type === 'text' && typeof block.text === 'string')
+    .map((block) => block.text)
+    .join('');
+  if (text.trim() === '') {
     return {
       kind: 'error',
       category: 'no_content',
       detail: 'AI service returned no content.',
     };
+  }
+  if (hasSchema) {
+    // `output_config.format` constrains decoding to the schema, so the text is
+    // the JSON document itself.
+    try {
+      return { kind: 'object', value: JSON.parse(text) };
+    } catch {
+      return {
+        kind: 'error',
+        category: 'parse_error',
+        detail: 'AI service returned invalid JSON.',
+      };
+    }
   }
   return { kind: 'text', text };
 }
@@ -913,8 +892,7 @@ function extractOllama(data: unknown): ExtractResult {
 function extractResponse(
   family: ProviderFamily,
   data: unknown,
-  hasSchema: boolean,
-  toolName: string
+  hasSchema: boolean
 ): ExtractResult {
   switch (family) {
     case 'google':
@@ -922,7 +900,7 @@ function extractResponse(
     case 'openai':
       return extractOpenAiFamily(data);
     case 'anthropic':
-      return extractAnthropic(data, hasSchema, toolName);
+      return extractAnthropic(data, hasSchema);
     case 'ollama':
       return extractOllama(data);
   }
@@ -1338,12 +1316,7 @@ export async function dispatchAiRequest(
     return outcome.error;
   }
 
-  const extracted = extractResponse(
-    family,
-    outcome.data,
-    Boolean(jsonSchema),
-    toolName
-  );
+  const extracted = extractResponse(family, outcome.data, Boolean(jsonSchema));
 
   if (extracted.kind === 'error') {
     return {
