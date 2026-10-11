@@ -367,6 +367,7 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
       'view',
       'notes',
       'superset-with',
+      'warmups',
       'replace',
       'clear',
       'remove',
@@ -429,6 +430,58 @@ describe('ActiveWorkoutScreen overflow menu wiring', () => {
 
     expect(mockSheet.props?.title).toBe('Running');
     expect(sheetItemKeys()).not.toContain('clear');
+  });
+
+  it('adds a warm-up ramp from the first working set, and hides the item once one is logged', () => {
+    const { getByTestId } = renderScreen();
+    fireEvent.press(getByTestId('card-ex-b-overflow'));
+    expect(sheetItemKeys()).toContain('warmups');
+
+    pressSheetItem('warmups');
+
+    const sets = useActiveWorkoutStore.getState().session!.exercises[1].sets;
+    // 60 kg first working set: 40%, 60% and 80% rounded to 2.5.
+    expect(
+      sets.filter((s) => s.set_type === 'warmup').map((s) => s.weight)
+    ).toEqual([25, 35, 47.5]);
+    expect(sets[sets.length - 1]!.set_type).toBe('normal');
+
+    const first = sets[0]!;
+    act(() => useActiveWorkoutStore.getState().completeSet(String(first.id)));
+    fireEvent.press(getByTestId('card-ex-b-overflow'));
+    expect(sheetItemKeys()).not.toContain('warmups');
+  });
+
+  it('offers no warm-ups for a timed exercise or a set without a weight', () => {
+    __resetActiveWorkoutStoreForTests();
+    const session = makeSession();
+    const plank = makeExercise('ex-d', 'Plank', [
+      makeSet(401, { reps: null, weight: null, duration: 45 }),
+    ]);
+    plank.exercise_snapshot.modality = 'duration';
+    session.exercises.push(
+      plank,
+      makeExercise('ex-e', 'Curl', [makeSet(501, { weight: null })])
+    );
+    useActiveWorkoutStore.getState().startWorkout(session);
+    const { getByTestId } = renderScreen();
+
+    fireEvent.press(getByTestId('card-ex-d-overflow'));
+    expect(sheetItemKeys()).not.toContain('warmups');
+    fireEvent.press(getByTestId('card-ex-e-overflow'));
+    expect(sheetItemKeys()).not.toContain('warmups');
+  });
+
+  it('hides warm-ups when the working weight cannot build a loadable ramp', () => {
+    __resetActiveWorkoutStoreForTests();
+    const session = makeSession();
+    // 2 kg against the default 2.5 kg plate step rounds to nothing under it.
+    session.exercises[1].sets[0].weight = 2;
+    useActiveWorkoutStore.getState().startWorkout(session);
+    const { getByTestId } = renderScreen();
+
+    fireEvent.press(getByTestId('card-ex-b-overflow'));
+    expect(sheetItemKeys()).not.toContain('warmups');
   });
 
   it('swaps to the candidate pick list in place and back', () => {

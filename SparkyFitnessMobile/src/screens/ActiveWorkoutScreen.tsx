@@ -15,7 +15,11 @@ import {
   KeyboardStickyView,
   type KeyboardAwareScrollViewRef,
 } from 'react-native-keyboard-controller';
-import { findDropSetBaseIndex } from '@workspace/shared';
+import {
+  calculateWarmupSets,
+  findDropSetBaseIndex,
+  findWarmupBaseIndex,
+} from '@workspace/shared';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
@@ -74,8 +78,11 @@ import {
   formatSetLoad,
   rendersCardioEffortForm,
   resolveSnapshotModality,
+  isCardioModality,
+  isDurationModality,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { resolveWarmupOptions } from '../utils/warmupSettings';
 import { useActiveWorkoutIntervalLifecycle } from '../hooks/useActiveWorkoutIntervalLifecycle';
 import { useActiveWorkoutDiscard } from '../hooks/useActiveWorkoutDiscard';
 import { useActiveWorkoutFinish } from '../hooks/useActiveWorkoutFinish';
@@ -236,6 +243,98 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     () => buildExerciseReorderItems(session?.exercises ?? []).length,
     [session]
   );
+  // The first working set's weight, typed or assumed, that a warm-up ramp
+  // builds towards. Null for cardio and timed exercises, or when that set has
+  // no weight yet.
+  const warmupWeightKg = useCallback(
+    (entryId: string): number | null => {
+      const ex = session?.exercises.find((e) => e.id === entryId);
+      if (!ex) return null;
+      const modality = resolveSnapshotModality(ex.exercise_snapshot);
+      if (isCardioModality(modality) || isDurationModality(modality))
+        return null;
+      const baseIndex = findWarmupBaseIndex(
+        ex.sets,
+        (s) => s.weight ?? plannedSetValues[String(s.id)]?.weight
+      );
+      if (baseIndex < 0) return null;
+      const base = ex.sets[baseIndex];
+      return Number(base.weight ?? plannedSetValues[String(base.id)]?.weight);
+    },
+    [session, plannedSetValues]
+  );
+  const warmupCalculatorEnabled = useAppPreferencesStore(
+    (s) => s.warmupCalculatorEnabled
+  );
+  const warmupMethod = useAppPreferencesStore((s) => s.warmupMethod);
+  const warmupPlateRounding = useAppPreferencesStore(
+    (s) => s.warmupPlateRounding
+  );
+  const warmupDumbbellRounding = useAppPreferencesStore(
+    (s) => s.warmupDumbbellRounding
+  );
+  const canAddWarmups = useCallback(
+    (entryId: string): boolean => {
+      if (!warmupCalculatorEnabled) return false;
+      const weightKg = warmupWeightKg(entryId);
+      if (weightKg == null) return false;
+      const ex = session?.exercises.find((e) => e.id === entryId);
+      // A warm-up already logged means the ramp is under way.
+      if (
+        ex?.sets.some(
+          (s) =>
+            s.set_type === 'warmup' &&
+            (completedSetIds[String(s.id)] != null || s.completed_at != null)
+        )
+      ) {
+        return false;
+      }
+      // A weight findWarmupBaseIndex accepts can still round to nothing
+      // (2 kg against the default 2.5 kg plate step). Hide the action then.
+      return (
+        calculateWarmupSets(
+          weightKg,
+          weightUnit,
+          resolveWarmupOptions(
+            { warmupMethod, warmupPlateRounding, warmupDumbbellRounding },
+            weightUnit,
+            ex?.exercise_snapshot?.equipment
+          )
+        ).length > 0
+      );
+    },
+    [
+      warmupCalculatorEnabled,
+      warmupWeightKg,
+      session,
+      completedSetIds,
+      weightUnit,
+      warmupMethod,
+      warmupPlateRounding,
+      warmupDumbbellRounding,
+    ]
+  );
+  const handleAddWarmups = useCallback(
+    (entryId: string) => {
+      const weightKg = warmupWeightKg(entryId);
+      if (weightKg == null) return;
+      const ex = session?.exercises.find((e) => e.id === entryId);
+      useActiveWorkoutStore
+        .getState()
+        .addWarmupSetsToExercise(
+          entryId,
+          weightKg,
+          weightUnit,
+          resolveWarmupOptions(
+            useAppPreferencesStore.getState(),
+            weightUnit,
+            ex?.exercise_snapshot?.equipment
+          )
+        );
+    },
+    [warmupWeightKg, weightUnit, session]
+  );
+
   const handleOpenReorder = useCallback(() => {
     Keyboard.dismiss();
     setReorderVisible(true);
@@ -908,6 +1007,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onPressThumb={handlePressThumb}
         onToggleExerciseNote={handleToggleExerciseNote}
         onReplaceExercise={handleReplaceExercise}
+        canAddWarmups={canAddWarmups}
+        onAddWarmups={handleAddWarmups}
         onClearExerciseSets={handleClearExerciseSets}
         onRemoveExercise={handleRemoveExercise}
         onSelectSupersetPartner={(entryId, candidateId) => {

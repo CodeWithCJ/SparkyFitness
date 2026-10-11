@@ -118,6 +118,10 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const setSymptomsCardVisible = useAppPreferencesStore(
     (s) => s.setSymptomsCardVisible
   );
+  const moodCardVisible = useAppPreferencesStore((s) => s.moodCardVisible);
+  const setMoodCardVisible = useAppPreferencesStore(
+    (s) => s.setMoodCardVisible
+  );
   const progressPhotosCardVisible = useAppPreferencesStore(
     (s) => s.progressPhotosCardVisible
   );
@@ -160,6 +164,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     cycle: cycleCardVisible,
     medications: medicationsCardVisible,
     symptoms: symptomsCardVisible,
+    mood: moodCardVisible,
     progressPhotos: progressPhotosCardVisible,
     healthTrends: healthTrendsCardVisible,
     mindfulness: mindfulnessCardVisible,
@@ -198,6 +203,9 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
         case 'symptoms':
           setSymptomsCardVisible(isVisible);
           break;
+        case 'mood':
+          setMoodCardVisible(isVisible);
+          break;
         case 'progressPhotos':
           setProgressPhotosCardVisible(isVisible);
           break;
@@ -220,6 +228,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
       setCycleCardVisible,
       setMedicationsCardVisible,
       setSymptomsCardVisible,
+      setMoodCardVisible,
       setProgressPhotosCardVisible,
       setHealthTrendsCardVisible,
       setMindfulnessCardVisible,

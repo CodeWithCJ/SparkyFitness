@@ -32,7 +32,27 @@ import glp1Service from '../../services/glp1Service.js';
 import medicationEntryRepository from '../../models/medicationEntryRepository.js';
 import medicationDisplayPreferenceRepository from '../../models/medicationDisplayPreferenceRepository.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
-import { instantToDay, todayInZone } from '@workspace/shared';
+import {
+  instantToDay,
+  SUPPLEMENT_LOOKUP_PROVIDER_TYPE,
+  supplementLabelExtractionSchema,
+  supplementLabelScanRequestSchema,
+  supplementLookupQuerySchema,
+  type SupplementLookupProduct,
+  todayInZone,
+} from '@workspace/shared';
+import { log } from '../../config/logging.js';
+import { resolveIsAdmin } from '../../utils/adminCheck.js';
+import {
+  lookupSupplementByUpc,
+  mapScannedLabel,
+} from '../../services/supplementLookupService.js';
+import {
+  extractSupplementLabel,
+  type SupplementLabelScanErrorCategory,
+} from '../../services/supplementLabelScanService.js';
+import { lookupSupplementInOpenFoodFacts } from '../../services/supplementOpenFoodFactsService.js';
+import { getActiveProvidersByTypes } from '../../models/externalProviderRepository.js';
 
 const router = express.Router();
 
@@ -456,6 +476,60 @@ const requireDiaryForSupplementDose = (
  *       - { in: path, name: viewGroup, required: true, schema: { type: string } }
  *       - { in: path, name: platform, required: true, schema: { type: string } }
  *     responses: { 204: { description: Deleted. }, 404: { description: Not found. } }
+ *
+ * /v2/medications/supplement-label/scan:
+ *   post:
+ *     summary: Read a Supplement Facts photo with the user's vision AI provider
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [image, mime_type]
+ *             properties:
+ *               image: { type: string, description: Base64-encoded label photo }
+ *               mime_type: { type: string }
+ *     responses:
+ *       200: { description: The mapped supplement product. }
+ *       400: { description: Invalid request, or an unsupported image type. }
+ *       403: { description: The AI provider URL is on a private network. }
+ *       422: { description: No usable AI provider, or the model did not return a readable label. }
+ *       502: { description: The vision provider failed. }
+ *       504: { description: The vision provider timed out. }
+ * /v2/medications/supplement-label/map:
+ *   post:
+ *     summary: Map an on-device Supplement Facts reading onto a supplement product
+ *     description: No AI runs here. The server only matches ingredients and converts units.
+ *     tags: [Medications & GLP-1]
+ *     security: [{ cookieAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, brand, form, serving, ingredients]
+ *             properties:
+ *               name: { type: string, nullable: true, maxLength: 200 }
+ *               brand: { type: string, nullable: true, maxLength: 200 }
+ *               form: { type: string, nullable: true, enum: [tablet, capsule, softgel, gummy, powder, liquid] }
+ *               serving: { type: string, nullable: true, maxLength: 100 }
+ *               ingredients:
+ *                 type: array
+ *                 maxItems: 120
+ *                 items:
+ *                   type: object
+ *                   required: [name, amount, unit]
+ *                   properties:
+ *                     name: { type: string, maxLength: 200 }
+ *                     amount: { type: number, nullable: true, minimum: 0 }
+ *                     unit: { type: string, nullable: true, maxLength: 40 }
+ *     responses:
+ *       200: { description: The mapped supplement product. }
+ *       400: { description: Invalid request. }
  */
 
 // Small helper to send a uniform 400 for Zod failures.
@@ -638,7 +712,121 @@ const deleteEntry: RequestHandler = async (req, res, next) => {
   }
 };
 
+// Finds a supplement by the barcode on its package so the app can fill in its name,
+// form and nutrition. The NIH label database answers first; Open Food Facts covers
+// products it lacks (mostly outside the US). Each source runs only while the user
+// can see it as an active external provider (`dsld`, `openfoodfacts`), so either
+// can be switched off like the other providers. A miss is an ordinary answer.
+const lookupSupplement: RequestHandler = async (req, res, next) => {
+  try {
+    const query = supplementLookupQuerySchema.safeParse(req.query);
+    if (!query.success) return badRequest(res, query.error);
+    const providers = await getActiveProvidersByTypes(req.userId, [
+      SUPPLEMENT_LOOKUP_PROVIDER_TYPE,
+      'openfoodfacts',
+    ]);
+    const useDsld = providers.some(
+      (p: { provider_type: string }) =>
+        p.provider_type === SUPPLEMENT_LOOKUP_PROVIDER_TYPE
+    );
+    const offProvider = providers.find(
+      (p: { id: string; provider_type: string }) =>
+        p.provider_type === 'openfoodfacts'
+    );
+    if (!useDsld && !offProvider) {
+      return res.status(404).json({
+        error: 'No supplement barcode source is enabled',
+      });
+    }
+
+    let product: SupplementLookupProduct | null = null;
+    let dsldFailed = false;
+    if (useDsld) {
+      try {
+        product = await lookupSupplementByUpc(query.data.upc);
+      } catch (error) {
+        dsldFailed = true;
+        log(
+          'warn',
+          `Supplement label lookup failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    }
+    if (!product && offProvider) {
+      product = await lookupSupplementInOpenFoodFacts(query.data.upc, {
+        userId: req.userId,
+        providerId: offProvider.id,
+      });
+    }
+    if (!product && dsldFailed) {
+      return res
+        .status(502)
+        .json({ error: 'The supplement label database is unavailable' });
+    }
+    res.json({ product });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const SUPPLEMENT_LABEL_ERROR_HTTP_STATUS: Record<
+  SupplementLabelScanErrorCategory,
+  number
+> = {
+  no_ai_configured: 422,
+  unsupported_provider: 422,
+  api_key_missing: 422,
+  custom_url_missing: 422,
+  private_network_forbidden: 403,
+  unsupported_media: 400,
+  refused: 422,
+  truncated: 422,
+  no_content: 422,
+  parse_error: 422,
+  upstream_error: 502,
+  timeout: 504,
+};
+
+// Reads a photographed Supplement Facts panel with the user's vision AI provider
+// and answers with the same product the barcode lookup does.
+const scanSupplementLabel: RequestHandler = async (req, res, next) => {
+  try {
+    const body = supplementLabelScanRequestSchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
+    const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
+    const result = await extractSupplementLabel(
+      body.data.image,
+      body.data.mime_type,
+      req.userId,
+      isAdmin
+    );
+    if (!result.success) {
+      const status = SUPPLEMENT_LABEL_ERROR_HTTP_STATUS[result.category] ?? 500;
+      return res.status(status).json({ error: result.error });
+    }
+    res.json({ product: mapScannedLabel(result.label) });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Maps a panel the phone already read on device. No AI runs here: the server
+// only matches the ingredients to nutrients and converts the units, so both
+// readers share one set of rules.
+const mapSupplementLabel: RequestHandler = async (req, res, next) => {
+  try {
+    const body = supplementLabelExtractionSchema.safeParse(req.body);
+    if (!body.success) return badRequest(res, body.error);
+    res.json({ product: mapScannedLabel(body.data) });
+  } catch (error) {
+    next(error);
+  }
+};
+
 router.get('/', listMedications);
+router.get('/supplement-lookup', lookupSupplement);
+router.post('/supplement-label/scan', scanSupplementLabel);
+router.post('/supplement-label/map', mapSupplementLabel);
 router.post(
   '/',
   stripNutrientFieldsWithoutDiaryAccess({ keepSupplementFlag: true }),

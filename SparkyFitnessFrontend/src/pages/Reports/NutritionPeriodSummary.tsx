@@ -484,9 +484,11 @@ const NutritionPeriodSummary = ({
         <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="w-[220px] justify-between">
-              {selectedNutrients.length === 1
-                ? selectedOption?.label
-                : `${selectedOption?.label} +${selectedNutrients.length - 1}`}
+              {selectedNutrients.length === 1 ? (
+                <span>{selectedOption?.label}</span>
+              ) : (
+                <span>{`${selectedOption?.label} +${selectedNutrients.length - 1}`}</span>
+              )}
               <ChevronDown className="h-4 w-4 opacity-50" />
             </Button>
           </DropdownMenuTrigger>
@@ -526,8 +528,7 @@ const NutritionPeriodSummary = ({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {netBalance > 0 ? '+' : netBalance < 0 ? '-' : ''}
-                {displayNetBalance} {unitStr}
+                {`${netBalance > 0 ? '+' : netBalance < 0 ? '-' : ''}${displayNetBalance} ${unitStr}`}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {t('reports.totalEaten', 'Total Eaten')}: {displayTotalEaten}{' '}
@@ -565,8 +566,7 @@ const NutritionPeriodSummary = ({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {averageVariance > 0 ? '+' : averageVariance < 0 ? '-' : ''}
-                {displayAvgVariance} {unitStr}
+                {`${averageVariance > 0 ? '+' : averageVariance < 0 ? '-' : ''}${displayAvgVariance} ${unitStr}`}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {isPrimaryTarget
@@ -595,7 +595,7 @@ const NutritionPeriodSummary = ({
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm">
-                      {selectedOption?.label} ({unitStr})
+                      <span>{selectedOption?.label}</span> ({unitStr})
                     </CardTitle>
                     <span className="text-xs text-muted-foreground font-normal">
                       {t('reports.average', 'Avg')}: {formattedAverageEaten}{' '}

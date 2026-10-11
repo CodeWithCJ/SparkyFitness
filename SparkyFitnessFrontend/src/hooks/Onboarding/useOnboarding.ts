@@ -2,11 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getOnboardingStatus,
   resetOnboardingStatus,
+  setTargetWeight,
   skipOnboarding,
   submitOnboardingData,
 } from '@/api/Onboarding/onboarding';
 import { onboardingKeys } from '@/api/keys/onboarding';
 import { useTranslation } from 'react-i18next';
+import { userKeys } from '@/api/keys/admin';
 import { OnboardingData } from '@/types/onboarding';
 
 export const useOnboardingStatus = (enabled: boolean) => {
@@ -81,6 +83,31 @@ export const useSkipOnboarding = () => {
       errorMessage: t(
         'onboarding.skipFailed',
         'Could not skip onboarding. Please try again.'
+      ),
+    },
+  });
+};
+
+export const useSetTargetWeight = (userId: string) => {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: (targetWeightKg: number | null) =>
+      setTargetWeight(targetWeightKg),
+    onSuccess: () => {
+      return queryClient.invalidateQueries({
+        queryKey: userKeys.profile(userId),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'goals.goalsSettings.goalWeightSaveFailed',
+        'Failed to save goal weight.'
+      ),
+      successMessage: t(
+        'goals.goalsSettings.goalWeightSaved',
+        'Goal weight saved.'
       ),
     },
   });

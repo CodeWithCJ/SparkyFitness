@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
+import { ExtensionStorage } from '@bacons/apple-targets';
+import Constants from 'expo-constants';
 import * as QuickActions from 'expo-quick-actions';
 import Toast from 'react-native-toast-message';
 import i18n from '../localization/i18n';
@@ -149,4 +151,40 @@ export function useQuickActions(enabled: boolean): void {
     );
     return () => subscription.remove();
   }, [enabled, language]);
+}
+
+const CONTROL_ROUTE_KEY = 'pendingControlRoute';
+
+const iosAppGroup = (
+  Constants.expoConfig?.extra as { iosAppGroup?: string } | undefined
+)?.iosAppGroup;
+
+/**
+ * The Scan food, Log food and Calories left controls (Control Center, Lock Screen) open the
+ * app and leave the screen they want in the shared app group. Picks it up when
+ * the app launches or comes to the front and goes there, the same way the
+ * Home Screen shortcuts do.
+ */
+export function useControlRouteHandoff(enabled: boolean): void {
+  useEffect(() => {
+    if (!enabled || Platform.OS !== 'ios' || !iosAppGroup) return;
+    const storage = new ExtensionStorage(iosAppGroup);
+    const pickUp = (): void => {
+      const route = storage.get(CONTROL_ROUTE_KEY);
+      if (route == null || route === '') return;
+      storage.remove(CONTROL_ROUTE_KEY);
+      if (route === 'scan') runQuickAction('scan-food');
+      else if (route === 'search') runQuickAction('search-food');
+      else if (route === 'diary') {
+        whenNavigationReady(() =>
+          navigationRef.navigate('Tabs', { screen: 'Diary' })
+        );
+      }
+    };
+    pickUp();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') pickUp();
+    });
+    return () => subscription.remove();
+  }, [enabled]);
 }

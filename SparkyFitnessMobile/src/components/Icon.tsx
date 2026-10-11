@@ -175,6 +175,7 @@ const ICON_MAP = {
   medication: { sf: 'pills', ion: 'medkit-outline' },
   calendar: { sf: 'calendar', ion: 'calendar-outline' },
   symptoms: { sf: 'cross.case', ion: 'medkit-outline' },
+  mood: { sf: 'face.smiling', ion: 'happy-outline' },
 
   // Sleep
   'sleep-wake-up': { sf: 'alarm.fill', ion: 'alarm' },

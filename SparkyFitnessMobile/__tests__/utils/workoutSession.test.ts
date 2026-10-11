@@ -33,6 +33,7 @@ import {
   describeActiveSetAssumed,
   evaluateExerciseProgression,
   resolveAssumedSetValues,
+  alignPreviousSets,
   resolveLiveAssumedSetValues,
   extractPlannedSetValues,
   stripPlannedSetValues,
@@ -1993,6 +1994,7 @@ describe('workoutSession', () => {
           name: 'Bench Press',
           category: 'Strength',
           modality: null,
+          equipment: null,
           images: ['bench.png'],
         });
         expect(card.sets[0]).toMatchObject({
@@ -2344,7 +2346,7 @@ describe('workoutSession', () => {
       const startedAt = Date.UTC(2026, 2, 20, 10, 0, 0);
       const min = (n: number) => startedAt + n * 60_000;
 
-      it('splits start→last-completion across exercises by completed-set count', () => {
+      it('gives each exercise the time up to its own completed sets', () => {
         const session = makePreset({
           exercises: [
             makeExercise({
@@ -2366,8 +2368,83 @@ describe('workoutSession', () => {
           {},
           startedAt
         );
-        expect(payload[0].duration_minutes).toBe(20); // 30 × 2/3
-        expect(payload[1].duration_minutes).toBe(10); // 30 × 1/3
+        expect(payload[0].duration_minutes).toBe(12); // start → 12 min
+        expect(payload[1].duration_minutes).toBe(18); // 12 → 30 min
+      });
+
+      it('splits alternating superset sets by their own gaps', () => {
+        const session = makePreset({
+          exercises: [
+            makeExercise({
+              superset_group: 1,
+              sets: [makeSet({ id: 101 }), makeSet({ id: 102, set_number: 2 })],
+            }),
+            makeExercise({
+              id: ENTRY_B,
+              exercise_id: EX_2,
+              superset_group: 1,
+              sets: [makeSet({ id: 201 }), makeSet({ id: 202, set_number: 2 })],
+            }),
+          ],
+        });
+
+        const completed = {
+          '101': min(3),
+          '201': min(5),
+          '102': min(8),
+          '202': min(11),
+        };
+        const payload = buildSessionExercisesPayload(
+          session,
+          completed,
+          {},
+          startedAt
+        );
+        expect(payload[0].duration_minutes).toBe(6); // 0→3 + 5→8
+        expect(payload[1].duration_minutes).toBe(5); // 3→5 + 8→11
+      });
+
+      it('stamps entry_time with the local start of each exercise', () => {
+        const localStart = new Date(2026, 2, 20, 10, 0, 0).getTime();
+        const at = (n: number) => localStart + n * 60_000;
+        const session = makePreset({
+          exercises: [
+            makeExercise({
+              sets: [makeSet({ id: 101 }), makeSet({ id: 102, set_number: 2 })],
+            }),
+            makeExercise({
+              id: ENTRY_B,
+              exercise_id: EX_2,
+              sets: [makeSet({ id: 201 })],
+            }),
+            makeExercise({
+              id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+              sets: [makeSet({ id: 301 })],
+            }),
+          ],
+        });
+        const payload = buildSessionExercisesPayload(
+          session,
+          { '101': at(4), '102': at(12), '201': at(19) },
+          {},
+          localStart
+        );
+        expect(payload[0].entry_time).toBe('10:00');
+        expect(payload[1].entry_time).toBe('10:12');
+        // Nothing completed yet: omitted so the server keeps its value.
+        expect('entry_time' in payload[2]).toBe(false);
+      });
+
+      it('omits entry_time without a workout start', () => {
+        const session = makePreset({
+          exercises: [makeExercise({ sets: [makeSet({ id: 101 })] })],
+        });
+        const payload = buildSessionExercisesPayload(
+          session,
+          { '101': min(10) },
+          {}
+        );
+        expect('entry_time' in payload[0]).toBe(false);
       });
 
       it('gives an exercise with no completed sets zero duration', () => {
@@ -4037,6 +4114,45 @@ describe('workoutSession', () => {
         setType,
         weight,
         reps,
+      });
+
+      it('keeps warm-ups added ahead of the working sets from taking their history', () => {
+        const sets = [
+          makeSet(1, { set_type: 'warmup' }),
+          makeSet(2, { set_type: 'warmup' }),
+          makeSet(3),
+          makeSet(4),
+        ];
+        const previous = [prev(70, 14), prev(90, 10)];
+        const aligned = alignPreviousSets(sets, previous);
+        expect(aligned[0]).toBeUndefined();
+        expect(aligned[1]).toBeUndefined();
+        expect(aligned[2]).toBe(previous[0]);
+        expect(aligned[3]).toBe(previous[1]);
+        expect(resolveAssumedSetValues(sets, previous)[2]).toMatchObject({
+          weight: 70,
+          reps: 14,
+        });
+      });
+
+      it("pairs warm-ups with last time's warm-ups and working sets with its working sets", () => {
+        const sets = [
+          makeSet(1, { set_type: 'warmup' }),
+          makeSet(2),
+          makeSet(3),
+        ];
+        const previous = [prev(40, 10, 'warmup'), prev(100, 8), prev(100, 6)];
+        expect(alignPreviousSets(sets, previous)).toEqual([
+          previous[0],
+          previous[1],
+          previous[2],
+        ]);
+        // No warm-ups planned this time: the working sets still take the
+        // working history, not last time's warm-up.
+        expect(alignPreviousSets([makeSet(2), makeSet(3)], previous)).toEqual([
+          previous[1],
+          previous[2],
+        ]);
       });
 
       it('assumes each set from its same-position previous-session set', () => {

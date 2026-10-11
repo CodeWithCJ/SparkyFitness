@@ -480,7 +480,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                     </span>
                     {sched.dose_amount != null && (
                       <span className="text-xs text-muted-foreground ml-2">
-                        ({formatDose(med, sched)})
+                        (<span>{formatDose(med, sched)}</span>)
                       </span>
                     )}
                   </div>

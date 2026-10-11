@@ -161,7 +161,9 @@ export const CardioPRBadgesWidget = ({
                           }
                         >
                           {exerciseDisplayLabel(pr.activityName, t, false)}
-                          {pr.sportConfidence === 'inferred' && ' *'}
+                          {pr.sportConfidence === 'inferred' && (
+                            <span>{' *'}</span>
+                          )}
                         </span>
                         <span className="flex items-center gap-0.5">
                           <Calendar className="w-2.5 h-2.5" />

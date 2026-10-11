@@ -60,7 +60,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// applied by `beginPlan`. One per session: each update is a full list.
     private var pendingSetTargets: [String: (
         revision: Double, targets: [String: SetValues], completedSetIds: Set<String>,
-        rest: PhoneRest?, armedAt: Date?, setTimers: [String: Date]?
+        rest: PhoneRest?, armedAt: Date?, setTimers: [String: Date]?, prSetIds: Set<String>
     )] = [:]
     /// When each session was stopped, on the phone's clock when the phone
     /// sent it. A start whose `armedAt` is at or before that is the queued
@@ -589,7 +589,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
                 targets: pending.targets,
                 completedSetIds: pending.completedSetIds,
                 phoneRest: pending.rest,
-                setTimers: pending.setTimers
+                setTimers: pending.setTimers,
+                prSetIds: pending.prSetIds
             )
         }
         // Only this session's: another plan's targets may already be held
@@ -1001,7 +1002,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
                 targets: update.targets,
                 completedSetIds: update.completedSetIds,
                 phoneRest: update.rest,
-                setTimers: ContextPayloadMapper.setTimers(from: payload)
+                setTimers: ContextPayloadMapper.setTimers(from: payload),
+                prSetIds: update.prSetIds
             )
             return
         }
@@ -1018,7 +1020,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
         }
         pendingSetTargets[update.sessionId] = (
             update.revision, update.targets, update.completedSetIds, update.rest,
-            update.armedAt, ContextPayloadMapper.setTimers(from: payload)
+            update.armedAt, ContextPayloadMapper.setTimers(from: payload), update.prSetIds
         )
     }
 
@@ -1107,19 +1109,59 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// Sends one completed set, carrying whatever the wearer typed. Queued
     /// like a check-in — a hole in the diary from a dropped delivery is not an
     /// acceptable loss, unlike a stretch of missing heart rate.
-    func sendSetCompleted(_ step: WorkoutStep, values: SetValues) {
-        guard let sessionId = workoutStore.plan?.sessionId else { return }
+    ///
+    /// Returns whether Watch Connectivity accepted the payload. `false` before
+    /// the session activates: with `requireDurable` the payload is not parked
+    /// in memory, so the caller can keep its own persisted copy and retry.
+    @discardableResult
+    func sendSetCompleted(
+        _ step: WorkoutStep,
+        values: SetValues,
+        rpe: Double? = nil,
+        completedAt: Date = Date(),
+        durationSeconds: Int? = nil,
+        useCapturedDuration: Bool = false,
+        requireDurable: Bool = false
+    ) -> Bool {
+        guard let sessionId = workoutStore.plan?.sessionId else { return false }
+        if requireDurable, !isActivated { return false }
         let completed = CompletedSet(
             clientId: UUID().uuidString,
             sessionId: sessionId,
             setId: step.plannedSet.setId,
             weightKg: values.weightKg,
             reps: values.reps,
-            duration: workoutStore.holdLoggedSeconds(for: step.plannedSet.setId),
+            duration: useCapturedDuration
+                ? durationSeconds
+                : workoutStore.holdLoggedSeconds(for: step.plannedSet.setId),
             distanceKm: step.plannedSet.carry == true ? values.distanceKm : nil,
-            completedAt: Date()
+            rpe: rpe,
+            completedAt: completedAt
         )
         transfer(OutboundPayloads.setCompleted(completed))
+        return isActivated
+    }
+
+    /// Sends a Save or Skip that was stored because the session was not
+    /// active yet. No-op until activation, and until the wearer has chosen.
+    func retryPendingSetCompletion() {
+        guard isActivated,
+              let pending = workoutStore.pendingSetCompletion,
+              pending.readyToSend,
+              let step = workoutStore.steps.first(where: {
+                  $0.plannedSet.setId == pending.setId
+              })
+        else { return }
+        let sent = sendSetCompleted(
+            step,
+            values: pending.values,
+            rpe: pending.rpe,
+            completedAt: pending.completedAt,
+            durationSeconds: pending.durationSeconds,
+            useCapturedDuration: true,
+            requireDurable: true
+        )
+        if sent { workoutStore.clearPendingSetCompletion() }
     }
 
     /// Sends one heart-rate batch for whichever exercise is current right now.
@@ -1353,6 +1395,7 @@ extension WatchSessionManager: WCSessionDelegate {
             self.adoptReceivedContext()
             self.retryPending()
             self.recoverLiveWorkoutIfNeeded()
+            self.retryPendingSetCompletion()
             self.resendQueuedWaterTaps()
             self.resendQueuedWaterDeletes()
             self.requestContext()

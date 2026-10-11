@@ -4,22 +4,24 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type {
-  ExerciseEntryResponse,
-  ExerciseEntrySetResponse,
-  ExerciseModality,
-  ExerciseCoachingSignal,
-  ExerciseRecentSessionSet,
-  ExerciseSnapshotResponse,
-  IntervalEngineStep,
-  IntervalPhase,
-  PresetSessionResponse,
-  WorkoutFormat,
-  DropSetWeightUnit,
-} from '@workspace/shared';
 import {
+  type ExerciseEntryResponse,
+  type ExerciseEntrySetResponse,
+  type ExerciseModality,
+  type ExerciseCoachingSignal,
+  type ExerciseRecentSessionSet,
+  type ExerciseSnapshotResponse,
+  type IntervalEngineStep,
+  type IntervalPhase,
+  type PresetSessionResponse,
+  type WorkoutFormat,
+  type DropSetWeightUnit,
   buildIntervalPhases,
   calculateDropSetWeightsKg,
+  calculateWarmupSets,
+  type WarmupOptions,
+  isWarmupSetType,
+  WARMUP_REST_SEC,
   shiftPhasesForPause,
 } from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
@@ -469,6 +471,18 @@ export interface ActiveWorkoutState {
     unit: DropSetWeightUnit
   ) => void;
   /**
+   * Insert ramping warm-up sets (bar, then 50 / 70 / 85% of the working
+   * weight) ahead of the exercise's first working set. Warm-ups that have not
+   * been logged are replaced, so tapping again does not stack them; one that
+   * has been logged stops the action, since the ramp is already under way.
+   */
+  addWarmupSetsToExercise: (
+    entryId: string,
+    workingWeightKg: number,
+    unit: DropSetWeightUnit,
+    options?: WarmupOptions
+  ) => void;
+  /**
    * Delete a set, renumbering the rest. Deleting an exercise's last remaining
    * set removes the exercise from the session entirely.
    */
@@ -547,11 +561,16 @@ export interface ActiveWorkoutState {
    * moment: a mid-flight reorder or delete breaks the positional graft, so
    * the graft is skipped when the local prefix no longer matches (the still-
    * dirty session is resent by the pending debounce or trailing save).
+   * `sentSetIds`, when captured, is each exercise's set-id order at that
+   * same moment. Inserting warm-ups (or any other set-order or set-count
+   * change) while the save is in flight would map the server ids onto the
+   * new sets, so the graft is skipped and the newer shape gets its own save.
    */
   applyServerSession: (
     serverSession: PresetSessionResponse,
     sentRevision: number,
-    sentEntryIds: string[]
+    sentEntryIds: string[],
+    sentSetIds?: string[][]
   ) => void;
 }
 
@@ -726,11 +745,12 @@ export function buildStepsFromSession(
  * Map local set ids → server set ids by position (exercise index, set index).
  *
  * Valid because the autosave payload preserves order and the server recreates
- * in order. Most shape-changing edits are append-only (`addSet`/`addExercise`
- * append, `deleteSet` shifts down), but `supersetWith`/`ungroupExercise` can
- * reorder exercises — so `applyServerSession` guards its graft branch by
- * comparing the local entry-id prefix against the ids captured at send time
- * and skips the graft (staying dirty) when they diverge.
+ * in order. A reorder of exercises (`supersetWith` / `ungroupExercise`), or
+ * a change in set order or count while a save is in flight (warm-ups
+ * prepended onto `[101, 102]`), does not. `applyServerSession` skips the
+ * graft when the local entry-id prefix no longer matches, or when a captured
+ * set-id snapshot differs. Callers that omit the snapshot keep grafting an
+ * append or a delete, which still share a prefix of the sets that were sent.
  *
  * Positions beyond the shorter side are unmapped — callers keep the local id
  * (temp ids re-save on the next autosave; id churn only, no data loss).
@@ -1214,13 +1234,28 @@ function startRestForStep(
   steps: WorkoutStep[],
   setId: string,
   session: PresetSessionResponse | null,
-  durationSecOverride?: number
+  durationSecOverride?: number,
+  /**
+   * When the rest began, if before now: a set the watch logged is only
+   * reported once the wearer picks an effort, and the watch's rest has been
+   * running since the tap. Starting this one from "now" would put its end
+   * later than the watch's and restart the watch's timer.
+   */
+  startedAtMs?: number
 ): Rest {
   const step = steps.find((s) => s.setId === setId);
   const durationSec =
     durationSecOverride ?? step?.restSec ?? getDefaultRestSec();
+  const now = Date.now();
+  const startedAt =
+    startedAtMs != null && Number.isFinite(startedAtMs) && startedAtMs < now
+      ? startedAtMs
+      : now;
+  const endsAt = startedAt + durationSec * 1000;
+  // The break is already over: nothing to count down.
+  if (endsAt <= now) return READY_REST;
+  const remainingSec = Math.max(1, Math.ceil((endsAt - now) / 1000));
   const token = ++restInstanceCounter;
-  const endsAt = Date.now() + durationSec * 1000;
 
   const rest: Rest = {
     state: 'resting',
@@ -1238,7 +1273,7 @@ function startRestForStep(
     setId,
     exerciseName
   );
-  scheduleGuardedRestNotification(exerciseName, durationSec, token, content);
+  scheduleGuardedRestNotification(exerciseName, remainingSec, token, content);
 
   return rest;
 }
@@ -1754,7 +1789,13 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // of 0) advances straight to ready — no timer flash.
           rest:
             restSec > 0
-              ? startRestForStep(state.steps, nextStep.setId, session, restSec)
+              ? startRestForStep(
+                  state.steps,
+                  nextStep.setId,
+                  session,
+                  restSec,
+                  completedSetIds[setId]
+                )
               : READY_REST,
           sessionRevision: state.sessionRevision + 1,
           hasUnsavedChanges: true,
@@ -2203,6 +2244,79 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set(buildSessionEditState(state, next));
       },
 
+      addWarmupSetsToExercise: (entryId, workingWeightKg, unit, options) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        const exercise = session.exercises.find((e) => e.id === entryId);
+        if (!exercise) return;
+
+        const warmups = calculateWarmupSets(workingWeightKg, unit, options);
+        if (warmups.length === 0) return;
+
+        const isLogged = (s: ExerciseEntrySetResponse) =>
+          state.completedSetIds[String(s.id)] != null || s.completed_at != null;
+        if (
+          exercise.sets.some((s) => isWarmupSetType(s.set_type) && isLogged(s))
+        )
+          return;
+
+        // None of the old warm-ups is logged (checked above), so all of them go
+        // and the new ramp leads the working sets.
+        const working = exercise.sets.filter(
+          (s) => !isWarmupSetType(s.set_type)
+        );
+
+        let tempId = nextTempSetId(session, state.setRenderKeys);
+        const warmupSets: ExerciseEntrySetResponse[] = warmups.map((w) => {
+          const created: ExerciseEntrySetResponse = {
+            id: tempId,
+            set_number: 0,
+            set_type: 'warmup',
+            weight: w.weightKg,
+            reps: w.reps,
+            duration: null,
+            distance: null,
+            rest_time: WARMUP_REST_SEC,
+            notes: null,
+            rpe: null,
+            rir: null,
+            is_pr: false,
+            completed_at: null,
+          };
+          tempId -= 1;
+          return created;
+        });
+
+        const sets = [...warmupSets, ...working].map((s, i) => ({
+          ...s,
+          set_number: i + 1,
+        }));
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: session.exercises.map((e) =>
+            e.id === entryId ? { ...e, sets } : e
+          ),
+        };
+        const edited = buildSessionEditState(state, next);
+        // The first working set is still in the session, so the shared edit
+        // tail would leave the cursor on it and skip the new warm-ups. Move
+        // onto the first warm-up, and drop any rest that belonged to the
+        // former cursor. A cursor on a later set, or another exercise, stays.
+        const firstWorkingId =
+          working.length > 0 ? String(working[0].id) : null;
+        if (
+          warmupSets.length > 0 &&
+          firstWorkingId != null &&
+          state.activeSetId === firstWorkingId
+        ) {
+          cancelCurrentRestNotification(state.rest);
+          edited.activeSetId = String(warmupSets[0].id);
+          edited.rest = READY_REST;
+        }
+        set(edited);
+      },
+
       deleteSet: (setId) => {
         const state = get();
         const session = state.session;
@@ -2485,7 +2599,12 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         });
       },
 
-      applyServerSession: (serverSession, sentRevision, sentEntryIds) => {
+      applyServerSession: (
+        serverSession,
+        sentRevision,
+        sentEntryIds,
+        sentSetIds
+      ) => {
         const state = get();
         // The workout may have been cleared or replaced while the save was in
         // flight — a response for a different (or no) session is dropped.
@@ -2512,6 +2631,27 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             if (local.exercises[i].id !== sentEntryIds[i]) return;
           }
           if (local.exercises.length < sentEntryIds.length) return;
+
+          // A set inserted, deleted, or reordered after the payload was built
+          // (warm-ups prepended onto [101, 102]) would take the server ids of
+          // the sets that used to sit there. Skip; the newer shape is resent.
+          if (sentSetIds) {
+            const comparable = Math.min(
+              local.exercises.length,
+              sentEntryIds.length
+            );
+            for (let i = 0; i < comparable; i++) {
+              const sent = sentSetIds[i];
+              const localIds = local.exercises[i].sets.map((s) => String(s.id));
+              if (
+                sent == null ||
+                sent.length !== localIds.length ||
+                sent.some((id, j) => id !== localIds[j])
+              ) {
+                return;
+              }
+            }
+          }
 
           // Keep the newer local values; only graft the server-assigned ids
           // into place. Every logical set survives this, so the rest timer

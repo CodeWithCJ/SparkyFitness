@@ -43,6 +43,7 @@ import MacroCard from '../components/MacroCard';
 import MedicationsCard from '../components/MedicationsCard';
 import { MindfulnessCard } from '../components/mindfulness/MindfulnessCard';
 import SymptomsCard from '../components/SymptomsCard';
+import MoodCard from '../components/mood/MoodCard';
 import ProgressPhotosCard from '../components/ProgressPhotosCard';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
@@ -64,6 +65,7 @@ import {
   useWidgetSync,
 } from '../hooks';
 import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
+import { moodEntriesRootQueryKey } from '../hooks/queryKeys';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   useMindfulnessDay,
@@ -294,12 +296,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const { summaryNutrients, refetch: refetchNutrientPrefs } =
     useNutrientDisplayPreferences({ enabled: isConnected });
 
-  useWidgetSync(summary);
-
   useBackgroundWaterSync(activeWaterContainer);
   // The hydration card and the hydration trend must agree on the unit, so both read it
   // from here rather than each resolving the fallback chain themselves.
   const waterDisplayUnit = waterUnit || preferences?.water_display_unit || 'ml';
+  useWidgetSync(summary, {
+    drinkMl: servingVolume ?? null,
+    unit: waterDisplayUnit,
+    canLog: true,
+  });
 
   // The chart is a single-axis line graph; if the user picked stones+lbs, plot lbs.
   const weightUnit: 'kg' | 'lbs' =
@@ -366,6 +371,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const medicationsCardVisible = useAppPreferencesStore(
     (s) => s.medicationsCardVisible
   );
+  const moodCardVisible = useAppPreferencesStore((s) => s.moodCardVisible);
   const symptomsCardVisible = useAppPreferencesStore(
     (s) => s.symptomsCardVisible
   );
@@ -418,6 +424,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       // MedicationsCard owns its own queries.
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey }),
       queryClient.invalidateQueries({ queryKey: ['mindfulness'] }),
+      // MoodCard owns its own query.
+      queryClient.invalidateQueries({ queryKey: moodEntriesRootQueryKey }),
     ]);
     setRefreshing(false);
   }, [
@@ -800,6 +808,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               return symptomsCardVisible ? (
                 <SymptomsCard
                   key="symptoms"
+                  navigation={navigation}
+                  date={selectedDate}
+                />
+              ) : null;
+            case 'mood':
+              return moodCardVisible ? (
+                <MoodCard
+                  key="mood"
                   navigation={navigation}
                   date={selectedDate}
                 />

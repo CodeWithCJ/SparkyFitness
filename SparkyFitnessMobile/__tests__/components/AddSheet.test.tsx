@@ -186,6 +186,17 @@ describe('AddSheet', () => {
     expect(onDismissWithoutAction).not.toHaveBeenCalled();
   });
 
+  it('invokes onAddMood when the secondary Mood row is pressed', () => {
+    const onAddMood = jest.fn();
+    const { ref, getByText } = renderAddSheet({ onAddMood });
+
+    act(() => ref.current?.present());
+    fireEvent.press(getByText('Mood'));
+    act(() => mockBottomSheetControls.onDismiss?.());
+
+    expect(onAddMood).toHaveBeenCalledTimes(1);
+  });
+
   it('offers live start, activity, and past logging in the exercise submenu', () => {
     const { ref, props, getByText, queryByText } = renderAddSheet();
 

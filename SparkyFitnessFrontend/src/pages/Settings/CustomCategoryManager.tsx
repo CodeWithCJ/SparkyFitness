@@ -409,7 +409,7 @@ const CustomCategoryManager = () => {
                 )}
                 <div className="text-sm text-gray-500">
                   {category.measurement_type} • {category.frequency} •{' '}
-                  {category.data_type}
+                  <span>{category.data_type}</span>
                 </div>
               </div>
               <div className="flex gap-2">

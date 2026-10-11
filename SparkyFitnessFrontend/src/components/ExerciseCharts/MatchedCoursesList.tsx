@@ -109,7 +109,7 @@ export const MatchedCoursesList = ({
                       <div className="font-semibold text-indigo-600">
                         {act.avgPaceFormatted}
                       </div>
-                      {act.avgHeartRate && (
+                      {!!act.avgHeartRate && (
                         <div className="text-[10px] text-red-500">
                           {act.avgHeartRate} bpm
                         </div>

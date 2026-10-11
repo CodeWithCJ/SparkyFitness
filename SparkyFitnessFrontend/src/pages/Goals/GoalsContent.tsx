@@ -15,6 +15,7 @@ import { WeeklyGoalPlanDialog } from './WeeklyGoalPlanDialog';
 import { WeeklyGoalPlansSection } from './WeeklyGoalPlansSection';
 import { GoalPresetsSection } from './GoalPresetsSection';
 import { DailyGoals } from './DailyGoals';
+import { GoalWeight } from './GoalWeight';
 import { ResetOnboarding } from './ResetOnboarding';
 import { GoalPresetDialog } from './GoalPresetDialog';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
@@ -150,6 +151,9 @@ export const GoalsContent = ({
           {t('goals.goalsSettings.cascadingGoals', 'Cascading Goals')}
         </Badge>
       </div>
+
+      {/* Goal Weight */}
+      <GoalWeight />
 
       {/* Reset Onboarding */}
       <ResetOnboarding />

@@ -11,6 +11,13 @@ import medicationDisplayPreferenceRepository from '../models/medicationDisplayPr
 import glp1Service from '../services/glp1Service.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import medicationRoutes from '../routes/v2/medicationRoutes.js';
+import {
+  lookupSupplementByUpc,
+  mapScannedLabel,
+} from '../services/supplementLookupService.js';
+import { extractSupplementLabel } from '../services/supplementLabelScanService.js';
+import { lookupSupplementInOpenFoodFacts } from '../services/supplementOpenFoodFactsService.js';
+import { getActiveProvidersByTypes } from '../models/externalProviderRepository.js';
 
 vi.mock('../models/medicationRepository.js');
 vi.mock('../models/medicationPenRepository.js');
@@ -19,6 +26,22 @@ vi.mock('../models/titrationRepository.js');
 vi.mock('../models/medicationEntryRepository.js');
 vi.mock('../models/medicationDisplayPreferenceRepository.js');
 vi.mock('../services/glp1Service.js');
+vi.mock('../models/externalProviderRepository.js', () => ({
+  getActiveProvidersByTypes: vi.fn(),
+}));
+vi.mock('../services/supplementLookupService.js', () => ({
+  lookupSupplementByUpc: vi.fn(),
+  mapScannedLabel: vi.fn(),
+}));
+vi.mock('../services/supplementLabelScanService.js', () => ({
+  extractSupplementLabel: vi.fn(),
+}));
+vi.mock('../utils/adminCheck.js', () => ({
+  resolveIsAdmin: vi.fn(async () => false),
+}));
+vi.mock('../services/supplementOpenFoodFactsService.js', () => ({
+  lookupSupplementInOpenFoodFacts: vi.fn(),
+}));
 vi.mock('../utils/permissionUtils.js', () => ({
   canAccessUserData: vi.fn(),
 }));
@@ -361,6 +384,232 @@ describe('Medication Routes V2', () => {
         .send({ name: 'Metformin' });
 
       expect(canAccessUserData).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('GET /api/v2/medications/supplement-lookup', () => {
+    beforeEach(() => {
+      vi.mocked(getActiveProvidersByTypes).mockResolvedValue([
+        { id: 'p1', provider_type: 'dsld', provider_name: 'NIH DSLD' },
+      ]);
+    });
+
+    it('is refused while no barcode source is active for the user', async () => {
+      vi.mocked(getActiveProvidersByTypes).mockResolvedValue([]);
+
+      const res = await request(app)
+        .get('/api/v2/medications/supplement-lookup?upc=858849003115')
+        .set('Cookie', cookie);
+
+      expect(res.statusCode).toBe(404);
+      expect(getActiveProvidersByTypes).toHaveBeenCalledWith(
+        expect.anything(),
+        ['dsld', 'openfoodfacts']
+      );
+      expect(lookupSupplementByUpc).not.toHaveBeenCalled();
+      expect(lookupSupplementInOpenFoodFacts).not.toHaveBeenCalled();
+    });
+
+    it('asks Open Food Facts when the label database has no match', async () => {
+      vi.mocked(getActiveProvidersByTypes).mockResolvedValue([
+        { id: 'p1', provider_type: 'dsld' },
+        { id: 'p2', provider_type: 'openfoodfacts' },
+      ] as never);
+      vi.mocked(lookupSupplementByUpc).mockResolvedValue(null);
+      const product = { source: 'off', sourceId: '4009932008937', name: 'Mg' };
+      vi.mocked(lookupSupplementInOpenFoodFacts).mockResolvedValue(
+        product as never
+      );
+
+      const res = await request(app)
+        .get('/api/v2/medications/supplement-lookup?upc=4009932008937')
+        .set('Cookie', cookie);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({ product });
+      expect(lookupSupplementInOpenFoodFacts).toHaveBeenCalledWith(
+        '4009932008937',
+        expect.objectContaining({ providerId: 'p2' })
+      );
+    });
+
+    it('does not ask Open Food Facts when the label database matched', async () => {
+      vi.mocked(getActiveProvidersByTypes).mockResolvedValue([
+        { id: 'p1', provider_type: 'dsld' },
+        { id: 'p2', provider_type: 'openfoodfacts' },
+      ] as never);
+      vi.mocked(lookupSupplementByUpc).mockResolvedValue({
+        source: 'dsld',
+        name: 'Vitamin D3',
+      } as never);
+
+      await request(app)
+        .get('/api/v2/medications/supplement-lookup?upc=858849003115')
+        .set('Cookie', cookie);
+
+      expect(lookupSupplementInOpenFoodFacts).not.toHaveBeenCalled();
+    });
+
+    it('still uses Open Food Facts when the label database is off', async () => {
+      vi.mocked(getActiveProvidersByTypes).mockResolvedValue([
+        { id: 'p2', provider_type: 'openfoodfacts' },
+      ] as never);
+      vi.mocked(lookupSupplementInOpenFoodFacts).mockResolvedValue(null);
+
+      const res = await request(app)
+        .get('/api/v2/medications/supplement-lookup?upc=4009932008937')
+        .set('Cookie', cookie);
+
+      expect(res.statusCode).toBe(200);
+      expect(lookupSupplementByUpc).not.toHaveBeenCalled();
+    });
+
+    it('is a 502 only when the label database failed and nothing else answered', async () => {
+      vi.mocked(getActiveProvidersByTypes).mockResolvedValue([
+        { id: 'p1', provider_type: 'dsld' },
+        { id: 'p2', provider_type: 'openfoodfacts' },
+      ] as never);
+      vi.mocked(lookupSupplementByUpc).mockRejectedValue(new Error('timeout'));
+      vi.mocked(lookupSupplementInOpenFoodFacts).mockResolvedValue(null);
+
+      const res = await request(app)
+        .get('/api/v2/medications/supplement-lookup?upc=858849003115')
+        .set('Cookie', cookie);
+
+      expect(res.statusCode).toBe(502);
+    });
+
+    it('returns the product found for a barcode', async () => {
+      const product = { source: 'dsld', sourceId: '65059', name: 'Vitamin D3' };
+      vi.mocked(lookupSupplementByUpc).mockResolvedValue(product as never);
+
+      const res = await request(app)
+        .get('/api/v2/medications/supplement-lookup?upc=858849003115')
+        .set('Cookie', cookie);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({ product });
+      expect(lookupSupplementByUpc).toHaveBeenCalledWith('858849003115');
+    });
+
+    it('answers with no product when nothing matches', async () => {
+      vi.mocked(lookupSupplementByUpc).mockResolvedValue(null);
+
+      const res = await request(app)
+        .get('/api/v2/medications/supplement-lookup?upc=858849003115')
+        .set('Cookie', cookie);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({ product: null });
+    });
+
+    it('rejects a missing barcode', async () => {
+      const res = await request(app)
+        .get('/api/v2/medications/supplement-lookup')
+        .set('Cookie', cookie);
+
+      expect(res.statusCode).toBe(400);
+      expect(lookupSupplementByUpc).not.toHaveBeenCalled();
+    });
+
+    it('reports a database that cannot be reached', async () => {
+      vi.mocked(lookupSupplementByUpc).mockRejectedValue(new Error('timeout'));
+
+      const res = await request(app)
+        .get('/api/v2/medications/supplement-lookup?upc=858849003115')
+        .set('Cookie', cookie);
+
+      expect(res.statusCode).toBe(502);
+    });
+
+    it('is not mistaken for a medication id', async () => {
+      vi.mocked(lookupSupplementByUpc).mockResolvedValue(null);
+
+      await request(app)
+        .get('/api/v2/medications/supplement-lookup?upc=858849003115')
+        .set('Cookie', cookie);
+
+      expect(medicationRepository.getMedicationById).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('supplement label scan', () => {
+    const label = {
+      name: 'Zinc',
+      brand: null,
+      form: null,
+      serving: null,
+      ingredients: [{ name: 'Zinc', amount: 15, unit: 'mg' }],
+    };
+    const product = { source: 'label', name: 'Zinc' };
+
+    it('maps a label the phone read on device without running an AI', async () => {
+      vi.mocked(mapScannedLabel).mockReturnValue(product as never);
+
+      const res = await request(app)
+        .post('/api/v2/medications/supplement-label/map')
+        .set('Cookie', cookie)
+        .send(label);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({ product });
+      expect(extractSupplementLabel).not.toHaveBeenCalled();
+    });
+
+    it('rejects a label with no ingredients list', async () => {
+      const res = await request(app)
+        .post('/api/v2/medications/supplement-label/map')
+        .set('Cookie', cookie)
+        .send({ name: 'Zinc' });
+
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('scans a photo with the vision provider', async () => {
+      vi.mocked(extractSupplementLabel).mockResolvedValue({
+        success: true,
+        label,
+      } as never);
+      vi.mocked(mapScannedLabel).mockReturnValue(product as never);
+
+      const res = await request(app)
+        .post('/api/v2/medications/supplement-label/scan')
+        .set('Cookie', cookie)
+        .send({ image: 'abc', mime_type: 'image/jpeg' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body).toEqual({ product });
+      expect(extractSupplementLabel).toHaveBeenCalledWith(
+        'abc',
+        'image/jpeg',
+        expect.anything(),
+        false
+      );
+    });
+
+    it('answers 422 when no vision AI is configured', async () => {
+      vi.mocked(extractSupplementLabel).mockResolvedValue({
+        success: false,
+        category: 'no_ai_configured',
+        error: 'No AI service configured',
+      });
+
+      const res = await request(app)
+        .post('/api/v2/medications/supplement-label/scan')
+        .set('Cookie', cookie)
+        .send({ image: 'abc', mime_type: 'image/jpeg' });
+
+      expect(res.statusCode).toBe(422);
+    });
+
+    it('rejects a scan with no image', async () => {
+      const res = await request(app)
+        .post('/api/v2/medications/supplement-label/scan')
+        .set('Cookie', cookie)
+        .send({});
+
+      expect(res.statusCode).toBe(400);
+      expect(extractSupplementLabel).not.toHaveBeenCalled();
     });
   });
 

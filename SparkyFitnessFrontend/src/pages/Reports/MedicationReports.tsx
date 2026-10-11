@@ -768,7 +768,7 @@ const MedicationReports = ({
                     strokeWidth={2.5}
                     dot={{ r: 4 }}
                   />
-                  {targetWeightConverted && (
+                  {!!targetWeightConverted && (
                     <Line
                       type="monotone"
                       dataKey={() => targetWeightConverted}
@@ -1406,7 +1406,8 @@ const MedicationReports = ({
                       : '-'}
                   </td>
                   <td className="py-1">
-                    {m.strength_value} {m.strength_unit}
+                    <span>{m.strength_value}</span>{' '}
+                    <span>{m.strength_unit}</span>
                   </td>
                   <td className="py-1">
                     {m.schedules && m.schedules.length > 0
@@ -1529,7 +1530,9 @@ const MedicationReports = ({
                       {medications.find((m) => m.id === inj.medication_id)
                         ?.display_name || 'GLP-1'}
                     </td>
-                    <td className="py-1">{inj.dose_mg} mg</td>
+                    <td className="py-1">
+                      <span>{inj.dose_mg}</span> mg
+                    </td>
                     <td className="py-1 capitalize">
                       {inj.site
                         ? t(

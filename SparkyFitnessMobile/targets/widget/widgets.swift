@@ -24,7 +24,7 @@ private struct CalorieSnapshotPayload: Decodable {
     let lastUpdated: Double?
 }
 
-private func loadCalorieSnapshot() -> CalorieSnapshot {
+func loadCalorieSnapshot() -> CalorieSnapshot {
     guard
         let appGroup = appGroupIdentifier(),
         !appGroup.isEmpty,
@@ -198,6 +198,12 @@ struct widgetEntryView: View {
     var body: some View {
         Group {
             switch family {
+            case .accessoryCircular:
+                lockCircular
+            case .accessoryRectangular:
+                lockRectangular
+            case .accessoryInline:
+                lockInline
             case .systemSmall:
                 smallBody
             default:
@@ -205,6 +211,36 @@ struct widgetEntryView: View {
             }
         }
         .widgetURL(dashboardURL)
+    }
+
+    // Lock Screen: calories left, as a ring, a short card and one line.
+    private var lockRemaining: String {
+        entry.snapshot.hasData ? localizedNumberString(entry.snapshot.remaining) : "-"
+    }
+
+    private var lockCircular: some View {
+        Gauge(value: entry.snapshot.progress) {
+            Text(localizedWidgetString("widget.kcal"))
+        } currentValueLabel: {
+            Text(lockRemaining)
+                .minimumScaleFactor(0.5)
+        }
+        .gaugeStyle(.accessoryCircular)
+    }
+
+    private var lockRectangular: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(lockRemaining) \(localizedWidgetString("widget.kcal_left"))")
+                .font(.headline)
+                .minimumScaleFactor(0.7)
+            ProgressView(value: entry.snapshot.progress)
+            Text("\(localizedWidgetString("widget.food")) \(localizedNumberString(entry.snapshot.food))")
+                .font(.caption)
+        }
+    }
+
+    private var lockInline: some View {
+        Text("\(lockRemaining) \(localizedWidgetString("widget.kcal_left"))")
     }
 
     private var smallBody: some View {
@@ -280,7 +316,10 @@ struct widget: Widget {
         }
         .configurationDisplayName("widget.calorie.name")
         .description("widget.calorie.description")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([
+            .systemSmall, .systemMedium,
+            .accessoryCircular, .accessoryRectangular, .accessoryInline,
+        ])
     }
 }
 

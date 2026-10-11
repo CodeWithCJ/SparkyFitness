@@ -32,6 +32,7 @@ import type {
 import type { Meal, MealIngredientDraft } from './meals';
 import type { MealPlanPickerTarget, MealPlanTemplate } from './mealPlans';
 import type { WorkoutPreset } from './workoutPresets';
+import type { WorkoutPlanTemplate } from './workoutPlans';
 import type { ExerciseReplaceContext } from '../utils/exerciseReplace';
 
 export type FoodPickerMode =
@@ -79,6 +80,8 @@ export type RootStackParamList = {
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
   MealPlans: undefined;
+  WorkoutPlans: undefined;
+  WorkoutPlanForm: { template?: WorkoutPlanTemplate } | undefined;
   MealPlanForm: { template?: MealPlanTemplate; initialMeal?: Meal } | undefined;
   // #2115, Phase 12: mobile-only water-container CRUD.
   WaterContainers: undefined;
@@ -327,6 +330,7 @@ export type RootStackParamList = {
   };
   ActivityDetail: { session: IndividualSessionResponse };
   FastingDetail: undefined;
+  FastingSettings: undefined;
   MindfulnessDetail: { selectedDate?: string } | undefined;
   SleepDetail: { entryId: string; day: string };
   Chat: undefined;
@@ -352,6 +356,7 @@ export type RootStackParamList = {
   WatchSettings: undefined;
   DiarySettings: undefined;
   WorkoutSettings: undefined;
+  WarmupSettings: undefined;
   ServerSettings: undefined;
   PasskeySettings: undefined;
   AppSettings: undefined;
@@ -360,7 +365,13 @@ export type RootStackParamList = {
   WhatsNew: undefined;
   MedicationsList: undefined;
   MedicationDetail: { medicationId: string };
-  MedicationForm: { medicationId?: string; isSupplement?: boolean };
+  MedicationForm: {
+    medicationId?: string;
+    isSupplement?: boolean;
+    /** Set by the barcode scanner when it returns a code. */
+    pendingScannedBarcode?: string;
+    scannedBarcodeNonce?: number;
+  };
   MedicationScheduleForm: { medicationId: string; scheduleId?: string };
   SymptomLog:
     | {
@@ -370,6 +381,7 @@ export type RootStackParamList = {
         date?: string;
       }
     | undefined;
+  MoodLog: { date?: string } | undefined;
   SymptomHistory: { symptomId?: string } | undefined;
   ManageSymptoms: undefined;
   SymptomDefinitionEditor: { definitionId?: string } | undefined;

@@ -76,7 +76,8 @@ enum ContextPayloadMapper {
                 ? payload["workoutServerId"] as? String
                 : previous.workoutServerId,
             distanceUnit: payload["distanceUnit"] as? String ?? previous.distanceUnit,
-            doubleTapEnabled: payload["doubleTapEnabled"] as? Bool ?? previous.doubleTapEnabled
+            doubleTapEnabled: payload["doubleTapEnabled"] as? Bool ?? previous.doubleTapEnabled,
+            rpeEnabled: payload["rpeEnabled"] as? Bool ?? previous.rpeEnabled
         )
     }
 
@@ -406,7 +407,7 @@ enum ContextPayloadMapper {
     static func setTargets(from payload: [String: Any]) -> (
         sessionId: String, revision: Double, targets: [String: SetValues],
         completedSetIds: Set<String>, rest: PhoneRest?,
-        armedAt: Date?
+        armedAt: Date?, prSetIds: Set<String>
     )? {
         guard
             let sessionId = payload["sessionId"] as? String,
@@ -453,7 +454,10 @@ enum ContextPayloadMapper {
         let armedAt = doubleValue(payload["armedAt"]).map {
             Date(timeIntervalSince1970: $0 / 1000)
         }
-        return (sessionId, revision, targets, completed, rest, armedAt)
+        // Logged sets the phone flagged as personal records. Absent from an
+        // older phone build, which simply never celebrates.
+        let prSetIds = Set(stringArray(payload["prSetIds"]))
+        return (sessionId, revision, targets, completed, rest, armedAt, prSetIds)
     }
 
     // MARK: - Acks

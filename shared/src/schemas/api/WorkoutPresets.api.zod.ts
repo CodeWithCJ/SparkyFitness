@@ -46,6 +46,11 @@ export const workoutPresetExerciseResponseSchema = z.object({
    * the between-session progression step. Optional: older servers omit it.
    */
   ramp_increment: z.number().nullable().optional(),
+  /**
+   * Library equipment for this exercise. Warm-up rounding uses it to pick the
+   * dumbbell step instead of the plate step. Optional: older servers omit it.
+   */
+  equipment: z.array(z.string()).optional(),
   sets: z.array(workoutPresetSetResponseSchema),
 });
 

@@ -1459,6 +1459,47 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('completeSet rest for a set the watch logged earlier', () => {
+    it('counts the rest from when the set was ticked, so it ends with the watch rest', async () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].rest_time = 90;
+      useActiveWorkoutStore.getState().startWorkout(session);
+
+      // The wearer ticked the set 20 s ago and has only now saved its effort.
+      useActiveWorkoutStore.getState().completeSet('101', FIXED_NOW - 20_000);
+
+      const { rest } = useActiveWorkoutStore.getState();
+      expect(rest.state).toBe('resting');
+      expect(rest.durationSec).toBe(90);
+      expect(rest.endsAt).toBe(FIXED_NOW - 20_000 + 90_000);
+      await flushPromises();
+    });
+
+    it('is ready when the break ran out while the effort was being picked', async () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].rest_time = 30;
+      useActiveWorkoutStore.getState().startWorkout(session);
+
+      useActiveWorkoutStore.getState().completeSet('101', FIXED_NOW - 45_000);
+
+      expect(useActiveWorkoutStore.getState().rest.state).toBe('ready');
+      await flushPromises();
+    });
+
+    it('starts the rest now when the set was logged on the phone', async () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].rest_time = 60;
+      useActiveWorkoutStore.getState().startWorkout(session);
+
+      useActiveWorkoutStore.getState().completeSet('101');
+
+      expect(useActiveWorkoutStore.getState().rest.endsAt).toBe(
+        FIXED_NOW + 60_000
+      );
+      await flushPromises();
+    });
+  });
+
   describe('completeSet rest (supersets)', () => {
     // Steps: 301(90), 401(0), 302(90), 402(0).
     beforeEach(() => {
@@ -3047,6 +3088,56 @@ describe('activeWorkoutStore', () => {
       expect(state.session).toBe(reordered); // untouched — no positional graft
       expect(state.hasUnsavedChanges).toBe(true);
     });
+
+    it('grafts when the sent set ids still match a value-only edit', () => {
+      useActiveWorkoutStore.getState().updateSetField('101', { weight: 65 });
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+      useActiveWorkoutStore.getState().updateSetField('101', { weight: 70 });
+
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(
+          makeRecreatedSession(),
+          sentRevision,
+          SENT_ENTRY_IDS,
+          [['101', '102'], ['201']]
+        );
+
+      const sets = useActiveWorkoutStore.getState().session!.exercises[0].sets;
+      expect(sets.map((s) => s.id)).toEqual([501, 502]);
+      expect(sets[0].weight).toBe(70);
+      expect(useActiveWorkoutStore.getState().hasUnsavedChanges).toBe(true);
+    });
+
+    it('skips the graft when warm-ups were prepended after the sent set ids', () => {
+      useActiveWorkoutStore.getState().updateSetField('101', { weight: 65 });
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+      const sentSetIds = useActiveWorkoutStore
+        .getState()
+        .session!.exercises.map((e) => e.sets.map((s) => String(s.id)));
+
+      useActiveWorkoutStore
+        .getState()
+        .addWarmupSetsToExercise('ex-uuid-1', 100, 'kg');
+      const withWarmups = useActiveWorkoutStore.getState().session;
+
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(
+          makeRecreatedSession(),
+          sentRevision,
+          SENT_ENTRY_IDS,
+          sentSetIds
+        );
+
+      const state = useActiveWorkoutStore.getState();
+      expect(state.session).toBe(withWarmups);
+      expect(state.hasUnsavedChanges).toBe(true);
+      const ids = state.session!.exercises[0].sets.map((s) => s.id);
+      expect(ids).toContain(101);
+      expect(ids).toContain(102);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
   });
 
   describe('setRenderKeys (stable render keys across id churn)', () => {
@@ -4062,6 +4153,115 @@ describe('activeWorkoutStore', () => {
       const allIds = session.exercises.flatMap((e) => e.sets.map((x) => x.id));
       expect(new Set(allIds).size).toBe(allIds.length);
       expect(drops.every((d) => d.id < 0)).toBe(true);
+    });
+
+    it('inserts a warm-up ramp ahead of the working sets, renumbered, with unique temp ids', () => {
+      useActiveWorkoutStore.getState().addSetToExercise('ex-uuid-2');
+      useActiveWorkoutStore
+        .getState()
+        .addWarmupSetsToExercise('ex-uuid-1', 100, 'kg');
+
+      const session = useActiveWorkoutStore.getState().session!;
+      const sets = session.exercises[0].sets;
+      expect(sets.map((x) => x.set_type)).toEqual([
+        'warmup',
+        'warmup',
+        'warmup',
+        'working',
+        'working',
+      ]);
+      expect(sets.slice(0, 3).map((x) => [x.weight, x.reps])).toEqual([
+        [40, 5],
+        [60, 5],
+        [80, 3],
+      ]);
+      expect(sets.map((x) => x.set_number)).toEqual([1, 2, 3, 4, 5]);
+      // The working sets are untouched.
+      expect(sets.slice(3).map((x) => x.id)).toEqual([101, 102]);
+      expect(sets.slice(3).map((x) => x.weight)).toEqual([60, 70]);
+
+      const allIds = session.exercises.flatMap((e) => e.sets.map((x) => x.id));
+      expect(new Set(allIds).size).toBe(allIds.length);
+    });
+
+    it('replaces warm-ups that were not logged instead of stacking them', () => {
+      const store = useActiveWorkoutStore.getState();
+      store.addWarmupSetsToExercise('ex-uuid-1', 100, 'kg');
+      store.addWarmupSetsToExercise('ex-uuid-1', 80, 'kg');
+
+      const sets = useActiveWorkoutStore.getState().session!.exercises[0].sets;
+      expect(sets.filter((x) => x.set_type === 'warmup')).toHaveLength(3);
+      expect(
+        sets.filter((x) => x.set_type === 'warmup').map((x) => x.weight)
+      ).toEqual([32.5, 47.5, 65]);
+      expect(sets.map((x) => x.set_number)).toEqual([1, 2, 3, 4, 5]);
+    });
+
+    it('leaves the exercise alone once a warm-up has been logged', () => {
+      const store = useActiveWorkoutStore.getState();
+      store.addWarmupSetsToExercise('ex-uuid-1', 100, 'kg');
+      const first =
+        useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+      useActiveWorkoutStore.getState().completeSet(String(first.id));
+      const before =
+        useActiveWorkoutStore.getState().session!.exercises[0].sets;
+
+      useActiveWorkoutStore
+        .getState()
+        .addWarmupSetsToExercise('ex-uuid-1', 120, 'kg');
+
+      expect(useActiveWorkoutStore.getState().session!.exercises[0].sets).toBe(
+        before
+      );
+    });
+
+    it('moves the cursor onto the first warm-up when it sat on the first working set, and clears rest', async () => {
+      mockSchedule.mockResolvedValueOnce('notif-warmup-cursor');
+      useActiveWorkoutStore.getState().completeActiveSet();
+      await flushPromises();
+      // Rest is running, but the cursor is back on the set the ramp leads.
+      useActiveWorkoutStore.setState({ activeSetId: '101' });
+
+      useActiveWorkoutStore
+        .getState()
+        .addWarmupSetsToExercise('ex-uuid-1', 100, 'kg');
+
+      const state = useActiveWorkoutStore.getState();
+      const first = state.session!.exercises[0].sets[0];
+      expect(first.set_type).toBe('warmup');
+      expect(state.activeSetId).toBe(String(first.id));
+      expect(state.rest.state).toBe('ready');
+      expect(mockCancel).toHaveBeenCalledWith('notif-warmup-cursor');
+    });
+
+    it('leaves the cursor and its rest alone when it is on a later working set', async () => {
+      mockSchedule.mockResolvedValueOnce('notif-later-set');
+      useActiveWorkoutStore.getState().completeActiveSet();
+      await flushPromises();
+      mockCancel.mockClear();
+      expect(useActiveWorkoutStore.getState().activeSetId).toBe('102');
+      const restBefore = useActiveWorkoutStore.getState().rest;
+
+      useActiveWorkoutStore
+        .getState()
+        .addWarmupSetsToExercise('ex-uuid-1', 100, 'kg');
+
+      const state = useActiveWorkoutStore.getState();
+      expect(state.activeSetId).toBe('102');
+      expect(state.rest).toBe(restBefore);
+      expect(mockCancel).not.toHaveBeenCalled();
+    });
+
+    it('adds nothing when no step would be a loadable weight under the working weight', () => {
+      const before =
+        useActiveWorkoutStore.getState().session!.exercises[0].sets;
+      // 2 kg: every step rounds to 0 or up to 2.5, which is not under 2.
+      useActiveWorkoutStore
+        .getState()
+        .addWarmupSetsToExercise('ex-uuid-1', 2, 'kg');
+      expect(useActiveWorkoutStore.getState().session!.exercises[0].sets).toBe(
+        before
+      );
     });
 
     it('marks the session dirty when the location changes, so autosave runs', () => {

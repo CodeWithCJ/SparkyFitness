@@ -153,6 +153,30 @@ describe('useWidgetSync', () => {
     expect(mockAddLog).not.toHaveBeenCalled();
   });
 
+  it('writes and reloads the water snapshot when water info is given', () => {
+    renderHook(() =>
+      useWidgetSync(makeSummary({ waterConsumed: 473, waterGoal: 2000 }), {
+        drinkMl: 473.176,
+        unit: 'oz',
+        canLog: true,
+      })
+    );
+
+    const waterCall = setMock.mock.calls.find(
+      (call) => call[0] === 'waterSnapshot'
+    );
+    expect(waterCall?.[1]).toMatchObject({
+      consumedMl: 473,
+      goalMl: 2000,
+      drinkMl: 473.176,
+      unit: 'oz',
+      canLog: 1,
+    });
+    expect(reloadMock.mock.calls.map((call) => call[0])).toContain(
+      'waterWidget'
+    );
+  });
+
   it('writes only the macro snapshot when calorieBalance is undefined', () => {
     const summary = makeSummary({
       calorieBalance: undefined as unknown as DailySummary['calorieBalance'],

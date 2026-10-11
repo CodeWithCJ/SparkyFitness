@@ -222,7 +222,7 @@ export const ActivityInterrogationFinder = ({
                       <Calendar className="w-3 h-3" />
                       {item.entryDate}
                     </span>
-                    {item.distanceFormatted && (
+                    {!!item.distanceFormatted && (
                       <span className="flex items-center gap-1 font-medium text-foreground">
                         <MapPin className="w-3 h-3 text-blue-500" />
                         {item.distanceFormatted} {isMiles ? 'mi' : 'km'}
@@ -247,7 +247,7 @@ export const ActivityInterrogationFinder = ({
                       <div className="font-semibold">{item.formattedPace}</div>
                     </div>
                   )}
-                  {item.avgHeartRate && (
+                  {!!item.avgHeartRate && (
                     <div>
                       <div className="text-[10px] text-muted-foreground">
                         {t('exerciseAnalytics.finder.avgHeartRate', 'Avg HR')}

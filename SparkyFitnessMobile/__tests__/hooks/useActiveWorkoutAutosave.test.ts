@@ -671,7 +671,8 @@ describe('useActiveWorkoutAutosave', () => {
         expect(spy).toHaveBeenCalledWith(
           expect.objectContaining({ id: 'session-1' }),
           revisionAtSend,
-          ['ex-uuid-1']
+          ['ex-uuid-1'],
+          [['101', '102']]
         );
       } finally {
         useActiveWorkoutStore.setState({ applyServerSession: original });

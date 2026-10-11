@@ -461,7 +461,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                     </p>
                   )}
 
-                  {bmr && (
+                  {!!bmr && (
                     <p>
                       {t(
                         'exercise.dailyProgress.bmrCalories',
@@ -513,7 +513,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
           </div>
 
           {/* Detailed Burned Breakdown (Visible if data present) */}
-          {(exerciseSource !== 'none' || bmr) && (
+          {!!(exerciseSource !== 'none' || bmr) && (
             <div className="text-center p-2 bg-blue-50 rounded-lg space-y-1">
               <div className="text-sm font-medium text-blue-700">
                 {t(
@@ -563,7 +563,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                 </div>
               )}
 
-              {bmr && (
+              {!!bmr && (
                 <div className="text-xs text-blue-600">
                   {t(
                     'exercise.dailyProgress.bmrCalories',

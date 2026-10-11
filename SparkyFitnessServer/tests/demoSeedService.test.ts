@@ -482,11 +482,21 @@ describe('Demo Mode Infrastructure', () => {
       '/api/exercises/import-json',
       '/api/foods/scan-label',
       '/api/foods/estimate-food-photo',
+      '/api/v2/medications/supplement-label/scan',
       '/api/v2/foods/abc-123/openfoodfacts/contribute',
     ])('blocks non-multipart upload route %s', (path) => {
       const { res, next } = run(path, 'POST');
       expect(next).not.toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('does not block mapping an on-device supplement reading', () => {
+      const { res, next } = run(
+        '/api/v2/medications/supplement-label/map',
+        'POST'
+      );
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
     });
 
     it('does not mistake a path merely containing "import" for an import', () => {

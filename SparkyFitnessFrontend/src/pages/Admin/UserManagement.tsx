@@ -488,7 +488,8 @@ const SortableHead = ({
       onSort(col);
     }}
   >
-    {label} {currentSort === col && (sortOrder === 'asc' ? '▲' : '▼')}
+    {label}{' '}
+    {currentSort === col && <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>}
   </TableHead>
 );
 

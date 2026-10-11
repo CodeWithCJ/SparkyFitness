@@ -422,17 +422,26 @@ export default function CycleCalendar({
                 )}
               </CardTitle>
               <CardDescription className="text-xs">
-                {decoratedDaysMap[selectedDate] === 'period' &&
-                  t('cycle.legend.period', 'Period Day')}
-                {decoratedDaysMap[selectedDate] === 'predicted-period' &&
-                  t('cycle.legend.predicted', 'Predicted Period')}
-                {decoratedDaysMap[selectedDate] === 'fertile' &&
-                  t('cycle.legend.fertile', 'Fertile Window')}
-                {decoratedDaysMap[selectedDate] === 'ovulation' &&
-                  t('cycle.legend.ovulation', 'Predicted Ovulation')}
+                {decoratedDaysMap[selectedDate] === 'period' && (
+                  <span>{t('cycle.legend.period', 'Period Day')}</span>
+                )}
+                {decoratedDaysMap[selectedDate] === 'predicted-period' && (
+                  <span>{t('cycle.legend.predicted', 'Predicted Period')}</span>
+                )}
+                {decoratedDaysMap[selectedDate] === 'fertile' && (
+                  <span>{t('cycle.legend.fertile', 'Fertile Window')}</span>
+                )}
+                {decoratedDaysMap[selectedDate] === 'ovulation' && (
+                  <span>
+                    {t('cycle.legend.ovulation', 'Predicted Ovulation')}
+                  </span>
+                )}
                 {(!decoratedDaysMap[selectedDate] ||
-                  decoratedDaysMap[selectedDate] === 'none') &&
-                  t('cycle.calendar.normalDay', 'Non-bleeding day')}
+                  decoratedDaysMap[selectedDate] === 'none') && (
+                  <span>
+                    {t('cycle.calendar.normalDay', 'Non-bleeding day')}
+                  </span>
+                )}
               </CardDescription>
             </div>
 
@@ -514,7 +523,7 @@ export default function CycleCalendar({
                 )}
 
                 {/* Energy */}
-                {selectedLog.energy && (
+                {!!selectedLog.energy && (
                   <p className="text-xs text-muted-foreground">
                     <span className="font-semibold">
                       {t('cycle.log.energy', 'Energy')}:

@@ -95,8 +95,8 @@ const sampleEstimate = {
 };
 
 // Per-family upstream response-body factories matching each provider's wire
-// shape. google/openai/ollama deliver the payload as a JSON *string* the helper
-// parses; anthropic returns the object directly in a tool_use block.
+// shape. Every family delivers the payload as a JSON *string* the helper
+// parses; anthropic's arrives in a text block after any thinking blocks.
 function googleBody(payload: unknown) {
   return {
     candidates: [{ content: { parts: [{ text: JSON.stringify(payload) }] } }],
@@ -109,14 +109,14 @@ function openAiBody(payload: unknown) {
     ],
   };
 }
-// The helper's extractor finds the tool block by the service's schemaName
-// ('food_photo_estimate'), so the body must emit exactly that name — any
-// other name mis-extracts → UPSTREAM_ERROR.
-function anthropicToolBody(payload: unknown) {
+// The request asks for JSON outputs (`output_config.format`), and the models
+// that think by default put a thinking block ahead of the answer.
+function anthropicJsonBody(payload: unknown) {
   return {
-    stop_reason: 'tool_use',
+    stop_reason: 'end_turn',
     content: [
-      { type: 'tool_use', name: 'food_photo_estimate', input: payload },
+      { type: 'thinking', thinking: '', signature: 'sig' },
+      { type: 'text', text: JSON.stringify(payload) },
     ],
   };
 }
@@ -144,7 +144,7 @@ function bodyFor(serviceType: string, payload: unknown) {
     case 'google':
       return googleBody(payload);
     case 'anthropic':
-      return anthropicToolBody(payload);
+      return anthropicJsonBody(payload);
     case 'ollama':
       return ollamaBody(payload);
     default:

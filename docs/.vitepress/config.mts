@@ -165,6 +165,7 @@ export default defineConfig({
             { text: 'Bodyweight Exercises', link: '/features/exercises/bodyweight-exercises' },
             { text: 'Adaptive Coaching', link: '/features/exercises/adaptive-coaching' },
             { text: 'Training Consistency', link: '/features/exercises/training-consistency' },
+            { text: 'Warm-Up Sets', link: '/features/exercises/warm-up-sets' },
           ],
         },
         {

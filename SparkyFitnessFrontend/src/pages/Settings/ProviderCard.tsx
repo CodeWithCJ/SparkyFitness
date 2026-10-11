@@ -635,15 +635,16 @@ export const ProviderCard = ({
               'norish',
               'free-exercise-db',
               'wger',
-            ].includes(provider.provider_type) &&
-            ` - App ID: ${
-              provider.provider_type === 'yazio'
-                ? (yazioDisplay.username || yazioDisplay.clientId).substring(
-                    0,
-                    4
-                  )
-                : provider.app_id.substring(0, 4)
-            }...`}
+            ].includes(provider.provider_type) && (
+              <span>{` - App ID: ${
+                provider.provider_type === 'yazio'
+                  ? (yazioDisplay.username || yazioDisplay.clientId).substring(
+                      0,
+                      4
+                    )
+                  : provider.app_id.substring(0, 4)
+              }...`}</span>
+            )}
           {provider.app_key &&
             [
               'mealie',
@@ -652,9 +653,12 @@ export const ProviderCard = ({
               'nutritionix',
               'fatsecret',
               'withings',
-            ].includes(provider.provider_type) &&
-            ` - App Key: ${provider.app_key.substring(0, 4)}...`}
-          {provider.sync_frequency && ` - Sync: ${provider.sync_frequency}`}
+            ].includes(provider.provider_type) && (
+              <span>{` - App Key: ${provider.app_key.substring(0, 4)}...`}</span>
+            )}
+          {provider.sync_frequency && (
+            <span>{` - Sync: ${provider.sync_frequency}`}</span>
+          )}
         </p>
 
         {provider.provider_type === 'swissfood' && (

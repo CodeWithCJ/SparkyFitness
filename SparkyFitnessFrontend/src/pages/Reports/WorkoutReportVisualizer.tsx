@@ -285,8 +285,8 @@ const WorkoutReportVisualizer = ({
                         t('common.notApplicable', 'N/A')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {step.endConditionValue}{' '}
-                      {step.endCondition?.conditionTypeKey}
+                      <span>{step.endConditionValue}</span>{' '}
+                      <span>{step.endCondition?.conditionTypeKey}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {step.weightValue

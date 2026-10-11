@@ -299,7 +299,7 @@ const OidcSettings: React.FC = () => {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {provider.display_name}
+                          <span>{provider.display_name}</span>
                           {provider.is_env_configured && (
                             <Badge
                               variant="outline"

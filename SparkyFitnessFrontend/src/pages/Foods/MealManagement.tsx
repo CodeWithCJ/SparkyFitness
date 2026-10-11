@@ -831,7 +831,7 @@ const MealManagement: React.FC = () => {
               <ul className="list-disc pl-5 space-y-1">
                 {viewingMeal.foods.map((food, index) => (
                   <li key={index}>
-                    {food.quantity} {food.unit} - {food.food_name}
+                    {food.quantity} {food.unit} - <span>{food.food_name}</span>
                   </li>
                 ))}
               </ul>

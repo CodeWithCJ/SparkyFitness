@@ -66,6 +66,11 @@ async function saveNow(
   // Entry-id order at send time: applyServerSession compares it against the
   // local session so a mid-flight reorder/delete can't be grafted positionally.
   const sentEntryIds = state.session.exercises.map((e) => e.id);
+  // Set-id order at send time. A warm-up insert changes both the count and
+  // the order, which a positional id graft would assign to the wrong sets.
+  const sentSetIds = state.session.exercises.map((e) =>
+    e.sets.map((s) => String(s.id))
+  );
   // Captured before the request: the user may end or swap the session while
   // it is in flight, so the failure log must describe the session that was
   // being saved, not whatever the store holds at catch time.
@@ -111,7 +116,7 @@ async function saveNow(
     });
     useActiveWorkoutStore
       .getState()
-      .applyServerSession(result, sentRevision, sentEntryIds);
+      .applyServerSession(result, sentRevision, sentEntryIds, sentSetIds);
     syncExerciseSessionInCache(queryClient, result);
     return 'saved';
   } catch (error) {

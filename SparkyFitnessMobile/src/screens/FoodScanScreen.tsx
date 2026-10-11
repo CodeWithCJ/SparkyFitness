@@ -29,7 +29,6 @@ import {
   type BarcodeScanningResult,
 } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
 import {
   lookupBarcodeV2,
   scanNutritionLabel,
@@ -42,6 +41,7 @@ import {
   isOnDeviceLabelScanAvailable,
   scanLabelOnDevice,
 } from '../services/onDeviceLabelScan';
+import { prepareLabelPhoto } from '../utils/labelPhoto';
 import {
   rememberLabelScan,
   type LabelScanSource,
@@ -65,9 +65,6 @@ const GUIDE_WIDTH = 280;
 const GUIDE_HEIGHT = 160;
 
 const GUIDE_BOTTOM_MARGIN = 120;
-// Longest edge sent for analysis. A label-filling crop reads correctly well
-// below this; capping bounds upload size without costing accuracy.
-const LABEL_MAX_DIMENSION = 1600;
 
 const CORNER_SIZE = 24;
 const CORNER_BORDER = 3;
@@ -406,43 +403,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
 
   // Both label paths share one shape: get an image (system camera or library),
   // let the user crop it to the label with the system editor's adjustable
-  // handles, downscale, scan. Vision models misread labels that occupy a small
-  // share of the frame, so the crop step is what makes results reliable.
-  const prepareLabelPhoto = async (asset: {
-    uri: string;
-    base64?: string | null;
-    width?: number;
-    height?: number;
-  }) => {
-    const longEdge = Math.max(asset.width ?? 0, asset.height ?? 0);
-    if (longEdge > LABEL_MAX_DIMENSION && asset.width && asset.height) {
-      const scaleTo =
-        asset.width >= asset.height
-          ? { width: LABEL_MAX_DIMENSION }
-          : { height: LABEL_MAX_DIMENSION };
-      const processed = await ImageManipulator.manipulateAsync(
-        asset.uri,
-        [{ resize: scaleTo }],
-        {
-          compress: 0.85,
-          format: ImageManipulator.SaveFormat.JPEG,
-          base64: true,
-        }
-      );
-      if (processed.base64)
-        return { base64: processed.base64, uri: processed.uri };
-    }
-    if (asset.base64) return { base64: asset.base64, uri: asset.uri };
-    const reencoded = await ImageManipulator.manipulateAsync(asset.uri, [], {
-      compress: 0.85,
-      format: ImageManipulator.SaveFormat.JPEG,
-      base64: true,
-    });
-    return reencoded.base64
-      ? { base64: reencoded.base64, uri: reencoded.uri }
-      : null;
-  };
-
+  // handles, downscale (`prepareLabelPhoto`), scan. Vision models misread labels
+  // that occupy a small share of the frame, so the crop step is what makes
+  // results reliable.
   const handleLabelCapture = async () => {
     if (pickerLock.current) return;
     pickerLock.current = true;

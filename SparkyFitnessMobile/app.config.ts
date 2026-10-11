@@ -193,9 +193,15 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         // the app in the background. Nothing plays in the background unless
         // that setting is on and a rest is running.
         UIBackgroundModes: ['audio'],
+        // Lets the Siri and Shortcuts actions and the Lock Screen controls find
+        // the Keychain group the app shares with the widget extension.
+        // Read by the Siri and Shortcuts actions to find the widget snapshots.
+        APP_GROUP_IDENTIFIER: getIosAppGroup(),
+        SparkyKeychainGroup: `$(AppIdentifierPrefix)${getIosAppGroup()}`,
       },
       entitlements: {
         'com.apple.security.application-groups': [getIosAppGroup()],
+        'keychain-access-groups': [`$(AppIdentifierPrefix)${getIosAppGroup()}`],
         // Lets iOS honour the `timeSensitive` rest alert (see
         // `scheduleRestNotification`); without it a Focus mode silences it.
         'com.apple.developer.usernotifications.time-sensitive': true,

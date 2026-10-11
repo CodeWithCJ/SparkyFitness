@@ -237,6 +237,10 @@ describe('workoutLiveActivity', () => {
           exercise: 'Exercise',
           set: 'Set',
           setOf: 'of',
+          subtractFifteenSeconds: 'Subtract 15 seconds',
+          subtractFifteenSecondsShort: '-15s',
+          skip: 'Skip',
+          next: 'Next',
         },
         startedAt: FIXED_NOW,
         phase: 'active',
@@ -245,6 +249,10 @@ describe('workoutLiveActivity', () => {
         pausedRemainingLabel: null,
         setLine: 'Bench Press · Set 1 of 2',
         elapsedLabel: null,
+        exerciseName: 'Bench Press',
+        setProgress: 'Set 1 of 2',
+        targetLine: '60 kg × 10 reps',
+        subtitleText: 'Set 1 of 2',
       });
     });
 
@@ -506,6 +514,83 @@ describe('workoutLiveActivity', () => {
           phase: 'resting',
           restEndsAt: FIXED_NOW + 75_000,
         })
+      );
+    });
+
+    it('trims the current rest by 15s on rest-subtract-15', async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      useActiveWorkoutStore.getState().completeSet('101');
+      await flushPromises();
+
+      fireInteraction('rest-subtract-15');
+      await flushPromises();
+
+      expect(instance.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          phase: 'resting',
+          restEndsAt: FIXED_NOW + 45_000,
+        })
+      );
+    });
+
+    it("shows the upcoming set's target in the user's weight unit while resting", async () => {
+      await initHydrated();
+      useActiveWorkoutStore.getState().setWeightUnit('lbs');
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      await flushPromises();
+      const instance = createdInstances[0];
+
+      useActiveWorkoutStore.getState().completeSet('101');
+      await flushPromises();
+
+      expect(instance.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          phase: 'resting',
+          exerciseName: 'Bench Press',
+          setProgress: 'Set 2 of 2',
+          targetLine: expect.stringMatching(/^\d+(\.\d)? lbs × \d+ reps$/),
+          subtitleText: expect.stringMatching(
+            /^Next: Set 2 of 2 \(\d+(\.\d)? lbs × \d+ reps\)$/
+          ),
+        })
+      );
+    });
+
+    it('repaints the target when the exercise settings load after the start', async () => {
+      await initHydrated();
+      const session = makeSession();
+      for (const set of session.exercises[0].sets) {
+        (set as { weight: number | null }).weight = null;
+      }
+      useActiveWorkoutStore.getState().startWorkout(session);
+      useActiveWorkoutStore.setState({
+        plannedSetValues: {
+          '101': { weight: 60, reps: 10, duration: null, distance: null },
+          '102': { weight: 60, reps: 10, duration: null, distance: null },
+        },
+      });
+      await flushPromises();
+      const instance = createdInstances[0];
+      useActiveWorkoutStore.getState().completeSet('101');
+      await flushPromises();
+      expect(instance.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ targetLine: expect.stringMatching(/^60 /) })
+      );
+
+      // The preset's settings arrive later: a 5 kg ramp puts set 2 at 65.
+      useActiveWorkoutStore.setState({
+        exerciseConfigs: {
+          'ex-uuid-1': { ramp_increment: 5 } as never,
+        },
+      });
+      await flushPromises();
+
+      expect(instance.update).toHaveBeenLastCalledWith(
+        expect.objectContaining({ targetLine: expect.stringMatching(/^65 /) })
       );
     });
 

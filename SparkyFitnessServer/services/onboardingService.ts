@@ -71,12 +71,27 @@ async function skipOnboarding(userId: any) {
     throw new Error('Failed to skip onboarding.', { cause: error });
   }
 }
+/**
+ * Sets or clears the user's target weight without touching the rest of onboarding.
+ * @param userId - The UUID of the user.
+ * @param targetWeightKg - Target weight in kg, or null to clear it.
+ */
+async function setTargetWeight(userId: string, targetWeightKg: number | null) {
+  try {
+    await onboardingRepository.setTargetWeight(userId, targetWeightKg);
+  } catch (error) {
+    log('error', `Error saving target weight for user ${userId}:`, error);
+    throw new Error('Failed to save target weight.', { cause: error });
+  }
+}
 export { processOnboardingData };
+export { setTargetWeight };
 export { checkOnboardingStatus };
 export { resetOnboardingStatus };
 export { skipOnboarding };
 export default {
   processOnboardingData,
+  setTargetWeight,
   checkOnboardingStatus,
   resetOnboardingStatus,
   skipOnboarding,

@@ -1164,13 +1164,14 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                  signed, so formatting them raw double-prints the sign for gain
                  modes ("Deficit (--10%) = --200 kcal"). */
               <span>
-                {goalModeLabel} {adjustmentLabel} ({adjustmentSign}
-                {Math.abs(Math.round(deficitPct * 100))}%) = {adjustmentSign}
-                {Math.abs(
+                {goalModeLabel} {adjustmentLabel} (
+                {`${adjustmentSign}${Math.abs(Math.round(deficitPct * 100))}`}
+                %) ={' '}
+                {`${adjustmentSign}${Math.abs(
                   Math.round(
                     convertEnergy(calculatedDeficitAmount, 'kcal', energyUnit)
                   )
-                )}{' '}
+                )}`}{' '}
                 {getEnergyUnitString(energyUnit)}
               </span>
             )}
@@ -1203,7 +1204,9 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
                   'Effective Safety Floor:'
                 )}{' '}
                 {effectiveSafetyFloor === null ? (
-                  t('settings.goalMode.safetyFloorDisabled', 'Disabled')
+                  <span>
+                    {t('settings.goalMode.safetyFloorDisabled', 'Disabled')}
+                  </span>
                 ) : (
                   <>
                     {Math.round(

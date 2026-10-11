@@ -1,0 +1,16 @@
+"watch.rpe.label" = "RPE";
+"watch.rpe.skip" = "Skip";
+"watch.rpe.save" = "Save";
+"watch.rpe.meaning.10" = "No more reps possible";
+"watch.rpe.meaning.9_5" = "Could\'ve maybe done 1 more rep";
+"watch.rpe.meaning.9" = "Could\'ve done 1 more rep";
+"watch.rpe.meaning.8_5" = "Could\'ve maybe done 2 more reps";
+"watch.rpe.meaning.8" = "Could\'ve done 2 more reps";
+"watch.rpe.meaning.7_5" = "Could\'ve maybe done 3 more reps";
+"watch.rpe.meaning.7" = "Could\'ve done 3 more reps";
+"watch.rpe.meaning.6_5" = "Could\'ve maybe done 4 more reps";
+"watch.rpe.meaning.6" = "Could\'ve done 4+ more reps";
+"watch.rpe.meaning.5" = "Could\'ve done 5+ more reps";
+"watch.rpe.meaning.4" = "Light effort";
+"watch.rpe.meaning.3" = "Very light effort";
+"watch.rpe.meaning.low" = "Little to no effort";

@@ -409,6 +409,14 @@ export function useWatchWorkoutBridge(
       if (payload.duration != null)
         patch.duration = Math.round(payload.duration);
       if (payload.distanceKm != null) patch.distance = payload.distanceKm;
+      if (
+        payload.rpe != null &&
+        Number.isFinite(payload.rpe) &&
+        payload.rpe >= 1 &&
+        payload.rpe <= 10
+      ) {
+        patch.rpe = payload.rpe;
+      }
       if (Object.keys(patch).length > 0) {
         state.updateSetField(payload.setId, patch);
       }
