@@ -131,12 +131,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const toggleTheme = () => {
     setThemeState((previousThemeSetting) => {
+      const nextResolvedTheme: Exclude<ThemeSetting, 'system'> =
+        previousThemeSetting === 'whoop'
+          ? 'light'
+          : resolveTheme(previousThemeSetting) === 'light'
+            ? 'dark'
+            : 'whoop';
+      const systemTheme = getSystemTheme();
       const newTheme: ThemeSetting =
-        previousThemeSetting === 'dark'
-          ? 'whoop'
-          : previousThemeSetting === 'whoop'
-            ? 'light'
-            : 'dark';
+        nextResolvedTheme !== 'whoop' && nextResolvedTheme === systemTheme
+          ? 'system'
+          : nextResolvedTheme;
       info(loggingLevel, 'ThemeProvider: Toggling theme to:', newTheme);
       setResolvedTheme(resolveTheme(newTheme));
       return newTheme;

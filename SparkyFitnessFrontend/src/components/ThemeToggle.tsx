@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const ThemeToggle = () => {
-  const { theme, toggleTheme } = useTheme();
+  const { theme, resolvedTheme, toggleTheme } = useTheme();
 
   const getIcon = () => {
     switch (theme) {
@@ -14,7 +14,11 @@ const ThemeToggle = () => {
       case 'whoop':
         return <Sun className="h-4 w-4" />;
       case 'system':
-        return <Moon className="h-4 w-4" />;
+        return resolvedTheme === 'dark' ? (
+          <Sunset className="h-4 w-4" />
+        ) : (
+          <Moon className="h-4 w-4" />
+        );
     }
   };
 
@@ -27,7 +31,7 @@ const ThemeToggle = () => {
       case 'whoop':
         return 'Light mode';
       case 'system':
-        return 'Dark mode';
+        return resolvedTheme === 'dark' ? 'WHOOP theme' : 'Dark mode';
     }
   };
 
