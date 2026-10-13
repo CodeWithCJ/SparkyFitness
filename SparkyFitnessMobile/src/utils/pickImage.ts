@@ -19,7 +19,9 @@ import { addLog } from '../services/LogService';
 const MAX_DIMENSION = 1600;
 const COMPRESS_QUALITY = 0.85;
 
-export type PickedImage = { uri: string };
+// `mimeType` is `image/jpeg` once re-encoded; when the re-encode fails it is
+// whatever the picker reported for the original.
+export type PickedImage = { uri: string; mimeType?: string };
 
 /**
  * Distinguishes the two "nothing happened" outcomes: a cancel is the user
@@ -52,13 +54,14 @@ async function downscale(asset: {
       : [];
 
   // Re-encode even when no resize is needed: it normalizes HEIC (the iOS
-  // default) to JPEG, which is on the server's mime allowlist. HEIC is not.
+  // default) to JPEG, which every server path and AI provider accepts without
+  // relying on the server's HEIC transcode.
   const processed = await ImageManipulator.manipulateAsync(uri, actions, {
     compress: COMPRESS_QUALITY,
     format: ImageManipulator.SaveFormat.JPEG,
   });
 
-  return { uri: processed.uri };
+  return { uri: processed.uri, mimeType: 'image/jpeg' };
 }
 
 /** Takes a photo with the system camera. */
@@ -86,7 +89,10 @@ export async function pickImageFromCamera(): Promise<CameraPickResult> {
       `[Food Image] Downscale failed, using original: ${String(error)}`,
       'WARNING'
     );
-    return { status: 'ok', image: { uri: asset.uri } };
+    return {
+      status: 'ok',
+      image: { uri: asset.uri, mimeType: asset.mimeType },
+    };
   }
 }
 
@@ -114,7 +120,7 @@ export async function pickImagesFromLibrary(
         `[Food Image] Downscale failed, using original: ${String(error)}`,
         'WARNING'
       );
-      picked.push({ uri: asset.uri });
+      picked.push({ uri: asset.uri, mimeType: asset.mimeType });
     }
   }
   return picked;

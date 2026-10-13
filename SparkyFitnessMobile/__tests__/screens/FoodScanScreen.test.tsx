@@ -1,7 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
 import FoodScanScreen from '../../src/screens/FoodScanScreen';
 import {
   lookupBarcodeV2,
@@ -15,6 +14,7 @@ import {
   hasSeenFoodPhotoIntro,
   markFoodPhotoIntroSeen,
 } from '../../src/services/foodPhotoIntro';
+import { pickImagesFromLibrary } from '../../src/utils/pickImage';
 
 jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
   lookupBarcodeV2: jest.fn(),
@@ -27,6 +27,10 @@ jest.mock('../../src/services/haptics', () => ({
 
 jest.mock('../../src/hooks/useActiveAiServiceSetting', () => ({
   useActiveAiServiceSetting: jest.fn(),
+}));
+
+jest.mock('../../src/utils/pickImage', () => ({
+  pickImagesFromLibrary: jest.fn(),
 }));
 
 jest.mock('../../src/services/foodPhotoIntro', () => ({
@@ -598,16 +602,16 @@ describe('FoodScanScreen', () => {
   });
 
   describe('Photo library picker', () => {
-    const mockLaunchLibrary =
-      ImagePicker.launchImageLibraryAsync as jest.MockedFunction<
-        typeof ImagePicker.launchImageLibraryAsync
+    const mockPickImagesFromLibrary =
+      pickImagesFromLibrary as jest.MockedFunction<
+        typeof pickImagesFromLibrary
       >;
     const mockMarkSeen = markFoodPhotoIntroSeen as jest.MockedFunction<
       typeof markFoodPhotoIntroSeen
     >;
 
     beforeEach(() => {
-      mockLaunchLibrary.mockReset();
+      mockPickImagesFromLibrary.mockReset();
     });
 
     it('exposes the library button only in photo mode when AI is configured', async () => {
@@ -636,11 +640,10 @@ describe('FoodScanScreen', () => {
       expect(screen.queryByLabelText('Choose photo from library')).toBeNull();
     });
 
-    it('routes a picked photo into the FoodPhotoFlow > Improve screen', async () => {
-      mockLaunchLibrary.mockResolvedValue({
-        canceled: false,
-        assets: [{ uri: 'file:///picked.jpg' } as any],
-      } as any);
+    it('routes the downscaled JPEG of a picked photo into the FoodPhotoFlow > Improve screen', async () => {
+      mockPickImagesFromLibrary.mockResolvedValue([
+        { uri: 'file:///downscaled.jpg', mimeType: 'image/jpeg' },
+      ]);
 
       const screen = renderScreenWithRoute({ initialMode: 'photo' });
       await waitFor(() => {
@@ -652,17 +655,20 @@ describe('FoodScanScreen', () => {
       });
 
       await waitFor(() => {
-        expect(mockLaunchLibrary).toHaveBeenCalledTimes(1);
+        expect(mockPickImagesFromLibrary).toHaveBeenCalledWith(1);
       });
       expect(mockMarkSeen).toHaveBeenCalled();
       expect(mockNavigation.replace).toHaveBeenCalledWith('FoodPhotoFlow', {
         screen: 'Improve',
-        params: { date: undefined, photo: { uri: 'file:///picked.jpg' } },
+        params: {
+          date: undefined,
+          photo: { uri: 'file:///downscaled.jpg', mimeType: 'image/jpeg' },
+        },
       });
     });
 
     it('does nothing when the user cancels the system picker', async () => {
-      mockLaunchLibrary.mockResolvedValue({ canceled: true } as any);
+      mockPickImagesFromLibrary.mockResolvedValue([]);
 
       const screen = renderScreenWithRoute({ initialMode: 'photo' });
       await waitFor(() => {
@@ -674,14 +680,14 @@ describe('FoodScanScreen', () => {
       });
 
       await waitFor(() => {
-        expect(mockLaunchLibrary).toHaveBeenCalledTimes(1);
+        expect(mockPickImagesFromLibrary).toHaveBeenCalledTimes(1);
       });
       expect(mockNavigation.replace).not.toHaveBeenCalled();
     });
 
     it('ignores a second tap while the picker is still resolving', async () => {
       let resolveLaunch: ((value: any) => void) | undefined;
-      mockLaunchLibrary.mockImplementation(
+      mockPickImagesFromLibrary.mockImplementation(
         () =>
           new Promise((resolve) => {
             resolveLaunch = resolve;
@@ -699,10 +705,10 @@ describe('FoodScanScreen', () => {
         fireEvent.press(button);
       });
 
-      expect(mockLaunchLibrary).toHaveBeenCalledTimes(1);
+      expect(mockPickImagesFromLibrary).toHaveBeenCalledTimes(1);
 
       await act(async () => {
-        resolveLaunch?.({ canceled: true });
+        resolveLaunch?.([]);
       });
     });
   });
