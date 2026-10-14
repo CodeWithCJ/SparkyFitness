@@ -1,8 +1,10 @@
 # Database Security & RLS Tiers
 
-*Last updated: 2026-09-01*
+*Last updated: 2026-10-14*
 
 SparkyFitness uses PostgreSQL Row-Level Security (RLS) to enforce strict data isolation between accounts, caregivers, family members, and third-party integrations (API keys). This document covers the security design, context switching mechanism, and the three-tier database table classifications.
+
+Database startup applies migrations before canonical RLS. Policy migrations that depend on permission helpers must allow those helpers to be absent on a fresh database; the canonical RLS pass installs the complete policies before the server accepts traffic. The unlinked food-snapshot migration follows this rule without changing diary permission requirements.
 
 ---
 

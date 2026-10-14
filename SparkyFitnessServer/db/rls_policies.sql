@@ -843,6 +843,8 @@ WITH CHECK (authenticated_user_id() = owner_user_id);
 
 CREATE POLICY select_policy ON public.food_entries FOR SELECT TO PUBLIC
 USING (has_diary_read_access(user_id));
+-- Also installs the unlinked-snapshot policy on fresh databases, where its
+-- migration ran before has_diary_access was created by this canonical file.
 CREATE POLICY insert_policy ON public.food_entries FOR INSERT TO PUBLIC
 WITH CHECK (
   has_diary_access(user_id) AND (

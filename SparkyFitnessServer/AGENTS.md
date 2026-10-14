@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-09_
+_Last updated: 2026-10-14_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -184,6 +184,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   4. Add or update the matching Zod schema in `../shared/src/schemas/database/`.
 - Keep future schema-startup steps in `utils/initializeDatabase.ts` and pass its shared client through all database work. The lock and schema work must use the same connection so initialization cannot continue on another connection after the lock-owning session is lost. Do not create alternate migration mechanisms.
 - Migrations run from `index.ts`, **before any application module is imported**, and via dynamic `await import()`. Both details are load-bearing: Better Auth validates the schema eagerly at `auth.ts` module scope and caches a mismatch for the life of the process (issues #2469 / #2470), and `db/poolManager.ts` builds its pools at module load, so a static import would be hoisted above the env/secret loading. `tests/bootOrder.test.ts` guards this
+- Policy migrations must handle fresh databases whose permission helpers are only installed by the subsequent canonical RLS pass. `20261009020000_allow_unlinked_food_snapshot_copies.sql` updates existing policies only when `has_diary_access(uuid)` exists; canonical RLS installs the same policy on fresh databases before startup opens traffic.
 
 ### Uploads: Public vs Sensitive
 

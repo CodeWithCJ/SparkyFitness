@@ -6,6 +6,8 @@ The system is built with **least-privilege boundary isolation** using PostgreSQL
 
 AI service model and reasoning settings remain private to their owner. An administrator can publish a shared configuration; family diary access does not grant access to personal AI credentials or settings.
 
+Diary copies can retain their recorded nutrition after the original saved food is deleted. Those copies follow the same diary sharing permissions as other food entries.
+
 ---
 
 ## How to Set Up Sharing
