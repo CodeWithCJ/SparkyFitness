@@ -7,6 +7,31 @@ import {
   describeSchedules,
 } from '@workspace/shared';
 
+const nativeTimeString = Date.prototype.toLocaleTimeString;
+beforeEach(() => {
+  // These examples use a US device. Production intentionally uses the device
+  // locale, so a developer's Windows locale must not choose the expectations.
+  jest.spyOn(Date.prototype, 'toLocaleTimeString').mockImplementation(function (
+    this: Date,
+    _locales,
+    options
+  ) {
+    return nativeTimeString.call(this, 'en-US', options);
+  });
+});
+afterEach(() => jest.restoreAllMocks());
+
+it('uses the device locale rather than forcing a twelve-hour clock', () => {
+  jest.spyOn(Date.prototype, 'toLocaleTimeString').mockImplementation(function (
+    this: Date,
+    _locales,
+    options
+  ) {
+    return nativeTimeString.call(this, 'en-GB', options);
+  });
+  expect(formatTimeOfDay('21:00')).toBe('21:00');
+});
+
 describe('formatDose', () => {
   it('prefers the schedule dose override, in the medication dose_unit', () => {
     const med = {
