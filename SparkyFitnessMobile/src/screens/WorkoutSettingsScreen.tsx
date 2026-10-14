@@ -164,7 +164,7 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
                   })
                 : t('workoutSettings.restSoundSilentSubtitle', {
                     defaultValue:
-                      'Play the rest chime even when your phone is on silent or vibrate.',
+                      'Play the rest chime even when your phone is on silent or vibrate. With the app closed or the screen locked, the rest alert rings as an alarm, at alarm volume and through Do Not Disturb when it allows alarms.',
                   })
             }
             subtitleNumberOfLines={0}

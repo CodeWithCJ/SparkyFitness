@@ -6,6 +6,7 @@ import { addLog } from './LogService';
 import i18n from '../localization/i18n';
 import { fireSuccessHaptic } from './haptics';
 import {
+  isRestChimeThroughSilentEnabled,
   willBackgroundRestChimeSound,
   playRestCompleteSound,
   willPlayRestCompleteSound,
@@ -17,6 +18,15 @@ import {
 } from '../stores/appPreferencesStore';
 
 const CHANNEL_ID = 'workout-timer';
+/**
+ * Android-only sibling of `CHANNEL_ID` whose sound plays on the alarm stream,
+ * which the ringer's silent and vibrate modes do not mute. The rest ping uses
+ * it only while the chime is set to play through silent mode. A second channel
+ * rather than a change to `CHANNEL_ID`, because Android freezes a channel's
+ * sound settings once it exists: nobody's current channel has to be recreated
+ * and no per-channel setting they changed is lost.
+ */
+const REST_ALARM_CHANNEL_ID = 'workout-timer-alarm';
 const FASTING_CHANNEL_ID = 'fasting';
 const HYDRATION_CHANNEL_ID = 'hydration';
 export const MEDICATION_REMINDER_CHANNEL_ID = 'medication-reminders';
@@ -63,6 +73,18 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
       ),
       importance: Notifications.AndroidImportance.HIGH,
       enableVibrate: true,
+    });
+    await Notifications.setNotificationChannelAsync(REST_ALARM_CHANNEL_ID, {
+      name: notificationCopy(
+        'notifications.channels.workoutTimerAlarm',
+        'Workout timer (silent mode)'
+      ),
+      importance: Notifications.AndroidImportance.HIGH,
+      enableVibrate: true,
+      // Alarm usage carries the sound past a muted ringer, like an alarm clock,
+      // and needs no special access. It plays at alarm volume and Do Not
+      // Disturb treats it as an alarm, so it stays behind the opt-in.
+      audioAttributes: { usage: Notifications.AndroidAudioUsage.ALARM },
     });
     await Notifications.setNotificationChannelAsync(FASTING_CHANNEL_ID, {
       name: notificationCopy('notifications.channels.fasting', 'Fasting'),
@@ -416,7 +438,12 @@ export async function scheduleRestNotification(
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds,
-        channelId: CHANNEL_ID,
+        // Android has no background chime, so with the app off screen this
+        // ping is the only cue; the alarm channel lets it sound through silent
+        // mode. iOS ignores the channel.
+        channelId: isRestChimeThroughSilentEnabled()
+          ? REST_ALARM_CHANNEL_ID
+          : CHANNEL_ID,
       },
     });
     return id;

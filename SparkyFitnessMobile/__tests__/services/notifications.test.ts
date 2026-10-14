@@ -168,6 +168,27 @@ describe('notifications service', () => {
       );
     });
 
+    it('creates a separate alarm-stream channel for the silent-mode rest ping', async () => {
+      Object.defineProperty(Platform, 'OS', {
+        get: () => 'android',
+        configurable: true,
+      });
+      await initNotifications();
+      expect(mockSetChannel).toHaveBeenCalledWith(
+        'workout-timer-alarm',
+        expect.objectContaining({
+          name: 'Workout timer (silent mode)',
+          importance: Notifications.AndroidImportance.HIGH,
+          audioAttributes: { usage: Notifications.AndroidAudioUsage.ALARM },
+        })
+      );
+      // The existing channel keeps its settings; Android would ignore a change.
+      const workoutTimerCall = mockSetChannel.mock.calls.find(
+        ([id]) => id === 'workout-timer'
+      );
+      expect(workoutTimerCall?.[1]).not.toHaveProperty('audioAttributes');
+    });
+
     it('creates a dedicated fasting Android channel', async () => {
       Object.defineProperty(Platform, 'OS', {
         get: () => 'android',
@@ -370,6 +391,51 @@ describe('notifications service', () => {
           content: expect.objectContaining({ sound: true }),
         })
       );
+    });
+
+    describe('on Android', () => {
+      beforeEach(() => {
+        Object.defineProperty(Platform, 'OS', {
+          get: () => 'android',
+          configurable: true,
+        });
+      });
+
+      it('rings through silent mode on the alarm channel when opted in', async () => {
+        useAppPreferencesStore.getState().setRestChimeThroughSilent(true);
+        await scheduleRestNotification('Bench Press', 60);
+        expect(mockSchedule).toHaveBeenCalledWith(
+          expect.objectContaining({
+            // No background chime on Android, so the ping keeps its sound.
+            content: expect.objectContaining({ sound: true }),
+            trigger: expect.objectContaining({
+              channelId: 'workout-timer-alarm',
+            }),
+          })
+        );
+      });
+
+      it('stays on the default channel when not opted in', async () => {
+        await scheduleRestNotification('Bench Press', 60);
+        expect(mockSchedule).toHaveBeenCalledWith(
+          expect.objectContaining({
+            trigger: expect.objectContaining({ channelId: 'workout-timer' }),
+          })
+        );
+      });
+
+      it('stays on the default channel when the rest chime is off', async () => {
+        // The silent-mode switch is hidden with the chime off, so a value
+        // saved earlier must not keep ringing at alarm volume.
+        useAppPreferencesStore.getState().setRestChimeThroughSilent(true);
+        useAppPreferencesStore.getState().setRestTimerSoundEnabled(false);
+        await scheduleRestNotification('Bench Press', 60);
+        expect(mockSchedule).toHaveBeenCalledWith(
+          expect.objectContaining({
+            trigger: expect.objectContaining({ channelId: 'workout-timer' }),
+          })
+        );
+      });
     });
 
     it('sweeps stale delivered rest pings, leaving other notifications alone', async () => {

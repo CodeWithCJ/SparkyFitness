@@ -262,6 +262,7 @@
       "medicationReminders": "Medication reminders",
       "ongoingWorkout": "Ongoing workout",
       "workoutTimer": "Workout timer",
+      "workoutTimerAlarm": "Workout timer (silent mode)",
       "fasting": "Fasting",
       "hydration": "Hydration reminders"
     },
@@ -1165,7 +1166,7 @@
     "restSoundAccessibility": "Rest timer sound",
     "restSoundSilent": "Play through silent mode",
     "restSoundSilentSubtitleIos": "Play the rest chime even when your phone is on silent, including with the app in the background or the screen locked.",
-    "restSoundSilentSubtitle": "Play the rest chime even when your phone is on silent or vibrate.",
+    "restSoundSilentSubtitle": "Play the rest chime even when your phone is on silent or vibrate. With the app closed or the screen locked, the rest alert rings as an alarm, at alarm volume and through Do Not Disturb when it allows alarms.",
     "restSoundSilentAccessibility": "Play rest timer sound through silent mode",
     "keepAwakeAccessibility": "Keep screen awake",
     "adaptiveCoaching": "Adaptive suggestions",
