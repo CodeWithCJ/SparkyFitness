@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-12_
+_Last updated: 2026-10-14_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -245,6 +245,7 @@ npx expo prebuild --clean
 - The transport must use `expo/fetch` — it exposes a real `ReadableStream` body. RN's global fetch buffers responses and silently breaks incremental streaming.
 - Auth and proxy headers are resolved per request through an async `headers` callback; `service_config_id` (the user's active AI provider) is merged into the request body and required by the server.
 - `chatApi.ts` is history persistence only: `GET /api/chat/sparky-chat-history` and `POST /api/chat/clear-all-history`. `useChatHistory` seeds the runtime with prior messages and uses `staleTime`/`gcTime` of 0 because the runtime ignores `messages` changes after mount — every chat open must re-seed cold.
+- `useChatBackgroundRecovery.ts` tracks a unique ID per generation (including retries), watches app-state changes, and polls saved history on foreground return after an interrupted turn. A background stream ending without a protocol finish reason still needs recovery: Android may report a clean EOF for a broken connection. Android's `expo/fetch` can also reject the response with an empty error message; recover that case only after backgrounding. An explicit stop or confirmed finish releases the pending turn. The server persists that ID as `metadata.client_message_id` and consumes the provider stream independently of the phone. Recovery remounts the thread with the saved transcript and never resends a potentially mutating AI request. The screen stays awake only while a live reply runs.
 - Chat UI lives in `components/chat/`: `MarkdownMessage` (`react-native-enriched-markdown` + `remend` to repair unclosed streamed markdown), `ToolCallCard` (derives running/complete/error from `result`/`isError`), `TypingIndicator`. Tool-name display mapping lives in `constants/chat.ts`.
 - There is no chat Zustand store; thread state lives in the assistant-ui runtime and history seeding in React Query.
 

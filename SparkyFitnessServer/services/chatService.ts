@@ -63,6 +63,7 @@ interface ProcessedMessagePart {
 }
 
 interface ChatMessage {
+  id?: string;
   role: string;
   content?: string | ChatMessagePart[];
   parts?: ChatMessagePart[];
@@ -2616,6 +2617,18 @@ async function processChatMessageStream(
       llmMessages[llmMessages.length - 1]
     );
 
+    // Correlate a restored response with the exact client turn, including when
+    // two turns have identical text. Older clients do not send message IDs.
+    const clientMessageId = [...messages]
+      .reverse()
+      .find((message) => message.role === 'user')?.id;
+    const recoveryMetadata =
+      typeof clientMessageId === 'string' &&
+      clientMessageId.length > 0 &&
+      clientMessageId.length <= 200
+        ? { client_message_id: clientMessageId }
+        : undefined;
+
     const result = streamText({
       model: modelInstance,
       system: systemPromptContent,
@@ -2703,6 +2716,7 @@ async function processChatMessageStream(
             content: userMessageContent,
             messageType: 'user',
             parts: userMessageParts,
+            metadata: recoveryMetadata,
           })
           .catch((err: unknown) =>
             log('error', 'Failed to save user chat history:', err)
@@ -2762,12 +2776,18 @@ async function processChatMessageStream(
               '',
             messageType: 'assistant',
             parts: assistantParts,
+            metadata: recoveryMetadata,
           })
           .catch((err: unknown) =>
             log('error', 'Failed to save assistant chat history:', err)
           );
       },
     });
+
+    // Keep consuming independently of the HTTP connection. A locked phone or
+    // lost connection must not stall tool execution or the onFinish save.
+    // The existing workflow timeout still bounds the provider request.
+    void result.consumeStream();
 
     return {
       stream: withEmptyCompletionGuard(

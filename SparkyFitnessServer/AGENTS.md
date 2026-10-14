@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-10_
+_Last updated: 2026-10-14_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -270,6 +270,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect `routes/syncedDataRoutes.ts`, `services/syncedDataService.ts`, and `models/syncedDataRepository.ts` (the `SYNCED_SOURCE_TABLES` whitelist)
 - AI chat or chatbot tool issue:
   inspect `services/chatService.ts`, `ai/tools/`, and the matching domain service and repository
+  Streaming turns consume the provider output independently of the HTTP connection so `onFinish` persists the reply after a mobile disconnect. A valid final user-message ID is stored as `metadata.client_message_id` on both history rows for exact-turn recovery; mobile assigns a fresh ID to each generation, including retries.
 - Fasting or mood issue:
   inspect `routes/fastingRoutes.ts` / `routes/moodRoutes.ts` and `models/fastingRepository.ts` / `models/moodRepository.ts`
 - Symptom or episode tracking issue (#1882):

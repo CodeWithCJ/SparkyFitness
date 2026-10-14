@@ -3,9 +3,31 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
+import { AppState, type AppStateStatus } from 'react-native';
 import ChatScreen from '../../src/screens/ChatScreen';
 import { getActiveServerConfig } from '../../src/services/storage';
 import { useActiveAiServiceSetting, useChatHistory } from '../../src/hooks';
+import { useChatHistory as useRealChatHistory } from '../../src/hooks/useChatHistory';
+import * as chatApi from '../../src/services/api/chatApi';
+
+const mockWakeAcquire = jest.fn();
+const mockWakeRelease = jest.fn();
+const mockPrepareCapture = jest.fn();
+
+jest.mock('expo-keep-awake', () => ({
+  useKeepAwake: (tag: string) => {
+    const { useEffect } = jest.requireActual<typeof import('react')>('react');
+    useEffect(() => {
+      mockWakeAcquire(tag);
+      return () => mockWakeRelease(tag);
+    }, [tag]);
+  },
+}));
+
+type PrepareChatRequest = (options: {
+  messages: { id: string; role: string }[];
+  body?: Record<string, unknown>;
+}) => { body: { messages: { id: string; role: string }[] } };
 
 // The real @assistant-ui runtime pulls in web fetch globals + a chain of ESM
 // dependencies that don't load under jsdom without transforming the whole tree.
@@ -19,13 +41,24 @@ jest.mock('expo/fetch', () => ({ fetch: jest.fn() }));
 
 jest.mock('@assistant-ui/react-ai-sdk', () => ({
   __esModule: true,
-  AssistantChatTransport: class AssistantChatTransport {},
+  AssistantChatTransport: class AssistantChatTransport {
+    constructor(options: { prepareSendMessagesRequest: PrepareChatRequest }) {
+      mockPrepareCapture(options.prepareSendMessagesRequest);
+    }
+  },
   useChatRuntime: (options: {
     onError?: (error: Error) => void;
+    onFinish?: (event: Record<string, unknown>) => void;
     messages?: unknown;
   }) => {
-    (global as any).__mockCapturedOnError = options?.onError;
-    (global as any).__mockCapturedMessages = options?.messages;
+    const callbacks = global as typeof globalThis & {
+      __mockCapturedOnError?: typeof options.onError;
+      __mockCapturedOnFinish?: typeof options.onFinish;
+      __mockCapturedMessages?: unknown;
+    };
+    callbacks.__mockCapturedOnError = options.onError;
+    callbacks.__mockCapturedOnFinish = options.onFinish;
+    callbacks.__mockCapturedMessages = options.messages;
     return {};
   },
 }));
@@ -213,6 +246,10 @@ const ACTIVE_SETTING = { id: 'svc-1', service_type: 'openai' } as any;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  AppState.currentState = 'active';
+  jest
+    .spyOn(AppState, 'addEventListener')
+    .mockReturnValue({ remove: jest.fn() });
   (global as any).__mockChatIsRunning = false;
   (global as any).__mockChatIsEmpty = true;
   (global as any).__mockCapturedOnError = undefined;
@@ -257,6 +294,52 @@ describe('ChatScreen config gating', () => {
 });
 
 describe('ChatScreen thread', () => {
+  it('gives every generation a fresh recovery ID while preserving the request body', async () => {
+    const { findByTestId } = renderScreen();
+    await findByTestId('composer-send');
+    const prepare = mockPrepareCapture.mock.calls[0][0] as PrepareChatRequest;
+    const messages = [{ id: 'user-message', role: 'user' }];
+    let first: ReturnType<PrepareChatRequest> | undefined;
+    let retry: ReturnType<PrepareChatRequest> | undefined;
+    act(() => {
+      first = prepare({ messages, body: { service_config_id: 'svc-1' } });
+      retry = prepare({ messages, body: { service_config_id: 'svc-1' } });
+    });
+    expect(first?.body).toEqual({
+      service_config_id: 'svc-1',
+      messages: [{ id: expect.any(String), role: 'user' }],
+    });
+    expect(first?.body.messages[0].id).not.toBe('user-message');
+    expect(retry?.body.messages[0].id).not.toBe(first?.body.messages[0].id);
+    expect(messages[0].id).toBe('user-message');
+  });
+
+  it('keeps the screen awake only during a reply and releases the lock on completion', async () => {
+    const queryClient = new QueryClient();
+    const tree = () => (
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider initialMetrics={initialMetrics}>
+          <ChatScreen navigation={navigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    );
+    const { findByTestId, rerender, unmount } = render(tree());
+    await findByTestId('composer-send');
+    expect(mockWakeAcquire).not.toHaveBeenCalled();
+    (
+      global as typeof globalThis & { __mockChatIsRunning: boolean }
+    ).__mockChatIsRunning = true;
+    rerender(tree());
+    expect(mockWakeAcquire).toHaveBeenCalledWith('sparky-chat');
+    (
+      global as typeof globalThis & { __mockChatIsRunning: boolean }
+    ).__mockChatIsRunning = false;
+    rerender(tree());
+    expect(mockWakeRelease).toHaveBeenCalledTimes(1);
+    unmount();
+    expect(mockWakeRelease).toHaveBeenCalledTimes(1);
+  });
+
   it('renders the empty state with the configured starter suggestions', async () => {
     const { findByText, getByText } = renderScreen();
     expect(
@@ -534,6 +617,89 @@ describe('ChatScreen auto-scroll pinning', () => {
 });
 
 describe('ChatScreen history seeding', () => {
+  it.each(['connection error', 'empty error', 'silent EOF'])(
+    'restores the saved reply after a background %s and remounts with fresh history',
+    async (failure) => {
+      let changeState: ((state: AppStateStatus) => void) | undefined;
+      AppState.currentState = 'active';
+      const appStateListener = jest
+        .spyOn(AppState, 'addEventListener')
+        .mockImplementation((_event, listener) => {
+          changeState = listener;
+          return { remove: jest.fn() };
+        });
+      const loadHistory = jest
+        .spyOn(chatApi, 'loadChatHistory')
+        .mockResolvedValue([]);
+      mockUseChatHistory.mockImplementation(useRealChatHistory);
+      const screen = renderScreen();
+      try {
+        await screen.findByTestId('composer-send');
+        const prepare = mockPrepareCapture.mock
+          .calls[0][0] as PrepareChatRequest;
+        let request: ReturnType<PrepareChatRequest> | undefined;
+        act(() => {
+          request = prepare({ messages: [{ id: 'user', role: 'user' }] });
+          AppState.currentState = 'background';
+          changeState?.('background');
+        });
+        const globals = global as typeof globalThis & {
+          __mockCapturedOnError: (error: Error) => void;
+          __mockCapturedOnFinish: (event: Record<string, unknown>) => void;
+          __mockCapturedMessages: { content: string }[];
+        };
+        act(() => {
+          if (failure === 'connection error' || failure === 'empty error') {
+            globals.__mockCapturedOnError(
+              new Error(
+                failure === 'empty error'
+                  ? ''
+                  : 'Software caused connection abort'
+              )
+            );
+          } else {
+            globals.__mockCapturedOnFinish({
+              isAbort: false,
+              isError: false,
+              isDisconnect: false,
+              finishReason: undefined,
+            });
+          }
+        });
+        expect(Toast.show).not.toHaveBeenCalled();
+        expect(
+          await screen.findByText('Restoring Sparky’s reply…')
+        ).toBeTruthy();
+        expect(screen.queryByTestId('composer-send')).toBeNull();
+
+        const savedHistory: chatApi.ChatHistoryEntry[] = [
+          {
+            id: 'saved-reply',
+            content: 'Recovered nutrition answer',
+            message_type: 'assistant',
+            metadata: { client_message_id: request?.body.messages[0].id },
+            created_at: '2026-10-14T12:00:00Z',
+          },
+        ];
+        loadHistory.mockResolvedValue(savedHistory);
+        await act(async () => {
+          AppState.currentState = 'active';
+          changeState?.('active');
+        });
+        await screen.findByTestId('composer-send');
+        expect(globals.__mockCapturedMessages[0].content).toBe(
+          'Recovered nutrition answer'
+        );
+        expect(mockPrepareCapture).toHaveBeenCalledTimes(2);
+        expect(screen.queryByText('Restoring Sparky’s reply…')).toBeNull();
+      } finally {
+        screen.unmount();
+        appStateListener.mockRestore();
+        loadHistory.mockRestore();
+      }
+    }
+  );
+
   it('seeds the runtime with the loaded history messages', async () => {
     const seed = [
       {
