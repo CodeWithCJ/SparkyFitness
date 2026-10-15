@@ -172,6 +172,10 @@ If you are not a technical user and prefer not to run SparkyFitness on your own 
 <a href="https://zenith.hosting/host/sparkyfitness?ref=gh">
   <img src="https://cdn.zenith.hosting/buttons/deploy-with-zenith.svg" height="70" width="150" alt="Deploy with Zenith">
 </a>
+<br>
+<a href="https://pethost.dev/templates/sparkyfitness/">
+  <img src="https://pethost.dev/button.svg" width="150" alt="Deploy on Pethost">
+</a>
 
 
 > **Note:** These are independent third-party services. We encourage you to explore features provided by each provider to determine the one that best fits your needs.
