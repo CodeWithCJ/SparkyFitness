@@ -1,0 +1,25 @@
+{
+  "commit_id": "ebaf59e8-297a-422c-abdc-411bf71fb020",
+  "test_id": "35863f7c-0a30-4272-bf4e-6fa9d48bcab5",
+  "testcase_id": "01M4XAA9BX0TM2D2TDP7RNFQZY",
+  "project_id": "01KM2CDFXKKHWDD2TSG94JGVGJ",
+  "folder_id": "01KM2CDFYCGAVS50DA3YHM6GMA",
+  "org_id": "3063150",
+  "session_name": "food_diary",
+  "executions": [
+    {
+      "execution_id": "2b2e3882-f7d0-495c-87f4-08f2a00f6f2f",
+      "run_kind": "author",
+      "status": "passed",
+      "valid": true,
+      "at": "2026-10-14T14:14:13.347Z"
+    },
+    {
+      "execution_id": "3e1af735-138f-407d-8fc7-cea4602a4153",
+      "run_kind": "replay",
+      "status": "passed",
+      "valid": true,
+      "at": "2026-10-14T14:15:09.578Z"
+    }
+  ]
+}

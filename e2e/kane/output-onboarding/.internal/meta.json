@@ -1,0 +1,25 @@
+{
+  "commit_id": "72a4fb71-dcb2-4b0c-9b54-ddbc5cb9c445",
+  "test_id": "89e9c4e0-e417-47af-af6d-16c416937c85",
+  "testcase_id": "01M4X78C3RKR4GSB350K7SP7DD",
+  "project_id": "01KM2CDFXKKHWDD2TSG94JGVGJ",
+  "folder_id": "01KM2CDFYCGAVS50DA3YHM6GMA",
+  "org_id": "3063150",
+  "session_name": "onboarding",
+  "executions": [
+    {
+      "execution_id": "26724c04-dcdd-42b6-b54f-47e28dbd04dd",
+      "run_kind": "author",
+      "status": "passed",
+      "valid": true,
+      "at": "2026-10-14T13:55:18.672Z"
+    },
+    {
+      "execution_id": "bfbcd552-c1e7-4fcf-860f-ce459b549f7d",
+      "run_kind": "replay",
+      "status": "passed",
+      "valid": true,
+      "at": "2026-10-14T13:56:36.392Z"
+    }
+  ]
+}
