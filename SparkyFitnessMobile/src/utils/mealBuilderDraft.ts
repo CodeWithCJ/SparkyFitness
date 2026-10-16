@@ -151,6 +151,8 @@ export function buildMealIngredientDraftFromEntryMealFood(
 ): MealIngredientDraft {
   return normalizeMealIngredientDraft({
     ...food,
+    food_id: food.food_id ?? undefined,
+    variant_id: food.variant_id ?? undefined,
     brand: null,
     calories: food.calories ?? 0,
     protein: food.protein ?? 0,

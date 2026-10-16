@@ -1,6 +1,7 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import MealBuilder from '@/components/MealBuilder';
+import { updateFoodEntryMeal } from '@/api/Diary/foodEntryService';
 import { renderWithClient } from '../test-utils';
 
 // Mock react-i18next
@@ -90,6 +91,39 @@ const sampleFoods = [
 describe('MealBuilder', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('saves a detached diary snapshot without recreating its library food', async () => {
+    const ingredient = sampleFoods[0];
+    if (!ingredient) throw new Error('Missing meal fixture ingredient');
+    const detached = {
+      ...ingredient,
+      food_id: undefined,
+      variant_id: undefined,
+    };
+    renderWithClient(
+      <MealBuilder
+        initialFoods={[detached]}
+        source="food-diary"
+        foodEntryId="entry-1"
+        foodEntryDate="2026-10-16"
+        foodEntryMealType="dinner"
+      />
+    );
+    fireEvent.change(screen.getByLabelText('Meal Name'), {
+      target: { value: 'Edited meal' },
+    });
+    fireEvent.click(screen.getByText('Update Entry'));
+    await waitFor(() =>
+      expect(updateFoodEntryMeal).toHaveBeenCalledWith(
+        'entry-1',
+        expect.objectContaining({
+          name: 'Edited meal',
+          foods: [expect.objectContaining(detached)],
+        })
+      )
+    );
+    expect(mockCreateMeal).not.toHaveBeenCalled();
   });
 
   it('gives a photo-built diary meal the full serving model', async () => {

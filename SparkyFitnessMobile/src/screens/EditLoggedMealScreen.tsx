@@ -368,10 +368,16 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
 
   const canSave =
     dirty &&
+    Number.isFinite(quantity) &&
     quantity > 0 &&
     !!meal &&
     ingredients.length > 0 &&
-    ingredients.every((food) => !!food.variant_id && food.quantity > 0) &&
+    // Diary snapshots remain editable after their library food/variant is
+    // deleted. Zero amounts are retained for unmeasured recipe ingredients.
+    ingredients.every(
+      (food) => Number.isFinite(food.quantity) && food.quantity >= 0
+    ) &&
+    ingredients.some((food) => food.quantity > 0) &&
     !!effectiveDate;
 
   const handleSave = () => {

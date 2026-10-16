@@ -147,13 +147,14 @@ async function createFoodEntryMeal(
 async function updateFoodEntryMeal(
   foodEntryMealId: string,
   foodEntryMealData: FoodEntryMealUpdate,
-  updatedByUserId: string
+  updatedByUserId: string,
+  providedClient?: PoolClient
 ) {
   log(
     'info',
     `updateFoodEntryMeal in foodEntryMealRepository: foodEntryMealId: ${foodEntryMealId}, foodEntryMealData: ${JSON.stringify(foodEntryMealData)}, updatedByUserId: ${updatedByUserId}`
   );
-  const client = await getClient(updatedByUserId);
+  const client = providedClient ?? (await getClient(updatedByUserId));
   log(
     'info',
     `[DEBUG] Repo update params: quantity=${foodEntryMealData.quantity}, unit=${foodEntryMealData.unit}`
@@ -223,7 +224,7 @@ async function updateFoodEntryMeal(
     );
     throw error;
   } finally {
-    client.release();
+    if (!providedClient) client.release();
   }
 }
 async function getFoodEntryMealById(foodEntryMealId: string, userId: string) {

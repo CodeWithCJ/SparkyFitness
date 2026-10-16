@@ -1,5 +1,14 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 
+const transactionClient = vi.hoisted(() => ({
+  query: vi.fn().mockResolvedValue({ rows: [] }),
+  release: vi.fn(),
+}));
+vi.mock('../db/poolManager.js', () => ({
+  getClient: vi.fn().mockResolvedValue(transactionClient),
+  getSystemClient: vi.fn(),
+}));
+
 // Mock all dependencies
 vi.mock('../models/foodRepository.js', () => ({
   default: {
@@ -230,7 +239,7 @@ describe('foodEntryMealService', () => {
       // Verify delete is called first
       expect(
         foodRepository.deleteFoodEntryComponentsByFoodEntryMealId
-      ).toHaveBeenCalledWith('meal-entry-1', 'user-1');
+      ).toHaveBeenCalledWith('meal-entry-1', 'user-1', transactionClient);
 
       // Verify that component foods are scaled correctly.
       // consumedQuantity (2.0) / (serving_size (1.0) * total_servings (1.0)) = 2.0 portion multiplier.
@@ -243,7 +252,8 @@ describe('foodEntryMealService', () => {
             quantity: 300,
           }),
         ],
-        'user-1'
+        'user-1',
+        { client: transactionClient }
       );
     });
 
@@ -377,6 +387,303 @@ describe('foodEntryMealService', () => {
   });
 
   describe('updateFoodEntryMeal component dates', () => {
+    it('preserves the write error and discards a client when rollback fails', async () => {
+      const writeError = new Error('Original write failure');
+      vi.mocked(
+        foodEntryMealRepository.updateFoodEntryMeal
+      ).mockRejectedValueOnce(writeError);
+      transactionClient.query
+        .mockResolvedValueOnce({ rows: [] })
+        .mockRejectedValueOnce(new Error('Connection lost'));
+
+      await expect(
+        updateFoodEntryMeal('user-1', 'user-1', 'meal-entry-1', {
+          notes: 'Edited note',
+        })
+      ).rejects.toBe(writeError);
+      expect(transactionClient.release).toHaveBeenCalledWith(true);
+    });
+
+    it.each([undefined, '', '   '])(
+      'rejects an unnamed detached snapshot (%s) before writes',
+      async (foodName) => {
+        await expect(
+          updateFoodEntryMeal('user-1', 'user-1', 'meal-entry-1', {
+            foods: [
+              {
+                food_id: null,
+                food_name: foodName,
+                quantity: 100,
+                serving_size: 100,
+                calories: 165,
+              },
+            ],
+          })
+        ).rejects.toMatchObject({ statusCode: 400 });
+        expect(
+          foodEntryMealRepository.updateFoodEntryMeal
+        ).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each(['parent', 'template', 'replacement'])(
+      'rolls back the whole save when %s fails',
+      async (failure) => {
+        const error = new Error('Injected write failure');
+        vi.mocked(
+          foodEntryMealRepository.updateFoodEntryMeal
+        ).mockResolvedValue({
+          id: 'meal-entry-1',
+          meal_type_id: 'dinner-id',
+          entry_date: '2026-10-14',
+          quantity: 1,
+          unit: 'serving',
+          entry_total_servings: 1,
+        });
+        if (failure === 'parent') {
+          vi.mocked(
+            foodEntryMealRepository.updateFoodEntryMeal
+          ).mockRejectedValueOnce(error);
+        } else if (failure === 'template') {
+          vi.mocked(
+            foodEntryMealRepository.updateFoodEntryMeal
+          ).mockResolvedValue({
+            id: 'meal-entry-1',
+            meal_type_id: 'dinner-id',
+            entry_date: '2026-10-14',
+            meal_template_id: 'template-1',
+            quantity: 1,
+            unit: 'serving',
+            entry_total_servings: null,
+          });
+          vi.mocked(mealRepository.getMealById).mockRejectedValueOnce(error);
+        } else {
+          vi.mocked(foodRepository.bulkCreateFoodEntries).mockRejectedValueOnce(
+            error
+          );
+        }
+        await expect(
+          updateFoodEntryMeal('user-1', 'user-1', 'meal-entry-1', {
+            name: 'Edited name',
+            foods: [
+              {
+                food_id: null,
+                variant_id: null,
+                food_name: 'Stored food',
+                quantity: 100,
+                serving_size: 100,
+                calories: 165,
+              },
+            ],
+          })
+        ).rejects.toThrow('Injected write failure');
+        expect(
+          transactionClient.query.mock.calls.map((call) => call[0])
+        ).toEqual(['BEGIN', 'ROLLBACK']);
+        expect(transactionClient.release).toHaveBeenCalledTimes(1);
+        expect(
+          vi.mocked(foodEntryMealRepository.updateFoodEntryMeal).mock
+            .calls[0][3]
+        ).toBe(transactionClient);
+        if (failure === 'replacement') {
+          expect(
+            vi.mocked(foodRepository.deleteFoodEntryComponentsByFoodEntryMealId)
+              .mock.calls[0][2]
+          ).toBe(transactionClient);
+          expect(
+            vi.mocked(foodRepository.bulkCreateFoodEntries).mock.calls[0][2]
+          ).toEqual({ client: transactionClient });
+        }
+      }
+    );
+
+    it.each([
+      [false, 'serving_size'],
+      [false, 'calories'],
+      [true, 'serving_size'],
+      [true, 'calories'],
+    ] as const)(
+      'rejects an incomplete snapshot with inaccessible links=%s and missing %s before writes',
+      async (linked, missingField) => {
+        vi.mocked(foodRepository.getFoodById).mockResolvedValue(null);
+        vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue(null);
+        await expect(
+          updateFoodEntryMeal('user-1', 'user-1', 'meal-entry-1', {
+            name: 'Edited name',
+            foods: [
+              {
+                food_id: linked ? 'deleted-food' : null,
+                variant_id: linked ? 'deleted-variant' : null,
+                food_name: 'Stored food',
+                quantity: 100,
+                serving_size: 100,
+                calories: 165,
+                [missingField]: null,
+              },
+            ],
+          })
+        ).rejects.toMatchObject({ statusCode: 400 });
+        expect(
+          foodEntryMealRepository.updateFoodEntryMeal
+        ).not.toHaveBeenCalled();
+        expect(
+          foodRepository.deleteFoodEntryComponentsByFoodEntryMealId
+        ).not.toHaveBeenCalled();
+        expect(foodRepository.bulkCreateFoodEntries).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each([
+      'serving_size',
+      'calories',
+      'protein',
+      'carbs',
+      'fat',
+      'saturated_fat',
+      'polyunsaturated_fat',
+      'monounsaturated_fat',
+      'trans_fat',
+      'cholesterol',
+      'sodium',
+      'potassium',
+      'dietary_fiber',
+      'sugars',
+      'vitamin_a',
+      'vitamin_c',
+      'calcium',
+      'iron',
+      'caffeine_mg',
+      'water_ml',
+      'alcohol_g',
+      'quantity',
+    ])('rejects invalid %s before any writes', async (field) => {
+      for (const value of [
+        'invalid',
+        '',
+        Infinity,
+        NaN,
+        -1,
+        '-1',
+        ...(field === 'serving_size'
+          ? [0, '0', -1]
+          : field === 'quantity'
+            ? [-1]
+            : []),
+      ]) {
+        await expect(
+          updateFoodEntryMeal('user-1', 'user-1', 'meal-entry-1', {
+            name: 'Edited name',
+            foods: [
+              {
+                food_name: 'Stored food',
+                quantity: 100,
+                serving_size: 100,
+                calories: 165,
+                [field]: value,
+              },
+            ],
+          })
+        ).rejects.toMatchObject({ statusCode: 400 });
+        expect(
+          foodEntryMealRepository.updateFoodEntryMeal
+        ).not.toHaveBeenCalled();
+        expect(
+          foodRepository.deleteFoodEntryComponentsByFoodEntryMealId
+        ).not.toHaveBeenCalled();
+        expect(foodRepository.bulkCreateFoodEntries).not.toHaveBeenCalled();
+      }
+    });
+
+    it.each([false, true])(
+      'preserves edited ingredient snapshots when library links are available: %s',
+      async (linked) => {
+        vi.mocked(
+          foodEntryMealRepository.updateFoodEntryMeal
+        ).mockResolvedValue({
+          id: 'meal-entry-1',
+          meal_type_id: 'breakfast-id',
+          entry_date: '2026-06-19',
+          quantity: 2,
+          unit: 'serving',
+          entry_total_servings: 4,
+          legacy_serving_unit_math: false,
+        });
+        vi.mocked(foodRepository.getFoodById).mockResolvedValue(
+          linked ? { id: 'food-1', name: 'Current food', brand: 'Brand' } : null
+        );
+        vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue(
+          linked
+            ? {
+                id: 'variant-1',
+                serving_size: 50,
+                serving_unit: 'g',
+                calories: 999,
+              }
+            : null
+        );
+
+        await updateFoodEntryMeal('user-1', 'user-1', 'meal-entry-1', {
+          quantity: 2,
+          entry_total_servings: 4,
+          foods: [
+            {
+              food_id: linked ? 'food-1' : null,
+              variant_id: linked ? 'variant-1' : null,
+              food_name: 'Logged chicken',
+              quantity: linked ? 300 : '300',
+              unit: 'g',
+              serving_size: linked ? 100 : '100',
+              serving_unit: 'g',
+              calories: linked ? 165 : '165',
+              protein: linked ? 31 : '31',
+              sodium: 75,
+              polyunsaturated_fat: 2,
+              custom_nutrients: { choline: 90 },
+            },
+            {
+              food_id: null,
+              variant_id: null,
+              food_name: 'Optional seasoning',
+              quantity: 0,
+              unit: 'g',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 0,
+            },
+          ],
+        });
+
+        expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
+          [
+            expect.objectContaining({
+              food_id: linked ? 'food-1' : null,
+              variant_id: linked ? 'variant-1' : null,
+              food_name: 'Logged chicken',
+              quantity: 150,
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 165,
+              protein: 31,
+              sodium: 75,
+              polyunsaturated_fat: 2,
+              custom_nutrients: { choline: 90 },
+              entry_date: '2026-06-19',
+            }),
+            expect.objectContaining({
+              food_id: null,
+              variant_id: null,
+              food_name: 'Optional seasoning',
+              quantity: 0,
+              serving_size: 100,
+              calories: 0,
+            }),
+          ],
+          'user-1',
+          { client: transactionClient }
+        );
+      }
+    );
+
     // entry_date was the one inherited field with no fallback to the stored
     // row. Omitting it sent undefined into the NOT NULL column, and because the
     // delete had already run the entry was left with no components at all.
@@ -417,7 +724,8 @@ describe('foodEntryMealService', () => {
 
       expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
         [expect.objectContaining({ entry_date: '2026-06-19' })],
-        'user-1'
+        'user-1',
+        { client: transactionClient }
       );
     });
   });

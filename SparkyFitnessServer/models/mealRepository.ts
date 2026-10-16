@@ -279,8 +279,12 @@ async function searchMeals(
     client.release();
   }
 }
-async function getMealById(mealId: string, userId: string) {
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
+async function getMealById(
+  mealId: string,
+  userId: string,
+  transactionClient?: PoolClient
+) {
+  const client = transactionClient ?? (await getClient(userId)); // User-specific operation (RLS will handle access)
   try {
     const mealResult = await client.query(
       `SELECT id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, notes, created_at, updated_at
@@ -293,7 +297,7 @@ async function getMealById(mealId: string, userId: string) {
     }
     return meal;
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
 }
 async function updateMeal(

@@ -324,6 +324,80 @@ describe.runIf(RUN)('RLS permission matrix', () => {
   const tablesIn = (...d: Domain[]) =>
     Object.keys(DOMAIN).filter((t) => d.includes(DOMAIN[t]));
 
+  describe('unlinked diary nutrition snapshots', () => {
+    let mealTypeId: string;
+    let variantId: string;
+    beforeAll(async () => {
+      const sys = await getSystemClient();
+      try {
+        const mealType = await sys.query(
+          'INSERT INTO meal_types (user_id, name, sort_order) VALUES ($1, $2, 999) RETURNING id',
+          [OWNER, 'RLS snapshot fixture']
+        );
+        mealTypeId = mealType.rows[0].id;
+        const food = await sys.query(
+          'INSERT INTO foods (user_id, name) VALUES ($1, $2) RETURNING id',
+          [OWNER, 'RLS snapshot source']
+        );
+        const variant = await sys.query(
+          'INSERT INTO food_variants (food_id, serving_size, serving_unit, calories) VALUES ($1, 100, $2, 165) RETURNING id',
+          [food.rows[0].id, 'g']
+        );
+        variantId = variant.rows[0].id;
+      } finally {
+        sys.release();
+      }
+    });
+
+    it.each([
+      ['owner', (): string => OWNER, true],
+      ['diary delegate', (): string => D.diary, true],
+      ['read-only reports delegate', (): string => D.reports, false],
+      ['unpermitted delegate', (): string => D.none, false],
+    ] as const)(
+      'allows snapshot inserts only with diary write access: %s',
+      async (_label, actorId, allowed) => {
+        const actor = actorId();
+        const client = await getClient(OWNER, actor);
+        try {
+          const insert = client.query(
+            `INSERT INTO food_entries (user_id, meal_type_id, quantity, unit, entry_date, food_name,
+            serving_size, serving_unit, calories, food_id, meal_id, variant_id, created_by_user_id)
+           VALUES ($1, $2, 150, 'g', '2026-10-14', 'Stored snapshot', 100, 'g', 165, NULL, NULL, NULL, $3)
+           RETURNING food_id, variant_id, calories`,
+            [OWNER, mealTypeId, actor]
+          );
+          if (allowed) {
+            const result = await insert;
+            expect(result.rows).toEqual([
+              { food_id: null, variant_id: null, calories: 165 },
+            ]);
+          } else {
+            await expect(insert).rejects.toMatchObject({ code: '42501' });
+          }
+        } finally {
+          client.release();
+        }
+      }
+    );
+
+    it('rejects an independent variant pointer even for the diary owner', async () => {
+      const client = await getClient(OWNER);
+      try {
+        await expect(
+          client.query(
+            `INSERT INTO food_entries (user_id, meal_type_id, quantity, unit, entry_date, food_name,
+            serving_size, serving_unit, calories, food_id, meal_id, variant_id)
+           VALUES ($1, $2, 150, 'g', '2026-10-14', 'Stored snapshot', 100, 'g', 165, NULL, NULL, $3)`,
+            [OWNER, mealTypeId, variantId]
+          )
+        ).rejects.toMatchObject({ code: '42501' });
+      } finally {
+        client.release();
+      }
+    });
+  });
+
   describe('policy wiring (pg_policies)', () => {
     it('every RLS-enabled table is classified in DOMAIN (completeness guard)', async () => {
       const sys = await getSystemClient();

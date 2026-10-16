@@ -107,6 +107,8 @@ These tables contain daily diaries, logging entries, and scheduler items. **Care
 
 #### A. Diary Logs (Writable by delegates with `can_manage_diary` / Readable by `can_view_reports` or `can_manage_diary`)
 
+The `food_entries` insert policy permits detached nutrition snapshots when `food_id`, `meal_id`, and `variant_id` are all null. This branch still requires `has_diary_access(user_id)`; detaching library links does not grant access to another person's diary.
+
 | Table Name | Description | Write (insert/update/delete) | Read (select) |
 | :--- | :--- | :--- | :--- |
 | `food_entries` | Logged meals/calories consumed for the day, plus an optional per-entry markdown `notes` field. Snapshot-backed: carries its own `food_name`, `brand_name`, serving size and full nutrition, and `food_id` is `ON DELETE SET NULL` — see *Library deletes vs. diary history* below | Delegate with `can_manage_diary` | Delegate with `can_manage_diary` or `can_view_reports` |

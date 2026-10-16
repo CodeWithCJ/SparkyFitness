@@ -769,7 +769,14 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     // Resolve any un-persisted foods (e.g. from photo estimation) before saving
     const resolvedFoods: MealFood[] = [];
     for (const mf of mealFoods) {
-      if (mf.item_type === 'meal' || mf.child_meal_id || mf.food_id) {
+      if (
+        mf.item_type === 'meal' ||
+        mf.child_meal_id ||
+        mf.food_id ||
+        (source === 'food-diary' && foodEntryId)
+      ) {
+        // Logged ingredients already carry their nutrition snapshot. Editing
+        // history must not recreate a library food whose link was deleted.
         resolvedFoods.push(mf);
         continue;
       }
