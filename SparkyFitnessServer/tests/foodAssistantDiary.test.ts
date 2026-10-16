@@ -1,3 +1,6 @@
+import { buildDiaryTools } from '../ai/tools/diaryTools.js';
+import { foodAssistantDiaryConfirmationSchema } from '@workspace/shared';
+import { toolOpts } from './helpers/toolExecutionOptions.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
@@ -713,4 +716,42 @@ describe('verified diary changes', () => {
     expect(task.status).toBe('draft');
     expect(rows('food_entries')[0].food_name).toBe('Sourdough');
   });
+});
+
+it('completes an MCP bulk deletion only after the owner confirms the review link', async () => {
+  const scope = { type: 'logged_meal' as const, id: parentId };
+  const preview = await service.inspectDiary(userId, scope);
+  const tool = buildDiaryTools(userId).sparky_manage_diary;
+  const result = await tool.execute!(
+    {
+      action: 'apply',
+      task_id: taskId,
+      command: {
+        operation_id: randomUUID(),
+        expected_version: task.version,
+        action: {
+          type: 'delete',
+          scope,
+          expected_fingerprint: preview.fingerprint,
+        },
+      },
+    },
+    toolOpts
+  );
+  expect(rows('food_entries')).toHaveLength(1);
+  const href = String(result).match(/\[Review diary changes\]\(([^)]+)\)/)?.[1];
+  expect(href).toBeDefined();
+  const proposal = foodAssistantDiaryConfirmationSchema.parse(
+    JSON.parse(decodeURIComponent(new URL(href!).hash.slice(1)))
+  );
+  if (proposal.action !== 'apply' || proposal.command.action.type !== 'delete')
+    throw new Error('Expected a deletion confirmation');
+  await service.applyDiary(
+    userId,
+    taskId,
+    proposal.command,
+    proposal.command.action.confirmation_quote
+  );
+  expect(rows('food_entries')).toHaveLength(0);
+  expect(rows('food_entry_meals')).toHaveLength(0);
 });
