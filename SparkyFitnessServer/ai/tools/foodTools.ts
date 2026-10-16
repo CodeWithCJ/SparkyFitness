@@ -29,10 +29,10 @@ import {
 import { fetchProviderFoodDetails } from '../../services/foodProviderDetailService.js';
 import {
   resolveFoodPortion,
+  validateNutritionReference,
   nutrientNumber,
   type PortionVariant,
 } from '../../utils/foodPortionResolver.js';
-import { validateNamedFoodReference } from '../../utils/foodNutritionSnapshot.js';
 import { ERRORS, formatZodError } from './errors.js';
 import {
   compactRecord,
@@ -339,11 +339,6 @@ async function resolveFoodLogVariantAndQuantity(args: {
     explicitVariant,
   });
   if (!resolved.ok) return resolved;
-  const nutritionIssue = validateNamedFoodReference(
-    typeof food?.name === 'string' ? food.name : '',
-    resolved.variant
-  );
-  if (nutritionIssue) return { ok: false as const, message: nutritionIssue };
   if (!resolved.variant.id) {
     return {
       ok: false as const,
@@ -1625,7 +1620,7 @@ Actions:
               });
               if (!portion.ok) return ERRORS.VALIDATION(portion.message);
               const v = portion.variant;
-              const nutritionIssue = validateNamedFoodReference(match.name, v);
+              const nutritionIssue = validateNutritionReference(v);
               if (
                 nutritionIssue ||
                 [v.calories ?? v.energy, v.protein, v.carbs, v.fat].some(
@@ -1712,7 +1707,7 @@ Actions:
                 ...(match.variants || []).filter((variant) => variant !== v),
               ].filter(
                 (varOpt: ProviderFoodVariant) =>
-                  !validateNamedFoodReference(match.name, varOpt) &&
+                  !validateNutritionReference(varOpt) &&
                   !availableVariants.some((saved) =>
                     sameReference(saved, varOpt)
                   )
@@ -2870,7 +2865,7 @@ Actions:
           // write back a note with its tail cut off.
           const data = {
             ...compacted,
-            variants: variants.map((v: Record<string, unknown>) =>
+            variants: variants.map((v) =>
               compactRecord({ ...v }, VARIANT_DROP)
             ),
           };
