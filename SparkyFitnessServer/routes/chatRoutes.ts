@@ -16,6 +16,7 @@ import {
 import {
   testAiServiceConnectionRequestSchema,
   normalizeChatToolCategories,
+  aiServiceSettingsMutatorSchema,
   MAX_VOICE_UPLOAD_BYTES,
   voiceAudioMimeTypeSchema,
   voiceTranscriptionRequestSchema,
@@ -211,6 +212,13 @@ router.post('/', authenticate, async (req, res, next) => {
       // Validate required fields before hitting the database
       if (!service_data) {
         return res.status(400).json({ error: 'service_data is required.' });
+      }
+      if (
+        !aiServiceSettingsMutatorSchema.shape.reasoning_effort.safeParse(
+          service_data.reasoning_effort
+        ).success
+      ) {
+        return res.status(400).json({ error: 'Invalid reasoning effort.' });
       }
       // service_type and service_name are only required when creating a new record (no id)
       if (!service_data.id) {

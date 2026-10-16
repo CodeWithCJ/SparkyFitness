@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { createOpenAI } from '@ai-sdk/openai';
 import { vi, describe, expect, it } from 'vitest';
 import { buildChatbotTools, buildChatToolSurface } from '../ai/tools/index.js';
 import { ENABLE_TOOLS_TOOL_NAME } from '../ai/tools/metaTools.js';
@@ -396,4 +398,24 @@ describe('buildChatToolSurface', () => {
       first
     );
   });
+});
+
+it('preserves lazy provider schemas while normalizing application Zod schemas', () => {
+  const research = createOpenAI({ apiKey: 'test-placeholder' }).tools.webSearch(
+    {}
+  );
+  const tools = buildChatbotTools(
+    'lazy-schema-review',
+    'UTC',
+    'full',
+    true,
+    ['food'],
+    false,
+    { foodResearchTool: research }
+  );
+  expect(tools.web_search.inputSchema).toBe(research.inputSchema);
+  expect(tools.sparky_manage_food.inputSchema).toBeInstanceOf(z.ZodType);
+  expect(() =>
+    z.toJSONSchema(tools.sparky_manage_food.inputSchema as z.ZodType)
+  ).not.toThrow();
 });

@@ -179,6 +179,7 @@ const AIServiceSettings = () => {
         is_active: true,
         model_name: globalSetting.model_name || undefined,
         chat_tool_profile: globalSetting.chat_tool_profile ?? 'full',
+        reasoning_effort: globalSetting.reasoning_effort ?? 'medium',
         supports_audio_input: globalSetting.supports_audio_input,
       };
       await addService(overrideData);
@@ -593,6 +594,7 @@ const AIServiceSettings = () => {
       showCustomModelInput: isCustomModel,
       custom_model_name: service.model_name ?? '',
       chat_tool_profile: service.chat_tool_profile ?? 'full',
+      reasoning_effort: service.reasoning_effort ?? 'medium',
       supports_audio_input: service.supports_audio_input,
     });
   };

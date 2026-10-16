@@ -279,6 +279,7 @@ const GlobalAISettings = () => {
       showCustomModelInput: isCustomModel,
       custom_model_name: service.model_name ?? '',
       chat_tool_profile: service.chat_tool_profile ?? 'full',
+      reasoning_effort: service.reasoning_effort ?? 'medium',
       supports_audio_input: service.supports_audio_input,
     });
   };

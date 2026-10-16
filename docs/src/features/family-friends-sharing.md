@@ -4,6 +4,8 @@ Family & Friends Sharing in SparkyFitness allows you to connect with family memb
 
 The system is built with **least-privilege boundary isolation** using PostgreSQL Row-Level Security (RLS), ensuring that your private credentials and account settings are never shared.
 
+AI service model and reasoning settings remain private to their owner. An administrator can publish a shared configuration; family diary access does not grant access to personal AI credentials or settings.
+
 ---
 
 ## How to Set Up Sharing

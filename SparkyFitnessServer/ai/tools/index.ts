@@ -77,6 +77,8 @@ export interface ToolBuildContext {
   latestImageDataUrl?: string | null;
   /** The active AI service config ID from the current chat session, if known. */
   serviceConfigId?: string | null;
+  /** Provider-executed web research, offered within the food category only. */
+  foodResearchTool?: Tool;
 }
 
 const CATEGORY_BUILDERS: Record<
@@ -90,6 +92,8 @@ const CATEGORY_BUILDERS: Record<
     (u, tz) => buildRunProgramTools(u, tz),
   ],
   food: [
+    (_u, _tz, ctx): ToolMap =>
+      ctx?.foodResearchTool ? { web_search: ctx.foodResearchTool } : {},
     (u, tz) => buildFoodTools(u, tz),
     (u, tz) => buildFavoritesTools(u, tz),
     (u, tz) => buildMealPlanTools(u, tz),
@@ -237,7 +241,7 @@ function applyChatProviderTuning(tools: ToolMap): void {
   // runtime parse changes. Chat-only: MCP strips nulls upstream itself.
   for (const name of Object.keys(tools)) {
     const t = tools[name] as Tool & { inputSchema?: unknown };
-    if (t.inputSchema) {
+    if (t.inputSchema instanceof z.ZodType) {
       t.inputSchema = z.preprocess(
         stripNullValues,
         t.inputSchema as z.ZodType
