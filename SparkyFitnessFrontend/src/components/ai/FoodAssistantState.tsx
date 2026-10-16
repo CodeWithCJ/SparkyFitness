@@ -127,7 +127,7 @@ export function FoodAssistantState({
                   task.status.replaceAll('_', ' ')
                 )}
               </span>
-              {task.status !== 'cancelled' && task.status !== 'complete' && (
+              {task.status !== 'complete' && (
                 <>
                   <Button
                     size="sm"
@@ -137,14 +137,18 @@ export function FoodAssistantState({
                   >
                     {t('foodAssistant.resume', 'Resume in chat')}
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={mutation.isPending}
-                    onClick={() => mutation.mutate({ action: 'cancel', task })}
-                  >
-                    {t('common.cancel', 'Cancel')}
-                  </Button>
+                  {task.status !== 'cancelled' && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={mutation.isPending}
+                      onClick={() =>
+                        mutation.mutate({ action: 'cancel', task })
+                      }
+                    >
+                      {t('common.cancel', 'Cancel')}
+                    </Button>
+                  )}
                 </>
               )}
             </div>

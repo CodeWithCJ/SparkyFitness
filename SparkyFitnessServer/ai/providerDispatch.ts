@@ -920,7 +920,10 @@ function extractOpenAiFamily(data: unknown): ExtractResult {
   if (d?.status === 'incomplete') {
     return {
       kind: 'error',
-      category: 'truncated',
+      category:
+        d.incomplete_details?.reason === 'content_filter'
+          ? 'refused'
+          : 'truncated',
       detail: `AI service returned an incomplete response (${d.incomplete_details?.reason || 'unknown reason'}).`,
     };
   }
