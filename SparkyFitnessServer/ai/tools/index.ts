@@ -247,7 +247,7 @@ function applyChatProviderTuning(tools: ToolMap): void {
   // runtime parse changes. Chat-only: MCP strips nulls upstream itself.
   for (const name of Object.keys(tools)) {
     const t = tools[name] as Tool & { inputSchema?: unknown };
-    if (t.inputSchema) {
+    if (t.inputSchema instanceof z.ZodType) {
       t.inputSchema = z.preprocess(
         stripNullValues,
         t.inputSchema as z.ZodType

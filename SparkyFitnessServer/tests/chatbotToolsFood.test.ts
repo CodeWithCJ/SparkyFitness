@@ -5624,3 +5624,89 @@ describe('sparky_manage_food set_food_notes', () => {
     expect(result).toContain('food_id or food_name');
   });
 });
+
+describe('update_entry saved reference selection', () => {
+  it('switches a slice snapshot to the saved gram variant for an explicit gram amount', async () => {
+    vi.mocked(foodRepository.getFoodEntryById).mockResolvedValue({
+      food_id: FOOD_ID,
+      variant_id: VARIANT_ID,
+      quantity: 2,
+      serving_size: 1,
+      serving_unit: 'slice',
+    });
+    vi.mocked(foodRepository.getFoodVariantsByFoodId).mockResolvedValue([
+      { id: 'gram-variant', serving_size: 100, serving_unit: 'g' },
+    ]);
+    vi.mocked(foodEntryService.updateFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry',
+        quantity: 75,
+        unit: 'g',
+      },
+      opts
+    );
+    expect(result).toBe('✅ Entry updated to 75 g.');
+    expect(foodRepository.getFoodVariantsByFoodId).toHaveBeenCalledWith(
+      FOOD_ID,
+      'user-1'
+    );
+    expect(foodEntryService.updateFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      ENTRY_ID,
+      { variant_id: 'gram-variant', quantity: 75, unit: 'g' },
+      { preserveSnapshot: true }
+    );
+  });
+  it('does not guess a gram amount for a unit-only slice edit', async () => {
+    vi.mocked(foodRepository.getFoodEntryById).mockResolvedValue({
+      food_id: FOOD_ID,
+      quantity: 2,
+      serving_size: 1,
+      serving_unit: 'slice',
+    });
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry',
+        unit: 'g',
+      },
+      opts
+    );
+    expect(result).toContain('Cannot safely convert');
+    expect(foodEntryService.updateFoodEntry).not.toHaveBeenCalled();
+  });
+  it('preserves literal stored servings on a unit-only serving edit', async () => {
+    vi.mocked(foodRepository.getFoodEntryById).mockResolvedValue({
+      quantity: 2,
+      serving_size: 4.5,
+      serving_unit: 'serving',
+    });
+    vi.mocked(foodEntryService.updateFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'update_entry',
+        entry_id: ENTRY_ID,
+        entry_type: 'food_entry',
+        unit: 'serving',
+      },
+      opts
+    );
+    expect(result).toBe('✅ Entry updated to 2 serving.');
+    expect(foodEntryService.updateFoodEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      ENTRY_ID,
+      { quantity: 2, unit: 'serving' },
+      { preserveSnapshot: true }
+    );
+  });
+});
