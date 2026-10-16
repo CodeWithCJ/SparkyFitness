@@ -480,6 +480,8 @@ interface NormalizedFoodVariant {
   is_default: boolean;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
+  allergens?: string[] | null;
+  traces?: string[] | null;
 }
 
 interface NormalizedFood {
@@ -578,6 +580,8 @@ export function _transformNormalizedFood(
     provider_external_id: food.provider_external_id,
     is_custom: food.is_custom,
     ...mapVariant(displayVariant),
+    allergens: displayVariant.allergens,
+    traces: displayVariant.traces,
     serving_description:
       displayVariant.serving_description ??
       `${displayVariant.serving_size} ${displayVariant.serving_unit}`,

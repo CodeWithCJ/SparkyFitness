@@ -217,7 +217,7 @@ const MiniNutritionTrends = ({
   if (isLoading) {
     return (
       <div className="mt-4 p-3 text-center text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        Loading charts...
+        {t('diary.miniNutritionTrends.loadingCharts', 'Loading charts...')}
       </div>
     );
   }
@@ -225,7 +225,10 @@ const MiniNutritionTrends = ({
   if (chartData.length === 0) {
     return (
       <div className="mt-4 p-3 text-center text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        No trend data available for the past 14 days
+        {t(
+          'diary.miniNutritionTrends.noTrendDataAvailableFor',
+          'No trend data available for the past 14 days'
+        )}
       </div>
     );
   }
@@ -256,7 +259,10 @@ const MiniNutritionTrends = ({
   return (
     <div className="mt-4 space-y-3">
       <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        14-Day Nutrition Trends
+        {t(
+          'diary.miniNutritionTrends.n14DayNutritionTrends',
+          '14-Day Nutrition Trends'
+        )}
       </div>
 
       {visibleNutrients.map((nutrient) => {

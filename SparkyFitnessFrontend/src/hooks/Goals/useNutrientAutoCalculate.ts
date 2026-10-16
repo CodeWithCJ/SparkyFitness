@@ -7,7 +7,7 @@ import { isAutoCalculable } from '@/pages/Goals/nutrientAutoCalculateHelpers';
 import {
   computeAutoCalculatedValue,
   type AlgorithmBundle,
-} from '@/services/nutrientCalculationService';
+} from '@workspace/shared';
 import type { UserCustomNutrient } from '@/types/customNutrient';
 
 const DEFAULT_STANDARD_IDS = NUTRIENT_CONFIG.filter(

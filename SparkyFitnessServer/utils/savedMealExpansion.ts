@@ -74,7 +74,8 @@ export async function expandSavedMeal(
   if (!rootPortion.ok) throw new FoodAssistantConflict(rootPortion.message);
   if (
     selection.expected_updated_at &&
-    root.updated_at.toISOString() !== selection.expected_updated_at
+    root.updated_at.getTime() !==
+      new Date(selection.expected_updated_at).getTime()
   )
     throw new FoodAssistantConflict(
       'The selected recipe changed. Read its current version before continuing.'

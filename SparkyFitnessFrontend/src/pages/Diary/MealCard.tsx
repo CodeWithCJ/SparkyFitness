@@ -247,10 +247,11 @@ const MealCard = ({
               </CardTitle>
               <span className="text-xs sm:text-sm text-gray-500">
                 {Math.round(convertEnergy(totals.calories, 'kcal', energyUnit))}
-                {!!meal.targetCalories &&
-                  ` / ${Math.round(
+                {!!meal.targetCalories && (
+                  <span>{` / ${Math.round(
                     convertEnergy(meal.targetCalories, 'kcal', energyUnit)
-                  )}`}
+                  )}`}</span>
+                )}
                 {getEnergyUnitString(energyUnit)}
               </span>
             </div>
@@ -521,7 +522,9 @@ const MealCard = ({
                                   variant="secondary"
                                   className="text-[10px] font-medium"
                                 >
-                                  GI: {giValue}
+                                  {t('diary.mealCard.gi', 'GI: {{giValue}}', {
+                                    giValue,
+                                  })}
                                 </Badge>
                               )}
                           </div>
@@ -685,7 +688,9 @@ const MealCard = ({
                               variant="secondary"
                               className="text-xs w-fit font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-transparent dark:text-purple-600"
                             >
-                              GI: {giValue}
+                              {t('diary.mealCard.gi', 'GI: {{giValue}}', {
+                                giValue,
+                              })}
                             </Badge>
                           )}
                       </div>

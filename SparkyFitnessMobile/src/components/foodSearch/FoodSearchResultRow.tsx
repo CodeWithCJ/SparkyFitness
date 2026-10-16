@@ -1,3 +1,4 @@
+import AllergenBadges from '../AllergenBadges';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
@@ -105,6 +106,7 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
               ) : null}
             </View>
           ) : null}
+          <AllergenBadges allergens={item.allergens} traces={item.traces} />
         </View>
         <View className="items-end">
           {loadingFoodId === item.id ? (

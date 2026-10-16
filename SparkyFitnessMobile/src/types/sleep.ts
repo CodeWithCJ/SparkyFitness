@@ -129,7 +129,7 @@ export interface SleepStageEvent {
  * One sleep session row, as returned by `GET /api/sleep`.
  *
  * Only the fields the mobile UI reads are declared; the row carries more columns
- * (respiration, HRV, body battery, stress) that nothing here displays yet.
+ * (the Sleep Analytics report reads respiration, HRV, body battery and stress).
  *
  * Two of these types are load-bearing and easy to get wrong. The server's pool sets
  * `NUMERIC -> parseFloat` and `DATE -> identity` (`db/poolManager.ts`), so `sleep_score`
@@ -158,6 +158,14 @@ export interface SleepEntry {
   lowest_spo2_value: number | null;
   highest_spo2_value: number | null;
   resting_heart_rate: number | null;
+  /** Mean respiration rate in breaths per minute, for sources that report it. */
+  average_respiration_value?: number | null;
+  /** Average overnight HRV in milliseconds, for sources that report it. */
+  avg_overnight_hrv?: number | null;
+  /** Average stress score during sleep (0-100), for sources that report it. */
+  avg_sleep_stress?: number | null;
+  /** Body battery points gained overnight, for sources that report it. */
+  body_battery_change?: number | null;
   /**
    * IANA timezone the session was recorded in, when the source reported one. Null for
    * rows written before the column existed and for sources that only report an offset.

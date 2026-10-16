@@ -97,3 +97,27 @@ export type FoodAssistantDiaryAction = z.infer<
 export type ApplyFoodAssistantDiary = z.infer<
   typeof applyFoodAssistantDiarySchema
 >;
+
+/** A request link contains proposed work only. The signed-in owner must review
+ * it and press Confirm before the existing authenticated mutation is sent. */
+export const foodAssistantDiaryConfirmationSchema = z.discriminatedUnion(
+  "action",
+  [
+    z
+      .object({
+        action: z.literal("undo"),
+        task_id: uuid,
+        undo: undoFoodAssistantDiarySchema,
+      })
+      .strict(),
+    z
+      .object({
+        action: z.literal("apply"),
+        task_id: uuid,
+        command: applyFoodAssistantDiarySchema.refine(
+          (command) => command.action.type === "delete",
+        ),
+      })
+      .strict(),
+  ],
+);

@@ -253,13 +253,16 @@ const IntradaySamplesChart: React.FC<IntradaySamplesChartProps> = ({
 
           <div className="flex items-center gap-3 text-muted-foreground font-mono">
             <span>
-              {t('common.avg', 'Avg')}: {stats.avg} {metricConfig.unit}
+              {t('sleepHealth.avg', 'Avg: {{avg}} {{unit}}', {
+                avg: stats.avg,
+                unit: metricConfig.unit,
+              })}
             </span>
             <span>
-              {t('common.min', 'Min')}: {stats.min}
+              {t('sleepHealth.min', 'Min: {{min}}', { min: stats.min })}
             </span>
             <span>
-              {t('common.max', 'Max')}: {stats.max}
+              {t('sleepHealth.max', 'Max: {{max}}', { max: stats.max })}
             </span>
           </div>
         </div>

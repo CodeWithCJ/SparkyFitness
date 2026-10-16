@@ -36,6 +36,7 @@ import { activeAiServiceSettingQueryKey } from '../hooks/queryKeys';
 import { addLog } from '../services/LogService';
 import { parseDecimalInput, DECIMAL_INPUT_REGEX } from '../utils/numericInput';
 import { mapEstimateError } from '../utils/foodPhotoEstimate';
+import { downscaleFoodPhoto } from '../utils/pickImage';
 
 type Props = FoodPhotoFlowScreenProps<'Improve'>;
 
@@ -231,7 +232,15 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       });
       if (result.canceled) return;
       const asset = result.assets?.[0];
-      if (asset?.uri) appendImage(asset.uri, asset.mimeType);
+      if (asset?.uri) {
+        const prepared = await downscaleFoodPhoto(asset).catch(() => asset);
+        appendImage(
+          prepared.uri,
+          prepared.uri !== asset.uri
+            ? 'image/jpeg'
+            : (asset.mimeType ?? 'image/jpeg')
+        );
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[Food Photo Improve] Camera capture failed: ${message}`, 'ERROR');
@@ -260,7 +269,15 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
       });
       if (result.canceled) return;
       for (const asset of result.assets ?? []) {
-        if (asset?.uri) appendImage(asset.uri, asset.mimeType);
+        if (asset?.uri) {
+          const prepared = await downscaleFoodPhoto(asset).catch(() => asset);
+          appendImage(
+            prepared.uri,
+            prepared.uri !== asset.uri
+              ? 'image/jpeg'
+              : (asset.mimeType ?? 'image/jpeg')
+          );
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -419,7 +436,8 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
                 defaultValue: 'Photo too large',
               });
               message = t('foodPhotoImprove.photoTooLargeMessage', {
-                defaultValue: 'Retake the photo at lower quality.',
+                defaultValue:
+                  'The image is too large for AI analysis. Please try another photo.',
               });
               break;
             case 'unexpectedImageFormatTitle':

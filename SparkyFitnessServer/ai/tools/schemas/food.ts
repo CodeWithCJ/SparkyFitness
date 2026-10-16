@@ -186,7 +186,7 @@ const createFoodSchema = z
         'Product barcode; stored as a string, including leading zeroes'
       ),
     notes: notesSchema.describe(
-      'Optional markdown reference note for recipes, preparation details, or ingredients. Keep food_name short and put extra details here.'
+      'Optional markdown reference note for recipes, preparation details, or ingredients. Keep the exact product name in food_name; put preparation details here.'
     ),
     calories: z.coerce.number().min(0).describe('Calories (kcal)'),
     protein: z.coerce.number().min(0).describe('Protein (g)'),

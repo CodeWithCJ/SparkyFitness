@@ -49,6 +49,7 @@ const DateCell = ({
   value: string;
   onChange: (value: string) => void;
 }) => {
+  const { t } = useTranslation();
   const { formatDate, parseDateInUserTimezone } = usePreferences();
   const parsed = value ? parseDateInUserTimezone(value) : undefined;
   return (
@@ -63,7 +64,9 @@ const DateCell = ({
           {parsed ? (
             <span className="truncate">{formatDate(parsed)}</span>
           ) : (
-            <span className="text-muted-foreground">Pick a date</span>
+            <span className="text-muted-foreground">
+              {t('common.pickADate', 'Pick a date')}
+            </span>
           )}
         </Button>
       </PopoverTrigger>
@@ -120,6 +123,7 @@ const MoodTagsCell = ({
   value: string;
   onChange: (value: string) => void;
 }) => {
+  const { t } = useTranslation();
   const tags = value
     ? value
         .split('|')
@@ -130,7 +134,7 @@ const MoodTagsCell = ({
     <AliasChipInput
       value={tags}
       onChange={(next) => onChange(next.join('|'))}
-      placeholder="Add mood tag"
+      placeholder={t('checkIn.healthDataImportCSV.addMoodTag', 'Add mood tag')}
     />
   );
 };
@@ -350,7 +354,9 @@ const HealthDataImportCSV = () => {
                         {h.replace(/_/g, ' ')}
                       </th>
                     ))}
-                    <th className="px-3 py-2 text-left font-medium">Actions</th>
+                    <th className="px-3 py-2 text-left font-medium">
+                      {t('common.actions', 'Actions')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -390,7 +396,12 @@ const HealthDataImportCSV = () => {
                               }
                             >
                               <SelectTrigger className="w-full md:w-24">
-                                <SelectValue placeholder="unit" />
+                                <SelectValue
+                                  placeholder={t(
+                                    'checkIn.healthDataImportCSV.unit',
+                                    'unit'
+                                  )}
+                                />
                               </SelectTrigger>
                               <SelectContent>
                                 {config.dropdownColumns[h].map((opt) => (

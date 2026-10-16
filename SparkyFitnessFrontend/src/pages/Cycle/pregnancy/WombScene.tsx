@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 // The "in mummy's tummy" illustration. Three hand-drawn womb scenes (embryo,
 // curled fetus, head-down baby) map to the nearest committed style. The belly
 // outline subtly grows with the week. Self-contained inline SVG, theme-neutral.
@@ -137,6 +138,7 @@ export default function WombScene({
   size = 240,
   className,
 }: WombSceneProps) {
+  const { t } = useTranslation();
   // Belly grows subtly with gestation (weeks 4..40 → curve height).
   const bellyDrop = 150 + Math.min(40, Math.max(0, (week - 8) * 1.4));
   return (
@@ -146,7 +148,11 @@ export default function WombScene({
       viewBox="0 0 240 240"
       className={className}
       role="img"
-      aria-label={`Baby at week ${week} inside the womb`}
+      aria-label={t(
+        'pregnancy.wombScene.babyAtWeekInsideThe',
+        'Baby at week {{week}} inside the womb',
+        { week }
+      )}
     >
       <circle cx="120" cy="120" r="112" fill="#FDF2EC" />
       <path

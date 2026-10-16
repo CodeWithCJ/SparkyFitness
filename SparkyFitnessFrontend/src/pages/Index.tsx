@@ -8,6 +8,7 @@ import MainLayout from '@/layouts/MainLayout';
 import { useOnboardingStatus } from '@/hooks/Onboarding/useOnboarding';
 import { useState } from 'react';
 
+import { useTranslation } from 'react-i18next';
 interface IndexProps {
   onShowAboutDialog: () => void;
   onShowNewReleaseDialog: () => void;
@@ -17,6 +18,7 @@ const Index: React.FC<IndexProps> = ({
   onShowAboutDialog,
   onShowNewReleaseDialog,
 }) => {
+  const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
   const { loggingLevel } = usePreferences();
   debug(loggingLevel, 'Index: Component rendered (onboarding check).');
@@ -40,7 +42,9 @@ const Index: React.FC<IndexProps> = ({
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-xl text-white">Loading...</p>
+        <p className="text-xl text-white">
+          {t('common.loading', 'Loading...')}
+        </p>
       </div>
     );
   }

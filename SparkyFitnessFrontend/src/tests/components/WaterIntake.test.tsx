@@ -14,7 +14,10 @@ import { renderWithClient } from '../test-utils';
 // Mock hooks and contexts
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: Record<string, string>) => {
+    t: (key: string, options?: Record<string, string> | string) => {
+      if (typeof options === 'string') {
+        return options;
+      }
       if (
         key === 'foodDiary.waterIntake.perDrink' ||
         key === 'foodDiary.waterIntake.defaultPerDrink'

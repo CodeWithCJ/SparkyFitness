@@ -17,6 +17,7 @@ const at = (time: string): string => `${DAY}T${time}.000Z`;
 interface StoredSample {
   t: string;
   bpm: number;
+  ex?: string;
 }
 
 const incoming = (time: string, bpm: number): FlatHealthSample => ({
@@ -103,6 +104,45 @@ describe('upsertSamplesByDay', () => {
       { t: at('08:00:00'), bpm: 60 },
       { t: at('09:00:00'), bpm: 105 },
       { t: at('09:01:00'), bpm: 130 },
+      { t: at('12:00:00'), bpm: 70 },
+    ]);
+  });
+
+  it("keeps another entry's samples that sit inside the window", async () => {
+    stored = [
+      { t: at('08:00:00'), bpm: 60 },
+      { t: at('09:00:30'), bpm: 180, ex: 'other-entry' },
+      { t: at('09:00:30'), bpm: 140, ex: 'this-entry' },
+      { t: at('12:00:00'), bpm: 70 },
+    ];
+
+    await upsertSamplesByDay(
+      'user-1',
+      'user-1',
+      'heart_rate',
+      'SparkyFitness Watch',
+      [
+        {
+          entry_date: DAY,
+          timestamp: new Date(at('09:00:00')),
+          ex: 'this-entry',
+          bpm: 105,
+        },
+      ],
+      {
+        mode: 'merge',
+        window: {
+          startMs: Date.parse(at('09:00:00')),
+          endMs: Date.parse(at('09:01:00')),
+        },
+        ex: 'this-entry',
+      }
+    );
+
+    expect(writtenSamples()).toEqual([
+      { t: at('08:00:00'), bpm: 60 },
+      { t: at('09:00:00'), bpm: 105, ex: 'this-entry' },
+      { t: at('09:00:30'), bpm: 180, ex: 'other-entry' },
       { t: at('12:00:00'), bpm: 70 },
     ]);
   });

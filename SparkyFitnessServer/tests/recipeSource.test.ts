@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { extractRecipeCards, readRecipeSource } from '../utils/recipeSource.js';
+import {
+  extractRecipeCards,
+  readRecipeSource,
+  RecipeSourceError,
+} from '../utils/recipeSource.js';
 
 const source = {
   '@type': 'Recipe',
@@ -14,6 +18,21 @@ const source = {
 const html = `<script type="application/ld+json">${JSON.stringify({ '@graph': [source] })}</script>`;
 
 describe('original recipe extraction', () => {
+  it('reports a timeout after response headers as a source fetch error', async () => {
+    const fetchPage = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.error(new DOMException('Timed out', 'TimeoutError'));
+          },
+        }),
+        { headers: { 'Content-Type': 'text/html' } }
+      )
+    );
+    await expect(
+      readRecipeSource('https://example.com/recipe', fetchPage)
+    ).rejects.toBeInstanceOf(RecipeSourceError);
+  });
   it('rejects a private source URL before reading its page', async () => {
     await expect(readRecipeSource('http://127.0.0.1/recipe')).rejects.toThrow();
   });

@@ -2,8 +2,14 @@
 
 import { moodByName, moodValueToTag } from '@workspace/shared';
 
+import i18n from 'i18next';
 /** What a day with no mood logged shows. */
-const NO_MOOD = { emoji: '😐', label: 'Neutral' } as const;
+const NO_MOOD = {
+  emoji: '😐',
+  get label() {
+    return i18n.t('moodUtils.neutral', 'Neutral');
+  },
+} as const;
 
 /**
  * The emoji and label a stored `mood_value` stands for.

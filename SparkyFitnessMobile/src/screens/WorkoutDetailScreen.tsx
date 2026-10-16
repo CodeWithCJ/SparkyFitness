@@ -33,6 +33,7 @@ import {
   getWorkoutSummary,
   getExerciseVolumeKg,
   hasBodyweightExercise,
+  isWarmupSetType,
   formatVolume,
   canReorderDraftExercises,
   exerciseFromSnapshot,
@@ -209,6 +210,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     replaceExercise,
     clearExerciseCompletions,
     addSet,
+    addWarmupSets,
     removeSet,
     updateSetField,
     updateSetMeta,
@@ -636,6 +638,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       ? formState.exercises.reduce(
           (sum, ex) =>
             ex.sets.reduce((s, set) => {
+              if (isWarmupSetType(set.setType)) return s;
               const w = parseSetWeight(
                 set.weight,
                 resolveExerciseModality(
@@ -996,6 +999,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               setExerciseNotes={setExerciseNotes}
               onReplaceExercise={handleReplaceExercise}
               clearExerciseCompletions={clearExerciseCompletions}
+              addWarmupSets={addWarmupSets}
               supersetWith={supersetWith}
               ungroupExercise={ungroupExercise}
               onReorderExercises={reorderExercises}

@@ -5,7 +5,7 @@ import { CartesianChart, Bar } from 'victory-native';
 import { Line as SkiaLine } from '@shopify/react-native-skia';
 import { useCSSVariable } from 'uniwind';
 import {
-  makeChartFont,
+  useChartFont,
   formatXLabel7d,
   formatXLabel30d90d,
   formatTooltipDate,
@@ -46,8 +46,6 @@ const X_TICK_COUNT: Record<TrendRange, number> = {
   '30d': 6,
   '90d': 5,
 };
-
-const font = makeChartFont(11);
 
 const formatYLabel = (value: number) => {
   if (value >= 1000) return formatChartYLabel(value);
@@ -100,6 +98,7 @@ const NutrientBarChart: React.FC<NutrientBarChartProps> = ({
   goal,
 }) => {
   const { t } = useTranslation();
+  const font = useChartFont(11);
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',

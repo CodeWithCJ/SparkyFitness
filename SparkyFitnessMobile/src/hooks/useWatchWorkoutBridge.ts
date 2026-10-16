@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import Toast from 'react-native-toast-message';
 import WatchConnectivity, {
   type WatchSetCompletedPayload,
+  type WatchSetUncompletedPayload,
   type WatchRestChangedPayload,
   type WatchSetTimerStartedPayload,
   type WatchSetTimerStoppedPayload,
@@ -409,6 +410,14 @@ export function useWatchWorkoutBridge(
       if (payload.duration != null)
         patch.duration = Math.round(payload.duration);
       if (payload.distanceKm != null) patch.distance = payload.distanceKm;
+      if (
+        payload.rpe != null &&
+        Number.isFinite(payload.rpe) &&
+        payload.rpe >= 1 &&
+        payload.rpe <= 10
+      ) {
+        patch.rpe = payload.rpe;
+      }
       if (Object.keys(patch).length > 0) {
         state.updateSetField(payload.setId, patch);
       }
@@ -428,6 +437,32 @@ export function useWatchWorkoutBridge(
       // Flushed immediately rather than left to the debounced autosave: the
       // phone screen that normally drives that debounce may not even be
       // open while the wearer is logging entirely from the watch.
+      await saveActiveWorkoutSession(queryClient);
+    },
+    []
+  );
+
+  // The wearer un-logged a set on the watch. Mirrors `handleSetCompleted`:
+  // deduped by client id, matched to the live session, saved at once.
+  const handleSetUncompleted = useCallback(
+    async (payload: WatchSetUncompletedPayload): Promise<void> => {
+      if (handledSetClientIdsRef.current.has(payload.clientId)) return;
+
+      const state = useActiveWorkoutStore.getState();
+      if (state.sessionId !== payload.sessionId) {
+        handledSetClientIdsRef.current.add(payload.clientId);
+        addLog(
+          `Watch set-uncompleted ignored: no matching active session (${payload.sessionId})`,
+          'WARNING'
+        );
+        return;
+      }
+      // Completion and un-log can take different WatchConnectivity paths, so
+      // the un-log can arrive first. Recording the id now would drop the
+      // redelivery that arrives after the set is actually logged.
+      if (state.completedSetIds[payload.setId] == null) return;
+      handledSetClientIdsRef.current.add(payload.clientId);
+      state.uncompleteSet(payload.setId);
       await saveActiveWorkoutSession(queryClient);
     },
     []
@@ -861,6 +896,7 @@ export function useWatchWorkoutBridge(
 
   const handlersRef = useRef({
     handleSetCompleted,
+    handleSetUncompleted,
     handleHeartRateBatch,
     handleWorkoutStop,
     handleWorkoutDiscard,
@@ -869,6 +905,7 @@ export function useWatchWorkoutBridge(
   useEffect(() => {
     handlersRef.current = {
       handleSetCompleted,
+      handleSetUncompleted,
       handleHeartRateBatch,
       handleWorkoutStop,
       handleWorkoutDiscard,
@@ -887,6 +924,12 @@ export function useWatchWorkoutBridge(
       'onSetCompleted',
       (payload) => {
         void handlersRef.current.handleSetCompleted(payload);
+      }
+    );
+    const setUncompletedSub = WatchConnectivity.addListener(
+      'onSetUncompleted',
+      (payload) => {
+        void handlersRef.current.handleSetUncompleted(payload);
       }
     );
     const restChangedSub = WatchConnectivity.addListener(
@@ -940,6 +983,7 @@ export function useWatchWorkoutBridge(
     return () => {
       workoutDiscardSub.remove();
       setCompletedSub.remove();
+      setUncompletedSub.remove();
       restChangedSub.remove();
       setTimerStartedSub.remove();
       setTimerStoppedSub.remove();

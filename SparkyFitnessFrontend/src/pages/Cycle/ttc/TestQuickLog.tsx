@@ -13,6 +13,7 @@ import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
+import i18n from 'i18next';
 interface TestQuickLogProps {
   currentCycleStart: string | null;
 }
@@ -20,23 +21,31 @@ interface TestQuickLogProps {
 const OPK_OPTIONS = [
   {
     value: 'negative',
-    label: 'Negative',
+    get label() {
+      return i18n.t('ttc.testQuickLog.negative', 'Negative');
+    },
     color: 'bg-muted hover:bg-muted/80 text-muted-foreground',
   },
   {
     value: 'low',
-    label: 'Low LH',
+    get label() {
+      return i18n.t('ttc.testQuickLog.lowLH', 'Low LH');
+    },
     color:
       'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20',
   },
   {
     value: 'high',
-    label: 'High LH',
+    get label() {
+      return i18n.t('ttc.testQuickLog.highLH', 'High LH');
+    },
     color: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/20',
   },
   {
     value: 'peak',
-    label: 'Peak Surge',
+    get label() {
+      return i18n.t('ttc.testQuickLog.peakSurge', 'Peak Surge');
+    },
     color: 'bg-rose-500 text-white hover:bg-rose-600 border-transparent',
   },
 ];
@@ -44,18 +53,24 @@ const OPK_OPTIONS = [
 const HPT_OPTIONS = [
   {
     value: 'negative',
-    label: 'Negative',
+    get label() {
+      return i18n.t('ttc.testQuickLog.negative', 'Negative');
+    },
     color: 'bg-muted hover:bg-muted/80 text-muted-foreground',
   },
   {
     value: 'faint',
-    label: 'Faint Line',
+    get label() {
+      return i18n.t('ttc.testQuickLog.faintLine', 'Faint Line');
+    },
     color:
       'bg-rose-100 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300',
   },
   {
     value: 'positive',
-    label: 'Positive ✓',
+    get label() {
+      return i18n.t('ttc.testQuickLog.positive', 'Positive ✓');
+    },
     color:
       'bg-rose-500 text-white hover:bg-rose-600 border-transparent font-semibold',
   },
@@ -203,8 +218,11 @@ export default function TestQuickLog({ currentCycleStart }: TestQuickLogProps) {
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-foreground">
                         {entry.test_type === 'opk'
-                          ? 'OPK (LH)'
-                          : 'Pregnancy (HPT)'}
+                          ? t('ttc.testQuickLog.opkLH', 'OPK (LH)')
+                          : t(
+                              'ttc.testQuickLog.pregnancyHPT',
+                              'Pregnancy (HPT)'
+                            )}
                       </span>
                       <span
                         className={cn(

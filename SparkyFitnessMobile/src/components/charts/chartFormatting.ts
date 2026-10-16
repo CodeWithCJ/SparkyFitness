@@ -1,12 +1,49 @@
 import { Platform } from 'react-native';
-import { getAppLocale, formatLocalizedNumber } from '../../localization';
+import { useMemo } from 'react';
+import {
+  getAppLocale,
+  useAppLocale,
+  formatLocalizedNumber,
+} from '../../localization';
 import { matchFont } from '@shopify/react-native-skia';
 
-const fontFamily = Platform.select({ ios: 'Helvetica', default: 'sans-serif' });
+/**
+ * Helvetica has no CJK glyphs and Skia does no per-glyph font fallback, so axis
+ * labels such as "10月5日" would draw as missing-glyph squares on iOS. Pick a
+ * system family that covers the app locale's script instead.
+ */
+export const chartFontFamily = (
+  locale: string,
+  os: string = Platform.OS
+): string => {
+  if (os !== 'ios') return 'sans-serif';
+  const [language, ...subtags] = locale.toLowerCase().split('-');
+  switch (language) {
+    case 'zh':
+      return subtags.some((tag) => ['tw', 'hk', 'mo', 'hant'].includes(tag))
+        ? 'PingFang TC'
+        : 'PingFang SC';
+    case 'ja':
+      return 'Hiragino Sans';
+    case 'ko':
+      return 'Apple SD Gothic Neo';
+    default:
+      return 'Helvetica';
+  }
+};
 
-/** Skia label font shared by the dashboard/wellness charts. */
-export const makeChartFont = (fontSize: number) =>
-  matchFont({ fontFamily, fontSize });
+/**
+ * Skia label font shared by the dashboard/wellness charts, rebuilt when the app language changes, so the
+ * family always covers the language on screen. A module-level font runs at
+ * import, before the language has resolved, and would stay on the wrong font.
+ */
+export const useChartFont = (fontSize: number) => {
+  const locale = useAppLocale();
+  return useMemo(
+    () => matchFont({ fontFamily: chartFontFamily(locale), fontSize }),
+    [locale, fontSize]
+  );
+};
 
 /**
  * Axis label size for the dashboard trend charts. Skia text ignores the OS font-size
@@ -42,6 +79,19 @@ export const formatTooltipDate = (day: string): string => {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
+  });
+};
+
+/** A calendar day with its year, for dates far enough out that the year matters. */
+export const formatDateWithYear = (day: string): string => {
+  const parts = day.split('-');
+  if (parts.length < 3) return day;
+  const [year, month, d] = parts.map(Number);
+  const date = new Date(year, (month || 1) - 1, d || 1);
+  return date.toLocaleDateString(getAppLocale(), {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   });
 };
 

@@ -62,6 +62,9 @@ export const adjustedGoalsSchema = z.object({
   protein: z.number(),
   carbs: z.number(),
   fat: z.number(),
+  // Present when exercise water loss raised the day's water goal. Omitted
+  // when the base goal is already the one to show.
+  water_goal_ml: z.number().optional(),
 });
 
 export type AdjustedGoals = z.infer<typeof adjustedGoalsSchema>;

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 
+import { useTranslation } from 'react-i18next';
 const ANIMATION_DURATION = 200;
 
 const reasoningVariants = cva('aui-reasoning-root mb-4 w-full', {
@@ -125,6 +126,7 @@ function ReasoningTrigger({
   active?: boolean;
   duration?: number;
 }) {
+  const { t } = useTranslation();
   const durationText = duration ? ` (${duration}s)` : '';
 
   return (
@@ -144,14 +146,20 @@ function ReasoningTrigger({
         data-slot="reasoning-trigger-label"
         className="aui-reasoning-trigger-label-wrapper relative inline-block leading-none"
       >
-        <span>Reasoning{durationText}</span>
+        <span>
+          {t('reasoning.reasoning', 'Reasoning{{durationText}}', {
+            durationText,
+          })}
+        </span>
         {active ? (
           <span
             aria-hidden
             data-slot="reasoning-trigger-shimmer"
             className="aui-reasoning-trigger-shimmer shimmer pointer-events-none absolute inset-0 motion-reduce:animate-none"
           >
-            Reasoning{durationText}
+            {t('reasoning.reasoning', 'Reasoning{{durationText}}', {
+              durationText,
+            })}
           </span>
         ) : null}
       </span>

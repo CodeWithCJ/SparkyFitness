@@ -1,5 +1,6 @@
 import { NumericFoodVariantKeys } from '@/types/food';
 
+import i18n from 'i18next';
 export const nutrientFields: NumericFoodVariantKeys[] = [
   'calories',
   'protein',
@@ -36,10 +37,22 @@ export const UNSCALED_NUTRIENT_FIELDS: NumericFoodVariantKeys[] = [
 // Unit groups mirror the lookup tables in servingSizeConversions.ts so that
 // compatible-unit detection is consistent in both directions.
 export const UNIT_GROUPS = [
-  { label: 'Weight', units: ['g', 'kg', 'mg', 'oz', 'lb'] },
-  { label: 'Volume', units: ['ml', 'l', 'cup', 'tbsp', 'tsp', 'fl oz'] },
   {
-    label: 'Quantity',
+    get label() {
+      return i18n.t('common.weight', 'Weight');
+    },
+    units: ['g', 'kg', 'mg', 'oz', 'lb'],
+  },
+  {
+    get label() {
+      return i18n.t('foodForm.volume', 'Volume');
+    },
+    units: ['ml', 'l', 'cup', 'tbsp', 'tsp', 'fl oz'],
+  },
+  {
+    get label() {
+      return i18n.t('foodForm.quantity', 'Quantity');
+    },
     units: [
       'piece',
       'slice',

@@ -19,6 +19,7 @@ import { ElementType, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { localizeMuscle, localizeEquipment } from '@/utils/exerciseTaxonomy';
 
+import i18n from 'i18next';
 type ExerciseCategory = keyof typeof EXERCISE_CATEGORY_META;
 
 interface ExerciseListItemProps {
@@ -30,12 +31,16 @@ interface ExerciseListItemProps {
 
 const SOURCE_BADGES: Record<string, { label: string; className: string }> = {
   wger: {
-    label: 'Wger',
+    get label() {
+      return i18n.t('exercises.exerciseSearchListItem.wger', 'Wger');
+    },
     className:
       'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
   },
   'free-exercise-db': {
-    label: 'Free DB',
+    get label() {
+      return i18n.t('exercises.exerciseSearchListItem.freeDB', 'Free DB');
+    },
     className:
       'bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300',
   },
@@ -175,7 +180,9 @@ export const ExerciseSearchListItem = ({
                 {Math.round(
                   convertEnergy(exercise.calories_per_hour, 'kcal', energyUnit)
                 )}{' '}
-                {getEnergyUnitString(energyUnit)}/hr
+                {t('exercises.exerciseSearchListItem.perHour', '{{unit}}/hr', {
+                  unit: getEnergyUnitString(energyUnit),
+                })}
               </span>
             </>
           ) : null}
@@ -199,7 +206,7 @@ export const ExerciseSearchListItem = ({
         {exercise.primary_muscles && exercise.primary_muscles.length > 0 && (
           <div className="text-[10px] text-gray-400 dark:text-gray-500 leading-snug">
             <span className="font-medium text-gray-500 dark:text-gray-400">
-              Primary:{' '}
+              {t('exercises.exerciseSearchListItem.primary', 'Primary:')}{' '}
             </span>
             {exercise.primary_muscles
               .map((m) => localizeMuscle(t, m))
@@ -210,7 +217,10 @@ export const ExerciseSearchListItem = ({
           exercise.secondary_muscles.length > 0 && (
             <div className="text-[10px] text-gray-400 dark:text-gray-500 leading-snug">
               <span className="font-medium text-gray-500 dark:text-gray-400">
-                Secondary:{' '}
+                {t(
+                  'exercises.exerciseSearchListItem.secondary',
+                  'Secondary:'
+                )}{' '}
               </span>
               {exercise.secondary_muscles
                 .map((m) => localizeMuscle(t, m))
@@ -220,7 +230,10 @@ export const ExerciseSearchListItem = ({
         {exercise.equipment && exercise.equipment.length > 0 && (
           <div className="text-[10px] text-gray-400 dark:text-gray-500 leading-snug">
             <span className="font-medium text-gray-500 dark:text-gray-400">
-              Equipment:{' '}
+              {t(
+                'exercises.exerciseSearchListItem.equipment',
+                'Equipment:'
+              )}{' '}
             </span>
             {exercise.equipment
               .map((eq) => localizeEquipment(t, eq))
@@ -244,7 +257,10 @@ export const ExerciseSearchListItem = ({
             <button
               onClick={handleSpeak}
               className="flex-shrink-0 p-1 rounded text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-950/50 transition-colors"
-              title="Read instructions aloud"
+              title={t(
+                'exercises.exerciseSearchListItem.readInstructionsAloud',
+                'Read instructions aloud'
+              )}
             >
               <Volume2 className="w-3 h-3" />
             </button>

@@ -191,14 +191,14 @@ const WorkoutPlansManager = () => {
             onCheckedChange={(value) =>
               table.toggleAllPageRowsSelected(!!value)
             }
-            aria-label="Select all"
+            aria-label={t('common.selectAll', 'Select all')}
           />
         ),
         cell: ({ row }) => (
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
+            aria-label={t('common.selectRow', 'Select row')}
           />
         ),
         enableSorting: false,
@@ -305,7 +305,9 @@ const WorkoutPlansManager = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
+                  <span className="sr-only">
+                    {t('exercises.workoutPlansManager.openMenu', 'Open menu')}
+                  </span>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -392,8 +394,14 @@ const WorkoutPlansManager = () => {
               </span>
               {activePlan.sequence_position && (
                 <span className="text-xs text-muted-foreground font-medium">
-                  ({activePlan.sequence_position.current} of{' '}
-                  {activePlan.sequence_position.total})
+                  {t(
+                    'workoutPlansManager.currentOfTotal',
+                    '({{current}} of {{total}})',
+                    {
+                      current: activePlan.sequence_position.current,
+                      total: activePlan.sequence_position.total,
+                    }
+                  )}
                 </span>
               )}
             </div>

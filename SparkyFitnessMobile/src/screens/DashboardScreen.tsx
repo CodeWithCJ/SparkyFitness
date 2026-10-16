@@ -43,7 +43,9 @@ import MacroCard from '../components/MacroCard';
 import MedicationsCard from '../components/MedicationsCard';
 import { MindfulnessCard } from '../components/mindfulness/MindfulnessCard';
 import SymptomsCard from '../components/SymptomsCard';
+import MoodCard from '../components/mood/MoodCard';
 import ProgressPhotosCard from '../components/ProgressPhotosCard';
+import TrainingLoadDashboardCard from '../components/TrainingLoadDashboardCard';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
@@ -64,6 +66,10 @@ import {
   useWidgetSync,
 } from '../hooks';
 import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
+import {
+  moodEntriesRootQueryKey,
+  trainingLoadRootQueryKey,
+} from '../hooks/queryKeys';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   useMindfulnessDay,
@@ -294,12 +300,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const { summaryNutrients, refetch: refetchNutrientPrefs } =
     useNutrientDisplayPreferences({ enabled: isConnected });
 
-  useWidgetSync(summary);
-
   useBackgroundWaterSync(activeWaterContainer);
   // The hydration card and the hydration trend must agree on the unit, so both read it
   // from here rather than each resolving the fallback chain themselves.
   const waterDisplayUnit = waterUnit || preferences?.water_display_unit || 'ml';
+  useWidgetSync(summary, {
+    drinkMl: servingVolume ?? null,
+    unit: waterDisplayUnit,
+    canLog: true,
+  });
 
   // The chart is a single-axis line graph; if the user picked stones+lbs, plot lbs.
   const weightUnit: 'kg' | 'lbs' =
@@ -366,6 +375,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const medicationsCardVisible = useAppPreferencesStore(
     (s) => s.medicationsCardVisible
   );
+  const moodCardVisible = useAppPreferencesStore((s) => s.moodCardVisible);
   const symptomsCardVisible = useAppPreferencesStore(
     (s) => s.symptomsCardVisible
   );
@@ -378,12 +388,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const mindfulnessCardVisible = useAppPreferencesStore(
     (s) => s.mindfulnessCardVisible
   );
+  const trainingLoadCardVisible = useAppPreferencesStore(
+    (s) => s.trainingLoadCardVisible
+  );
 
   const { sessions: mindfulSessions, totalMindfulMinutes } =
     useMindfulnessDay(selectedDate);
   const {
     saveSession: saveMindfulSession,
-    updateSession: updateMindfulSession,
     deleteSession: deleteMindfulSession,
   } = useMindfulnessMutations(selectedDate);
 
@@ -418,6 +430,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       // MedicationsCard owns its own queries.
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey }),
       queryClient.invalidateQueries({ queryKey: ['mindfulness'] }),
+      // MoodCard owns its own query.
+      queryClient.invalidateQueries({ queryKey: moodEntriesRootQueryKey }),
+      // TrainingLoadDashboardCard owns its query, and a pull is not a focus.
+      trainingLoadCardVisible
+        ? queryClient.invalidateQueries({ queryKey: trainingLoadRootQueryKey })
+        : Promise.resolve(),
     ]);
     setRefreshing(false);
   }, [
@@ -428,6 +446,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     refetchCustomNutrients,
     refetchNutrientPrefs,
     refetchCaffeine,
+    trainingLoadCardVisible,
     queryClient,
   ]);
 
@@ -804,6 +823,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   date={selectedDate}
                 />
               ) : null;
+            case 'mood':
+              return moodCardVisible ? (
+                <MoodCard
+                  key="mood"
+                  navigation={navigation}
+                  date={selectedDate}
+                />
+              ) : null;
             case 'progressPhotos':
               return progressPhotosCardVisible ? (
                 <ProgressPhotosCard
@@ -820,6 +847,28 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                       defaultValue: 'Health Trends',
                     })}
                   </Text>
+                  {/* Beside the heading, not around it: the heading stays a direct
+                      child of the card's wrapper, which carries the card margin. */}
+                  <Pressable
+                    testID="dashboard-reports-link"
+                    accessibilityRole="button"
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    onPress={() => navigation.navigate('Reports')}
+                    className="flex-row items-center"
+                    style={{ position: 'absolute', right: 0, top: 6 }}
+                  >
+                    <Text className="text-accent-primary font-medium">
+                      {t('dashboard.reportsLink', {
+                        defaultValue: 'Reports',
+                      })}
+                    </Text>
+                    <Icon
+                      name="chevron-forward"
+                      size={14}
+                      color={accentColor}
+                      style={{ marginLeft: 2 }}
+                    />
+                  </Pressable>
                   {visibleTrends.length > 0 && (
                     <SegmentedControl
                       segments={RANGE_SEGMENTS(t)}
@@ -833,6 +882,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                     sleep={trends.sleep}
                     hydration={trends.hydration}
                     calories={trends.calories}
+                    vo2max={trends.vo2max}
                     range={trendsRange}
                     weightUnit={weightUnit}
                     waterUnit={waterDisplayUnit}
@@ -845,6 +895,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   />
                 </View>
               ) : null;
+            case 'trainingLoad':
+              return trainingLoadCardVisible ? (
+                <TrainingLoadDashboardCard
+                  key="trainingLoad"
+                  navigation={navigation}
+                />
+              ) : null;
             case 'mindfulness':
               return mindfulnessCardVisible ? (
                 <MindfulnessCard
@@ -853,7 +910,6 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   totalMindfulMinutes={totalMindfulMinutes}
                   selectedDate={selectedDate}
                   onSaveSession={saveMindfulSession}
-                  onUpdateSession={updateMindfulSession}
                   onDeleteSession={deleteMindfulSession}
                   onPressDetails={() =>
                     navigation.navigate('MindfulnessDetail', { selectedDate })

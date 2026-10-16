@@ -20,6 +20,7 @@ describe('healthTrends registry', () => {
       sleep: 'Sleep',
       hydration: 'Hydration',
       calories: 'Calories',
+      vo2max: 'VO2 max',
     };
 
     for (const key of HEALTH_TREND_KEYS) {

@@ -99,7 +99,9 @@ const FastingZoneBar: React.FC<FastingZoneBarProps> = ({
         </div>
       )}
       <div className="flex justify-between text-xs text-muted-foreground uppercase tracking-wider mb-1">
-        <span>Metabolic State</span>
+        <span>
+          {t('fasting.fastingZoneBar.metabolicState', 'Metabolic State')}
+        </span>
         {/* <span>{ZONES[activeIndex].name}</span> */}
       </div>
       <div className="w-full h-4 bg-secondary rounded-full overflow-hidden flex">
@@ -136,7 +138,11 @@ const FastingZoneBar: React.FC<FastingZoneBarProps> = ({
                 <TooltipContent>
                   <div className="font-bold">{zone.name}</div>
                   <div className="text-xs">
-                    {zone.start}-{zone.end} hours
+                    {t(
+                      'fasting.fastingZoneBar.hours',
+                      '{{start}}-{{end}} hours',
+                      { start: zone.start, end: zone.end }
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground">
                     {zone.desc}

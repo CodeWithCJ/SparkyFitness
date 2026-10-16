@@ -26,7 +26,8 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "resourceClass": "medium"
+        "resourceClass": "medium",
+        "image": "macos-tahoe-26.6-xcode-27.0"
       }
     }
   },

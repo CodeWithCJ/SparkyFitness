@@ -28,6 +28,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 jest.mock('../../src/hooks', () => ({
+  useNutrientDisplayPreferences: jest.fn(() => ({ preferences: [] })),
   useDailySummary: jest.fn(),
   useServerConnection: jest.fn(),
   useMealTypes: jest.fn(),

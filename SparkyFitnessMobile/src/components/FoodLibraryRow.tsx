@@ -8,6 +8,7 @@ import { useProfile } from '../hooks';
 import { deriveShareStatus } from '../utils/shareStatus';
 import ShareStatusBadge from './ShareStatusBadge';
 import Icon from './Icon';
+import AllergenBadges from './AllergenBadges';
 import VerifiedBadge from './VerifiedBadge';
 import AiEstimateBadge from './AiEstimateBadge';
 import FoodThumbnail from './FoodThumbnail';
@@ -104,6 +105,10 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
                 {food.brand}
               </Text>
             ) : null}
+            <AllergenBadges
+              allergens={food.default_variant.allergens}
+              traces={food.default_variant.traces}
+            />
           </View>
           <View className="items-end">
             <Text className="text-text-primary text-base font-semibold">

@@ -65,6 +65,14 @@ jest.mock('@/components/ExerciseActivityDetailsEditor', () => ({
   default: () => <div data-testid="activity-details" />,
 }));
 
+jest.mock('@/hooks/Shoes/useShoes', () => ({
+  useAssignShoeMutation: () => ({ mutateAsync: jest.fn() }),
+}));
+
+jest.mock('@/components/Shoes/ShoeSelect', () => ({
+  ShoeSelect: () => <div data-testid="shoe-select" />,
+}));
+
 const cardioSet = {
   id: 7,
   set_number: 1,

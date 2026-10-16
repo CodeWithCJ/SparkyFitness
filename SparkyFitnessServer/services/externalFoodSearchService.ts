@@ -18,6 +18,8 @@ import {
 import { searchYazioFoods } from '../integrations/yazio/yazioService.js';
 import { searchSwissFoods } from '../integrations/swissfood/swissFoodService.js';
 import { searchCanadianNutrientFoods } from '../integrations/cnf/cnfService.js';
+import { searchLivsmedelsverketFoods } from '../integrations/livsmedelsverket/livsmedelsverketService.js';
+import { isPublicFoodProvider } from '@workspace/shared';
 import {
   searchFatSecretFoods,
   getFatSecretNutrients,
@@ -95,15 +97,7 @@ export async function resolveProviderCredentials(
   providerId: string | undefined,
   providerType: ProviderType
 ): Promise<ProviderCredentials> {
-  if (providerType === 'openfoodfacts') {
-    return {};
-  }
-
-  if (
-    (providerType === 'swissfood' ||
-      providerType === 'canadian-nutrient-file') &&
-    !providerId
-  ) {
+  if (isPublicFoodProvider(providerType) && !providerId) {
     return {};
   }
 
@@ -454,6 +448,19 @@ export async function searchProviderFoods(
 
     case 'canadian-nutrient-file': {
       const result = await searchCanadianNutrientFoods(
+        query,
+        page,
+        pageSize,
+        language,
+        credentials.base_url || undefined
+      );
+      foods = result.foods || [];
+      pagination = result.pagination;
+      break;
+    }
+
+    case 'livsmedelsverket': {
+      const result = await searchLivsmedelsverketFoods(
         query,
         page,
         pageSize,

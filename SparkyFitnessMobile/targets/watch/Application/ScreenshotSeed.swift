@@ -46,6 +46,18 @@ enum ScreenshotSeed {
         ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"] == "exercises"
     }
 
+    /// Which scroll page of the active workout to land on: setoptions,
+    /// exerciseoptions or actions.
+    static var workoutPage: String? {
+        let v = ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"]
+        return ["setoptions", "exerciseoptions", "actions"].contains(v) ? v : nil
+    }
+
+    /// Opens the effort screen for the current set on appear.
+    static var opensRpe: Bool {
+        ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"] == "rpe"
+    }
+
     /// Opens the "Update Workout?" question on appear.
     static var opensPresetUpdate: Bool {
         ProcessInfo.processInfo.environment["SPARKY_SCREENSHOT_SHEET"] == "updatealert"

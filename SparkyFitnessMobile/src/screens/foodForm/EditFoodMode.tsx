@@ -7,6 +7,7 @@ import { CommonActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
 import FoodImagePicker from '../../components/FoodImagePicker';
+import Button from '../../components/ui/Button';
 import { usableFoodImages } from '../../utils/foodImages';
 import {
   pickerImagesDiffer,
@@ -109,9 +110,11 @@ function buildUpdatedFoodInfo(
 export function EditFoodMode({
   params,
   navigation,
+  routeKey,
 }: {
   params: EditFoodParams;
   navigation: FoodFormScreenProps['navigation'];
+  routeKey: string;
 }) {
   const { item, initialValues, returnKey, foodId, variantId, customNutrients } =
     params;
@@ -654,6 +657,7 @@ export function EditFoodMode({
         }}
         submitRequestRef={submitRequestRef}
         initialValues={initialValues}
+        nutritionLabelScan={params.pendingNutritionLabelScan}
         submitLabel={SAVE_LABEL}
         showNotes
         noteImages={savedNoteImages}
@@ -661,6 +665,21 @@ export function EditFoodMode({
         hideSubmitButton={usesNativeHeader}
         headerChildren={
           <View className="mb-4">
+            <Button
+              variant="secondary"
+              disabled={isSubmitting}
+              className="mb-4"
+              onPress={() =>
+                navigation.navigate('FoodScan', {
+                  mode: 'capture-label',
+                  returnKey: routeKey,
+                })
+              }
+            >
+              {t('foodForm.scanNutritionLabel', {
+                defaultValue: 'Scan nutrition label',
+              })}
+            </Button>
             <FoodImagePicker
               items={pickerImages}
               onItemsChange={setPickerImages}

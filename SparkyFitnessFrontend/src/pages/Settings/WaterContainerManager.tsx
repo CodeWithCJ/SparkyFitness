@@ -37,7 +37,7 @@ import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import { foodViewOptions } from '@/hooks/Foods/useFoods';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import {
@@ -49,6 +49,11 @@ import type { Meal } from '@/types/meal';
 import type { WaterContainer } from '@/types/settings';
 import type { DrinkPresetCatalogEntry } from '@workspace/shared';
 import { Utensils, X, Edit2, Link2, Plus, Coffee, Beer } from 'lucide-react';
+
+// 0 is a valid factor (a drink that should count as no water), so only a
+// non-finite value falls back to 1.0.
+const toHydrationFactor = (value: number) =>
+  Number.isFinite(value) ? value : 1.0;
 
 const WaterContainerManager: React.FC = () => {
   const { user } = useAuth();
@@ -269,7 +274,7 @@ const WaterContainerManager: React.FC = () => {
       is_primary: false,
       servings_per_container: linkedFood ? 1 : Number(servingsPerContainer),
       linked_quantity: linkedFood ? Number(linkedQuantity) : 1,
-      hydration_factor: Number(hydrationFactor) || 1.0,
+      hydration_factor: toHydrationFactor(Number(hydrationFactor)),
       linked_food_id: linkedFood ? linkedFood.id : null,
       linked_variant_id: linkedVariantId,
       linked_meal_type_id: linkedMealTypeId,
@@ -366,7 +371,7 @@ const WaterContainerManager: React.FC = () => {
         unit: editUnit,
         servings_per_container: editLinkedFood ? 1 : Number(editServings),
         linked_quantity: editLinkedFood ? Number(editLinkedQuantity) : 1,
-        hydration_factor: Number(editHydrationFactor) || 1.0,
+        hydration_factor: toHydrationFactor(Number(editHydrationFactor)),
         linked_food_id: editLinkedFood ? editLinkedFood.id : null,
         linked_variant_id: editLinkedVariantId ?? null,
         linked_meal_type_id: editLinkedMealTypeId ?? null,
@@ -502,20 +507,31 @@ const WaterContainerManager: React.FC = () => {
                           <Utensils className="w-3 h-3" />
                           <span>
                             {t(
-                              'waterContainerManager.linkedFood',
-                              'Linked Food'
+                              'waterContainerManager.linkedFood2',
+                              'Linked Food: {{linked_food_name}}',
+                              {
+                                linked_food_name:
+                                  c.linked_food_name ||
+                                  t(
+                                    'settings.waterContainerManager.food',
+                                    'Food'
+                                  ),
+                              }
                             )}
-                            : {c.linked_food_name || 'Food'}
                           </span>
                         </Badge>
                       )}
                       {c.hydration_factor !== undefined && (
                         <Badge variant="outline" className="font-normal">
                           {t(
-                            'waterContainerManager.hydrationFactor',
-                            'Hydration'
+                            'waterContainerManager.hydration',
+                            'Hydration: {{hydration_factor}}%',
+                            {
+                              hydration_factor: Math.round(
+                                (c.hydration_factor ?? 1) * 100
+                              ),
+                            }
                           )}
-                          : {Math.round((c.hydration_factor ?? 1) * 100)}%
                         </Badge>
                       )}
                     </div>
@@ -742,17 +758,24 @@ const WaterContainerManager: React.FC = () => {
                       </div>
                       <div className="flex items-center justify-between gap-2 text-xs">
                         <span className="text-muted-foreground">
-                          {t(
-                            'waterContainerManager.perPress',
-                            'One press logs'
-                          )}{' '}
-                          <span className="font-medium text-foreground">
-                            {describeLink(
-                              foodVariants,
-                              linkedVariantId,
-                              linkedQuantity
-                            )}
-                          </span>
+                          <Trans
+                            i18nKey="waterContainerManager.onePressLogs"
+                            defaults={
+                              'One press logs <span>{{describeLink}}</span>'
+                            }
+                            values={{
+                              describeLink: describeLink(
+                                foodVariants,
+                                linkedVariantId,
+                                linkedQuantity
+                              ),
+                            }}
+                            components={{
+                              span: (
+                                <span className="font-medium text-foreground" />
+                              ),
+                            }}
+                          />
                         </span>
                         <Button
                           type="button"
@@ -874,14 +897,38 @@ const WaterContainerManager: React.FC = () => {
                       >
                         <Utensils className="w-3 h-3" />
                         <span>
-                          {t('waterContainerManager.linkedFood', 'Linked Food')}
-                          : {c.linked_food_name || 'Food'}
-                          {c.linked_variant_serving_size
-                            ? ` (${c.linked_variant_serving_size} ${c.linked_variant_serving_unit || ''})`
-                            : ''}
-                          {c.linked_meal_type_name
-                            ? ` • ${c.linked_meal_type_name}`
-                            : ''}
+                          {(() => {
+                            const food =
+                              c.linked_food_name ||
+                              t('settings.waterContainerManager.food', 'Food');
+                            const serving = c.linked_variant_serving_size
+                              ? `${c.linked_variant_serving_size} ${c.linked_variant_serving_unit || ''}`.trim()
+                              : null;
+                            const meal = c.linked_meal_type_name || null;
+                            if (serving && meal)
+                              return t(
+                                'waterContainerManager.linkedFoodServingMeal',
+                                'Linked Food: {{food}} ({{serving}}) • {{meal}}',
+                                { food, serving, meal }
+                              );
+                            if (serving)
+                              return t(
+                                'waterContainerManager.linkedFoodServing',
+                                'Linked Food: {{food}} ({{serving}})',
+                                { food, serving }
+                              );
+                            if (meal)
+                              return t(
+                                'waterContainerManager.linkedFoodMeal',
+                                'Linked Food: {{food}} • {{meal}}',
+                                { food, meal }
+                              );
+                            return t(
+                              'waterContainerManager.linkedFoodOnly',
+                              'Linked Food: {{food}}',
+                              { food }
+                            );
+                          })()}
                         </span>
                       </Badge>
                     )}
@@ -889,10 +936,10 @@ const WaterContainerManager: React.FC = () => {
                       c.hydration_factor !== 1.0 && (
                         <Badge variant="outline" className="font-normal">
                           {t(
-                            'waterContainerManager.hydrationFactor',
-                            'Hydration Factor'
+                            'waterContainerManager.hydrationFactorX',
+                            'Hydration Factor: {{hydration_factor}}x',
+                            { hydration_factor: c.hydration_factor }
                           )}
-                          : {c.hydration_factor}x
                         </Badge>
                       )}
                   </div>
@@ -999,7 +1046,11 @@ const WaterContainerManager: React.FC = () => {
                           variant="secondary"
                           className="text-[10px] px-1.5 py-0 bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-normal"
                         >
-                          {item.caffeineMg} mg caffeine
+                          {t(
+                            'settings.waterContainerManager.mgCaffeine',
+                            '{{caffeineMg}} mg caffeine',
+                            { caffeineMg: item.caffeineMg }
+                          )}
                         </Badge>
                       )}
                       {item.abvPercent !== undefined && (
@@ -1007,14 +1058,26 @@ const WaterContainerManager: React.FC = () => {
                           variant="secondary"
                           className="text-[10px] px-1.5 py-0 bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-normal"
                         >
-                          {item.abvPercent}% ABV
+                          {t(
+                            'settings.waterContainerManager.abv',
+                            '{{abvPercent}}% ABV',
+                            { abvPercent: item.abvPercent }
+                          )}
                         </Badge>
                       )}
                       <Badge
                         variant="outline"
                         className="text-[10px] px-1.5 py-0 font-normal"
                       >
-                        {Math.round(item.hydrationFactor * 100)}% water
+                        {t(
+                          'waterContainerManager.water',
+                          '{{hydrationFactor}}% water',
+                          {
+                            hydrationFactor: Math.round(
+                              item.hydrationFactor * 100
+                            ),
+                          }
+                        )}
                       </Badge>
                     </div>
                   </div>
@@ -1197,14 +1260,24 @@ const WaterContainerManager: React.FC = () => {
                   </div>
                   <div className="flex items-center justify-between gap-2 text-xs">
                     <span className="text-muted-foreground">
-                      {t('waterContainerManager.perPress', 'One press logs')}{' '}
-                      <span className="font-medium text-foreground">
-                        {describeLink(
-                          editFoodVariants,
-                          editLinkedVariantId,
-                          editLinkedQuantity
-                        )}
-                      </span>
+                      <Trans
+                        i18nKey="waterContainerManager.onePressLogs"
+                        defaults={
+                          'One press logs <span>{{describeLink}}</span>'
+                        }
+                        values={{
+                          describeLink: describeLink(
+                            editFoodVariants,
+                            editLinkedVariantId,
+                            editLinkedQuantity
+                          ),
+                        }}
+                        components={{
+                          span: (
+                            <span className="font-medium text-foreground" />
+                          ),
+                        }}
+                      />
                     </span>
                     <Button
                       type="button"

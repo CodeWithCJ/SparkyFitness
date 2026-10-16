@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 interface CallbackStatusProps {
   loading: boolean;
   message: string;
 }
 export const CallbackStatus = ({ loading, message }: CallbackStatusProps) => {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-transparent">
       <div className="p-8 bg-card rounded-xl shadow-lg border text-center max-w-md w-full">
@@ -11,7 +13,10 @@ export const CallbackStatus = ({ loading, message }: CallbackStatusProps) => {
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-6"></div>
             <p className="text-xl font-medium text-foreground">{message}</p>
             <p className="text-muted-foreground mt-2 text-sm">
-              This will only take a moment.
+              {t(
+                'integrations.callbackStatus.thisWillOnlyTakeA',
+                'This will only take a moment.'
+              )}
             </p>
           </>
         ) : (
@@ -35,7 +40,10 @@ export const CallbackStatus = ({ loading, message }: CallbackStatusProps) => {
               {message}
             </p>
             <p className="text-muted-foreground text-sm">
-              Redirecting you back to settings...
+              {t(
+                'integrations.callbackStatus.redirectingYouBackToSettings',
+                'Redirecting you back to settings...'
+              )}
             </p>
           </div>
         )}

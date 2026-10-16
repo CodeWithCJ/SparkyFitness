@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HEALTH_TREND_KEYS } from '../../src/constants/healthTrends';
+import { REPORT_KEYS } from '../../src/constants/reports';
 import { WATCH_PAGE_KEYS } from '../../src/constants/watchPages';
 import {
   useAppPreferencesStore,
@@ -127,6 +128,76 @@ describe('appPreferencesStore', () => {
     });
   });
 
+  describe('report preferences', () => {
+    it('defaults to every report, nothing hidden, opening on 30 days', () => {
+      const state = useAppPreferencesStore.getState();
+      expect(state.reportOrder).toEqual([...REPORT_KEYS]);
+      expect(state.hiddenReports).toEqual([]);
+      expect(state.hiddenReportSections).toEqual([]);
+      expect(state.reportDefaultRange).toBe('30d');
+    });
+
+    it('hides and shows reports and sections without duplicates', () => {
+      const store = useAppPreferencesStore.getState();
+      store.setReportHidden('mood', true);
+      store.setReportHidden('mood', true);
+      store.setReportSectionHidden('sleep.stages', true);
+      store.setReportSectionHidden('sleep.stages', true);
+      expect(useAppPreferencesStore.getState().hiddenReports).toEqual(['mood']);
+      expect(useAppPreferencesStore.getState().hiddenReportSections).toEqual([
+        'sleep.stages',
+      ]);
+
+      store.setReportHidden('mood', false);
+      store.setReportSectionHidden('sleep.stages', false);
+      expect(useAppPreferencesStore.getState().hiddenReports).toEqual([]);
+      expect(useAppPreferencesStore.getState().hiddenReportSections).toEqual(
+        []
+      );
+    });
+
+    it('shows the original six nutrient averages until the user picks', () => {
+      const state = useAppPreferencesStore.getState();
+      expect(state.shownReportNutrients).toEqual([
+        'dietary_fiber',
+        'sugars',
+        'sodium',
+        'water_ml',
+        'caffeine_mg',
+        'alcohol_g',
+      ]);
+      expect(state.reportNutrientOrder).toEqual([]);
+
+      state.setReportNutrientShown('Creatine', true);
+      state.setReportNutrientShown('Creatine', true);
+      state.setReportNutrientShown('sugars', false);
+      expect(
+        useAppPreferencesStore
+          .getState()
+          .shownReportNutrients.filter((key) => key === 'Creatine')
+      ).toHaveLength(1);
+      expect(
+        useAppPreferencesStore.getState().shownReportNutrients
+      ).not.toContain('sugars');
+    });
+
+    it('reset puts every report setting back to its default', () => {
+      const store = useAppPreferencesStore.getState();
+      store.setReportOrder(['mood', 'nutrition', 'sleep', 'exercise']);
+      store.setReportHidden('sleep', true);
+      store.setReportDefaultRange('7d');
+      store.setReportSectionHidden('nutrition.goal', true);
+
+      store.resetReportCustomization();
+
+      const state = useAppPreferencesStore.getState();
+      expect(state.reportOrder).toEqual([...REPORT_KEYS]);
+      expect(state.hiddenReports).toEqual([]);
+      expect(state.reportDefaultRange).toBe('30d');
+      expect(state.hiddenReportSections).toEqual([]);
+    });
+  });
+
   describe('watch page preferences', () => {
     it('defaults to every page, in the order the watch shipped with', () => {
       const state = useAppPreferencesStore.getState();
@@ -173,12 +244,14 @@ describe('appPreferencesStore', () => {
         'askSparky',
         'macros',
         'exercise',
+        'trainingLoad',
         'hydration',
         'caffeine',
         'fasting',
         'cycle',
         'medications',
         'symptoms',
+        'mood',
         'progressPhotos',
         'healthTrends',
         'mindfulness',

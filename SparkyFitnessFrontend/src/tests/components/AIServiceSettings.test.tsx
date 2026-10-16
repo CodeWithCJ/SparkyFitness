@@ -75,6 +75,12 @@ const translations: Record<string, string> = {
   'settings.aiService.userSettings.useCustomModel': 'Use Custom Model Name',
   'settings.aiService.userSettings.model': 'Model',
   'settings.aiService.userSettings.customModelName': 'Custom Model Name',
+  'settings.aiService.userSettings.supportsAudioInput':
+    'Show this configuration in the Voice list',
+  'settings.aiService.userSettings.supportsAudioInputDescription':
+    'The selected model accepts audio files.',
+  'settings.aiService.userSettings.audioInputProviderUnsupported':
+    'Voice transcription is not supported for this provider type yet.',
   'settings.aiService.userSettings.systemPrompt': 'System Prompt',
   'settings.aiService.userSettings.activeService': 'Active Service',
   'settings.aiService.userSettings.setAsActive': 'Set as Active Service',
@@ -475,6 +481,31 @@ describe('AIServiceSettings', () => {
     });
   });
 
+  it('keeps the voice-list toggle controlled while editing', async () => {
+    renderWithClient(<AIServiceSettings />);
+
+    const editButton = await screen.findByRole('button', {
+      name: 'Edit Service',
+    });
+    fireEvent.click(editButton);
+
+    const voiceToggle = await screen.findByRole('switch', {
+      name: 'Show this configuration in the Voice list',
+    });
+    expect(voiceToggle).not.toBeChecked();
+
+    fireEvent.click(voiceToggle);
+    expect(voiceToggle).toBeChecked();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+    await waitFor(() => {
+      expect(mockUpdateAIService).toHaveBeenCalledWith(
+        'user-service1',
+        expect.objectContaining({ supports_audio_input: true })
+      );
+    });
+  });
+
   it('deletes a user service with confirmation', async () => {
     mockDeleteAIService.mockResolvedValue(true);
 
@@ -667,10 +698,9 @@ describe('AIServiceSettings', () => {
 
     await screen.findByText('My Custom Service');
 
-    // The service toggle is the unnamed switch; exclude the unrelated
-    // "Show token usage" toggle (id="show_token_stats").
+    // Service active switches have no id; exclude the named preference toggles.
     const switches = await screen.findAllByRole('switch');
-    const toggleSwitch = switches.find((s) => s.id !== 'show_token_stats')!;
+    const toggleSwitch = switches.find((s) => !s.id)!;
     fireEvent.click(toggleSwitch);
 
     await waitFor(() => {
@@ -729,11 +759,10 @@ describe('AIServiceSettings', () => {
     await screen.findByRole('heading', { name: 'Service A' });
     await screen.findByRole('heading', { name: 'Service B' });
 
-    // Exclude the unrelated "Show token usage" toggle (id="show_token_stats");
-    // assert only the per-service active toggles.
+    // Assert only the unnamed per-service active switches.
     const switches = screen
       .getAllByRole('switch')
-      .filter((toggle) => toggle.id !== 'show_token_stats');
+      .filter((toggle) => !toggle.id);
     expect(switches).toHaveLength(2);
     switches.forEach((toggle) => expect(toggle).toBeChecked());
   });
@@ -774,10 +803,12 @@ describe('AIServiceSettings', () => {
 
     renderWithClient(<AIServiceSettings />);
 
-    const trigger = await screen.findByLabelText('Active AI provider');
+    const trigger = await screen.findByLabelText('Chat configuration');
     fireEvent.pointerDown(trigger);
 
-    const option = await screen.findByRole('option', { name: 'Service B' });
+    const option = await screen.findByRole('option', {
+      name: 'Service B — claude-3',
+    });
     fireEvent.click(option);
 
     await waitFor(() => {
@@ -785,6 +816,75 @@ describe('AIServiceSettings', () => {
         expect.objectContaining({ active_ai_service_id: 'svc-b' })
       );
     });
+  });
+
+  it('lists only audio-capable configurations supported by the voice route', async () => {
+    const services: AiServiceSettingsResponse[] = [
+      {
+        id: 'gemini-audio',
+        user_id: 'user1',
+        service_name: 'Gemini Audio',
+        service_type: 'google',
+        custom_url: null,
+        is_active: true,
+        system_prompt: null,
+        model_name: 'gemini-2.5-flash',
+        is_public: false,
+        supports_audio_input: true,
+      },
+      {
+        id: 'openrouter-audio-flag',
+        user_id: 'user1',
+        service_name: 'OpenRouter Text',
+        service_type: 'openrouter',
+        custom_url: null,
+        is_active: true,
+        system_prompt: null,
+        model_name: 'deepseek/deepseek-chat',
+        is_public: false,
+        supports_audio_input: true,
+      },
+      {
+        id: 'openai-text-only',
+        user_id: 'user1',
+        service_name: 'OpenAI Text',
+        service_type: 'openai',
+        custom_url: null,
+        is_active: true,
+        system_prompt: null,
+        model_name: 'gpt-4o-mini',
+        is_public: false,
+        supports_audio_input: false,
+      },
+    ];
+    mockGetAIServices.mockResolvedValue(services);
+    mockGetPreferences.mockResolvedValue({
+      auto_clear_history: '7days',
+      active_ai_service_id: 'gemini-audio',
+    });
+
+    renderWithClient(<AIServiceSettings />);
+
+    const recognition = await screen.findByLabelText('Recognition');
+    await waitFor(() => expect(recognition).not.toBeDisabled());
+    fireEvent.pointerDown(recognition);
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'AI transcription' })
+    );
+    const trigger = await screen.findByLabelText('Voice model');
+    fireEvent.pointerDown(trigger);
+
+    expect(
+      await screen.findByRole('option', {
+        name: 'Gemini Audio — gemini-2.5-flash (Used for chat)',
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: /OpenRouter Text/ })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: /OpenAI Text/ })
+    ).not.toBeInTheDocument();
   });
 
   it('shows the Active badge on a global service only when it is the selected provider', async () => {

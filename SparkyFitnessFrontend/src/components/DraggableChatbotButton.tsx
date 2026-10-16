@@ -6,6 +6,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 
+import { useTranslation } from 'react-i18next';
 const BUTTON_SIZE = 56; // 14 * 4 = 56px (w-14)
 const MINIMIZED_SIZE = 24;
 const EDGE_MARGIN = 16;
@@ -22,6 +23,7 @@ interface ButtonState {
 }
 
 const DraggableChatbotButton: React.FC = () => {
+  const { t } = useTranslation();
   const { toggleChat, isChatOpen } = useChatbotVisibility();
   const { user } = useAuth();
   const [buttonState, setButtonState] = useState<ButtonState>(() => {
@@ -326,7 +328,10 @@ const DraggableChatbotButton: React.FC = () => {
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         role="button"
-        aria-label="Restore AI Chat"
+        aria-label={t(
+          'draggableChatbotButton.restoreAIChat',
+          'Restore AI Chat'
+        )}
       >
         <div className="w-full h-full flex items-center justify-center pointer-events-none">
           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
@@ -355,7 +360,7 @@ const DraggableChatbotButton: React.FC = () => {
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       role="button"
-      aria-label="Open AI Chat"
+      aria-label={t('draggableChatbotButton.openAIChat', 'Open AI Chat')}
     >
       {/* Minimize button - only on desktop (mobile uses drag-to-edge) */}
       {!isChatOpen && !isMobile && (
@@ -371,7 +376,10 @@ const DraggableChatbotButton: React.FC = () => {
             handleMinimize(e);
           }}
           onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
-          aria-label="Minimize chat button"
+          aria-label={t(
+            'draggableChatbotButton.minimizeChatButton',
+            'Minimize chat button'
+          )}
         >
           <X className="w-4 h-4 text-white" />
         </button>
@@ -379,7 +387,7 @@ const DraggableChatbotButton: React.FC = () => {
 
       <img
         src="/images/chatbot.gif"
-        alt="AI Chatbot"
+        alt={t('draggableChatbotButton.aiChatbot', 'AI Chatbot')}
         className={`w-full h-full object-contain drop-shadow-lg pointer-events-none
           ${isDragging ? 'scale-110' : 'hover:scale-110'} transition-transform duration-200`}
         draggable={false}

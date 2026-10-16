@@ -25,6 +25,9 @@ interface ActiveWorkoutOverflowSheetProps {
   onPressThumb: (entryId: string) => void;
   onToggleExerciseNote: (entryId: string) => void;
   onReplaceExercise: (entryId: string) => void;
+  /** Whether the exercise can take a warm-up ramp: a weight to ramp to, and none logged yet. */
+  canAddWarmups: (entryId: string) => boolean;
+  onAddWarmups: (entryId: string) => void;
   onClearExerciseSets: (entryId: string) => void;
   onRemoveExercise: (entryId: string) => void;
   onSelectSupersetPartner: (entryId: string, candidateId: string) => void;
@@ -43,6 +46,8 @@ export default function ActiveWorkoutOverflowSheet({
   onPressThumb,
   onToggleExerciseNote,
   onReplaceExercise,
+  canAddWarmups,
+  onAddWarmups,
   onClearExerciseSets,
   onRemoveExercise,
   onSelectSupersetPartner,
@@ -110,6 +115,13 @@ export default function ActiveWorkoutOverflowSheet({
         },
       });
     }
+    if (canAddWarmups(entryId)) {
+      items.push({
+        key: 'warmups',
+        label: t('workout.addWarmups', { defaultValue: 'Add warm-ups' }),
+        onPress: () => onAddWarmups(entryId),
+      });
+    }
     items.push({
       key: 'replace',
       label: t('workout.replaceExercise', { defaultValue: 'Replace exercise' }),
@@ -140,6 +152,8 @@ export default function ActiveWorkoutOverflowSheet({
     onPressThumb,
     onToggleExerciseNote,
     onReplaceExercise,
+    canAddWarmups,
+    onAddWarmups,
     onClearExerciseSets,
     onRemoveExercise,
     onSelectSupersetPartner,

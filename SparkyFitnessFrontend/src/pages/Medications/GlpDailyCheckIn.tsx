@@ -23,7 +23,8 @@ import { useAddCategoryMutation } from '@/hooks/Settings/useCustomCategories';
 const GLP_METRICS: {
   key: string;
   name: string;
-  label: string;
+  /** English name stored on the category and used as the translation default. */
+  defaultLabel: string;
   Icon: LucideIcon;
   color: string;
   chip: string;
@@ -31,7 +32,7 @@ const GLP_METRICS: {
   {
     key: 'hunger',
     name: 'GLP Hunger',
-    label: 'Hunger',
+    defaultLabel: 'Hunger',
     Icon: Utensils,
     color: 'text-orange-500',
     chip: 'bg-orange-100 dark:bg-orange-900/50',
@@ -39,7 +40,7 @@ const GLP_METRICS: {
   {
     key: 'food_noise',
     name: 'GLP Food Noise',
-    label: 'Food noise',
+    defaultLabel: 'Food noise',
     Icon: Brain,
     color: 'text-violet-500',
     chip: 'bg-violet-100 dark:bg-violet-900/50',
@@ -47,7 +48,7 @@ const GLP_METRICS: {
   {
     key: 'fullness',
     name: 'GLP Fullness',
-    label: 'Fullness',
+    defaultLabel: 'Fullness',
     Icon: Soup,
     color: 'text-emerald-500',
     chip: 'bg-emerald-100 dark:bg-emerald-900/50',
@@ -55,7 +56,7 @@ const GLP_METRICS: {
   {
     key: 'energy',
     name: 'GLP Energy',
-    label: 'Energy',
+    defaultLabel: 'Energy',
     Icon: Zap,
     color: 'text-amber-500',
     chip: 'bg-amber-100 dark:bg-amber-900/50',
@@ -118,7 +119,7 @@ export default function GlpDailyCheckIn({
       if (!categoryId) {
         const created = await addCategory({
           name: m.name,
-          display_name: m.label,
+          display_name: m.defaultLabel,
           measurement_type: 'score (0–10)',
           frequency: 'Daily',
           data_type: 'numeric',
@@ -165,7 +166,7 @@ export default function GlpDailyCheckIn({
                   >
                     <m.Icon className={`h-3.5 w-3.5 ${m.color}`} />
                   </span>
-                  {t('medications.checkin.metric.' + m.key, m.label)}
+                  {t('medications.checkin.metric.' + m.key, m.defaultLabel)}
                 </span>
                 <span className="font-semibold tabular-nums">
                   {valueFor(m.key)}{' '}

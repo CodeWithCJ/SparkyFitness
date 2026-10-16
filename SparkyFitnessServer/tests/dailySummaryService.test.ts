@@ -514,6 +514,44 @@ describe('dailySummaryService', () => {
       expect(result.adjustedGoals!.carbs).toBe(234);
       expect(result.adjustedGoals!.fat).toBe(78);
     });
+
+    test('returns the adjusted water goal when only water changes', async () => {
+      vi.mocked(goalService.getUserGoals).mockImplementation(
+        (_userId, _date, _endDate, adjust) => {
+          if (adjust) {
+            return Promise.resolve({
+              calories: 2000,
+              protein: 150,
+              carbs: 200,
+              fat: 67,
+              water_goal_ml: 2800,
+            });
+          }
+          return Promise.resolve({
+            calories: 2000,
+            protein: 150,
+            carbs: 200,
+            fat: 67,
+            water_goal_ml: 2000,
+          });
+        }
+      );
+
+      const result = await getDailySummary({
+        actorUserId,
+        targetUserId,
+        date,
+        includeCheckin: true,
+      });
+
+      expect(result.adjustedGoals).toEqual({
+        calories: 2000,
+        protein: 150,
+        carbs: 200,
+        fat: 67,
+        water_goal_ml: 2800,
+      });
+    });
   });
 });
 

@@ -1,5 +1,6 @@
 import { getClient } from '../db/poolManager.js';
 import type { NutrientGoalType } from '@workspace/shared';
+import type { PoolClient } from 'pg';
 
 const TABLE_NAME = 'user_nutrient_goal_preferences';
 
@@ -73,11 +74,14 @@ async function deleteNutrientGoalPreference(
 async function renameNutrientGoalPreferenceKey(
   userId: string,
   oldKey: string,
-  newKey: string
+  newKey: string,
+  // When given, the caller owns the transaction and the client's lifetime.
+  sharedClient?: PoolClient
 ): Promise<void> {
-  const client = await getClient(userId);
+  if (oldKey === newKey) return;
+  const client = sharedClient ?? (await getClient(userId));
   try {
-    await client.query('BEGIN');
+    if (!sharedClient) await client.query('BEGIN');
     // ON CONFLICT DO NOTHING: if the user somehow already has an override at
     // newKey, keep it and drop the stale oldKey row rather than erroring.
     await client.query(
@@ -92,12 +96,12 @@ async function renameNutrientGoalPreferenceKey(
       `DELETE FROM ${TABLE_NAME} WHERE user_id = $1 AND nutrient_key = $2`,
       [userId, oldKey]
     );
-    await client.query('COMMIT');
+    if (!sharedClient) await client.query('COMMIT');
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (!sharedClient) await client.query('ROLLBACK');
     throw error;
   } finally {
-    client.release();
+    if (!sharedClient) client.release();
   }
 }
 

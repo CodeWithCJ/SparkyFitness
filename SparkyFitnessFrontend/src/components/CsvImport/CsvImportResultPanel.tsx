@@ -36,13 +36,19 @@ const CsvImportResultPanel = ({ result }: CsvImportResultPanelProps) => {
       )}
       <div className="flex flex-wrap gap-4 text-sm">
         <span className="text-green-600 font-medium">
-          {t('csvImport.resultImported', 'Imported')}: {result.processed.length}
+          {t('csvImport.imported', 'Imported: {{processedCount}}', {
+            processedCount: result.processed.length,
+          })}
         </span>
         <span className="text-muted-foreground">
-          {t('csvImport.resultSkipped', 'Skipped')}: {result.skipped.length}
+          {t('csvImport.skipped', 'Skipped: {{skippedCount}}', {
+            skippedCount: result.skipped.length,
+          })}
         </span>
         <span className="text-red-600">
-          {t('csvImport.resultFailed', 'Failed')}: {result.errors.length}
+          {t('csvImport.failed', 'Failed: {{errorsCount}}', {
+            errorsCount: result.errors.length,
+          })}
         </span>
       </div>
       {result.errors.length > 0 && (

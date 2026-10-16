@@ -14,6 +14,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatWeight } from '@/utils/numberFormatting';
 import { axisLabelText } from '@/utils/chartUtils';
 
+import { useTranslation } from 'react-i18next';
 interface PrData {
   date: string;
   oneRM: number;
@@ -28,6 +29,7 @@ interface PrProgressionChartProps {
 export const PrProgressionChart = ({
   prProgressionData,
 }: PrProgressionChartProps) => {
+  const { t } = useTranslation();
   const { weightUnit, formatDate } = usePreferences();
 
   const sortedData = useMemo(() => {
@@ -40,7 +42,10 @@ export const PrProgressionChart = ({
     return (
       <Card>
         <CardContent className="h-[300px] flex items-center justify-center text-muted-foreground">
-          No PR data available for this period.
+          {t(
+            'reports.prProgressionChart.noPRDataAvailableFor',
+            'No PR data available for this period.'
+          )}
         </CardContent>
       </Card>
     );
@@ -49,7 +54,9 @@ export const PrProgressionChart = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>PR Progression</CardTitle>
+        <CardTitle>
+          {t('reports.prProgressionChart.prProgression', 'PR Progression')}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-[300px] w-full">

@@ -88,6 +88,7 @@ export function presetFormReducer(
           exerciseCategory: exercise.category ?? null,
           exerciseModality: exercise.modality ?? null,
           images: exercise.image_url ? [exercise.image_url] : [],
+          exerciseEquipment: exercise.equipment ?? null,
           supersetGroup: exercise.superset_group ?? null,
           // Progression & Equipment Fields
           progressionMode: exercise.progression_mode ?? 'rep_goal',
@@ -147,6 +148,8 @@ export function presetFormReducer(
           exerciseCategory: exercise.exercise_snapshot?.category ?? null,
           exerciseModality: exercise.exercise_snapshot?.modality ?? null,
           images: exercise.exercise_snapshot?.images ?? [],
+          exerciseEquipment: exercise.exercise_snapshot?.equipment ?? null,
+          snapshot: exercise.exercise_snapshot ?? null,
           supersetGroup: exercise.superset_group ?? null,
           sets: exercise.sets.map((set, setIdx) => ({
             clientId: action.clientIds[exerciseIdx].setClientIds[setIdx],
@@ -203,6 +206,7 @@ export function useWorkoutPresetForm() {
     replaceExercise,
     duplicateExercise,
     addSet,
+    addWarmupSets,
     removeSet,
     updateSetField,
     updateSetMeta,
@@ -294,6 +298,7 @@ export function useWorkoutPresetForm() {
     replaceExercise,
     duplicateExercise,
     addSet,
+    addWarmupSets,
     removeSet,
     updateSetField,
     updateSetMeta,

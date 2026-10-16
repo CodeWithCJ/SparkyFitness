@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { apiCall } from '@/api/api';
 import {
   foodAssistantPreferenceSchema,
@@ -48,7 +49,7 @@ export const changeFoodAssistantTask = async (
 ) => {
   await apiCall(`/v2/food-assistant/tasks/${task.id}/${action}`, {
     method: 'POST',
-    body: { operation_id: crypto.randomUUID(), expected_version: task.version },
+    body: { operation_id: uuidv4(), expected_version: task.version },
   });
 };
 export const markFoodAssistantShopping = async (
@@ -62,7 +63,7 @@ export const markFoodAssistantShopping = async (
       {
         method: 'POST',
         body: {
-          operation_id: crypto.randomUUID(),
+          operation_id: uuidv4(),
           expected_version: task.version,
           change: { type: 'mark', item_id: itemId, purchased },
         },

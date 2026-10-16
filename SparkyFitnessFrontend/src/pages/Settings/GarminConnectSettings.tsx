@@ -11,6 +11,7 @@ import {
   useResumeGarminLoginMutation,
 } from '@/hooks/Integrations/useIntegrations';
 
+import { useTranslation } from 'react-i18next';
 interface GarminConnectSettingsProps {
   initialClientState?: string | null;
   onMfaComplete?: () => void;
@@ -20,6 +21,7 @@ const GarminConnectSettings = ({
   initialClientState,
   onMfaComplete,
 }: GarminConnectSettingsProps) => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [garminEmail, setGarminEmail] = useState('');
   const [garminPassword, setGarminPassword] = useState('');
@@ -42,8 +44,11 @@ const GarminConnectSettings = ({
   const handleGarminLogin = async () => {
     if (!user) {
       toast({
-        title: 'Error',
-        description: 'User not authenticated. Please log in.',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.garminConnectSettings.userNotAuthenticatedPleaseLog',
+          'User not authenticated. Please log in.'
+        ),
         variant: 'destructive',
       });
       return;
@@ -58,9 +63,14 @@ const GarminConnectSettings = ({
         setGarminClientState(result.client_state);
         setShowGarminMfaInput(true);
         toast({
-          title: 'MFA Required',
-          description:
-            'Please enter the MFA code from your Garmin Connect app.',
+          title: t(
+            'settings.garminConnectSettings.mfaRequired',
+            'MFA Required'
+          ),
+          description: t(
+            'settings.garminConnectSettings.pleaseEnterTheMFACode',
+            'Please enter the MFA code from your Garmin Connect app.'
+          ),
         });
       } else if (result.status === 'success') {
         setShowGarminMfaInput(false);
@@ -77,8 +87,11 @@ const GarminConnectSettings = ({
   const handleGarminMfaSubmit = async () => {
     if (!user) {
       toast({
-        title: 'Error',
-        description: 'User not authenticated. Please log in.',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.garminConnectSettings.userNotAuthenticatedPleaseLog',
+          'User not authenticated. Please log in.'
+        ),
         variant: 'destructive',
       });
       return;
@@ -110,8 +123,10 @@ const GarminConnectSettings = ({
         }
       />
       <p className="text-sm text-muted-foreground">
-        Sparky Fitness does not store your Garmin email or password. They are
-        used only during login to obtain secure tokens.
+        {t(
+          'settings.garminConnectSettings.sparkyFitnessDoesNotStore',
+          'Sparky Fitness does not store your Garmin email or password. They are used only during login to obtain secure tokens.'
+        )}
       </p>
       {!garminStatus?.isLinked &&
         !showGarminMfaInput &&
@@ -125,11 +140,19 @@ const GarminConnectSettings = ({
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="garmin-email">Garmin Email</Label>
+                <Label htmlFor="garmin-email">
+                  {t(
+                    'settings.garminConnectSettings.garminEmail',
+                    'Garmin Email'
+                  )}
+                </Label>
                 <Input
                   id="settings-garmin-email"
                   type="email"
-                  placeholder="Enter your Garmin email"
+                  placeholder={t(
+                    'settings.garminConnectSettings.enterYourGarminEmail',
+                    'Enter your Garmin email'
+                  )}
                   value={garminEmail}
                   onChange={(e) => setGarminEmail(e.target.value)}
                   disabled={loading}
@@ -137,11 +160,19 @@ const GarminConnectSettings = ({
                 />
               </div>
               <div>
-                <Label htmlFor="garmin-password">Garmin Password</Label>
+                <Label htmlFor="garmin-password">
+                  {t(
+                    'settings.garminConnectSettings.garminPassword',
+                    'Garmin Password'
+                  )}
+                </Label>
                 <Input
                   id="settings-garmin-password"
                   type="password"
-                  placeholder="Enter your Garmin password"
+                  placeholder={t(
+                    'settings.garminConnectSettings.enterYourGarminPassword',
+                    'Enter your Garmin password'
+                  )}
                   value={garminPassword}
                   onChange={(e) => setGarminPassword(e.target.value)}
                   disabled={loading}
@@ -150,24 +181,45 @@ const GarminConnectSettings = ({
               </div>
             </div>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Connecting...' : 'Connect Garmin'}
+              {loading
+                ? t(
+                    'settings.garminConnectSettings.connecting',
+                    'Connecting...'
+                  )
+                : t(
+                    'settings.garminConnectSettings.connectGarmin',
+                    'Connect Garmin'
+                  )}
             </Button>
           </form>
         )}
 
       {showGarminMfaInput && (
         <>
-          <Label htmlFor="garmin-mfa-code">Garmin MFA Code</Label>
+          <Label htmlFor="garmin-mfa-code">
+            {t(
+              'settings.garminConnectSettings.garminMFACode',
+              'Garmin MFA Code'
+            )}
+          </Label>
           <Input
             id="settings-garmin-mfa-code"
             type="text"
-            placeholder="Enter MFA code"
+            placeholder={t(
+              'settings.garminConnectSettings.enterMFACode',
+              'Enter MFA code'
+            )}
             value={garminMfaCode}
             onChange={(e) => setGarminMfaCode(e.target.value)}
             disabled={loading}
           />
           <Button onClick={handleGarminMfaSubmit} disabled={loading}>
-            {loading ? 'Submitting...' : 'Submit MFA Code'}
+            {loading
+              ? t('settings.garminConnectSettings.submitting', 'Submitting...')
+              : t(
+                  'settings.garminConnectSettings.submitMFACode',
+                  'Submit MFA Code'
+                )}
           </Button>
         </>
       )}

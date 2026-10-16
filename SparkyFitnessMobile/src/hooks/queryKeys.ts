@@ -99,7 +99,14 @@ export const allProvidersFoodSearchQueryKey = (
 
 export const mealTypesQueryKey = ['mealTypes'] as const;
 
+export const shoesQueryKey = ['shoes'] as const;
+export const allergenPreferencesQueryKey = ['allergenPreferences'] as const;
+
 export const goalsQueryKey = (date: string) => ['goals', date] as const;
+
+export const goalPresetsQueryKey = ['goalPresets'] as const;
+
+export const weeklyGoalPlansQueryKey = ['weeklyGoalPlans'] as const;
 
 export const goalsRangeQueryKey = (
   startDate: string,
@@ -112,6 +119,11 @@ export const foodVariantsQueryKey = (foodId: string) =>
 
 export const measurementsRangeQueryKey = (startDate: string, endDate: string) =>
   ['measurementsRange', startDate, endDate] as const;
+
+export const vo2MaxRangeQueryKeyRoot = ['vo2MaxRange'] as const;
+
+export const vo2MaxRangeQueryKey = (startDate: string, endDate: string) =>
+  [...vo2MaxRangeQueryKeyRoot, startDate, endDate] as const;
 
 export const waterIntakeRangeQueryKey = (startDate: string, endDate: string) =>
   ['waterIntakeRange', startDate, endDate] as const;
@@ -266,12 +278,20 @@ export const workoutPresetSearchQueryKey = (searchTerm: string) =>
 export const workoutPresetsLibraryQueryKey = (searchTerm: string) =>
   ['workoutPresetsLibrary', searchTerm] as const;
 
+export const workoutPlansRootQueryKey = ['workoutPlanTemplates'] as const;
+
+export const workoutPlansQueryKey = ['workoutPlanTemplates', 'list'] as const;
+
 export const activeWorkoutPlanQueryKey = (date: string) =>
   ['workoutPlanTemplates', 'active', date] as const;
 
 export const activeAiServiceSettingQueryKey = [
   'ai-service-settings',
   'active',
+] as const;
+export const voiceServiceOptionsQueryKey = [
+  'ai-service-settings',
+  'voice-options',
 ] as const;
 export const userAiConfigAllowedQueryKey = [
   'ai-service-settings',
@@ -283,8 +303,14 @@ export const fastingCurrentQueryKey = ['fasting', 'current'] as const;
 export const fastingStatsQueryKey = ['fasting', 'stats'] as const;
 export const fastingHistoryQueryKey = (limit: number, offset: number) =>
   ['fasting', 'history', limit, offset] as const;
+export const fastingPreferencesQueryKey = ['fasting', 'preferences'] as const;
+export const fastingRangeQueryKey = (startDate: string, endDate: string) =>
+  ['fasting', 'range', startDate, endDate] as const;
 
 export const customNutrientsQueryKey = ['customNutrients'] as const;
+export const nutrientGoalPreferencesQueryKey = [
+  'nutrientGoalPreferences',
+] as const;
 export const nutrientDisplayPreferencesQueryKey = [
   'nutrientDisplayPreferences',
 ] as const;
@@ -300,14 +326,22 @@ export const exerciseDashboardQueryKey = (startDate: string, endDate: string) =>
 export const trainingConsistencyQueryKey = () =>
   ['trainingConsistency'] as const;
 
+export const trainingLoadRootQueryKey = ['trainingLoad'] as const;
+
+export const trainingLoadQueryKey = (today: string) =>
+  [...trainingLoadRootQueryKey, today] as const;
+
 export const cardioSessionsQueryKey = (
   startDate: string,
   endDate: string,
   unitSystem: 'metric' | 'imperial'
 ) => ['cardioSessions', startDate, endDate, unitSystem] as const;
 
+export const personalRecordsQueryKey = (unitSystem: 'metric' | 'imperial') =>
+  ['personalRecords', unitSystem] as const;
+
 export const cardioSessionDetailQueryKey = (
-  part: 'entry' | 'gps' | 'hrZones',
+  part: 'entry' | 'gps' | 'hrZones' | 'distanceSeries',
   exerciseEntryId: string
 ) => ['cardioSessionDetail', part, exerciseEntryId] as const;
 
@@ -330,6 +364,11 @@ export const pregnancyCurrentQueryKey = ['pregnancyCurrent'] as const;
 export const pregnancyOverviewQueryKey = ['pregnancyOverview'] as const;
 export const pregnancyChecklistQueryKey = ['pregnancyChecklist'] as const;
 export const pregnancyPhotosQueryKey = ['pregnancyPhotos'] as const;
+
+export const moodEntriesRootQueryKey = ['moodEntries'] as const;
+export const moodEntriesQueryKey = (startDate: string, endDate: string) =>
+  ['moodEntries', startDate, endDate] as const;
+export const customMoodsQueryKey = ['customMoods'] as const;
 
 export const symptomEntriesQueryKey = (fromDate: string, toDate: string) =>
   ['symptomEntries', fromDate, toDate] as const;
@@ -355,6 +394,30 @@ export const medicationEntriesQueryKey = (opts?: {
   toDate?: string;
   medicationId?: string;
 }) => ['medications', 'entries', opts ?? {}] as const;
+// GLP-1 keys live under the medications root so invalidateMedicationEntryCaches
+// (a dose or injection changes the merged entries feed) refreshes them too.
+export const glp1PensQueryKey = (medicationId: string) =>
+  ['medications', 'glp1', 'pens', medicationId] as const;
+export const glp1InjectionsQueryKey = (medicationId: string) =>
+  ['medications', 'glp1', 'injections', medicationId] as const;
+export const glp1TitrationQueryKey = (medicationId: string) =>
+  ['medications', 'glp1', 'titration', medicationId] as const;
+export const glp1SerumCurveQueryKey = (medicationId: string) =>
+  ['medications', 'glp1', 'serumCurve', medicationId] as const;
+export const glp1SiteSuggestionQueryKey = (medicationId: string) =>
+  ['medications', 'glp1', 'siteSuggestion', medicationId] as const;
 
 /** Autocomplete source for the live workout's gym / location prompt. */
 export const workoutLocationsQueryKey = ['workoutLocations'] as const;
+
+export const runningTrendsQueryKey = (startDate: string, endDate: string) =>
+  ['cardioSessions', 'runningTrends', startDate, endDate] as const;
+
+export const runningRecordsQueryKey = () =>
+  ['cardioSessions', 'runningRecords'] as const;
+
+/** The person's run program and place in it (server-backed). */
+export const runProgramQueryKey = ['runProgram'] as const;
+
+/** The person's own saved run programs. */
+export const customRunProgramsQueryKey = ['customRunPrograms'] as const;

@@ -36,6 +36,7 @@ const schema = z.discriminatedUnion('action', [
       action: z.literal('forget_preference'),
       key: z.string().min(1).max(100),
       expected_version: z.number().int().positive(),
+      source_quote: z.string().trim().min(1).max(2000),
     })
     .strict(),
   z.object({ action: z.literal('list_tasks') }).strict(),
@@ -86,6 +87,7 @@ export function buildFoodAssistantTools(
         preference: rememberFoodAssistantPreferenceSchema.optional(),
         key: z.string().optional(),
         expected_version: z.number().optional(),
+        source_quote: z.string().optional(),
       }),
       execute: async (raw) => {
         const parsed = schema.safeParse(raw);
@@ -107,7 +109,9 @@ export function buildFoodAssistantTools(
               await service.forgetPreference(
                 userId,
                 args.key,
-                args.expected_version
+                args.expected_version,
+                args.source_quote,
+                ctx?.latestUserText
               );
               return 'Preference forgotten.';
             case 'list_tasks':

@@ -3,6 +3,10 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import Svg, { Rect, Circle, Ellipse, Path, G } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import {
+  getBuiltInSymptomLabels,
+  translateBuiltInSymptomLabel,
+} from '../../utils/symptomLabels';
+import {
   BODY_REGIONS,
   HEAD_REGIONS,
   REGION_SHAPES,
@@ -24,6 +28,7 @@ export default function SymptomLocationPicker({
   onToggle,
 }: SymptomLocationPickerProps) {
   const { t } = useTranslation();
+  const builtInLabels = getBuiltInSymptomLabels(t);
   const [view, setView] = useState<MapView>('front');
 
   const regions: SymptomRegion[] =
@@ -225,7 +230,7 @@ export default function SymptomLocationPicker({
                   highlighted ? 'text-accent-primary' : 'text-text-primary'
                 }`}
               >
-                {region.label}
+                {translateBuiltInSymptomLabel(builtInLabels, region.label)}
               </Text>
             </TouchableOpacity>
           );

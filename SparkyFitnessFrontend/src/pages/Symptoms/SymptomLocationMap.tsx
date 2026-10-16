@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { translateSymptomLabel } from './symptomLabels';
 import {
   BODY_REGIONS,
   HEAD_REGIONS,
@@ -186,7 +187,7 @@ export default function SymptomLocationMap({
               role="button"
               tabIndex={0}
               aria-pressed={isOn}
-              aria-label={region.label}
+              aria-label={translateSymptomLabel(t, region.label)}
               className="cursor-pointer outline-none focus-visible:[&>*]:stroke-ring focus-visible:[&>*]:stroke-2"
               onClick={() => onToggle(region.label)}
               onKeyDown={(e) => {

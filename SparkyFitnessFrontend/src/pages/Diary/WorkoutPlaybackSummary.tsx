@@ -203,7 +203,7 @@ const WorkoutPlaybackSummary = ({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="startTime" className="text-sm">
-                  Start Time
+                  {t('diary.workoutPlaybackSummary.startTime', 'Start Time')}
                 </Label>
                 <div className="flex items-center gap-1.5">
                   <button
@@ -211,10 +211,13 @@ const WorkoutPlaybackSummary = ({
                     onClick={() => onStartTimeChange('')}
                     disabled={!startTime}
                     className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-muted-foreground shadow-sm hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-40 disabled:pointer-events-none"
-                    title="Clear time"
+                    title={t(
+                      'diary.workoutPlaybackSummary.clearTime',
+                      'Clear time'
+                    )}
                   >
                     <X className="h-4 w-4" />
-                    Clear
+                    {t('diary.workoutPlaybackSummary.clear', 'Clear')}
                   </button>
                   <button
                     type="button"
@@ -225,10 +228,13 @@ const WorkoutPlaybackSummary = ({
                       );
                     }}
                     className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1 text-sm font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-                    title="Set to current local time"
+                    title={t(
+                      'diary.workoutPlaybackSummary.setToCurrentLocalTime',
+                      'Set to current local time'
+                    )}
                   >
                     <Clock className="h-4 w-4" />
-                    Now
+                    {t('diary.workoutPlaybackSummary.now', 'Now')}
                   </button>
                 </div>
               </div>

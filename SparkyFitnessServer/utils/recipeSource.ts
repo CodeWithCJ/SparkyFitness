@@ -151,8 +151,13 @@ export async function readRecipeSource(
         html += decoder.decode(chunk.value, { stream: true });
       }
       html += decoder.decode();
+    } catch (error) {
+      if (error instanceof RecipeSourceError) throw error;
+      throw new RecipeSourceError(
+        'The original recipe page could not be fetched. Paste its ingredient list or attach its image.'
+      );
     } finally {
-      await reader.cancel();
+      await reader.cancel().catch(() => undefined);
       reader.releaseLock();
     }
     const cards = /application\/(ld\+json|json)/i.test(contentType)

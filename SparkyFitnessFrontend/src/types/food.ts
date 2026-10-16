@@ -1,4 +1,5 @@
 import { FormFoodVariant } from '@/utils/foodForm';
+import type { FoodProviderType } from '@workspace/shared';
 
 export type GlycemicIndex =
   'None' | 'Very Low' | 'Low' | 'Medium' | 'High' | 'Very High';
@@ -73,17 +74,7 @@ export interface Food {
   shared_with_public?: boolean;
   barcode?: string | null;
   provider_external_id?: string;
-  provider_type?:
-    | 'openfoodfacts'
-    | 'nutritionix'
-    | 'fatsecret'
-    | 'mealie'
-    | 'tandoor'
-    | 'usda'
-    | 'yazio'
-    | 'norish'
-    | 'swissfood'
-    | 'canadian-nutrient-file';
+  provider_type?: FoodProviderType | 'nutritionix';
   provider_verified?: boolean;
   default_variant?: FoodVariant;
   variants?: FoodVariant[];

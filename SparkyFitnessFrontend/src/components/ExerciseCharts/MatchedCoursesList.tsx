@@ -81,12 +81,21 @@ export const MatchedCoursesList = ({
               </div>
               <div className="text-xs text-muted-foreground flex items-center gap-3">
                 <span>
-                  {t('exerciseAnalytics.matchedCourses.average', 'Avg:')}{' '}
-                  {course.avgDistanceFormatted} {isMiles ? 'mi' : 'km'}
+                  {t(
+                    'exerciseAnalytics.matchedCourses.avg',
+                    'Avg: {{avgDistanceFormatted}} {{isMiles}}',
+                    {
+                      avgDistanceFormatted: course.avgDistanceFormatted,
+                      isMiles: isMiles ? 'mi' : 'km',
+                    }
+                  )}
                 </span>
                 <span className="font-medium text-foreground">
-                  {t('exerciseAnalytics.matchedCourses.bestPace', 'Best Pace:')}{' '}
-                  {course.bestPaceFormatted}
+                  {t(
+                    'exerciseAnalytics.matchedCourses.bestPace2',
+                    'Best Pace: {{bestPaceFormatted}}',
+                    { bestPaceFormatted: course.bestPaceFormatted }
+                  )}
                 </span>
               </div>
             </button>
@@ -101,15 +110,18 @@ export const MatchedCoursesList = ({
                     <div>
                       <div className="font-medium text-xs">{act.entryDate}</div>
                       <div className="text-muted-foreground">
-                        {Math.round(act.durationMinutes)}{' '}
-                        {t('common.min', 'min')}
+                        {t(
+                          'exerciseAnalytics.matchedCourses.min',
+                          '{{durationMinutes}} min',
+                          { durationMinutes: Math.round(act.durationMinutes) }
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
                       <div className="font-semibold text-indigo-600">
                         {act.avgPaceFormatted}
                       </div>
-                      {act.avgHeartRate && (
+                      {!!act.avgHeartRate && (
                         <div className="text-[10px] text-red-500">
                           {act.avgHeartRate} bpm
                         </div>

@@ -18,14 +18,14 @@ import {
   getAutoCalculateFamily,
   type AlgorithmBundle,
   type UserNutrientData,
-} from '@/services/nutrientCalculationService';
+} from '@workspace/shared';
 import {
   AddedSugarAlgorithmLabels,
   FatBreakdownAlgorithmLabels,
   MineralCalculationAlgorithmLabels,
   VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithmLabels,
-} from '@/types/nutrientAlgorithms';
+} from '@workspace/shared';
 
 const FAMILY_ALGORITHM_LABELS: Record<
   keyof Omit<AlgorithmBundle, 'addedSugar'>,

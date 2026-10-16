@@ -27,6 +27,10 @@ import {
   epleyOneRepMaxKg,
   resolveExerciseModality,
   buildTrainingConsistency,
+  computeTrainingLoad,
+  estimateMaxHeartRate,
+  LOAD_WEEKS,
+  type TrainingLoad,
   weekStartOf,
   TRAINING_CONSISTENCY_WEEKS,
   type TrainingConsistency,
@@ -970,11 +974,47 @@ export { getReportsData };
 export { getMiniNutritionTrends };
 export { getNutritionTrendsWithGoals };
 export { getExerciseDashboardData };
+/**
+ * Acute against chronic training load over the last four weeks, from every
+ * logged workout (cardio and strength). Max heart rate comes from the profile's
+ * age when there is one.
+ */
+async function getTrainingLoad(
+  authenticatedUserId: string,
+  targetUserId: string
+): Promise<TrainingLoad> {
+  try {
+    const timezone = await loadUserTimezone(targetUserId);
+    const today = todayInZone(timezone);
+    const [sessions, profile] = await Promise.all([
+      reportRepository.getTrainingLoadSessions(
+        targetUserId,
+        addDays(today, -(LOAD_WEEKS * 7 - 1)),
+        today
+      ),
+      userRepository.getUserProfile(targetUserId),
+    ]);
+    const age = profile?.date_of_birth
+      ? userAge(profile.date_of_birth, timezone)
+      : null;
+    return computeTrainingLoad(sessions, today, estimateMaxHeartRate(age));
+  } catch (error) {
+    log(
+      'error',
+      `Error building training load for user ${targetUserId} by ${authenticatedUserId}:`,
+      error
+    );
+    throw error;
+  }
+}
+
 export { getTrainingConsistency };
+export { getTrainingLoad };
 export default {
   getReportsData,
   getMiniNutritionTrends,
   getNutritionTrendsWithGoals,
   getExerciseDashboardData,
   getTrainingConsistency,
+  getTrainingLoad,
 };

@@ -10,15 +10,13 @@ import {
   thresholdCrossingTime,
 } from '@workspace/shared';
 import type { CaffeineActiveResponse } from '@workspace/shared';
-import { makeChartFont, CHART_LABEL_FONT_SIZE } from './charts/chartFormatting';
+import { useChartFont, CHART_LABEL_FONT_SIZE } from './charts/chartFormatting';
 import LineSeriesMark from './charts/LineSeriesMark';
 import { usePreferences } from '../hooks/usePreferences';
 import {
   formatDateToTimeLabel,
   formatTimeLabel,
 } from '../utils/entryTimeDisplay';
-
-const font = makeChartFont(CHART_LABEL_FONT_SIZE);
 
 type CaffeineCardProps = {
   kinetics: CaffeineActiveResponse | undefined;
@@ -38,6 +36,7 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
   isLoading,
 }) => {
   const { t } = useTranslation();
+  const font = useChartFont(CHART_LABEL_FONT_SIZE);
   const { preferences } = usePreferences();
   const [accentColor, dangerColor, textMuted] = useCSSVariable([
     '--color-accent-primary',

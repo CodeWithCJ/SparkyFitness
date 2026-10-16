@@ -17,6 +17,7 @@ import type {
   UpdateSymptomEntryBody,
 } from '@workspace/shared';
 
+import i18n from 'i18next';
 const symptomKeys = {
   definitions: () => ['custom-symptoms'] as const,
   options: (kind?: SymptomOptionKind) =>
@@ -55,28 +56,48 @@ export const useCustomSymptoms = () =>
   useQuery({
     queryKey: symptomKeys.definitions(),
     queryFn: () => symptomService.listSymptomDefinitions(),
-    meta: { errorMessage: 'Failed to load your symptoms.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.failedToLoadYourSymptoms',
+        'Failed to load your symptoms.'
+      ),
+    },
   });
 
 export const useSymptomOptions = (kind?: SymptomOptionKind) =>
   useQuery({
     queryKey: symptomKeys.options(kind),
     queryFn: () => symptomService.listSymptomOptions(kind),
-    meta: { errorMessage: 'Failed to load symptom options.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.failedToLoadSymptomOptions',
+        'Failed to load symptom options.'
+      ),
+    },
   });
 
 export const useSymptomEntries = (filters?: SymptomEntryFilters) =>
   useQuery({
     queryKey: symptomKeys.entries(filters),
     queryFn: () => symptomService.listSymptomEntries(filters),
-    meta: { errorMessage: 'Failed to load symptom logs.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.failedToLoadSymptomLogs',
+        'Failed to load symptom logs.'
+      ),
+    },
   });
 
 export const useOngoingEpisodes = () =>
   useQuery({
     queryKey: symptomKeys.ongoing(),
     queryFn: () => symptomService.listOngoingEpisodes(),
-    meta: { errorMessage: 'Failed to load ongoing episodes.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.failedToLoadOngoingEpisodes',
+        'Failed to load ongoing episodes.'
+      ),
+    },
   });
 
 /** The diary around the given entries, keyed by entry id. */
@@ -88,7 +109,12 @@ export const useSymptomContext = (ids: string[]) =>
       return Object.fromEntries(list.map((c) => [c.entry_id, c]));
     },
     enabled: ids.length > 0,
-    meta: { errorMessage: 'Failed to load the diary around these episodes.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.failedToLoadTheDiary',
+        'Failed to load the diary around these episodes.'
+      ),
+    },
   });
 
 export const useSymptomFreeDays = (range?: {
@@ -98,7 +124,12 @@ export const useSymptomFreeDays = (range?: {
   useQuery({
     queryKey: symptomKeys.freeDays(range),
     queryFn: () => symptomService.listSymptomFreeDays(range),
-    meta: { errorMessage: 'Failed to load symptom-free days.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.failedToLoadSymptomFree',
+        'Failed to load symptom-free days.'
+      ),
+    },
   });
 
 // --- Definition mutations --------------------------------------------------
@@ -111,8 +142,14 @@ export const useCreateCustomSymptomMutation = () => {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: symptomKeys.definitions() }),
     meta: {
-      errorMessage: 'Could not save symptom.',
-      successMessage: 'Symptom saved.',
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotSaveSymptom',
+        'Could not save symptom.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useSymptoms.symptomSaved',
+        'Symptom saved.'
+      ),
     },
   });
 };
@@ -129,7 +166,12 @@ export const useUpdateCustomSymptomMutation = () => {
     }) => symptomService.updateSymptomDefinition(id, body),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: symptomKeys.definitions() }),
-    meta: { errorMessage: 'Could not update symptom.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotUpdateSymptom',
+        'Could not update symptom.'
+      ),
+    },
   });
 };
 
@@ -140,8 +182,14 @@ export const useDeleteCustomSymptomMutation = () => {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: symptomKeys.definitions() }),
     meta: {
-      errorMessage: 'Could not delete symptom.',
-      successMessage: 'Symptom deleted. Your past logs are kept.',
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotDeleteSymptom',
+        'Could not delete symptom.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useSymptoms.symptomDeletedYourPastLogs',
+        'Symptom deleted. Your past logs are kept.'
+      ),
     },
   });
 };
@@ -157,7 +205,12 @@ export const useCreateSymptomOptionMutation = () => {
     mutationFn: (body: CreateSymptomOptionBody) =>
       symptomService.createSymptomOption(body),
     onSuccess: () => invalidateOptions(queryClient),
-    meta: { errorMessage: 'Could not save option.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotSaveOption',
+        'Could not save option.'
+      ),
+    },
   });
 };
 
@@ -166,7 +219,12 @@ export const useDeleteSymptomOptionMutation = () => {
   return useMutation({
     mutationFn: (id: string) => symptomService.deleteSymptomOption(id),
     onSuccess: () => invalidateOptions(queryClient),
-    meta: { errorMessage: 'Could not remove option.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotRemoveOption',
+        'Could not remove option.'
+      ),
+    },
   });
 };
 
@@ -179,8 +237,14 @@ export const useCreateSymptomEntryMutation = () => {
       symptomService.createSymptomEntry(body),
     onSuccess: () => invalidateEntryFamily(queryClient),
     meta: {
-      errorMessage: 'Could not log symptom.',
-      successMessage: 'Symptom logged.',
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotLogSymptom',
+        'Could not log symptom.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useSymptoms.symptomLogged',
+        'Symptom logged.'
+      ),
     },
   });
 };
@@ -192,8 +256,14 @@ export const useUpdateSymptomEntryMutation = () => {
       symptomService.updateSymptomEntry(id, body),
     onSuccess: () => invalidateEntryFamily(queryClient),
     meta: {
-      errorMessage: 'Could not update symptom log.',
-      successMessage: 'Symptom log updated.',
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotUpdateSymptomLog',
+        'Could not update symptom log.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useSymptoms.symptomLogUpdated',
+        'Symptom log updated.'
+      ),
     },
   });
 };
@@ -205,8 +275,14 @@ export const useEndEpisodeMutation = () => {
       symptomService.endSymptomEpisode(id, body),
     onSuccess: () => invalidateEntryFamily(queryClient),
     meta: {
-      errorMessage: 'Could not end the episode.',
-      successMessage: 'Episode ended.',
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotEndTheEpisode',
+        'Could not end the episode.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useSymptoms.episodeEnded',
+        'Episode ended.'
+      ),
     },
   });
 };
@@ -217,7 +293,12 @@ export const useAddSeverityMutation = () => {
     mutationFn: ({ id, severity }: { id: string; severity: number }) =>
       symptomService.addSymptomSeverity(id, severity),
     onSuccess: () => invalidateEntryFamily(queryClient),
-    meta: { errorMessage: 'Could not update severity.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotUpdateSeverity',
+        'Could not update severity.'
+      ),
+    },
   });
 };
 
@@ -227,8 +308,14 @@ export const useDeleteSymptomEntryMutation = () => {
     mutationFn: (id: string) => symptomService.deleteSymptomEntry(id),
     onSuccess: () => invalidateEntryFamily(queryClient),
     meta: {
-      errorMessage: 'Could not remove symptom log.',
-      successMessage: 'Symptom log removed.',
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotRemoveSymptomLog',
+        'Could not remove symptom log.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useSymptoms.symptomLogRemoved',
+        'Symptom log removed.'
+      ),
     },
   });
 };
@@ -245,8 +332,14 @@ export const useMarkSymptomFreeMutation = () => {
       symptomService.markSymptomFree(entryDate),
     onSuccess: () => invalidateFreeDays(queryClient),
     meta: {
-      errorMessage: 'Could not save that.',
-      successMessage: 'Marked as a symptom-free day.',
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotSaveThat',
+        'Could not save that.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useSymptoms.markedAsASymptomFree',
+        'Marked as a symptom-free day.'
+      ),
     },
   });
 };
@@ -257,7 +350,12 @@ export const useUnmarkSymptomFreeMutation = () => {
     mutationFn: (entryDate: string) =>
       symptomService.unmarkSymptomFree(entryDate),
     onSuccess: () => invalidateFreeDays(queryClient),
-    meta: { errorMessage: 'Could not undo that.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotUndoThat',
+        'Could not undo that.'
+      ),
+    },
   });
 };
 
@@ -273,7 +371,12 @@ export const useUploadSymptomPhotoMutation = () => {
         queryKey: ['symptom-entries'],
         refetchType: 'all',
       }),
-    meta: { errorMessage: 'Could not upload the photo.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotUploadThePhoto',
+        'Could not upload the photo.'
+      ),
+    },
   });
 };
 
@@ -286,6 +389,11 @@ export const useDeleteSymptomPhotoMutation = () => {
         queryKey: ['symptom-entries'],
         refetchType: 'all',
       }),
-    meta: { errorMessage: 'Could not remove the photo.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useSymptoms.couldNotRemoveThePhoto',
+        'Could not remove the photo.'
+      ),
+    },
   });
 };

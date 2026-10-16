@@ -31,20 +31,26 @@ export type CameraPickResult =
   | { status: 'cancelled' }
   | { status: 'denied' };
 
+/**
+ * Downscales an image so its longest edge is at most `MAX_DIMENSION` and
+ * re-encodes it as JPEG. No-ops if the dimensions are already within bounds
+ * or unknown, avoiding forced width-only distortion on tall images.
+ */
 async function downscale(asset: {
   uri: string;
   width?: number;
   height?: number;
 }): Promise<PickedImage> {
   const { uri, width, height } = asset;
-  const longEdge = Math.max(width ?? 0, height ?? 0);
+  const hasDimensions = Boolean(width && height && width > 0 && height > 0);
+  const longEdge = hasDimensions ? Math.max(width!, height!) : 0;
 
   const actions: ImageManipulator.Action[] =
-    longEdge > MAX_DIMENSION && width && height
+    hasDimensions && longEdge > MAX_DIMENSION
       ? [
           {
             resize:
-              width >= height
+              width! >= height!
                 ? { width: MAX_DIMENSION }
                 : { height: MAX_DIMENSION },
           },
@@ -60,6 +66,8 @@ async function downscale(asset: {
 
   return { uri: processed.uri };
 }
+
+export { downscale as downscaleFoodPhoto };
 
 /** Takes a photo with the system camera. */
 export async function pickImageFromCamera(): Promise<CameraPickResult> {

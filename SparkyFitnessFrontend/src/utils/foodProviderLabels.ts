@@ -11,6 +11,7 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   norish: 'Norish',
   swissfood: 'SwissFood',
   'canadian-nutrient-file': 'Canadian Nutrient File',
+  livsmedelsverket: 'Swedish Food Agency (Livsmedelsverket)',
   nutritionix: 'Nutritionix',
 };
 

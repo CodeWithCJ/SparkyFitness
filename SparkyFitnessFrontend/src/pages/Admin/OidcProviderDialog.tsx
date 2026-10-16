@@ -161,7 +161,10 @@ export const ProviderDialog: React.FC<{
                   id="provider_id"
                   value={editedProvider.provider_id || ''}
                   onChange={handleChange}
-                  placeholder="e.g. authentik, google, keycloak"
+                  placeholder={t(
+                    'admin.oidcProviderDialog.eGAuthentikGoogleKeycloak',
+                    'e.g. authentik, google, keycloak'
+                  )}
                   readOnly={editedProvider.is_env_configured}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
@@ -250,7 +253,10 @@ export const ProviderDialog: React.FC<{
                   id="domain"
                   value={editedProvider.domain || ''}
                   onChange={handleChange}
-                  placeholder="e.g. sparkyfitness.com"
+                  placeholder={t(
+                    'admin.oidcProviderDialog.eGSparkyfitnessCom',
+                    'e.g. sparkyfitness.com'
+                  )}
                   readOnly={editedProvider.is_env_configured}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
@@ -330,7 +336,10 @@ export const ProviderDialog: React.FC<{
                       htmlFor="manual_redirect"
                       className="text-xs text-muted-foreground"
                     >
-                      Expert Mode: Custom Domain
+                      {t(
+                        'admin.oidcProviderDialog.expertModeCustomDomain',
+                        'Expert Mode: Custom Domain'
+                      )}
                     </Label>
                   </div>
                 </div>
@@ -359,7 +368,10 @@ export const ProviderDialog: React.FC<{
                       variant="ghost"
                       size="icon"
                       className="h-10 w-10 rounded-none hover:bg-muted border-l transition-colors"
-                      title="Copy full Redirect URI"
+                      title={t(
+                        'admin.oidcProviderDialog.copyFullRedirectURI',
+                        'Copy full Redirect URI'
+                      )}
                       onClick={() => {
                         const base = isManualRedirectUri
                           ? baseUrlOverride || window.location.origin
@@ -385,15 +397,24 @@ export const ProviderDialog: React.FC<{
                     baseUrlOverride &&
                     !baseUrlOverride.startsWith('http') && (
                       <p className="text-[10px] text-red-500 mt-1 font-medium italic">
-                        ⚠️ URL must start with http:// or https://
+                        {t(
+                          'admin.oidcProviderDialog.urlMustStartWithHttp',
+                          '⚠️ URL must start with http:// or https://'
+                        )}
                       </p>
                     )}
                 </div>
 
                 <p className="text-[11px] text-muted-foreground leading-snug">
                   {!isManualRedirectUri
-                    ? '✓ Automatically synced with your current URL. Path suffix is locked for routing safety.'
-                    : '⚠️ Expert: Ensure your Base URL is reachable from the internet for the OIDC provider to return data.'}
+                    ? t(
+                        'admin.oidcProviderDialog.automaticallySyncedWithYourCurrent',
+                        '✓ Automatically synced with your current URL. Path suffix is locked for routing safety.'
+                      )
+                    : t(
+                        'admin.oidcProviderDialog.expertEnsureYourBaseURL',
+                        '⚠️ Expert: Ensure your Base URL is reachable from the internet for the OIDC provider to return data.'
+                      )}
                 </p>
               </div>
               <div>
@@ -423,7 +444,9 @@ export const ProviderDialog: React.FC<{
                     <SelectItem value="client_secret_basic">
                       client_secret_basic
                     </SelectItem>
-                    <SelectItem value="none">none</SelectItem>
+                    <SelectItem value="none">
+                      {t('admin.oidcProviderDialog.none', 'none')}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

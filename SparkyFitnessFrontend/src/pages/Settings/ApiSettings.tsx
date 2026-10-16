@@ -339,10 +339,15 @@ export const ApiSettings = () => {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     <p>
-                      {t('settings.apiKeyManagement.created', 'Created:')}{' '}
-                      {key.createdAt
-                        ? new Date(key.createdAt).toLocaleDateString()
-                        : 'N/A'}
+                      {t(
+                        'settings.apiKeyManagement.created2',
+                        'Created: {{createdAt}}',
+                        {
+                          createdAt: key.createdAt
+                            ? new Date(key.createdAt).toLocaleDateString()
+                            : 'N/A',
+                        }
+                      )}
                     </p>
                     {key.expiresAt && (
                       <p
@@ -352,14 +357,24 @@ export const ApiSettings = () => {
                             : ''
                         }
                       >
-                        {t('settings.apiKeyManagement.expires', 'Expires:')}{' '}
-                        {new Date(key.expiresAt).toLocaleDateString()}
+                        {t(
+                          'settings.apiKeyManagement.expires2',
+                          'Expires: {{value}}',
+                          {
+                            value: new Date(key.expiresAt).toLocaleDateString(),
+                          }
+                        )}
                       </p>
                     )}
                     {key.updatedAt && (
                       <p>
-                        {t('settings.apiKeyManagement.lastUsed', 'Last Used:')}{' '}
-                        {new Date(key.updatedAt).toLocaleDateString()}
+                        {t(
+                          'settings.apiKeyManagement.lastUsed2',
+                          'Last Used: {{value}}',
+                          {
+                            value: new Date(key.updatedAt).toLocaleDateString(),
+                          }
+                        )}
                       </p>
                     )}
                   </div>

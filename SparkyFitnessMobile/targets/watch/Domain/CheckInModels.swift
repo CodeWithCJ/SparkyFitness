@@ -163,11 +163,98 @@ struct WaterLogEntry: Codable, Equatable, Identifiable {
 struct WaterSnapshot: Codable, Equatable {
     let day: String
     let consumedMl: Double
+    /// The part of `consumedMl` that came from food. Nil unless the phone's
+    /// food-water setting is on, which is also when the Water page shows it.
+    var fromFoodMl: Double? = nil
     /// Today's individual drinks, newest first. Empty is a real state (nothing
     /// logged yet), distinct from the whole snapshot being nil.
     let log: [WaterLogEntry]
 
     var isToday: Bool { day == CheckInDate.today() }
+}
+
+/// One scheduled dose slot for today, as the phone built it for the
+/// Medications page.
+struct MedicationDose: Codable, Equatable, Identifiable {
+    /// `medicationId:scheduleId` — one per slot, so a medication taken twice a
+    /// day has two rows.
+    let id: String
+    let medicationId: String
+    let scheduleId: String
+    let name: String
+    /// Already formatted by the phone ("10 mg"); empty when the medication has
+    /// no dose set.
+    let detail: String
+    /// Already formatted in the account's 12/24-hour convention; empty when the
+    /// slot has no time.
+    let time: String
+    let status: MedicationDoseStatus
+}
+
+/// Where a dose slot stands, as the phone's own dose rows read it.
+enum MedicationDoseStatus: String, Codable {
+    case pending, taken, skipped
+}
+
+/// Today's scheduled doses. Empty is a real state (nothing scheduled), distinct
+/// from the whole snapshot being nil ("the phone hasn't said yet").
+struct MedicationSnapshot: Codable, Equatable {
+    let day: String
+    let doses: [MedicationDose]
+
+    var isToday: Bool { day == CheckInDate.today() }
+}
+
+/// A fast as the Fasting page and complication draw it.
+struct WatchFast: Codable, Equatable {
+    let startedAt: Date
+    /// When the fast reaches its goal. Nil for an open-ended fast.
+    let targetEndAt: Date?
+    /// The preset's name, such as "16:8".
+    let label: String?
+}
+
+/// Today's steps as the phone reports them.
+struct StepsSnapshot: Codable, Equatable {
+    let day: String
+    let count: Int
+
+    var isToday: Bool { day == CheckInDate.today() }
+}
+
+/// A dose the wearer ticked but the phone hasn't confirmed.
+///
+/// Lives in `CheckInStore` for the same reason `PendingWaterTap` does: the tap
+/// is realistically made with the phone out of reach, and until its
+/// confirmation arrives this is the only record that it happened.
+struct PendingMedicationTap: Codable, Equatable, Identifiable {
+    /// Also the `clientId` sent to the phone, which the acknowledgement names.
+    let id: String
+    /// The slot's `MedicationDose.id`, so a row can find its own tap.
+    let doseId: String
+    let medicationId: String
+    let scheduleId: String
+    let createdAt: Date
+    let day: String
+    /// `.queued` draws an orange tick, `.saved` a green one, `.failed` a red
+    /// retry mark.
+    var state: SyncState = .queued
+    /// True when this un-ticks the dose after a mistaken tap. Optional so taps
+    /// persisted before undo existed still decode.
+    var undo: Bool? = nil
+
+    var isToday: Bool { day == CheckInDate.today() }
+    var isUndo: Bool { undo ?? false }
+}
+
+/// One dose tick, sent straight to the phone, which owns the API call.
+struct MedicationTap: Codable, Equatable {
+    let id: String
+    let entryDate: String
+    let medicationId: String
+    let scheduleId: String
+    /// False when the wearer un-ticked the dose.
+    var taken: Bool = true
 }
 
 /// A container tap the wearer has made but the phone hasn't confirmed.
@@ -239,6 +326,15 @@ struct StartableWorkout: Codable, Equatable, Identifiable {
     let name: String
 
     var id: String { presetId }
+}
+
+/// An exercise the wearer can add to the running workout from the wrist. The
+/// phone loads the real exercise by `exerciseId`; this is only the name to tap.
+struct SuggestedExercise: Codable, Equatable, Identifiable {
+    let exerciseId: String
+    let name: String
+
+    var id: String { exerciseId }
 }
 
 /// A workout the active plans put on today, shown first on the workout page.
@@ -347,6 +443,9 @@ struct WatchContext: Codable, Equatable {
     /// Today's planned workouts. Nil until the phone has said, empty when no
     /// plan has one due.
     var scheduledWorkouts: [ScheduledWorkout]? = nil
+    /// Exercises offered by Add Exercise during a workout, recent ones first.
+    /// Nil until the phone has said.
+    var suggestedExercises: [SuggestedExercise]? = nil
     /// The phone's active server when `startableWorkouts` was built. Sent
     /// back with a start request. Nil on a context from before this field.
     var workoutServerId: String? = nil
@@ -356,6 +455,38 @@ struct WatchContext: Codable, Equatable {
     /// The phone's Settings → Apple Watch → Double-tap switch. Defaulted so the
     /// existing initializer calls need not pass it; nil reads as on.
     var doubleTapEnabled: Bool? = nil
+    /// Phone's Settings → Apple Watch → effort (RPE) switch. Nil reads as off.
+    var rpeEnabled: Bool? = nil
+    /// Today's scheduled medication doses. Nil until the phone has said, which
+    /// the page renders as "not synced yet" rather than an empty list. Expires
+    /// at midnight like `water`.
+    var medications: MedicationSnapshot? = nil
+    /// The fast running now. Nil with `fastSynced` true means "not fasting".
+    var fast: WatchFast? = nil
+    /// True once the phone has said anything about fasting, so "not fasting"
+    /// is not confused with "never heard".
+    var fastSynced: Bool? = nil
+    /// Today's step count from the phone. Nil when it has none for today.
+    var steps: StepsSnapshot? = nil
+    /// Daily step goal from the phone. Nil reads as 10,000.
+    var stepGoal: Int? = nil
+    /// The phone's "Voice cues" switch: a wrist-only run speaks each completed km or mile.
+    var runVoiceCues: Bool? = nil
+    /// The phone's "Auto-pause" switch, the default for a run begun on the
+    /// wrist. Nil (an older phone build) reads as on.
+    var runAutoPause: Bool? = nil
+    /// Minutes between spoken check-ins, the default for a run begun on the wrist.
+    var runCheckInMinutes: Int? = nil
+    /// The pace range last used on the phone, in seconds per km, and the
+    /// heart-rate range; the start screen offers them as a starting point.
+    /// An alert is only ever on for the run it was chosen for.
+    var runPaceBand: WatchPaceBand? = nil
+    var runHeartRateBand: WatchHeartRateBand? = nil
+    /// Plans a wrist-only run can follow. Nil until the phone has said.
+    var runPlans: [WatchRunPlan]? = nil
+    /// Learned correction for the watch's indoor distance. Nil until the
+    /// phone has learned one, which reads as no correction.
+    var indoorDistanceScale: IndoorDistanceScale? = nil
 
     static let empty = WatchContext(
         today: nil,
@@ -436,6 +567,8 @@ struct WatchContext: Codable, Equatable {
     /// Whether the double-tap gesture logs a set. On until the phone says
     /// otherwise.
     var effectiveDoubleTapEnabled: Bool { doubleTapEnabled ?? true }
+
+    var effectiveRpeEnabled: Bool { rpeEnabled ?? false }
 
     /// Stale seeds are worse than no seed: every morning would start from a lie
     /// and the delta line would reassure falsely.

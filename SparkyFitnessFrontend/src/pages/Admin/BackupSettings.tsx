@@ -79,7 +79,12 @@ const BackupSettings: React.FC = () => {
               backupLocation={'/app/SparkyFitnessServer/backup'}
             />
           ) : (
-            <div className="p-4 text-red-500">Failed to load settings.</div>
+            <div className="p-4 text-red-500">
+              {t(
+                'admin.backupSettings.failedToLoadSettings',
+                'Failed to load settings.'
+              )}
+            </div>
           )}
         </AccordionContent>
       </AccordionItem>

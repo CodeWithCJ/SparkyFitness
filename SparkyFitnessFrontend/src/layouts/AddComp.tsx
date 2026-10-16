@@ -52,7 +52,7 @@ const AddComp: React.FC<AddCompProps> = ({
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-foreground/70 hover:text-foreground text-xl font-bold p-2 rounded-full hover:bg-muted-foreground/10 transition-colors"
-          aria-label="Close"
+          aria-label={t('common.close', 'Close')}
         >
           &times;
         </button>

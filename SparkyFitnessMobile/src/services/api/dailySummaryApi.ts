@@ -6,6 +6,7 @@ import type {
   CalorieBalance,
   SupplementTotals,
   WaterIntakeBreakdown,
+  AdjustedGoals,
 } from '@workspace/shared';
 
 export interface DailySummaryApiResponse {
@@ -21,12 +22,7 @@ export interface DailySummaryApiResponse {
   // Optional: a client can outrun the server it talks to, and supplement totals only exist
   // on servers new enough to send them.
   supplementTotals?: SupplementTotals;
-  adjustedGoals?: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  } | null;
+  adjustedGoals?: AdjustedGoals | null;
 }
 
 export const fetchDailySummary = (

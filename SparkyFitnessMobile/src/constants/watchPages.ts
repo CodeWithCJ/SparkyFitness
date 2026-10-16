@@ -10,9 +10,12 @@
 export const WATCH_PAGE_KEYS = [
   'goals',
   'water',
+  'medications',
   'entry',
   'trend',
   'workout',
+  'fasting',
+  'steps',
 ] as const;
 
 export type WatchPageKey = (typeof WATCH_PAGE_KEYS)[number];
@@ -30,11 +33,15 @@ export const WATCH_PAGE_LABELS: Record<
 > = {
   goals: (t) => t('watchSettings.pages.goals', { defaultValue: 'Goals' }),
   water: (t) => t('watchSettings.pages.water', { defaultValue: 'Water' }),
+  medications: (t) =>
+    t('watchSettings.pages.medications', { defaultValue: 'Medications' }),
   entry: (t) =>
     t('watchSettings.pages.entry', { defaultValue: 'Weight check-in' }),
   trend: (t) =>
     t('watchSettings.pages.trend', { defaultValue: 'Weight trend' }),
   workout: (t) => t('watchSettings.pages.workout', { defaultValue: 'Workout' }),
+  fasting: (t) => t('watchSettings.pages.fasting', { defaultValue: 'Fasting' }),
+  steps: (t) => t('watchSettings.pages.steps', { defaultValue: 'Steps' }),
 };
 
 /** What the watch's Goals page lists until the wearer picks: the three macros. */

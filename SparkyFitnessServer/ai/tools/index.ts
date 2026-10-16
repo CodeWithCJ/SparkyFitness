@@ -42,6 +42,7 @@ import { buildVisionTools } from './visionTools.js';
 import type { FoodPhotoEstimateSink } from './foodPhotoEstimateSink.js';
 import { buildWizardTools } from './wizardTools.js';
 import { buildWorkoutPlanTools } from './workoutPlanTools.js';
+import { buildRunProgramTools } from './runProgramTools.js';
 
 /**
  * Tool surfaces the chatbot can expose:
@@ -95,6 +96,7 @@ const CATEGORY_BUILDERS: Record<
     (u, tz) => buildExerciseTools(u, tz),
     (u, tz) => buildExerciseStatsTools(u, tz),
     (u, tz) => buildWorkoutPlanTools(u, tz),
+    (u, tz) => buildRunProgramTools(u, tz),
   ],
   food: [
     (_u, _tz, ctx): ToolMap =>

@@ -15,4 +15,3 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION public.assistant_plan_has_external_dependants(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.assistant_plan_has_external_dependants(uuid) TO PUBLIC;

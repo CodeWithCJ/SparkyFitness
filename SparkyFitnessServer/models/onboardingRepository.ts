@@ -131,12 +131,36 @@ async function setOnboardingSkipped(userId: any) {
     client.release();
   }
 }
+/**
+ * Sets or clears only the user's target weight, creating the onboarding row when the
+ * user skipped onboarding.
+ * @param userId - The UUID of the user.
+ * @param targetWeightKg - Target weight in kg, or null to clear it.
+ */
+async function setTargetWeight(userId: string, targetWeightKg: number | null) {
+  const client = await getClient(userId);
+  try {
+    await client.query(
+      `INSERT INTO onboarding_data (user_id, target_weight)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id) DO UPDATE SET target_weight = EXCLUDED.target_weight`,
+      [userId, targetWeightKg]
+    );
+  } catch (error) {
+    log('error', 'Error in setTargetWeight repository:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 export { saveOnboardingData };
+export { setTargetWeight };
 export { getOnboardingStatus };
 export { resetOnboardingStatus };
 export { setOnboardingSkipped };
 export default {
   saveOnboardingData,
+  setTargetWeight,
   getOnboardingStatus,
   resetOnboardingStatus,
   setOnboardingSkipped,

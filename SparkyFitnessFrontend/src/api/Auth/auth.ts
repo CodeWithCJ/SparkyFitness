@@ -7,6 +7,7 @@ import type {
 } from '@/types/auth';
 import { apiCall } from '../api';
 
+import i18n from 'i18next';
 interface AuthError extends Error {
   code?: string;
   status?: number;
@@ -69,7 +70,10 @@ export const registerUser = async (
   }
 
   return {
-    message: 'User registered successfully',
+    message: i18n.t(
+      'hooks.auth.userRegisteredSuccessfully',
+      'User registered successfully'
+    ),
     userId: authData?.user?.id,
     role: authData?.user?.role || 'user',
     fullName: authData?.user?.name || '',
@@ -113,7 +117,7 @@ export const loginUser = async (
   }
 
   return {
-    message: 'Login successful',
+    message: i18n.t('hooks.auth.loginSuccessful', 'Login successful'),
     userId: authData?.user?.id,
     role: authData?.user?.role || 'user',
     fullName: authData?.user?.name || '',
@@ -252,7 +256,9 @@ export const demoLogin = async (): Promise<AuthResponse> => {
   }
 
   return {
-    message: data.message || 'Demo login successful',
+    message:
+      data.message ||
+      i18n.t('hooks.auth.demoLoginSuccessful', 'Demo login successful'),
     userId: data.user.id,
     role: data.user.role || 'user',
     fullName: data.user.name || 'Demo User',

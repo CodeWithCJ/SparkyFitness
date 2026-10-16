@@ -1,0 +1,84 @@
+diff --git a/android/src/main/java/expo/modules/kotlin/AppContext.kt b/android/src/main/java/expo/modules/kotlin/AppContext.kt
+index 7bb61c680027d60c4ab79d91db5169589a512353..ea36a1d8b885444efac5dc87d1a2beea2c88b438 100644
+--- a/android/src/main/java/expo/modules/kotlin/AppContext.kt
++++ b/android/src/main/java/expo/modules/kotlin/AppContext.kt
+@@ -307,13 +307,14 @@ class AppContext(
+       "Current Activity is of incorrect class, expected AppCompatActivity, received ${currentActivity?.localClassName}"
+     }
+ 
++    activityResultsManager.onHostResume(activity)
++
+     // We need to re-register activity contracts when reusing AppContext with new Activity after host destruction.
+     if (hostWasDestroyed) {
+       hostWasDestroyed = false
+       registry.registerActivityContracts()
+     }
+ 
+-    activityResultsManager.onHostResume(activity)
+     registry.post(EventName.ACTIVITY_ENTERS_FOREGROUND)
+   }
+ 
+diff --git a/android/src/main/java/expo/modules/kotlin/activityresult/AppContextActivityResultRegistry.kt b/android/src/main/java/expo/modules/kotlin/activityresult/AppContextActivityResultRegistry.kt
+index a5b971ef8fdc06d064d68349a6ac7230b517a783..b4ea0d62bc72d5e276b7ce7308b8dc24553615e4 100644
+--- a/android/src/main/java/expo/modules/kotlin/activityresult/AppContextActivityResultRegistry.kt
++++ b/android/src/main/java/expo/modules/kotlin/activityresult/AppContextActivityResultRegistry.kt
+@@ -29,6 +29,7 @@ import expo.modules.kotlin.safeGetParcelable
+ import expo.modules.kotlin.safeGetParcelableExtra
+ import java.io.Serializable
+ import java.util.Random
++import java.util.concurrent.CountDownLatch
+ 
+ private const val TAG = "ActivityResultRegistry"
+ 
+@@ -221,7 +222,41 @@ class AppContextActivityResultRegistry(
+ 
+     return object : AppContextActivityResultLauncher<I, O>() {
+       override fun launch(input: I, callback: ActivityResultCallback<O>) {
+-        val requestCode = keyToRequestCode[key]
++        var requestCode = keyToRequestCode[key]
++        if (requestCode == null) {
++          val reRegister = {
++            val currentAct = currentActivityProvider.currentActivity as? AppCompatActivity
++            if (currentAct != null && !currentAct.isFinishing && !currentAct.isDestroyed) {
++              val newCode = generateRandomNumber()
++              requestCodeToKey[newCode] = key
++              keyToRequestCode[key] = newCode
++              if (keyToLifecycleContainers[key] == null) {
++                val newContainer = LifecycleContainer(currentAct.lifecycle)
++                newContainer.addObserver(observer)
++                keyToLifecycleContainers[key] = newContainer
++              }
++              requestCode = newCode
++            }
++          }
++          if (Looper.myLooper() == Looper.getMainLooper()) {
++            reRegister()
++          } else {
++            val latch = CountDownLatch(1)
++            var error: Throwable? = null
++            Handler(Looper.getMainLooper()).post {
++              try {
++                reRegister()
++              } catch (t: Throwable) {
++                error = t
++              } finally {
++                latch.countDown()
++              }
++            }
++            latch.await()
++            error?.let { throw it }
++          }
++        }
++        val finalRequestCode = requestCode
+           ?: throw IllegalStateException("Attempting to launch an unregistered ActivityResultLauncher with contract $contract and input $input. You must ensure the ActivityResultLauncher is registered before calling launch()")
+ 
+         keyToCallbacksAndContract[key] = CallbacksAndContract(fallbackCallback, callback, contract)
+@@ -229,7 +264,7 @@ class AppContextActivityResultRegistry(
+         launchedKeys.add(key)
+ 
+         try {
+-          onLaunch(requestCode, contract, input)
++          onLaunch(finalRequestCode, contract, input)
+         } catch (e: Exception) {
+           launchedKeys.remove(key)
+           throw e

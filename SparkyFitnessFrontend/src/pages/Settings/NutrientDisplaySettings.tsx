@@ -299,8 +299,12 @@ const NutrientDisplaySettingsInner: React.FC<
       } catch (error: unknown) {
         const message = getErrorMessage(error);
         toast({
-          title: 'Error',
-          description: `Failed to save ${pref.view_group} (${pref.platform}) preferences: ${message}`,
+          title: t('common.error', 'Error'),
+          description: t(
+            'settings.nutrientDisplaySettings.failedToSavePreferences',
+            'Failed to save {{view_group}} ({{platform}}) preferences: {{message}}',
+            { view_group: pref.view_group, platform: pref.platform, message }
+          ),
           variant: 'destructive',
         });
       }
@@ -311,6 +315,7 @@ const NutrientDisplaySettingsInner: React.FC<
     preferences,
     loadNutrientDisplayPreferences,
     updatePreference,
+    t,
   ]);
 
   useEffect(() => {
@@ -452,15 +457,23 @@ const NutrientDisplaySettingsInner: React.FC<
       } catch (error: unknown) {
         const message = getErrorMessage(error);
         toast({
-          title: 'Error',
-          description: `Failed to reset ${viewGroup} (${pform}) preferences: ${message}`,
+          title: t('common.error', 'Error'),
+          description: t(
+            'settings.nutrientDisplaySettings.failedToResetPreferences',
+            'Failed to reset {{viewGroup}} ({{pform}}) preferences: {{message}}',
+            { viewGroup, pform, message }
+          ),
           variant: 'destructive',
         });
       }
     }
     toast({
-      title: 'Success',
-      description: `Preferences for ${viewGroup} (${platformsToReset.join(' & ')}) have been reset to default.`,
+      title: t('common.success', 'Success'),
+      description: t(
+        'settings.nutrientDisplaySettings.preferencesReset',
+        'Preferences for {{viewGroup}} ({{platforms}}) have been reset to default.',
+        { viewGroup, platforms: platformsToReset.join(' & ') }
+      ),
     });
   };
 

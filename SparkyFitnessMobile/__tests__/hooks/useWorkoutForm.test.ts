@@ -959,6 +959,36 @@ describe('workoutFormReducer', () => {
       expect(bare.exercises[0].exerciseModality).toBeNull();
     });
 
+    it('carries snapshot equipment so dumbbell warm-ups can round to the dumbbell step', () => {
+      const state = makeEmptyDraft();
+      const session = makeSession({
+        exercises: [
+          {
+            exercise_id: 'ex-1',
+            exercise_snapshot: {
+              id: 'ex-1',
+              name: 'Curl',
+              category: 'Strength',
+              calories_per_hour: 200,
+              source: 'system',
+              equipment: ['dumbbell'],
+            },
+            duration_minutes: 10,
+            calories_burned: 40,
+            sets: [],
+          } as any,
+        ],
+      });
+      const result = workoutFormReducer(state, {
+        type: 'POPULATE',
+        session,
+        weightUnit: 'kg',
+        distanceUnit: 'km',
+      });
+      expect(result.exercises[0].exerciseEquipment).toEqual(['dumbbell']);
+      expect(result.exercises[0].snapshot?.equipment).toEqual(['dumbbell']);
+    });
+
     it('round-trips set_type, duration, notes, rpe, and completed_at into the draft so edit-saves cannot wipe them', () => {
       const state = makeEmptyDraft();
       const session = makeSession({
@@ -1675,6 +1705,27 @@ describe('workoutFormReducer', () => {
       expect(result.exercises[0].sets).toHaveLength(2);
       expect(result.exercises[0].sets[0].weight).toBe('100');
       expect(result.exercises[0].sets[0].reps).toBe('5');
+    });
+
+    it('carries preset equipment onto the draft', () => {
+      const state = makeEmptyDraft();
+      const preset = makePreset({
+        exercises: [
+          {
+            ...makePreset().exercises[0],
+            equipment: ['dumbbell'],
+          },
+        ],
+      });
+      const result = workoutFormReducer(state, {
+        type: 'POPULATE_FROM_PRESET',
+        preset,
+        weightUnit: 'kg',
+        distanceUnit: 'km',
+        date: '2026-03-20',
+        clientIds: presetClientIds(preset),
+      });
+      expect(result.exercises[0].exerciseEquipment).toEqual(['dumbbell']);
     });
 
     it('converts weight from kg to lbs', () => {

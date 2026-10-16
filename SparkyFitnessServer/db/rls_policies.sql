@@ -1063,7 +1063,6 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION public.assistant_recipe_has_dependants(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.assistant_recipe_has_dependants(uuid) TO PUBLIC;
 
 -- Plan creation undo may delete only its own unused template. This boolean
 -- guard includes references hidden by RLS and never exposes their identities.
@@ -1080,4 +1079,3 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION public.assistant_plan_has_external_dependants(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.assistant_plan_has_external_dependants(uuid) TO PUBLIC;

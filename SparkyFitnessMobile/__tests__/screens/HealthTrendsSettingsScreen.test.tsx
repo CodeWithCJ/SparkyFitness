@@ -66,7 +66,14 @@ describe('HealthTrendsSettingsScreen', () => {
 
   test('lists every registered trend in the saved order', () => {
     useAppPreferencesStore.setState({
-      healthTrendOrder: ['sleep', 'steps', 'weight', 'hydration', 'calories'],
+      healthTrendOrder: [
+        'sleep',
+        'steps',
+        'weight',
+        'hydration',
+        'calories',
+        'vo2max',
+      ],
     });
 
     renderScreen();
@@ -77,6 +84,7 @@ describe('HealthTrendsSettingsScreen', () => {
       'weight',
       'hydration',
       'calories',
+      'vo2max',
     ]);
     expect(orderedRowKeys()).toHaveLength(HEALTH_TREND_KEYS.length);
   });
@@ -112,6 +120,7 @@ describe('HealthTrendsSettingsScreen', () => {
       'sleep',
       'hydration',
       'calories',
+      'vo2max',
     ]);
   });
 

@@ -1,5 +1,6 @@
 import type {
   ExerciseActivityQueryResponse,
+  ExercisePRMatrixResponse,
   ExerciseEntryGpsPoints,
   ExerciseEntryHrZones,
   ExerciseEntryResponse,
@@ -63,6 +64,18 @@ export const fetchWorkoutGpsPoints = async (
   return response?.data ?? null;
 };
 
+/** Distance against active time for an entry with no route, or null. */
+export const fetchExerciseEntryDistanceSeries = async (
+  id: string
+): Promise<[number, number][] | null> => {
+  const response = await apiFetch<{ points: [number, number][] | null }>({
+    endpoint: `/api/exercise-entries/${encodeURIComponent(id)}/distance-series`,
+    serviceName: SERVICE,
+    operation: 'fetch workout distance series',
+  });
+  return response?.points ?? null;
+};
+
 export const fetchWorkoutHrZones = async (
   id: string
 ): Promise<ExerciseEntryHrZones[]> => {
@@ -90,3 +103,13 @@ export const fetchHeartRateSamples = async (
   });
   return response?.data ?? [];
 };
+
+/** Best efforts per sport and distance (cardio) plus estimated strength maxes. */
+export const fetchPersonalRecords = (
+  unitSystem: 'metric' | 'imperial'
+): Promise<ExercisePRMatrixResponse> =>
+  apiFetch<ExercisePRMatrixResponse>({
+    endpoint: `/api/exercise-stats/prs?unitSystem=${unitSystem}`,
+    serviceName: SERVICE,
+    operation: 'fetch personal records',
+  });

@@ -28,7 +28,7 @@ export default function SymptomSection({
       <CollapsibleTrigger className="flex w-full items-center justify-between py-3 text-left text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <span>{title}</span>
         <span className="flex items-center gap-2 text-xs font-normal text-muted-foreground">
-          {summary}
+          {summary ? <span>{summary}</span> : null}
           <ChevronDown
             className={cn('h-4 w-4 transition-transform', open && 'rotate-180')}
           />

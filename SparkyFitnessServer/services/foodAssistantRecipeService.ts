@@ -157,9 +157,19 @@ export async function importProviderIngredient(
     let selectedFood: z.infer<typeof foodSchema>;
     let selectedVariant: z.infer<typeof variantSchema>;
     if (existing) {
-      selectedFood = foodSchema.parse(
-        await foodRepository.getFoodById(existing.id, userId, client, true)
+      const reusedFood = await foodRepository.getFoodById(
+        existing.id,
+        userId,
+        client,
+        true
       );
+      selectedFood = foodSchema.parse(reusedFood);
+      if (reusedFood?.is_quick_food) {
+        await client.query(
+          'UPDATE foods SET is_quick_food = FALSE WHERE id = $1 AND user_id = $2',
+          [selectedFood.id, userId]
+        );
+      }
       const matching = selectedFood.variants.find(
         (variant) =>
           variant.source === 'imported' &&
@@ -477,7 +487,9 @@ export async function publishRecipe(
         before = mealSchema.parse(current);
         if (
           before.user_id !== userId ||
-          before.updated_at.toISOString() !== input.expected_meal_updated_at
+          !input.expected_meal_updated_at ||
+          before.updated_at.getTime() !==
+            new Date(input.expected_meal_updated_at).getTime()
         )
           throw new FoodAssistantConflict(
             'The recipe changed or belongs to another person. Read it again before editing.'
@@ -653,9 +665,16 @@ export async function undoRecipe(
           'That publication is not the current completed recipe task.'
         );
       const { before, after } = publication.data;
-      const current = mealSchema.parse(
-        await mealRepository.getMealById(after.id, userId, client)
+      const currentRow = await mealRepository.getMealById(
+        after.id,
+        userId,
+        client
       );
+      if (!currentRow)
+        throw new FoodAssistantConflict(
+          'The recipe changed or no longer exists. Undo cannot overwrite it.'
+        );
+      const current = mealSchema.parse(currentRow);
       if (
         current.user_id !== userId ||
         current.updated_at.getTime() !== after.updated_at.getTime() ||

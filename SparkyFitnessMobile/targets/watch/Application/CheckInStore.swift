@@ -26,6 +26,9 @@ final class CheckInStore: ObservableObject {
     /// Deletes confirmed on the watch but not yet written by the phone. Same
     /// lifecycle as `pendingWaterTaps`, and persisted for the same reason.
     @Published private(set) var pendingWaterDeletes: [PendingWaterDelete] = []
+    /// Doses ticked on the watch but not yet reflected in a pushed context.
+    /// Same lifecycle and persistence as `pendingWaterTaps`.
+    @Published private(set) var pendingMedicationTaps: [PendingMedicationTap] = []
 
     private let defaults = UserDefaults.standard
     private let contextKey = "sparky.watch.context"
@@ -33,6 +36,7 @@ final class CheckInStore: ObservableObject {
     private let lastCapturedKey = "sparky.watch.lastCaptured"
     private let pendingWaterKey = "sparky.watch.pendingWaterTaps"
     private let pendingWaterDeleteKey = "sparky.watch.pendingWaterDeletes"
+    private let pendingMedicationKey = "sparky.watch.pendingMedicationTaps"
 
     private init() {
         load()
@@ -196,6 +200,66 @@ final class CheckInStore: ObservableObject {
         pendingWaterTaps.filter { $0.state == .failed }
     }
 
+    // MARK: - Medications
+
+    /// Records a dose tick and returns the id to send to the phone. The caller
+    /// must use it as the tap's `clientId`: it is what the acknowledgement
+    /// names.
+    func recordMedicationTap(_ dose: MedicationDose, undo: Bool = false) -> String {
+        let id = UUID().uuidString
+        // A fresh tap supersedes an earlier failed one for the same slot;
+        // otherwise the failed one would keep the status pill red forever.
+        pendingMedicationTaps.removeAll { $0.doseId == dose.id && $0.state == .failed }
+        pendingMedicationTaps.append(
+            PendingMedicationTap(
+                id: id,
+                doseId: dose.id,
+                medicationId: dose.medicationId,
+                scheduleId: dose.scheduleId,
+                createdAt: Date(),
+                day: CheckInDate.today(),
+                state: .queued,
+                undo: undo ? true : nil
+            )
+        )
+        persist()
+        return id
+    }
+
+    /// Moves one tick to `.saved` or `.failed` once the phone reports on it.
+    /// Unknown ids are ignored.
+    func markMedicationTap(_ clientId: String, _ state: SyncState) {
+        guard let index = pendingMedicationTaps.firstIndex(where: { $0.id == clientId }) else { return }
+        guard pendingMedicationTaps[index].state != state else { return }
+        pendingMedicationTaps[index].state = state
+        persist()
+    }
+
+    /// Today's tick or un-tick for a dose slot that has not failed, if any. The
+    /// latest wins, so a tap followed by an undo reads as not taken.
+    func medicationTap(for doseId: String) -> PendingMedicationTap? {
+        pendingMedicationTaps.last { $0.doseId == doseId && $0.isToday && $0.state != .failed }
+    }
+
+    /// Ticks the phone reported as failed, for the retry path.
+    var retryableMedicationTaps: [PendingMedicationTap] {
+        pendingMedicationTaps.filter { $0.state == .failed }
+    }
+
+    /// Ticks still waiting on the phone, for the resend path.
+    var queuedMedicationTaps: [PendingMedicationTap] {
+        pendingMedicationTaps.filter { $0.state == .queued }
+    }
+
+    /// What the Medications page's status pill shows: the worst outstanding
+    /// state, same reduction as `waterSyncState`.
+    var medicationSyncState: SyncState {
+        let states = pendingMedicationTaps.map(\.state)
+        if states.contains(.failed) { return .failed }
+        if states.contains(.queued) { return .queued }
+        return .saved
+    }
+
     // MARK: - Phone updates
 
     func apply(context incoming: WatchContext) {
@@ -217,10 +281,12 @@ final class CheckInStore: ObservableObject {
         for clientId in incoming.ackedClientIds {
             markWaterTap(clientId, .saved)
             markWaterDelete(clientId, .saved)
+            markMedicationTap(clientId, .saved)
         }
         for clientId in incoming.failedClientIds {
             markWaterTap(clientId, .failed)
             markWaterDelete(clientId, .failed)
+            markMedicationTap(clientId, .failed)
         }
 
         // Then settle the resolved ones. A total the phone built after the tap
@@ -263,6 +329,17 @@ final class CheckInStore: ObservableObject {
                 // reason with, so settle everything already resolved.
                 pendingWaterTaps.removeAll { $0.state != .queued }
                 pendingWaterDeletes.removeAll { $0.state != .queued }
+            }
+        }
+
+        // Resolved ticks settle once a today-snapshot built after them has had
+        // its chance to show the dose as taken — same rule as water taps. A
+        // `.queued` tick waits for its ack: it has no evidence either way.
+        if context.medications?.isToday == true {
+            if let generatedAt = context.generatedAt {
+                pendingMedicationTaps.removeAll { $0.state != .queued && $0.createdAt <= generatedAt }
+            } else {
+                pendingMedicationTaps.removeAll { $0.state != .queued }
             }
         }
 
@@ -372,6 +449,17 @@ final class CheckInStore: ObservableObject {
             context.water = nil
             changed = true
         }
+        if let medications = context.medications, !medications.isToday {
+            context.medications = nil
+            changed = true
+        }
+        // Yesterday's ticks belong to yesterday's slots; today's slots are new.
+        // A queued one is kept: it is a write to yesterday's entry that still
+        // has to reach the phone (`resend` sends it under `tap.day`).
+        if pendingMedicationTaps.contains(where: { !$0.isToday && $0.state != .queued }) {
+            pendingMedicationTaps.removeAll { !$0.isToday && $0.state != .queued }
+            changed = true
+        }
         // Yesterday's unconfirmed taps are yesterday's problem — carrying them
         // into a new day would show a bottle part-full before a drop was drunk.
         // Keyed on each tap's own day, not on the water snapshot: an unsynced
@@ -410,6 +498,9 @@ final class CheckInStore: ObservableObject {
         if let data = try? encoder.encode(pendingWaterDeletes) {
             defaults.set(data, forKey: pendingWaterDeleteKey)
         }
+        if let data = try? encoder.encode(pendingMedicationTaps) {
+            defaults.set(data, forKey: pendingMedicationKey)
+        }
     }
 
     private func load() {
@@ -435,6 +526,10 @@ final class CheckInStore: ObservableObject {
         if let data = defaults.data(forKey: pendingWaterDeleteKey),
            let decoded = try? decoder.decode([PendingWaterDelete].self, from: data) {
             pendingWaterDeletes = decoded
+        }
+        if let data = defaults.data(forKey: pendingMedicationKey),
+           let decoded = try? decoder.decode([PendingMedicationTap].self, from: data) {
+            pendingMedicationTaps = decoded
         }
 
         // What was just restored may describe a day that has since ended —

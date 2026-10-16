@@ -142,7 +142,7 @@ interface ActiveWorkoutSetRowProps {
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
   /**
-   * Hevy-style PREVIOUS column: this set's counterpart (by position) in the
+   * Hevy-style PREVIOUS column: this set's counterpart (warm-ups with warm-ups, working sets with working sets, each by position) in the
    * exercise's most recent prior session. `null` renders a dash (no history
    * or fewer sets last time); leave it `undefined` to omit the column
    * entirely (view mode). Tapping the value copies its weight/reps into the

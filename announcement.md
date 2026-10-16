@@ -1,26 +1,17 @@
 ---
-id: 20260903-sparkyfitness-weblate
+id: 20261012-sparkyfitness-sponsorship
 active: true
-title: SparkyFitness Translations! 🌟
+title: SparkyFitness Sponsorship! 🌟
 ---
 
-## 🌍 SparkyFitness Translations Have Moved!
+## 🌍 Please cancel your Github & Ko-fi Sponsorship if you are a sponsor
 
-I’ve moved SparkyFitness translations to our new dedicated translation platform:
+## Please skip this if you are not a active sponsor, 
 
-👉 https://weblate.sparkyfitness.com/engage/sparkyfitness/
 
-Previously, SparkyFitness translations were hosted on a shared Weblate instance. As the project grew, we ran into the instance’s translation limits, especially as we expanded support for the **SparkyFitness mobile apps**.
+Thank you so much for sponsoring the project! 🙏 I really appreciate your support. Could you please cancel your active sponsorship for now?
 
-To make sure we can continue adding and maintaining translations across **Web and Mobile**, I’ve now set up a **dedicated Weblate instance exclusively for SparkyFitness**.
+I'll be pausing sponsorships for the next few months and plan to enable them again in the future. Thanks for your understanding and for supporting SparkyFitness!
 
-This gives us much more room to grow and makes it easier to keep translations synchronized across the entire SparkyFitness ecosystem.
-
-### 💙 Want to help translate SparkyFitness?
-
-Visit the translation page and help make SparkyFitness accessible to more users around the world:
-
-👉 https://weblate.sparkyfitness.com/engage/sparkyfitness/
-
-Thank you to everyone who has contributed translations so far! 🙏
+Meanwhile you can support the project in otherways such as reporting bug, raising enhancement request, submitting PR, updating documentation or helping other members etc. 
 

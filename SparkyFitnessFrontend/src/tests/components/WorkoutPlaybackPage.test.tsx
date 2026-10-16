@@ -16,9 +16,8 @@ jest.mock('react-i18next', () => ({
       defaultValue?: string,
       values?: Record<string, string | number>
     ) =>
-      (defaultValue || key).replace(
-        '{{setNumber}}',
-        String(values?.['setNumber'] ?? '{{setNumber}}')
+      (defaultValue || key).replace(/\{\{(\w+)\}\}/g, (match, name) =>
+        String(values?.[name] ?? match)
       ),
   }),
 }));

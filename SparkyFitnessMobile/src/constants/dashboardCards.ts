@@ -5,12 +5,14 @@ export const DASHBOARD_CARD_KEYS = [
   'askSparky',
   'macros',
   'exercise',
+  'trainingLoad',
   'hydration',
   'caffeine',
   'fasting',
   'cycle',
   'medications',
   'symptoms',
+  'mood',
   'progressPhotos',
   'healthTrends',
   'mindfulness',
@@ -29,6 +31,8 @@ export const DASHBOARD_CARD_TITLES: Record<
   macros: (t) => t('dashboardSettings.macros', { defaultValue: 'Nutrients' }),
   exercise: (t) =>
     t('dashboardSettings.exercise', { defaultValue: 'Exercise Progress' }),
+  trainingLoad: (t) =>
+    t('dashboardSettings.trainingLoad', { defaultValue: 'Training Load' }),
   hydration: (t) =>
     t('dashboardSettings.hydration', { defaultValue: 'Hydration' }),
   caffeine: (t) =>
@@ -42,6 +46,7 @@ export const DASHBOARD_CARD_TITLES: Record<
     t('dashboardSettings.medications', { defaultValue: 'Medications' }),
   symptoms: (t) =>
     t('dashboardSettings.symptoms', { defaultValue: 'Symptoms' }),
+  mood: (t) => t('dashboardSettings.mood', { defaultValue: 'Mood' }),
   progressPhotos: (t) =>
     t('dashboardSettings.progressPhotos', {
       defaultValue: 'Progress Photos',
@@ -72,6 +77,11 @@ export const DASHBOARD_CARD_SUBTITLES: Record<
     t('dashboardSettings.exerciseSubtitle', {
       defaultValue: 'Show exercise minutes and calorie burn targets',
     }),
+  trainingLoad: (t) =>
+    t('dashboardSettings.trainingLoadSubtitle', {
+      defaultValue:
+        'Show this week against your usual training, with a nudge to rest',
+    }),
   hydration: (t) =>
     t('dashboardSettings.hydrationSubtitle', {
       defaultValue: 'Show the hydration card on the Dashboard',
@@ -95,6 +105,10 @@ export const DASHBOARD_CARD_SUBTITLES: Record<
   symptoms: (t) =>
     t('dashboardSettings.symptomsSubtitle', {
       defaultValue: 'Show symptom status, active episodes, and quick logging',
+    }),
+  mood: (t) =>
+    t('dashboardSettings.moodSubtitle', {
+      defaultValue: "Show today's mood, a 7-day trend, and quick logging",
     }),
   progressPhotos: (t) =>
     t('dashboardSettings.progressPhotosSubtitle', {

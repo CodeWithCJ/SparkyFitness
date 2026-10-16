@@ -336,7 +336,10 @@ const UserManagement: React.FC = () => {
                           onSort={handleSortChange}
                         />
                         <SortableHead
-                          label="Email MFA"
+                          label={t(
+                            'admin.userManagement.emailMFA',
+                            'Email MFA'
+                          )}
                           col="mfa_email_enabled"
                           currentSort={sortBy}
                           sortOrder={sortOrder}
@@ -488,7 +491,8 @@ const SortableHead = ({
       onSort(col);
     }}
   >
-    {label} {currentSort === col && (sortOrder === 'asc' ? '▲' : '▼')}
+    {label}{' '}
+    {currentSort === col && <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>}
   </TableHead>
 );
 

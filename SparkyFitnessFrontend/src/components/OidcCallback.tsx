@@ -5,6 +5,7 @@ import { authClient } from '../lib/auth-client';
 import { useAuth } from '../hooks/useAuth';
 import { getErrorMessage } from '@/utils/api';
 
+import { useTranslation } from 'react-i18next';
 interface ExtendedAuthUser {
   id: string;
   email: string;
@@ -13,6 +14,7 @@ interface ExtendedAuthUser {
 }
 
 const OidcCallback: React.FC = () => {
+  const { t } = useTranslation();
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { signIn } = useAuth();
@@ -65,10 +67,19 @@ const OidcCallback: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center flex-col gap-4">
-      <h1 className="text-xl font-semibold">Completing Secure Login...</h1>
-      {error && <p className="text-red-500 font-medium">Error: {error}</p>}
+      <h1 className="text-xl font-semibold">
+        {t('oidcCallback.completingSecureLogin', 'Completing Secure Login...')}
+      </h1>
+      {error && (
+        <p className="text-red-500 font-medium">
+          {t('oidcCallback.error', 'Error: {{error}}', { error })}
+        </p>
+      )}
       <p className="text-muted-foreground italic">
-        Please wait while we finalize your session.
+        {t(
+          'oidcCallback.pleaseWaitWhileWeFinalize',
+          'Please wait while we finalize your session.'
+        )}
       </p>
     </div>
   );

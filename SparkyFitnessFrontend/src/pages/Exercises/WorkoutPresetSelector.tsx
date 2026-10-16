@@ -139,7 +139,9 @@ const WorkoutPresetSelector: React.FC<WorkoutPresetSelectorProps> = ({
             }
           >
             <SelectTrigger className="w-32 h-11 border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900 rounded-xl focus:ring-blue-500">
-              <SelectValue placeholder="All" />
+              <SelectValue
+                placeholder={t('exercises.workoutPresetSelector.all', 'All')}
+              />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">
@@ -248,6 +250,7 @@ const PresetSelectionCard: React.FC<{
   preset: WorkoutPreset;
   onClick: () => void;
 }> = ({ preset, onClick }) => {
+  const { t } = useTranslation();
   const exerciseCount = preset.exercises?.length ?? 0;
 
   return (
@@ -267,7 +270,12 @@ const PresetSelectionCard: React.FC<{
               {exerciseCount > 0 && (
                 <span className="flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800">
                   {exerciseCount}{' '}
-                  {exerciseCount === 1 ? 'Exercise' : 'Exercises'}
+                  {exerciseCount === 1
+                    ? t('exercises.workoutPresetSelector.exercise', 'Exercise')
+                    : t(
+                        'exercises.workoutPresetSelector.exercises',
+                        'Exercises'
+                      )}
                 </span>
               )}
             </div>
@@ -284,7 +292,7 @@ const PresetSelectionCard: React.FC<{
               <div className="flex items-center gap-1 text-gray-300 dark:text-gray-700">
                 <Layers className="w-3 h-3" />
                 <span className="text-[10px] font-medium uppercase tracking-wider">
-                  Preset
+                  {t('exercises.workoutPresetSelector.preset', 'Preset')}
                 </span>
               </div>
             </div>

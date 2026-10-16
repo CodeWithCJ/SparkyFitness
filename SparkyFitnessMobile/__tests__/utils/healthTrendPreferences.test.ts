@@ -6,7 +6,14 @@ import {
 
 describe('resolveHealthTrendOrder', () => {
   test('returns a saved order verbatim when it covers every registered key', () => {
-    const savedOrder = ['sleep', 'steps', 'hydration', 'weight', 'calories'];
+    const savedOrder = [
+      'sleep',
+      'steps',
+      'hydration',
+      'weight',
+      'calories',
+      'vo2max',
+    ];
 
     expect(resolveHealthTrendOrder(savedOrder)).toEqual(savedOrder);
   });
@@ -20,6 +27,7 @@ describe('resolveHealthTrendOrder', () => {
       'sleep',
       'hydration',
       'calories',
+      'vo2max',
     ]);
   });
 
@@ -33,6 +41,7 @@ describe('resolveHealthTrendOrder', () => {
       'sleep',
       'hydration',
       'calories',
+      'vo2max',
     ]);
   });
 
@@ -46,6 +55,7 @@ describe('resolveHealthTrendOrder', () => {
       'sleep',
       'hydration',
       'calories',
+      'vo2max',
     ]);
   });
 

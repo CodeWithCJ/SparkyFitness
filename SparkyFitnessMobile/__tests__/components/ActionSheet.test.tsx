@@ -15,6 +15,7 @@ const mockModal: {
   dismiss: jest.Mock;
   props: {
     onAnimate?: (from: number, to: number) => void;
+    onChange?: (index: number) => void;
     onDismiss?: () => void;
   } | null;
 } = { present: jest.fn(), dismiss: jest.fn(), props: null };
@@ -246,6 +247,30 @@ describe('ActionSheet', () => {
     // Open state clears on the terminal onDismiss, releasing the listener.
     fireDismissed();
     expect(remove).toHaveBeenCalled();
+    osSpy.restore();
+  });
+
+  it('takes Android hardware back when the open reports only onChange', () => {
+    // With Android's "Remove animations" the open finishes before onAnimate
+    // reaches JS and the library drops it; onChange still arrives.
+    const osSpy = jest.replaceProperty(Platform, 'OS', 'android');
+    const listeners: (() => boolean)[] = [];
+    const addEventListenerSpy = jest
+      .spyOn(BackHandler, 'addEventListener')
+      .mockImplementation(((_event: string, handler: () => boolean) => {
+        listeners.push(handler);
+        return { remove: jest.fn() };
+      }) as typeof BackHandler.addEventListener);
+
+    const { ref } = renderSheet();
+    act(() => ref.current?.present());
+    act(() => mockModal.props?.onChange?.(0));
+    expect(listeners).toHaveLength(1);
+
+    expect(listeners[0]()).toBe(true);
+    expect(mockModal.dismiss).toHaveBeenCalledTimes(1);
+
+    addEventListenerSpy.mockRestore();
     osSpy.restore();
   });
 });

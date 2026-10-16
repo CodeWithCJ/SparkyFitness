@@ -246,7 +246,7 @@ const SyncRangeDialog = ({
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {startDate ? (
-                      format(startDate, 'PP')
+                      <span>{format(startDate, 'PP')}</span>
                     ) : (
                       <span>{t('common.pickADate', 'Pick a date')}</span>
                     )}
@@ -282,7 +282,7 @@ const SyncRangeDialog = ({
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {endDate ? (
-                      format(endDate, 'PP')
+                      <span>{format(endDate, 'PP')}</span>
                     ) : (
                       <span>{t('common.pickADate', 'Pick a date')}</span>
                     )}

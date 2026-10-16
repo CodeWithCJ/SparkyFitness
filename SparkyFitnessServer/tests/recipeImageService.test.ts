@@ -29,6 +29,34 @@ beforeEach(() => {
     custom_url: null,
   });
 });
+it('prefers the independently configured vision service over the text chat service', async () => {
+  vi.mocked(
+    chatRepository.getActiveVisionAiServiceSetting
+  ).mockResolvedValueOnce({ id: 'vision' });
+  vi.mocked(dispatchAiRequest).mockResolvedValueOnce({
+    ok: true,
+    text: '',
+    json: {
+      name: null,
+      yield: null,
+      instructions: null,
+      ingredients: ['Flour'],
+      issues: [],
+    },
+  });
+  await readRecipeImage('owner', image, 'text-only');
+  expect(chatRepository.getAiServiceSettingForBackend).toHaveBeenCalledWith(
+    'vision',
+    'owner'
+  );
+});
+it('rejects more than 8 MiB of decoded image data before making a request', async () => {
+  const tooLarge = `data:image/png;base64,${Buffer.alloc(8 * 1024 * 1024 + 1).toString('base64')}`;
+  await expect(readRecipeImage('owner', tooLarge, 'vision')).rejects.toThrow(
+    'at most 8 MB'
+  );
+  expect(dispatchAiRequest).not.toHaveBeenCalled();
+});
 it('transcribes only the attached image with the selected model and preserves unreadable ingredient lines', async () => {
   const source = {
     name: 'Bread',

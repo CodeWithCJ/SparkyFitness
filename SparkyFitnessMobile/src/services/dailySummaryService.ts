@@ -17,6 +17,7 @@ import type {
   CalorieBalance,
   SupplementTotals,
   WaterIntakeBreakdown,
+  AdjustedGoals,
 } from '@workspace/shared';
 import {
   resolveSupplementTotals,
@@ -33,12 +34,7 @@ export interface DailySummaryRawData {
   stepCalories: number;
   calorieBalance?: CalorieBalance;
   supplementTotals?: SupplementTotals;
-  adjustedGoals?: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-  } | null;
+  adjustedGoals?: AdjustedGoals | null;
 }
 
 export async function loadDailySummaryRawData(
@@ -115,6 +111,7 @@ export function buildDailySummary(
     exerciseMinutes,
     exerciseMinutesGoal: goals.target_exercise_duration_minutes || 0,
     exerciseCaloriesGoal: goals.target_exercise_calories_burned || 0,
+    stepsGoal: goals.target_steps || 0,
     netCalories,
     remainingCalories,
     protein: {
@@ -134,7 +131,7 @@ export function buildDailySummary(
       goal: goals.dietary_fiber || 0,
     },
     waterConsumed: waterIntake.water_ml || 0,
-    waterGoal: goals.water_goal_ml ?? 2500,
+    waterGoal: adjustedGoals?.water_goal_ml ?? goals.water_goal_ml ?? 2500,
     waterFromFood: Number(waterIntakeBreakdown?.food_ml) || 0,
     foodEntries,
     supplementTotals: supplements,
