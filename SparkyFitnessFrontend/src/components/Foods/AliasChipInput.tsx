@@ -2,6 +2,7 @@ import type React from 'react';
 import { useState } from 'react';
 import { X } from 'lucide-react';
 
+import { useTranslation } from 'react-i18next';
 // Chip/tag input for nutrient aliases. Each alias is a discrete token added on
 // Enter, so a provider label that itself contains a comma (e.g. "Magnesium, Mg")
 // stays a single alias instead of being split into two.
@@ -10,6 +11,7 @@ export const AliasChipInput: React.FC<{
   onChange: (value: string[]) => void;
   placeholder?: string;
 }> = ({ value, onChange, placeholder }) => {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
   const commit = () => {
     const trimmed = input.trim();
@@ -31,7 +33,9 @@ export const AliasChipInput: React.FC<{
           {alias}
           <button
             type="button"
-            aria-label={`Remove ${alias}`}
+            aria-label={t('foods.aliasChipInput.remove', 'Remove {{alias}}', {
+              alias,
+            })}
             onClick={() => onChange(value.filter((a) => a !== alias))}
             className="text-muted-foreground hover:text-foreground"
           >

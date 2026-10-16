@@ -749,6 +749,12 @@ async function getPersonalRecordMatrix(
     }
 
     for (const sportGroup of PR_SPORT_GROUPS) {
+      // The bands are running distances. A sport with no distance standard of
+      // its own (skiing, rowing machines, anything classified as 'other') would
+      // otherwise be ranked against them: a fast downhill run becomes a
+      // marathon record. Such efforts only ever surface as the single
+      // best-effort card below.
+      if (sportGroup === 'other') continue;
       for (const [stdKey, stdConfig] of standardEntries) {
         const candidate = bestBySportAndStandard.get(`${sportGroup}:${stdKey}`);
         if (!candidate) continue;

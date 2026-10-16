@@ -1,3 +1,4 @@
+import i18n from 'i18next';
 export interface DietTemplate {
   id: string;
   name: string;
@@ -11,7 +12,12 @@ export const DIET_TEMPLATES: DietTemplate[] = [
   {
     id: 'balanced',
     name: 'Balanced',
-    description: 'Well-rounded nutrition for general health',
+    get description() {
+      return i18n.t(
+        'dietTemplates.wellRoundedNutritionForGeneral',
+        'Well-rounded nutrition for general health'
+      );
+    },
     carbsPercentage: 45,
     proteinPercentage: 20,
     fatPercentage: 35,
@@ -19,7 +25,12 @@ export const DIET_TEMPLATES: DietTemplate[] = [
   {
     id: 'mediterranean',
     name: 'Mediterranean',
-    description: 'Heart-healthy with healthy fats',
+    get description() {
+      return i18n.t(
+        'dietTemplates.heartHealthyWithHealthyFats',
+        'Heart-healthy with healthy fats'
+      );
+    },
     carbsPercentage: 50,
     proteinPercentage: 15,
     fatPercentage: 35,
@@ -27,7 +38,12 @@ export const DIET_TEMPLATES: DietTemplate[] = [
   {
     id: 'dash',
     name: 'DASH',
-    description: 'Dietary Approaches to Stop Hypertension',
+    get description() {
+      return i18n.t(
+        'dietTemplates.dietaryApproachesToStopHypertension',
+        'Dietary Approaches to Stop Hypertension'
+      );
+    },
     carbsPercentage: 55,
     proteinPercentage: 18,
     fatPercentage: 27,
@@ -35,7 +51,12 @@ export const DIET_TEMPLATES: DietTemplate[] = [
   {
     id: 'atkins',
     name: 'Atkins',
-    description: 'Very low carb, high fat',
+    get description() {
+      return i18n.t(
+        'dietTemplates.veryLowCarbHighFat',
+        'Very low carb, high fat'
+      );
+    },
     carbsPercentage: 10,
     proteinPercentage: 30,
     fatPercentage: 60,
@@ -43,7 +64,12 @@ export const DIET_TEMPLATES: DietTemplate[] = [
   {
     id: 'low_fat',
     name: 'Low Fat',
-    description: 'High carb, minimal fat',
+    get description() {
+      return i18n.t(
+        'dietTemplates.highCarbMinimalFat',
+        'High carb, minimal fat'
+      );
+    },
     carbsPercentage: 70,
     proteinPercentage: 20,
     fatPercentage: 10,
@@ -51,7 +77,9 @@ export const DIET_TEMPLATES: DietTemplate[] = [
   {
     id: 'low_carb',
     name: 'Low Carb / Keto',
-    description: 'Ketogenic-style diet',
+    get description() {
+      return i18n.t('dietTemplates.ketogenicStyleDiet', 'Ketogenic-style diet');
+    },
     carbsPercentage: 5,
     proteinPercentage: 20,
     fatPercentage: 75,
@@ -59,7 +87,12 @@ export const DIET_TEMPLATES: DietTemplate[] = [
   {
     id: 'custom',
     name: 'Custom',
-    description: 'Set your own percentages',
+    get description() {
+      return i18n.t(
+        'dietTemplates.setYourOwnPercentages',
+        'Set your own percentages'
+      );
+    },
     carbsPercentage: 40,
     proteinPercentage: 30,
     fatPercentage: 30,

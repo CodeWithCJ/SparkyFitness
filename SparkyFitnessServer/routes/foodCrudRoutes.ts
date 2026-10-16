@@ -17,6 +17,7 @@ import labelScanService, {
 } from '../services/labelScanService.js';
 import foodPhotoEstimationService from '../services/foodPhotoEstimationService.js';
 import type { FoodPhotoEstimateErrorCode } from '@workspace/shared';
+import { isPublicFoodProvider } from '@workspace/shared';
 import { backfillOffAllergens } from '../utils/backfillAllergens.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
 import {
@@ -1299,12 +1300,7 @@ router.post(
         typeof activeProviders[0]?.id === 'string'
           ? activeProviders[0].id
           : undefined;
-      if (
-        food.provider_type !== 'openfoodfacts' &&
-        food.provider_type !== 'swissfood' &&
-        food.provider_type !== 'canadian-nutrient-file' &&
-        !providerId
-      ) {
+      if (!isPublicFoodProvider(food.provider_type) && !providerId) {
         return res.status(400).json({
           error: `No active ${food.provider_type} provider is configured.`,
         });

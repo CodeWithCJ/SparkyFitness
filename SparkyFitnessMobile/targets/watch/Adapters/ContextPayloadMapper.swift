@@ -84,7 +84,19 @@ enum ContextPayloadMapper {
             fastSynced: fastKnown(in: payload) ? true : previous.fastSynced,
             steps: steps(from: payload["steps"]),
             stepGoal: (payload["stepGoal"] as? NSNumber)?.intValue ?? previous.stepGoal,
-            runVoiceCues: payload["runVoiceCues"] as? Bool ?? previous.runVoiceCues
+            runVoiceCues: payload["runVoiceCues"] as? Bool ?? previous.runVoiceCues,
+            runAutoPause: payload["runAutoPause"] as? Bool ?? previous.runAutoPause,
+            runCheckInMinutes: (payload["runCheckInMinutes"] as? NSNumber)?.intValue ?? previous.runCheckInMinutes,
+            runPaceBand: WatchPaceBand.normalized(
+                min: (payload["runPaceMinSecondsPerKm"] as? NSNumber)?.doubleValue,
+                max: (payload["runPaceMaxSecondsPerKm"] as? NSNumber)?.doubleValue
+            ) ?? previous.runPaceBand,
+            runHeartRateBand: WatchHeartRateBand.normalized(
+                min: (payload["runHeartRateMinBpm"] as? NSNumber)?.doubleValue,
+                max: (payload["runHeartRateMaxBpm"] as? NSNumber)?.doubleValue
+            ) ?? previous.runHeartRateBand,
+            runPlans: runPlans(from: payload) ?? previous.runPlans,
+            indoorDistanceScale: indoorDistanceScale(from: payload) ?? previous.indoorDistanceScale
         )
     }
 
@@ -139,6 +151,112 @@ enum ContextPayloadMapper {
             else { return nil }
             return SuggestedExercise(exerciseId: exerciseId, name: name)
         }
+    }
+
+    /// Nil when the key is absent so an older push keeps the list; empty is a real answer.
+    /// `{walk, run}` factors; nil when the phone sent none.
+    static func indoorDistanceScale(from payload: [String: Any]) -> IndoorDistanceScale? {
+        guard let raw = payload["indoorDistanceScale"] as? [String: Any] else { return nil }
+        let walk = (raw["walk"] as? NSNumber)?.doubleValue ?? 1
+        let run = (raw["run"] as? NSNumber)?.doubleValue ?? 1
+        return IndoorDistanceScale(walk: walk, run: run)
+    }
+
+    static func runPlans(from payload: [String: Any]) -> [WatchRunPlan]? {
+        guard let raw = payload["runPlans"] else { return nil }
+        let rows = dictionaryArray(raw) ?? []
+        return rows.compactMap { runPlan(from: $0) }
+    }
+
+    /// One plan from the phone, as a row of `runPlans` or the `plan` of a start
+    /// request. Nil when it has no name or no readable step.
+    static func runPlan(from row: [String: Any]) -> WatchRunPlan? {
+        guard
+            let id = row["id"] as? String, !id.isEmpty,
+            let name = row["name"] as? String, !name.isEmpty
+        else { return nil }
+        let steps: [WatchRunPlan.Step] = (dictionaryArray(row["steps"]) ?? []).compactMap { step in
+            guard
+                let label = step["label"] as? String,
+                let seconds = (step["seconds"] as? NSNumber)?.doubleValue, seconds > 0
+            else { return nil }
+            let meters = (step["meters"] as? NSNumber)?.doubleValue
+            return WatchRunPlan.Step(
+                label: label,
+                seconds: seconds,
+                pace: WatchPaceBand.normalized(
+                    min: (step["paceMin"] as? NSNumber)?.doubleValue,
+                    max: (step["paceMax"] as? NSNumber)?.doubleValue
+                ),
+                heartRate: WatchHeartRateBand.normalized(
+                    min: (step["hrMin"] as? NSNumber)?.doubleValue,
+                    max: (step["hrMax"] as? NSNumber)?.doubleValue
+                ),
+                meters: meters.flatMap { $0 > 0 ? $0 : nil },
+                unit: (step["unit"] as? String) == "mi" ? "mi" : nil
+            )
+        }
+        guard !steps.isEmpty else { return nil }
+        return WatchRunPlan(
+            id: id,
+            name: name,
+            programId: row["programId"] as? String,
+            programIndex: (row["programIndex"] as? NSNumber)?.intValue,
+            steps: steps,
+            activity: row["activity"] as? String,
+            startText: row["startText"] as? String,
+            doneText: row["doneText"] as? String
+        )
+    }
+
+    /// The phone asking the watch to record a walk or run. Nil when it cannot
+    /// be understood; a plan that cannot be read just means no plan.
+    static func runStartRequest(from payload: [String: Any]) -> WatchRunStartRequest? {
+        guard
+            let requestId = payload["requestId"] as? String, !requestId.isEmpty,
+            let kindRaw = payload["kind"] as? String, let kind = WatchRunKind(rawValue: kindRaw),
+            let placeRaw = payload["place"] as? String, let place = WatchRunPlace(rawValue: placeRaw)
+        else { return nil }
+        let at = (payload["requestedAt"] as? NSNumber)?.doubleValue ?? 0
+        return WatchRunStartRequest(
+            requestId: requestId,
+            kind: kind,
+            place: place,
+            requestedAt: Date(timeIntervalSince1970: at / 1000),
+            plan: (payload["plan"] as? [String: Any]).flatMap { runPlan(from: $0) },
+            settings: runSettings(from: payload)
+        )
+    }
+
+    /// The switches a start request carries; nil unless both are there.
+    static func runSettings(from payload: [String: Any]) -> WatchRunSettings? {
+        guard let autoPause = payload["autoPause"] as? Bool,
+              let voiceCues = payload["voiceCues"] as? Bool
+        else { return nil }
+        return WatchRunSettings(
+            autoPause: autoPause,
+            voiceCues: voiceCues,
+            paceBand: WatchPaceBand.normalized(
+                min: (payload["paceMin"] as? NSNumber)?.doubleValue,
+                max: (payload["paceMax"] as? NSNumber)?.doubleValue
+            ),
+            heartRateBand: WatchHeartRateBand.normalized(
+                min: (payload["hrMin"] as? NSNumber)?.doubleValue,
+                max: (payload["hrMax"] as? NSNumber)?.doubleValue
+            ),
+            checkInMinutes: (payload["checkInMinutes"] as? NSNumber)?.intValue
+        )
+    }
+
+    /// A pause, resume, lap, finish or discard sent from the phone's live view,
+    /// or a switch change (`autoPauseOn`/`Off`, `voiceCuesOn`/`Off`, `paceAlertOn`/`Off`, `heartRateAlertOn`/`Off`).
+    static func runControl(from payload: [String: Any]) -> (runId: String, action: String, controlId: String)? {
+        guard
+            let runId = payload["runId"] as? String, !runId.isEmpty,
+            let action = payload["action"] as? String, !action.isEmpty,
+            let controlId = payload["controlId"] as? String, !controlId.isEmpty
+        else { return nil }
+        return (runId, action, controlId)
     }
 
     /// Same rule as `startableWorkouts`: nil when the key is absent, so an

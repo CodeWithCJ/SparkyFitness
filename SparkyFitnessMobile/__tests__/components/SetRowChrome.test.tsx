@@ -2,6 +2,7 @@ import React from 'react';
 import { Keyboard, Platform, View } from 'react-native';
 import { KeyboardEvents } from 'react-native-keyboard-controller';
 import { render, fireEvent, act } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   useSetEditAccessoryBar,
   type SetRowAccessoryHandle,
@@ -10,6 +11,11 @@ import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
 } from '../../src/stores/appPreferencesStore';
+
+const safeAreaMetrics = {
+  insets: { top: 0, right: 0, bottom: 0, left: 0 },
+  frame: { x: 0, y: 0, width: 390, height: 844 },
+};
 
 function makeHandle(): SetRowAccessoryHandle {
   return { log: jest.fn(), focusField: jest.fn(), advance: jest.fn() };
@@ -47,7 +53,12 @@ function Harness({
         onRegisterAccessoryHandle(key, null);
     };
   }, [onRegisterAccessoryHandle, handles]);
-  return <View>{accessoryBar}</View>;
+  // The bar reads the bottom inset, as every screen in the app provides.
+  return (
+    <SafeAreaProvider initialMetrics={safeAreaMetrics}>
+      <View>{accessoryBar}</View>
+    </SafeAreaProvider>
+  );
 }
 
 describe('useSetEditAccessoryBar', () => {

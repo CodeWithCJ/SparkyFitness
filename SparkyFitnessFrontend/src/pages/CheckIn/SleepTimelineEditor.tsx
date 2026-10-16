@@ -345,34 +345,34 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
           ) : (
             <>
               <p>
-                <b>{t('sleepTimelineEditor.bedtime', 'Bedtime')}:</b>{' '}
+                <b>{t('sleepTimelineEditor.bedtime2', 'Bedtime:')}</b>{' '}
                 {entryDetails.bedtime}
               </p>
               <p>
-                <b>{t('sleepTimelineEditor.wakeTime', 'Wake Time')}:</b>{' '}
+                <b>{t('sleepTimelineEditor.wakeTime2', 'Wake Time:')}</b>{' '}
                 {entryDetails.wakeTime}
               </p>
             </>
           )}
           <p>
-            <b>{t('sleepTimelineEditor.duration', 'Duration')}:</b>{' '}
+            <b>{t('sleepTimelineEditor.duration2', 'Duration:')}</b>{' '}
             {entryDetails.duration}
           </p>
           {entryDetails.timeAsleep && (
             <p>
-              <b>{t('sleepTimelineEditor.timeAsleep', 'Time Asleep')}:</b>{' '}
+              <b>{t('sleepTimelineEditor.timeAsleep2', 'Time Asleep:')}</b>{' '}
               {entryDetails.timeAsleep}
             </p>
           )}
           {!!entryDetails.sleepScore && (
             <p>
-              <b>{t('sleepTimelineEditor.sleepScore', 'Sleep Score')}:</b>{' '}
+              <b>{t('sleepTimelineEditor.sleepScore2', 'Sleep Score:')}</b>{' '}
               {entryDetails.sleepScore}
             </p>
           )}
           {entryDetails.source && (
             <p>
-              <b>{t('sleepTimelineEditor.source', 'Source')}:</b>{' '}
+              <b>{t('sleepTimelineEditor.source2', 'Source:')}</b>{' '}
               {entryDetails.source}
             </p>
           )}
@@ -380,28 +380,28 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
           {entryDetails.deepSleepSeconds !== undefined &&
             entryDetails.deepSleepSeconds !== null && (
               <p>
-                <b>{t('sleepEntrySection.deepSleep', 'Deep')}:</b>{' '}
+                <b>{t('sleepTimelineEditor.deep2', 'Deep:')}</b>{' '}
                 {formatSecondsToHHMM(entryDetails.deepSleepSeconds)}
               </p>
             )}
           {entryDetails.lightSleepSeconds !== undefined &&
             entryDetails.lightSleepSeconds !== null && (
               <p>
-                <b>{t('sleepEntrySection.lightSleep', 'Light')}:</b>{' '}
+                <b>{t('sleepTimelineEditor.light2', 'Light:')}</b>{' '}
                 {formatSecondsToHHMM(entryDetails.lightSleepSeconds)}
               </p>
             )}
           {entryDetails.remSleepSeconds !== undefined &&
             entryDetails.remSleepSeconds !== null && (
               <p>
-                <b>{t('sleepEntrySection.remSleep', 'REM')}:</b>{' '}
+                <b>{t('sleepTimelineEditor.rem2', 'REM:')}</b>{' '}
                 {formatSecondsToHHMM(entryDetails.remSleepSeconds)}
               </p>
             )}
           {entryDetails.awakeSleepSeconds !== undefined &&
             entryDetails.awakeSleepSeconds !== null && (
               <p>
-                <b>{t('sleepEntrySection.awake', 'Awake')}:</b>{' '}
+                <b>{t('sleepTimelineEditor.awake2', 'Awake:')}</b>{' '}
                 {formatSecondsToHHMM(entryDetails.awakeSleepSeconds)}
               </p>
             )}
@@ -410,28 +410,28 @@ const SleepTimelineEditor: React.FC<SleepTimelineEditorProps> = ({
           {entryDetails.averageSpo2Value !== undefined &&
             entryDetails.averageSpo2Value !== null && (
               <p>
-                <b>{t('sleepEntrySection.avgSpO2', 'Avg SpO2')}:</b>{' '}
+                <b>{t('sleepTimelineEditor.avgSpO2', 'Avg SpO2:')}</b>{' '}
                 {entryDetails.averageSpo2Value.toFixed(1)}%
               </p>
             )}
           {entryDetails.avgOvernightHrv !== undefined &&
             entryDetails.avgOvernightHrv !== null && (
               <p>
-                <b>{t('sleepEntrySection.avgOvernightHrv', 'Avg HRV')}:</b>{' '}
+                <b>{t('sleepTimelineEditor.avgHRV', 'Avg HRV:')}</b>{' '}
                 {entryDetails.avgOvernightHrv.toFixed(1)} ms
               </p>
             )}
           {entryDetails.avgSleepStress !== undefined &&
             entryDetails.avgSleepStress !== null && (
               <p>
-                <b>{t('sleepEntrySection.avgSleepStress', 'Avg Stress')}:</b>{' '}
+                <b>{t('sleepTimelineEditor.avgStress', 'Avg Stress:')}</b>{' '}
                 {entryDetails.avgSleepStress.toFixed(1)}
               </p>
             )}
           {entryDetails.restingHeartRate !== undefined &&
             entryDetails.restingHeartRate !== null && (
               <p>
-                <b>{t('sleepEntrySection.restingHR', 'Resting HR')}:</b>{' '}
+                <b>{t('sleepTimelineEditor.restingHR', 'Resting HR:')}</b>{' '}
                 {entryDetails.restingHeartRate} bpm
               </p>
             )}

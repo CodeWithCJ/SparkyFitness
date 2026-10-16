@@ -108,47 +108,62 @@ export default function InjectionSiteSettings() {
           )}
         </p>
         <div className="max-h-[50vh] space-y-1 overflow-y-auto">
-          {rows.map((row, idx) => (
-            <div
-              key={row.id}
-              className="flex items-center justify-between rounded-md border p-2 text-sm"
-            >
-              <div className="flex items-center gap-2">
-                <div className="flex flex-col text-muted-foreground">
-                  <button
-                    type="button"
-                    onClick={() => move(idx, -1)}
-                    disabled={idx === 0}
-                    className="disabled:opacity-30"
-                    aria-label={`Move ${row.label} up`}
+          {rows.map((row, idx) => {
+            const siteName = t('medications.sites.label.' + row.id, row.label);
+            return (
+              <div
+                key={row.id}
+                className="flex items-center justify-between rounded-md border p-2 text-sm"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="flex flex-col text-muted-foreground">
+                    <button
+                      type="button"
+                      onClick={() => move(idx, -1)}
+                      disabled={idx === 0}
+                      className="disabled:opacity-30"
+                      aria-label={t(
+                        'medications.injectionSiteSettings.moveUp',
+                        'Move {{label}} up',
+                        { label: siteName }
+                      )}
+                    >
+                      <ChevronUp className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => move(idx, 1)}
+                      disabled={idx === rows.length - 1}
+                      className="disabled:opacity-30"
+                      aria-label={t(
+                        'medications.injectionSiteSettings.moveDown',
+                        'Move {{label}} down',
+                        { label: siteName }
+                      )}
+                    >
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <span
+                    className={
+                      row.active ? '' : 'text-muted-foreground line-through'
+                    }
                   >
-                    <ChevronUp className="h-3 w-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => move(idx, 1)}
-                    disabled={idx === rows.length - 1}
-                    className="disabled:opacity-30"
-                    aria-label={`Move ${row.label} down`}
-                  >
-                    <ChevronDown className="h-3 w-3" />
-                  </button>
+                    {siteName}
+                  </span>
                 </div>
-                <span
-                  className={
-                    row.active ? '' : 'text-muted-foreground line-through'
-                  }
-                >
-                  {t('medications.sites.label.' + row.id, row.label)}
-                </span>
+                <Switch
+                  checked={row.active}
+                  onCheckedChange={() => toggle(row.id)}
+                  aria-label={t(
+                    'medications.injectionSiteSettings.toggle',
+                    'Toggle {{label}}',
+                    { label: siteName }
+                  )}
+                />
               </div>
-              <Switch
-                checked={row.active}
-                onCheckedChange={() => toggle(row.id)}
-                aria-label={`Toggle ${row.label}`}
-              />
-            </div>
-          ))}
+            );
+          })}
         </div>
         <DialogFooter>
           <Button onClick={save} disabled={upsert.isPending}>

@@ -26,6 +26,7 @@ import { CustomNutrientDialog } from '@/components/Foods/CustomNutrientDialog';
 import { getStandardNutrientId } from '@/constants/standardNutrientAliases';
 import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
 
+import { useTranslation } from 'react-i18next';
 // Public web page for a provider's food, so users can cross-check field names
 // against the source. Only providers with a stable public URL are linked.
 function getProviderFoodUrl(food: Food): string | null {
@@ -37,6 +38,13 @@ function getProviderFoodUrl(food: Food): string | null {
     case 'openfoodfacts': {
       const code = food.barcode || food.provider_external_id;
       return code ? `https://world.openfoodfacts.org/product/${code}` : null;
+    }
+    case 'livsmedelsverket': {
+      if (!food.provider_external_id) {
+        return 'https://soknaringsinnehall.livsmedelsverket.se/';
+      }
+      const query = encodeURIComponent(food.name || '');
+      return `https://soknaringsinnehall.livsmedelsverket.se/Home/FoodDetails/${food.provider_external_id}?sokord=${query}&soktyp=1&kategoriId=`;
     }
     default:
       return null;
@@ -65,6 +73,7 @@ export const ProviderNutrientViewer = ({
   food,
   onApplyMatch,
 }: ProviderNutrientViewerProps) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogLabel, setDialogLabel] = useState('');
@@ -116,8 +125,15 @@ export const ProviderNutrientViewer = ({
       nutrient.name.toLowerCase() === label.toLowerCase()
     ) {
       toast({
-        title: 'Already mapped',
-        description: `"${label}" already maps to ${nutrient.name}.`,
+        title: t(
+          'foodSearch.providerNutrientViewer.alreadyMapped',
+          'Already mapped'
+        ),
+        description: t(
+          'foodSearch.providerNutrientViewer.alreadyMapsTo',
+          '"{{label}}" already maps to {{name}}.',
+          { label, name: nutrient.name }
+        ),
       });
       return;
     }
@@ -130,13 +146,20 @@ export const ProviderNutrientViewer = ({
       });
       onApplyMatch?.(nutrient.name, label, nutrient.unit);
       toast({
-        title: 'Alias added',
-        description: `"${label}" will now import into ${nutrient.name}.`,
+        title: t('foodSearch.providerNutrientViewer.aliasAdded', 'Alias added'),
+        description: t(
+          'foodSearch.providerNutrientViewer.willNowImportInto',
+          '"{{label}}" will now import into {{name}}.',
+          { label, name: nutrient.name }
+        ),
       });
     } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to add alias. Please try again.',
+        title: t('common.error', 'Error'),
+        description: t(
+          'foodSearch.providerNutrientViewer.failedToAddAliasPlease',
+          'Failed to add alias. Please try again.'
+        ),
         variant: 'destructive',
       });
     }
@@ -161,8 +184,11 @@ export const ProviderNutrientViewer = ({
             className="flex w-full items-center justify-between px-4 py-3 text-left"
           >
             <span className="text-sm font-medium">
-              Nutrient fields reported by {providerLabel} (
-              {providerNutrients.length})
+              {t(
+                'foodSearch.providerNutrientViewer.nutrientFieldsReportedBy',
+                'Nutrient fields reported by {{providerLabel}} ( {{length}})',
+                { providerLabel, length: providerNutrients.length }
+              )}
             </span>
             <ChevronDown
               className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`}
@@ -171,9 +197,11 @@ export const ProviderNutrientViewer = ({
         </CollapsibleTrigger>
         <CollapsibleContent className="px-4 pb-4 space-y-3">
           <p className="text-xs text-muted-foreground">
-            These are the exact field names {providerLabel} uses. Add one as an
-            alias so it imports into your custom nutrient. Matching ignores case
-            and punctuation.
+            {t(
+              'foodSearch.providerNutrientViewer.theseAreTheExactField',
+              'These are the exact field names {{providerLabel}} uses. Add one as an alias so it imports into your custom nutrient. Matching ignores case and punctuation.',
+              { providerLabel }
+            )}
           </p>
           {sourceUrl && (
             <a
@@ -182,7 +210,11 @@ export const ProviderNutrientViewer = ({
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
             >
-              View this food on {providerLabel}
+              {t(
+                'foodSearch.providerNutrientViewer.viewThisFoodOn',
+                'View this food on {{providerLabel}}',
+                { providerLabel }
+              )}
               <ExternalLink className="h-3 w-3" />
             </a>
           )}
@@ -221,19 +253,30 @@ export const ProviderNutrientViewer = ({
                         variant="outline"
                         className="text-muted-foreground"
                       >
-                        Standard: {standardLabel}
+                        {t(
+                          'foodSearch.providerNutrientViewer.standard',
+                          'Standard: {{standardLabel}}',
+                          { standardLabel }
+                        )}
                       </Badge>
                     ) : (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="outline" size="sm" className="h-7">
                             <Plus className="h-3 w-3 mr-1" />
-                            Add as alias
+                            {t(
+                              'foodSearch.providerNutrientViewer.addAsAlias',
+                              'Add as alias'
+                            )}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>
-                            Add "{label}" to
+                            {t(
+                              'foodSearch.providerNutrientViewer.addTo',
+                              'Add "{{label}}" to',
+                              { label }
+                            )}
                           </DropdownMenuLabel>
                           {(customNutrients ?? []).map((nutrient) => (
                             <DropdownMenuItem
@@ -252,7 +295,10 @@ export const ProviderNutrientViewer = ({
                             onClick={() => openCreateDialog(label)}
                           >
                             <Plus className="h-3 w-3 mr-1" />
-                            New custom nutrient
+                            {t(
+                              'foodSearch.providerNutrientViewer.newCustomNutrient',
+                              'New custom nutrient'
+                            )}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

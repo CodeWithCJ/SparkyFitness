@@ -44,6 +44,8 @@ import {
   resumeRecording,
   startRecording,
   type RecordingSession,
+  setRecordingAudioCues,
+  setRecordingAutoPause,
 } from '../../src/services/gpsRecordingService';
 
 const mockedBaseline = jest.mocked(captureStepCounterBaseline);
@@ -594,6 +596,76 @@ describe('auto-pause', () => {
     expect(kept.map((point) => point.t)).toEqual([T0, T0 + 2000, T0 + 4000]);
   });
 
+  it('can be turned on mid-recording, starting fresh', async () => {
+    await startRecording({ activity: 'run', notification });
+    await ingestFixes([standing(0), standing(10), standing(12)]);
+    expect((await storedSession())?.status).toBe('recording');
+
+    await setRecordingAutoPause(true, notification);
+    expect((await storedSession())?.autoPause).toBe(true);
+    // The stillness before it was turned on does not count.
+    await ingestFixes([standing(13)]);
+    expect((await storedSession())?.status).toBe('recording');
+    await ingestFixes([standing(20), standing(25)]);
+    expect((await storedSession())?.autoPaused).toBe(true);
+  });
+
+  it('resumes the session when turned off while it holds it paused', async () => {
+    await startRecording({ activity: 'run', autoPause: true, notification });
+    await ingestFixes([standing(0), standing(10), standing(12)]);
+    expect((await storedSession())?.autoPaused).toBe(true);
+
+    await setRecordingAutoPause(false, notification);
+    const stored = await storedSession();
+    expect(stored?.autoPause).toBe(false);
+    expect(stored?.status).toBe('recording');
+  });
+
+  it('leaves a pause the person made when turned off', async () => {
+    await startRecording({ activity: 'run', autoPause: true, notification });
+    await pauseRecording();
+    await setRecordingAutoPause(false, notification);
+    expect((await storedSession())?.status).toBe('paused');
+  });
+
+  it('stays off for an indoor session', async () => {
+    await startRecording({ activity: 'run', indoor: true, notification });
+    await setRecordingAutoPause(true, notification);
+    expect((await storedSession())?.autoPause).toBe(false);
+    expect(mockedLocation.startLocationUpdatesAsync).not.toHaveBeenCalled();
+  });
+
+  it('switches the distance filter with it mid-recording', async () => {
+    await startRecording({ activity: 'run', notification });
+    expect(mockedLocation.startLocationUpdatesAsync).toHaveBeenLastCalledWith(
+      GPS_RECORDING_TASK_NAME,
+      expect.objectContaining({ distanceInterval: 2 })
+    );
+
+    // On: fixes must keep coming while the person stands still.
+    await setRecordingAutoPause(true, notification);
+    expect(mockedLocation.startLocationUpdatesAsync).toHaveBeenLastCalledWith(
+      GPS_RECORDING_TASK_NAME,
+      expect.objectContaining({ distanceInterval: 0 })
+    );
+
+    await setRecordingAutoPause(false, notification);
+    expect(mockedLocation.startLocationUpdatesAsync).toHaveBeenLastCalledWith(
+      GPS_RECORDING_TASK_NAME,
+      expect.objectContaining({ distanceInterval: 2 })
+    );
+    expect(mockedLocation.startLocationUpdatesAsync).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps the setting when the task cannot be restarted', async () => {
+    await startRecording({ activity: 'run', notification });
+    mockedLocation.startLocationUpdatesAsync.mockRejectedValueOnce(
+      new Error('not allowed')
+    );
+    await setRecordingAutoPause(true, notification);
+    expect((await storedSession())?.autoPause).toBe(true);
+  });
+
   it('lets the person resume an auto-pause by hand', async () => {
     await startRecording({ activity: 'run', autoPause: true, notification });
     await ingestFixes([standing(0), standing(10), standing(12)]);
@@ -644,6 +716,30 @@ describe('voice cues', () => {
     await ingestFixes([stepNorth(0, 0), stepNorth(200, 3100)]);
     expect(spoken()).toHaveLength(1);
     expect(spoken()[0]).toMatch(/^3 kilometers\./);
+  });
+
+  it('can be turned on mid-recording without announcing past kilometers', async () => {
+    await startRecording({ activity: 'run', notification });
+    await ingestFixes([stepNorth(0, 0), stepNorth(250, 1300)]);
+
+    await setRecordingAudioCues('km');
+    expect(beginRecordingCues).toHaveBeenCalled();
+    expect((await storedSession())?.cuedSplits).toBe(1);
+    await ingestFixes([stepNorth(260, 1400)]);
+    expect(spoken()).toHaveLength(0);
+
+    await ingestFixes([stepNorth(420, 2100)]);
+    expect(spoken()).toHaveLength(1);
+    expect(spoken()[0]).toMatch(/^2 kilometers\./);
+  });
+
+  it('can be turned off mid-recording', async () => {
+    await startRecording({ activity: 'run', audioCues: 'km', notification });
+    (speakRecordingCue as jest.Mock).mockClear();
+    await setRecordingAudioCues(undefined);
+    expect((await storedSession())?.audioCues).toBeUndefined();
+    await ingestFixes([stepNorth(0, 0), stepNorth(250, 1300)]);
+    expect(spoken()).toHaveLength(0);
   });
 
   it('speaks pauses and resumes', async () => {

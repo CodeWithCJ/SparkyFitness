@@ -25,7 +25,9 @@ import Vo2MaxLineChart from './Vo2MaxLineChart';
 import WeightLineChart from './WeightLineChart';
 
 type HealthTrendsPagerProps = {
-  steps: HealthTrendSeries<StepsDataPoint>;
+  steps: HealthTrendSeries<StepsDataPoint> & {
+    stepsGoals?: (number | null)[];
+  };
   weight: HealthTrendSeries<WeightDataPoint>;
   sleep: SleepTrendSeries;
   hydration: HealthTrendSeries<HydrationDataPoint>;

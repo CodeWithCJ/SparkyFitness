@@ -4,6 +4,7 @@ import { useCardioSessionDetail } from '../../src/hooks/useCardioSessionDetail';
 import {
   fetchExerciseEntry,
   fetchHeartRateSamples,
+  fetchExerciseEntryDistanceSeries,
   fetchWorkoutGpsPoints,
   fetchWorkoutHrZones,
 } from '../../src/services/api/exerciseStatsApi';
@@ -17,6 +18,7 @@ jest.mock('../../src/services/api/exerciseStatsApi', () => ({
   fetchExerciseEntry: jest.fn(),
   fetchHeartRateSamples: jest.fn(),
   fetchWorkoutGpsPoints: jest.fn(),
+  fetchExerciseEntryDistanceSeries: jest.fn(),
   fetchWorkoutHrZones: jest.fn(),
 }));
 
@@ -26,6 +28,9 @@ jest.mock('../../src/hooks/usePreferences', () => ({
 
 const mockGps = fetchWorkoutGpsPoints as jest.MockedFunction<
   typeof fetchWorkoutGpsPoints
+>;
+const mockSeries = fetchExerciseEntryDistanceSeries as jest.MockedFunction<
+  typeof fetchExerciseEntryDistanceSeries
 >;
 const mockZones = fetchWorkoutHrZones as jest.MockedFunction<
   typeof fetchWorkoutHrZones
@@ -100,5 +105,35 @@ describe('useCardioSessionDetail', () => {
     expect(result.current.heartRate[0]?.bpm).toBe(140);
     expect(result.current.route).toHaveLength(0);
     expect(mockSamples).toHaveBeenCalledWith('2026-09-20', '2026-09-21');
+  });
+
+  test('an indoor session with no route reads its distance series', async () => {
+    mockGps.mockResolvedValue(null);
+    mockSeries.mockResolvedValue([
+      [0, 0],
+      [30, 90],
+    ]);
+    mockEntry.mockResolvedValue(undefined as never);
+    mockSamples.mockResolvedValue([] as never);
+    const { result } = renderHook(
+      () => useCardioSessionDetail('run-1', '2026-09-20'),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+    await waitFor(() => expect(result.current.distanceSeries).toHaveLength(2));
+  });
+
+  test('a session with a route does not ask for a series', async () => {
+    mockGps.mockResolvedValue(
+      gpsRow([
+        { t: '2026-09-20T12:00:00Z', lat: 1, lon: 1, hr: 120 },
+        { t: '2026-09-20T12:01:00Z', lat: 1, lon: 1.001, hr: 130 },
+      ])
+    );
+    const { result } = renderHook(
+      () => useCardioSessionDetail('run-1', '2026-09-20'),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+    await waitFor(() => expect(result.current.route).toHaveLength(2));
+    expect(mockSeries).not.toHaveBeenCalled();
   });
 });

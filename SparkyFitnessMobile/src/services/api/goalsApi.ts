@@ -68,6 +68,7 @@ export const saveDailyGoals = async (
       p_target_exercise_calories_burned: goals.target_exercise_calories_burned,
       p_target_exercise_duration_minutes:
         goals.target_exercise_duration_minutes,
+      p_target_steps: goals.target_steps,
       p_protein_percentage: goals.protein_percentage,
       p_carbs_percentage: goals.carbs_percentage,
       p_fat_percentage: goals.fat_percentage,

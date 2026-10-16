@@ -6,6 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import {
   Alert,
   ActivityIndicator,
@@ -21,15 +22,27 @@ import Toast from 'react-native-toast-message';
 
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
+import ProgramActionRow from '../components/recording/ProgramActionRow';
+import RecordingSwitchRow from '../components/recording/RecordingSwitchRow';
+import HeartRateBandCard from '../components/recording/HeartRateBandCard';
+import SuggestedRangesCard from '../components/recording/SuggestedRangesCard';
+import PaceBandCard, {
+  type PaceBandChoice,
+} from '../components/recording/PaceBandCard';
 import RecordingVoiceCard from '../components/recording/RecordingVoiceCard';
-import Switch from '../components/ui/Switch';
+import CheckInCard from '../components/recording/CheckInCard';
 import SegmentedControl from '../components/SegmentedControl';
 import { SplitRow, Stat } from '../components/recording/SplitRow';
 import RunProgramSelect from '../components/recording/RunProgramSelect';
-import { programWorkoutLabel } from '../components/recording/RunProgramCard';
+import {
+  programTitle,
+  programWorkoutLabel,
+} from '../components/recording/RunProgramCard';
+import GpsSignalBadge from '../components/recording/GpsSignalBadge';
 import IntervalCard from '../components/recording/IntervalCard';
 import IntervalSetup, {
   DEFAULT_CUSTOM_INTERVALS,
+  usesWorkDistance,
   type IntervalChoice,
 } from '../components/recording/IntervalSetup';
 import RouteMap from '../components/exerciseStats/RouteMap';
@@ -37,6 +50,10 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useIndoorDistanceEstimate } from '../hooks/useIndoorDistanceEstimate';
 import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
 import { usePreferences } from '../hooks/usePreferences';
+import { useSuggestedRanges } from '../hooks/useSuggestedRanges';
+import { useWatchConnectivity } from '../hooks/useWatchConnectivity';
+import { startRunOnWatch } from '../services/watchRunControl';
+import { buildWatchStartPlan } from '../utils/watchRunPlans';
 import { useRecordingHeartRate } from '../stores/liveHeartRateStore';
 import { notificationText } from '../utils/recordingNotification';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
@@ -45,28 +62,42 @@ import {
   RecordingPermissionError,
   discardRecording,
   elapsedSeconds,
+  planCompleted,
   finishRecording,
   COUNTDOWN_CHOICES,
   getHeartRateSamples,
   getRecordingPreferences,
+  setHeartRateBandPreference,
+  setPaceBandPreference,
+  setRecordingHeartRateBand,
+  setRecordingPaceBand,
   hydrate,
   markLap,
   pauseRecording,
   resumeRecording,
+  setRecordingAudioCues,
+  setRecordingAutoPause,
+  setCheckInPreference,
   setCountdownPreference,
+  setRecordingCheckIn,
   setRecordingPreference,
   startRecording,
   tickIntervals,
   useGpsRecording,
 } from '../services/gpsRecordingService';
 import {
+  applyHeartRateTargets,
+  applyPaceTargets,
+  type HeartRateBand,
   buildIntervalPlan,
   INTERVAL_PRESETS,
   intervalPosition,
-  lastStepStarted,
   type IntervalOptions,
   type IntervalPlan,
+  type PaceBand,
   type RunProgramResponse,
+  zoneShiftForEffort,
+  type StepEffort,
 } from '@workspace/shared';
 import {
   completeProgramWorkout,
@@ -81,6 +112,8 @@ import {
 } from '../utils/runSummary';
 import { toLocalDateString } from '../utils/dateUtils';
 import { saveRecordedActivity } from '../services/gpsRecordingSave';
+import { useShoeMutations } from '../hooks/useShoes';
+import { promptToRetireShoe } from '../utils/retireShoePrompt';
 import { fireSelectionHaptic } from '../services/haptics';
 import { addLog } from '../services/LogService';
 import {
@@ -103,14 +136,115 @@ import {
 } from '../utils/gpsRecording';
 import type { RootStackScreenProps } from '../types/navigation';
 
+/** A starting band: 5:00 to 5:30 per km, 8:00 to 8:50 per mile. */
+const defaultPaceBand = (unit: 'km' | 'miles'): PaceBandChoice =>
+  unit === 'miles'
+    ? { fastest: 480, slowest: 530 }
+    : { fastest: 300, slowest: 330 };
+
+/** Starting heart-rate ranges: a steady aerobic one, and for fast and easy stretches. */
+const DEFAULT_HEART_RATE_BAND: HeartRateBand = { minBpm: 130, maxBpm: 150 };
+const DEFAULT_WORK_HEART_RATE_BAND: HeartRateBand = {
+  minBpm: 160,
+  maxBpm: 175,
+};
+const DEFAULT_EASY_HEART_RATE_BAND: HeartRateBand = {
+  minBpm: 120,
+  maxBpm: 140,
+};
+/** And for the warm-up and cool-down, an easy zone below the easy stretches. */
+const DEFAULT_WARM_HEART_RATE_BAND: HeartRateBand = {
+  minBpm: 100,
+  maxBpm: 125,
+};
+
+/** One of a plan's heart-rate ranges as chosen on this screen. */
+interface HeartRateTargetChoice {
+  enabled: boolean;
+  band: HeartRateBand | null;
+}
+
+/** One of a plan's pace ranges as chosen on this screen. */
+interface PaceTargetChoice {
+  enabled: boolean;
+  /** In the display unit; null until the person moves it. */
+  band: PaceBandChoice | null;
+}
+
+/** Starting ranges for a plan's fast stretches: 4:30-5:00/km, 7:15-8:00/mi. */
+const defaultWorkPaceBand = (unit: 'km' | 'miles'): PaceBandChoice =>
+  unit === 'miles'
+    ? { fastest: 435, slowest: 480 }
+    : { fastest: 270, slowest: 300 };
+
+/** And for its easy stretches: 6:00-7:00/km, 9:40-11:15/mi. */
+const defaultEasyPaceBand = (unit: 'km' | 'miles'): PaceBandChoice =>
+  unit === 'miles'
+    ? { fastest: 580, slowest: 675 }
+    : { fastest: 360, slowest: 420 };
+
+/** And for its warm-up and cool-down, up to a walk: 6:30-15:00/km, 10:30-24:10/mi. */
+const defaultWarmPaceBand = (unit: 'km' | 'miles'): PaceBandChoice =>
+  unit === 'miles'
+    ? { fastest: 630, slowest: 1450 }
+    : { fastest: 390, slowest: 900 };
+
+/** The band the service takes: seconds per kilometre. */
+const paceBandPerKm = (band: PaceBandChoice, unit: 'km' | 'miles') => {
+  const perKm = unit === 'miles' ? 1 / 1.609344 : 1;
+  return {
+    minSecondsPerKm: band.fastest * perKm,
+    maxSecondsPerKm: band.slowest * perKm,
+  };
+};
+
+/** A saved band (seconds per km) as the card shows it, in the display unit. */
+const paceBandInUnit = (
+  band: { minSecondsPerKm: number; maxSecondsPerKm: number },
+  unit: 'km' | 'miles'
+): PaceBandChoice => {
+  const perUnit = unit === 'miles' ? 1.609344 : 1;
+  return {
+    fastest: Math.round((band.minSecondsPerKm * perUnit) / 5) * 5,
+    slowest: Math.round((band.maxSecondsPerKm * perUnit) / 5) * 5,
+  };
+};
+
 type Props = RootStackScreenProps<'RecordActivity'>;
 
 const FEET_PER_METER = 3.28084;
+
+/** "Outdoor run", "Indoor walk", "Ride": what a recording is, for its header. */
+function recordingTitle(
+  t: TFunction,
+  activity: RecordingActivity,
+  indoor: boolean
+): string {
+  switch (activity) {
+    case 'walk':
+      return indoor
+        ? t('recordActivity.title.indoorWalk', { defaultValue: 'Indoor walk' })
+        : t('recordActivity.title.outdoorWalk', {
+            defaultValue: 'Outdoor walk',
+          });
+    case 'ride':
+      return indoor
+        ? t('recordActivity.title.indoorRide', { defaultValue: 'Indoor ride' })
+        : t('recordActivity.title.outdoorRide', {
+            defaultValue: 'Outdoor ride',
+          });
+    default:
+      return indoor
+        ? t('recordActivity.title.indoorRun', { defaultValue: 'Indoor run' })
+        : t('recordActivity.title.outdoorRun', { defaultValue: 'Outdoor run' });
+  }
+}
 
 const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const { updateMutation: updateShoe } = useShoeMutations();
   const { preferences } = usePreferences();
   const distanceUnit =
     (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
@@ -124,9 +258,47 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const heartRate = useRecordingHeartRate(session?.id ?? null);
   const [activity, setActivity] = useState<RecordingActivity>('run');
   const [busy, setBusy] = useState(false);
+  const { isSupported: watchSupported, isPaired: watchPaired } =
+    useWatchConnectivity();
+  // Outdoors or indoors (a treadmill: no GPS), chosen first; then, for a walk
+  // or run with a paired watch, which device records it. A ride is
+  // phone-only.
+  const [indoor, setIndoor] = useState(false);
+  const [recordWith, setRecordWith] = useState<'phone' | 'watch'>('phone');
+  const watchAvailable = watchSupported && watchPaired && activity !== 'ride';
+  const onWatch = watchAvailable && recordWith === 'watch';
   const [autoPause, setAutoPause] = useState(true);
   const [audioCues, setAudioCues] = useState(false);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
+  const [checkInMinutes, setCheckInMinutes] = useState(0);
+  const [heartRateAlert, setHeartRateAlert] = useState(false);
+  const [heartRateBand, setHeartRateBand] = useState<HeartRateBand | null>(
+    null
+  );
+  const [workHeartRate, setWorkHeartRate] = useState<HeartRateTargetChoice>({
+    enabled: false,
+    band: null,
+  });
+  const [easyHeartRate, setEasyHeartRate] = useState<HeartRateTargetChoice>({
+    enabled: false,
+    band: null,
+  });
+  const [warmHeartRate, setWarmHeartRate] = useState<HeartRateTargetChoice>({
+    enabled: false,
+    band: null,
+  });
+  const [paceAlert, setPaceAlert] = useState(false);
+  const [paceBand, setPaceBand] = useState<PaceBandChoice | null>(null);
+  // The range last saved (seconds per km), shown until the person changes it.
+  const [savedPaceBand, setSavedPaceBand] = useState<{
+    minSecondsPerKm: number;
+    maxSecondsPerKm: number;
+  } | null>(null);
+  const currentPaceBand =
+    paceBand ??
+    (savedPaceBand
+      ? paceBandInUnit(savedPaceBand, distanceUnit)
+      : defaultPaceBand(distanceUnit));
   const [intervalChoice, setIntervalChoice] = useState<IntervalChoice>('off');
   const [customIntervals, setCustomIntervals] = useState<IntervalOptions>(
     DEFAULT_CUSTOM_INTERVALS
@@ -135,6 +307,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     status: storedProgram,
     enabled: programEnabled,
     loaded: programLoaded,
+    effortSuggestion,
   } = useRunProgram();
   // The program only drives the screen while the person has it switched on.
   const programStatus = programEnabled ? storedProgram : null;
@@ -159,13 +332,182 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       setIntervalChoice('off');
     }
   }, [intervalChoice, programLoaded, programWorkout]);
-  const intervalPlan = useMemo<IntervalPlan | undefined>(() => {
+  // The run/walk presets are not offered for a walk or ride, so switching to
+  // one drops a run/walk preset rather than leaving a choice the picker lacks.
+  useEffect(() => {
+    if (activity === 'run') return;
+    const preset = INTERVAL_PRESETS.find((p) => p.id === intervalChoice);
+    if (preset?.options.style === 'runWalk') setIntervalChoice('off');
+  }, [activity, intervalChoice]);
+  // Optional pace ranges for a plan's fast and easy stretches, this run only.
+  // Paces for tempo, marathon-pace and stride stretches, set from a recent race.
+  const [effortPace, setEffortPace] = useState<Partial<
+    Record<StepEffort, PaceBand>
+  > | null>(null);
+  const [workPace, setWorkPace] = useState<PaceTargetChoice>({
+    enabled: false,
+    band: null,
+  });
+  const [easyPace, setEasyPace] = useState<PaceTargetChoice>({
+    enabled: false,
+    band: null,
+  });
+  const [warmPace, setWarmPace] = useState<PaceTargetChoice>({
+    enabled: false,
+    band: null,
+  });
+  const workBand = workPace.band ?? defaultWorkPaceBand(distanceUnit);
+  const easyBand = easyPace.band ?? defaultEasyPaceBand(distanceUnit);
+  // Distance steps follow GPS distance, so going indoors drops a distance
+  // plan: Custom goes back to timed work, a distance preset to no plan.
+  useEffect(() => {
+    if (!indoor) return;
+    if (intervalChoice === 'custom') {
+      if (usesWorkDistance(customIntervals)) {
+        setCustomIntervals({
+          ...customIntervals,
+          workMeters: undefined,
+          workUnit: undefined,
+        });
+      }
+      return;
+    }
+    const preset = INTERVAL_PRESETS.find((p) => p.id === intervalChoice);
+    if (preset && usesWorkDistance(preset.options)) setIntervalChoice('off');
+  }, [indoor, intervalChoice, customIntervals]);
+  const [warmOpen, setWarmOpen] = useState(false);
+  const warmBand = warmPace.band ?? defaultWarmPaceBand(distanceUnit);
+  const basePlan = useMemo<IntervalPlan | undefined>(() => {
     if (intervalChoice === 'off') return undefined;
     if (intervalChoice === 'program') return programWorkout?.plan;
-    if (intervalChoice === 'custom') return buildIntervalPlan(customIntervals);
-    const preset = INTERVAL_PRESETS.find((p) => p.id === intervalChoice);
-    return preset ? buildIntervalPlan(preset.options) : undefined;
-  }, [intervalChoice, customIntervals, programWorkout]);
+    const plan =
+      intervalChoice === 'custom'
+        ? buildIntervalPlan(customIntervals)
+        : (() => {
+            const preset = INTERVAL_PRESETS.find(
+              (p) => p.id === intervalChoice
+            );
+            return preset ? buildIntervalPlan(preset.options) : undefined;
+          })();
+    // A walk or ride has no running in it: its steps are Fast and Easy, so
+    // the card, the spoken cues and the watch never say "Run" during one.
+    return plan && activity !== 'run' && plan.style === 'runWalk'
+      ? { ...plan, style: 'fastEasy' }
+      : plan;
+  }, [intervalChoice, customIntervals, programWorkout, activity]);
+  const workHeartRateBand = workHeartRate.band ?? DEFAULT_WORK_HEART_RATE_BAND;
+  const easyHeartRateBand = easyHeartRate.band ?? DEFAULT_EASY_HEART_RATE_BAND;
+  const warmHeartRateBand = warmHeartRate.band ?? DEFAULT_WARM_HEART_RATE_BAND;
+  const warmParts: string[] = [];
+  if (warmPace.enabled) {
+    warmParts.push(
+      `${formatClock(warmBand.fastest)}–${formatClock(warmBand.slowest)}/${unitLabel}`
+    );
+  }
+  if (warmHeartRate.enabled && watchAvailable) {
+    warmParts.push(
+      `${warmHeartRateBand.minBpm}–${warmHeartRateBand.maxBpm} ${t('recordActivity.unitBpm', { defaultValue: 'bpm' })}`
+    );
+  }
+  const warmSummary =
+    warmParts.length > 0
+      ? warmParts.join(' · ')
+      : t('recordActivity.warmRanges.off', { defaultValue: 'Off' });
+  const currentHeartRateBand = heartRateBand ?? DEFAULT_HEART_RATE_BAND;
+  const intervalPlan = useMemo<IntervalPlan | undefined>(
+    () =>
+      basePlan
+        ? applyHeartRateTargets(
+            applyPaceTargets(basePlan, {
+              work: workPace.enabled
+                ? paceBandPerKm(workBand, distanceUnit)
+                : null,
+              easy: easyPace.enabled
+                ? paceBandPerKm(easyBand, distanceUnit)
+                : null,
+              warm: warmPace.enabled
+                ? paceBandPerKm(warmBand, distanceUnit)
+                : null,
+              byEffort: workPace.enabled
+                ? (effortPace ?? undefined)
+                : undefined,
+            }),
+            {
+              work: workHeartRate.enabled ? workHeartRateBand : null,
+              easy: easyHeartRate.enabled ? easyHeartRateBand : null,
+              warm: warmHeartRate.enabled ? warmHeartRateBand : null,
+            }
+          )
+        : undefined,
+    [
+      basePlan,
+      workPace.enabled,
+      easyPace.enabled,
+      warmPace.enabled,
+      effortPace,
+      workBand,
+      easyBand,
+      warmBand,
+      distanceUnit,
+      workHeartRate.enabled,
+      easyHeartRate.enabled,
+      warmHeartRate.enabled,
+      workHeartRateBand,
+      easyHeartRateBand,
+      warmHeartRateBand,
+    ]
+  );
+  // Starting ranges for the plan's fast and easy stretches, offered with a tap.
+  const showPlanTargets = intervalChoice !== 'off' && (!indoor || onWatch);
+  // How the last two rated workouts felt re-paces the suggestions: two hard
+  // ones slow every zone, two easy ones speed them up.
+  const paceShift = zoneShiftForEffort(
+    programEnabled ? effortSuggestion : null
+  );
+  const suggested = useSuggestedRanges(activity, showPlanTargets, paceShift);
+  const suggestedPaceChoice = useMemo(() => {
+    if (!suggested.pace) return null;
+    const perUnit = distanceUnit === 'miles' ? 1.609344 : 1;
+    const choice = (band: {
+      minSecondsPerKm: number;
+      maxSecondsPerKm: number;
+    }) => ({
+      fastest: Math.round((band.minSecondsPerKm * perUnit) / 5) * 5,
+      slowest: Math.round((band.maxSecondsPerKm * perUnit) / 5) * 5,
+    });
+    const efforts: Record<string, ReturnType<typeof choice>> = {};
+    for (const effort of ['tempo', 'marathon', 'stride'] as const) {
+      const band = suggested.byEffort?.[effort];
+      if (band) efforts[effort] = choice(band);
+    }
+    return {
+      work: choice(suggested.pace.work),
+      easy: choice(suggested.pace.easy),
+      warm: choice(suggested.pace.warm),
+      sessions: suggested.pace.sessions,
+      race: suggested.pace.race,
+      efforts,
+    };
+  }, [suggested.pace, suggested.byEffort, distanceUnit]);
+  // Tempo, stride and marathon-pace ranges come from the saved race; once it is
+  // cleared or the activity changes, the ranges applied from it no longer apply.
+  useEffect(() => {
+    setEffortPace(null);
+  }, [suggested.byEffort]);
+  const suggestedHeartRate = watchAvailable ? suggested.heartRate : null;
+  const useSuggestedRangesNow = () => {
+    if (suggestedPaceChoice) {
+      setWorkPace({ enabled: true, band: suggestedPaceChoice.work });
+      setEasyPace({ enabled: true, band: suggestedPaceChoice.easy });
+      setWarmPace({ enabled: true, band: suggestedPaceChoice.warm });
+      setEffortPace(suggested.byEffort);
+    }
+    if (suggestedHeartRate) {
+      setWorkHeartRate({ enabled: true, band: suggestedHeartRate.work });
+      setEasyHeartRate({ enabled: true, band: suggestedHeartRate.easy });
+      setWarmHeartRate({ enabled: true, band: suggestedHeartRate.warm });
+    }
+  };
   // Seconds left before recording begins, or null when no countdown is running.
   const [countdownLeft, setCountdownLeft] = useState<number | null>(null);
   const [permissionProblem, setPermissionProblem] = useState<
@@ -179,9 +521,6 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   // Set when the person taps Start here, so a session that is already there
   // when the screen opens can be told apart from one started on this visit.
   const [startedHere, setStartedHere] = useState(false);
-  // Indoor (treadmill) recording: no GPS, and the distance is typed in at the
-  // end from whatever the machine shows.
-  const [indoor, setIndoor] = useState(false);
   // Null until the person types: the field then shows the step-based estimate,
   // and clearing it leaves it empty rather than bringing the estimate back.
   const [indoorDistanceText, setIndoorDistanceText] = useState<string | null>(
@@ -193,13 +532,19 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     autoPause: false,
     audioCues: false,
     countdownSeconds: false,
+    checkInMinutes: false,
+    paceAlert: false,
+    heartRateAlert: false,
   });
 
+  // While a recording is going, the header names it ("Outdoor run"), so the
+  // screen always says what is being recorded.
+  const liveTitle = session
+    ? recordingTitle(t, session.activity, session.indoor === true)
+    : t('screens.recordActivity', { defaultValue: 'Record Activity' });
   useScreenHeader({
-    title: t('screens.recordActivity', { defaultValue: 'Record Activity' }),
-    nativeTitle: t('screens.recordActivity', {
-      defaultValue: 'Record Activity',
-    }),
+    title: liveTitle,
+    nativeTitle: liveTitle,
     left: { kind: 'back' },
   });
 
@@ -214,8 +559,18 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       if (!preferenceEdits.current.audioCues) {
         setAudioCues(preferences.audioCues);
       }
+      if (!preferenceEdits.current.checkInMinutes) {
+        setCheckInMinutes(preferences.checkInMinutes);
+      }
       if (!preferenceEdits.current.countdownSeconds) {
         setCountdownSeconds(preferences.countdownSeconds);
+      }
+      // Only the ranges come back: an alert is switched on per run.
+      if (!preferenceEdits.current.heartRateAlert) {
+        setHeartRateBand(preferences.heartRateBand ?? null);
+      }
+      if (!preferenceEdits.current.paceAlert) {
+        setSavedPaceBand(preferences.paceBand ?? null);
       }
     });
     return () => {
@@ -241,7 +596,8 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [isLive]);
 
   // Each second, let a timed plan move on to its next step.
-  const hasIntervals = Boolean(session?.intervals);
+  const hasIntervals =
+    Boolean(session?.intervals) || Boolean(session?.checkInMinutes);
   useEffect(() => {
     if (!isLive || !hasIntervals) return;
     void tickIntervals();
@@ -307,6 +663,43 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       run(
         async () => {
           setPermissionProblem(null);
+          if (onWatch) {
+            const meta =
+              intervalChoice === 'program' && programStatus
+                ? {
+                    id: programStatus.program.id,
+                    name: programTitle(t, programStatus.program),
+                    program: {
+                      id: programStatus.program.id,
+                      index: programStatus.done,
+                      activity: programStatus.program.activity,
+                    },
+                  }
+                : {
+                    id: intervalChoice,
+                    name: t('recordActivity.watch.planName', {
+                      defaultValue: 'Intervals',
+                    }),
+                  };
+            await startRunOnWatch({
+              kind: activity,
+              place: indoor ? 'indoor' : 'outdoor',
+              autoPause,
+              voiceCues: audioCues,
+              checkInMinutes,
+              ...(paceAlert
+                ? { paceBand: paceBandPerKm(currentPaceBand, distanceUnit) }
+                : {}),
+              ...(heartRateAlert
+                ? { heartRateBand: currentHeartRateBand }
+                : {}),
+              plan: intervalPlan
+                ? buildWatchStartPlan(t, intervalPlan, meta)
+                : undefined,
+            });
+            navigation.navigate('WatchRunLive');
+            return;
+          }
           // Before the await: the session publishes inside startRecording, and
           // the "already recording" notice must not flash for one render.
           setStartedHere(true);
@@ -320,7 +713,16 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
                 : 'km'
               : undefined,
             intervals: intervalPlan,
+            checkInMinutes: audioCues ? checkInMinutes : 0,
             indoor,
+            paceBand:
+              paceAlert && !indoor && activity !== 'ride'
+                ? paceBandPerKm(currentPaceBand, distanceUnit)
+                : undefined,
+            heartRateBand:
+              heartRateAlert && !indoor && activity !== 'ride'
+                ? currentHeartRateBand
+                : undefined,
             program:
               intervalChoice === 'program' && programStatus && intervalPlan
                 ? { id: programStatus.program.id, index: programStatus.done }
@@ -335,11 +737,18 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     [
       activity,
       audioCues,
+      checkInMinutes,
       autoPause,
+      paceAlert,
+      currentPaceBand,
+      heartRateAlert,
+      currentHeartRateBand,
       distanceUnit,
       indoor,
       intervalChoice,
       intervalPlan,
+      navigation,
+      onWatch,
       programStatus,
       run,
       t,
@@ -462,11 +871,10 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         session.indoor ? indoorEstimate : null,
         session.indoor === true && indoorDistanceText === null
       );
-      // Ticks a program workout off only if the plan was followed to its last
-      // step; a run cut short can be tried again. The day is the one the run
+      // Ticks a program workout off only if the plan was followed to its end; a run cut short can be tried again. The day is the one the run
       // started on, so a run saved after midnight still counts for its own day.
       let program: RunSummaryParams['program'] = null;
-      if (session.program && lastStepStarted(session.intervals)) {
+      if (session.program && planCompleted(session)) {
         // The activity is already saved, so a failure here only costs the
         // tick: say so and carry on rather than failing the save.
         try {
@@ -501,6 +909,15 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         }
       }
       invalidateExerciseCache(queryClient, saved.entryDate);
+      const { wornOutShoe } = saved;
+      if (wornOutShoe) {
+        promptToRetireShoe(t, wornOutShoe, () =>
+          updateShoe.mutate({
+            id: wornOutShoe.id,
+            data: { status: 'retired' },
+          })
+        );
+      }
       // The activity is filed. Nothing after this may report the save as
       // failed, or the person would be told to try again for no reason.
       let summaryParams: RunSummaryParams | null = null;
@@ -515,6 +932,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
             await getHeartRateSamples().catch(() => [])
           ),
           program,
+          entryId: saved.entryId,
         });
       } catch (error) {
         addLog(
@@ -554,6 +972,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     queryClient,
     session,
     t,
+    updateShoe,
   ]);
 
   const number = (value: number, digits = 2) =>
@@ -651,63 +1070,150 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
               onSelect={(key) => setIndoor(key === 'indoor')}
             />
           </View>
-          {indoor ? null : (
-            <View className="flex-row items-center justify-between bg-surface rounded-xl p-4 mt-4">
-              <View className="flex-1 mr-3">
-                <Text className="text-text-primary text-sm font-semibold">
-                  {t('recordActivity.autoPause.title', {
-                    defaultValue: 'Auto-pause',
-                  })}
-                </Text>
-                <Text className="text-text-secondary text-xs mt-0.5">
-                  {t('recordActivity.autoPause.description', {
-                    defaultValue:
-                      'Pauses the clock when you stop and carries on when you move.',
-                  })}
-                </Text>
-              </View>
-              <Switch
-                testID="auto-pause-switch"
-                accessibilityLabel={t('recordActivity.autoPause.title', {
-                  defaultValue: 'Auto-pause',
+          {watchAvailable ? (
+            <View className="bg-surface rounded-xl p-4 mt-4">
+              <Text className="text-text-primary text-sm font-semibold mb-1">
+                {t('recordActivity.watch.title', {
+                  defaultValue: 'Record with',
                 })}
-                value={autoPause}
-                onValueChange={(value) => {
-                  preferenceEdits.current.autoPause = true;
-                  setAutoPause(value);
-                  void setRecordingPreference('autoPause', value);
-                }}
+              </Text>
+              <Text className="text-text-secondary text-xs mb-2">
+                {recordWith === 'phone'
+                  ? indoor
+                    ? t('recordActivity.watch.phoneIndoorHint', {
+                        defaultValue:
+                          'Your phone counts your steps to estimate the distance. Correct it to the treadmill’s figure afterwards.',
+                      })
+                    : t('recordActivity.watch.phoneHint', {
+                        defaultValue:
+                          'Your phone’s GPS records the route and distance.',
+                      })
+                  : indoor
+                    ? t('recordActivity.watch.indoorHint', {
+                        defaultValue:
+                          'Your watch counts steps and estimates the distance. Correct it to the treadmill’s figure afterwards.',
+                      })
+                    : t('recordActivity.watch.outdoorHint', {
+                        defaultValue:
+                          'Your watch records it with its own GPS and heart rate sensor. Your phone can stay behind.',
+                      })}
+              </Text>
+              <SegmentedControl<'phone' | 'watch'>
+                segments={[
+                  {
+                    key: 'phone',
+                    label: indoor
+                      ? t('recordActivity.watch.phoneIndoor', {
+                          defaultValue: 'Phone',
+                        })
+                      : t('recordActivity.watch.phone', {
+                          defaultValue: 'Phone GPS',
+                        }),
+                  },
+                  {
+                    key: 'watch',
+                    label: indoor
+                      ? t('recordActivity.watch.watchIndoor', {
+                          defaultValue: 'Watch',
+                        })
+                      : t('recordActivity.watch.outdoor', {
+                          defaultValue: 'Watch GPS',
+                        }),
+                  },
+                ]}
+                activeKey={recordWith}
+                onSelect={setRecordWith}
               />
             </View>
-          )}
-          <View className="flex-row items-center justify-between bg-surface rounded-xl p-4 mt-4">
-            <View className="flex-1 mr-3">
-              <Text className="text-text-primary text-sm font-semibold">
-                {t('recordActivity.audioCues.title', {
-                  defaultValue: 'Voice cues',
-                })}
-              </Text>
-              <Text className="text-text-secondary text-xs mt-0.5">
-                {t('recordActivity.audioCues.description', {
-                  defaultValue:
-                    'Speaks your time at each kilometer or mile, and when you pause or resume.',
-                })}
-              </Text>
-            </View>
-            <Switch
-              testID="audio-cues-switch"
-              accessibilityLabel={t('recordActivity.audioCues.title', {
-                defaultValue: 'Voice cues',
+          ) : null}
+          {/* A phone indoors has no location fixes for auto-pause; the
+              watch judges by its step counter, so it keeps the switch. */}
+          {indoor && !onWatch ? null : (
+            <RecordingSwitchRow
+              testID="auto-pause-switch"
+              title={t('recordActivity.autoPause.title', {
+                defaultValue: 'Auto-pause',
               })}
-              value={audioCues}
+              description={t('recordActivity.autoPause.description', {
+                defaultValue:
+                  'Pauses the clock when you stop and carries on when you move.',
+              })}
+              value={autoPause}
               onValueChange={(value) => {
-                preferenceEdits.current.audioCues = true;
-                setAudioCues(value);
-                void setRecordingPreference('audioCues', value);
+                preferenceEdits.current.autoPause = true;
+                setAutoPause(value);
+                void setRecordingPreference('autoPause', value);
               }}
             />
-          </View>
-          {audioCues && <RecordingVoiceCard />}
+          )}
+          <RecordingSwitchRow
+            testID="audio-cues-switch"
+            title={t('recordActivity.audioCues.title', {
+              defaultValue: 'Voice cues',
+            })}
+            description={t('recordActivity.audioCues.description', {
+              defaultValue:
+                'Speaks your time at each kilometer or mile, and when you pause or resume.',
+            })}
+            value={audioCues}
+            onValueChange={(value) => {
+              preferenceEdits.current.audioCues = true;
+              setAudioCues(value);
+              void setRecordingPreference('audioCues', value);
+            }}
+          />
+          {/* The watch speaks with its own voice. */}
+          {audioCues && !onWatch ? <RecordingVoiceCard /> : null}
+          {audioCues ? (
+            <CheckInCard
+              minutes={checkInMinutes}
+              onChange={(minutes) => {
+                preferenceEdits.current.checkInMinutes = true;
+                setCheckInMinutes(minutes);
+                void setCheckInPreference(minutes);
+              }}
+            />
+          ) : null}
+          {/* A phone indoors has no GPS pace to judge by; the watch has its own. */}
+          {(!indoor || onWatch) && activity !== 'ride' ? (
+            <PaceBandCard
+              enabled={paceAlert}
+              onEnabledChange={(value) => {
+                preferenceEdits.current.paceAlert = true;
+                setPaceAlert(value);
+                if (value) {
+                  void setPaceBandPreference(
+                    paceBandPerKm(currentPaceBand, distanceUnit)
+                  );
+                }
+              }}
+              band={currentPaceBand}
+              onBandChange={(next) => {
+                preferenceEdits.current.paceAlert = true;
+                setPaceBand(next);
+                void setPaceBandPreference(paceBandPerKm(next, distanceUnit));
+              }}
+              unit={distanceUnit}
+            />
+          ) : null}
+          {/* Heart rate comes from the Apple Watch, so needs one paired. */}
+          {watchAvailable && (!indoor || onWatch) ? (
+            <HeartRateBandCard
+              enabled={heartRateAlert}
+              onEnabledChange={(value) => {
+                preferenceEdits.current.heartRateAlert = true;
+                setHeartRateAlert(value);
+                if (value)
+                  void setHeartRateBandPreference(currentHeartRateBand);
+              }}
+              band={currentHeartRateBand}
+              onBandChange={(next) => {
+                preferenceEdits.current.heartRateAlert = true;
+                setHeartRateBand(next);
+                void setHeartRateBandPreference(next);
+              }}
+            />
+          ) : null}
           <View className="bg-surface rounded-xl p-4 mt-4">
             <Text className="text-text-primary text-sm font-semibold mb-2">
               {t('recordActivity.countdown.title', {
@@ -756,7 +1262,161 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
             onChoice={setIntervalChoice}
             custom={customIntervals}
             onCustom={setCustomIntervals}
+            activity={activity}
+            distanceAllowed={!indoor}
+            milesAvailable={distanceUnit === 'miles'}
           />
+          {/* A plan can hold a pace in its fast and easy stretches and its warm-up and cool-down. */}
+          {showPlanTargets ? (
+            <>
+              <SuggestedRangesCard
+                unit={distanceUnit}
+                pace={suggestedPaceChoice}
+                heartRate={suggestedHeartRate}
+                onUse={useSuggestedRangesNow}
+              />
+              <PaceBandCard
+                testIDPrefix="work-pace"
+                title={t('recordActivity.paceBand.workTitle', {
+                  defaultValue: 'Fast stretch pace',
+                })}
+                description={t('recordActivity.paceBand.workDescription', {
+                  defaultValue:
+                    'Alerts you when a fast stretch is outside this range.',
+                })}
+                enabled={workPace.enabled}
+                onEnabledChange={(enabled) =>
+                  setWorkPace((current) => ({ ...current, enabled }))
+                }
+                band={workBand}
+                onBandChange={(band) =>
+                  setWorkPace((current) => ({ ...current, band }))
+                }
+                unit={distanceUnit}
+              />
+              <PaceBandCard
+                testIDPrefix="easy-pace"
+                title={t('recordActivity.paceBand.easyTitle', {
+                  defaultValue: 'Easy stretch pace',
+                })}
+                description={t('recordActivity.paceBand.easyDescription', {
+                  defaultValue:
+                    'Alerts you when an easy stretch is outside this range.',
+                })}
+                enabled={easyPace.enabled}
+                onEnabledChange={(enabled) =>
+                  setEasyPace((current) => ({ ...current, enabled }))
+                }
+                band={easyBand}
+                onBandChange={(band) =>
+                  setEasyPace((current) => ({ ...current, band }))
+                }
+                unit={distanceUnit}
+              />
+              {watchAvailable ? (
+                <>
+                  <HeartRateBandCard
+                    testIDPrefix="work-hr"
+                    title={t('recordActivity.heartRateBand.workTitle', {
+                      defaultValue: 'Fast stretch heart rate',
+                    })}
+                    description={t(
+                      'recordActivity.heartRateBand.workDescription',
+                      {
+                        defaultValue:
+                          'Alerts you when your heart rate in a fast stretch is outside this range.',
+                      }
+                    )}
+                    enabled={workHeartRate.enabled}
+                    onEnabledChange={(enabled) =>
+                      setWorkHeartRate((current) => ({ ...current, enabled }))
+                    }
+                    band={workHeartRateBand}
+                    onBandChange={(band) =>
+                      setWorkHeartRate((current) => ({ ...current, band }))
+                    }
+                  />
+                  <HeartRateBandCard
+                    testIDPrefix="easy-hr"
+                    title={t('recordActivity.heartRateBand.easyTitle', {
+                      defaultValue: 'Easy stretch heart rate',
+                    })}
+                    description={t(
+                      'recordActivity.heartRateBand.easyDescription',
+                      {
+                        defaultValue:
+                          'Alerts you when your heart rate in an easy stretch is outside this range.',
+                      }
+                    )}
+                    enabled={easyHeartRate.enabled}
+                    onEnabledChange={(enabled) =>
+                      setEasyHeartRate((current) => ({ ...current, enabled }))
+                    }
+                    band={easyHeartRateBand}
+                    onBandChange={(band) =>
+                      setEasyHeartRate((current) => ({ ...current, band }))
+                    }
+                  />
+                </>
+              ) : null}
+              <View className="bg-surface rounded-xl px-4 mt-4">
+                <ProgramActionRow
+                  testID="warm-ranges-toggle"
+                  label={t('recordActivity.warmRanges.title', {
+                    defaultValue: 'Warm-up and cool-down',
+                  })}
+                  hint={warmSummary}
+                  onPress={() => setWarmOpen((open) => !open)}
+                />
+              </View>
+              {warmOpen ? (
+                <>
+                  <PaceBandCard
+                    testIDPrefix="warm-pace"
+                    title={t('recordActivity.paceBand.warmTitle', {
+                      defaultValue: 'Warm-up and cool-down pace',
+                    })}
+                    description={t('recordActivity.paceBand.warmDescription', {
+                      defaultValue:
+                        'Alerts you when the warm-up or cool-down is outside this range.',
+                    })}
+                    enabled={warmPace.enabled}
+                    onEnabledChange={(enabled) =>
+                      setWarmPace((current) => ({ ...current, enabled }))
+                    }
+                    band={warmBand}
+                    onBandChange={(band) =>
+                      setWarmPace((current) => ({ ...current, band }))
+                    }
+                    unit={distanceUnit}
+                  />
+                  {watchAvailable ? (
+                    <HeartRateBandCard
+                      testIDPrefix="warm-hr"
+                      title={t('recordActivity.heartRateBand.warmTitle', {
+                        defaultValue: 'Warm-up and cool-down heart rate',
+                      })}
+                      description={t(
+                        'recordActivity.heartRateBand.warmDescription',
+                        {
+                          defaultValue:
+                            'Alerts you when your heart rate in the warm-up or cool-down is outside this range.',
+                        }
+                      )}
+                      enabled={warmHeartRate.enabled}
+                      onEnabledChange={(enabled) =>
+                        setWarmHeartRate((current) => ({ ...current, enabled }))
+                      }
+                      band={warmHeartRateBand}
+                      onBandChange={(band) =>
+                        setWarmHeartRate((current) => ({ ...current, band }))
+                      }
+                    />
+                  ) : null}
+                </>
+              ) : null}
+            </>
+          ) : null}
           {permissionProblem ? (
             <View className="bg-surface rounded-xl p-4 mt-4">
               <Text className="text-text-primary text-sm mb-3">
@@ -834,7 +1494,10 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     });
     const finished = session.status === 'finished';
     const intervalPos = session.intervals
-      ? intervalPosition(session.intervals.plan, active)
+      ? intervalPosition(session.intervals.plan, active, {
+          cursor: session.intervals.cursor,
+          meters: distance,
+        })
       : null;
     const indoorSession = session.indoor === true;
     // Still running from before this visit (or from earlier in it): say when it
@@ -874,6 +1537,11 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
                 defaultValue: 'Waiting for a GPS fix…',
               })}
             </Text>
+          </View>
+        )}
+        {indoorSession || finished ? null : (
+          <View className="items-center mb-2">
+            <GpsSignalBadge />
           </View>
         )}
         <View className="items-center mb-4">
@@ -1161,6 +1829,88 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             {t('recordActivity.discard.action', { defaultValue: 'Discard' })}
           </Button>
+        )}
+        {/* This recording only: the saved preferences stay as they are. */}
+        {finished || session.indoor ? null : (
+          <RecordingSwitchRow
+            testID="live-auto-pause-switch"
+            title={t('recordActivity.autoPause.title', {
+              defaultValue: 'Auto-pause',
+            })}
+            value={session.autoPause === true}
+            onValueChange={(value) =>
+              void run(
+                () =>
+                  setRecordingAutoPause(
+                    value,
+                    notificationText(t, session.activity)
+                  ),
+                t('recordActivity.errors.resume', {
+                  defaultValue: 'Could not resume recording',
+                })
+              )
+            }
+          />
+        )}
+        {finished ? null : (
+          <RecordingSwitchRow
+            testID="live-audio-cues-switch"
+            title={t('recordActivity.audioCues.title', {
+              defaultValue: 'Voice cues',
+            })}
+            value={session.audioCues != null}
+            onValueChange={(value) =>
+              void setRecordingAudioCues(
+                value ? (distanceUnit === 'miles' ? 'miles' : 'km') : undefined
+              )
+            }
+          />
+        )}
+        {finished || session.audioCues == null ? null : (
+          <CheckInCard
+            testID="live-check-in"
+            minutes={session.checkInMinutes ?? 0}
+            onChange={(minutes) => {
+              preferenceEdits.current.checkInMinutes = true;
+              setCheckInMinutes(minutes);
+              void setCheckInPreference(minutes);
+              void setRecordingCheckIn(minutes);
+            }}
+          />
+        )}
+        {/* Change the range without stopping: a new range starts the wait again. */}
+        {finished || session.indoor || session.activity === 'ride' ? null : (
+          <PaceBandCard
+            testIDPrefix="live-pace"
+            enabled={session.paceBand != null}
+            onEnabledChange={(on) =>
+              void setRecordingPaceBand(
+                on ? paceBandPerKm(currentPaceBand, distanceUnit) : undefined
+              )
+            }
+            band={
+              session.paceBand
+                ? paceBandInUnit(session.paceBand, distanceUnit)
+                : currentPaceBand
+            }
+            onBandChange={(next) =>
+              void setRecordingPaceBand(paceBandPerKm(next, distanceUnit))
+            }
+            unit={distanceUnit}
+          />
+        )}
+        {finished || session.indoor || session.activity === 'ride' ? null : (
+          <HeartRateBandCard
+            testIDPrefix="live-hr"
+            enabled={session.heartRateBand != null}
+            onEnabledChange={(on) =>
+              void setRecordingHeartRateBand(
+                on ? currentHeartRateBand : undefined
+              )
+            }
+            band={session.heartRateBand ?? currentHeartRateBand}
+            onBandChange={(next) => void setRecordingHeartRateBand(next)}
+          />
         )}
       </>
     );

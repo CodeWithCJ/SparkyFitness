@@ -7,6 +7,7 @@ import {
   elevationGainLoss,
   formatClock,
   formatPace,
+  gpsSignalLevel,
   haversineMeters,
   METERS_PER_KM,
   paceSecondsPerUnit,
@@ -389,5 +390,20 @@ describe('splitBars', () => {
     expect(splitBars([split(1, 20, true)], 1000)).toEqual([
       { fraction: 0, fastest: false },
     ]);
+  });
+});
+
+describe('gpsSignalLevel', () => {
+  const now = 100_000;
+  it('grades the newest fix by its accuracy radius', () => {
+    expect(gpsSignalLevel({ hacc: 5, t: now }, now)).toBe('good');
+    expect(gpsSignalLevel({ hacc: 18, t: now }, now)).toBe('fair');
+    expect(gpsSignalLevel({ hacc: 60, t: now }, now)).toBe('weak');
+  });
+
+  it('reads as no signal before a fix, with no accuracy, or when stale', () => {
+    expect(gpsSignalLevel(null, now)).toBe('none');
+    expect(gpsSignalLevel({ hacc: -1, t: now }, now)).toBe('none');
+    expect(gpsSignalLevel({ hacc: 5, t: now - 16_000 }, now)).toBe('none');
   });
 });

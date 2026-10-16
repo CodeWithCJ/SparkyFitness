@@ -10,19 +10,9 @@ jest.mock('@/hooks/Reports/useReports', () => ({
     mockUseAlcoholWeekReport(date, userId),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, second?: unknown) => {
-      if (typeof second === 'string') return second;
-      const opts = second as
-        { defaultValue?: string; count?: number } | undefined;
-      const template = opts?.defaultValue ?? key;
-      return opts?.count !== undefined
-        ? template.replace('{{count}}', String(opts.count))
-        : template;
-    },
-  }),
-}));
+jest.mock('react-i18next', () =>
+  jest.requireActual('@/tests/mocks/reactI18next')
+);
 
 function week(overrides: Record<string, unknown> = {}) {
   const days = [

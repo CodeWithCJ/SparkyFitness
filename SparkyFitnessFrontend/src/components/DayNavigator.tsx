@@ -105,7 +105,7 @@ const DayNavigator = ({
             className="text-xs text-muted-foreground h-9 px-3 rounded-full border border-border/60"
             onClick={handleToday}
           >
-            Today
+            {t('dayNavigator.today', 'Today')}
           </Button>
         )}
       </div>

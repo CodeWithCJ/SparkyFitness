@@ -11,8 +11,9 @@ enum WatchPage: String, CaseIterable {
     /// System Now Playing. Not arrangeable: it sits right after the Workout
     /// page, and only while a workout is running.
     case nowPlaying
-    /// The phone's GPS recording. Not arrangeable: it shows first, and only
-    /// while a recording is running.
+    /// The phone's GPS recording used to have a page of its own here. It now
+    /// shows on the Workout page, so this is never put in the page list; the
+    /// case stays so a stored or phone-sent page name still decodes.
     case recording
 
     /// The pages to show, in swipe order.

@@ -11,13 +11,45 @@ import {
 import { CalendarIcon } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
+import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 const PRESETS = [
-  { label: 'Last 7 days', days: 7 },
-  { label: 'Last 14 days', days: 14 },
-  { label: 'Last 30 days', days: 30 },
-  { label: 'Last 90 days', days: 90 },
-  { label: '6 months', days: 180 },
-  { label: '1 year', days: 365 },
+  {
+    get label() {
+      return i18n.t('ui.dateRangeWithPresets.last7Days', 'Last 7 days');
+    },
+    days: 7,
+  },
+  {
+    get label() {
+      return i18n.t('ui.dateRangeWithPresets.last14Days', 'Last 14 days');
+    },
+    days: 14,
+  },
+  {
+    get label() {
+      return i18n.t('ui.dateRangeWithPresets.last30Days', 'Last 30 days');
+    },
+    days: 30,
+  },
+  {
+    get label() {
+      return i18n.t('ui.dateRangeWithPresets.last90Days', 'Last 90 days');
+    },
+    days: 90,
+  },
+  {
+    get label() {
+      return i18n.t('ui.dateRangeWithPresets.n6Months', '6 months');
+    },
+    days: 180,
+  },
+  {
+    get label() {
+      return i18n.t('ui.dateRangeWithPresets.n1Year', '1 year');
+    },
+    days: 365,
+  },
 ];
 
 interface Props {
@@ -33,6 +65,7 @@ export const DateRangePickerWithPresets = ({
   onStartDateChange,
   onEndDateChange,
 }: Props) => {
+  const { t } = useTranslation();
   const { formatDate, formatDateInUserTimezone } = usePreferences();
   const [open, setOpen] = React.useState(false);
   const [activePreset, setActivePreset] = React.useState<number | null>(null);
@@ -92,7 +125,7 @@ export const DateRangePickerWithPresets = ({
           {/* Presets sidebar */}
           <div className="flex flex-col gap-0.5 p-2 border-r border-border/40 bg-muted/30 min-w-[130px]">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-2 pt-1 pb-2">
-              Quick select
+              {t('ui.dateRangeWithPresets.quickSelect', 'Quick select')}
             </p>
             {PRESETS.map(({ label, days }) => (
               <button

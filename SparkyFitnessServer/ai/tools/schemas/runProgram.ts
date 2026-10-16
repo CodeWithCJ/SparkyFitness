@@ -67,7 +67,7 @@ export const manageRunProgramSchema = z.discriminatedUnion('action', [
         .max(50)
         .optional()
         .describe(
-          'walkFit, beginner5k, fiveToTenK, faster5k, halfMarathon or marathon. Default beginner5k.'
+          'walkFit, walk10k, returnToRunning, gentle5k, beginner5k, fiveToTenK, faster5k, beginner10k, faster10k, tenKToHalf, halfMarathon, fasterHalf, beginnerMarathon, marathon or advancedMarathon; the half marathon and beginner marathon plans also come as tenKToHalf4, halfMarathon4, fasterHalf4 and beginnerMarathon4 with four runs a week. Default beginner5k.'
         ),
       confirmed: confirmedSchema,
     })

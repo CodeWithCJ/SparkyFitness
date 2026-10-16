@@ -1,18 +1,30 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { Alert, Platform, ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { findProgram, programOutline, RUN_PROGRAMS } from '@workspace/shared';
+import {
+  customProgramId,
+  findProgram,
+  PICKER_PROGRAMS,
+  programOutline,
+  programVersions,
+  type CustomRunProgramResponse,
+} from '@workspace/shared';
 import RunProgramCard, {
   programDescription,
   programName,
 } from '../components/recording/RunProgramCard';
+import PaceReferenceCard from '../components/recording/PaceReferenceCard';
 import RunProgramCalendar from '../components/recording/RunProgramCalendar';
 import RunProgramGuide, {
   programStructure,
 } from '../components/recording/RunProgramGuide';
 import Button from '../components/ui/Button';
+import SegmentedControl from '../components/SegmentedControl';
+import ProgramActionRow, {
+  ProgramActionList,
+} from '../components/recording/ProgramActionRow';
 import CalendarSheet, {
   type CalendarSheetRef,
 } from '../components/CalendarSheet';
@@ -24,9 +36,12 @@ import {
   setProgramPosition,
   skipProgramWorkout,
   startProgram,
+  useCustomRunPrograms,
   useRunProgram,
 } from '../services/runProgramService';
 import { addLog } from '../services/LogService';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { formatLocalizedNumber } from '../localization';
 import type { RootStackScreenProps } from '../types/navigation';
 import { addDays, toLocalDateString } from '../utils/dateUtils';
 
@@ -47,6 +62,19 @@ const RunProgramsScreen: React.FC<Props> = ({ navigation }) => {
   const storedId = status?.program.id;
   const startCalendarRef = useRef<CalendarSheetRef>(null);
   const [startingId, setStartingId] = useState<string | null>(null);
+  // Which version (3 or 4 runs a week) is picked on a card that has both.
+  const [versionOf, setVersionOf] = useState<Record<string, string>>({});
+  const { programs: customPrograms } = useCustomRunPrograms();
+  const paceReferenceRace = useAppPreferencesStore((s) => s.paceReferenceRace);
+  const setPaceReferenceRace = useAppPreferencesStore(
+    (s) => s.setPaceReferenceRace
+  );
+  const paceReferenceOnWatch = useAppPreferencesStore(
+    (s) => s.paceReferenceOnWatch
+  );
+  const setPaceReferenceOnWatch = useAppPreferencesStore(
+    (s) => s.setPaceReferenceOnWatch
+  );
 
   const header = useScreenHeader({
     title: t('screens.runPrograms', { defaultValue: 'Training programs' }),
@@ -74,10 +102,14 @@ const RunProgramsScreen: React.FC<Props> = ({ navigation }) => {
   );
 
   // Starting asks when the first workout is: today, or a date from the calendar.
+  const nameOf = (id: string): string =>
+    customPrograms.find((p) => customProgramId(p.id) === id)?.name ??
+    programName(t, id);
+
   const askStart = (id: string) => {
     Alert.alert(
       t('runPrograms.startWhenTitle', {
-        name: programName(t, id),
+        name: nameOf(id),
         defaultValue: 'Start {{name}}',
       }),
       t('runPrograms.startWhenMessage', {
@@ -114,7 +146,7 @@ const RunProgramsScreen: React.FC<Props> = ({ navigation }) => {
     // week 1 (and switches it on), so it is always confirmed.
     Alert.alert(
       t('recordActivity.program.switchTitle', {
-        name: programName(t, id),
+        name: nameOf(id),
         defaultValue: 'Switch to {{name}}?',
       }),
       t('recordActivity.program.switchMessage', {
@@ -140,6 +172,88 @@ const RunProgramsScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
+  const yourPlans = (
+    <View className="mt-6" testID="your-plans">
+      <Text className="text-text-primary text-base font-semibold">
+        {t('runPrograms.custom.title', { defaultValue: 'Your plans' })}
+      </Text>
+      <Text className="text-text-secondary text-xs mt-1">
+        {t('runPrograms.custom.intro', {
+          defaultValue:
+            'Write your own plan as a list of workouts, each made of timed steps, and follow it like any program.',
+        })}
+      </Text>
+      {customPrograms.map((plan: CustomRunProgramResponse) => (
+        <View
+          key={plan.id}
+          className="bg-surface rounded-xl p-4 mt-3"
+          testID={`custom-plan-${plan.id}`}
+        >
+          <Text className="text-text-primary text-base font-semibold">
+            {plan.name}
+          </Text>
+          <Text className="text-text-muted text-xs mt-0.5">
+            {t('runPrograms.custom.workoutCount', {
+              count: plan.workouts.length,
+              formattedCount: formatLocalizedNumber(plan.workouts.length),
+              defaultValue: '{{formattedCount}} workouts',
+              defaultValue_one: '{{formattedCount}} workout',
+              defaultValue_other: '{{formattedCount}} workouts',
+            })}
+          </Text>
+          <View className="flex-row mt-3">
+            <View className="flex-1 mr-2">
+              <Button
+                variant="outline"
+                onPress={() => askStart(customProgramId(plan.id))}
+                testID={`custom-plan-start-${plan.id}`}
+              >
+                {storedId === customProgramId(plan.id)
+                  ? t('runPrograms.custom.restart', {
+                      defaultValue: 'Start again',
+                    })
+                  : t('runPrograms.start', { defaultValue: 'Start program' })}
+              </Button>
+            </View>
+            <View className="flex-1">
+              <Button
+                variant="outline"
+                onPress={() =>
+                  navigation.navigate('RunProgramEdit', { id: plan.id })
+                }
+                testID={`custom-plan-edit-${plan.id}`}
+              >
+                {t('runPrograms.custom.edit', { defaultValue: 'Edit' })}
+              </Button>
+            </View>
+          </View>
+        </View>
+      ))}
+      <View className="flex-row mt-3">
+        <View className="flex-1 mr-2">
+          <Button
+            variant="secondary"
+            onPress={() => navigation.navigate('RunProgramRace')}
+            testID="plan-a-race"
+          >
+            {t('runPrograms.race.open', { defaultValue: 'Plan a race' })}
+          </Button>
+        </View>
+        <View className="flex-1">
+          <Button
+            variant="secondary"
+            onPress={() => navigation.navigate('RunProgramEdit')}
+            testID="custom-plan-new"
+          >
+            {t('runPrograms.custom.create', {
+              defaultValue: 'Create a plan',
+            })}
+          </Button>
+        </View>
+      </View>
+    </View>
+  );
+
   let body: React.ReactNode = null;
   if (loaded && status) {
     body = (
@@ -162,19 +276,65 @@ const RunProgramsScreen: React.FC<Props> = ({ navigation }) => {
           onSelect={() =>
             navigation.navigate('RecordActivity', { programWorkout: true })
           }
+          prominent
           startLabel={t('runPrograms.startWorkout', {
             defaultValue: "Start today's workout",
           })}
           onRestart={() => change(restartProgram)}
           onSkip={() => change(skipProgramWorkout)}
         />
+        <View className="bg-surface rounded-xl px-4 mt-4">
+          <ProgramActionList>
+            <ProgramActionRow
+              label={t('runPrograms.openCalendar', {
+                defaultValue: 'Open the program calendar',
+              })}
+              hint={t('runPrograms.openCalendarHint', {
+                defaultValue: 'Every workout on a month view',
+              })}
+              onPress={() => navigation.navigate('RunProgramCalendar')}
+            />
+            {status.program.custom ? null : (
+              <ProgramActionRow
+                label={t('runPrograms.custom.customize', {
+                  defaultValue: 'Customize this program',
+                })}
+                hint={t('runPrograms.custom.customizeHint', {
+                  defaultValue: 'Copy it as a plan you can edit',
+                })}
+                onPress={() =>
+                  navigation.navigate('RunProgramEdit', {
+                    fromProgramId: status.program.id,
+                  })
+                }
+                testID="customize-current"
+              />
+            )}
+          </ProgramActionList>
+        </View>
         <RunProgramCalendar
           status={status}
           schedule={schedule}
           doneDay={doneDay}
           today={today}
+          onCatchUp={(next) => change(() => setProgramPosition(next))}
         />
-        <RunProgramGuide programId={storedId} />
+        <RunProgramGuide
+          programId={status.program.custom ? undefined : storedId}
+        />
+        <PaceReferenceCard
+          race={paceReferenceRace}
+          onSave={setPaceReferenceRace}
+          watch={
+            Platform.OS === 'ios'
+              ? {
+                  value: paceReferenceOnWatch,
+                  onChange: setPaceReferenceOnWatch,
+                }
+              : undefined
+          }
+        />
+        {yourPlans}
       </>
     );
   } else if (loaded) {
@@ -187,29 +347,50 @@ const RunProgramsScreen: React.FC<Props> = ({ navigation }) => {
           })}
         </Text>
         <RunProgramGuide defaultOpen />
-        {RUN_PROGRAMS.map((program) => {
+        {PICKER_PROGRAMS.map((basic) => {
+          const versions = programVersions(basic.id);
+          const program =
+            versions.find((v) => v.id === versionOf[basic.id]) ?? basic;
           const outline = programOutline(findProgram(program.id)!);
           return (
             <View
-              key={program.id}
+              key={basic.id}
               className="bg-surface rounded-xl p-4 mt-4"
-              testID={`run-program-${program.id}`}
+              testID={`run-program-${basic.id}`}
             >
               <Text className="text-text-primary text-base font-semibold">
-                {programName(t, program.id)}
+                {programName(t, basic.id)}
               </Text>
-              <Text className="text-text-muted text-xs mt-0.5">
-                {program.activity === 'walk'
-                  ? t('runPrograms.weeksWalks', {
-                      weeks: program.weeks,
-                      runs: program.workoutsPerWeek,
-                      defaultValue: '{{weeks}} weeks, {{runs}} walks a week',
-                    })
-                  : t('runPrograms.weeksRuns', {
-                      weeks: program.weeks,
-                      runs: program.workoutsPerWeek,
-                      defaultValue: '{{weeks}} weeks, {{runs}} runs a week',
+              {versions.length > 1 ? (
+                <View className="mt-2" testID={`run-versions-${basic.id}`}>
+                  <SegmentedControl
+                    segments={versions.map((v) => ({
+                      key: v.id,
+                      label: t('runPrograms.runsPerWeekOption', {
+                        count: v.workoutsPerWeek,
+                        defaultValue: '{{count}} runs a week',
+                        defaultValue_one: '{{count}} run a week',
+                      }),
+                    }))}
+                    activeKey={program.id}
+                    onSelect={(id) =>
+                      setVersionOf((prev) => ({ ...prev, [basic.id]: id }))
+                    }
+                  />
+                  <Text className="text-text-muted text-xs mt-1">
+                    {t('runPrograms.runsPerWeekHint', {
+                      defaultValue:
+                        'A fourth run adds a short easy run, so the long run is a smaller share of your week.',
                     })}
+                  </Text>
+                </View>
+              ) : null}
+              <Text className="text-text-muted text-xs mt-0.5">
+                {t('runPrograms.weeksRuns', {
+                  weeks: program.weeks,
+                  runs: program.workoutsPerWeek,
+                  defaultValue: '{{weeks}} weeks, {{runs}} workouts a week',
+                })}
               </Text>
               <Text className="text-text-secondary text-sm mt-2">
                 {programDescription(t, program.id)}
@@ -237,9 +418,37 @@ const RunProgramsScreen: React.FC<Props> = ({ navigation }) => {
                   {t('runPrograms.start', { defaultValue: 'Start program' })}
                 </Button>
               </View>
+              <View className="mt-2">
+                <Button
+                  variant="ghost"
+                  onPress={() =>
+                    navigation.navigate('RunProgramEdit', {
+                      fromProgramId: program.id,
+                    })
+                  }
+                  testID={`customize-${program.id}`}
+                >
+                  {t('runPrograms.custom.customize', {
+                    defaultValue: 'Customize this program',
+                  })}
+                </Button>
+              </View>
             </View>
           );
         })}
+        <PaceReferenceCard
+          race={paceReferenceRace}
+          onSave={setPaceReferenceRace}
+          watch={
+            Platform.OS === 'ios'
+              ? {
+                  value: paceReferenceOnWatch,
+                  onChange: setPaceReferenceOnWatch,
+                }
+              : undefined
+          }
+        />
+        {yourPlans}
       </>
     );
   }

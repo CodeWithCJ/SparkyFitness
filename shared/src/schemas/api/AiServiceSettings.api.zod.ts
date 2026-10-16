@@ -31,6 +31,7 @@ export const createAiServiceSettingsRequestSchema =
       model_name: true,
       service_name: true,
       service_type: true,
+      supports_audio_input: true,
       system_prompt: true,
     })
     .extend({
@@ -48,6 +49,7 @@ export const updateAiServiceSettingsRequestSchema =
       model_name: true,
       service_name: true,
       service_type: true,
+      supports_audio_input: true,
       system_prompt: true,
     })
     .extend({

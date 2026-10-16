@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { usePreferences } from '@/contexts/PreferencesContext';
 
+import { useTranslation } from 'react-i18next';
 interface StressDataPoint {
   time: string;
   stress_level: number;
@@ -22,6 +23,7 @@ interface StressChartProps {
 }
 
 const StressChart = ({ data, title }: StressChartProps) => {
+  const { t } = useTranslation();
   const { formatTime } = usePreferences();
   const [isMounted, setIsMounted] = React.useState(false);
 
@@ -47,7 +49,10 @@ const StressChart = ({ data, title }: StressChartProps) => {
         <CardContent>
           <div className="h-[300px] flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-md">
             <span className="text-xs text-muted-foreground">
-              Loading stress data...
+              {t(
+                'reports.stressChart.loadingStressData',
+                'Loading stress data...'
+              )}
             </span>
           </div>
         </CardContent>
@@ -81,7 +86,12 @@ const StressChart = ({ data, title }: StressChartProps) => {
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <p>No stress data available for this period.</p>
+          <p>
+            {t(
+              'reports.stressChart.noStressDataAvailableFor',
+              'No stress data available for this period.'
+            )}
+          </p>
         )}
       </CardContent>
     </Card>

@@ -6,19 +6,26 @@ import Toast from 'react-native-toast-message';
 import {
   planMinutes,
   programRunForDate,
+  suggestFromBreak,
+  suggestFromLoad,
   type ExerciseSessionResponse,
 } from '@workspace/shared';
 import Icon from '../Icon';
 import Button from '../ui/Button';
 import {
+  adjustProgramRunning,
   completeProgramWorkout,
   useRunProgram,
 } from '../../services/runProgramService';
+import { useTrainingLoad } from '../../hooks/useTrainingLoad';
 import { useRefetchOnFocus } from '../../hooks/useRefetchOnFocus';
 import { addLog } from '../../services/LogService';
 import { toLocalDateString } from '../../utils/dateUtils';
 import { findLoggedRun } from '../../utils/loggedRun';
-import { programName } from './RunProgramCard';
+import { customWorkoutTitle, programTitle } from './RunProgramCard';
+
+/** The current time, read when the Diary renders. */
+const clockNow = (): number => Date.now();
 
 /**
  * The Diary's card for the training program's workout, in the style of a
@@ -39,8 +46,18 @@ const RunProgramBanner: React.FC<{
   // Read each render: this card stays mounted on the Diary tab overnight.
   const today = toLocalDateString(new Date());
   const [counting, setCounting] = useState(false);
-  const { status, enabled, schedule, doneDay, loaded, refetch } =
-    useRunProgram();
+  const [easing, setEasing] = useState(false);
+  const [easeDismissed, setEaseDismissed] = useState(false);
+  const {
+    status,
+    enabled,
+    schedule,
+    doneDay,
+    lastAdjustment,
+    loaded,
+    refetch,
+  } = useRunProgram();
+  const { load } = useTrainingLoad();
   // The program may have changed on another device or through Sparky.
   useRefetchOnFocus(refetch, true);
 
@@ -68,6 +85,57 @@ const RunProgramBanner: React.FC<{
   const logged = isToday
     ? findLoggedRun(exerciseEntries, minutes, status.program.activity)
     : null;
+
+  const breakOffer =
+    isToday && status.program.activity !== 'walk' && !easeDismissed
+      ? suggestFromBreak({
+          lastDoneDay: doneDay,
+          today,
+          next: status.done,
+          total: status.total,
+          lastAdjustedDay: lastAdjustment
+            ? toLocalDateString(new Date(lastAdjustment.at))
+            : null,
+        })
+      : null;
+  // Training load only speaks up when the break offer has nothing to say.
+  const loadOffer =
+    !breakOffer &&
+    isToday &&
+    status.program.activity !== 'walk' &&
+    !easeDismissed &&
+    load
+      ? suggestFromLoad({
+          status: load.status,
+          next: status.done,
+          total: status.total,
+          lastAdjustedAt: lastAdjustment?.at ?? null,
+          nowMs: clockNow(),
+        })
+      : null;
+  const ease = breakOffer
+    ? { ...breakOffer, reason: 'break' as const }
+    : loadOffer
+      ? { ...loadOffer, reason: 'load' as const }
+      : null;
+
+  const easeBackIn = async (percent: number, count: number) => {
+    setEasing(true);
+    try {
+      await adjustProgramRunning(percent, count);
+    } catch (error) {
+      addLog(`[Run Program] Could not ease back in: ${error}`, 'WARNING');
+      Toast.show({
+        type: 'error',
+        text1: t('recordActivity.program.errors.update', {
+          defaultValue: 'Could not update your program',
+        }),
+        text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+      });
+    } finally {
+      setEasing(false);
+    }
+  };
 
   const countLoggedRun = async (entryId: string) => {
     setCounting(true);
@@ -103,7 +171,7 @@ const RunProgramBanner: React.FC<{
           className="text-xs font-semibold text-text-secondary flex-1"
           numberOfLines={1}
         >
-          {programName(t, status.program.id)} •{' '}
+          {programTitle(t, status.program)} •{' '}
           {run.kind === 'upNext'
             ? t('runPrograms.banner.upNext', { defaultValue: 'Up next' })
             : isToday
@@ -120,19 +188,26 @@ const RunProgramBanner: React.FC<{
           className="text-base font-semibold text-text-primary flex-1 mr-3"
           numberOfLines={2}
         >
-          {status.program.activity === 'walk'
-            ? t('runPrograms.banner.titleWalk', {
-                week: workout.week + 1,
-                run: workout.day + 1,
+          {status.program.custom
+            ? t('runPrograms.banner.titleCustom', {
+                title: customWorkoutTitle(t, workout),
                 minutes,
-                defaultValue: 'Week {{week}}, walk {{run}} · {{minutes}} min',
+                defaultValue: '{{title}} · {{minutes}} min',
               })
-            : t('runPrograms.banner.title', {
-                week: workout.week + 1,
-                run: workout.day + 1,
-                minutes,
-                defaultValue: 'Week {{week}}, run {{run}} · {{minutes}} min',
-              })}
+            : status.program.activity === 'walk'
+              ? t('runPrograms.banner.titleWalk', {
+                  week: workout.week + 1,
+                  walk: workout.day + 1,
+                  minutes,
+                  defaultValue:
+                    'Week {{week}}, walk {{walk}} · {{minutes}} min',
+                })
+              : t('runPrograms.banner.title', {
+                  week: workout.week + 1,
+                  run: workout.day + 1,
+                  minutes,
+                  defaultValue: 'Week {{week}}, run {{run}} · {{minutes}} min',
+                })}
         </Text>
         {isToday ? (
           <Button variant="primary" onPress={onStart}>
@@ -140,12 +215,54 @@ const RunProgramBanner: React.FC<{
           </Button>
         ) : null}
       </View>
+      {ease ? (
+        <View className="mt-3 pt-3 border-t border-border-subtle">
+          <Text className="text-text-secondary text-sm mb-2">
+            {ease.reason === 'break'
+              ? t('runPrograms.banner.easeBack', {
+                  workouts: ease.count,
+                  days: ease.daysAway,
+                  percent: Math.abs(ease.percent),
+                  defaultValue:
+                    "It's been {{days}} days since your last workout. Ease the running in the next {{workouts}} workouts by {{percent}}% to build back safely?",
+                })
+              : t('runPrograms.banner.easeLoad', {
+                  workouts: ease.count,
+                  percent: Math.abs(ease.percent),
+                  defaultValue:
+                    'Your training jumped well above your usual this week. Ease the running in the next {{workouts}} workouts by {{percent}}% to lower the injury risk?',
+                })}
+          </Text>
+          <View className="flex-row gap-2">
+            <Button
+              variant="outline"
+              onPress={() => void easeBackIn(ease.percent, ease.count)}
+              disabled={easing}
+            >
+              {t('runPrograms.banner.easeBackAction', {
+                defaultValue: 'Ease back in',
+              })}
+            </Button>
+            <Button variant="ghost" onPress={() => setEaseDismissed(true)}>
+              {t('runPrograms.banner.easeBackDismiss', {
+                defaultValue: 'Not now',
+              })}
+            </Button>
+          </View>
+        </View>
+      ) : null}
       {logged ? (
         <View className="mt-3 pt-3 border-t border-border-subtle flex-row items-center justify-between">
           <Text className="text-text-secondary text-sm flex-1 mr-3">
-            {t('runPrograms.banner.loggedRun', {
-              defaultValue: 'You logged a run today. Count it as this workout?',
-            })}
+            {status.program.activity === 'walk'
+              ? t('runPrograms.banner.loggedWalk', {
+                  defaultValue:
+                    'You logged a walk today. Count it as this workout?',
+                })
+              : t('runPrograms.banner.loggedRun', {
+                  defaultValue:
+                    'You logged a run today. Count it as this workout?',
+                })}
           </Text>
           <Button
             variant="outline"

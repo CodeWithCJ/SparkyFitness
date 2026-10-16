@@ -746,7 +746,63 @@ async function getDailyNutritionTotalsRange(
   }
 }
 
+/**
+ * Every logged workout in the range with just what training load needs: its
+ * day, length and average heart rate. Synced calorie summaries are not
+ * workouts.
+ */
+async function getTrainingLoadSessions(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<
+  { day: string; durationMinutes: number; avgHeartRate: number | null }[]
+> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      // A workout logged without a duration still has its sets: their timing
+      // (seconds, per set) stands in for the length before the positive filter.
+      `SELECT day, duration_minutes, avg_heart_rate
+       FROM (
+         SELECT ee.entry_date,
+                TO_CHAR(ee.entry_date, 'YYYY-MM-DD') AS day,
+                COALESCE(
+                  NULLIF(ee.duration_minutes, 0),
+                  (SELECT SUM(COALESCE(s.duration, 0)) / 60.0
+                   FROM exercise_entry_sets s
+                   WHERE s.exercise_entry_id = ee.id),
+                  0
+                ) AS duration_minutes,
+                ee.avg_heart_rate
+         FROM exercise_entries ee
+         WHERE ee.user_id = $1
+           AND ee.entry_date BETWEEN $2 AND $3
+           AND ee.exercise_name != 'Active Calories'
+       ) sessions
+       WHERE duration_minutes > 0
+       ORDER BY entry_date ASC`,
+      [userId, startDate, endDate]
+    );
+    return result.rows.map(
+      (row: {
+        day: string;
+        duration_minutes: string | number;
+        avg_heart_rate: string | number | null;
+      }) => ({
+        day: row.day,
+        durationMinutes: Number(row.duration_minutes),
+        avgHeartRate:
+          row.avg_heart_rate === null ? null : Number(row.avg_heart_rate),
+      })
+    );
+  } finally {
+    client.release();
+  }
+}
+
 export { getNutritionData };
+export { getTrainingLoadSessions };
 export { getTabularFoodData };
 export { getMeasurementData };
 export { getCustomMeasurementsData };
@@ -762,6 +818,7 @@ export default {
   getCustomMeasurementsData,
   getMiniNutritionTrends,
   getExerciseEntries,
+  getTrainingLoadSessions,
   getBodyWeightReadings,
   getExerciseNames,
   getDailyNutritionTotalsRange,

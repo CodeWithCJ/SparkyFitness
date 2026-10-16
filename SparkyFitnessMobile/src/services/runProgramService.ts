@@ -1,7 +1,12 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
+  suggestFromEffort,
+  type EffortSuggestion,
+  pendingEffortRating,
   storedProgramStatus,
+  type CustomRunProgramInput,
+  type CustomRunProgramResponse,
   type ProgramStatus,
   type RunProgramAdjustment,
   type RunProgramResponse,
@@ -9,9 +14,17 @@ import {
 import { queryClient } from '../hooks/queryClient';
 import { toLocalDateString } from '../utils/dateUtils';
 import { programWorkoutForEntry } from '../utils/runProgramSummary';
-import { runProgramQueryKey } from '../hooks/queryKeys';
 import {
+  customRunProgramsQueryKey,
+  runProgramQueryKey,
+} from '../hooks/queryKeys';
+import {
+  adjustRunProgramRunning,
+  createCustomRunProgram,
+  deleteCustomRunProgram,
+  fetchCustomRunPrograms,
   fetchRunProgram,
+  updateCustomRunProgram,
   markRunProgramWorkoutDone,
   rateRunProgramWorkout,
   saveRunProgram,
@@ -194,6 +207,14 @@ export async function completeProgramWorkout(
   );
 }
 
+/** Eases (negative) or lengthens the running in the next `count` workouts. */
+export async function adjustProgramRunning(
+  percent: number,
+  count: number
+): Promise<void> {
+  setCache((await adjustRunProgramRunning({ percent, count })).program);
+}
+
 /**
  * Saves how hard finished workout `index` felt and returns the program as the
  * server now holds it (unchanged if that workout cannot be rated).
@@ -210,8 +231,13 @@ export async function rateProgramWorkout(
   return program;
 }
 
+/** The current time; read when the Diary renders, as the card ages out over two days. */
+const clockNow = (): number => Date.now();
+
 /** The current program status, or null when none is active. */
 export function useRunProgram(): {
+  /** The program as the server holds it, including its logs, or null. */
+  program: RunProgramResponse | null;
   /** The place in the program, even while it is switched off. */
   status: ProgramStatus | null;
   /** Whether the person is using it. */
@@ -226,6 +252,10 @@ export function useRunProgram(): {
   };
   /** The local day a program workout was last completed, or null. */
   doneDay: string | null;
+  /** The latest program workout still waiting to be rated, if recent. */
+  pendingEffort: { programId: string; index: number } | null;
+  /** What the last two rated workouts say about pace: ease off, move on or neither. */
+  effortSuggestion: EffortSuggestion | null;
   loaded: boolean;
   refetch: () => Promise<unknown>;
 } {
@@ -235,7 +265,11 @@ export function useRunProgram(): {
     // Always re-read on opening a screen: the assistant may have changed it.
     staleTime: 0,
   });
+  const pending = data
+    ? pendingEffortRating(data.completion_log, data.effort_log, clockNow())
+    : null;
   return {
+    program: data ?? null,
     status: data ? storedProgramStatus(data) : null,
     enabled: data?.enabled ?? false,
     lastAdjustment: data?.adjustment_log.at(-1) ?? null,
@@ -245,6 +279,13 @@ export function useRunProgram(): {
       endDay: data?.end_date ?? null,
     },
     doneDay: data?.last_done_date ?? null,
+    pendingEffort:
+      pending && data
+        ? { programId: data.program_id, index: pending.index }
+        : null,
+    effortSuggestion: data
+      ? suggestFromEffort(data.effort_log, data.next_index)
+      : null,
     loaded: isSuccess,
     refetch,
   };
@@ -267,4 +308,40 @@ export function useProgramWorkoutForEntry(
     () => (data && entryId ? programWorkoutForEntry(data, entryId) : null),
     [data, entryId]
   );
+}
+
+/** The person's own programs, newest first, and whether they have loaded. */
+export function useCustomRunPrograms(): {
+  programs: CustomRunProgramResponse[];
+  loaded: boolean;
+  refetch: () => Promise<unknown>;
+} {
+  const { data, isSuccess, refetch } = useQuery({
+    queryKey: customRunProgramsQueryKey,
+    queryFn: async () => (await fetchCustomRunPrograms()).programs,
+    staleTime: 0,
+  });
+  return { programs: data ?? [], loaded: isSuccess, refetch };
+}
+
+const refreshCustomPrograms = () =>
+  queryClient.invalidateQueries({ queryKey: customRunProgramsQueryKey });
+
+/** Saves a new program (no `id`) or changes one; the copy being run follows. */
+export async function saveCustomProgram(
+  input: CustomRunProgramInput,
+  id?: string
+): Promise<CustomRunProgramResponse> {
+  const { program } = id
+    ? await updateCustomRunProgram(id, input)
+    : await createCustomRunProgram(input);
+  await refreshCustomPrograms();
+  // Editing changes the copy being run on the server.
+  if (id) await queryClient.invalidateQueries({ queryKey: runProgramQueryKey });
+  return program;
+}
+
+export async function removeCustomProgram(id: string): Promise<void> {
+  await deleteCustomRunProgram(id);
+  await refreshCustomPrograms();
 }

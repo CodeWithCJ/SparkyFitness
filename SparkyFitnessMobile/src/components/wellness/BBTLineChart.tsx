@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
 import { CartesianChart } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
-import { makeChartFont, formatTooltipDate } from '../charts/chartFormatting';
+import { useChartFont, formatTooltipDate } from '../charts/chartFormatting';
 import LineSeriesMark from '../charts/LineSeriesMark';
 import { formatLocalizedNumber, getAppLocale } from '../../localization';
 import ChartTouchOverlay, {
@@ -21,8 +21,6 @@ type BBTLineChartProps = {
   data: BBTDataPoint[];
   isLoading: boolean;
 };
-
-const font = makeChartFont(11);
 
 // X-axis label: render the same calendar day in the active application locale
 // (e.g. "6/3" in en-US, "3.06" in pl-PL) instead of a hard-coded MM/DD.
@@ -61,6 +59,7 @@ export const buildBBTTooltipText = (
 
 const BBTLineChart: React.FC<BBTLineChartProps> = ({ data, isLoading }) => {
   const { t } = useTranslation();
+  const font = useChartFont(11);
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',

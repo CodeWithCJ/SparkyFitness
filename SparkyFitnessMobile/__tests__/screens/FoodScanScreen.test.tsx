@@ -1,11 +1,13 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import * as ImagePicker from 'expo-image-picker';
 import FoodScanScreen from '../../src/screens/FoodScanScreen';
 import {
   lookupBarcodeV2,
   scanNutritionLabel,
+  type LabelScanResult,
 } from '../../src/services/api/externalFoodSearchApi';
 import { ApiError } from '../../src/services/api/errors';
 import { TimeoutError } from '../../src/utils/concurrency';
@@ -55,6 +57,8 @@ describe('FoodScanScreen', () => {
     replace: jest.fn(),
     goBack: jest.fn(),
     navigate: jest.fn(),
+    dispatch: jest.fn(),
+    isFocused: jest.fn(() => true),
   } as any;
 
   const mockRoute = {
@@ -499,6 +503,125 @@ describe('FoodScanScreen', () => {
     });
   });
 
+  describe('capture-label mode', () => {
+    const params = { mode: 'capture-label', returnKey: 'FoodForm-edit-key' };
+
+    it('returns unchanged when the photo picker is cancelled', async () => {
+      jest
+        .mocked(ImagePicker.launchImageLibraryAsync)
+        .mockResolvedValueOnce({ canceled: true, assets: null });
+      const screen = renderScreenWithRoute(params);
+      await act(async () =>
+        fireEvent.press(
+          screen.getByLabelText('Choose label photo from library')
+        )
+      );
+      expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+      expect(mockNavigation.dispatch).not.toHaveBeenCalled();
+      expect(mockScanNutritionLabel).not.toHaveBeenCalled();
+    });
+
+    it('returns unchanged when choosing a photo fails', async () => {
+      jest
+        .mocked(ImagePicker.launchImageLibraryAsync)
+        .mockRejectedValueOnce(new Error('Photo unavailable'));
+      const screen = renderScreenWithRoute(params);
+      await act(async () =>
+        fireEvent.press(
+          screen.getByLabelText('Choose label photo from library')
+        )
+      );
+      expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+      expect(mockNavigation.dispatch).not.toHaveBeenCalled();
+    });
+
+    const takeLabelPhoto = async () => {
+      jest.mocked(ImagePicker.launchImageLibraryAsync).mockResolvedValueOnce({
+        canceled: false,
+        assets: [
+          {
+            uri: 'file:///label.jpg',
+            width: 800,
+            height: 400,
+            base64: 'label-base64',
+          },
+        ],
+      });
+      const screen = renderScreenWithRoute(params);
+      expect(screen.queryByText('Barcode')).toBeNull();
+      expect(screen.queryByText('Photo')).toBeNull();
+      await act(async () => {
+        fireEvent.press(
+          screen.getByLabelText('Choose label photo from library')
+        );
+      });
+      return screen;
+    };
+
+    it('returns a partial result to the same form without creating a food', async () => {
+      const result = { calories: 0, protein: 12, fiber: null };
+      mockScanNutritionLabel.mockResolvedValueOnce(result as LabelScanResult);
+      const screen = await takeLabelPhoto();
+      await act(async () => fireEvent.press(screen.getByText('Use Photo')));
+      expect(mockNavigation.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          source: 'FoodForm-edit-key',
+          payload: {
+            params: {
+              pendingNutritionLabelScan: { result, nonce: expect.any(Number) },
+            },
+          },
+        })
+      );
+      expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+      expect(mockLookupBarcodeV2).not.toHaveBeenCalled();
+    });
+
+    it('leaves the form unchanged on cancel', () => {
+      const screen = renderScreenWithRoute(params);
+      fireEvent.press(screen.getByLabelText('Go back'));
+      expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+      expect(mockNavigation.dispatch).not.toHaveBeenCalled();
+      expect(mockScanNutritionLabel).not.toHaveBeenCalled();
+    });
+
+    it('returns without changing the form when analysis fails', async () => {
+      mockScanNutritionLabel.mockRejectedValueOnce(new Error('Scan failed'));
+      const screen = await takeLabelPhoto();
+      await act(async () => fireEvent.press(screen.getByText('Use Photo')));
+      expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+      expect(mockNavigation.dispatch).not.toHaveBeenCalled();
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+    });
+
+    it('treats a malformed successful response as a scan error', async () => {
+      mockScanNutritionLabel.mockResolvedValueOnce(
+        null as unknown as Awaited<ReturnType<typeof scanNutritionLabel>>
+      );
+      const screen = await takeLabelPhoto();
+      await act(async () => fireEvent.press(screen.getByText('Use Photo')));
+      expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+      expect(mockNavigation.dispatch).not.toHaveBeenCalled();
+    });
+
+    it('discards a result when the scanner was closed during analysis', async () => {
+      let resolveScan: (result: LabelScanResult) => void = () => {};
+      mockScanNutritionLabel.mockImplementationOnce(
+        () =>
+          new Promise<LabelScanResult>((resolve) => {
+            resolveScan = resolve;
+          })
+      );
+      const screen = await takeLabelPhoto();
+      await act(async () => fireEvent.press(screen.getByText('Use Photo')));
+      fireEvent.press(screen.getByLabelText('Go back'));
+      await act(async () => resolveScan({ calories: 500 } as LabelScanResult));
+      expect(mockNavigation.dispatch).not.toHaveBeenCalled();
+      expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('capture-barcode mode', () => {
     const captureRoute = {
       key: 'FoodScan-key',
@@ -708,6 +831,30 @@ describe('FoodScanScreen', () => {
       await act(async () => {
         resolveLaunch?.({ canceled: true });
       });
+    });
+
+    it('logs error and shows restart toast when picker fails with unregistered ActivityResultLauncher', async () => {
+      mockLaunchLibrary.mockRejectedValue(
+        new Error(
+          "Call to function 'ExponentImagePicker.launchImageLibraryAsync' has been rejected. → Caused by: java.lang.IllegalStateException: Attempting to launch an unregistered ActivityResultLauncher with contract expo.modules.imagepicker.contracts.ImageLibraryContract"
+        )
+      );
+
+      const screen = renderScreenWithRoute({ initialMode: 'photo' });
+      await waitFor(() => {
+        expect(screen.getByLabelText('Choose photo from library')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('Choose photo from library'));
+      });
+
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          text2: 'Unable to open gallery. Please restart the app.',
+        })
+      );
     });
   });
   it('localizes timeout lookup failures and keeps recovery actions visible', async () => {

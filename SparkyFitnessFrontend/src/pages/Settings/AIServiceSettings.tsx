@@ -27,6 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { UserChatPreferences } from '@/components/ai/UserChatPreferences';
 import { GlobalOverrideBanner } from '@/components/ai/GlobalOverrideBanner';
 import { ServiceForm } from '@/components/ai/ServiceForm';
+import { VoiceInputSettings } from '@/components/ai/VoiceInputSettings';
 import { UserServiceListItem } from '@/components/ai/UserServiceListItem';
 import { getModelOptions, requiresApiKey } from '@/utils/aiServiceUtils';
 import {
@@ -87,8 +88,11 @@ const AIServiceSettings = () => {
     useUpdateAIService();
   const { mutateAsync: deleteService, isPending: isDeleting } =
     useDeleteAIService();
-  const { mutateAsync: updatePreferences, isPending: isUpdatingPrefs } =
-    useUpdateUserAIPreferences();
+  const {
+    mutateAsync: updatePreferences,
+    mutate: patchPreferences,
+    isPending: isUpdatingPrefs,
+  } = useUpdateUserAIPreferences();
   const {
     testConnection,
     isPending: isTesting,
@@ -110,6 +114,7 @@ const AIServiceSettings = () => {
       showCustomModelInput: false,
       custom_model_name: '',
       chat_tool_profile: 'full',
+      supports_audio_input: false,
     });
 
   const [editingService, setEditingService] = useState<string | null>(null);
@@ -135,7 +140,10 @@ const AIServiceSettings = () => {
     if (settingsLoading) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: 'Please wait while settings are being loaded...',
+        description: t(
+          'settings.aiServiceSettings.pleaseWaitWhileSettingsAre',
+          'Please wait while settings are being loaded...'
+        ),
         variant: 'destructive',
       });
       return;
@@ -171,6 +179,7 @@ const AIServiceSettings = () => {
         is_active: true,
         model_name: globalSetting.model_name || undefined,
         chat_tool_profile: globalSetting.chat_tool_profile ?? 'full',
+        supports_audio_input: globalSetting.supports_audio_input,
       };
       await addService(overrideData);
       // Success toast is handled by the mutation meta
@@ -184,7 +193,10 @@ const AIServiceSettings = () => {
     if (settingsLoading) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: 'Please wait while settings are being loaded...',
+        description: t(
+          'settings.aiServiceSettings.pleaseWaitWhileSettingsAre',
+          'Please wait while settings are being loaded...'
+        ),
         variant: 'destructive',
       });
       return;
@@ -226,7 +238,10 @@ const AIServiceSettings = () => {
     if (settingsLoading) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: 'Please wait while settings are being loaded...',
+        description: t(
+          'settings.aiServiceSettings.pleaseWaitWhileSettingsAre',
+          'Please wait while settings are being loaded...'
+        ),
         variant: 'destructive',
       });
       return;
@@ -271,6 +286,7 @@ const AIServiceSettings = () => {
         showCustomModelInput: false,
         custom_model_name: '',
         chat_tool_profile: 'full',
+        supports_audio_input: false,
       });
 
       setShowAddForm(false);
@@ -301,7 +317,10 @@ const AIServiceSettings = () => {
     if (settingsLoading) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: 'Please wait while settings are being loaded...',
+        description: t(
+          'settings.aiServiceSettings.pleaseWaitWhileSettingsAre',
+          'Please wait while settings are being loaded...'
+        ),
         variant: 'destructive',
       });
       return;
@@ -384,7 +403,10 @@ const AIServiceSettings = () => {
     if (settingsLoading) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: 'Please wait while settings are being loaded...',
+        description: t(
+          'settings.aiServiceSettings.pleaseWaitWhileSettingsAre',
+          'Please wait while settings are being loaded...'
+        ),
         variant: 'destructive',
       });
       return;
@@ -442,7 +464,10 @@ const AIServiceSettings = () => {
     if (settingsLoading) {
       toast({
         title: t('settings.aiService.userSettings.error'),
-        description: 'Please wait while settings are being loaded...',
+        description: t(
+          'settings.aiServiceSettings.pleaseWaitWhileSettingsAre',
+          'Please wait while settings are being loaded...'
+        ),
         variant: 'destructive',
       });
       return;
@@ -513,6 +538,7 @@ const AIServiceSettings = () => {
         model_name: originalService.model_name ?? '',
         showCustomModelInput: false,
         custom_model_name: '',
+        supports_audio_input: originalService.supports_audio_input,
       });
       if (serviceData.api_key === '') delete serviceData.api_key;
       await updateService({ serviceId, serviceData });
@@ -567,6 +593,7 @@ const AIServiceSettings = () => {
       showCustomModelInput: isCustomModel,
       custom_model_name: service.model_name ?? '',
       chat_tool_profile: service.chat_tool_profile ?? 'full',
+      supports_audio_input: service.supports_audio_input,
     });
   };
 
@@ -661,6 +688,16 @@ const AIServiceSettings = () => {
             </div>
           )}
 
+          <VoiceInputSettings
+            preferences={preferencesData}
+            services={services}
+            chatServiceId={activeServiceId}
+            onChange={(patch, onSaved) =>
+              patchPreferences(patch, { onSuccess: onSaved })
+            }
+            disabled={isUpdatingPrefs}
+          />
+
           {services.length > 0 && (
             <>
               <Separator />
@@ -670,19 +707,14 @@ const AIServiceSettings = () => {
                   : t('settings.aiService.userSettings.availableServices')}
               </h3>
 
-              {/* Active-provider + vision-provider selectors share a row.
-                  active_ai_service_id is the single pointer every AI feature
-                  (chat, food-photo, label scan, unit conversion) reads;
-                  active_vision_ai_service_id optionally overrides it for the
-                  vision tasks (food-photo + label scan, and chat's image tools),
-                  falling back to the active provider. "Same as default" clears it. */}
+              {/* Vision can inherit Chat; voice is configured separately above. */}
               {enabledServices.length > 0 && (
                 <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
                   <div className="space-y-2 sm:max-w-sm sm:flex-1">
                     <Label htmlFor="active-ai-provider-select">
                       {t(
                         'settings.aiService.userSettings.activeProvider',
-                        'Active AI provider'
+                        'Chat configuration'
                       )}
                     </Label>
                     <Select
@@ -702,7 +734,7 @@ const AIServiceSettings = () => {
                         <SelectValue
                           placeholder={t(
                             'settings.aiService.userSettings.activeProvider',
-                            'Active AI provider'
+                            'Chat configuration'
                           )}
                         />
                       </SelectTrigger>
@@ -710,6 +742,9 @@ const AIServiceSettings = () => {
                         {enabledServices.map((service) => (
                           <SelectItem key={service.id} value={service.id}>
                             {service.service_name}
+                            {service.model_name
+                              ? ` — ${service.model_name}`
+                              : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -720,7 +755,7 @@ const AIServiceSettings = () => {
                     <Label htmlFor="active-vision-ai-provider-select">
                       {t(
                         'settings.aiService.userSettings.activeVisionProvider',
-                        'Active vision AI provider'
+                        'Vision configuration'
                       )}
                     </Label>
                     <Select
@@ -741,7 +776,7 @@ const AIServiceSettings = () => {
                         <SelectValue
                           placeholder={t(
                             'settings.aiService.userSettings.activeVisionProvider',
-                            'Active vision AI provider'
+                            'Vision configuration'
                           )}
                         />
                       </SelectTrigger>
@@ -749,12 +784,15 @@ const AIServiceSettings = () => {
                         <SelectItem value={SAME_AS_DEFAULT}>
                           {t(
                             'settings.aiService.userSettings.sameAsDefault',
-                            'Same as default'
+                            'Same as Chat configuration'
                           )}
                         </SelectItem>
                         {enabledServices.map((service) => (
                           <SelectItem key={service.id} value={service.id}>
                             {service.service_name}
+                            {service.model_name
+                              ? ` — ${service.model_name}`
+                              : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>

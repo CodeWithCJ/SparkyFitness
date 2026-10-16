@@ -23,6 +23,16 @@ struct WatchRunSnapshot: Codable {
     var savedAt: Date
     /// Lap presses (epoch ms). Optional so a snapshot written before laps existed still decodes.
     var lapMarks: [Double]?
+    var lapDistances: [Double]?
+    /// `[active seconds, metres]` rows for the pace chart. Optional for older snapshots.
+    var distanceSeries: [[Double]]?
+    /// The plan being followed, so a relaunch keeps following it. Optional for older snapshots.
+    var plan: WatchRunPlan?
+    /// Where the plan's current step began. Optional for older snapshots,
+    /// whose plans were all timed and are placed again from `elapsed`.
+    var planCursor: WatchRunPlan.Cursor?
+    /// Auto-pause and voice cues as last set. Optional for older snapshots.
+    var settings: WatchRunSettings?
 
     /// A run left this long ago is not one the wearer is still doing.
     static let maxAge: TimeInterval = 12 * 60 * 60

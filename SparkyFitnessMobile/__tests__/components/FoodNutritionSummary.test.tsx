@@ -2,7 +2,12 @@ import React from 'react';
 import { render } from '@testing-library/react-native';
 import FoodNutritionSummary from '../../src/components/FoodNutritionSummary';
 
+const mockPreferences: { current: unknown[] } = { current: [] };
+
 jest.mock('../../src/hooks', () => ({
+  useNutrientDisplayPreferences: jest.fn(() => ({
+    preferences: mockPreferences.current,
+  })),
   useServerConnection: jest.fn(() => ({ isConnected: true, isLoading: false })),
   useCustomNutrients: jest.fn(() => ({
     customNutrients: [],
@@ -130,5 +135,56 @@ describe('FoodNutritionSummary — Total Carbs row', () => {
       // carbs in this case; we shouldn't add a redundant Total Carbs row.
       expect(queryByText('Total Carbs')).toBeNull();
     });
+  });
+});
+
+describe('FoodNutritionSummary — Food Database display preference', () => {
+  afterEach(() => {
+    mockPreferences.current = [];
+  });
+
+  it('shows every nutrient when no preference is saved', () => {
+    const { getByText } = render(
+      <FoodNutritionSummary
+        name="Oats"
+        values={{ ...baseValues, sodium: 50 }}
+      />
+    );
+    expect(getByText('Fiber')).toBeTruthy();
+    expect(getByText('Sugars')).toBeTruthy();
+    expect(getByText('Sodium')).toBeTruthy();
+  });
+
+  it('hides nutrients the mobile Food Database list leaves out', () => {
+    mockPreferences.current = [
+      {
+        view_group: 'food_database',
+        platform: 'mobile',
+        visible_nutrients: ['sodium', 'dietary_fiber'],
+      },
+    ];
+    const { getByText, queryByText } = render(
+      <FoodNutritionSummary
+        name="Oats"
+        values={{ ...baseValues, sodium: 50 }}
+      />
+    );
+    expect(getByText('Fiber')).toBeTruthy();
+    expect(getByText('Sodium')).toBeTruthy();
+    expect(queryByText('Sugars')).toBeNull();
+  });
+
+  it('ignores a preference saved for another platform', () => {
+    mockPreferences.current = [
+      {
+        view_group: 'food_database',
+        platform: 'desktop',
+        visible_nutrients: ['sodium'],
+      },
+    ];
+    const { getByText } = render(
+      <FoodNutritionSummary name="Oats" values={baseValues} />
+    );
+    expect(getByText('Sugars')).toBeTruthy();
   });
 });

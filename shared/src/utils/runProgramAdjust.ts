@@ -1,4 +1,11 @@
 import type { ProgramWorkout } from "./runPrograms.ts";
+import {
+  EXPECTED_SECONDS_PER_METER,
+  isDistanceStep,
+  MAX_STEP_METERS,
+  MIN_STEP_METERS,
+  type IntervalStep,
+} from "./runIntervals.ts";
 
 /**
  * Changes to a person's run program that keep it safe: only workouts not yet
@@ -28,6 +35,41 @@ export interface AdjustResult extends ProgramState {
 export class ProgramAdjustError extends Error {}
 
 const roundTo5 = (seconds: number): number => Math.round(seconds / 5) * 5;
+const roundTo10 = (meters: number): number => Math.round(meters / 10) * 10;
+
+/**
+ * A distance step scaled by `factor`, kept within 30% under and 10% over
+ * `was` (the original distance) when known. Its expected time follows.
+ */
+function scaleDistanceStep(
+  step: IntervalStep,
+  factor: number,
+  was: number | null,
+): IntervalStep {
+  let meters = Math.min(
+    MAX_STEP_METERS,
+    Math.max(MIN_STEP_METERS, roundTo10((step.meters ?? 0) * factor)),
+  );
+  if (was !== null && was > 0) {
+    meters = Math.min(
+      roundTo10(was * (1 + MAX_PUSH_PERCENT / 100)),
+      Math.max(roundTo10(was * (1 - MAX_EASE_PERCENT / 100)), meters),
+    );
+  }
+  if (meters === step.meters) return step;
+  return {
+    ...step,
+    meters,
+    seconds: Math.max(
+      5,
+      Math.round(
+        step.meters
+          ? (step.seconds * meters) / step.meters
+          : meters * EXPECTED_SECONDS_PER_METER,
+      ),
+    ),
+  };
+}
 
 /** Index of the first workout of `week` (0-based), or -1. */
 export function firstIndexOfWeek(
@@ -64,7 +106,8 @@ export function moveTo(state: ProgramState, index: number): AdjustResult {
 /**
  * Makes the running in the next `count` workouts shorter (negative `percent`)
  * or a little longer (positive), leaving the walking, warm-up and cool-down.
- * Workouts already done are never changed.
+ * A distance step changes its distance by the same rules as a timed step's
+ * time. Workouts already done are never changed.
  *
  * With `baseline` (the program as first written), running time in a step can
  * never end up more than 30% under or 10% over the original, however many
@@ -102,6 +145,16 @@ export function adjustRunning(
     let changed = false;
     const steps = workout.plan.steps.map((step, stepIndex) => {
       if (step.kind !== "work") return step;
+      if (isDistanceStep(step)) {
+        const before = comparable ? original.plan.steps[stepIndex] : undefined;
+        const scaled = scaleDistanceStep(
+          step,
+          factor,
+          before && isDistanceStep(before) ? (before.meters ?? null) : null,
+        );
+        if (scaled !== step) changed = true;
+        return scaled;
+      }
       let seconds = Math.min(
         MAX_RUN_SECONDS,
         Math.max(MIN_RUN_SECONDS, roundTo5(step.seconds * factor)),

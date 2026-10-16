@@ -552,12 +552,19 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 
     // Send only the instant (timestamp) plus tz metadata, never a pre-bucketed day
     // string: the server derives the calendar day from the instant + timezone.
+    const meta = rec.metadata as Record<string, unknown> | undefined;
+    const foodName =
+      (rec.metadataFoodType as string) ||
+      (meta?.HKFoodType as string) ||
+      (meta?.foodType as string) ||
+      'Apple Health food';
+
     const entry: TransformedNutritionEntry = {
       type: 'Nutrition',
       source: HEALTHKIT_SOURCE,
       source_id: uuid,
       timestamp: startDate,
-      food_name: (rec.metadataFoodType as string) || 'Apple Health food',
+      food_name: foodName,
       meal_type: mealTypeFromInstant(new Date(startDate)),
       ...extractTimezoneMetadata(rec),
     };

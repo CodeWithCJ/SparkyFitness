@@ -39,6 +39,8 @@ enum OutboundPayloads {
         static let fastStart = "fastStart"
         static let fastEnd = "fastEnd"
         static let runFinished = "runFinished"
+        static let runLive = "runLive"
+        static let runCue = "runCue"
     }
 
     /// A morning check-in awaiting a server write.
@@ -269,10 +271,70 @@ enum OutboundPayloads {
         ]
     }
 
+    /// A spoken cue for the phone to say instead of the watch, so it comes out
+    /// of the headphones paired to the phone. `id` comes back in the phone's
+    /// `runCueAck`; without it the watch says the cue itself.
+    static func runCue(id: String, text: String, interrupt: Bool) -> [String: Any] {
+        [
+            "type": Kind.runCue,
+            "id": id,
+            "text": text,
+            "interrupt": interrupt,
+        ]
+    }
+
+    /// What a wrist-only walk or run looks like right now, for the phone's live
+    /// view. Sent only while the phone is reachable and never queued: the
+    /// finished run (`runFinished`) is what reaches the diary, and a figure
+    /// that arrives minutes late describes nothing.
+    static func runLive(
+        runId: String,
+        kind: String,
+        place: String,
+        status: String,
+        autoPaused: Bool,
+        settings: WatchRunSettings,
+        paceAlert: Bool,
+        heartRateAlert: Bool,
+        elapsed: TimeInterval,
+        distanceMeters: Double,
+        heartRate: Double?,
+        energyKcal: Double,
+        lapCount: Int,
+        stepLabel: String?,
+        stepRemaining: TimeInterval?,
+        nextLabel: String?,
+        requestId: String?
+    ) -> [String: Any] {
+        var payload: [String: Any] = [
+            "type": Kind.runLive,
+            "runId": runId,
+            "kind": kind,
+            "place": place,
+            "status": status,
+            "autoPaused": autoPaused,
+            "autoPause": settings.autoPause,
+            "voiceCues": settings.voiceCues,
+            "paceAlert": paceAlert,
+            "heartRateAlert": heartRateAlert,
+            "elapsed": elapsed,
+            "distanceMeters": distanceMeters,
+            "energyKcal": energyKcal,
+            "lapCount": lapCount,
+            "sentAt": Date().timeIntervalSince1970 * 1000,
+        ]
+        if let heartRate { payload["heartRate"] = heartRate }
+        if let stepLabel { payload["stepLabel"] = stepLabel }
+        if let stepRemaining { payload["stepRemaining"] = stepRemaining }
+        if let nextLabel { payload["nextLabel"] = nextLabel }
+        if let requestId { payload["requestId"] = requestId }
+        return payload
+    }
+
     /// A walk or run recorded on the wrist alone, sent once when it finishes.
     /// The route and heart rate are thinned to what the connection can carry.
     static func runFinished(_ result: WatchRunResult) -> [String: Any] {
-        [
+        var payload: [String: Any] = [
             "type": Kind.runFinished,
             "clientId": result.clientId,
             "kind": result.kind.rawValue,
@@ -285,7 +347,22 @@ enum OutboundPayloads {
             "route": WatchRunResult.thin(result.route, to: 1500),
             "heartRate": WatchRunResult.thin(result.heartRate, to: 600),
             "laps": result.laps,
+            "lapDistances": result.lapDistances,
+            "distanceSeries": WatchRunResult.thin(result.distanceSeries, to: 300),
+            "planCompleted": result.planCompleted,
+            "distanceScale": result.distanceScale,
         ]
+        if let estimated = result.estimatedDistanceMeters {
+            payload["estimatedDistanceMeters"] = estimated
+        }
+        if let plan = result.plan {
+            payload["planId"] = plan.id
+            if let programId = plan.programId, let index = plan.programIndex {
+                payload["programId"] = programId
+                payload["programIndex"] = index
+            }
+        }
+        return payload
     }
 
     /// The reading the wrist is showing right now. Only ever sent as a live

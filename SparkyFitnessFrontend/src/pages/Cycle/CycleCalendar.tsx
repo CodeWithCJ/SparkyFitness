@@ -488,7 +488,9 @@ export default function CycleCalendar({
                         size={20}
                       />
                       <span className="font-semibold text-xs capitalize">
-                        {t('cycle.log.flow', 'Flow')}: {selectedLog.flow_level}
+                        {t('cycle.calendar.flow', 'Flow: {{flow_level}}', {
+                          flow_level: selectedLog.flow_level,
+                        })}
                       </span>
                     </div>
                   )}
@@ -516,7 +518,7 @@ export default function CycleCalendar({
                 {selectedLog.cervical_mucus && (
                   <p className="text-xs text-muted-foreground capitalize">
                     <span className="font-semibold">
-                      {t('cycle.log.mucus', 'Mucus')}:
+                      {t('cycle.calendar.mucus', 'Mucus:')}
                     </span>{' '}
                     {selectedLog.cervical_mucus}
                   </p>
@@ -526,7 +528,7 @@ export default function CycleCalendar({
                 {!!selectedLog.energy && (
                   <p className="text-xs text-muted-foreground">
                     <span className="font-semibold">
-                      {t('cycle.log.energy', 'Energy')}:
+                      {t('cycle.calendar.energy', 'Energy:')}
                     </span>{' '}
                     {selectedLog.energy}/5
                   </p>

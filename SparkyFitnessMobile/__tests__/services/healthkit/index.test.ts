@@ -2022,6 +2022,212 @@ describe('readHealthRecords', () => {
       );
       expect((looseEntry as { objects: unknown[] }).objects).toHaveLength(1);
     });
+
+    test('excludes loose samples matching a correlation bundle and timestamp even when UUIDs differ (prevents double-counting)', async () => {
+      await initHealthConnect();
+      const mfBundle = 'com.macrofactor.app';
+      mockQueryCorrelationSamples.mockResolvedValue([
+        correlation({
+          uuid: 'corr-macrofactor-lunch',
+          startDate: '2024-01-15T12:30:00Z',
+          endDate: '2024-01-15T12:30:00Z',
+          metadataFoodType: undefined,
+          metadata: { HKFoodType: 'Chicken Rice Bowl' },
+          sourceRevision: { source: { bundleIdentifier: mfBundle } },
+          objects: [
+            {
+              uuid: 'corr-obj-protein',
+              quantityType: 'HKQuantityTypeIdentifierDietaryProtein',
+              quantity: 40,
+              unit: 'g',
+            },
+            {
+              uuid: 'corr-obj-energy',
+              quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed',
+              quantity: 542,
+              unit: 'kcal',
+            },
+          ],
+        }),
+      ]);
+      mockQueryQuantitySamples.mockImplementation(
+        looseByIdentifier({
+          HKQuantityTypeIdentifierDietaryEnergyConsumed: [
+            // App saved loose sample with DIFFERENT uuid than correlation objects
+            {
+              uuid: 'loose-obj-energy-unmatched-uuid',
+              startDate: '2024-01-15T12:30:00Z',
+              quantity: 542,
+              unit: 'kcal',
+              source: { bundleIdentifier: mfBundle },
+            },
+          ],
+          HKQuantityTypeIdentifierDietaryProtein: [
+            {
+              uuid: 'loose-obj-protein-unmatched-uuid',
+              startDate: '2024-01-15T12:30:00Z',
+              quantity: 40,
+              unit: 'g',
+              source: { bundleIdentifier: mfBundle },
+            },
+          ],
+        })
+      );
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      // Only the correlation entry should be returned — the loose duplicate is excluded
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        uuid: 'corr-macrofactor-lunch',
+        startDate: '2024-01-15T12:30:00Z',
+        metadataFoodType: 'Chicken Rice Bowl',
+        sourceBundleId: mfBundle,
+      });
+    });
+
+    test('extracts foodLabel and timezone from correlation metadata (HKFoodType, HKTimeZone)', async () => {
+      await initHealthConnect();
+      mockQueryCorrelationSamples.mockResolvedValue([
+        correlation({
+          uuid: 'corr-meta',
+          startDate: '2024-01-15T08:00:00Z',
+          metadataFoodType: undefined,
+          metadataTimeZone: undefined,
+          metadata: {
+            HKFoodType: 'Oatmeal with Berries',
+            HKTimeZone: 'Europe/London',
+          },
+        }),
+      ]);
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        uuid: 'corr-meta',
+        metadataFoodType: 'Oatmeal with Berries',
+        metadata: { HKTimeZone: 'Europe/London' },
+      });
+    });
+
+    test('preserves loose samples from the same source when outside the correlation window', async () => {
+      await initHealthConnect();
+      const appBundle = 'com.example.nutrition';
+      mockQueryCorrelationSamples.mockResolvedValue([
+        correlation({
+          uuid: 'corr-lunch',
+          startDate: '2024-01-15T12:30:00Z',
+          endDate: '2024-01-15T12:30:00Z',
+          sourceRevision: { source: { bundleIdentifier: appBundle } },
+        }),
+      ]);
+      mockQueryQuantitySamples.mockImplementation(
+        looseByIdentifier({
+          HKQuantityTypeIdentifierDietaryProtein: [
+            // Same source, but logged 4 hours later as a standalone loose snack
+            {
+              uuid: 'loose-snack-protein',
+              startDate: '2024-01-15T16:30:00Z',
+              quantity: 15,
+              unit: 'g',
+              source: { bundleIdentifier: appBundle },
+            },
+          ],
+        })
+      );
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      // Correlation from 12:30 AND standalone snack from 16:30 should both be returned
+      expect(result).toHaveLength(2);
+      const ids = result.map((r) => (r as { uuid: string }).uuid);
+      expect(ids).toContain('corr-lunch');
+      expect(ids).toContain('com.example.nutrition:2024-01-15T16:30:00Z');
+    });
+
+    test('preserves distinct loose nutrient from the same bundle within the correlation window', async () => {
+      await initHealthConnect();
+      const appBundle = 'com.example.nutrition';
+      mockQueryCorrelationSamples.mockResolvedValue([
+        correlation({
+          uuid: 'corr-protein-only',
+          startDate: '2024-01-15T12:30:00Z',
+          endDate: '2024-01-15T12:30:00Z',
+          sourceRevision: { source: { bundleIdentifier: appBundle } },
+          objects: [
+            {
+              uuid: 'corr-protein',
+              quantityType: 'HKQuantityTypeIdentifierDietaryProtein',
+              quantity: 25,
+              unit: 'g',
+            },
+          ],
+        }),
+      ]);
+      mockQueryQuantitySamples.mockImplementation(
+        looseByIdentifier({
+          HKQuantityTypeIdentifierDietaryProtein: [
+            // Same nutrient type inside the correlation window -> excluded
+            {
+              uuid: 'loose-duplicate-protein',
+              startDate: '2024-01-15T12:30:00Z',
+              quantity: 25,
+              unit: 'g',
+              source: { bundleIdentifier: appBundle },
+            },
+          ],
+          HKQuantityTypeIdentifierDietaryEnergyConsumed: [
+            // Distinct nutrient type NOT in the correlation -> preserved
+            {
+              uuid: 'loose-distinct-energy',
+              startDate: '2024-01-15T12:30:00Z',
+              quantity: 200,
+              unit: 'kcal',
+              source: { bundleIdentifier: appBundle },
+            },
+          ],
+        })
+      );
+
+      const result = await readHealthRecords(
+        'Nutrition',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      // Should return the correlation record AND the loose record for the distinct nutrient
+      expect(result).toHaveLength(2);
+      const ids = result.map((r) => (r as { uuid: string }).uuid);
+      expect(ids).toContain('corr-protein-only');
+      expect(ids).toContain('com.example.nutrition:2024-01-15T12:30:00Z');
+
+      const looseEntry = result.find(
+        (r) =>
+          (r as { uuid: string }).uuid ===
+          'com.example.nutrition:2024-01-15T12:30:00Z'
+      );
+      expect(
+        (looseEntry as { objects: { quantityType: string }[] }).objects
+      ).toEqual([
+        expect.objectContaining({
+          quantityType: 'HKQuantityTypeIdentifierDietaryEnergyConsumed',
+          quantity: 200,
+        }),
+      ]);
+    });
   });
 });
 

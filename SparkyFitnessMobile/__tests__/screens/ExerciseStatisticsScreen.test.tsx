@@ -1,11 +1,16 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
-import type { ExerciseDashboardSummary } from '@workspace/shared';
+import {
+  buildRunningTrends,
+  predictRaceTimes,
+  type ExerciseDashboardSummary,
+} from '@workspace/shared';
 
 import ExerciseStatisticsScreen from '../../src/screens/ExerciseStatisticsScreen';
 import { useExerciseDashboard } from '../../src/hooks/useExerciseDashboard';
 import { usePreferences } from '../../src/hooks/usePreferences';
 import { useCardioSessions } from '../../src/hooks/useCardioSessions';
+import { useRunningTrends } from '../../src/hooks/useRunningTrends';
 import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
@@ -47,10 +52,21 @@ jest.mock('../../src/hooks/useTrainingConsistency', () => ({
   }),
 }));
 
+const mockTrainingLoad = jest.fn();
+jest.mock('../../src/hooks/useTrainingLoad', () => ({
+  useTrainingLoad: () => mockTrainingLoad(),
+}));
+const mockUsePaceZones = jest.fn();
+jest.mock('../../src/hooks/usePaceZones', () => ({
+  usePaceZones: (...args: unknown[]) => mockUsePaceZones(...args),
+}));
 jest.mock('../../src/hooks/useCardioSessions', () => ({
   useCardioSessions: jest.fn(),
 }));
 
+jest.mock('../../src/hooks/useRunningTrends', () => ({
+  useRunningTrends: jest.fn(),
+}));
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: jest.fn(() => ({
     preferences: { default_weight_unit: 'kg' },
@@ -96,6 +112,9 @@ const mockUseExerciseDashboard = useExerciseDashboard as jest.MockedFunction<
 >;
 const mockUseCardioSessions = useCardioSessions as jest.MockedFunction<
   typeof useCardioSessions
+>;
+const mockUseRunningTrends = useRunningTrends as jest.MockedFunction<
+  typeof useRunningTrends
 >;
 const mockUsePreferences = usePreferences as jest.MockedFunction<
   typeof usePreferences
@@ -172,11 +191,24 @@ describe('ExerciseStatisticsScreen', () => {
   });
 
   beforeEach(() => {
+    mockUsePaceZones.mockReset();
+    mockUsePaceZones.mockReturnValue({ result: null, isLoading: false });
     mockUseExerciseDashboard.mockReset();
     mockUseExerciseDashboard.mockReturnValue(dashboardResult());
+    mockTrainingLoad.mockReturnValue({
+      load: undefined,
+      isLoading: false,
+      isError: false,
+    });
     navigation.navigate.mockReset();
     mockGender = null;
     mockUseCardioSessions.mockReturnValue(cardioResult());
+    mockUseRunningTrends.mockReturnValue({
+      trends: null,
+      raceTimes: [],
+      isLoading: false,
+      isError: false,
+    });
     mockUsePreferences.mockReturnValue({
       preferences: { default_weight_unit: 'kg' },
     } as ReturnType<typeof usePreferences>);
@@ -303,6 +335,72 @@ describe('ExerciseStatisticsScreen', () => {
     });
   });
 
+  it('shows the running trends above the sessions when there are runs', () => {
+    mockUseRunningTrends.mockReturnValue({
+      trends: buildRunningTrends(
+        [
+          {
+            exerciseName: 'Morning Run',
+            category: 'running',
+            entryDate: '2026-09-26',
+            durationMinutes: 30,
+            distanceMeters: 5000,
+            avgHeartRate: 150,
+          },
+        ],
+        { today: '2026-09-27' }
+      ),
+      raceTimes: predictRaceTimes([
+        { distanceStandard: '5k', bestTimeSeconds: 1500 },
+      ]),
+      isLoading: false,
+      isError: false,
+    });
+    const screen = render(<ExerciseStatisticsScreen {...props} />);
+    fireEvent.press(screen.getByText('Cardio'));
+
+    expect(screen.getByText('Running, last 12 weeks')).toBeTruthy();
+    // This week and the longest run are the same 5 km run.
+    expect(screen.getAllByText('5.0 km')).toHaveLength(2);
+    // A 5K in 25:00 scales to the other distances.
+    expect(screen.getByText('Race time estimates')).toBeTruthy();
+    expect(screen.getByText('10K')).toBeTruthy();
+    // Too far to extrapolate a marathon from a 5K.
+    expect(screen.queryByText('Marathon')).toBeNull();
+    expect(screen.getByText('Half marathon')).toBeTruthy();
+  });
+
+  it('leaves the trends out when there are no runs', () => {
+    const screen = render(<ExerciseStatisticsScreen {...props} />);
+    fireEvent.press(screen.getByText('Cardio'));
+
+    expect(screen.queryByText('Running, last 12 weeks')).toBeNull();
+  });
+
+  it('shows pace zones above the cardio list once there are runs to build them from', () => {
+    mockUsePaceZones.mockReturnValue({
+      isLoading: false,
+      result: {
+        thresholdSecondsPerKm: 300,
+        source: 'effort',
+        sessions: 2,
+        zones: [
+          { id: 'easy', minSecondsPerKm: 345, maxSecondsPerKm: 405 },
+          { id: 'steady', minSecondsPerKm: 315, maxSecondsPerKm: 345 },
+          { id: 'threshold', minSecondsPerKm: 290, maxSecondsPerKm: 315 },
+          { id: 'interval', minSecondsPerKm: 265, maxSecondsPerKm: 290 },
+          { id: 'repetition', minSecondsPerKm: 240, maxSecondsPerKm: 265 },
+        ],
+      },
+    });
+    const screen = render(<ExerciseStatisticsScreen {...props} />);
+    expect(screen.queryByText('Pace zones')).toBeNull();
+    fireEvent.press(screen.getByText('Cardio'));
+    expect(mockUsePaceZones).toHaveBeenLastCalledWith(true);
+    expect(screen.getByText('Pace zones')).toBeTruthy();
+    expect(screen.getByText('5:45 – 6:45 /km')).toBeTruthy();
+  });
+
   it('loads older cardio sessions on request', () => {
     const fetchNextPage = jest.fn();
     mockUseCardioSessions.mockReturnValue(
@@ -334,6 +432,39 @@ describe('ExerciseStatisticsScreen', () => {
     const screen = render(<ExerciseStatisticsScreen {...props} />);
     expect(screen.getByText('No workouts in this range')).toBeTruthy();
     expect(screen.queryByText('Sets per Muscle')).toBeNull();
+  });
+
+  it('still shows the fixed-window training load when the range is empty', () => {
+    mockTrainingLoad.mockReturnValue({
+      load: {
+        weeks: [
+          { start: '2026-09-16', load: 100 },
+          { start: '2026-09-23', load: 120 },
+          { start: '2026-09-30', load: 110 },
+          { start: '2026-10-07', load: 130 },
+        ],
+        acute: 130,
+        chronic: 115,
+        ratio: 1.1,
+        status: 'steady',
+        restDays: 1,
+        recovery: null,
+      },
+      isLoading: false,
+      isError: false,
+    });
+    mockUseExerciseDashboard.mockReturnValue(
+      dashboardResult({
+        data: {
+          ...DASHBOARD,
+          keyStats: { totalWorkouts: 0, totalVolume: 0, totalReps: 0 },
+          muscleGroupSets: {},
+        },
+      })
+    );
+    const screen = render(<ExerciseStatisticsScreen {...props} />);
+    expect(screen.getByText('No workouts in this range')).toBeTruthy();
+    expect(screen.getAllByTestId('training-load-bar')).toHaveLength(4);
   });
 
   it('keeps showing cached stats when a refetch fails', () => {

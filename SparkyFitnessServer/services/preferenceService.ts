@@ -157,6 +157,8 @@ async function validateChartScaleMode(
 }
 function getDefaultPreferences() {
   return {
+    voice_input_enabled: true,
+    active_voice_ai_service_id: null,
     calorie_goal_adjustment_mode: 'dynamic',
     show_net_carbs: false,
     timezone: null,

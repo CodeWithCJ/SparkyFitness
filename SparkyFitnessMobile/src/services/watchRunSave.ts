@@ -1,5 +1,7 @@
 import {
+  attachExerciseEntryDistanceSeries,
   attachExerciseEntryGpsTrack,
+  attachExerciseEntryLaps,
   attachExerciseEntryWatchTelemetry,
   createExerciseEntry,
 } from './api/exerciseApi';
@@ -17,6 +19,7 @@ import {
   toWorkoutGpsPoints,
 } from '../utils/gpsRecording';
 import {
+  indoorLapWindows,
   watchRunActivity,
   watchRunPoints,
   type WatchRunPayload,
@@ -86,6 +89,34 @@ export async function saveWatchRun(
           : computeSplits(points, unitMeters)
       ),
     });
+  } else {
+    // No route (indoors): the laps the wearer marked, from the watch's own
+    // figures. Best effort, like the telemetry: the run is already filed.
+    const windows = indoorLapWindows(payload);
+    if (windows.length > 0) {
+      try {
+        await attachExerciseEntryLaps(entryId, windows);
+      } catch (error) {
+        addLog(
+          `[Watch Run] Could not attach laps: ${String(error)}`,
+          'WARNING'
+        );
+      }
+    }
+    // The pace chart's data, so the diary's session screen can draw it too.
+    if (payload.distanceSeries.length >= 2) {
+      try {
+        await attachExerciseEntryDistanceSeries(
+          entryId,
+          payload.distanceSeries
+        );
+      } catch (error) {
+        addLog(
+          `[Watch Run] Could not attach distance series: ${String(error)}`,
+          'WARNING'
+        );
+      }
+    }
   }
   await attachTelemetry(entryId, payload);
   return entryId;

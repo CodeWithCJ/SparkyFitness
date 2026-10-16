@@ -251,7 +251,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     useMindfulnessDay(selectedDate);
   const {
     saveSession: saveMindfulSession,
-    updateSession: updateMindfulSession,
     deleteSession: deleteMindfulSession,
   } = useMindfulnessMutations(selectedDate);
   // Weight supports a third "stones + lbs" mode that renders as two inputs.
@@ -1864,7 +1863,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 totalMindfulMinutes={totalMindfulMinutes}
                 selectedDate={selectedDate}
                 onSaveSession={saveMindfulSession}
-                onUpdateSession={updateMindfulSession}
                 onDeleteSession={deleteMindfulSession}
                 onPressDetails={() =>
                   navigation.navigate('MindfulnessDetail', { selectedDate })

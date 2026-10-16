@@ -22,6 +22,7 @@ import { MessagePart, ImagePart } from '@/types/Chatbot_types';
 import { type UIMessage } from 'ai';
 import { resizeImageBase64 } from '@/utils/imageResize';
 
+import { useTranslation } from 'react-i18next';
 interface SparkyChatInnerProps {
   activeAIServiceSetting: {
     id: string;
@@ -39,6 +40,7 @@ const SparkyChatInner = ({
   activeAIServiceSetting,
   history,
 }: SparkyChatInnerProps) => {
+  const { t } = useTranslation();
   const invalidateDiary = useDiaryInvalidation();
   const invalidateChat = useChatInvalidation();
   const userDate = formatDateToYYYYMMDD(new Date());
@@ -153,10 +155,13 @@ const SparkyChatInner = ({
     },
     onError: (error) => {
       toast({
-        title: 'Chat Error',
+        title: t('chat.sparkyChatInterface.chatError', 'Chat Error'),
         description:
           error.message ||
-          'Failed to process message. Please check your AI service settings.',
+          t(
+            'chat.sparkyChatInterface.failedToProcessMessagePlease',
+            'Failed to process message. Please check your AI service settings.'
+          ),
         variant: 'destructive',
       });
     },

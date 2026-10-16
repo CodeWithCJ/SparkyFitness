@@ -517,30 +517,50 @@ export function useMeasurementChartWidgets({
                     className="text-xs text-muted-foreground"
                     data-testid="weight-trend-summary"
                   >
-                    {t('reports.weightTrendSummary', 'Trend {{weight}}', {
-                      weight: formatWeight(
+                    {(() => {
+                      const weight = formatWeight(
                         weightTrendSummary.currentTrend,
                         weightUnit
-                      ),
-                    })}
-                    {weightTrendSummary.weeklyRate !== null &&
-                      ` · ${t('reports.weightTrendRate', '{{rate}} per week', {
-                        rate: `${weightTrendSummary.weeklyRate > 0 ? '+' : ''}${formatWeight(
-                          weightTrendSummary.weeklyRate,
-                          weightUnit
-                        )}`,
-                      })}`}
-                    {weightTrendSummary.forecastDate &&
-                      ` · ${t(
-                        'reports.weightGoalForecast',
-                        'Goal projected {{date}}',
-                        {
-                          date: formatDateInUserTimezone(
+                      );
+                      const rate =
+                        weightTrendSummary.weeklyRate !== null
+                          ? `${weightTrendSummary.weeklyRate > 0 ? '+' : ''}${formatWeight(
+                              weightTrendSummary.weeklyRate,
+                              weightUnit
+                            )}`
+                          : null;
+                      const date = weightTrendSummary.forecastDate
+                        ? formatDateInUserTimezone(
                             weightTrendSummary.forecastDate,
                             'PP'
-                          ),
+                          )
+                        : null;
+                      if (rate && date)
+                        return t(
+                          'reports.weightTrendRateAndForecast',
+                          'Trend {{weight}} · {{rate}} per week · Goal projected {{date}}',
+                          { weight, rate, date }
+                        );
+                      if (rate)
+                        return t(
+                          'reports.weightTrendWithRate',
+                          'Trend {{weight}} · {{rate}} per week',
+                          { weight, rate }
+                        );
+                      if (date)
+                        return t(
+                          'reports.weightTrendWithForecast',
+                          'Trend {{weight}} · Goal projected {{date}}',
+                          { weight, date }
+                        );
+                      return t(
+                        'reports.weightTrendSummary',
+                        'Trend {{weight}}',
+                        {
+                          weight,
                         }
-                      )}`}
+                      );
+                    })()}
                   </p>
                 )}
               </CardHeader>

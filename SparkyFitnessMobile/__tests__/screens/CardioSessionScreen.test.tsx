@@ -1,11 +1,21 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import Toast from 'react-native-toast-message';
 import type { ExerciseActivityQueryItem } from '@workspace/shared';
 
 import CardioSessionScreen from '../../src/screens/CardioSessionScreen';
 import { useCardioSessionDetail } from '../../src/hooks/useCardioSessionDetail';
+import { shareRouteAsGpx } from '../../src/services/gpxExport';
 import { initializeI18n } from '../../src/localization/i18n';
 import type { RootStackScreenProps } from '../../src/types/navigation';
+
+jest.mock('../../src/services/gpxExport', () => ({
+  shareRouteAsGpx: jest.fn(() => Promise.resolve(true)),
+}));
+jest.mock('react-native-toast-message', () => ({
+  __esModule: true,
+  default: { show: jest.fn() },
+}));
 
 // The program badge reads the run program query; it has its own tests.
 jest.mock('../../src/components/recording/ProgramWorkoutBadge', () => ({
@@ -32,6 +42,11 @@ jest.mock('uniwind', () => ({
   useCSSVariable: (keys: string | string[]) =>
     Array.isArray(keys) ? keys.map(() => '#111827') : '#111827',
   useUniwind: () => ({ theme: 'light' }),
+}));
+// The shoe picker reads the shoe list and the entry; it has its own tests.
+jest.mock('../../src/components/ShoePickerCard', () => ({
+  __esModule: true,
+  default: () => null,
 }));
 // The chart draws with Skia; its data handling is covered by the hook tests.
 jest.mock('../../src/components/exerciseStats/HeartRateChart', () => {
@@ -282,5 +297,40 @@ describe('CardioSessionScreen', () => {
         'Average heart rate 148 bpm. Beat-by-beat samples were not stored.'
       )
     ).toBeTruthy();
+  });
+
+  it('exports the route as a GPX file', async () => {
+    mockDetail.mockReturnValue(detail());
+    const screen = render(<CardioSessionScreen {...props()} />);
+    fireEvent.press(screen.getByTestId('export-gpx'));
+    await waitFor(() =>
+      expect(shareRouteAsGpx).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'Morning Run',
+          day: '2026-09-26',
+          points: expect.arrayContaining([
+            expect.objectContaining({ lat: 51.5 }),
+          ]),
+        })
+      )
+    );
+  });
+
+  it('says so when the route cannot be exported', async () => {
+    jest.mocked(shareRouteAsGpx).mockRejectedValueOnce(new Error('disk'));
+    mockDetail.mockReturnValue(detail());
+    const screen = render(<CardioSessionScreen {...props()} />);
+    fireEvent.press(screen.getByTestId('export-gpx'));
+    await waitFor(() =>
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' })
+      )
+    );
+  });
+
+  it('offers no export without a route', () => {
+    mockDetail.mockReturnValue(detail({ route: [] }));
+    const screen = render(<CardioSessionScreen {...props()} />);
+    expect(screen.queryByTestId('export-gpx')).toBeNull();
   });
 });

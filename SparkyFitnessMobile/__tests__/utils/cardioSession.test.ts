@@ -8,6 +8,7 @@ import {
   gpsHeartRateSeries,
   combinedHeartRateZoneRows,
   heartRateZoneRows,
+  paceSeriesFromDistance,
   paceSeriesFromTrack,
   projectRoute,
   routeRegion,
@@ -420,5 +421,29 @@ describe('paceSeriesFromTrack', () => {
     const best = Math.min(...series.map((point) => point.paceSeconds));
 
     expect(best).toBeLessThan(100);
+  });
+});
+
+describe('paceSeriesFromDistance', () => {
+  test('turns distance against active time into pace per unit', () => {
+    // 3 m/s = 5:33 per km.
+    const rows = [0, 10, 20, 30, 40, 50, 60].map((s) => [s, s * 3]);
+    const series = paceSeriesFromDistance(rows, 1000);
+    expect(series.length).toBeGreaterThan(0);
+    expect(series[0].paceSeconds).toBeCloseTo(1000 / 3, 0);
+    expect(series[series.length - 1].distance).toBeCloseTo(0.18, 2);
+  });
+
+  test('needs two readings and leaves out standing still', () => {
+    expect(paceSeriesFromDistance([[0, 0]], 1000)).toEqual([]);
+    expect(
+      paceSeriesFromDistance(
+        [
+          [0, 100],
+          [60, 100],
+        ],
+        1000
+      )
+    ).toEqual([]);
   });
 });

@@ -14,6 +14,8 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useExerciseDashboard } from '../hooks/useExerciseDashboard';
 import { useTrainingConsistency } from '../hooks/useTrainingConsistency';
 import { useCardioSessions } from '../hooks/useCardioSessions';
+import { useRunningTrends } from '../hooks/useRunningTrends';
+import { usePaceZones } from '../hooks/usePaceZones';
 import { usePreferences } from '../hooks/usePreferences';
 import { useProfile } from '../hooks/useProfile';
 import { formatLocalizedNumber } from '../localization';
@@ -27,7 +29,11 @@ import type { ReportSectionKey } from '../constants/reports';
 import StatusView from '../components/StatusView';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CardioSessionList from '../components/exerciseStats/CardioSessionList';
+import RunningTrendsCard from '../components/exerciseStats/RunningTrendsCard';
 import TrainingConsistencyCard from '../components/exerciseStats/TrainingConsistencyCard';
+import PaceZonesCard from '../components/exerciseStats/PaceZonesCard';
+import TrainingLoadCard from '../components/exerciseStats/TrainingLoadCard';
+import { useTrainingLoad } from '../hooks/useTrainingLoad';
 import MuscleFigure, {
   MUSCLE_HEAT_COLORS,
 } from '../components/exerciseStats/MuscleFigure';
@@ -131,7 +137,10 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
 
   const { data, isLoading } = useExerciseDashboard(range, customRange);
   const consistency = useTrainingConsistency();
+  const trainingLoad = useTrainingLoad();
   const cardio = useCardioSessions(range, view === 'cardio', customRange);
+  const running = useRunningTrends(view === 'cardio');
+  const paceZones = usePaceZones(view === 'cardio');
   const { preferences } = usePreferences();
   const weightUnit: 'kg' | 'lbs' =
     preferences?.default_weight_unit === 'lbs' ||
@@ -177,6 +186,16 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   const hasActivity =
     (data?.keyStats.totalWorkouts ?? 0) > 0 || setRows.length > 0;
 
+  // A fixed 28-day window, so it still has something to say when the selected
+  // range holds no workouts.
+  const loadCard = isSectionShown('exercise.load') ? (
+    <TrainingLoadCard
+      data={trainingLoad.load}
+      isLoading={trainingLoad.isLoading}
+      isError={trainingLoad.isError}
+    />
+  ) : null;
+
   const renderCardio = () => {
     if (cardio.isLoading) {
       return <StatusView inline loading />;
@@ -207,6 +226,19 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
     }
     return (
       <>
+        {running.trends && running.trends.totalRuns > 0 ? (
+          <RunningTrendsCard
+            trends={running.trends}
+            raceTimes={running.raceTimes}
+            distanceUnit={cardio.distanceUnit}
+          />
+        ) : null}
+        {paceZones.result ? (
+          <PaceZonesCard
+            result={paceZones.result}
+            distanceUnit={cardio.distanceUnit}
+          />
+        ) : null}
         <Text className="text-text-secondary text-xs mb-3">
           {t('exerciseStatistics.cardio.hint', {
             defaultValue: 'Tap a workout for its route and heart rate.',
@@ -253,18 +285,21 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
     }
     if (!hasActivity) {
       return (
-        <StatusView
-          inline
-          icon="exercise-weights"
-          iconTone="muted"
-          title={t('exerciseStatistics.states.empty', {
-            defaultValue: 'No workouts in this range',
-          })}
-          subtitle={t('exerciseStatistics.states.emptyHint', {
-            defaultValue:
-              'Log a workout and its sets will show up here by muscle.',
-          })}
-        />
+        <>
+          <StatusView
+            inline
+            icon="exercise-weights"
+            iconTone="muted"
+            title={t('exerciseStatistics.states.empty', {
+              defaultValue: 'No workouts in this range',
+            })}
+            subtitle={t('exerciseStatistics.states.emptyHint', {
+              defaultValue:
+                'Log a workout and its sets will show up here by muscle.',
+            })}
+          />
+          {loadCard}
+        </>
       );
     }
 
@@ -464,6 +499,8 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
             ) : null}
           </View>
         ) : null}
+
+        {loadCard}
 
         {isSectionShown('exercise.consistency') ? (
           <TrainingConsistencyCard

@@ -17,7 +17,7 @@ test('asks for run days when none are chosen', () => {
       today={today}
     />
   );
-  expect(screen.getByText(/Pick your run days/)).toBeTruthy();
+  expect(screen.getByText(/Pick your workout days/)).toBeTruthy();
 });
 
 test('lists the next runs with their dates and the finish day, and shows them all on request', () => {
@@ -56,7 +56,9 @@ test('says whether the program fits before the goal date', () => {
       today={today}
     />
   );
-  expect(screen.getByText(/after your goal date. Add a run day/)).toBeTruthy();
+  expect(
+    screen.getByText(/after your goal date. Add a workout day/)
+  ).toBeTruthy();
   expect(
     screen.getByText(/workouts do not fit before your goal date/)
   ).toBeTruthy();

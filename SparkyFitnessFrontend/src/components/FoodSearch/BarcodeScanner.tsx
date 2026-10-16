@@ -24,6 +24,7 @@ import { ZxingEngine } from '@/lib/scannerEngines/ZxingEngine';
 import { Html5QrcodeEngine } from '@/lib/scannerEngines/Html5QrcodeEngine';
 import { QuaggaEngine } from '@/lib/scannerEngines/QuaggaEngine';
 
+import i18n from 'i18next';
 interface BarcodeScannerProps {
   onBarcodeDetected: (barcode: string) => void;
   onClose: () => void;
@@ -38,7 +39,12 @@ interface AdvancedMediaTrackConstraints extends MediaTrackConstraintSet {
 const ENGINE_OPTIONS = [
   { value: 'zxing', label: '@zxing/library' },
   { value: 'html5-qrcode', label: 'html5-qrcode' },
-  { value: 'quagga2', label: 'quagga2' },
+  {
+    value: 'quagga2',
+    get label() {
+      return i18n.t('foodSearch.barcodeScanner.quagga2', 'quagga2');
+    },
+  },
 ];
 
 const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
@@ -334,7 +340,9 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
         <div className="absolute top-4 left-4 right-16 z-20 flex flex-col gap-2 pointer-events-auto">
           <Select value={selectedEngine} onValueChange={handleEngineChange}>
             <SelectTrigger className="w-full max-w-[150px] bg-black/60 text-white border-gray-600 h-8 text-xs">
-              <SelectValue placeholder="Engine" />
+              <SelectValue
+                placeholder={t('foodSearch.barcodeScanner.engine', 'Engine')}
+              />
             </SelectTrigger>
             <SelectContent>
               {ENGINE_OPTIONS.map((opt) => (
@@ -349,12 +357,21 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             <Select value={selectedCameraId} onValueChange={handleCameraChange}>
               <SelectTrigger className="w-full max-w-[150px] bg-black/60 text-white border-gray-600 h-8 text-xs">
                 <Camera className="w-3 h-3 mr-2" />
-                <SelectValue placeholder="Camera" />
+                <SelectValue
+                  placeholder={t('foodSearch.barcodeScanner.camera', 'Camera')}
+                />
               </SelectTrigger>
               <SelectContent>
                 {cameras.map((cam) => (
                   <SelectItem key={cam.deviceId} value={cam.deviceId}>
-                    {cam.label || `Camera ${cam.deviceId.slice(0, 4)}...`}
+                    {cam.label ||
+                      t(
+                        'foodSearch.barcodeScanner.cameraName',
+                        'Camera {{id}}...',
+                        {
+                          id: cam.deviceId.slice(0, 4),
+                        }
+                      )}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -416,7 +433,15 @@ const BarcodeScanner: React.FC<BarcodeScannerProps> = ({
             <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none z-10">
               <p className="text-white text-xs bg-black/60 rounded px-3 py-1 inline-flex items-center backdrop-blur-sm">
                 <Scan className="w-3 h-3 mr-1" />
-                {internalContinuousMode ? 'Continuous Scan' : 'Align Barcode'}
+                {internalContinuousMode
+                  ? t(
+                      'foodSearch.barcodeScanner.continuousScan',
+                      'Continuous Scan'
+                    )
+                  : t(
+                      'foodSearch.barcodeScanner.alignBarcode',
+                      'Align Barcode'
+                    )}
               </p>
             </div>
           </div>

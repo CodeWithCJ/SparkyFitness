@@ -52,8 +52,9 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {t('sleepReport.sleepHypnogram', 'Sleep Hypnogram')} -{' '}
-            {formatDateInUserTimezone(sleepChartData.date, dateFormat)}
+            {t('sleepReport.sleepHypnogram2', 'Sleep Hypnogram - {{date}}', {
+              date: formatDateInUserTimezone(sleepChartData.date, dateFormat),
+            })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -73,8 +74,9 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {t('sleepReport.sleepHypnogram', 'Sleep Hypnogram')} -{' '}
-            {formatDateInUserTimezone(sleepChartData.date, dateFormat)}
+            {t('sleepReport.sleepHypnogram2', 'Sleep Hypnogram - {{date}}', {
+              date: formatDateInUserTimezone(sleepChartData.date, dateFormat),
+            })}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -283,8 +285,9 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
         <Card className={isMaximized ? 'h-full flex flex-col' : ''}>
           <CardHeader>
             <CardTitle>
-              {t('sleepReport.sleepHypnogram', 'Sleep Hypnogram')} -{' '}
-              {formatDateInUserTimezone(sleepChartData.date, dateFormat)}
+              {t('sleepReport.sleepHypnogram2', 'Sleep Hypnogram - {{date}}', {
+                date: formatDateInUserTimezone(sleepChartData.date, dateFormat),
+              })}
             </CardTitle>
           </CardHeader>
           <CardContent

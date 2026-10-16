@@ -293,11 +293,14 @@ export default function CycleSymptomPicker({ date }: CycleSymptomPickerProps) {
                     htmlFor="custom-symp-name"
                     className="text-[10px] uppercase font-bold text-muted-foreground"
                   >
-                    Symptom Name
+                    {t('cycle.cycleSymptomPicker.symptomName', 'Symptom Name')}
                   </Label>
                   <Input
                     id="custom-symp-name"
-                    placeholder="e.g. Fatigue"
+                    placeholder={t(
+                      'cycle.cycleSymptomPicker.eGFatigue',
+                      'e.g. Fatigue'
+                    )}
                     value={newSymptomName}
                     onChange={(e) => setNewSymptomName(e.target.value)}
                     className="h-8 text-xs w-full"
@@ -308,7 +311,7 @@ export default function CycleSymptomPicker({ date }: CycleSymptomPickerProps) {
                   className="h-8 text-xs"
                   onClick={handleAddCustomSymptom}
                 >
-                  Add
+                  {t('common.add', 'Add')}
                 </Button>
               </div>
             </div>

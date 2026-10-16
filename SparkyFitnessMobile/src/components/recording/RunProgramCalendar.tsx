@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
+  catchUpFor,
   daysBetween,
   planMinutes,
   projectRuns,
@@ -9,6 +10,7 @@ import {
   type ProgramStatus,
 } from '@workspace/shared';
 import { formatDayLabel } from '../../utils/dayLabel';
+import Button from '../ui/Button';
 
 /** Runs listed before "Show all". */
 const PREVIEW_RUNS = 7;
@@ -32,7 +34,9 @@ const RunProgramCalendar: React.FC<{
   doneDay: string | null;
   /** Today, YYYY-MM-DD. */
   today: string;
-}> = ({ status, schedule, doneDay, today }) => {
+  /** Moves the place in the program to this workout (a catch-up). */
+  onCatchUp?: (next: number) => void;
+}> = ({ status, schedule, doneDay, today, onCatchUp }) => {
   const { t } = useTranslation();
   const [showAll, setShowAll] = useState(false);
   if (status.finished) return null;
@@ -71,13 +75,15 @@ const RunProgramCalendar: React.FC<{
             count: -gap,
             date: dayText(finish, 'long'),
             defaultValue:
-              'At this pace you finish on {{date}}, {{count}} days after your goal date. Add a run day or move the date.',
+              'At this pace you finish on {{date}}, {{count}} days after your goal date. Add a workout day or move the date.',
             defaultValue_one:
-              'At this pace you finish on {{date}}, {{count}} day after your goal date. Add a run day or move the date.',
+              'At this pace you finish on {{date}}, {{count}} day after your goal date. Add a workout day or move the date.',
             defaultValue_other:
-              'At this pace you finish on {{date}}, {{count}} days after your goal date. Add a run day or move the date.',
+              'At this pace you finish on {{date}}, {{count}} days after your goal date. Add a workout day or move the date.',
           });
   }
+
+  const catchUp = catchUpFor({ ...base, schedule: plan });
 
   const shown = showAll ? runs : runs.slice(0, PREVIEW_RUNS);
   return (
@@ -93,11 +99,11 @@ const RunProgramCalendar: React.FC<{
           {t('runPrograms.calendar.noDays', {
             count: left,
             defaultValue:
-              '{{count}} workouts left. Pick your run days to see when each one falls; until then the Diary offers the next one every day.',
+              '{{count}} workouts left. Pick your workout days to see when each one falls; until then the Diary offers the next one every day.',
             defaultValue_one:
-              '{{count}} workout left. Pick your run days to see when each one falls; until then the Diary offers the next one every day.',
+              '{{count}} workout left. Pick your workout days to see when each one falls; until then the Diary offers the next one every day.',
             defaultValue_other:
-              '{{count}} workouts left. Pick your run days to see when each one falls; until then the Diary offers the next one every day.',
+              '{{count}} workouts left. Pick your workout days to see when each one falls; until then the Diary offers the next one every day.',
           })}
         </Text>
       ) : (
@@ -113,10 +119,56 @@ const RunProgramCalendar: React.FC<{
           {fit ? (
             <Text className="text-text-secondary text-sm mt-1">{fit}</Text>
           ) : null}
+          {catchUp.state === 'skip' && onCatchUp ? (
+            <View className="mt-2" testID="run-program-catch-up">
+              <Text className="text-text-secondary text-sm">
+                {t('runPrograms.calendar.catchUp', {
+                  count: catchUp.skip,
+                  date: dayText(catchUp.finishDay, 'long'),
+                  defaultValue:
+                    'Skip the next {{count}} workouts to finish on {{date}}, in time for your goal. The last workout is never skipped.',
+                  defaultValue_one:
+                    'Skip the next {{count}} workout to finish on {{date}}, in time for your goal. The last workout is never skipped.',
+                  defaultValue_other:
+                    'Skip the next {{count}} workouts to finish on {{date}}, in time for your goal. The last workout is never skipped.',
+                })}
+              </Text>
+              <View className="mt-2">
+                <Button
+                  variant="outline"
+                  onPress={() => onCatchUp(catchUp.next)}
+                  testID="run-program-catch-up-button"
+                >
+                  {t('runPrograms.calendar.catchUpButton', {
+                    count: catchUp.skip,
+                    defaultValue: 'Skip {{count}} workouts',
+                    defaultValue_one: 'Skip {{count}} workout',
+                    defaultValue_other: 'Skip {{count}} workouts',
+                  })}
+                </Button>
+              </View>
+            </View>
+          ) : null}
+          {catchUp.state === 'tooFar' ? (
+            <Text
+              className="text-text-secondary text-sm mt-1"
+              testID="run-program-too-far"
+            >
+              {t('runPrograms.calendar.tooFar', {
+                count: catchUp.late,
+                defaultValue:
+                  'You are too far behind to catch up by skipping: {{count}} workouts will not fit. Add workout days or move your goal date.',
+                defaultValue_one:
+                  'You are too far behind to catch up by skipping: {{count}} workout will not fit. Add workout days or move your goal date.',
+                defaultValue_other:
+                  'You are too far behind to catch up by skipping: {{count}} workouts will not fit. Add workout days or move your goal date.',
+              })}
+            </Text>
+          ) : null}
           <Text className="text-text-muted text-xs mt-1">
             {t('runPrograms.calendar.moves', {
               defaultValue:
-                'A run you miss is not skipped: the dates after it move along.',
+                'A workout you miss is not skipped: the dates after it move along.',
             })}
           </Text>
           <View className="mt-3">
@@ -138,10 +190,10 @@ const RunProgramCalendar: React.FC<{
                     {status.program.activity === 'walk'
                       ? t('runPrograms.calendar.rowWalk', {
                           week: workout.week + 1,
-                          run: workout.day + 1,
+                          walk: workout.day + 1,
                           minutes: planMinutes(workout.plan),
                           defaultValue:
-                            'Week {{week}}, walk {{run}} · {{minutes}} min',
+                            'Week {{week}}, walk {{walk}} · {{minutes}} min',
                         })
                       : t('runPrograms.calendar.row', {
                           week: workout.week + 1,

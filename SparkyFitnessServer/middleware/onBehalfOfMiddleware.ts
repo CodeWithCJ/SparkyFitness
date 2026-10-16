@@ -19,7 +19,7 @@ const onBehalfOfMiddleware = async (req: any, res: any, next: any) => {
         await familyAccessRepository.checkFamilyAccessPermission(
           authUserId,
           onBehalfOfUserId,
-          ['diary', 'checkin', 'reports', 'medications']
+          ['diary', 'checkin', 'reports', 'medications', 'can_view_reports']
         );
       if (hasAccess) {
         req.originalUserId = authUserId; // Store the actual authenticated user's ID

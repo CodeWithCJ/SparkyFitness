@@ -69,6 +69,46 @@ describe('stepAutoPause', () => {
     expect(stopped.actions[3]).toEqual({ type: 'pause', at: T0 + 5000 });
   });
 
+  it('sees a stop when the phone gives no speed and the position wanders', () => {
+    // iOS reports -1 for speed while standing still; the position drifts a few
+    // metres from fix to fix, which neighbouring fixes would read as a jog.
+    const drift = [0, 3, -2, 4, -3, 2, -4, 3, -1, 4, -2, 3, 0, -3, 2, -4];
+    const wandering = drift.map((meters, i): RawFix => ({
+      t: T0 + i * 1000,
+      lat: 51.5 + meters / 111_194.9,
+      lon: -0.12,
+      speed: -1,
+      hacc: 5,
+    }));
+    const { actions } = run(wandering, false);
+    expect(actions.some((a) => a.type === 'pause')).toBe(true);
+  });
+
+  it('does not take a runner without a speed reading for standing still', () => {
+    // 3 m/s with no Doppler speed and a 10 m accuracy radius.
+    const running = Array.from({ length: 30 }, (_, i): RawFix => ({
+      t: T0 + i * 1000,
+      lat: 51.5 + (i * 3) / 111_194.9,
+      lon: -0.12,
+      speed: -1,
+      hacc: 10,
+    }));
+    const { actions } = run(running, false);
+    expect(actions.every((a) => a.type === 'none')).toBe(true);
+  });
+
+  it('does not take a walker without a speed reading for standing still', () => {
+    const walking = Array.from({ length: 40 }, (_, i): RawFix => ({
+      t: T0 + i * 1000,
+      lat: 51.5 + (i * 1.4) / 111_194.9,
+      lon: -0.12,
+      speed: -1,
+      hacc: 8,
+    }));
+    const { actions } = run(walking, false, 'walk');
+    expect(actions.every((a) => a.type === 'none')).toBe(true);
+  });
+
   it('ignores fixes too inaccurate to judge speed', () => {
     const { actions } = run(
       [0, 5, 10, 15].map((s) => fixAt(s, 0, 80)),

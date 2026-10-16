@@ -25,18 +25,22 @@ interface MealPercentageManagerProps {
 const distributionTemplates = [
   {
     name: 'Even Distribution',
+    translationKey: 'evenDistribution',
     values: { breakfast: 25, lunch: 25, dinner: 25, snacks: 25 },
   },
   {
     name: 'Intermittent Fasting',
+    translationKey: 'intermittentFasting',
     values: { breakfast: 0, lunch: 40, dinner: 40, snacks: 20 },
   },
   {
     name: 'Protein-Focused Morning',
+    translationKey: 'proteinFocusedMorning',
     values: { breakfast: 40, lunch: 30, dinner: 20, snacks: 10 },
   },
   {
     name: 'No Snacks',
+    translationKey: 'noSnacks',
     values: { breakfast: 30, lunch: 40, dinner: 30, snacks: 0 },
   },
 ];
@@ -169,7 +173,10 @@ const MealPercentageManager = ({
             {!hasCustomMeals &&
               distributionTemplates.map((template) => (
                 <SelectItem key={template.name} value={template.name}>
-                  {template.name}
+                  {t(
+                    `goals.mealDistribution.${template.translationKey}`,
+                    template.name
+                  )}
                 </SelectItem>
               ))}
           </SelectContent>

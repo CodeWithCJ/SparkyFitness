@@ -21,6 +21,7 @@ export const DEFAULT_GOALS = {
   alcohol_g: 28,
   target_exercise_calories_burned: 0,
   target_exercise_duration_minutes: 0,
+  target_steps: null,
   protein_percentage: null,
   carbs_percentage: null,
   fat_percentage: null,

@@ -46,6 +46,8 @@ import type {
   NumericFoodVariantKeys,
 } from '@/types/food';
 
+import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
 interface UseCustomFoodFormProps {
   food?: Food;
   initialVariants?: FoodVariant[];
@@ -89,9 +91,14 @@ function toPositiveNumber(value: unknown): number | null {
 
 function buildManualConversionToast() {
   return {
-    title: 'Manual Nutrition Update',
-    description:
-      "Can't convert between units. Update nutrition values manually.",
+    title: i18n.t(
+      'hooks.useFoodForm.manualNutritionUpdate',
+      'Manual Nutrition Update'
+    ),
+    description: i18n.t(
+      'hooks.useFoodForm.canTConvertBetweenUnits',
+      "Can't convert between units. Update nutrition values manually."
+    ),
   } as const;
 }
 
@@ -386,6 +393,7 @@ export function useCustomFoodForm({
   onSave,
   aiEstimatesAvailable = true,
 }: UseCustomFoodFormProps) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { energyUnit, convertEnergy, loggingLevel, autoScaleOnlineImports } =
     usePreferences();
@@ -736,9 +744,14 @@ export function useCustomFoodForm({
   const removeVariant = (index: number) => {
     if (index === 0) {
       toast({
-        title: 'Cannot remove default unit',
-        description:
-          "The default unit represents the food's primary serving and cannot be removed.",
+        title: t(
+          'hooks.useFoodForm.cannotRemoveDefaultUnit',
+          'Cannot remove default unit'
+        ),
+        description: t(
+          'hooks.useFoodForm.theDefaultUnitRepresentsThe',
+          "The default unit represents the food's primary serving and cannot be removed."
+        ),
         variant: 'destructive',
       });
       return;
@@ -1084,9 +1097,14 @@ export function useCustomFoodForm({
       const baseSize = toPositiveNumber(anchorVariant.serving_size);
       if (baseSize === null) {
         toast({
-          title: 'Set the default variant first',
-          description:
-            'The default variant needs a positive serving size before AI can estimate other units.',
+          title: t(
+            'hooks.useFoodForm.setTheDefaultVariantFirst',
+            'Set the default variant first'
+          ),
+          description: t(
+            'hooks.useFoodForm.theDefaultVariantNeedsA',
+            'The default variant needs a positive serving size before AI can estimate other units.'
+          ),
           variant: 'destructive',
         });
         return;
@@ -1159,7 +1177,7 @@ export function useCustomFoodForm({
         )
       );
     },
-    [variants, originalVariants, variantMeta]
+    [variants, originalVariants, variantMeta, t]
   );
 
   const updateField = (field: string, value: string | boolean) => {
@@ -1275,8 +1293,11 @@ export function useCustomFoodForm({
 
     if (newVariantErrors.some((entry) => entry !== '')) {
       toast({
-        title: 'Validation Error',
-        description: 'Please correct the errors in the unit variants.',
+        title: t('hooks.useFoodForm.validationError', 'Validation Error'),
+        description: t(
+          'hooks.useFoodForm.pleaseCorrectTheErrorsIn',
+          'Please correct the errors in the unit variants.'
+        ),
         variant: 'destructive',
       });
       return false;
@@ -1285,16 +1306,22 @@ export function useCustomFoodForm({
     const defaultCount = variants.filter((v) => v.is_default).length;
     if (defaultCount === 0) {
       toast({
-        title: 'Validation Error',
-        description: 'At least one variant must be marked as the default unit.',
+        title: t('hooks.useFoodForm.validationError', 'Validation Error'),
+        description: t(
+          'hooks.useFoodForm.atLeastOneVariantMust',
+          'At least one variant must be marked as the default unit.'
+        ),
         variant: 'destructive',
       });
       return false;
     }
     if (defaultCount > 1) {
       toast({
-        title: 'Validation Error',
-        description: 'Only one variant can be marked as the default unit.',
+        title: t('hooks.useFoodForm.validationError', 'Validation Error'),
+        description: t(
+          'hooks.useFoodForm.onlyOneVariantCanBe',
+          'Only one variant can be marked as the default unit.'
+        ),
         variant: 'destructive',
       });
       return false;
@@ -1304,15 +1331,18 @@ export function useCustomFoodForm({
     const BARCODE_REGEX = /^\d{8,14}$/;
     if (barcode && !BARCODE_REGEX.test(barcode)) {
       toast({
-        title: 'Validation Error',
-        description: 'Barcode must be 8-14 digits.',
+        title: t('hooks.useFoodForm.validationError', 'Validation Error'),
+        description: t(
+          'hooks.useFoodForm.barcodeMustBe814',
+          'Barcode must be 8-14 digits.'
+        ),
         variant: 'destructive',
       });
       return false;
     }
 
     return true;
-  }, [variants, formData.barcode]);
+  }, [variants, formData.barcode, t]);
 
   const persistFood = useCallback(async () => {
     if (!user) return;

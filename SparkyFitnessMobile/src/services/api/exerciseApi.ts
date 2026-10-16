@@ -20,6 +20,7 @@ import type {
   PresetSessionResponse,
   ExerciseEntryResponse,
   AttachExerciseEntryGpsTrackRequest,
+  AttachExerciseEntryLapsRequest,
   Pagination,
 } from '@workspace/shared';
 
@@ -421,6 +422,24 @@ export const updateExerciseEntry = async (
   });
 };
 
+/**
+ * Sets the distance of an entry that has no GPS track (a treadmill run) to the
+ * figure read off the machine. The server keeps everything else and scales any
+ * laps to match; it answers 409 for an entry that has a route.
+ */
+export const setExerciseEntryDistance = async (
+  id: string,
+  distanceKm: number
+): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: `/api/exercise-entries/${encodeURIComponent(id)}/distance`,
+    serviceName: 'Exercise API',
+    operation: 'set exercise entry distance',
+    method: 'POST',
+    body: { distance_km: distanceKm },
+  });
+};
+
 export const getWorkout = async (
   id: string
 ): Promise<PresetSessionResponse> => {
@@ -503,6 +522,42 @@ export const attachExerciseEntryGpsTrack = async (
     operation: 'attach exercise entry GPS track',
     method: 'POST',
     body: track,
+  });
+};
+
+/**
+ * Laps for an entry that has no GPS track (an indoor run from the watch). With
+ * a track the laps go with it in {@link attachExerciseEntryGpsTrack}. Sending
+ * the same laps twice replaces them, so a retry is safe.
+ */
+export const attachExerciseEntryLaps = async (
+  exerciseEntryId: string,
+  laps: AttachExerciseEntryLapsRequest['laps']
+): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: `/api/exercise-entries/${exerciseEntryId}/laps`,
+    serviceName: 'Exercise API',
+    operation: 'attach exercise entry laps',
+    method: 'POST',
+    body: { laps },
+  });
+};
+
+/**
+ * Stores the distance against active time of a session with no route (an
+ * indoor run from the watch) so its pace can be charted. Posting again
+ * replaces it, so a retry is safe.
+ */
+export const attachExerciseEntryDistanceSeries = async (
+  exerciseEntryId: string,
+  points: number[][]
+): Promise<void> => {
+  return apiFetch<void>({
+    endpoint: `/api/exercise-entries/${exerciseEntryId}/distance-series`,
+    serviceName: 'Exercise API',
+    operation: 'attach exercise entry distance series',
+    method: 'POST',
+    body: { points },
   });
 };
 

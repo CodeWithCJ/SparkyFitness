@@ -27,14 +27,12 @@ struct ContentView: View {
 
     /// The pages in swipe order, as the phone last arranged them.
     private var pages: [WatchPage] {
-        // A wrist-only run lives on the Workout page, so it keeps that page
-        // showing (and Now Playing beside it) just as a strength workout does.
-        let arranged = store.context.visiblePages(
-            workoutActive: workout.isActive || run.isActive
+        // A wrist-only run and the phone's GPS recording both live on the
+        // Workout page, so they keep that page showing (and Now Playing
+        // beside it) just as a strength workout does.
+        store.context.visiblePages(
+            workoutActive: workout.isActive || run.isActive || recording.isActive
         )
-        // The phone's GPS recording goes first while it runs, whatever the
-        // wearer arranged: it is the thing they are doing right now.
-        return recording.isActive ? [.recording] + arranged : arranged
     }
 
     var body: some View {
@@ -110,7 +108,7 @@ struct ContentView: View {
             session.refreshComplications()
             // Coming back to the app mid-workout lands on the workout, not
             // whichever page was left open.
-            if workout.isActive { page = .workout }
+            if workout.isActive || run.isActive || recording.isActive { page = .workout }
         }
         // A workout started on the phone opens the watch app; land on the
         // workout rather than whichever page was showing last. Keyed on the
@@ -120,9 +118,10 @@ struct ContentView: View {
             if sessionId != nil { page = .workout }
         }
         // A recording that starts (or is picked up after the app was away)
-        // opens on its page, once per recording; swiping away is respected.
+        // opens the Workout page, where it shows, once per recording; swiping
+        // away is respected.
         .onChange(of: recording.state?.sessionId) { _, sessionId in
-            if sessionId != nil { page = .recording }
+            if sessionId != nil { page = .workout }
         }
         .onOpenURL { url in
             guard let link = WatchDeepLink(url: url),
@@ -198,8 +197,7 @@ struct ContentView: View {
     /// page in the wearer's order, so the page they put first is the one the
     /// app opens on.
     private var initialPage: WatchPage {
-        if recording.isActive { return .recording }
-        if workout.isActive || run.isActive { return .workout }
+        if workout.isActive || run.isActive || recording.isActive { return .workout }
         return pages.first ?? .goals
     }
 }

@@ -563,3 +563,23 @@ export function formatPace(secondsPerUnit: number | null): string {
   if (secondsPerUnit > 3600) return '—';
   return formatClock(secondsPerUnit);
 }
+
+export type GpsSignalLevel = 'none' | 'weak' | 'fair' | 'good';
+
+/** A fix older than this reads as no signal: the GPS has gone quiet. */
+export const GPS_SIGNAL_STALE_MS = 15_000;
+
+/**
+ * How good the GPS is from the newest fix's accuracy radius: 10 m or better is
+ * good, 25 m fair, anything coarser weak. The same rule the watch uses for its
+ * signal bars.
+ */
+export function gpsSignalLevel(
+  fix: { hacc: number; t: number } | null,
+  now: number
+): GpsSignalLevel {
+  if (!fix || fix.hacc < 0 || now - fix.t > GPS_SIGNAL_STALE_MS) return 'none';
+  if (fix.hacc <= 10) return 'good';
+  if (fix.hacc <= 25) return 'fair';
+  return 'weak';
+}

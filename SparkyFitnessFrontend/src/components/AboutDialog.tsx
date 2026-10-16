@@ -1,6 +1,6 @@
 import type React from 'react';
 import { useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -69,34 +69,48 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
                 )}
               </p>
               <p>
-                {t('aboutDialog.applicationVersion', 'Application Version: ')}
-                <strong>{version}</strong>
+                <Trans
+                  i18nKey="aboutDialog.applicationVersion2"
+                  defaults={'Application Version: <strong>{{version}}</strong>'}
+                  values={{ version }}
+                  components={{ strong: <strong /> }}
+                />
               </p>
               <div>
-                {t('aboutDialog.joinDiscord', 'Join our community on Discord:')}{' '}
-                <a
-                  href="https://discord.gg/vcnMT5cPEA"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline"
-                >
-                  discord.gg/vcnMT5cPEA
-                </a>
+                <Trans
+                  i18nKey="aboutDialog.joinOurCommunityOnDiscord"
+                  defaults={
+                    'Join our community on Discord: <link>discord.gg/vcnMT5cPEA</link>'
+                  }
+                  components={{
+                    link: (
+                      <a
+                        href="https://discord.gg/vcnMT5cPEA"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline"
+                      />
+                    ),
+                  }}
+                />
               </div>
               <div>
-                {t(
-                  'aboutDialog.moreInfoVisit',
-                  'For more information, visit the'
-                )}{' '}
-                <a
-                  href="https://github.com/CodeWithCJ/SparkyFitness"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:underline"
-                >
-                  {t('aboutDialog.githubRepo', 'GitHub repository')}
-                </a>
-                .
+                <Trans
+                  i18nKey="aboutDialog.forMoreInformationVisitThe"
+                  defaults={
+                    'For more information, visit the <link>GitHub repository</link>.'
+                  }
+                  components={{
+                    link: (
+                      <a
+                        href="https://github.com/CodeWithCJ/SparkyFitness"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline"
+                      />
+                    ),
+                  }}
+                />
               </div>
               <div>
                 <h3 className="font-semibold mt-2">
@@ -106,17 +120,17 @@ const AboutDialog: React.FC<AboutDialogProps> = ({
                   {t('aboutDialog.frontend', 'Frontend:')}
                 </h4>
                 <ul className="list-disc list-inside text-sm ml-4">
-                  <li>React</li>
-                  <li>TypeScript</li>
-                  <li>Tailwind CSS</li>
+                  <li>{t('aboutDialog.react', 'React')}</li>
+                  <li>{t('aboutDialog.typeScript', 'TypeScript')}</li>
+                  <li>{t('aboutDialog.tailwindCSS', 'Tailwind CSS')}</li>
                 </ul>
                 <h4 className="font-medium mt-2">
                   {t('aboutDialog.backend', 'Backend:')}
                 </h4>
                 <ul className="list-disc list-inside text-sm ml-4">
-                  <li>Node.js</li>
-                  <li>Express</li>
-                  <li>PostgreSQL</li>
+                  <li>{t('aboutDialog.nodeJs', 'Node.js')}</li>
+                  <li>{t('aboutDialog.express', 'Express')}</li>
+                  <li>{t('aboutDialog.postgreSQL', 'PostgreSQL')}</li>
                 </ul>
                 <h4 className="font-medium mt-2">
                   {t('aboutDialog.externalApis', 'External APIs:')}

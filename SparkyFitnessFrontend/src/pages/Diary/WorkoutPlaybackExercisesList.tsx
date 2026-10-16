@@ -131,8 +131,11 @@ const WorkoutPlaybackExercisesList = ({
                     {exercise.exercise_name}
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    {completedSets}/{totalSets}{' '}
-                    {t('exercise.workoutPlaybackDialog.sets', 'sets')}
+                    {t(
+                      'exercise.workoutPlaybackPage.sets',
+                      '{{completedSets}}/{{totalSets}} sets',
+                      { completedSets, totalSets }
+                    )}
                   </p>
                 </div>
                 {onReplaceExercise && (
@@ -281,7 +284,11 @@ const WorkoutPlaybackExercisesList = ({
                 <div className="mt-2 flex justify-center gap-3">
                   <button
                     type="button"
-                    aria-label={`Add set for ${exercise.exercise_name}`}
+                    aria-label={t(
+                      'diary.workoutPlaybackExercisesList.addSetFor',
+                      'Add set for {{exercise_name}}',
+                      { exercise_name: exercise.exercise_name }
+                    )}
                     className="inline-flex items-center justify-center px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                     onClick={() => onAddSet(exerciseIndex)}
                   >

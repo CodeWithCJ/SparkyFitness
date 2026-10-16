@@ -4,6 +4,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import FoodFormScreen from '../../src/screens/FoodFormScreen';
+import type { FoodFormProps } from '../../src/components/FoodForm';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import { useMealTypes, usePreferences } from '../../src/hooks';
 import { useSaveFood } from '../../src/hooks/useSaveFood';
@@ -155,7 +156,7 @@ jest.mock('../../src/components/FoodForm', () => {
   const { Pressable, Text, View } = require('react-native');
   return {
     __esModule: true,
-    default: (props: any) => {
+    default: (props: FoodFormProps) => {
       mockFoodForm(props);
       const {
         onSubmit,
@@ -165,6 +166,7 @@ jest.mock('../../src/components/FoodForm', () => {
       } = props;
       return (
         <View>
+          {props.headerChildren}
           {children}
           {unitSelector ? (
             <Pressable
@@ -248,6 +250,31 @@ function answerSyncPrompt(choice: 'keep' | 'update' = 'keep') {
 
 describe('FoodFormScreen', () => {
   const navigation = mockNavigation;
+
+  it('opens the label scanner over the existing edit session without saving', () => {
+    const params = {
+      mode: 'edit-food',
+      item: {
+        id: 'food-1',
+        name: 'Yogurt',
+        source: 'local',
+        barcode: '012345678905',
+      },
+      initialValues: { name: 'Yogurt', calories: '120' },
+      foodId: 'food-1',
+      variantId: 'variant-1',
+      returnKey: 'FoodDetail-key',
+    };
+    const screen = renderScreen(params);
+    fireEvent.press(screen.getByText('Scan nutrition label'));
+    expect(navigation.navigate).toHaveBeenCalledWith('FoodScan', {
+      mode: 'capture-label',
+      returnKey: 'FoodForm-key',
+    });
+    expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+    expect(mockCreateVariant).not.toHaveBeenCalled();
+    expect(navigation.dispatch).not.toHaveBeenCalled();
+  });
 
   const mockSaveFoodAsync = jest.fn();
   const mockAddEntry = jest.fn();

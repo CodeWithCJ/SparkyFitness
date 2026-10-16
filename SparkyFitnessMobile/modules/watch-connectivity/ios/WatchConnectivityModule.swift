@@ -45,6 +45,10 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
     var onRecordingHeartRate: (([String: Any]) -> Void)?
     var onFastStartRequested: (([String: Any]) -> Void)?
     var onFastEndRequested: (([String: Any]) -> Void)?
+    /// What a wrist-only run looks like right now. Live messages only.
+    var onRunLive: (([String: Any]) -> Void)?
+    /// A cue the watch wants said out loud by the phone (its headphones).
+    var onRunCue: (([String: Any]) -> Void)?
     /// A walk or run recorded on the watch alone, sent when it finished.
     var onRunFinished: (([String: Any]) -> Void)?
 
@@ -139,6 +143,10 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
             onFastStartRequested?(payload)
         case "fastEnd":
             onFastEndRequested?(payload)
+        case "runLive":
+            onRunLive?(payload)
+        case "runCue":
+            onRunCue?(payload)
         case "runFinished":
             onRunFinished?(payload)
         default:
@@ -253,7 +261,7 @@ public class WatchConnectivityModule: Module {
     /// until the wearer opens the watch app by hand. watchOS only launches it
     /// while the watch is on the wrist, unlocked and paired; otherwise this
     /// quietly does nothing and the plan still arrives on the next open.
-    private static func launchWatchApp(activity: String? = nil) {
+    private static func launchWatchApp(activity: String? = nil, indoor: Bool = false) {
         guard HKHealthStore.isHealthDataAvailable(),
               WCSession.isSupported(),
               WCSession.default.isPaired,
@@ -263,10 +271,10 @@ public class WatchConnectivityModule: Module {
         switch activity {
         case "walk", "walking":
             configuration.activityType = .walking
-            configuration.locationType = .outdoor
+            configuration.locationType = indoor ? .indoor : .outdoor
         case "run", "running":
             configuration.activityType = .running
-            configuration.locationType = .outdoor
+            configuration.locationType = indoor ? .indoor : .outdoor
         case "ride", "cycling":
             configuration.activityType = .cycling
             configuration.locationType = .outdoor
@@ -303,6 +311,8 @@ public class WatchConnectivityModule: Module {
             "onRecordingHeartRate",
             "onFastStartRequested",
             "onFastEndRequested",
+            "onRunLive",
+            "onRunCue",
             "onRunFinished"
         )
 
@@ -502,6 +512,37 @@ public class WatchConnectivityModule: Module {
                     "samples": dictionaryArray(payload["samples"]),
                 ])
             }
+            self.delegateHandler.onRunLive = { [weak self] payload in
+                var event: [String: Any] = [
+                    "runId": payload["runId"] as? String ?? "",
+                    "kind": payload["kind"] as? String ?? "",
+                    "place": payload["place"] as? String ?? "",
+                    "status": payload["status"] as? String ?? "",
+                    "autoPaused": payload["autoPaused"] as? Bool ?? false,
+                    "elapsed": (payload["elapsed"] as? NSNumber)?.doubleValue ?? 0,
+                    "distanceMeters": (payload["distanceMeters"] as? NSNumber)?.doubleValue ?? 0,
+                    "energyKcal": (payload["energyKcal"] as? NSNumber)?.doubleValue ?? 0,
+                    "lapCount": (payload["lapCount"] as? NSNumber)?.intValue ?? 0,
+                    "sentAt": (payload["sentAt"] as? NSNumber)?.doubleValue ?? 0,
+                ]
+                if let hr = (payload["heartRate"] as? NSNumber)?.doubleValue { event["heartRate"] = hr }
+                if let label = payload["stepLabel"] as? String { event["stepLabel"] = label }
+                if let left = (payload["stepRemaining"] as? NSNumber)?.doubleValue { event["stepRemaining"] = left }
+                if let next = payload["nextLabel"] as? String { event["nextLabel"] = next }
+                if let requestId = payload["requestId"] as? String { event["requestId"] = requestId }
+                if let autoPause = payload["autoPause"] as? Bool { event["autoPause"] = autoPause }
+                if let voiceCues = payload["voiceCues"] as? Bool { event["voiceCues"] = voiceCues }
+                if let paceAlert = payload["paceAlert"] as? Bool { event["paceAlert"] = paceAlert }
+                if let heartRateAlert = payload["heartRateAlert"] as? Bool { event["heartRateAlert"] = heartRateAlert }
+                self?.sendEvent("onRunLive", event)
+            }
+            self.delegateHandler.onRunCue = { [weak self] payload in
+                self?.sendEvent("onRunCue", [
+                    "id": payload["id"] as? String ?? "",
+                    "text": payload["text"] as? String ?? "",
+                    "interrupt": payload["interrupt"] as? Bool ?? false,
+                ])
+            }
             self.delegateHandler.onRunFinished = { [weak self] payload in
                 guard let self else { return }
                 let event = self.normalizedRunEvent(payload)
@@ -601,6 +642,43 @@ public class WatchConnectivityModule: Module {
             if durable, payload["status"] as? String == "recording" {
                 Self.launchWatchApp(activity: payload["activity"] as? String)
             }
+        }
+
+        /// Asks the watch to start a walk or run itself and opens its app, so
+        /// the run is recorded with the watch's own sensors (steps, distance,
+        /// heart rate). Queued so a watch out of range still hears it; the
+        /// watch ignores a request that has gone stale.
+        AsyncFunction("startRun") { (request: [String: Any]) -> Void in
+            guard WCSession.isSupported() else { return }
+            var payload = request.compactMapValues(withoutNulls)
+            payload["type"] = "runStart"
+            WCSession.default.transferUserInfo(payload)
+            if WCSession.default.isReachable {
+                WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+            }
+            Self.launchWatchApp(
+                activity: payload["kind"] as? String,
+                indoor: payload["place"] as? String == "indoor"
+            )
+        }
+
+        /// Pause, resume, lap, finish or discard for the run going on the
+        /// watch. Queued as well as sent live so a finish is not lost.
+        AsyncFunction("sendRunControl") { (control: [String: Any]) -> Void in
+            guard WCSession.isSupported() else { return }
+            var payload = control.compactMapValues(withoutNulls)
+            payload["type"] = "runControl"
+            WCSession.default.transferUserInfo(payload)
+            if WCSession.default.isReachable {
+                WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+            }
+        }
+
+        /// Confirms a cue the watch asked the phone to say, so the watch does
+        /// not say it too. Live only: an ack that arrives late is useless.
+        AsyncFunction("sendRunCueAck") { (id: String) -> Void in
+            guard WCSession.isSupported(), WCSession.default.isReachable else { return }
+            WCSession.default.sendMessage(["type": "runCueAck", "id": id], replyHandler: nil, errorHandler: nil)
         }
 
         /// Tells the watch the workout it was armed with is over, because it
@@ -981,7 +1059,7 @@ public class WatchConnectivityModule: Module {
     /// The event JS and the native queue both store, so a cold start and a
     /// live event carry the same laps.
     private func normalizedRunEvent(_ payload: [String: Any]) -> [String: Any] {
-        [
+        var event: [String: Any] = [
             "clientId": payload["clientId"] as? String ?? "",
             "kind": payload["kind"] as? String ?? "",
             "place": payload["place"] as? String ?? "",
@@ -993,7 +1071,22 @@ public class WatchConnectivityModule: Module {
             "route": payload["route"] as? [[Double]] ?? [],
             "heartRate": payload["heartRate"] as? [[Double]] ?? [],
             "laps": numberList(payload["laps"]),
+            "lapDistances": numberList(payload["lapDistances"]),
+            "distanceSeries": payload["distanceSeries"] as? [[Double]] ?? [],
+            "planId": payload["planId"] as? String ?? "",
+            "programId": payload["programId"] as? String ?? "",
+            "programIndex": (payload["programIndex"] as? NSNumber)?.intValue ?? -1,
+            "planCompleted": payload["planCompleted"] as? Bool ?? false,
         ]
+        // Indoor distance learning: the factor the watch applied, and what it
+        // showed before a treadmill distance was entered on the wrist.
+        if let scale = (payload["distanceScale"] as? NSNumber)?.doubleValue {
+            event["distanceScale"] = scale
+        }
+        if let estimated = (payload["estimatedDistanceMeters"] as? NSNumber)?.doubleValue {
+            event["estimatedDistanceMeters"] = estimated
+        }
+        return event
     }
 
     /// Caller holds `runAccess` only through `rememberFinishedRun`.

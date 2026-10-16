@@ -91,6 +91,10 @@ const SECTION_LABELS: Record<
     t('reportsSettings.sections.trainingConsistency', {
       defaultValue: 'Training consistency',
     }),
+  'exercise.load': (t) =>
+    t('reportsSettings.sections.trainingLoad', {
+      defaultValue: 'Training load',
+    }),
   'exercise.analysis': (t) =>
     t('reportsSettings.sections.moreAnalysis', {
       defaultValue: 'More analysis',

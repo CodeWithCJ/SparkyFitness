@@ -37,6 +37,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+import { useTranslation } from 'react-i18next';
 interface ExternalProviderListProps {
   showAddForm: boolean;
   isAdminMode?: boolean;
@@ -53,6 +54,7 @@ const SortableProviderRow = ({
   children,
   disabled = false,
 }: SortableProviderRowProps) => {
+  const { t } = useTranslation();
   const {
     attributes,
     listeners,
@@ -80,7 +82,10 @@ const SortableProviderRow = ({
       <div className="flex items-start gap-3">
         <button
           type="button"
-          aria-label="Drag to reorder provider"
+          aria-label={t(
+            'settings.externalProviderList.dragToReorderProvider',
+            'Drag to reorder provider'
+          )}
           className="mt-1 text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing disabled:opacity-40"
           {...attributes}
           {...listeners}
@@ -98,6 +103,7 @@ const ExternalProviderList = ({
   showAddForm,
   isAdminMode = false,
 }: ExternalProviderListProps) => {
+  const { t } = useTranslation();
   const [editingProvider, setEditingProvider] = useState<string | null>(null);
   const [editData, setEditData] = useState<Partial<ExternalDataProvider>>({});
 
@@ -424,9 +430,17 @@ const ExternalProviderList = ({
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <p>No data providers configured yet.</p>
+        <p>
+          {t(
+            'settings.externalProviderList.noDataProvidersConfiguredYet',
+            'No data providers configured yet.'
+          )}
+        </p>
         <p className="text-sm">
-          Add your first data provider to enable search from external sources.
+          {t(
+            'settings.externalProviderList.addYourFirstDataProvider',
+            'Add your first data provider to enable search from external sources.'
+          )}
         </p>
       </div>
     );

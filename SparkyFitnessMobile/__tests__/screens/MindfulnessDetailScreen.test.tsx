@@ -119,4 +119,39 @@ describe('MindfulnessDetailScreen', () => {
     expect(getByLabelText('Edit')).toBeTruthy();
     expect(getByLabelText('Delete')).toBeTruthy();
   });
+
+  it('logs by hand through the shared log screen instead of a form of its own', () => {
+    const { getByText, queryByText, queryByLabelText } = render(
+      <MindfulnessDetailScreen
+        navigation={mockNavigation as never}
+        route={{ params: { selectedDate: '2026-10-06' } } as never}
+      />
+    );
+
+    expect(queryByText('Save Mindful Session')).toBeNull();
+    expect(queryByLabelText('Duration in minutes')).toBeNull();
+
+    fireEvent.press(getByText('Log Mindful Session'));
+
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('MindfulnessLog', {
+      date: '2026-10-06',
+    });
+  });
+
+  it('edits a session from History in the shared log screen', () => {
+    const { getByText, getByLabelText } = render(
+      <MindfulnessDetailScreen
+        navigation={mockNavigation as never}
+        route={{ params: { selectedDate: '2026-10-06' } } as never}
+      />
+    );
+
+    fireEvent.press(getByText('History'));
+    fireEvent.press(getByLabelText('Edit'));
+
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('MindfulnessLog', {
+      date: '2026-10-06',
+      session: expect.objectContaining({ id: 'session-1' }),
+    });
+  });
 });

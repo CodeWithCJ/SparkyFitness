@@ -5,6 +5,7 @@ import type { UserCustomNutrient } from '@/types/customNutrient';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
+import i18n from 'i18next';
 export const useCustomNutrients = () => {
   const { t } = useTranslation();
 
@@ -59,13 +60,19 @@ export const useCreateCustomNutrientMutation = ({
       });
     },
     meta: {
-      errorMessage: 'Failed to add custom nutrient.',
+      errorMessage: i18n.t(
+        'hooks.useCustomNutrients.failedToAddCustomNutrient',
+        'Failed to add custom nutrient.'
+      ),
       // The supplement editor creates one nutrient per free-text row on save, so a
       // per-nutrient toast would stack N of them in front of the one toast the user
       // is waiting on. That caller opts out and reports the save itself.
       successMessage: silentSuccess
         ? undefined
-        : 'Custom nutrient added successfully.',
+        : i18n.t(
+            'hooks.useCustomNutrients.customNutrientAddedSuccessfully',
+            'Custom nutrient added successfully.'
+          ),
     },
   });
 };
@@ -131,8 +138,14 @@ export const useUpdateCustomNutrientMutation = () => {
       });
     },
     meta: {
-      errorMessage: 'Failed to update custom nutrient.',
-      successMessage: 'Custom nutrient updated successfully.',
+      errorMessage: i18n.t(
+        'hooks.useCustomNutrients.failedToUpdateCustomNutrient',
+        'Failed to update custom nutrient.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useCustomNutrients.customNutrientUpdatedSuccessfully',
+        'Custom nutrient updated successfully.'
+      ),
     },
   });
 };
@@ -157,8 +170,14 @@ export const useDeleteCustomNutrientMutation = () => {
       });
     },
     meta: {
-      errorMessage: 'Failed to delete custom nutrient.',
-      successMessage: 'Custom nutrient deleted successfully.',
+      errorMessage: i18n.t(
+        'hooks.useCustomNutrients.failedToDeleteCustomNutrient',
+        'Failed to delete custom nutrient.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useCustomNutrients.customNutrientDeletedSuccessfully',
+        'Custom nutrient deleted successfully.'
+      ),
     },
   });
 };

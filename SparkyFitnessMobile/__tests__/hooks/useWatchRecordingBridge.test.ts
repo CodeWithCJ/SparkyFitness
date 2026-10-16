@@ -20,6 +20,7 @@ jest.mock('../../src/services/gpsRecordingService', () => ({
   finishRecording: jest.fn(() => Promise.resolve()),
   markLap: jest.fn(() => Promise.resolve(1)),
   addHeartRateSamples: jest.fn(() => Promise.resolve()),
+  noteLiveHeartRate: jest.fn(() => Promise.resolve()),
   elapsedSeconds: jest.fn(() => 0),
 }));
 
@@ -337,6 +338,11 @@ describe('useWatchRecordingBridge', () => {
       bpm: 144,
       at: 5_000,
     });
+    // The same reading is judged against the heart-rate range, if one is set.
+    expect(mockedService.noteLiveHeartRate).toHaveBeenCalledWith(
+      'rec-1',
+      143.6
+    );
   });
 
   it('ignores live readings for another session or with no usable value', () => {

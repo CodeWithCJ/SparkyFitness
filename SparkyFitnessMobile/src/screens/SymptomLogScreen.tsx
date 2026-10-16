@@ -30,6 +30,10 @@ import { getTodayDate } from '../utils/dateUtils';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import {
+  getBuiltInSymptomLabels,
+  translateBuiltInSymptomLabel,
+} from '../utils/symptomLabels';
+import {
   BUILT_IN_SYMPTOM_DEFINITIONS,
   BUILT_IN_OPTIONS,
   type SymptomScaleType,
@@ -43,6 +47,9 @@ const IMPACT_OPTIONS: SymptomImpact[] = ['none', 'mild', 'moderate', 'severe'];
 
 export default function SymptomLogScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
+  const builtInLabels = getBuiltInSymptomLabels(t);
+  const tr = (label: string) =>
+    translateBuiltInSymptomLabel(builtInLabels, label);
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -418,7 +425,7 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
                           selected ? 'text-white' : 'text-text-primary'
                         }`}
                       >
-                        {builtIn.displayName}
+                        {tr(builtIn.displayName)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -554,7 +561,7 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
                             : 'text-text-primary'
                         }`}
                       >
-                        {q}
+                        {tr(q)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -595,7 +602,7 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
                             : 'text-text-primary'
                         }`}
                       >
-                        {item}
+                        {tr(item)}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -609,12 +616,12 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
                 {t('symptoms.triggers', { defaultValue: 'Triggers' })}
               </Text>
               <View className="flex-row flex-wrap gap-1.5">
-                {BUILT_IN_OPTIONS.trigger.map((tr) => {
-                  const isSelected = triggers.includes(tr);
+                {BUILT_IN_OPTIONS.trigger.map((trig) => {
+                  const isSelected = triggers.includes(trig);
                   return (
                     <TouchableOpacity
-                      key={tr}
-                      onPress={() => toggleItem(triggers, setTriggers, tr)}
+                      key={trig}
+                      onPress={() => toggleItem(triggers, setTriggers, trig)}
                       className={`px-3 py-1.5 rounded-full border ${
                         isSelected
                           ? 'bg-amber-600/20 border-amber-500'
@@ -628,7 +635,7 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
                             : 'text-text-primary'
                         }`}
                       >
-                        {tr}
+                        {tr(trig)}
                       </Text>
                     </TouchableOpacity>
                   );

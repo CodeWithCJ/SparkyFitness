@@ -6,6 +6,10 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
 import { useSymptomDefinitions } from '../hooks/useSymptoms';
 import { BUILT_IN_SYMPTOM_DEFINITIONS } from '@workspace/shared';
+import {
+  getBuiltInSymptomLabels,
+  translateBuiltInSymptomLabel,
+} from '../utils/symptomLabels';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 
@@ -13,6 +17,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ManageSymptoms'>;
 
 export default function ManageSymptomsScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const builtInLabels = getBuiltInSymptomLabels(t);
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { definitions } = useSymptomDefinitions();
@@ -121,7 +126,10 @@ export default function ManageSymptomsScreen({ navigation }: Props) {
               >
                 <View>
                   <Text className="text-sm font-semibold text-text-primary">
-                    {builtIn.displayName}
+                    {translateBuiltInSymptomLabel(
+                      builtInLabels,
+                      builtIn.displayName
+                    )}
                   </Text>
                   <Text className="text-xs text-text-muted">
                     {builtIn.category}

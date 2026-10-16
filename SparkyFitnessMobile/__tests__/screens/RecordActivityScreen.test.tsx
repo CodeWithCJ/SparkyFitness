@@ -8,14 +8,22 @@ import {
   RecordingPermissionError,
   discardRecording,
   finishRecording,
+  getRecordingPreferences,
   hydrate,
   pauseRecording,
   startRecording,
   markLap,
+  setRecordingAudioCues,
+  setHeartRateBandPreference,
+  setPaceBandPreference,
+  setRecordingPaceBand,
+  setRecordingAutoPause,
   useGpsRecording,
   type RecordingSession,
   type RecordingSnapshot,
 } from '../../src/services/gpsRecordingService';
+import { useWatchConnectivity } from '../../src/hooks/useWatchConnectivity';
+import { startRunOnWatch } from '../../src/services/watchRunControl';
 import { useRunProgram } from '../../src/services/runProgramService';
 import { programStatus } from '@workspace/shared';
 import { saveRecordedActivity } from '../../src/services/gpsRecordingSave';
@@ -36,11 +44,14 @@ jest.mock('../../src/services/gpsRecordingService', () => {
   return {
     RecordingPermissionError,
     useGpsRecording: jest.fn(),
+    useLatestGpsFix: jest.fn(() => ({ hacc: 6, t: Date.now() })),
     hydrate: jest.fn(() => Promise.resolve()),
     markLap: jest.fn(() => Promise.resolve(1)),
     startRecording: jest.fn(() => Promise.resolve()),
     pauseRecording: jest.fn(() => Promise.resolve()),
     resumeRecording: jest.fn(() => Promise.resolve()),
+    setRecordingAutoPause: jest.fn(() => Promise.resolve()),
+    setRecordingAudioCues: jest.fn(() => Promise.resolve()),
     finishRecording: jest.fn(() => Promise.resolve()),
     discardRecording: jest.fn(() => Promise.resolve()),
     getHeartRateSamples: jest.fn(() => Promise.resolve([])),
@@ -49,14 +60,30 @@ jest.mock('../../src/services/gpsRecordingService', () => {
       Promise.resolve({
         autoPause: true,
         audioCues: false,
+        paceBand: null,
+        heartRateBand: null,
         countdownSeconds: 0,
       })
     ),
     setRecordingPreference: jest.fn(() => Promise.resolve()),
     setCountdownPreference: jest.fn(() => Promise.resolve()),
+    setPaceBandPreference: jest.fn(() => Promise.resolve()),
+    setRecordingPaceBand: jest.fn(() => Promise.resolve()),
+    setHeartRateBandPreference: jest.fn(() => Promise.resolve()),
+    setRecordingHeartRateBand: jest.fn(() => Promise.resolve()),
     COUNTDOWN_CHOICES: [0, 3, 5, 10],
   };
 });
+jest.mock('../../src/hooks/useWatchConnectivity', () => ({
+  useWatchConnectivity: jest.fn(() => ({
+    isSupported: false,
+    isPaired: false,
+    isReachable: false,
+  })),
+}));
+jest.mock('../../src/services/watchRunControl', () => ({
+  startRunOnWatch: jest.fn(() => Promise.resolve('q1')),
+}));
 jest.mock('../../src/services/runProgramService', () => ({
   useRunProgram: jest.fn(),
   completeProgramWorkout: jest.fn(() => Promise.resolve()),
@@ -77,6 +104,10 @@ jest.mock('../../src/hooks/useIndoorDistanceEstimate', () => ({
 }));
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: () => ({ preferences: { default_distance_unit: 'km' } }),
+}));
+const mockSuggestedRanges = jest.fn(() => ({ pace: null, heartRate: null }));
+jest.mock('../../src/hooks/useSuggestedRanges', () => ({
+  useSuggestedRanges: () => mockSuggestedRanges(),
 }));
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: jest.fn(() => null),
@@ -128,7 +159,11 @@ const track: RecordedPoint[] = Array.from({ length: 11 }, (_, i) => ({
 const state = (s: RecordingSession | null, points: RecordedPoint[] = []) =>
   mockedState.mockReturnValue({ session: s, points } as RecordingSnapshot);
 
-const navigation = { goBack: jest.fn(), replace: jest.fn() };
+const navigation = {
+  goBack: jest.fn(),
+  replace: jest.fn(),
+  navigate: jest.fn(),
+};
 const props = {
   navigation,
   route: { key: 'RecordActivity', name: 'RecordActivity' },
@@ -155,6 +190,7 @@ describe('RecordActivityScreen', () => {
   });
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSuggestedRanges.mockReturnValue({ pace: null, heartRate: null });
     jest.mocked(useIndoorDistanceEstimate).mockReturnValue(null);
     useLiveHeartRateStore.setState({ reading: null });
     mockedProgram.mockReturnValue({
@@ -210,6 +246,277 @@ describe('RecordActivityScreen', () => {
         expect(screen.getByText('Using this workout')).toBeTruthy()
       );
     });
+
+    describe('suggested ranges', () => {
+      const openProgramWorkout = () =>
+        render(
+          <QueryClientProvider client={new QueryClient()}>
+            <RecordActivityScreen
+              {...props}
+              route={
+                {
+                  key: 'RecordActivity',
+                  name: 'RecordActivity',
+                  params: { programWorkout: true },
+                } as never
+              }
+            />
+          </QueryClientProvider>
+        );
+      const suggestion = {
+        pace: {
+          work: { minSecondsPerKm: 285, maxSecondsPerKm: 320 },
+          easy: { minSecondsPerKm: 360, maxSecondsPerKm: 420 },
+          warm: { minSecondsPerKm: 380, maxSecondsPerKm: 840 },
+          sessions: 5,
+        },
+        heartRate: {
+          work: { minBpm: 155, maxBpm: 170 },
+          easy: { minBpm: 110, maxBpm: 130 },
+          warm: { minBpm: 95, maxBpm: 120 },
+          maxHeartRate: 185,
+        },
+      };
+
+      it('offers them for a plan and puts them on every fast, easy and warm-up stretch when used', async () => {
+        state(null);
+        onProgram();
+        jest.mocked(useWatchConnectivity).mockReturnValue({
+          isSupported: true,
+          isPaired: true,
+          isReachable: true,
+        } as ReturnType<typeof useWatchConnectivity>);
+        mockSuggestedRanges.mockReturnValue(suggestion as never);
+        const screen = openProgramWorkout();
+        await waitFor(() =>
+          expect(screen.getByTestId('suggested-ranges-card')).toBeTruthy()
+        );
+        expect(screen.getByText('Based on your last 5 sessions.')).toBeTruthy();
+        expect(
+          screen.getByText(
+            'Pace: fast 4:45–5:20/km, easy 6:00–7:00/km, warm-up and cool-down 6:20–14:00/km'
+          )
+        ).toBeTruthy();
+
+        fireEvent.press(screen.getByTestId('suggested-ranges-use'));
+        fireEvent.press(screen.getByText('Start'));
+        await waitFor(() => expect(startRecording).toHaveBeenCalled());
+        const { intervals } = jest.mocked(startRecording).mock.calls[0][0];
+        const work = intervals?.steps.find((step) => step.kind === 'work');
+        const easy = intervals?.steps.find((step) => step.kind === 'recovery');
+        expect(work?.pace).toEqual({
+          minSecondsPerKm: 285,
+          maxSecondsPerKm: 320,
+        });
+        expect(work?.heartRate).toEqual({ minBpm: 155, maxBpm: 170 });
+        expect(easy?.pace).toEqual({
+          minSecondsPerKm: 360,
+          maxSecondsPerKm: 420,
+        });
+        expect(easy?.heartRate).toEqual({ minBpm: 110, maxBpm: 130 });
+        const warmSteps =
+          intervals?.steps.filter(
+            (step) => step.kind === 'warmup' || step.kind === 'cooldown'
+          ) ?? [];
+        expect(warmSteps.length).toBeGreaterThan(0);
+        for (const step of warmSteps) {
+          expect(step.pace).toEqual({
+            minSecondsPerKm: 380,
+            maxSecondsPerKm: 840,
+          });
+          expect(step.heartRate).toEqual({ minBpm: 95, maxBpm: 120 });
+        }
+      });
+
+      it('from a recent race, gives the runs of a run/walk plan the easy-running range', async () => {
+        state(null);
+        onProgram();
+        mockSuggestedRanges.mockReturnValue({
+          ...suggestion,
+          pace: {
+            ...suggestion.pace,
+            sessions: 0,
+            race: { distanceKm: 5, seconds: 1500 },
+          },
+          byEffort: {
+            easy: { minSecondsPerKm: 365, maxSecondsPerKm: 410 },
+            tempo: { minSecondsPerKm: 320, maxSecondsPerKm: 335 },
+          },
+        } as never);
+        const screen = openProgramWorkout();
+        await waitFor(() =>
+          expect(screen.getByTestId('suggested-ranges-card')).toBeTruthy()
+        );
+        expect(
+          screen.getByText('Based on your recent race: 5K in 25:00.')
+        ).toBeTruthy();
+
+        fireEvent.press(screen.getByTestId('suggested-ranges-use'));
+        fireEvent.press(screen.getByText('Start'));
+        await waitFor(() => expect(startRecording).toHaveBeenCalled());
+        const { intervals } = jest.mocked(startRecording).mock.calls[0][0];
+        const runs = intervals?.steps.filter((step) => step.kind === 'work');
+        expect(runs?.length).toBeGreaterThan(0);
+        // Beginner runs are easy running, so they get the easy-effort range,
+        // not the interval range the fast stretches get.
+        for (const step of runs ?? []) {
+          expect(step.pace).toEqual({
+            minSecondsPerKm: 365,
+            maxSecondsPerKm: 410,
+          });
+        }
+      });
+
+      it('shows nothing without a suggestion, and applies nothing until tapped', async () => {
+        state(null);
+        onProgram();
+        mockSuggestedRanges.mockReturnValue({ pace: null, heartRate: null });
+        const screen = openProgramWorkout();
+        await waitFor(() =>
+          expect(screen.getByText('Using this workout')).toBeTruthy()
+        );
+        expect(screen.queryByTestId('suggested-ranges-card')).toBeNull();
+
+        mockSuggestedRanges.mockReturnValue(suggestion as never);
+        screen.rerender(
+          <QueryClientProvider client={new QueryClient()}>
+            <RecordActivityScreen
+              {...props}
+              route={
+                {
+                  key: 'RecordActivity',
+                  name: 'RecordActivity',
+                  params: { programWorkout: true },
+                } as never
+              }
+            />
+          </QueryClientProvider>
+        );
+        fireEvent.press(screen.getByText('Start'));
+        await waitFor(() => expect(startRecording).toHaveBeenCalled());
+        const { intervals } = jest.mocked(startRecording).mock.calls[0][0];
+        expect(
+          intervals?.steps.some((step) => step.pace || step.heartRate)
+        ).toBe(false);
+      });
+    });
+  });
+
+  describe('with a paired watch', () => {
+    beforeEach(() =>
+      jest.mocked(useWatchConnectivity).mockReturnValue({
+        isSupported: true,
+        isPaired: true,
+        isReachable: true,
+      })
+    );
+    afterEach(() =>
+      jest.mocked(useWatchConnectivity).mockReturnValue({
+        isSupported: false,
+        isPaired: false,
+        isReachable: false,
+      })
+    );
+
+    it('records with the phone unless the watch is chosen', async () => {
+      state(null);
+      const screen = await renderScreen();
+      fireEvent.press(screen.getByText('Start'));
+      await waitFor(() => expect(startRecording).toHaveBeenCalled());
+      expect(startRunOnWatch).not.toHaveBeenCalled();
+    });
+
+    it('starts an outdoor run on the watch', async () => {
+      state(null);
+      const screen = await renderScreen();
+      fireEvent.press(screen.getByText('Watch GPS'));
+      // The watch has auto-pause and voice cues of its own, set from here.
+      fireEvent(screen.getByTestId('auto-pause-switch'), 'valueChange', false);
+      fireEvent(screen.getByTestId('audio-cues-switch'), 'valueChange', true);
+      fireEvent.press(screen.getByText('Start'));
+      await waitFor(() =>
+        expect(startRunOnWatch).toHaveBeenCalledWith({
+          kind: 'run',
+          place: 'outdoor',
+          plan: undefined,
+          autoPause: false,
+          voiceCues: true,
+        })
+      );
+      expect(startRecording).not.toHaveBeenCalled();
+    });
+
+    it('sends the pace range with a watch run when the alert is on', async () => {
+      state(null);
+      const screen = await renderScreen();
+      fireEvent.press(screen.getByText('Watch GPS'));
+      fireEvent(screen.getByTestId('pace-alert-switch'), 'valueChange', true);
+      fireEvent.press(screen.getByText('Start'));
+      await waitFor(() =>
+        expect(startRunOnWatch).toHaveBeenCalledWith(
+          expect.objectContaining({
+            paceBand: {
+              minSecondsPerKm: expect.any(Number),
+              maxSecondsPerKm: expect.any(Number),
+            },
+          })
+        )
+      );
+    });
+
+    it('starts a treadmill run on the watch and opens the live screen', async () => {
+      state(null);
+      const screen = await renderScreen();
+      fireEvent.press(screen.getByText('Indoor'));
+      fireEvent.press(screen.getByText('Watch'));
+      // The watch judges indoor stops by its step counter.
+      expect(screen.getByTestId('auto-pause-switch')).toBeTruthy();
+      fireEvent.press(screen.getByText('Start'));
+      await waitFor(() =>
+        expect(startRunOnWatch).toHaveBeenCalledWith({
+          kind: 'run',
+          place: 'indoor',
+          plan: undefined,
+          autoPause: true,
+          voiceCues: false,
+        })
+      );
+      expect(startRecording).not.toHaveBeenCalled();
+      expect(navigation.navigate).toHaveBeenCalledWith('WatchRunLive');
+    });
+
+    it('names the choice after the place: GPS outdoors, the device indoors', async () => {
+      state(null);
+      const screen = await renderScreen();
+      expect(screen.getByText('Phone GPS')).toBeTruthy();
+      expect(screen.getByText('Watch GPS')).toBeTruthy();
+      fireEvent.press(screen.getByText('Indoor'));
+      expect(screen.queryByText('Phone GPS')).toBeNull();
+      expect(screen.getByText('Phone')).toBeTruthy();
+      expect(screen.getByText('Watch')).toBeTruthy();
+    });
+
+    it('records indoors on the phone by default', async () => {
+      state(null);
+      const screen = await renderScreen();
+      fireEvent.press(screen.getByText('Indoor'));
+      fireEvent.press(screen.getByText('Start'));
+      await waitFor(() =>
+        expect(startRecording).toHaveBeenCalledWith(
+          expect.objectContaining({ indoor: true })
+        )
+      );
+      expect(startRunOnWatch).not.toHaveBeenCalled();
+    });
+
+    it('offers the watch for a walk but not a ride', async () => {
+      state(null);
+      const screen = await renderScreen();
+      fireEvent.press(screen.getByText('Ride'));
+      expect(screen.queryByText('Watch GPS')).toBeNull();
+      fireEvent.press(screen.getByText('Walk'));
+      expect(screen.getByText('Watch GPS')).toBeTruthy();
+    });
   });
 
   it('starts a recording of the chosen activity', async () => {
@@ -256,6 +563,95 @@ describe('RecordActivityScreen', () => {
     );
   });
 
+  it('starts with a pace band in seconds per kilometre when the alert is on', async () => {
+    state(null);
+    const screen = await renderScreen();
+
+    fireEvent(screen.getByTestId('pace-alert-switch'), 'valueChange', true);
+    fireEvent.press(screen.getByTestId('pace-fastest-down'));
+    fireEvent.press(screen.getByText('Start'));
+
+    await waitFor(() =>
+      expect(startRecording).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paceBand: {
+            minSecondsPerKm: expect.any(Number),
+            maxSecondsPerKm: expect.any(Number),
+          },
+        })
+      )
+    );
+  });
+
+  it("keeps the chosen pace range as the next run's starting point", async () => {
+    state(null);
+    const screen = await renderScreen();
+    fireEvent(screen.getByTestId('pace-alert-switch'), 'valueChange', true);
+    expect(setPaceBandPreference).toHaveBeenCalledWith(
+      expect.objectContaining({
+        minSecondsPerKm: expect.any(Number),
+        maxSecondsPerKm: expect.any(Number),
+      })
+    );
+    fireEvent.press(screen.getByTestId('pace-slowest-up'));
+    expect(setPaceBandPreference).toHaveBeenLastCalledWith(
+      expect.objectContaining({ maxSecondsPerKm: expect.any(Number) })
+    );
+  });
+
+  it('keeps the heart-rate range for the next run and passes it on', async () => {
+    jest.mocked(useWatchConnectivity).mockReturnValue({
+      isSupported: true,
+      isPaired: true,
+      isReachable: true,
+    } as ReturnType<typeof useWatchConnectivity>);
+    state(null);
+    const screen = await renderScreen();
+    fireEvent(screen.getByTestId('hr-alert-switch'), 'valueChange', true);
+    expect(setHeartRateBandPreference).toHaveBeenCalledWith(
+      expect.objectContaining({ minBpm: expect.any(Number) })
+    );
+    fireEvent.press(screen.getByText('Start'));
+    await waitFor(() =>
+      expect(startRecording).toHaveBeenCalledWith(
+        expect.objectContaining({
+          heartRateBand: {
+            minBpm: expect.any(Number),
+            maxBpm: expect.any(Number),
+          },
+        })
+      )
+    );
+  });
+
+  it('starts with the alerts off even after a range was saved', async () => {
+    jest.mocked(getRecordingPreferences).mockResolvedValueOnce({
+      autoPause: true,
+      audioCues: false,
+      paceBand: { minSecondsPerKm: 280, maxSecondsPerKm: 300 },
+      heartRateBand: { minBpm: 150, maxBpm: 170 },
+      countdownSeconds: 0,
+    });
+    state(null);
+    const screen = await renderScreen();
+    expect(screen.getByTestId('pace-alert-switch').props.value).toBe(false);
+    fireEvent(screen.getByTestId('pace-alert-switch'), 'valueChange', true);
+    // The saved range is the starting point.
+    expect(screen.getByTestId('pace-fastest-value').props.children).toContain(
+      '4:40'
+    );
+  });
+
+  it('sends no pace band unless the alert is switched on', async () => {
+    state(null);
+    const screen = await renderScreen();
+    fireEvent.press(screen.getByText('Start'));
+    await waitFor(() => expect(startRecording).toHaveBeenCalled());
+    expect(startRecording).toHaveBeenCalledWith(
+      expect.objectContaining({ paceBand: undefined })
+    );
+  });
+
   it('marks a lap while recording, but not while paused', async () => {
     state(session(), track);
     const screen = await renderScreen();
@@ -265,6 +661,57 @@ describe('RecordActivityScreen', () => {
     state(session({ status: 'paused', pausedAt: Date.now() }), track);
     screen.rerender(renderUi());
     expect(screen.queryByText('Lap')).toBeNull();
+  });
+
+  it('changes the pace range for the recording while it runs', async () => {
+    state(
+      session({ paceBand: { minSecondsPerKm: 300, maxSecondsPerKm: 330 } }),
+      track
+    );
+    const screen = await renderScreen();
+    fireEvent.press(screen.getByTestId('live-pace-slowest-up'));
+    expect(setRecordingPaceBand).toHaveBeenCalledWith({
+      minSecondsPerKm: 300,
+      maxSecondsPerKm: 335,
+    });
+    fireEvent(
+      screen.getByTestId('live-pace-alert-switch'),
+      'valueChange',
+      false
+    );
+    expect(setRecordingPaceBand).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it('changes auto-pause and voice cues for the recording while it runs', async () => {
+    state(session({ autoPause: true }), track);
+    const screen = await renderScreen();
+
+    fireEvent(
+      screen.getByTestId('live-auto-pause-switch'),
+      'valueChange',
+      false
+    );
+    await waitFor(() =>
+      expect(setRecordingAutoPause).toHaveBeenCalledWith(
+        false,
+        expect.anything()
+      )
+    );
+    fireEvent(
+      screen.getByTestId('live-audio-cues-switch'),
+      'valueChange',
+      true
+    );
+    expect(setRecordingAudioCues).toHaveBeenCalledWith(
+      expect.stringMatching(/^(km|miles)$/)
+    );
+  });
+
+  it('offers no auto-pause switch during an indoor recording', async () => {
+    state(session({ indoor: true }));
+    const screen = await renderScreen();
+    expect(screen.queryByTestId('live-auto-pause-switch')).toBeNull();
+    expect(screen.getByTestId('live-audio-cues-switch')).toBeTruthy();
   });
 
   it('lists marked laps and flags the fastest after finishing', async () => {
@@ -340,6 +787,21 @@ describe('RecordActivityScreen', () => {
 
     fireEvent.press(screen.getByText('Pause'));
     await waitFor(() => expect(pauseRecording).toHaveBeenCalled());
+  });
+
+  it('names the activity in the header and shows the GPS signal', async () => {
+    state(session(), track);
+    const screen = await renderScreen();
+    const { useScreenHeader } = jest.requireMock(
+      '../../src/hooks/useScreenHeader'
+    );
+    expect(useScreenHeader).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'Outdoor run',
+        nativeTitle: 'Outdoor run',
+      })
+    );
+    expect(screen.getByLabelText('GPS good')).toBeTruthy();
   });
 
   it('finishes from the live screen', async () => {
@@ -485,11 +947,17 @@ describe('RecordActivityScreen', () => {
 
     fireEvent.press(screen.getByText('Indoor'));
     expect(screen.getByText(/No GPS is used/)).toBeTruthy();
+    // No location fixes indoors, so auto-pause is neither offered nor sent.
+    expect(screen.queryByTestId('auto-pause-switch')).toBeNull();
     fireEvent.press(screen.getByText('Start'));
 
     await waitFor(() =>
       expect(startRecording).toHaveBeenCalledWith(
-        expect.objectContaining({ activity: 'run', indoor: true })
+        expect.objectContaining({
+          activity: 'run',
+          indoor: true,
+          autoPause: false,
+        })
       )
     );
   });

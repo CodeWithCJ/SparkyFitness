@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { HealthMetric } from '@workspace/shared';
 import * as genericHealthService from '@/api/Health/genericHealthService';
 
+import i18n from 'i18next';
 export const genericHealthKeys = {
   metrics: (startDate: string, endDate?: string, userId?: string) =>
     ['generic-health-metrics', startDate, endDate, userId] as const,
@@ -35,7 +36,12 @@ export const useHealthMetricSamples = (
         userId
       ),
     enabled: Boolean(startDate && metric),
-    meta: { errorMessage: 'Failed to load health metric samples.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useGenericHealth.failedToLoadHealthMetric',
+        'Failed to load health metric samples.'
+      ),
+    },
   });
 
 export const useDailyHealthMetrics = (
@@ -48,7 +54,12 @@ export const useDailyHealthMetrics = (
     queryFn: () =>
       genericHealthService.fetchDailyHealthMetrics(startDate, endDate, userId),
     enabled: Boolean(startDate),
-    meta: { errorMessage: 'Failed to load daily health metrics.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useGenericHealth.failedToLoadDailyHealth',
+        'Failed to load daily health metrics.'
+      ),
+    },
   });
 
 export const useWorkoutLaps = (exerciseEntryId: string) =>
@@ -56,7 +67,12 @@ export const useWorkoutLaps = (exerciseEntryId: string) =>
     queryKey: genericHealthKeys.workoutLaps(exerciseEntryId),
     queryFn: () => genericHealthService.fetchWorkoutLaps(exerciseEntryId),
     enabled: Boolean(exerciseEntryId),
-    meta: { errorMessage: 'Failed to load workout laps.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useGenericHealth.failedToLoadWorkoutLaps',
+        'Failed to load workout laps.'
+      ),
+    },
   });
 
 export const useWorkoutGpsPoints = (exerciseEntryId: string) =>
@@ -64,7 +80,12 @@ export const useWorkoutGpsPoints = (exerciseEntryId: string) =>
     queryKey: genericHealthKeys.workoutGps(exerciseEntryId),
     queryFn: () => genericHealthService.fetchWorkoutGpsPoints(exerciseEntryId),
     enabled: Boolean(exerciseEntryId),
-    meta: { errorMessage: 'Failed to load workout GPS points.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useGenericHealth.failedToLoadWorkoutGPS',
+        'Failed to load workout GPS points.'
+      ),
+    },
   });
 
 export const useWorkoutHrZones = (exerciseEntryId: string) =>
@@ -72,5 +93,10 @@ export const useWorkoutHrZones = (exerciseEntryId: string) =>
     queryKey: genericHealthKeys.workoutHrZones(exerciseEntryId),
     queryFn: () => genericHealthService.fetchWorkoutHrZones(exerciseEntryId),
     enabled: Boolean(exerciseEntryId),
-    meta: { errorMessage: 'Failed to load heart rate zones.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useGenericHealth.failedToLoadHeartRate',
+        'Failed to load heart rate zones.'
+      ),
+    },
   });

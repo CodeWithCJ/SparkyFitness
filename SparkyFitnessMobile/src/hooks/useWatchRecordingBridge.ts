@@ -12,6 +12,7 @@ import {
   finishRecording,
   hydrate,
   markLap,
+  noteLiveHeartRate,
   pauseRecording,
   resumeRecording,
   useGpsRecording,
@@ -20,10 +21,13 @@ import {
 import { addLog } from '../services/LogService';
 import { useLiveHeartRateStore } from '../stores/liveHeartRateStore';
 import { notificationText } from '../utils/recordingNotification';
-import { intervalStepName } from '../utils/recordingCues';
+import {
+  intervalStepName,
+  stepDistanceText,
+  stepLengthText,
+} from '../utils/recordingCues';
 import {
   currentPaceSecondsPerUnit,
-  formatClock,
   METERS_PER_KM,
   METERS_PER_MILE,
   summarizeRecording,
@@ -85,6 +89,7 @@ export function useWatchRecordingBridge(enabled: boolean): void {
       status === 'recording'
         ? currentPaceSecondsPerUnit(points, unitMeters)
         : null;
+    const distanceMeters = summarizeRecording(points).distanceMeters;
     const state: WatchRecordingStatePayload = {
       sessionId: session.id,
       activity: session.activity,
@@ -92,7 +97,7 @@ export function useWatchRecordingBridge(enabled: boolean): void {
       status,
       startedAt: session.startedAt,
       pausedMs: session.pausedMs,
-      distanceMeters: Math.round(summarizeRecording(points).distanceMeters),
+      distanceMeters: Math.round(distanceMeters),
       distanceUnit: unitRef.current,
       lapCount: session.laps?.length ?? 0,
       sentAt: Date.now(),
@@ -108,14 +113,15 @@ export function useWatchRecordingBridge(enabled: boolean): void {
     if (session.intervals && status !== 'finished') {
       const position = intervalPosition(
         session.intervals.plan,
-        elapsedSeconds(session)
+        elapsedSeconds(session),
+        { cursor: session.intervals.cursor, meters: distanceMeters }
       );
       if (position) {
         const translate = tRef.current;
         state.intervalIndex = position.done
           ? session.intervals.plan.steps.length
           : position.index;
-        state.intervalLabel = position.done
+        const name = position.done
           ? translate('recordActivity.intervals.complete', {
               defaultValue: 'Intervals complete',
             })
@@ -124,13 +130,20 @@ export function useWatchRecordingBridge(enabled: boolean): void {
               position.step.kind,
               session.intervals.plan.style
             );
+        // The watch counts time down on its own between updates; a distance
+        // step has nothing to count, so its metres left ride in the label
+        // (refreshed with every update) and the countdown is left off.
+        state.intervalLabel =
+          position.remainingMeters !== null && !position.done
+            ? `${name} · ${stepDistanceText(translate, position.remainingMeters, position.step.unit)}`
+            : name;
         state.intervalRemaining = Math.ceil(position.remaining);
         if (position.next && !position.done) {
           state.intervalNext = `${intervalStepName(
             translate,
             position.next.kind,
             session.intervals.plan.style
-          )} ${formatClock(position.next.seconds)}`;
+          )} ${stepLengthText(translate, position.next)}`;
         }
       }
     }
@@ -241,6 +254,8 @@ export function useWatchRecordingBridge(enabled: boolean): void {
           bpm: Math.round(payload.bpm),
           at: payload.at,
         });
+        // The range the runner set, if any, is judged on the same reading.
+        void noteLiveHeartRate(payload.sessionId, payload.bpm);
       }
     );
     return () => {

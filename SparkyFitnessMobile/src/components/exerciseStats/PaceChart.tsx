@@ -6,13 +6,12 @@ import { formatLocalizedNumber } from '../../localization';
 import type { PacePoint } from '../../utils/cardioSession';
 import { formatPace } from '../../utils/gpsRecording';
 import {
-  makeChartFont,
+  useChartFont,
   CHART_LABEL_FONT_SIZE,
   computeNiceYAxisScale,
 } from '../charts/chartFormatting';
 import LineSeriesMark from '../charts/LineSeriesMark';
 
-const font = makeChartFont(CHART_LABEL_FONT_SIZE);
 const X_TICK_COUNT = 5;
 
 /**
@@ -39,6 +38,7 @@ interface PaceChartProps {
  * sits higher on the chart, as in running apps; the axis labels undo it.
  */
 const PaceChart: React.FC<PaceChartProps> = ({ data, xAxisCaption }) => {
+  const font = useChartFont(CHART_LABEL_FONT_SIZE);
   const [lineColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',

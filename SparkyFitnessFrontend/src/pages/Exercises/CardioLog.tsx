@@ -57,7 +57,9 @@ export const CardioLog = ({
           <div className="flex flex-col gap-1.5">
             <Label className="text-[10px] text-muted-foreground uppercase font-bold flex items-center">
               <Route className="h-3 w-3 mr-1 text-blue-500" />
-              {t('workout.distance', 'Distance')} ({distanceUnit})
+              {t('workout.distance2', 'Distance ({{distanceUnit}})', {
+                distanceUnit,
+              })}
             </Label>
             <NumericInput
               className="h-8 text-sm"

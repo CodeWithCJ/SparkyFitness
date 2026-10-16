@@ -5,6 +5,7 @@ import './BodyMapFilter.css';
 import { useBodyMapSvgQuery } from '@/hooks/Exercises/useExercises';
 import { svgClassToSchemaName } from '@workspace/shared';
 
+import { useTranslation } from 'react-i18next';
 interface BodyMapFilterProps {
   selectedMuscles: string[];
   onMuscleToggle: (muscle: string) => void;
@@ -16,6 +17,7 @@ const BodyMapFilter: React.FC<BodyMapFilterProps> = ({
   onMuscleToggle,
   availableMuscleGroups,
 }) => {
+  const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
   const svgContainerRef = useRef<HTMLDivElement>(null);
   const { data: svgContent } = useBodyMapSvgQuery();
@@ -100,7 +102,11 @@ const BodyMapFilter: React.FC<BodyMapFilterProps> = ({
       ref={svgContainerRef}
       className="w-full h-auto"
     >
-      {!svgContent && <div>Loading body map...</div>}
+      {!svgContent && (
+        <div>
+          {t('exercises.bodyMapFilter.loadingBodyMap', 'Loading body map...')}
+        </div>
+      )}
     </div>
   );
 };

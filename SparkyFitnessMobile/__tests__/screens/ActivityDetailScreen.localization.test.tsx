@@ -14,6 +14,12 @@ jest.mock('../../src/components/recording/ProgramWorkoutBadge', () => ({
   __esModule: true,
   default: () => null,
 }));
+// The shoe picker reads the shoe list and the entry; it has its own tests.
+jest.mock('../../src/components/ShoePickerCard', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
 jest.mock('../../src/hooks/useExerciseMutations', () => ({
   useDeleteExerciseEntry: jest.fn(),
   useUpdateExerciseEntry: jest.fn(),

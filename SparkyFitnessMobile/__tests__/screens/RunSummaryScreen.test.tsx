@@ -1,10 +1,17 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 import RunSummaryScreen from '../../src/screens/RunSummaryScreen';
 import {
   rateProgramWorkout,
   setProgramPosition,
 } from '../../src/services/runProgramService';
+import { setExerciseEntryDistance } from '../../src/services/api/exerciseApi';
+import { usePersonalRecords } from '../../src/hooks/usePersonalRecords';
 import type { RunSummaryParams } from '../../src/utils/runSummary';
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
@@ -13,6 +20,12 @@ jest.mock('../../src/hooks/useScreenHeader', () => ({
 jest.mock('../../src/services/runProgramService', () => ({
   setProgramPosition: jest.fn(() => Promise.resolve()),
   rateProgramWorkout: jest.fn(() => Promise.resolve(null)),
+}));
+jest.mock('../../src/services/api/exerciseApi', () => ({
+  setExerciseEntryDistance: jest.fn(() => Promise.resolve()),
+}));
+jest.mock('../../src/hooks/usePersonalRecords', () => ({
+  usePersonalRecords: jest.fn(() => ({ records: [] })),
 }));
 jest.mock('../../src/utils/routeMapSupport', () => ({
   canShowRouteMap: () => false,
@@ -202,4 +215,122 @@ it('does not ask about a workout that was not ticked off', () => {
     })
   );
   expect(screen.queryByText('How hard was that?')).toBeNull();
+});
+
+const record = (activityId: string, standard: '1k' | '5k', time: string) =>
+  ({
+    id: `${standard}-${activityId}`,
+    category: 'Cardio',
+    sportGroup: 'run',
+    distanceStandard: standard,
+    label: standard,
+    bestTimeSeconds: 1,
+    formattedTime: time,
+    avgPaceSecondsPerKm: 300,
+    formattedPace: '5:00 /km',
+    activityId,
+    activityName: 'Run',
+    achievedAt: '2026-10-12',
+  }) as never;
+
+it('shows the records this run set, and none it did not', () => {
+  jest.mocked(usePersonalRecords).mockReturnValue({
+    records: [record('entry-1', '5k', '24:10'), record('other', '1k', '4:30')],
+  } as never);
+  renderScreen(params({ entryId: 'entry-1' }));
+  expect(screen.getByText('New personal record')).toBeTruthy();
+  expect(screen.getByText('24:10')).toBeTruthy();
+  expect(screen.queryByText('4:30')).toBeNull();
+  fireEvent.press(screen.getByText('View all records'));
+  expect(navigation.navigate).toHaveBeenCalledWith('PersonalRecords');
+});
+
+it('says records when it set more than one', () => {
+  jest.mocked(usePersonalRecords).mockReturnValue({
+    records: [
+      record('entry-1', '5k', '24:10'),
+      record('entry-1', '1k', '4:30'),
+    ],
+  } as never);
+  renderScreen(params({ entryId: 'entry-1' }));
+  expect(screen.getByText('New personal records')).toBeTruthy();
+});
+
+it('does not look for records without a saved entry', () => {
+  jest.mocked(usePersonalRecords).mockReturnValue({
+    records: [record('entry-1', '5k', '24:10')],
+  } as never);
+  renderScreen(params());
+  expect(usePersonalRecords).toHaveBeenCalledWith(false);
+  expect(screen.queryByText('New personal record')).toBeNull();
+});
+
+describe('treadmill distance', () => {
+  const treadmill = (overrides: Partial<RunSummaryParams> = {}) =>
+    params({
+      entryId: 'entry-1',
+      editableDistance: true,
+      distanceMeters: 4000,
+      activeSeconds: 1200,
+      ...overrides,
+    });
+
+  it('is only offered for an indoor run that was saved', () => {
+    renderScreen(params({ entryId: 'entry-1' }));
+    expect(screen.queryByText('Treadmill distance')).toBeNull();
+    renderScreen(params({ editableDistance: true }));
+    expect(screen.queryByText('Treadmill distance')).toBeNull();
+  });
+
+  it('sends the distance in km and shows it, with the pace following', async () => {
+    renderScreen(treadmill());
+    expect(screen.getByText('4.00')).toBeTruthy();
+    fireEvent.changeText(
+      screen.getByLabelText('Distance from the treadmill in km'),
+      '5'
+    );
+    fireEvent.press(screen.getByText('Update'));
+    await screen.findByText('Distance updated.');
+    expect(setExerciseEntryDistance).toHaveBeenCalledWith('entry-1', 5);
+    expect(screen.getByText('5.00')).toBeTruthy();
+  });
+
+  it('converts miles to km', async () => {
+    renderScreen(treadmill({ distanceUnit: 'miles' }));
+    fireEvent.changeText(
+      screen.getByLabelText('Distance from the treadmill in mi'),
+      '3'
+    );
+    fireEvent.press(screen.getByText('Update'));
+    await screen.findByText('Distance updated.');
+    expect(setExerciseEntryDistance).toHaveBeenCalledWith(
+      'entry-1',
+      expect.closeTo(4.828, 2)
+    );
+  });
+
+  it('keeps the old figure when the update fails', async () => {
+    jest
+      .mocked(setExerciseEntryDistance)
+      .mockRejectedValueOnce(new Error('offline'));
+    renderScreen(treadmill());
+    fireEvent.changeText(
+      screen.getByLabelText('Distance from the treadmill in km'),
+      '5'
+    );
+    fireEvent.press(screen.getByText('Update'));
+    await waitFor(() => expect(setExerciseEntryDistance).toHaveBeenCalled());
+    expect(screen.queryByText('Distance updated.')).toBeNull();
+    expect(screen.getByText('4.00')).toBeTruthy();
+  });
+
+  it('will not send an empty or absurd distance', () => {
+    renderScreen(treadmill());
+    fireEvent.changeText(
+      screen.getByLabelText('Distance from the treadmill in km'),
+      '5000'
+    );
+    fireEvent.press(screen.getByText('Update'));
+    expect(setExerciseEntryDistance).not.toHaveBeenCalled();
+  });
 });

@@ -522,7 +522,9 @@ const MealCard = ({
                                   variant="secondary"
                                   className="text-[10px] font-medium"
                                 >
-                                  GI: {giValue}
+                                  {t('diary.mealCard.gi', 'GI: {{giValue}}', {
+                                    giValue,
+                                  })}
                                 </Badge>
                               )}
                           </div>
@@ -686,7 +688,9 @@ const MealCard = ({
                               variant="secondary"
                               className="text-xs w-fit font-medium px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-transparent dark:text-purple-600"
                             >
-                              GI: {giValue}
+                              {t('diary.mealCard.gi', 'GI: {{giValue}}', {
+                                giValue,
+                              })}
                             </Badge>
                           )}
                       </div>

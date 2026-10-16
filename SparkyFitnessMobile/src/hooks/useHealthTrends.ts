@@ -44,8 +44,13 @@ export type HydrationTrendSeries = HealthTrendSeries<HydrationDataPoint> & {
   hydrationGoals: (number | null)[];
 };
 
+/** The resolved steps goal for each day in the window, same order as `data`. */
+export type StepsTrendSeries = HealthTrendSeries<StepsDataPoint> & {
+  stepsGoals: (number | null)[];
+};
+
 interface HealthTrends {
-  steps: HealthTrendSeries<StepsDataPoint>;
+  steps: StepsTrendSeries;
   weight: HealthTrendSeries<WeightDataPoint>;
   sleep: SleepTrendSeries;
   hydration: HydrationTrendSeries;
@@ -72,9 +77,11 @@ export function useHealthTrends({
 
   const {
     stepsData,
+    stepsGoals,
     weightData,
     isLoading: isMeasurementsLoading,
     isError: isMeasurementsError,
+    isStepsGoalsError,
     refetch: refetchMeasurements,
   } = useMeasurementsRange({ range, enabled: isMeasurementsEnabled });
 
@@ -134,8 +141,10 @@ export function useHealthTrends({
     // Steps and weight share one request, so they necessarily share its fetch state.
     steps: {
       data: stepsData,
+      stepsGoals,
       isLoading: isMeasurementsLoading,
-      isError: isMeasurementsError,
+      // A failed goals request must not read as "no goal set"; weight is unaffected.
+      isError: isMeasurementsError || isStepsGoalsError,
     },
     weight: {
       data: weightData,

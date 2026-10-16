@@ -9,6 +9,7 @@ import {
   todayInZone,
   addDays,
   userFastingPreferencesMutatorSchema,
+  clampStoredMoodValue,
 } from '@workspace/shared';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
@@ -179,6 +180,7 @@ router.post('/start', async (req, res) => {
  *                 properties:
  *                   value:
  *                     type: integer
+ *                     description: Mood intensity on a 10-100 scale; see the MoodEntry schema for the band boundaries.
  *                   notes:
  *                     type: string
  *     responses:
@@ -204,6 +206,17 @@ router.post('/end', async (req, res) => {
   if (!id || !end_time) {
     return res.status(400).json({ error: 'Fast ID and end time are required' });
   }
+  // The mood lands in the same 10-100 column `POST /api/mood` writes, so it is
+  // brought into range the same way. Checked before either branch writes
+  // anything, so a bad value cannot leave a fast half-ended. A mood with no
+  // value logs nothing, rather than reaching the NOT NULL column as undefined.
+  let storedMoodValue: number | null = null;
+  if (mood && mood.value !== null && mood.value !== undefined) {
+    storedMoodValue = clampStoredMoodValue(mood.value);
+    if (storedMoodValue === null) {
+      return res.status(400).json({ error: 'Mood value must be a number' });
+    }
+  }
   try {
     if (id === 'auto-current') {
       const tz = await loadUserTimezone(userId);
@@ -222,10 +235,10 @@ router.post('/end', async (req, res) => {
           .json({ error: 'start_time must be before end_time' });
       }
 
-      if (mood && mood.value !== null) {
+      if (storedMoodValue !== null) {
         await moodRepository.createOrUpdateMoodEntry(
           userId,
-          mood.value,
+          storedMoodValue,
           mood.notes || '',
           end_time
         );
@@ -259,10 +272,10 @@ router.post('/end', async (req, res) => {
         .status(400)
         .json({ error: 'start_time must be before end_time' });
     }
-    if (mood && mood.value !== null) {
+    if (storedMoodValue !== null) {
       await moodRepository.createOrUpdateMoodEntry(
         userId,
-        mood.value,
+        storedMoodValue,
         mood.notes || '',
         end_time
       );

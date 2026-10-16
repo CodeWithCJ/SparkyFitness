@@ -59,6 +59,10 @@ import {
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { localizeAiEstimateQuality } from '../utils/foodPhotoEstimate';
 import {
+  labelScanToNutritionPatch,
+  type NutritionLabelScan,
+} from '../utils/labelScanFood';
+import {
   CONFIDENCE_TONES,
   getConversionFactor,
   shouldOfferAiConversion,
@@ -70,6 +74,7 @@ export type { FoodFormData };
 
 export interface FoodFormProps {
   initialValues?: Partial<FoodFormData>;
+  nutritionLabelScan?: NutritionLabelScan;
   onSubmit: (data: FoodFormData) => void;
   submitRequestRef?: React.MutableRefObject<(() => void) | null>;
   onServingChange?: (servingSize: string, servingUnit: string) => void;
@@ -129,6 +134,7 @@ type AiToneColors = Record<ConfidenceTone, string>;
 
 const FoodForm: React.FC<FoodFormProps> = ({
   initialValues,
+  nutritionLabelScan,
   onSubmit,
   submitRequestRef,
   onServingChange,
@@ -888,6 +894,23 @@ const FoodForm: React.FC<FoodFormProps> = ({
         ])
       ),
     });
+
+  useEffect(() => {
+    if (!nutritionLabelScan) return;
+    const patch = labelScanToNutritionPatch(nutritionLabelScan.result);
+    const displayValues = buildDisplayFormState(patch);
+    const displayPatch: Partial<FoodFormData> = {};
+    for (const field of Object.keys(patch) as (keyof FoodFormData)[]) {
+      displayPatch[field] = displayValues[field];
+    }
+    // Update both representations without triggering serving-size auto-scaling
+    // or replacing the selected variant and the rest of the live draft.
+    preciseNumericValuesRef.current = {
+      ...preciseNumericValuesRef.current,
+      ...buildPreciseNumericValues(patch),
+    };
+    setForm((previous) => ({ ...previous, ...displayPatch }));
+  }, [nutritionLabelScan]);
 
   const handleSubmitPress = () => {
     if (!showManualUpdateBanner) {

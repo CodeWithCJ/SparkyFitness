@@ -32,6 +32,8 @@ export interface FoodDefaultVariant {
   is_default?: boolean;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
+  allergens?: string[] | null;
+  traces?: string[] | null;
 }
 
 export interface FoodItem {

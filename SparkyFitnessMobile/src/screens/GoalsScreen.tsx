@@ -19,6 +19,7 @@ import {
 } from '../hooks';
 import type { MealType } from '../types/mealTypes';
 import { useLatestMeasurementsOnOrBefore } from '../hooks/useMeasurements';
+import { useCustomNutrients } from '../hooks/useCustomNutrients';
 import {
   useAdjustedCalorieGoal,
   useGoalPresetMutations,
@@ -88,7 +89,8 @@ type NutrientGoalField =
 type OtherGoalField =
   | 'water_goal_ml'
   | 'target_exercise_calories_burned'
-  | 'target_exercise_duration_minutes';
+  | 'target_exercise_duration_minutes'
+  | 'target_steps';
 
 type GoalField = NutrientGoalField | OtherGoalField;
 
@@ -121,6 +123,7 @@ const OTHER_FIELDS: OtherGoalField[] = [
   'water_goal_ml',
   'target_exercise_calories_burned',
   'target_exercise_duration_minutes',
+  'target_steps',
 ];
 
 const ALL_FIELDS: GoalField[] = [
@@ -144,6 +147,16 @@ const toDrafts = (
 };
 
 const parseDraft = (text: string): number => Number(text.replace(',', '.'));
+
+// Custom nutrient goals are stored by nutrient name; an unset goal is edited
+// as an empty field rather than 0.
+const toCustomDrafts = (goals: DailyGoals): Record<string, string> =>
+  Object.fromEntries(
+    Object.entries(goals.custom_nutrients ?? {}).map(([name, value]) => [
+      name,
+      String(value),
+    ])
+  );
 
 // The four built-in meals keep their own goal columns; any other meal type
 // lives in custom_meal_percentages, keyed by its lowercase name.
@@ -263,6 +276,12 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
     toDrafts(goals, waterUnit)
   );
   const [drafts, setDrafts] = useState(initialDrafts);
+  const { isConnected } = useServerConnection();
+  const { customNutrients } = useCustomNutrients({ enabled: isConnected });
+  const [initialCustomDrafts, setInitialCustomDrafts] = useState(() =>
+    toCustomDrafts(goals)
+  );
+  const [customDrafts, setCustomDrafts] = useState(initialCustomDrafts);
 
   const algorithms: AlgorithmBundle = useMemo(
     () => ({
@@ -387,6 +406,9 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
     target_exercise_duration_minutes: t('goals.fields.exerciseMinutes', {
       defaultValue: 'Exercise duration (min)',
     }),
+    target_steps: t('goals.fields.steps', {
+      defaultValue: 'Daily steps',
+    }),
   };
 
   const { presets } = useGoalPresets();
@@ -434,6 +456,26 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
           ? Math.round(volumeToMl(value, waterUnit))
           : value;
     }
+    for (const [name, text] of Object.entries(customDrafts)) {
+      if (text === (initialCustomDrafts[name] ?? '')) continue;
+      const rest = { ...next.custom_nutrients };
+      if (text.trim() === '') {
+        delete rest[name];
+      } else {
+        const value = parseDraft(text);
+        if (!Number.isFinite(value) || value < 0) {
+          Toast.show({
+            type: 'error',
+            text1: t('goals.invalidValue', {
+              defaultValue: 'Enter a valid number for every goal.',
+            }),
+          });
+          return null;
+        }
+        rest[name] = value;
+      }
+      next.custom_nutrients = rest;
+    }
     for (const { key } of meals) {
       if (mealDrafts[key] === initialMealDrafts[key]) continue;
       const value = mealDrafts[key] ?? 0;
@@ -471,6 +513,8 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
     base,
     drafts,
     initialDrafts,
+    customDrafts,
+    initialCustomDrafts,
     mealTotalValid,
     meals,
     mealDrafts,
@@ -628,12 +672,15 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
       Object.keys(custom).length > 0 ? custom : undefined;
 
     const nextDrafts = toDrafts(nextBase, waterUnit);
+    const nextCustomDrafts = toCustomDrafts(nextBase);
     const nextMeals: MealPercentages = Object.fromEntries(
       meals.map(({ key }) => [key, getMealPercentage(nextBase, key)])
     );
     setBase(nextBase);
     setInitialDrafts(nextDrafts);
     setDrafts(nextDrafts);
+    setInitialCustomDrafts(nextCustomDrafts);
+    setCustomDrafts(nextCustomDrafts);
     setInitialMealDrafts(nextMeals);
     setMealDrafts(nextMeals);
     Toast.show({
@@ -862,6 +909,40 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
         </Text>
       )}
       {renderFields(OTHER_NUTRIENT_FIELDS)}
+      {customNutrients.length > 0 && (
+        <>
+          {sectionTitle(
+            t('goals.sections.customNutrients', {
+              defaultValue: 'Custom nutrients',
+            })
+          )}
+          {customNutrients.map((nutrient) => {
+            const label = `${nutrient.name} (${nutrient.unit})`;
+            return (
+              <View key={nutrient.id} className="gap-1">
+                <Text className="text-sm font-medium text-text-primary">
+                  {label}
+                </Text>
+                <FormInput
+                  value={customDrafts[nutrient.name] ?? ''}
+                  onChangeText={(text) =>
+                    setCustomDrafts((prev) => ({
+                      ...prev,
+                      [nutrient.name]: text,
+                    }))
+                  }
+                  keyboardType="decimal-pad"
+                  placeholder={t('goals.customNutrients.notSet', {
+                    defaultValue: 'No goal',
+                  })}
+                  accessibilityLabel={label}
+                  testID={`goal-input-custom-${nutrient.name}`}
+                />
+              </View>
+            );
+          })}
+        </>
+      )}
       {sectionTitle(
         t('goals.sections.activity', { defaultValue: 'Water & exercise' })
       )}

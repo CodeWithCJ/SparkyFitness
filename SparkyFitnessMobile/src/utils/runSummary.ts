@@ -34,6 +34,18 @@ export interface RunSummaryParams {
   splits: RecordedSplit[];
   /** The laps the person marked, when any. */
   laps: RecordedSplit[];
+  /** An indoor session's `[active seconds, metres]` rows, for the pace chart. */
+  distanceSeries?: number[][];
+  /** The saved diary entry, so the screen can look up the records it set. */
+  entryId?: string | null;
+  /** True for a treadmill run, whose distance the person can correct. */
+  editableDistance?: boolean;
+  /**
+   * For a watch indoor session: the learned factor the watch applied and the
+   * distance it showed before any correction, so a treadmill distance entered
+   * here teaches the factor (`learnWatchIndoorScale`).
+   */
+  watchIndoor?: { scale: number; estimatedMeters: number };
   /** For a program workout: where the person is now and what comes next. */
   program: {
     nextLine: string;
@@ -53,6 +65,7 @@ export function buildRunSummary({
   lapMarks,
   avgHeartRate,
   program,
+  entryId,
 }: {
   activity: RecordingActivity;
   entryDate: string;
@@ -61,6 +74,7 @@ export function buildRunSummary({
   lapMarks: readonly number[] | undefined;
   avgHeartRate: number | null;
   program: RunSummaryParams['program'];
+  entryId?: string | null;
 }): RunSummaryParams {
   const unitMeters = distanceUnit === 'miles' ? METERS_PER_MILE : METERS_PER_KM;
   const summary = summarizeRecording(points);
@@ -81,6 +95,7 @@ export function buildRunSummary({
     splits: computeSplits(points, unitMeters),
     laps: lapMarks && lapMarks.length > 0 ? computeLaps(points, lapMarks) : [],
     program,
+    entryId: entryId ?? null,
   };
 }
 

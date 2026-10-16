@@ -504,7 +504,7 @@ const NutritionPeriodSummary = ({
                   <span>{opt.label}</span>
                   {opt.key === primaryNutrient && (
                     <span className="text-xs text-muted-foreground ml-2">
-                      ({t('reports.primary', 'Primary')})
+                      {t('reports.primary2', '(Primary)')}
                     </span>
                   )}
                 </div>
@@ -531,12 +531,18 @@ const NutritionPeriodSummary = ({
                 {`${netBalance > 0 ? '+' : netBalance < 0 ? '-' : ''}${displayNetBalance} ${unitStr}`}
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                {t('reports.totalEaten', 'Total Eaten')}: {displayTotalEaten}{' '}
-                {unitStr}
+                {t(
+                  'reports.totalEaten2',
+                  'Total Eaten: {{displayTotalEaten}} {{unitStr}}',
+                  { displayTotalEaten, unitStr }
+                )}
               </p>
               <p className="text-xs text-muted-foreground">
-                {t('reports.totalGoal', 'Total Goal')}: {displayTotalGoal}{' '}
-                {unitStr}
+                {t(
+                  'reports.totalGoal2',
+                  'Total Goal: {{displayTotalGoal}} {{unitStr}}',
+                  { displayTotalGoal, unitStr }
+                )}
               </p>
               {isPrimaryTarget && validDaysCount > 0 && (
                 <p className="text-xs text-green-600 dark:text-green-400 font-medium mt-0.5">
@@ -598,8 +604,11 @@ const NutritionPeriodSummary = ({
                       <span>{selectedOption?.label}</span> ({unitStr})
                     </CardTitle>
                     <span className="text-xs text-muted-foreground font-normal">
-                      {t('reports.average', 'Avg')}: {formattedAverageEaten}{' '}
-                      {unitStr}
+                      {t(
+                        'reports.avg2',
+                        'Avg: {{formattedAverageEaten}} {{unitStr}}',
+                        { formattedAverageEaten, unitStr }
+                      )}
                     </span>
                   </div>
                 </CardHeader>

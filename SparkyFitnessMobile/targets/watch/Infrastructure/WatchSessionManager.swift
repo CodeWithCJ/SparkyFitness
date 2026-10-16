@@ -271,6 +271,53 @@ final class WatchSessionManager: NSObject, ObservableObject {
         ))
     }
 
+    /// The live view's figures for a wrist-only run: a message while the phone
+    /// is reachable, at most every couple of seconds unless `force`d (a status
+    /// change), and dropped otherwise. Never queued.
+    func sendRunLive(_ payload: [String: Any], force: Bool = false) {
+        guard WCSession.isSupported(), isActivated, WCSession.default.isReachable else { return }
+        let now = Date()
+        if !force, let last = lastRunLiveAt, now.timeIntervalSince(last) < Self.runLiveInterval {
+            return
+        }
+        lastRunLiveAt = now
+        WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+    }
+
+    private static let runLiveInterval: TimeInterval = 2
+
+    /// Cues handed to the phone that it has not confirmed yet, each with what
+    /// to do if it never does.
+    private var pendingCues: [String: () -> Void] = [:]
+    private static let cueAckTimeout: TimeInterval = 2
+
+    /// Asks the phone to say a cue (its headphones are the ones in the wearer's
+    /// ears). Returns false when the phone cannot be reached right now, so the
+    /// caller speaks it on the watch; otherwise `fallback` runs if the phone
+    /// does not confirm in time or the send fails.
+    func relayRunCue(_ text: String, interrupt: Bool, fallback: @escaping () -> Void) -> Bool {
+        guard WCSession.isSupported(), isActivated, WCSession.default.isReachable else { return false }
+        let id = UUID().uuidString
+        pendingCues[id] = fallback
+        WCSession.default.sendMessage(
+            OutboundPayloads.runCue(id: id, text: text, interrupt: interrupt),
+            replyHandler: nil
+        ) { [weak self] _ in
+            Task { @MainActor in self?.failCue(id) }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.cueAckTimeout) { [weak self] in
+            self?.failCue(id)
+        }
+        return true
+    }
+
+    /// Runs the cue's fallback unless the phone already confirmed it.
+    private func failCue(_ id: String) {
+        guard let fallback = pendingCues.removeValue(forKey: id) else { return }
+        fallback()
+    }
+    private var lastRunLiveAt: Date?
+
     /// Hands a finished wrist-only walk or run to the phone to file in the
     /// diary. Returns true once the message is durably queued: `transferUserInfo`
     /// accepted it, or it is on disk until activation can hand it over. False
@@ -674,6 +721,18 @@ final class WatchSessionManager: NSObject, ObservableObject {
         case "recordingState":
             if let update = ContextPayloadMapper.recordingUpdate(from: payload) {
                 RecordingStore.shared.apply(update)
+            }
+        case "runStart":
+            if let request = ContextPayloadMapper.runStartRequest(from: payload) {
+                WatchRunStore.shared.startRequested(request)
+            }
+        case "runCueAck":
+            if let id = payload["id"] as? String { pendingCues.removeValue(forKey: id) }
+        case "runControl":
+            if let control = ContextPayloadMapper.runControl(from: payload) {
+                WatchRunStore.shared.applyRemote(
+                    runId: control.runId, action: control.action, controlId: control.controlId
+                )
             }
         default: break
         }

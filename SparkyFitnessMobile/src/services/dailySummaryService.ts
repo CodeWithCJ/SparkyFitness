@@ -111,6 +111,7 @@ export function buildDailySummary(
     exerciseMinutes,
     exerciseMinutesGoal: goals.target_exercise_duration_minutes || 0,
     exerciseCaloriesGoal: goals.target_exercise_calories_burned || 0,
+    stepsGoal: goals.target_steps || 0,
     netCalories,
     remainingCalories,
     protein: {

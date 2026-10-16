@@ -50,6 +50,7 @@ jest.mock('@tanstack/react-query', () => ({
 }));
 
 jest.mock('../../src/hooks', () => ({
+  useNutrientDisplayPreferences: jest.fn(() => ({ preferences: [] })),
   useMealTypes: jest.fn(),
   usePreferences: jest.fn(() => ({
     preferences: undefined,

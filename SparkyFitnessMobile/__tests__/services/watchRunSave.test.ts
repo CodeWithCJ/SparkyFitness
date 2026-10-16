@@ -1,5 +1,7 @@
 import {
+  attachExerciseEntryDistanceSeries,
   attachExerciseEntryGpsTrack,
+  attachExerciseEntryLaps,
   attachExerciseEntryWatchTelemetry,
   createExerciseEntry,
 } from '../../src/services/api/exerciseApi';
@@ -36,6 +38,11 @@ const outdoor: WatchRunPayload = {
     [T0 + 60_000, 140],
   ],
   laps: [],
+  lapDistances: [],
+  distanceSeries: [],
+  planId: null,
+  program: null,
+  planCompleted: false,
 };
 
 beforeEach(() => {
@@ -98,4 +105,73 @@ test('cuts the route at the laps the wearer marked', async () => {
   const { laps } = jest.mocked(attachExerciseEntryGpsTrack).mock.calls[0][1];
   // Two marks make three stretches, not one per kilometre.
   expect(laps).toHaveLength(3);
+});
+
+test('an indoor run files the laps the wearer marked, with their distances', async () => {
+  const indoor = {
+    ...outdoor,
+    place: 'indoor' as const,
+    route: [],
+    distanceMeters: 3000,
+    laps: [T0 + 300_000, T0 + 600_000],
+    lapDistances: [900, 1900],
+    distanceSeries: [],
+  };
+  await saveWatchRun(indoor, 'km', 'e7', jest.fn());
+  expect(attachExerciseEntryGpsTrack).not.toHaveBeenCalled();
+  const [, laps] = jest.mocked(attachExerciseEntryLaps).mock.calls[0];
+  expect(laps.map((l) => l.distance_meters)).toEqual([900, 1000, 1100]);
+  expect(laps.map((l) => l.lap_index)).toEqual([1, 2, 3]);
+});
+
+test('a failed laps upload does not fail the save', async () => {
+  jest.mocked(attachExerciseEntryLaps).mockRejectedValueOnce(new Error('boom'));
+  const indoor = {
+    ...outdoor,
+    place: 'indoor' as const,
+    route: [],
+    laps: [T0 + 300_000],
+    lapDistances: [900],
+    distanceSeries: [],
+  };
+  await expect(saveWatchRun(indoor, 'km', 'e7', jest.fn())).resolves.toBe('e7');
+  expect(attachExerciseEntryWatchTelemetry).toHaveBeenCalled();
+});
+
+test('an indoor run with no laps attaches none', async () => {
+  const indoor = { ...outdoor, place: 'indoor' as const, route: [] };
+  await saveWatchRun(indoor, 'km', 'e7', jest.fn());
+  expect(attachExerciseEntryLaps).not.toHaveBeenCalled();
+});
+
+test('an indoor run files its distance series for the pace chart', async () => {
+  const series = [
+    [0, 0],
+    [10, 28],
+    [20, 57],
+  ];
+  const indoor = {
+    ...outdoor,
+    place: 'indoor' as const,
+    route: [],
+    distanceSeries: series,
+  };
+  await saveWatchRun(indoor, 'km', 'e7', jest.fn());
+  expect(attachExerciseEntryDistanceSeries).toHaveBeenCalledWith('e7', series);
+});
+
+test('a failed series upload does not fail the save', async () => {
+  jest
+    .mocked(attachExerciseEntryDistanceSeries)
+    .mockRejectedValueOnce(new Error('boom'));
+  const indoor = {
+    ...outdoor,
+    place: 'indoor' as const,
+    route: [],
+    distanceSeries: [
+      [0, 0],
+      [10, 28],
+    ],
+  };
+  await expect(saveWatchRun(indoor, 'km', 'e7', jest.fn())).resolves.toBe('e7');
 });

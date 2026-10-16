@@ -8,9 +8,9 @@ enum RecordingActivity: String {
 
     var title: String {
         switch self {
-        case .walk: return "Walk"
-        case .run: return "Run"
-        case .ride: return "Ride"
+        case .walk: return String(localized: "watch.activity.walk", defaultValue: "Walk")
+        case .run: return String(localized: "watch.activity.run", defaultValue: "Run")
+        case .ride: return String(localized: "watch.activity.ride", defaultValue: "Ride")
         }
     }
 

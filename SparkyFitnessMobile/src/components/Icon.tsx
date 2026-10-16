@@ -34,6 +34,8 @@ const ICON_MAP = {
   search: { sf: 'magnifyingglass', ion: 'search-outline' },
   save: { sf: 'square.and.arrow.down', ion: 'save-outline' },
   share: { sf: 'square.and.arrow.up', ion: 'share-outline' },
+  microphone: { sf: 'mic.fill', ion: 'mic' },
+  'microphone-off': { sf: 'mic.slash.fill', ion: 'mic-off' },
   bookmark: { sf: 'bookmark', ion: 'bookmark-outline' },
   'bookmark-filled': { sf: 'bookmark.fill', ion: 'bookmark' },
   star: { sf: 'star.fill', ion: 'star' },

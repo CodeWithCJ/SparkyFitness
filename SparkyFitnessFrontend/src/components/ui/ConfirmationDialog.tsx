@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Terminal } from 'lucide-react';
 
+import { useTranslation } from 'react-i18next';
 interface ConfirmationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -35,6 +36,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   secondaryActionLabel,
   onSecondaryAction,
 }) => {
+  const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -45,13 +47,15 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
         {!!warning && (
           <Alert variant="destructive">
             <Terminal className="h-4 w-4" />
-            <AlertTitle>Warning</AlertTitle>
+            <AlertTitle>
+              {t('ui.confirmationDialog.warning', 'Warning')}
+            </AlertTitle>
             <AlertDescription>{warning}</AlertDescription>
           </Alert>
         )}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </Button>
           {secondaryActionLabel && onSecondaryAction && (
             <Button variant="secondary" onClick={onSecondaryAction}>
@@ -62,7 +66,7 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
             variant={variant === 'destructive' ? 'destructive' : 'default'}
             onClick={onConfirm}
           >
-            {confirmLabel || 'Confirm'}
+            {confirmLabel || t('common.confirm', 'Confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -3,6 +3,7 @@ import { UserCustomNutrient } from '@/types/customNutrient';
 import { FoodVariant } from '@/types/food';
 import { getGridClass } from '@/utils/layout';
 
+import { useTranslation } from 'react-i18next';
 interface NutrientGridProps {
   food: Partial<FoodVariant> | null;
   visibleNutrients: string[];
@@ -20,6 +21,7 @@ export const NutrientGrid = ({
   getEnergyUnitString,
   customNutrients = [],
 }: NutrientGridProps) => {
+  const { t } = useTranslation();
   const nutrientDetails: {
     [key: string]: { color: string; label: string; unit: string };
   } = {
@@ -28,21 +30,81 @@ export const NutrientGrid = ({
       label: getEnergyUnitString(energyUnit),
       unit: '',
     },
-    protein: { color: 'text-blue-600', label: 'protein', unit: 'g' },
-    carbs: { color: 'text-orange-600', label: 'carbs', unit: 'g' },
-    fat: { color: 'text-yellow-600', label: 'fat', unit: 'g' },
-    dietary_fiber: { color: 'text-green-600', label: 'fiber', unit: 'g' },
-    sugars: { color: 'text-pink-500', label: 'sugar', unit: 'g' },
-    sodium: { color: 'text-purple-500', label: 'sodium', unit: 'mg' },
-    cholesterol: { color: 'text-indigo-500', label: 'cholesterol', unit: 'mg' },
-    saturated_fat: { color: 'text-red-500', label: 'sat fat', unit: 'g' },
-    trans_fat: { color: 'text-red-700', label: 'trans fat', unit: 'g' },
-    potassium: { color: 'text-teal-500', label: 'potassium', unit: 'mg' },
-    vitamin_a: { color: 'text-yellow-400', label: 'vit a', unit: 'mcg' },
-    vitamin_c: { color: 'text-orange-400', label: 'vit c', unit: 'mg' },
-    iron: { color: 'text-gray-500', label: 'iron', unit: 'mg' },
-    calcium: { color: 'text-blue-400', label: 'calcium', unit: 'mg' },
-    glycemic_index: { color: 'text-purple-600', label: 'GI', unit: '' },
+    protein: {
+      color: 'text-blue-600',
+      label: t('foodSearch.nutrientGrid.protein', 'protein'),
+      unit: 'g',
+    },
+    carbs: {
+      color: 'text-orange-600',
+      label: t('foodSearch.nutrientGrid.carbs', 'carbs'),
+      unit: 'g',
+    },
+    fat: {
+      color: 'text-yellow-600',
+      label: t('foodSearch.nutrientGrid.fat', 'fat'),
+      unit: 'g',
+    },
+    dietary_fiber: {
+      color: 'text-green-600',
+      label: t('foodSearch.nutrientGrid.fiber', 'fiber'),
+      unit: 'g',
+    },
+    sugars: {
+      color: 'text-pink-500',
+      label: t('foodSearch.nutrientGrid.sugar', 'sugar'),
+      unit: 'g',
+    },
+    sodium: {
+      color: 'text-purple-500',
+      label: t('foodSearch.nutrientGrid.sodium', 'sodium'),
+      unit: 'mg',
+    },
+    cholesterol: {
+      color: 'text-indigo-500',
+      label: t('foodSearch.nutrientGrid.cholesterol', 'cholesterol'),
+      unit: 'mg',
+    },
+    saturated_fat: {
+      color: 'text-red-500',
+      label: t('foodSearch.nutrientGrid.satFat', 'sat fat'),
+      unit: 'g',
+    },
+    trans_fat: {
+      color: 'text-red-700',
+      label: t('foodSearch.nutrientGrid.transFat', 'trans fat'),
+      unit: 'g',
+    },
+    potassium: {
+      color: 'text-teal-500',
+      label: t('foodSearch.nutrientGrid.potassium', 'potassium'),
+      unit: 'mg',
+    },
+    vitamin_a: {
+      color: 'text-yellow-400',
+      label: t('foodSearch.nutrientGrid.vitA', 'vit a'),
+      unit: 'mcg',
+    },
+    vitamin_c: {
+      color: 'text-orange-400',
+      label: t('foodSearch.nutrientGrid.vitC', 'vit c'),
+      unit: 'mg',
+    },
+    iron: {
+      color: 'text-gray-500',
+      label: t('foodSearch.nutrientGrid.iron', 'iron'),
+      unit: 'mg',
+    },
+    calcium: {
+      color: 'text-blue-400',
+      label: t('foodSearch.nutrientGrid.calcium', 'calcium'),
+      unit: 'mg',
+    },
+    glycemic_index: {
+      color: 'text-purple-600',
+      label: t('foodSearch.nutrientGrid.gi', 'GI'),
+      unit: '',
+    },
   };
 
   // Add custom nutrients to nutrientDetails

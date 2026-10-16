@@ -1,10 +1,13 @@
 import {
+  advanceIntervalCursor,
   buildIntervalPlan,
   INTERVAL_PRESETS,
   intervalPosition,
   isValidIntervalPlan,
+  planHasDistanceSteps,
   planTotalSeconds,
   stepStartSeconds,
+  type IntervalPlan,
 } from '@workspace/shared';
 
 const plan = buildIntervalPlan({
@@ -108,4 +111,159 @@ test('isValidIntervalPlan rejects junk', () => {
       steps: [{ kind: 'work', seconds: 0 }],
     })
   ).toBe(false);
+});
+
+describe('distance steps', () => {
+  const reps: IntervalPlan = buildIntervalPlan({
+    style: 'fastEasy',
+    warmupSeconds: 60,
+    workSeconds: 90,
+    workMeters: 400,
+    recoverySeconds: 60,
+    rounds: 2,
+    cooldownSeconds: 0,
+  });
+
+  test('build work steps of a distance with an expected time', () => {
+    expect(reps.steps).toEqual([
+      { kind: 'warmup', seconds: 60 },
+      { kind: 'work', meters: 400, seconds: 144 },
+      { kind: 'recovery', seconds: 60 },
+      { kind: 'work', meters: 400, seconds: 144 },
+      { kind: 'recovery', seconds: 60 },
+    ]);
+    expect(planHasDistanceSteps(reps)).toBe(true);
+    expect(planHasDistanceSteps(plan)).toBe(false);
+    expect(isValidIntervalPlan(reps)).toBe(true);
+  });
+
+  test('the distance presets are valid plans with distance steps', () => {
+    const distance = INTERVAL_PRESETS.filter(
+      (p) => p.options.workMeters !== undefined
+    );
+    expect(distance.map((p) => p.id)).toEqual(['sixBy400m', 'fiveBy1k']);
+    for (const preset of distance) {
+      const built = buildIntervalPlan(preset.options);
+      expect(isValidIntervalPlan(built)).toBe(true);
+      expect(planHasDistanceSteps(built)).toBe(true);
+    }
+  });
+
+  test('reject a step distance out of range', () => {
+    expect(
+      isValidIntervalPlan({
+        style: 'fastEasy',
+        steps: [{ kind: 'work', seconds: 10, meters: 10 }],
+      })
+    ).toBe(false);
+  });
+
+  test('a distance step ends on distance, the next timed step from then', () => {
+    // Warm-up ends at 60 s, 150 m in.
+    let { cursor, started } = advanceIntervalCursor(reps, null, 60, 150);
+    expect(cursor).toEqual({ index: 1, startSeconds: 60, startMeters: 150 });
+    expect(started).toHaveLength(1);
+    // 300 m into the rep at 160 s: still going.
+    ({ cursor } = advanceIntervalCursor(reps, cursor, 160, 450));
+    expect(cursor.index).toBe(1);
+    const mid = intervalPosition(reps, 160, { cursor, meters: 450 });
+    expect(mid?.remainingMeters).toBe(100);
+    expect(mid?.remaining).toBe(0);
+    expect(mid?.fraction).toBeCloseTo(0.75);
+    // 400 m reached at 180 s, whatever the expected time said.
+    ({ cursor, started } = advanceIntervalCursor(reps, cursor, 180, 560));
+    expect(cursor).toEqual({ index: 2, startSeconds: 180, startMeters: 550 });
+    expect(started).toEqual([cursor]);
+    // The 60 s recovery counts from 180 s.
+    const rest = intervalPosition(reps, 200, { cursor, meters: 600 });
+    expect(rest?.step.kind).toBe('recovery');
+    expect(rest?.remaining).toBe(40);
+    expect(rest?.remainingMeters).toBeNull();
+  });
+
+  test('a distance step does not end on the clock alone', () => {
+    const position = intervalPosition(reps, 10_000);
+    expect(position?.index).toBe(1);
+    expect(position?.done).toBe(false);
+  });
+
+  test('after a long gap a distance step counts only distance from then on', () => {
+    // The recording checks every second, so this only happens after a gap:
+    // the warm-up ended long ago, but how far had been run by then is not
+    // known, so the rep starts at the distance recorded now.
+    const { cursor, started } = advanceIntervalCursor(reps, null, 400, 2000);
+    expect(started).toEqual([
+      { index: 1, startSeconds: 60, startMeters: 2000 },
+    ]);
+    expect(cursor.index).toBe(1);
+  });
+
+  test('distance steps passed together are all listed, in order', () => {
+    const back: IntervalPlan = {
+      style: 'fastEasy',
+      steps: [
+        { kind: 'work', meters: 400, seconds: 144 },
+        { kind: 'work', meters: 400, seconds: 144 },
+      ],
+    };
+    const { cursor, started } = advanceIntervalCursor(back, null, 300, 900);
+    expect(started.map((s) => [s.index, s.startMeters])).toEqual([
+      [1, 400],
+      [2, 800],
+    ]);
+    expect(intervalPosition(back, 300, { cursor, meters: 900 })?.done).toBe(
+      true
+    );
+  });
+
+  test('a timed plan places the same with or without a cursor', () => {
+    for (const seconds of [0, 59, 300, 361, 449, 450, 811, 2000]) {
+      const { cursor } = advanceIntervalCursor(plan, null, seconds, 0);
+      expect(intervalPosition(plan, seconds, { cursor, meters: 0 })).toEqual(
+        intervalPosition(plan, seconds)
+      );
+    }
+  });
+});
+
+describe('distance steps set in miles', () => {
+  it('keeps metres for the step and marks it as miles', () => {
+    const built = buildIntervalPlan({
+      style: 'fastEasy',
+      warmupSeconds: 0,
+      workSeconds: 90,
+      workMeters: 1609,
+      workUnit: 'mi',
+      recoverySeconds: 60,
+      rounds: 1,
+      cooldownSeconds: 0,
+    });
+    expect(built.steps[0]).toEqual({
+      kind: 'work',
+      meters: 1609,
+      seconds: 579,
+      unit: 'mi',
+    });
+    expect(isValidIntervalPlan(built)).toBe(true);
+    expect(
+      isValidIntervalPlan({
+        style: 'fastEasy',
+        steps: [{ kind: 'work', seconds: 10, meters: 400, unit: 'yd' }],
+      })
+    ).toBe(false);
+  });
+
+  it('a metre step carries no unit', () => {
+    const built = buildIntervalPlan({
+      style: 'fastEasy',
+      warmupSeconds: 0,
+      workSeconds: 90,
+      workMeters: 400,
+      workUnit: 'm',
+      recoverySeconds: 0,
+      rounds: 1,
+      cooldownSeconds: 0,
+    });
+    expect(built.steps[0].unit).toBeUndefined();
+  });
 });

@@ -174,6 +174,53 @@ export interface WatchContextPayload {
    * speaks each completed km or mile while this is on. Missing reads as off.
    */
   runVoiceCues?: boolean | null;
+  /** The phone's Auto-pause switch: the default for a run begun on the wrist. */
+  runAutoPause?: boolean | null;
+  /** Minutes between spoken check-ins: the default for a run begun on the wrist; 0 is off. */
+  runCheckInMinutes?: number | null;
+  /**
+   * The pace range last used on the Record screen (seconds per km). The
+   * watch's start screen offers it as the starting point of a pace alert; an
+   * alert is only on for the run it was chosen for.
+   */
+  runPaceMinSecondsPerKm?: number | null;
+  runPaceMaxSecondsPerKm?: number | null;
+  /** The heart-rate range (bpm) last used, offered the same way. */
+  runHeartRateMinBpm?: number | null;
+  runHeartRateMaxBpm?: number | null;
+  /**
+   * Plans a wrist-only run can follow: the training-program workout due now
+   * (carrying `programId`/`programIndex`) then the built-in interval plans,
+   * with step names already translated. Missing keeps the watch's last list.
+   */
+  /**
+   * Learned correction for the watch's indoor distance, from treadmill
+   * distances entered after earlier sessions (`services/watchIndoorScale.ts`).
+   * Missing keeps the watch's last value.
+   */
+  indoorDistanceScale?: { walk: number; run: number };
+  runPlans?: {
+    id: string;
+    name: string;
+    programId?: string;
+    programIndex?: number;
+    /** 'walk' for a walking program; missing is a run. */
+    activity?: 'walk';
+    /** `meters` marks a distance step; `seconds` is then its expected time. */
+    /** Spoken before a program workout's first step, and when it ends; already in the app language. */
+    startText?: string;
+    doneText?: string;
+    steps: {
+      label: string;
+      seconds: number;
+      meters?: number;
+      paceMin?: number;
+      paceMax?: number;
+      hrMin?: number;
+      hrMax?: number;
+      unit?: 'mi';
+    }[];
+  }[];
   /**
    * Settings → Apple Watch: the watch app's pages in swipe order, and the ones
    * turned off (`WATCH_PAGE_KEYS` names). Missing reads as the factory order
@@ -705,6 +752,125 @@ export interface WatchRunFinishedPayload {
   heartRate: number[][];
   /** Epoch ms of each Lap press. Missing on a payload from an older watch build. */
   laps?: number[];
+  /** Metres covered at each lap mark, same order (an indoor run's laps use these). */
+  lapDistances: number[];
+  /** `[active seconds, cumulative metres]` about every 10 s; empty when not recorded. */
+  distanceSeries?: number[][];
+  /** The plan the run followed, if any. */
+  planId: string;
+  /** Set when the plan was a training-program workout. */
+  programId: string;
+  programIndex: number;
+  /** Whether the run reached the plan's last step. */
+  planCompleted: boolean;
+  /** The learned indoor factor the watch applied to its own distance. */
+  distanceScale?: number;
+  /** What the watch showed before a treadmill distance was entered on the wrist. */
+  estimatedDistanceMeters?: number;
+}
+
+/**
+ * What a wrist-only walk or run looks like right now: figures sent every few
+ * seconds while the phone is reachable (never queued), so the phone can show
+ * its stats. `status: 'ended'` is the last one.
+ */
+/** A cue the watch wants the phone to say; answer with `sendRunCueAck(id)`. */
+export interface WatchRunCuePayload {
+  id: string;
+  text: string;
+  /** Say it now rather than after the cue being spoken. */
+  interrupt: boolean;
+}
+
+export interface WatchRunLivePayload {
+  runId: string;
+  kind: string;
+  place: string;
+  status: string;
+  autoPaused: boolean;
+  /** Active seconds on the watch's clock when it was sent. */
+  elapsed: number;
+  distanceMeters: number;
+  heartRate?: number;
+  energyKcal: number;
+  lapCount: number;
+  stepLabel?: string;
+  stepRemaining?: number;
+  nextLabel?: string;
+  /** Epoch ms on the watch when it was sent. */
+  sentAt: number;
+  /** The phone's `runStart` request this run began from; absent for a run started on the wrist. */
+  requestId?: string;
+  /** This run's switches; absent from an older watch build. */
+  autoPause?: boolean;
+  voiceCues?: boolean;
+  /** Whether a pace or heart-rate range is being watched; absent from an older watch build. */
+  paceAlert?: boolean;
+  heartRateAlert?: boolean;
+}
+
+/** One step of a guided walk or run the phone hands the watch. */
+export interface WatchRunStartPlanStep {
+  label: string;
+  seconds: number;
+  /** Pace range to hold in this step, seconds per km; both or neither. */
+  paceMin?: number;
+  paceMax?: number;
+  /** Heart-rate range (bpm) to hold in this step; both or neither. */
+  hrMin?: number;
+  hrMax?: number;
+}
+
+/** Asks the watch to start recording a walk or run itself. */
+export interface WatchRunStartPayload {
+  requestId: string;
+  kind: 'run' | 'walk';
+  place: 'indoor' | 'outdoor';
+  /** Epoch ms; the watch ignores a request older than two minutes. */
+  requestedAt: number;
+  /** The Record screen's switches for this run (both or neither). */
+  autoPause?: boolean;
+  voiceCues?: boolean;
+  /** Minutes between spoken check-ins (needs voiceCues); 0 or absent for none. */
+  checkInMinutes?: number;
+  /** Pace range (seconds per km) to stay inside; both or neither. */
+  paceMin?: number;
+  paceMax?: number;
+  /** Heart-rate range (bpm) to stay inside; both or neither. */
+  hrMin?: number;
+  hrMax?: number;
+  plan?: {
+    id: string;
+    name: string;
+    programId?: string;
+    programIndex?: number;
+    activity?: string;
+    startText?: string;
+    doneText?: string;
+    steps: WatchRunStartPlanStep[];
+  };
+}
+
+export type WatchRunControlAction =
+  | 'pause'
+  | 'resume'
+  | 'lap'
+  | 'finish'
+  | 'discard'
+  | 'autoPauseOn'
+  | 'autoPauseOff'
+  | 'voiceCuesOn'
+  | 'voiceCuesOff'
+  | 'paceAlertOn'
+  | 'paceAlertOff'
+  | 'heartRateAlertOn'
+  | 'heartRateAlertOff';
+
+export interface WatchRunControlPayload {
+  runId: string;
+  action: WatchRunControlAction;
+  /** Unique per tap, so a queued copy delivered twice acts once. */
+  controlId: string;
 }
 
 export type WatchConnectivityEvents = {
@@ -730,6 +896,8 @@ export type WatchConnectivityEvents = {
   onRecordingHeartRate: (payload: WatchRecordingHeartRatePayload) => void;
   onFastStartRequested: (payload: WatchFastStartRequestPayload) => void;
   onFastEndRequested: (payload: WatchFastEndRequestPayload) => void;
+  onRunLive: (payload: WatchRunLivePayload) => void;
+  onRunCue: (payload: WatchRunCuePayload) => void;
   onRunFinished: (payload: WatchRunFinishedPayload) => void;
 };
 
@@ -748,6 +916,12 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
     durable: boolean
   ): Promise<void>;
   startWorkout(plan: WatchWorkoutStartPayload): Promise<void>;
+  /** Starts a walk or run on the watch and opens its app. */
+  startRun(request: WatchRunStartPayload): Promise<void>;
+  /** Pause, resume, lap, finish or discard for the run on the watch, or a switch change (`autoPauseOn`/`Off`, `voiceCuesOn`/`Off`, `paceAlertOn`/`Off`, `heartRateAlertOn`/`Off`). */
+  sendRunControl(control: WatchRunControlPayload): Promise<void>;
+  /** Tells the watch the phone is saying cue `id`, so it stays quiet. */
+  sendRunCueAck(id: string): Promise<void>;
   /**
    * The live workout's plan again after exercises, supersets or sets changed
    * on the phone mid-workout. The watch swaps it in without restarting,

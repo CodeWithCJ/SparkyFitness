@@ -194,7 +194,13 @@ export const TagInput: React.FC<TagInputProps> = ({
                   e.stopPropagation();
                   removeTag(index);
                 }}
-                aria-label={`Remove ${getLabel(tag)}`}
+                aria-label={t(
+                  'components.tagInput.removeTag',
+                  'Remove {{tag}}',
+                  {
+                    tag: getLabel(tag),
+                  }
+                )}
               >
                 <X className="h-3 w-3" />
               </button>

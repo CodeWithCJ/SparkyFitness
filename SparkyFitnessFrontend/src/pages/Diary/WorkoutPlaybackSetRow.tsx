@@ -156,7 +156,11 @@ const WorkoutPlaybackSetRow = ({
           <div className="col-span-2 flex min-w-0 items-center justify-between gap-2 sm:col-start-1 sm:col-span-1 sm:justify-start">
             <div className="flex min-w-0 items-center gap-2">
               <Checkbox
-                aria-label={`Complete set ${setNumber}`}
+                aria-label={t(
+                  'diary.workoutPlaybackSetRow.completeSet',
+                  'Complete set {{setNumber}}',
+                  { setNumber }
+                )}
                 checked={completed}
                 className="data-[state=checked]:border-emerald-500 data-[state=checked]:bg-emerald-500 data-[state=checked]:text-white"
                 onClick={(event) => {
@@ -174,7 +178,11 @@ const WorkoutPlaybackSetRow = ({
                 type="button"
                 variant="ghost"
                 className="h-auto p-0 text-sm font-medium hover:bg-transparent"
-                aria-label={`Select set ${setNumber} for ${exerciseName}`}
+                aria-label={t(
+                  'diary.workoutPlaybackSetRow.selectSetFor',
+                  'Select set {{setNumber}} for {{exerciseName}}',
+                  { setNumber, exerciseName }
+                )}
                 onClick={() => onSelectSet(pointer)}
               >
                 {t(
@@ -195,7 +203,11 @@ const WorkoutPlaybackSetRow = ({
             }
           >
             <SelectTrigger
-              aria-label={`Type set ${setNumber}`}
+              aria-label={t(
+                'diary.workoutPlaybackSetRow.typeSet',
+                'Type set {{setNumber}}',
+                { setNumber }
+              )}
               onClick={(event) => event.stopPropagation()}
               className="col-span-2 border-border/70 bg-transparent shadow-none outline-none ring-0 focus:border-border/70 focus:outline-none focus:ring-0 focus:ring-offset-0 focus-visible:border-border/70 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 data-[state=open]:border-border/70 data-[state=open]:outline-none data-[state=open]:ring-0 data-[state=open]:shadow-none sm:col-start-2 sm:col-span-1"
             >
@@ -274,7 +286,11 @@ const WorkoutPlaybackSetRow = ({
                 inputMode="numeric"
                 min={0}
                 step={1}
-                aria-label={`Reps set ${setNumber}`}
+                aria-label={t(
+                  'diary.workoutPlaybackSetRow.repsSet',
+                  'Reps set {{setNumber}}',
+                  { setNumber }
+                )}
                 value={reps ?? ''}
                 onClick={(event) => event.stopPropagation()}
                 onChange={(event) =>
@@ -302,7 +318,11 @@ const WorkoutPlaybackSetRow = ({
                     onSetFieldChange(pointer, 'weight', value)
                   }
                   inputClassName="focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                  aria-label={`Weight set ${setNumber}`}
+                  aria-label={t(
+                    'diary.workoutPlaybackSetRow.weightSet',
+                    'Weight set {{setNumber}}',
+                    { setNumber }
+                  )}
                 />
               </div>
             </>
@@ -312,7 +332,11 @@ const WorkoutPlaybackSetRow = ({
             type="button"
             variant="outline"
             className="col-span-1 w-full min-w-0 justify-center px-2 text-xs tabular-nums sm:col-start-5 sm:col-span-1"
-            aria-label={`Edit rest for set ${setNumber}`}
+            aria-label={t(
+              'diary.workoutPlaybackSetRow.editRestForSet',
+              'Edit rest for set {{setNumber}}',
+              { setNumber }
+            )}
             onClick={(event) => {
               event.stopPropagation();
               onOpenRestEditor(pointer);
@@ -328,7 +352,11 @@ const WorkoutPlaybackSetRow = ({
               variant="ghost"
               size="icon"
               className="cursor-pointer"
-              aria-label={`Toggle notes for set ${setNumber}`}
+              aria-label={t(
+                'diary.workoutPlaybackSetRow.toggleNotesForSet',
+                'Toggle notes for set {{setNumber}}',
+                { setNumber }
+              )}
               onClick={(event) => {
                 event.stopPropagation();
                 onToggleNotesVisibility(notesKey);
@@ -342,7 +370,11 @@ const WorkoutPlaybackSetRow = ({
               size="icon"
               className="cursor-pointer"
               disabled={!canRemove}
-              aria-label={`Remove set ${setNumber} for ${exerciseName}`}
+              aria-label={t(
+                'diary.workoutPlaybackSetRow.removeSetFor',
+                'Remove set {{setNumber}} for {{exerciseName}}',
+                { setNumber, exerciseName }
+              )}
               onClick={(event) => {
                 event.stopPropagation();
                 onRemoveSet(pointer);
@@ -354,7 +386,11 @@ const WorkoutPlaybackSetRow = ({
 
           {isNotesVisible && (
             <Textarea
-              aria-label={`Set notes ${setNumber}`}
+              aria-label={t(
+                'diary.workoutPlaybackSetRow.setNotes',
+                'Set notes {{setNumber}}',
+                { setNumber }
+              )}
               value={notes ?? ''}
               onClick={(event) => event.stopPropagation()}
               onChange={(event) =>

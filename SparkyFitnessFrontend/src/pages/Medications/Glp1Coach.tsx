@@ -88,8 +88,14 @@ export default function Glp1Coach({ med }: Glp1CoachProps) {
         <CardHeader>
           <CardTitle className="flex items-center justify-between text-base font-semibold">
             <span>
-              {t('medications.glp1.pkTitle', 'PK serum level')} —{' '}
-              {curveQ.data?.drugName ?? curveQ.data?.drugId ?? med.name}
+              {t(
+                'medications.glp1.pkSerumLevel',
+                'PK serum level — {{drugName}}',
+                {
+                  drugName:
+                    curveQ.data?.drugName ?? curveQ.data?.drugId ?? med.name,
+                }
+              )}
             </span>
             <span className="flex items-center gap-2">
               {/* Only offer the switch when there is an anchor date to switch to. */}
@@ -129,7 +135,11 @@ export default function Glp1Coach({ med }: Glp1CoachProps) {
               )}
               {curveQ.data?.currentLevelFraction != null && (
                 <Badge variant="secondary">
-                  ~{Math.round(curveQ.data.currentLevelFraction * 100)}% now
+                  {t('medications.glp1.now', '~{{currentLevelFraction}}% now', {
+                    currentLevelFraction: Math.round(
+                      curveQ.data.currentLevelFraction * 100
+                    ),
+                  })}
                 </Badge>
               )}
             </span>

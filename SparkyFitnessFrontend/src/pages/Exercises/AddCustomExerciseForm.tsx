@@ -159,7 +159,10 @@ export default function AddCustomExerciseForm({
               : newExerciseCalories.toString()
           }
           onChange={(e) => setManualCaloriesPerHour(Number(e.target.value))}
-          placeholder="Calculated: 300"
+          placeholder={t(
+            'exercises.addCustomExerciseForm.calculated300',
+            'Calculated: 300'
+          )}
           className="col-span-3"
         />
         <p className="col-span-4 text-xs text-muted-foreground">
@@ -393,7 +396,11 @@ export default function AddCustomExerciseForm({
               >
                 <img
                   src={url}
-                  alt={`preview ${index}`}
+                  alt={t(
+                    'exercises.addCustomExerciseForm.preview',
+                    'preview {{index}}',
+                    { index }
+                  )}
                   className="w-full h-full object-cover rounded"
                 />
                 <Button

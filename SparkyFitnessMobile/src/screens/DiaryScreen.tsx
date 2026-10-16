@@ -54,6 +54,7 @@ import {
 import { useWorkoutPresets } from '../hooks/useWorkoutPresets';
 import { getWorkoutPresetById } from '../services/api/workoutPresetsApi';
 import RunProgramBanner from '../components/recording/RunProgramBanner';
+import RunEffortPrompt from '../components/recording/RunEffortPrompt';
 import { useActiveWorkoutPlans } from '../hooks/useActiveWorkoutPlan';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import {
@@ -76,7 +77,11 @@ import type {
   WorkoutPlanTemplate,
 } from '../types/workoutPlans';
 import { isManualSource } from '../utils/customMeasurementsForm';
-import { formatDateLabel, getDateRelationToToday } from '../utils/dateUtils';
+import {
+  formatDateLabel,
+  getDateRelationToToday,
+  toLocalDateString,
+} from '../utils/dateUtils';
 import { cardioSessionFromDiaryEntry } from '../utils/cardioSession';
 import {
   getHistoricalMealTypeLabel,
@@ -668,15 +673,21 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
                 addSheetRef.current?.present({ initialMenu: 'exercise' })
               }
               programBanner={
-                <RunProgramBanner
-                  date={selectedDate}
-                  exerciseEntries={summary.exerciseEntries}
-                  onStart={() =>
-                    navigation.navigate('RecordActivity', {
-                      programWorkout: true,
-                    })
-                  }
-                />
+                <>
+                  <RunEffortPrompt
+                    date={selectedDate}
+                    today={toLocalDateString(new Date())}
+                  />
+                  <RunProgramBanner
+                    date={selectedDate}
+                    exerciseEntries={summary.exerciseEntries}
+                    onStart={() =>
+                      navigation.navigate('RecordActivity', {
+                        programWorkout: true,
+                      })
+                    }
+                  />
+                </>
               }
               onPressPlanAssignment={handleStartPlanAssignment}
               onPressWorkout={(session) => {

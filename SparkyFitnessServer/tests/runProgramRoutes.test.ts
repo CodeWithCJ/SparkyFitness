@@ -5,6 +5,12 @@ import express from 'express';
 import errorHandler from '../middleware/errorHandler.js';
 import runProgramRoutes from '../routes/v2/runProgramRoutes.js';
 import {
+  adjustRunProgram,
+  createCustomRunProgram,
+  CustomRunProgramLimitError,
+  deleteCustomRunProgram,
+  listCustomRunPrograms,
+  updateCustomRunProgram,
   completeRunProgramWorkout,
   getRunProgram,
   rateRunProgramWorkout,
@@ -16,10 +22,16 @@ vi.mock('../models/runProgramRepository.js', () => {
   class UnknownRunProgramError extends Error {}
   return {
     getRunProgram: vi.fn(),
+    adjustRunProgram: vi.fn(),
     upsertRunProgram: vi.fn(),
     completeRunProgramWorkout: vi.fn(),
     rateRunProgramWorkout: vi.fn(),
     UnknownRunProgramError,
+    CustomRunProgramLimitError: class CustomRunProgramLimitError extends Error {},
+    createCustomRunProgram: vi.fn(),
+    deleteCustomRunProgram: vi.fn(),
+    listCustomRunPrograms: vi.fn(),
+    updateCustomRunProgram: vi.fn(),
   };
 });
 
@@ -44,6 +56,8 @@ app.use(errorHandler);
 const program = {
   id: 'p1',
   program_id: 'beginner5k',
+  name: null,
+  activity: null,
   enabled: true,
   next_index: 0,
   workouts: [],
@@ -257,5 +271,195 @@ describe('run program routes', () => {
     const res = await request(app).get('/api/v2/run-program');
     expect(res.status).toBe(403);
     expect(getRunProgram).not.toHaveBeenCalled();
+  });
+
+  it('adjusts the next workouts as the person', async () => {
+    vi.mocked(adjustRunProgram).mockResolvedValue(program);
+    const res = await request(app)
+      .post('/api/v2/run-program/adjust')
+      .send({ percent: -15, count: 2 });
+    expect(res.status).toBe(200);
+    expect(adjustRunProgram).toHaveBeenCalledWith(
+      'test-user-id',
+      'user',
+      expect.any(Function),
+      'test-user-id'
+    );
+  });
+
+  it('refuses an out-of-range adjustment and a missing program', async () => {
+    const bad = await request(app)
+      .post('/api/v2/run-program/adjust')
+      .send({ percent: -50, count: 2 });
+    expect(bad.status).toBe(400);
+    expect(adjustRunProgram).not.toHaveBeenCalled();
+
+    vi.mocked(adjustRunProgram).mockResolvedValue(null);
+    const none = await request(app)
+      .post('/api/v2/run-program/adjust')
+      .send({ percent: -15, count: 2 });
+    expect(none.status).toBe(400);
+  });
+
+  describe('custom programs', () => {
+    const id = '0b6f1c1e-6a52-4a8e-9a3b-2f1d4f5a9c10';
+    const body = {
+      name: 'My plan',
+      activity: 'run',
+      workouts: [
+        {
+          title: 'Easy',
+          plan: {
+            style: 'runWalk',
+            steps: [
+              { kind: 'warmup', seconds: 300 },
+              { kind: 'work', seconds: 600 },
+            ],
+          },
+        },
+      ],
+    };
+    const saved = {
+      id,
+      name: 'My plan',
+      activity: 'run',
+      workouts: [],
+      created_at: '2026-10-13T00:00:00.000Z',
+      updated_at: '2026-10-13T00:00:00.000Z',
+    };
+
+    it('lists, creates, changes and deletes', async () => {
+      vi.mocked(listCustomRunPrograms).mockResolvedValue([saved] as never);
+      const list = await request(app).get('/api/v2/run-program/custom');
+      expect(list.status).toBe(200);
+      expect(list.body.programs).toHaveLength(1);
+
+      vi.mocked(createCustomRunProgram).mockResolvedValue(saved as never);
+      const created = await request(app)
+        .post('/api/v2/run-program/custom')
+        .send(body);
+      expect(created.status).toBe(200);
+      expect(createCustomRunProgram).toHaveBeenCalledWith(
+        'test-user-id',
+        expect.objectContaining({ name: 'My plan' }),
+        'test-user-id'
+      );
+
+      vi.mocked(updateCustomRunProgram).mockResolvedValue(saved as never);
+      const changed = await request(app)
+        .put(`/api/v2/run-program/custom/${id}`)
+        .send(body);
+      expect(changed.status).toBe(200);
+
+      vi.mocked(deleteCustomRunProgram).mockResolvedValue(true);
+      const removed = await request(app).delete(
+        `/api/v2/run-program/custom/${id}`
+      );
+      expect(removed.status).toBe(204);
+    });
+
+    it('rejects a bad program and one over the limit', async () => {
+      for (const bad of [
+        { ...body, name: '' },
+        { ...body, workouts: [] },
+        { ...body, activity: 'swim' },
+        {
+          ...body,
+          workouts: [
+            {
+              plan: { style: 'runWalk', steps: [{ kind: 'work', seconds: 0 }] },
+            },
+          ],
+        },
+      ]) {
+        const res = await request(app)
+          .post('/api/v2/run-program/custom')
+          .send(bad);
+        expect(res.status).toBe(400);
+      }
+      expect(createCustomRunProgram).not.toHaveBeenCalled();
+
+      vi.mocked(createCustomRunProgram).mockRejectedValue(
+        new CustomRunProgramLimitError('max')
+      );
+      const over = await request(app)
+        .post('/api/v2/run-program/custom')
+        .send(body);
+      expect(over.status).toBe(400);
+    });
+
+    it('accepts a pace and heart-rate target on a step, and refuses bad ones', async () => {
+      vi.mocked(createCustomRunProgram).mockResolvedValue(saved as never);
+      const withTargets = (step: Record<string, unknown>) => ({
+        ...body,
+        workouts: [
+          {
+            plan: {
+              style: 'runWalk',
+              steps: [{ kind: 'work', seconds: 600, ...step }],
+            },
+          },
+        ],
+      });
+      const ok = await request(app)
+        .post('/api/v2/run-program/custom')
+        .send(
+          withTargets({
+            pace: { minSecondsPerKm: 300, maxSecondsPerKm: 360 },
+            heartRate: { minBpm: 130, maxBpm: 150 },
+          })
+        );
+      expect(ok.status).toBe(200);
+      expect(createCustomRunProgram).toHaveBeenCalledWith(
+        'test-user-id',
+        expect.objectContaining({
+          workouts: [
+            expect.objectContaining({
+              plan: expect.objectContaining({
+                steps: [
+                  expect.objectContaining({
+                    pace: { minSecondsPerKm: 300, maxSecondsPerKm: 360 },
+                  }),
+                ],
+              }),
+            }),
+          ],
+        }),
+        'test-user-id'
+      );
+      for (const bad of [
+        { pace: { minSecondsPerKm: 360, maxSecondsPerKm: 300 } },
+        { pace: { minSecondsPerKm: 60, maxSecondsPerKm: 300 } },
+        { heartRate: { minBpm: 150, maxBpm: 130 } },
+        { heartRate: { minBpm: 20, maxBpm: 130 } },
+      ]) {
+        const res = await request(app)
+          .post('/api/v2/run-program/custom')
+          .send(withTargets(bad));
+        expect(res.status).toBe(400);
+      }
+    });
+
+    it('answers 404 for an unknown or malformed id', async () => {
+      vi.mocked(updateCustomRunProgram).mockResolvedValue(null);
+      vi.mocked(deleteCustomRunProgram).mockResolvedValue(false);
+      expect(
+        (await request(app).put(`/api/v2/run-program/custom/${id}`).send(body))
+          .status
+      ).toBe(404);
+      expect(
+        (await request(app).delete(`/api/v2/run-program/custom/${id}`)).status
+      ).toBe(404);
+      expect(
+        (await request(app).delete('/api/v2/run-program/custom/nope')).status
+      ).toBe(404);
+    });
+
+    it('is owner-only', async () => {
+      actingAs = 'someone-else';
+      const res = await request(app).get('/api/v2/run-program/custom');
+      expect(res.status).toBe(403);
+      expect(listCustomRunPrograms).not.toHaveBeenCalled();
+    });
   });
 });

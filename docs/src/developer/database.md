@@ -95,8 +95,10 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | `exercise_preset_entries` | Logged workout presets for the day |
 | `exercise_entry_sets` | Reps, weights, and sets completed |
 | `exercise_entry_activity_details` | Heart rate, distance, activity data |
+| `shoes` | Running-shoe inventory with retirement mileage; linked from `exercise_entries.shoe_id` |
 | `exercise_entry_laps` | Lap split intervals for workouts |
 | `exercise_entry_hr_zones` | Heart-rate time-in-zone splits per workout |
+| `exercise_entry_distance_series` | Distance-against-time rows for an indoor entry with no route, behind its pace chart. One row per workout (`points` is JSONB) |
 | `exercise_entry_gps_points` | GPS trackpoints & second-by-second telemetry. One row per workout (the `points` column holds the whole track as JSONB), not one row per trackpoint |
 | `workout_presets` | Custom workout/preset templates |
 | `workout_preset_exercises` | Exercises assigned to presets |
@@ -154,6 +156,7 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | `cycle_test_entries` | Ovulation and pregnancy test logs |
 | `pregnancies` | Pregnancy records (due date, status) |
 | `run_programs` | A person's run program, their place in it, its Diary schedule, goal date, adjustments to it and which diary entries its workouts were done as |
+| `custom_run_programs` | A person's own run or walk plans: a name, the activity and an ordered list of workouts, each a list of timed steps. Starting one copies it into `run_programs` |
 | `pregnancy_kick_sessions` | Fetal kick-counter sessions |
 | `pregnancy_contractions` | Contraction timer logs |
 | `pregnancy_photos` | Bump photo journal |
@@ -190,7 +193,7 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | `global_settings` | Application feature flags and config |
 | `sso_provider` | Active Single Sign-On providers |
 | `oidc_providers` | OpenID Connect integration settings |
-| `external_provider_types` | Search provider configurations (FatSecret, USDA, Canadian Nutrient File) |
+| `external_provider_types` | Search provider configurations (FatSecret, USDA, Canadian Nutrient File, Livsmedelsverket) |
 | `external_data_providers` | Configured API integration credentials, including personal or global Open Food Facts accounts |
 | `openfoodfacts_product_read_rate_limit` | Singleton lease and cooldown coordinating Open Food Facts product reads across server instances |
 | `openfoodfacts_sync_queue` | Dormant revision-aware automatic upload state and retained history; unused by manual contributions |

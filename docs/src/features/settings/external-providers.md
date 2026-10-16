@@ -18,6 +18,7 @@ SparkyFitness supports integration with the following health and fitness data pr
 - Hevy (not tested)
 - [Liftosaur](/features/settings/liftosaur)
 - [Canadian Nutrient File (Health Canada)](/features/settings/canadian-nutrient-file)
+- [Swedish Food Agency (Livsmedelsverket)](/features/settings/livsmedelsverket)
 - Swiss Food Composition Database
 - OpenFoodFacts
 - USDA
@@ -36,6 +37,14 @@ The Canadian Nutrient File (CNF) is Health Canada's official food composition da
 SparkyFitness supports both **live on-demand search** across the official Health Canada API in English and French, as well as **offline bulk catalog import** to cache the entire catalog locally.
 
 For setup instructions, import options, and licensing information, see the [Canadian Nutrient File Documentation](/features/settings/canadian-nutrient-file).
+
+## Swedish Food Agency (Livsmedelsverket)
+
+The Swedish Food Agency (*Livsmedelsverket*) publishes the authoritative Swedish Food Composition Database (*Livsmedelsdatabasen*) containing ~2,600 analyzed and calculated food items with over 50 nutritional components each. It is free open data licensed under Creative Commons Attribution 4.0 (CC BY 4.0), requires no credentials or API keys, and is enabled by default.
+
+SparkyFitness supports both **live on-demand search** across the official open data API in Swedish and English, as well as **offline bulk catalog import** to cache the entire catalog locally.
+
+For setup instructions, import options, and licensing information, see the [Swedish Food Agency Documentation](/features/settings/livsmedelsverket).
 
 ## Open Food Facts Accounts and Contributions
 

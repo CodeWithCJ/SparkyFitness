@@ -784,6 +784,53 @@ describe('lookup_food_nutrition', () => {
       { providerId: 'prov-swiss' }
     );
   });
+
+  it('supports explicit provider_type: "livsmedelsverket" in lookup_food_nutrition', async () => {
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      {
+        id: 'prov-slv',
+        provider_type: 'livsmedelsverket',
+        provider_name: 'Swedish Food Agency (Livsmedelsverket)',
+      },
+    ]);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          name: 'Knäckebröd råg',
+          provider_external_id: 'slv-101',
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 350,
+            protein: 10,
+            carbs: 65,
+            fat: 2,
+          },
+        },
+      ],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'lookup_food_nutrition',
+        food_name: 'Knäckebröd',
+        provider_type: 'livsmedelsverket',
+      },
+      opts
+    );
+
+    expect(result).toContain('Found match in **livsmedelsverket**');
+    expect(result).toContain('Knäckebröd råg');
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-1',
+      'livsmedelsverket',
+      'Knäckebröd',
+      { providerId: 'prov-slv' }
+    );
+  });
 });
 
 describe('barcode metadata', () => {
@@ -2090,6 +2137,70 @@ describe('log_external_food', () => {
       expect.objectContaining({
         provider_type: 'swissfood',
         provider_external_id: 'swiss-101',
+      })
+    );
+  });
+
+  it('supports logging a food from livsmedelsverket provider', async () => {
+    const swedishBread = {
+      name: 'Knäckebröd råg',
+      provider_external_id: 'slv-101',
+      default_variant: {
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 350,
+        protein: 10,
+        carbs: 65,
+        fat: 2,
+      },
+    };
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      {
+        id: 'prov-slv',
+        provider_type: 'livsmedelsverket',
+        provider_name: 'Swedish Food Agency (Livsmedelsverket)',
+      },
+    ]);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [swedishBread],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+    });
+    vi.mocked(foodCoreService.createFood).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Knäckebröd råg',
+      default_variant: {
+        id: VARIANT_ID,
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 350,
+      },
+    });
+    vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+      id: ENTRY_ID,
+      food_name: 'Knäckebröd råg',
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'log_external_food',
+        food_name: 'Knäckebröd råg',
+        provider_type: 'livsmedelsverket',
+        quantity: 100,
+        unit: 'g',
+        meal_type: 'breakfast',
+        entry_date: '2026-10-14',
+      },
+      opts
+    );
+
+    expect(result).toContain('Saved "Knäckebröd råg" from livsmedelsverket');
+    expect(foodCoreService.createFood).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        provider_type: 'livsmedelsverket',
+        provider_external_id: 'slv-101',
       })
     );
   });

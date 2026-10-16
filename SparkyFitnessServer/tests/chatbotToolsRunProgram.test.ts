@@ -24,6 +24,8 @@ const program = (overrides: Partial<RunProgramResponse> = {}) =>
   ({
     id: 'p1',
     program_id: 'beginner5k',
+    name: null,
+    activity: null,
     enabled: true,
     next_index: 4,
     workouts: findProgram('beginner5k')!.workouts,

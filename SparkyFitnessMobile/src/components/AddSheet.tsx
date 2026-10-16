@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 import Icon, { type IconName } from './Icon';
 import Button from './ui/Button';
-import { useSheetBackdrop } from './ui/sheetChrome';
+import { useSheetBackdrop, useSheetHardwareBack } from './ui/sheetChrome';
 
 export interface AddSheetRef {
   present: (options?: { initialMenu?: 'exercise' }) => void;
@@ -82,6 +82,10 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const pendingInitialMenuRef = useRef<'exercise' | null>(null);
     const presentFrameRef = useRef<number | null>(null);
     const [showExerciseMenu, setShowExerciseMenu] = useState(false);
+    // Mirrors the modal's open state for the Android hardware-back listener.
+    // Cleared in onDismiss (the terminal signal), not at dismissal start, so a
+    // Back press during the close animation is still swallowed by the sheet.
+    const [isOpen, setIsOpen] = useState(false);
 
     const [surfaceBg, textMuted, accentPrimary, raisedBg, textSecondary] =
       useCSSVariable([
@@ -108,6 +112,15 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       });
     }, [clearScheduledPresent]);
 
+    const dismissSheet = useCallback(() => {
+      pendingPresentRef.current = false;
+      pendingInitialMenuRef.current = null;
+      isPresentingRef.current = false;
+      isDismissingRef.current = true;
+      clearScheduledPresent();
+      bottomSheetRef.current?.dismiss();
+    }, [clearScheduledPresent]);
+
     useImperativeHandle(
       ref,
       () => ({
@@ -130,16 +143,9 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
           setShowExerciseMenu(initialMenu === 'exercise');
           schedulePresent();
         },
-        dismiss: () => {
-          pendingPresentRef.current = false;
-          pendingInitialMenuRef.current = null;
-          isPresentingRef.current = false;
-          isDismissingRef.current = true;
-          clearScheduledPresent();
-          bottomSheetRef.current?.dismiss();
-        },
+        dismiss: dismissSheet,
       }),
-      [clearScheduledPresent, schedulePresent]
+      [dismissSheet, schedulePresent]
     );
 
     useEffect(() => {
@@ -169,6 +175,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     const handleDismiss = useCallback(() => {
       isDismissingRef.current = false;
       isOpenRef.current = false;
+      setIsOpen(false);
       if (pendingPresentRef.current) {
         const initialMenu = pendingInitialMenuRef.current;
         pendingPresentRef.current = false;
@@ -186,6 +193,20 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       }
     }, [onDismissWithoutAction, schedulePresent]);
 
+    // The sheet is opening or open. Called from onAnimate and from onChange:
+    // when the open finishes before onAnimate reaches JS (Android's "Remove
+    // animations", or a busy JS thread), the library drops onAnimate, and
+    // onChange is the only signal that arrives.
+    const markOpen = useCallback(() => {
+      isDismissingRef.current = false;
+      isOpenRef.current = true;
+      isPresentingRef.current = false;
+      pendingPresentRef.current = false;
+      pendingInitialMenuRef.current = null;
+      clearScheduledPresent();
+      setIsOpen(true);
+    }, [clearScheduledPresent]);
+
     const handleAnimate = useCallback(
       (fromIndex: number, toIndex: number) => {
         if (fromIndex >= 0 && toIndex === -1) {
@@ -196,16 +217,40 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         }
 
         if (toIndex >= 0) {
-          isDismissingRef.current = false;
-          isOpenRef.current = true;
-          isPresentingRef.current = false;
-          pendingPresentRef.current = false;
-          pendingInitialMenuRef.current = null;
-          clearScheduledPresent();
+          markOpen();
         }
       },
-      [clearScheduledPresent]
+      [markOpen]
     );
+
+    const handleChange = useCallback(
+      (index: number) => {
+        if (index >= 0) {
+          markOpen();
+        }
+      },
+      [markOpen]
+    );
+
+    const showMainMenu = useCallback(() => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setShowExerciseMenu(false);
+    }, []);
+
+    // Back does what the sheet's own Back link does: from the Exercise menu it
+    // returns to the main menu, and from the main menu it closes the sheet.
+    const handleHardwareBack = useCallback(() => {
+      // Already closing (an option was picked, or Back was pressed twice):
+      // only swallow the press, so the menu does not change as the sheet goes.
+      if (isDismissingRef.current) return;
+      if (showExerciseMenu) {
+        showMainMenu();
+      } else {
+        dismissSheet();
+      }
+    }, [dismissSheet, showExerciseMenu, showMainMenu]);
+
+    useSheetHardwareBack(isOpen, handleHardwareBack);
 
     const cards: ActionCard[] = [
       {
@@ -313,6 +358,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
         onAnimate={handleAnimate}
+        onChange={handleChange}
         onDismiss={handleDismiss}
       >
         <BottomSheetView className="pb-safe-or-5 px-2.5">
@@ -322,12 +368,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
                 className="flex-row items-center mb-3 px-1.5"
                 accessibilityRole="button"
                 accessibilityLabel={t('common.back', { defaultValue: 'Back' })}
-                onPress={() => {
-                  LayoutAnimation.configureNext(
-                    LayoutAnimation.Presets.easeInEaseOut
-                  );
-                  setShowExerciseMenu(false);
-                }}
+                onPress={showMainMenu}
               >
                 <Icon name="chevron-back" size={20} color={accentPrimary} />
                 <Text

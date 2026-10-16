@@ -358,6 +358,29 @@ export function paceSeriesFromTrack(
     samples.push({ t, meters: running });
   }
 
+  return paceSeriesFromSamples(samples, unitMeters);
+}
+
+/**
+ * A distance recorded against time with no route (an indoor session):
+ * `[active seconds, cumulative metres]` rows, in the same windows as a track.
+ */
+export function paceSeriesFromDistance(
+  rows: readonly (readonly number[])[],
+  unitMeters: number
+): PacePoint[] {
+  if (rows.length < 2 || !(unitMeters > 0)) return [];
+  const samples = rows
+    .filter((row) => row.length >= 2)
+    .map((row) => ({ t: row[0] * 1000, meters: row[1] }))
+    .sort((a, b) => a.t - b.t);
+  return paceSeriesFromSamples(samples, unitMeters);
+}
+
+function paceSeriesFromSamples(
+  samples: readonly { t: number; meters: number }[],
+  unitMeters: number
+): PacePoint[] {
   const series: PacePoint[] = [];
   let anchor = samples[0];
   for (let i = 1; i < samples.length; i++) {

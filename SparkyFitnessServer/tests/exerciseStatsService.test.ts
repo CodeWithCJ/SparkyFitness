@@ -478,6 +478,38 @@ describe('exerciseStatsService', () => {
       expect(runPr?.bestTimeSeconds).not.toBe(walkPr?.bestTimeSeconds);
     });
 
+    it('leaves sports without a distance standard out of the distance bands', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            std_key: 'marathon',
+            id: 'ski-1',
+            exercise_name: 'Downhill Skiing',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-02-23'),
+            duration_minutes: 122.2,
+            distance: 42.2,
+            provider_name: null,
+            detail_data: null,
+            exercise_source_id: null,
+          },
+        ],
+      });
+      // No band qualifies, so the best-effort fallback runs before strength.
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      expect(
+        res.cardioPRs.filter(
+          (pr) => pr.sportGroup === 'other' && pr.distanceStandard !== 'custom'
+        )
+      ).toEqual([]);
+    });
+
     it('does not let a bike ride take the 5 km record from a run', async () => {
       mockClient.query.mockResolvedValueOnce({
         rows: [

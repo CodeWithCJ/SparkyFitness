@@ -60,8 +60,11 @@ const MFASettings = () => {
   const handlePasswordAction = async () => {
     if (!confirmPassword) {
       toast({
-        title: 'Error',
-        description: 'Password is required.',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.mfaSettings.passwordIsRequired',
+          'Password is required.'
+        ),
         variant: 'destructive',
       });
       return;
@@ -87,7 +90,13 @@ const MFASettings = () => {
           }
           setOtpAuthUrl(enableRes.data.totpURI);
           setRecoveryCodes(enableRes.data.backupCodes);
-          toast({ title: 'Success', description: 'Scan QR code to verify.' });
+          toast({
+            title: t('common.success', 'Success'),
+            description: t(
+              'settings.mfaSettings.scanQRCodeToVerify',
+              'Scan QR code to verify.'
+            ),
+          });
           await refetch();
           break;
         }
@@ -97,7 +106,13 @@ const MFASettings = () => {
           });
           if (disableRes.error) throw disableRes.error;
 
-          toast({ title: 'Success', description: 'TOTP disabled.' });
+          toast({
+            title: t('common.success', 'Success'),
+            description: t(
+              'settings.mfaSettings.totpDisabled',
+              'TOTP disabled.'
+            ),
+          });
           await refetch();
           queryClient.invalidateQueries({ queryKey: ['users'] });
           queryClient.refetchQueries({ queryKey: ['users'], type: 'all' });
@@ -110,7 +125,13 @@ const MFASettings = () => {
           if (backupRes.error) throw backupRes.error;
           setRecoveryCodes(backupRes.data.backupCodes);
           setShowRecoveryCodes(true);
-          toast({ title: 'Success', description: 'Backup codes generated.' });
+          toast({
+            title: t('common.success', 'Success'),
+            description: t(
+              'settings.mfaSettings.backupCodesGenerated',
+              'Backup codes generated.'
+            ),
+          });
           await refetch();
           break;
         }
@@ -122,8 +143,13 @@ const MFASettings = () => {
       const message = getErrorMessage(error);
       log(loggingLevel, 'ERROR', 'MFA Action Error:', error);
       toast({
-        title: 'Error',
-        description: message || 'Failed to perform action',
+        title: t('common.error', 'Error'),
+        description:
+          message ||
+          t(
+            'settings.mfaSettings.failedToPerformAction',
+            'Failed to perform action'
+          ),
         variant: 'destructive',
       });
     } finally {
@@ -141,7 +167,13 @@ const MFASettings = () => {
       });
       if (error) throw error;
 
-      toast({ title: 'Success', description: 'TOTP verified and enabled!' });
+      toast({
+        title: t('common.success', 'Success'),
+        description: t(
+          'settings.mfaSettings.totpVerifiedAndEnabled',
+          'TOTP verified and enabled!'
+        ),
+      });
       await refetch();
       queryClient.invalidateQueries({ queryKey: ['users'] });
       queryClient.refetchQueries({ queryKey: ['users'], type: 'all' });
@@ -151,8 +183,12 @@ const MFASettings = () => {
       const message = getErrorMessage(error);
       log(loggingLevel, 'ERROR', 'Error verifying TOTP:', error);
       toast({
-        title: 'Error',
-        description: `Failed to verify TOTP: ${message}`,
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.mfaSettings.failedToVerifyTOTP',
+          'Failed to verify TOTP: {{message}}',
+          { message }
+        ),
         variant: 'destructive',
       });
     } finally {
@@ -164,13 +200,24 @@ const MFASettings = () => {
     setEmailLoading(true);
     try {
       await toggleEmailMfa(true);
-      toast({ title: 'Success', description: 'Email MFA enabled!' });
+      toast({
+        title: t('common.success', 'Success'),
+        description: t(
+          'settings.mfaSettings.emailMFAEnabled',
+          'Email MFA enabled!'
+        ),
+      });
       await refetch();
     } catch (error: unknown) {
       const message = getErrorMessage(error);
       toast({
-        title: 'Error',
-        description: message || 'Failed to enable Email MFA',
+        title: t('common.error', 'Error'),
+        description:
+          message ||
+          t(
+            'settings.mfaSettings.failedToEnableEmailMFA',
+            'Failed to enable Email MFA'
+          ),
         variant: 'destructive',
       });
     } finally {
@@ -182,13 +229,24 @@ const MFASettings = () => {
     setEmailLoading(true);
     try {
       await toggleEmailMfa(false);
-      toast({ title: 'Success', description: 'Email MFA disabled.' });
+      toast({
+        title: t('common.success', 'Success'),
+        description: t(
+          'settings.mfaSettings.emailMFADisabled',
+          'Email MFA disabled.'
+        ),
+      });
       await refetch();
     } catch (error: unknown) {
       const message = getErrorMessage(error);
       toast({
-        title: 'Error',
-        description: message || 'Failed to disable Email MFA',
+        title: t('common.error', 'Error'),
+        description:
+          message ||
+          t(
+            'settings.mfaSettings.failedToDisableEmailMFA',
+            'Failed to disable Email MFA'
+          ),
         variant: 'destructive',
       });
     } finally {
@@ -199,8 +257,11 @@ const MFASettings = () => {
   const copyRecoveryCodes = () => {
     navigator.clipboard.writeText(recoveryCodes.join('\n'));
     toast({
-      title: 'Copied',
-      description: 'Recovery codes copied to clipboard.',
+      title: t('settings.mfaSettings.copied', 'Copied'),
+      description: t(
+        'settings.mfaSettings.recoveryCodesCopiedToClipboard',
+        'Recovery codes copied to clipboard.'
+      ),
     });
   };
 

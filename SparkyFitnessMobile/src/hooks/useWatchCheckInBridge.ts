@@ -63,7 +63,19 @@ import { useActiveWorkoutPlans } from './useActiveWorkoutPlan';
 import { scheduledWorkoutsForWatch } from '../utils/workoutPlanSchedule';
 import { useCurrentFast } from './useFasting';
 import { toWatchFast } from '../utils/watchFast';
-import { getRecordingPreferences } from '../services/gpsRecordingService';
+import {
+  getRecordingPreferences,
+  onRecordingPreferenceChange,
+} from '../services/gpsRecordingService';
+import { useRunProgram } from '../services/runProgramService';
+import { suggestedPaceRangesFromRace } from '../utils/suggestedRanges';
+import { buildWatchRunPlans } from '../utils/watchRunPlans';
+import {
+  getWatchIndoorScale,
+  onWatchIndoorScaleChange,
+} from '../services/watchIndoorScale';
+import { presetName } from '../components/recording/IntervalSetup';
+import { programWorkoutLabel } from '../components/recording/RunProgramCard';
 
 /** Saved workouts the watch may start. Presets with no exercises are omitted:
  * the server rejects a session that has none. */
@@ -114,8 +126,8 @@ function goalProgress(consumed: number, goal: number): number {
   return Math.max(0, Math.min(1, consumed / goal));
 }
 
-/** Daily step goal sent to the watch (no per-user step goal exists yet). */
-const WATCH_STEP_GOAL = 10000;
+/** Step goal sent to the watch when the user has not set one. */
+const DEFAULT_WATCH_STEP_GOAL = 10000;
 
 /** Days of history relayed to the watch — matches the watch's 14-day chart. */
 const HISTORY_DAYS = 14;
@@ -280,6 +292,56 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // A weighted carry's distance follows the phone's distance unit: the watch
   // shows metres, or yards when the phone is set to miles.
   const distanceUnit = watchDistanceUnit(preferences?.default_distance_unit);
+  const { status: programStatus, enabled: programEnabled } = useRunProgram();
+  // The learned indoor distance factor, re-read whenever a correction
+  // changes it, so the next context push carries the new value.
+  const [indoorDistanceScale, setIndoorDistanceScale] = useState<{
+    walk: number;
+    run: number;
+  } | null>(null);
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      void getWatchIndoorScale().then((scale) => {
+        if (active) setIndoorDistanceScale(scale);
+      });
+    };
+    load();
+    const unsubscribe = onWatchIndoorScaleChange(load);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
+  const paceReferenceRace = useAppPreferencesStore((s) => s.paceReferenceRace);
+  const paceReferenceOnWatch = useAppPreferencesStore(
+    (s) => s.paceReferenceOnWatch
+  );
+  // Race-based pace ranges for the program workout offered on the watch, when
+  // the person has set a race and asked for them there. Runs only.
+  const watchPaceRanges = useMemo(
+    () =>
+      paceReferenceOnWatch &&
+      paceReferenceRace &&
+      programStatus?.program.activity !== 'walk'
+        ? suggestedPaceRangesFromRace(paceReferenceRace, 'run')
+        : null,
+    [paceReferenceOnWatch, paceReferenceRace, programStatus]
+  );
+  const runPlans = useMemo(
+    () =>
+      buildWatchRunPlans(
+        t,
+        { status: programStatus, enabled: programEnabled },
+        {
+          program: (status) => programWorkoutLabel(t, status),
+          preset: (id) => presetName(t, id),
+        },
+        watchPaceRanges
+      ),
+    [t, programStatus, programEnabled, watchPaceRanges]
+  );
   const { presets } = useWorkoutPresets({ enabled });
   const fastQuery = useCurrentFast({ enabled });
   const fast = fastQuery.data;
@@ -405,6 +467,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // two never disagree.
   const waterConsumedMl = dailySummary?.waterConsumed ?? null;
   const waterGoalMl = dailySummary?.waterGoal ?? null;
+  const stepGoal =
+    dailySummary?.stepsGoal && dailySummary.stepsGoal > 0
+      ? dailySummary.stepsGoal
+      : DEFAULT_WATCH_STEP_GOAL;
   // The part of the total that came from logged food's water. Sent only when
   // food water counts toward intake (the same setting the phone's gauge
   // follows), so the watch shows the line only for people who opted in.
@@ -666,6 +732,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       const figures =
         summaryDate === today ? figuresForSummaryDate : NO_FIGURES_FOR_TODAY;
 
+      const recording = await getRecordingPreferences();
       const context: WatchContextPayload = {
         // Keeps consecutive pushes distinct — see the field's own comment.
         // Without it an unchanged day pushes an identical dictionary, which
@@ -692,7 +759,23 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         restAlertsEnabled,
         doubleTapEnabled: watchDoubleTapEnabled,
         rpeEnabled: watchRpeEnabled,
-        runVoiceCues: (await getRecordingPreferences()).audioCues,
+        runVoiceCues: recording.audioCues,
+        runAutoPause: recording.autoPause,
+        runCheckInMinutes: recording.checkInMinutes,
+        ...(recording.heartRateBand
+          ? {
+              runHeartRateMinBpm: recording.heartRateBand.minBpm,
+              runHeartRateMaxBpm: recording.heartRateBand.maxBpm,
+            }
+          : {}),
+        ...(recording.paceBand
+          ? {
+              runPaceMinSecondsPerKm: recording.paceBand.minSecondsPerKm,
+              runPaceMaxSecondsPerKm: recording.paceBand.maxSecondsPerKm,
+            }
+          : {}),
+        runPlans,
+        ...(indoorDistanceScale ? { indoorDistanceScale } : {}),
         startableWorkouts,
         suggestedExercises,
         // Built for `summaryDate`; a push that has crossed midnight before the
@@ -708,7 +791,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           todayRow?.steps != null && todayRow.steps >= 0
             ? { day: today, count: Math.round(todayRow.steps) }
             : null,
-        stepGoal: WATCH_STEP_GOAL,
+        stepGoal,
         pageOrder: resolveKeyOrder(watchPageOrder, WATCH_PAGE_KEYS),
         hiddenPages: hiddenWatchPages,
         setInputStyle: watchSetInputStyle,
@@ -738,10 +821,13 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     restAlertsEnabled,
     watchDoubleTapEnabled,
     watchRpeEnabled,
+    runPlans,
+    indoorDistanceScale,
     startableWorkouts,
     suggestedExercises,
     scheduledWorkouts,
     waterGoalMl,
+    stepGoal,
     waterDisplayUnit,
     watchPageOrder,
     hiddenWatchPages,
@@ -764,6 +850,15 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   useEffect(() => {
     pushContextRef.current = pushContext;
   });
+  // The Voice cues switch lives on the Record screen, outside this hook's
+  // dependencies, so tell the watch when it flips.
+  useEffect(
+    () =>
+      onRecordingPreferenceChange(() => {
+        if (enabled) void pushContextRef.current();
+      }),
+    [enabled]
+  );
 
   /**
    * Writes the ack bookkeeping to disk, and is awaited by every caller.

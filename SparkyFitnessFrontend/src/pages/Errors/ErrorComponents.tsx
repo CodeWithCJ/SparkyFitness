@@ -12,6 +12,7 @@ import {
   triggerChunkRecoveryReload,
 } from '@/utils/chunkRecovery';
 
+import { useTranslation } from 'react-i18next';
 const UPDATE_TITLE = 'Updating SparkyFitness...';
 const UPDATE_MESSAGE = 'Loading the latest version.';
 
@@ -38,6 +39,7 @@ const useChunkRecoveryReload = (routeError: unknown) => {
 };
 
 export const RootErrorBoundary = () => {
+  const { t } = useTranslation();
   const error = useRouteError();
   const navigate = useNavigate();
   const isUpdatingApp = useChunkRecoveryReload(error);
@@ -76,7 +78,7 @@ export const RootErrorBoundary = () => {
           className="flex items-center gap-2 mx-auto"
         >
           <Home className="h-4 w-4" />
-          Return to Home
+          {t('errors.errorComponents.returnToHome', 'Return to Home')}
         </Button>
       </div>
     </div>
@@ -84,6 +86,7 @@ export const RootErrorBoundary = () => {
 };
 
 export const RouteErrorBoundary = () => {
+  const { t } = useTranslation();
   const error = useRouteError();
   const navigate = useNavigate();
   const isUpdatingApp = useChunkRecoveryReload(error);
@@ -124,14 +127,14 @@ export const RouteErrorBoundary = () => {
             className="flex items-center gap-2"
           >
             <RefreshCcw className="h-4 w-4" />
-            Reload Page
+            {t('errors.errorComponents.reloadPage', 'Reload Page')}
           </Button>
           <Button
             onClick={() => navigate('/')}
             className="flex items-center gap-2"
           >
             <Home className="h-4 w-4" />
-            Return to Home
+            {t('errors.errorComponents.returnToHome', 'Return to Home')}
           </Button>
         </div>
       </div>

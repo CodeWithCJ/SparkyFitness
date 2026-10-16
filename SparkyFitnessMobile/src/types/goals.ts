@@ -21,6 +21,7 @@ export interface DailyGoals {
   water_goal_ml?: number;
   target_exercise_calories_burned?: number;
   target_exercise_duration_minutes?: number;
+  target_steps?: number;
   protein_percentage?: number;
   carbs_percentage?: number;
   fat_percentage?: number;

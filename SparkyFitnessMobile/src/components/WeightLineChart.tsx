@@ -5,7 +5,7 @@ import { CartesianChart } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
 import { formatLocalizedNumber } from '../localization/i18n';
 import {
-  makeChartFont,
+  useChartFont,
   CHART_LABEL_FONT_SIZE,
   formatXLabel7d,
   formatXLabel30d90d,
@@ -44,8 +44,6 @@ const X_TICK_COUNT: Record<HealthTrendDateRange, number> = {
   '30d': 6,
   '90d': 5,
 };
-
-const font = makeChartFont(CHART_LABEL_FONT_SIZE);
 
 const DEFAULT_TOOLTIP = '';
 
@@ -99,6 +97,7 @@ const WeightLineChart: React.FC<WeightLineChartProps> = ({
   goal,
 }) => {
   const { t } = useTranslation();
+  const font = useChartFont(CHART_LABEL_FONT_SIZE);
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',

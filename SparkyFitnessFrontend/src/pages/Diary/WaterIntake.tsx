@@ -427,7 +427,10 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                       </span>
                       {preset.hydration_factor === 0 && (
                         <span className="text-[9px] text-amber-600 dark:text-amber-400 font-mono">
-                          0% water
+                          {t(
+                            'foodDiary.waterIntake.zeroPercentWater',
+                            '0% water'
+                          )}
                         </span>
                       )}
                     </div>
@@ -449,8 +452,11 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
               className="flex items-center justify-between w-full text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
             >
               <span>
-                {t('foodDiary.waterIntake.logTitle', "Today's drinks")} (
-                {logEntries.length})
+                {t(
+                  'foodDiary.waterIntake.todaySDrinks',
+                  "Today's drinks ({{logEntriesCount}})",
+                  { logEntriesCount: logEntries.length }
+                )}
               </span>
               {showLog ? (
                 <ChevronUp className="h-3.5 w-3.5" />

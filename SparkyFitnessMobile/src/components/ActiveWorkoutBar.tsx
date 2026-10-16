@@ -28,6 +28,8 @@ import { flushActiveWorkoutBeforeClear } from '../hooks/useActiveWorkoutAutosave
 import { usePreferences } from '../hooks/usePreferences';
 import { useRestCountdown } from '../hooks/useRestCountdown';
 import { useRecordingBarContent } from '../hooks/useRecordingBarContent';
+import { useWatchRunBarContent } from '../hooks/useWatchRunBarContent';
+import { useHasWatchRunLive } from '../stores/watchRunLiveStore';
 import {
   useGpsRecording,
   useHasGpsRecording,
@@ -147,7 +149,8 @@ export function useActiveWorkoutBarPadding(
 ): number {
   const workoutActive = useActiveWorkoutStore((s) => s.sessionId !== null);
   const recordingActive = useHasGpsRecording();
-  if (!workoutActive && !recordingActive) return 0;
+  const watchRunActive = useHasWatchRunLive();
+  if (!workoutActive && !recordingActive && !watchRunActive) return 0;
   return context === 'tabs'
     ? ACTIVE_WORKOUT_BAR_HEIGHT
     : BAR_CONTENT_HEIGHT + LIQUID_GLASS_VERTICAL_GAP;
@@ -175,6 +178,7 @@ const HIDDEN_ROUTES = new Set<string>([
   'WorkoutAdd',
   'ActivityAdd',
   'RecordActivity',
+  'WatchRunLive',
   'MealPlans',
   'MealPlanForm',
   'MealAdd',
@@ -182,6 +186,7 @@ const HIDDEN_ROUTES = new Set<string>([
   'WaterContainerEdit',
   'WaterContainers',
   'MeasurementsAdd',
+  'MindfulnessLog',
   'Chat',
   'ActiveWorkout',
 ]);
@@ -487,7 +492,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   // A GPS recording takes the bar when no strength workout does, so leaving
   // the Record Activity screen keeps it one tap away above the dock.
   const recording = useGpsRecording();
-  const recordingContent = useRecordingBarContent({
+  const gpsContent = useRecordingBarContent({
     session: sessionId == null ? recording.session : null,
     points: recording.points,
     distanceUnit:
@@ -499,6 +504,21 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
       navigationRef.navigate('RecordActivity');
     },
   });
+
+  // A walk or run the watch is recording on its own comes next, so the phone
+  // shows how it is going. It never replaces a strength workout or a phone
+  // recording, which are the ones the phone itself controls.
+  const watchRunContent = useWatchRunBarContent({
+    distanceUnit:
+      preferences?.default_distance_unit === 'miles' ? 'miles' : 'km',
+    accentColor: accentPrimary,
+    onOpen: () => {
+      if (!navigationRef.isReady()) return;
+      navigationRef.navigate('WatchRunLive');
+    },
+  });
+  const recordingContent =
+    gpsContent ?? (sessionId == null ? watchRunContent : null);
 
   const isWorkoutComplete = sessionId != null && activeSetId == null;
 

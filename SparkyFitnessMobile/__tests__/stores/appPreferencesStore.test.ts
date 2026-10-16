@@ -244,6 +244,7 @@ describe('appPreferencesStore', () => {
         'askSparky',
         'macros',
         'exercise',
+        'trainingLoad',
         'hydration',
         'caffeine',
         'fasting',
