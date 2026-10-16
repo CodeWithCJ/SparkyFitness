@@ -147,3 +147,6 @@ The assistant can create private foods from labels or supplied nutrition, edit i
 Ask for recorded nutrient totals, goal comparisons or differences between two date ranges. The assistant reads historical diary snapshots and distinguishes logged days, unlogged days and missing nutrient references. It can save the analysis with its dates, source fingerprint and capture time for later review. A logged day may still be incomplete; goal gaps compare recorded food with calendar targets before exercise adjustments. The report states this goal basis and does not infer causes or diagnoses. Each analysis period supports up to 90 calendar days.
 
 Full-profile food chats allow up to 48 steps and 15 minutes for source research, checkpoints and verified publication. Smaller local/core profiles retain their shorter bounds. Longer work stays in saved tasks that can be resumed.
+
+
+If a connected client requests a diary undo or bulk deletion, open its review link while signed in and confirm the displayed entries. Opening the link does not change your diary. Lasting preferences are removed only after an explicit request naming the preference, or through its Delete control in settings.
