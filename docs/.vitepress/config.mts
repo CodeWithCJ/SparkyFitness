@@ -66,6 +66,7 @@ export default defineConfig({
         items: [
           { text: 'Feature Comparison', link: '/features/comparison' },
           { text: 'Diary & Nutrition', link: '/features/diary/meals' },
+          { text: 'Reports', link: '/features/reports' }, 
           { text: 'Exercise Logging', link: '/features/exercises/exercise-search' },
           { text: 'Food Database', link: '/features/food/food-search' },
           { text: 'AI Nutrition Assistant', link: '/features/ai-assistant' },
