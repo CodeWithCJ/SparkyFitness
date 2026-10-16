@@ -155,6 +155,14 @@ export function FoodAssistantState({
           {selected && (
             <div className="rounded border p-2 space-y-2">
               <p>{selected.checkpoint.summary}</p>
+              {selected.checkpoint.recipe?.source_yield && (
+                <p>
+                  {t('foodAssistant.sourceYield', {
+                    yield: selected.checkpoint.recipe.source_yield,
+                    defaultValue: 'Original recipe yield: {{yield}}',
+                  })}
+                </p>
+              )}
               <p>{selected.checkpoint.next_step}</p>
               {shopping.success && (
                 <fieldset className="space-y-2">

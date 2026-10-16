@@ -127,7 +127,20 @@ async function getAiServiceSettingForBackend(id: string, userId: string) {
 // inactive service too. The user-scoped client preserves RLS: a user reads only
 // their own private rows plus `is_public` global rows, so this serves both the
 // per-user and admin/global test contexts without leaking other users' keys.
-async function getDecryptedAiServiceSettingById(id: string, userId: string) {
+async function getDecryptedAiServiceSettingById(
+  id: string,
+  userId: string
+): Promise<
+  | (Pick<
+      AiServiceSettings,
+      | 'service_type'
+      | 'custom_url'
+      | 'model_name'
+      | 'reasoning_effort'
+      | 'is_public'
+    > & { api_key: string | null })
+  | null
+> {
   const client = await getClient(userId); // User-specific operation (RLS-scoped)
   try {
     const result = await client.query(
@@ -158,6 +171,7 @@ async function getDecryptedAiServiceSettingById(id: string, userId: string) {
       api_key: decryptedApiKey,
       custom_url: setting.custom_url,
       model_name: setting.model_name,
+      reasoning_effort: setting.reasoning_effort ?? 'medium',
       is_public: setting.is_public,
     };
   } finally {

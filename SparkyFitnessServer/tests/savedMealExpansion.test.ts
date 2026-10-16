@@ -54,6 +54,13 @@ beforeEach(() => {
   vi.mocked(mealRepository.getMealById).mockResolvedValue(meal());
 });
 describe('verified saved meal expansion', () => {
+  it('accepts the same recipe version without fractional seconds', async () => {
+    const value = await expandSavedMeal(userId, {
+      ...selection,
+      expected_updated_at: '2026-10-09T00:00:00Z',
+    });
+    expect(value.leaves).toHaveLength(1);
+  });
   it('preserves explicit zero rows in the source while expanding only quantities that contribute', async () => {
     const zero = {
       ...ingredient,

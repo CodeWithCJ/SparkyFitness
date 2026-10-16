@@ -40,6 +40,33 @@ router.use((req, _res, next) => {
   next();
 });
 const uuid = z.string().uuid();
+/**
+ * @swagger
+ * /v2/food-assistant/analysis:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/analysis', async (req, res, next) => {
   const input = foodAssistantAnalysisDraftSchema.safeParse(req.body);
   if (!input.success)
@@ -56,6 +83,40 @@ router.post('/analysis', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/analysis/save/{id}:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/analysis/save/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id),
     command = changeFoodAssistantTaskSchema.safeParse(req.body);
@@ -74,6 +135,34 @@ router.post('/analysis/save/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/library/foods/{id}:
+ *   get:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.get('/library/foods/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   if (!id.success) return res.status(400).json({ error: 'Invalid food ID.' });
@@ -83,6 +172,34 @@ router.get('/library/foods/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/library/preview/{id}:
+ *   get:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.get('/library/preview/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id),
     foodId = uuid.optional().safeParse(req.query.food_id);
@@ -96,6 +213,40 @@ router.get('/library/preview/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/library/publish/{id}:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/library/publish/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id),
     data = publishFoodAssistantFoodSchema.safeParse(req.body);
@@ -116,6 +267,40 @@ router.post('/library/publish/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/library/undo/{id}:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/library/undo/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id),
     data = undoFoodAssistantFoodSchema.safeParse(req.body);
@@ -134,6 +319,40 @@ router.post('/library/undo/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/library/import/{id}:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/library/import/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id),
     data = importFoodAssistantProviderFoodSchema.safeParse(req.body);
@@ -147,6 +366,34 @@ router.post('/library/import/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/planning/plans/{id}:
+ *   get:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.get('/planning/plans/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   if (!id.success) return res.status(400).json({ error: 'Invalid plan ID.' });
@@ -156,6 +403,34 @@ router.get('/planning/plans/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/planning/preview/{id}:
+ *   get:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.get('/planning/preview/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   if (!id.success) return res.status(400).json({ error: 'Invalid task ID.' });
@@ -172,6 +447,46 @@ const planningCommands = {
   change_shopping_list: changeFoodAssistantShoppingSchema,
   undo_shopping_list: undoFoodAssistantShoppingSchema,
 };
+/**
+ * @swagger
+ * /v2/food-assistant/planning/{action}/{id}:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: action
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [cancel, resume]
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/planning/:action/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id),
     action = z
@@ -254,6 +569,33 @@ router.post('/planning/:action/:id', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /v2/food-assistant/diary/inspect:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/diary/inspect', async (req, res, next) => {
   const data = foodAssistantDiaryScopeSchema.safeParse(req.body);
   if (!data.success)
@@ -264,6 +606,40 @@ router.post('/diary/inspect', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/diary/apply/{id}:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/diary/apply/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id),
     data = applyFoodAssistantDiarySchema.safeParse(req.body);
@@ -289,6 +665,40 @@ router.post('/diary/apply/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/diary/undo/{id}:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/diary/undo/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id),
     data = undoFoodAssistantDiarySchema.safeParse(req.body);
@@ -308,6 +718,34 @@ router.post('/diary/undo/:id', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /v2/food-assistant/recipes/{id}:
+ *   get:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.get('/recipes/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   if (!id.success) return res.status(400).json({ error: 'Invalid recipe ID.' });
@@ -317,6 +755,33 @@ router.get('/recipes/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/recipes/draft:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/recipes/draft', async (req, res, next) => {
   const data = z
     .object({ meal_id: uuid, request_id: uuid })
@@ -336,6 +801,34 @@ router.post('/recipes/draft', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/tasks/{id}/recipe-preview:
+ *   get:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.get('/tasks/:id/recipe-preview', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   if (!id.success) return res.status(400).json({ error: 'Invalid task ID.' });
@@ -345,6 +838,40 @@ router.get('/tasks/:id/recipe-preview', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/recipes/publish/{id}:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/recipes/publish/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   const data = publishFoodAssistantRecipeSchema.safeParse(req.body);
@@ -366,6 +893,40 @@ router.post('/recipes/publish/:id', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /v2/food-assistant/recipes/import-ingredient/{id}:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/recipes/import-ingredient/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   const data = importFoodAssistantProviderFoodSchema.safeParse(req.body);
@@ -383,6 +944,40 @@ router.post('/recipes/import-ingredient/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/recipes/undo/{id}:
+ *   post:
+ *     summary: Run a versioned food assistant action
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/recipes/undo/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   const data = undoFoodAssistantRecipeSchema.safeParse(req.body);
@@ -402,6 +997,27 @@ router.post('/recipes/undo/:id', async (req, res, next) => {
   }
 });
 
+/**
+ * @swagger
+ * /v2/food-assistant/preferences:
+ *   get:
+ *     summary: List lasting food preferences
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.get('/preferences', async (req, res, next) => {
   try {
     res.json(await service.listPreferences(req.userId));
@@ -409,6 +1025,41 @@ router.get('/preferences', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/preferences:
+ *   put:
+ *     summary: Save a lasting preference from settings
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [key, value, expected_version]
+ *             properties:
+ *               key:
+ *                 type: string
+ *               value:
+ *                 type: string
+ *               expected_version:
+ *                 type: integer
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.put('/preferences', async (req, res, next) => {
   const parsed = editFoodAssistantPreferenceSchema.safeParse(req.body);
   if (!parsed.success)
@@ -426,6 +1077,39 @@ router.put('/preferences', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/preferences/{key}:
+ *   delete:
+ *     summary: Delete a versioned preference from settings
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: key
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - name: version
+ *         in: query
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *     responses:
+ *       '204':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.delete('/preferences/:key', async (req, res, next) => {
   const version = z.coerce
     .number()
@@ -438,13 +1122,37 @@ router.delete('/preferences/:key', async (req, res, next) => {
     await service.forgetPreference(
       req.userId,
       String(req.params.key),
-      version.data
+      version.data,
+      undefined,
+      undefined,
+      true
     );
     res.sendStatus(204);
   } catch (error) {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/tasks:
+ *   get:
+ *     summary: List recoverable food tasks
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.get('/tasks', async (req, res, next) => {
   try {
     res.json(await service.listTasks(req.userId));
@@ -452,6 +1160,45 @@ router.get('/tasks', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/tasks:
+ *   post:
+ *     summary: Create a recoverable food task
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id, kind, title, checkpoint]
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 format: uuid
+ *               kind:
+ *                 type: string
+ *               title:
+ *                 type: string
+ *               checkpoint:
+ *                 type: object
+ *                 description: FoodAssistantCheckpoint from the shared API contract; includes summary and retained ingredient/evidence rows.
+ *     responses:
+ *       '201':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/tasks', async (req, res, next) => {
   const parsed = createFoodAssistantTaskSchema.safeParse(req.body);
   if (!parsed.success)
@@ -462,6 +1209,34 @@ router.post('/tasks', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/tasks/{id}:
+ *   get:
+ *     summary: Read an owner-scoped task
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.get('/tasks/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   if (!id.success) return res.status(400).json({ error: 'Invalid task ID.' });
@@ -473,6 +1248,34 @@ router.get('/tasks/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/tasks/{id}/operations:
+ *   get:
+ *     summary: Read committed task operations
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.get('/tasks/:id/operations', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   if (!id.success) return res.status(400).json({ error: 'Invalid task ID.' });
@@ -482,6 +1285,52 @@ router.get('/tasks/:id/operations', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/tasks/{id}:
+ *   patch:
+ *     summary: Checkpoint unfinished food work
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [operation_id, expected_version, status, checkpoint]
+ *             properties:
+ *               operation_id:
+ *                 type: string
+ *                 format: uuid
+ *               expected_version:
+ *                 type: integer
+ *               status:
+ *                 type: string
+ *               checkpoint:
+ *                 type: object
+ *                 description: FoodAssistantCheckpoint from the shared API contract; includes summary and retained ingredient/evidence rows.
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.patch('/tasks/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   const data = checkpointFoodAssistantTaskSchema.safeParse(req.body);
@@ -500,6 +1349,53 @@ router.patch('/tasks/:id', async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /v2/food-assistant/tasks/{id}/{action}:
+ *   post:
+ *     summary: Cancel or explicitly resume a task
+ *     description: Private state is scoped to the signed-in actor. Mutations require the current version and a stable operation ID where specified by the shared request contract.
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - name: action
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [cancel, resume]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [operation_id, expected_version]
+ *             properties:
+ *               operation_id:
+ *                 type: string
+ *                 format: uuid
+ *               expected_version:
+ *                 type: integer
+ *     responses:
+ *       '200':
+ *         description: Persisted result or requested owner-scoped state
+ *       '400':
+ *         description: Invalid request
+ *       '401':
+ *         description: Authentication required
+ *       '404':
+ *         description: Item is not accessible
+ *       '409':
+ *         description: Stale version, conflicting retry, or action requiring confirmation
+ */
 router.post('/tasks/:id/:action', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
   const action = z.enum(['cancel', 'resume']).safeParse(req.params.action);

@@ -22,4 +22,3 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION public.assistant_food_has_dependants(uuid,uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.assistant_food_has_dependants(uuid,uuid) TO PUBLIC;

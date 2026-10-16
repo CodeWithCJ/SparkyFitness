@@ -183,7 +183,11 @@ const SparkyChatInner = ({
             content: [
               {
                 type: 'text',
-                text: `Continue my saved food task ${taskId}. Read its latest checkpoint before proceeding.`,
+                text: t('foodAssistant.resumePrompt', {
+                  id: taskId,
+                  defaultValue:
+                    'Continue my saved food task {{id}}. Read its latest checkpoint before proceeding.',
+                }),
               },
             ],
           })

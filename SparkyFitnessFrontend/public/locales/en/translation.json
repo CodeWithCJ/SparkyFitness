@@ -8306,7 +8306,18 @@
       "unresolved": "Needs matching",
       "selected": "Selected",
       "verified": "Verified"
-    }
+    },
+    "resumePrompt": "Continue my saved food task {{id}}. Read its latest checkpoint before proceeding.",
+    "sourceYield": "Original recipe yield: {{yield}}",
+    "confirmationRestore": "Entries after undo",
+    "confirmationTitle": "Review diary changes",
+    "confirmationDescription": "Your chat client requested these changes. Review the entries below before confirming. Opening this page does not change your diary.",
+    "confirmUndo": "Confirm undo",
+    "confirmationDone": "Changes saved. Return to your chat client and retry the same request to read the result.",
+    "confirmationChanged": "The diary task changed. Ask your chat client for a fresh preview.",
+    "confirmationCurrent": "Entries affected",
+    "confirmationInvalid": "This confirmation link is invalid. Ask your chat client to inspect the diary again.",
+    "confirmDelete": "Delete these entries"
   },
   "voiceSettings": {
     "title": "Voice input",

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { isGpt6Model } from '@workspace/shared';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -170,7 +171,7 @@ export const ServiceForm = ({
       </div>
 
       {formData.service_type === 'openai' &&
-        /^gpt-6(?:[.-]|$)/.test(selectedModel ?? '') && (
+        isGpt6Model(selectedModel ?? '') && (
           <div>
             <Label htmlFor="reasoning_effort">
               {t('settings.aiService.reasoningEffort.label')}

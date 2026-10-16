@@ -248,11 +248,11 @@ export async function changeShopping(
       allowComplete: true,
     },
     async (task) => {
-      const result = foodAssistantShoppingResultSchema.parse(task.result);
       if (task.kind !== 'shopping' || task.status !== 'complete')
         throw new FoodAssistantConflict(
           'Read the current completed shopping list before editing it.'
         );
+      const result = foodAssistantShoppingResultSchema.parse(task.result);
       const change = input.change;
       if (change.type === 'add') {
         if (result.items.length >= 500)

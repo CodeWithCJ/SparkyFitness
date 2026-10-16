@@ -124,7 +124,7 @@ it('uses the current attached image, retains unreadable lines, and stores its di
     yield: '2 loaves',
     ingredients: ['250 g flour', '[Unreadable line]'],
     instructions: null,
-    issues: ['Clarify line 2'],
+    issues: Array.from({ length: 10 }, () => 'Clarify line 2 '.repeat(30)),
   });
   const dataUrl = 'data:image/png;base64,aGVsbG8=';
   await buildRecipeTools(owner, {
@@ -140,6 +140,7 @@ it('uses the current attached image, retains unreadable lines, and stores its di
   expect(image.readRecipeImage).toHaveBeenCalledWith(owner, dataUrl, 'vision');
   const task = vi.mocked(repository.createTask).mock.calls[0][1];
   expect(task.checkpoint.ingredients).toHaveLength(2);
+  expect(task.checkpoint.summary).toHaveLength(2000);
   expect(task.checkpoint.ingredients[1].description).toBe('[Unreadable line]');
   expect(task.checkpoint.recipe).toMatchObject({
     source_yield: '2 loaves',

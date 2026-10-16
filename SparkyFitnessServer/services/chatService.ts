@@ -38,6 +38,7 @@ import {
   ChatToolCategorySlug,
   CHAT_TOOL_CATEGORY_SLUGS,
   isChatToolCategorySlug,
+  isGpt6Model,
 } from '@workspace/shared';
 
 interface ChatMessagePart {
@@ -868,6 +869,27 @@ const RETENTION_24H_MODEL_PREFIXES = [
 // reasoning-model IDs otherwise convert Sparky's system prompt to `developer`,
 // which older compatible gateways may not recognize as system instructions.
 // (Anthropic caches on the tools — see ai/tools/index.ts; Gemini auto-caches.)
+function buildFoodResearchTool(
+  serviceType: string,
+  modelName: string,
+  apiKey?: string | null
+) {
+  return serviceType === 'openai' && isGpt6Model(modelName)
+    ? createOpenAI({ apiKey: apiKey ?? undefined }).tools.webSearch({
+        searchContextSize: 'high',
+      })
+    : undefined;
+}
+
+function latestUserMessageText(messages: ChatMessage[]): string {
+  return extractMessageText(
+    [...messages].reverse().find((message) => message.role === 'user') ?? {
+      role: 'user',
+      content: '',
+    }
+  );
+}
+
 export function buildChatProviderOptions(
   serviceType: string,
   userId: string,
@@ -881,7 +903,7 @@ export function buildChatProviderOptions(
   const openai: Record<string, JSONValue> = {
     promptCacheKey: `sparky-chat-${userId}`,
   };
-  if (/^gpt-6(?:[.-]|$)/.test(modelName)) {
+  if (isGpt6Model(modelName)) {
     openai.reasoningEffort = reasoningEffort;
     openai.promptCacheOptions = { ttl: '30m' };
     openai.store = false;
@@ -2112,17 +2134,12 @@ async function processChatMessage(
       aiService.system_prompt,
       latestImageDataUrl,
       aiService.id,
-      aiService.service_type === 'openai' && /^gpt-6(?:[.-]|$)/.test(modelName)
-        ? createOpenAI({ apiKey: aiService.api_key }).tools.webSearch({
-            searchContextSize: 'high',
-          })
-        : undefined,
-      extractMessageText(
-        [...messages].reverse().find((message) => message.role === 'user') ?? {
-          role: 'user',
-          content: '',
-        }
-      )
+      buildFoodResearchTool(
+        aiService.service_type,
+        modelName,
+        aiService.api_key
+      ),
+      latestUserMessageText(messages)
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -2238,7 +2255,12 @@ async function processChatMessage(
     if (!finalContent) {
       // A tool call can fail or only search. Its name never proves a write.
       // Preserve the actual result instead of claiming a food was logged.
-      finalContent = toolOutputs.at(-1)?.trim() || EMPTY_RESPONSE_ERROR_TEXT;
+      log(
+        'debug',
+        'No assistant reply text; tool output retained for diagnostics:',
+        toolOutputs
+      );
+      finalContent = EMPTY_RESPONSE_ERROR_TEXT;
     }
 
     if (finalContent) {
@@ -2651,17 +2673,12 @@ async function processChatMessageStream(
       aiService.system_prompt,
       latestImageDataUrl,
       aiService.id,
-      aiService.service_type === 'openai' && /^gpt-6(?:[.-]|$)/.test(modelName)
-        ? createOpenAI({ apiKey: aiService.api_key }).tools.webSearch({
-            searchContextSize: 'high',
-          })
-        : undefined,
-      extractMessageText(
-        [...messages].reverse().find((message) => message.role === 'user') ?? {
-          role: 'user',
-          content: '',
-        }
-      )
+      buildFoodResearchTool(
+        aiService.service_type,
+        modelName,
+        aiService.api_key
+      ),
+      latestUserMessageText(messages)
     );
 
     const chatProviderOptions = buildChatProviderOptions(

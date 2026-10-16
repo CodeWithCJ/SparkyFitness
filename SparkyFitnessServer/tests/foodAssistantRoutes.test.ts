@@ -330,6 +330,20 @@ it('returns a conflict on stale edits rather than reporting success', async () =
   expect(response.status).toBe(409);
   expect(response.text).toContain('changed');
 });
+it('binds explicit settings deletion to the signed-in owner', async () => {
+  vi.mocked(service.forgetPreference).mockResolvedValueOnce(undefined);
+  expect((await request('DELETE', '/preferences/bread?version=2')).status).toBe(
+    204
+  );
+  expect(service.forgetPreference).toHaveBeenCalledWith(
+    'signed-in-owner',
+    'bread',
+    2,
+    undefined,
+    undefined,
+    true
+  );
+});
 it('validates planning writes and binds publication and shopping checks to the signed-in actor', async () => {
   const command = { operation_id: id, expected_version: 3, schedule: true };
   expect(

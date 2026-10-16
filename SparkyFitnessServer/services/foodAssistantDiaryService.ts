@@ -285,19 +285,20 @@ export async function applyDiary(
             input.estimate_source_quote,
             currentText
           );
-        const snapshots = saved
-          ? saved.leaves
-          : await Promise.all(
-              (action.type === 'log' ? action.foods : []).map((food) =>
-                selectFood(
-                  userId,
-                  client,
-                  food,
-                  input.estimate_source_quote,
-                  currentText
-                )
+        const snapshots = saved ? saved.leaves : [];
+        if (!saved && action.type === 'log') {
+          for (const food of action.foods) {
+            snapshots.push(
+              await selectFood(
+                userId,
+                client,
+                food,
+                input.estimate_source_quote,
+                currentText
               )
             );
+          }
+        }
         const logged = await writeVerifiedDiaryLog(userId, client, {
           snapshots,
           destination: action.destination,

@@ -56,7 +56,7 @@ These additive routes are authenticated and owner-only, using the signed-in acto
 | `/api/v2/food-assistant/diary/apply/:id` | POST | Apply versioned atomic log, replace, resize, scale, move, copy or delete with readback |
 | `/api/v2/food-assistant/diary/undo/:id` | POST | Explicitly restore a completed diary operation without overwriting later edits |
 
-Task changes require `operation_id` and `expected_version`. Repeating an identical operation returns its stored result. Reusing an ID for different work, stale versions, and unsupported transitions return HTTP 409. General task actions cannot change completed or cancelled tasks; recipe undo is a specific audited operation on a completed publication. Domain writes must share the repository's operation transaction; the operation record and checkpoint commit together. Draft endpoints cannot mark a task complete or mutate diary/library records. Older chat clients do not need to send these new fields.
+Task changes require `operation_id` and `expected_version`. Repeating an identical operation returns its stored result. Reusing an ID for different work, stale versions, and unsupported transitions return HTTP 409. General task actions cannot change completed tasks; only an explicit resume can reopen a cancelled task as a draft, without starting work; recipe undo is a specific audited operation on a completed publication. Domain writes must share the repository's operation transaction; the operation record and checkpoint commit together. Draft endpoints cannot mark a task complete or mutate diary/library records. Older chat clients do not need to send these new fields.
 
 ### Authentication
 
@@ -471,3 +471,5 @@ Progress photos attached to a calendar day. Every route below requires the `chec
 *   **Authentication**: JWT Token.
 *   **Responses**:
     *   `204 No Content`:
+
+MCP diary undo and bulk deletion require the signed-in owner to open the returned review link and press Confirm. The page loads the current task and entry preview without writing on page load. It submits the same versioned operation through the authenticated diary endpoint; the MCP client then retries the same operation ID to retrieve the persisted result. Model-supplied quotes alone never authorize these actions.

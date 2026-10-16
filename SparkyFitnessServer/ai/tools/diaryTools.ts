@@ -58,6 +58,20 @@ export function buildDiaryTools(userId: string, ctx?: ToolBuildContext) {
         const parsed = schema.safeParse(raw);
         if (!parsed.success) return formatZodError(parsed.error);
         const args = parsed.data;
+        // Stateless MCP has no independently captured user message. A quote in
+        // tool arguments is not consent. Use an authenticated review page; its
+        // explicit button commits the same idempotent operation for MCP retries.
+        const needsOwnerConfirmation =
+          !ctx?.latestUserText &&
+          (args.action === 'undo' ||
+            (args.action === 'apply' && args.command.action.type === 'delete'));
+        if (needsOwnerConfirmation) {
+          if (args.action === 'undo')
+            args.undo.source_quote = 'Undo these diary changes.';
+          if (args.action === 'apply' && args.command.action.type === 'delete')
+            args.command.action.confirmation_quote =
+              'Delete these diary entries.';
+        }
         try {
           switch (args.action) {
             case 'import_provider':
@@ -92,6 +106,22 @@ export function buildDiaryTools(userId: string, ctx?: ToolBuildContext) {
               );
           }
         } catch (error) {
+          if (
+            needsOwnerConfirmation &&
+            error instanceof FoodAssistantConflict &&
+            /explicit current user request|obtain confirmation/i.test(
+              error.message
+            )
+          ) {
+            const link = new URL(
+              'diary-confirmation',
+              `${process.env.SPARKY_FITNESS_FRONTEND_URL ?? 'http://localhost:8080'}/`
+            );
+            link.hash = encodeURIComponent(JSON.stringify(args));
+            return ERRORS.VALIDATION(
+              `The diary owner must review and confirm this request: [Review diary changes](${link.toString()}). Nothing was changed. After confirmation, retry this same operation ID to read its persisted result.`
+            );
+          }
           return error instanceof FoodAssistantConflict
             ? ERRORS.VALIDATION(error.message)
             : ERRORS.DB_ERROR(error);

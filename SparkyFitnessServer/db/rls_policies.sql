@@ -1081,7 +1081,6 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION public.assistant_recipe_has_dependants(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.assistant_recipe_has_dependants(uuid) TO PUBLIC;
 
 -- Plan creation undo may delete only its own unused template. This boolean
 -- guard includes references hidden by RLS and never exposes their identities.
@@ -1098,7 +1097,6 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION public.assistant_plan_has_external_dependants(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.assistant_plan_has_external_dependants(uuid) TO PUBLIC;
 
 -- Only a boolean leaves this function. The actor must own the food, including
 -- when checking references hidden by RLS before undo removes a new variant.
@@ -1125,4 +1123,3 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION public.assistant_food_has_dependants(uuid,uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.assistant_food_has_dependants(uuid,uuid) TO PUBLIC;

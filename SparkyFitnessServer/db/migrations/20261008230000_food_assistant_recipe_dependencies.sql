@@ -19,4 +19,3 @@ BEGIN
 END;
 $$;
 REVOKE ALL ON FUNCTION public.assistant_recipe_has_dependants(uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.assistant_recipe_has_dependants(uuid) TO PUBLIC;

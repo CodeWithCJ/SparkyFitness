@@ -108,7 +108,12 @@ export function buildRecipeTools(userId: string, ctx?: ToolBuildContext) {
         source_quote: z.string().optional(),
         provider_import: importFoodAssistantProviderFoodSchema.optional(),
         undo: undoFoodAssistantRecipeSchema.optional(),
-        command: publishFoodAssistantRecipeSchema.optional(),
+        command: z
+          .union([
+            publishFoodAssistantRecipeSchema,
+            changeFoodAssistantTaskSchema,
+          ])
+          .optional(),
       }),
       execute: async (raw) => {
         const parsed = schema.safeParse(raw);
@@ -225,7 +230,10 @@ export function buildRecipeTools(userId: string, ctx?: ToolBuildContext) {
                 title: source.name ?? 'Recipe image draft',
                 checkpoint: {
                   summary: source.issues.length
-                    ? `Image transcription needs clarification: ${source.issues.join('; ')}`
+                    ? `Image transcription needs clarification: ${source.issues.join('; ')}`.slice(
+                        0,
+                        2000
+                      )
                     : 'Recipe image transcribed. Nutrition and portions still need verification.',
                   ingredients: source.ingredients.map((description, index) => ({
                     id: uuidv5(`${index}:${description}`, args.request_id),

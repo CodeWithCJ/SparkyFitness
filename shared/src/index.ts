@@ -253,6 +253,7 @@ export * from "./schemas/api/FoodAssistantFoodDraft.api.zod.ts";
 export * from "./schemas/api/FoodAssistantLibrary.api.zod.ts";
 export * from "./schemas/api/FoodAssistantAnalysis.api.zod.ts";
 export * from "./utils/foodAssistantState.ts";
+export * from "./ai/modelFamilies.ts";
 export * from "./utils/runProgramAdjust.ts";
 export * from "./utils/runProgramBreak.ts";
 export * from "./utils/runProgramEffort.ts";

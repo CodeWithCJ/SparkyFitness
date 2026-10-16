@@ -1,4 +1,5 @@
 import undici from 'undici';
+import { isGpt6Model } from '@workspace/shared';
 import convert from 'heic-convert';
 import sharp from 'sharp';
 import { log } from '../config/logging.js';
@@ -603,10 +604,7 @@ function buildGoogleRequest(
 function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
   // GPT-6 tool use and structured output use the Responses protocol. Keep
   // user-hosted compatible endpoints on their configured Chat protocol.
-  if (
-    ctx.provider.service_type === 'openai' &&
-    /^gpt-6(?:[.-]|$)/.test(ctx.model)
-  ) {
+  if (ctx.provider.service_type === 'openai' && isGpt6Model(ctx.model)) {
     const format = ctx.jsonSchema
       ? {
           type: 'json_schema',
@@ -927,6 +925,29 @@ function extractOpenAiFamily(data: unknown): ExtractResult {
     };
   }
   // Perplexity Agent API responses (/v1/responses) return `output_text` or `output`
+  if (
+    Array.isArray(d?.output) &&
+    (d.output as unknown[]).some(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        'content' in item &&
+        Array.isArray(item.content) &&
+        (item.content as unknown[]).some(
+          (block) =>
+            block &&
+            typeof block === 'object' &&
+            'type' in block &&
+            block.type === 'refusal'
+        )
+    )
+  ) {
+    return {
+      kind: 'error',
+      category: 'refused',
+      detail: 'AI service refused the request.',
+    };
+  }
   if (typeof d?.output_text === 'string' && d.output_text.trim() !== '') {
     return { kind: 'text', text: d.output_text };
   }
