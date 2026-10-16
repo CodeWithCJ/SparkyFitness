@@ -61,7 +61,7 @@ const ANTHROPIC_MODELS_REJECTING_TEMPERATURE =
 // custom / openrouter gateway may serve a same-looking model id through a shim
 // that does accept temperature, so those are left to layer 2 rather than
 // assumed broken.
-const OPENAI_MODELS_REJECTING_TEMPERATURE = /^(gpt-5|o[1-9](-|$))/;
+const OPENAI_MODELS_REJECTING_TEMPERATURE = /^(gpt-[56]|o[1-9](-|$))/;
 
 const STATIC_TEMPERATURE_REJECTIONS: Record<string, RegExp> = {
   anthropic: ANTHROPIC_MODELS_REJECTING_TEMPERATURE,
