@@ -62,6 +62,21 @@ function expectSystemMessage(request: RecordedOpenAiRequest) {
 }
 
 describe('buildChatProviderOptions', () => {
+  it.each(['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-sol'])(
+    'uses supported reasoning and cache fields for %s',
+    (model) => {
+      expect(
+        buildChatProviderOptions('openai', 'user-1', model, 'high')
+      ).toEqual({
+        openai: {
+          promptCacheKey: 'sparky-chat-user-1',
+          reasoningEffort: 'high',
+          promptCacheOptions: { ttl: '30m' },
+          store: false,
+        },
+      });
+    }
+  );
   // Provider-gating: only the canonical 'openai' service type gets the
   // openai-namespaced prompt_cache_* options. OpenAI-compatible services share
   // the namespace but receive only adapter-level compatibility options.

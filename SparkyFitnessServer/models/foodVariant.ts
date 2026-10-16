@@ -1,11 +1,16 @@
+import type { PoolClient } from 'pg';
+import type { FoodVariantInput } from '../types/nutrition.js';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
 import { sanitizeGlycemicIndex } from './food.js';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createFoodVariant(variantData: any, userId: any) {
-  const client = await getClient(userId); // User-specific operation
+async function createFoodVariant(
+  variantData: FoodVariantInput,
+  userId: string,
+  transactionClient?: PoolClient
+) {
+  const client: PoolClient = transactionClient ?? (await getClient(userId));
   try {
     const result = await client.query(
       `INSERT INTO food_variants (
@@ -51,7 +56,7 @@ async function createFoodVariant(variantData: any, userId: any) {
     );
     return result.rows[0];
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -88,17 +93,20 @@ async function getFoodVariantOwnerId(variantId: any, userId: any) {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getFoodVariantsByFoodId(foodId: any, userId: any) {
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
+async function getFoodVariantsByFoodId(
+  foodId: string,
+  userId: string,
+  transactionClient?: PoolClient
+) {
+  const client: PoolClient = transactionClient ?? (await getClient(userId)); // User-specific operation (RLS will handle access)
   try {
-    const result = await client.query(
+    const result = await client.query<FoodVariantInput>(
       'SELECT * FROM food_variants WHERE food_id = $1',
       [foodId]
     );
     return result.rows;
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

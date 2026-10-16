@@ -37,6 +37,28 @@ AI transcription requires an updated client and server, with the database migrat
 - **Meal Context**: Understand meal timing and context for accurate logging
 - **Brand Recognition**: Identify specific food brands and products
 
+## Food Preferences and Saved Tasks
+
+The web and mobile chats' **Food preferences and tasks** panel shows lasting food preferences and saved work. Tell Sparky explicitly what to remember, or edit and forget preferences in the panel. A choice for one meal does not replace a lasting preference. These preferences are stored separately from conversation history.
+
+Multi-step food tasks keep their ingredient selections, portion variants, source evidence and next step. Ingredients that still need matching remain in the draft with incomplete nutrition. Saving a draft does not publish a recipe or add food to the diary. Select a task to inspect its checkpoint and operation history, cancel remaining work, or resume it in chat. Resume does not start a background job.
+
+This information belongs to the signed-in person and is not shared with family diary viewers.
+
+## Saved Recipe Drafts
+
+Ask Sparky to import an original recipe URL, transcribe an attached recipe image, or edit a saved recipe. Each ingredient remains in a saved draft while its product, portion and nutrition are verified. A source yield such as “2 loaves” stays visible until the number of servings is confirmed. Missing ingredients or nutrition remain unresolved; partial subtotals are not shown as complete recipe totals.
+
+Provider ingredients use full details for the exact selected product. Importing an ingredient saves it to the food library without logging it. Publishing a complete draft creates a private saved recipe, or edits your selected recipe after checking that it has not changed. The assistant verifies the saved ingredient quantities and nutrient snapshots before reporting success. Existing diary entries keep their logged nutrition.
+
+You can ask to undo a recipe publication. Undo checks for later edits and refuses to overwrite newer work. Undoing recipe creation also requires that nobody uses it in a diary, meal plan, another recipe or favorite. Import, publication and undo retries reuse their request IDs and operation IDs, preventing duplicate saves.
+
+## Verified Diary Changes
+
+Ask Sparky to replace, resize, scale, move, copy or delete logged foods or a whole meal. Replacements keep the same diary entry and group while updating the selected food, portion and nutrition together. Resizing, moving and copying retain the logged snapshot, including notes, photos and custom nutrients, rather than refreshing an old entry from today's catalog. Linked drink records and daily water totals change in the same transaction.
+
+The assistant inspects the current selection before applying it. Ambiguous food names require choosing the intended entry. Bulk and whole-meal deletions show a preview and require explicit confirmation. You can ask to undo a completed action; undo restores its prior snapshots only if later edits would not be overwritten. Copy undo removes the copies and leaves the source meal intact. A provider reference claiming implausible energy per bread slice triggers source verification instead of a guessed calorie correction.
+
 ## Troubleshooting AI Providers
 
 Most "OpenAI Compatible / OpenRouter isn't working" reports come from provider configuration, not from SparkyFitness itself. The most common cases:
@@ -103,3 +125,6 @@ Small local models (roughly 3B–8B, e.g. an 8 GB Mac) can drive the chatbot's t
 2. **Use the `core` tool profile.** When you add an Ollama service, SparkyFitness now preselects the **core** tool profile (in the service's settings). Core exposes the everyday logging tools plus goals (~20 tools) instead of the full ~35, which small models select from far more reliably and which fits a smaller context window. Pick **full** only on a strong local machine with a raised context window.
 
 The server logs a warning when an Ollama service runs the `full` profile, since that combination most often overflows the default context. Also prefer models trained for tool calling (e.g. `qwen2.5:7b-instruct`, `llama3.1:8b`) — plain small chat models make unreliable tool calls.
+
+
+If a connected client requests a diary undo or bulk deletion, open its review link while signed in and confirm the displayed entries. Opening the link does not change your diary. Lasting preferences are removed only after an explicit request naming the preference, or through its Delete control in settings.
