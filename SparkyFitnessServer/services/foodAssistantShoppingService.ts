@@ -43,11 +43,14 @@ export function aggregateShoppingItems(
       );
     const identity = foodId ?? name.trim().toLowerCase();
     const compatible = [...items.entries()].find(
-      ([key, item]) =>
-        key.startsWith(`${identity}:`) &&
+      ([, item]) =>
+        (item.food_id ?? item.name.trim().toLowerCase()) === identity &&
+        Boolean(item.food_id) === Boolean(foodId) &&
         (item.unit === unit || getConversionFactor(item.unit, unit) !== null)
     );
-    const key = compatible?.[0] ?? `${identity}:${unit}`,
+    const key =
+        compatible?.[0] ??
+        JSON.stringify([foodId ? 'food' : 'name', identity, unit]),
       item = compatible?.[1];
     if (item) {
       item.quantity += quantity * (getConversionFactor(item.unit, unit) ?? 1);

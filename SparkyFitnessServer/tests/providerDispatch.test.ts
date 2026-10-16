@@ -553,6 +553,17 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     }
   );
 
+  it('classifies filtered Responses output as refused, without accepting partial text', async () => {
+    mockFetch({
+      status: 'incomplete',
+      incomplete_details: { reason: 'content_filter' },
+      output_text: JSON.stringify(SAMPLE),
+    });
+    const result = await dispatchAiRequest(
+      baseRequest({ provider: makeProvider({ model_name: 'gpt-6-astra' }) })
+    );
+    expect(result).toMatchObject({ ok: false, category: 'refused' });
+  });
   it('does not parse partial Responses output as a successful result', async () => {
     mockFetch({
       status: 'incomplete',

@@ -2220,7 +2220,9 @@ async function processChatMessage(
         'No assistant reply text; tool output retained for diagnostics:',
         toolOutputs
       );
-      finalContent = EMPTY_RESPONSE_ERROR_TEXT;
+      finalContent = executedToolsList.length
+        ? EMPTY_TOOL_RESPONSE_TEXT
+        : EMPTY_RESPONSE_ERROR_TEXT;
     }
 
     if (finalContent) {
@@ -2498,6 +2500,8 @@ async function testAiServiceConnection(
   }
   return { ok: true };
 }
+const EMPTY_TOOL_RESPONSE_TEXT =
+  'Tools ran, but the AI service returned no summary. Check your diary and saved changes before retrying.';
 const EMPTY_RESPONSE_ERROR_TEXT =
   'The AI service returned an empty response. Please try again.';
 

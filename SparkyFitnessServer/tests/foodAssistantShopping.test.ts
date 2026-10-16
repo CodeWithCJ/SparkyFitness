@@ -70,6 +70,22 @@ const food = (quantity: number, unit: string, id = foodId) => ({
   unit,
 });
 describe('shopping quantities and source completeness', () => {
+  it('keeps name-only identities containing colons separate in either order', () => {
+    const rows = [
+      { ...food(20, 'g'), food_id: null, food_name: 'salt: sea' },
+      { ...food(10, 'g'), food_id: null, food_name: 'salt' },
+    ];
+    for (const source of [rows, [...rows].reverse()]) {
+      const items = service.aggregateShoppingItems(source, [], taskId);
+      expect(items).toHaveLength(2);
+      expect(items.find((item) => item.name === 'salt: sea')?.quantity).toBe(
+        20
+      );
+      expect(items.find((item) => item.name === 'salt')?.quantity).toBe(10);
+      expect(new Set(items.map((item) => item.id)).size).toBe(2);
+    }
+  });
+
   it('combines compatible metric units and subtracts pantry exactly once', () => {
     const items = service.aggregateShoppingItems(
       [food(500, 'g'), food(1, 'kg')],

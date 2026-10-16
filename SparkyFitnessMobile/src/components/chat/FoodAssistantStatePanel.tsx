@@ -209,7 +209,7 @@ export default function FoodAssistantStatePanel() {
                 </Text>
               </Pressable>
               <Text className="text-text-muted">{taskStatus[task.status]}</Text>
-              {!['complete', 'cancelled'].includes(task.status) && (
+              {task.status !== 'complete' && (
                 <View className="flex-row gap-4">
                   <Pressable
                     accessibilityRole="button"
@@ -222,15 +222,19 @@ export default function FoodAssistantStatePanel() {
                       })}
                     </Text>
                   </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={disabled}
-                    onPress={() => mutation.mutate({ action: 'cancel', task })}
-                  >
-                    <Text className="text-text-primary py-1">
-                      {t('common.cancel', { defaultValue: 'Cancel' })}
-                    </Text>
-                  </Pressable>
+                  {task.status !== 'cancelled' && (
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={disabled}
+                      onPress={() =>
+                        mutation.mutate({ action: 'cancel', task })
+                      }
+                    >
+                      <Text className="text-text-primary py-1">
+                        {t('common.cancel', { defaultValue: 'Cancel' })}
+                      </Text>
+                    </Pressable>
+                  )}
                 </View>
               )}
             </View>

@@ -147,3 +147,31 @@ it('renders saved shopping quantities and marks only the selected item', async (
     )
   );
 });
+
+it('offers explicit resume for cancelled tasks without showing Cancel', async () => {
+  const cancelled = foodAssistantTaskSchema.parse({
+    ...task,
+    status: 'cancelled',
+  });
+  jest.mocked(api.loadAssistantTasks).mockResolvedValue([cancelled]);
+  const view = mount();
+  fireEvent.press(view.getByText('Food preferences and tasks'));
+  fireEvent.press(await view.findByText('Resume in chat'));
+  expect(view.queryByText('Cancel')).toBeNull();
+  await waitFor(() =>
+    expect(api.changeAssistantTask).toHaveBeenCalledWith(cancelled, 'resume')
+  );
+  await waitFor(() => expect(mockAppend).toHaveBeenCalled());
+});
+it('hides both task actions for completed tasks', async () => {
+  jest
+    .mocked(api.loadAssistantTasks)
+    .mockResolvedValue([
+      foodAssistantTaskSchema.parse({ ...task, status: 'complete' }),
+    ]);
+  const view = mount();
+  fireEvent.press(view.getByText('Food preferences and tasks'));
+  await view.findByText('Recipe draft');
+  expect(view.queryByText('Resume in chat')).toBeNull();
+  expect(view.queryByText('Cancel')).toBeNull();
+});
