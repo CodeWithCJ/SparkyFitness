@@ -169,6 +169,29 @@ it('requires a current explicit ingredient-removal request and rejects malformed
   expect(String(result)).toContain('explicit request');
   expect(repository.mutateTask).not.toHaveBeenCalled();
   expect(
-    String(await tool.execute!({ action: 'publish_recipe' }, toolOpts))
+    String(await tool.execute!({ action: 'publish_recipe' } as never, toolOpts))
   ).toContain('VALIDATION');
+});
+
+it('advertises action-specific commands with an object root', () => {
+  const input = buildRecipeTools(owner).sparky_manage_recipes
+    .inputSchema as z.ZodType;
+  expect(z.toJSONSchema(input).type).toBe('object');
+  const removal = {
+    action: 'remove_recipe_ingredient',
+    task_id: requestId,
+    ingredient_id: randomUUID(),
+    source_quote: 'Remove butter',
+    command: { operation_id: randomUUID(), expected_version: 2 },
+  };
+  expect(input.safeParse(removal).success).toBe(true);
+  expect(
+    input.safeParse({
+      ...removal,
+      command: {
+        ...removal.command,
+        estimate_source_quote: 'Use estimated nutrition',
+      },
+    }).success
+  ).toBe(false);
 });
