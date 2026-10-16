@@ -1145,6 +1145,118 @@ describe('chatService', () => {
       return chunks;
     };
 
+    it.each(['error', 'other', 'length', undefined])(
+      'does not mark a partial %s completion as recoverable',
+      async (reason) => {
+        streamModel([
+          { type: 'stream-start', warnings: [] },
+          { type: 'text-start', id: 'text-1' },
+          { type: 'text-delta', id: 'text-1', delta: 'Incomplete reply' },
+          { type: 'text-end', id: 'text-1' },
+          ...(reason
+            ? [
+                {
+                  type: 'finish',
+                  finishReason: { unified: reason, raw: reason },
+                  usage,
+                },
+              ]
+            : []),
+        ]);
+        const { stream } = await chatService.processChatMessageStream(
+          [{ id: 'partial-turn', role: 'user', content: 'Check my diary' }],
+          'svc-1',
+          activeUserId,
+          actorUserId
+        );
+        await drainStream(stream);
+        await vi.waitFor(() => {
+          expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+            expect.objectContaining({
+              messageType: 'assistant',
+              content: 'Incomplete reply',
+              metadata: undefined,
+            })
+          );
+        });
+      }
+    );
+
+    it('finishes and saves a correlated response without the client reading the stream', async () => {
+      streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 'text-1' },
+        { type: 'text-delta', id: 'text-1', delta: 'Your saved reply' },
+        { type: 'text-end', id: 'text-1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: 'stop' },
+          usage,
+        },
+      ]);
+      const { stream } = await chatService.processChatMessageStream(
+        [{ id: 'mobile-turn-1', role: 'user', content: 'Show my nutrition' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      // A suspended mobile app makes no further reads. Completion and history
+      // persistence must proceed independently of that consumer's backpressure.
+      await vi.waitFor(() => {
+        expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+          expect.objectContaining({
+            messageType: 'assistant',
+            content: 'Your saved reply',
+            metadata: { client_message_id: 'mobile-turn-1' },
+          })
+        );
+      });
+      expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messageType: 'user',
+          metadata: { client_message_id: 'mobile-turn-1' },
+        })
+      );
+      await stream.cancel();
+    });
+
+    it('still saves the reply after the client disconnects', async () => {
+      streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 'text-1' },
+        {
+          type: 'text-delta',
+          id: 'text-1',
+          delta: 'Completed after disconnect',
+        },
+        { type: 'text-end', id: 'text-1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: 'stop' },
+          usage,
+        },
+      ]);
+      const { stream } = await chatService.processChatMessageStream(
+        [{ id: 'locked-turn', role: 'user', content: 'Check my diary' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      const reader = stream.getReader();
+      await reader.read();
+      await reader.cancel();
+      await vi.waitFor(() => {
+        expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+          expect.objectContaining({
+            messageType: 'assistant',
+            content: 'Completed after disconnect',
+            metadata: { client_message_id: 'locked-turn' },
+          })
+        );
+      });
+    });
+
     beforeEach(() => {
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         aiServiceSetting

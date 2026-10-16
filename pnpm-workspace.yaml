@@ -87,6 +87,7 @@ patchedDependencies:
   react-native-health-connect@4.1.3: patches/react-native-health-connect@4.1.3.patch
   react-native-bottom-tabs@1.4.0: patches/react-native-bottom-tabs@1.4.0.patch
   expo-modules-core@57.0.19: patches/expo-modules-core@57.0.19.patch
+  ai@7.0.99: patches/ai@7.0.99.patch
 
 supportedArchitectures:
   cpu:

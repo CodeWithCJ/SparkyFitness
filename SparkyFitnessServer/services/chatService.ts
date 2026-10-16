@@ -20,6 +20,7 @@ import {
 } from '../ai/modelCapabilities.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { TtlCache } from '../utils/ttlCache.js';
+import { backgroundChatStream } from '../utils/backgroundChatStream.js';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
   createGuardedFetch,
@@ -63,6 +64,7 @@ interface ProcessedMessagePart {
 }
 
 interface ChatMessage {
+  id?: string;
   role: string;
   content?: string | ChatMessagePart[];
   parts?: ChatMessagePart[];
@@ -2631,6 +2633,19 @@ async function processChatMessageStream(
       llmMessages[llmMessages.length - 1]
     );
 
+    // Correlate a restored response with the exact client turn, including when
+    // two turns have identical text. Older clients do not send message IDs.
+    const clientMessageId = [...messages]
+      .reverse()
+      .find((message) => message.role === 'user')?.id;
+    const recoveryMetadata =
+      typeof clientMessageId === 'string' &&
+      clientMessageId.length > 0 &&
+      clientMessageId.length <= 200
+        ? { client_message_id: clientMessageId }
+        : undefined;
+
+    let providerStreamFailed = false;
     const result = streamText({
       model: modelInstance,
       system: systemPromptContent,
@@ -2657,6 +2672,7 @@ async function processChatMessageStream(
           temperature: CORE_PROFILE_CHAT_TEMPERATURE,
         }),
       onError({ error }) {
+        providerStreamFailed = true;
         // The one place a stream-time parameter rejection can be learned. The
         // intent classifier is not a reliable canary: it returns early on any
         // keyword match, and is skipped entirely when the user picks tool
@@ -2718,6 +2734,7 @@ async function processChatMessageStream(
             content: userMessageContent,
             messageType: 'user',
             parts: userMessageParts,
+            metadata: recoveryMetadata,
           })
           .catch((err: unknown) =>
             log('error', 'Failed to save user chat history:', err)
@@ -2777,6 +2794,13 @@ async function processChatMessageStream(
               '',
             messageType: 'assistant',
             parts: assistantParts,
+            metadata:
+              !providerStreamFailed &&
+              (finishReason === 'stop' ||
+                (finishReason === 'tool-calls' &&
+                  Boolean(askCall || capturedEstimate)))
+                ? recoveryMetadata
+                : undefined,
           })
           .catch((err: unknown) =>
             log('error', 'Failed to save assistant chat history:', err)
@@ -2784,15 +2808,18 @@ async function processChatMessageStream(
       },
     });
 
+    const uiStream = result.toUIMessageStream({
+      messageMetadata: ({ part }) =>
+        part.type === 'finish'
+          ? mapUsageToMetadata(part.totalUsage)
+          : undefined,
+    });
+    // Create the UI branch first, then drain and release the SDK's retained
+    // branch. The optional ai patch preserves default multi-consumer behavior.
+    void result.consumeStream({ discardInternalStream: true });
+
     return {
-      stream: withEmptyCompletionGuard(
-        result.toUIMessageStream({
-          messageMetadata: ({ part }) =>
-            part.type === 'finish'
-              ? mapUsageToMetadata(part.totalUsage)
-              : undefined,
-        })
-      ),
+      stream: withEmptyCompletionGuard(backgroundChatStream(uiStream)),
     };
   } catch (error) {
     log(

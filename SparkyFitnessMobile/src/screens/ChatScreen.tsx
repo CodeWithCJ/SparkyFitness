@@ -21,6 +21,8 @@ import {
   type TextInputProps,
 } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
+import { useKeepAwake } from 'expo-keep-awake';
+import { randomUUID } from 'expo-crypto';
 import { getLocales } from 'expo-localization';
 import {
   ExpoSpeechRecognitionModule,
@@ -32,7 +34,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
 import Clipboard from '@react-native-clipboard/clipboard';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
   AssistantRuntimeProvider,
   ThreadPrimitive,
@@ -69,7 +71,11 @@ import {
 } from '../services/storage';
 import { getAuthHeaders } from '../services/api/authService';
 import { normalizeUrl } from '../services/api/apiClient';
-import { clearAllChatHistory } from '../services/api/chatApi';
+import {
+  clearAllChatHistory,
+  type ChatHistoryEntry,
+} from '../services/api/chatApi';
+import { useChatBackgroundRecovery } from '../hooks/useChatBackgroundRecovery';
 import { addLog } from '../services/LogService';
 import { resolveSpeechLocale } from '../utils/speechLocale';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -125,17 +131,28 @@ function ChatKeyboardAvoidingView(
  * active AI provider — the server requires it to build the model.
  */
 
+/** A recovered turn may have changed any tool-backed screen; preserve its seeded history. */
+function invalidateChatCaches(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({
+    predicate: ({ queryKey }) => queryKey[0] !== chatHistoryQueryKey[0],
+  });
+}
+
 /** Builds the assistant-ui runtime bound to our streaming endpoint. */
 function useSparkyChatRuntime({
   baseUrl,
   serviceConfigId,
   initialMessages,
+  recovery,
 }: {
   baseUrl: string;
   serviceConfigId: string;
   initialMessages: InitialMessages;
+  recovery: ReturnType<typeof useChatBackgroundRecovery>;
 }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { startTurn } = recovery;
   const transport = useMemo(
     () =>
       new AssistantChatTransport({
@@ -154,8 +171,23 @@ function useSparkyChatRuntime({
         },
         // Merged into the request body alongside `messages`; the server reads it.
         body: { service_config_id: serviceConfigId },
+        prepareSendMessagesRequest: ({ messages, body }) => {
+          // A retry can reuse the same user message ID. Give each generation
+          // its own ID so recovery cannot pick up an earlier attempt's reply.
+          const messageIndex = messages.findLastIndex((m) => m.role === 'user');
+          const turnId = randomUUID();
+          startTurn(turnId);
+          return {
+            body: {
+              ...body,
+              messages: messages.map((message, index) =>
+                index === messageIndex ? { ...message, id: turnId } : message
+              ),
+            },
+          };
+        },
       }),
-    [baseUrl, serviceConfigId]
+    [baseUrl, serviceConfigId, startTurn]
   );
 
   // Thread-level safety net: a per-message error box can't render if the stream
@@ -166,8 +198,17 @@ function useSparkyChatRuntime({
     transport,
     // Seed prior history (the runtime ignores changes after mount — see ChatThread's key).
     messages: initialMessages,
+    onFinish: ({ isAbort, isError, isDisconnect, finishReason }) => {
+      if (isAbort) recovery.finishTurn();
+      else if (!isError && !isDisconnect) {
+        recovery.finishTurn(finishReason !== undefined);
+      }
+      invalidateChatCaches(queryClient);
+      void queryClient.invalidateQueries({ queryKey: chatHistoryQueryKey });
+    },
     onError: (error: Error) => {
       addLog('Chat stream error', 'ERROR', [error?.message ?? String(error)]);
+      if (recovery.recoverError(error)) return;
       Toast.show({
         type: 'error',
         text1: t('chat.error', { defaultValue: 'Chat error' }),
@@ -182,7 +223,13 @@ function useSparkyChatRuntime({
 }
 
 /** A single chat bubble. Rendered inside the message context. */
-function MessageBubble({ role }: { role: MessageRole }) {
+function MessageBubble({
+  role,
+  recovering,
+}: {
+  role: MessageRole;
+  recovering: boolean;
+}) {
   const { t } = useTranslation();
   const isUser = role === 'user';
   const [dangerBg, dangerIcon, dangerText, muted] = useCSSVariable([
@@ -250,38 +297,42 @@ function MessageBubble({ role }: { role: MessageRole }) {
       {/* Error box + actions sit below the bubble and only apply to assistant
           messages. ErrorPrimitive.Root self-gates (renders null with no error). */}
       <MessagePrimitive.If assistant>
-        <ErrorPrimitive.Root
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            backgroundColor: dangerBg,
-            borderRadius: 12,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            marginTop: 6,
-          }}
-        >
-          <Icon name="alert-circle" size={16} color={dangerIcon} />
-          <ErrorPrimitive.Message
-            style={{ flex: 1, color: dangerText, fontSize: 13 }}
-          />
-        </ErrorPrimitive.Root>
+        {!recovering && (
+          <ErrorPrimitive.Root
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: dangerBg,
+              borderRadius: 12,
+              paddingHorizontal: 12,
+              paddingVertical: 8,
+              marginTop: 6,
+            }}
+          >
+            <Icon name="alert-circle" size={16} color={dangerIcon} />
+            <ErrorPrimitive.Message
+              style={{ flex: 1, color: dangerText, fontSize: 13 }}
+            />
+          </ErrorPrimitive.Root>
+        )}
 
         {/* Actions appear under every settled (non-running) assistant message:
             Copy on all of them, Retry only on the latest reply. */}
         <MessagePrimitive.If running={false}>
           <View className="flex-row gap-4 mt-1.5 ml-1">
-            <MessagePrimitive.If last>
-              <ActionBarPrimitive.Reload>
-                <View className="flex-row items-center gap-1">
-                  <Icon name="sync" size={15} color={muted} />
-                  <Text className="text-text-secondary text-xs">
-                    {t('chat.retry', { defaultValue: 'Retry' })}
-                  </Text>
-                </View>
-              </ActionBarPrimitive.Reload>
-            </MessagePrimitive.If>
+            {!recovering && (
+              <MessagePrimitive.If last>
+                <ActionBarPrimitive.Reload>
+                  <View className="flex-row items-center gap-1">
+                    <Icon name="sync" size={15} color={muted} />
+                    <Text className="text-text-secondary text-xs">
+                      {t('chat.retry', { defaultValue: 'Retry' })}
+                    </Text>
+                  </View>
+                </ActionBarPrimitive.Reload>
+              </MessagePrimitive.If>
+            )}
             <ActionBarPrimitive.Copy
               copyToClipboard={(text) => Clipboard.setString(text)}
             >
@@ -764,21 +815,24 @@ function Composer({
   );
 }
 
-/**
- * Headless reporter: lifts the thread's running state out to ChatScreen so the
- * header Clear button (outside the runtime provider) can disable while a stream
- * is in flight. Reads `isRunning` from assistant-ui state and pushes it up.
- */
+function ChatKeepAwake() {
+  useKeepAwake('sparky-chat', { suppressDeactivateWarnings: true });
+  return null;
+}
+
+/** Disable clearing while a stream or recovery runs, and scope the wake lock. */
 function RunningReporter({
   onRunningChange,
+  recovering,
 }: {
   onRunningChange: (running: boolean) => void;
+  recovering: boolean;
 }) {
   const isRunning = useAuiState((s) => s.thread.isRunning);
   useEffect(() => {
-    onRunningChange(!!isRunning);
-  }, [isRunning, onRunningChange]);
-  return null;
+    onRunningChange(!!isRunning || recovering);
+  }, [isRunning, onRunningChange, recovering]);
+  return isRunning && !recovering ? <ChatKeepAwake /> : null;
 }
 
 /** The live thread. Only mounted once baseUrl + serviceConfigId are known. */
@@ -817,6 +871,7 @@ function ChatThread({
   initialMessages,
   onRunningChange,
   autoFocusReady,
+  onRecovered,
 }: {
   baseUrl: string;
   serviceConfigId: string;
@@ -825,12 +880,25 @@ function ChatThread({
   initialMessages: InitialMessages;
   onRunningChange: (running: boolean) => void;
   autoFocusReady: boolean;
+  onRecovered: (history: ChatHistoryEntry[]) => void;
 }) {
   const { t } = useTranslation();
+  const onRecoveryFailed = useCallback(() => {
+    Toast.show({
+      type: 'error',
+      text1: t('chat.error', { defaultValue: 'Chat error' }),
+      text2: t('chat.recoveryFailed', {
+        defaultValue:
+          'Could not restore the reply. Reopen chat to check the saved history.',
+      }),
+    });
+  }, [t]);
+  const recovery = useChatBackgroundRecovery({ onRecovered, onRecoveryFailed });
   const runtime = useSparkyChatRuntime({
     baseUrl,
     serviceConfigId,
     initialMessages,
+    recovery,
   });
 
   // Keep the message list pinned to the bottom as content grows — but only
@@ -904,7 +972,10 @@ function ChatThread({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <RunningReporter onRunningChange={handleRunningChange} />
+      <RunningReporter
+        onRunningChange={handleRunningChange}
+        recovering={recovery.recovering}
+      />
       <ThreadPrimitive.Root style={{ flex: 1 }}>
         <View style={{ flex: 1 }}>
           <ThreadPrimitive.Empty>
@@ -949,16 +1020,32 @@ function ChatThread({
             onContentSizeChange={scrollToBottomIfPinned}
             onLayout={scrollToBottomIfPinned}
           >
-            {({ message }) => <MessageBubble role={message.role} />}
+            {({ message }) => (
+              <MessageBubble
+                role={message.role}
+                recovering={recovery.recovering}
+              />
+            )}
           </ThreadMessages>
         </View>
 
-        <Composer
-          key={`${voiceInputEnabled}:${voiceServiceConfigId ?? 'system'}`}
-          autoFocusReady={autoFocusReady}
-          voiceServiceConfigId={voiceServiceConfigId}
-          voiceInputEnabled={voiceInputEnabled}
-        />
+        {recovery.recovering ? (
+          <View className="flex-row items-center justify-center gap-2 p-4">
+            <ActivityIndicator />
+            <Text className="text-text-muted">
+              {t('chat.recovering', {
+                defaultValue: 'Restoring Sparky’s reply…',
+              })}
+            </Text>
+          </View>
+        ) : (
+          <Composer
+            key={`${voiceInputEnabled}:${voiceServiceConfigId ?? 'system'}`}
+            autoFocusReady={autoFocusReady}
+            voiceServiceConfigId={voiceServiceConfigId}
+            voiceInputEnabled={voiceInputEnabled}
+          />
+        )}
       </ThreadPrimitive.Root>
     </AssistantRuntimeProvider>
   );
@@ -1043,6 +1130,19 @@ export default function ChatScreen({
     enabled: !!baseUrl,
   });
   const initialMessages = historyData ?? [];
+
+  const handleRecovered = useCallback(
+    async (history: ChatHistoryEntry[]) => {
+      // An error-triggered history refetch may still contain the old transcript.
+      // Stop it before seeding the remounted runtime with the recovered reply.
+      await queryClient.cancelQueries({ queryKey: chatHistoryQueryKey });
+      queryClient.setQueryData(chatHistoryQueryKey, history);
+      invalidateChatCaches(queryClient);
+      setRunning(false);
+      setThreadKey((key) => key + 1);
+    },
+    [queryClient]
+  );
 
   const serviceConfigId = setting?.id ?? null;
 
@@ -1159,6 +1259,7 @@ export default function ChatScreen({
             initialMessages={initialMessages}
             onRunningChange={setRunning}
             autoFocusReady={transitionComplete}
+            onRecovered={handleRecovered}
           />
         )}
       </ChatKeyboardAvoidingView>
