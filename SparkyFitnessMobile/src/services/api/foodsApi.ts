@@ -112,6 +112,7 @@ export interface CreateFoodVariantPayload {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  abv_percent?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
   // AI-Assisted Unit Conversions provenance — optional; server defaults
@@ -237,8 +238,11 @@ export interface UpdateFoodVariantPayload {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  abv_percent?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
+  source?: 'manual' | 'ai_estimate' | 'imported';
+  ai_confidence?: 'high' | 'medium' | 'low' | null;
 }
 
 /**

@@ -18,6 +18,7 @@ import type { Food, FoodVariant } from '@/types/food';
 
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { VariantCard } from './VariantCard';
+import { NamedPortionEditor, NamedPortionSummary } from './NamedPortionEditor';
 import { useCustomFoodForm } from '@/hooks/Foods/useFoodForm';
 import { useRefreshFoodFromSourceMutation } from '@/hooks/Foods/useFoods';
 import { getProviderDisplayName } from '@/utils/foodProviderLabels';
@@ -25,7 +26,7 @@ import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 import { UNIT_GROUPS } from '@/constants/foodForm';
 import { deriveSavedAiUnits } from '@/utils/foodAiUnits';
-import { getConversionFactor } from '@workspace/shared';
+import { getConversionFactor, parseNamedFoodPortion } from '@workspace/shared';
 import { FoodImagePicker } from './FoodImagePicker';
 import { resolveFoodImageSrc } from '@/utils/foodImages';
 import { useOpenFoodFactsContributionAvailability } from '@/hooks/Foods/useOpenFoodFactsContribution';
@@ -77,6 +78,7 @@ const CustomFoodForm = ({
   const {
     formData,
     variants,
+    managedPortionRows,
     variantErrors,
     loading,
     showSyncConfirmation,
@@ -89,6 +91,8 @@ const CustomFoodForm = ({
     updateField,
     applyProviderRefresh,
     addVariant,
+    addNamedPortion,
+    portionUnit,
     duplicateVariant,
     removeVariant,
     updateVariant,
@@ -222,6 +226,83 @@ const CustomFoodForm = ({
       return Array.from(compatibleUnits);
     });
   }, [conversionBaseVariants, loadedVariants, variants]);
+
+  const renderVariantCard = (
+    variant: (typeof variants)[number],
+    index: number
+  ) => {
+    // The AI anchor is ALWAYS the food's trusted default
+    // variant — using a single source of truth avoids
+    // compounding AI estimates on top of each other (which
+    // would happen if we anchored on the row's previous state
+    // when that state was itself an AI value).
+    //
+    // Button visibility rules:
+    //   • Default row: only show when it's pending a unit swap.
+    //   • Non-default row, non-AI: show when the row's unit
+    //     differs from the trusted default's unit (the AI
+    //     estimate fills the gap math can't bridge).
+    //   • AI-tagged row: show only while pending a unit swap
+    //     (a settled AI estimate needs no re-trigger; once a
+    //     fresh estimate lands, the button hides until the
+    //     user picks another unit).
+    const isPendingSwap = manualUnitConversionPending[index] === true;
+    const isDefaultRow =
+      variant.is_default === true || defaultVariant === variant;
+    const isAiRow = variant.source === 'ai_estimate';
+    const shouldOfferButton = isAiRow
+      ? isPendingSwap
+      : isDefaultRow
+        ? isPendingSwap
+        : true;
+    const aiEstimateAnchorUnit =
+      shouldOfferButton && trustedDefaultVariant
+        ? trustedDefaultVariant.serving_unit
+        : null;
+
+    const variantCard = (
+      <VariantCard
+        key={index}
+        index={index}
+        variant={variant}
+        nutritionReadOnly={managedPortionRows?.[index] ?? false}
+        variantError={variantErrors[index] ?? ''}
+        visibleNutrients={visibleNutrients}
+        energyUnit={energyUnit}
+        convertEnergy={convertEnergy}
+        customNutrients={customNutrients}
+        showCompatibleUnitIndicators={
+          (hasTrustedCompatibilityBase[index] ?? false) ||
+          (compatibleUnitsByIndex[index]?.length ?? 0) > 0
+        }
+        food={{
+          // Sentinel id for foods that haven't been saved yet —
+          // the AI endpoint only uses foodId for
+          // telemetry/context, not for DB lookup, so a string
+          // suffices.
+          id: food?.id || 'pending-new-food',
+          name: formData.name || food?.name || '',
+          brand: formData.brand || food?.brand || null,
+        }}
+        defaultVariant={defaultVariant}
+        aiEstimateAnchorUnit={aiEstimateAnchorUnit}
+        aiEstimatesAvailable={aiEstimatesAvailable}
+        // Cross-row AI sparkle: each row's dropdown surfaces
+        // the AI marker on every SAVED AI unit on this food,
+        // not just the row's own unit. Fresh in-form estimates
+        // wait until Save before appearing in the picker.
+        savedAiUnits={savedAiUnits}
+        aiEstimatedUnit={aiEstimatedUnits[index] ?? null}
+        compatibleUnits={compatibleUnitsByIndex[index] ?? []}
+        onApplyAiEstimate={applyAiEstimate}
+        onUpdate={updateVariant}
+        onDuplicate={duplicateVariant}
+        onRemove={removeVariant}
+      />
+    );
+
+    return variantCard;
+  };
 
   return (
     <>
@@ -370,6 +451,21 @@ const CustomFoodForm = ({
               onApplyMatch={applyProviderNutrientMatch}
             />
 
+            <NamedPortionEditor unit={portionUnit} onAdd={addNamedPortion}>
+              {variants.map((variant, index) =>
+                parseNamedFoodPortion(variant.serving_unit) ? (
+                  <NamedPortionSummary
+                    key={index}
+                    label={`${variant.serving_size} ${variant.serving_unit}`}
+                    nutrition={`${convertEnergy(Number(variant.calories) || 0, 'kcal', energyUnit).toFixed(0)} ${energyUnit}`}
+                    onRemove={() => removeVariant(index)}
+                  >
+                    {renderVariantCard(variant, index)}
+                  </NamedPortionSummary>
+                ) : null
+              )}
+            </NamedPortionEditor>
+
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">
@@ -388,77 +484,11 @@ const CustomFoodForm = ({
               </p>
 
               <div className="space-y-6">
-                {variants.map((variant, index) => {
-                  // The AI anchor is ALWAYS the food's trusted default
-                  // variant — using a single source of truth avoids
-                  // compounding AI estimates on top of each other (which
-                  // would happen if we anchored on the row's previous state
-                  // when that state was itself an AI value).
-                  //
-                  // Button visibility rules:
-                  //   • Default row: only show when it's pending a unit swap.
-                  //   • Non-default row, non-AI: show when the row's unit
-                  //     differs from the trusted default's unit (the AI
-                  //     estimate fills the gap math can't bridge).
-                  //   • AI-tagged row: show only while pending a unit swap
-                  //     (a settled AI estimate needs no re-trigger; once a
-                  //     fresh estimate lands, the button hides until the
-                  //     user picks another unit).
-                  const isPendingSwap =
-                    manualUnitConversionPending[index] === true;
-                  const isDefaultRow =
-                    variant.is_default === true || defaultVariant === variant;
-                  const isAiRow = variant.source === 'ai_estimate';
-                  const shouldOfferButton = isAiRow
-                    ? isPendingSwap
-                    : isDefaultRow
-                      ? isPendingSwap
-                      : true;
-                  const aiEstimateAnchorUnit =
-                    shouldOfferButton && trustedDefaultVariant
-                      ? trustedDefaultVariant.serving_unit
-                      : null;
-
-                  return (
-                    <VariantCard
-                      key={index}
-                      index={index}
-                      variant={variant}
-                      variantError={variantErrors[index] ?? ''}
-                      visibleNutrients={visibleNutrients}
-                      energyUnit={energyUnit}
-                      convertEnergy={convertEnergy}
-                      customNutrients={customNutrients}
-                      showCompatibleUnitIndicators={
-                        (hasTrustedCompatibilityBase[index] ?? false) ||
-                        (compatibleUnitsByIndex[index]?.length ?? 0) > 0
-                      }
-                      food={{
-                        // Sentinel id for foods that haven't been saved yet —
-                        // the AI endpoint only uses foodId for
-                        // telemetry/context, not for DB lookup, so a string
-                        // suffices.
-                        id: food?.id || 'pending-new-food',
-                        name: formData.name || food?.name || '',
-                        brand: formData.brand || food?.brand || null,
-                      }}
-                      defaultVariant={defaultVariant}
-                      aiEstimateAnchorUnit={aiEstimateAnchorUnit}
-                      aiEstimatesAvailable={aiEstimatesAvailable}
-                      // Cross-row AI sparkle: each row's dropdown surfaces
-                      // the AI marker on every SAVED AI unit on this food,
-                      // not just the row's own unit. Fresh in-form estimates
-                      // wait until Save before appearing in the picker.
-                      savedAiUnits={savedAiUnits}
-                      aiEstimatedUnit={aiEstimatedUnits[index] ?? null}
-                      compatibleUnits={compatibleUnitsByIndex[index] ?? []}
-                      onApplyAiEstimate={applyAiEstimate}
-                      onUpdate={updateVariant}
-                      onDuplicate={duplicateVariant}
-                      onRemove={removeVariant}
-                    />
-                  );
-                })}
+                {variants.map((variant, index) =>
+                  parseNamedFoodPortion(variant.serving_unit)
+                    ? null
+                    : renderVariantCard(variant, index)
+                )}
               </div>
             </div>
 

@@ -6,6 +6,11 @@ import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { StackActions } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  buildNamedFoodPortion,
+  parseNamedFoodPortion,
+} from '@workspace/shared';
 import Icon from '../../components/Icon';
 import StepperInput from '../../components/StepperInput';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
@@ -34,7 +39,18 @@ import {
   formatDateLabel,
 } from '../../utils/dateUtils';
 import { parseOptional } from '../../types/foodInfo';
-import { createFoodVariant } from '../../services/api/foodsApi';
+import {
+  createFoodVariant,
+  deleteFoodVariant,
+  fetchFoodVariants,
+  updateFood,
+  updateFoodVariant,
+} from '../../services/api/foodsApi';
+import type { FoodItem } from '../../types/foods';
+import {
+  saveNamedFoodPortions,
+  type EditableFoodPortion,
+} from '../../utils/namedFoodPortions';
 import type { FoodFormScreenProps } from '../FoodFormScreen';
 import type {
   EquivalentUnit,
@@ -43,6 +59,7 @@ import type {
 import {
   formatServingSizeDisplay,
   formatServingUnit,
+  buildCreateFoodVariantPayload,
 } from '../../utils/foodDetails';
 import { buildMealIngredientDraftFromSavedFood } from '../../utils/mealBuilderDraft';
 import {
@@ -53,11 +70,14 @@ import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference
 import { useScreenHeader } from '../../hooks/useScreenHeader';
 import { BarcodeField, BARCODE_REGEX } from './BarcodeField';
 import {
+  FOOD_VARIANT_FIELDS,
+  hasFoodFormChanges,
   buildVariantFromFormData,
   buildVariantFromInitialValues,
   confirmDiscardEquivalents,
   equivalentsDiffer,
   isBlankEquivalent,
+  invalidateFoodCaches,
 } from './persistence';
 
 type CreateFoodParams = Extract<
@@ -109,7 +129,6 @@ export function CreateFoodMode({
     if (scannedBarcodeNonce == null || pendingScannedBarcode == null) return;
     // Consume a one-shot navigation param: guarded by the nonce and paired with
     // clearing the param via setParams, so it can't move to a render-time derive.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBarcodeInput(pendingScannedBarcode);
     navigation.setParams({
       pendingScannedBarcode: undefined,
@@ -132,6 +151,17 @@ export function CreateFoodMode({
     );
 
   const [equivalentDraft, setEquivalentDraft] = useState<EquivalentUnit[]>([]);
+  const [portionDraft, setPortionDraft] = useState<EditableFoodPortion[]>([]);
+  const [isPortionSaving, setIsPortionSaving] = useState(false);
+  const savedFoodRef = useRef<FoodItem | null>(null);
+  const savedRequestRef = useRef<{
+    data: FoodFormData;
+    custom: string;
+    images: string;
+  } | null>(null);
+  const initialVariantIdsRef = useRef<Set<string> | null>(null);
+  const attemptedVariantKeysRef = useRef(new Set<string>());
+  const queryClient = useQueryClient();
   // Baseline is always empty for a new food — use a stable ref so it doesn't
   // need to be listed as a useEffect dependency.
   const equivalentBaselineRef = useRef<EquivalentUnit[]>([]);
@@ -269,6 +299,7 @@ export function CreateFoodMode({
   );
   const {
     addEntry,
+    addEntryAsync,
     isPending: isAddPending,
     invalidateCache,
   } = useAddFoodEntry({
@@ -283,7 +314,7 @@ export function CreateFoodMode({
     },
   });
 
-  const isSubmitting = isAddPending || isSavePending;
+  const isSubmitting = isAddPending || isSavePending || isPortionSaving;
 
   const handleSubmit = async (data: FoodFormData) => {
     if (!data.name.trim()) {
@@ -369,6 +400,169 @@ export function CreateFoodMode({
       (eq) => !isBlankEquivalent(eq)
     );
 
+    const saveFoodForForm = async () => {
+      if (portionDraft.length === 0 && !savedFoodRef.current) {
+        return saveFoodAsync(saveFoodPayload, imageArgs);
+      }
+      setIsPortionSaving(true);
+      try {
+        let saved = savedFoodRef.current;
+        const requestSnapshot = {
+          data: { ...data },
+          custom: JSON.stringify(customNutrientValues),
+          images: JSON.stringify(imageArgs ?? null),
+        };
+        if (!saved) {
+          saved = await saveFoodAsync(saveFoodPayload, imageArgs);
+          savedFoodRef.current = saved;
+          savedRequestRef.current = requestSnapshot;
+        } else {
+          const previous = savedRequestRef.current;
+          const metadata: {
+            name?: string;
+            brand?: string;
+            notes?: string | null;
+          } = {};
+          if (data.name !== previous?.data.name) metadata.name = data.name;
+          if (data.brand !== previous?.data.brand) metadata.brand = data.brand;
+          if (data.notes !== previous?.data.notes)
+            metadata.notes = saveFoodPayload.notes;
+          const imagesChanged = previous?.images !== requestSnapshot.images;
+          if (Object.keys(metadata).length > 0 || imagesChanged) {
+            const updated = await updateFood(
+              saved.id,
+              metadata,
+              imagesChanged ? splitPickerImages(pickerImages) : undefined
+            );
+            saved = {
+              ...saved,
+              ...updated,
+              default_variant: saved.default_variant,
+            };
+          }
+          const customChanged = previous?.custom !== requestSnapshot.custom;
+          if (
+            saved.default_variant.id &&
+            (customChanged ||
+              hasFoodFormChanges(
+                previous?.data ?? data,
+                data,
+                FOOD_VARIANT_FIELDS
+              ))
+          ) {
+            const payload = buildCreateFoodVariantPayload(saved.id, {
+              ...saved.default_variant,
+              ...buildVariantFromFormData(data, pendingUnitSelection),
+              custom_nutrients: customChanged
+                ? customNutrientValues
+                : saved.default_variant.custom_nutrients,
+            });
+            await updateFoodVariant(saved.default_variant.id, payload);
+            saved = {
+              ...saved,
+              default_variant: { ...saved.default_variant, ...payload },
+            };
+          }
+          savedFoodRef.current = saved;
+          savedRequestRef.current = requestSnapshot;
+        }
+        const existing = await fetchFoodVariants(saved.id);
+        initialVariantIdsRef.current ??= new Set(
+          existing.map((variant) => variant.id)
+        );
+        const variantKey = (size: number, unit: string) => `${size}|${unit}`;
+        // Creation may resolve an existing barcode/provider food. Its saved
+        // reference stays authoritative until the user changes this form.
+        const source = saved.default_variant;
+        const desiredNamedUnits = portionDraft.map(
+          (portion) => buildNamedFoodPortion(source, portion)?.serving_unit
+        );
+        for (const unit of desiredNamedUnits) {
+          if (unit) attemptedVariantKeysRef.current.add(variantKey(1, unit));
+        }
+        for (const equivalent of cleanEquivalents)
+          attemptedVariantKeysRef.current.add(
+            variantKey(equivalent.serving_size, equivalent.serving_unit)
+          );
+        const mayRemove = (variant: {
+          id: string;
+          serving_size: number;
+          serving_unit: string;
+        }) =>
+          !initialVariantIdsRef.current?.has(variant.id) &&
+          attemptedVariantKeysRef.current.has(
+            variantKey(variant.serving_size, variant.serving_unit)
+          );
+        const removedIds = existing
+          .filter(
+            (variant) =>
+              mayRemove(variant) &&
+              parseNamedFoodPortion(variant.serving_unit) &&
+              !desiredNamedUnits.includes(variant.serving_unit)
+          )
+          .map((variant) => variant.id);
+        const confirmed = await saveNamedFoodPortions(
+          saved.id,
+          source,
+          portionDraft,
+          removedIds
+        );
+        // Reconcile every staged equivalent on retry, using the latest nutrition.
+        for (const equivalent of cleanEquivalents) {
+          const match = confirmed.find(
+            (variant) =>
+              variant.serving_size === equivalent.serving_size &&
+              variant.serving_unit === equivalent.serving_unit
+          );
+          const payload = buildCreateFoodVariantPayload(saved.id, {
+            ...source,
+            serving_size: equivalent.serving_size,
+            serving_unit: equivalent.serving_unit,
+          });
+          if (match) await updateFoodVariant(match.id, payload);
+          else await createFoodVariant(payload);
+        }
+        for (const variant of confirmed) {
+          if (
+            mayRemove(variant) &&
+            variant.id !== saved.default_variant.id &&
+            !parseNamedFoodPortion(variant.serving_unit) &&
+            !cleanEquivalents.some(
+              (equivalent) =>
+                equivalent.serving_size === variant.serving_size &&
+                equivalent.serving_unit === variant.serving_unit
+            )
+          )
+            await deleteFoodVariant(variant.id);
+        }
+        const readback = await fetchFoodVariants(saved.id);
+        if (
+          cleanEquivalents.some(
+            (equivalent) =>
+              !readback.some(
+                (variant) =>
+                  variant.serving_size === equivalent.serving_size &&
+                  variant.serving_unit === equivalent.serving_unit
+              )
+          )
+        )
+          throw new Error('Food equivalents could not be confirmed');
+        queryClient.setQueryData(['foodVariants', saved.id], readback);
+        await invalidateFoodCaches(queryClient, saved.id);
+        return saved;
+      } catch (error) {
+        Toast.show({
+          type: 'error',
+          text1: t('foodForm.portions.saveFailed', {
+            defaultValue: 'Could not save all portions. Try saving again.',
+          }),
+        });
+        throw error;
+      } finally {
+        setIsPortionSaving(false);
+      }
+    };
+
     // Schedules equivalent-variant creation after the food is saved. Fires
     // and forgets — navigation has already occurred. Any failures are shown
     // via toast; missing equivalents can be added later via the food detail
@@ -424,9 +618,10 @@ export function CreateFoodMode({
         return;
       }
       try {
-        const savedFood = await saveFoodAsync(saveFoodPayload, imageArgs);
+        const savedFood = await saveFoodForForm();
         isSavingRef.current = true;
-        saveEquivalentsAsync(savedFood.id);
+        if (portionDraft.length === 0 && !savedFoodRef.current)
+          saveEquivalentsAsync(savedFood.id);
         const ingredient = buildMealIngredientDraftFromSavedFood(
           savedFood,
           parseDecimalInput(data.servingSize) || 0,
@@ -455,9 +650,10 @@ export function CreateFoodMode({
 
     if (isLibraryMode) {
       try {
-        const savedFood = await saveFoodAsync(saveFoodPayload, imageArgs);
+        const savedFood = await saveFoodForForm();
         isSavingRef.current = true;
-        saveEquivalentsAsync(savedFood.id);
+        if (portionDraft.length === 0 && !savedFoodRef.current)
+          saveEquivalentsAsync(savedFood.id);
         Toast.show({
           type: 'success',
           text1: t('createFood.success.foodSaved', {
@@ -494,6 +690,25 @@ export function CreateFoodMode({
             'No meal types are available. Please check your account settings.',
         }),
       });
+      return;
+    }
+
+    if (portionDraft.length > 0 || savedFoodRef.current) {
+      try {
+        const saved = await saveFoodForForm();
+        await addEntryAsync({
+          createEntryPayload: {
+            food_id: saved.id,
+            variant_id: saved.default_variant.id,
+            meal_type_id: effectiveMealId,
+            quantity,
+            unit: data.servingUnit || 'serving',
+            entry_date: selectedDate,
+          },
+        });
+      } catch {
+        // Keep this form and savedFoodRef for a retry of the same food.
+      }
       return;
     }
 
@@ -593,6 +808,7 @@ export function CreateFoodMode({
             : undefined
         }
         equivalents={{ items: equivalentDraft, onChange: setEquivalentDraft }}
+        portions={{ items: portionDraft, onChange: setPortionDraft }}
         onCustomNutrientsChange={setCustomNutrientValues}
       >
         {isLogEntryMode ? (

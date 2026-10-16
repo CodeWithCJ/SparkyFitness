@@ -3,6 +3,8 @@ import {
   createFoodVariant,
   loadFoodVariants,
   saveFood,
+  type FoodCreateProgress,
+  type ManagedFoodPortion,
 } from '@/api/Foods/enhancedCustomFoodFormService';
 import { Food, FoodVariant } from '@/types/food';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -58,6 +60,9 @@ export const useSaveFoodMutation = () => {
       userId,
       foodId,
       imageFiles,
+      onFoodPersisted,
+      createProgress,
+      managedPortions,
     }: {
       foodData: Food;
       variants: FoodVariant[];
@@ -65,7 +70,19 @@ export const useSaveFoodMutation = () => {
       foodId?: string;
       /** Newly attached image files; sent as multipart when present. */
       imageFiles?: File[];
-    }) => saveFood(foodData, variants, userId, foodId, imageFiles),
+      onFoodPersisted?: (food: Food) => void;
+      createProgress?: FoodCreateProgress;
+      managedPortions?: readonly ManagedFoodPortion[];
+    }) =>
+      saveFood(
+        foodData,
+        variants,
+        userId,
+        foodId,
+        imageFiles,
+        onFoodPersisted,
+        { createProgress, managedPortions }
+      ),
 
     onSuccess: () => {
       queryClient.invalidateQueries({

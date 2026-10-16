@@ -1609,9 +1609,49 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               onDecrement={() => adjustQuantity(-1)}
               onIncrement={() => adjustQuantity(1)}
             />
-            <Text className="text-text-primary text-base font-medium ml-2">
-              {quantityUnitLabel}
-            </Text>
+            {variantPickerOptions.length > 1 ? (
+              <BottomSheetPicker
+                value={selectedVariantId ?? variantPickerOptions[0]?.id ?? ''}
+                options={variantPickerOptions.map((variant) => ({
+                  label: variant.label,
+                  value: variant.id ?? '',
+                }))}
+                onSelect={handleVariantChange}
+                title={t('foodEntryAdd.pickers.selectServing', {
+                  defaultValue: 'Select Serving',
+                })}
+                renderTrigger={({ onPress }) => (
+                  <TouchableOpacity
+                    onPress={onPress}
+                    accessibilityRole="button"
+                    accessibilityLabel={t(
+                      'foodEntryAdd.pickers.selectServing',
+                      { defaultValue: 'Select Serving' }
+                    )}
+                    disabled={isCreateVariantPending}
+                    className="flex-1 flex-row items-center justify-between bg-raised border border-border-subtle rounded-lg px-3 py-3 ml-2 gap-2"
+                  >
+                    <Text className="text-text-primary text-base font-medium flex-1">
+                      {quantityUnitLabel}
+                    </Text>
+                    {isCreateVariantPending ? (
+                      <ActivityIndicator size="small" color={accentColor} />
+                    ) : (
+                      <Icon
+                        name="chevron-down"
+                        size={16}
+                        color={textPrimary}
+                        weight="medium"
+                      />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            ) : (
+              <Text className="text-text-primary text-base font-medium ml-2">
+                {quantityUnitLabel}
+              </Text>
+            )}
           </View>
           <View className="flex-row items-center mt-2">
             <Text className="text-text-secondary text-sm">
@@ -1630,51 +1670,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             {displayValues.servingUnit !== 'serving' &&
               !displayValues.servingDescription
                 ?.toLowerCase()
-                .includes('serving') &&
-              (variantPickerOptions.length > 1 ? (
-                <BottomSheetPicker
-                  value={selectedVariantId ?? variantPickerOptions[0]?.id ?? ''}
-                  options={variantPickerOptions.map((variant) => ({
-                    label: variant.label,
-                    value: variant.id ?? '',
-                  }))}
-                  onSelect={handleVariantChange}
-                  title={t('foodEntryAdd.pickers.selectServing', {
-                    defaultValue: 'Select Serving',
-                  })}
-                  renderTrigger={({ onPress }) => (
-                    <TouchableOpacity
-                      onPress={onPress}
-                      activeOpacity={0.7}
-                      className="flex-row items-center ml-1"
-                      disabled={isCreateVariantPending}
-                    >
-                      <Text className="text-text-secondary text-sm">
-                        {' · '}
-                        {perServingLabel}{' '}
-                        {t('foodEntryAdd.labels.perServing', {
-                          defaultValue: 'per serving',
-                        })}
-                      </Text>
-                      {isCreateVariantPending ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={accentColor}
-                          style={{ marginLeft: 6 }}
-                        />
-                      ) : (
-                        <Icon
-                          name="chevron-down"
-                          size={12}
-                          color={textPrimary}
-                          style={{ marginLeft: 4 }}
-                          weight="medium"
-                        />
-                      )}
-                    </TouchableOpacity>
-                  )}
-                />
-              ) : (
+                .includes('serving') && (
                 <Text className="text-text-secondary text-sm">
                   {' · '}
                   {perServingLabel}{' '}
@@ -1682,7 +1678,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                     defaultValue: 'per serving',
                   })}
                 </Text>
-              ))}
+              )}
             {/* Serving-unit meals: surface the meal's yield count as a
                 substitute for the suppressed "per serving" suffix above.
                 Singular meals (total_servings <= 1) don't need this \u2014 there's

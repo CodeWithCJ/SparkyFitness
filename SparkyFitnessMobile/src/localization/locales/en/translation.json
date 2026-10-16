@@ -2853,6 +2853,19 @@
     "removeFailed": "Failed to remove photo"
   },
   "foodForm": {
+    "portions": {
+      "title": "Named portions",
+      "help": "Keep this food in grams or milliliters and add portions such as a packet or bottle.",
+      "remove": "Remove portion {{name}}",
+      "metricReference": "Select a gram or milliliter serving to define portion sizes.",
+      "name": "Portion name",
+      "namePlaceholder": "e.g. packet",
+      "equals": "1 portion =",
+      "amount": "Portion amount",
+      "confirm": "Add portion",
+      "add": "+ Add portion",
+      "saveFailed": "Could not save all portions. Try saving again."
+    },
     "scanNutritionLabel": "Scan nutrition label",
     "equivalentSizes": "Equivalent sizes",
     "selectUnit": "Select Unit",
