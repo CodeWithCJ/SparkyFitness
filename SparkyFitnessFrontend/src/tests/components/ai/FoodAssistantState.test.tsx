@@ -106,3 +106,35 @@ it('does not continue a task when a version conflict is returned', async () => {
   await screen.findByRole('alert');
   expect(onResume).not.toHaveBeenCalled();
 });
+
+it('offers explicit resume for cancelled tasks without showing Cancel', async () => {
+  const cancelled = foodAssistantTaskSchema.parse({
+    ...task,
+    status: 'cancelled',
+  });
+  jest.mocked(api.loadFoodAssistantTasks).mockResolvedValue([cancelled]);
+  const onResume = jest.fn();
+  renderWithClient(<FoodAssistantState onResume={onResume} />);
+  fireEvent.click(screen.getByText('Food preferences and tasks'));
+  fireEvent.click(await screen.findByText('Resume in chat'));
+  expect(screen.queryByText('Cancel')).toBeNull();
+  await waitFor(() =>
+    expect(api.changeFoodAssistantTask).toHaveBeenCalledWith(
+      cancelled,
+      'resume'
+    )
+  );
+  await waitFor(() => expect(onResume).toHaveBeenCalledWith(id));
+});
+it('hides both task actions for completed tasks', async () => {
+  jest
+    .mocked(api.loadFoodAssistantTasks)
+    .mockResolvedValue([
+      foodAssistantTaskSchema.parse({ ...task, status: 'complete' }),
+    ]);
+  renderWithClient(<FoodAssistantState onResume={jest.fn()} />);
+  fireEvent.click(screen.getByText('Food preferences and tasks'));
+  await screen.findByText('Bread draft');
+  expect(screen.queryByText('Resume in chat')).toBeNull();
+  expect(screen.queryByText('Cancel')).toBeNull();
+});

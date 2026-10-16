@@ -2371,6 +2371,7 @@ Actions:
                 : {};
               let entryQuantity = args.quantity;
               let entryUnit = args.unit;
+              let replacementVariantId: string | undefined;
               if (entryType === 'food_entry' && entryUnit !== undefined) {
                 if (isAmbiguousLegacyFoodUnit(entryUnit)) {
                   return ERRORS.VALIDATION(
@@ -2389,7 +2390,10 @@ Actions:
                 // into the requested representation before reconciling it
                 // back to the variant unit.
                 if (entryQuantity === undefined) {
-                  if (normalizeFoodUnit(entryUnit) === 'serving') {
+                  if (
+                    normalizeFoodUnit(entryUnit) === 'serving' &&
+                    normalizeFoodUnit(existingEntry.serving_unit) !== 'serving'
+                  ) {
                     const servingSize = Number(existingEntry.serving_size);
                     if (Number.isFinite(servingSize) && servingSize > 0) {
                       requestedQuantity /= servingSize;
@@ -2404,12 +2408,34 @@ Actions:
                     }
                   }
                 }
-                const reconciled = resolveFoodPortion({
+                let reconciled = resolveFoodPortion({
                   quantity: requestedQuantity,
                   unit: entryUnit,
                   variants: [existingEntry],
                   explicitVariant: existingEntry,
                 });
+                // Keep the historical reference whenever it can represent the edit.
+                // An explicit new amount may select another saved reference (e.g.
+                // slices -> grams); the service then refreshes that variant's snapshot.
+                if (
+                  !reconciled.ok &&
+                  entryQuantity !== undefined &&
+                  existingEntry.food_id
+                ) {
+                  const variants = await foodRepository.getFoodVariantsByFoodId(
+                    existingEntry.food_id,
+                    userId
+                  );
+                  const alternative = resolveFoodPortion({
+                    quantity: entryQuantity,
+                    unit: entryUnit,
+                    variants: variants ?? [],
+                  });
+                  if (alternative.ok && alternative.variant.id) {
+                    reconciled = alternative;
+                    replacementVariantId = alternative.variant.id;
+                  }
+                }
                 if (!reconciled.ok)
                   return ERRORS.VALIDATION(reconciled.message);
                 entryQuantity = reconciled.quantity;
@@ -2429,6 +2455,9 @@ Actions:
                     userId,
                     entryId,
                     {
+                      ...(replacementVariantId
+                        ? { variant_id: replacementVariantId }
+                        : {}),
                       quantity: entryQuantity,
                       unit: entryUnit,
                       ...mealTypeUpdate,

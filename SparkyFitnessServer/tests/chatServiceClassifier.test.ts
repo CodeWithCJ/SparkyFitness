@@ -149,7 +149,7 @@ describe('getSystemPrompt diary-editing guidance', () => {
     (profile) => {
       const prompt = getSystemPrompt('UTC', 'None', profile, ['food']);
       expect(prompt).toContain('sparky_manage_diary');
-      expect(prompt).toMatch(/inspect the selection/i);
+      expect(prompt).toMatch(/inspect (?:the selection|the exact entry)/i);
       expect(prompt).toMatch(/material ambiguity/i);
       expect(prompt).toMatch(/replace it in place/i);
     }

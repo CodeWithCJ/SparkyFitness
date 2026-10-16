@@ -50,10 +50,8 @@ const uuid = z.string().uuid();
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.post('/diary/inspect', async (req, res, next) => {
   const data = foodAssistantDiaryScopeSchema.safeParse(req.body);
@@ -94,10 +92,8 @@ router.post('/diary/inspect', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.post('/diary/apply/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id),
@@ -153,10 +149,8 @@ router.post('/diary/apply/:id', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.post('/diary/undo/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id),
@@ -200,10 +194,8 @@ router.post('/diary/undo/:id', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.get('/recipes/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
@@ -236,10 +228,8 @@ router.get('/recipes/:id', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.post('/recipes/draft', async (req, res, next) => {
   const data = z
@@ -283,10 +273,8 @@ router.post('/recipes/draft', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.get('/tasks/:id/recipe-preview', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
@@ -326,10 +314,8 @@ router.get('/tasks/:id/recipe-preview', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.post('/recipes/publish/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
@@ -381,10 +367,8 @@ router.post('/recipes/publish/:id', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.post('/recipes/import-ingredient/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
@@ -432,10 +416,8 @@ router.post('/recipes/import-ingredient/:id', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.post('/recipes/undo/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
@@ -472,10 +454,8 @@ router.post('/recipes/undo/:id', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.get('/preferences', async (req, res, next) => {
   try {
@@ -514,10 +494,8 @@ router.get('/preferences', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.put('/preferences', async (req, res, next) => {
   const parsed = editFoodAssistantPreferenceSchema.safeParse(req.body);
@@ -564,10 +542,8 @@ router.put('/preferences', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.delete('/preferences/:key', async (req, res, next) => {
   const version = z.coerce
@@ -607,10 +583,8 @@ router.delete('/preferences/:key', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.get('/tasks', async (req, res, next) => {
   try {
@@ -653,10 +627,8 @@ router.get('/tasks', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.post('/tasks', async (req, res, next) => {
   const parsed = createFoodAssistantTaskSchema.safeParse(req.body);
@@ -692,9 +664,9 @@ router.post('/tasks', async (req, res, next) => {
  *       '401':
  *         description: Authentication required
  *       '404':
- *         description: Item is not accessible
+ *         description: Task not found or inaccessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.get('/tasks/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
@@ -730,10 +702,8 @@ router.get('/tasks/:id', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.get('/tasks/:id/operations', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
@@ -785,10 +755,8 @@ router.get('/tasks/:id/operations', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.patch('/tasks/:id', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
@@ -843,10 +811,8 @@ router.patch('/tasks/:id', async (req, res, next) => {
  *         description: Invalid request
  *       '401':
  *         description: Authentication required
- *       '404':
- *         description: Item is not accessible
  *       '409':
- *         description: Stale version, conflicting retry, or action requiring confirmation
+ *         description: Missing or inaccessible item, stale version, conflicting retry, or action requiring confirmation
  */
 router.post('/tasks/:id/:action', async (req, res, next) => {
   const id = uuid.safeParse(req.params.id);
