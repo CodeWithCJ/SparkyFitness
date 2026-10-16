@@ -31,7 +31,7 @@ import {
   formatTooltipDate,
   formatXLabel30d90d,
   formatXLabel7d,
-  makeChartFont,
+  useChartFont,
   measureLabelColumnWidth,
 } from './charts/chartFormatting';
 import {
@@ -58,8 +58,6 @@ const PLOT_HEIGHT = 150;
  * instead of one sized for the longest label across every locale/time format.
  */
 const FALLBACK_LABEL_COLUMN_WIDTH = 44;
-
-const axisFont = makeChartFont(CHART_LABEL_FONT_SIZE);
 
 /** Wide enough for `formatXLabel30d90d`'s "Aug 28" without truncating. */
 const X_LABEL_WIDTH = 56;
@@ -213,6 +211,7 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
   range,
 }) => {
   const { t } = useTranslation();
+  const axisFont = useChartFont(CHART_LABEL_FONT_SIZE);
   const { preferences } = usePreferences();
   const [plotWidth, setPlotWidth] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -316,7 +315,7 @@ const SleepTimelineChart: React.FC<SleepTimelineChartProps> = ({
         (text) => axisFont.getTextWidth(text),
         FALLBACK_LABEL_COLUMN_WIDTH
       ),
-    [tickLabels]
+    [tickLabels, axisFont]
   );
 
   const renderPlaceholder = (message: string) => (

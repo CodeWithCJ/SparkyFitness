@@ -189,7 +189,19 @@ const SPORT_TOKENS: ReadonlyArray<readonly [ActivitySport, readonly string[]]> =
     ],
     [
       "fitness_equipment",
-      ["elliptical", "stairstepper", "stepper", "stairmaster"],
+      [
+        "elliptical",
+        "stairstepper",
+        "stepper",
+        // Apple Health names this workout "Stair Climbing" (shown as "Stair
+        // Stepper" in Fitness) and a second type "Stairs"; camel-cased
+        // "StairMaster" splits into stair + master. "stair" alone is safe
+        // because only whole tokens match.
+        "stair",
+        "stairs",
+        "stairclimber",
+        "stairmaster",
+      ],
     ],
     [
       "strength",

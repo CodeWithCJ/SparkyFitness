@@ -145,6 +145,30 @@ describe('useWatchSetTargetsSync', () => {
     });
   });
 
+  it('sends the logged sets that are personal records', () => {
+    act(() => {
+      useActiveWorkoutStore.setState({
+        session: makeSession(),
+        sessionId: 'session-1',
+        watchArmedAt: ARMED_AT,
+      });
+    });
+    renderHook(() => useWatchSetTargetsSync(true));
+    expect(mockUpdateSetTargets.mock.calls[0][0].prSetIds).toEqual([]);
+
+    act(() => {
+      useActiveWorkoutStore.setState({
+        completedSetIds: { '101': 1000 },
+        prSetIds: { '101': true, '102': true },
+      });
+    });
+
+    // '102' carries a stale flag but is not logged.
+    expect(mockUpdateSetTargets.mock.calls.at(-1)?.[0].prSetIds).toEqual([
+      '101',
+    ]);
+  });
+
   it('sends the sets logged on the phone, and again when one is logged', () => {
     act(() => {
       useActiveWorkoutStore.setState({

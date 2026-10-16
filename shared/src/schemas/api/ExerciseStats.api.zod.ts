@@ -161,6 +161,12 @@ export const exerciseActivityQueryItemSchema = z.object({
   formattedPace: z.string().nullable(), // e.g. "5:12 /km" or "8:22 /mi"
   caloriesBurned: z.number(),
   avgHeartRate: z.number().nullable(),
+  // Optional because a self-hosted deployment can pair a newer client with a
+  // server that predates these fields: an older response simply lacks them.
+  /** Floors (flights of stairs) climbed, e.g. on a stair stepper. */
+  floorsClimbed: z.number().nullable().optional(),
+  /** Total ascent in metres, whatever the unit system of the request. */
+  elevationGainMeters: z.number().nullable().optional(),
   source: z.string().nullable(),
   notes: z.string().nullable(),
   hasGpsTrack: z.boolean(),

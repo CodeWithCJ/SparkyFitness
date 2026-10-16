@@ -196,13 +196,17 @@ const FoodResultCard = ({
                     className={`text-xs ${AI_BADGE_TONE_CLASSES[CONFIDENCE_TONES[foodItem.default_variant.ai_confidence as AiConfidence]]}`}
                   >
                     <Sparkles className="h-3 w-3 mr-1" />
-                    AI{' '}
-                    {
-                      OVERALL_CONFIDENCE_LABELS[
-                        foodItem.default_variant.ai_confidence as AiConfidence
-                      ]
-                    }{' '}
-                    estimate
+                    {t(
+                      'enhancedFoodSearch.aiEstimate',
+                      'AI {{ai_confidence}} estimate',
+                      {
+                        ai_confidence:
+                          OVERALL_CONFIDENCE_LABELS[
+                            foodItem.default_variant
+                              .ai_confidence as AiConfidence
+                          ],
+                      }
+                    )}
                   </Badge>
                 )}
               {!isOnline &&
@@ -236,7 +240,13 @@ const FoodResultCard = ({
                 foodItem.default_variant?.glycemic_index &&
                 foodItem.default_variant.glycemic_index !== 'None' && (
                   <Badge variant="outline" className="text-xs">
-                    GI: {foodItem.default_variant.glycemic_index}
+                    {t(
+                      'foodSearch.foodResultCard.gi',
+                      'GI: {{glycemic_index}}',
+                      {
+                        glycemic_index: foodItem.default_variant.glycemic_index,
+                      }
+                    )}
                   </Badge>
                 )}
             </div>
@@ -254,7 +264,11 @@ const FoodResultCard = ({
                   customNutrients={nutrientConfig.customNutrients}
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Per {formatServingLabel(foodItem.default_variant)}
+                  {t('enhancedFoodSearch.per', 'Per {{default_variant}}', {
+                    default_variant: formatServingLabel(
+                      foodItem.default_variant
+                    ),
+                  })}
                 </p>
                 <AllergenBadges
                   allergens={foodItem.default_variant.allergens}

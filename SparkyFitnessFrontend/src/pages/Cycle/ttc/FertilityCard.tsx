@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles, AlertTriangle } from 'lucide-react';
 import type { FertilityDetails } from '@/hooks/useCycle';
@@ -18,7 +18,7 @@ const BAND_COLORS: Record<string, string> = {
   low: 'bg-muted text-muted-foreground border-transparent',
 };
 
-const BASIS_LABELS: Record<string, string> = {
+const BASIS_DEFAULTS: Record<string, string> = {
   bbt: 'BBT temperature shift',
   opk: 'OPK LH peak test',
   calendar: 'calendar method predictions',
@@ -34,6 +34,7 @@ export default function FertilityCard({
   const band = conceptionProbability.band;
   const probPercent = Math.round(conceptionProbability.probability * 100);
   const basis = ovulationEstimate?.basis || 'calendar';
+  const basisKey = basis in BASIS_DEFAULTS ? basis : 'calendar';
   const ovulationDate = ovulationEstimate?.date;
 
   const formatDate = (dateStr: string) => {
@@ -83,18 +84,25 @@ export default function FertilityCard({
         <p className="text-sm text-foreground/90">
           {ovulationDate ? (
             <>
-              {t(
-                'cycle.ttc.ovulationEstimateDetail',
-                'Ovulation is estimated on '
-              )}
-              <strong className="font-semibold">
-                {formatDate(ovulationDate)}
-              </strong>
-              {t('cycle.ttc.ovulationEstimateBasis', ' based on ')}
-              <span className="font-medium underline decoration-emerald-500/40 decoration-2">
-                {BASIS_LABELS[basis]}
-              </span>
-              .
+              <Trans
+                i18nKey="cycle.ttc.ovulationIsEstimatedOnBased"
+                defaults={
+                  'Ovulation is estimated on <strong>{{ovulationDate}}</strong> based on <span>{{basis}}</span>.'
+                }
+                values={{
+                  ovulationDate: formatDate(ovulationDate),
+                  basis: t(
+                    `cycle.ttc.fertilityBasis.${basisKey}`,
+                    BASIS_DEFAULTS[basisKey] ?? basisKey
+                  ),
+                }}
+                components={{
+                  strong: <strong className="font-semibold" />,
+                  span: (
+                    <span className="font-medium underline decoration-emerald-500/40 decoration-2" />
+                  ),
+                }}
+              />
             </>
           ) : (
             t(

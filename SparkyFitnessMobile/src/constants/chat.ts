@@ -52,6 +52,11 @@ const TOOL_DISPLAY: Record<string, ToolDisplay> = {
     defaultLabel: 'Check-in',
     icon: 'measurements',
   },
+  sparky_manage_run_program: {
+    labelKey: 'chat.tools.runProgram',
+    defaultLabel: 'Run program',
+    icon: 'exercise',
+  },
   sparky_manage_goals: {
     labelKey: 'chat.tools.goals',
     defaultLabel: 'Goals',

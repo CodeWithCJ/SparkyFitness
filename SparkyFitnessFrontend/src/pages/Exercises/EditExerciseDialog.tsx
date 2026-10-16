@@ -379,7 +379,11 @@ export default function EditExerciseDialog({ form }: EditExerciseDialogProps) {
                     >
                       <img
                         src={resolveExerciseImageSrc(url)}
-                        alt={`existing ${index}`}
+                        alt={t(
+                          'exercises.editExerciseDialog.existing',
+                          'existing {{index}}',
+                          { index }
+                        )}
                         className="w-full h-full object-cover rounded"
                       />
                       <Button
@@ -414,7 +418,11 @@ export default function EditExerciseDialog({ form }: EditExerciseDialogProps) {
                     >
                       <img
                         src={url}
-                        alt={`preview ${index}`}
+                        alt={t(
+                          'exercises.editExerciseDialog.preview',
+                          'preview {{index}}',
+                          { index }
+                        )}
                         className="w-full h-full object-cover rounded"
                       />
                       <Button

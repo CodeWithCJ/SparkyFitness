@@ -48,6 +48,7 @@ import {
 import { garminKeys } from '@/api/keys/integrations';
 import { externalProviderKeys } from '@/api/keys/settings';
 import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
+import i18n from 'i18next';
 export const useLinkFitbitMutation = () => {
   const { t } = useTranslation();
   const invalidate = useDiaryInvalidation();
@@ -624,8 +625,14 @@ export const useResumeGarminLoginMutation = () => {
       });
     },
     meta: {
-      successMessage: 'Garmin Connect linked successfully!',
-      errorMessage: 'Failed to submit MFA code. Please try again.',
+      successMessage: i18n.t(
+        'hooks.useIntegrations.garminConnectLinkedSuccessfully',
+        'Garmin Connect linked successfully!'
+      ),
+      errorMessage: i18n.t(
+        'hooks.useIntegrations.failedToSubmitMFACode',
+        'Failed to submit MFA code. Please try again.'
+      ),
     },
   });
 };

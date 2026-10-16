@@ -280,6 +280,86 @@ describe('exerciseStatsService', () => {
       expect(mockClient.release).toHaveBeenCalled();
     });
 
+    it('carries floors climbed and elevation gain for a stair workout', async () => {
+      mockClient.query.mockResolvedValueOnce({ rows: [{ count: '1' }] });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'entry-stairs',
+            user_id: 'user-123',
+            exercise_name: 'Stair Climbing',
+            category: 'cardio',
+            entry_date: new Date('2026-10-08'),
+            entry_time: '06:49',
+            duration_minutes: 16.93,
+            distance: null,
+            avg_heart_rate: 157,
+            calories_burned: 219,
+            floors_climbed: '56',
+            elevation_gain_meters: '181.9056',
+            source: 'HealthKit',
+            notes: null,
+          },
+        ],
+      });
+
+      const res = await exerciseStatsService.queryExerciseActivities(
+        'user-123',
+        {
+          page: 1,
+          pageSize: 10,
+          sortBy: 'entry_date',
+          sortOrder: 'desc',
+          unitSystem: 'metric',
+        }
+      );
+
+      expect(res.items[0].floorsClimbed).toBe(56);
+      expect(res.items[0].elevationGainMeters).toBe(181.9);
+      const sql = String(mockClient.query.mock.calls[1]?.[0]);
+      expect(sql).toContain('floors_climbed');
+      expect(sql).toContain('elevation_gain_meters');
+    });
+
+    it('leaves floors and elevation null when the source never measured them', async () => {
+      mockClient.query.mockResolvedValueOnce({ rows: [{ count: '1' }] });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'entry-walk',
+            user_id: 'user-123',
+            exercise_name: 'Walking',
+            category: 'cardio',
+            entry_date: new Date('2026-10-08'),
+            entry_time: '07:00',
+            duration_minutes: 30,
+            distance: 2.5,
+            avg_heart_rate: null,
+            calories_burned: 120,
+            // A zero or empty column is "not measured", never "0 floors".
+            floors_climbed: 0,
+            elevation_gain_meters: null,
+            source: 'manual',
+            notes: null,
+          },
+        ],
+      });
+
+      const res = await exerciseStatsService.queryExerciseActivities(
+        'user-123',
+        {
+          page: 1,
+          pageSize: 10,
+          sortBy: 'entry_date',
+          sortOrder: 'desc',
+          unitSystem: 'metric',
+        }
+      );
+
+      expect(res.items[0].floorsClimbed).toBeNull();
+      expect(res.items[0].elevationGainMeters).toBeNull();
+    });
+
     it('does not treat a crunch or a strength session as cardio', async () => {
       mockClient.query.mockResolvedValueOnce({ rows: [{ count: '0' }] });
       mockClient.query.mockResolvedValueOnce({ rows: [] });
@@ -396,6 +476,38 @@ describe('exerciseStatsService', () => {
       expect(walkPr?.activityName).toBe('Antwerp Walking');
       // The walk keeps its own record instead of overwriting the run's.
       expect(runPr?.bestTimeSeconds).not.toBe(walkPr?.bestTimeSeconds);
+    });
+
+    it('leaves sports without a distance standard out of the distance bands', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            std_key: 'marathon',
+            id: 'ski-1',
+            exercise_name: 'Downhill Skiing',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-02-23'),
+            duration_minutes: 122.2,
+            distance: 42.2,
+            provider_name: null,
+            detail_data: null,
+            exercise_source_id: null,
+          },
+        ],
+      });
+      // No band qualifies, so the best-effort fallback runs before strength.
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      expect(
+        res.cardioPRs.filter(
+          (pr) => pr.sportGroup === 'other' && pr.distanceStandard !== 'custom'
+        )
+      ).toEqual([]);
     });
 
     it('does not let a bike ride take the 5 km record from a run', async () => {

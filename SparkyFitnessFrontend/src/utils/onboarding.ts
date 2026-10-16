@@ -1,5 +1,5 @@
 import { DEFAULT_GOALS } from '@/constants/goals';
-import { calculateAllAdvancedNutrients } from '@/services/nutrientCalculationService';
+import { calculateAllAdvancedNutrients } from '@workspace/shared';
 import { ExpandedGoals } from '@/types/goals';
 import {
   FatBreakdownAlgorithm,
@@ -7,7 +7,7 @@ import {
   VitaminCalculationAlgorithm,
   SugarCalculationAlgorithm,
   AddedSugarAlgorithm,
-} from '@/types/nutrientAlgorithms';
+} from '@workspace/shared';
 import { calculateBasePlan } from './nutritionCalculations';
 import { EnergyUnit } from '@/contexts/PreferencesContext';
 import { OnboardingData } from '@/types/onboarding';

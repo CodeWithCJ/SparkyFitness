@@ -8,7 +8,9 @@ import {
   parseAmount,
   pickerCatalogEntries,
   rowsForCatalogId,
+  rowsFromLookup,
   rowsFromNutrients,
+  unmatchedSummary,
 } from '../../src/utils/supplements';
 import { MACRO_PICKER_FIELDS } from '@workspace/shared';
 
@@ -156,5 +158,50 @@ describe('saved supplements', () => {
     expect(
       countNutrients({ vitamin_a: 1, custom_nutrients: { A: 1, B: 2 } })
     ).toBe(3);
+  });
+});
+
+describe('barcode lookup', () => {
+  const product = {
+    source: 'dsld' as const,
+    sourceId: '1',
+    name: 'Daily Multi',
+    brand: null,
+    form: null,
+    serving: null,
+    fixed: [
+      { key: 'vitamin_c' as const, amount: 90 },
+      { key: 'protein' as const, amount: 2 },
+    ],
+    catalog: [{ catalogId: 'magnesium', amount: 400 }],
+    unmatched: [
+      { name: 'A', amount: 1, unit: 'mg' },
+      { name: 'B', amount: 1, unit: 'mg' },
+      { name: 'C', amount: 1, unit: 'mg' },
+    ],
+  };
+
+  it('turns the found nutrients into rows with their amounts', () => {
+    const rows = rowsFromLookup(product);
+    expect(rows.map((r) => [r.id, r.label, r.unit, r.value])).toEqual([
+      ['fixed:vitamin_c', 'Vitamin C', 'mg', '90'],
+      ['fixed:protein', 'Protein', 'g', '2'],
+      ['catalog:magnesium', 'Magnesium', 'mg', '400'],
+    ]);
+  });
+
+  it('saves what a lookup found', () => {
+    expect(
+      buildNutrients(rowsFromLookup(product), { magnesium: 'Mg' })
+    ).toEqual({
+      vitamin_c: 90,
+      protein: 2,
+      custom_nutrients: { Mg: 400 },
+    });
+  });
+
+  it('summarises the ingredients left out', () => {
+    expect(unmatchedSummary(product, 2)).toEqual({ names: 'A, B', extra: 1 });
+    expect(unmatchedSummary({ ...product, unmatched: [] })).toBeNull();
   });
 });

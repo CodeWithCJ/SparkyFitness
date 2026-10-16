@@ -25,6 +25,8 @@ const syncInfoPlist = (appGroup) => {
   <dict>
     <key>APP_GROUP_IDENTIFIER</key>
     <string>${escapedAppGroup}</string>
+    <key>SparkyKeychainGroup</key>
+    <string>$(AppIdentifierPrefix)${escapedAppGroup}</string>
     <key>NSExtension</key>
     <dict>
       <key>NSExtensionPointIdentifier</key>
@@ -51,6 +53,7 @@ module.exports = (config) => {
     icon: '../../assets/icons/adaptiveicon.png',
     entitlements: {
       'com.apple.security.application-groups': [appGroup],
+      'keychain-access-groups': [`$(AppIdentifierPrefix)${appGroup}`],
     },
   };
 };

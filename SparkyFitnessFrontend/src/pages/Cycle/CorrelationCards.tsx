@@ -50,7 +50,9 @@ function CorrelationCard({ c }: { c: CorrelationResult }) {
       <CardHeader className="py-3 px-4">
         <CardTitle className="flex items-center gap-1.5 text-sm">
           <TrendingUp className="h-4 w-4" />
-          {label} {t('cycle.correlation.byPhase', 'by cycle phase')}
+          {t('cycle.correlation.byCyclePhase', '{{label}} by cycle phase', {
+            label,
+          })}
         </CardTitle>
       </CardHeader>
       <CardContent className="px-4 pb-4 space-y-1.5">

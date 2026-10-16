@@ -23,6 +23,7 @@ import BumpPhotoJournal from './BumpPhotoJournal';
 import VitalsCard from './VitalsCard';
 import type { ChecklistItem } from './pregnancyTypes';
 
+import i18n from 'i18next';
 type Tool =
   | 'growth'
   | 'kicks'
@@ -42,43 +43,57 @@ const TOOLS: {
     id: 'growth',
     icon: Sprout,
     labelKey: 'pregnancy.tiles.growth',
-    label: 'Baby growth',
+    get label() {
+      return i18n.t('pregnancy.pregnancyToday.babyGrowth', 'Baby growth');
+    },
   },
   {
     id: 'kicks',
     icon: Baby,
     labelKey: 'pregnancy.tiles.kicks',
-    label: 'Kick counter',
+    get label() {
+      return i18n.t('pregnancy.pregnancyToday.kickCounter', 'Kick counter');
+    },
   },
   {
     id: 'contractions',
     icon: Timer,
     labelKey: 'pregnancy.tiles.contractions',
-    label: 'Contractions',
+    get label() {
+      return i18n.t('pregnancy.pregnancyToday.contractions', 'Contractions');
+    },
   },
   {
     id: 'photos',
     icon: Camera,
     labelKey: 'pregnancy.tiles.photos',
-    label: 'Bump photo',
+    get label() {
+      return i18n.t('pregnancy.pregnancyToday.bumpPhoto', 'Bump photo');
+    },
   },
   {
     id: 'safety',
     icon: Apple,
     labelKey: 'pregnancy.tiles.safety',
-    label: 'Food & meds',
+    get label() {
+      return i18n.t('pregnancy.pregnancyToday.foodMeds', 'Food & meds');
+    },
   },
   {
     id: 'vitals',
     icon: HeartPulse,
     labelKey: 'pregnancy.tiles.vitals',
-    label: 'Vitals',
+    get label() {
+      return i18n.t('pregnancy.pregnancyToday.vitals', 'Vitals');
+    },
   },
   {
     id: 'checklist',
     icon: ListChecks,
     labelKey: 'pregnancy.tiles.checklist',
-    label: 'Checklist',
+    get label() {
+      return i18n.t('pregnancy.pregnancyToday.checklist', 'Checklist');
+    },
   },
 ];
 
@@ -128,8 +143,15 @@ export default function PregnancyToday() {
                   </p>
                   {baby.lengthCm != null ? (
                     <p className="text-xs text-muted-foreground">
-                      ≈ {baby.lengthCm} cm
-                      {baby.weightG != null ? ` · ${baby.weightG} g` : ''}
+                      {t(
+                        baby.weightG != null
+                          ? 'pregnancy.pregnancyToday.lengthAndWeight'
+                          : 'pregnancy.pregnancyToday.lengthOnly',
+                        baby.weightG != null
+                          ? '≈ {{lengthCm}} cm · {{weightG}} g'
+                          : '≈ {{lengthCm}} cm',
+                        { lengthCm: baby.lengthCm, weightG: baby.weightG }
+                      )}
                     </p>
                   ) : null}
                 </div>
@@ -190,6 +212,7 @@ export default function PregnancyToday() {
               pregnancyId={pregnancyId}
               vitals={overview.vitals ?? null}
               date={overview.date ?? ''}
+              week={gestation.week}
             />
           ) : null}
           {tool === 'checklist' ? (

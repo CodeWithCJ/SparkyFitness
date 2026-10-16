@@ -7,6 +7,8 @@ import { useDebounce } from '@/hooks/useDebounce';
 import type { Food, NutritionixItem } from '@/types/food';
 import type { DataProvider } from '@/types/settings';
 
+import type { FoodProviderType } from '@workspace/shared';
+
 // A single online provider result, tagged with its source so the UI can render
 // the correct edit/detail flow. Mirrors the per-provider mapping used by the
 // single-provider online search in FoodSearch.tsx. Defined here (rather than in
@@ -14,44 +16,12 @@ import type { DataProvider } from '@/types/settings';
 // share the type.
 export type ExternalResultWrapper =
   | {
-      provider_type: 'openfoodfacts';
-      food: Food;
-    }
-  | {
       provider_type: 'nutritionix';
       raw: NutritionixItem;
       food: Food;
     }
   | {
-      provider_type: 'fatsecret';
-      food: Food;
-    }
-  | {
-      provider_type: 'usda';
-      food: Food;
-    }
-  | {
-      provider_type: 'mealie';
-      food: Food;
-    }
-  | {
-      provider_type: 'tandoor';
-      food: Food;
-    }
-  | {
-      provider_type: 'yazio';
-      food: Food;
-    }
-  | {
-      provider_type: 'norish';
-      food: Food;
-    }
-  | {
-      provider_type: 'swissfood';
-      food: Food;
-    }
-  | {
-      provider_type: 'canadian-nutrient-file';
+      provider_type: FoodProviderType;
       food: Food;
     };
 

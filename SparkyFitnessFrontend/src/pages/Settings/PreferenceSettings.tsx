@@ -142,19 +142,34 @@ export const PreferenceSettings = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="MM/dd/yyyy">
-                  MM/dd/yyyy (12/25/2024)
+                  {t(
+                    'settings.preferenceSettings.mmDdYyyy1225',
+                    'MM/dd/yyyy (12/25/2024)'
+                  )}
                 </SelectItem>
                 <SelectItem value="dd/MM/yyyy">
-                  dd/MM/yyyy (25/12/2024)
+                  {t(
+                    'settings.preferenceSettings.ddMMYyyy2512',
+                    'dd/MM/yyyy (25/12/2024)'
+                  )}
                 </SelectItem>
                 <SelectItem value="dd-MMM-yyyy">
-                  dd-MMM-yyyy (25-Dec-2024)
+                  {t(
+                    'settings.preferenceSettings.ddMMMYyyy25Dec',
+                    'dd-MMM-yyyy (25-Dec-2024)'
+                  )}
                 </SelectItem>
                 <SelectItem value="yyyy-MM-dd">
-                  yyyy-MM-dd (2024-12-25)
+                  {t(
+                    'settings.preferenceSettings.yyyyMMDd202412',
+                    'yyyy-MM-dd (2024-12-25)'
+                  )}
                 </SelectItem>
                 <SelectItem value="MMM dd, yyyy">
-                  MMM dd, yyyy (Dec 25, 2024)
+                  {t(
+                    'settings.preferenceSettings.mmmDdYyyyDec25',
+                    'MMM dd, yyyy (Dec 25, 2024)'
+                  )}
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -327,7 +342,11 @@ export const PreferenceSettings = () => {
               <SelectContent>
                 {STANDARD_DRINK_PRESETS.map((preset) => (
                   <SelectItem key={preset.code} value={String(preset.grams)}>
-                    {preset.label} ({preset.grams}g pure alcohol)
+                    {t(
+                      'settings.preferenceSettings.gPureAlcohol',
+                      '{{label}} ({{grams}}g pure alcohol)',
+                      { label: preset.label, grams: preset.grams }
+                    )}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -446,37 +465,37 @@ export const PreferenceSettings = () => {
                 {[
                   {
                     value: '0',
-                    label: 'Sunday',
+                    label: t('common.sunday', 'Sunday'),
                     tKey: 'settings.preferences.sunday',
                   },
                   {
                     value: '1',
-                    label: 'Monday',
+                    label: t('common.monday', 'Monday'),
                     tKey: 'settings.preferences.monday',
                   },
                   {
                     value: '2',
-                    label: 'Tuesday',
+                    label: t('common.tuesday', 'Tuesday'),
                     tKey: 'settings.preferences.tuesday',
                   },
                   {
                     value: '3',
-                    label: 'Wednesday',
+                    label: t('common.wednesday', 'Wednesday'),
                     tKey: 'settings.preferences.wednesday',
                   },
                   {
                     value: '4',
-                    label: 'Thursday',
+                    label: t('common.thursday', 'Thursday'),
                     tKey: 'settings.preferences.thursday',
                   },
                   {
                     value: '5',
-                    label: 'Friday',
+                    label: t('common.friday', 'Friday'),
                     tKey: 'settings.preferences.friday',
                   },
                   {
                     value: '6',
-                    label: 'Saturday',
+                    label: t('common.saturday', 'Saturday'),
                     tKey: 'settings.preferences.saturday',
                   },
                 ].map((day) => (

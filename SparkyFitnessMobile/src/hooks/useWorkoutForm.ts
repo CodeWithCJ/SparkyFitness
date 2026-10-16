@@ -159,6 +159,7 @@ export function workoutFormReducer(
           supersetGroup: exercise.superset_group ?? null,
           notes: exercise.notes,
           snapshot: exercise.exercise_snapshot ?? null,
+          exerciseEquipment: exercise.exercise_snapshot?.equipment ?? null,
           durationMinutes: exercise.duration_minutes ?? 0,
           calories:
             (exercise.calories_burned ?? 0) > 0
@@ -214,6 +215,7 @@ export function workoutFormReducer(
           exerciseCategory: exercise.category ?? null,
           exerciseModality: exercise.modality ?? null,
           images: exercise.image_url ? [exercise.image_url] : [],
+          exerciseEquipment: exercise.equipment ?? null,
           supersetGroup: exercise.superset_group ?? null,
           sets: exercise.sets.map((set, setIdx) => ({
             clientId: action.clientIds[exerciseIdx].setClientIds[setIdx],
@@ -286,6 +288,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     replaceExercise,
     clearExerciseCompletions,
     addSet,
+    addWarmupSets,
     removeSet,
     updateSetField,
     updateSetMeta,
@@ -373,6 +376,7 @@ export function useWorkoutForm(options?: UseWorkoutFormOptions) {
     replaceExercise,
     clearExerciseCompletions,
     addSet,
+    addWarmupSets,
     removeSet,
     updateSetField,
     updateSetMeta,

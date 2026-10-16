@@ -19,31 +19,39 @@ export const AI_TIMEOUT_MS = 120_000;
 
 /**
  * Wraps fetch with an AbortController that auto-aborts after timeoutMs.
- * Caller-provided signals are excluded from the type because they would be
- * clobbered by the timeout signal; if a caller ever needs cancellation, the
- * two signals must be combined here (AbortSignal.any isn't available in RN).
+ * Combines caller cancellation with the timeout without AbortSignal.any, which
+ * is not available on every supported React Native runtime.
  */
 export const fetchWithTimeout = async (
   url: string,
-  options: Omit<RequestInit, 'signal'>,
+  options: RequestInit,
   timeoutMs: number
 ): Promise<Response> => {
+  const { signal, ...requestOptions } = options;
+  if (signal?.aborted) {
+    const error = new Error('Request cancelled');
+    error.name = 'AbortError';
+    throw error;
+  }
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const cancel = () => controller.abort();
+  signal?.addEventListener('abort', cancel, { once: true });
+  const timer = setTimeout(cancel, timeoutMs);
 
   try {
-    const response = await fetch(url, {
-      ...options,
-      signal: controller.signal,
-    });
-    return response;
+    return await fetch(url, { ...requestOptions, signal: controller.signal });
   } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
+    if (
+      error instanceof Error &&
+      error.name === 'AbortError' &&
+      !signal?.aborted
+    ) {
       throw new TimeoutError('Request', timeoutMs);
     }
     throw error;
   } finally {
     clearTimeout(timer);
+    signal?.removeEventListener('abort', cancel);
   }
 };
 

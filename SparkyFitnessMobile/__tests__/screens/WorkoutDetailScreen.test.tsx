@@ -644,6 +644,41 @@ describe('WorkoutDetailScreen', () => {
       const { payload } = mockUpdateSession.mock.calls[0][0];
       expect(payload.exercises[0].sets[0].completed_at).toBeNull();
     });
+
+    it('leaves warm-up sets out of the edit-mode volume summary', () => {
+      const screen = renderScreen(
+        buildSession({
+          exercises: [
+            buildExercise({
+              sets: [
+                buildSet({
+                  id: 101,
+                  set_number: 1,
+                  set_type: 'warmup',
+                  weight: 40,
+                  reps: 5,
+                }),
+                buildSet({
+                  id: 102,
+                  set_number: 2,
+                  set_type: 'normal',
+                  weight: 60,
+                  reps: 10,
+                }),
+              ],
+            }),
+          ],
+        })
+      );
+
+      expect(screen.getByText('600 kg')).toBeTruthy();
+      expect(screen.queryByText('800 kg')).toBeNull();
+
+      fireEvent.press(screen.getByLabelText('Edit workout'));
+
+      expect(screen.queryByText('800 kg')).toBeNull();
+      expect(screen.getByText('600 kg')).toBeTruthy();
+    });
   });
 
   it('renders a superset rail on each grouped exercise', () => {

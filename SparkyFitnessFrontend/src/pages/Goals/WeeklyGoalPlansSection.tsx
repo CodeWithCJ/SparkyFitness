@@ -56,10 +56,16 @@ export const WeeklyGoalPlansSection = ({
                     )}
                   </h4>
                   <p className="text-sm text-gray-600">
-                    {formatDateInUserTimezone(plan.start_date)} to{' '}
-                    {plan.end_date
-                      ? formatDateInUserTimezone(plan.end_date)
-                      : t('common.indefinite', 'Indefinite')}
+                    {t(
+                      'goals.goalsSettings.startDateToEndDate',
+                      '{{start_date}} to {{end_date}}',
+                      {
+                        start_date: formatDateInUserTimezone(plan.start_date),
+                        end_date: plan.end_date
+                          ? formatDateInUserTimezone(plan.end_date)
+                          : t('common.indefinite', 'Indefinite'),
+                      }
+                    )}
                   </p>
                 </div>
                 <div className="flex space-x-2">

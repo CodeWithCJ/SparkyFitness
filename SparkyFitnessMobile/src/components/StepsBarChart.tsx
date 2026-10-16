@@ -11,6 +11,8 @@ type StepsBarChartProps = {
   isLoading: boolean;
   isError: boolean;
   range: HealthTrendDateRange;
+  /** The steps goal for each day in `data`, same order; null draws no line. */
+  stepsGoals?: (number | null)[];
 };
 
 const getSteps = (point: StepsDataPoint): number => point.steps;
@@ -43,6 +45,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
   isLoading,
   isError,
   range,
+  stepsGoals,
 }) => {
   const { t } = useTranslation();
 
@@ -59,6 +62,7 @@ const StepsBarChart: React.FC<StepsBarChartProps> = ({
       range={range}
       title={t('charts.steps.title', { defaultValue: 'Steps' })}
       getValue={getSteps}
+      goalValues={stepsGoals}
       formatTooltip={formatTooltip}
       errorText={t('charts.steps.loadFailed', {
         defaultValue: 'Failed to load step data',

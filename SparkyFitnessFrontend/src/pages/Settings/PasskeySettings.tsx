@@ -120,9 +120,10 @@ const PasskeySettings = () => {
                           t('settings.passkey.unnamed', 'Unnamed Passkey')}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {t('settings.passkey.addedOn', 'Added on')}{' '}
-                        {format(new Date(pk.createdAt), 'PPp', {
-                          locale: getDateLocale(language),
+                        {t('settings.passkey.addedOn2', 'Added on {{format}}', {
+                          format: format(new Date(pk.createdAt), 'PPp', {
+                            locale: getDateLocale(language),
+                          }),
                         })}
                       </p>
                     </div>

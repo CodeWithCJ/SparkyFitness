@@ -27,7 +27,15 @@ import {
   getCnfImportStatus,
   deleteCnfLibraryFoods,
 } from '../services/cnfBulkImportService.js';
-import { cnfBulkImportRequestSchema } from '@workspace/shared';
+import {
+  cnfBulkImportRequestSchema,
+  livsmedelsverketBulkImportRequestSchema,
+} from '@workspace/shared';
+import {
+  getLivsmedelsverketImportStatus,
+  startLivsmedelsverketBulkImport,
+  deleteLivsmedelsverketLibraryFoods,
+} from '../services/livsmedelsverketBulkImportService.js';
 
 const cnfUpload = multer({
   storage: multer.memoryStorage(),
@@ -1247,6 +1255,114 @@ router.delete(
       const result = await deleteCnfLibraryFoods(req.userId);
       res.json({
         message: `Deleted ${result.deletedCount} Canadian Nutrient File library items.`,
+        ...result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /foods/livsmedelsverket/bulk-import:
+ *   post:
+ *     summary: Bulk import Livsmedelsverket foods and nutrients
+ *     tags: [External Integrations]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               language:
+ *                 type: string
+ *                 enum: [sv, en]
+ *                 default: sv
+ *               syncPastEntries:
+ *                 type: boolean
+ *                 default: false
+ *               maxFoods:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Bulk import started
+ */
+router.post(
+  '/livsmedelsverket/bulk-import',
+  authenticate,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const parseResult = livsmedelsverketBulkImportRequestSchema.safeParse(
+        req.body || {}
+      );
+      if (!parseResult.success) {
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: parseResult.error.format(),
+        });
+      }
+
+      const currentStatus = getLivsmedelsverketImportStatus(req.userId);
+      if (currentStatus.isRunning) {
+        return res.status(409).json({
+          error: 'A Livsmedelsverket import is already running for this user.',
+        });
+      }
+
+      await startLivsmedelsverketBulkImport(req.userId, parseResult.data);
+
+      res.status(202).json({
+        message: 'Livsmedelsverket bulk import started.',
+        status: getLivsmedelsverketImportStatus(req.userId),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /foods/livsmedelsverket/status:
+ *   get:
+ *     summary: Get status of Livsmedelsverket bulk import
+ *     tags: [External Integrations]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current bulk import status
+ */
+router.get('/livsmedelsverket/status', authenticate, isAdmin, (req, res) => {
+  res.json(getLivsmedelsverketImportStatus(req.userId));
+});
+
+/**
+ * @swagger
+ * /foods/livsmedelsverket:
+ *   delete:
+ *     summary: Delete Livsmedelsverket library items
+ *     tags: [External Integrations]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Items deleted successfully
+ */
+router.delete(
+  '/livsmedelsverket',
+  authenticate,
+  isAdmin,
+  async (req, res, next) => {
+    try {
+      const result = await deleteLivsmedelsverketLibraryFoods(req.userId);
+      res.json({
+        message: `Deleted ${result.deletedCount} Swedish Food Agency library items.`,
         ...result,
       });
     } catch (error) {

@@ -3,13 +3,15 @@ import { View, Text, TouchableOpacity, Pressable } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../Icon';
+import {
+  mindfulnessSessionTypeEmoji,
+  mindfulnessSessionTypeLabel,
+} from '../../utils/mindfulnessSessionTypes';
 import { BreathworkModal } from './BreathworkModal';
 import { MeditationTimerModal } from './MeditationTimerModal';
-import { MindfulnessSessionModal } from './MindfulnessSessionModal';
 import type {
   MindfulnessSessionResponse,
   CreateMindfulnessSessionBody,
-  UpdateMindfulnessSessionBody,
 } from '@workspace/shared';
 
 interface MindfulnessCardProps {
@@ -17,10 +19,10 @@ interface MindfulnessCardProps {
   totalMindfulMinutes: number;
   selectedDate: string;
   onSaveSession: (data: CreateMindfulnessSessionBody) => Promise<unknown>;
-  onUpdateSession?: (
-    id: string,
-    data: UpdateMindfulnessSessionBody
-  ) => Promise<unknown>;
+  /** Opens the log form for a new session; without it the card shows no Log. */
+  onLogSession?: () => void;
+  /** Opens the log form on `session`; without it the card shows no Edit. */
+  onEditSession?: (session: MindfulnessSessionResponse) => void;
   onDeleteSession?: (sessionId: string) => Promise<unknown>;
   compact?: boolean;
   onPressDetails?: () => void;
@@ -31,7 +33,8 @@ export const MindfulnessCard: React.FC<MindfulnessCardProps> = ({
   totalMindfulMinutes,
   selectedDate,
   onSaveSession,
-  onUpdateSession,
+  onLogSession,
+  onEditSession,
   onDeleteSession,
   compact = false,
   onPressDetails,
@@ -42,9 +45,6 @@ export const MindfulnessCard: React.FC<MindfulnessCardProps> = ({
   ];
   const [breathworkVisible, setBreathworkVisible] = useState(false);
   const [timerVisible, setTimerVisible] = useState(false);
-  const [logModalVisible, setLogModalVisible] = useState(false);
-  const [editingSession, setEditingSession] =
-    useState<MindfulnessSessionResponse | null>(null);
 
   const handleBreathworkSave = async (
     durationSeconds: number,
@@ -116,66 +116,6 @@ export const MindfulnessCard: React.FC<MindfulnessCardProps> = ({
   });
   const latestSession = sortedSessions[0];
   const latestTimeStr = formatSessionTime(latestSession?.start_time);
-
-  const getSessionEmoji = (type?: string | null) => {
-    switch (type) {
-      case 'meditation':
-        return '🧘';
-      case 'breathwork':
-        return '🌊';
-      case 'reflection':
-        return '🪞';
-      case 'walking':
-        return '🚶';
-      case 'yoga':
-        return '🤸';
-      case 'guided':
-        return '🎧';
-      case 'unguided':
-        return '🕯️';
-      case 'other':
-      default:
-        return '✨';
-    }
-  };
-
-  const getSessionTypeLabel = (type?: string | null) => {
-    switch (type) {
-      case 'meditation':
-        return t('mindfulness.types.meditation', {
-          defaultValue: 'Meditation',
-        });
-      case 'breathwork':
-        return t('mindfulness.types.breathwork', {
-          defaultValue: 'Breathwork',
-        });
-      case 'reflection':
-        return t('mindfulness.types.reflection', {
-          defaultValue: 'Reflection',
-        });
-      case 'walking':
-        return t('mindfulness.types.walking', {
-          defaultValue: 'Mindful Walking',
-        });
-      case 'yoga':
-        return t('mindfulness.types.yoga', {
-          defaultValue: 'Yoga',
-        });
-      case 'guided':
-        return t('mindfulness.types.guided', {
-          defaultValue: 'Guided',
-        });
-      case 'unguided':
-        return t('mindfulness.types.unguided', {
-          defaultValue: 'Unguided',
-        });
-      case 'other':
-      default:
-        return t('mindfulness.types.other', {
-          defaultValue: 'Other',
-        });
-    }
-  };
 
   // When used on the Dashboard with onPressDetails, render an insights-only card
   // (Interactive practice and logging are housed inside MindfulnessDetailScreen).
@@ -297,7 +237,7 @@ export const MindfulnessCard: React.FC<MindfulnessCardProps> = ({
                   className="px-3 py-1.5 rounded-xl bg-surface-elevated flex-row items-center gap-1.5 shadow-xs"
                 >
                   <Text className="text-base">
-                    {getSessionEmoji(s.session_type)}
+                    {mindfulnessSessionTypeEmoji(s.session_type)}
                   </Text>
                   <Text className="text-sm text-text-primary font-bold">
                     {formatDurationDisplay(s.duration_seconds)}
@@ -395,19 +335,18 @@ export const MindfulnessCard: React.FC<MindfulnessCardProps> = ({
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => {
-            setEditingSession(null);
-            setLogModalVisible(true);
-          }}
-          className="flex-1 py-2 px-3 rounded-xl bg-surface-elevated border border-border-subtle flex-row items-center justify-center gap-1.5"
-          accessibilityRole="button"
-        >
-          <Icon name="add" size={14} color="#9CA3AF" />
-          <Text className="text-text-secondary text-xs font-semibold">
-            {t('mindfulness.actions.log', { defaultValue: 'Log' })}
-          </Text>
-        </TouchableOpacity>
+        {onLogSession && (
+          <TouchableOpacity
+            onPress={onLogSession}
+            className="flex-1 py-2 px-3 rounded-xl bg-surface-elevated border border-border-subtle flex-row items-center justify-center gap-1.5"
+            accessibilityRole="button"
+          >
+            <Icon name="add" size={14} color="#9CA3AF" />
+            <Text className="text-text-secondary text-xs font-semibold">
+              {t('mindfulness.actions.log', { defaultValue: 'Log' })}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Session List (only when not in summary details mode) */}
@@ -423,7 +362,7 @@ export const MindfulnessCard: React.FC<MindfulnessCardProps> = ({
                 <View className="flex-1 mr-2">
                   <View className="flex-row items-center gap-1.5">
                     <Text className="text-text-primary text-sm font-semibold capitalize">
-                      {getSessionTypeLabel(session.session_type)}
+                      {mindfulnessSessionTypeLabel(session.session_type, t)}
                     </Text>
                     {session.provider && session.provider !== 'manual' && (
                       <View className="bg-white/10 px-1.5 py-0.5 rounded-md">
@@ -466,12 +405,9 @@ export const MindfulnessCard: React.FC<MindfulnessCardProps> = ({
                   <Text className="text-text-primary text-sm font-bold">
                     {formatDurationDisplay(session.duration_seconds)}
                   </Text>
-                  {onUpdateSession && (
+                  {onEditSession && (
                     <TouchableOpacity
-                      onPress={() => {
-                        setEditingSession(session);
-                        setLogModalVisible(true);
-                      }}
+                      onPress={() => onEditSession(session)}
                       hitSlop={8}
                       className="p-1"
                       accessibilityRole="button"
@@ -513,18 +449,6 @@ export const MindfulnessCard: React.FC<MindfulnessCardProps> = ({
         visible={timerVisible}
         onClose={() => setTimerVisible(false)}
         onSave={handleTimerSave}
-      />
-
-      <MindfulnessSessionModal
-        visible={logModalVisible}
-        onClose={() => {
-          setLogModalVisible(false);
-          setEditingSession(null);
-        }}
-        onSave={onSaveSession}
-        onUpdate={onUpdateSession}
-        initialSession={editingSession}
-        selectedDate={selectedDate}
       />
     </View>
   );

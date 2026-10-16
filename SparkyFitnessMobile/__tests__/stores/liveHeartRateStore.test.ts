@@ -3,8 +3,10 @@ import { act, renderHook } from '@testing-library/react-native';
 import {
   LIVE_HEART_RATE_MAX_AGE_MS,
   newestHeartRateSample,
+  RECORDING_HEART_RATE_MAX_AGE_MS,
   useLiveHeartRate,
   useLiveHeartRateStore,
+  useRecordingHeartRate,
 } from '../../src/stores/liveHeartRateStore';
 import { useActiveWorkoutStore } from '../../src/stores/activeWorkoutStore';
 
@@ -31,6 +33,37 @@ describe('liveHeartRateStore', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  test('a GPS recording shows its own reading, and only while it is fresh', () => {
+    useLiveHeartRateStore
+      .getState()
+      .record(reading({ sessionId: 'rec-1', exerciseEntryId: '', bpm: 152 }));
+
+    const own = renderHook(() => useRecordingHeartRate('rec-1'));
+    expect(own.result.current).toBe(152);
+    expect(
+      renderHook(() => useRecordingHeartRate('rec-2')).result.current
+    ).toBeNull();
+    expect(
+      renderHook(() => useRecordingHeartRate(null)).result.current
+    ).toBeNull();
+
+    // The watch goes quiet: the number is dropped rather than left on screen.
+    act(() => {
+      jest.advanceTimersByTime(RECORDING_HEART_RATE_MAX_AGE_MS + 5_000);
+    });
+    expect(own.result.current).toBeNull();
+  });
+
+  test('a recording reading is not mistaken for a workout exercise reading', () => {
+    useLiveHeartRateStore
+      .getState()
+      .record(reading({ sessionId: 'rec-1', exerciseEntryId: '' }));
+
+    expect(
+      renderHook(() => useLiveHeartRate('entry-1')).result.current
+    ).toBeNull();
   });
 
   test('a late, older reading for the same workout does not replace a newer one', () => {

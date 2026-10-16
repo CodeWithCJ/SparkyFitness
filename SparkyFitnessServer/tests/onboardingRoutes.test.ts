@@ -73,6 +73,73 @@ describe('Onboarding Routes', () => {
     });
   });
 
+  // --- PUT /onboarding/target-weight ---
+  describe('PUT /onboarding/target-weight', () => {
+    it('saves a target weight in kg', async () => {
+      // @ts-expect-error TS(2339)
+      onboardingService.setTargetWeight.mockResolvedValue(undefined);
+
+      const res = await request(app)
+        .put('/onboarding/target-weight')
+        .send({ targetWeight: 82.5 });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toEqual({ targetWeight: 82.5 });
+      expect(onboardingService.setTargetWeight).toHaveBeenCalledWith(
+        'testUserId',
+        82.5
+      );
+    });
+
+    it('rounds to the two decimals the column stores', async () => {
+      // @ts-expect-error TS(2339)
+      onboardingService.setTargetWeight.mockResolvedValue(undefined);
+
+      const res = await request(app)
+        .put('/onboarding/target-weight')
+        .send({ targetWeight: 82.456 });
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.body).toEqual({ targetWeight: 82.46 });
+      expect(onboardingService.setTargetWeight).toHaveBeenCalledWith(
+        'testUserId',
+        82.46
+      );
+    });
+
+    it('clears the target weight with null', async () => {
+      // @ts-expect-error TS(2339)
+      onboardingService.setTargetWeight.mockResolvedValue(undefined);
+
+      const res = await request(app)
+        .put('/onboarding/target-weight')
+        .send({ targetWeight: null });
+
+      expect(res.statusCode).toEqual(200);
+      expect(onboardingService.setTargetWeight).toHaveBeenCalledWith(
+        'testUserId',
+        null
+      );
+    });
+
+    it.each([
+      { targetWeight: 0 },
+      { targetWeight: -5 },
+      { targetWeight: 1000 },
+      { targetWeight: 999.996 },
+      { targetWeight: 0.001 },
+      { targetWeight: '80' },
+      {},
+    ])('rejects %j with 400', async (body) => {
+      const res = await request(app)
+        .put('/onboarding/target-weight')
+        .send(body);
+
+      expect(res.statusCode).toEqual(400);
+      expect(onboardingService.setTargetWeight).not.toHaveBeenCalled();
+    });
+  });
+
   // --- GET /onboarding/status ---
   describe('GET /onboarding/status', () => {
     it('should return onboardingComplete and onboardingSkipped when not complete', async () => {

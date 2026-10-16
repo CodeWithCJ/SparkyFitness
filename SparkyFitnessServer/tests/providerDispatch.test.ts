@@ -9,6 +9,7 @@ import {
 import { OutboundUrlBlockedError } from '../utils/outboundUrlPolicy.js';
 import { resetLearnedRejections } from '../ai/modelCapabilities.js';
 import convert from 'heic-convert';
+import sharp from 'sharp';
 
 // Fixed "JPEG" bytes returned by the mocked transcoder. Declared via vi.hoisted
 // so the hoisted vi.mock('heic-convert') factory below can reference it.
@@ -120,10 +121,12 @@ function openAiBody(payload: unknown, extra: Record<string, unknown> = {}) {
     ],
   };
 }
-function anthropicToolBody(payload: unknown, name = SCHEMA_NAME) {
+// Structured requests use JSON outputs (`output_config.format`), so the payload
+// arrives as the text of a `text` block.
+function anthropicJsonBody(payload: unknown) {
   return {
-    stop_reason: 'tool_use',
-    content: [{ type: 'tool_use', name, input: payload }],
+    stop_reason: 'end_turn',
+    content: [{ type: 'text', text: JSON.stringify(payload) }],
   };
 }
 function ollamaBody(payload: unknown) {
@@ -317,7 +320,7 @@ describe('dispatchAiRequest — preconditions', () => {
   );
 
   it('transcodes HEIC to JPEG and dispatches it', async () => {
-    const m = mockFetch(anthropicToolBody(SAMPLE));
+    const m = mockFetch(anthropicJsonBody(SAMPLE));
     const result = await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -344,7 +347,7 @@ describe('dispatchAiRequest — preconditions', () => {
   it('passes a JPEG mislabeled as HEIC straight through without transcoding (sniffs the bytes)', async () => {
     // Android's photo picker hands the app decoded JPEG bytes but labels them
     // image/heic; the server must trust the bytes, not the label.
-    const m = mockFetch(anthropicToolBody(SAMPLE));
+    const m = mockFetch(anthropicJsonBody(SAMPLE));
     const result = await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -368,7 +371,7 @@ describe('dispatchAiRequest — preconditions', () => {
   });
 
   it('transcodes when the bytes are really HEIC even if the client mislabels the mime', async () => {
-    const m = mockFetch(anthropicToolBody(SAMPLE));
+    const m = mockFetch(anthropicJsonBody(SAMPLE));
     const result = await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -410,7 +413,7 @@ describe('dispatchAiRequest — preconditions', () => {
   });
 
   it('detects HEIC with an uppercase ftyp brand (case-insensitive)', async () => {
-    mockFetch(anthropicToolBody(SAMPLE));
+    mockFetch(anthropicJsonBody(SAMPLE));
     const result = await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -425,7 +428,7 @@ describe('dispatchAiRequest — preconditions', () => {
   });
 
   it('does not crash on a malformed image entry (non-string base64)', async () => {
-    mockFetch(anthropicToolBody(SAMPLE));
+    mockFetch(anthropicJsonBody(SAMPLE));
     const result = await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -439,7 +442,7 @@ describe('dispatchAiRequest — preconditions', () => {
   });
 
   it('normalizes uppercase/whitespace HEIC mime types before the transcode check', async () => {
-    const m = mockFetch(anthropicToolBody(SAMPLE));
+    const m = mockFetch(anthropicJsonBody(SAMPLE));
     const result = await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -462,7 +465,7 @@ describe('dispatchAiRequest — preconditions', () => {
   });
 
   it('does not crash when an image mime type is missing (non-string)', async () => {
-    mockFetch(anthropicToolBody(SAMPLE));
+    mockFetch(anthropicJsonBody(SAMPLE));
     const result = await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -768,6 +771,44 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     expect(messages[0].content).toBe('Do the thing.');
   });
 
+  it('DeepSeek OpenAI-compatible endpoints use json_object with schema in prompt', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'openai_compatible',
+          custom_url: 'https://api.deepseek.com/v1',
+        }),
+        images: [IMG],
+      })
+    );
+    const { url, body } = captured(m);
+    expect(url).toBe('https://api.deepseek.com/v1/chat/completions');
+    expect(body.response_format).toEqual({ type: 'json_object' });
+    const content = (
+      body.messages as Array<{ content: Array<Record<string, unknown>> }>
+    )[0].content;
+    const textPart = content.find((part) => part.type === 'text') as {
+      text: string;
+    };
+    expect(textPart.text).toContain(JSON.stringify(toStrictJsonSchema(SCHEMA)));
+    expect(content.some((part) => part.type === 'image_url')).toBe(true);
+  });
+
+  it('does not treat lookalike domains as DeepSeek', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'openai_compatible',
+          custom_url: 'https://api.deepseek.com.evil.example/v1',
+        }),
+      })
+    );
+    const { body } = captured(m);
+    expect((body.response_format as { type: string }).type).toBe('json_schema');
+  });
+
   it('custom uses the user-supplied URL as-is and strict json_schema', async () => {
     const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(
@@ -808,8 +849,10 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     expect(gc.responseSchema.propertyOrdering).toEqual(['answer', 'nested']);
   });
 
-  it('anthropic forces a tool_use call with a strict input_schema', async () => {
-    const m = mockFetch(anthropicToolBody(SAMPLE));
+  // Claude Opus 5.5, Sonnet 5.5 and Fable 5.1 reject a forced `tool_choice`
+  // with a 400, so structured requests must not depend on one.
+  it('anthropic requests JSON outputs with a strict schema, not a forced tool call', async () => {
+    const m = mockFetch(anthropicJsonBody(SAMPLE));
     await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -823,19 +866,35 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     expect(headers['x-api-key']).toBe('anth-key');
     expect(headers['anthropic-version']).toBe('2023-06-01');
     expect(body.max_tokens).toBeGreaterThanOrEqual(2048);
-    expect(body.tool_choice).toEqual({ type: 'tool', name: SCHEMA_NAME });
-    const tools = body.tools as Array<{
-      name: string;
-      strict: boolean;
-      input_schema: JsonSchemaNode;
-    }>;
-    expect(tools).toHaveLength(1);
-    expect(tools[0].name).toBe(SCHEMA_NAME);
-    expect(tools[0].strict).toBe(true);
-    expect(tools[0].input_schema.additionalProperties).toBe(false);
-    expect(tools[0].input_schema.properties?.nested).toMatchObject({
+    expect(body).not.toHaveProperty('tool_choice');
+    expect(body).not.toHaveProperty('tools');
+    const { format } = body.output_config as {
+      format: { type: string; schema: JsonSchemaNode };
+    };
+    expect(format.type).toBe('json_schema');
+    expect(format.schema.additionalProperties).toBe(false);
+    expect(format.schema.properties?.nested).toMatchObject({
       additionalProperties: false,
     });
+  });
+
+  it('anthropic sends no output_config when no schema is requested', async () => {
+    const m = mockFetch({
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: JSON.stringify(SAMPLE) }],
+    });
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'anthropic',
+          api_key: 'anth-key',
+        }),
+        jsonSchema: undefined,
+        schemaName: undefined,
+        parseJson: true,
+      })
+    );
+    expect(captured(m).body).not.toHaveProperty('output_config');
   });
 
   it('ollama asks for JSON and carries the schema in the prompt', async () => {
@@ -936,7 +995,7 @@ describe('dispatchAiRequest — vision request shapes', () => {
   });
 
   it('anthropic sends a base64 image source block', async () => {
-    const m = mockFetch(anthropicToolBody(SAMPLE));
+    const m = mockFetch(anthropicJsonBody(SAMPLE));
     await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -1038,7 +1097,7 @@ describe('dispatchAiRequest — extraction & success', () => {
   });
 });
 
-describe('dispatchAiRequest — anthropic tool_use extraction', () => {
+describe('dispatchAiRequest — anthropic JSON output extraction', () => {
   const anthropicReq = (body: unknown) => {
     mockFetch(body);
     return dispatchAiRequest(
@@ -1051,8 +1110,8 @@ describe('dispatchAiRequest — anthropic tool_use extraction', () => {
     );
   };
 
-  it('returns the tool_use input object directly (not a re-parsed string)', async () => {
-    const result = await anthropicReq(anthropicToolBody(SAMPLE));
+  it('returns the parsed JSON object from the text block', async () => {
+    const result = await anthropicReq(anthropicJsonBody(SAMPLE));
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.json).toEqual(SAMPLE);
@@ -1060,6 +1119,19 @@ describe('dispatchAiRequest — anthropic tool_use extraction', () => {
       // text is the stringification of the object payload.
       expect(result.text).toBe(JSON.stringify(SAMPLE));
     }
+  });
+
+  // Claude Opus 5+, Sonnet 5+ and Haiku 5.5 think by default, so the answer
+  // can follow one or more thinking blocks (empty under display: "omitted").
+  it('reads the answer past leading thinking blocks', async () => {
+    const result = await anthropicReq({
+      stop_reason: 'end_turn',
+      content: [
+        { type: 'thinking', thinking: '', signature: 'sig' },
+        { type: 'text', text: JSON.stringify(SAMPLE) },
+      ],
+    });
+    expect(result).toMatchObject({ ok: true, json: SAMPLE });
   });
 
   it('maps stop_reason refusal → refused', async () => {
@@ -1071,32 +1143,28 @@ describe('dispatchAiRequest — anthropic tool_use extraction', () => {
   it('maps stop_reason max_tokens → truncated', async () => {
     const result = await anthropicReq({
       stop_reason: 'max_tokens',
-      content: [
-        { type: 'tool_use', name: SCHEMA_NAME, input: { partial: true } },
-      ],
+      content: [{ type: 'text', text: '{"answer":"tr' }],
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.category).toBe('truncated');
   });
 
-  it('maps stop_reason end_turn (no tool call) → no_content', async () => {
+  it('maps a response with only thinking and no text → no_content', async () => {
     const result = await anthropicReq({
       stop_reason: 'end_turn',
-      content: [{ type: 'text', text: 'I cannot help with that.' }],
+      content: [{ type: 'thinking', thinking: '', signature: 'sig' }],
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.category).toBe('no_content');
   });
 
-  it('maps a malformed tool_use block → upstream_error', async () => {
+  it('maps text that is not JSON → parse_error', async () => {
     const result = await anthropicReq({
-      stop_reason: 'tool_use',
-      content: [
-        { type: 'tool_use', name: SCHEMA_NAME, input: 'not-an-object' },
-      ],
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: 'I cannot help with that.' }],
     });
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.category).toBe('upstream_error');
+    if (!result.ok) expect(result.category).toBe('parse_error');
   });
 
   it('extracts plain text when no schema is requested (label-scan style)', async () => {
@@ -1520,6 +1588,39 @@ describe('dispatchAiRequest — models that reject temperature', () => {
     expect(captured(second).body.temperature).toBeUndefined();
   });
 
+  // Anthropic has no `param` field and words the rejection as a deprecation,
+  // so a Claude model outside the static gate must still self-heal.
+  it('self-heals on Anthropic\'s "temperature is deprecated" 400', async () => {
+    const m = mockSequence(
+      {
+        ok: false,
+        status: 400,
+        body: JSON.stringify({
+          type: 'error',
+          error: {
+            type: 'invalid_request_error',
+            message: '`temperature` is deprecated for this model.',
+          },
+        }),
+      },
+      { body: anthropicJsonBody(SAMPLE) }
+    );
+    const result = await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'anthropic',
+          api_key: 'anth-key',
+          model_name: 'claude-unreleased-9',
+        }),
+        temperature: 0,
+      })
+    );
+    expect(result).toMatchObject({ ok: true, json: SAMPLE });
+    expect(m).toHaveBeenCalledTimes(2);
+    expect(bodyOfCall(m, 0).temperature).toBe(0);
+    expect(bodyOfCall(m, 1)).not.toHaveProperty('temperature');
+  });
+
   it('does not retry a 400 that is not a parameter rejection', async () => {
     const body = JSON.stringify({
       error: { message: 'Invalid API key.', code: 'invalid_api_key' },
@@ -1619,7 +1720,7 @@ describe('dispatchAiRequest — temperature', () => {
   });
 
   it('anthropic sends temperature 0 in the body', async () => {
-    const m = mockFetch(anthropicToolBody(SAMPLE));
+    const m = mockFetch(anthropicJsonBody(SAMPLE));
     await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -1633,7 +1734,7 @@ describe('dispatchAiRequest — temperature', () => {
   });
 
   it('anthropic omits temperature when unset', async () => {
-    const m = mockFetch(anthropicToolBody(SAMPLE));
+    const m = mockFetch(anthropicJsonBody(SAMPLE));
     await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -1855,12 +1956,12 @@ describe('toStrictJsonSchema', () => {
 });
 
 describe('anthropic max_tokens headroom', () => {
-  // On Claude Opus 5 and Sonnet 5, omitting `thinking` runs adaptive thinking
-  // by default and max_tokens caps thinking *and* the visible response
-  // together. The old 2048 ceiling left a forced tool call at risk of being
-  // truncated, surfacing as stop_reason 'max_tokens'.
-  it('requests enough tokens to survive adaptive thinking plus a tool call', async () => {
-    const m = mockFetch(anthropicToolBody(SAMPLE));
+  // On Claude Opus 5+, Sonnet 5+ and Haiku 5.5, omitting `thinking` runs
+  // adaptive thinking by default and max_tokens caps thinking *and* the
+  // visible response together. The old 2048 ceiling left the structured
+  // response at risk of being truncated, surfacing as stop_reason 'max_tokens'.
+  it('requests enough tokens to survive adaptive thinking plus the response', async () => {
+    const m = mockFetch(anthropicJsonBody(SAMPLE));
     const result = await dispatchAiRequest(
       baseRequest({
         provider: makeProvider({
@@ -1876,31 +1977,35 @@ describe('anthropic max_tokens headroom', () => {
 });
 
 describe('anthropic temperature compatibility', () => {
-  // Claude Opus 4.7+ reject `temperature` with a 400; Sonnet 5 rejects
-  // non-default values. Forwarding it fails the request outright.
-  it.each(['claude-opus-5', 'claude-opus-4-8', 'claude-sonnet-5'])(
-    'omits temperature for %s',
-    async (model) => {
-      const m = mockFetch(anthropicToolBody(SAMPLE));
-      const result = await dispatchAiRequest(
-        baseRequest({
-          provider: makeProvider({
-            service_type: 'anthropic',
-            api_key: 'anth-key',
-            model_name: model,
-          }),
-          temperature: 0.7,
-        })
-      );
-      expect(result.ok).toBe(true);
-      expect(captured(m).body).not.toHaveProperty('temperature');
-    }
-  );
+  // Claude Opus 4.7+ reject `temperature` with a 400; Sonnet 5+ and Haiku 5.5
+  // reject non-default values. Forwarding it fails the request outright.
+  it.each([
+    'claude-opus-5',
+    'claude-opus-5-5',
+    'claude-opus-4-8',
+    'claude-sonnet-5',
+    'claude-sonnet-5-5',
+    'claude-haiku-5-5',
+  ])('omits temperature for %s', async (model) => {
+    const m = mockFetch(anthropicJsonBody(SAMPLE));
+    const result = await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'anthropic',
+          api_key: 'anth-key',
+          model_name: model,
+        }),
+        temperature: 0.7,
+      })
+    );
+    expect(result.ok).toBe(true);
+    expect(captured(m).body).not.toHaveProperty('temperature');
+  });
 
   it.each(['claude-sonnet-4-6', 'claude-haiku-4-5'])(
     'still sends temperature for %s',
     async (model) => {
-      const m = mockFetch(anthropicToolBody(SAMPLE));
+      const m = mockFetch(anthropicJsonBody(SAMPLE));
       await dispatchAiRequest(
         baseRequest({
           provider: makeProvider({
@@ -2018,6 +2123,76 @@ describe('dispatchAiRequest — Perplexity 403 deprecation handling', () => {
         'Perplexity has retired the OpenAI-compatible Chat Completions API'
       );
       expect(result.detail).toContain('Use OpenRouter with a Perplexity model');
+    }
+  });
+});
+
+describe('dispatchAiRequest — image downscaling & oversized image handling', () => {
+  it('automatically downscales an oversized image before dispatching to provider', async () => {
+    const hugeJpeg = await sharp({
+      create: {
+        width: 3000,
+        height: 2000,
+        channels: 3,
+        background: { r: 100, g: 150, b: 200 },
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const m = mockFetch({
+      choices: [{ message: { content: '{"ok": true}' } }],
+    });
+
+    const result = await dispatchAiRequest(
+      baseRequest({
+        images: [
+          { base64: hugeJpeg.toString('base64'), mimeType: 'image/jpeg' },
+        ],
+      })
+    );
+
+    expect(result.ok).toBe(true);
+    const sentBody = captured(m).body as {
+      messages: Array<{
+        content: Array<{ type: string; image_url?: { url: string } }>;
+      }>;
+    };
+    const imageUrl = sentBody.messages[0].content[0].image_url?.url;
+    expect(imageUrl).toBeDefined();
+    const sentBase64 = imageUrl!.replace(/^data:image\/jpeg;base64,/, '');
+    const sentBuffer = Buffer.from(sentBase64, 'base64');
+    const sentMeta = await sharp(sentBuffer).metadata();
+    expect(sentMeta.width).toBe(2048);
+    expect(sentMeta.height).toBe(1365);
+  });
+
+  it('translates OpenAI 400 patch-limit rejection into image_too_large category', async () => {
+    mockFetch(
+      {
+        error: {
+          message:
+            'The image you provided requires 48960 patches after processing, exceeding the limit of 30000. Please resize the image and try again.',
+          type: 'invalid_request_error',
+          param: 'messages',
+          code: 'invalid_value',
+        },
+      },
+      { ok: false, status: 400 }
+    );
+
+    const result = await dispatchAiRequest(
+      baseRequest({
+        images: [{ base64: 'abc', mimeType: 'image/jpeg' }],
+      })
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.category).toBe('image_too_large');
+      expect(result.detail).toBe(
+        'The image is too large for AI analysis. Please try another photo.'
+      );
     }
   });
 });

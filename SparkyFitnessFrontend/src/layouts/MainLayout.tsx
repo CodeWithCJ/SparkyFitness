@@ -476,7 +476,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           <div className="flex items-center gap-1">
             <img
               src="/images/SparkyFitness.webp"
-              alt="SparkyFitness Logo"
+              alt={t('mainLayout.sparkyFitnessLogo', 'SparkyFitness Logo')}
               width={54}
               height={72}
             />
@@ -670,7 +670,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
                 className="cursor-pointer underline bg-transparent border-0 p-0 text-inherit font-normal text-sm"
                 onClick={onShowAboutDialog}
               >
-                SparkyFitness v{appVersion?.version ?? ''}
+                {t('nav.sparkyFitnessV', 'SparkyFitness v{{version}}', {
+                  version: appVersion?.version ?? '',
+                })}
               </button>
               <span>•</span>
               <button
@@ -689,7 +691,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({
               className="cursor-pointer underline bg-transparent border-0 p-0 text-inherit font-normal text-sm"
               onClick={onShowAboutDialog}
             >
-              SparkyFitness v{appVersion?.version ?? ''}
+              {t('nav.sparkyFitnessV', 'SparkyFitness v{{version}}', {
+                version: appVersion?.version ?? '',
+              })}
             </button>
             <span>•</span>
             <button

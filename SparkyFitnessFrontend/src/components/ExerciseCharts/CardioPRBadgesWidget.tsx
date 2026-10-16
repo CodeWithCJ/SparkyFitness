@@ -136,8 +136,11 @@ export const CardioPRBadgesWidget = ({
                         </div>
                         <div className="text-[11px] text-muted-foreground flex items-center gap-1">
                           <Zap className="w-3 h-3 text-blue-500" />
-                          {t('exerciseAnalytics.records.pace', 'Pace:')}{' '}
-                          {pr.formattedPace}
+                          {t(
+                            'exerciseAnalytics.records.pace2',
+                            'Pace: {{formattedPace}}',
+                            { formattedPace: pr.formattedPace }
+                          )}
                         </div>
                       </div>
                       <div className="text-[10px] text-muted-foreground flex items-center justify-between pt-1 border-t border-amber-500/20">
@@ -161,7 +164,9 @@ export const CardioPRBadgesWidget = ({
                           }
                         >
                           {exerciseDisplayLabel(pr.activityName, t, false)}
-                          {pr.sportConfidence === 'inferred' && ' *'}
+                          {pr.sportConfidence === 'inferred' && (
+                            <span>{' *'}</span>
+                          )}
                         </span>
                         <span className="flex items-center gap-0.5">
                           <Calendar className="w-2.5 h-2.5" />
@@ -213,9 +218,14 @@ export const CardioPRBadgesWidget = ({
                       {formatWeight(st.estimatedOneRMKg, weightUnit)}
                     </span>
                     <span className="text-[10px] text-muted-foreground block">
-                      {t('exerciseAnalytics.records.bestSet', 'Best set:')}{' '}
-                      {formatWeight(st.weightKg, weightUnit)} × {st.reps}{' '}
-                      {t('exerciseAnalytics.records.reps', 'reps')}
+                      {t(
+                        'exerciseAnalytics.records.bestSetReps',
+                        'Best set: {{weightKg}} × {{reps}} reps',
+                        {
+                          weightKg: formatWeight(st.weightKg, weightUnit),
+                          reps: st.reps,
+                        }
+                      )}
                     </span>
                   </div>
                   <div className="text-[10px] text-muted-foreground">

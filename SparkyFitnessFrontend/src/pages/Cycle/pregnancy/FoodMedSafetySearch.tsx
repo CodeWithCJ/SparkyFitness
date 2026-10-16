@@ -12,22 +12,29 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Check, AlertTriangle, XCircle } from 'lucide-react';
 
+import i18n from 'i18next';
 const STATUS_META: Record<
   SafetyStatus,
   { label: string; className: string; icon: typeof Check }
 > = {
   safe: {
-    label: 'Safe',
+    get label() {
+      return i18n.t('pregnancy.foodMedSafetySearch.safe', 'Safe');
+    },
     className: 'text-emerald-600 bg-emerald-500/10',
     icon: Check,
   },
   caution: {
-    label: 'Caution',
+    get label() {
+      return i18n.t('pregnancy.foodMedSafetySearch.caution', 'Caution');
+    },
     className: 'text-amber-600 bg-amber-500/10',
     icon: AlertTriangle,
   },
   avoid: {
-    label: 'Avoid',
+    get label() {
+      return i18n.t('pregnancy.foodMedSafetySearch.avoid', 'Avoid');
+    },
     className: 'text-red-600 bg-red-500/10',
     icon: XCircle,
   },

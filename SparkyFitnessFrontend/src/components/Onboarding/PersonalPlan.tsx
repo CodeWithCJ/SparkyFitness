@@ -8,7 +8,7 @@ import {
   MineralCalculationAlgorithm,
   VitaminCalculationAlgorithm,
   SugarCalculationAlgorithm,
-} from '@/types/nutrientAlgorithms';
+} from '@workspace/shared';
 import { Save, PlayCircle } from 'lucide-react';
 import { useSaveGoalsMutation } from '@/hooks/Goals/useGoals';
 import { calculateBasePlan } from '@/utils/nutritionCalculations';
@@ -410,20 +410,31 @@ const PersonalPlan = ({
     <div className="animate-in slide-in-from-bottom duration-500 pb-8">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-foreground">
-          Your Personal Plan
+          {t('onboarding.plan.title', 'Your Personal Plan')}
         </h1>
         <p className="text-muted-foreground mt-2">
-          Ready to reach your goal of {formData.primaryGoal.replace('_', ' ')}.
+          {t(
+            'onboarding.plan.goalDescription',
+            'Ready to reach your goal of {{goal}}.',
+            {
+              goal: t(
+                `onboarding.${formData.primaryGoal === 'lose_weight' ? 'loseWeight' : formData.primaryGoal === 'gain_weight' ? 'gainWeight' : 'maintainWeight'}`
+              ),
+            }
+          )}
         </p>
       </div>
 
       <Alert className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-400 dark:border-yellow-600/50 text-yellow-900 dark:text-yellow-200">
         <AlertTriangle className="h-4 w-4 stroke-yellow-600 dark:stroke-yellow-500" />
         <AlertDescription className="text-sm">
-          <strong>Medical Disclaimer:</strong> This plan is for informational
-          purposes only and should not replace professional medical advice.
-          Please consult with your doctor or a certified nutritionist before
-          making significant changes to your diet or exercise routine.
+          <strong>
+            {t('onboarding.plan.medicalDisclaimerTitle', 'Medical Disclaimer:')}
+          </strong>{' '}
+          {t(
+            'onboarding.plan.medicalDisclaimer',
+            'This plan is for informational purposes only and should not replace professional medical advice. Please consult with your doctor or a certified nutritionist before making significant changes to your diet or exercise routine.'
+          )}
         </AlertDescription>
       </Alert>
 
@@ -467,7 +478,7 @@ const PersonalPlan = ({
 
       {/* Nutrient Sections Grid */}
       <h2 className="text-xl font-bold text-foreground mb-4 ml-1 mt-8">
-        Nutrient Goals
+        {t('onboarding.plan.nutrientGoals', 'Nutrient Goals')}
       </h2>
       <NutrientGoals
         convertEnergy={convertEnergy}

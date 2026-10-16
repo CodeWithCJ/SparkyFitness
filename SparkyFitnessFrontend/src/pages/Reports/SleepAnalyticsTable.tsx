@@ -212,8 +212,7 @@ const SleepAnalyticsTable = ({
                             : 'font-mono'
                       }
                     >
-                      {sleepAnalyticsData.sleepDebt > 0 ? '+' : ''}
-                      {formatSecondsToHHMM(sleepAnalyticsData.sleepDebt * 3600)}
+                      {`${sleepAnalyticsData.sleepDebt > 0 ? '+' : ''}${formatSecondsToHHMM(sleepAnalyticsData.sleepDebt * 3600)}`}
                     </TableCell>
                     <TableCell className="font-mono text-muted-foreground">
                       {sleepAnalyticsData.weight

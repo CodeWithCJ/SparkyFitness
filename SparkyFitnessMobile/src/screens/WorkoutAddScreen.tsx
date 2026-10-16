@@ -86,6 +86,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     replaceExercise,
     clearExerciseCompletions,
     addSet,
+    addWarmupSets,
     removeSet,
     updateSetField,
     updateSetMeta,
@@ -519,6 +520,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   setExerciseNotes={setExerciseNotes}
                   onReplaceExercise={handleReplaceExercise}
                   clearExerciseCompletions={clearExerciseCompletions}
+                  addWarmupSets={addWarmupSets}
                   supersetWith={supersetWith}
                   ungroupExercise={ungroupExercise}
                   onReorderExercises={reorderExercises}

@@ -459,6 +459,61 @@ describe('WorkoutFormExerciseList', () => {
       expect(utils.queryByText('Reorder exercises')).toBeNull();
     });
 
+    it('adds the warm-up ramp from the first working set, and hides the item without the prop', () => {
+      const addWarmupSets = jest.fn();
+      const utils = renderList([makeExercise('a')], { addWarmupSets });
+      fireEvent.press(utils.getByTestId('card-a-overflow'));
+      fireEvent.press(utils.getByTestId('menu-item-warmups'));
+      // 100 kg working weight, default 40% x 5, 60% x 5, 80% x 3 on a 2.5 step.
+      expect(addWarmupSets).toHaveBeenCalledWith(
+        'a',
+        [
+          { weight: '40.0', reps: '5' },
+          { weight: '60.0', reps: '5' },
+          { weight: '80.0', reps: '3' },
+        ],
+        60
+      );
+
+      const without = renderList([makeExercise('a')]);
+      fireEvent.press(without.getByTestId('card-a-overflow'));
+      expect(without.queryByTestId('menu-item-warmups')).toBeNull();
+    });
+
+    it('hides Add warm-ups with no weight on the first working set, or once one is logged', () => {
+      const addWarmupSets = jest.fn();
+      const noWeight = renderList(
+        [
+          makeExercise('a', {
+            sets: [{ clientId: 'a-s1', weight: '', reps: '5', restTime: 90 }],
+          }),
+        ],
+        { addWarmupSets }
+      );
+      fireEvent.press(noWeight.getByTestId('card-a-overflow'));
+      expect(noWeight.queryByTestId('menu-item-warmups')).toBeNull();
+
+      const logged = renderList(
+        [
+          makeExercise('a', {
+            sets: [
+              {
+                clientId: 'a-w1',
+                weight: '40',
+                reps: '5',
+                setType: 'warmup',
+                completedAt: '2026-10-06T10:00:00Z',
+              },
+              { clientId: 'a-s1', weight: '100', reps: '5', restTime: 90 },
+            ],
+          }),
+        ],
+        { addWarmupSets }
+      );
+      fireEvent.press(logged.getByTestId('card-a-overflow'));
+      expect(logged.queryByTestId('menu-item-warmups')).toBeNull();
+    });
+
     it('routes Replace exercise through onReplaceExercise; omitted without the prop', () => {
       const onReplaceExercise = jest.fn();
       const utils = renderList([makeExercise('a')], { onReplaceExercise });

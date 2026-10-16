@@ -19,19 +19,7 @@ export class FoodAssistantConflict extends Error {
   }
 }
 
-// Key order must not turn a semantically identical retry into a new command.
-function canonicalJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`;
-  if (value instanceof Date) return JSON.stringify(value.toISOString());
-  if (value && typeof value === 'object') {
-    return `{${Object.entries(value)
-      .filter(([, v]) => v !== undefined)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value) ?? 'null';
-}
+import { canonicalJson } from '../utils/canonicalJson.js';
 
 export async function listPreferences(userId: string) {
   const client = await getClient(userId, userId);
@@ -131,22 +119,11 @@ export async function createTask(
   input: CreateFoodAssistantTask
 ) {
   const client = await getClient(userId, userId);
-  const creationHash = createHash('sha256')
-    // Preserve the original creation fingerprint for tasks made before origin
-    // metadata was introduced. Structured imports include their source identity.
-    .update(
-      canonicalJson(
-        input.origin.type === 'user_draft'
-          ? {
-              id: input.id,
-              kind: input.kind,
-              title: input.title,
-              checkpoint: input.checkpoint,
-            }
-          : input
-      )
-    )
-    .digest('hex');
+  const creationInput = input.origin.type === 'user_draft'
+    ? { id: input.id, kind: input.kind, title: input.title, checkpoint: input.checkpoint }
+    : input;
+  const creationHash = createHash('sha256').update(canonicalJson(creationInput)).digest('hex');
+  const legacyCreationHash = createHash('sha256').update(canonicalJson(creationInput, true)).digest('hex');
   try {
     const result = await client.query(
       `INSERT INTO food_assistant_tasks(id, user_id, kind, title, checkpoint, creation_hash, origin)
@@ -169,7 +146,7 @@ export async function createTask(
     const task = existing.rows[0]
       ? foodAssistantTaskSchema.parse(existing.rows[0])
       : null;
-    if (!task || task.creation_hash !== creationHash) {
+    if (!task || (task.creation_hash !== creationHash && task.creation_hash !== legacyCreationHash)) {
       throw new FoodAssistantConflict(
         'That request ID belongs to different work. Use a new ID for a different request.'
       );
@@ -196,6 +173,7 @@ export async function listOperations(userId: string, taskId: string) {
 }
 
 interface TaskMutation {
+  allowCancelled?: boolean;
   allowComplete?: boolean;
   taskId: string;
   operationId: string;
@@ -204,14 +182,14 @@ interface TaskMutation {
   request: unknown;
 }
 
-function mutationHash(command: TaskMutation): string {
+function mutationHash(command: TaskMutation, legacyOrder = false): string {
   return createHash('sha256')
     .update(
       canonicalJson({
         taskId: command.taskId,
         kind: command.kind,
         request: command.request,
-      })
+      }, legacyOrder)
     )
     .digest('hex');
 }
@@ -230,7 +208,7 @@ export async function replayTaskMutation(
     );
     if (!result.rows[0]) return null;
     const saved = foodAssistantOperationSchema.parse(result.rows[0]);
-    if (saved.request_hash !== mutationHash(command))
+    if (saved.request_hash !== mutationHash(command) && saved.request_hash !== mutationHash(command, true))
       throw new FoodAssistantConflict(
         'This operation ID was already used for a different request.'
       );
@@ -268,7 +246,7 @@ export async function mutateTask(
     );
     if (prior.rows[0]) {
       const saved = foodAssistantOperationSchema.parse(prior.rows[0]);
-      if (saved.request_hash !== requestHash)
+      if (saved.request_hash !== requestHash && saved.request_hash !== mutationHash(command, true))
         throw new FoodAssistantConflict(
           'This operation ID was already used for a different request.'
         );
@@ -285,7 +263,7 @@ export async function mutateTask(
       throw new FoodAssistantConflict();
     if (
       (task.status === 'complete' && !command.allowComplete) ||
-      task.status === 'cancelled'
+      (task.status === 'cancelled' && !command.allowCancelled)
     )
       throw new FoodAssistantConflict(
         'This task has finished or was cancelled. Start a new task.'

@@ -183,6 +183,42 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({
             })}
             onPress={() => navigation.navigate('MealTypeSettings')}
           />
+          <SettingsRow
+            icon="warning"
+            title={t('foodSettings.allergens.title', {
+              defaultValue: 'Allergens',
+            })}
+            subtitle={t('foodSettings.allergens.subtitle', {
+              defaultValue:
+                'Get warnings on foods and scans that contain allergens you track',
+            })}
+            onPress={() => navigation.navigate('AllergenSettings')}
+          />
+        </SettingsRowGroup>
+
+        <SettingsRowGroup
+          title={t('foodSettings.nutrients.title', {
+            defaultValue: 'Nutrients',
+          })}
+        >
+          <SettingsRow
+            title={t('foodSettings.nutrients.custom', {
+              defaultValue: 'Custom Nutrients',
+            })}
+            subtitle={t('foodSettings.nutrients.customSubtitle', {
+              defaultValue: 'Create and edit your own nutrients',
+            })}
+            onPress={() => navigation.navigate('CustomNutrients')}
+          />
+          <SettingsRow
+            title={t('foodSettings.nutrients.display', {
+              defaultValue: 'Nutrient Display',
+            })}
+            subtitle={t('foodSettings.nutrients.displaySubtitle', {
+              defaultValue: 'Choose and order the nutrients shown in each view',
+            })}
+            onPress={() => navigation.navigate('NutrientDisplaySettings')}
+          />
         </SettingsRowGroup>
 
         {/* {t('foodSettings.netCarbs.title', { defaultValue: 'Show Net Carbs' })} */}

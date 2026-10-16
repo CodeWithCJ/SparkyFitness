@@ -158,10 +158,12 @@ export const WeeklyGoalPlanDialog = ({
                   >
                     <CalendarDays className="mr-2 h-4 w-4" />
                     {currentWeeklyPlan.start_date ? (
-                      formatDateInUserTimezone(
-                        currentWeeklyPlan.start_date,
-                        dateFormat
-                      )
+                      <span>
+                        {formatDateInUserTimezone(
+                          currentWeeklyPlan.start_date,
+                          dateFormat
+                        )}
+                      </span>
                     ) : (
                       <span>
                         {t('goals.goalsSettings.pickADate', 'Pick a date')}
@@ -201,10 +203,12 @@ export const WeeklyGoalPlanDialog = ({
                   >
                     <CalendarDays className="mr-2 h-4 w-4" />
                     {currentWeeklyPlan.end_date ? (
-                      formatDateInUserTimezone(
-                        currentWeeklyPlan.end_date,
-                        dateFormat
-                      )
+                      <span>
+                        {formatDateInUserTimezone(
+                          currentWeeklyPlan.end_date,
+                          dateFormat
+                        )}
+                      </span>
                     ) : (
                       <span>
                         {t('goals.goalsSettings.pickADate', 'Pick a date')}

@@ -28,7 +28,7 @@ import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { ActivityLevel } from '@/contexts/PreferencesContext';
 import { error as logError } from '@/utils/logging';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   FatBreakdownAlgorithm,
@@ -41,7 +41,7 @@ import {
   VitaminCalculationAlgorithmLabels,
   SugarCalculationAlgorithmLabels,
   AddedSugarAlgorithmLabels,
-} from '@/types/nutrientAlgorithms';
+} from '@workspace/shared';
 import {
   useDiaryInvalidation,
   useDailyProgressInvalidation,
@@ -487,10 +487,6 @@ const CalculationSettings = () => {
     deficitCeilingPercent != null &&
     getGoalModeAdjustment(mode, goalModeCustomPercentage) * 100 >
       deficitCeilingPercent + 1e-9;
-  const goalModeSuffix = (mode: GoalMode) =>
-    isGoalModeUnreachable(mode)
-      ? ` — ${t('settings.goalMode.modeUnreachableSuffix', 'not reachable')}`
-      : '';
 
   const deficitPct = getGoalModeAdjustment(goalMode, goalModeCustomPercentage);
 
@@ -833,10 +829,10 @@ const CalculationSettings = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="kcal">
-              kcal ({t('calculationSettings.calories', 'Calories')})
+              {t('settings.goalMode.kcalCalories', 'kcal (Calories)')}
             </SelectItem>
             <SelectItem value="kJ">
-              kJ ({t('calculationSettings.joules', 'Joules')})
+              {t('settings.goalMode.kJJoules', 'kJ (Joules)')}
             </SelectItem>
           </SelectContent>
         </Select>
@@ -871,61 +867,49 @@ const CalculationSettings = () => {
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="adaptive" id="adaptive-goal" />
             <Label htmlFor="adaptive-goal" className="cursor-pointer">
-              <span className="font-medium">
-                {t(
-                  'settings.calorieGoalAdjustment.adaptiveGoal',
-                  'Adaptive Goal'
-                )}
-                :
-              </span>{' '}
-              {t(
-                'settings.calorieGoalAdjustment.adaptiveGoalDescription',
-                "The 'Gold Standard'. SparkyFitness calculates your TDEE by correlating your actual weight changes with your calorie intake over the last 35 days. It 'learns' your unique metabolism."
-              )}
+              <Trans
+                i18nKey="settings.goalMode.adaptiveGoalTheGoldStandard"
+                defaults={
+                  "<span>Adaptive Goal:</span> The 'Gold Standard'. SparkyFitness calculates your TDEE by correlating your actual weight changes with your calorie intake over the last 35 days. It 'learns' your unique metabolism."
+                }
+                components={{ span: <span className="font-medium" /> }}
+              />
             </Label>
           </div>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="dynamic" id="dynamic-goal" />
             <Label htmlFor="dynamic-goal" className="cursor-pointer">
-              <span className="font-medium">
-                {t(
-                  'settings.calorieGoalAdjustment.dynamicGoal',
-                  'Dynamic Goal'
-                )}
-                :
-              </span>{' '}
-              {t(
-                'settings.calorieGoalAdjustment.dynamicGoalDescription',
-                'Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily.'
-              )}
+              <Trans
+                i18nKey="settings.goalMode.dynamicGoalYourCalorieGoal"
+                defaults={
+                  '<span>Dynamic Goal:</span> Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily.'
+                }
+                components={{ span: <span className="font-medium" /> }}
+              />
             </Label>
           </div>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="fixed" id="fixed-goal" />
             <Label htmlFor="fixed-goal" className="cursor-pointer">
-              <span className="font-medium">
-                {t('settings.calorieGoalAdjustment.fixedGoal', 'Fixed Goal')}:
-              </span>{' '}
-              {t(
-                'settings.calorieGoalAdjustment.fixedGoalDescription',
-                'Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target.'
-              )}
+              <Trans
+                i18nKey="settings.goalMode.fixedGoalYourCalorieGoal"
+                defaults={
+                  '<span>Fixed Goal:</span> Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target.'
+                }
+                components={{ span: <span className="font-medium" /> }}
+              />
             </Label>
           </div>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="percentage" id="percentage-goal" />
             <Label htmlFor="percentage-goal" className="cursor-pointer">
-              <span className="font-medium">
-                {t(
-                  'settings.calorieGoalAdjustment.percentageGoal',
-                  'Percentage Earn-Back'
-                )}
-                :
-              </span>{' '}
-              {t(
-                'settings.calorieGoalAdjustment.percentageGoalDescription',
-                'Only earn back a set percentage of your exercise calories. For example, 50% creates a safety buffer to avoid overeating from over-estimated burns.'
-              )}
+              <Trans
+                i18nKey="settings.goalMode.percentageEarnBackOnlyEarn"
+                defaults={
+                  '<span>Percentage Earn-Back:</span> Only earn back a set percentage of your exercise calories. For example, 50% creates a safety buffer to avoid overeating from over-estimated burns.'
+                }
+                components={{ span: <span className="font-medium" /> }}
+              />
             </Label>
           </div>
           {calorieGoalAdjustmentMode === 'percentage' && (
@@ -961,17 +945,13 @@ const CalculationSettings = () => {
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="tdee" id="tdee-goal" />
             <Label htmlFor="tdee-goal" className="cursor-pointer">
-              <span className="font-medium">
-                {t(
-                  'settings.calorieGoalAdjustment.tdeeGoal',
-                  'Device Projection'
-                )}
-                :
-              </span>{' '}
-              {t(
-                'settings.calorieGoalAdjustment.tdeeGoalDescription',
-                'Uses Health Connect total calories when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.'
-              )}
+              <Trans
+                i18nKey="settings.goalMode.deviceProjectionUsesHealthConnect"
+                defaults={
+                  '<span>Device Projection:</span> Uses Health Connect total calories when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.'
+                }
+                components={{ span: <span className="font-medium" /> }}
+              />
             </Label>
           </div>
           {(calorieGoalAdjustmentMode === 'tdee' ||
@@ -1032,10 +1012,9 @@ const CalculationSettings = () => {
               </div>
               {calorieGoalAdjustmentMode === 'adaptive' && (
                 <p className="text-sm text-muted-foreground italic mt-[-4px]">
-                  💡{' '}
                   {t(
-                    'settings.calorieGoalAdjustment.adaptiveActivityHint',
-                    'In Adaptive mode this is the fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier, so a level set too low can hold a genuinely higher expenditure down.'
+                    'settings.goalMode.inAdaptiveModeThisIs',
+                    '💡 In Adaptive mode this is the fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier, so a level set too low can hold a genuinely higher expenditure down.'
                   )}
                 </p>
               )}
@@ -1242,18 +1221,33 @@ const CalculationSettings = () => {
                 </SelectItem>
                 <SelectItem value="recomp">
                   {t(
-                    'settings.goalMode.modeRecomp',
-                    'Body Recomposition (-10%)'
+                    isGoalModeUnreachable('recomp')
+                      ? 'settings.goalMode.bodyRecomposition10Unreachable'
+                      : 'settings.goalMode.bodyRecomposition10',
+                    isGoalModeUnreachable('recomp')
+                      ? 'Body Recomposition (-10%) — not reachable'
+                      : 'Body Recomposition (-10%)'
                   )}
-                  {goalModeSuffix('recomp')}
                 </SelectItem>
                 <SelectItem value="cut">
-                  {t('settings.goalMode.modeCut', 'Cut (-15%)')}
-                  {goalModeSuffix('cut')}
+                  {t(
+                    isGoalModeUnreachable('cut')
+                      ? 'settings.goalMode.cut15Unreachable'
+                      : 'settings.goalMode.cut15',
+                    isGoalModeUnreachable('cut')
+                      ? 'Cut (-15%) — not reachable'
+                      : 'Cut (-15%)'
+                  )}
                 </SelectItem>
                 <SelectItem value="high_cut">
-                  {t('settings.goalMode.modeHighCut', 'High Cut (-20%)')}
-                  {goalModeSuffix('high_cut')}
+                  {t(
+                    isGoalModeUnreachable('high_cut')
+                      ? 'settings.goalMode.highCut20Unreachable'
+                      : 'settings.goalMode.highCut20',
+                    isGoalModeUnreachable('high_cut')
+                      ? 'High Cut (-20%) — not reachable'
+                      : 'High Cut (-20%)'
+                  )}
                 </SelectItem>
                 <SelectItem value="lean_bulk">
                   {t('settings.goalMode.modeLeanBulk', 'Lean Bulk (+10%)')}
@@ -1426,10 +1420,10 @@ const CalculationSettings = () => {
               <div>
                 <Label htmlFor="calorie-safety-floor-value">
                   {t(
-                    'settings.goalMode.safetyFloorValueLabel',
-                    'Custom minimum'
-                  )}{' '}
-                  ({getEnergyUnitString(energyUnit)})
+                    'settings.goalMode.customMinimum',
+                    'Custom minimum ({{energyUnitString}})',
+                    { energyUnitString: getEnergyUnitString(energyUnit) }
+                  )}
                 </Label>
                 <Input
                   id="calorie-safety-floor-value"
@@ -1545,12 +1539,13 @@ const CalculationSettings = () => {
                   }`}
                 >
                   {/* No sign at zero: "-0 kcal (0%)" reads as an error. */}
-                  {previewResult.appliedDeficit === 0
-                    ? ''
-                    : previewResult.isGainGoal
-                      ? '+'
-                      : '-'}
-                  {Math.abs(
+                  {`${
+                    previewResult.appliedDeficit === 0
+                      ? ''
+                      : previewResult.isGainGoal
+                        ? '+'
+                        : '-'
+                  }${Math.abs(
                     Math.round(
                       convertEnergy(
                         previewResult.appliedDeficit,
@@ -1558,7 +1553,7 @@ const CalculationSettings = () => {
                         energyUnit
                       )
                     )
-                  )}{' '}
+                  )}`}{' '}
                   {getEnergyUnitString(energyUnit)} (
                   {Math.abs(
                     Math.round(
@@ -1591,21 +1586,19 @@ const CalculationSettings = () => {
             {/* Measured adaptive TDEE — independent of goal mode and method */}
             {measuredAdaptiveTdee != null && (
               <p className="text-sm text-muted-foreground">
-                {t(
-                  'settings.goalMode.measuredAdaptiveTdee',
-                  'Measured Adaptive TDEE'
-                )}
-                :{' '}
-                <span className="font-medium">
-                  {Math.round(
-                    convertEnergy(measuredAdaptiveTdee, 'kcal', energyUnit)
-                  )}{' '}
-                  {getEnergyUnitString(energyUnit)}
-                </span>{' '}
-                {t(
-                  'settings.goalMode.measuredAdaptiveTdeeHint',
-                  '(does not change with Goal Mode)'
-                )}
+                <Trans
+                  i18nKey="settings.goalMode.measuredAdaptiveTDEEDoesNot"
+                  defaults={
+                    'Measured Adaptive TDEE: <span>{{energy}} {{energyUnitString}}</span> (does not change with Goal Mode)'
+                  }
+                  values={{
+                    energy: Math.round(
+                      convertEnergy(measuredAdaptiveTdee, 'kcal', energyUnit)
+                    ),
+                    energyUnitString: getEnergyUnitString(energyUnit),
+                  }}
+                  components={{ span: <span className="font-medium" /> }}
+                />
               </p>
             )}
 

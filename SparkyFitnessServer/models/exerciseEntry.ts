@@ -538,7 +538,14 @@ async function applyWatchTelemetryAtomically(
   userId: string,
   actingUserId: string,
   proposed: WatchTelemetryFields,
-  zones: WatchTelemetryZoneSpec[] | null
+  zones: WatchTelemetryZoneSpec[] | null,
+  /**
+   * Runs before COMMIT, while this entry's row lock is still held, and only
+   * when the heart-rate snapshot was accepted. The series write belongs here:
+   * doing it after COMMIT let an older flush store samples the lock had
+   * already rejected, or land them after a newer flush.
+   */
+  onHrAccepted?: () => Promise<void>
 ): Promise<void> {
   const client = await getClient(userId, actingUserId);
   try {
@@ -587,6 +594,9 @@ async function applyWatchTelemetryAtomically(
             seconds_in_zone: zone.seconds_in_zone,
           }))
         );
+      }
+      if (!skipHr && onHrAccepted) {
+        await onHrAccepted();
       }
       await client.query('COMMIT');
     } catch (error) {
@@ -1602,7 +1612,6 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
         preset.exercises.sort(
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (a: any, b: any) =>
-            compareByEntryTime(a.entry_time, b.entry_time) ||
             (a.sort_order || 0) - (b.sort_order || 0) ||
             // @ts-expect-error TS(2362): The left-hand side of an arithmetic operation must... Remove this comment to see the full error message
             new Date(a.created_at) - new Date(b.created_at)

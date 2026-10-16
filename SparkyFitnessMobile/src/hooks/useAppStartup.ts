@@ -23,7 +23,10 @@ import {
 import { initMedicationNotificationActions } from '../services/medicationNotificationHandler';
 import { ensureSymptomNotificationCategory } from '../services/symptomReminderService';
 import { initWorkoutLiveActivity } from '../services/workoutLiveActivity';
+import { initRunLiveActivity } from '../services/runLiveActivity';
 import { ensureTimezoneBootstrapped } from '../services/api/preferencesApi';
+import { loadSpeechVoices } from '../services/speechVoice';
+import { cancelLegacyRunReminders } from '../services/legacyRunReminders';
 
 interface AppStartupArgs {
   /**
@@ -60,6 +63,9 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
       // Remove the flag so the dashboard will auto-open on first SyncScreen visit
       await AsyncStorage.removeItem('@HealthConnect:hasAutoOpenedDashboard');
       await initNotifications();
+      void cancelLegacyRunReminders();
+      // So the first spoken cue already uses the chosen voice.
+      void loadSpeechVoices();
     };
 
     initializeApp().catch((error) => {
@@ -80,6 +86,15 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(
         `[App] Failed to initialize workout Live Activity: ${message}`,
+        'ERROR'
+      );
+    });
+
+    // Dynamic Island / Lock Screen card for phone GPS runs and watch runs.
+    initRunLiveActivity().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(
+        `[App] Failed to initialize run Live Activity: ${message}`,
         'ERROR'
       );
     });

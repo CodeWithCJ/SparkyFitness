@@ -264,11 +264,29 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="calorie-settings"
+                  title={t('settings.rows.goals', { defaultValue: 'Goals' })}
+                  onPress={() => navigation.navigate('Goals')}
+                  iconColor={catCalories}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
+                  icon="calorie-settings"
                   title={t('settings.rows.calories', {
                     defaultValue: 'Calories & BMR',
                   })}
                   onPress={() => navigation.navigate('CalorieSettings')}
                   iconColor={catCalories}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
+                  icon="microphone"
+                  title={t('voiceSettings.open', {
+                    defaultValue: 'Voice settings',
+                  })}
+                  onPress={() => navigation.navigate('ChatSettings')}
+                  iconColor={catBlue}
                 />
               )}
               {isConnected && (
@@ -307,6 +325,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               )}
               {isConnected && (
                 <SettingsRow
+                  icon="chart-bar"
+                  title={t('settings.rows.reports', {
+                    defaultValue: 'Reports',
+                  })}
+                  onPress={() => navigation.navigate('ReportsSettings')}
+                  iconColor={catBlue}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
                   icon="wellness"
                   title={
                     discreetMode
@@ -319,6 +347,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   }
                   onPress={() => navigation.navigate('CycleSettings')}
                   iconColor={catPink}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
+                  icon="timer"
+                  title={t('settings.rows.fasting', {
+                    defaultValue: 'Fasting',
+                  })}
+                  onPress={() => navigation.navigate('FastingSettings')}
+                  iconColor={catOrange}
                 />
               )}
               <SettingsRow

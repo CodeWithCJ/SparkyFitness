@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import type { SymptomEntryResponse } from '@workspace/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -104,8 +104,12 @@ function EpisodeDetail({
         <div className="flex flex-wrap items-center gap-2 text-sm">
           {entry.severity != null && (
             <span>
-              {t('symptoms.severity.label', 'Severity')}{' '}
-              <strong>{entry.severity}</strong>
+              <Trans
+                i18nKey="symptoms.sections.severity"
+                defaults={'Severity <strong>{{severity}}</strong>'}
+                values={{ severity: entry.severity }}
+                components={{ strong: <strong /> }}
+              />
             </span>
           )}
           {entry.peak_severity != null &&

@@ -56,6 +56,15 @@ jest.mock('../../src/components/CaloriesBarChart', () => {
   };
 });
 
+jest.mock('../../src/components/Vo2MaxLineChart', () => {
+  const ReactModule = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: () => ReactModule.createElement(View, { testID: 'vo2max-chart' }),
+  };
+});
+
 type PagerProps = React.ComponentProps<typeof HealthTrendsPager>;
 
 const emptySeries = <TPoint,>(): HealthTrendSeries<TPoint> => ({
@@ -586,5 +595,21 @@ describe('HealthTrendsPager', () => {
       1800, 2000,
     ]);
     expect(screen.getByTestId('weight-chart').props.goal).toBeUndefined();
+  });
+});
+
+describe('VO2 max page', () => {
+  test('shows once readings exist', () => {
+    renderPager({
+      visibleTrends: ['steps', 'vo2max'],
+      vo2max: populated({ day: '2026-06-03', vo2max: 44.2 }),
+    });
+    expect(screen.getByTestId('vo2max-chart')).toBeTruthy();
+  });
+
+  test('hides itself for someone who never syncs VO2 max', () => {
+    renderPager({ visibleTrends: ['steps', 'vo2max'] });
+    expect(screen.queryByTestId('vo2max-chart')).toBeNull();
+    expect(screen.getByTestId('steps-chart')).toBeTruthy();
   });
 });

@@ -67,9 +67,8 @@ const sampleAiResponse = {
 };
 
 // Per-family upstream response-body factories matching each provider's wire
-// shape. The dispatch helper forces a tool call on anthropic (structured
-// request), so its payload arrives as a tool_use input object; the text-based
-// families deliver a JSON string the helper parses.
+// shape. Every family delivers a JSON string the helper parses; on anthropic
+// the structured request asks for JSON outputs, so it arrives in a text block.
 function googleBody(payload: unknown) {
   return {
     candidates: [{ content: { parts: [{ text: JSON.stringify(payload) }] } }],
@@ -82,10 +81,10 @@ function openAiBody(payload: unknown) {
     ],
   };
 }
-function anthropicToolBody(payload: unknown) {
+function anthropicJsonBody(payload: unknown) {
   return {
-    stop_reason: 'tool_use',
-    content: [{ type: 'tool_use', name: 'unit_conversion', input: payload }],
+    stop_reason: 'end_turn',
+    content: [{ type: 'text', text: JSON.stringify(payload) }],
   };
 }
 function ollamaBody(payload: unknown) {
@@ -97,7 +96,7 @@ function bodyFor(serviceType: string, payload: unknown) {
     case 'google':
       return googleBody(payload);
     case 'anthropic':
-      return anthropicToolBody(payload);
+      return anthropicJsonBody(payload);
     case 'ollama':
       return ollamaBody(payload);
     default:

@@ -9,7 +9,9 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useAuth } from '@/hooks/useAuth';
 import { Users, User, Loader2 } from 'lucide-react';
 
+import { useTranslation } from 'react-i18next';
 const ProfileSwitcher = () => {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { activeUserId, isActingOnBehalf, accessibleUsers, switchToUser } =
     useActiveUser();
@@ -64,7 +66,7 @@ const ProfileSwitcher = () => {
         <SelectItem value={user.id}>
           <div className="flex items-center gap-2">
             <User className="h-4 w-4" />
-            <span>Your Profile</span>
+            <span>{t('profileSwitcher.yourProfile', 'Your Profile')}</span>
           </div>
         </SelectItem>
         {switchableUsers.map((accessibleUser) => (
@@ -75,7 +77,9 @@ const ProfileSwitcher = () => {
             <div className="flex items-center gap-2">
               <User className="h-4 w-4" />
               <span>{accessibleUser.full_name || accessibleUser.email}</span>
-              <span className="text-xs text-gray-500">(Family)</span>
+              <span className="text-xs text-gray-500">
+                {t('profileSwitcher.family', '(Family)')}
+              </span>
             </div>
           </SelectItem>
         ))}

@@ -14,13 +14,44 @@ import type { FormFoodVariant } from '@/utils/foodForm';
 import { useTranslation } from 'react-i18next';
 import { NumericInput } from '../NumericInput';
 
+import i18n from 'i18next';
 const GLYCEMIC_INDEX_OPTIONS: { value: GlycemicIndex; label: string }[] = [
-  { value: 'None', label: 'None' },
-  { value: 'Very Low', label: 'Very Low' },
-  { value: 'Low', label: 'Low' },
-  { value: 'Medium', label: 'Medium' },
-  { value: 'High', label: 'High' },
-  { value: 'Very High', label: 'Very High' },
+  {
+    value: 'None',
+    get label() {
+      return i18n.t('foodSearch.nutrientFormGrid.none', 'None');
+    },
+  },
+  {
+    value: 'Very Low',
+    get label() {
+      return i18n.t('foodSearch.nutrientFormGrid.veryLow', 'Very Low');
+    },
+  },
+  {
+    value: 'Low',
+    get label() {
+      return i18n.t('foodSearch.nutrientFormGrid.low', 'Low');
+    },
+  },
+  {
+    value: 'Medium',
+    get label() {
+      return i18n.t('foodSearch.nutrientFormGrid.medium', 'Medium');
+    },
+  },
+  {
+    value: 'High',
+    get label() {
+      return i18n.t('foodSearch.nutrientFormGrid.high', 'High');
+    },
+  },
+  {
+    value: 'Very High',
+    get label() {
+      return i18n.t('foodSearch.nutrientFormGrid.veryHigh', 'Very High');
+    },
+  },
 ];
 
 interface NutrientGridProps {
@@ -116,7 +147,10 @@ export function NutrientGrid({
             htmlFor={gridId(variantIndex, 'glycemic_index')}
             className="flex-1"
           >
-            Glycemic Index (GI)
+            {t(
+              'foodSearch.nutrientFormGrid.glycemicIndexGI',
+              'Glycemic Index (GI)'
+            )}
           </Label>
           <Select
             value={variant.glycemic_index ?? 'None'}
@@ -125,7 +159,12 @@ export function NutrientGrid({
             }
           >
             <SelectTrigger id={gridId(variantIndex, 'glycemic_index')}>
-              <SelectValue placeholder="Select GI" />
+              <SelectValue
+                placeholder={t(
+                  'foodSearch.nutrientFormGrid.selectGI',
+                  'Select GI'
+                )}
+              />
             </SelectTrigger>
             <SelectContent>
               {GLYCEMIC_INDEX_OPTIONS.map(({ value, label }) => (
@@ -144,7 +183,11 @@ export function NutrientGrid({
       return (
         <NutrientInput
           id={gridId(variantIndex, 'calories')}
-          label={`Calories (${energyUnit})`}
+          label={t(
+            'foodSearch.nutrientFormGrid.calories',
+            'Calories ({{energyUnit}})',
+            { energyUnit }
+          )}
           value={
             variant.calories !== undefined
               ? Math.round(

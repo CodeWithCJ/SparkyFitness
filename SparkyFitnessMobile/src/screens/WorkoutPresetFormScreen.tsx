@@ -90,6 +90,11 @@ interface PresetFormBodyProps {
   onAddExercisePress: () => void;
   onReplaceExercise: (clientId: string) => void;
   onDuplicateExercise: (clientId: string) => void;
+  addWarmupSets: (
+    clientId: string,
+    warmups: { weight: string; reps: string }[],
+    restSec: number
+  ) => void;
   onRegisterAccessoryHandle: (
     key: string,
     handle: SetRowAccessoryHandle | null
@@ -152,6 +157,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   onAddExercisePress,
   onReplaceExercise,
   onDuplicateExercise,
+  addWarmupSets,
   onRegisterAccessoryHandle,
   onViewExercise,
   listRef,
@@ -280,6 +286,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
           setExerciseRest={setExerciseRest}
           onReplaceExercise={onReplaceExercise}
           onDuplicateExercise={onDuplicateExercise}
+          addWarmupSets={addWarmupSets}
           supersetWith={supersetWith}
           ungroupExercise={ungroupExercise}
           onReorderExercises={reorderExercises}
@@ -328,6 +335,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({
     replaceExercise,
     duplicateExercise,
     addSet,
+    addWarmupSets,
     removeSet,
     updateSetField,
     updateSetMeta,
@@ -536,6 +544,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({
         onAddExercisePress={openExerciseSearch}
         onReplaceExercise={handleReplaceExercise}
         onDuplicateExercise={duplicateExercise}
+        addWarmupSets={addWarmupSets}
         onRegisterAccessoryHandle={onRegisterAccessoryHandle}
         onViewExercise={(exercise) =>
           navigation.navigate('ExerciseDetail', {
@@ -628,6 +637,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({
     replaceExercise,
     duplicateExercise,
     addSet,
+    addWarmupSets,
     removeSet,
     updateSetField,
     updateSetMeta,
@@ -825,6 +835,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({
         onAddExercisePress={openExerciseSearch}
         onReplaceExercise={handleReplaceExercise}
         onDuplicateExercise={duplicateExercise}
+        addWarmupSets={addWarmupSets}
         onRegisterAccessoryHandle={onRegisterAccessoryHandle}
         onViewExercise={(exercise) =>
           navigation.navigate('ExerciseDetail', {

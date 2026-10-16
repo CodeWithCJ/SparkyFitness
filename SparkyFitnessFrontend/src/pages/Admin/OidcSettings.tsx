@@ -224,7 +224,7 @@ const OidcSettings: React.FC = () => {
   if (error)
     return (
       <div className="text-red-500">
-        {t('admin.oidcSettings.error', 'Error')}: {error}
+        {t('admin.oidcSettings.loadFailed', 'Failed to load OIDC providers.')}
       </div>
     );
 
@@ -293,13 +293,17 @@ const OidcSettings: React.FC = () => {
                       <TableCell>
                         <img
                           src={provider.logo_url || '/oidc-logo.png'}
-                          alt={`${provider.display_name} logo`}
+                          alt={t(
+                            'admin.oidcSettings.logo2',
+                            '{{display_name}} logo',
+                            { display_name: provider.display_name }
+                          )}
                           className="h-8 w-8 object-contain"
                         />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {provider.display_name}
+                          <span>{provider.display_name}</span>
                           {provider.is_env_configured && (
                             <Badge
                               variant="outline"

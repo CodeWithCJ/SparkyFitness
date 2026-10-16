@@ -14,19 +14,33 @@ const VISION_AI_SERVICE_ID_GUARD_PARAM = 41;
 const ALL_PROVIDERS_DEFAULT_PARAM = 46;
 // $48 in both the update and the upsert.
 const FOOD_WATER_TO_INTAKE_PARAM = 47;
+// Voice fields follow chart_scale_mode ($53), preserving existing positions.
+const VOICE_AI_SERVICE_ID_PARAM = 53;
+const VOICE_AI_SERVICE_ID_GUARD_PARAM = 54;
+const VOICE_INPUT_ENABLED_PARAM = 55;
 // $8 in the update statement (the upsert numbers it $9).
 const FOOD_DATA_PROVIDER_ID_PARAM = 7;
 
 describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: {
+    query: ReturnType<
+      typeof vi.fn<
+        (
+          sql: string,
+          params: unknown[]
+        ) => Promise<{ rows: Record<string, unknown>[] }>
+      >
+    >;
+    release: ReturnType<typeof vi.fn>;
+  };
   beforeEach(() => {
     mockClient = {
       query: vi.fn(),
       release: vi.fn(),
     };
-    // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
-    getClient.mockResolvedValue(mockClient);
+    vi.mocked(getClient).mockResolvedValue(
+      mockClient as unknown as Awaited<ReturnType<typeof getClient>>
+    );
   });
   afterEach(() => {
     vi.clearAllMocks();
@@ -110,6 +124,105 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
     const params = mockClient.query.mock.calls[0][1];
     expect(params[VISION_AI_SERVICE_ID_PARAM]).toBe('svc-99');
     expect(params[VISION_AI_SERVICE_ID_GUARD_PARAM]).toBe(true);
+  });
+
+  it.each([true, false, undefined])(
+    'updates voice visibility independently of provider selection: %s',
+    async (enabled) => {
+      mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+      await preferenceRepository.updateUserPreferences('user-1', {
+        voice_input_enabled: enabled,
+      });
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(sql).toContain(
+        'voice_input_enabled = COALESCE($56, voice_input_enabled)'
+      );
+      expect(params[VOICE_INPUT_ENABLED_PARAM]).toBe(enabled);
+      expect(params[VOICE_AI_SERVICE_ID_GUARD_PARAM]).toBe(false);
+    }
+  );
+
+  it.each([true, false, undefined])(
+    'preserves omitted voice visibility on upsert: %s',
+    async (enabled) => {
+      mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+      await preferenceRepository.upsertUserPreferences({
+        user_id: 'user-1',
+        voice_input_enabled: enabled,
+      });
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(sql).toContain(
+        'voice_input_enabled = COALESCE($56, user_preferences.voice_input_enabled)'
+      );
+      expect(params[VOICE_INPUT_ENABLED_PARAM]).toBe(enabled);
+      expect(params[VOICE_AI_SERVICE_ID_GUARD_PARAM]).toBe(false);
+    }
+  );
+
+  it.each(['update', 'upsert'] as const)(
+    'keeps voice values separate from hydration, caffeine, and chart preferences on %s',
+    async (operation) => {
+      mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+      const preferences = {
+        add_food_water_to_intake: true,
+        standard_drink_grams: 14,
+        weekly_alcohol_limit_g: 100,
+        caffeine_half_life_hours: 5,
+        target_bedtime: '22:30',
+        chart_scale_mode: 'time' as const,
+        active_voice_ai_service_id: null,
+        voice_input_enabled: false,
+      };
+      if (operation === 'update') {
+        await preferenceRepository.updateUserPreferences('user-1', preferences);
+      } else {
+        await preferenceRepository.upsertUserPreferences({
+          user_id: 'user-1',
+          ...preferences,
+        });
+      }
+      const [, params] = mockClient.query.mock.calls[0];
+      expect(params.slice(47)).toEqual([
+        true,
+        14,
+        100,
+        5,
+        '22:30',
+        'time',
+        null,
+        true,
+        false,
+      ]);
+    }
+  );
+
+  it('round-trips and guards the active_voice_ai_service_id pointer', async () => {
+    mockClient.query.mockResolvedValueOnce({
+      rows: [{ user_id: 'user-1', active_voice_ai_service_id: 'voice-1' }],
+    });
+
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      active_voice_ai_service_id: 'voice-1',
+    });
+
+    const [sql, params] = mockClient.query.mock.calls[0];
+    expect(sql).toContain(
+      'active_voice_ai_service_id = CASE WHEN $55 THEN EXCLUDED.active_voice_ai_service_id'
+    );
+    expect(params[VOICE_AI_SERVICE_ID_PARAM]).toBe('voice-1');
+    expect(params[VOICE_AI_SERVICE_ID_GUARD_PARAM]).toBe(true);
+  });
+
+  it('leaves active_voice_ai_service_id untouched when the field is omitted', async () => {
+    mockClient.query.mockResolvedValueOnce({ rows: [{ user_id: 'user-1' }] });
+
+    await preferenceRepository.updateUserPreferences('user-1', {
+      show_net_carbs: true,
+    });
+
+    const params = mockClient.query.mock.calls[0][1];
+    expect(params[VOICE_AI_SERVICE_ID_GUARD_PARAM]).toBe(false);
   });
 
   it('leaves active_vision_ai_service_id untouched when the field is omitted', async () => {

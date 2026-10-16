@@ -84,6 +84,40 @@ export function useLiveHeartRate(
 }
 
 /**
+ * How long a GPS recording's reading stays on screen. The watch sends one every
+ * few seconds while the phone is reachable; a run has no batch to wait for, so
+ * a number this old means the watch has gone quiet (out of range, or paused).
+ */
+export const RECORDING_HEART_RATE_MAX_AGE_MS = 15_000;
+
+/**
+ * The newest heart rate the watch has sent for this GPS recording, or null
+ * when there is none or it is older than `RECORDING_HEART_RATE_MAX_AGE_MS`.
+ * Shares the store with the strength workout's reading: the two never run at
+ * once (the watch skips heart rate for a recording while a workout owns its
+ * HealthKit session), and the session id keeps them apart.
+ */
+export function useRecordingHeartRate(
+  recordingId: string | null
+): number | null {
+  const reading = useLiveHeartRateStore((s) => s.reading);
+  const matches =
+    recordingId != null && reading != null && reading.sessionId === recordingId;
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!matches) return;
+    const timer = setInterval(() => setNow(Date.now()), 5_000);
+    return () => clearInterval(timer);
+  }, [matches, reading]);
+
+  if (!matches || now - reading.at > RECORDING_HEART_RATE_MAX_AGE_MS) {
+    return null;
+  }
+  return reading.bpm;
+}
+
+/**
  * The newest sample among the batch's attributed samples, with the exercise
  * it was attributed to. Null when none has a usable time and heart rate.
  */

@@ -7,6 +7,7 @@ import { useAiUnitConversion } from '@/hooks/Foods/useAiUnitConversion';
 import { error as logError } from '@/utils/logging';
 import { OVERALL_CONFIDENCE_LABELS } from '@workspace/shared';
 
+import { useTranslation } from 'react-i18next';
 interface AiEstimateSectionProps {
   food: { id: string; name: string; brand?: string | null };
   /** The unit the user picked in the dropdown (the new, incompatible unit). */
@@ -66,6 +67,7 @@ export function AiEstimateSection({
   onAccept,
   onEdit,
 }: AiEstimateSectionProps) {
+  const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
   const requestAiUnitConversion = useAiUnitConversion();
   const [state, setState] = useState<SectionState>({ kind: 'idle' });
@@ -122,7 +124,10 @@ export function AiEstimateSection({
           className="w-full"
         >
           <Sparkles className="h-4 w-4 mr-2" />
-          Convert with AI
+          {t(
+            'foodUnitSelector.aiEstimateSection.convertWithAI',
+            'Convert with AI'
+          )}
         </Button>
       </div>
     );
@@ -133,7 +138,11 @@ export function AiEstimateSection({
       <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span>
-          Estimating {fromAmount} {fromUnit} in {toUnit}...
+          {t(
+            'foodUnitSelector.aiEstimateSection.estimatingIn',
+            'Estimating {{fromAmount}} {{fromUnit}} in {{toUnit}}...',
+            { fromAmount, fromUnit, toUnit }
+          )}
         </span>
       </div>
     );
@@ -150,7 +159,7 @@ export function AiEstimateSection({
             size="sm"
             onClick={runEstimate}
           >
-            Try again
+            {t('foodUnitSelector.aiEstimateSection.tryAgain', 'Try again')}
           </Button>
           <Button
             type="button"
@@ -158,7 +167,7 @@ export function AiEstimateSection({
             size="sm"
             onClick={() => setState({ kind: 'idle' })}
           >
-            Dismiss
+            {t('foodUnitSelector.aiEstimateSection.dismiss', 'Dismiss')}
           </Button>
         </div>
       </div>
@@ -176,15 +185,26 @@ export function AiEstimateSection({
           aria-hidden
         />
         <span className="text-sm font-medium">
-          Estimated - about {data.estimatedAmount} {toUnit}
+          {t(
+            'foodUnitSelector.aiEstimateSection.estimatedAbout',
+            'Estimated - about {{estimatedAmount}} {{toUnit}}',
+            { estimatedAmount: data.estimatedAmount, toUnit }
+          )}
         </span>
         <span className="text-xs text-muted-foreground">
-          - {OVERALL_CONFIDENCE_LABELS[data.confidence]} estimate
+          {t(
+            'foodUnitSelector.aiEstimateSection.estimate2',
+            '- {{confidence}} estimate',
+            { confidence: OVERALL_CONFIDENCE_LABELS[data.confidence] }
+          )}
         </span>
       </div>
       {isLow && (
         <p className="text-xs text-destructive">
-          Generic estimate - verify if accuracy matters.
+          {t(
+            'foodUnitSelector.aiEstimateSection.genericEstimateVerifyIfAccuracy',
+            'Generic estimate - verify if accuracy matters.'
+          )}
         </p>
       )}
       <div className="flex gap-2 pt-1">
@@ -194,7 +214,7 @@ export function AiEstimateSection({
           size="sm"
           onClick={() => onAccept(data)}
         >
-          Use this
+          {t('foodUnitSelector.aiEstimateSection.useThis', 'Use this')}
         </Button>
         <Button
           type="button"
@@ -205,7 +225,7 @@ export function AiEstimateSection({
             setState({ kind: 'idle' });
           }}
         >
-          Edit
+          {t('common.edit', 'Edit')}
         </Button>
       </div>
     </div>

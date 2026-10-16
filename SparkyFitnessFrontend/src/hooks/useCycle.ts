@@ -7,6 +7,7 @@ import type {
   SharedCycleTestEntry,
 } from '@workspace/shared';
 
+import i18n from 'i18next';
 export const cycleKeys = {
   settings: () => ['cycle-settings'] as const,
   overview: (date?: string) => ['cycle-overview', date ?? 'today'] as const,
@@ -24,28 +25,48 @@ export const useCycleSettings = () =>
   useQuery({
     queryKey: cycleKeys.settings(),
     queryFn: () => cycleService.getSettings(),
-    meta: { errorMessage: 'Failed to load cycle settings.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.failedToLoadCycleSettings',
+        'Failed to load cycle settings.'
+      ),
+    },
   });
 
 export const useCycleOverview = (date?: string) =>
   useQuery({
     queryKey: cycleKeys.overview(date),
     queryFn: () => cycleService.getOverview(date),
-    meta: { errorMessage: 'Failed to load cycle overview.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.failedToLoadCycleOverview',
+        'Failed to load cycle overview.'
+      ),
+    },
   });
 
 export const useCycleHistory = (limit?: number) =>
   useQuery({
     queryKey: cycleKeys.cycles(),
     queryFn: () => cycleService.listCycles(limit),
-    meta: { errorMessage: 'Failed to load cycle history.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.failedToLoadCycleHistory',
+        'Failed to load cycle history.'
+      ),
+    },
   });
 
 export const useCycleLogs = (start: string, end: string) =>
   useQuery({
     queryKey: cycleKeys.logs(start, end),
     queryFn: () => cycleService.listLogs(start, end),
-    meta: { errorMessage: 'Failed to load cycle logs.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.failedToLoadCycleLogs',
+        'Failed to load cycle logs.'
+      ),
+    },
   });
 
 export const useUpsertCycleSettingsMutation = () => {
@@ -64,8 +85,11 @@ export const useUpsertCycleSettingsMutation = () => {
       queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
     },
     meta: {
-      errorMessage: 'Could not save cycle settings.',
-      successMessage: 'Settings saved.',
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotSaveCycleSettings',
+        'Could not save cycle settings.'
+      ),
+      successMessage: i18n.t('hooks.useCycle.settingsSaved', 'Settings saved.'),
     },
   });
 };
@@ -91,7 +115,12 @@ export const useUpsertDailyLogMutation = () => {
       queryClient.invalidateQueries({ queryKey: ['cycle-correlations'] });
       queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
     },
-    meta: { errorMessage: 'Could not save your log.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotSaveYourLog',
+        'Could not save your log.'
+      ),
+    },
   });
 };
 
@@ -103,7 +132,12 @@ export const useDismissPromptMutation = () => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.settings() });
       queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
     },
-    meta: { errorMessage: 'Could not update.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotUpdate',
+        'Could not update.'
+      ),
+    },
   });
 };
 
@@ -111,7 +145,12 @@ export const useCycleInsights = () =>
   useQuery({
     queryKey: cycleKeys.insights(),
     queryFn: () => cycleService.getInsights(),
-    meta: { errorMessage: 'Failed to load cycle insights.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.failedToLoadCycleInsights',
+        'Failed to load cycle insights.'
+      ),
+    },
   });
 
 export const useBulkUpsertDailyLogMutation = () => {
@@ -127,7 +166,12 @@ export const useBulkUpsertDailyLogMutation = () => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.insights() });
       queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
     },
-    meta: { errorMessage: 'Could not paint period dates.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotPaintPeriodDates',
+        'Could not paint period dates.'
+      ),
+    },
   });
 };
 
@@ -144,7 +188,12 @@ export const useCreateManualCycleMutation = () => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.insights() });
       queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
     },
-    meta: { errorMessage: 'Could not create manual cycle.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotCreateManualCycle',
+        'Could not create manual cycle.'
+      ),
+    },
   });
 };
 
@@ -161,7 +210,12 @@ export const useUpdateCycleMutation = () => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.insights() });
       queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
     },
-    meta: { errorMessage: 'Could not update cycle.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotUpdateCycle',
+        'Could not update cycle.'
+      ),
+    },
   });
 };
 
@@ -177,7 +231,12 @@ export const useDeleteCycleMutation = () => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.insights() });
       queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
     },
-    meta: { errorMessage: 'Could not delete cycle.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotDeleteCycle',
+        'Could not delete cycle.'
+      ),
+    },
   });
 };
 
@@ -185,14 +244,24 @@ export const useFertilityQuery = (date?: string) =>
   useQuery({
     queryKey: cycleKeys.fertility(date),
     queryFn: () => cycleService.getFertility(date),
-    meta: { errorMessage: 'Failed to load fertility details.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.failedToLoadFertilityDetails',
+        'Failed to load fertility details.'
+      ),
+    },
   });
 
 export const useTestEntriesQuery = (start: string, end: string) =>
   useQuery({
     queryKey: cycleKeys.tests(start, end),
     queryFn: () => cycleService.listTestEntries(start, end),
-    meta: { errorMessage: 'Failed to load test entries.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.failedToLoadTestEntries',
+        'Failed to load test entries.'
+      ),
+    },
   });
 
 export const useCreateTestEntry = () => {
@@ -210,7 +279,12 @@ export const useCreateTestEntry = () => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.cycles() });
       queryClient.invalidateQueries({ queryKey: cycleKeys.insights() });
     },
-    meta: { errorMessage: 'Could not log test entry.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotLogTestEntry',
+        'Could not log test entry.'
+      ),
+    },
   });
 };
 
@@ -225,7 +299,12 @@ export const useDeleteTestEntry = () => {
       queryClient.invalidateQueries({ queryKey: cycleKeys.cycles() });
       queryClient.invalidateQueries({ queryKey: cycleKeys.insights() });
     },
-    meta: { errorMessage: 'Could not delete test entry.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotDeleteTestEntry',
+        'Could not delete test entry.'
+      ),
+    },
   });
 };
 
@@ -233,20 +312,35 @@ export const useCycleCorrelations = () =>
   useQuery({
     queryKey: ['cycle-correlations'],
     queryFn: () => cycleService.getCorrelations(),
-    meta: { errorMessage: 'Failed to load correlations.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.failedToLoadCorrelations',
+        'Failed to load correlations.'
+      ),
+    },
   });
 
 export const useCycleExportMutation = () =>
   useMutation({
     mutationFn: () => cycleService.getExport(),
-    meta: { errorMessage: 'Could not export your data.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotExportYourData',
+        'Could not export your data.'
+      ),
+    },
   });
 
 export const useDisplayPreferences = (viewGroup: string, platform = 'web') =>
   useQuery({
     queryKey: cycleKeys.displayPreferences(viewGroup, platform),
     queryFn: () => cycleService.getDisplayPreferences(viewGroup, platform),
-    meta: { errorMessage: 'Failed to load display preferences.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.failedToLoadDisplayPreferences',
+        'Failed to load display preferences.'
+      ),
+    },
   });
 
 export const useUpsertDisplayPreferencesMutation = (
@@ -267,7 +361,12 @@ export const useUpsertDisplayPreferencesMutation = (
       });
       queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
     },
-    meta: { errorMessage: 'Could not save display preferences.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotSaveDisplayPreferences',
+        'Could not save display preferences.'
+      ),
+    },
   });
 };
 

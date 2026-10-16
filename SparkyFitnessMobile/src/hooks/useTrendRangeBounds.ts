@@ -1,10 +1,15 @@
 import { useCallback, useRef, useState } from 'react';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { getTodayDate } from '../utils/dateUtils';
-import { trendRangeBounds, type TrendRange } from '../utils/trendRange';
+import {
+  clampCustomRange,
+  trendRangeBounds,
+  type CustomRange,
+  type ReportRange,
+} from '../utils/trendRange';
 
 /**
- * Date bounds for a range ending today, refreshed on screen focus.
+ * Date bounds for a range ending today (or the days the user picked), refreshed on screen focus.
  *
  * Today is held in state so a screen left open past midnight moves its range
  * forward on the next focus; the new bounds change the caller's query key,
@@ -15,7 +20,11 @@ import { trendRangeBounds, type TrendRange } from '../utils/trendRange';
  * already fetching for the day just read, so it is skipped rather than
  * invalidating (or, for cardio, resetting) a request in flight.
  */
-export function useTrendRangeBounds(range: TrendRange, refresh: () => void) {
+export function useTrendRangeBounds(
+  range: ReportRange,
+  refresh: () => void,
+  custom?: CustomRange | null
+) {
   const [today, setToday] = useState(getTodayDate);
   const focusedBefore = useRef(false);
 
@@ -33,5 +42,9 @@ export function useTrendRangeBounds(range: TrendRange, refresh: () => void) {
   }, [today, refresh]);
   useRefetchOnFocus(onFocus);
 
-  return trendRangeBounds(range, today);
+  // Picked days are fixed, so they only need the clamp (nothing after today).
+  if (range === 'custom' && custom) {
+    return clampCustomRange(custom.startDate, custom.endDate, today);
+  }
+  return trendRangeBounds(range === 'custom' ? '30d' : range, today);
 }

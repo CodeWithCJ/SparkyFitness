@@ -1,3 +1,4 @@
+import AllergenWarning from '../components/AllergenWarning';
 import React, {
   useState,
   useRef,
@@ -1578,6 +1579,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         className="flex-1"
         contentContainerClassName="px-4 pt-4 pb-4 gap-4"
       >
+        <AllergenWarning
+          allergens={activeItem.allergens}
+          traces={activeItem.traces}
+        />
+
         <FoodNutritionHeader
           name={adjustedValues?.name || activeItem.name}
           brand={adjustedValues?.brand ?? activeItem.brand}

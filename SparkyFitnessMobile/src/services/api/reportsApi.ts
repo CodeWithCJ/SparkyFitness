@@ -1,6 +1,7 @@
 import type {
   ExerciseDashboardSummary,
   TrainingConsistency,
+  TrainingLoad,
 } from '@workspace/shared';
 import { apiFetch } from './apiClient';
 
@@ -58,4 +59,11 @@ export const fetchTrainingConsistency = (): Promise<TrainingConsistency> =>
     endpoint: '/api/reports/training-consistency',
     serviceName: 'Reports API',
     operation: 'fetch training consistency',
+  });
+
+export const fetchTrainingLoad = (): Promise<TrainingLoad> =>
+  apiFetch<TrainingLoad>({
+    endpoint: '/api/reports/training-load',
+    serviceName: 'Reports API',
+    operation: 'fetch training load',
   });

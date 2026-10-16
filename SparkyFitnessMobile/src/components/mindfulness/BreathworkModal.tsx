@@ -1,12 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  SafeAreaView,
-  StyleSheet,
-} from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,7 +9,9 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
+import FullScreenModalBody from '../FullScreenModalBody';
 import Icon from '../Icon';
+import { useSaveOncePerRun } from '../../hooks/useSaveOncePerRun';
 
 type ProtocolKey = 'box' | 'relax' | 'coherence';
 
@@ -206,18 +201,17 @@ export const BreathworkModal: React.FC<BreathworkModalProps> = ({
     setIsActive(false);
   };
 
-  const handleFinish = async () => {
-    const finalSeconds = elapsedSeconds;
-    if (finalSeconds > 0) {
-      try {
-        await onSave(finalSeconds, 'breathwork');
-      } catch {
-        return;
+  const canFinish = elapsedSeconds > 0;
+  // Finish stays on screen while the save runs: one run is logged once.
+  const saveRunOnce = useSaveOncePerRun(canFinish);
+  const handleFinish = () =>
+    saveRunOnce(
+      () => onSave(elapsedSeconds, 'breathwork'),
+      () => {
+        resetState();
+        onClose();
       }
-    }
-    resetState();
-    onClose();
-  };
+    );
 
   const handleClose = () => {
     resetState();
@@ -271,150 +265,146 @@ export const BreathworkModal: React.FC<BreathworkModalProps> = ({
       transparent
       onRequestClose={handleClose}
     >
-      <View className="flex-1 bg-background justify-between">
-        <SafeAreaView className="flex-1 justify-between px-6 py-4">
-          {/* Header */}
-          <View className="flex-row justify-between items-center">
-            <View>
-              <Text className="text-text-primary text-xl font-bold">
-                {t('mindfulness.breathwork.title', {
-                  defaultValue: 'Breathwork',
-                })}
-              </Text>
-              <Text className="text-text-secondary text-xs mt-0.5">
-                {protocol.name} • {getProtocolDescription(protocolKey)}
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={handleClose}
-              className="p-2 rounded-full bg-surface border border-border-subtle"
-              accessibilityRole="button"
-              accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
-            >
-              <Icon name="close" size={20} color={textPrimary} />
-            </TouchableOpacity>
+      <FullScreenModalBody className="justify-between px-6">
+        {/* Header */}
+        <View className="flex-row justify-between items-center">
+          <View>
+            <Text className="text-text-primary text-xl font-bold">
+              {t('mindfulness.breathwork.title', {
+                defaultValue: 'Breathwork',
+              })}
+            </Text>
+            <Text className="text-text-secondary text-xs mt-0.5">
+              {protocol.name} • {getProtocolDescription(protocolKey)}
+            </Text>
           </View>
+          <TouchableOpacity
+            onPress={handleClose}
+            className="p-2 rounded-full bg-surface border border-border-subtle"
+            accessibilityRole="button"
+            accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
+          >
+            <Icon name="close" size={20} color={textPrimary} />
+          </TouchableOpacity>
+        </View>
 
-          {/* Protocol Selector (only when not active) */}
-          {!isActive && elapsedSeconds === 0 && (
-            <View className="flex-row justify-center gap-2 my-2">
-              {(Object.keys(PROTOCOLS) as ProtocolKey[]).map((key) => {
-                const isSelected = key === protocolKey;
-                return (
-                  <TouchableOpacity
-                    key={key}
-                    onPress={() => setProtocolKey(key)}
-                    className={`px-3 py-1.5 rounded-full border ${
+        {/* Protocol Selector (only when not active) */}
+        {!isActive && elapsedSeconds === 0 && (
+          <View className="flex-row justify-center gap-2 my-2">
+            {(Object.keys(PROTOCOLS) as ProtocolKey[]).map((key) => {
+              const isSelected = key === protocolKey;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  onPress={() => setProtocolKey(key)}
+                  className={`px-3 py-1.5 rounded-full border ${
+                    isSelected
+                      ? 'bg-blue-500/20 border-blue-500'
+                      : 'bg-surface border-border-subtle'
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-semibold ${
                       isSelected
-                        ? 'bg-blue-500/20 border-blue-500'
-                        : 'bg-surface border-border-subtle'
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : 'text-text-secondary'
                     }`}
                   >
-                    <Text
-                      className={`text-xs font-semibold ${
-                        isSelected
-                          ? 'text-blue-600 dark:text-blue-400'
-                          : 'text-text-secondary'
-                      }`}
-                    >
-                      {PROTOCOLS[key].name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
+                    {PROTOCOLS[key].name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
-          {/* Central Animated Breathing Bubble */}
-          <View className="items-center justify-center my-auto">
-            <Animated.View
-              style={[styles.breathingCircle, circleAnimatedStyle]}
+        {/* Central Animated Breathing Bubble */}
+        <View className="items-center justify-center my-auto">
+          <Animated.View style={[styles.breathingCircle, circleAnimatedStyle]}>
+            <View style={styles.breathingInnerCircle} />
+          </Animated.View>
+
+          <View className="absolute items-center">
+            <Text className="text-text-primary text-3xl font-extrabold tracking-wider">
+              {isActive
+                ? getPhaseText()
+                : t('mindfulness.breathwork.ready', {
+                    defaultValue: 'Ready',
+                  })}
+            </Text>
+            {isActive && (
+              <Text className="text-blue-600 dark:text-blue-400 text-4xl font-bold mt-2">
+                {phaseCountdown}
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* Stats Bar */}
+        <View className="flex-row justify-around py-3 bg-surface rounded-2xl border border-border-subtle">
+          <View className="items-center">
+            <Text className="text-text-secondary text-xs">
+              {t('mindfulness.breathwork.time', { defaultValue: 'Time' })}
+            </Text>
+            <Text className="text-text-primary text-base font-semibold mt-0.5">
+              {formatMinutesSeconds(elapsedSeconds)}
+            </Text>
+          </View>
+          <View className="items-center">
+            <Text className="text-text-secondary text-xs">
+              {t('mindfulness.breathwork.cycles', { defaultValue: 'Cycles' })}
+            </Text>
+            <Text className="text-text-primary text-base font-semibold mt-0.5">
+              {cyclesCompleted}
+            </Text>
+          </View>
+        </View>
+
+        {/* Actions */}
+        <View className="flex-row gap-3 mt-4">
+          {!isActive ? (
+            <TouchableOpacity
+              onPress={startSession}
+              className="flex-1 bg-blue-600 py-4 rounded-2xl items-center"
+              accessibilityRole="button"
             >
-              <View style={styles.breathingInnerCircle} />
-            </Animated.View>
-
-            <View className="absolute items-center">
-              <Text className="text-text-primary text-3xl font-extrabold tracking-wider">
-                {isActive
-                  ? getPhaseText()
-                  : t('mindfulness.breathwork.ready', {
-                      defaultValue: 'Ready',
+              <Text className="text-white font-bold text-base">
+                {elapsedSeconds > 0
+                  ? t('mindfulness.breathwork.resume', {
+                      defaultValue: 'Resume',
+                    })
+                  : t('mindfulness.breathwork.start', {
+                      defaultValue: 'Start Breathing',
                     })}
               </Text>
-              {isActive && (
-                <Text className="text-blue-600 dark:text-blue-400 text-4xl font-bold mt-2">
-                  {phaseCountdown}
-                </Text>
-              )}
-            </View>
-          </View>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={pauseSession}
+              className="flex-1 bg-amber-600 py-4 rounded-2xl items-center"
+              accessibilityRole="button"
+            >
+              <Text className="text-white font-bold text-base">
+                {t('mindfulness.breathwork.pause', { defaultValue: 'Pause' })}
+              </Text>
+            </TouchableOpacity>
+          )}
 
-          {/* Stats Bar */}
-          <View className="flex-row justify-around py-3 bg-surface rounded-2xl border border-border-subtle">
-            <View className="items-center">
-              <Text className="text-text-secondary text-xs">
-                {t('mindfulness.breathwork.time', { defaultValue: 'Time' })}
+          {canFinish && (
+            <TouchableOpacity
+              onPress={handleFinish}
+              className="flex-1 bg-emerald-600 py-4 rounded-2xl items-center"
+              accessibilityRole="button"
+            >
+              <Text className="text-white font-bold text-base">
+                {t('mindfulness.breathwork.finishAndSave', {
+                  defaultValue: 'Finish & Save',
+                })}
               </Text>
-              <Text className="text-text-primary text-base font-semibold mt-0.5">
-                {formatMinutesSeconds(elapsedSeconds)}
-              </Text>
-            </View>
-            <View className="items-center">
-              <Text className="text-text-secondary text-xs">
-                {t('mindfulness.breathwork.cycles', { defaultValue: 'Cycles' })}
-              </Text>
-              <Text className="text-text-primary text-base font-semibold mt-0.5">
-                {cyclesCompleted}
-              </Text>
-            </View>
-          </View>
-
-          {/* Actions */}
-          <View className="flex-row gap-3 mt-4">
-            {!isActive ? (
-              <TouchableOpacity
-                onPress={startSession}
-                className="flex-1 bg-blue-600 py-4 rounded-2xl items-center"
-                accessibilityRole="button"
-              >
-                <Text className="text-white font-bold text-base">
-                  {elapsedSeconds > 0
-                    ? t('mindfulness.breathwork.resume', {
-                        defaultValue: 'Resume',
-                      })
-                    : t('mindfulness.breathwork.start', {
-                        defaultValue: 'Start Breathing',
-                      })}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                onPress={pauseSession}
-                className="flex-1 bg-amber-600 py-4 rounded-2xl items-center"
-                accessibilityRole="button"
-              >
-                <Text className="text-white font-bold text-base">
-                  {t('mindfulness.breathwork.pause', { defaultValue: 'Pause' })}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {elapsedSeconds > 0 && (
-              <TouchableOpacity
-                onPress={handleFinish}
-                className="flex-1 bg-emerald-600 py-4 rounded-2xl items-center"
-                accessibilityRole="button"
-              >
-                <Text className="text-white font-bold text-base">
-                  {t('mindfulness.breathwork.finishAndSave', {
-                    defaultValue: 'Finish & Save',
-                  })}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </SafeAreaView>
-      </View>
+            </TouchableOpacity>
+          )}
+        </View>
+      </FullScreenModalBody>
     </Modal>
   );
 };

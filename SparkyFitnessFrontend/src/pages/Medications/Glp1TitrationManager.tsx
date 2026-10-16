@@ -109,8 +109,10 @@ export default function Glp1TitrationManager({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Your planned GLP-1 dose escalation (e.g. 0.25 → 0.5 → 1.0 mg). Add
-          each step with its start date; mark one “active” as your current dose.
+          {t(
+            'medications.glp1TitrationManager.yourPlannedGLP1Dose',
+            'Your planned GLP-1 dose escalation (e.g. 0.25 → 0.5 → 1.0 mg). Add each step with its start date; mark one “active” as your current dose.'
+          )}
         </p>
       </CardHeader>
       <CardContent>
@@ -118,7 +120,9 @@ export default function Glp1TitrationManager({
           <div className="mb-4 space-y-2 rounded-md border p-3">
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Dose</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t('medications.glp1TitrationManager.dose', 'Dose')}
+                </Label>
                 <div className="flex gap-1">
                   <Input
                     type="number"
@@ -136,7 +140,10 @@ export default function Glp1TitrationManager({
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
-                  Start date
+                  {t(
+                    'medications.glp1TitrationManager.startDate',
+                    'Start date'
+                  )}
                 </Label>
                 <Input
                   type="date"
@@ -146,7 +153,10 @@ export default function Glp1TitrationManager({
               </div>
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">
-                  Weeks at this dose
+                  {t(
+                    'medications.glp1TitrationManager.weeksAtThisDose',
+                    'Weeks at this dose'
+                  )}
                 </Label>
                 <Input
                   type="number"
@@ -156,7 +166,9 @@ export default function Glp1TitrationManager({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Status</Label>
+                <Label className="text-xs text-muted-foreground">
+                  {t('medications.glp1TitrationManager.status', 'Status')}
+                </Label>
                 <Select
                   value={stepStatus}
                   onValueChange={(v) =>
@@ -186,18 +198,23 @@ export default function Glp1TitrationManager({
                   checked={stepIsTaper}
                   onCheckedChange={setStepIsTaper}
                 />{' '}
-                Taper (dose reduction)
+                {t(
+                  'medications.glp1TitrationManager.taperDoseReduction',
+                  'Taper (dose reduction)'
+                )}
               </label>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={resetForm}>
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </Button>
                 <Button
                   size="sm"
                   onClick={handleSaveStep}
                   disabled={!stepDose || savePending}
                 >
-                  {editingStep ? 'Save' : 'Add'}
+                  {editingStep
+                    ? t('common.save', 'Save')
+                    : t('common.add', 'Add')}
                 </Button>
               </div>
             </div>
@@ -240,12 +257,16 @@ export default function Glp1TitrationManager({
                       {step.planned_weeks ? (
                         <span className="text-muted-foreground">
                           {' '}
-                          · {step.planned_weeks} wks
+                          {t(
+                            'medications.glp1TitrationManager.wks',
+                            '· {{planned_weeks}} wks',
+                            { planned_weeks: step.planned_weeks }
+                          )}
                         </span>
                       ) : null}
                       {step.is_taper && (
                         <Badge variant="outline" className="ml-2 text-[10px]">
-                          taper
+                          {t('medications.glp1TitrationManager.taper', 'taper')}
                         </Badge>
                       )}
                     </div>
@@ -261,7 +282,10 @@ export default function Glp1TitrationManager({
                         size="icon"
                         className="h-6 w-6 text-muted-foreground"
                         onClick={() => openEditStep(step)}
-                        aria-label="Edit titration step"
+                        aria-label={t(
+                          'medications.glp1TitrationManager.editTitrationStep',
+                          'Edit titration step'
+                        )}
                       >
                         <Pencil className="h-3 w-3" />
                       </Button>
@@ -270,7 +294,10 @@ export default function Glp1TitrationManager({
                         size="icon"
                         className="h-6 w-6 text-muted-foreground hover:text-destructive"
                         onClick={() => deleteStepMutation.mutate(step.id)}
-                        aria-label="Delete titration step"
+                        aria-label={t(
+                          'medications.glp1TitrationManager.deleteTitrationStep',
+                          'Delete titration step'
+                        )}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>

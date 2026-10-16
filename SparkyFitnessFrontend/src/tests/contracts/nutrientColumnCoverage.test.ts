@@ -90,12 +90,6 @@ const DELIBERATE_OMISSIONS: Omission[] = [
       'Prose describing which targets an algorithm computes, not a nutrient list.',
   },
   {
-    file: /^services\/nutrientCalculationService\.ts$/,
-    columns: TRACKED_COLUMNS,
-    reason:
-      'RDA targets for vitamins/minerals. Caffeine and alcohol are limits, not recommended intakes, and water has its own goal.',
-  },
-  {
     file: /^pages\/Diary\/NutritionSummaryCard\.tsx$/,
     columns: ['water_ml'],
     reason: 'Summary card — the water ring owns that number.',

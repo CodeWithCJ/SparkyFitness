@@ -21,7 +21,9 @@ import { useState } from 'react';
 import { useClearChatHistoryMutation } from '@/hooks/AI/useSparkyChat';
 import { useAuth } from '@/hooks/useAuth';
 
+import { useTranslation } from 'react-i18next';
 const SparkyChat = () => {
+  const { t } = useTranslation();
   const { isChatOpen, closeChat } = useChatbotVisibility();
   const { user } = useAuth();
   const { data: services } = useAIServices();
@@ -101,10 +103,13 @@ const SparkyChat = () => {
                   onClick={() => isMinimized && setIsMinimized(false)}
                 >
                   <MessageCircle className="h-5 w-5" />
-                  Sparky AI Coach
+                  {t('chat.sparkyChat.sparkyAICoach', 'Sparky AI Coach')}
                 </DialogPrimitive.Title>
                 <DialogPrimitive.Description className="sr-only">
-                  Your personal AI nutrition and fitness coach.
+                  {t(
+                    'chat.sparkyChat.yourPersonalAINutritionAnd',
+                    'Your personal AI nutrition and fitness coach.'
+                  )}
                 </DialogPrimitive.Description>
 
                 <div className="flex items-center gap-1 shrink-0">
@@ -119,7 +124,12 @@ const SparkyChat = () => {
                         id="ai-provider-select"
                         className="h-8 text-xs max-w-[160px]"
                       >
-                        <SelectValue placeholder="Select provider" />
+                        <SelectValue
+                          placeholder={t(
+                            'chat.sparkyChat.selectProvider',
+                            'Select provider'
+                          )}
+                        />
                       </SelectTrigger>
                       <SelectContent>
                         {usableServices.map((service) => (
@@ -137,7 +147,10 @@ const SparkyChat = () => {
                       size="icon"
                       onClick={handleClearHistory}
                       disabled={isClearing}
-                      aria-label="Clear chat history"
+                      aria-label={t(
+                        'chat.sparkyChat.clearChatHistory',
+                        'Clear chat history'
+                      )}
                       className="shrink-0"
                     >
                       <Trash2 className="h-5 w-5" />
@@ -148,7 +161,11 @@ const SparkyChat = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => setIsMinimized((prev) => !prev)}
-                    aria-label={isMinimized ? 'Expand chat' : 'Minimize chat'}
+                    aria-label={
+                      isMinimized
+                        ? t('chat.sparkyChat.expandChat', 'Expand chat')
+                        : t('chat.sparkyChat.minimizeChat', 'Minimize chat')
+                    }
                     className="shrink-0"
                   >
                     {isMinimized ? (
@@ -162,7 +179,7 @@ const SparkyChat = () => {
                     variant="ghost"
                     size="icon"
                     onClick={closeChat}
-                    aria-label="Close chat"
+                    aria-label={t('chat.sparkyChat.closeChat', 'Close chat')}
                     className="shrink-0"
                   >
                     <X className="h-5 w-5" />

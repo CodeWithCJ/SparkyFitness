@@ -141,6 +141,36 @@ private struct MacroRing: View {
     }
 }
 
+/// The Lock Screen version of the macro ring: the same three shares of the
+/// day's macro calories, separated by opacity because the Lock Screen tints
+/// everything the same colour.
+private struct MacroLockRing: View {
+    let snapshot: MacroSnapshot
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 5))
+            if snapshot.macroKcalTotal > 0 {
+                let total = snapshot.macroKcalTotal
+                let protein = snapshot.proteinKcal / total
+                let carbs = snapshot.carbsKcal / total
+                arc(from: 0, to: protein, opacity: 1)
+                arc(from: protein, to: protein + carbs, opacity: 0.65)
+                arc(from: protein + carbs, to: 1, opacity: 0.35)
+            }
+        }
+        .padding(2)
+    }
+
+    private func arc(from: Double, to: Double, opacity: Double) -> some View {
+        Circle()
+            .trim(from: CGFloat(from + 0.01), to: CGFloat(max(from + 0.01, to - 0.01)))
+            .stroke(Color.primary.opacity(opacity), style: StrokeStyle(lineWidth: 5, lineCap: .butt))
+            .rotationEffect(.degrees(-90))
+    }
+}
+
 private struct MacroRingWithLabel: View {
     let snapshot: MacroSnapshot
     let ringSize: CGFloat
@@ -221,6 +251,12 @@ struct macroWidgetEntryView: View {
     var body: some View {
         Group {
             switch family {
+            case .accessoryCircular:
+                lockCircular
+            case .accessoryRectangular:
+                lockRectangular
+            case .accessoryInline:
+                lockInline
             case .systemSmall:
                 smallBody
             default:
@@ -228,6 +264,86 @@ struct macroWidgetEntryView: View {
             }
         }
         .widgetURL(dashboardURL)
+    }
+
+    // Lock Screen: the Lock Screen draws everything in one tint, so the three
+    // macros are told apart by opacity and by their names, not by colour.
+    private var lockSummary: String {
+        let snapshot = entry.snapshot
+        return [
+            (localizedWidgetString("widget.protein"), snapshot.proteinGrams),
+            (localizedWidgetString("widget.carbs"), snapshot.carbsGrams),
+            (localizedWidgetString("widget.fat"), snapshot.fatGrams),
+        ]
+        .map { name, grams in
+            "\(name) " + String(
+                format: localizedWidgetString("widget.grams"),
+                localizedNumberString(grams)
+            )
+        }
+        .joined(separator: ", ")
+    }
+
+    private var lockCircular: some View {
+        let calories = entry.snapshot.hasData
+            ? localizedNumberString(entry.snapshot.caloriesConsumed)
+            : "-"
+        return MacroLockRing(snapshot: entry.snapshot)
+            .overlay(
+                Text(calories)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                    .padding(.horizontal, 6)
+            )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+                String(format: localizedWidgetString("widget.a11y.kcal"), calories)
+                    + ", "
+                    + lockSummary
+            )
+    }
+
+    private var lockRectangular: some View {
+        VStack(spacing: 1) {
+            lockRow(localizedWidgetString("widget.protein"), entry.snapshot.proteinGrams, opacity: 1)
+            lockRow(localizedWidgetString("widget.carbs"), entry.snapshot.carbsGrams, opacity: 0.7)
+            lockRow(localizedWidgetString("widget.fat"), entry.snapshot.fatGrams, opacity: 0.45)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(lockSummary)
+    }
+
+    private func lockRow(_ name: String, _ grams: Double, opacity: Double) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(Color.primary.opacity(opacity))
+                .frame(width: 7, height: 7)
+            Text(name)
+                .font(.caption)
+                .lineLimit(1)
+            Spacer(minLength: 0)
+            Text(String(format: localizedWidgetString("widget.grams"), localizedNumberString(grams)))
+                .font(.system(.caption, design: .rounded).weight(.semibold))
+                .lineLimit(1)
+        }
+    }
+
+    private var lockInline: some View {
+        let snapshot = entry.snapshot
+        let text = [
+            (localizedWidgetString("widget.protein"), snapshot.proteinGrams),
+            (localizedWidgetString("widget.carbs"), snapshot.carbsGrams),
+            (localizedWidgetString("widget.fat"), snapshot.fatGrams),
+        ]
+        .map { name, grams in
+            "\(name) " + String(
+                format: localizedWidgetString("widget.grams"),
+                localizedNumberString(grams)
+            )
+        }
+        .joined(separator: " · ")
+        return Label(text, systemImage: "fork.knife")
     }
 
     private var smallBody: some View {
@@ -304,7 +420,10 @@ struct macroWidget: Widget {
         }
         .configurationDisplayName("widget.macro.name")
         .description("widget.macro.description")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([
+            .systemSmall, .systemMedium,
+            .accessoryCircular, .accessoryRectangular, .accessoryInline,
+        ])
     }
 }
 

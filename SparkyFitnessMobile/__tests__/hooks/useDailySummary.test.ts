@@ -349,6 +349,31 @@ describe('useDailySummary', () => {
       expect(result.current.summary?.waterGoal).toBe(3000);
     });
 
+    test('uses the exercise-adjusted water goal when the summary includes one', async () => {
+      mockFetchDailySummary.mockResolvedValue({
+        ...makeSummaryResponse({
+          goals: { water_goal_ml: 2000 },
+        }),
+        adjustedGoals: {
+          calories: 2000,
+          protein: 150,
+          carbs: 200,
+          fat: 65,
+          water_goal_ml: 2800,
+        },
+      });
+
+      const { result } = renderHook(() => useDailySummary({ date: testDate }), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.summary?.waterGoal).toBe(2800);
+    });
+
     test('defaults water goal to 2500 when not set in goals', async () => {
       mockFetchDailySummary.mockResolvedValue(
         makeSummaryResponse({

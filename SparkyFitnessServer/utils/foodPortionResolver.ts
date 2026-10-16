@@ -10,6 +10,7 @@ export interface PortionVariant {
   protein?: number | string | null;
   carbs?: number | string | null;
   fat?: number | string | null;
+  alcohol_g?: number | string | null;
 }
 
 const aliases: Readonly<Record<string, string>> = {
@@ -80,6 +81,7 @@ export function validateNutritionReference(
     variant.protein,
     variant.carbs,
     variant.fat,
+    variant.alcohol_g,
   ];
   for (const value of nutrients) {
     if (
@@ -91,7 +93,8 @@ export function validateNutritionReference(
       return 'The nutrition reference contains a negative or non-finite value.';
     }
   }
-  const [calories, protein, carbs, fat] = nutrients.map(nutrientNumber);
+  const [calories, protein, carbs, fat, alcohol] =
+    nutrients.map(nutrientNumber);
   const gramsFactor = getConversionFactor('g', unit);
   if (gramsFactor !== null) {
     const grams = size * gramsFactor;
@@ -110,7 +113,7 @@ export function validateNutritionReference(
   // A generous tolerance allows label rounding, fibre and polyols. This is a
   // research trigger, never a formula for inventing missing label calories.
   if (calories !== null && protein !== null && carbs !== null && fat !== null) {
-    const macroEnergy = protein * 4 + carbs * 4 + fat * 9;
+    const macroEnergy = protein * 4 + carbs * 4 + fat * 9 + (alcohol ?? 0) * 7;
     if (macroEnergy > calories * 2 + 30 || calories > macroEnergy * 2 + 100) {
       return 'Calories and macros disagree substantially; verify the source before saving.';
     }

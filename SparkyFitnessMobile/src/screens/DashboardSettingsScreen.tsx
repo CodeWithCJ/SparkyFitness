@@ -118,6 +118,10 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const setSymptomsCardVisible = useAppPreferencesStore(
     (s) => s.setSymptomsCardVisible
   );
+  const moodCardVisible = useAppPreferencesStore((s) => s.moodCardVisible);
+  const setMoodCardVisible = useAppPreferencesStore(
+    (s) => s.setMoodCardVisible
+  );
   const progressPhotosCardVisible = useAppPreferencesStore(
     (s) => s.progressPhotosCardVisible
   );
@@ -135,6 +139,12 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   );
   const setMindfulnessCardVisible = useAppPreferencesStore(
     (s) => s.setMindfulnessCardVisible
+  );
+  const trainingLoadCardVisible = useAppPreferencesStore(
+    (s) => s.trainingLoadCardVisible
+  );
+  const setTrainingLoadCardVisible = useAppPreferencesStore(
+    (s) => s.setTrainingLoadCardVisible
   );
 
   const dashboardCardOrder = useAppPreferencesStore(
@@ -160,9 +170,11 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     cycle: cycleCardVisible,
     medications: medicationsCardVisible,
     symptoms: symptomsCardVisible,
+    mood: moodCardVisible,
     progressPhotos: progressPhotosCardVisible,
     healthTrends: healthTrendsCardVisible,
     mindfulness: mindfulnessCardVisible,
+    trainingLoad: trainingLoadCardVisible,
   };
 
   const setCardVisibility = useCallback(
@@ -198,6 +210,9 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
         case 'symptoms':
           setSymptomsCardVisible(isVisible);
           break;
+        case 'mood':
+          setMoodCardVisible(isVisible);
+          break;
         case 'progressPhotos':
           setProgressPhotosCardVisible(isVisible);
           break;
@@ -206,6 +221,9 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
           break;
         case 'mindfulness':
           setMindfulnessCardVisible(isVisible);
+          break;
+        case 'trainingLoad':
+          setTrainingLoadCardVisible(isVisible);
           break;
       }
     },
@@ -220,9 +238,11 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
       setCycleCardVisible,
       setMedicationsCardVisible,
       setSymptomsCardVisible,
+      setMoodCardVisible,
       setProgressPhotosCardVisible,
       setHealthTrendsCardVisible,
       setMindfulnessCardVisible,
+      setTrainingLoadCardVisible,
     ]
   );
 
@@ -369,7 +389,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
           <Text className="text-text-secondary text-sm">
             {t('dashboardSettings.customNutrientsDescription', {
               defaultValue:
-                'Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Dashboard.',
+                'Add custom nutrients in Settings > Food Settings > Custom Nutrients. Once you add some, they will appear here so you can choose which show on your Dashboard.',
             })}
           </Text>
         </View>

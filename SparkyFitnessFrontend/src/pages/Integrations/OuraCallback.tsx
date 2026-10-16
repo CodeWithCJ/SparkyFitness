@@ -4,7 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 import { CallbackStatus } from './CallbackStatus';
 import { useLinkOuraMutation } from '@/hooks/Integrations/useIntegrations';
 
+import { useTranslation } from 'react-i18next';
 const OuraCallback = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -25,8 +27,14 @@ const OuraCallback = () => {
       if (!code) {
         setMessage('Error: Missing Oura authorization code.');
         toast({
-          title: 'Oura OAuth Error',
-          description: 'Missing authorization code in callback.',
+          title: t(
+            'integrations.ouraCallback.ouraOAuthError',
+            'Oura OAuth Error'
+          ),
+          description: t(
+            'integrations.ouraCallback.missingAuthorizationCodeInCallback',
+            'Missing authorization code in callback.'
+          ),
           variant: 'destructive',
         });
         setLoading(false);
@@ -48,7 +56,7 @@ const OuraCallback = () => {
     };
 
     processCallback();
-  }, [location, navigate, toast, linkOuraAccount]);
+  }, [location, navigate, toast, linkOuraAccount, t]);
 
   return <CallbackStatus loading={loading} message={message} />;
 };

@@ -401,7 +401,10 @@ describe('ActiveWorkoutScreen workout-plan end-to-end save', () => {
           ],
         }),
         expect.any(Number),
-        expect.any(Array)
+        expect.any(Array),
+        // Set-id order captured at send time, so a warm-up insert mid-flight
+        // is not grafted onto the wrong sets.
+        [['101', '102']]
       );
 
       // No failure warning, and the celebration screen replaced the stack.

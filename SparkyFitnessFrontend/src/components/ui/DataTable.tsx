@@ -186,7 +186,9 @@ export function DataTable<TData extends RowData>({
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
-            placeholder={searchPlaceholder || 'Search...'}
+            placeholder={
+              searchPlaceholder || t('ui.dataTable.search', 'Search...')
+            }
             onChange={(event) => onSearchChange(event.target.value)}
             className="pl-10 max-w-sm"
           />

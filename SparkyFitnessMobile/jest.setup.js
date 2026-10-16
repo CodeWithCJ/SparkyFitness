@@ -198,16 +198,37 @@ jest.mock('expo-haptics', () => ({
 }));
 
 // Mock expo-audio
-jest.mock('expo-audio', () => ({
-  createAudioPlayer: jest.fn(() => ({
-    play: jest.fn(),
-    pause: jest.fn(),
-    seekTo: jest.fn().mockResolvedValue(undefined),
-    remove: jest.fn(),
-  })),
-  setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
-  setIsAudioActiveAsync: jest.fn().mockResolvedValue(undefined),
-}));
+jest.mock('expo-audio', () => {
+  const recorder = {
+    isRecording: false,
+    uri: 'file:///voice.m4a',
+    prepareToRecordAsync: jest.fn().mockResolvedValue(undefined),
+    record: jest.fn(),
+    stop: jest.fn().mockResolvedValue(undefined),
+  };
+  return {
+    createAudioPlayer: jest.fn(() => ({
+      play: jest.fn(),
+      pause: jest.fn(),
+      seekTo: jest.fn().mockResolvedValue(undefined),
+      remove: jest.fn(),
+    })),
+    RecordingPresets: { HIGH_QUALITY: {} },
+    getRecordingPermissionsAsync: jest
+      .fn()
+      .mockResolvedValue({ granted: false }),
+    requestRecordingPermissionsAsync: jest
+      .fn()
+      .mockResolvedValue({ granted: true }),
+    setAudioModeAsync: jest.fn().mockResolvedValue(undefined),
+    setIsAudioActiveAsync: jest.fn().mockResolvedValue(undefined),
+    useAudioRecorder: jest.fn(() => recorder),
+    useAudioRecorderState: jest.fn(() => ({
+      isRecording: false,
+      metering: -160,
+    })),
+  };
+});
 
 // Mock expo-speech (guided workout narration)
 jest.mock('expo-speech', () => ({
@@ -827,3 +848,30 @@ jest.mock('expo-crypto', () => {
     },
   };
 });
+
+// Rows render AllergenBadges, which reads the user's tracked allergens through
+// React Query. Most suites render rows without a QueryClientProvider, so default
+// to "no tracked allergens"; allergen suites mock this module themselves.
+jest.mock('./src/hooks/useAllergenPreferences', () => ({
+  useAllergenPreferences: () => ({
+    preferences: [],
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  }),
+  useAllergenPreferenceMutations: jest.fn(),
+}));
+
+jest.mock('expo-image-manipulator', () => ({
+  manipulateAsync: jest.fn(async (uri, _actions = [], options = {}) => ({
+    uri: uri + '-manipulated.jpg',
+    width: 1600,
+    height: 1200,
+    base64: options.base64 ? 'AAAA-manipulated-base64' : undefined,
+  })),
+  SaveFormat: {
+    JPEG: 'jpeg',
+    PNG: 'png',
+    WEBP: 'webp',
+  },
+}));

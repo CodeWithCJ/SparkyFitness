@@ -255,10 +255,11 @@ export async function upsertDailyHealthMetrics(
          active_calories = COALESCE(EXCLUDED.active_calories, daily_health_metrics.active_calories),
          bmr_calories = COALESCE(EXCLUDED.bmr_calories, daily_health_metrics.bmr_calories),
          -- Daily aggregate syncs can finish out of order. Advance the calorie
-         -- snapshot and its capture time together, never independently.
+         -- snapshot and its capture time together, never independently. A NULL
+         -- incoming stamp only fills a NULL slot: the comparison is NULL, so a
+         -- stamped total is never displaced by an unordered legacy write.
          total_calories = CASE
            WHEN EXCLUDED.total_calories IS NOT NULL
-             AND EXCLUDED.total_calories_captured_at IS NOT NULL
              AND (
                daily_health_metrics.total_calories_captured_at IS NULL
                OR EXCLUDED.total_calories_captured_at > daily_health_metrics.total_calories_captured_at
@@ -268,7 +269,6 @@ export async function upsertDailyHealthMetrics(
          END,
          total_calories_captured_at = CASE
            WHEN EXCLUDED.total_calories IS NOT NULL
-             AND EXCLUDED.total_calories_captured_at IS NOT NULL
              AND (
                daily_health_metrics.total_calories_captured_at IS NULL
                OR EXCLUDED.total_calories_captured_at > daily_health_metrics.total_calories_captured_at

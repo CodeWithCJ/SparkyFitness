@@ -14,6 +14,11 @@ jest.mock('../../modules/watch-connectivity', () => ({
   },
 }));
 
+const mockSave = jest.fn(() => Promise.resolve('saved'));
+jest.mock('../../src/hooks/useActiveWorkoutAutosave', () => ({
+  saveActiveWorkoutSession: () => mockSave(),
+}));
+
 const mockUpdateWorkoutPlan = (
   jest.requireMock('../../modules/watch-connectivity') as {
     default: { updateWorkoutPlan: jest.Mock };
@@ -137,6 +142,32 @@ describe('useWatchPlanSync', () => {
       'entry-2': false,
       'entry-3': true,
     });
+  });
+
+  it('asks for the save at once when a set has a temporary id, once per change', () => {
+    startArmed();
+    renderHook(() => useWatchPlanSync(true));
+    expect(mockSave).not.toHaveBeenCalled();
+
+    const session = useActiveWorkoutStore.getState().session!;
+    const withTemp = {
+      ...session,
+      exercises: session.exercises.map((exercise, index) =>
+        index === 0
+          ? { ...exercise, sets: [...exercise.sets, makeSet(-1)] }
+          : exercise
+      ),
+    } as PresetSessionResponse;
+    act(() => {
+      useActiveWorkoutStore.setState({ session: withTemp });
+    });
+    expect(mockSave).toHaveBeenCalledTimes(1);
+
+    // An unrelated update while the same temporary id is pending.
+    act(() => {
+      useActiveWorkoutStore.setState({ session: { ...withTemp } });
+    });
+    expect(mockSave).toHaveBeenCalledTimes(1);
   });
 
   it('waits for new sets to get server ids before sending', () => {

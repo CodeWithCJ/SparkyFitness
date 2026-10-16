@@ -305,8 +305,12 @@ describe('ActiveWorkoutGuidedCard', () => {
     expect(useActiveWorkoutStore.getState().rest.state).toBe('resting');
   });
 
-  it('mutes the voice for the workout but keeps the caption', () => {
+  it('mutes the voice for the workout but keeps the caption', async () => {
     const actual = jest.requireActual('../../src/services/speech');
+    // Cues wait for the installed voices, so read them first.
+    await jest
+      .requireActual('../../src/services/speechVoice')
+      .loadSpeechVoices();
     const { AppState } = require('react-native');
     Object.defineProperty(AppState, 'currentState', {
       get: () => 'active',

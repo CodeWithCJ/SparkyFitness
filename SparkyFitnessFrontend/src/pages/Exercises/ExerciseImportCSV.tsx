@@ -116,8 +116,12 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="true">True</SelectItem>
-            <SelectItem value="false">False</SelectItem>
+            <SelectItem value="true">
+              {t('exercises.exerciseImportCSV.true', 'True')}
+            </SelectItem>
+            <SelectItem value="false">
+              {t('exercises.exerciseImportCSV.false', 'False')}
+            </SelectItem>
           </SelectContent>
         </Select>
       );
@@ -347,7 +351,9 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
                         {h.replace(/_/g, ' ')}
                       </th>
                     ))}
-                    <th className="px-4 py-2 text-left font-medium">Actions</th>
+                    <th className="px-4 py-2 text-left font-medium">
+                      {t('common.actions', 'Actions')}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

@@ -119,7 +119,8 @@ const ChronotypeCard: React.FC<ChronotypeCardProps> = ({ data }) => {
               {t('sleepScience.melatoninWindow', 'Melatonin Window')}
             </p>
             <p className="font-mono font-medium text-sm text-purple-500">
-              {data.melatoninWindowStart} – {data.melatoninWindowEnd}
+              {data.melatoninWindowStart} –{' '}
+              <span>{data.melatoninWindowEnd}</span>
             </p>
           </div>
         )}

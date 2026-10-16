@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import type { Dispatch, MutableRefObject } from 'react';
-import { resolveExerciseModality } from '@workspace/shared';
+import { isWarmupSetType, resolveExerciseModality } from '@workspace/shared';
 import {
   getDefaultRestSec,
   moveDraftExerciseItem,
@@ -69,6 +69,13 @@ export type DraftExercisesAction =
     }
   | { type: 'CLEAR_EXERCISE_COMPLETIONS'; clientId: string }
   | { type: 'ADD_SET'; exerciseClientId: string; setClientId: string }
+  | {
+      type: 'ADD_WARMUP_SETS';
+      exerciseClientId: string;
+      /** Display-unit weight text, as the draft set rows hold it. */
+      sets: { clientId: string; weight: string; reps: string }[];
+      restSec: number;
+    }
   | { type: 'REMOVE_SET'; exerciseClientId: string; setClientId: string }
   | {
       type: 'UPDATE_SET_FIELD';
@@ -114,6 +121,7 @@ export function draftExercisesReducer(
           exerciseName: action.exercise.name,
           exerciseCategory: action.exercise.category,
           exerciseModality: action.exercise.modality ?? null,
+          exerciseEquipment: action.exercise.equipment ?? null,
           images: action.exercise.images ?? [],
           progressionMode: 'rep_goal',
           repGoal: null,
@@ -180,6 +188,7 @@ export function draftExercisesReducer(
           exerciseName: action.exercise.name,
           exerciseCategory: action.exercise.category,
           exerciseModality: action.exercise.modality ?? null,
+          exerciseEquipment: action.exercise.equipment ?? null,
           images: action.exercise.images ?? [],
           sets,
         };
@@ -242,6 +251,39 @@ export function draftExercisesReducer(
               : set
           ),
         };
+      });
+    }
+
+    case 'ADD_WARMUP_SETS': {
+      const target = exercises.find(
+        (e) => e.clientId === action.exerciseClientId
+      );
+      // A warm-up already logged means the ramp is under way: leave it be.
+      if (
+        target == null ||
+        action.sets.length === 0 ||
+        target.sets.some(
+          (s) => isWarmupSetType(s.setType) && s.completedAt != null
+        )
+      ) {
+        return exercises;
+      }
+      return exercises.map((exercise) => {
+        if (exercise.clientId !== action.exerciseClientId) return exercise;
+        // The new ramp replaces any unlogged warm-ups and leads the rest.
+        const working = exercise.sets.filter(
+          (s) => !isWarmupSetType(s.setType)
+        );
+        const warmups: WorkoutDraftSet[] = action.sets.map((s) => ({
+          clientId: s.clientId,
+          weight: s.weight,
+          reps: s.reps,
+          distance: '',
+          duration: null,
+          restTime: action.restSec,
+          setType: 'warmup',
+        }));
+        return { ...exercise, sets: [...warmups, ...working] };
       });
     }
 
@@ -404,6 +446,11 @@ export function useDraftExerciseActions(
   duplicateExercise: (clientId: string) => { exerciseClientId: string };
   clearExerciseCompletions: (clientId: string) => void;
   addSet: (exerciseClientId: string) => string;
+  addWarmupSets: (
+    exerciseClientId: string,
+    warmups: { weight: string; reps: string }[],
+    restSec: number
+  ) => void;
   removeSet: (exerciseClientId: string, setClientId: string) => void;
   updateSetField: (
     exerciseClientId: string,
@@ -514,6 +561,19 @@ export function useDraftExerciseActions(
       clearExerciseCompletions: (clientId: string) => {
         exercisesModifiedRef.current = true;
         dispatch({ type: 'CLEAR_EXERCISE_COMPLETIONS', clientId });
+      },
+      addWarmupSets: (
+        exerciseClientId: string,
+        warmups: { weight: string; reps: string }[],
+        restSec: number
+      ) => {
+        exercisesModifiedRef.current = true;
+        dispatch({
+          type: 'ADD_WARMUP_SETS',
+          exerciseClientId,
+          sets: warmups.map((w) => ({ ...w, clientId: generateClientId() })),
+          restSec,
+        });
       },
       addSet: (exerciseClientId: string) => {
         exercisesModifiedRef.current = true;

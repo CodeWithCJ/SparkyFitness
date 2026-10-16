@@ -2,6 +2,7 @@ import type React from 'react';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import { useTranslation } from 'react-i18next';
 interface GitHubSponsorButtonProps {
   owner: string;
   className?: string;
@@ -11,6 +12,7 @@ const GitHubSponsorButton: React.FC<GitHubSponsorButtonProps> = ({
   owner,
   className,
 }) => {
+  const { t } = useTranslation();
   const sponsorUrl = `https://github.com/sponsors/${owner}`;
 
   return (
@@ -24,7 +26,7 @@ const GitHubSponsorButton: React.FC<GitHubSponsorButtonProps> = ({
       )}
     >
       <Heart className="h-4 w-4 fill-current text-pink-500" />
-      <span>Sponsor</span>
+      <span>{t('gitHubSponsorButton.sponsor', 'Sponsor')}</span>
     </a>
   );
 };

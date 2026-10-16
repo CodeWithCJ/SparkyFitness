@@ -27,10 +27,17 @@ export const DeveloperResources = () => {
       <AccordionContent className="p-4 pt-0 space-y-4">
         <div className="grid gap-4">
           <div className="flex flex-col space-y-2">
-            <h4 className="font-medium">API Documentation</h4>
+            <h4 className="font-medium">
+              {t(
+                'settings.developerResources.apiDocumentation',
+                'API Documentation'
+              )}
+            </h4>
             <p className="text-sm text-muted-foreground">
-              Explore the SparkyFitness API documentation to build integrations
-              or understand the platform better.
+              {t(
+                'settings.developerResources.exploreTheSparkyFitnessAPIDocumentation',
+                'Explore the SparkyFitness API documentation to build integrations or understand the platform better.'
+              )}
             </p>
             <div className="flex gap-4 mt-2">
               <Button variant="outline" asChild>
@@ -39,7 +46,10 @@ export const DeveloperResources = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Swagger UI (Interactive)
+                  {t(
+                    'settings.developerResources.swaggerUIInteractive',
+                    'Swagger UI (Interactive)'
+                  )}
                 </a>
               </Button>
               <Button variant="outline" asChild>
@@ -48,7 +58,10 @@ export const DeveloperResources = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Redoc (Read-only)
+                  {t(
+                    'settings.developerResources.redocReadOnly',
+                    'Redoc (Read-only)'
+                  )}
                 </a>
               </Button>
             </div>

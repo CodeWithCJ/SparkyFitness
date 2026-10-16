@@ -163,18 +163,28 @@ export async function getDailySummary({
   const rawCalories = Number(rawGoalData?.calories) || 2000;
   const adjCalories = Number(adjustedGoalData?.calories) || rawCalories;
 
+  const rawWaterGoal = Number(rawGoalData?.water_goal_ml ?? 0);
+  const adjustedWaterGoal = Number(
+    adjustedGoalData?.water_goal_ml ?? rawWaterGoal
+  );
+  const waterGoalChanged = adjustedWaterGoal !== rawWaterGoal;
+
   const computedAdjustedGoals: {
     calories: number;
     protein: number;
     carbs: number;
     fat: number;
+    water_goal_ml?: number;
   } | null =
-    adjCalories !== rawCalories
+    adjCalories !== rawCalories || waterGoalChanged
       ? {
           calories: Math.round(adjCalories),
           protein: Math.round(Number(adjustedGoalData?.protein) || 0),
           carbs: Math.round(Number(adjustedGoalData?.carbs) || 0),
           fat: Math.round(Number(adjustedGoalData?.fat) || 0),
+          ...(waterGoalChanged
+            ? { water_goal_ml: Math.round(adjustedWaterGoal) }
+            : {}),
         }
       : null;
 

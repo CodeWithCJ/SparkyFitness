@@ -5,6 +5,7 @@ import { getApiErrorMessage } from '../services/api/errors';
 import { externalFoodSearchQueryKey } from './queryKeys';
 import { useDebounce } from './useDebounce';
 import { offRateLimiter } from '../utils/rateLimiter';
+import { isPublicFoodProvider } from '@workspace/shared';
 
 export function useExternalFoodSearch(
   searchText: string,
@@ -28,12 +29,7 @@ export function useExternalFoodSearch(
       autoScale
     ),
     queryFn: async ({ signal, pageParam }) => {
-      if (
-        providerType !== 'openfoodfacts' &&
-        providerType !== 'swissfood' &&
-        providerType !== 'canadian-nutrient-file' &&
-        !providerId
-      ) {
+      if (!isPublicFoodProvider(providerType) && !providerId) {
         return {
           items: [],
           pagination: { page: 1, pageSize: 0, totalCount: 0, hasMore: false },

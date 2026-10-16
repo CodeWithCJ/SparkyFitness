@@ -27,6 +27,19 @@ const slice = {
 };
 
 describe('verified food portions', () => {
+  it('accepts verified spirits with source-reported alcohol and zero macros', () => {
+    expect(
+      validateNutritionReference({
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 231,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        alcohol_g: 33,
+      })
+    ).toBeNull();
+  });
   it('logs two white bread slices as 200 calories, never two grams / five calories', () => {
     const result = resolveFoodPortion({
       quantity: 2,

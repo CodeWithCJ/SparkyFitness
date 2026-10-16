@@ -18,6 +18,10 @@ enum WatchDeepLink: String {
     /// Water intake complication → the Water page. `ContentView` maps this
     /// to `.water`; `WaterGoalComplication` produces it.
     case water
+    /// Fasting complication → the Fasting page.
+    case fasting
+    /// Steps complication → the Steps page.
+    case steps
 
     static let scheme = "sparkyfitness-watch"
 

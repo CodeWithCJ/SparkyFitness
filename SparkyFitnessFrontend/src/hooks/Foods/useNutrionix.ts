@@ -5,6 +5,7 @@ import {
 } from '@/api/Foods/nutrionix';
 import { nutritionixKeys } from '@/api/keys/meals';
 
+import i18n from 'i18next';
 // 1. Search Query Options
 export const searchNutritionixOptions = (
   query: string,
@@ -14,7 +15,10 @@ export const searchNutritionixOptions = (
   queryFn: () => searchNutritionixFoods(query, providerId),
   enabled: !!query && !!providerId,
   meta: {
-    errorMessage: 'Failed to search Nutritionix foods.',
+    errorMessage: i18n.t(
+      'hooks.useNutrionix.failedToSearchNutritionixFoods',
+      'Failed to search Nutritionix foods.'
+    ),
   },
 });
 
@@ -26,7 +30,10 @@ export const nutritionixNaturalNutrientsOptions = (
   queryFn: () => getNutritionixNutrients(query, providerId),
   enabled: !!query && !!providerId,
   meta: {
-    errorMessage: 'Failed to load Nutritionix natural nutrients.',
+    errorMessage: i18n.t(
+      'hooks.useNutrionix.failedToLoadNutritionixNatural',
+      'Failed to load Nutritionix natural nutrients.'
+    ),
   },
 });
 
@@ -38,6 +45,9 @@ export const nutritionixBrandedNutrientsOptions = (
   queryFn: () => getNutritionixBrandedNutrients(nixItemId, providerId),
   enabled: !!nixItemId && !!providerId,
   meta: {
-    errorMessage: 'Failed to load Nutritionix branded nutrients.',
+    errorMessage: i18n.t(
+      'hooks.useNutrionix.failedToLoadNutritionixBranded',
+      'Failed to load Nutritionix branded nutrients.'
+    ),
   },
 });

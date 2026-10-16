@@ -17,6 +17,12 @@ export type HealthTrendSeries<TPoint> = {
   isError: boolean;
 };
 
+/** The VO2 max reading for a day, in ml/kg/min. */
+export type Vo2MaxDataPoint = {
+  day: string;
+  vo2max: number;
+};
+
 /** A day's total water intake, in millilitres as the server stores it. */
 export type HydrationDataPoint = {
   day: string;

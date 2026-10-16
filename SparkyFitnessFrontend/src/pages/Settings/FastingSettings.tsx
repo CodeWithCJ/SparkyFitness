@@ -135,7 +135,15 @@ const FastingSettingsForm = ({ preferences }: FastingSettingsFormProps) => {
             <SelectContent>
               {FASTING_PRESETS.map((p) => (
                 <SelectItem key={p.id} value={p.name}>
-                  {p.name} ({p.fastingHours}h fast / {p.eatingHours}h eating)
+                  {t(
+                    'settings.fastingSettings.hFastHEating',
+                    '{{name}} ({{fastingHours}}h fast / {{eatingHours}}h eating)',
+                    {
+                      name: p.name,
+                      fastingHours: p.fastingHours,
+                      eatingHours: p.eatingHours,
+                    }
+                  )}
                 </SelectItem>
               ))}
               <SelectItem value="Custom">

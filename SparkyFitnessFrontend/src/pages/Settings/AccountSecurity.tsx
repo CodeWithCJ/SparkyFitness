@@ -40,8 +40,11 @@ export const AccountSecurity = () => {
   const handleEmailChange = async () => {
     if (!newEmail || newEmail === user?.email) {
       toast({
-        title: 'Error',
-        description: 'Please enter a new email address',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.accountSecurity.pleaseEnterANewEmail',
+          'Please enter a new email address'
+        ),
         variant: 'destructive',
       });
       return;
@@ -55,8 +58,11 @@ export const AccountSecurity = () => {
   const handlePasswordChange = async () => {
     if (!passwordForm.current_password) {
       toast({
-        title: 'Error',
-        description: 'Current password is required',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.accountSecurity.currentPasswordIsRequired',
+          'Current password is required'
+        ),
         variant: 'destructive',
       });
       return;
@@ -64,8 +70,11 @@ export const AccountSecurity = () => {
 
     if (passwordForm.new_password !== passwordForm.confirm_password) {
       toast({
-        title: 'Error',
-        description: 'New passwords do not match',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.accountSecurity.newPasswordsDoNotMatch',
+          'New passwords do not match'
+        ),
         variant: 'destructive',
       });
       return;
@@ -73,7 +82,7 @@ export const AccountSecurity = () => {
 
     if (passwordForm.new_password.length < 8) {
       toast({
-        title: 'Error',
+        title: t('common.error', 'Error'),
         description: t('settings.accountSecurity.passwordLengthError'),
         variant: 'destructive',
       });

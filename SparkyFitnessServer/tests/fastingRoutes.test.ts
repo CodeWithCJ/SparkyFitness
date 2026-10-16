@@ -6,6 +6,7 @@ import fastingRoutes from '../routes/fastingRoutes.js';
 import fastingRepository from '../models/fastingRepository.js';
 import fastingPreferencesRepository from '../models/fastingPreferencesRepository.js';
 import fastingAutoCalculationService from '../services/fastingAutoCalculationService.js';
+import moodRepository from '../models/moodRepository.js';
 
 // Mock repositories and middleware
 vi.mock('../models/fastingRepository.js');
@@ -176,6 +177,86 @@ describe('Fasting Routes', () => {
 
       expect(res.statusCode).toEqual(404);
       expect(res.body.error).toContain('Fast not found');
+    });
+  });
+
+  describe('POST /fasting/end mood', () => {
+    const endTime = '2026-07-18T16:00:00.000Z';
+    const activeFast = {
+      id: 'fast-id',
+      user_id: 'testUserId',
+      start_time: '2026-07-18T00:00:00.000Z',
+    };
+
+    it('brings the mood into the range the mood column carries', async () => {
+      // @ts-expect-error TS(2339)
+      fastingRepository.getFastingById.mockResolvedValue(activeFast);
+      // @ts-expect-error TS(2339)
+      fastingRepository.endFast.mockResolvedValue({ id: 'fast-id' });
+
+      const res = await request(app)
+        .post('/fasting/end')
+        .send({ id: 'fast-id', end_time: endTime, mood: { value: 8 } });
+
+      expect(res.statusCode).toEqual(200);
+      expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
+        'testUserId',
+        10,
+        '',
+        endTime
+      );
+    });
+
+    it('clamps the mood on the auto-calculated fast too', async () => {
+      // @ts-expect-error TS(2339)
+      fastingAutoCalculationService.getCurrentAutoFast.mockResolvedValue({
+        start_time: '2026-07-18T00:00:00.000Z',
+      });
+      // @ts-expect-error TS(2339)
+      fastingRepository.createCompletedFast.mockResolvedValue({ id: 'auto' });
+
+      const res = await request(app)
+        .post('/fasting/end')
+        .send({
+          id: 'auto-current',
+          end_time: endTime,
+          mood: { value: 150, notes: 'Done' },
+        });
+
+      expect(res.statusCode).toEqual(200);
+      expect(moodRepository.createOrUpdateMoodEntry).toHaveBeenCalledWith(
+        'testUserId',
+        100,
+        'Done',
+        endTime
+      );
+    });
+
+    it('rejects a mood that is not a number before ending anything', async () => {
+      const res = await request(app)
+        .post('/fasting/end')
+        .send({ id: 'fast-id', end_time: endTime, mood: { value: 'great' } });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toBe('Mood value must be a number');
+      expect(fastingRepository.getFastingById).not.toHaveBeenCalled();
+      expect(fastingRepository.endFast).not.toHaveBeenCalled();
+      expect(moodRepository.createOrUpdateMoodEntry).not.toHaveBeenCalled();
+    });
+
+    it('ends the fast without logging a mood that carries no value', async () => {
+      // @ts-expect-error TS(2339)
+      fastingRepository.getFastingById.mockResolvedValue(activeFast);
+      // @ts-expect-error TS(2339)
+      fastingRepository.endFast.mockResolvedValue({ id: 'fast-id' });
+
+      const res = await request(app)
+        .post('/fasting/end')
+        .send({ id: 'fast-id', end_time: endTime, mood: { notes: 'Fine' } });
+
+      expect(res.statusCode).toEqual(200);
+      expect(fastingRepository.endFast).toHaveBeenCalled();
+      expect(moodRepository.createOrUpdateMoodEntry).not.toHaveBeenCalled();
     });
   });
 

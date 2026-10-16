@@ -4,12 +4,16 @@ import { fetchCardioSessionsPage } from '../services/api/exerciseStatsApi';
 import { cardioSessionsQueryKey } from './queryKeys';
 import { usePreferences } from './usePreferences';
 import { useTrendRangeBounds } from './useTrendRangeBounds';
-import type { TrendRange } from '../utils/trendRange';
+import type { CustomRange, ReportRange } from '../utils/trendRange';
 
 const PAGE_SIZE = 50;
 const cardioSessionsFamily = ['cardioSessions'] as const;
 
-export function useCardioSessions(range: TrendRange, enabled = true) {
+export function useCardioSessions(
+  range: ReportRange,
+  enabled = true,
+  custom?: CustomRange | null
+) {
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
   const unitSystem =
@@ -24,7 +28,7 @@ export function useCardioSessions(range: TrendRange, enabled = true) {
       type: 'active',
     });
   }, [queryClient, enabled]);
-  const { startDate, endDate } = useTrendRangeBounds(range, refresh);
+  const { startDate, endDate } = useTrendRangeBounds(range, refresh, custom);
 
   const query = useInfiniteQuery({
     queryKey: cardioSessionsQueryKey(startDate, endDate, unitSystem),

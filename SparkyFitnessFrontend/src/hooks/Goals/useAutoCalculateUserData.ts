@@ -3,7 +3,7 @@ import { useProfileQuery } from '@/hooks/Settings/useProfile';
 import { useMostRecentWeightQuery } from '@/hooks/Diary/useDailyProgress';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { calculateAge } from '@workspace/shared';
-import type { UserNutrientData } from '@/services/nutrientCalculationService';
+import type { UserNutrientData } from '@workspace/shared';
 
 // PreferencesContext's ActivityLevel includes 'none', which UserNutrientData
 // doesn't model (each calculate* function just falls back to its own default

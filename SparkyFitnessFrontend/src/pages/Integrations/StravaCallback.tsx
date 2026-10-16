@@ -4,7 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 import { CallbackStatus } from './CallbackStatus';
 import { useLinkStravaMutation } from '@/hooks/Integrations/useIntegrations';
 
+import { useTranslation } from 'react-i18next';
 const StravaCallback = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -21,8 +23,14 @@ const StravaCallback = () => {
       if (!code) {
         setMessage('Error: Missing Strava authorization code.');
         toast({
-          title: 'Strava OAuth Error',
-          description: 'Missing authorization code in callback.',
+          title: t(
+            'integrations.stravaCallback.stravaOAuthError',
+            'Strava OAuth Error'
+          ),
+          description: t(
+            'integrations.stravaCallback.missingAuthorizationCodeInCallback',
+            'Missing authorization code in callback.'
+          ),
           variant: 'destructive',
         });
         setLoading(false);
@@ -44,7 +52,7 @@ const StravaCallback = () => {
     };
 
     processCallback();
-  }, [location, navigate, toast, linkStravaAccount]);
+  }, [location, navigate, toast, linkStravaAccount, t]);
 
   return <CallbackStatus loading={loading} message={message} />;
 };

@@ -40,11 +40,11 @@ describe('foodPhotoEstimate', () => {
       }
     });
 
-    test('IMAGE_TOO_LARGE asks for retake (does not stay on form)', () => {
+    test('IMAGE_TOO_LARGE asks for another photo (does not stay on form)', () => {
       const copy = mapEstimateError('IMAGE_TOO_LARGE');
       expect(copy.stayOnForm).toBe(false);
       expect(copy.invalidateAiSettings).toBe(false);
-      expect(copy.messageDefaultValue.toLowerCase()).toContain('retake');
+      expect(copy.messageDefaultValue.toLowerCase()).toContain('another photo');
     });
 
     test('CONTENT_BLOCKED stays on form so user keeps typed context', () => {

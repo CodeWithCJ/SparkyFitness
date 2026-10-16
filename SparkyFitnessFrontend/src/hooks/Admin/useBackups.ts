@@ -11,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BackupSettingsMutator } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 
+import i18n from 'i18next';
 export const useBackupSettings = () => {
   const { t } = useTranslation();
 
@@ -71,7 +72,10 @@ export const useRestoreBackup = () => {
   return useMutation({
     mutationFn: restoreBackup,
     meta: {
-      successMessage: 'Restored. Logging out..',
+      successMessage: i18n.t(
+        'hooks.useBackups.restoredLoggingOut',
+        'Restored. Logging out..'
+      ),
     },
   });
 };

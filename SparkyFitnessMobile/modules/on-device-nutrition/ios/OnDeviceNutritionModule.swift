@@ -61,6 +61,41 @@ columns unless only per-100 is printed. Never estimate or invent a value: leave 
 a field empty when it is not printed. Do not copy a %Daily Value as a weight.
 """
 
+@available(iOS 27, *)
+@Generable
+private struct SupplementIngredientExtraction {
+    @Guide(description: "Ingredient name as printed, such as Vitamin C or Zinc, without the amount")
+    let name: String
+    @Guide(description: "Amount PER SERVING from the Amount Per Serving column, number only. Never the % Daily Value. Empty when only a percent is printed")
+    let amount: Double?
+    @Guide(description: "Unit printed beside the amount: mg, mcg, g, IU or kcal. Empty when none")
+    let unit: String?
+}
+
+@available(iOS 27, *)
+@Generable
+private struct SupplementLabelExtraction {
+    @Guide(description: "Product name if printed, else empty")
+    let name: String?
+    @Guide(description: "Brand if printed, else empty")
+    let brand: String?
+    @Guide(description: "One of tablet, capsule, softgel, gummy, powder, liquid when the package says so, else empty")
+    let form: String?
+    @Guide(description: "Serving size as printed, such as 2 Capsules")
+    let serving: String?
+    @Guide(description: "Every Supplement Facts line that has an amount per serving, in the order printed. Leave out lines that only show a % Daily Value, and inactive or other ingredients")
+    let ingredients: [SupplementIngredientExtraction]
+}
+
+private let supplementInstructions = """
+You read Supplement Facts panels. You are given the panel's text, recognised \
+line by line from the photo, and the photo itself. Copy names, amounts and \
+units exactly as they appear in the text; use the photo only to tell which \
+column a number belongs to. Use the Amount Per Serving column, never % Daily \
+Value. Never estimate or invent a value: leave a field empty when it is not \
+printed.
+"""
+
 /// Text on the label, top to bottom, one recognised line per row. Run here
 /// rather than left to the model's OCR tool so the numbers the model sees are
 /// the printed ones, and so the caller can check the answer against them.
@@ -139,6 +174,42 @@ public class OnDeviceNutritionModule: Module {
                     "calcium": r.calcium,
                     "iron": r.iron,
                     "values_are_per_100": r.valuesArePer100,
+                    "ocr_text": ocrText,
+                ]
+            }
+            #endif
+            throw OnDeviceNutritionError.unavailable
+        }
+
+        // Reads a Supplement Facts panel. The caller checks the answer against
+        // `ocr_text` and falls back to the server's vision provider.
+        AsyncFunction("scanSupplementLabel") { (base64: String) -> [String: Any?] in
+            #if compiler(>=6.4) && canImport(FoundationModels)
+            if #available(iOS 27, *) {
+                guard let data = Data(base64Encoded: base64),
+                    let source = CGImageSourceCreateWithData(data as CFData, nil),
+                    let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+                else {
+                    throw OnDeviceNutritionError.badImage
+                }
+                let ocrText = recognizeLabelText(in: image)
+                let session = LanguageModelSession(instructions: supplementInstructions)
+                let response = try await session.respond(
+                    generating: SupplementLabelExtraction.self,
+                    options: GenerationOptions(sampling: .greedy)
+                ) {
+                    "Label text:\n\(ocrText)\n\nExtract the supplement facts from this label."
+                    Attachment(image)
+                }
+                let r = response.content
+                return [
+                    "name": r.name ?? "",
+                    "brand": r.brand ?? "",
+                    "form": r.form,
+                    "serving": r.serving,
+                    "ingredients": r.ingredients.map { ingredient -> [String: Any?] in
+                        ["name": ingredient.name, "amount": ingredient.amount, "unit": ingredient.unit]
+                    },
                     "ocr_text": ocrText,
                 ]
             }

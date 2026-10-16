@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import {
@@ -13,14 +13,8 @@ import SettingsRow from './SettingsRow';
 import Button from './ui/Button';
 import Switch from './ui/Switch';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import {
-  listGuidedVoices,
-  speakGuided,
-  type GuidedVoiceOption,
-} from '../services/speech';
-
-/** Sentinel picker value for "use the device default voice". */
-const DEFAULT_VOICE = '';
+import { speakGuided } from '../services/speech';
+import { useSpeechVoiceChoices } from '../hooks/useSpeechVoiceChoices';
 
 const RATE_OPTIONS: number[] = [];
 for (
@@ -50,8 +44,6 @@ export default function GuidedWorkoutSettingsSection() {
   const { t, i18n } = useTranslation();
   const enabled = useAppPreferencesStore((s) => s.guidedWorkoutEnabled);
   const setEnabled = useAppPreferencesStore((s) => s.setGuidedWorkoutEnabled);
-  const voiceId = useAppPreferencesStore((s) => s.guidedVoiceId);
-  const setVoiceId = useAppPreferencesStore((s) => s.setGuidedVoiceId);
   const rate = useAppPreferencesStore((s) => s.guidedSpeechRate);
   const setRate = useAppPreferencesStore((s) => s.setGuidedSpeechRate);
   const countdownSec = useAppPreferencesStore((s) => s.guidedCountdownSec);
@@ -59,38 +51,7 @@ export default function GuidedWorkoutSettingsSection() {
     (s) => s.setGuidedCountdownSec
   );
 
-  const [voices, setVoices] = useState<GuidedVoiceOption[]>([]);
-  useEffect(() => {
-    if (!enabled) return;
-    let cancelled = false;
-    void listGuidedVoices().then((list) => {
-      if (!cancelled) setVoices(list);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled]);
-
-  // Offer the voices for the app language first; a phone can have hundreds.
-  const voiceOptions = useMemo<PickerOption<string>[]>(() => {
-    const lang = i18n.language.split('-')[0]?.toLowerCase() ?? '';
-    const matching = voices.filter((v) =>
-      v.language.toLowerCase().startsWith(lang)
-    );
-    const shown = matching.length > 0 ? matching : voices;
-    return [
-      {
-        label: t('guidedWorkout.settings.voiceDefault', {
-          defaultValue: 'Device default',
-        }),
-        value: DEFAULT_VOICE,
-      },
-      ...shown.map((v) => ({
-        label: `${v.name} (${v.language})`,
-        value: v.identifier,
-      })),
-    ];
-  }, [voices, i18n.language, t]);
+  const voice = useSpeechVoiceChoices(enabled);
 
   const rateOptions = useMemo<PickerOption<number>[]>(
     () =>
@@ -152,17 +113,17 @@ export default function GuidedWorkoutSettingsSection() {
             })}
             rightAccessory={
               <BottomSheetPicker
-                value={voiceId ?? DEFAULT_VOICE}
-                options={voiceOptions}
-                onSelect={(value) =>
-                  setVoiceId(value === DEFAULT_VOICE ? null : value)
-                }
+                value={voice.value}
+                options={voice.options}
+                onSelect={voice.onSelect}
                 title={t('guidedWorkout.settings.voice', {
                   defaultValue: 'Voice',
                 })}
                 containerStyle={PICKER_WIDTH}
               />
             }
+            subtitle={voice.hint ?? undefined}
+            subtitleNumberOfLines={0}
           />
 
           <SettingsRow

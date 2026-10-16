@@ -70,3 +70,17 @@ export const resetOnboardingStatus = async () => {
     throw error;
   }
 };
+
+/**
+ * Sets or clears the user's goal weight.
+ * @param targetWeightKg Goal weight in kilograms, or null to clear it.
+ */
+export const setTargetWeight = async (targetWeightKg: number | null) => {
+  return apiCall('/onboarding/target-weight', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ targetWeight: targetWeightKg }),
+  });
+};

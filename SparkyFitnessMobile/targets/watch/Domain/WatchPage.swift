@@ -7,10 +7,14 @@ import Foundation
 /// `src/constants/watchPages.ts`), so renaming a case on one side alone makes
 /// the other drop it. Case order is the factory swipe order.
 enum WatchPage: String, CaseIterable {
-    case goals, water, entry, trend, workout
+    case goals, water, medications, entry, trend, workout, fasting, steps
     /// System Now Playing. Not arrangeable: it sits right after the Workout
     /// page, and only while a workout is running.
     case nowPlaying
+    /// The phone's GPS recording used to have a page of its own here. It now
+    /// shows on the Workout page, so this is never put in the page list; the
+    /// case stays so a stored or phone-sent page name still decodes.
+    case recording
 
     /// The pages to show, in swipe order.
     ///
@@ -31,10 +35,10 @@ enum WatchPage: String, CaseIterable {
         var ordered: [WatchPage] = []
         for name in order ?? [] {
             guard let page = WatchPage(rawValue: name), page != .nowPlaying,
-                  !ordered.contains(page) else { continue }
+                  page != .recording, !ordered.contains(page) else { continue }
             ordered.append(page)
         }
-        for page in allCases where page != .nowPlaying && !ordered.contains(page) {
+        for page in allCases where page != .nowPlaying && page != .recording && !ordered.contains(page) {
             ordered.append(page)
         }
 

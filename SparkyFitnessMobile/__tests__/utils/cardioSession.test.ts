@@ -8,6 +8,8 @@ import {
   gpsHeartRateSeries,
   combinedHeartRateZoneRows,
   heartRateZoneRows,
+  paceSeriesFromDistance,
+  paceSeriesFromTrack,
   projectRoute,
   routeRegion,
   usableRoutePoints,
@@ -242,6 +244,43 @@ describe('cardioSessionFromDiaryEntry', () => {
     expect(item!.distanceFormatted).toBeCloseTo(1.243, 2);
   });
 
+  it('carries floors climbed and elevation gain so a stair workout shows them from the diary', () => {
+    const item = cardioSessionFromDiaryEntry(
+      entry({ floors_climbed: 56, elevation_gain_meters: 181.9 }),
+      'km'
+    );
+    expect(item).toMatchObject({
+      floorsClimbed: 56,
+      elevationGainMeters: 181.9,
+    });
+  });
+
+  it('reads floors and elevation that arrive as numeric strings', () => {
+    // The diary entry is a raw database row; numeric columns come back as text.
+    const item = cardioSessionFromDiaryEntry(
+      entry({
+        floors_climbed: '56' as unknown as number,
+        elevation_gain_meters: '181.9056' as unknown as number,
+      }),
+      'km'
+    );
+    expect(item?.floorsClimbed).toBe(56);
+    expect(item?.elevationGainMeters).toBeCloseTo(181.9056, 4);
+  });
+
+  it('leaves floors and elevation null when none were measured', () => {
+    for (const overrides of [
+      {},
+      { floors_climbed: null, elevation_gain_meters: null },
+      { floors_climbed: 0, elevation_gain_meters: 0 },
+      { floors_climbed: 'n/a' as unknown as number },
+    ]) {
+      const item = cardioSessionFromDiaryEntry(entry(overrides), 'km');
+      expect(item?.floorsClimbed).toBeNull();
+      expect(item?.elevationGainMeters).toBeNull();
+    }
+  });
+
   it('leaves in-app entries on the basic screen', () => {
     for (const source of [
       'manual',
@@ -253,6 +292,28 @@ describe('cardioSessionFromDiaryEntry', () => {
     ]) {
       expect(cardioSessionFromDiaryEntry(entry({ source }), 'km')).toBeNull();
     }
+  });
+
+  it('maps an in-app entry when the caller has found a route for it', () => {
+    const item = cardioSessionFromDiaryEntry(
+      entry({ source: 'Manual', name: 'Walking' }),
+      'km',
+      { allowInApp: true }
+    );
+    expect(item).toMatchObject({ id: 'e1', exerciseName: 'Walking' });
+  });
+
+  it('still refuses a strength session, even when in-app entries are allowed', () => {
+    expect(
+      cardioSessionFromDiaryEntry(
+        entry({
+          source: 'Manual',
+          sets: [{ weight: 50, reps: 5 }] as IndividualSessionResponse['sets'],
+        }),
+        'km',
+        { allowInApp: true }
+      )
+    ).toBeNull();
   });
 
   it('titles a nameless synced workout', () => {
@@ -275,5 +336,114 @@ describe('cardioSessionFromDiaryEntry', () => {
     expect(
       cardioSessionFromDiaryEntry(entry({ sets: [], exercise_snapshot }), 'km')
     ).toBeNull();
+  });
+});
+
+describe('paceSeriesFromTrack', () => {
+  const T0 = Date.UTC(2026, 8, 26, 7, 0, 0);
+  const at = (seconds: number, metersNorth: number, extra = {}) =>
+    ({
+      t: new Date(T0 + seconds * 1000).toISOString(),
+      lat: 51.5 + metersNorth / 111_194.9,
+      lon: -0.1,
+      ...extra,
+    }) as GpsTrackPoint;
+  const KM = 1000;
+
+  it('reads a steady pace along the distance', () => {
+    // 4 m/s is 250 s per km.
+    const track = Array.from({ length: 13 }, (_, i) => at(i * 10, i * 40));
+    const series = paceSeriesFromTrack(track, KM);
+    expect(series.length).toBeGreaterThan(0);
+    for (const p of series) expect(p.paceSeconds).toBeCloseTo(250, 0);
+    expect(series[series.length - 1].distance).toBeCloseTo(0.48, 2);
+  });
+
+  it('uses the points own distance when the track has it', () => {
+    const track = [at(0, 0, { dist: 0 }), at(60, 0, { dist: 300 })];
+    const [first] = paceSeriesFromTrack(track, KM);
+    // 300 m in 60 s, whatever the coordinates say.
+    expect(first.paceSeconds).toBeCloseTo(200, 5);
+    expect(first.distance).toBeCloseTo(0.3, 5);
+  });
+
+  it('leaves out stretches where the person was standing still', () => {
+    const track = [
+      at(0, 0),
+      at(30, 120),
+      // Stopped for two minutes.
+      at(60, 120),
+      at(90, 120),
+      at(120, 120),
+      at(150, 120),
+      at(180, 240),
+    ];
+    const series = paceSeriesFromTrack(track, KM);
+    expect(series.every((p) => p.paceSeconds < 600)).toBe(true);
+  });
+
+  it('measures in miles when asked', () => {
+    const track = [at(0, 0, { dist: 0 }), at(60, 0, { dist: 160.9344 })];
+    const [first] = paceSeriesFromTrack(track, 1609.344);
+    // 0.1 mile in a minute is ten minutes a mile.
+    expect(first.paceSeconds).toBeCloseTo(600, 3);
+  });
+
+  it('gives nothing for too few or unusable points', () => {
+    expect(paceSeriesFromTrack([at(0, 0)], KM)).toEqual([]);
+    expect(paceSeriesFromTrack([at(0, 0), at(5, 10)], KM)).toEqual([]);
+  });
+
+  it('ignores an out-of-order point instead of adding its distance', () => {
+    const track = [
+      at(0, 0),
+      at(40, 100),
+      // Earlier, and a long way off. It must not move the distance along.
+      at(10, 5000),
+      at(80, 200),
+    ];
+    const series = paceSeriesFromTrack(track, KM);
+
+    expect(series.length).toBeGreaterThan(0);
+    expect(series[series.length - 1].distance).toBeLessThan(0.3);
+  });
+
+  it('thins a very long track', () => {
+    const track = Array.from({ length: 5000 }, (_, i) => at(i * 31, i * 100));
+    expect(paceSeriesFromTrack(track, KM).length).toBeLessThanOrEqual(402);
+  });
+
+  it('keeps the fastest reading when a long track is thinned', () => {
+    const track = Array.from({ length: 800 }, (_, i) =>
+      at(i * 31, i === 2 ? 800 : i * 80)
+    );
+    const series = paceSeriesFromTrack(track, KM);
+    const best = Math.min(...series.map((point) => point.paceSeconds));
+
+    expect(best).toBeLessThan(100);
+  });
+});
+
+describe('paceSeriesFromDistance', () => {
+  test('turns distance against active time into pace per unit', () => {
+    // 3 m/s = 5:33 per km.
+    const rows = [0, 10, 20, 30, 40, 50, 60].map((s) => [s, s * 3]);
+    const series = paceSeriesFromDistance(rows, 1000);
+    expect(series.length).toBeGreaterThan(0);
+    expect(series[0].paceSeconds).toBeCloseTo(1000 / 3, 0);
+    expect(series[series.length - 1].distance).toBeCloseTo(0.18, 2);
+  });
+
+  test('needs two readings and leaves out standing still', () => {
+    expect(paceSeriesFromDistance([[0, 0]], 1000)).toEqual([]);
+    expect(
+      paceSeriesFromDistance(
+        [
+          [0, 100],
+          [60, 100],
+        ],
+        1000
+      )
+    ).toEqual([]);
   });
 });

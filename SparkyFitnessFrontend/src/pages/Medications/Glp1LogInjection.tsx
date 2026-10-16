@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Syringe } from 'lucide-react';
 import { INJECTION_SITES, localDateTimeToUtc } from '@workspace/shared';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -86,18 +86,17 @@ export default function Glp1LogInjection({ med }: Glp1LogInjectionProps) {
         <div>
           <div className="flex items-center justify-between gap-2">
             <Label className="text-xs text-muted-foreground">
-              {t('medications.glp1.injectionSite', 'Injection site')} ·{' '}
-              <span className="text-green-600">
-                {t('medications.glp1.legendSuggested', 'green = suggested')}
-              </span>
-              ,{' '}
-              <span className="text-amber-600">
-                {t(
-                  'medications.glp1.legendResting',
-                  'amber = resting <{{days}}d',
-                  { days: sitesQ.data?.restDays ?? 7 }
-                )}
-              </span>
+              <Trans
+                i18nKey="medications.glp1.injectionSiteGreenSuggestedAmber"
+                defaults={
+                  'Injection site · <span>green = suggested</span>, <span2>amber = resting <{{days}}d</span2>'
+                }
+                values={{ days: sitesQ.data?.restDays ?? 7 }}
+                components={{
+                  span: <span className="text-green-600" />,
+                  span2: <span className="text-amber-600" />,
+                }}
+              />
             </Label>
             <InjectionSiteSettings />
           </div>
@@ -151,9 +150,15 @@ export default function Glp1LogInjection({ med }: Glp1LogInjectionProps) {
                 .filter((p) => p.status !== 'finished')
                 .map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.kind}
-                    {p.dose_mg ? ` ${p.dose_mg}mg` : ''} ·{' '}
-                    {(p.doses_total ?? 0) - p.doses_used} left
+                    {t(
+                      'medications.glp1.left',
+                      '{{kind}}{{dose_mg}} · {{doses_total}} left',
+                      {
+                        kind: p.kind,
+                        dose_mg: p.dose_mg ? ` ${p.dose_mg}mg` : '',
+                        doses_total: (p.doses_total ?? 0) - p.doses_used,
+                      }
+                    )}
                   </SelectItem>
                 ))}
             </SelectContent>
