@@ -92,7 +92,16 @@ export function useDiaryConfirmation() {
       });
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries();
+      // This preview intentionally describes the version just committed. Keep
+      // it stable while refreshing the diary, tasks and other affected views.
+      await queryClient.invalidateQueries({
+        predicate: ({ queryKey }) =>
+          !(
+            queryKey[0] === 'foodAssistant' &&
+            queryKey[1] === 'diaryConfirmation' &&
+            queryKey[2] === hash
+          ),
+      });
     },
   });
   return { request, preview, confirm };

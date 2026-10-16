@@ -70,7 +70,7 @@ export function buildDiaryTools(userId: string, ctx?: ToolBuildContext) {
             args.undo.source_quote = 'Undo these diary changes.';
           if (args.action === 'apply' && args.command.action.type === 'delete')
             args.command.action.confirmation_quote =
-              'Delete these diary entries.';
+              'Confirm deletion of these diary entries.';
         }
         try {
           switch (args.action) {
@@ -115,7 +115,7 @@ export function buildDiaryTools(userId: string, ctx?: ToolBuildContext) {
           ) {
             const link = new URL(
               'diary-confirmation',
-              `${process.env.SPARKY_FITNESS_FRONTEND_URL ?? 'http://localhost:8080'}/`
+              `${(process.env.SPARKY_FITNESS_FRONTEND_URL ?? 'http://localhost:8080').replace(/\/+$/, '')}/`
             );
             link.hash = encodeURIComponent(JSON.stringify(args));
             return ERRORS.VALIDATION(
