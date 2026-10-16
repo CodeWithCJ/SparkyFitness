@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { foodAssistantTaskSchema } from '@workspace/shared';
