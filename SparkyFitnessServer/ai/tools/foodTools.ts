@@ -2053,9 +2053,11 @@ Actions:
                   isServingCount ||
                   normalizeServingUnit(storedUnit) ===
                     normalizeServingUnit(row.serving_unit);
-                const consumedQuantity = isServingCount
-                  ? quantity * Number(row.serving_size)
-                  : quantity;
+                const consumedQuantity =
+                  isServingCount &&
+                  normalizeFoodUnit(row.serving_unit) !== 'serving'
+                    ? quantity * Number(row.serving_size)
+                    : quantity;
                 const scaled =
                   !isLegacyAmbiguous && compatibleUnit
                     ? scaleNutritionForConsumedAmount(

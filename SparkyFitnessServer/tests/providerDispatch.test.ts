@@ -564,6 +564,34 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     );
     expect(result).toMatchObject({ ok: false, category: 'refused' });
   });
+  it('extracts answer JSON without reasoning or provider tool content', async () => {
+    mockFetch({
+      output: [
+        {
+          type: 'reasoning',
+          text: 'private reasoning',
+          content: [{ type: 'reasoning_text', text: 'private analysis' }],
+        },
+        { type: 'web_search_call', text: 'search metadata' },
+        {
+          type: 'message',
+          role: 'assistant',
+          content: [
+            { type: 'reasoning_text', text: 'not an answer' },
+            { type: 'output_text', text: JSON.stringify(SAMPLE) },
+          ],
+        },
+      ],
+    });
+    const result = await dispatchAiRequest(
+      baseRequest({ provider: makeProvider({ model_name: 'gpt-6-astra' }) })
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      json: SAMPLE,
+      text: JSON.stringify(SAMPLE),
+    });
+  });
   it('does not parse partial Responses output as a successful result', async () => {
     mockFetch({
       status: 'incomplete',

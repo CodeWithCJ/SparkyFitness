@@ -5710,3 +5710,66 @@ describe('update_entry saved reference selection', () => {
     );
   });
 });
+
+it('logs and lists literal servings without multiplying a multi-serving reference twice', async () => {
+  const reference = {
+    id: VARIANT_ID,
+    food_id: FOOD_ID,
+    serving_size: 4.5,
+    serving_unit: 'serving',
+    calories: 450,
+    protein: 45,
+    carbs: 45,
+    fat: 10,
+  };
+  const food = {
+    id: FOOD_ID,
+    name: 'Verified multi-serving reference',
+    default_variant: reference,
+  };
+  vi.mocked(foodRepository.getFoodById).mockResolvedValue(food);
+  vi.mocked(foodCoreService.getFoodById).mockResolvedValue(food);
+  vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+    id: ENTRY_ID,
+  });
+  await tools.sparky_manage_food.execute!(
+    {
+      action: 'log_food',
+      food_id: FOOD_ID,
+      quantity: 2,
+      unit: 'serving',
+      meal_type: 'breakfast',
+      entry_date: '2026-10-16',
+    },
+    opts
+  );
+  expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+    'user-1',
+    'user-1',
+    expect.objectContaining({
+      quantity: 2,
+      unit: 'serving',
+      variant_id: VARIANT_ID,
+    })
+  );
+  vi.mocked(foodEntryService.getFoodEntriesByDate).mockResolvedValue([
+    {
+      ...reference,
+      id: ENTRY_ID,
+      food_name: food.name,
+      quantity: 2,
+      unit: 'serving',
+      meal_type: 'Breakfast',
+    },
+  ]);
+  vi.mocked(foodEntryMealRepository.getFoodEntryMealsByDate).mockResolvedValue(
+    []
+  );
+  const diary = await tools.sparky_manage_food.execute!(
+    { action: 'list_diary', entry_date: '2026-10-16' },
+    opts
+  );
+  expect(diary).toContain('200 kcal');
+  expect(diary).toContain('**Total Energy:** 200 kcal');
+  expect(diary).not.toContain('900 kcal');
+});
