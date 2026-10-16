@@ -10,6 +10,7 @@ import {
 import { Check, Sparkles, Clock, CalendarDays, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NumericInput } from '@/components/NumericInput';
 import { Label } from '@/components/ui/label';
 import { MarkdownView } from '@/components/ui/MarkdownView';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
@@ -436,14 +437,16 @@ const EditFoodEntryDialog = ({
                   <Label htmlFor="quantity">
                     {t('editFoodEntry.quantity', 'Quantity')}
                   </Label>
-                  <Input
+                  <NumericInput
                     id="quantity"
-                    type="number"
+                    allowExpressions
+                    decimals={3}
+                    required
                     step="any"
                     min="0.01"
                     value={quantity}
                     ref={inputRef}
-                    onChange={(e) => setQuantity(Number(e.target.value))}
+                    onValueChange={(value) => setQuantity(value ?? 0)}
                   />
                 </div>
 

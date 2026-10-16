@@ -1,4 +1,8 @@
 {
+  "numericInput": {
+    "mathHint": "Supports +, -, *, / and parentheses, e.g. 30*5.",
+    "invalidExpression": "Enter a valid calculation within the allowed range."
+  },
   "openFoodFactsContribution": {
     "title": "Contribute to Open Food Facts",
     "unavailable": "Contributions require your own custom food, an enabled server setting and an available Open Food Facts account.",

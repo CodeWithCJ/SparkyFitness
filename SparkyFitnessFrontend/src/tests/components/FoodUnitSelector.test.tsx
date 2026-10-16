@@ -351,13 +351,13 @@ describe('FoodUnitSelector', () => {
     await renderSelector(food);
 
     const quantityInput = screen.getByLabelText(/^Quantity$/i);
-    expect(quantityInput).toHaveValue(3);
+    expect(quantityInput).toHaveValue('3');
 
     fireEvent.change(quantityInput, { target: { value: '' } });
-    expect(quantityInput).toHaveValue(null);
+    expect(quantityInput).toHaveValue('');
 
     fireEvent.change(quantityInput, { target: { value: '1' } });
-    expect(quantityInput).toHaveValue(1);
+    expect(quantityInput).toHaveValue('1');
   });
 
   it('submits fractional quantities through the selector', async () => {
@@ -376,7 +376,7 @@ describe('FoodUnitSelector', () => {
 
     const quantityInput = screen.getByLabelText(/^Quantity$/i);
     fireEvent.change(quantityInput, { target: { value: '0.25' } });
-    expect(quantityInput).toHaveValue(0.25);
+    expect(quantityInput).toHaveValue('0.25');
 
     fireEvent.click(screen.getByRole('button', { name: /Add to Meal/i }));
 
@@ -407,6 +407,26 @@ describe('FoodUnitSelector', () => {
     });
 
     selectSpy.mockRestore();
+  });
+
+  it('submits the calculated food quantity without requiring blur', async () => {
+    const onSelect = jest.fn();
+    await renderSelector(createFood(createVariant({})), { onSelect });
+    const input = screen.getByLabelText(/^Quantity$/i);
+    fireEvent.change(input, { target: { value: '30*5' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add to Meal/i }));
+    await waitFor(() => expect(onSelect).toHaveBeenCalled());
+    expect(onSelect.mock.calls[0]?.[1]).toBe(150);
+  });
+
+  it('blocks an invalid calculation from logging the previous quantity', async () => {
+    const onSelect = jest.fn();
+    await renderSelector(createFood(createVariant({})), { onSelect });
+    const input = screen.getByLabelText(/^Quantity$/i);
+    fireEvent.change(input, { target: { value: '1/0' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add to Meal/i }));
+    expect(input).toBeInvalid();
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('does not show compatible-unit checks when the selected saved variant is AI-estimated', async () => {

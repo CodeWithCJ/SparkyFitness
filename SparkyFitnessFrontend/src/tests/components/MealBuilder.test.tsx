@@ -115,6 +115,31 @@ describe('MealBuilder', () => {
     expect(screen.getByRole('combobox')).toBeEnabled();
   });
 
+  it('calculates the consumed meal quantity and updates nutrition', async () => {
+    renderWithClient(
+      <MealBuilder
+        initialFoods={sampleFoods}
+        source="food-diary"
+        foodEntryDate="2026-08-28"
+        foodEntryMealType="dinner"
+      />
+    );
+    const input = await screen.findByLabelText('Quantity Consumed (serving)');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '1/2' } });
+    fireEvent.blur(input);
+    expect(input).toHaveValue('0.5');
+    expect(
+      screen
+        .getAllByText((_content, element) =>
+          /^Calories:/.test(element?.textContent ?? '')
+        )
+        .at(-1)?.textContent
+    ).toMatch(/48/);
+    fireEvent.change(input, { target: { value: '1/0' } });
+    expect(screen.getByRole('button', { name: 'Update Entry' })).toBeDisabled();
+  });
+
   it('toggles diary nutrition between the consumed portion and the whole dish', async () => {
     // The diary dialog shows the portion by default, but the whole-dish totals
     // have to stay reachable so the ingredient list above (which is always at

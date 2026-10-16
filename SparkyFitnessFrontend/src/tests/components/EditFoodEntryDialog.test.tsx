@@ -189,6 +189,26 @@ describe('EditFoodEntryDialog', () => {
     mockVariantsData = [];
   });
 
+  it('saves arithmetic as a numeric quantity when editing a diary entry', async () => {
+    render(
+      <EditFoodEntryDialog
+        entry={entry}
+        open
+        onOpenChange={jest.fn()}
+        availableMealTypes={mealTypes}
+      />
+    );
+    const input = await screen.findByLabelText(/^Quantity$/i);
+    fireEvent.change(input, { target: { value: '50+10' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+    await waitFor(() =>
+      expect(mockUpdateFoodEntry).toHaveBeenCalledWith({
+        id: 'entry-1',
+        data: expect.objectContaining({ quantity: 60 }),
+      })
+    );
+  });
+
   it('shows the manual warning, hides preview, and disables save for unresolved incompatible units', async () => {
     render(
       <EditFoodEntryDialog
