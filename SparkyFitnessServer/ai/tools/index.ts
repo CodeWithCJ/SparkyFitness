@@ -254,8 +254,9 @@ function applyChatProviderTuning(tools: ToolMap): void {
       ) as unknown as typeof t.inputSchema;
     }
   }
-  // The published flat schemas are advisory; real validation is the strict
-  // per-action union inside each handler. Strict provider-side mode must stay
+  // Most published schemas are advisory flat objects, with strict per-action
+  // validation in their handlers. Recipes publish the correlated action union
+  // with object-root metadata for provider compatibility. Strict provider-side mode must stay
   // off: OpenAI's Responses API treats an omitted flag as "attempt strict
   // mode" and then forces models to emit every published property, producing
   // placeholder junk that the per-action validation rejects.
