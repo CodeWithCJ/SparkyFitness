@@ -52,7 +52,10 @@ export function invalidateMealUsageCaches(queryClient: QueryClient) {
   });
 }
 
-function invalidateMealCaches(queryClient: QueryClient, mealId?: string) {
+export function invalidateMealCaches(
+  queryClient: QueryClient,
+  mealId?: string
+) {
   queryClient.invalidateQueries({ queryKey: mealsQueryKey });
   invalidateMealUsageCaches(queryClient);
   queryClient.invalidateQueries({ queryKey: mealSearchQueryKeyRoot });
@@ -63,6 +66,8 @@ function invalidateMealCaches(queryClient: QueryClient, mealId?: string) {
 
   if (mealId) {
     queryClient.invalidateQueries({ queryKey: mealDetailQueryKey(mealId) });
+  } else {
+    queryClient.invalidateQueries({ queryKey: ['mealDetail'] });
   }
 }
 

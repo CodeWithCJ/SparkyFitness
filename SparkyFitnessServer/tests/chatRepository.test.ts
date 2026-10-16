@@ -1,3 +1,5 @@
+import type { PoolClient } from 'pg';
+import type { Mock } from 'vitest';
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 import chatRepository from '../models/chatRepository.js';
 import { getClient } from '../db/poolManager.js';
@@ -72,8 +74,15 @@ describe('chatRepository.upsertAiServiceSetting', () => {
 });
 
 describe('chatRepository.getDecryptedAiServiceSettingById', () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockClient: any;
+  let mockClient: {
+    query: Mock<
+      (
+        sql: string,
+        params?: unknown[]
+      ) => Promise<{ rows: Record<string, unknown>[] }>
+    >;
+    release: Mock<() => void>;
+  };
 
   beforeEach(() => {
     mockClient = {
@@ -81,7 +90,7 @@ describe('chatRepository.getDecryptedAiServiceSettingById', () => {
       release: vi.fn(),
     };
     vi.clearAllMocks();
-    vi.mocked(getClient).mockResolvedValue(mockClient);
+    vi.mocked(getClient).mockResolvedValue(mockClient as unknown as PoolClient);
   });
 
   it('selects by id WITHOUT the is_active filter so inactive services can be tested', async () => {
@@ -117,7 +126,24 @@ describe('chatRepository.getDecryptedAiServiceSettingById', () => {
       custom_url: null,
       model_name: 'gpt-4o',
       is_public: false,
+      reasoning_effort: 'medium',
     });
+  });
+
+  it('preserves the configured reasoning effort when decrypting a service', async () => {
+    mockClient.query.mockResolvedValue({
+      rows: [
+        {
+          service_type: 'openai',
+          model_name: 'gpt-6',
+          reasoning_effort: 'xhigh',
+          is_public: false,
+        },
+      ],
+    });
+    expect(
+      await chatRepository.getDecryptedAiServiceSettingById('svc-1', 'user-1')
+    ).toMatchObject({ reasoning_effort: 'xhigh', model_name: 'gpt-6' });
   });
 
   it('returns null when no row is visible to the user', async () => {

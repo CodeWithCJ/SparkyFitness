@@ -361,6 +361,7 @@ All endpoints require auth headers, and proxy headers are injected before auth h
 - `fastingApi.ts` - `POST /api/fasting/start`, `POST /api/fasting/end`, current/stats/history/range reads, and `GET/PUT /api/fasting/preferences`.
 - `authService.ts`, `profileApi.ts`, `externalProvidersApi.ts`, `customNutrientsApi.ts` - auth/session/MFA, profile, configured providers, custom nutrient definitions.
 - `ChatScreen.tsx` (transport) + `chatApi.ts` - streaming chat via `POST /api/chat/stream`, history load/clear.
+- `hooks/invalidateAssistantFoodCaches.ts` - refresh diary, library, recipe, meal-plan and assistant-state caches after a chat turn; reuses the ordinary food and meal invalidation helpers.
 
 When reviewing an API issue, trace screen/hook -> API client -> server route -> service/repository -> shared schema before judging the fix. Deeper endpoint docs live in mobile `docs/` (`food_api.md`, `sync_api.md`, `measurements_api.md`, `external_providers.md`, `healthkit.md`, `bg_sync.md`).
 
