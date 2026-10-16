@@ -491,76 +491,89 @@ describe('chatService', () => {
       ]);
     });
 
-    it('executes a log_food tool call in-process, derives food_added from call input, and saves history', async () => {
-      vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
-        {
-          ...eggsRow,
-          default_variant: {
-            ...eggsRow.default_variant,
-            serving_size: 1,
-            serving_unit: 'serving',
+    it.each([true, false])(
+      'executes a log_food tool call and avoids inviting a duplicate retry when summary=%s',
+      async (hasSummary) => {
+        vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
+          {
+            ...eggsRow,
+            default_variant: {
+              ...eggsRow.default_variant,
+              serving_size: 1,
+              serving_unit: 'serving',
+            },
           },
-        },
-      ]);
-      vi.mocked(foodRepository.getFoodVariantsByFoodId).mockResolvedValue([]);
-      vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
-        id: 'entry-1',
-        food_name: 'Eggs',
-      });
-      const logFoodArgs = {
-        action: 'log_food',
-        food_name: 'Eggs',
-        quantity: 2,
-        unit: 'serving',
-        meal_type: 'breakfast',
-        entry_date: '2026-06-10',
-      };
-      scriptModel([
-        toolCallStep(logFoodArgs),
-        textStep('Logged 2 eggs for breakfast!'),
-      ]);
-
-      const result = await chatService.processChatMessage(
-        [{ role: 'user', content: 'log 2 eggs for breakfast' }],
-        'svc-1',
-        activeUserId,
-        actorUserId
-      );
-
-      expect(result.content).toBe('Logged 2 eggs for breakfast!');
-      expect(result.action).toBe('food_added');
-      expect(result.executedTools).toEqual([
-        { name: 'sparky_manage_food', args: logFoodArgs },
-      ]);
-      // Tool handlers act as the authenticated user, not the active user.
-      expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
-        actorUserId,
-        actorUserId,
-        {
-          user_id: actorUserId,
-          food_id: FOOD_ID,
-          variant_id: VARIANT_ID,
-          entry_date: '2026-06-10',
+        ]);
+        vi.mocked(foodRepository.getFoodVariantsByFoodId).mockResolvedValue([]);
+        vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+          id: 'entry-1',
+          food_name: 'Eggs',
+        });
+        const logFoodArgs = {
+          action: 'log_food',
+          food_name: 'Eggs',
           quantity: 2,
           unit: 'serving',
-          meal_type_id: 'breakfast-id',
-        }
-      );
-      expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
-        expect.objectContaining({
-          user_id: activeUserId,
-          messageType: 'user',
-          content: 'log 2 eggs for breakfast',
-        })
-      );
-      expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
-        expect.objectContaining({
-          user_id: activeUserId,
-          messageType: 'assistant',
-          content: 'Logged 2 eggs for breakfast!',
-        })
-      );
-    });
+          meal_type: 'breakfast',
+          entry_date: '2026-06-10',
+        };
+        scriptModel([
+          toolCallStep(logFoodArgs),
+          textStep(hasSummary ? 'Logged 2 eggs for breakfast!' : ''),
+        ]);
+
+        const result = await chatService.processChatMessage(
+          [{ role: 'user', content: 'log 2 eggs for breakfast' }],
+          'svc-1',
+          activeUserId,
+          actorUserId
+        );
+
+        const expectedContent = hasSummary
+          ? 'Logged 2 eggs for breakfast!'
+          : 'Tools ran, but the AI service returned no summary. Check your diary and saved changes before retrying.';
+        expect(result.content).toBe(expectedContent);
+        if (!hasSummary)
+          expect(log).toHaveBeenCalledWith(
+            'debug',
+            'No assistant reply text; tool result metadata:',
+            { toolNames: ['sparky_manage_food'], resultCount: 1 }
+          );
+        expect(foodEntryService.createFoodEntry).toHaveBeenCalledTimes(1);
+        expect(result.action).toBe('food_added');
+        expect(result.executedTools).toEqual([
+          { name: 'sparky_manage_food', args: logFoodArgs },
+        ]);
+        // Tool handlers act as the authenticated user, not the active user.
+        expect(foodEntryService.createFoodEntry).toHaveBeenCalledWith(
+          actorUserId,
+          actorUserId,
+          {
+            user_id: actorUserId,
+            food_id: FOOD_ID,
+            variant_id: VARIANT_ID,
+            entry_date: '2026-06-10',
+            quantity: 2,
+            unit: 'serving',
+            meal_type_id: 'breakfast-id',
+          }
+        );
+        expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+          expect.objectContaining({
+            user_id: activeUserId,
+            messageType: 'user',
+            content: 'log 2 eggs for breakfast',
+          })
+        );
+        expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+          expect.objectContaining({
+            user_id: activeUserId,
+            messageType: 'assistant',
+            content: expectedContent,
+          })
+        );
+      }
+    );
 
     it('limits the tool set passed to the model when toolCategories is provided', async () => {
       const model = scriptModel([textStep('Sure.')]);
@@ -677,7 +690,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 34\/55 active tools for chatbot \(profile=core/
+          /Loaded 35\/56 active tools for chatbot \(profile=core/
         )
       );
       // The core profile is the mitigation, so no context-window warning.
@@ -759,7 +772,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 55\/55 active tools for chatbot \(profile=full/
+          /Loaded 56\/56 active tools for chatbot \(profile=full/
         )
       );
       // Ollama + full profile is the risky combo, so warn about the 4096 default.
@@ -792,7 +805,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 55\/55 active tools for chatbot \(profile=full/
+          /Loaded 56\/56 active tools for chatbot \(profile=full/
         )
       );
     });
@@ -820,7 +833,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 55\/55 active tools for chatbot \(profile=full/
+          /Loaded 56\/56 active tools for chatbot \(profile=full/
         )
       );
       // The context-window warning is Ollama-only; cloud providers never see it.

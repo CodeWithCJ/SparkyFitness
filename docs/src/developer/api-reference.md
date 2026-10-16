@@ -34,6 +34,21 @@ While a live, interactive OpenAPI documentation (like Swagger UI) might be avail
 
 ## Detailed API Endpoints
 
+### Food Assistant State
+
+These additive routes are authenticated and owner-only, using the signed-in actor rather than a selected family diary. The shared `FoodAssistant.api.zod.ts` and `FoodAssistant.zod.ts` contracts define their bodies and responses.
+
+| Route | Method | Purpose |
+| --- | --- | --- |
+| `/api/v2/food-assistant/preferences` | GET / PUT | Read lasting preferences or create/edit one with its expected version |
+| `/api/v2/food-assistant/preferences/:key?version=N` | DELETE | Forget a preference only if its version still matches |
+| `/api/v2/food-assistant/tasks` | GET / POST | List recent tasks or create a task with a stable UUID request ID |
+| `/api/v2/food-assistant/tasks/:id` | GET / PATCH | Read a full checkpoint or save one with an operation ID and expected version |
+| `/api/v2/food-assistant/tasks/:id/operations` | GET | Read committed before/after operation records |
+| `/api/v2/food-assistant/tasks/:id/:action` | POST | Cancel or resume remaining work; `action` is `cancel` or `resume` |
+
+Task changes require `operation_id` and `expected_version`. Repeating an identical operation returns its stored result. Reusing an ID for different work, stale versions, and attempts to change a completed or cancelled task return HTTP 409. Domain writes must share the repository's operation transaction; the operation record and checkpoint commit together. Draft endpoints cannot mark a task complete or mutate diary/library records. Older chat clients do not need to send these new fields.
+
 ### Authentication
 
 *   **API Key**: Used for specific endpoints like `/api/health-data`. The API Key should be sent in the `Authorization` header as `Bearer <API_KEY>` or in the `X-API-Key` header. The API Key must have the necessary permissions (e.g., `health_data_write`).

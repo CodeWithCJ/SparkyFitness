@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { isGpt6Model } from '@workspace/shared';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -168,6 +169,40 @@ export const ServiceForm = ({
           </p>
         )}
       </div>
+
+      {formData.service_type === 'openai' &&
+        isGpt6Model(selectedModel ?? '') && (
+          <div>
+            <Label htmlFor="reasoning_effort">
+              {t('settings.aiService.reasoningEffort.label')}
+            </Label>
+            <Select
+              value={formData.reasoning_effort ?? 'medium'}
+              onValueChange={(value) =>
+                onFormDataChange({
+                  reasoning_effort: value as
+                    'low' | 'medium' | 'high' | 'xhigh' | 'max',
+                })
+              }
+            >
+              <SelectTrigger id="reasoning_effort">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(['low', 'medium', 'high', 'xhigh', 'max'] as const).map(
+                  (effort) => (
+                    <SelectItem key={effort} value={effort}>
+                      {t(`settings.aiService.reasoningEffort.${effort}`)}
+                    </SelectItem>
+                  )
+                )}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">
+              {t('settings.aiService.reasoningEffort.description')}
+            </p>
+          </div>
+        )}
 
       {requiresCustomUrl && (
         <div>
