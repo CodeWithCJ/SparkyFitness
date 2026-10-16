@@ -21,6 +21,7 @@ export interface ExpandedGoals {
   alcohol_g?: number | null;
   target_exercise_calories_burned: number;
   target_exercise_duration_minutes: number;
+  target_steps?: number | null;
   protein_percentage: number | null;
   carbs_percentage: number | null;
   fat_percentage: number | null;
@@ -58,6 +59,7 @@ export interface GoalPreset {
   alcohol_g?: number | null;
   target_exercise_calories_burned: number;
   target_exercise_duration_minutes: number;
+  target_steps?: number | null;
   protein_percentage: number | null;
   carbs_percentage: number | null;
   fat_percentage: number | null;

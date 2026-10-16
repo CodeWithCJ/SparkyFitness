@@ -3,6 +3,7 @@ import {
   exerciseHistoryResetQueryKey,
   sleepDayQueryKeyRoot,
   sleepRangeQueryKeyRoot,
+  vo2MaxRangeQueryKeyRoot,
 } from './queryKeys';
 
 const dailySummaryQueryFamily = ['dailySummary'] as const;
@@ -21,6 +22,8 @@ export function refreshHealthSyncCache(queryClient: QueryClient) {
   // restart (reload) refetches /api/sleep.
   void queryClient.invalidateQueries({ queryKey: sleepDayQueryKeyRoot });
   void queryClient.invalidateQueries({ queryKey: sleepRangeQueryKeyRoot });
+  // VO2 max arrives in the same sync as a custom measurement.
+  void queryClient.invalidateQueries({ queryKey: vo2MaxRangeQueryKeyRoot });
   void queryClient.invalidateQueries({
     queryKey: exerciseHistoryQueryFamily,
     refetchType: 'none',

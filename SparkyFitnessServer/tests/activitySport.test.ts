@@ -267,6 +267,33 @@ describe('classifyActivitySport — free-text names', () => {
   });
 });
 
+describe('stair workouts', () => {
+  // Apple Health names the same workout "Stair Climbing" (Fitness calls it
+  // "Stair Stepper") and has a second type, "Stairs"; the old tokens only knew
+  // "stepper", so these classified as other.
+  it.each([
+    'Stair Climbing',
+    'Stairs',
+    'StairMaster',
+    'stair_climbing',
+    'Stair Stepper',
+  ])('treats %s as fitness equipment', (name) => {
+    expect(mapRawSportValue(name)).toBe('fitness_equipment');
+    expect(classifyActivitySport({ exerciseName: name })).toEqual({
+      sport: 'fitness_equipment',
+      confidence: 'inferred',
+    });
+  });
+
+  it('still refuses to guess when a name also names another sport', () => {
+    expect(mapRawSportValue('Stairs then run')).toBe('other');
+  });
+
+  it('does not match "stair" inside unrelated words', () => {
+    expect(mapRawSportValue('Staircase repair')).toBe('other');
+  });
+});
+
 describe('toPrSportGroup', () => {
   it('folds hiking in with walking and keeps the rest distinct', () => {
     expect(toPrSportGroup('running')).toBe('run');

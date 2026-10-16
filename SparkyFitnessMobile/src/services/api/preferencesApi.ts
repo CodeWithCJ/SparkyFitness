@@ -41,6 +41,21 @@ export const updateNutrientDisplayPreference = (
     body: { visible_nutrients: visibleNutrients },
   });
 
+/**
+ * Resets a view group / platform to the server default.
+ * DELETE /api/preferences/nutrient-display/:viewGroup/:platform
+ */
+export const resetNutrientDisplayPreference = (
+  viewGroup: string,
+  platform: string
+): Promise<NutrientDisplayPreference> =>
+  apiFetch<NutrientDisplayPreference>({
+    endpoint: `/api/preferences/nutrient-display/${viewGroup}/${platform}`,
+    serviceName: 'Preferences API',
+    operation: 'reset nutrient display preference',
+    method: 'DELETE',
+  });
+
 interface EnsureTimezoneBootstrappedOptions {
   throwOnFailure?: boolean;
 }

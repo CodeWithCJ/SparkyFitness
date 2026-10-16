@@ -14,6 +14,9 @@ import { getUserLoggingLevel } from './utils/userPreferences.ts';
 import { toast } from './hooks/use-toast.ts';
 import { error } from '@/utils/logging';
 import { HttpApiError } from './api/api.ts';
+import { installTranslationDomGuard } from './utils/translationDomGuard.ts';
+
+installTranslationDomGuard();
 
 declare module '@tanstack/react-query' {
   interface Register {

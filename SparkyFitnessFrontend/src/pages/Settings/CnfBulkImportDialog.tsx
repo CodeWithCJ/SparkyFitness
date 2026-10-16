@@ -127,12 +127,30 @@ export function CnfBulkImportDialog({
               <Progress value={status?.progress ?? 0} />
               <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                 <div>
-                  {t('settings.cnf.processed', 'Processed')}:{' '}
-                  {status?.processed} / {status?.total}
+                  <Trans
+                    i18nKey="settings.cnf.processed2"
+                    defaults={
+                      'Processed: <processed>{{processed}}</processed> / <total>{{total}}</total>'
+                    }
+                    values={{
+                      processed: status?.processed,
+                      total: status?.total,
+                    }}
+                    components={{ processed: <span />, total: <span /> }}
+                  />
                 </div>
                 <div className="text-right">
-                  {t('settings.cnf.imported', 'Imported')}: {status?.imported} |{' '}
-                  {t('settings.cnf.updated', 'Updated')}: {status?.updated}
+                  <Trans
+                    i18nKey="settings.cnf.importedUpdated"
+                    defaults={
+                      'Imported: <imported>{{imported}}</imported> | Updated: <updated>{{updated}}</updated>'
+                    }
+                    values={{
+                      imported: status?.imported,
+                      updated: status?.updated,
+                    }}
+                    components={{ imported: <span />, updated: <span /> }}
+                  />
                 </div>
               </div>
             </div>
@@ -246,8 +264,18 @@ export function CnfBulkImportDialog({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="en">English (default)</SelectItem>
-                    <SelectItem value="fr">Français (French)</SelectItem>
+                    <SelectItem value="en">
+                      {t(
+                        'settings.cnfBulkImportDialog.englishDefault',
+                        'English (default)'
+                      )}
+                    </SelectItem>
+                    <SelectItem value="fr">
+                      {t(
+                        'settings.cnfBulkImportDialog.franAisFrench',
+                        'Français (French)'
+                      )}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

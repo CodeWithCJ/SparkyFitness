@@ -1,5 +1,6 @@
 import { localDateToDay, addDays } from '@workspace/shared';
 
+import i18n from 'i18next';
 // CSV import of historical health data (body measurements, sleep, vitals, daily
 // activity totals, hydration). Rows are parsed client-side and mapped into the
 // flat HealthDataPayloadItem shape consumed by
@@ -75,7 +76,9 @@ export const ACTIVITY_TYPES = [
 export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
   {
     value: 'measurements',
-    label: 'Body Measurements',
+    get label() {
+      return i18n.t('healthDataImport.bodyMeasurements', 'Body Measurements');
+    },
     description:
       'Weight, body fat, height, and body circumference. One row per day. ' +
       'Stored without a source label, so re-importing a date overwrites it.',
@@ -121,7 +124,9 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
   },
   {
     value: 'sleep',
-    label: 'Sleep',
+    get label() {
+      return i18n.t('healthDataImport.sleep', 'Sleep');
+    },
     description:
       'One sleep session per row. Provide bedtime/wake_time as ISO timestamps. ' +
       'The deep/light/rem/awake columns are aggregate seconds per stage. For a ' +
@@ -161,8 +166,12 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
     ],
     guides: [
       {
-        title:
-          'Optional stage_events JSON (leave blank for durations-only). Stage types: deep, light, rem, awake',
+        get title() {
+          return i18n.t(
+            'healthDataImport.optionalStageEventsJSONLeave',
+            'Optional stage_events JSON (leave blank for durations-only). Stage types: deep, light, rem, awake'
+          );
+        },
         options: [
           '[{"stage_type":"deep","start_time":"2026-01-02T23:20:00Z","end_time":"2026-01-02T23:50:00Z"}]',
         ],
@@ -171,7 +180,9 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
   },
   {
     value: 'vitals',
-    label: 'Vitals & Custom',
+    get label() {
+      return i18n.t('healthDataImport.vitalsCustom', 'Vitals & Custom');
+    },
     description:
       'One reading per row. `type` accepts a vital name OR any custom category ' +
       'name — unknown types create/reuse a custom measurement category by name.',
@@ -204,14 +215,21 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
     ],
     guides: [
       {
-        title: 'Accepted vital types (or use any custom category name)',
+        get title() {
+          return i18n.t(
+            'healthDataImport.acceptedVitalTypesOrUse',
+            'Accepted vital types (or use any custom category name)'
+          );
+        },
         options: VITALS_TYPES,
       },
     ],
   },
   {
     value: 'activity',
-    label: 'Daily Activity',
+    get label() {
+      return i18n.t('healthDataImport.dailyActivity', 'Daily Activity');
+    },
     description:
       'Daily totals such as steps, distance, and calories burned. Note: steps ' +
       'and active_calories ignore notes; distance is stored as a custom measurement.',
@@ -241,15 +259,27 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
     ],
     guides: [
       {
-        title: 'Accepted activity types',
+        get title() {
+          return i18n.t(
+            'healthDataImport.acceptedActivityTypes',
+            'Accepted activity types'
+          );
+        },
         options: ACTIVITY_TYPES,
       },
     ],
   },
   {
     value: 'hydration',
-    label: 'Hydration',
-    description: 'Daily water intake. Values are converted to millilitres.',
+    get label() {
+      return i18n.t('healthDataImport.hydration', 'Hydration');
+    },
+    get description() {
+      return i18n.t(
+        'healthDataImport.dailyWaterIntakeValuesAre',
+        'Daily water intake. Values are converted to millilitres.'
+      );
+    },
     requiredHeaders: ['date', 'value', 'unit', 'source'],
     dropdownColumns: {
       unit: VOLUME_UNITS,
@@ -271,7 +301,9 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
   },
   {
     value: 'mood',
-    label: 'Mood',
+    get label() {
+      return i18n.t('healthDataImport.mood', 'Mood');
+    },
     description:
       'One mood entry per day (re-importing a date overwrites it). ' +
       'mood_value is 10-100: 10 Sad, 20 Angry, 30 Worried, 40 Neutral, ' +

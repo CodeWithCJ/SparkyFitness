@@ -17,6 +17,7 @@ import FoodThumbnail from './FoodThumbnail';
 import { useFoodImageSourceContext } from './FoodImageSourceProvider';
 import { diaryEntryImage, diaryEntryImages } from '../utils/foodImages';
 import { useOpenLightbox } from './LightboxProvider';
+import AllergenBadges from './AllergenBadges';
 
 interface SwipeableFoodRowProps {
   entry: FoodEntry;
@@ -177,6 +178,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
                 </Text>
               )}
             </View>
+            <AllergenBadges allergens={entry.allergens} traces={entry.traces} />
           </TouchableOpacity>
           {canQuickAdjust ? (
             <Button

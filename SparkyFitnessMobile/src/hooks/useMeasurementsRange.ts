@@ -1,7 +1,9 @@
+import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchMeasurementsRange } from '../services/api/measurementsApi';
+import { fetchGoalsRange } from '../services/api/goalsApi';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
-import { measurementsRangeQueryKey } from './queryKeys';
+import { measurementsRangeQueryKey, goalsRangeQueryKey } from './queryKeys';
 import { getTodayDate, addDays } from '../utils/dateUtils';
 import { RANGE_DAYS, type HealthTrendDateRange } from '../types/healthTrends';
 
@@ -69,11 +71,41 @@ export function useMeasurementsRange({
 
   useRefetchOnFocus(query.refetch, enabled);
 
+  // Raw (unadjusted) goal for each day; a day without a steps goal is null so the
+  // chart draws no line for it.
+  const {
+    data: stepsGoals,
+    isError: isGoalsError,
+    refetch: refetchGoals,
+  } = useQuery({
+    queryKey: goalsRangeQueryKey(startDate, today, false),
+    queryFn: () => fetchGoalsRange(startDate, today, false),
+    enabled,
+    select: (goalsByDay) => {
+      const resolvedGoals: (number | null)[] = [];
+      for (let dayOffset = 0; dayOffset < days; dayOffset++) {
+        const day = addDays(today, -(days - 1 - dayOffset));
+        const goal = goalsByDay[day]?.target_steps;
+        resolvedGoals.push(goal && goal > 0 ? goal : null);
+      }
+      return resolvedGoals;
+    },
+  });
+
+  useRefetchOnFocus(refetchGoals, enabled);
+
+  const { refetch: refetchData } = query;
+  const refetch = useCallback(async () => {
+    await Promise.all([refetchData(), refetchGoals()]);
+  }, [refetchData, refetchGoals]);
+
   return {
     stepsData: query.data?.stepsData ?? [],
+    stepsGoals: stepsGoals ?? [],
     weightData: query.data?.weightData ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
-    refetch: query.refetch,
+    isStepsGoalsError: isGoalsError,
+    refetch,
   };
 }

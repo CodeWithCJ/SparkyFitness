@@ -6,6 +6,7 @@ import {
   type MacroPickerField,
   type MedicationNutrients,
   type MicronutrientCatalogEntry,
+  type SupplementLookupProduct,
 } from '@workspace/shared';
 import { NUTRIENT_META } from '../constants/nutrients';
 import { parseDecimalInput } from './numericInput';
@@ -206,4 +207,39 @@ export function countNutrients(nutrients: MedicationNutrients | undefined) {
     if (key !== 'custom_nutrients' && typeof value === 'number') count += 1;
   }
   return count;
+}
+
+/** Rows for the nutrients a barcode lookup found, with their amounts filled in. */
+export function rowsFromLookup(
+  product: SupplementLookupProduct
+): NutrientRow[] {
+  const rows: NutrientRow[] = [];
+  for (const { key, amount } of product.fixed) {
+    const meta = fixedMeta(key);
+    rows.push({
+      id: `fixed:${key}`,
+      label: meta.label,
+      unit: meta.unit,
+      fixedField: key,
+      value: String(amount),
+    });
+  }
+  for (const { catalogId, amount } of product.catalog) {
+    const [row] = rowsForCatalogId(catalogId);
+    if (row) rows.push({ ...row, value: String(amount) });
+  }
+  return rows;
+}
+
+/** The label's ingredients that were not added, for a short note. */
+export function unmatchedSummary(
+  product: SupplementLookupProduct,
+  limit = 4
+): { names: string; extra: number } | null {
+  if (product.unmatched.length === 0) return null;
+  const shown = product.unmatched.slice(0, limit).map((item) => item.name);
+  return {
+    names: shown.join(', '),
+    extra: product.unmatched.length - shown.length,
+  };
 }

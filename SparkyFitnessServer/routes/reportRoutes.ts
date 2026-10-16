@@ -333,4 +333,49 @@ router.get('/training-consistency', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /reports/training-load:
+ *   get:
+ *     summary: Get training load (last 7 days against the 4-week average)
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema: { type: 'string', format: 'uuid' }
+ *     responses:
+ *       200:
+ *         description: Weekly load, acute/chronic ratio, status and a rest hint.
+ */
+router.get('/training-load', authenticate, async (req, res, next) => {
+  const { userId } = req.query;
+  const targetUserId = userId || req.userId;
+  if (!targetUserId) {
+    return res.status(400).json({ error: 'Target User ID is required.' });
+  }
+  if (userId && userId !== req.userId) {
+    const hasPermission = await canAccessUserData(
+      userId,
+      'reports',
+      req.authenticatedUserId || req.userId
+    );
+    if (!hasPermission) {
+      return res.status(403).json({
+        error:
+          'Forbidden: You do not have permission to view reports for this user.',
+      });
+    }
+  }
+  try {
+    const data = await reportService.getTrainingLoad(
+      req.userId,
+      String(targetUserId)
+    );
+    res.status(200).json(data);
+  } catch (error) {
+    next(error);
+  }
+});
 export default router;

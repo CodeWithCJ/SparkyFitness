@@ -1170,6 +1170,7 @@ const handleWorkout: RecordHandler = async (
           ? (workoutAny.totalDistance?.quantity ?? 0)
           : (workoutAny.totalDistance ?? 0);
       let totalSteps: number | undefined;
+      let totalFlights: number | undefined;
       let basalEnergyBurned: number | undefined;
 
       // Pin units explicitly on each getStatistic call. getAllStatistics returns
@@ -1214,6 +1215,30 @@ const handleWorkout: RecordHandler = async (
           }
         } catch {
           // Not readable on this device; resting stays unreported.
+        }
+
+        // Floors climbed during the workout, which is what Apple Fitness shows
+        // as "Flights Climbed" for a stair stepper. The workout sample's own
+        // `totalFlightsClimbed` property is not filled in for workouts built
+        // from statistics (a stair machine over GymKit, for one), so read it
+        // the way steps are read below. Its own try: flights is a separate
+        // read permission, and a refusal must not cost the distance and step
+        // reads that follow.
+        try {
+          const flightStats = await w.getStatistic(
+            'HKQuantityTypeIdentifierFlightsClimbed',
+            'count'
+          );
+          const flights = flightStats?.sumQuantity?.quantity;
+          if (
+            typeof flights === 'number' &&
+            Number.isFinite(flights) &&
+            flights > 0
+          ) {
+            totalFlights = Math.round(flights);
+          }
+        } catch {
+          // Not readable on this device; floors fall back to the sample property.
         }
 
         const distanceTypes = [
@@ -1284,6 +1309,24 @@ const handleWorkout: RecordHandler = async (
         };
       }
 
+      // Tell a walk or run recorded on the watch alone (source bundle
+      // `<phone-bundle>.watchkitapp`) from other apps' workouts, and whether
+      // it was indoors, so the transformer can title it.
+      const workoutExtras = w as unknown as {
+        sourceRevision?: { source?: { bundleIdentifier?: string } };
+        metadata?: Record<string, unknown>;
+      };
+      const workoutBundleId =
+        workoutExtras.sourceRevision?.source?.bundleIdentifier;
+      if (workoutBundleId) record.sourceBundleId = workoutBundleId;
+      const indoorFlag = workoutExtras.metadata?.HKIndoorWorkout;
+      if (indoorFlag !== undefined) {
+        record.metadata = {
+          ...(record.metadata as Record<string, unknown> | undefined),
+          HKIndoorWorkout: indoorFlag,
+        };
+      }
+
       // Elevation is not a totals field on the workout; it arrives as metadata.
       const elevation = w as unknown as {
         metadataElevationAscended?: { quantity?: number };
@@ -1302,7 +1345,13 @@ const handleWorkout: RecordHandler = async (
       const telemetry: Record<string, number | null | undefined> = {};
       const gain = elevation.metadataElevationAscended?.quantity;
       const loss = elevation.metadataElevationDescended?.quantity;
-      const floors = quantityOf(elevation.totalFlightsClimbed);
+      // The sample property when it carries a value, else the statistic read
+      // above; a property of 0 is "not recorded", not "no floors".
+      const propertyFloors = quantityOf(elevation.totalFlightsClimbed);
+      const floors =
+        typeof propertyFloors === 'number' && propertyFloors > 0
+          ? propertyFloors
+          : totalFlights;
       const strokes = quantityOf(elevation.totalSwimmingStrokeCount);
       if (typeof gain === 'number') telemetry.elevation_gain_meters = gain;
       if (typeof loss === 'number') telemetry.elevation_loss_meters = loss;
@@ -1603,14 +1652,26 @@ interface LooseGroup {
   objects: { quantityType: string; quantity: number; unit: string }[];
 }
 
+interface CorrelationEvent {
+  bundleId: string;
+  startTime: number;
+  endTime: number;
+  containedTypes: Set<string>;
+}
+
 // Reconstruct per-food entries from LOOSE dietary samples — those NOT contained in any Food
 // correlation. A source's samples are grouped by event instant (one logged food = one shared
 // timestamp). `correlationUuids` are the contained-sample UUIDs to skip so we never
 // double-count nutrients that the correlation read already returned.
+// `correlationEvents` are the source bundle + time window + contained nutrient types of all read
+// correlations so loose samples from that same source and meal window are excluded if the correlation
+// already provides that nutrient (preventing double-counting in apps like MacroFactor that emit
+// both correlations and loose samples, while keeping distinct loose nutrients not in the correlation).
 const readLooseNutrition = async (
   startDate: Date,
   endDate: Date,
-  correlationUuids: Set<string>
+  correlationUuids: Set<string>,
+  correlationEvents: readonly CorrelationEvent[] = []
 ): Promise<Record<string, unknown>[]> => {
   const groups = new Map<string, LooseGroup>();
   // Filter to the window natively (limit: 0 = all in-window samples) instead of taking a
@@ -1629,9 +1690,15 @@ const readLooseNutrition = async (
       const sample = s as unknown as {
         uuid?: string;
         startDate: string | Date;
+        endDate?: string | Date;
         quantity: number;
         unit: string;
         metadataTimeZone?: string;
+        metadata?: {
+          HKTimeZone?: string;
+          timeZone?: string;
+          [key: string]: unknown;
+        };
         sourceRevision?: { source?: { bundleIdentifier?: string } };
       };
       if (!isInDateRange(new Date(sample.startDate), startDate, endDate))
@@ -1639,18 +1706,54 @@ const readLooseNutrition = async (
       if (sample.uuid && correlationUuids.has(sample.uuid)) continue; // already in a correlation
 
       const bundleId = sample.sourceRevision?.source?.bundleIdentifier;
+      const sampleStartMs = new Date(sample.startDate).getTime();
+      if (Number.isNaN(sampleStartMs)) continue;
+      const sampleEndMsRaw = sample.endDate
+        ? new Date(sample.endDate).getTime()
+        : sampleStartMs;
+      const sampleEndMs = Number.isNaN(sampleEndMsRaw)
+        ? sampleStartMs
+        : sampleEndMsRaw;
+
+      // Skip loose samples matching a correlation from the same source bundle in the same
+      // event window that already contains this nutrient type (prevents double-counting
+      // nutrients while preserving distinct nutrients not included in the correlation).
+      if (
+        bundleId &&
+        correlationEvents.some(
+          (event) =>
+            event.bundleId === bundleId &&
+            event.containedTypes.has(identifier) &&
+            sampleStartMs <= event.endTime + 1000 &&
+            sampleEndMs >= event.startTime - 1000
+        )
+      ) {
+        continue;
+      }
+
       const startIso = toIsoString(sample.startDate);
       const key = `${bundleId ?? 'unknown'}|${startIso}`;
+
+      const sampleTz =
+        (typeof sample.metadata?.HKTimeZone === 'string'
+          ? sample.metadata.HKTimeZone
+          : undefined) ||
+        (typeof sample.metadata?.timeZone === 'string'
+          ? sample.metadata.timeZone
+          : undefined) ||
+        sample.metadataTimeZone;
 
       let group = groups.get(key);
       if (!group) {
         group = {
           bundleId,
           startIso,
-          timeZone: sample.metadataTimeZone,
+          timeZone: sampleTz,
           objects: [],
         };
         groups.set(key, group);
+      } else if (!group.timeZone && sampleTz) {
+        group.timeZone = sampleTz;
       }
       group.objects.push({
         quantityType: identifier,
@@ -1686,8 +1789,8 @@ const handleNutrition: RecordHandler = async (
   // large or old food history would otherwise silently drop valid in-window correlations.
   const dateFilter = { date: { startDate, endDate } };
 
-  // 1. Named Food correlations (e.g. LoseIt). Collect contained-sample UUIDs so the loose
-  //    read below doesn't double-count the same nutrients.
+  // 1. Named Food correlations (e.g. LoseIt). Collect contained-sample UUIDs and correlation
+  //    event windows so the loose read below doesn't double-count the same nutrients.
   const correlations = await queryCorrelationSamples(
     'HKCorrelationTypeIdentifierFood',
     {
@@ -1703,12 +1806,21 @@ const handleNutrition: RecordHandler = async (
   );
 
   const correlationUuids = new Set<string>();
+  const correlationEvents: CorrelationEvent[] = [];
   const correlationRecords = inRange.map((c) => {
     const correlation = c as unknown as {
       uuid?: string;
       startDate: string | Date;
+      endDate?: string | Date;
       metadataFoodType?: string;
       metadataTimeZone?: string;
+      metadata?: {
+        HKFoodType?: string;
+        foodType?: string;
+        HKTimeZone?: string;
+        timeZone?: string;
+        [key: string]: unknown;
+      };
       sourceRevision?: { source?: { bundleIdentifier?: string } };
       objects?: {
         uuid?: string;
@@ -1721,17 +1833,58 @@ const handleNutrition: RecordHandler = async (
     for (const o of objects) {
       if (o.uuid) correlationUuids.add(o.uuid);
     }
+
+    const bundleId = correlation.sourceRevision?.source?.bundleIdentifier;
+    if (bundleId && objects.length > 0) {
+      const startMs = new Date(correlation.startDate).getTime();
+      const endMs = correlation.endDate
+        ? new Date(correlation.endDate).getTime()
+        : startMs;
+      if (!Number.isNaN(startMs)) {
+        const containedTypes = new Set<string>();
+        for (const o of objects) {
+          if (o.quantityType) {
+            containedTypes.add(o.quantityType);
+          }
+        }
+        correlationEvents.push({
+          bundleId,
+          startTime: Math.min(startMs, Number.isNaN(endMs) ? startMs : endMs),
+          endTime: Math.max(startMs, Number.isNaN(endMs) ? startMs : endMs),
+          containedTypes,
+        });
+      }
+    }
+
+    const foodLabel =
+      (typeof correlation.metadata?.HKFoodType === 'string'
+        ? correlation.metadata.HKFoodType
+        : undefined) ||
+      (typeof correlation.metadata?.foodType === 'string'
+        ? correlation.metadata.foodType
+        : undefined) ||
+      correlation.metadataFoodType;
+
+    const timeZone =
+      (typeof correlation.metadata?.HKTimeZone === 'string'
+        ? correlation.metadata.HKTimeZone
+        : undefined) ||
+      (typeof correlation.metadata?.timeZone === 'string'
+        ? correlation.metadata.timeZone
+        : undefined) ||
+      correlation.metadataTimeZone;
+
     return toNutritionRecord({
       objects: objects.map((o) => ({
         quantityType: o.quantityType,
         quantity: o.quantity,
         unit: o.unit,
       })),
-      foodLabel: correlation.metadataFoodType,
+      foodLabel,
       uuid: correlation.uuid,
       startIso: toIsoString(correlation.startDate),
-      sourceBundleId: correlation.sourceRevision?.source?.bundleIdentifier,
-      timeZone: correlation.metadataTimeZone,
+      sourceBundleId: bundleId,
+      timeZone,
     });
   });
 
@@ -1739,7 +1892,8 @@ const handleNutrition: RecordHandler = async (
   const looseRecords = await readLooseNutrition(
     startDate,
     endDate,
-    correlationUuids
+    correlationUuids,
+    correlationEvents
   );
 
   return [...correlationRecords, ...looseRecords];

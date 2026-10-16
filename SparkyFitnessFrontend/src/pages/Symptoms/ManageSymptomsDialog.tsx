@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { translateSymptomChoice, translateSymptomLabel } from './symptomLabels';
 import { Eye, EyeOff, Pencil, Pin, PinOff, Plus, Trash2 } from 'lucide-react';
 import {
   BUILT_IN_OPTIONS,
@@ -83,11 +84,11 @@ function OptionsManager({ kind }: { kind: SymptomOptionKind }) {
                 hidden.has(label) ? 'text-muted-foreground line-through' : ''
               }
             >
-              {label}
+              {translateSymptomLabel(t, label)}
             </span>
             <Switch
               aria-label={t('symptoms.manage.show', 'Show {{name}}', {
-                name: label,
+                name: translateSymptomLabel(t, label),
               })}
               checked={!hidden.has(label)}
               onCheckedChange={(visible) =>
@@ -236,11 +237,14 @@ export default function ManageSymptomsDialog({
                     className="flex items-center justify-between gap-2 p-2.5 text-sm"
                   >
                     <span className="min-w-0">
-                      <span className="font-medium">{c.displayName}</span>
+                      <span className="font-medium">
+                        {translateSymptomChoice(t, c)}
+                      </span>
                       <span className="ml-2 text-xs text-muted-foreground">
                         {t(`symptoms.templates.${c.template}`, c.template)}
-                        {c.isEpisodic &&
-                          ` · ${t('symptoms.manage.episodeTag', 'episodes')}`}
+                        {c.isEpisodic && (
+                          <span>{` · ${t('symptoms.manage.episodeTag', 'episodes')}`}</span>
+                        )}
                       </span>
                     </span>
                     <span className="flex shrink-0 items-center">

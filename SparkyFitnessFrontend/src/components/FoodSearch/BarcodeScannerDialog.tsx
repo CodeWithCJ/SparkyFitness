@@ -72,7 +72,7 @@ export const BarcodeScannerDialog = ({
             <div className="flex items-center gap-2">
               <Database className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm font-medium">
-                {t('enhancedFoodSearch.provider', 'Data Provider')}:
+                {t('enhancedFoodSearch.dataProvider', 'Data Provider:')}
               </span>
             </div>
             <Select
@@ -96,7 +96,10 @@ export const BarcodeScannerDialog = ({
                   ))
                 ) : (
                   <SelectItem value="none" disabled>
-                    No active providers found
+                    {t(
+                      'foodSearch.barcodeScannerDialog.noActiveProvidersFound',
+                      'No active providers found'
+                    )}
                   </SelectItem>
                 )}
               </SelectContent>
@@ -104,7 +107,16 @@ export const BarcodeScannerDialog = ({
           </div>
         )}
 
-        <Suspense fallback={<div>Loading camera module...</div>}>
+        <Suspense
+          fallback={
+            <div>
+              {t(
+                'foodSearch.barcodeScannerDialog.loadingCameraModule',
+                'Loading camera module...'
+              )}
+            </div>
+          }
+        >
           <BarcodeScanner
             onBarcodeDetected={onBarcodeDetected}
             onClose={() => onOpenChange(false)}

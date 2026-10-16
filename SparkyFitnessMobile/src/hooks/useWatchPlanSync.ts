@@ -5,6 +5,8 @@ import WatchConnectivity, {
   type WatchWorkoutStartPayload,
 } from '../../modules/watch-connectivity';
 import { isTempSetId } from '../utils/workoutSession';
+import { saveActiveWorkoutSession } from './useActiveWorkoutAutosave';
+import { queryClient } from './queryClient';
 import { buildWatchWorkoutStartPayload } from './useStartLiveWorkout';
 
 type ActiveWorkoutState = ReturnType<typeof useActiveWorkoutStore.getState>;
@@ -33,9 +35,12 @@ function watchPlanStructureKey(plan: WatchWorkoutStartPayload): string {
  * armed once at live start; without this it keeps the original plan, and
  * anything added later can only be logged on the phone.
  *
- * Waits while any set still has a temporary id: the autosave swaps those for
- * server ids within moments, and a set the watch logged under the temporary
- * id would no longer match anything on the phone.
+ * Waits while any set still has a temporary id, since a set the watch logged
+ * under the temporary id would no longer match anything on the phone. It does
+ * not wait for the debounced autosave to swap them: it asks for the save at
+ * once (saves run one at a time, so this cannot overlap another), so what was
+ * added on the phone reaches the wrist after one round trip to the server
+ * instead of that plus the debounce.
  */
 export function useWatchPlanSync(enabled: boolean): void {
   const { t } = useTranslation();
@@ -48,6 +53,9 @@ export function useWatchPlanSync(enabled: boolean): void {
     // ids must be sent even though nothing else changed.
     let known: { armedAt: number; key: string | null } | null = null;
     let lastRevision = 0;
+    // The temporary ids a save was last asked for, so a store update that
+    // changes nothing about them does not ask again.
+    let flushedFor = '';
 
     const sync = (state: ActiveWorkoutState): void => {
       const { session, watchArmedAt } = state;
@@ -60,6 +68,17 @@ export function useWatchPlanSync(enabled: boolean): void {
       ) {
         if (known?.armedAt !== watchArmedAt) {
           known = { armedAt: watchArmedAt, key: null };
+        }
+        const tempIds = session.exercises
+          .flatMap((exercise) => exercise.sets.map((set) => set.id))
+          .filter(isTempSetId)
+          .join(',');
+        if (tempIds !== flushedFor) {
+          flushedFor = tempIds;
+          // The store updates with server ids when it lands, which runs this
+          // again and sends the plan. A failure is logged by the save itself
+          // and retried by the autosave.
+          void saveActiveWorkoutSession(queryClient).catch(() => undefined);
         }
         return;
       }

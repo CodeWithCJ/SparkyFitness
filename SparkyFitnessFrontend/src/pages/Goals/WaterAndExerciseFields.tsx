@@ -1,5 +1,6 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import {
@@ -21,6 +22,7 @@ type WaterExerciseBase = Pick<
   | 'water_goal_ml'
   | 'target_exercise_calories_burned'
   | 'target_exercise_duration_minutes'
+  | 'target_steps'
 >;
 
 export const WaterAndExerciseFields = <T extends WaterExerciseBase>({
@@ -31,6 +33,7 @@ export const WaterAndExerciseFields = <T extends WaterExerciseBase>({
   setState: (newState: T) => void;
 }) => {
   const { t } = useTranslation();
+  const stepsGoalId = useId();
   const {
     water_display_unit,
     setWaterDisplayUnit,
@@ -124,6 +127,24 @@ export const WaterAndExerciseFields = <T extends WaterExerciseBase>({
             setState({
               ...state,
               target_exercise_duration_minutes: Number(e.target.value),
+            })
+          }
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor={stepsGoalId} className="text-xs">
+          {t('goals.goalsSettings.targetSteps', 'Daily Steps Goal')}
+        </Label>
+        <Input
+          id={stepsGoalId}
+          type="number"
+          min={0}
+          value={state.target_steps ?? ''}
+          onChange={(e) =>
+            setState({
+              ...state,
+              target_steps:
+                e.target.value === '' ? null : Number(e.target.value),
             })
           }
         />

@@ -18,7 +18,7 @@ import {
   VitaminCalculationAlgorithm,
   SugarCalculationAlgorithm,
   AddedSugarAlgorithm,
-} from '@/types/nutrientAlgorithms';
+} from '@workspace/shared';
 import { BmrAlgorithm } from '@/services/bmrService';
 import { BodyFatAlgorithm } from '@/services/bodyCompositionService';
 import {

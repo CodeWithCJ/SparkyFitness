@@ -64,6 +64,7 @@ describe('goalRepository', () => {
         custom_nutrients: {},
         caffeine_mg: 300,
         alcohol_g: 14,
+        target_steps: 10000,
       };
 
       const result = await goalRepository.upsertGoal(goalData);
@@ -71,13 +72,24 @@ describe('goalRepository', () => {
       expect(mockClient.query).toHaveBeenCalledTimes(1);
       const [sql, params] = mockClient.query.mock.calls[0];
 
-      // Check positional params count ($1 through $35)
-      expect(params).toHaveLength(35);
+      // Check positional params count ($1 through $37)
+      expect(params).toHaveLength(37);
       expect(params[0]).toBe('user-1'); // $1 user_id
       expect(params[1]).toBe('2026-09-05'); // $2 goal_date
       expect(params[2]).toBe(2000); // $3 calories
       expect(params[33]).toBe(300); // $34 caffeine_mg
       expect(params[34]).toBe(14); // $35 alcohol_g
+      expect(params[35]).toBe(10000); // $36 target_steps
+      expect(params[36]).toBe(true); // $37 target_steps supplied
+      // target_steps is named once in the INSERT column list, as its last column
+      expect(sql.split('VALUES')[0].match(/target_steps/g)?.length).toBe(1);
+      // Every INSERT column has exactly one value placeholder.
+      const columnList = sql.split('INSERT INTO user_goals (')[1].split(')')[0];
+      const columns = columnList.split(',').map((c: string) => c.trim());
+      const insertValues = sql.split('VALUES')[1].split('ON CONFLICT')[0];
+      expect(new Set(columns).size).toBe(columns.length);
+      expect(insertValues.match(/\$\d+/g)).toHaveLength(columns.length);
+      expect(sql).toContain('alcohol_g, target_steps');
 
       // Check SQL includes caffeine_mg and alcohol_g in INSERT and DO UPDATE
       expect(sql).toContain('caffeine_mg');

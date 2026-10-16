@@ -117,9 +117,18 @@ enum SampleDay {
             hiddenPages: nil,
             setInputStyle: nil,
             startableWorkouts: startableWorkouts,
-            scheduledWorkouts: scheduledWorkouts
+            scheduledWorkouts: scheduledWorkouts,
+            suggestedExercises: suggestedExercises
         )
     }
+
+    /// For Add Exercise during a workout.
+    static let suggestedExercises = [
+        SuggestedExercise(exerciseId: "ex-1", name: "Bench Press"),
+        SuggestedExercise(exerciseId: "ex-2", name: "Lat Pulldown"),
+        SuggestedExercise(exerciseId: "ex-3", name: "Back Squat"),
+        SuggestedExercise(exerciseId: "ex-4", name: "Overhead Press"),
+    ]
 
     /// What the active plan puts on today, for the top of the workout picker.
     static let scheduledWorkouts = [

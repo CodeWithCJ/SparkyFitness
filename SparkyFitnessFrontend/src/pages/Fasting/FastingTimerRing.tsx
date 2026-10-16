@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo, useId } from 'react';
 import { cn } from '@/lib/utils';
 import { Flame } from 'lucide-react';
 
+import { useTranslation } from 'react-i18next';
 interface FastingTimerRingProps {
   startTime: Date;
   targetEndTime: Date;
@@ -16,6 +17,7 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
   targetEndTime,
   size = 220,
 }) => {
+  const { t } = useTranslation();
   const [now, setNow] = useState<Date>(new Date());
 
   useEffect(() => {
@@ -229,7 +231,9 @@ const FastingTimerRing: React.FC<FastingTimerRingProps> = ({
           <span>{zone.name}</span>
         </div>
         <div className="text-xs text-muted-foreground mt-2">
-          {progress >= 100 ? 'Goal Reached' : `${Math.round(progress)}%`}
+          {progress >= 100
+            ? t('fasting.fastingTimerRing.goalReached', 'Goal Reached')
+            : `${Math.round(progress)}%`}
         </div>
       </div>
     </div>

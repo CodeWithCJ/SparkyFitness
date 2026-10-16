@@ -4,7 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 import { CallbackStatus } from './CallbackStatus';
 import { useLinkFitbitMutation } from '@/hooks/Integrations/useIntegrations';
 
+import { useTranslation } from 'react-i18next';
 const FitbitCallback = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -21,8 +23,14 @@ const FitbitCallback = () => {
       if (!code) {
         setMessage('Error: Missing Fitbit authorization code.');
         toast({
-          title: 'Fitbit OAuth Error',
-          description: 'Missing authorization code in callback.',
+          title: t(
+            'integrations.fitbitCallback.fitbitOAuthError',
+            'Fitbit OAuth Error'
+          ),
+          description: t(
+            'integrations.fitbitCallback.missingAuthorizationCodeInCallback',
+            'Missing authorization code in callback.'
+          ),
           variant: 'destructive',
         });
         setLoading(false);
@@ -48,7 +56,7 @@ const FitbitCallback = () => {
     };
 
     processCallback();
-  }, [location, navigate, toast, linkFitbitAccount]);
+  }, [location, navigate, toast, linkFitbitAccount, t]);
 
   return <CallbackStatus loading={loading} message={message} />;
 };

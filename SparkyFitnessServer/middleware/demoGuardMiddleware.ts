@@ -150,6 +150,7 @@ const DEMO_BLOCKED_PATH_PATTERNS = [
   // import-from-csv, import-history-csv, import-fit, import-json
   /\/import(-|\/|$)/i,
   /\/scan-label$/i, // base64 label image -> LLM
+  /\/supplement-label\/scan$/i, // base64 supplement label image -> LLM
   /\/estimate-food-photo$/i, // base64 meal photo -> LLM
   /\/openfoodfacts\//i, // publishes product data and photos to a public database
 ];

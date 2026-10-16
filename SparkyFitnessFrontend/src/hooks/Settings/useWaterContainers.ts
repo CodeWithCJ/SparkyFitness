@@ -10,12 +10,16 @@ import {
 } from '@/api/Settings/waterContainerService';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 
+import i18n from 'i18next';
 export const useWaterContainersQuery = (userId?: string) => {
   return useQuery({
     queryKey: waterContainerKeys.lists(),
     queryFn: getWaterContainers,
     meta: {
-      errorMessage: 'Failed to fetch water containers.',
+      errorMessage: i18n.t(
+        'hooks.useWaterContainers.failedToFetchWaterContainers',
+        'Failed to fetch water containers.'
+      ),
     },
     enabled: !!userId,
   });
@@ -26,7 +30,10 @@ export const useDrinkPresetCatalogQuery = () => {
     queryKey: ['water-containers', 'catalog'],
     queryFn: getDrinkPresetCatalog,
     meta: {
-      errorMessage: 'Failed to fetch drink preset catalog.',
+      errorMessage: i18n.t(
+        'hooks.useWaterContainers.failedToFetchDrinkPreset',
+        'Failed to fetch drink preset catalog.'
+      ),
     },
   });
 };
@@ -40,8 +47,14 @@ export const useMaterializeDrinkPresetMutation = () => {
       queryClient.invalidateQueries({ queryKey: waterContainerKeys.all });
     },
     meta: {
-      successMessage: 'Drink preset added.',
-      errorMessage: 'Failed to add drink preset.',
+      successMessage: i18n.t(
+        'hooks.useWaterContainers.drinkPresetAdded',
+        'Drink preset added.'
+      ),
+      errorMessage: i18n.t(
+        'hooks.useWaterContainers.failedToAddDrinkPreset',
+        'Failed to add drink preset.'
+      ),
     },
   });
 };
@@ -55,8 +68,14 @@ export const useCreateWaterContainerMutation = () => {
       queryClient.invalidateQueries({ queryKey: waterContainerKeys.all });
     },
     meta: {
-      successMessage: 'Water container added.',
-      errorMessage: 'Failed to add water container.',
+      successMessage: i18n.t(
+        'hooks.useWaterContainers.waterContainerAdded',
+        'Water container added.'
+      ),
+      errorMessage: i18n.t(
+        'hooks.useWaterContainers.failedToAddWaterContainer',
+        'Failed to add water container.'
+      ),
     },
   });
 };
@@ -76,8 +95,14 @@ export const useUpdateWaterContainerMutation = () => {
       queryClient.invalidateQueries({ queryKey: waterContainerKeys.all });
     },
     meta: {
-      successMessage: 'Water container updated.',
-      errorMessage: 'Failed to update water container.',
+      successMessage: i18n.t(
+        'hooks.useWaterContainers.waterContainerUpdated',
+        'Water container updated.'
+      ),
+      errorMessage: i18n.t(
+        'hooks.useWaterContainers.failedToUpdateWaterContainer',
+        'Failed to update water container.'
+      ),
     },
   });
 };
@@ -91,8 +116,14 @@ export const useDeleteWaterContainerMutation = () => {
       queryClient.invalidateQueries({ queryKey: waterContainerKeys.all });
     },
     meta: {
-      successMessage: 'Water container deleted.',
-      errorMessage: 'Failed to delete water container.',
+      successMessage: i18n.t(
+        'hooks.useWaterContainers.waterContainerDeleted',
+        'Water container deleted.'
+      ),
+      errorMessage: i18n.t(
+        'hooks.useWaterContainers.failedToDeleteWaterContainer',
+        'Failed to delete water container.'
+      ),
     },
   });
 };
@@ -106,8 +137,14 @@ export const useSetPrimaryWaterContainerMutation = () => {
       queryClient.invalidateQueries({ queryKey: waterContainerKeys.all });
     },
     meta: {
-      successMessage: 'Primary container updated.',
-      errorMessage: 'Failed to set primary container.',
+      successMessage: i18n.t(
+        'hooks.useWaterContainers.primaryContainerUpdated',
+        'Primary container updated.'
+      ),
+      errorMessage: i18n.t(
+        'hooks.useWaterContainers.failedToSetPrimaryContainer',
+        'Failed to set primary container.'
+      ),
     },
   });
 };

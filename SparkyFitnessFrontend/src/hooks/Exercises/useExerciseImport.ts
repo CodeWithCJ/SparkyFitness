@@ -11,6 +11,7 @@ import {
   type CsvFormatOptions,
 } from '@workspace/shared';
 
+import i18n from 'i18next';
 // Debounce for the reparse-on-format-change effects below — collapses rapid
 // format-bar clicks into a single re-parse instead of one per click.
 const REPARSE_DEBOUNCE_MS = 400;
@@ -193,7 +194,10 @@ export function useExerciseImport(
         name: 'Push-ups',
         category: 'Strength',
         calories_per_hour: 300,
-        description: 'Bodyweight exercise for chest, shoulders, and triceps.',
+        description: i18n.t(
+          'hooks.useExerciseImport.bodyweightExerciseForChestShoulders',
+          'Bodyweight exercise for chest, shoulders, and triceps.'
+        ),
         force: 'Push',
         level: 'Beginner',
         mechanic: 'Compound',

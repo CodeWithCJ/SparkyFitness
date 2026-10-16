@@ -1,16 +1,8 @@
 import { z } from "zod";
 import { changeFoodAssistantTaskSchema } from "./FoodAssistant.api.zod.ts";
+import { foodAssistantDateSchema } from "./FoodAssistantPlanDraft.api.zod.ts";
 const uuid = z.string().uuid();
-const date = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/)
-  .refine((value) => {
-    const parsed = new Date(`${value}T12:00:00Z`);
-    return (
-      Number.isFinite(parsed.getTime()) &&
-      parsed.toISOString().slice(0, 10) === value
-    );
-  }, "Use a valid calendar date.");
+const date = foodAssistantDateSchema;
 const time = z
   .string()
   .regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/)
@@ -46,6 +38,15 @@ const observed = {
   expected_fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
 };
 export const foodAssistantDiaryActionSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("log_recipe"),
+      meal_id: uuid,
+      expected_recipe_updated_at: z.string().datetime(),
+      ...portion.shape,
+      destination,
+    })
+    .strict(),
   z
     .object({
       type: z.literal("log"),
@@ -96,3 +97,27 @@ export type FoodAssistantDiaryAction = z.infer<
 export type ApplyFoodAssistantDiary = z.infer<
   typeof applyFoodAssistantDiarySchema
 >;
+
+/** A request link contains proposed work only. The signed-in owner must review
+ * it and press Confirm before the existing authenticated mutation is sent. */
+export const foodAssistantDiaryConfirmationSchema = z.discriminatedUnion(
+  "action",
+  [
+    z
+      .object({
+        action: z.literal("undo"),
+        task_id: uuid,
+        undo: undoFoodAssistantDiarySchema,
+      })
+      .strict(),
+    z
+      .object({
+        action: z.literal("apply"),
+        task_id: uuid,
+        command: applyFoodAssistantDiarySchema.refine(
+          (command) => command.action.type === "delete",
+        ),
+      })
+      .strict(),
+  ],
+);

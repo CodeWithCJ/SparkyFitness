@@ -63,8 +63,11 @@ export const EnergyCircle = ({
             )}
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            {t('exercise.dailyProgress.remaining', 'remaining')}{' '}
-            {getEnergyUnitString(unit)}
+            {t(
+              'exercise.dailyProgress.remaining2',
+              'remaining {{energyUnitString}}',
+              { energyUnitString: getEnergyUnitString(unit) }
+            )}
           </div>
           {targetBand !== undefined && (
             <div className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">

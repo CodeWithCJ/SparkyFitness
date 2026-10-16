@@ -1,3 +1,4 @@
+import { scaleMax } from '@workspace/shared';
 import { useState, useMemo } from 'react';
 import {
   View,
@@ -19,6 +20,7 @@ import {
   useSymptomFreeDays,
   useSymptomActions,
 } from '../hooks/useSymptoms';
+import SymptomCalendar from '../components/symptoms/SymptomCalendar';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
@@ -37,11 +39,25 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
   >(null);
 
   const { definitions } = useSymptomDefinitions();
+  // A symptom can be rated on 1-5 or 1-10; show each severity against its own
+  // scale. A text-scale symptom has no numeric maximum, so it gets no badge.
+  const maxFor = (symptomId: string | null | undefined) => {
+    const max = scaleMax(
+      definitions.find((d) => d.id === symptomId)?.scale_type ?? '1-10'
+    );
+    return max > 0 ? max : null;
+  };
   const [now] = useState(() => Date.now());
   const { episodes: ongoing } = useOngoingEpisodes();
-  const { entries, isLoading } = useSymptomEntriesDetailed({
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  // Insights always cover the last 30 days; the list narrows to a tapped day.
+  const { entries } = useSymptomEntriesDetailed({
     fromDate: thirtyDaysAgo,
     toDate: today,
+  });
+  const { entries: listEntries, isLoading } = useSymptomEntriesDetailed({
+    fromDate: selectedDate ?? thirtyDaysAgo,
+    toDate: selectedDate ?? today,
   });
   const { freeDays } = useSymptomFreeDays({
     fromDate: thirtyDaysAgo,
@@ -102,8 +118,10 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
   }, [entries, freeDays]);
 
   const filteredEntries = selectedSymptomFilter
-    ? entries.filter((e) => e.symptom_name_snapshot === selectedSymptomFilter)
-    : entries;
+    ? listEntries.filter(
+        (e) => e.symptom_name_snapshot === selectedSymptomFilter
+      )
+    : listEntries;
 
   const formatDuration = (start: string | null, end: string | null) => {
     if (!start) return '';
@@ -226,6 +244,12 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
             </Text>
           </TouchableOpacity>
         </View>
+
+        <SymptomCalendar
+          selectedDate={selectedDate}
+          initialDate={today}
+          onSelectDate={setSelectedDate}
+        />
 
         {/* 30-Day Insights Card */}
         <View className="p-3.5 rounded-xl bg-surface border border-border mb-1">
@@ -350,10 +374,10 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
                     · {formatDuration(ep.started_at, null)}
                   </Text>
                 </View>
-                {ep.severity != null && (
+                {ep.severity != null && maxFor(ep.symptom_id) != null && (
                   <View className="bg-amber-500/20 px-2.5 py-1 rounded-md border border-amber-500/40">
                     <Text className="text-xs font-bold text-amber-500">
-                      {ep.severity}/10
+                      {ep.severity}/{maxFor(ep.symptom_id)}
                     </Text>
                   </View>
                 )}
@@ -376,10 +400,14 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
               })}
             </Text>
             <Text className="text-xs text-text-muted text-center px-6">
-              {t('symptoms.noHistoryDesc', {
-                defaultValue:
-                  'Logs and past episodes for the last 30 days will show here.',
-              })}
+              {selectedDate
+                ? t('symptoms.noHistoryForDay', {
+                    defaultValue: 'No symptoms were logged on this day.',
+                  })
+                : t('symptoms.noHistoryDesc', {
+                    defaultValue:
+                      'Logs and past episodes for the last 30 days will show here.',
+                  })}
             </Text>
           </View>
         ) : (
@@ -387,10 +415,8 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
             <TouchableOpacity
               key={item.id}
               onPress={() =>
-                navigation.navigate('SymptomLog', {
+                navigation.navigate('SymptomEpisodeDetail', {
                   entryId: item.id,
-                  date: item.entry_date,
-                  isOngoing: Boolean(item.started_at && !item.ended_at),
                 })
               }
               className="bg-surface border border-border rounded-2xl p-4 space-y-2 shadow-sm"
@@ -408,10 +434,10 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
                   </Text>
                 </View>
 
-                {item.severity != null && (
+                {item.severity != null && maxFor(item.symptom_id) != null && (
                   <View className="bg-accent-primary/10 px-2.5 py-1 rounded-lg border border-accent-primary/20">
                     <Text className="text-xs font-bold text-accent-primary">
-                      {item.severity}/10
+                      {item.severity}/{maxFor(item.symptom_id)}
                     </Text>
                   </View>
                 )}

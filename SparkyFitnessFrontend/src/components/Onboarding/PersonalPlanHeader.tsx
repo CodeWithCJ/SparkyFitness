@@ -76,7 +76,7 @@ export const PersonalPlanHeader = ({
         </div>
 
         <p className="text-muted-foreground uppercase text-sm font-bold tracking-wider mb-2">
-          Daily Calorie Budget
+          {t('onboarding.plan.dailyCalorieBudget', 'Daily Calorie Budget')}
         </p>
         <div className="text-6xl font-extrabold text-green-500 flex justify-center">
           <Input
@@ -92,19 +92,24 @@ export const PersonalPlanHeader = ({
           />
         </div>
         <p className="text-xl text-foreground font-medium mt-1">
-          {getEnergyUnitString(localEnergyUnit)} / day
+          {t('onboarding.plan.perDay', '{{unit}} / day', {
+            unit: getEnergyUnitString(localEnergyUnit),
+          })}
         </p>
 
         <div className="mt-6 pt-6 border-t border-border flex justify-between text-sm text-muted-foreground">
           <span>
-            Base BMR:{' '}
-            {plan?.bmr &&
-              Math.round(convertEnergy(plan.bmr, 'kcal', localEnergyUnit))}
-            ) {getEnergyUnitString(localEnergyUnit)}
+            {t('onboarding.plan.baseBmr', 'Base BMR:')}{' '}
+            {!!plan?.bmr && (
+              <span>
+                {Math.round(convertEnergy(plan.bmr, 'kcal', localEnergyUnit))}
+              </span>
+            )}
+            {getEnergyUnitString(localEnergyUnit)}
           </span>
 
           <span>
-            Calorie Buyback:{' '}
+            {t('onboarding.plan.calorieBuyback', 'Calorie Buyback:')}{' '}
             <span
               className={
                 formData.addBurnedCalories
@@ -112,7 +117,9 @@ export const PersonalPlanHeader = ({
                   : 'text-muted-foreground'
               }
             >
-              {formData.addBurnedCalories ? 'ON' : 'OFF'}
+              {formData.addBurnedCalories
+                ? t('onboarding.plan.on', 'ON')
+                : t('onboarding.plan.off', 'OFF')}
             </span>
           </span>
         </div>

@@ -154,11 +154,9 @@ export const DailyHealthMetricsCard: React.FC<DailyHealthMetricsCardProps> = ({
                 {t('dailyHealthMetrics.peak', 'peak')}
               </span>
               <span className="text-xs text-muted-foreground font-mono">
-                (
-                {t('dailyHealthMetrics.low', 'low: {{val}}', {
+                {t('dailyHealthMetrics.low2', '(low: {{val}})', {
                   val: metrics.body_battery_lowest ?? '--',
                 })}
-                )
               </span>
             </div>
             {metrics.body_battery_highest != null && (

@@ -155,7 +155,10 @@ export const useDeleteFoodMutation = () => {
         'Failed to delete food.'
       ),
 
-      successMessage: 'Food deleted successfully.',
+      successMessage: i18n.t(
+        'hooks.useFoods.foodDeletedSuccessfully',
+        'Food deleted successfully.'
+      ),
     },
   });
 };

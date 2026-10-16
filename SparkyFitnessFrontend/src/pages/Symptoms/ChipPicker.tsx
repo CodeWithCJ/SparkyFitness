@@ -4,6 +4,7 @@ import { Plus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { OptionItem } from '@workspace/shared';
+import { translateSymptomLabel } from './symptomLabels';
 
 interface ChipPickerProps {
   items: OptionItem[];
@@ -73,7 +74,9 @@ export default function ChipPicker({
                 onClick={() => onToggle(item.label)}
                 className={chipClass(on)}
               >
-                {item.label}
+                {item.isCustom
+                  ? item.label
+                  : translateSymptomLabel(t, item.label)}
               </button>
               {item.isCustom && optionId && onRemoveCustom && (
                 <button

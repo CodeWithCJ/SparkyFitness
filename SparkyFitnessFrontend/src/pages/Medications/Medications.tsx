@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import DayNavigator from '@/components/DayNavigator';
 import {
@@ -457,8 +457,11 @@ export default function Medications() {
                             <>
                               <span>·</span>
                               <span className="truncate">
-                                {t('medications.cabinet.doctorPrefix', 'Dr.')}{' '}
-                                {med.prescriber}
+                                {t(
+                                  'medications.cabinet.drPrescriber',
+                                  'Dr. {{prescriber}}',
+                                  { prescriber: med.prescriber }
+                                )}
                               </span>
                             </>
                           )}
@@ -507,7 +510,7 @@ export default function Medications() {
                           </CardTitle>
                           {selected.is_glp1 && (
                             <Badge className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] px-1.5 py-0">
-                              GLP-1
+                              {t('medications.glp1Name', 'GLP-1')}
                             </Badge>
                           )}
                           {selected.is_supplement &&
@@ -695,17 +698,13 @@ export default function Medications() {
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="text-sm text-muted-foreground">
-                          {t(
-                            'medications.cabinet.adherenceDescriptionBefore',
-                            'Schedules and daily checklists for non-GLP-1 medications are fully active. Manage schedule rules below, and log daily intake from the'
-                          )}{' '}
-                          <strong>
-                            {t('medications.cabinet.todayTab', 'Today')}
-                          </strong>{' '}
-                          {t(
-                            'medications.cabinet.adherenceDescriptionAfter',
-                            'tab.'
-                          )}
+                          <Trans
+                            i18nKey="medications.cabinet.schedulesAndDailyChecklistsFor"
+                            defaults={
+                              'Schedules and daily checklists for non-GLP-1 medications are fully active. Manage schedule rules below, and log daily intake from the <strong>Today</strong> tab.'
+                            }
+                            components={{ strong: <strong /> }}
+                          />
                         </CardContent>
                       </Card>
                       <ScheduleManager med={selected} />

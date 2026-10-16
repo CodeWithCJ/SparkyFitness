@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Wine, AlertCircle, CheckCircle } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { useAlcoholWeekReport } from '@/hooks/Reports/useReports';
 import { Skeleton } from '@/components/ui/skeleton';
 import { compareDays, type AlcoholDayTotal } from '@workspace/shared';
@@ -74,14 +74,22 @@ export const WeeklyAlcoholCard = ({ date, userId }: WeeklyAlcoholCardProps) => {
           <div>
             <span className="text-2xl font-bold">{standard_drinks}</span>
             <span className="text-sm text-muted-foreground ml-1">
-              {t('reports.alcohol.standardDrinks', 'std drinks')} ({total_g}g)
+              {t('reports.alcohol.stdDrinksG', 'std drinks ({{total_g}}g)', {
+                total_g,
+              })}
             </span>
           </div>
           {limit_standard_drinks !== null ? (
             <div className="flex items-center space-x-2">
               <span className="text-sm text-muted-foreground">
-                {t('reports.alcohol.limit', 'Limit')}: {limit_standard_drinks} (
-                {limit_g}g)
+                <Trans
+                  i18nKey="reports.alcohol.limitG"
+                  defaults={
+                    'Limit: {{limit_standard_drinks}} (<span>{{limit_g}}</span>g)'
+                  }
+                  values={{ limit_standard_drinks, limit_g }}
+                  components={{ span: <span /> }}
+                />
               </span>
               {over_limit ? (
                 <Badge

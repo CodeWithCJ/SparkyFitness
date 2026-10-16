@@ -353,6 +353,32 @@ const MedicationDetailScreen: React.FC<MedicationDetailScreenProps> = ({
             </View>
           )}
 
+          {med.is_glp1 && !med.is_supplement && (
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('Glp1Tracker', { medicationId })
+              }
+              activeOpacity={0.6}
+              accessibilityRole="button"
+              className="bg-surface rounded-xl p-4 mb-3 shadow-sm flex-row items-center"
+            >
+              <View className="flex-1">
+                <Text className="text-base font-semibold text-text-primary">
+                  {t('medications.glp1.tracker.title', {
+                    defaultValue: 'GLP-1 tracker',
+                  })}
+                </Text>
+                <Text className="text-sm text-text-muted mt-0.5">
+                  {t('medications.glp1.tracker.subtitle', {
+                    defaultValue:
+                      'Injections, site map, pens, titration and daily check-in',
+                  })}
+                </Text>
+              </View>
+              <Icon name="chevron-forward" size={16} color={textSecondary} />
+            </TouchableOpacity>
+          )}
+
           <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
             <View className="flex-row justify-between items-center mb-2">
               <Text className="text-sm font-semibold text-text-secondary">

@@ -339,6 +339,24 @@ export async function processGarminHealthAndWellnessData(
             ? Number(acuteLoad) / Number(chronicLoad)
             : null;
 
+        // Ordering key for the total_calories upsert gate: routes.py stamps
+        // each daily_summary entry with the get_user_summary fetch instant
+        // (captured_at), so the newest provider snapshot wins however
+        // scheduled and manual syncs interleave — the same reasoning Polar
+        // uses end_time for. Microservices predating the field omit it and an
+        // unparseable value degrades the same way: the row then keeps a NULL
+        // capture time, which the upsert gate only lets fill an equally
+        // untimestamped slot, so a delayed legacy sync can never stamp its own
+        // arrival time over a newer timestamped total.
+        const summaryCapturedAtMs = summaryItem.captured_at
+          ? Date.parse(String(summaryItem.captured_at))
+          : NaN;
+        const totalCalories = summaryItem.total_calories ?? null;
+        const totalCaloriesCapturedAt =
+          totalCalories !== null && !Number.isNaN(summaryCapturedAtMs)
+            ? new Date(summaryCapturedAtMs)
+            : null;
+
         await genericHealthRepo.upsertDailyHealthMetrics(userId, actingUserId, {
           user_id: userId,
           entry_date: dateStr,
@@ -355,6 +373,10 @@ export async function processGarminHealthAndWellnessData(
           floors_descended: floorsItem?.floors_descended ?? null,
           active_calories: summaryItem.active_calories ?? null,
           bmr_calories: summaryItem.bmr_calories ?? null,
+          total_calories: totalCalories,
+          // Value and stamp travel as a pair: a NULL stamp marks an unordered
+          // legacy snapshot, which the gate only lets fill a NULL slot.
+          total_calories_captured_at: totalCaloriesCapturedAt,
           resting_heart_rate: summaryItem.resting_heart_rate ?? null,
           exercise_minutes: intensityItem?.total_intensity_minutes ?? null,
           body_battery_highest:

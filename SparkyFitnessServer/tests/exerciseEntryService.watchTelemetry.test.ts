@@ -2,6 +2,7 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import userRepository from '../models/userRepository.js';
 import { attachWatchTelemetryToExerciseEntry } from '../services/exerciseEntryService.js';
+import { upsertSamplesByDay } from '../services/healthMetricSampleWriter.js';
 
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
 vi.mock('../models/exercise', () => ({ default: {} }));
@@ -20,6 +21,12 @@ vi.mock('../models/exerciseEntry', async (importOriginal) => {
 vi.mock('../models/workoutPresetRepository', () => ({ default: {} }));
 vi.mock('../models/activityDetailsRepository', () => ({ default: {} }));
 vi.mock('../models/preferenceRepository', () => ({ default: {} }));
+vi.mock('../services/healthMetricSampleWriter', () => ({
+  upsertSamplesByDay: vi.fn(),
+}));
+vi.mock('../utils/timezoneLoader', () => ({
+  loadUserTimezone: vi.fn(() => Promise.resolve('UTC')),
+}));
 vi.mock('../models/userRepository', () => ({
   default: { getUserProfile: vi.fn() },
 }));
@@ -45,8 +52,11 @@ describe('attachWatchTelemetryToExerciseEntry', () => {
     // @ts-expect-error TS(2339): mock method not on typed function.
     exerciseEntryRepository.getExerciseEntryOwnerId.mockResolvedValue(userId);
     // @ts-expect-error TS(2339): mock method not on typed function.
-    exerciseEntryRepository.applyWatchTelemetryAtomically.mockResolvedValue(
-      undefined
+    exerciseEntryRepository.applyWatchTelemetryAtomically.mockImplementation(
+      async (...args: unknown[]) => {
+        const onAccepted = args[5];
+        if (typeof onAccepted === 'function') await onAccepted();
+      }
     );
     // @ts-expect-error TS(2339): mock method not on typed function.
     userRepository.getUserProfile.mockResolvedValue({ date_of_birth: null });
@@ -154,7 +164,8 @@ describe('attachWatchTelemetryToExerciseEntry', () => {
         calories_burned: 200,
         active_calories: 200,
       }),
-      expect.any(Array)
+      expect.any(Array),
+      expect.any(Function)
     );
   });
 });
@@ -323,5 +334,62 @@ describe('filterStaleWatchTelemetryFields', () => {
     expect(update?.sql).not.toMatch(
       /GREATEST\(\$2::numeric, watch_duration_minutes\)/
     );
+  });
+});
+
+describe('attachWatchTelemetryToExerciseEntry heart rate series', () => {
+  beforeEach(() => {
+    vi.mocked(
+      exerciseEntryRepository.getExerciseEntryOwnerId
+    ).mockResolvedValue(userId);
+    vi.mocked(userRepository.getUserProfile).mockResolvedValue(null as never);
+    vi.mocked(upsertSamplesByDay).mockReset();
+  });
+
+  it('stores the series tagged with the entry, replacing only its own span', async () => {
+    await attachWatchTelemetryToExerciseEntry(
+      userId,
+      userId,
+      entryId,
+      series(150)
+    );
+    expect(upsertSamplesByDay).toHaveBeenCalledTimes(1);
+    const [, , metric, , samples, options] =
+      vi.mocked(upsertSamplesByDay).mock.calls[0];
+    expect(metric).toBe('heart_rate');
+    expect(samples).toHaveLength(10);
+    expect(samples[0]).toMatchObject({ ex: entryId, bpm: 150 });
+    expect(options).toMatchObject({ mode: 'merge', ex: entryId });
+  });
+
+  it('writes no series when the snapshot was rejected', async () => {
+    vi.mocked(
+      exerciseEntryRepository.applyWatchTelemetryAtomically
+    ).mockResolvedValue(undefined);
+    await attachWatchTelemetryToExerciseEntry(
+      userId,
+      userId,
+      entryId,
+      series(150)
+    );
+    expect(upsertSamplesByDay).not.toHaveBeenCalled();
+  });
+
+  it('writes no series for a calories-only post', async () => {
+    await attachWatchTelemetryToExerciseEntry(
+      userId,
+      userId,
+      entryId,
+      undefined,
+      300
+    );
+    expect(upsertSamplesByDay).not.toHaveBeenCalled();
+  });
+
+  it('does not fail the post when the series cannot be stored', async () => {
+    vi.mocked(upsertSamplesByDay).mockRejectedValueOnce(new Error('db down'));
+    await expect(
+      attachWatchTelemetryToExerciseEntry(userId, userId, entryId, series(150))
+    ).resolves.toBeUndefined();
   });
 });

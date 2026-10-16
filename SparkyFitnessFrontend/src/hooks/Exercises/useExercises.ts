@@ -89,7 +89,10 @@ export const exerciseDeletionImpactOptions = (exerciseId: string | null) => ({
   enabled: !!exerciseId,
   staleTime: 0,
   meta: {
-    errorMessage: 'Could not fetch deletion impact. Please try again.',
+    errorMessage: i18n.t(
+      'hooks.useExercises.couldNotFetchDeletionImpact',
+      'Could not fetch deletion impact. Please try again.'
+    ),
   },
 });
 // --- Mutations ---
@@ -328,7 +331,11 @@ export const activityDetailsOptions = (
   queryFn: () => getActivityDetails(exerciseEntryId, providerName),
   enabled: Boolean(exerciseEntryId && providerName),
   meta: {
-    errorMessage: `Failed to fetch ${providerName} activity details.`,
+    errorMessage: i18n.t(
+      'hooks.useExercises.failedToFetchActivityDetails',
+      'Failed to fetch {{providerName}} activity details.',
+      { providerName }
+    ),
   },
 });
 
@@ -345,7 +352,10 @@ export const useBodyMapSvgQuery = (figure: BodyFigure = 'male') => {
     queryFn: () => getBodyMapSvg(figure),
     staleTime: Infinity,
     meta: {
-      errorMessage: 'Error fetching body map SVG',
+      errorMessage: i18n.t(
+        'hooks.useExercises.errorFetchingBodyMapSVG',
+        'Error fetching body map SVG'
+      ),
     },
   });
 };

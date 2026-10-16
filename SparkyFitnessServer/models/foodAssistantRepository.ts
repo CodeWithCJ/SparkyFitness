@@ -119,21 +119,20 @@ export async function createTask(
   input: CreateFoodAssistantTask
 ) {
   const client = await getClient(userId, userId);
+  const creationInput =
+    input.origin.type === 'user_draft'
+      ? {
+          id: input.id,
+          kind: input.kind,
+          title: input.title,
+          checkpoint: input.checkpoint,
+        }
+      : input;
   const creationHash = createHash('sha256')
-    // Preserve the original creation fingerprint for tasks made before origin
-    // metadata was introduced. Structured imports include their source identity.
-    .update(
-      canonicalJson(
-        input.origin.type === 'user_draft'
-          ? {
-              id: input.id,
-              kind: input.kind,
-              title: input.title,
-              checkpoint: input.checkpoint,
-            }
-          : input
-      )
-    )
+    .update(canonicalJson(creationInput))
+    .digest('hex');
+  const legacyCreationHash = createHash('sha256')
+    .update(canonicalJson(creationInput, true))
     .digest('hex');
   try {
     const result = await client.query(
@@ -157,7 +156,11 @@ export async function createTask(
     const task = existing.rows[0]
       ? foodAssistantTaskSchema.parse(existing.rows[0])
       : null;
-    if (!task || task.creation_hash !== creationHash) {
+    if (
+      !task ||
+      (task.creation_hash !== creationHash &&
+        task.creation_hash !== legacyCreationHash)
+    ) {
       throw new FoodAssistantConflict(
         'That request ID belongs to different work. Use a new ID for a different request.'
       );
@@ -184,6 +187,7 @@ export async function listOperations(userId: string, taskId: string) {
 }
 
 interface TaskMutation {
+  allowCancelled?: boolean;
   allowComplete?: boolean;
   taskId: string;
   operationId: string;
@@ -192,14 +196,17 @@ interface TaskMutation {
   request: unknown;
 }
 
-function mutationHash(command: TaskMutation): string {
+function mutationHash(command: TaskMutation, legacyOrder = false): string {
   return createHash('sha256')
     .update(
-      canonicalJson({
-        taskId: command.taskId,
-        kind: command.kind,
-        request: command.request,
-      })
+      canonicalJson(
+        {
+          taskId: command.taskId,
+          kind: command.kind,
+          request: command.request,
+        },
+        legacyOrder
+      )
     )
     .digest('hex');
 }
@@ -218,7 +225,10 @@ export async function replayTaskMutation(
     );
     if (!result.rows[0]) return null;
     const saved = foodAssistantOperationSchema.parse(result.rows[0]);
-    if (saved.request_hash !== mutationHash(command))
+    if (
+      saved.request_hash !== mutationHash(command) &&
+      saved.request_hash !== mutationHash(command, true)
+    )
       throw new FoodAssistantConflict(
         'This operation ID was already used for a different request.'
       );
@@ -256,7 +266,10 @@ export async function mutateTask(
     );
     if (prior.rows[0]) {
       const saved = foodAssistantOperationSchema.parse(prior.rows[0]);
-      if (saved.request_hash !== requestHash)
+      if (
+        saved.request_hash !== requestHash &&
+        saved.request_hash !== mutationHash(command, true)
+      )
         throw new FoodAssistantConflict(
           'This operation ID was already used for a different request.'
         );
@@ -273,7 +286,7 @@ export async function mutateTask(
       throw new FoodAssistantConflict();
     if (
       (task.status === 'complete' && !command.allowComplete) ||
-      task.status === 'cancelled'
+      (task.status === 'cancelled' && !command.allowCancelled)
     )
       throw new FoodAssistantConflict(
         'This task has finished or was cancelled. Start a new task.'

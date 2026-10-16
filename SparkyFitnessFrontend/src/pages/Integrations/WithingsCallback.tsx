@@ -4,7 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 import { CallbackStatus } from './CallbackStatus';
 import { useLinkWithingsMutation } from '@/hooks/Integrations/useIntegrations';
 
+import { useTranslation } from 'react-i18next';
 const WithingsCallback = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -20,8 +22,14 @@ const WithingsCallback = () => {
       if (!code || !state) {
         setMessage('Error: Missing OAuth code or state.');
         toast({
-          title: 'Withings OAuth Error',
-          description: 'Missing OAuth code or state in callback.',
+          title: t(
+            'integrations.withingsCallback.withingsOAuthError',
+            'Withings OAuth Error'
+          ),
+          description: t(
+            'integrations.withingsCallback.missingOAuthCodeOrState',
+            'Missing OAuth code or state in callback.'
+          ),
           variant: 'destructive',
         });
         setLoading(false);
@@ -43,7 +51,7 @@ const WithingsCallback = () => {
     };
 
     processCallback();
-  }, [location, navigate, linkWithingsAccount, setMessage, toast]);
+  }, [location, navigate, linkWithingsAccount, setMessage, toast, t]);
 
   return <CallbackStatus loading={loading} message={message} />;
 };

@@ -4,6 +4,10 @@ SparkyFitness allows you to set and track various fitness and nutrition goals, h
 
 ---
 
+## Goal Weight
+
+Set your goal weight under **Goals**. It was previously only asked once during onboarding. Enter it in your preferred weight unit (stones and pounds users enter pounds); it is stored in kilograms. **Clear** removes it. The mobile Weight chart uses it for the dashed goal line and the projected goal date.
+
 ## Nutrient Goal Direction (Minimum / Maximum / Target)
 
 By default, every nutrient goal in SparkyFitness is treated as a **minimum** — a target to reach, with progress filling toward 100% as you approach it. That works well for protein or fiber, but it doesn't fit every nutrient or every person: someone managing high cholesterol wants cholesterol treated as a ceiling, not something to "fill up"; someone maintaining their weight wants calories treated as a range to stay near, not a bar to max out.

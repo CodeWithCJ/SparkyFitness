@@ -6,6 +6,8 @@ import type {
   WorkoutHeartRatePoint,
 } from '@workspace/shared';
 import { canEditGroupedWorkout } from '@workspace/shared';
+import { haversineMeters } from './gpsRecording';
+import { toFiniteNumber } from './numericInput';
 import { distanceFromKm } from './unitConversions';
 
 /** Trackpoints kept when drawing a route; plenty for a phone-width figure. */
@@ -260,14 +262,18 @@ export function combinedHeartRateZoneRows(
  * Maps a diary workout to the shape the cardio detail screen takes, or null
  * when that screen has nothing to add. Only synced workouts qualify: in-app
  * entries (manual, sparky, workout plan, or no source) carry no route, heart
- * rate, or zones, and strength sessions are logged as weight and reps.
+ * rate, or zones, and strength sessions are logged as weight and reps. Pass
+ * `allowInApp` for an in-app entry that is a run, walk or ride (a GPS
+ * recording or watch run is saved as one).
  */
 export function cardioSessionFromDiaryEntry(
   session: IndividualSessionResponse,
-  distanceUnit: 'km' | 'miles'
+  distanceUnit: 'km' | 'miles',
+  options: { allowInApp?: boolean } = {}
 ): ExerciseActivityQueryItem | null {
   if (!session.entry_date) return null;
-  if (canEditGroupedWorkout(session.source)) return null;
+  // In-app entries are skipped unless the caller asks for them.
+  if (!options.allowInApp && canEditGroupedWorkout(session.source)) return null;
   if (session.exercise_snapshot?.modality === 'weight_reps') return null;
   if (session.sets.some((set) => set.weight != null || set.reps != null)) {
     return null;
@@ -275,6 +281,11 @@ export function cardioSessionFromDiaryEntry(
 
   const distanceKm =
     session.distance != null && session.distance > 0 ? session.distance : null;
+  // The entry row comes straight from the database, where these columns are
+  // numeric and so arrive as strings. Empty and zero both mean "not measured",
+  // matching the server's activity item, so a walk shows no "0 floors".
+  const floors = toFiniteNumber(session.floors_climbed);
+  const elevationGain = toFiniteNumber(session.elevation_gain_meters);
   return {
     id: session.id,
     userId: '',
@@ -295,8 +306,115 @@ export function cardioSessionFromDiaryEntry(
     formattedPace: null,
     caloriesBurned: session.calories_burned,
     avgHeartRate: session.avg_heart_rate,
+    floorsClimbed: floors > 0 ? floors : null,
+    elevationGainMeters: elevationGain > 0 ? elevationGain : null,
     source: session.source,
     notes: session.notes,
     hasGpsTrack: false,
   };
+}
+
+export interface PacePoint {
+  /** Distance from the start, in the display unit (km or mi). */
+  distance: number;
+  /** Seconds per display unit. */
+  paceSeconds: number;
+}
+
+/** Each pace reading spans at least this long, which smooths GPS jitter. */
+const PACE_WINDOW_SECONDS = 30;
+/** Readings slower than this (seconds per unit) are standing still. */
+const MAX_PACE_SECONDS = 3600;
+/** Points kept for the chart. */
+const MAX_PACE_POINTS = 400;
+
+/**
+ * Pace along a recorded or imported route: for each stretch of at least
+ * `PACE_WINDOW_SECONDS` between trackpoints, the seconds per kilometer or mile
+ * over it, plotted at the distance where it ended. Stretches that are
+ * standing still are left out, so a red light is a gap and not a spike to an
+ * hour per kilometer. Uses each point's own `dist` when the track carries it,
+ * and falls back to the path length between fixes.
+ */
+export function paceSeriesFromTrack(
+  points: readonly GpsTrackPoint[],
+  unitMeters: number
+): PacePoint[] {
+  if (points.length < 2 || !(unitMeters > 0)) return [];
+  const samples: { t: number; meters: number }[] = [];
+  let running = 0;
+  let previous: GpsTrackPoint | null = null;
+  for (const point of points) {
+    const t = Date.parse(point.t);
+    if (!Number.isFinite(t)) continue;
+    // Out of order: leave the running distance and the previous fix alone.
+    if (samples.length > 0 && t <= samples[samples.length - 1].t) continue;
+    if (typeof point.dist === 'number' && Number.isFinite(point.dist)) {
+      running = point.dist;
+    } else if (previous) {
+      running += haversineMeters(previous, point);
+    }
+    previous = point;
+    samples.push({ t, meters: running });
+  }
+
+  return paceSeriesFromSamples(samples, unitMeters);
+}
+
+/**
+ * A distance recorded against time with no route (an indoor session):
+ * `[active seconds, cumulative metres]` rows, in the same windows as a track.
+ */
+export function paceSeriesFromDistance(
+  rows: readonly (readonly number[])[],
+  unitMeters: number
+): PacePoint[] {
+  if (rows.length < 2 || !(unitMeters > 0)) return [];
+  const samples = rows
+    .filter((row) => row.length >= 2)
+    .map((row) => ({ t: row[0] * 1000, meters: row[1] }))
+    .sort((a, b) => a.t - b.t);
+  return paceSeriesFromSamples(samples, unitMeters);
+}
+
+function paceSeriesFromSamples(
+  samples: readonly { t: number; meters: number }[],
+  unitMeters: number
+): PacePoint[] {
+  const series: PacePoint[] = [];
+  let anchor = samples[0];
+  for (let i = 1; i < samples.length; i++) {
+    const sample = samples[i];
+    const seconds = (sample.t - anchor.t) / 1000;
+    if (seconds < PACE_WINDOW_SECONDS) continue;
+    const meters = sample.meters - anchor.meters;
+    if (meters > 0) {
+      const pace = seconds / (meters / unitMeters);
+      if (pace > 0 && pace <= MAX_PACE_SECONDS) {
+        series.push({
+          distance: sample.meters / unitMeters,
+          paceSeconds: pace,
+        });
+      }
+    }
+    anchor = sample;
+  }
+
+  if (series.length <= MAX_PACE_POINTS) return series;
+  const step = Math.ceil(series.length / MAX_PACE_POINTS);
+  const kept = series.filter(
+    (_, i) => i % step === 0 || i === series.length - 1
+  );
+  let fastest = 0;
+  for (let i = 1; i < series.length; i++) {
+    if (series[i].paceSeconds < series[fastest].paceSeconds) fastest = i;
+  }
+  if (kept.includes(series[fastest])) return kept;
+  const fastestPoint = series[fastest];
+  const insertAt = kept.findIndex(
+    (sample) => sample.distance > fastestPoint.distance
+  );
+  if (insertAt === -1) kept.push(fastestPoint);
+  else kept.splice(insertAt, 0, fastestPoint);
+  return kept;
 }

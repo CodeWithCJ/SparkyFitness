@@ -247,8 +247,11 @@ const NutritionChartsGrid = ({
                     </CardTitle>
                     <div className="text-right text-xs text-muted-foreground font-normal">
                       <div>
-                        {t('reports.average', 'Avg')}: {formattedAverage}{' '}
-                        {chart.unit}
+                        {t(
+                          'reports.avg',
+                          'Avg: {{formattedAverage}} {{unit}}',
+                          { formattedAverage, unit: chart.unit }
+                        )}
                       </div>
                       {showSupplementShare && (
                         <div>

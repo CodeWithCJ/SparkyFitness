@@ -12,7 +12,6 @@ export {
   listTasks,
   getTask,
   listOperations,
-  forgetPreference,
 } from '../models/foodAssistantRepository.js';
 
 export function createTask(userId: string, input: unknown) {
@@ -73,6 +72,7 @@ export function changeTask(
       expectedVersion: data.expected_version,
       kind: action,
       request: data,
+      allowCancelled: action === 'resume',
     },
     async (task) => ({
       ...task,
@@ -97,16 +97,74 @@ export async function rememberPreference(
     );
   const oneOff =
     /\b(today|tonight|this (?:meal|time|week)|for (?:lunch|dinner|breakfast)|just (?:this|for))\b/i.test(
-      latestUserText ?? ''
+      preferenceSentence(latestUserText ?? '', data.source_quote)
     );
   if (
     !fromSettings &&
     (!latestUserText?.includes(data.source_quote) ||
-      (!explicitMemory && (!enduring || oneOff)))
+      oneOff ||
+      (!explicitMemory && !enduring))
   ) {
     throw new repository.FoodAssistantConflict(
       'Only an explicit lasting preference in the current user message can be remembered. Ask the user to state what to remember.'
     );
   }
   return repository.rememberPreference(userId, data);
+}
+
+function preferenceSentence(message: string, quote: string): string {
+  const index = message.indexOf(quote);
+  if (index < 0) return message;
+  const start = message.slice(0, index).search(/[^.!?;\n]*$/);
+  const end = message.slice(index + quote.length).search(/[.!?;\n]/);
+  return message.slice(start, end < 0 ? undefined : index + quote.length + end);
+}
+
+/** Settings deletion is an explicit authenticated action; model calls must quote
+ * a removal request from the independently captured current user message. */
+export function forgetPreference(
+  userId: string,
+  key: string,
+  expectedVersion: number,
+  sourceQuote?: string,
+  latestUserText?: string,
+  fromSettings = false
+) {
+  // A bounded command grammar binds the request to this saved key. A recipe's
+  // removal instruction or an arbitrary quote containing "delete" is not consent.
+  const quote = sourceQuote
+    ?.normalize('NFKC')
+    .replace(/[’‘]/g, "'")
+    .replace(/_/g, ' ')
+    .trim();
+  const message = latestUserText?.normalize('NFKC').replace(/[’‘]/g, "'");
+  const namedKey = key.replace(/_/g, ' ').toLowerCase();
+  const removal =
+    /^(?:(?:please|can you|could you|would you|will you|i want you to)\s+)*(?:forget|remove|delete|clear|erase|stop remembering)\s+(?:(?:my|the)\s+)?(.+?)(?:,?\s+please)?[.!?]?$/i.exec(
+      quote ?? ''
+    );
+  const targets = [
+    `${namedKey} preference`,
+    `${namedKey} food preference`,
+    `preference ${namedKey}`,
+    `saved preference ${namedKey}`,
+    ...['for', 'about', 'named', 'called'].map(
+      (word) => `preference ${word} ${namedKey}`
+    ),
+  ];
+  if (
+    !fromSettings &&
+    (!sourceQuote?.trim() ||
+      !latestUserText?.includes(sourceQuote) ||
+      !quote ||
+      !targets.includes(removal?.[1].toLowerCase() ?? '') ||
+      /\b(don't|do not|never|not to)\b[^.!?\n]{0,80}\b(forget|remove|delete|clear|erase|stop remembering)\b/i.test(
+        message ?? ''
+      ))
+  ) {
+    throw new repository.FoodAssistantConflict(
+      `Forgetting a preference needs an explicit current user request naming it, such as "Forget my ${key} preference". Use Food preferences to remove it directly.`
+    );
+  }
+  return repository.forgetPreference(userId, key, expectedVersion);
 }

@@ -1,4 +1,5 @@
-import express from 'express';
+import express, { type RequestHandler } from 'express';
+import { voiceInputPreferencesSchema } from '@workspace/shared';
 import { authenticate } from '../middleware/authMiddleware.js';
 import preferenceService from '../services/preferenceService.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
@@ -54,6 +55,16 @@ router.put(
     }
   }
 );
+
+const validateVoicePreferences: RequestHandler = (req, res, next) => {
+  const parsed = voiceInputPreferencesSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'Invalid voice input preferences.' });
+    return;
+  }
+  next();
+};
+
 // Endpoint to bootstrap timezone from the device only if unset
 router.post('/bootstrap-timezone', authenticate, async (req, res, next) => {
   const { timezone } = req.body;
@@ -106,39 +117,44 @@ router.post('/bootstrap-timezone', authenticate, async (req, res, next) => {
  *       200:
  *         description: Preferences updated successfully.
  */
-router.put('/', authenticate, async (req, res, next) => {
-  const preferenceData = req.body;
-  try {
-    const updatedPreferences = await preferenceService.updateUserPreferences(
-      req.userId,
+router.put(
+  '/',
+  authenticate,
+  validateVoicePreferences,
+  async (req, res, next) => {
+    const preferenceData = req.body;
+    try {
+      const updatedPreferences = await preferenceService.updateUserPreferences(
+        req.userId,
 
-      req.userId,
-      preferenceData
-    );
-    clearUserTdeeCache(req.userId);
-    res.status(200).json(updatedPreferences);
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.status === 400) {
+        req.userId,
+        preferenceData
+      );
+      clearUserTdeeCache(req.userId);
+      res.status(200).json(updatedPreferences);
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(400).json({ error: error.message });
+      if (error.status === 400) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(400).json({ error: error.message });
+      }
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      if (error.message.startsWith('Forbidden')) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(403).json({ error: error.message });
+      }
+      if (
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        error.message ===
+        'User preferences not found or not authorized to update.'
+      ) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(403).json({ error: error.message });
-    }
-    if (
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      error.message ===
-      'User preferences not found or not authorized to update.'
-    ) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(404).json({ error: error.message });
-    }
-    next(error);
   }
-});
+);
 // Endpoint to delete user preferences
 /**
  * @swagger
@@ -232,27 +248,32 @@ router.get('/', authenticate, async (req, res, next) => {
  *       200:
  *         description: Preferences upserted successfully.
  */
-router.post('/', authenticate, async (req, res, next) => {
-  const preferenceData = req.body;
-  try {
-    const newPreferences = await preferenceService.upsertUserPreferences(
-      req.userId,
-      preferenceData
-    );
-    clearUserTdeeCache(req.userId);
-    res.status(200).json(newPreferences);
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.status === 400) {
+router.post(
+  '/',
+  authenticate,
+  validateVoicePreferences,
+  async (req, res, next) => {
+    const preferenceData = req.body;
+    try {
+      const newPreferences = await preferenceService.upsertUserPreferences(
+        req.userId,
+        preferenceData
+      );
+      clearUserTdeeCache(req.userId);
+      res.status(200).json(newPreferences);
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(400).json({ error: error.message });
-    }
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
+      if (error.status === 400) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(400).json({ error: error.message });
+      }
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(403).json({ error: error.message });
+      if (error.message.startsWith('Forbidden')) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(403).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 export default router;

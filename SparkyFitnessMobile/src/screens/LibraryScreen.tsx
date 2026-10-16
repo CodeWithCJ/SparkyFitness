@@ -21,6 +21,8 @@ import Button from '../components/ui/Button';
 import CreateTile from '../components/CreateTile';
 import FoodLibraryRow from '../components/FoodLibraryRow';
 import Icon from '../components/Icon';
+import { programTitle } from '../components/recording/RunProgramCard';
+import { useRunProgram } from '../services/runProgramService';
 import MealLibraryRow from '../components/MealLibraryRow';
 import StatusView from '../components/StatusView';
 import {
@@ -56,6 +58,8 @@ type RecentItem =
 
 const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
+  const { status: storedProgram, enabled: programEnabled } = useRunProgram();
+  const activeProgram = programEnabled ? storedProgram : null;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const usesNativeTabs = useNativeIOSTabsActive();
@@ -396,6 +400,74 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
         </Pressable>
         <Pressable
           className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
+          onPress={() => navigation.navigate('WorkoutPlans')}
+          style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+        >
+          <View className="flex-1 mr-3">
+            <Text className="text-base font-semibold text-text-primary">
+              {t('screens.library.workoutPlans', {
+                defaultValue: 'Workout plans',
+              })}
+            </Text>
+            <Text className="text-sm text-text-secondary mt-0.5">
+              {t('screens.library.workoutPlansSubtitle', {
+                defaultValue: 'Schedule workouts across the week',
+              })}
+            </Text>
+          </View>
+          <Icon name="chevron-forward" size={20} color="#999" />
+        </Pressable>
+        <Pressable
+          className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
+          onPress={() => navigation.navigate('RunPrograms')}
+          style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+        >
+          <View className="flex-1 mr-3">
+            <Text className="text-base font-semibold text-text-primary">
+              {t('screens.library.runPrograms', {
+                defaultValue: 'Training programs',
+              })}
+            </Text>
+            <Text className="text-sm text-text-secondary mt-0.5">
+              {activeProgram
+                ? t('screens.library.runProgramsActive', {
+                    name: programTitle(t, activeProgram.program),
+                    progress: t('recordActivity.program.workoutsDone', {
+                      done: activeProgram.done,
+                      total: activeProgram.total,
+                      defaultValue: '{{done}} of {{total}} workouts',
+                    }),
+                    defaultValue: '{{name}} · {{progress}}',
+                  })
+                : t('screens.library.runProgramsSubtitle', {
+                    defaultValue:
+                      'Run and walk plans from Beginner 5K to marathon',
+                  })}
+            </Text>
+          </View>
+          <Icon name="chevron-forward" size={20} color="#999" />
+        </Pressable>
+        <Pressable
+          className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
+          onPress={() => navigation.navigate('PersonalRecords')}
+          style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+        >
+          <View className="flex-1 mr-3">
+            <Text className="text-base font-semibold text-text-primary">
+              {t('screens.library.personalRecords', {
+                defaultValue: 'Personal records',
+              })}
+            </Text>
+            <Text className="text-sm text-text-secondary mt-0.5">
+              {t('screens.library.personalRecordsSubtitle', {
+                defaultValue: 'Your best 1 km, 5 km, 10 km and more',
+              })}
+            </Text>
+          </View>
+          <Icon name="chevron-forward" size={20} color="#999" />
+        </Pressable>
+        <Pressable
+          className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
           onPress={() => navigation.navigate('ExercisesLibrary')}
           style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
         >
@@ -428,18 +500,33 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
         </Pressable>
         <Pressable
           className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
-          onPress={() => navigation.navigate('ExerciseStatistics')}
+          onPress={() => navigation.navigate('Equipment')}
           style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
         >
           <View className="flex-1 mr-3">
             <Text className="text-base font-semibold text-text-primary">
-              {t('screens.library.exerciseStatistics', {
-                defaultValue: 'Exercise statistics',
-              })}
+              {t('screens.library.equipment', { defaultValue: 'Equipment' })}
             </Text>
             <Text className="text-sm text-text-secondary mt-0.5">
-              {t('screens.library.exerciseStatisticsSubtitle', {
-                defaultValue: 'Sets per muscle and a body heat map',
+              {t('screens.library.equipmentSubtitle', {
+                defaultValue: 'Shoes and other gear',
+              })}
+            </Text>
+          </View>
+          <Icon name="chevron-forward" size={20} color="#999" />
+        </Pressable>
+        <Pressable
+          className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
+          onPress={() => navigation.navigate('Reports')}
+          style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+        >
+          <View className="flex-1 mr-3">
+            <Text className="text-base font-semibold text-text-primary">
+              {t('screens.library.reports', { defaultValue: 'Reports' })}
+            </Text>
+            <Text className="text-sm text-text-secondary mt-0.5">
+              {t('screens.library.reportsSubtitle', {
+                defaultValue: 'Nutrition, sleep, mood and exercise trends',
               })}
             </Text>
           </View>

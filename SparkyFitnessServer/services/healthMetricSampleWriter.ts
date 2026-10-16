@@ -47,6 +47,12 @@ export interface SampleWriteOptions {
   mode?: SampleWriteMode;
   /** Instants bounding the samples being written. Required for `merge`. */
   window?: { startMs: number; endMs: number };
+  /**
+   * When set, a merge replaces only this exercise entry's samples inside
+   * `window`. A sample tagged with a different entry is kept, so two
+   * overlapping workouts do not erase each other's charts.
+   */
+  ex?: string;
 }
 
 /**
@@ -143,7 +149,16 @@ export async function upsertSamplesByDay(
           if (!window) return true;
           const ms = Date.parse(String(sample.t));
           if (!Number.isFinite(ms)) return true;
-          return ms < window.startMs || ms > window.endMs;
+          if (ms < window.startMs || ms > window.endMs) return true;
+          // Inside the window. Without an entry id, the whole span is replaced.
+          // With one, another entry's samples in that span stay.
+          const ex = options.ex;
+          return (
+            ex !== undefined &&
+            typeof sample.ex === 'string' &&
+            sample.ex.length > 0 &&
+            sample.ex !== ex
+          );
         });
 
         bucket.samples = retained.concat(bucket.samples);

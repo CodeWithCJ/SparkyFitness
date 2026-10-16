@@ -116,11 +116,14 @@ const DeleteFoodDialog: React.FC<DeleteFoodDialogProps> = ({
                             rel="noopener noreferrer"
                             className="text-xs text-primary underline underline-offset-2 shrink-0 hover:text-primary/70 transition-colors cursor-pointer"
                           >
-                            View
+                            {t('foods.deleteFoodDialog.view', 'View')}
                           </Link>
                         ) : (
                           <span className="text-[10px] text-muted-foreground shrink-0 px-1.5 py-0.5 rounded-full bg-muted">
-                            other user
+                            {t(
+                              'foods.deleteFoodDialog.otherUser',
+                              'other user'
+                            )}
                           </span>
                         )}
                       </div>

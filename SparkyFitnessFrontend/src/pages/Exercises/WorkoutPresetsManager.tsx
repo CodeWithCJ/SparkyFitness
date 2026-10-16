@@ -282,14 +282,14 @@ const WorkoutPresetsManager = () => {
             onCheckedChange={(value) =>
               table.toggleAllPageRowsSelected(!!value)
             }
-            aria-label="Select all"
+            aria-label={t('common.selectAll', 'Select all')}
           />
         ),
         cell: ({ row }) => (
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
+            aria-label={t('common.selectRow', 'Select row')}
             disabled={row.original.user_id !== user?.id}
           />
         ),
@@ -348,7 +348,13 @@ const WorkoutPresetsManager = () => {
             <div className="flex items-center gap-4 text-xs">
               <div className="flex items-center gap-1">
                 <Layers className="w-3 h-3 text-blue-500" />
-                <span>{totalSets} sets</span>
+                <span>
+                  {t(
+                    'exercises.workoutPresetsManager.sets',
+                    '{{totalSets}} sets',
+                    { totalSets }
+                  )}
+                </span>
               </div>
               <div className="flex items-center gap-1">
                 <Dumbbell className="w-3 h-3 text-indigo-500" />
@@ -369,7 +375,9 @@ const WorkoutPresetsManager = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-8 w-8 p-0">
-                  <span className="sr-only">Open menu</span>
+                  <span className="sr-only">
+                    {t('exercises.workoutPresetsManager.openMenu', 'Open menu')}
+                  </span>
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>

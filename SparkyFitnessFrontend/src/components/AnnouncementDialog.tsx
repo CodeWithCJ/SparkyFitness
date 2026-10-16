@@ -12,6 +12,7 @@ import {
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
 
+import { useTranslation } from 'react-i18next';
 export interface AnnouncementInfo {
   id: string;
   active: boolean;
@@ -34,6 +35,7 @@ const AnnouncementDialog: React.FC<AnnouncementDialogProps> = ({
   announcement,
   onDismiss,
 }) => {
+  const { t } = useTranslation();
   if (!announcement || !announcement.active) return null;
 
   const handleDismiss = () => {
@@ -51,19 +53,20 @@ const AnnouncementDialog: React.FC<AnnouncementDialogProps> = ({
             </div>
             <div>
               <AlertDialogTitle className="text-xl font-bold tracking-tight">
-                {announcement.title || 'Announcement'}
+                {announcement.title ||
+                  t('announcementDialog.announcement', 'Announcement')}
               </AlertDialogTitle>
               {announcement.publishedAt && (
                 <AlertDialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  Published:{' '}
-                  {new Date(announcement.publishedAt).toLocaleDateString(
-                    undefined,
-                    {
+                  {t('announcementDialog.published2', 'Published: {{value}}', {
+                    value: new Date(
+                      announcement.publishedAt
+                    ).toLocaleDateString(undefined, {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric',
-                    }
-                  )}
+                    }),
+                  })}
                 </AlertDialogDescription>
               )}
             </div>
@@ -71,7 +74,7 @@ const AnnouncementDialog: React.FC<AnnouncementDialogProps> = ({
           <button
             onClick={onClose}
             className="rounded-full p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-            aria-label="Close"
+            aria-label={t('common.close', 'Close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -88,7 +91,7 @@ const AnnouncementDialog: React.FC<AnnouncementDialogProps> = ({
             onClick={handleDismiss}
             className="bg-primary text-primary-foreground hover:bg-primary/90 px-5 py-2 font-medium rounded-lg text-sm transition-colors"
           >
-            Got it, don&apos;t show again
+            {t('announcementDialog.gotItDonTShow', "Got it, don't show again")}
           </AlertDialogCancel>
         </AlertDialogFooter>
       </AlertDialogContent>

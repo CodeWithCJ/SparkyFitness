@@ -314,10 +314,9 @@ const CustomCategoryManager = () => {
                   ))}
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-2 italic">
-                  💡{' '}
                   {t(
-                    'customCategoryManager.unitPrecisionNote',
-                    'Using standard units (like kcal, mmHg, BPM) automatically optimizes chart precision.'
+                    'customCategoryManager.usingStandardUnitsLikeKcal',
+                    '💡 Using standard units (like kcal, mmHg, BPM) automatically optimizes chart precision.'
                   )}
                 </p>
               </div>
@@ -409,7 +408,7 @@ const CustomCategoryManager = () => {
                 )}
                 <div className="text-sm text-gray-500">
                   {category.measurement_type} • {category.frequency} •{' '}
-                  {category.data_type}
+                  <span>{category.data_type}</span>
                 </div>
               </div>
               <div className="flex gap-2">

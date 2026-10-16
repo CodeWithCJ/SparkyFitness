@@ -12,6 +12,10 @@ import {
   stopGuidedSpeech,
 } from '../../src/services/speech';
 import {
+  __resetSpeechVoicesForTests,
+  loadSpeechVoices,
+} from '../../src/services/speechVoice';
+import {
   __resetAppPreferencesStoreForTests,
   useAppPreferencesStore,
 } from '../../src/stores/appPreferencesStore';
@@ -26,6 +30,12 @@ const mockVoices = Speech.getAvailableVoicesAsync as jest.MockedFunction<
   typeof Speech.getAvailableVoicesAsync
 >;
 
+/** Reads an empty voice list so speech dispatches synchronously. */
+async function voicesReady(): Promise<void> {
+  mockVoices.mockResolvedValue([]);
+  await loadSpeechVoices();
+}
+
 function setAppState(state: string): void {
   Object.defineProperty(AppState, 'currentState', {
     get: () => state,
@@ -37,6 +47,7 @@ describe('speech service', () => {
   beforeEach(() => {
     __resetAppPreferencesStoreForTests();
     __resetSpeechForTests();
+    __resetSpeechVoicesForTests();
     mockSpeak.mockClear();
     mockStop.mockClear();
     mockVoices.mockReset();
@@ -48,7 +59,16 @@ describe('speech service', () => {
     expect(mockSpeak).not.toHaveBeenCalled();
   });
 
-  it('speaks each line with the chosen voice and rate on the app audio session', () => {
+  it('speaks each line with the chosen voice and rate on the app audio session', async () => {
+    mockVoices.mockResolvedValue([
+      {
+        identifier: 'voice-1',
+        name: 'One',
+        language: 'en-US',
+        quality: 'Default',
+      },
+    ] as Awaited<ReturnType<typeof Speech.getAvailableVoicesAsync>>);
+    await loadSpeechVoices(true);
     useAppPreferencesStore.setState({
       guidedWorkoutEnabled: true,
       guidedVoiceId: 'voice-1',
@@ -70,7 +90,8 @@ describe('speech service', () => {
     );
   });
 
-  it('cancels what is still being read when interrupting', () => {
+  it('cancels what is still being read when interrupting', async () => {
+    await voicesReady();
     useAppPreferencesStore.setState({ guidedWorkoutEnabled: true });
     speakGuided(['Rest. 60 seconds.'], { interrupt: true });
     expect(mockStop).toHaveBeenCalled();
@@ -84,7 +105,8 @@ describe('speech service', () => {
     expect(mockSpeak).not.toHaveBeenCalled();
   });
 
-  it('drops cues instead of queueing deeply', () => {
+  it('drops cues instead of queueing deeply', async () => {
+    await voicesReady();
     useAppPreferencesStore.setState({ guidedWorkoutEnabled: true });
     speakGuided(Array.from({ length: 30 }, (_, i) => `line ${i}`));
     expect(mockSpeak).toHaveBeenCalledTimes(20);
@@ -93,13 +115,45 @@ describe('speech service', () => {
     expect(mockSpeak).toHaveBeenCalledTimes(21);
   });
 
-  it('frees queue slots as utterances finish', () => {
+  it('frees queue slots as utterances finish', async () => {
+    await voicesReady();
     useAppPreferencesStore.setState({ guidedWorkoutEnabled: true });
     speakGuided(Array.from({ length: 20 }, (_, i) => `line ${i}`));
     const firstOptions = mockSpeak.mock.calls[0]?.[1];
     firstOptions?.onDone?.();
     speakGuided(['one more']);
     expect(mockSpeak).toHaveBeenCalledTimes(21);
+  });
+
+  it('holds the first cue until the voices are read, then uses the pick', async () => {
+    useAppPreferencesStore.setState({
+      guidedWorkoutEnabled: true,
+      guidedVoiceId: 'voice-1',
+    });
+    mockVoices.mockResolvedValue([
+      {
+        identifier: 'voice-1',
+        name: 'One',
+        language: 'en-US',
+        quality: 'Enhanced',
+      },
+    ] as Speech.Voice[]);
+    speakGuided(['Push-up. 12 reps.'], { language: 'en-US' });
+    expect(mockSpeak).not.toHaveBeenCalled();
+    await loadSpeechVoices();
+    await Promise.resolve();
+    expect(mockSpeak).toHaveBeenCalledTimes(1);
+    expect(mockSpeak.mock.calls[0]?.[1]).toMatchObject({ voice: 'voice-1' });
+  });
+
+  it('drops a cue still waiting for the voices when narration is stopped', async () => {
+    useAppPreferencesStore.setState({ guidedWorkoutEnabled: true });
+    mockVoices.mockResolvedValue([]);
+    speakGuided(['Push-up. 12 reps.']);
+    stopGuidedSpeech();
+    await loadSpeechVoices();
+    await Promise.resolve();
+    expect(mockSpeak).not.toHaveBeenCalled();
   });
 
   it('lists voices sorted by language, then name', async () => {
@@ -125,7 +179,8 @@ describe('speech service', () => {
       useAppPreferencesStore.setState({ guidedWorkoutEnabled: true });
     });
 
-    it('captions the first line, then each line as it starts', () => {
+    it('captions the first line, then each line as it starts', async () => {
+      await voicesReady();
       const { result } = renderHook(() => useGuidedCaption());
       act(() =>
         speakGuided(['Push-up. 12 reps.', 'Brace.'], { interrupt: true })

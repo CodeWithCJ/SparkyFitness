@@ -386,7 +386,10 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                     </Label>
                     <Input
                       id="sched-prn-reason"
-                      placeholder="e.g. For pain, For headache"
+                      placeholder={t(
+                        'medications.scheduleManager.eGForPainFor',
+                        'e.g. For pain, For headache'
+                      )}
                       value={prnReason}
                       onChange={(e) => setPrnReason(e.target.value)}
                     />
@@ -463,7 +466,10 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
       <CardContent className="pt-4">
         {!med.schedules || med.schedules.length === 0 ? (
           <p className="text-sm text-muted-foreground py-2 text-center">
-            No schedule rules configured yet.
+            {t(
+              'medications.scheduleManager.noScheduleRulesConfiguredYet',
+              'No schedule rules configured yet.'
+            )}
           </p>
         ) : (
           <div className="space-y-3">
@@ -480,7 +486,7 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                     </span>
                     {sched.dose_amount != null && (
                       <span className="text-xs text-muted-foreground ml-2">
-                        ({formatDose(med, sched)})
+                        (<span>{formatDose(med, sched)}</span>)
                       </span>
                     )}
                   </div>
@@ -491,7 +497,10 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                   className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   onClick={() => deleteMutation.mutate(sched.id)}
                   disabled={deleteMutation.isPending}
-                  aria-label="Delete schedule rule"
+                  aria-label={t(
+                    'medications.scheduleManager.deleteScheduleRule',
+                    'Delete schedule rule'
+                  )}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

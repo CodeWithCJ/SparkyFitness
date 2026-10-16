@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Maximize2, Minimize2, ZoomIn, ZoomOut } from 'lucide-react';
 
+import { useTranslation } from 'react-i18next';
 interface ZoomableChartProps {
   children:
     | ((isMaximized: boolean, zoomLevel: number) => React.ReactNode)
@@ -18,6 +19,7 @@ interface ZoomableChartProps {
 }
 
 const ZoomableChart = ({ children, title, className }: ZoomableChartProps) => {
+  const { t } = useTranslation();
   const [isMaximized, setIsMaximized] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
 
@@ -84,7 +86,10 @@ const ZoomableChart = ({ children, title, className }: ZoomableChartProps) => {
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>
-              Maximized view of the chart. Use the controls to zoom or minimize.
+              {t(
+                'zoomableChart.maximizedViewOfTheChart',
+                'Maximized view of the chart. Use the controls to zoom or minimize.'
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-between mb-4">
@@ -98,7 +103,7 @@ const ZoomableChart = ({ children, title, className }: ZoomableChartProps) => {
                 <ZoomOut className="h-4 w-4" />
               </Button>
               <Button variant="outline" size="sm" onClick={resetZoom}>
-                Reset
+                {t('zoomableChart.reset', 'Reset')}
               </Button>
               <Button
                 variant="outline"

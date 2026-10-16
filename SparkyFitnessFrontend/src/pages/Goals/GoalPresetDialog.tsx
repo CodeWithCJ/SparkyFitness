@@ -281,16 +281,20 @@ export const GoalPresetDialog = ({
                 <div
                   className={`mt-2 text-sm font-medium text-right ${currentMacroTotal === 100 ? 'text-green-600' : 'text-destructive'}`}
                 >
-                  {t('goals.mealDistribution.total', 'Total')}:{' '}
-                  {currentMacroTotal}%{' '}
-                  {currentMacroTotal !== 100 &&
-                    `(${t('goals.mealDistribution.mustBe100', 'Must be 100% to save')})`}
+                  {t(
+                    'goals.goalsSettings.total',
+                    'Total: {{currentMacroTotal}}%',
+                    { currentMacroTotal }
+                  )}{' '}
+                  {currentMacroTotal !== 100 && (
+                    <span>{`(${t('goals.mealDistribution.mustBe100', 'Must be 100% to save')})`}</span>
+                  )}
                 </div>
 
                 <div className="mt-3 p-3 bg-muted/50 rounded-md text-sm text-muted-foreground grid grid-cols-1 sm:grid-cols-3 gap-2 text-center sm:text-left">
                   <div>
                     <span className="font-semibold">
-                      {t('nutrition.protein', 'Protein')}:
+                      {t('goals.goalsSettings.protein2', 'Protein:')}
                     </span>{' '}
                     ≈{' '}
                     {calculateGrams(
@@ -303,7 +307,7 @@ export const GoalPresetDialog = ({
                   </div>
                   <div>
                     <span className="font-semibold">
-                      {t('nutrition.carbs', 'Carbs')}:
+                      {t('goals.goalsSettings.carbs', 'Carbs:')}
                     </span>{' '}
                     ≈{' '}
                     {calculateGrams(
@@ -316,7 +320,7 @@ export const GoalPresetDialog = ({
                   </div>
                   <div>
                     <span className="font-semibold">
-                      {t('nutrition.fat', 'Fat')}:
+                      {t('goals.goalsSettings.fat2', 'Fat:')}
                     </span>{' '}
                     ≈{' '}
                     {calculateGrams(

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import type { ExerciseModality } from '@workspace/shared';
 import type { WorkoutPresetSet } from '@/types/workout';
+import i18n from 'i18next';
 export const EXERCISE_CATEGORIES = [
   {
     value: 'general',
@@ -330,13 +331,23 @@ export const dropdownOptions: Record<string, string[]> = {
 export const DROPDOWN_GUIDES = [
   {
     key: 'levelLabel',
-    label: 'Level:',
+    get label() {
+      return i18n.t('exercises.level', 'Level:');
+    },
     options: dropdownOptions['level'],
   },
-  { key: 'forceLabel', label: 'Force:', options: dropdownOptions['force'] },
+  {
+    key: 'forceLabel',
+    get label() {
+      return i18n.t('exercises.force', 'Force:');
+    },
+    options: dropdownOptions['force'],
+  },
   {
     key: 'mechanicLabel',
-    label: 'Mechanic:',
+    get label() {
+      return i18n.t('exercises.mechanic', 'Mechanic:');
+    },
     options: dropdownOptions['mechanic'],
   },
 ];

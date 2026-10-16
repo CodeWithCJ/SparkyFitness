@@ -3,11 +3,9 @@ import '@testing-library/jest-dom';
 import AuthenticationSettings from '@/pages/Admin/AuthenticationSettings';
 import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
-  }),
-}));
+jest.mock('react-i18next', () =>
+  jest.requireActual('@/tests/mocks/reactI18next')
+);
 jest.mock('@/hooks/use-toast', () => ({ toast: jest.fn() }));
 jest.mock('@/hooks/Admin/useSettings', () => ({
   useSettings: jest.fn(),

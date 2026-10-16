@@ -4,6 +4,12 @@ import * as Speech from 'expo-speech';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { addLog } from './LogService';
 import { beginCueDucking, endCueDucking } from './sounds';
+import {
+  loadSpeechVoices,
+  resolveSpeechVoice,
+  speechVoicesReady,
+} from './speechVoice';
+import { getAppLocale } from '../localization';
 
 /**
  * Guided workout narration (#1507). Mirrors `sounds.ts`: a preference check,
@@ -21,6 +27,8 @@ import { beginCueDucking, endCueDucking } from './sounds';
 const MAX_QUEUED_UTTERANCES = 20;
 
 let pending = 0;
+// Bumped by every stop, so a cue still waiting for the voices is dropped.
+let generation = 0;
 
 // Per-workout session state shared by the guided card and the interval HUD:
 // the voice mute (not a saved setting) and the caption of the line being
@@ -88,48 +96,58 @@ export function speakGuided(
   // over as it starts speaking.
   if (options.interrupt || pending === 0 || muted) setCaption(lines[0] ?? null);
   if (muted) return;
-  const { guidedVoiceId, guidedSpeechRate } = useAppPreferencesStore.getState();
-  try {
-    if (options.interrupt) stopGuidedSpeech();
-    for (const text of lines) {
-      if (pending >= MAX_QUEUED_UTTERANCES) {
-        addLog('guided speech queue full; dropping cue', 'WARNING');
-        return;
-      }
-      pending += 1;
-      let ducked = false;
-      const settle = () => {
-        pending = Math.max(0, pending - 1);
-        if (ducked) {
-          ducked = false;
-          endCueDucking();
+  const requested = generation;
+  const dispatch = () => {
+    if (muted || requested !== generation) return;
+    const { guidedSpeechRate } = useAppPreferencesStore.getState();
+    const voice = resolveSpeechVoice(options.language ?? getAppLocale());
+    try {
+      if (options.interrupt) stopGuidedSpeech();
+      for (const text of lines) {
+        if (pending >= MAX_QUEUED_UTTERANCES) {
+          addLog('guided speech queue full; dropping cue', 'WARNING');
+          return;
         }
-      };
-      Speech.speak(text, {
-        language: options.language,
-        voice: guidedVoiceId ?? undefined,
-        rate: guidedSpeechRate,
-        useApplicationAudioSession: true,
-        onStart: () => {
-          setCaption(text);
-          ducked = beginCueDucking();
-        },
-        onDone: settle,
-        onStopped: settle,
-        onError: (err) => {
-          settle();
-          addLog(`guided speech failed: ${err.message}`, 'WARNING');
-        },
-      });
+        pending += 1;
+        let ducked = false;
+        const settle = () => {
+          pending = Math.max(0, pending - 1);
+          if (ducked) {
+            ducked = false;
+            endCueDucking();
+          }
+        };
+        Speech.speak(text, {
+          language: options.language,
+          voice,
+          rate: guidedSpeechRate,
+          useApplicationAudioSession: true,
+          onStart: () => {
+            setCaption(text);
+            ducked = beginCueDucking();
+          },
+          onDone: settle,
+          onStopped: settle,
+          onError: (err) => {
+            settle();
+            addLog(`guided speech failed: ${err.message}`, 'WARNING');
+          },
+        });
+      }
+    } catch (err) {
+      addLog(`speakGuided failed: ${(err as Error).message}`, 'ERROR');
     }
-  } catch (err) {
-    addLog(`speakGuided failed: ${(err as Error).message}`, 'ERROR');
-  }
+  };
+  // The first cue waits for the voices, so it never falls back to the system
+  // voice while the selected one is still loading.
+  if (speechVoicesReady()) dispatch();
+  else void loadSpeechVoices().then(dispatch);
 }
 
 /** Cancels current and queued narration. Safe to call when nothing is speaking. */
 export function stopGuidedSpeech(): void {
   pending = 0;
+  generation += 1;
   try {
     void Speech.stop();
   } catch (err) {
@@ -166,6 +184,7 @@ export async function listGuidedVoices(): Promise<GuidedVoiceOption[]> {
 /** Test-only helper — clears the queue counter. */
 export function __resetSpeechForTests(): void {
   pending = 0;
+  generation = 0;
   muted = false;
   caption = null;
 }

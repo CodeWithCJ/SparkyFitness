@@ -9,7 +9,7 @@ async function getGoalByDate(userId: any, selectedDate: any) {
                cholesterol, sodium, potassium, dietary_fiber, sugars,
                vitamin_a, vitamin_c, calcium, iron,
                caffeine_mg, alcohol_g,
-               target_exercise_calories_burned, target_exercise_duration_minutes,
+               target_exercise_calories_burned, target_exercise_duration_minutes, target_steps,
                protein_percentage, carbs_percentage, fat_percentage,
                breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
                custom_meal_percentages, custom_nutrients
@@ -36,7 +36,7 @@ async function getAllHistoricalGoals(userId: string) {
               cholesterol, sodium, potassium, dietary_fiber, sugars,
               vitamin_a, vitamin_c, calcium, iron,
               caffeine_mg, alcohol_g,
-              target_exercise_calories_burned, target_exercise_duration_minutes,
+              target_exercise_calories_burned, target_exercise_duration_minutes, target_steps,
               protein_percentage, carbs_percentage, fat_percentage,
               breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
               custom_meal_percentages, custom_nutrients
@@ -66,7 +66,7 @@ async function getGoalsInRange(
               cholesterol, sodium, potassium, dietary_fiber, sugars,
               vitamin_a, vitamin_c, calcium, iron,
               caffeine_mg, alcohol_g,
-              target_exercise_calories_burned, target_exercise_duration_minutes,
+              target_exercise_calories_burned, target_exercise_duration_minutes, target_steps,
               protein_percentage, carbs_percentage, fat_percentage,
               breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
               custom_meal_percentages, custom_nutrients
@@ -92,7 +92,7 @@ async function getMostRecentGoalBeforeDate(userId: any, selectedDate: any) {
                cholesterol, sodium, potassium, dietary_fiber, sugars,
                vitamin_a, vitamin_c, calcium, iron,
                caffeine_mg, alcohol_g,
-               target_exercise_calories_burned, target_exercise_duration_minutes,
+               target_exercise_calories_burned, target_exercise_duration_minutes, target_steps,
                protein_percentage, carbs_percentage, fat_percentage,
                breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
                custom_meal_percentages, custom_nutrients
@@ -121,9 +121,9 @@ async function upsertGoal(goalData: any) {
         protein_percentage, carbs_percentage, fat_percentage,
         breakfast_percentage, lunch_percentage, dinner_percentage, snacks_percentage,
         custom_meal_percentages, custom_nutrients, created_at, updated_at,
-        caffeine_mg, alcohol_g
+        caffeine_mg, alcohol_g, target_steps
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36)
       ON CONFLICT (user_id, COALESCE(goal_date, '1900-01-01'::date))
       DO UPDATE SET
         calories = EXCLUDED.calories,
@@ -157,6 +157,8 @@ async function upsertGoal(goalData: any) {
         custom_nutrients = EXCLUDED.custom_nutrients,
         caffeine_mg = EXCLUDED.caffeine_mg,
         alcohol_g = EXCLUDED.alcohol_g,
+        -- A client that predates the steps goal omits it; keep the stored value.
+        target_steps = CASE WHEN $37::boolean THEN EXCLUDED.target_steps ELSE user_goals.target_steps END,
         updated_at = now()
       RETURNING *`,
       [
@@ -195,6 +197,8 @@ async function upsertGoal(goalData: any) {
         new Date(), // for updated_at
         goalData.caffeine_mg,
         goalData.alcohol_g,
+        goalData.target_steps ?? null,
+        goalData.target_steps !== undefined,
       ]
     );
     return result.rows[0];

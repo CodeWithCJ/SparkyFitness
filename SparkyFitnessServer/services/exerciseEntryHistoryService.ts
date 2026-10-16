@@ -295,7 +295,7 @@ async function getExerciseEntryHistorySessions(
           `SELECT ee.*, ${SETS_SUBQUERY}
            FROM exercise_entries ee
            WHERE ee.exercise_preset_entry_id = ANY($1::uuid[])
-           ORDER BY ee.entry_time ASC NULLS LAST, ee.sort_order ASC, ee.created_at ASC`,
+           ORDER BY ee.sort_order ASC, ee.created_at ASC`,
           [presetIds]
         )
         .then((r: { rows: Record<string, unknown>[] }) => {
@@ -530,7 +530,7 @@ async function _getExerciseEntriesByDateWithClient(
       `SELECT ee.*, ${SETS_SUBQUERY}
        FROM exercise_entries ee
        WHERE ee.user_id = $1 AND ee.entry_date = $2
-       ORDER BY ee.entry_time ASC NULLS LAST, ee.sort_order ASC, ee.created_at ASC`,
+       ORDER BY ee.sort_order ASC, ee.created_at ASC`,
       [userId, selectedDate]
     ),
   ]);
@@ -772,12 +772,15 @@ export async function getGroupedExerciseSessionByIdWithClient(
     return null;
   }
 
+  // Children follow the workout's own order (sort_order), never entry_time: a
+  // live session stamps entry_time when an exercise's first set is logged, so
+  // logging out of order would otherwise reorder the workout on every save.
   const [childEntriesResult, presetActivityResult] = await Promise.all([
     client.query(
       `SELECT ee.*, ${SETS_SUBQUERY}
        FROM exercise_entries ee
        WHERE ee.user_id = $1 AND ee.exercise_preset_entry_id = $2
-       ORDER BY ee.entry_time ASC NULLS LAST, ee.sort_order ASC, ee.created_at ASC
+       ORDER BY ee.sort_order ASC, ee.created_at ASC
        ${lockExerciseEntries ? 'FOR UPDATE OF ee' : ''}`,
       [targetUserId, presetEntryId]
     ),

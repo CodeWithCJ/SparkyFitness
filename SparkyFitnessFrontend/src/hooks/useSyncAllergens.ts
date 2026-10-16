@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { apiCall } from '@/api/api';
 
+import i18n from 'i18next';
 export const useSyncAllergens = () => {
   const { toast } = useToast();
   const [syncingAllergens, setSyncingAllergens] = useState(false);
@@ -13,16 +14,29 @@ export const useSyncAllergens = () => {
         method: 'POST',
       })) as { updated: number; total: number };
       toast({
-        title: 'Allergen sync complete',
+        title: i18n.t(
+          'hooks.useSyncAllergens.allergenSyncComplete',
+          'Allergen sync complete'
+        ),
         description:
           result.total === 0
-            ? 'All your OpenFoodFacts foods already have allergen data.'
-            : `Updated ${result.updated} of ${result.total} food(s).`,
+            ? i18n.t(
+                'hooks.useSyncAllergens.allYourOpenFoodFactsFoodsAlready',
+                'All your OpenFoodFacts foods already have allergen data.'
+              )
+            : i18n.t(
+                'hooks.useSyncAllergens.updatedOfFoodS',
+                'Updated {{updated}} of {{total}} food(s).',
+                { updated: result.updated, total: result.total }
+              ),
       });
     } catch {
       toast({
-        title: 'Sync failed',
-        description: 'Could not sync allergens. Please try again.',
+        title: i18n.t('hooks.useSyncAllergens.syncFailed', 'Sync failed'),
+        description: i18n.t(
+          'hooks.useSyncAllergens.couldNotSyncAllergensPlease',
+          'Could not sync allergens. Please try again.'
+        ),
         variant: 'destructive',
       });
     } finally {

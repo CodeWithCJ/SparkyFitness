@@ -95,6 +95,19 @@ function formatTimeDuration(totalSeconds: number): string {
 }
 
 /**
+ * A stored measurement as a number rounded to `decimals`, or null when the
+ * column is empty or not above zero. A zero from a source that never measured
+ * floors or ascent would otherwise show as "0 floors" on every activity.
+ */
+function positiveOrNull(value: unknown, decimals: number): number | null {
+  if (value === null || value === undefined) return null;
+  const parsed = parseFloat(String(value));
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+  const factor = 10 ** decimals;
+  return Math.round(parsed * factor) / factor;
+}
+
+/**
  * Formats a Date as a YYYY-MM-DD calendar day from its local components.
  * DATE_TRUNC returns local midnight, so toISOString().slice(0, 10) reports the
  * previous day whenever the server timezone is behind UTC.
@@ -562,6 +575,7 @@ async function queryExerciseActivities(
       SELECT
         id, user_id, exercise_name, category, entry_date, entry_time,
         duration_minutes, distance, avg_heart_rate, calories_burned, source, notes,
+        floors_climbed, elevation_gain_meters,
         EXISTS (
           SELECT 1 FROM public.exercise_entry_gps_points g
           WHERE g.exercise_entry_id = exercise_entries.id
@@ -615,6 +629,8 @@ async function queryExerciseActivities(
           avgHeartRate: row.avg_heart_rate
             ? Math.round(parseFloat(String(row.avg_heart_rate)))
             : null,
+          floorsClimbed: positiveOrNull(row.floors_climbed, 0),
+          elevationGainMeters: positiveOrNull(row.elevation_gain_meters, 1),
           source: row.source ? String(row.source) : null,
           notes: row.notes ? String(row.notes) : null,
           hasGpsTrack: row.has_gps_track === true,
@@ -733,6 +749,12 @@ async function getPersonalRecordMatrix(
     }
 
     for (const sportGroup of PR_SPORT_GROUPS) {
+      // The bands are running distances. A sport with no distance standard of
+      // its own (skiing, rowing machines, anything classified as 'other') would
+      // otherwise be ranked against them: a fast downhill run becomes a
+      // marathon record. Such efforts only ever surface as the single
+      // best-effort card below.
+      if (sportGroup === 'other') continue;
       for (const [stdKey, stdConfig] of standardEntries) {
         const candidate = bestBySportAndStandard.get(`${sportGroup}:${stdKey}`);
         if (!candidate) continue;

@@ -1,0 +1,7 @@
+{
+  "platforms": ["android"],
+  "android": {
+    "modules": ["expo.modules.stepcounter.StepCounterModule"],
+    "permissions": ["android.permission.ACTIVITY_RECOGNITION"]
+  }
+}

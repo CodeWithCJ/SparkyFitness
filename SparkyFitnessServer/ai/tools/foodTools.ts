@@ -24,6 +24,7 @@ import {
   IMPLAUSIBLE_SERVING_UNITS,
   type ProviderFoodItem,
   type ProviderFoodVariant,
+  type ProviderLookupResult,
 } from '../../services/foodProviderLookupService.js';
 import { fetchProviderFoodDetails } from '../../services/foodProviderDetailService.js';
 import {
@@ -662,9 +663,16 @@ function projectFoodDiaryEntry(
     : isServingCount
       ? 1
       : null;
-  const consumedQuantity = isServingCount
-    ? quantity * (hasValidServingSize ? parsedServingSize : 1)
-    : quantity;
+  // A serving-denominated reference already counts servings: serving_size 4.5
+  // with serving_unit "serving" means the stored nutrients cover 4.5 servings
+  // (the shape the diary CSV import writes). Only a gram/ml reference needs the
+  // serving count converted into the reference unit first.
+  const servingSizeIsServingCount =
+    servingUnit !== null && normalizeFoodUnit(servingUnit) === 'serving';
+  const consumedQuantity =
+    isServingCount && !servingSizeIsServingCount
+      ? quantity * (hasValidServingSize ? parsedServingSize : 1)
+      : quantity;
 
   if (
     !isLegacyAmbiguous &&
@@ -869,7 +877,8 @@ export async function getWaterHistoryRows(
 async function fetchVerifiedProviderFood(
   userId: string,
   providerType: string,
-  externalId: string
+  externalId: string,
+  providerId?: string
 ): Promise<ProviderFoodItem | null> {
   try {
     const detail = await fetchProviderFoodDetails({
@@ -877,6 +886,7 @@ async function fetchVerifiedProviderFood(
       dataUserId: userId,
       providerType,
       externalId,
+      providerId,
     });
     if (
       !detail ||
@@ -900,11 +910,11 @@ async function fetchVerifiedProviderFood(
 async function lookupFoodNutrition(
   userId: string,
   foodName: string,
-  providerType?: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): Promise<{ source: string; food: any | null; alternatives?: any[] }> {
+  providerType?: string,
+  externalId?: string
+): Promise<ProviderLookupResult> {
   // Internal DB search (unless another provider was explicitly requested)
-  if (!providerType || providerType === 'internal') {
+  if (!externalId && (!providerType || providerType === 'internal')) {
     const internalExact = await searchFoodInternal(userId, foodName, 'exact');
     if (internalExact.data.length > 0) {
       return {
@@ -930,7 +940,7 @@ async function lookupFoodNutrition(
   // The provider half of the cascade lives in foodProviderLookupService so the
   // food-photo matcher runs the identical order and ranking.
   const targetProviders = await resolveFoodProviderOrder(userId, providerType);
-  return lookupFoodFromProviders(userId, foodName, targetProviders);
+  return lookupFoodFromProviders(userId, foodName, targetProviders, externalId);
 }
 
 // Standalone domain tools.
@@ -1301,13 +1311,13 @@ Actions:
               text += `**${f.name}**`;
               if (f.brand) text += ` (${f.brand})`;
 
-              if (result.source === 'internal') {
+              if (result.source === 'internal' && f.id) {
                 const dbVariants = await foodRepository.getFoodVariantsByFoodId(
                   f.id,
                   userId
                 );
                 if (Array.isArray(dbVariants)) {
-                  f.variants = dbVariants;
+                  f.variants = dbVariants.map((variant) => ({ ...variant }));
                 }
               }
 
@@ -1382,6 +1392,7 @@ Actions:
                 const exampleCall = JSON.stringify({
                   action: 'log_external_food',
                   food_name: f.name,
+                  provider_type: result.source,
                   ...(f.provider_external_id
                     ? { external_id: String(f.provider_external_id) }
                     : {}),
@@ -1489,22 +1500,32 @@ Actions:
               const pinnedDetails = Boolean(
                 args.external_id && args.provider_type === 'fatsecret'
               );
+              const pinnedProvider = pinnedDetails
+                ? (await resolveFoodProviderOrder(userId, 'fatsecret'))[0]
+                : undefined;
               const result = pinnedDetails
                 ? {
                     source: 'fatsecret',
+                    provider_id: pinnedProvider?.id,
                     food: await fetchVerifiedProviderFood(
                       userId,
                       'fatsecret',
-                      args.external_id!
+                      args.external_id!,
+                      pinnedProvider?.id
                     ),
                     alternatives: [],
                   }
                 : await lookupFoodNutrition(
                     userId,
                     args.food_name,
-                    args.provider_type
+                    args.provider_type,
+                    args.external_id
                   );
               if (result.source === 'ai_estimate' || !result.food) {
+                if (args.external_id && !pinnedDetails)
+                  return ERRORS.VALIDATION(
+                    `Selected external ID "${args.external_id}" was not returned by any active provider. Nothing was logged. Look up that exact item again; do not substitute another result.`
+                  );
                 return ERRORS.VALIDATION(
                   `No verified external match is available for "${args.food_name}". Nothing was logged. Try another provider or official product source (up to three candidates), then ask for the label or portion weight. A provider outage is not permission to invent nutrition.`
                 );
@@ -1578,7 +1599,8 @@ Actions:
                 const detail = await fetchVerifiedProviderFood(
                   userId,
                   result.source,
-                  externalId
+                  externalId,
+                  result.provider_id
                 );
                 if (
                   !detail ||
@@ -1668,13 +1690,32 @@ Actions:
                 is_quick_food: args.is_quick_food === true,
               });
 
-              // Create the other variants returned by the provider
-              const otherVariants = (match.variants || []).filter(
+              // A provider food may already exist with a different default.
+              // Keep the selected source serving and use its persisted ID.
+              const savedVariants =
+                await foodCoreService.getFoodVariantsByFoodId(userId, food.id);
+              const availableVariants: PortionVariant[] = [
+                food.default_variant,
+                ...(savedVariants ?? []),
+              ].filter((variant): variant is NonNullable<typeof variant> =>
+                Boolean(variant)
+              );
+              const sameReference = (
+                left: PortionVariant,
+                right: PortionVariant
+              ) =>
+                nutrientNumber(left.serving_size) ===
+                  nutrientNumber(right.serving_size) &&
+                left.serving_unit === right.serving_unit;
+              const otherVariants = [
+                v,
+                ...(match.variants || []).filter((variant) => variant !== v),
+              ].filter(
                 (varOpt: ProviderFoodVariant) =>
-                  varOpt !== v &&
                   !validateNamedFoodReference(match.name, varOpt) &&
-                  (varOpt.serving_size !== v.serving_size ||
-                    varOpt.serving_unit !== v.serving_unit)
+                  !availableVariants.some((saved) =>
+                    sameReference(saved, varOpt)
+                  )
               );
               let createdVariants: PortionVariant[] = [];
               if (otherVariants.length > 0) {
@@ -1737,14 +1778,20 @@ Actions:
                 }
               }
 
-              const dv = food.default_variant;
+              const selectedVariant = [
+                ...availableVariants,
+                ...createdVariants,
+              ].find((saved) => sameReference(saved, v));
+              if (!selectedVariant?.id)
+                return ERRORS.VALIDATION(
+                  'The selected provider serving could not be saved; nothing was logged.'
+                );
               const logged = resolveFoodPortion({
                 quantity,
                 unit: args.unit,
-                variants: [dv, ...createdVariants].filter(
-                  (variant): variant is PortionVariant => Boolean(variant)
-                ),
-                preferredVariant: dv,
+                variants: [...availableVariants, ...createdVariants],
+                preferredVariant: selectedVariant,
+                explicitVariant: selectedVariant,
               });
               if (!logged.ok) return ERRORS.VALIDATION(logged.message);
               if (!logged.variant.id)

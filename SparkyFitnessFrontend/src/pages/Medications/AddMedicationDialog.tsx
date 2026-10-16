@@ -839,7 +839,10 @@ export default function AddMedicationDialog({
                       id="custom-glp-name"
                       value={customName}
                       onChange={(e) => setCustomName(e.target.value)}
-                      placeholder="e.g. Retatrutide, Compound Semaglutide"
+                      placeholder={t(
+                        'medications.addMedicationDialog.eGRetatrutideCompoundSemaglutide',
+                        'e.g. Retatrutide, Compound Semaglutide'
+                      )}
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -891,8 +894,18 @@ export default function AddMedicationDialog({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">
+                            {t(
+                              'medications.addMedicationDialog.weekly',
+                              'Weekly'
+                            )}
+                          </SelectItem>
+                          <SelectItem value="daily">
+                            {t(
+                              'medications.addMedicationDialog.daily',
+                              'Daily'
+                            )}
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1203,7 +1216,14 @@ export default function AddMedicationDialog({
                           setEffectiveness(star === effectiveness ? 0 : star)
                         }
                         className="text-lg transition-transform hover:scale-110"
-                        aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                        aria-label={t(
+                          'medications.addMedicationDialog.rateStars',
+                          {
+                            count: star,
+                            defaultValue_one: 'Rate {{count}} star',
+                            defaultValue_other: 'Rate {{count}} stars',
+                          }
+                        )}
                       >
                         <Star
                           className={`h-5 w-5 ${

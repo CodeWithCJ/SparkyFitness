@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Icon from '../Icon';
+import AllergenBadges from '../AllergenBadges';
 import ShareStatusBadge from '../ShareStatusBadge';
 import VerifiedBadge from '../VerifiedBadge';
 import { deriveShareStatus } from '../../utils/shareStatus';
@@ -132,6 +133,10 @@ const FoodResultRow: React.FC<FoodResultRowProps> = ({
               {item.brand}
             </Text>
           ) : null}
+          <AllergenBadges
+            allergens={item.default_variant.allergens}
+            traces={item.default_variant.traces}
+          />
         </View>
         <View className="items-end">
           <Text className="text-text-primary text-base font-semibold">

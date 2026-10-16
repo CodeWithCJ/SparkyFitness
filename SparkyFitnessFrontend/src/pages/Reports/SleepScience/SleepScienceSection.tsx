@@ -91,12 +91,24 @@ const SleepScienceSection: React.FC<SleepScienceSectionProps> = ({
                 </p>
                 <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
                   <span>
-                    {t('sleepScience.workdays', 'Workdays')}:{' '}
-                    {sufficiency.workdaysAvailable}/{sufficiency.workdaysNeeded}
+                    {t(
+                      'sleepScience.workdays2',
+                      'Workdays: {{workdaysAvailable}}/{{workdaysNeeded}}',
+                      {
+                        workdaysAvailable: sufficiency.workdaysAvailable,
+                        workdaysNeeded: sufficiency.workdaysNeeded,
+                      }
+                    )}
                   </span>
                   <span>
-                    {t('sleepScience.freedays', 'Free days')}:{' '}
-                    {sufficiency.freedaysAvailable}/{sufficiency.freedaysNeeded}
+                    {t(
+                      'sleepScience.freeDays',
+                      'Free days: {{freedaysAvailable}}/{{freedaysNeeded}}',
+                      {
+                        freedaysAvailable: sufficiency.freedaysAvailable,
+                        freedaysNeeded: sufficiency.freedaysNeeded,
+                      }
+                    )}
                   </span>
                 </div>
               </div>

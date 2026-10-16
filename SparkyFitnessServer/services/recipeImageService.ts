@@ -22,13 +22,17 @@ export async function readRecipeImage(
   const image = /^data:(image\/[a-z0-9.+-]+);base64,([a-z0-9+/=\s]+)$/i.exec(
     imageDataUrl ?? ''
   );
-  if (!image || image[2].length > 12 * 1024 * 1024)
+  if (
+    !image ||
+    image[2].length > Math.ceil((8 * 1024 * 1024) / 3) * 4 ||
+    Buffer.from(image[2], 'base64').byteLength > 8 * 1024 * 1024
+  )
     throw new RecipeSourceError(
       'Attach a recipe image of at most 8 MB to this chat.'
     );
   const settingId =
-    serviceConfigId ??
-    (await chatRepository.getActiveVisionAiServiceSetting(userId))?.id;
+    (await chatRepository.getActiveVisionAiServiceSetting(userId))?.id ??
+    serviceConfigId;
   const setting = settingId
     ? await chatRepository.getAiServiceSettingForBackend(settingId, userId)
     : null;

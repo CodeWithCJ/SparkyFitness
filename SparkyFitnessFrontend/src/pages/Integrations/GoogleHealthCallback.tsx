@@ -4,7 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 import { CallbackStatus } from './CallbackStatus';
 import { useLinkGoogleHealthMutation } from '@/hooks/Integrations/useIntegrations';
 
+import { useTranslation } from 'react-i18next';
 const GoogleHealthCallback = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -26,8 +28,14 @@ const GoogleHealthCallback = () => {
       if (!code) {
         setMessage('Error: Missing Google Health authorization code.');
         toast({
-          title: 'Google Health OAuth Error',
-          description: 'Missing authorization code in callback.',
+          title: t(
+            'integrations.googleHealthCallback.googleHealthOAuthError',
+            'Google Health OAuth Error'
+          ),
+          description: t(
+            'integrations.googleHealthCallback.missingAuthorizationCodeInCallback',
+            'Missing authorization code in callback.'
+          ),
           variant: 'destructive',
         });
         setLoading(false);
@@ -50,7 +58,7 @@ const GoogleHealthCallback = () => {
 
     processCallback();
     return () => clearTimeout(timeoutId);
-  }, [location, navigate, toast, linkGoogleHealthAccount]);
+  }, [location, navigate, toast, linkGoogleHealthAccount, t]);
 
   return <CallbackStatus loading={loading} message={message} />;
 };

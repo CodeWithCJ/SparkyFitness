@@ -23,6 +23,7 @@ import {
   MessagePrimitive,
   ThreadPrimitive,
   useAuiState,
+  useAui,
 } from '@assistant-ui/react';
 import type {
   AssistantRuntime,
@@ -44,7 +45,11 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from 'lucide-react';
-import type { FC } from 'react';
+import { useRef, type FC } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useUserAIPreferences } from '@/hooks/AI/useAIServiceSettings';
+import { useVoiceInput } from '@/hooks/AI/useVoiceInput';
+import { VoiceInputControl } from '@/components/ai/VoiceInputControl';
 
 interface ThreadProps {
   runtime?: AssistantRuntime;
@@ -112,10 +117,11 @@ const ThreadMessage: FC = () => {
 };
 
 const ThreadScrollToBottom: FC = () => {
+  const { t } = useTranslation();
   return (
     <ThreadPrimitive.ScrollToBottom asChild>
       <TooltipIconButton
-        tooltip="Scroll to bottom"
+        tooltip={t('thread.scrollToBottom', 'Scroll to bottom')}
         variant="outline"
         className="aui-thread-scroll-to-bottom dark:border-border dark:bg-background dark:hover:bg-accent absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible"
       >
@@ -126,15 +132,16 @@ const ThreadScrollToBottom: FC = () => {
 };
 
 const ThreadWelcome: FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="aui-thread-welcome-root my-auto flex grow flex-col">
       <div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
         <div className="aui-thread-welcome-message flex size-full flex-col justify-center px-4">
           <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-2xl font-semibold duration-200">
-            Hello there!
+            {t('thread.helloThere', 'Hello there!')}
           </h1>
           <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-xl delay-75 duration-200">
-            How can I help you today?
+            {t('thread.howCanIHelpYou', 'How can I help you today?')}
           </p>
         </div>
       </div>
@@ -177,8 +184,32 @@ const ThreadSuggestionItem: FC<{ prompt: string }> = ({ prompt }) => {
 };
 
 const Composer: FC = () => {
+  const { t, i18n } = useTranslation();
+  const aui = useAui();
+  const running = useAuiState((state) => state.thread.isRunning);
+  const { data: preferences } = useUserAIPreferences();
+  const voiceEnabled =
+    !!preferences && preferences.voice_input_enabled !== false;
+  const waveformRef = useRef<HTMLDivElement>(null);
+  const voice = useVoiceInput({
+    enabled: voiceEnabled && !running,
+    serviceId: preferences?.active_voice_ai_service_id ?? null,
+    language: i18n.language,
+    getText: () => aui.composer().getState().text,
+    setText: (text) => aui.composer().setText(text),
+    onLevel: (level) =>
+      waveformRef.current?.style.setProperty('--voice-level', String(level)),
+  });
   return (
-    <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+    <ComposerPrimitive.Root
+      className="aui-composer-root relative flex w-full flex-col"
+      onSubmitCapture={(event) => {
+        if (voice.busy) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }}
+    >
       <ComposerPrimitive.AttachmentDropzone asChild>
         <div
           data-slot="aui_composer-shell"
@@ -186,36 +217,54 @@ const Composer: FC = () => {
         >
           <ComposerAttachments />
           <ComposerPrimitive.Input
-            placeholder="Send a message..."
+            disabled={voice.busy}
+            placeholder={t('thread.sendAMessage', 'Send a message...')}
             className="aui-composer-input placeholder:text-muted-foreground/80 max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none"
             rows={1}
             autoFocus
-            aria-label="Message input"
+            aria-label={t('thread.messageInput', 'Message input')}
           />
-          <ComposerAction />
+          <div className="aui-composer-action-wrapper relative flex items-start justify-between gap-2">
+            <div
+              className={cn(
+                'flex items-center gap-1',
+                voice.busy && 'pointer-events-none opacity-50'
+              )}
+              inert={voice.busy}
+            >
+              <ComposerAddAttachment />
+              <ChatToolCategoriesSelector />
+            </div>
+            <div className="flex flex-col items-end gap-2">
+              {voiceEnabled && !running ? (
+                <VoiceInputControl {...voice} waveformRef={waveformRef}>
+                  <ComposerAction disabled={voice.busy} />
+                </VoiceInputControl>
+              ) : (
+                <ComposerAction disabled={voice.busy} />
+              )}
+            </div>
+          </div>
         </div>
       </ComposerPrimitive.AttachmentDropzone>
     </ComposerPrimitive.Root>
   );
 };
 
-const ComposerAction: FC = () => {
+const ComposerAction: FC<{ disabled: boolean }> = ({ disabled }) => {
+  const { t } = useTranslation();
   return (
-    <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      <div className="flex items-center gap-1">
-        <ComposerAddAttachment />
-        <ChatToolCategoriesSelector />
-      </div>
+    <>
       <AuiIf condition={(s) => !s.thread.isRunning}>
-        <ComposerPrimitive.Send asChild>
+        <ComposerPrimitive.Send asChild disabled={disabled}>
           <TooltipIconButton
-            tooltip="Send message"
+            tooltip={t('thread.sendMessage', 'Send message')}
             side="bottom"
             type="button"
             variant="default"
             size="icon"
             className="aui-composer-send size-8 rounded-full"
-            aria-label="Send message"
+            aria-label={t('thread.sendMessage', 'Send message')}
           >
             <ArrowUpIcon className="aui-composer-send-icon size-4" />
           </TooltipIconButton>
@@ -228,13 +277,13 @@ const ComposerAction: FC = () => {
             variant="default"
             size="icon"
             className="aui-composer-cancel size-8 rounded-full"
-            aria-label="Stop generating"
+            aria-label={t('thread.stopGenerating', 'Stop generating')}
           >
             <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
           </Button>
         </ComposerPrimitive.Cancel>
       </AuiIf>
-    </div>
+    </>
   );
 };
 
@@ -316,6 +365,7 @@ export const MessageTokenUsage: FC = () => {
 // so a bare `.totalTokens` would throw. "this session" signals the count is
 // current-session-only — it resets on reload (see known limitations).
 export const SessionTokenUsage: FC = () => {
+  const { t } = useTranslation();
   const { showTokenStats } = useChatbotVisibility();
   const messages = useAuiState((s) => s.thread.messages);
   if (!showTokenStats) return null;
@@ -325,7 +375,11 @@ export const SessionTokenUsage: FC = () => {
   );
   if (total === 0) return null;
   return (
-    <TokenUsageLine className="px-1" label="this session" totalTokens={total} />
+    <TokenUsageLine
+      className="px-1"
+      label={t('thread.thisSession', 'this session')}
+      totalTokens={total}
+    />
   );
 };
 
@@ -384,6 +438,7 @@ const AssistantMessage: FC = () => {
 };
 
 const AssistantActionBar: FC = () => {
+  const { t } = useTranslation();
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
@@ -391,7 +446,7 @@ const AssistantActionBar: FC = () => {
       className="aui-assistant-action-bar-root text-muted-foreground col-start-3 row-start-2 -ms-1 flex gap-1"
     >
       <ActionBarPrimitive.Copy asChild>
-        <TooltipIconButton tooltip="Copy">
+        <TooltipIconButton tooltip={t('thread.copy', 'Copy')}>
           <AuiIf condition={(s) => s.message.isCopied}>
             <CheckIcon />
           </AuiIf>
@@ -401,14 +456,14 @@ const AssistantActionBar: FC = () => {
         </TooltipIconButton>
       </ActionBarPrimitive.Copy>
       <ActionBarPrimitive.Reload asChild>
-        <TooltipIconButton tooltip="Refresh">
+        <TooltipIconButton tooltip={t('thread.refresh', 'Refresh')}>
           <RefreshCwIcon />
         </TooltipIconButton>
       </ActionBarPrimitive.Reload>
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger asChild>
           <TooltipIconButton
-            tooltip="More"
+            tooltip={t('thread.more', 'More')}
             className="data-[state=open]:bg-accent"
           >
             <MoreHorizontalIcon />
@@ -422,7 +477,7 @@ const AssistantActionBar: FC = () => {
           <ActionBarPrimitive.ExportMarkdown asChild>
             <ActionBarMorePrimitive.Item className="aui-action-bar-more-item hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none">
               <DownloadIcon className="size-4" />
-              Export as Markdown
+              {t('thread.exportAsMarkdown', 'Export as Markdown')}
             </ActionBarMorePrimitive.Item>
           </ActionBarPrimitive.ExportMarkdown>
         </ActionBarMorePrimitive.Content>
@@ -458,6 +513,7 @@ const UserMessage: FC = () => {
 };
 
 const UserActionBar: FC = () => {
+  const { t } = useTranslation();
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
@@ -465,7 +521,10 @@ const UserActionBar: FC = () => {
       className="aui-user-action-bar-root flex flex-col items-end"
     >
       <ActionBarPrimitive.Edit asChild>
-        <TooltipIconButton tooltip="Edit" className="aui-user-action-edit p-4">
+        <TooltipIconButton
+          tooltip={t('common.edit', 'Edit')}
+          className="aui-user-action-edit p-4"
+        >
           <PencilIcon />
         </TooltipIconButton>
       </ActionBarPrimitive.Edit>
@@ -474,6 +533,7 @@ const UserActionBar: FC = () => {
 };
 
 const EditComposer: FC = () => {
+  const { t } = useTranslation();
   return (
     <MessagePrimitive.Root
       data-slot="aui_edit-composer-wrapper"
@@ -487,11 +547,11 @@ const EditComposer: FC = () => {
         <div className="aui-edit-composer-footer mx-3 mb-3 flex items-center gap-2 self-end">
           <ComposerPrimitive.Cancel asChild>
             <Button variant="ghost" size="sm">
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </Button>
           </ComposerPrimitive.Cancel>
           <ComposerPrimitive.Send asChild>
-            <Button size="sm">Update</Button>
+            <Button size="sm">{t('thread.update', 'Update')}</Button>
           </ComposerPrimitive.Send>
         </div>
       </ComposerPrimitive.Root>
@@ -503,6 +563,7 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
   className,
   ...rest
 }) => {
+  const { t } = useTranslation();
   return (
     <BranchPickerPrimitive.Root
       hideWhenSingleBranch
@@ -513,7 +574,7 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
       {...rest}
     >
       <BranchPickerPrimitive.Previous asChild>
-        <TooltipIconButton tooltip="Previous">
+        <TooltipIconButton tooltip={t('common.previous', 'Previous')}>
           <ChevronLeftIcon />
         </TooltipIconButton>
       </BranchPickerPrimitive.Previous>
@@ -521,7 +582,7 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({
         <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
       </span>
       <BranchPickerPrimitive.Next asChild>
-        <TooltipIconButton tooltip="Next">
+        <TooltipIconButton tooltip={t('common.next', 'Next')}>
           <ChevronRightIcon />
         </TooltipIconButton>
       </BranchPickerPrimitive.Next>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as pregnancyService from '@/api/Pregnancy/pregnancyService';
 import type { SharedPregnancy } from '@workspace/shared';
+import i18n from 'i18next';
 export type {
   BumpPhoto,
   PregnancyVitals,
@@ -19,7 +20,12 @@ export const useAppointments = (upcoming?: boolean) =>
   useQuery({
     queryKey: [...pregnancyKeys.appointments(), upcoming ?? false],
     queryFn: () => pregnancyService.listAppointments(upcoming),
-    meta: { errorMessage: 'Failed to load appointments.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.failedToLoadAppointments',
+        'Failed to load appointments.'
+      ),
+    },
   });
 
 export const useCreateAppointmentMutation = () => {
@@ -32,8 +38,14 @@ export const useCreateAppointmentMutation = () => {
       queryClient.invalidateQueries({ queryKey: ['pregnancy-overview'] });
     },
     meta: {
-      errorMessage: 'Could not save appointment.',
-      successMessage: 'Appointment saved.',
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.couldNotSaveAppointment',
+        'Could not save appointment.'
+      ),
+      successMessage: i18n.t(
+        'hooks.usePregnancy.appointmentSaved',
+        'Appointment saved.'
+      ),
     },
   });
 };
@@ -46,7 +58,12 @@ export const useDeleteAppointmentMutation = () => {
       queryClient.invalidateQueries({ queryKey: pregnancyKeys.appointments() });
       queryClient.invalidateQueries({ queryKey: ['pregnancy-overview'] });
     },
-    meta: { errorMessage: 'Could not delete appointment.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.couldNotDeleteAppointment',
+        'Could not delete appointment.'
+      ),
+    },
   });
 };
 
@@ -54,7 +71,12 @@ export const usePregnancyOverview = (date?: string) =>
   useQuery({
     queryKey: pregnancyKeys.overview(date),
     queryFn: () => pregnancyService.getOverview(date),
-    meta: { errorMessage: 'Failed to load pregnancy overview.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.failedToLoadPregnancyOverview',
+        'Failed to load pregnancy overview.'
+      ),
+    },
   });
 
 export const useContractions = (enabled = true) =>
@@ -62,7 +84,12 @@ export const useContractions = (enabled = true) =>
     queryKey: pregnancyKeys.contractions(),
     queryFn: () => pregnancyService.getContractions(),
     refetchInterval: enabled ? 15000 : false,
-    meta: { errorMessage: 'Failed to load contractions.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.failedToLoadContractions',
+        'Failed to load contractions.'
+      ),
+    },
   });
 
 export const useCreatePregnancyMutation = () => {
@@ -76,8 +103,14 @@ export const useCreatePregnancyMutation = () => {
       queryClient.invalidateQueries({ queryKey: ['cycle-settings'] });
     },
     meta: {
-      errorMessage: 'Could not start pregnancy tracking.',
-      successMessage: 'Pregnancy tracking started.',
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.couldNotStartPregnancyTracking',
+        'Could not start pregnancy tracking.'
+      ),
+      successMessage: i18n.t(
+        'hooks.usePregnancy.pregnancyTrackingStarted',
+        'Pregnancy tracking started.'
+      ),
     },
   });
 };
@@ -89,7 +122,12 @@ export const useStartKickMutation = () => {
       pregnancyService.startKickSession(pregnancyId),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: pregnancyKeys.kicks() }),
-    meta: { errorMessage: 'Could not start kick session.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.couldNotStartKickSession',
+        'Could not start kick session.'
+      ),
+    },
   });
 };
 
@@ -107,7 +145,12 @@ export const useUpdateKickMutation = () => {
       queryClient.invalidateQueries({ queryKey: pregnancyKeys.kicks() });
       queryClient.invalidateQueries({ queryKey: ['pregnancy-overview'] });
     },
-    meta: { errorMessage: 'Could not update kick session.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.couldNotUpdateKickSession',
+        'Could not update kick session.'
+      ),
+    },
   });
 };
 
@@ -123,7 +166,12 @@ export const useCreateContractionMutation = () => {
     }) => pregnancyService.createContraction(pregnancyId, startedAt),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: pregnancyKeys.contractions() }),
-    meta: { errorMessage: 'Could not log contraction.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.couldNotLogContraction',
+        'Could not log contraction.'
+      ),
+    },
   });
 };
 
@@ -139,7 +187,12 @@ export const useUpdateContractionMutation = () => {
     }) => pregnancyService.updateContraction(id, body),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: pregnancyKeys.contractions() }),
-    meta: { errorMessage: 'Could not update contraction.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.couldNotUpdateContraction',
+        'Could not update contraction.'
+      ),
+    },
   });
 };
 
@@ -148,7 +201,12 @@ export const usePhotos = (pregnancyId: string | undefined) =>
     queryKey: ['pregnancy-photos', pregnancyId],
     queryFn: () => pregnancyService.listPhotos(pregnancyId!),
     enabled: !!pregnancyId,
-    meta: { errorMessage: 'Failed to load photos.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.failedToLoadPhotos',
+        'Failed to load photos.'
+      ),
+    },
   });
 
 export const useUploadPhotoMutation = () => {
@@ -168,8 +226,11 @@ export const useUploadPhotoMutation = () => {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['pregnancy-photos'] }),
     meta: {
-      errorMessage: 'Could not upload photo.',
-      successMessage: 'Photo added.',
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.couldNotUploadPhoto',
+        'Could not upload photo.'
+      ),
+      successMessage: i18n.t('hooks.usePregnancy.photoAdded', 'Photo added.'),
     },
   });
 };
@@ -180,7 +241,12 @@ export const useDeletePhotoMutation = () => {
     mutationFn: (id: string) => pregnancyService.deletePhoto(id),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ['pregnancy-photos'] }),
-    meta: { errorMessage: 'Could not delete photo.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.couldNotDeletePhoto',
+        'Could not delete photo.'
+      ),
+    },
   });
 };
 
@@ -193,6 +259,11 @@ export const useChecklistMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['pregnancy-overview'] });
     },
-    meta: { errorMessage: 'Could not update checklist.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.usePregnancy.couldNotUpdateChecklist',
+        'Could not update checklist.'
+      ),
+    },
   });
 };

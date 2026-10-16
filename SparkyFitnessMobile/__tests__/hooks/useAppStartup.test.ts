@@ -66,6 +66,9 @@ jest.mock('../../src/services/workoutLiveActivity', () => ({
   initWorkoutLiveActivity: jest.fn().mockResolvedValue(undefined),
 }));
 
+jest.mock('../../src/services/runLiveActivity', () => ({
+  initRunLiveActivity: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock('../../src/services/themeService', () => ({
   initializeTheme: jest.fn(),
 }));

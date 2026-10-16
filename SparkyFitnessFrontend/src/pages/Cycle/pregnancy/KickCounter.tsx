@@ -144,8 +144,11 @@ export default function KickCounter({
                   >
                     <span className="flex items-center gap-1.5">
                       <Check className="h-3.5 w-3.5 text-primary" />
-                      {s.kick_count}{' '}
-                      {t('pregnancy.kicks.movements', 'movements')}
+                      {t(
+                        'pregnancy.kicks.movements2',
+                        '{{kick_count}} movements',
+                        { kick_count: s.kick_count }
+                      )}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {formatDateInUserTimezone(s.started_at, 'MMM d')}

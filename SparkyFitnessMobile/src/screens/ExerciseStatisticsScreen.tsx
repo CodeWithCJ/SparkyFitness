@@ -14,6 +14,8 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useExerciseDashboard } from '../hooks/useExerciseDashboard';
 import { useTrainingConsistency } from '../hooks/useTrainingConsistency';
 import { useCardioSessions } from '../hooks/useCardioSessions';
+import { useRunningTrends } from '../hooks/useRunningTrends';
+import { usePaceZones } from '../hooks/usePaceZones';
 import { usePreferences } from '../hooks/usePreferences';
 import { useProfile } from '../hooks/useProfile';
 import { formatLocalizedNumber } from '../localization';
@@ -21,14 +23,21 @@ import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy'
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SegmentedControl from '../components/SegmentedControl';
+import ReportRangeControl from '../components/reports/ReportRangeControl';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import type { ReportSectionKey } from '../constants/reports';
 import StatusView from '../components/StatusView';
 import CollapsibleSection from '../components/CollapsibleSection';
 import CardioSessionList from '../components/exerciseStats/CardioSessionList';
+import RunningTrendsCard from '../components/exerciseStats/RunningTrendsCard';
 import TrainingConsistencyCard from '../components/exerciseStats/TrainingConsistencyCard';
+import PaceZonesCard from '../components/exerciseStats/PaceZonesCard';
+import TrainingLoadCard from '../components/exerciseStats/TrainingLoadCard';
+import { useTrainingLoad } from '../hooks/useTrainingLoad';
 import MuscleFigure, {
   MUSCLE_HEAT_COLORS,
 } from '../components/exerciseStats/MuscleFigure';
-import { trendRangeSegments, type TrendRange } from '../utils/trendRange';
+import type { CustomRange, ReportRange } from '../utils/trendRange';
 import { getTodayDate } from '../utils/dateUtils';
 import { weightFromKg } from '../utils/unitConversions';
 import {
@@ -102,7 +111,12 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const [range, setRange] = useState<TrendRange>('30d');
+  const defaultRange = useAppPreferencesStore((s) => s.reportDefaultRange);
+  const hiddenSections = useAppPreferencesStore((s) => s.hiddenReportSections);
+  const isSectionShown = (key: ReportSectionKey) =>
+    !hiddenSections.includes(key);
+  const [range, setRange] = useState<ReportRange>(defaultRange);
+  const [customRange, setCustomRange] = useState<CustomRange | null>(null);
   const [pickedMuscle, setPickedMuscle] = useState<string | null>(null);
   const togglePickedMuscle = (key: string) =>
     setPickedMuscle((current) => (current === key ? null : key));
@@ -121,9 +135,12 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
     left: { kind: 'back' },
   });
 
-  const { data, isLoading } = useExerciseDashboard(range);
+  const { data, isLoading } = useExerciseDashboard(range, customRange);
   const consistency = useTrainingConsistency();
-  const cardio = useCardioSessions(range, view === 'cardio');
+  const trainingLoad = useTrainingLoad();
+  const cardio = useCardioSessions(range, view === 'cardio', customRange);
+  const running = useRunningTrends(view === 'cardio');
+  const paceZones = usePaceZones(view === 'cardio');
   const { preferences } = usePreferences();
   const weightUnit: 'kg' | 'lbs' =
     preferences?.default_weight_unit === 'lbs' ||
@@ -150,7 +167,7 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
     [data]
   );
 
-  const selectRange = (next: TrendRange) => {
+  const selectRange = (next: ReportRange) => {
     setRange(next);
     setPickedMuscle(null);
   };
@@ -168,6 +185,16 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   const maxRowSets = setRows[0]?.sets ?? 0;
   const hasActivity =
     (data?.keyStats.totalWorkouts ?? 0) > 0 || setRows.length > 0;
+
+  // A fixed 28-day window, so it still has something to say when the selected
+  // range holds no workouts.
+  const loadCard = isSectionShown('exercise.load') ? (
+    <TrainingLoadCard
+      data={trainingLoad.load}
+      isLoading={trainingLoad.isLoading}
+      isError={trainingLoad.isError}
+    />
+  ) : null;
 
   const renderCardio = () => {
     if (cardio.isLoading) {
@@ -199,6 +226,19 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
     }
     return (
       <>
+        {running.trends && running.trends.totalRuns > 0 ? (
+          <RunningTrendsCard
+            trends={running.trends}
+            raceTimes={running.raceTimes}
+            distanceUnit={cardio.distanceUnit}
+          />
+        ) : null}
+        {paceZones.result ? (
+          <PaceZonesCard
+            result={paceZones.result}
+            distanceUnit={cardio.distanceUnit}
+          />
+        ) : null}
         <Text className="text-text-secondary text-xs mb-3">
           {t('exerciseStatistics.cardio.hint', {
             defaultValue: 'Tap a workout for its route and heart rate.',
@@ -245,281 +285,298 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
     }
     if (!hasActivity) {
       return (
-        <StatusView
-          inline
-          icon="exercise-weights"
-          iconTone="muted"
-          title={t('exerciseStatistics.states.empty', {
-            defaultValue: 'No workouts in this range',
-          })}
-          subtitle={t('exerciseStatistics.states.emptyHint', {
-            defaultValue:
-              'Log a workout and its sets will show up here by muscle.',
-          })}
-        />
+        <>
+          <StatusView
+            inline
+            icon="exercise-weights"
+            iconTone="muted"
+            title={t('exerciseStatistics.states.empty', {
+              defaultValue: 'No workouts in this range',
+            })}
+            subtitle={t('exerciseStatistics.states.emptyHint', {
+              defaultValue:
+                'Log a workout and its sets will show up here by muscle.',
+            })}
+          />
+          {loadCard}
+        </>
       );
     }
 
     return (
       <>
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm flex-row">
-          <StatTile
-            label={t('exerciseStatistics.stats.workouts', {
-              defaultValue: 'Workouts',
-            })}
-            value={formatLocalizedNumber(data.keyStats.totalWorkouts)}
-          />
-          <StatTile
-            label={t('exerciseStatistics.stats.volume', {
-              defaultValue: 'Volume',
-            })}
-            value={formatLocalizedNumber(
-              Math.round(weightFromKg(data.keyStats.totalVolume, weightUnit))
-            )}
-            unit={weightUnit}
-          />
-          <StatTile
-            label={t('exerciseStatistics.stats.reps', {
-              defaultValue: 'Reps',
-            })}
-            value={formatLocalizedNumber(data.keyStats.totalReps)}
-          />
-        </View>
-
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
-          <Text className="text-text-primary text-base font-bold">
-            {t('exerciseStatistics.setsPerMuscle.title', {
-              defaultValue: 'Sets per Muscle',
-            })}
-          </Text>
-          <Text className="text-text-secondary text-xs mt-0.5 mb-3">
-            {t('exerciseStatistics.setsPerMuscle.subtitle', {
-              defaultValue: 'Working sets on primary muscles in this range',
-            })}
-          </Text>
-          {setRows.length === 0 ? (
-            <Text className="text-text-secondary text-sm">
-              {t('exerciseStatistics.setsPerMuscle.none', {
-                defaultValue: 'No working sets with a primary muscle yet.',
+        {isSectionShown('exercise.overview') ? (
+          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm flex-row">
+            <StatTile
+              label={t('exerciseStatistics.stats.workouts', {
+                defaultValue: 'Workouts',
               })}
-            </Text>
-          ) : (
-            setRows.map((row) => (
-              // A figure muscle's row picks it on the figure too. The figure's
-              // regions are too small and repeated (left, right, front, back)
-              // to be screen-reader targets, so the rows are.
-              <Pressable
-                key={row.key}
-                className="mb-2.5"
-                disabled={!row.onFigure}
-                onPress={() => togglePickedMuscle(row.key)}
-                accessibilityRole={row.onFigure ? 'button' : undefined}
-                accessibilityState={
-                  row.onFigure
-                    ? { selected: pickedMuscle === row.key }
-                    : undefined
-                }
-                testID={`muscle-row-${row.key}`}
-              >
-                <View className="flex-row justify-between mb-1">
-                  <Text
-                    className={`text-sm text-text-primary ${
-                      pickedMuscle === row.key ? 'font-semibold' : ''
-                    }`}
-                  >
-                    {muscleLabel(t, row.name)}
-                  </Text>
-                  <Text className="text-text-secondary text-sm">
-                    {setsLabel(row.sets)}
-                  </Text>
-                </View>
-                <View className="h-1.5 rounded-full bg-progress-track overflow-hidden">
-                  <View
-                    className="h-1.5 rounded-full bg-exercise"
-                    style={{
-                      width: `${maxRowSets > 0 ? (row.sets / maxRowSets) * 100 : 0}%`,
-                    }}
-                  />
-                </View>
-              </Pressable>
-            ))
-          )}
-        </View>
-
-        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm items-center">
-          <Text className="text-text-primary text-base font-bold self-start">
-            {t('exerciseStatistics.heatMap.title', {
-              defaultValue: 'Muscle Heat Map',
-            })}
-          </Text>
-          <Text className="text-text-secondary text-xs mt-0.5 mb-3 self-start">
-            {t('exerciseStatistics.heatMap.subtitle', {
-              defaultValue: 'Front and back, tinted by working sets',
-            })}
-          </Text>
-          <View className="self-stretch mb-3">
-            <SegmentedControl
-              segments={[
-                {
-                  key: 'male',
-                  label: t('exerciseStatistics.heatMap.male', {
-                    defaultValue: 'Male',
-                  }),
-                },
-                {
-                  key: 'female',
-                  label: t('exerciseStatistics.heatMap.female', {
-                    defaultValue: 'Female',
-                  }),
-                },
-              ]}
-              activeKey={figure}
-              onSelect={(next) => {
-                setChosenFigure(next);
-                setPickedMuscle(null);
-              }}
+              value={formatLocalizedNumber(data.keyStats.totalWorkouts)}
+            />
+            <StatTile
+              label={t('exerciseStatistics.stats.volume', {
+                defaultValue: 'Volume',
+              })}
+              value={formatLocalizedNumber(
+                Math.round(weightFromKg(data.keyStats.totalVolume, weightUnit))
+              )}
+              unit={weightUnit}
+            />
+            <StatTile
+              label={t('exerciseStatistics.stats.reps', {
+                defaultValue: 'Reps',
+              })}
+              value={formatLocalizedNumber(data.keyStats.totalReps)}
             />
           </View>
-          <MuscleFigure
-            figure={figure}
-            setsByMuscle={setsByMuscle}
-            selectedKey={pickedMuscle}
-            onSelect={togglePickedMuscle}
-            accessibilityLabel={t('exerciseStatistics.heatMap.a11y', {
-              defaultValue:
-                'Body figure tinted by working sets. The same counts are listed under Sets per Muscle, where selecting a muscle highlights it here.',
-            })}
-          />
-          {pickedMuscle ? (
-            <Pressable
-              onPress={() => setPickedMuscle(null)}
-              accessibilityRole="button"
-              accessibilityLiveRegion="polite"
-              className="mt-3 rounded-full border border-border-subtle bg-raised px-3 py-1.5"
-            >
-              <Text className="text-sm text-text-primary">
-                <Text className="font-semibold">
-                  {muscleLabel(t, pickedMuscle)}
-                </Text>
-                <Text className="text-text-secondary">
-                  {' · '}
-                  {setsLabel(setsForMuscleKey(pickedMuscle, setsByMuscle))}
-                </Text>
-              </Text>
-            </Pressable>
-          ) : (
-            <Text className="mt-3 text-xs text-text-muted">
-              {t('exerciseStatistics.heatMap.tap', {
-                defaultValue: 'Tap a muscle',
+        ) : null}
+
+        {isSectionShown('exercise.setsPerMuscle') ? (
+          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+            <Text className="text-text-primary text-base font-bold">
+              {t('exerciseStatistics.setsPerMuscle.title', {
+                defaultValue: 'Sets per Muscle',
               })}
             </Text>
-          )}
-          <View className="flex-row items-center mt-3">
-            <Text className="text-xs text-text-muted mr-1.5">
-              {t('exerciseStatistics.heatMap.fewer', {
-                defaultValue: 'Fewer',
+            <Text className="text-text-secondary text-xs mt-0.5 mb-3">
+              {t('exerciseStatistics.setsPerMuscle.subtitle', {
+                defaultValue: 'Working sets on primary muscles in this range',
               })}
             </Text>
-            <View className="w-3 h-3 rounded-sm mr-1 bg-progress-track" />
-            {MUSCLE_HEAT_COLORS.map((color) => (
-              <View
-                key={color}
-                className="w-3 h-3 rounded-sm mr-1"
-                style={{ backgroundColor: color }}
-              />
-            ))}
-            <Text className="text-xs text-text-muted ml-0.5">
-              {t('exerciseStatistics.heatMap.more', { defaultValue: 'More' })}
-            </Text>
-          </View>
-          {notOnFigure.length > 0 ? (
-            <View className="self-stretch mt-4">
-              <Text className="text-xs uppercase text-text-muted mb-1">
-                {t('exerciseStatistics.heatMap.notOnFigure', {
-                  defaultValue: 'Not on the figure',
+            {setRows.length === 0 ? (
+              <Text className="text-text-secondary text-sm">
+                {t('exerciseStatistics.setsPerMuscle.none', {
+                  defaultValue: 'No working sets with a primary muscle yet.',
                 })}
               </Text>
-              {notOnFigure.map((row, index) => (
-                <ValueRow
-                  key={row.muscle}
-                  label={muscleLabel(t, row.muscle)}
-                  value={setsLabel(row.sets)}
-                  last={index === notOnFigure.length - 1}
+            ) : (
+              setRows.map((row) => (
+                // A figure muscle's row picks it on the figure too. The figure's
+                // regions are too small and repeated (left, right, front, back)
+                // to be screen-reader targets, so the rows are.
+                <Pressable
+                  key={row.key}
+                  className="mb-2.5"
+                  disabled={!row.onFigure}
+                  onPress={() => togglePickedMuscle(row.key)}
+                  accessibilityRole={row.onFigure ? 'button' : undefined}
+                  accessibilityState={
+                    row.onFigure
+                      ? { selected: pickedMuscle === row.key }
+                      : undefined
+                  }
+                  testID={`muscle-row-${row.key}`}
+                >
+                  <View className="flex-row justify-between mb-1">
+                    <Text
+                      className={`text-sm text-text-primary ${
+                        pickedMuscle === row.key ? 'font-semibold' : ''
+                      }`}
+                    >
+                      {muscleLabel(t, row.name)}
+                    </Text>
+                    <Text className="text-text-secondary text-sm">
+                      {setsLabel(row.sets)}
+                    </Text>
+                  </View>
+                  <View className="h-1.5 rounded-full bg-progress-track overflow-hidden">
+                    <View
+                      className="h-1.5 rounded-full bg-exercise"
+                      style={{
+                        width: `${maxRowSets > 0 ? (row.sets / maxRowSets) * 100 : 0}%`,
+                      }}
+                    />
+                  </View>
+                </Pressable>
+              ))
+            )}
+          </View>
+        ) : null}
+
+        {isSectionShown('exercise.heatMap') ? (
+          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm items-center">
+            <Text className="text-text-primary text-base font-bold self-start">
+              {t('exerciseStatistics.heatMap.title', {
+                defaultValue: 'Muscle Heat Map',
+              })}
+            </Text>
+            <Text className="text-text-secondary text-xs mt-0.5 mb-3 self-start">
+              {t('exerciseStatistics.heatMap.subtitle', {
+                defaultValue: 'Front and back, tinted by working sets',
+              })}
+            </Text>
+            <View className="self-stretch mb-3">
+              <SegmentedControl
+                segments={[
+                  {
+                    key: 'male',
+                    label: t('exerciseStatistics.heatMap.male', {
+                      defaultValue: 'Male',
+                    }),
+                  },
+                  {
+                    key: 'female',
+                    label: t('exerciseStatistics.heatMap.female', {
+                      defaultValue: 'Female',
+                    }),
+                  },
+                ]}
+                activeKey={figure}
+                onSelect={(next) => {
+                  setChosenFigure(next);
+                  setPickedMuscle(null);
+                }}
+              />
+            </View>
+            <MuscleFigure
+              figure={figure}
+              setsByMuscle={setsByMuscle}
+              selectedKey={pickedMuscle}
+              onSelect={togglePickedMuscle}
+              accessibilityLabel={t('exerciseStatistics.heatMap.a11y', {
+                defaultValue:
+                  'Body figure tinted by working sets. The same counts are listed under Sets per Muscle, where selecting a muscle highlights it here.',
+              })}
+            />
+            {pickedMuscle ? (
+              <Pressable
+                onPress={() => setPickedMuscle(null)}
+                accessibilityRole="button"
+                accessibilityLiveRegion="polite"
+                className="mt-3 rounded-full border border-border-subtle bg-raised px-3 py-1.5"
+              >
+                <Text className="text-sm text-text-primary">
+                  <Text className="font-semibold">
+                    {muscleLabel(t, pickedMuscle)}
+                  </Text>
+                  <Text className="text-text-secondary">
+                    {' · '}
+                    {setsLabel(setsForMuscleKey(pickedMuscle, setsByMuscle))}
+                  </Text>
+                </Text>
+              </Pressable>
+            ) : (
+              <Text className="mt-3 text-xs text-text-muted">
+                {t('exerciseStatistics.heatMap.tap', {
+                  defaultValue: 'Tap a muscle',
+                })}
+              </Text>
+            )}
+            <View className="flex-row items-center mt-3">
+              <Text className="text-xs text-text-muted mr-1.5">
+                {t('exerciseStatistics.heatMap.fewer', {
+                  defaultValue: 'Fewer',
+                })}
+              </Text>
+              <View className="w-3 h-3 rounded-sm mr-1 bg-progress-track" />
+              {MUSCLE_HEAT_COLORS.map((color) => (
+                <View
+                  key={color}
+                  className="w-3 h-3 rounded-sm mr-1"
+                  style={{ backgroundColor: color }}
                 />
               ))}
+              <Text className="text-xs text-text-muted ml-0.5">
+                {t('exerciseStatistics.heatMap.more', { defaultValue: 'More' })}
+              </Text>
             </View>
-          ) : null}
-        </View>
+            {notOnFigure.length > 0 ? (
+              <View className="self-stretch mt-4">
+                <Text className="text-xs uppercase text-text-muted mb-1">
+                  {t('exerciseStatistics.heatMap.notOnFigure', {
+                    defaultValue: 'Not on the figure',
+                  })}
+                </Text>
+                {notOnFigure.map((row, index) => (
+                  <ValueRow
+                    key={row.muscle}
+                    label={muscleLabel(t, row.muscle)}
+                    value={setsLabel(row.sets)}
+                    last={index === notOnFigure.length - 1}
+                  />
+                ))}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
-        <TrainingConsistencyCard
-          data={consistency.data}
-          isLoading={consistency.isLoading}
-          isError={consistency.isError}
-        />
+        {loadCard}
 
-        <Text className="text-text-primary text-base font-bold mt-2">
-          {t('exerciseStatistics.analysis.title', {
-            defaultValue: 'More Analysis',
-          })}
-        </Text>
-        <CollapsibleSection
-          title={t('exerciseStatistics.analysis.recovery', {
-            defaultValue: 'Last Trained',
-          })}
-          expanded={openSection === 'recovery'}
-          onToggle={() => toggleSection('recovery')}
-          itemCount={recoveryRows.length}
-        >
-          {recoveryRows.map((row, index) => (
-            <ValueRow
-              key={row.name}
-              label={muscleLabel(t, row.name)}
-              value={recoveryLabel(t, row.daysAgo, row.lastDate)}
-              last={index === recoveryRows.length - 1}
-            />
-          ))}
-        </CollapsibleSection>
-        <CollapsibleSection
-          title={t('exerciseStatistics.analysis.variety', {
-            defaultValue: 'Exercise Variety',
-          })}
-          expanded={openSection === 'variety'}
-          onToggle={() => toggleSection('variety')}
-          itemCount={varietyRows.length}
-        >
-          {varietyRows.map((row, index) => (
-            <ValueRow
-              key={row.name}
-              label={muscleLabel(t, row.name)}
-              value={t('exerciseStatistics.analysis.exerciseCount', {
-                count: row.value,
-                defaultValue: '{{count}} exercises',
-                defaultValue_one: '{{count}} exercise',
-                defaultValue_other: '{{count}} exercises',
+        {isSectionShown('exercise.consistency') ? (
+          <TrainingConsistencyCard
+            data={consistency.data}
+            isLoading={consistency.isLoading}
+            isError={consistency.isError}
+          />
+        ) : null}
+
+        {isSectionShown('exercise.analysis') ? (
+          <>
+            <Text className="text-text-primary text-base font-bold mt-2">
+              {t('exerciseStatistics.analysis.title', {
+                defaultValue: 'More Analysis',
               })}
-              last={index === varietyRows.length - 1}
-            />
-          ))}
-        </CollapsibleSection>
-        <CollapsibleSection
-          title={t('exerciseStatistics.analysis.volume', {
-            defaultValue: 'Volume by Muscle',
-          })}
-          expanded={openSection === 'volume'}
-          onToggle={() => toggleSection('volume')}
-          itemCount={volumeRows.length}
-        >
-          {volumeRows.map((row, index) => (
-            <ValueRow
-              key={row.name}
-              label={muscleLabel(t, row.name)}
-              value={`${formatLocalizedNumber(
-                Math.round(weightFromKg(row.value, weightUnit))
-              )} ${weightUnit}`}
-              last={index === volumeRows.length - 1}
-            />
-          ))}
-        </CollapsibleSection>
+            </Text>
+            <CollapsibleSection
+              title={t('exerciseStatistics.analysis.recovery', {
+                defaultValue: 'Last Trained',
+              })}
+              expanded={openSection === 'recovery'}
+              onToggle={() => toggleSection('recovery')}
+              itemCount={recoveryRows.length}
+            >
+              {recoveryRows.map((row, index) => (
+                <ValueRow
+                  key={row.name}
+                  label={muscleLabel(t, row.name)}
+                  value={recoveryLabel(t, row.daysAgo, row.lastDate)}
+                  last={index === recoveryRows.length - 1}
+                />
+              ))}
+            </CollapsibleSection>
+            <CollapsibleSection
+              title={t('exerciseStatistics.analysis.variety', {
+                defaultValue: 'Exercise Variety',
+              })}
+              expanded={openSection === 'variety'}
+              onToggle={() => toggleSection('variety')}
+              itemCount={varietyRows.length}
+            >
+              {varietyRows.map((row, index) => (
+                <ValueRow
+                  key={row.name}
+                  label={muscleLabel(t, row.name)}
+                  value={t('exerciseStatistics.analysis.exerciseCount', {
+                    count: row.value,
+                    defaultValue: '{{count}} exercises',
+                    defaultValue_one: '{{count}} exercise',
+                    defaultValue_other: '{{count}} exercises',
+                  })}
+                  last={index === varietyRows.length - 1}
+                />
+              ))}
+            </CollapsibleSection>
+            <CollapsibleSection
+              title={t('exerciseStatistics.analysis.volume', {
+                defaultValue: 'Volume by Muscle',
+              })}
+              expanded={openSection === 'volume'}
+              onToggle={() => toggleSection('volume')}
+              itemCount={volumeRows.length}
+            >
+              {volumeRows.map((row, index) => (
+                <ValueRow
+                  key={row.name}
+                  label={muscleLabel(t, row.name)}
+                  value={`${formatLocalizedNumber(
+                    Math.round(weightFromKg(row.value, weightUnit))
+                  )} ${weightUnit}`}
+                  last={index === volumeRows.length - 1}
+                />
+              ))}
+            </CollapsibleSection>
+          </>
+        ) : null}
       </>
     );
   };
@@ -539,10 +596,11 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-4">
-          <SegmentedControl
-            segments={trendRangeSegments(t)}
-            activeKey={range}
-            onSelect={selectRange}
+          <ReportRangeControl
+            range={range}
+            onRangeChange={selectRange}
+            customRange={customRange}
+            onCustomRangeChange={setCustomRange}
           />
         </View>
         <View className="mb-4">

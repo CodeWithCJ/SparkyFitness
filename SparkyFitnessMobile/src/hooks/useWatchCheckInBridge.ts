@@ -10,6 +10,7 @@ import WatchConnectivity, {
   type WatchWaterIntakePayload,
   type WatchWaterDeletePayload,
   type WatchWaterLogPayload,
+  type WatchMedicationTakenPayload,
 } from '../../modules/watch-connectivity';
 import {
   upsertCheckIn,
@@ -20,6 +21,15 @@ import {
   deleteWaterIntakeLogEntry,
 } from '../services/api/measurementsApi';
 import {
+  listMedications,
+  listEntries,
+  createEntry,
+  deleteEntry,
+  updateEntry,
+} from '../services/api/medicationsApi';
+import {
+  medicationsListQueryKey,
+  medicationEntriesQueryKey,
   measurementsQueryKey,
   measurementsRangeQueryKey,
   dailySummaryQueryKey,
@@ -27,12 +37,16 @@ import {
   waterIntakeLogQueryKey,
 } from './queryKeys';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
-import { getTodayDate, addDays } from '../utils/dateUtils';
+import { getTodayDate, addDays, getDeviceTimezone } from '../utils/dateUtils';
+import { medicationsForWatch } from '../utils/watchMedications';
+import { entryMatchesDose } from '../utils/medications';
+import { invalidateMedicationEntryCaches } from './invalidateMedicationEntryCaches';
 import { getServingVolume } from '../utils/unitConversions';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { addLog } from '../services/LogService';
 import { queryClient } from './queryClient';
 import { usePreferences } from './usePreferences';
+import { watchWaterFromFoodMl } from '../utils/watchWater';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useDailySummary } from './useDailySummary';
 import { WATCH_PAGE_KEYS } from '../constants/watchPages';
@@ -42,10 +56,26 @@ import { useCustomNutrients } from './useCustomNutrients';
 import { useTranslation } from 'react-i18next';
 import type { CheckInMeasurement } from '../types/measurements';
 import type { WorkoutPreset } from '../types/workoutPresets';
+import { useSuggestedExercises } from './useSuggestedExercises';
 import { useWorkoutPresets } from './useWorkoutPresets';
 import { getActiveServerConfigId } from '../services/storage';
 import { useActiveWorkoutPlans } from './useActiveWorkoutPlan';
 import { scheduledWorkoutsForWatch } from '../utils/workoutPlanSchedule';
+import { useCurrentFast } from './useFasting';
+import { toWatchFast } from '../utils/watchFast';
+import {
+  getRecordingPreferences,
+  onRecordingPreferenceChange,
+} from '../services/gpsRecordingService';
+import { useRunProgram } from '../services/runProgramService';
+import { suggestedPaceRangesFromRace } from '../utils/suggestedRanges';
+import { buildWatchRunPlans } from '../utils/watchRunPlans';
+import {
+  getWatchIndoorScale,
+  onWatchIndoorScaleChange,
+} from '../services/watchIndoorScale';
+import { presetName } from '../components/recording/IntervalSetup';
+import { programWorkoutLabel } from '../components/recording/RunProgramCard';
 
 /** Saved workouts the watch may start. Presets with no exercises are omitted:
  * the server rejects a session that has none. */
@@ -68,11 +98,36 @@ export function startableWorkoutsForWatch(
     .map((preset) => ({ presetId: String(preset.id), name: preset.name }));
 }
 
+/** Most exercises offered to the watch's Add Exercise list. */
+const WATCH_SUGGESTED_EXERCISE_LIMIT = 20;
+
+/**
+ * The exercises the watch can add to a running workout: recent ones first,
+ * then the most used, each once.
+ */
+export function suggestedExercisesForWatch(
+  recent: readonly { id: string; name: string }[],
+  top: readonly { id: string; name: string }[]
+): { exerciseId: string; name: string }[] {
+  const seen = new Set<string>();
+  const result: { exerciseId: string; name: string }[] = [];
+  for (const exercise of [...recent, ...top]) {
+    if (seen.has(exercise.id) || exercise.name.trim() === '') continue;
+    seen.add(exercise.id);
+    result.push({ exerciseId: exercise.id, name: exercise.name });
+    if (result.length === WATCH_SUGGESTED_EXERCISE_LIMIT) break;
+  }
+  return result;
+}
+
 /** Clamps a goal-progress fraction to 0...1 — passing a goal always reads as 1. */
 function goalProgress(consumed: number, goal: number): number {
   if (goal <= 0) return 0;
   return Math.max(0, Math.min(1, consumed / goal));
 }
+
+/** Step goal sent to the watch when the user has not set one. */
+const DEFAULT_WATCH_STEP_GOAL = 10000;
 
 /** Days of history relayed to the watch — matches the watch's 14-day chart. */
 const HISTORY_DAYS = 14;
@@ -105,7 +160,9 @@ const NO_FIGURES_FOR_TODAY = {
   fatConsumed: null,
   fatGoal: null,
   waterConsumedMl: null,
+  waterFromFoodMl: null,
   waterLog: [] as WatchWaterLogPayload[],
+  medications: null,
   goalNutrients: null,
 } as const;
 
@@ -180,6 +237,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // handledClientIdsRef) since check-in ids and water-tap ids are separate
   // namespaces the watch generates independently.
   const handledWaterClientIdsRef = useRef<Set<string>>(new Set());
+  // And for medication doses. In memory only: the write reads the day's entries
+  // first, so a redelivery after a restart finds the dose already logged
+  // instead of needing a persisted reservation to stay safe.
+  const handledMedicationClientIdsRef = useRef<Set<string>>(new Set());
   // Client ids the server refused. Rides in every context push beside
   // `ackedClientIds`, so a failed water tap reaches a watch whose phone was
   // never reachable — the immediate `sendAck` below can't manage that, and the
@@ -197,6 +258,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   const { preferences } = usePreferences();
   // Device-local settings the watch's haptics follow.
   const hapticsEnabled = useAppPreferencesStore((s) => s.hapticsEnabled);
+  const watchRpeEnabled = useAppPreferencesStore((s) => s.watchRpeEnabled);
   const watchDoubleTapEnabled = useAppPreferencesStore(
     (s) => s.watchDoubleTapEnabled
   );
@@ -230,10 +292,68 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // A weighted carry's distance follows the phone's distance unit: the watch
   // shows metres, or yards when the phone is set to miles.
   const distanceUnit = watchDistanceUnit(preferences?.default_distance_unit);
+  const { status: programStatus, enabled: programEnabled } = useRunProgram();
+  // The learned indoor distance factor, re-read whenever a correction
+  // changes it, so the next context push carries the new value.
+  const [indoorDistanceScale, setIndoorDistanceScale] = useState<{
+    walk: number;
+    run: number;
+  } | null>(null);
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      void getWatchIndoorScale().then((scale) => {
+        if (active) setIndoorDistanceScale(scale);
+      });
+    };
+    load();
+    const unsubscribe = onWatchIndoorScaleChange(load);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+
+  const paceReferenceRace = useAppPreferencesStore((s) => s.paceReferenceRace);
+  const paceReferenceOnWatch = useAppPreferencesStore(
+    (s) => s.paceReferenceOnWatch
+  );
+  // Race-based pace ranges for the program workout offered on the watch, when
+  // the person has set a race and asked for them there. Runs only.
+  const watchPaceRanges = useMemo(
+    () =>
+      paceReferenceOnWatch &&
+      paceReferenceRace &&
+      programStatus?.program.activity !== 'walk'
+        ? suggestedPaceRangesFromRace(paceReferenceRace, 'run')
+        : null,
+    [paceReferenceOnWatch, paceReferenceRace, programStatus]
+  );
+  const runPlans = useMemo(
+    () =>
+      buildWatchRunPlans(
+        t,
+        { status: programStatus, enabled: programEnabled },
+        {
+          program: (status) => programWorkoutLabel(t, status),
+          preset: (id) => presetName(t, id),
+        },
+        watchPaceRanges
+      ),
+    [t, programStatus, programEnabled, watchPaceRanges]
+  );
   const { presets } = useWorkoutPresets({ enabled });
+  const fastQuery = useCurrentFast({ enabled });
+  const fast = fastQuery.data;
+  const watchFast = useMemo(() => toWatchFast(fast), [fast]);
   const startableWorkouts = useMemo(
     () => startableWorkoutsForWatch(presets),
     [presets]
+  );
+  const { recentExercises, topExercises } = useSuggestedExercises({ enabled });
+  const suggestedExercises = useMemo(
+    () => suggestedExercisesForWatch(recentExercises, topExercises),
+    [recentExercises, topExercises]
   );
 
   // The calendar day everything below describes.
@@ -347,6 +467,17 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // two never disagree.
   const waterConsumedMl = dailySummary?.waterConsumed ?? null;
   const waterGoalMl = dailySummary?.waterGoal ?? null;
+  const stepGoal =
+    dailySummary?.stepsGoal && dailySummary.stepsGoal > 0
+      ? dailySummary.stepsGoal
+      : DEFAULT_WATCH_STEP_GOAL;
+  // The part of the total that came from logged food's water. Sent only when
+  // food water counts toward intake (the same setting the phone's gauge
+  // follows), so the watch shows the line only for people who opted in.
+  const waterFromFoodMl = watchWaterFromFoodMl(
+    preferences?.add_food_water_to_intake,
+    dailySummary?.waterFromFood
+  );
   // The app's globally configured display unit (independent of any one
   // container's own unit) — same source and fallback as the phone's own
   // hydration gauge (DashboardScreen).
@@ -373,6 +504,38 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   });
 
   const timeFormat = preferences?.time_format ?? null;
+
+  // Today's scheduled doses for the watch's Medications page. Same list and
+  // entry queries the phone's own MedicationsCard reads (and invalidates on
+  // every dose write), so the two never disagree about what is taken.
+  const { data: activeMedications } = useQuery({
+    queryKey: medicationsListQueryKey({ activeOnly: true }),
+    queryFn: () => listMedications({ activeOnly: true }),
+    enabled,
+  });
+  const { data: medicationEntries } = useQuery({
+    queryKey: medicationEntriesQueryKey({
+      fromDate: summaryDate,
+      toDate: summaryDate,
+    }),
+    queryFn: () => listEntries({ fromDate: summaryDate, toDate: summaryDate }),
+    enabled,
+  });
+  // Null until both queries have answered: an empty list is a real "nothing
+  // scheduled today" and must not be mistaken for "not loaded yet".
+  const watchMedications = useMemo(
+    () =>
+      activeMedications && medicationEntries
+        ? medicationsForWatch(
+            activeMedications,
+            medicationEntries,
+            summaryDate,
+            getDeviceTimezone(),
+            timeFormat
+          )
+        : null,
+    [activeMedications, medicationEntries, summaryDate, timeFormat]
+  );
 
   // Memoized because `pushContext` below closes over it. A fresh array every
   // render would either churn the listener subscription that watches
@@ -468,7 +631,9 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       fatConsumed,
       fatGoal,
       waterConsumedMl,
+      waterFromFoodMl,
       waterLog: watchWaterLog,
+      medications: watchMedications,
       goalNutrients,
     }),
     [
@@ -486,7 +651,9 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       fatConsumed,
       fatGoal,
       waterConsumedMl,
+      waterFromFoodMl,
       watchWaterLog,
+      watchMedications,
       goalNutrients,
     ]
   );
@@ -515,13 +682,18 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       // the most recent one for that date.
       const byDay = new Map<
         string,
-        { weight?: number | null; bodyFat?: number | null }
+        {
+          weight?: number | null;
+          bodyFat?: number | null;
+          steps?: number | null;
+        }
       >();
       for (const entry of range) {
         if (byDay.has(entry.entry_date)) continue;
         byDay.set(entry.entry_date, {
           weight: entry.weight,
           bodyFat: entry.body_fat_percentage,
+          steps: entry.steps,
         });
       }
 
@@ -560,6 +732,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       const figures =
         summaryDate === today ? figuresForSummaryDate : NO_FIGURES_FOR_TODAY;
 
+      const recording = await getRecordingPreferences();
       const context: WatchContextPayload = {
         // Keeps consecutive pushes distinct — see the field's own comment.
         // Without it an unchanged day pushes an identical dictionary, which
@@ -585,11 +758,40 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         hapticsEnabled,
         restAlertsEnabled,
         doubleTapEnabled: watchDoubleTapEnabled,
+        rpeEnabled: watchRpeEnabled,
+        runVoiceCues: recording.audioCues,
+        runAutoPause: recording.autoPause,
+        runCheckInMinutes: recording.checkInMinutes,
+        ...(recording.heartRateBand
+          ? {
+              runHeartRateMinBpm: recording.heartRateBand.minBpm,
+              runHeartRateMaxBpm: recording.heartRateBand.maxBpm,
+            }
+          : {}),
+        ...(recording.paceBand
+          ? {
+              runPaceMinSecondsPerKm: recording.paceBand.minSecondsPerKm,
+              runPaceMaxSecondsPerKm: recording.paceBand.maxSecondsPerKm,
+            }
+          : {}),
+        runPlans,
+        ...(indoorDistanceScale ? { indoorDistanceScale } : {}),
         startableWorkouts,
+        suggestedExercises,
         // Built for `summaryDate`; a push that has crossed midnight before the
         // hook re-rendered must not carry yesterday's plan.
         scheduledWorkouts: today === summaryDate ? scheduledWorkouts : [],
         workoutServerId,
+        // `fast: null` (not fasting) is stripped before it reaches the watch,
+        // so the answer "the server has replied" travels as its own flag.
+        ...(watchFast !== undefined
+          ? { fast: watchFast, fastKnown: true }
+          : {}),
+        steps:
+          todayRow?.steps != null && todayRow.steps >= 0
+            ? { day: today, count: Math.round(todayRow.steps) }
+            : null,
+        stepGoal,
         pageOrder: resolveKeyOrder(watchPageOrder, WATCH_PAGE_KEYS),
         hiddenPages: hiddenWatchPages,
         setInputStyle: watchSetInputStyle,
@@ -618,9 +820,14 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     hapticsEnabled,
     restAlertsEnabled,
     watchDoubleTapEnabled,
+    watchRpeEnabled,
+    runPlans,
+    indoorDistanceScale,
     startableWorkouts,
+    suggestedExercises,
     scheduledWorkouts,
     waterGoalMl,
+    stepGoal,
     waterDisplayUnit,
     watchPageOrder,
     hiddenWatchPages,
@@ -628,6 +835,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     summaryDate,
     figuresForSummaryDate,
     watchContainers,
+    watchFast,
   ]);
 
   /**
@@ -642,6 +850,15 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   useEffect(() => {
     pushContextRef.current = pushContext;
   });
+  // The Voice cues switch lives on the Record screen, outside this hook's
+  // dependencies, so tell the watch when it flips.
+  useEffect(
+    () =>
+      onRecordingPreferenceChange(() => {
+        if (enabled) void pushContextRef.current();
+      }),
+    [enabled]
+  );
 
   /**
    * Writes the ack bookkeeping to disk, and is awaited by every caller.
@@ -980,6 +1197,136 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     [ensureAckStateHydrated, persistAckState]
   );
 
+  /**
+   * A dose ticked on the watch's Medications page. Acknowledged like a water
+   * tap (reserve the id, write, ack both ways, push), but the write itself is
+   * idempotent: it reads the day's entries first and only creates one when the
+   * slot has none, so a redelivery that slips past the dedupe set cannot log
+   * the dose twice. A skipped or schedule-less (web-logged) entry for the slot
+   * is updated to taken instead, the same way the phone's own dose row does.
+   * An un-tick (`taken: false`) deletes the taken entry the same way, and is
+   * a no-op when there is none.
+   */
+  const processMedicationTaken = useCallback(
+    async (payload: WatchMedicationTakenPayload): Promise<void> => {
+      if (!WatchConnectivity) return;
+      await ensureAckStateHydrated();
+      if (
+        payload.clientId &&
+        handledMedicationClientIdsRef.current.has(payload.clientId)
+      ) {
+        // Same rule as `handleWaterTap`: only re-acknowledge what landed.
+        if (ackedClientIdsRef.current.includes(payload.clientId)) {
+          await WatchConnectivity.sendAck(payload.clientId, true);
+        }
+        return;
+      }
+      if (payload.clientId)
+        handledMedicationClientIdsRef.current.add(payload.clientId);
+
+      try {
+        const entries = await listEntries({
+          fromDate: payload.entryDate,
+          toDate: payload.entryDate,
+        });
+        // An empty scheduleId is an as-needed row: it logs a `prn_taken`
+        // entry like the phone's PRN button, once per day from the watch.
+        const asNeeded = !payload.scheduleId;
+        const existing = asNeeded
+          ? entries.find(
+              (e) =>
+                e.medication_id === payload.medicationId &&
+                e.status === 'prn_taken'
+            )
+          : entries.find((e) =>
+              entryMatchesDose(e, payload.medicationId, payload.scheduleId)
+            );
+        const alreadyTaken =
+          existing?.status === 'taken' || existing?.status === 'prn_taken';
+        if (payload.taken === false) {
+          if (existing && alreadyTaken) await deleteEntry(existing.id);
+        } else if (!alreadyTaken) {
+          const takenAt = new Date().toISOString();
+          if (existing) {
+            await updateEntry(existing.id, {
+              schedule_id: payload.scheduleId,
+              status: 'taken',
+              taken_at: takenAt,
+            });
+          } else {
+            await createEntry({
+              medication_id: payload.medicationId,
+              ...(asNeeded ? {} : { schedule_id: payload.scheduleId }),
+              status: asNeeded ? 'prn_taken' : 'taken',
+              entry_date: payload.entryDate,
+              taken_at: takenAt,
+            });
+          }
+        }
+
+        ackedClientIdsRef.current = [
+          ...ackedClientIdsRef.current,
+          payload.clientId,
+        ].slice(-20);
+        failedClientIdsRef.current = failedClientIdsRef.current.filter(
+          (id) => id !== payload.clientId
+        );
+        await persistAckState();
+        await WatchConnectivity.sendAck(payload.clientId, true);
+
+        // Awaited so the push below carries the new entry.
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: medicationEntriesQueryKey({
+              fromDate: payload.entryDate,
+              toDate: payload.entryDate,
+            }),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: dailySummaryQueryKey(payload.entryDate),
+          }),
+        ]);
+        invalidateMedicationEntryCaches(queryClient);
+
+        addLog(
+          `Watch medication dose ${payload.taken === false ? 'unmarked' : 'logged'} for ${payload.entryDate}: ${payload.medicationId}`,
+          'INFO'
+        );
+        await pushContextRef.current();
+      } catch (error) {
+        if (payload.clientId) {
+          handledMedicationClientIdsRef.current.delete(payload.clientId);
+          failedClientIdsRef.current = [
+            ...failedClientIdsRef.current,
+            payload.clientId,
+          ].slice(-20);
+          await persistAckState();
+          await WatchConnectivity.sendAck(payload.clientId, false);
+        }
+        addLog(
+          `Watch medication dose failed to save: ${String(error)}`,
+          'ERROR'
+        );
+        await pushContextRef.current();
+      }
+    },
+    [ensureAckStateHydrated, persistAckState]
+  );
+
+  // One at a time, in arrival order: a tick followed quickly by an un-tick
+  // must not have the un-tick read the day's entries before the tick lands.
+  const medicationQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const handleMedicationTaken = useCallback(
+    (payload: WatchMedicationTakenPayload): Promise<void> => {
+      const run = medicationQueueRef.current.then(() =>
+        processMedicationTaken(payload)
+      );
+      medicationQueueRef.current = run.catch(() => undefined);
+      return run;
+    },
+    [processMedicationTaken]
+  );
+
   // Latest handlers, read by the subscriptions below.
   //
   // Without this, the subscription effect had to list every handler as a dep,
@@ -994,6 +1341,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     handleCheckIn,
     handleWaterTap,
     handleWaterDelete,
+    handleMedicationTaken,
     pushContext,
     catchUpToToday,
   });
@@ -1002,6 +1350,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       handleCheckIn,
       handleWaterTap,
       handleWaterDelete,
+      handleMedicationTaken,
       pushContext,
       catchUpToToday,
     };
@@ -1037,6 +1386,12 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         onEvent(handlersRef.current.handleWaterDelete)(payload);
       }
     );
+    const medicationTakenSub = WatchConnectivity.addListener(
+      'onMedicationTaken',
+      (payload) => {
+        onEvent(handlersRef.current.handleMedicationTaken)(payload);
+      }
+    );
     const contextRequestSub = WatchConnectivity.addListener(
       'onContextRequest',
       () => {
@@ -1065,6 +1420,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       checkInSub.remove();
       waterIntakeSub.remove();
       waterDeleteSub.remove();
+      medicationTakenSub.remove();
       contextRequestSub.remove();
       reachabilitySub.remove();
       appStateSub.remove();

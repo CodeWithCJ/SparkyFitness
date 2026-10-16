@@ -76,3 +76,94 @@ export function mealTimingLabel(value: string, t: TFunction): string {
       return value;
   }
 }
+
+export function injectionSiteLabel(siteId: string, t: TFunction): string {
+  switch (siteId) {
+    case 'stomach_upper_left':
+      return t('medications.glp1.sites.stomach_upper_left', {
+        defaultValue: 'Stomach - Upper Left',
+      });
+    case 'stomach_upper_mid':
+      return t('medications.glp1.sites.stomach_upper_mid', {
+        defaultValue: 'Stomach - Upper Mid',
+      });
+    case 'stomach_upper_right':
+      return t('medications.glp1.sites.stomach_upper_right', {
+        defaultValue: 'Stomach - Upper Right',
+      });
+    case 'stomach_mid_left':
+      return t('medications.glp1.sites.stomach_mid_left', {
+        defaultValue: 'Stomach - Left Mid',
+      });
+    case 'stomach_mid_right':
+      return t('medications.glp1.sites.stomach_mid_right', {
+        defaultValue: 'Stomach - Right Mid',
+      });
+    case 'stomach_lower_left':
+      return t('medications.glp1.sites.stomach_lower_left', {
+        defaultValue: 'Stomach - Lower Left',
+      });
+    case 'stomach_lower_mid':
+      return t('medications.glp1.sites.stomach_lower_mid', {
+        defaultValue: 'Stomach - Lower Mid',
+      });
+    case 'stomach_lower_right':
+      return t('medications.glp1.sites.stomach_lower_right', {
+        defaultValue: 'Stomach - Lower Right',
+      });
+    case 'left_arm':
+      return t('medications.glp1.sites.left_arm', {
+        defaultValue: 'Left Arm',
+      });
+    case 'right_arm':
+      return t('medications.glp1.sites.right_arm', {
+        defaultValue: 'Right Arm',
+      });
+    case 'left_thigh':
+      return t('medications.glp1.sites.left_thigh', {
+        defaultValue: 'Left Thigh',
+      });
+    case 'right_thigh':
+      return t('medications.glp1.sites.right_thigh', {
+        defaultValue: 'Right Thigh',
+      });
+    case 'left_hip':
+      return t('medications.glp1.sites.left_hip', {
+        defaultValue: 'Left Hip',
+      });
+    case 'right_hip':
+      return t('medications.glp1.sites.right_hip', {
+        defaultValue: 'Right Hip',
+      });
+    case 'unknown':
+      return t('medications.glp1.sites.unknown', {
+        defaultValue: 'Unknown',
+      });
+    default:
+      return siteId;
+  }
+}
+
+export function glp1CheckInMetricLabel(
+  metricKey: 'hunger' | 'food_noise' | 'fullness' | 'energy',
+  t: TFunction
+): string {
+  switch (metricKey) {
+    case 'hunger':
+      return t('medications.glp1.checkIn.metric.hunger', {
+        defaultValue: 'Hunger',
+      });
+    case 'food_noise':
+      return t('medications.glp1.checkIn.metric.food_noise', {
+        defaultValue: 'Food noise',
+      });
+    case 'fullness':
+      return t('medications.glp1.checkIn.metric.fullness', {
+        defaultValue: 'Fullness',
+      });
+    case 'energy':
+      return t('medications.glp1.checkIn.metric.energy', {
+        defaultValue: 'Energy',
+      });
+  }
+}

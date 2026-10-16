@@ -18,6 +18,7 @@ import {
 } from '../../src/hooks';
 
 jest.mock('../../src/hooks', () => ({
+  useNutrientDisplayPreferences: jest.fn(() => ({ preferences: [] })),
   useDeleteFood: jest.fn(),
   useFoodVariants: jest.fn(),
   useProfile: jest.fn(),

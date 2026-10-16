@@ -6,6 +6,9 @@ import {
   deleteFast,
   fetchFastingStats,
   fetchFastingHistory,
+  fetchFastingRange,
+  fetchFastingPreferences,
+  updateFastingPreferences,
 } from '../../../src/services/api/fastingApi';
 
 const mockApiFetch = jest.fn();
@@ -136,6 +139,48 @@ describe('fastingApi', () => {
     test('coalesces a null body to an empty array', async () => {
       mockApiFetch.mockResolvedValueOnce(null);
       await expect(fetchFastingHistory()).resolves.toEqual([]);
+    });
+  });
+
+  describe('fetchFastingRange', () => {
+    test('GETs the inclusive date-range endpoint', async () => {
+      mockApiFetch.mockResolvedValueOnce([{ id: 'fast-1' }]);
+      const result = await fetchFastingRange('2026-07-08', '2026-10-05');
+      expect(result).toEqual([{ id: 'fast-1' }]);
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: '/api/fasting/history/range/2026-07-08/2026-10-05',
+        })
+      );
+    });
+
+    test('coalesces a null body to an empty list', async () => {
+      mockApiFetch.mockResolvedValueOnce(null);
+      await expect(fetchFastingRange('a', 'b')).resolves.toEqual([]);
+    });
+  });
+
+  describe('fasting preferences', () => {
+    test('fetchFastingPreferences GETs /api/fasting/preferences', async () => {
+      mockApiFetch.mockResolvedValueOnce({ auto_calculate: true });
+      await expect(fetchFastingPreferences()).resolves.toEqual({
+        auto_calculate: true,
+      });
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({ endpoint: '/api/fasting/preferences' })
+      );
+    });
+
+    test('updateFastingPreferences PUTs the partial body', async () => {
+      mockApiFetch.mockResolvedValueOnce({ pre_end_alert_minutes: 45 });
+      await updateFastingPreferences({ pre_end_alert_minutes: 45 });
+      expect(mockApiFetch).toHaveBeenCalledWith(
+        expect.objectContaining({
+          endpoint: '/api/fasting/preferences',
+          method: 'PUT',
+          body: { pre_end_alert_minutes: 45 },
+        })
+      );
     });
   });
 });

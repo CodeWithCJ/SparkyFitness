@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { addDays, buildWorkoutHeartRateSeries } from '@workspace/shared';
 import {
   fetchExerciseEntry,
+  fetchExerciseEntryDistanceSeries,
   fetchHeartRateSamples,
   fetchWorkoutGpsPoints,
   fetchWorkoutHrZones,
@@ -32,6 +33,13 @@ export function useCardioSessionDetail(
   const gpsQuery = useQuery({
     queryKey: cardioSessionDetailQueryKey('gps', exerciseEntryId),
     queryFn: () => fetchWorkoutGpsPoints(exerciseEntryId),
+  });
+  // An indoor session has no route; its pace comes from the distance series
+  // the watch recorded, when there is one.
+  const distanceQuery = useQuery({
+    queryKey: cardioSessionDetailQueryKey('distanceSeries', exerciseEntryId),
+    queryFn: () => fetchExerciseEntryDistanceSeries(exerciseEntryId),
+    enabled: gpsQuery.isSuccess && (gpsQuery.data?.points ?? []).length === 0,
   });
   const zonesQuery = useQuery({
     queryKey: cardioSessionDetailQueryKey('hrZones', exerciseEntryId),
@@ -87,6 +95,7 @@ export function useCardioSessionDetail(
 
   return {
     route: trackpoints,
+    distanceSeries: distanceQuery.data ?? null,
     heartRate,
     zones,
     isRouteLoading: gpsQuery.isLoading,

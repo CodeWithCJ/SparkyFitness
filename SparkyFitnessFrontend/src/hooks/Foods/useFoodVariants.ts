@@ -7,6 +7,7 @@ import {
 import { Food, FoodVariant } from '@/types/food';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import i18n from 'i18next';
 export const foodVariantsOptions = (foodId: string) => ({
   queryKey: foodVariantKeys.byFood(foodId),
   queryFn: () => loadFoodVariants(foodId),
@@ -39,7 +40,10 @@ export const useCreateFoodVariantMutation = () => {
       });
     },
     meta: {
-      errorMessage: 'Failed to create food variant.',
+      errorMessage: i18n.t(
+        'hooks.useFoodVariants.failedToCreateFoodVariant',
+        'Failed to create food variant.'
+      ),
     },
   });
 };
@@ -69,8 +73,14 @@ export const useSaveFoodMutation = () => {
       });
     },
     meta: {
-      errorMessage: 'Failed to save custom nutrient.',
-      successMessage: 'Food saved successfully.',
+      errorMessage: i18n.t(
+        'hooks.useFoodVariants.failedToSaveFood',
+        'Failed to save food.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useFoodVariants.foodSavedSuccessfully',
+        'Food saved successfully.'
+      ),
     },
   });
 };

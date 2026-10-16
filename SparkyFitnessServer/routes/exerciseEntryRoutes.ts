@@ -21,7 +21,13 @@ import {
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { isValidUuid } from '../utils/uuidUtils.js';
 import { fileURLToPath } from 'url';
-import { isEntryTimeString } from '@workspace/shared';
+import {
+  attachExerciseEntryGpsTrackRequestSchema,
+  attachExerciseEntryLapsRequestSchema,
+  attachExerciseEntryDistanceSeriesRequestSchema,
+  setExerciseEntryDistanceRequestSchema,
+  isEntryTimeString,
+} from '@workspace/shared';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -236,6 +242,9 @@ router.get('/by-date', authenticate, async (req, res, next) => {
  *               exercise_id:
  *                 type: string
  *                 format: uuid
+ *               exercise_name:
+ *                 type: string
+ *                 description: Optional name stored on this entry. When omitted, the library exercise name is used.
  *               duration_minutes:
  *                 type: number
  *               calories_burned:
@@ -305,6 +314,7 @@ router.post(
       }
       const {
         exercise_id,
+        exercise_name,
         duration_minutes,
         calories_burned,
         entry_date,
@@ -373,6 +383,7 @@ router.post(
         req.originalUserId || req.userId,
         {
           exercise_id,
+          exercise_name,
           duration_minutes,
           calories_burned,
           entry_date,
@@ -894,6 +905,386 @@ router.post('/:id/watch-telemetry', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /exercise-entries/{id}/gps-track:
+ *   post:
+ *     summary: Attach a recorded GPS track to an exercise entry
+ *     tags: [Fitness & Workouts]
+ *     description: >
+ *       Stores the route and per-lap splits of an activity recorded on the
+ *       phone against an entry created beforehand, and fills in the speed,
+ *       elevation and moving-time summary the track implies. Re-posting the
+ *       same track replaces it.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [points]
+ *             properties:
+ *               points:
+ *                 type: array
+ *                 minItems: 2
+ *                 items:
+ *                   type: object
+ *                   required: [t, lat, lon]
+ *                   properties:
+ *                     t:
+ *                       type: string
+ *                       format: date-time
+ *                     lat:
+ *                       type: number
+ *                     lon:
+ *                       type: number
+ *                     alt:
+ *                       type: number
+ *                     speed:
+ *                       type: number
+ *                     dist:
+ *                       type: number
+ *                     hacc:
+ *                       type: number
+ *               laps:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     lap_index:
+ *                       type: integer
+ *                     start_time:
+ *                       type: string
+ *                       format: date-time
+ *                     end_time:
+ *                       type: string
+ *                       format: date-time
+ *     responses:
+ *       204:
+ *         description: Track attached.
+ *       400:
+ *         description: Invalid request body or exercise entry ID.
+ *       404:
+ *         description: Exercise entry not found.
+ *       500:
+ *         description: Failed to attach the track.
+ */
+router.post(
+  '/:id/gps-track',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id || typeof id !== 'string' || !isValidUuid(id)) {
+      return res.status(400).json({
+        error: 'Exercise Entry ID is required and must be a valid UUID.',
+      });
+    }
+    const parsed = attachExerciseEntryGpsTrackRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.message });
+    }
+    try {
+      await exerciseEntryService.attachGpsTrackToExerciseEntry(
+        req.userId,
+        req.originalUserId || req.userId,
+        id,
+        parsed.data
+      );
+      res.status(204).send();
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      const message = error instanceof Error ? error.message : '';
+      if (status === 404 || message.startsWith('Exercise entry not found')) {
+        return res.status(404).json({ error: message });
+      }
+      if (status === 400) {
+        return res.status(400).json({ error: message });
+      }
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
+ * /exercise-entries/{id}/laps:
+ *   post:
+ *     summary: Attach laps to an exercise entry that has no GPS track
+ *     tags: [Fitness & Workouts]
+ *     description: >
+ *       Stores the lap windows of an activity recorded without a route, such
+ *       as a treadmill run from the watch, with the distance estimated for
+ *       each. The posted laps are the whole list: re-posting replaces any earlier
+ *       ones. Entries with a GPS track get their laps from /gps-track instead
+ *       and are refused with 409.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [laps]
+ *             properties:
+ *               laps:
+ *                 type: array
+ *                 minItems: 1
+ *                 items:
+ *                   type: object
+ *                   required: [lap_index, start_time, end_time]
+ *                   properties:
+ *                     lap_index:
+ *                       type: integer
+ *                     start_time:
+ *                       type: string
+ *                       format: date-time
+ *                     end_time:
+ *                       type: string
+ *                       format: date-time
+ *                     distance_meters:
+ *                       type: number
+ *                     avg_heart_rate:
+ *                       type: number
+ *     responses:
+ *       204:
+ *         description: Laps attached.
+ *       400:
+ *         description: Invalid request body or exercise entry ID.
+ *       404:
+ *         description: Exercise entry not found.
+ *       409:
+ *         description: The entry has a GPS track, which provides its own laps.
+ */
+router.post('/:id/laps', authenticate, demoGuard, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id || typeof id !== 'string' || !isValidUuid(id)) {
+    return res.status(400).json({
+      error: 'Exercise Entry ID is required and must be a valid UUID.',
+    });
+  }
+  const parsed = attachExerciseEntryLapsRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.message });
+  }
+  try {
+    await exerciseEntryService.attachLapsToExerciseEntry(
+      req.userId,
+      req.originalUserId || req.userId,
+      id,
+      parsed.data
+    );
+    res.status(204).send();
+  } catch (error) {
+    const status = (error as { status?: number }).status;
+    const message = error instanceof Error ? error.message : '';
+    if (status === 404 || message.startsWith('Exercise entry not found')) {
+      return res.status(404).json({ error: message });
+    }
+    if (status === 400 || status === 409) {
+      return res.status(status).json({ error: message });
+    }
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /exercise-entries/{id}/distance-series:
+ *   post:
+ *     summary: Attach a distance-against-time series to an entry with no route
+ *     tags: [Fitness & Workouts]
+ *     description: >
+ *       Stores `[active seconds, cumulative metres]` rows of a session
+ *       recorded without a route (a treadmill run from the watch) so its pace
+ *       can be charted. Re-posting replaces the series.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [points]
+ *             properties:
+ *               points:
+ *                 type: array
+ *                 minItems: 2
+ *                 items:
+ *                   type: array
+ *                   minItems: 2
+ *                   maxItems: 2
+ *                   items:
+ *                     type: number
+ *     responses:
+ *       204:
+ *         description: Series stored.
+ *       400:
+ *         description: Invalid request.
+ *       404:
+ *         description: Exercise entry not found.
+ *   get:
+ *     summary: The distance series stored for an entry
+ *     tags: [Fitness & Workouts]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: "`{ points }`, null when the entry has no series."
+ */
+router.post(
+  '/:id/distance-series',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id || typeof id !== 'string' || !isValidUuid(id)) {
+      return res.status(400).json({
+        error: 'Exercise Entry ID is required and must be a valid UUID.',
+      });
+    }
+    const parsed = attachExerciseEntryDistanceSeriesRequestSchema.safeParse(
+      req.body
+    );
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.message });
+    }
+    try {
+      await exerciseEntryService.attachDistanceSeriesToExerciseEntry(
+        req.userId,
+        req.originalUserId || req.userId,
+        id,
+        parsed.data
+      );
+      res.status(204).send();
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      const message = error instanceof Error ? error.message : '';
+      if (status === 404 || message.startsWith('Exercise entry not found')) {
+        return res.status(404).json({ error: message });
+      }
+      next(error);
+    }
+  }
+);
+router.get('/:id/distance-series', authenticate, async (req, res, next) => {
+  const { id } = req.params;
+  if (!id || typeof id !== 'string' || !isValidUuid(id)) {
+    return res.status(400).json({
+      error: 'Exercise Entry ID is required and must be a valid UUID.',
+    });
+  }
+  try {
+    const points = await exerciseEntryService.getExerciseEntryDistanceSeries(
+      req.originalUserId || req.userId,
+      id
+    );
+    res.status(200).json({ points });
+  } catch (error) {
+    next(error);
+  }
+});
+/**
+ * @swagger
+ * /exercise-entries/{id}/distance:
+ *   post:
+ *     summary: Set the distance of an entry that has no GPS track
+ *     tags: [Fitness & Workouts]
+ *     description: >
+ *       Corrects the distance of a treadmill run to what the machine showed.
+ *       Only the distance changes (the entry, its set and any laps, which are
+ *       scaled to match); heart rate and measured energy are kept. An entry
+ *       with a GPS track gets its distance from the route and is refused.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [distance_km]
+ *             properties:
+ *               distance_km: { type: number, exclusiveMinimum: 0, maximum: 1000 }
+ *     responses:
+ *       204:
+ *         description: Distance updated.
+ *       400:
+ *         description: Invalid request body or exercise entry ID.
+ *       404:
+ *         description: Exercise entry not found.
+ *       409:
+ *         description: The entry has a GPS track, which provides its distance.
+ */
+router.post(
+  '/:id/distance',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id || typeof id !== 'string' || !isValidUuid(id)) {
+      return res.status(400).json({
+        error: 'Exercise Entry ID is required and must be a valid UUID.',
+      });
+    }
+    const parsed = setExerciseEntryDistanceRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.message });
+    }
+    try {
+      await exerciseEntryService.setExerciseEntryDistance(
+        req.userId,
+        req.originalUserId || req.userId,
+        id,
+        parsed.data
+      );
+      res.status(204).send();
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      const message = error instanceof Error ? error.message : '';
+      if (status === 404 || message.startsWith('Exercise entry not found')) {
+        return res.status(404).json({ error: message });
+      }
+      if (status === 400 || status === 409) {
+        return res.status(status).json({ error: message });
+      }
+      next(error);
+    }
+  }
+);
 /**
  * @swagger
  * /exercise-entries/progress/{exerciseId}:

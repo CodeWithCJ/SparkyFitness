@@ -7,7 +7,6 @@ import {
   type FoodPhotoEstimateErrorCode,
 } from '@workspace/shared';
 import type { TFunction } from 'i18next';
-
 export type { ConfidenceTone };
 
 // Re-exports of the shared confidence-tier labels and tones. The mobile
@@ -100,7 +99,8 @@ export function mapEstimateError(
         titleKey: 'photoTooLargeTitle',
         titleDefaultValue: 'Photo too large',
         messageKey: 'photoTooLargeMessage',
-        messageDefaultValue: 'Retake the photo at lower quality.',
+        messageDefaultValue:
+          'The image is too large for AI analysis. Please try another photo.',
         stayOnForm: false,
         invalidateAiSettings: false,
       };

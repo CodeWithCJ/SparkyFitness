@@ -199,10 +199,14 @@ export default function MedicationLogTable({
         {sections.map(({ medication, rows, totalDoses }) => (
           <div key={medication.id} className="space-y-2">
             <h4 className="text-sm font-semibold">
-              {medication.display_name || medication.name} —{' '}
-              {t('medications.reports.dosesLogged', '{{count}} doses logged', {
-                count: totalDoses,
-              })}
+              {t(
+                'medications.reports.dosesLogged2',
+                '{{display_name}} — {{count}} doses logged',
+                {
+                  display_name: medication.display_name || medication.name,
+                  count: totalDoses,
+                }
+              )}
             </h4>
             <div className="rounded-md border overflow-x-auto">
               <Table>
@@ -233,13 +237,20 @@ export default function MedicationLogTable({
                         {row.taken + row.prn + row.injections}
                         {row.prn > 0 && (
                           <span className="text-xs text-muted-foreground ml-1">
-                            ({row.prn} PRN)
+                            {t(
+                              'reports.medicationLogTable.prn',
+                              '({{prn}} PRN)',
+                              { prn: row.prn }
+                            )}
                           </span>
                         )}
                         {row.injections > 0 && (
                           <span className="text-xs text-muted-foreground ml-1">
-                            ({row.injections}{' '}
-                            {t('medications.reports.injectionAbbrev', 'inj')})
+                            {t(
+                              'medications.reports.inj',
+                              '({{injections}} inj)',
+                              { injections: row.injections }
+                            )}
                           </span>
                         )}
                       </TableCell>

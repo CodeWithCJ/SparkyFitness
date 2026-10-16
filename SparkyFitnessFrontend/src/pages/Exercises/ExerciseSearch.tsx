@@ -190,7 +190,12 @@ const ExerciseSearch = ({
           }}
         >
           <SelectTrigger className="w-full h-9 text-sm border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-            <SelectValue placeholder="Select a provider" />
+            <SelectValue
+              placeholder={t(
+                'exercises.exerciseSearch.selectAProvider',
+                'Select a provider'
+              )}
+            />
           </SelectTrigger>
           <SelectContent>
             {providers.map((p) => (
@@ -230,7 +235,9 @@ const ExerciseSearch = ({
               }
             >
               <SelectTrigger className="w-32 h-10 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:ring-blue-500">
-                <SelectValue placeholder="All" />
+                <SelectValue
+                  placeholder={t('exercises.exerciseSearch.all', 'All')}
+                />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
