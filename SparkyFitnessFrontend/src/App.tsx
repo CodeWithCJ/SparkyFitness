@@ -55,6 +55,9 @@ const ResetPassword = lazyWithChunkRecovery(
 );
 const Index = lazyWithChunkRecovery(() => import('@/pages/Index'));
 const Diary = lazyWithChunkRecovery(() => import('@/pages/Diary/Diary'));
+const DiaryConfirmation = lazyWithChunkRecovery(
+  () => import('@/pages/Diary/DiaryConfirmation')
+);
 const CheckIn = lazyWithChunkRecovery(() => import('./pages/CheckIn/CheckIn'));
 const FoodDatabaseManager = lazyWithChunkRecovery(
   () => import('./pages/Foods/Foods')
@@ -386,6 +389,11 @@ const router = createBrowserRouter([
         ErrorBoundary: RootErrorBoundary,
         children: [
           { index: true, Component: Diary, ErrorBoundary: RouteErrorBoundary },
+          {
+            path: 'diary-confirmation',
+            Component: DiaryConfirmation,
+            ErrorBoundary: RouteErrorBoundary,
+          },
           {
             path: 'checkin',
             Component: CheckIn,
