@@ -17,7 +17,7 @@ const command = {
     type: 'delete',
     scope: { type: 'entries', ids: [id] },
     expected_fingerprint: fingerprint,
-    confirmation_quote: 'Delete these diary entries.',
+    confirmation_quote: 'Confirm deletion of these diary entries.',
   },
 };
 const entry = {
@@ -69,6 +69,15 @@ beforeEach(() => {
     );
 });
 it('previews the exact entries and sends no mutation until the owner presses Confirm', async () => {
+  let applied = false;
+  jest.mocked(apiCall).mockImplementation(async (endpoint) => {
+    if (endpoint.includes('/diary/apply/')) {
+      applied = true;
+      return {};
+    }
+    if (endpoint.endsWith('/inspect')) return { entries: [entry], fingerprint };
+    return { ...task, version: applied ? 2 : 1 };
+  });
   openPage();
   expect(await screen.findByText(/Chicken/)).toBeInTheDocument();
   expect(
@@ -88,6 +97,7 @@ it('previews the exact entries and sends no mutation until the owner presses Con
   expect(await screen.findByRole('status')).toHaveTextContent(
     'foodAssistant.confirmationDone'
   );
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
 it('refuses a changed preview before offering a confirmation button', async () => {
   jest

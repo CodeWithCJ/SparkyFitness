@@ -23,12 +23,14 @@ export default function DiaryConfirmation() {
         {t('foodAssistant.confirmationTitle')}
       </h1>
       <p>{t('foodAssistant.confirmationDescription')}</p>
-      {(!request || preview.error) && (
+      {!confirm.isSuccess && (!request || preview.error) && (
         <p role="alert">
           {preview.error?.message ?? t('foodAssistant.confirmationInvalid')}
         </p>
       )}
-      {preview.isLoading && <p>{t('common.loading', 'Loading...')}</p>}
+      {!confirm.isSuccess && preview.isLoading && (
+        <p>{t('common.loading', 'Loading...')}</p>
+      )}
       {confirm.isSuccess ? (
         <p role="status">{t('foodAssistant.confirmationDone')}</p>
       ) : (
@@ -48,7 +50,11 @@ export default function DiaryConfirmation() {
             )}
             <Button
               variant="destructive"
-              disabled={confirm.isPending}
+              disabled={
+                confirm.isPending ||
+                preview.isFetching ||
+                Boolean(preview.error)
+              }
               onClick={() => confirm.mutate()}
             >
               {t(
