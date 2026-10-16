@@ -428,7 +428,10 @@ router.delete('/preferences/:key', async (req, res, next) => {
     await service.forgetPreference(
       req.userId,
       String(req.params.key),
-      version.data, undefined, undefined, true
+      version.data,
+      undefined,
+      undefined,
+      true
     );
     res.sendStatus(204);
   } catch (error) {

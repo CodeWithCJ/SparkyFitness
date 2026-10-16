@@ -119,11 +119,21 @@ export async function createTask(
   input: CreateFoodAssistantTask
 ) {
   const client = await getClient(userId, userId);
-  const creationInput = input.origin.type === 'user_draft'
-    ? { id: input.id, kind: input.kind, title: input.title, checkpoint: input.checkpoint }
-    : input;
-  const creationHash = createHash('sha256').update(canonicalJson(creationInput)).digest('hex');
-  const legacyCreationHash = createHash('sha256').update(canonicalJson(creationInput, true)).digest('hex');
+  const creationInput =
+    input.origin.type === 'user_draft'
+      ? {
+          id: input.id,
+          kind: input.kind,
+          title: input.title,
+          checkpoint: input.checkpoint,
+        }
+      : input;
+  const creationHash = createHash('sha256')
+    .update(canonicalJson(creationInput))
+    .digest('hex');
+  const legacyCreationHash = createHash('sha256')
+    .update(canonicalJson(creationInput, true))
+    .digest('hex');
   try {
     const result = await client.query(
       `INSERT INTO food_assistant_tasks(id, user_id, kind, title, checkpoint, creation_hash, origin)
@@ -146,7 +156,11 @@ export async function createTask(
     const task = existing.rows[0]
       ? foodAssistantTaskSchema.parse(existing.rows[0])
       : null;
-    if (!task || (task.creation_hash !== creationHash && task.creation_hash !== legacyCreationHash)) {
+    if (
+      !task ||
+      (task.creation_hash !== creationHash &&
+        task.creation_hash !== legacyCreationHash)
+    ) {
       throw new FoodAssistantConflict(
         'That request ID belongs to different work. Use a new ID for a different request.'
       );
@@ -185,11 +199,14 @@ interface TaskMutation {
 function mutationHash(command: TaskMutation, legacyOrder = false): string {
   return createHash('sha256')
     .update(
-      canonicalJson({
-        taskId: command.taskId,
-        kind: command.kind,
-        request: command.request,
-      }, legacyOrder)
+      canonicalJson(
+        {
+          taskId: command.taskId,
+          kind: command.kind,
+          request: command.request,
+        },
+        legacyOrder
+      )
     )
     .digest('hex');
 }
@@ -208,7 +225,10 @@ export async function replayTaskMutation(
     );
     if (!result.rows[0]) return null;
     const saved = foodAssistantOperationSchema.parse(result.rows[0]);
-    if (saved.request_hash !== mutationHash(command) && saved.request_hash !== mutationHash(command, true))
+    if (
+      saved.request_hash !== mutationHash(command) &&
+      saved.request_hash !== mutationHash(command, true)
+    )
       throw new FoodAssistantConflict(
         'This operation ID was already used for a different request.'
       );
@@ -246,7 +266,10 @@ export async function mutateTask(
     );
     if (prior.rows[0]) {
       const saved = foodAssistantOperationSchema.parse(prior.rows[0]);
-      if (saved.request_hash !== requestHash && saved.request_hash !== mutationHash(command, true))
+      if (
+        saved.request_hash !== requestHash &&
+        saved.request_hash !== mutationHash(command, true)
+      )
         throw new FoodAssistantConflict(
           'This operation ID was already used for a different request.'
         );
