@@ -613,7 +613,7 @@ router.get('/preferences', async (req, res, next) => {
  *         application/json:
  *           schema:
  *             type: object
- *             required: [key, value, expected_version]
+ *             required: [key, value]
  *             properties:
  *               key:
  *                 type: string

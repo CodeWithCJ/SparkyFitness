@@ -137,3 +137,6 @@ Small local models (roughly 3B–8B, e.g. an 8 GB Mac) can drive the chatbot's t
 2. **Use the `core` tool profile.** When you add an Ollama service, SparkyFitness now preselects the **core** tool profile (in the service's settings). Core exposes the everyday logging tools plus goals instead of the full tool set, which small models select from far more reliably and which fits a smaller context window. Pick **full** only on a strong local machine with a raised context window.
 
 The server logs a warning when an Ollama service runs the `full` profile, since that combination most often overflows the default context. Also prefer models trained for tool calling (e.g. `qwen2.5:7b-instruct`, `llama3.1:8b`) — plain small chat models make unreliable tool calls.
+
+
+If a connected client requests a diary undo or bulk deletion, open its review link while signed in and confirm the displayed entries. Opening the link does not change your diary. Lasting preferences are removed only after an explicit request naming the preference, or through its Delete control in settings.
