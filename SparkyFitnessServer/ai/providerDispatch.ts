@@ -879,6 +879,9 @@ function extractTextFromAgentOutput(output: unknown): string | null {
       output_text?: unknown;
       content?: unknown;
     };
+    // Responses reasoning and tool items are not assistant answer text.
+    if (obj.type && !['message', 'output_text', 'text'].includes(obj.type))
+      continue;
     if (typeof obj.text === 'string') {
       texts.push(obj.text);
     } else if (typeof obj.output_text === 'string') {
@@ -893,6 +896,7 @@ function extractTextFromAgentOutput(output: unknown): string | null {
           text?: unknown;
           output_text?: unknown;
         };
+        if (b.type && !['output_text', 'text'].includes(b.type)) continue;
         if (typeof b.text === 'string') {
           texts.push(b.text);
         } else if (typeof b.output_text === 'string') {

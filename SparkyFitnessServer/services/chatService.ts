@@ -2215,11 +2215,10 @@ async function processChatMessage(
     if (!finalContent) {
       // A tool call can fail or only search. Its name never proves a write.
       // Preserve the actual result instead of claiming a food was logged.
-      log(
-        'debug',
-        'No assistant reply text; tool output retained for diagnostics:',
-        toolOutputs
-      );
+      log('debug', 'No assistant reply text; tool result metadata:', {
+        toolNames: executedToolsList.map((tool) => tool.name),
+        resultCount: toolOutputs.length,
+      });
       finalContent = executedToolsList.length
         ? EMPTY_TOOL_RESPONSE_TEXT
         : EMPTY_RESPONSE_ERROR_TEXT;

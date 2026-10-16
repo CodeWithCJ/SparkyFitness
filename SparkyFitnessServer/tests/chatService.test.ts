@@ -558,6 +558,12 @@ describe('chatService', () => {
           ? 'Logged 2 eggs for breakfast!'
           : 'Tools ran, but the AI service returned no summary. Check your diary and saved changes before retrying.';
         expect(result.content).toBe(expectedContent);
+        if (!hasSummary)
+          expect(log).toHaveBeenCalledWith(
+            'debug',
+            'No assistant reply text; tool result metadata:',
+            { toolNames: ['sparky_manage_food'], resultCount: 1 }
+          );
         expect(foodEntryService.createFoodEntry).toHaveBeenCalledTimes(1);
         expect(result.action).toBe('food_added');
         expect(result.executedTools).toEqual([
