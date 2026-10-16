@@ -2870,7 +2870,7 @@ Actions:
           // write back a note with its tail cut off.
           const data = {
             ...compacted,
-            variants: variants.map((v) =>
+            variants: variants.map((v: Record<string, unknown>) =>
               compactRecord({ ...v }, VARIANT_DROP)
             ),
           };

@@ -20,17 +20,6 @@ import { v5 as uuidv5 } from 'uuid';
 import type { ToolBuildContext } from './index.js';
 import { ERRORS, formatZodError } from './errors.js';
 
-const actions = [
-  'get_recipe',
-  'draft_from_recipe',
-  'import_recipe_url',
-  'import_recipe_image',
-  'preview_recipe',
-  'publish_recipe',
-  'import_provider_ingredient',
-  'remove_recipe_ingredient',
-  'undo_recipe',
-] as const;
 const uuid = z.string().uuid();
 const url = z
   .string()
@@ -94,24 +83,9 @@ export function buildRecipeTools(userId: string, ctx?: ToolBuildContext) {
     sparky_manage_recipes: tool({
       description:
         'Create and edit saved recipes using persisted ingredient drafts. get_recipe reads an accessible recipe and its updated_at version. draft_from_recipe copies EVERY ingredient into a new task for substitutions, resizing or yield changes. import_recipe_url reads the original page and saves an unresolved draft; when several recipe cards exist, inspect their names and choose card_index. import_recipe_image transcribes the image actually attached to this turn and saves all ingredient lines, including unreadable placeholders. Reuse request_id when retrying an import. Pasted recipes can be saved with sparky_food_assistant_state start_task. Resolve saved-food ingredients through lookup and checkpoint their IDs. For provider ingredients, first checkpoint the confirmed quantity/unit then use import_provider_ingredient with the exact provider ID: it verifies full details and atomically saves the library food, portion and draft row without logging anything. Reuse operation_id for a retry. Never guess a per-item weight or turn an unresolved ingredient into zero. Do not remove ingredients unless requested: remove_recipe_ingredient requires the exact current user quote. preview_recipe recalculates batch/per-serving nutrition and reports missing fields; known_subtotal is only the resolved portion. publish_recipe creates a private saved recipe, or updates meal_id with expected_meal_updated_at. It publishes nothing when ingredients, portions or yield remain unresolved. undo_recipe reverts the publication_operation_id only on an explicit current user undo request and only when the recipe has not changed since publication. Undoing creation is blocked if anyone uses the recipe in a diary, plan, another recipe or favorite. Existing diary snapshots keep their logged nutrition. Only say a recipe was saved after the publication result includes persisted readback. This tool does not log the recipe to the diary; use log_meal only when requested.',
-      inputSchema: z.object({
-        action: z.enum(actions),
-        meal_id: uuid.optional(),
-        request_id: uuid.optional(),
-        task_id: uuid.optional(),
-        url: url.optional(),
-        card_index: z.number().optional(),
-        ingredient_id: uuid.optional(),
-        source_quote: z.string().optional(),
-        provider_import: importFoodAssistantProviderFoodSchema.optional(),
-        undo: undoFoodAssistantRecipeSchema.optional(),
-        command: z
-          .union([
-            publishFoodAssistantRecipeSchema,
-            changeFoodAssistantTaskSchema,
-          ])
-          .optional(),
-      }),
+      // Keep the root object shape required by providers while advertising
+      // the exact command contract for each action.
+      inputSchema: schema.meta({ type: 'object' }),
       execute: async (raw) => {
         const parsed = schema.safeParse(raw);
         if (!parsed.success) return formatZodError(parsed.error);
