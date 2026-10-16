@@ -969,6 +969,7 @@
     "yesterday": "Yesterday"
   },
   "calorieSettings": {
+    "adaptiveEarnBack": "Adaptive targets already include activity. Remaining calories are Target minus Eaten. Exercise earn-back applies only to Manual targets.",
     "restingEnergy": "Resting Energy",
     "bmr": "BMR",
     "title": "Calorie & BMR Settings",

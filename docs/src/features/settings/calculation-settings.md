@@ -127,6 +127,16 @@ Gain is deliberately much slower than loss. Muscle growth is limited by training
 - **Adaptive Method:** Applies the deficit to your Calculated Adaptive TDEE (falling back to BMR × activity multiplier if history is insufficient).
 - **Manual Method:** Applies the deficit to your manually entered calorie target.
 
+With the **Adaptive Method**, that baseline already represents the whole day's
+expenditure. **Dynamic Goal** and **Percentage Earn-Back** therefore do not add
+exercise, background-step calories, or BMR to this target again. Remaining calories
+are the calculated food target minus intake. Activity and net energy are still
+reported separately. This also applies while Adaptive uses its fallback estimate.
+**Device Projection** keeps its explicit full-day projection behavior. With the
+**Manual Method**, Dynamic and Percentage Earn-Back continue to credit activity.
+If BMR cannot be calculated, the stored manual target and its earn-back behavior
+remain in use.
+
 Device Projection always uses the projected device TDEE as the live baseline for the selected Goal Mode; the calculation-method selector controls the saved non-device baseline and previews used by the other modes.
 
 ---

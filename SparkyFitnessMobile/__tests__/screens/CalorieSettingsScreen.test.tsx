@@ -5,6 +5,14 @@ import CalorieSettingsScreen from '../../src/screens/CalorieSettingsScreen';
 
 const mockMutate = jest.fn();
 let mockPreferences: Record<string, unknown> = {};
+let mockBmr: number | undefined = 1750;
+
+jest.mock('../../src/hooks/useDailySummary', () => ({
+  useDailySummary: () => ({
+    summary:
+      mockBmr === undefined ? undefined : { calorieBalance: { bmr: mockBmr } },
+  }),
+}));
 
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: () => ({ preferences: mockPreferences }),
@@ -81,6 +89,7 @@ describe('CalorieSettingsScreen', () => {
       await i18n.changeLanguage('en');
     });
     jest.clearAllMocks();
+    mockBmr = 1750;
     mockPreferences = {
       calorie_goal_adjustment_mode: 'adaptive',
       goal_mode: 'maintain',
@@ -121,6 +130,41 @@ describe('CalorieSettingsScreen', () => {
     fireEvent.press(getByText('Body Recomposition (-10%)'));
     expect(mockMutate).toHaveBeenCalledWith({ goal_mode: 'recomp' });
   });
+
+  it.each(['dynamic', 'percentage'])(
+    'explains why %s does not earn activity back on an Adaptive target',
+    (mode) => {
+      mockPreferences.calorie_goal_adjustment_mode = mode;
+      mockPreferences.goal_mode_calculation_method = 'adaptive';
+      const { getByText, queryByLabelText } = render(
+        <CalorieSettingsScreen navigation={navigation} route={route} />
+      );
+
+      expect(
+        getByText(
+          'Adaptive targets already include activity. Remaining calories are Target minus Eaten. Exercise earn-back applies only to Manual targets.'
+        )
+      ).toBeTruthy();
+      expect(getByText('Goal − Eaten')).toBeTruthy();
+      expect(queryByLabelText('Exercise Calories Applied')).toBeNull();
+    }
+  );
+
+  it.each([0, undefined])(
+    'keeps manual-fallback earn-back available when BMR is %s',
+    (bmr) => {
+      mockBmr = bmr;
+      mockPreferences.calorie_goal_adjustment_mode = 'percentage';
+      mockPreferences.goal_mode_calculation_method = 'adaptive';
+      mockPreferences.exercise_calorie_percentage = 50;
+      const { getByLabelText, getByText } = render(
+        <CalorieSettingsScreen navigation={navigation} route={route} />
+      );
+
+      expect(getByLabelText('Exercise Calories Applied')).toBeTruthy();
+      expect(getByText('Goal − Eaten + 50% of Exercise')).toBeTruthy();
+    }
+  );
 
   it('offers and saves Goal Mode calculation method on Android', () => {
     const { getByText } = render(

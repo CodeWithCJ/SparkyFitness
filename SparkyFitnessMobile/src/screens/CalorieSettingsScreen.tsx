@@ -13,6 +13,8 @@ import FormInput from '../components/FormInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import Switch from '../components/ui/Switch';
 import { usePreferences } from '../hooks/usePreferences';
+import { useDailySummary } from '../hooks/useDailySummary';
+import { getTodayDate } from '../utils/dateUtils';
 import { updatePreferences } from '../services/api/preferencesApi';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -25,6 +27,8 @@ import {
   MAX_GOAL_MODE_PERCENTAGE,
   MIN_CALORIE_SAFETY_FLOOR,
   convertEnergyValue,
+  isAdaptiveEarnBackSuppressed,
+  todayInZone,
   type CalorieSafetyFloorMode,
   type GoalMode,
   type GoalModeCalculationMethod,
@@ -212,6 +216,16 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const queryClient = useQueryClient();
   const { preferences } = usePreferences();
   const normalized = normalizePreferences(preferences);
+  const adaptiveEarnBackConfigured = isAdaptiveEarnBackSuppressed(
+    normalized.mode,
+    normalized.goalModeCalculationMethod
+  );
+  const { summary } = useDailySummary({
+    date: preferences?.timezone
+      ? todayInZone(preferences.timezone)
+      : getTodayDate(),
+    enabled: adaptiveEarnBackConfigured,
+  });
 
   const [percentageText, setPercentageText] = useState(() =>
     String(normalized.exerciseCaloriePercentage)
@@ -410,7 +424,12 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const optionsLayout = LinearTransition.delay(0).duration(250);
   const pipelineLayout = LinearTransition.delay(50).duration(250);
 
-  const showPercentage = normalized.mode === 'percentage';
+  // Match goalService: without a usable BMR the stored manual target remains
+  // active. Keep its earn-back control available until the balance is known.
+  const adaptiveEarnBackSuppressed =
+    adaptiveEarnBackConfigured && (summary?.calorieBalance?.bmr ?? 0) > 0;
+  const showPercentage =
+    normalized.mode === 'percentage' && !adaptiveEarnBackSuppressed;
   const showActivityLevel =
     normalized.mode === 'tdee' || normalized.mode === 'adaptive';
   const showNegativeAdjustment = normalized.mode === 'tdee';
@@ -439,7 +458,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
 
     let remainingFormula: string;
     let remainingNote: string | null;
-    switch (mode) {
+    switch (adaptiveEarnBackSuppressed ? 'adaptive' : mode) {
       case 'dynamic':
         remainingFormula = t('calorieSettings.formulas.dynamic', {
           defaultValue: 'Goal − Net Energy',
@@ -473,9 +492,11 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
         remainingFormula = t('calorieSettings.formulas.adaptive', {
           defaultValue: 'Goal − Eaten',
         });
-        remainingNote = t('calorieSettings.notes.adaptive', {
-          defaultValue: 'Goal = Adaptive TDEE',
-        });
+        remainingNote = adaptiveEarnBackSuppressed
+          ? null
+          : t('calorieSettings.notes.adaptive', {
+              defaultValue: 'Goal = Adaptive TDEE',
+            });
         break;
       default:
         remainingFormula = t('calorieSettings.formulas.fixed', {
@@ -489,6 +510,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
 
     return { burned, net, remainingFormula, remainingNote };
   }, [
+    adaptiveEarnBackSuppressed,
     normalized.mode,
     normalized.includeBmrInNetCalories,
     normalized.exerciseCaloriePercentage,
@@ -545,6 +567,14 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
               {t('calorieSettings.deviceProjectionDescription', {
                 defaultValue:
                   'Current-day Health Connect total calories are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.',
+              })}
+            </Text>
+          )}
+          {adaptiveEarnBackSuppressed && (
+            <Text className="text-text-secondary text-sm mt-3">
+              {t('calorieSettings.adaptiveEarnBack', {
+                defaultValue:
+                  'Adaptive targets already include activity. Remaining calories are Target minus Eaten. Exercise earn-back applies only to Manual targets.',
               })}
             </Text>
           )}

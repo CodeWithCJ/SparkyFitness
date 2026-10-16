@@ -2481,6 +2481,7 @@
       "percentageGoal": "Percentage Earn-Back",
       "percentageGoalDescription": "Only earn back a set percentage of your exercise calories. For example, 50% creates a safety buffer to avoid overeating from over-estimated burns.",
       "percentageLabel": "Earn-back percentage:",
+      "adaptiveEarnBack": "Adaptive targets already include activity. Remaining calories are Target minus Eaten. Exercise earn-back applies only to Manual targets.",
       "tdeeGoal": "Device Projection",
       "tdeeActivityHint": "Activity level is only used by the BMR + active calories fallback when a device total is unavailable.",
       "tdeeGoalDescription": "Uses Health Connect total calories when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.",

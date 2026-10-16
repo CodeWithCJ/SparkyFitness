@@ -1816,6 +1816,37 @@ describe('enrichExerciseSessions', () => {
     );
   });
 
+  test.each([75, 80])(
+    'does not turn resting-only energy into workout calories (basal %s)',
+    async (basal) => {
+      mockAggregateRecord.mockImplementation(
+        ({ recordType }: { recordType: string }) => {
+          if (recordType === 'ActiveCaloriesBurned') {
+            return Promise.resolve({
+              ACTIVE_CALORIES_TOTAL: { inKilocalories: 0 },
+            });
+          }
+          if (recordType === 'TotalCaloriesBurned') {
+            return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 75 } });
+          }
+          if (recordType === 'BasalMetabolicRate') {
+            return Promise.resolve({
+              BASAL_CALORIES_TOTAL: { inKilocalories: basal },
+            });
+          }
+          return Promise.resolve({});
+        }
+      );
+
+      const result = await enrichExerciseSessions(
+        [makeSession({ exerciseType: 70 })],
+        createTelemetryRunContext()
+      );
+
+      expect(result[0]).toMatchObject({ energy: { inKilocalories: 0 } });
+    }
+  );
+
   test('keeps the legacy total fallback when basal consumes the total', async () => {
     mockAggregateRecord.mockImplementation(
       ({ recordType }: { recordType: string }) => {

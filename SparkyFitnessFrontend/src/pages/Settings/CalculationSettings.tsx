@@ -79,6 +79,7 @@ import {
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   shouldShowCalorieSafetyWarning,
   normalizeCalorieGoalAdjustmentMode,
+  isAdaptiveEarnBackSuppressed,
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
 } from '@workspace/shared';
 
@@ -424,6 +425,12 @@ const CalculationSettings = () => {
   const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;
   const rawManualGoal = goalsData?.calories ?? 2000;
   const staticTdee = Math.round(bmr * activityMultiplier);
+  const adaptiveEarnBackSuppressed =
+    bmr > 0 &&
+    isAdaptiveEarnBackSuppressed(
+      calorieGoalAdjustmentMode,
+      goalModeCalculationMethod
+    );
   const calorieGoalOffset = bmr > 0 ? rawManualGoal - staticTdee : 0;
 
   let currentGoalBase =
@@ -912,36 +919,37 @@ const CalculationSettings = () => {
               />
             </Label>
           </div>
-          {calorieGoalAdjustmentMode === 'percentage' && (
-            <div className="ml-6 flex items-center gap-3">
-              <Percent className="w-4 h-4 text-muted-foreground" />
-              <Label
-                htmlFor="exercise-calorie-percentage"
-                className="text-sm whitespace-nowrap"
-              >
-                {t(
-                  'settings.calorieGoalAdjustment.percentageLabel',
-                  'Earn-back percentage:'
-                )}
-              </Label>
-              <Input
-                id="exercise-calorie-percentage"
-                type="number"
-                min={0}
-                max={100}
-                value={exerciseCaloriePercentage}
-                onChange={(e) => {
-                  const val = Math.min(
-                    100,
-                    Math.max(0, Number(e.target.value))
-                  );
-                  setExerciseCaloriePercentage(val);
-                }}
-                className="w-20"
-              />
-              <span className="text-sm text-muted-foreground">%</span>
-            </div>
-          )}
+          {calorieGoalAdjustmentMode === 'percentage' &&
+            !adaptiveEarnBackSuppressed && (
+              <div className="ml-6 flex items-center gap-3">
+                <Percent className="w-4 h-4 text-muted-foreground" />
+                <Label
+                  htmlFor="exercise-calorie-percentage"
+                  className="text-sm whitespace-nowrap"
+                >
+                  {t(
+                    'settings.calorieGoalAdjustment.percentageLabel',
+                    'Earn-back percentage:'
+                  )}
+                </Label>
+                <Input
+                  id="exercise-calorie-percentage"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={exerciseCaloriePercentage}
+                  onChange={(e) => {
+                    const val = Math.min(
+                      100,
+                      Math.max(0, Number(e.target.value))
+                    );
+                    setExerciseCaloriePercentage(val);
+                  }}
+                  className="w-20"
+                />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+            )}
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="tdee" id="tdee-goal" />
             <Label htmlFor="tdee-goal" className="cursor-pointer">
@@ -1122,61 +1130,71 @@ const CalculationSettings = () => {
                   )}
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {calorieGoalAdjustmentMode === 'dynamic'
+                  {adaptiveEarnBackSuppressed
                     ? t(
-                        'settings.calculationExplanation.remainingDynamic',
-                        'Daily Goal - Net Energy (Your goal grows as you move)'
+                        'settings.calculationExplanation.remainingAdaptive',
+                        'Daily Goal - Eaten (Goal is your adjusted Adaptive TDEE)'
                       )
-                    : calorieGoalAdjustmentMode === 'percentage'
+                    : calorieGoalAdjustmentMode === 'dynamic'
                       ? t(
-                          'settings.calculationExplanation.remainingPercentage',
-                          'Daily Goal - (Eaten - {{pct}}% of Exercise Burned)',
-                          { pct: exerciseCaloriePercentage }
+                          'settings.calculationExplanation.remainingDynamic',
+                          'Daily Goal - Net Energy (Your goal grows as you move)'
                         )
-                      : calorieGoalAdjustmentMode === 'tdee'
+                      : calorieGoalAdjustmentMode === 'percentage'
                         ? t(
-                            'settings.calculationExplanation.remainingTdee',
-                            'Projected TDEE × Goal Mode − Eaten'
+                            'settings.calculationExplanation.remainingPercentage',
+                            'Daily Goal - (Eaten - {{pct}}% of Exercise Burned)',
+                            { pct: exerciseCaloriePercentage }
                           )
-                        : calorieGoalAdjustmentMode === 'adaptive'
+                        : calorieGoalAdjustmentMode === 'tdee'
                           ? t(
-                              'settings.calculationExplanation.remainingAdaptive',
-                              'Daily Goal - Eaten (Goal is your adjusted Adaptive TDEE)'
+                              'settings.calculationExplanation.remainingTdee',
+                              'Projected TDEE × Goal Mode − Eaten'
                             )
-                          : t(
-                              'settings.calculationExplanation.remainingFixed',
-                              'Daily Goal - Eaten (Activity does not change your budget)'
-                            )}
+                          : calorieGoalAdjustmentMode === 'adaptive'
+                            ? t(
+                                'settings.calculationExplanation.remainingAdaptive',
+                                'Daily Goal - Eaten (Goal is your adjusted Adaptive TDEE)'
+                              )
+                            : t(
+                                'settings.calculationExplanation.remainingFixed',
+                                'Daily Goal - Eaten (Activity does not change your budget)'
+                              )}
                 </p>
               </div>
             </div>
           </div>
 
           <div className="pt-2 text-sm text-blue-700/70 dark:text-blue-300/60 italic border-t border-blue-100 dark:border-blue-800">
-            {calorieGoalAdjustmentMode === 'dynamic'
+            {adaptiveEarnBackSuppressed
               ? t(
-                  'settings.calculationExplanation.dynamicFootnote',
-                  '* Ideal for fueling workouts and active recovery.'
+                  'settings.calorieGoalAdjustment.adaptiveEarnBack',
+                  'Adaptive targets already include activity. Remaining calories are Target minus Eaten. Exercise earn-back applies only to Manual targets.'
                 )
-              : calorieGoalAdjustmentMode === 'percentage'
+              : calorieGoalAdjustmentMode === 'dynamic'
                 ? t(
-                    'settings.calculationExplanation.percentageFootnote',
-                    '* Creates a safety buffer to avoid overeating from over-estimated calorie burns.'
+                    'settings.calculationExplanation.dynamicFootnote',
+                    '* Ideal for fueling workouts and active recovery.'
                   )
-                : calorieGoalAdjustmentMode === 'tdee'
+                : calorieGoalAdjustmentMode === 'percentage'
                   ? t(
-                      'settings.calculationExplanation.tdeeFootnote',
-                      '* Enable Total Calories in Health Connect sync. The projection converges with the device total at midnight; BMR plus active calories is used as a fallback.'
+                      'settings.calculationExplanation.percentageFootnote',
+                      '* Creates a safety buffer to avoid overeating from over-estimated calorie burns.'
                     )
-                  : calorieGoalAdjustmentMode === 'adaptive'
+                  : calorieGoalAdjustmentMode === 'tdee'
                     ? t(
-                        'settings.calculationExplanation.adaptiveFootnote',
-                        '* Dynamically adjusts your Daily Goal based on your actual metabolism. Needs consistent food and weight tracking for high accuracy.'
+                        'settings.calculationExplanation.tdeeFootnote',
+                        '* Enable Total Calories in Health Connect sync. The projection converges with the device total at midnight; BMR plus active calories is used as a fallback.'
                       )
-                    : t(
-                        'settings.calculationExplanation.fixedFootnote',
-                        '* Ideal for strict caloric deficits and weight management.'
-                      )}
+                    : calorieGoalAdjustmentMode === 'adaptive'
+                      ? t(
+                          'settings.calculationExplanation.adaptiveFootnote',
+                          '* Dynamically adjusts your Daily Goal based on your actual metabolism. Needs consistent food and weight tracking for high accuracy.'
+                        )
+                      : t(
+                          'settings.calculationExplanation.fixedFootnote',
+                          '* Ideal for strict caloric deficits and weight management.'
+                        )}
           </div>
         </div>
       </div>

@@ -1392,14 +1392,15 @@ const selectBasalNormalizedSessionCalories = (
   const reportedActive =
     isPositiveCalories(active) && active <= totalValid ? active : undefined;
   const derivedActive = deriveActiveCalories(totalValid, basalValid);
-  const derivedPositive =
-    derivedActive != null && derivedActive > 0 ? derivedActive : undefined;
 
-  if (derivedPositive == null) {
+  if (derivedActive == null) {
     return selectSessionCalories(active, total, durationMs);
   }
-  if (reportedActive == null) return derivedPositive;
-  return Math.max(reportedActive, derivedPositive);
+  // A plausible basal aggregate can account for all the total energy. That is
+  // a valid zero active estimate, not a missing Android bridge value: falling
+  // back to Total here would label the resting energy as workout calories.
+  if (reportedActive == null) return derivedActive;
+  return Math.max(reportedActive, derivedActive);
 };
 
 const extractSessionCaloriePair = (

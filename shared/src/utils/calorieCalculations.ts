@@ -49,6 +49,18 @@ export function normalizeCalorieGoalAdjustmentMode(
   return mode === "smart" ? "tdee" : (mode as CalorieGoalAdjustmentMode);
 }
 
+/** Adaptive full-day targets already contain the energy earn-back would add. */
+export function isAdaptiveEarnBackSuppressed(
+  mode: string | null | undefined,
+  calculationMethod: string | null | undefined,
+): boolean {
+  const normalizedMode = normalizeCalorieGoalAdjustmentMode(mode);
+  return (
+    calculationMethod === "adaptive" &&
+    (normalizedMode === "dynamic" || normalizedMode === "percentage")
+  );
+}
+
 export type ExerciseCalorieSource = "logged" | "active" | "steps" | "none";
 
 export interface ResolvedExerciseCalories {

@@ -20,6 +20,7 @@ import {
   MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
   MIN_CALORIE_SAFETY_FLOOR,
   resolveCalorieSafetyFloor,
+  isAdaptiveEarnBackSuppressed,
 } from '@workspace/shared';
 
 /**
@@ -386,8 +387,20 @@ export function computeCalorieBalance({
   }
 
   // 4. Remaining & progress
+  // Adaptive targets already use full-day expenditure, including activity and
+  // resting energy (also when falling back to BMR x activity level). Crediting
+  // either again would erase the intended deficit. Explicit Device Projection
+  // still replaces that target with its own full-day estimate above.
+  const budgetMode =
+    bmr > 0 &&
+    isAdaptiveEarnBackSuppressed(
+      adjustmentMode,
+      userPreferences?.goal_mode_calculation_method
+    )
+      ? 'adaptive'
+      : adjustmentMode;
   const remaining = computeCaloriesRemaining({
-    mode: adjustmentMode,
+    mode: budgetMode,
     // TDEE mode expresses its live target as base goal + adjustment. Passing
     // the already-adjusted live goal here would apply the adjustment twice.
     goalCalories:

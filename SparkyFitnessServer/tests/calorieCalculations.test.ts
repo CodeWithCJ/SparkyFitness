@@ -2,7 +2,24 @@ import { describe, expect, test } from 'vitest';
 import {
   CALORIE_CALCULATION_CONSTANTS,
   computeStepCalories,
+  isAdaptiveEarnBackSuppressed,
 } from '@workspace/shared';
+
+describe('adaptive activity earn-back policy shared by both clients', () => {
+  test.each([
+    ['dynamic', 'adaptive', true],
+    ['percentage', 'adaptive', true],
+    [null, 'adaptive', true],
+    ['dynamic', 'manual', false],
+    ['percentage', null, false],
+    ['tdee', 'adaptive', false],
+    ['smart', 'adaptive', false],
+    ['fixed', 'adaptive', false],
+    ['adaptive', 'manual', false],
+  ] as const)('%s / %s suppresses earn-back: %s', (mode, method, expected) => {
+    expect(isAdaptiveEarnBackSuppressed(mode, method)).toBe(expected);
+  });
+});
 
 describe('computeStepCalories', () => {
   test('keeps the shipped stride-multiplier property available', () => {

@@ -215,6 +215,72 @@ describe('adjustment modes', () => {
   });
 });
 
+describe('adaptive calculation with activity earn-back', () => {
+  test.each(['dynamic', 'percentage'] as const)(
+    '%s does not add activity or BMR to a target based on full-day TDEE',
+    (mode) => {
+      const balance = computeCalorieBalance(
+        inputs({
+          adjustedGoalCalories: 2400,
+          eatenCalories: 2100,
+          exercise: { activeCalories: 0, otherCalories: 600, activitySteps: 0 },
+          backgroundStepCalories: 200,
+          userPreferences: {
+            ...inputs().userPreferences,
+            calorie_goal_adjustment_mode: mode,
+            goal_mode_calculation_method: 'adaptive',
+            include_bmr_in_net_calories: true,
+            exercise_calorie_percentage: 50,
+          },
+        })
+      );
+
+      expect(balance.goal).toBe(2400);
+      expect(balance.remaining).toBe(300);
+      expect(balance.progress).toBe(88);
+      // Activity still belongs in the burn/net statistics, even though the
+      // full-day target already includes it.
+      expect(balance.burned).toBe(2800);
+      expect(balance.net).toBe(-700);
+    }
+  );
+
+  test('the default dynamic mode also respects the adaptive baseline', () => {
+    const balance = computeCalorieBalance(
+      inputs({
+        backgroundStepCalories: 300,
+        userPreferences: { goal_mode_calculation_method: 'adaptive' },
+      })
+    );
+    expect(balance.remaining).toBe(1962 - 2000);
+  });
+
+  test.each([
+    ['dynamic', 700],
+    ['percentage', 450],
+  ] as const)(
+    '%s preserves manual-target credit when BMR is unavailable',
+    (mode, expectedRemaining) => {
+      vi.mocked(bmrService.calculateBmr).mockReturnValue(0);
+      const balance = computeCalorieBalance(
+        inputs({
+          adjustedGoalCalories: 2000,
+          eatenCalories: 1800,
+          exercise: { activeCalories: 0, otherCalories: 500, activitySteps: 0 },
+          userPreferences: {
+            ...inputs().userPreferences,
+            calorie_goal_adjustment_mode: mode,
+            goal_mode_calculation_method: 'adaptive',
+            exercise_calorie_percentage: 50,
+          },
+        })
+      );
+      // goalService cannot replace the stored target when BMR is zero.
+      expect(balance.remaining).toBe(expectedRemaining);
+    }
+  );
+});
+
 describe('dayFraction / tdee projection', () => {
   const tdeePrefs = {
     timezone: 'UTC',
