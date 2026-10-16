@@ -153,10 +153,10 @@ export function resolveFoodPortion<T extends PortionVariant>(args: {
     const size = nutrientNumber(variant.serving_size);
     const unit = normalizePortionUnit(variant.serving_unit);
     if (size === null || size <= 0 || !unit || /^\d/.test(unit)) return null;
-    if (requested === 'serving')
-      return { quantity: args.quantity * size, unit: variant.serving_unit! };
     if (requested === unit)
       return { quantity: args.quantity, unit: variant.serving_unit! };
+    if (requested === 'serving')
+      return { quantity: args.quantity * size, unit: variant.serving_unit! };
     const factor = getConversionFactor(unit, requested);
     if (factor === null) return null;
     return { quantity: args.quantity * factor, unit: variant.serving_unit! };

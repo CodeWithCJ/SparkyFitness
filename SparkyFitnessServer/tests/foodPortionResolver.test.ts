@@ -145,3 +145,29 @@ describe('verified food portions', () => {
     );
   });
 });
+
+it('keeps a literal serving count when nutrition covers a multi-serving reference', () => {
+  const reference = {
+    id: 'csv-reference',
+    serving_size: 4.5,
+    serving_unit: 'serving',
+    calories: 450,
+    protein: 30,
+    carbs: 60,
+    fat: 10,
+  };
+  const result = resolveFoodPortion({
+    quantity: 2,
+    unit: 'servings',
+    variants: [reference],
+  });
+  expect(result).toMatchObject({ ok: true, quantity: 2, unit: 'serving' });
+  if (result.ok)
+    expect(
+      scaleNutritionForConsumedAmount(
+        result.quantity,
+        reference.serving_size,
+        reference
+      ).calories
+    ).toBe(200);
+});
