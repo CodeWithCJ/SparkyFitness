@@ -278,7 +278,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect `routes/syncedDataRoutes.ts`, `services/syncedDataService.ts`, and `models/syncedDataRepository.ts` (the `SYNCED_SOURCE_TABLES` whitelist)
 - AI chat or chatbot tool issue:
   inspect `services/chatService.ts`, `ai/tools/`, and the matching domain service and repository
-  Streaming turns consume the provider output independently of the HTTP connection so `onFinish` persists the reply after a mobile disconnect. A valid final user-message ID is stored as `metadata.client_message_id` on both history rows for exact-turn recovery; mobile assigns a fresh ID to each generation, including retries.
+  Streaming turns consume provider output independently of the HTTP connection. `utils/backgroundChatStream.ts` bounds live delivery to 256 KiB and continues draining after a disconnect. The opt-in `ai@7.0.99` patch releases the SDK's retained stream branch after the UI consumer is created; default SDK consumption remains unchanged. Valid final user-message IDs are stored as `metadata.client_message_id`; assistant rows receive that marker only after a successful completion, while partial text stays in history. Mobile assigns a fresh ID to each generation, including retries.
 - Fasting or mood issue:
   inspect `routes/fastingRoutes.ts` / `routes/moodRoutes.ts` and `models/fastingRepository.ts` / `models/moodRepository.ts`
 - Symptom or episode tracking issue (#1882):

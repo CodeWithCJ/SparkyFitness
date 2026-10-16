@@ -13,10 +13,16 @@ beforeEach(() => {
   // locale, so a developer's Windows locale must not choose the expectations.
   jest.spyOn(Date.prototype, 'toLocaleTimeString').mockImplementation(function (
     this: Date,
-    _locales,
+    locales,
     options
   ) {
-    return nativeTimeString.call(this, 'en-US', options);
+    return nativeTimeString.call(
+      this,
+      locales === undefined || (Array.isArray(locales) && locales.length === 0)
+        ? 'en-US'
+        : locales,
+      options
+    );
   });
 });
 afterEach(() => jest.restoreAllMocks());
@@ -24,10 +30,16 @@ afterEach(() => jest.restoreAllMocks());
 it('uses the device locale rather than forcing a twelve-hour clock', () => {
   jest.spyOn(Date.prototype, 'toLocaleTimeString').mockImplementation(function (
     this: Date,
-    _locales,
+    locales,
     options
   ) {
-    return nativeTimeString.call(this, 'en-GB', options);
+    return nativeTimeString.call(
+      this,
+      locales === undefined || (Array.isArray(locales) && locales.length === 0)
+        ? 'en-GB'
+        : locales,
+      options
+    );
   });
   expect(formatTimeOfDay('21:00')).toBe('21:00');
 });

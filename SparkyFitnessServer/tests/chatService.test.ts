@@ -1145,6 +1145,43 @@ describe('chatService', () => {
       return chunks;
     };
 
+    it.each(['error', 'other', 'length', undefined])(
+      'does not mark a partial %s completion as recoverable',
+      async (reason) => {
+        streamModel([
+          { type: 'stream-start', warnings: [] },
+          { type: 'text-start', id: 'text-1' },
+          { type: 'text-delta', id: 'text-1', delta: 'Incomplete reply' },
+          { type: 'text-end', id: 'text-1' },
+          ...(reason
+            ? [
+                {
+                  type: 'finish',
+                  finishReason: { unified: reason, raw: reason },
+                  usage,
+                },
+              ]
+            : []),
+        ]);
+        const { stream } = await chatService.processChatMessageStream(
+          [{ id: 'partial-turn', role: 'user', content: 'Check my diary' }],
+          'svc-1',
+          activeUserId,
+          actorUserId
+        );
+        await drainStream(stream);
+        await vi.waitFor(() => {
+          expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+            expect.objectContaining({
+              messageType: 'assistant',
+              content: 'Incomplete reply',
+              metadata: undefined,
+            })
+          );
+        });
+      }
+    );
+
     it('finishes and saves a correlated response without the client reading the stream', async () => {
       streamModel([
         { type: 'stream-start', warnings: [] },

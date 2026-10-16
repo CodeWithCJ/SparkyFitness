@@ -1,0 +1,65 @@
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index bbb9bb93e6fde205f5c500887b3f5af903db0495..a6e27b75c4274e90aa2e3e942b98e1635e2e7b71 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -2636,6 +2636,8 @@ type UIMessageStreamOptions<UI_MESSAGE extends UIMessage> = {
+ };
+ type ConsumeStreamOptions = {
+     onError?: ErrorHandler;
++    /** Drain the retained branch after creating other consumers; future stream accesses are empty. */
++    discardInternalStream?: boolean;
+ };
+ /**
+  * A result object for accessing different stream types and additional information.
+diff --git a/dist/index.js b/dist/index.js
+index fbfca53c50c39e98a953222288c6702c4f4d392f..b8726a136f9b7894521640e40c9d0d483636b33b 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -11114,9 +11114,13 @@ var DefaultStreamTextResult = class {
+   }
+   async consumeStream(options) {
+     var _a25;
++    const stream = (options == null ? void 0 : options.discardInternalStream) ? this.baseStream : this.stream;
++    if (options == null ? void 0 : options.discardInternalStream) {
++      this.baseStream = new ReadableStream({ start(controller) { controller.close(); } });
++    }
+     try {
+       await consumeStream({
+-        stream: this.stream,
++        stream,
+         onError: (error) => {
+           var _a26;
+           this.rejectResultPromises(error);
+diff --git a/src/generate-text/stream-text-result.ts b/src/generate-text/stream-text-result.ts
+index ca7aef1acf1ae0c80b9777b409167c52e713237b..2730a5dc5e7108580a127f157b39e51527fbe664 100644
+--- a/src/generate-text/stream-text-result.ts
++++ b/src/generate-text/stream-text-result.ts
+@@ -111,6 +111,9 @@ export type UIMessageStreamOptions<UI_MESSAGE extends UIMessage> = {
+ 
+ export type ConsumeStreamOptions = {
+   onError?: ErrorHandler;
++  /** Drain and release the retained internal branch after other consumers have
++   * been created. Further stream accesses are empty; result promises still work. */
++  discardInternalStream?: boolean;
+ };
+ 
+ /**
+diff --git a/src/generate-text/stream-text.ts b/src/generate-text/stream-text.ts
+index 7b71f4bc0756387f5042f11c314d6afafe077b75..77249b3f86647685d28b5660fe997a0962d13adf 100644
+--- a/src/generate-text/stream-text.ts
++++ b/src/generate-text/stream-text.ts
+@@ -3332,9 +3332,13 @@ class DefaultStreamTextResult<
+   }
+ 
+   async consumeStream(options?: ConsumeStreamOptions): Promise<void> {
++    const stream = options?.discardInternalStream ? this.baseStream : this.stream;
++    if (options?.discardInternalStream) {
++      this.baseStream = new ReadableStream({ start(controller) { controller.close(); } });
++    }
+     try {
+       await consumeStream({
+-        stream: this.stream,
++        stream,
+         onError: error => {
+           this.rejectResultPromises(error);
+           options?.onError?.(error);

@@ -24,6 +24,9 @@ patchedDependencies:
   '@bacons/apple-targets@4.0.6':
     hash: e1b5c9bc2d5089883c01a2d5738b9b38e86dee5ffe8006f79545998c66cdda69
     path: patches/@bacons__apple-targets@4.0.6.patch
+  ai@7.0.99:
+    hash: c169a835d6c763b6d7b436b7d608d1e2afdccf7b926f290ae83983df11221316
+    path: patches/ai@7.0.99.patch
   expo-modules-core@57.0.19:
     hash: dcc0c1a244cd8191578c090a9339570cf35fa149159d7401c2b275339744375d
     path: patches/expo-modules-core@57.0.19.patch
@@ -167,7 +170,7 @@ importers:
         version: 0.23.0
       ai:
         specifier: ^7.0.99
-        version: 7.0.99(zod@4.6.1)
+        version: 7.0.99(patch_hash=c169a835d6c763b6d7b436b7d608d1e2afdccf7b926f290ae83983df11221316)(zod@4.6.1)
       better-auth:
         specifier: ^1.7.4
         version: 1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3))
@@ -697,7 +700,7 @@ importers:
         version: link:../shared
       ai:
         specifier: ^7.0.99
-        version: 7.0.99(zod@4.6.1)
+        version: 7.0.99(patch_hash=c169a835d6c763b6d7b436b7d608d1e2afdccf7b926f290ae83983df11221316)(zod@4.6.1)
       axios:
         specifier: ^1.20.0
         version: 1.20.0
@@ -12470,7 +12473,7 @@ snapshots:
       '@ai-sdk/mcp': 2.0.49(zod@4.6.1)
       '@ai-sdk/provider': 4.0.14
       '@ai-sdk/provider-utils': 5.0.40(zod@4.6.1)
-      ai: 7.0.99(zod@4.6.1)
+      ai: 7.0.99(patch_hash=c169a835d6c763b6d7b436b7d608d1e2afdccf7b926f290ae83983df11221316)(zod@4.6.1)
       react: 19.2.3
       swr: 2.4.1(react@19.2.3)
       throttleit: 2.1.0
@@ -12629,7 +12632,7 @@ snapshots:
       '@assistant-ui/core': 0.3.18(@assistant-ui/store@0.3.13(@assistant-ui/tap@0.9.17(@types/react@19.2.18)(react@19.2.3))(@types/react@19.2.18)(react@19.2.3))(@assistant-ui/tap@0.9.17(@types/react@19.2.18)(react@19.2.3))(@types/react@19.2.18)(assistant-cloud@0.2.0(@opentelemetry/api@1.9.1)(ioredis@5.10.1))(ioredis@5.10.1)(react@19.2.3)
       '@assistant-ui/store': 0.3.13(@assistant-ui/tap@0.9.17(@types/react@19.2.18)(react@19.2.3))(@types/react@19.2.18)(react@19.2.3)
       '@assistant-ui/tap': 0.9.17(@types/react@19.2.18)(react@19.2.3)
-      ai: 7.0.99(zod@4.6.1)
+      ai: 7.0.99(patch_hash=c169a835d6c763b6d7b436b7d608d1e2afdccf7b926f290ae83983df11221316)(zod@4.6.1)
       assistant-cloud: 0.2.0(@opentelemetry/api@1.9.1)(ioredis@5.10.1)
       assistant-stream: 0.3.42(ioredis@5.10.1)
     optionalDependencies:
@@ -12650,7 +12653,7 @@ snapshots:
       '@assistant-ui/core': 0.3.18(@assistant-ui/store@0.3.13(@assistant-ui/tap@0.9.17(@types/react@19.3.0)(react@19.2.3))(@types/react@19.3.0)(react@19.2.3))(@assistant-ui/tap@0.9.17(@types/react@19.3.0)(react@19.2.3))(@types/react@19.3.0)(assistant-cloud@0.2.0(@opentelemetry/api@1.9.1)(ioredis@5.10.1))(ioredis@5.10.1)(react@19.2.3)
       '@assistant-ui/store': 0.3.13(@assistant-ui/tap@0.9.17(@types/react@19.3.0)(react@19.2.3))(@types/react@19.3.0)(react@19.2.3)
       '@assistant-ui/tap': 0.9.17(@types/react@19.3.0)(react@19.2.3)
-      ai: 7.0.99(zod@4.6.1)
+      ai: 7.0.99(patch_hash=c169a835d6c763b6d7b436b7d608d1e2afdccf7b926f290ae83983df11221316)(zod@4.6.1)
       assistant-cloud: 0.2.0(@opentelemetry/api@1.9.1)(ioredis@5.10.1)
       assistant-stream: 0.3.42(ioredis@5.10.1)
     optionalDependencies:
@@ -18234,7 +18237,7 @@ snapshots:
 
   agent-cli-detector@0.1.7: {}
 
-  ai@7.0.99(zod@4.6.1):
+  ai@7.0.99(patch_hash=c169a835d6c763b6d7b436b7d608d1e2afdccf7b926f290ae83983df11221316)(zod@4.6.1):
     dependencies:
       '@ai-sdk/gateway': 4.0.80(zod@4.6.1)
       '@ai-sdk/provider': 4.0.14

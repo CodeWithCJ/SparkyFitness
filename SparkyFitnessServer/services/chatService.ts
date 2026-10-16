@@ -20,6 +20,7 @@ import {
 } from '../ai/modelCapabilities.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { TtlCache } from '../utils/ttlCache.js';
+import { backgroundChatStream } from '../utils/backgroundChatStream.js';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
   createGuardedFetch,
@@ -2644,6 +2645,7 @@ async function processChatMessageStream(
         ? { client_message_id: clientMessageId }
         : undefined;
 
+    let providerStreamFailed = false;
     const result = streamText({
       model: modelInstance,
       system: systemPromptContent,
@@ -2670,6 +2672,7 @@ async function processChatMessageStream(
           temperature: CORE_PROFILE_CHAT_TEMPERATURE,
         }),
       onError({ error }) {
+        providerStreamFailed = true;
         // The one place a stream-time parameter rejection can be learned. The
         // intent classifier is not a reliable canary: it returns early on any
         // keyword match, and is skipped entirely when the user picks tool
@@ -2791,7 +2794,13 @@ async function processChatMessageStream(
               '',
             messageType: 'assistant',
             parts: assistantParts,
-            metadata: recoveryMetadata,
+            metadata:
+              !providerStreamFailed &&
+              (finishReason === 'stop' ||
+                (finishReason === 'tool-calls' &&
+                  Boolean(askCall || capturedEstimate)))
+                ? recoveryMetadata
+                : undefined,
           })
           .catch((err: unknown) =>
             log('error', 'Failed to save assistant chat history:', err)
@@ -2799,20 +2808,18 @@ async function processChatMessageStream(
       },
     });
 
-    // Keep consuming independently of the HTTP connection. A locked phone or
-    // lost connection must not stall tool execution or the onFinish save.
-    // The existing workflow timeout still bounds the provider request.
-    void result.consumeStream();
+    const uiStream = result.toUIMessageStream({
+      messageMetadata: ({ part }) =>
+        part.type === 'finish'
+          ? mapUsageToMetadata(part.totalUsage)
+          : undefined,
+    });
+    // Create the UI branch first, then drain and release the SDK's retained
+    // branch. The optional ai patch preserves default multi-consumer behavior.
+    void result.consumeStream({ discardInternalStream: true });
 
     return {
-      stream: withEmptyCompletionGuard(
-        result.toUIMessageStream({
-          messageMetadata: ({ part }) =>
-            part.type === 'finish'
-              ? mapUsageToMetadata(part.totalUsage)
-              : undefined,
-        })
-      ),
+      stream: withEmptyCompletionGuard(backgroundChatStream(uiStream)),
     };
   } catch (error) {
     log(
