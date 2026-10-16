@@ -17,8 +17,12 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
     var onWaterIntake: (([String: Any]) -> Void)?
     /// A request from the watch to delete one logged drink.
     var onWaterDelete: (([String: Any]) -> Void)?
+    /// A scheduled dose marked taken on the watch, awaiting a server write.
+    var onMedicationTaken: (([String: Any]) -> Void)?
     /// One set logged during an active workout on the watch.
     var onSetCompleted: (([String: Any]) -> Void)?
+    /// The wearer un-logged a set on the watch.
+    var onSetUncompleted: (([String: Any]) -> Void)?
     var onRestChanged: (([String: Any]) -> Void)?
     /// The wearer started a set's hold countdown or stopwatch on the watch.
     var onSetTimerStarted: (([String: Any]) -> Void)?
@@ -32,8 +36,21 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
     var onWorkoutDiscard: (([String: Any]) -> Void)?
     /// The wearer picked a saved workout on the watch. The phone starts it.
     var onWorkoutStartRequested: (([String: Any]) -> Void)?
+    /// The wearer added or removed a set or exercise on the watch, or changed a
+    /// set's type. The phone applies it to the live workout.
+    var onWorkoutEdit: (([String: Any]) -> Void)?
     /// The wearer answered the update-this-workout question on the summary.
     var onPresetUpdateAnswer: (([String: Any]) -> Void)?
+    var onRecordingControl: (([String: Any]) -> Void)?
+    var onRecordingHeartRate: (([String: Any]) -> Void)?
+    var onFastStartRequested: (([String: Any]) -> Void)?
+    var onFastEndRequested: (([String: Any]) -> Void)?
+    /// What a wrist-only run looks like right now. Live messages only.
+    var onRunLive: (([String: Any]) -> Void)?
+    /// A cue the watch wants said out loud by the phone (its headphones).
+    var onRunCue: (([String: Any]) -> Void)?
+    /// A walk or run recorded on the watch alone, sent when it finished.
+    var onRunFinished: (([String: Any]) -> Void)?
 
     /// The newest `setTargets` update sent before the session finished
     /// activating. Apple only queues `transferUserInfo` on an activated
@@ -92,8 +109,12 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
             onWaterIntake?(payload)
         case "waterDelete":
             onWaterDelete?(payload)
+        case "medicationTaken":
+            onMedicationTaken?(payload)
         case "setCompleted":
             onSetCompleted?(payload)
+        case "setUncompleted":
+            onSetUncompleted?(payload)
         case "restChanged":
             onRestChanged?(payload)
         case "setTimerStarted":
@@ -110,8 +131,24 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
             onWorkoutDiscard?(payload)
         case "workoutStartRequested":
             onWorkoutStartRequested?(payload)
+        case "workoutEdit":
+            onWorkoutEdit?(payload)
         case "presetUpdateAnswer":
             onPresetUpdateAnswer?(payload)
+        case "recordingControl":
+            onRecordingControl?(payload)
+        case "recordingHeartRate":
+            onRecordingHeartRate?(payload)
+        case "fastStart":
+            onFastStartRequested?(payload)
+        case "fastEnd":
+            onFastEndRequested?(payload)
+        case "runLive":
+            onRunLive?(payload)
+        case "runCue":
+            onRunCue?(payload)
+        case "runFinished":
+            onRunFinished?(payload)
         default:
             break
         }
@@ -209,21 +246,42 @@ public class WatchConnectivityModule: Module {
     /// The watch callback and this module's queue both touch `heartRateQueue`.
     /// One serial queue so a drain and an ack can't interleave.
     private let heartRateAccess = DispatchQueue(label: "sparky.watch.heartRateQueue")
+    /// Wrist-only runs that arrived before JavaScript was listening. One file:
+    /// a run is rare, unlike a heart-rate batch a minute.
+    private var runQueue: [[String: Any]] = []
+    /// False until the current `runQueue` has been written. A failed write is
+    /// retried the next time JS asks for the queue.
+    private var runQueueStored = true
+    private var runQueueLoaded = false
+    private let runQueueLimit = 50
+    private let runAccess = DispatchQueue(label: "sparky.watch.runQueue")
 
     /// Opens the watch app for the workout the phone just started, the same
     /// way the system Workout app does. Without it the queued plan waits
     /// until the wearer opens the watch app by hand. watchOS only launches it
     /// while the watch is on the wrist, unlocked and paired; otherwise this
     /// quietly does nothing and the plan still arrives on the next open.
-    private static func launchWatchApp() {
+    private static func launchWatchApp(activity: String? = nil, indoor: Bool = false) {
         guard HKHealthStore.isHealthDataAvailable(),
               WCSession.isSupported(),
               WCSession.default.isPaired,
               WCSession.default.isWatchAppInstalled
         else { return }
         let configuration = HKWorkoutConfiguration()
-        configuration.activityType = .traditionalStrengthTraining
-        configuration.locationType = .indoor
+        switch activity {
+        case "walk", "walking":
+            configuration.activityType = .walking
+            configuration.locationType = indoor ? .indoor : .outdoor
+        case "run", "running":
+            configuration.activityType = .running
+            configuration.locationType = indoor ? .indoor : .outdoor
+        case "ride", "cycling":
+            configuration.activityType = .cycling
+            configuration.locationType = .outdoor
+        default:
+            configuration.activityType = .traditionalStrengthTraining
+            configuration.locationType = .indoor
+        }
         HKHealthStore().startWatchApp(with: configuration) { _, _ in }
     }
 
@@ -236,7 +294,9 @@ public class WatchConnectivityModule: Module {
             "onContextRequest",
             "onWaterIntake",
             "onWaterDelete",
+            "onMedicationTaken",
             "onSetCompleted",
+            "onSetUncompleted",
             "onRestChanged",
             "onSetTimerStarted",
             "onSetTimerStopped",
@@ -245,7 +305,15 @@ public class WatchConnectivityModule: Module {
             "onWorkoutStop",
             "onWorkoutDiscard",
             "onWorkoutStartRequested",
-            "onPresetUpdateAnswer"
+            "onWorkoutEdit",
+            "onPresetUpdateAnswer",
+            "onRecordingControl",
+            "onRecordingHeartRate",
+            "onFastStartRequested",
+            "onFastEndRequested",
+            "onRunLive",
+            "onRunCue",
+            "onRunFinished"
         )
 
         OnCreate {
@@ -284,6 +352,15 @@ public class WatchConnectivityModule: Module {
                     "entryId": payload["entryId"] as? String ?? "",
                 ])
             }
+            self.delegateHandler.onMedicationTaken = { [weak self] payload in
+                self?.sendEvent("onMedicationTaken", [
+                    "clientId": payload["clientId"] as? String ?? "",
+                    "entryDate": payload["entryDate"] as? String ?? "",
+                    "medicationId": payload["medicationId"] as? String ?? "",
+                    "scheduleId": payload["scheduleId"] as? String ?? "",
+                    "taken": payload["taken"] as? Bool ?? true,
+                ])
+            }
             self.delegateHandler.onSetCompleted = { [weak self] payload in
                 self?.sendEvent("onSetCompleted", [
                     "clientId": payload["clientId"] as? String ?? "",
@@ -298,6 +375,13 @@ public class WatchConnectivityModule: Module {
                     "duration": (payload["duration"] as? NSNumber)?.intValue,
                     "distanceKm": payload["distanceKm"] as? Double,
                     "completedAt": payload["completedAt"] as? String,
+                ])
+            }
+            self.delegateHandler.onSetUncompleted = { [weak self] payload in
+                self?.sendEvent("onSetUncompleted", [
+                    "clientId": payload["clientId"] as? String ?? "",
+                    "sessionId": payload["sessionId"] as? String ?? "",
+                    "setId": payload["setId"] as? String ?? "",
                 ])
             }
             self.delegateHandler.onSetTimerStarted = { [weak self] payload in
@@ -325,6 +409,17 @@ public class WatchConnectivityModule: Module {
                     "setId": payload["setId"] as? String ?? "",
                     "seconds": seconds,
                     "startedAt": startedAt,
+                ])
+            }
+            self.delegateHandler.onFastStartRequested = { [weak self] payload in
+                self?.sendEvent("onFastStartRequested", [
+                    "presetId": payload["presetId"] as? String ?? "",
+                    "clientId": payload["clientId"] as? String ?? "",
+                ])
+            }
+            self.delegateHandler.onFastEndRequested = { [weak self] payload in
+                self?.sendEvent("onFastEndRequested", [
+                    "clientId": payload["clientId"] as? String ?? "",
                 ])
             }
             self.delegateHandler.onRestChanged = { [weak self] payload in
@@ -383,11 +478,76 @@ public class WatchConnectivityModule: Module {
                     "serverId": payload["serverId"] as? String ?? "",
                 ])
             }
+            self.delegateHandler.onWorkoutEdit = { [weak self] payload in
+                var event: [String: Any] = [
+                    "sessionId": payload["sessionId"] as? String ?? "",
+                    "clientId": payload["clientId"] as? String ?? "",
+                    "action": payload["action"] as? String ?? "",
+                ]
+                for key in ["exerciseEntryId", "setId", "exerciseId", "setType"] {
+                    if let value = payload[key] as? String { event[key] = value }
+                }
+                self?.sendEvent("onWorkoutEdit", event)
+            }
             self.delegateHandler.onPresetUpdateAnswer = { [weak self] payload in
                 self?.sendEvent("onPresetUpdateAnswer", [
                     "sessionId": payload["sessionId"] as? String ?? "",
                     "update": payload["update"] as? Bool ?? false,
                 ])
+            }
+            self.delegateHandler.onRecordingControl = { [weak self] payload in
+                var event: [String: Any] = [
+                    "sessionId": payload["sessionId"] as? String ?? "",
+                    "action": payload["action"] as? String ?? "",
+                ]
+                // When the wearer pressed it (epoch ms); a queued control can
+                // arrive long after, and a lap belongs to the press.
+                if let at = (payload["at"] as? NSNumber)?.doubleValue { event["at"] = at }
+                self?.sendEvent("onRecordingControl", event)
+            }
+            self.delegateHandler.onRecordingHeartRate = { [weak self] payload in
+                self?.sendEvent("onRecordingHeartRate", [
+                    "sessionId": payload["sessionId"] as? String ?? "",
+                    "clientId": payload["clientId"] as? String ?? "",
+                    "samples": dictionaryArray(payload["samples"]),
+                ])
+            }
+            self.delegateHandler.onRunLive = { [weak self] payload in
+                var event: [String: Any] = [
+                    "runId": payload["runId"] as? String ?? "",
+                    "kind": payload["kind"] as? String ?? "",
+                    "place": payload["place"] as? String ?? "",
+                    "status": payload["status"] as? String ?? "",
+                    "autoPaused": payload["autoPaused"] as? Bool ?? false,
+                    "elapsed": (payload["elapsed"] as? NSNumber)?.doubleValue ?? 0,
+                    "distanceMeters": (payload["distanceMeters"] as? NSNumber)?.doubleValue ?? 0,
+                    "energyKcal": (payload["energyKcal"] as? NSNumber)?.doubleValue ?? 0,
+                    "lapCount": (payload["lapCount"] as? NSNumber)?.intValue ?? 0,
+                    "sentAt": (payload["sentAt"] as? NSNumber)?.doubleValue ?? 0,
+                ]
+                if let hr = (payload["heartRate"] as? NSNumber)?.doubleValue { event["heartRate"] = hr }
+                if let label = payload["stepLabel"] as? String { event["stepLabel"] = label }
+                if let left = (payload["stepRemaining"] as? NSNumber)?.doubleValue { event["stepRemaining"] = left }
+                if let next = payload["nextLabel"] as? String { event["nextLabel"] = next }
+                if let requestId = payload["requestId"] as? String { event["requestId"] = requestId }
+                if let autoPause = payload["autoPause"] as? Bool { event["autoPause"] = autoPause }
+                if let voiceCues = payload["voiceCues"] as? Bool { event["voiceCues"] = voiceCues }
+                if let paceAlert = payload["paceAlert"] as? Bool { event["paceAlert"] = paceAlert }
+                if let heartRateAlert = payload["heartRateAlert"] as? Bool { event["heartRateAlert"] = heartRateAlert }
+                self?.sendEvent("onRunLive", event)
+            }
+            self.delegateHandler.onRunCue = { [weak self] payload in
+                self?.sendEvent("onRunCue", [
+                    "id": payload["id"] as? String ?? "",
+                    "text": payload["text"] as? String ?? "",
+                    "interrupt": payload["interrupt"] as? Bool ?? false,
+                ])
+            }
+            self.delegateHandler.onRunFinished = { [weak self] payload in
+                guard let self else { return }
+                let event = self.normalizedRunEvent(payload)
+                self.rememberFinishedRun(event)
+                self.sendEvent("onRunFinished", event)
             }
             self.delegateHandler.activate()
         }
@@ -460,6 +620,65 @@ public class WatchConnectivityModule: Module {
             var payload = plan.compactMapValues(withoutNulls)
             payload["type"] = "workoutPlanUpdate"
             self.delegateHandler.transferPlanUpdate(payload)
+        }
+
+        /// Live stats for a GPS recording the phone is making, so the watch can
+        /// show time, distance and pace and offer pause/finish. `durable` is
+        /// set for a status change (start, pause, resume, finish) and also
+        /// queues the message, so a watch out of range still learns of it; the
+        /// ~3s distance refreshes are sent only while reachable, because a
+        /// queued backlog of stale distances is worthless. Never uses
+        /// application context: that single slot belongs to the check-in data.
+        AsyncFunction("updateRecordingState") { (state: [String: Any], durable: Bool) -> Void in
+            guard WCSession.isSupported() else { return }
+            var payload = state.compactMapValues(withoutNulls)
+            payload["type"] = "recordingState"
+            if durable {
+                WCSession.default.transferUserInfo(payload)
+            }
+            if WCSession.default.isReachable {
+                WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+            }
+            if durable, payload["status"] as? String == "recording" {
+                Self.launchWatchApp(activity: payload["activity"] as? String)
+            }
+        }
+
+        /// Asks the watch to start a walk or run itself and opens its app, so
+        /// the run is recorded with the watch's own sensors (steps, distance,
+        /// heart rate). Queued so a watch out of range still hears it; the
+        /// watch ignores a request that has gone stale.
+        AsyncFunction("startRun") { (request: [String: Any]) -> Void in
+            guard WCSession.isSupported() else { return }
+            var payload = request.compactMapValues(withoutNulls)
+            payload["type"] = "runStart"
+            WCSession.default.transferUserInfo(payload)
+            if WCSession.default.isReachable {
+                WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+            }
+            Self.launchWatchApp(
+                activity: payload["kind"] as? String,
+                indoor: payload["place"] as? String == "indoor"
+            )
+        }
+
+        /// Pause, resume, lap, finish or discard for the run going on the
+        /// watch. Queued as well as sent live so a finish is not lost.
+        AsyncFunction("sendRunControl") { (control: [String: Any]) -> Void in
+            guard WCSession.isSupported() else { return }
+            var payload = control.compactMapValues(withoutNulls)
+            payload["type"] = "runControl"
+            WCSession.default.transferUserInfo(payload)
+            if WCSession.default.isReachable {
+                WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+            }
+        }
+
+        /// Confirms a cue the watch asked the phone to say, so the watch does
+        /// not say it too. Live only: an ack that arrives late is useless.
+        AsyncFunction("sendRunCueAck") { (id: String) -> Void in
+            guard WCSession.isSupported(), WCSession.default.isReachable else { return }
+            WCSession.default.sendMessage(["type": "runCueAck", "id": id], replyHandler: nil, errorHandler: nil)
         }
 
         /// Tells the watch the workout it was armed with is over, because it
@@ -541,6 +760,35 @@ public class WatchConnectivityModule: Module {
                         return false
                     }
                     return self.deleteHeartRateBatchFile(batch.fileName)
+                }
+            }
+        }
+
+        /// Runs that arrived before JavaScript was listening. JS drains these
+        /// on startup and acks the ones it has stored.
+        AsyncFunction("pendingWatchRuns") { () -> [[String: Any]] in
+            self.runAccess.sync { () -> [[String: Any]] in
+                self.loadRunQueue()
+                if !self.runQueueStored {
+                    self.runQueueStored = self.writeRunQueue()
+                }
+                return self.runQueue
+            }
+        }
+
+        AsyncFunction("ackWatchRuns") { (clientIds: [String]) in
+            let ids = Set(clientIds)
+            self.runAccess.sync {
+                self.loadRunQueue()
+                let next = self.runQueue.filter { event in
+                    guard let id = event["clientId"] as? String else { return true }
+                    return !ids.contains(id)
+                }
+                // A failed rewrite leaves the old file, so the next launch
+                // replays the run and JS acks it again once it is stored.
+                if self.writeRunQueue(next) {
+                    self.runQueue = next
+                    self.runQueueStored = true
                 }
             }
         }
@@ -807,6 +1055,112 @@ public class WatchConnectivityModule: Module {
         heartRateQueue.append(batch)
         trimHeartRateQueue()
     }
+
+    /// The event JS and the native queue both store, so a cold start and a
+    /// live event carry the same laps.
+    private func normalizedRunEvent(_ payload: [String: Any]) -> [String: Any] {
+        var event: [String: Any] = [
+            "clientId": payload["clientId"] as? String ?? "",
+            "kind": payload["kind"] as? String ?? "",
+            "place": payload["place"] as? String ?? "",
+            "startedAt": (payload["startedAt"] as? NSNumber)?.doubleValue ?? 0,
+            "endedAt": (payload["endedAt"] as? NSNumber)?.doubleValue ?? 0,
+            "activeSeconds": (payload["activeSeconds"] as? NSNumber)?.doubleValue ?? 0,
+            "distanceMeters": (payload["distanceMeters"] as? NSNumber)?.doubleValue ?? 0,
+            "activeEnergyKcal": (payload["activeEnergyKcal"] as? NSNumber)?.doubleValue ?? 0,
+            "route": payload["route"] as? [[Double]] ?? [],
+            "heartRate": payload["heartRate"] as? [[Double]] ?? [],
+            "laps": numberList(payload["laps"]),
+            "lapDistances": numberList(payload["lapDistances"]),
+            "distanceSeries": payload["distanceSeries"] as? [[Double]] ?? [],
+            "planId": payload["planId"] as? String ?? "",
+            "programId": payload["programId"] as? String ?? "",
+            "programIndex": (payload["programIndex"] as? NSNumber)?.intValue ?? -1,
+            "planCompleted": payload["planCompleted"] as? Bool ?? false,
+        ]
+        // Indoor distance learning: the factor the watch applied, and what it
+        // showed before a treadmill distance was entered on the wrist.
+        if let scale = (payload["distanceScale"] as? NSNumber)?.doubleValue {
+            event["distanceScale"] = scale
+        }
+        if let estimated = (payload["estimatedDistanceMeters"] as? NSNumber)?.doubleValue {
+            event["estimatedDistanceMeters"] = estimated
+        }
+        return event
+    }
+
+    /// Caller holds `runAccess` only through `rememberFinishedRun`.
+    private func rememberFinishedRun(_ event: [String: Any]) {
+        let clientId = event["clientId"] as? String ?? ""
+        guard !clientId.isEmpty else { return }
+        runAccess.sync {
+            loadRunQueue()
+            if runQueue.contains(where: { ($0["clientId"] as? String) == clientId }) {
+                return
+            }
+            runQueue.append(event)
+            while runQueue.count > runQueueLimit {
+                runQueue.removeFirst()
+            }
+            runQueueStored = writeRunQueue()
+        }
+    }
+
+    /// Caller holds `runAccess`.
+    private func loadRunQueue() {
+        guard !runQueueLoaded else { return }
+        runQueueLoaded = true
+        guard let url = runQueueFile(),
+              let data = try? Data(contentsOf: url),
+              let raw = try? JSONSerialization.jsonObject(with: data)
+        else { return }
+        let known = Set(runQueue.compactMap { $0["clientId"] as? String })
+        for row in dictionaryArray(raw) {
+            let id = row["clientId"] as? String ?? ""
+            if id.isEmpty || known.contains(id) { continue }
+            runQueue.append(row)
+        }
+    }
+
+    /// Caller holds `runAccess`.
+    @discardableResult
+    private func writeRunQueue(_ rows: [[String: Any]]? = nil) -> Bool {
+        let payload = rows ?? runQueue
+        guard let url = runQueueFile(),
+              JSONSerialization.isValidJSONObject(payload),
+              let data = try? JSONSerialization.data(withJSONObject: payload)
+        else { return false }
+        do {
+            try data.write(to: url, options: .atomic)
+            return true
+        } catch {
+            NSLog("Watch run queue write failed: %@", error.localizedDescription)
+            return false
+        }
+    }
+
+    private func runQueueFile() -> URL? {
+        let fileManager = FileManager.default
+        guard let base = fileManager.urls(
+            for: .applicationSupportDirectory,
+            in: .userDomainMask
+        ).first else { return nil }
+        let directory = base.appendingPathComponent("WatchRunQueue", isDirectory: true)
+        if !fileManager.fileExists(atPath: directory.path) {
+            do {
+                try fileManager.createDirectory(
+                    at: directory,
+                    withIntermediateDirectories: true,
+                    attributes: [
+                        .protectionKey: FileProtectionType.completeUntilFirstUserAuthentication,
+                    ]
+                )
+            } catch {
+                return nil
+            }
+        }
+        return directory.appendingPathComponent("pending.json")
+    }
 }
 
 /// Strips JS `null`s out of a payload bound for `updateApplicationContext`.
@@ -842,4 +1196,10 @@ private func dictionaryArray(_ value: Any?) -> [[String: Any]] {
     if let typed = value as? [[String: Any]] { return typed }
     guard let any = value as? [Any] else { return [] }
     return any.compactMap { $0 as? [String: Any] }
+}
+
+private func numberList(_ value: Any?) -> [Double] {
+    if let numbers = value as? [NSNumber] { return numbers.map { $0.doubleValue } }
+    if let numbers = value as? [Double] { return numbers }
+    return []
 }

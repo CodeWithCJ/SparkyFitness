@@ -10,6 +10,8 @@ struct SparkyFitnessWatchApp: App {
     @StateObject private var session = WatchSessionManager.shared
     @StateObject private var store = CheckInStore.shared
     @StateObject private var workoutStore = WorkoutSessionStore.shared
+    @StateObject private var recordingStore = RecordingStore.shared
+    @StateObject private var runStore = WatchRunStore.shared
 
     var body: some Scene {
         WindowGroup {
@@ -17,6 +19,8 @@ struct SparkyFitnessWatchApp: App {
                 .environmentObject(session)
                 .environmentObject(store)
                 .environmentObject(workoutStore)
+                .environmentObject(recordingStore)
+                .environmentObject(runStore)
         }
     }
 }

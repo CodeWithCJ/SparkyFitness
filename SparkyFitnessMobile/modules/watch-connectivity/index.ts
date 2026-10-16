@@ -56,6 +56,32 @@ export interface WatchWaterDeletePayload {
   entryId: string;
 }
 
+/** A dose ticked, or un-ticked after a mistaken tap, on the Apple Watch. */
+export interface WatchMedicationTakenPayload {
+  /** Stable id generated on the watch, to dedupe a re-delivered transfer. */
+  clientId: string;
+  /** Calendar day (`yyyy-MM-dd`) in the wearer's local timezone. */
+  entryDate: string;
+  medicationId: string;
+  scheduleId: string;
+  /** False when the wearer un-ticked the dose; absent from older watch builds, which only ever tick. */
+  taken?: boolean;
+}
+
+/** One of today's scheduled dose slots, relayed to the watch's Medications page. */
+export interface WatchMedicationDosePayload {
+  /** `medicationId:scheduleId` — unique per dose slot. */
+  id: string;
+  medicationId: string;
+  scheduleId: string;
+  name: string;
+  /** Pre-formatted dose ("10 mg"), empty when the medication has none. */
+  detail: string;
+  /** Pre-formatted time of day in the account's 12/24-hour convention, empty when untimed. */
+  time: string;
+  status: 'pending' | 'taken' | 'skipped';
+}
+
 /**
  * One logged drink relayed to the watch's water log view. Manual entries
  * only — synced records (Apple Health and friends) carry no container and
@@ -144,6 +170,58 @@ export interface WatchContextPayload {
   /** Whether the watch asks for an RPE after each logged set. */
   rpeEnabled?: boolean | null;
   /**
+   * The Record screen's Voice cues switch. A run recorded from the wrist alone
+   * speaks each completed km or mile while this is on. Missing reads as off.
+   */
+  runVoiceCues?: boolean | null;
+  /** The phone's Auto-pause switch: the default for a run begun on the wrist. */
+  runAutoPause?: boolean | null;
+  /** Minutes between spoken check-ins: the default for a run begun on the wrist; 0 is off. */
+  runCheckInMinutes?: number | null;
+  /**
+   * The pace range last used on the Record screen (seconds per km). The
+   * watch's start screen offers it as the starting point of a pace alert; an
+   * alert is only on for the run it was chosen for.
+   */
+  runPaceMinSecondsPerKm?: number | null;
+  runPaceMaxSecondsPerKm?: number | null;
+  /** The heart-rate range (bpm) last used, offered the same way. */
+  runHeartRateMinBpm?: number | null;
+  runHeartRateMaxBpm?: number | null;
+  /**
+   * Plans a wrist-only run can follow: the training-program workout due now
+   * (carrying `programId`/`programIndex`) then the built-in interval plans,
+   * with step names already translated. Missing keeps the watch's last list.
+   */
+  /**
+   * Learned correction for the watch's indoor distance, from treadmill
+   * distances entered after earlier sessions (`services/watchIndoorScale.ts`).
+   * Missing keeps the watch's last value.
+   */
+  indoorDistanceScale?: { walk: number; run: number };
+  runPlans?: {
+    id: string;
+    name: string;
+    programId?: string;
+    programIndex?: number;
+    /** 'walk' for a walking program; missing is a run. */
+    activity?: 'walk';
+    /** `meters` marks a distance step; `seconds` is then its expected time. */
+    /** Spoken before a program workout's first step, and when it ends; already in the app language. */
+    startText?: string;
+    doneText?: string;
+    steps: {
+      label: string;
+      seconds: number;
+      meters?: number;
+      paceMin?: number;
+      paceMax?: number;
+      hrMin?: number;
+      hrMax?: number;
+      unit?: 'mi';
+    }[];
+  }[];
+  /**
    * Settings → Apple Watch: the watch app's pages in swipe order, and the ones
    * turned off (`WATCH_PAGE_KEYS` names). Missing reads as the factory order
    * with nothing hidden; the watch carries the last values forward.
@@ -207,6 +285,8 @@ export interface WatchContextPayload {
   containers?: WatchContainerPayload[] | null;
   /** Today's water totals in ml, for the same page's bottle fill. */
   waterConsumedMl?: number | null;
+  /** Part of `waterConsumedMl` from food; null unless that amount is positive. */
+  waterFromFoodMl?: number | null;
   waterGoalMl?: number | null;
   /**
    * The app's globally configured water display unit (Settings → water
@@ -229,10 +309,23 @@ export interface WatchContextPayload {
    */
   waterLog?: WatchWaterLogPayload[] | null;
   /**
+   * Today's scheduled medication doses, soonest first, for the watch's
+   * Medications page. Day-scoped like the water figures: blanked (null) when
+   * the push crosses midnight, so the watch shows "not synced" rather than
+   * yesterday's ticks. An empty array means nothing is scheduled today.
+   */
+  medications?: WatchMedicationDosePayload[] | null;
+  /**
    * Saved workouts the wearer can start from the wrist. Names and ids only;
    * the phone still builds and arms the session. Absent on an older phone.
    */
   startableWorkouts?: { presetId: string; name: string }[] | null;
+  /**
+   * Exercises the wearer can add to a running workout from the wrist: recent
+   * ones first, then the most used. Names and ids only; the phone loads the
+   * exercise itself. Absent on an older phone.
+   */
+  suggestedExercises?: { exerciseId: string; name: string }[] | null;
   /**
    * Today's planned workouts (from the active workout plans), shown above the
    * saved ones. Each is also a saved workout, so a tap starts it by `presetId`
@@ -247,6 +340,25 @@ export interface WatchContextPayload {
    * the phone has switched accounts.
    */
   workoutServerId?: string | null;
+  /**
+   * The fast running now, or null for none. Left out until the phone has
+   * heard from the server, so a watch keeps what it had.
+   */
+  fastKnown?: boolean;
+  fast?: {
+    /** Epoch ms. */
+    startedAt: number;
+    /** Epoch ms, or null for an open-ended fast. */
+    targetEndAt: number | null;
+    label: string | null;
+  } | null;
+  /**
+   * Today's step count, with the day it belongs to. Left out when the phone
+   * has no step figure for today; the watch drops a count from another day.
+   */
+  steps?: { day: string; count: number } | null;
+  /** Daily step goal the Steps page and complication measure against. */
+  stepGoal?: number | null;
 }
 
 /** One target set the watch shows for a planned exercise. */
@@ -362,6 +474,14 @@ export interface WatchWorkoutStartPayload {
    * it when Finish is tapped on a workout whose exercises or sets changed.
    */
   fromPreset?: boolean;
+}
+
+/** A set the wearer un-logged on the watch during an active workout. */
+export interface WatchSetUncompletedPayload {
+  /** Stable id generated on the watch, to dedupe a re-delivered transfer. */
+  clientId: string;
+  sessionId: string;
+  setId: string;
 }
 
 /** One set logged on the watch during an active workout. */
@@ -506,6 +626,25 @@ export interface WatchWorkoutDiscardPayload {
   armedAt?: number;
 }
 
+/**
+ * An edit made on the watch's workout page. `clientId` lets the phone drop a
+ * copy delivered twice. `sessionId` ties it to the workout it was made in.
+ */
+export interface WatchWorkoutEditPayload {
+  sessionId: string;
+  clientId: string;
+  action:
+    'addSet' | 'deleteSet' | 'setSetType' | 'addExercise' | 'deleteExercise';
+  /** For `addSet` and `deleteExercise`. */
+  exerciseEntryId?: string;
+  /** For `deleteSet` and `setSetType`. */
+  setId?: string;
+  /** For `addExercise`: the library exercise to add. */
+  exerciseId?: string;
+  /** For `setSetType`: `normal`, `warmup`, `drop` or `failure`. */
+  setType?: string;
+}
+
 /** The wearer's answer to the watch's "update this workout?" question, asked
  * when they tap Finish on a workout started from a saved one and changed. */
 export interface WatchPresetUpdateAnswerPayload {
@@ -520,13 +659,229 @@ export interface WatchWorkoutStartRequestedPayload {
   serverId?: string;
 }
 
+/**
+ * What the phone tells the watch about a GPS recording in progress (the phone
+ * records the route; the watch is a remote and heart-rate sensor). Times are
+ * epoch ms so the watch can run its own clock between updates: elapsed is
+ * `(pausedAt ?? now) - startedAt - pausedMs`.
+ */
+export interface WatchRecordingStatePayload {
+  sessionId: string;
+  activity: 'walk' | 'run' | 'ride';
+  /**
+   * True for a treadmill or other indoor session. Absent from an older phone
+   * build, which the watch treats as outdoor.
+   */
+  indoor?: boolean;
+  status: 'recording' | 'paused' | 'finished' | 'ended';
+  startedAt: number;
+  pausedMs: number;
+  /** Epoch ms the current pause began; omitted unless paused. */
+  pausedAt?: number;
+  distanceMeters: number;
+  /** Seconds per km or mile, in the phone's distance unit; omitted when unknown. */
+  paceSeconds?: number;
+  distanceUnit: 'km' | 'mi';
+  /** Laps marked so far, shown on the watch; omitted by older phone builds. */
+  lapCount?: number;
+  /** Phone clock (epoch ms) at send time, so the watch drops out-of-order copies. */
+  sentAt: number;
+  /**
+   * An interval plan's current step, when the recording follows one. The
+   * watch buzzes when `intervalIndex` changes and counts `intervalRemaining`
+   * down from when it receives this. Omitted by an older phone build or when
+   * there is no plan.
+   */
+  intervalIndex?: number;
+  /** The step's name in the phone's language, e.g. "Run". */
+  intervalLabel?: string;
+  /** Seconds left in the step when this was sent; 0 once the plan is done. */
+  intervalRemaining?: number;
+  /** What comes next, e.g. "Walk 1:30"; omitted on the last step. */
+  intervalNext?: string;
+  /**
+   * Only on `ended`: true when the recording was thrown away, false when it
+   * was saved to the diary. The watch holds its Apple Health workout until it
+   * hears which, so a discarded activity is never written to Health. Absent
+   * from an older phone build, which the watch treats as saved.
+   */
+  discarded?: boolean;
+}
+
+export interface WatchRecordingControlPayload {
+  sessionId: string;
+  action: 'pause' | 'resume' | 'finish' | 'lap';
+  /** Epoch ms the control was pressed on the watch; only sent with `lap`. */
+  at?: number;
+}
+
+export interface WatchRecordingHeartRatePayload {
+  sessionId: string;
+  /** Dedupes a re-delivered queued batch. */
+  clientId: string;
+  samples: WatchHeartRateSamplePayload[];
+}
+
+/** The wearer asked to start a fast from the watch's Fasting page. */
+export interface WatchFastStartRequestPayload {
+  /** `FASTING_PRESETS` id, e.g. "16-8". */
+  presetId: string;
+  clientId: string;
+}
+
+/** The wearer asked to end the running fast from the watch. */
+export interface WatchFastEndRequestPayload {
+  clientId: string;
+}
+
+/**
+ * A walk or run recorded on the watch alone, sent once when it finishes. The
+ * shape is `WatchRunPayload` in `src/utils/watchRun.ts`; this is the loose
+ * wire type and the phone validates it before use.
+ */
+export interface WatchRunFinishedPayload {
+  clientId: string;
+  kind: string;
+  place: string;
+  startedAt: number;
+  endedAt: number;
+  activeSeconds: number;
+  distanceMeters: number;
+  activeEnergyKcal: number;
+  route: number[][];
+  heartRate: number[][];
+  /** Epoch ms of each Lap press. Missing on a payload from an older watch build. */
+  laps?: number[];
+  /** Metres covered at each lap mark, same order (an indoor run's laps use these). */
+  lapDistances: number[];
+  /** `[active seconds, cumulative metres]` about every 10 s; empty when not recorded. */
+  distanceSeries?: number[][];
+  /** The plan the run followed, if any. */
+  planId: string;
+  /** Set when the plan was a training-program workout. */
+  programId: string;
+  programIndex: number;
+  /** Whether the run reached the plan's last step. */
+  planCompleted: boolean;
+  /** The learned indoor factor the watch applied to its own distance. */
+  distanceScale?: number;
+  /** What the watch showed before a treadmill distance was entered on the wrist. */
+  estimatedDistanceMeters?: number;
+}
+
+/**
+ * What a wrist-only walk or run looks like right now: figures sent every few
+ * seconds while the phone is reachable (never queued), so the phone can show
+ * its stats. `status: 'ended'` is the last one.
+ */
+/** A cue the watch wants the phone to say; answer with `sendRunCueAck(id)`. */
+export interface WatchRunCuePayload {
+  id: string;
+  text: string;
+  /** Say it now rather than after the cue being spoken. */
+  interrupt: boolean;
+}
+
+export interface WatchRunLivePayload {
+  runId: string;
+  kind: string;
+  place: string;
+  status: string;
+  autoPaused: boolean;
+  /** Active seconds on the watch's clock when it was sent. */
+  elapsed: number;
+  distanceMeters: number;
+  heartRate?: number;
+  energyKcal: number;
+  lapCount: number;
+  stepLabel?: string;
+  stepRemaining?: number;
+  nextLabel?: string;
+  /** Epoch ms on the watch when it was sent. */
+  sentAt: number;
+  /** The phone's `runStart` request this run began from; absent for a run started on the wrist. */
+  requestId?: string;
+  /** This run's switches; absent from an older watch build. */
+  autoPause?: boolean;
+  voiceCues?: boolean;
+  /** Whether a pace or heart-rate range is being watched; absent from an older watch build. */
+  paceAlert?: boolean;
+  heartRateAlert?: boolean;
+}
+
+/** One step of a guided walk or run the phone hands the watch. */
+export interface WatchRunStartPlanStep {
+  label: string;
+  seconds: number;
+  /** Pace range to hold in this step, seconds per km; both or neither. */
+  paceMin?: number;
+  paceMax?: number;
+  /** Heart-rate range (bpm) to hold in this step; both or neither. */
+  hrMin?: number;
+  hrMax?: number;
+}
+
+/** Asks the watch to start recording a walk or run itself. */
+export interface WatchRunStartPayload {
+  requestId: string;
+  kind: 'run' | 'walk';
+  place: 'indoor' | 'outdoor';
+  /** Epoch ms; the watch ignores a request older than two minutes. */
+  requestedAt: number;
+  /** The Record screen's switches for this run (both or neither). */
+  autoPause?: boolean;
+  voiceCues?: boolean;
+  /** Minutes between spoken check-ins (needs voiceCues); 0 or absent for none. */
+  checkInMinutes?: number;
+  /** Pace range (seconds per km) to stay inside; both or neither. */
+  paceMin?: number;
+  paceMax?: number;
+  /** Heart-rate range (bpm) to stay inside; both or neither. */
+  hrMin?: number;
+  hrMax?: number;
+  plan?: {
+    id: string;
+    name: string;
+    programId?: string;
+    programIndex?: number;
+    activity?: string;
+    startText?: string;
+    doneText?: string;
+    steps: WatchRunStartPlanStep[];
+  };
+}
+
+export type WatchRunControlAction =
+  | 'pause'
+  | 'resume'
+  | 'lap'
+  | 'finish'
+  | 'discard'
+  | 'autoPauseOn'
+  | 'autoPauseOff'
+  | 'voiceCuesOn'
+  | 'voiceCuesOff'
+  | 'paceAlertOn'
+  | 'paceAlertOff'
+  | 'heartRateAlertOn'
+  | 'heartRateAlertOff';
+
+export interface WatchRunControlPayload {
+  runId: string;
+  action: WatchRunControlAction;
+  /** Unique per tap, so a queued copy delivered twice acts once. */
+  controlId: string;
+}
+
 export type WatchConnectivityEvents = {
   onReachabilityChange: (payload: { isReachable: boolean }) => void;
   onCheckIn: (payload: WatchCheckInPayload) => void;
   onContextRequest: () => void;
   onWaterIntake: (payload: WatchWaterIntakePayload) => void;
   onWaterDelete: (payload: WatchWaterDeletePayload) => void;
+  onMedicationTaken: (payload: WatchMedicationTakenPayload) => void;
   onSetCompleted: (payload: WatchSetCompletedPayload) => void;
+  onSetUncompleted: (payload: WatchSetUncompletedPayload) => void;
   onRestChanged: (payload: WatchRestChangedPayload) => void;
   onSetTimerStarted: (payload: WatchSetTimerStartedPayload) => void;
   onSetTimerStopped: (payload: WatchSetTimerStoppedPayload) => void;
@@ -535,7 +890,15 @@ export type WatchConnectivityEvents = {
   onWorkoutStop: (payload: WatchWorkoutStopPayload) => void;
   onWorkoutDiscard: (payload: WatchWorkoutDiscardPayload) => void;
   onWorkoutStartRequested: (payload: WatchWorkoutStartRequestedPayload) => void;
+  onWorkoutEdit: (payload: WatchWorkoutEditPayload) => void;
   onPresetUpdateAnswer: (payload: WatchPresetUpdateAnswerPayload) => void;
+  onRecordingControl: (payload: WatchRecordingControlPayload) => void;
+  onRecordingHeartRate: (payload: WatchRecordingHeartRatePayload) => void;
+  onFastStartRequested: (payload: WatchFastStartRequestPayload) => void;
+  onFastEndRequested: (payload: WatchFastEndRequestPayload) => void;
+  onRunLive: (payload: WatchRunLivePayload) => void;
+  onRunCue: (payload: WatchRunCuePayload) => void;
+  onRunFinished: (payload: WatchRunFinishedPayload) => void;
 };
 
 declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivityEvents> {
@@ -544,7 +907,21 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   isPaired(): boolean;
   updateContext(context: WatchContextPayload): Promise<void>;
   sendAck(clientId: string, ok: boolean): Promise<void>;
+  /**
+   * Live stats for a phone GPS recording. `durable` queues the message as
+   * well (status changes); the periodic distance refresh is reachable-only.
+   */
+  updateRecordingState(
+    state: WatchRecordingStatePayload,
+    durable: boolean
+  ): Promise<void>;
   startWorkout(plan: WatchWorkoutStartPayload): Promise<void>;
+  /** Starts a walk or run on the watch and opens its app. */
+  startRun(request: WatchRunStartPayload): Promise<void>;
+  /** Pause, resume, lap, finish or discard for the run on the watch, or a switch change (`autoPauseOn`/`Off`, `voiceCuesOn`/`Off`, `paceAlertOn`/`Off`, `heartRateAlertOn`/`Off`). */
+  sendRunControl(control: WatchRunControlPayload): Promise<void>;
+  /** Tells the watch the phone is saying cue `id`, so it stays quiet. */
+  sendRunCueAck(id: string): Promise<void>;
   /**
    * The live workout's plan again after exercises, supersets or sets changed
    * on the phone mid-workout. The watch swaps it in without restarting,
@@ -628,6 +1005,12 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
    */
   pendingHeartRateBatches(): Promise<WatchHeartRateBatchPayload[]>;
   ackHeartRateBatches(clientIds: string[]): Promise<void>;
+  /**
+   * Wrist-only runs received before JavaScript was listening. Kept until
+   * `ackWatchRuns` says the phone has stored them.
+   */
+  pendingWatchRuns(): Promise<WatchRunFinishedPayload[]>;
+  ackWatchRuns(clientIds: string[]): Promise<void>;
   /**
    * Server config that owns batches received after this call. Persisted
    * natively, so a batch that arrives on a cold start is stamped before

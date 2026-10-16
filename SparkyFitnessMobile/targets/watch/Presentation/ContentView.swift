@@ -9,6 +9,8 @@ struct ContentView: View {
     @EnvironmentObject private var store: CheckInStore
     @EnvironmentObject private var session: WatchSessionManager
     @EnvironmentObject private var workout: WorkoutSessionStore
+    @EnvironmentObject private var recording: RecordingStore
+    @EnvironmentObject private var run: WatchRunStore
 
     /// Watched so the app can notice a day has ended while it was away. The
     /// watch app commonly stays resident overnight, in which case nothing
@@ -25,7 +27,12 @@ struct ContentView: View {
 
     /// The pages in swipe order, as the phone last arranged them.
     private var pages: [WatchPage] {
-        store.context.visiblePages(workoutActive: workout.isActive)
+        // A wrist-only run and the phone's GPS recording both live on the
+        // Workout page, so they keep that page showing (and Now Playing
+        // beside it) just as a strength workout does.
+        store.context.visiblePages(
+            workoutActive: workout.isActive || run.isActive || recording.isActive
+        )
     }
 
     var body: some View {
@@ -64,6 +71,7 @@ struct ContentView: View {
             session.retryPending()
             session.resendQueuedWaterTaps()
             session.resendQueuedWaterDeletes()
+            session.resendQueuedMedicationTaps()
             // Publish what the watch already knows before waiting on the
             // phone: `requestContext()` above only reaches a phone that's
             // reachable right now, and until it answers the complications
@@ -100,13 +108,19 @@ struct ContentView: View {
             session.refreshComplications()
             // Coming back to the app mid-workout lands on the workout, not
             // whichever page was left open.
-            if workout.isActive { page = .workout }
+            if workout.isActive || run.isActive || recording.isActive { page = .workout }
         }
         // A workout started on the phone opens the watch app; land on the
         // workout rather than whichever page was showing last. Keyed on the
         // session id, so it happens once per workout and the wearer can still
         // swipe away mid-workout without being pulled back.
         .onChange(of: workout.plan?.sessionId) { _, sessionId in
+            if sessionId != nil { page = .workout }
+        }
+        // A recording that starts (or is picked up after the app was away)
+        // opens the Workout page, where it shows, once per recording; swiping
+        // away is respected.
+        .onChange(of: recording.state?.sessionId) { _, sessionId in
             if sessionId != nil { page = .workout }
         }
         .onOpenURL { url in
@@ -129,6 +143,10 @@ struct ContentView: View {
             return .goals
         case .water:
             return .water
+        case .fasting:
+            return .fasting
+        case .steps:
+            return .steps
         }
     }
 
@@ -139,6 +157,12 @@ struct ContentView: View {
             GoalSummaryView()
         case .water:
             WaterIntakeView()
+        case .medications:
+            MedicationsView()
+        case .fasting:
+            FastingView()
+        case .steps:
+            StepsView()
         case .entry:
             CheckInEntryView { self.page = shown(.trend) ?? self.page }
         case .trend:
@@ -148,6 +172,8 @@ struct ContentView: View {
                 .environment(\.workoutPageActive, selectedPage == .workout)
         case .nowPlaying:
             NowPlayingPage()
+        case .recording:
+            RecordingView()
         }
     }
 
@@ -171,7 +197,7 @@ struct ContentView: View {
     /// page in the wearer's order, so the page they put first is the one the
     /// app opens on.
     private var initialPage: WatchPage {
-        if workout.isActive { return .workout }
+        if workout.isActive || run.isActive || recording.isActive { return .workout }
         return pages.first ?? .goals
     }
 }

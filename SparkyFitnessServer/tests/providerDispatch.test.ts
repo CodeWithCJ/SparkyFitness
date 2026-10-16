@@ -9,6 +9,7 @@ import {
 import { OutboundUrlBlockedError } from '../utils/outboundUrlPolicy.js';
 import { resetLearnedRejections } from '../ai/modelCapabilities.js';
 import convert from 'heic-convert';
+import sharp from 'sharp';
 
 // Fixed "JPEG" bytes returned by the mocked transcoder. Declared via vi.hoisted
 // so the hoisted vi.mock('heic-convert') factory below can reference it.
@@ -768,6 +769,44 @@ describe('dispatchAiRequest — text-only structured request shapes', () => {
     expect((body.response_format as { type: string }).type).toBe('json_schema');
     const messages = body.messages as Array<{ content: string }>;
     expect(messages[0].content).toBe('Do the thing.');
+  });
+
+  it('DeepSeek OpenAI-compatible endpoints use json_object with schema in prompt', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'openai_compatible',
+          custom_url: 'https://api.deepseek.com/v1',
+        }),
+        images: [IMG],
+      })
+    );
+    const { url, body } = captured(m);
+    expect(url).toBe('https://api.deepseek.com/v1/chat/completions');
+    expect(body.response_format).toEqual({ type: 'json_object' });
+    const content = (
+      body.messages as Array<{ content: Array<Record<string, unknown>> }>
+    )[0].content;
+    const textPart = content.find((part) => part.type === 'text') as {
+      text: string;
+    };
+    expect(textPart.text).toContain(JSON.stringify(toStrictJsonSchema(SCHEMA)));
+    expect(content.some((part) => part.type === 'image_url')).toBe(true);
+  });
+
+  it('does not treat lookalike domains as DeepSeek', async () => {
+    const m = mockFetch(openAiBody(JSON.stringify(SAMPLE)));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'openai_compatible',
+          custom_url: 'https://api.deepseek.com.evil.example/v1',
+        }),
+      })
+    );
+    const { body } = captured(m);
+    expect((body.response_format as { type: string }).type).toBe('json_schema');
   });
 
   it('custom uses the user-supplied URL as-is and strict json_schema', async () => {
@@ -2084,6 +2123,76 @@ describe('dispatchAiRequest — Perplexity 403 deprecation handling', () => {
         'Perplexity has retired the OpenAI-compatible Chat Completions API'
       );
       expect(result.detail).toContain('Use OpenRouter with a Perplexity model');
+    }
+  });
+});
+
+describe('dispatchAiRequest — image downscaling & oversized image handling', () => {
+  it('automatically downscales an oversized image before dispatching to provider', async () => {
+    const hugeJpeg = await sharp({
+      create: {
+        width: 3000,
+        height: 2000,
+        channels: 3,
+        background: { r: 100, g: 150, b: 200 },
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const m = mockFetch({
+      choices: [{ message: { content: '{"ok": true}' } }],
+    });
+
+    const result = await dispatchAiRequest(
+      baseRequest({
+        images: [
+          { base64: hugeJpeg.toString('base64'), mimeType: 'image/jpeg' },
+        ],
+      })
+    );
+
+    expect(result.ok).toBe(true);
+    const sentBody = captured(m).body as {
+      messages: Array<{
+        content: Array<{ type: string; image_url?: { url: string } }>;
+      }>;
+    };
+    const imageUrl = sentBody.messages[0].content[0].image_url?.url;
+    expect(imageUrl).toBeDefined();
+    const sentBase64 = imageUrl!.replace(/^data:image\/jpeg;base64,/, '');
+    const sentBuffer = Buffer.from(sentBase64, 'base64');
+    const sentMeta = await sharp(sentBuffer).metadata();
+    expect(sentMeta.width).toBe(2048);
+    expect(sentMeta.height).toBe(1365);
+  });
+
+  it('translates OpenAI 400 patch-limit rejection into image_too_large category', async () => {
+    mockFetch(
+      {
+        error: {
+          message:
+            'The image you provided requires 48960 patches after processing, exceeding the limit of 30000. Please resize the image and try again.',
+          type: 'invalid_request_error',
+          param: 'messages',
+          code: 'invalid_value',
+        },
+      },
+      { ok: false, status: 400 }
+    );
+
+    const result = await dispatchAiRequest(
+      baseRequest({
+        images: [{ base64: 'abc', mimeType: 'image/jpeg' }],
+      })
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.category).toBe('image_too_large');
+      expect(result.detail).toBe(
+        'The image is too large for AI analysis. Please try another photo.'
+      );
     }
   });
 });

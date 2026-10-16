@@ -1,4 +1,5 @@
 import {
+  chartFontFamily,
   computeNiceYAxisScale,
   measureLabelColumnWidth,
 } from '../../../src/components/charts/chartFormatting';
@@ -101,5 +102,19 @@ describe('measureLabelColumnWidth', () => {
 
   test('rounds a fractional measurement up', () => {
     expect(measureLabelColumnWidth(['23'], () => 12.2, 44)).toBe(19);
+  });
+});
+
+describe('chartFontFamily', () => {
+  test('uses a CJK-capable family on iOS for Chinese, Japanese and Korean', () => {
+    expect(chartFontFamily('zh-CN', 'ios')).toBe('PingFang SC');
+    expect(chartFontFamily('zh-Hant-TW', 'ios')).toBe('PingFang TC');
+    expect(chartFontFamily('ja-JP', 'ios')).toBe('Hiragino Sans');
+    expect(chartFontFamily('ko-KR', 'ios')).toBe('Apple SD Gothic Neo');
+  });
+
+  test('keeps Helvetica for other iOS locales and sans-serif on Android', () => {
+    expect(chartFontFamily('en-US', 'ios')).toBe('Helvetica');
+    expect(chartFontFamily('zh-CN', 'android')).toBe('sans-serif');
   });
 });

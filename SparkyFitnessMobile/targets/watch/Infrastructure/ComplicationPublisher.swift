@@ -8,6 +8,16 @@ struct GoalProgress: Equatable {
     let protein: Double
     let carbs: Double
     let fat: Double
+    /// Grams eaten and the goal behind each fraction, so a macro complication
+    /// can show the numbers. Nil from a phone that does not send them.
+    var proteinGrams: MacroGrams? = nil
+    var carbsGrams: MacroGrams? = nil
+    var fatGrams: MacroGrams? = nil
+}
+
+struct MacroGrams: Equatable {
+    let consumed: Double
+    let goal: Double
 }
 
 /// The watch app's only writer to shared App Group storage, and the only
@@ -40,6 +50,31 @@ enum ComplicationPublisher {
         static let kind = "waterGoalComplication"
     }
 
+    private enum Steps {
+        static let key = "stepsSnapshot"
+        static let kind = "stepsComplication"
+    }
+
+    /// Field names here are decoded by `StepsComplication`.
+    private struct StepsSnapshotPayload: Codable, Equatable {
+        let date: String
+        let count: Int
+        let goal: Int
+    }
+
+    private enum Fasting {
+        static let key = "fastingSnapshot"
+        static let kind = "fastingComplication"
+    }
+
+    /// Field names here are decoded by `FastingComplication`. Times are epoch ms.
+    private struct FastingSnapshotPayload: Codable, Equatable {
+        let active: Bool
+        let startedAt: Double?
+        let targetEndAt: Double?
+        let label: String?
+    }
+
     /// Field names here are decoded by `EnergyGoalComplication`.
     private struct EnergySnapshot: Codable, Equatable {
         let date: String
@@ -47,6 +82,12 @@ enum ComplicationPublisher {
         let proteinGoalProgress: Double
         let carbsGoalProgress: Double
         let fatGoalProgress: Double
+        let proteinConsumed: Double?
+        let proteinGoal: Double?
+        let carbsConsumed: Double?
+        let carbsGoal: Double?
+        let fatConsumed: Double?
+        let fatGoal: Double?
     }
 
     /// Field names here are decoded by `WaterGoalComplication`.
@@ -69,7 +110,13 @@ enum ComplicationPublisher {
                 calorieGoalProgress: goals.calories,
                 proteinGoalProgress: goals.protein,
                 carbsGoalProgress: goals.carbs,
-                fatGoalProgress: goals.fat
+                fatGoalProgress: goals.fat,
+                proteinConsumed: goals.proteinGrams?.consumed,
+                proteinGoal: goals.proteinGrams?.goal,
+                carbsConsumed: goals.carbsGrams?.consumed,
+                carbsGoal: goals.carbsGrams?.goal,
+                fatConsumed: goals.fatGrams?.consumed,
+                fatGoal: goals.fatGrams?.goal
             ),
             forKey: Energy.key,
             reloading: Energy.kind
@@ -86,6 +133,40 @@ enum ComplicationPublisher {
             ),
             forKey: Water.key,
             reloading: Water.kind
+        )
+    }
+
+    /// Publishes today's step count for the Steps complication.
+    static func publish(steps: Int, goal: Int, for day: String) {
+        guard isPublishable(day) else { return }
+        write(
+            StepsSnapshotPayload(date: day, count: max(0, steps), goal: max(1, goal)),
+            forKey: Steps.key,
+            reloading: Steps.kind
+        )
+    }
+
+    /// Removes the step count, for a phone that has none for today, so the
+    /// complication does not keep showing an earlier figure.
+    static func clearSteps() {
+        guard let defaults = sharedDefaults(),
+              defaults.data(forKey: Steps.key) != nil else { return }
+        defaults.removeObject(forKey: Steps.key)
+        WidgetCenter.shared.reloadTimelines(ofKind: Steps.kind)
+    }
+
+    /// Publishes the running fast (or none) for the Fasting complication. Not
+    /// day-scoped: a fast spans midnight, and the widget counts from its start.
+    static func publish(fast: WatchFast?) {
+        write(
+            FastingSnapshotPayload(
+                active: fast != nil,
+                startedAt: fast.map { $0.startedAt.timeIntervalSince1970 * 1000 },
+                targetEndAt: fast?.targetEndAt.map { $0.timeIntervalSince1970 * 1000 },
+                label: fast?.label
+            ),
+            forKey: Fasting.key,
+            reloading: Fasting.kind
         )
     }
 

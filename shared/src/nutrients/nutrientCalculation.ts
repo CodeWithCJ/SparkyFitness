@@ -4,7 +4,7 @@ import {
   VitaminCalculationAlgorithm,
   SugarCalculationAlgorithm,
   AddedSugarAlgorithm,
-} from '@/types/nutrientAlgorithms';
+} from './nutrientAlgorithms.ts';
 
 /**
  * User data interface for nutrient calculations

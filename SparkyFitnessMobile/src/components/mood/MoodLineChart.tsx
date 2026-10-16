@@ -4,7 +4,7 @@ import { View, Text } from 'react-native';
 import { CartesianChart } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
 import {
-  makeChartFont,
+  useChartFont,
   CHART_LABEL_FONT_SIZE,
   formatXLabel7d,
   formatXLabel30d90d,
@@ -29,8 +29,6 @@ const X_TICK_COUNT: Record<HealthTrendDateRange, number> = {
 // Mood is stored on a fixed 0-100 scale, so the axis does not auto-fit.
 const Y_TICKS = [0, 25, 50, 75, 100];
 
-const font = makeChartFont(CHART_LABEL_FONT_SIZE);
-
 const MoodLineChart: React.FC<MoodLineChartProps> = ({
   data,
   isLoading,
@@ -38,6 +36,7 @@ const MoodLineChart: React.FC<MoodLineChartProps> = ({
   range,
 }) => {
   const { t } = useTranslation();
+  const font = useChartFont(CHART_LABEL_FONT_SIZE);
   const [accentColor, textMuted] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',

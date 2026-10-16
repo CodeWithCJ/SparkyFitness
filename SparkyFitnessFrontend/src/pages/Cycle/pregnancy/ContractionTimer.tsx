@@ -155,11 +155,20 @@ export default function ContractionTimer({
                   >
                     <span>{formatTime(c.started_at)}</span>
                     <span className="text-muted-foreground">
-                      {t('pregnancy.contractions.dur', 'Duration')}:{' '}
-                      {fmtDuration(c.started_at, c.ended_at)}
-                      {prev
-                        ? ` · ${t('pregnancy.contractions.int', 'Interval')}: ${fmtInterval(prev.started_at, c.started_at)}`
-                        : ''}
+                      {t(
+                        prev
+                          ? 'pregnancy.contractions.durationWithInterval'
+                          : 'pregnancy.contractions.duration',
+                        prev
+                          ? 'Duration: {{duration}} · Interval: {{interval}}'
+                          : 'Duration: {{duration}}',
+                        {
+                          duration: fmtDuration(c.started_at, c.ended_at),
+                          interval: prev
+                            ? fmtInterval(prev.started_at, c.started_at)
+                            : '',
+                        }
+                      )}
                     </span>
                   </div>
                 );

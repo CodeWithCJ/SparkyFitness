@@ -139,3 +139,9 @@ export const formatRelativeTime = (
     defaultValue: '{{date}} at {{time}}',
   });
 };
+
+/** Weekday of a `YYYY-MM-DD` calendar day, 0 = Sunday, without any timezone shift. */
+export const weekdayOfDay = (dateString: string): number => {
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day).getDay();
+};

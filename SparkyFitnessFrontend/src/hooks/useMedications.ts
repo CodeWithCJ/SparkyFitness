@@ -21,6 +21,7 @@ import type {
   ListMedicationEntriesOptions,
 } from '@/types/medications';
 
+import i18n from 'i18next';
 const medKeys = {
   list: (opts?: ListMedicationsOptions) => ['medications', opts ?? {}] as const,
   pens: (medId: string) => ['medication-pens', medId] as const,
@@ -71,28 +72,48 @@ export const useMedications = (
     queryKey: medKeys.list(opts),
     queryFn: () => medicationService.listMedications(opts),
     enabled: options?.enabled ?? true,
-    meta: { errorMessage: 'Failed to load medications.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useMedications.failedToLoadMedications',
+        'Failed to load medications.'
+      ),
+    },
   });
 
 export const useMedicationPens = (medId: string) =>
   useQuery({
     queryKey: medKeys.pens(medId),
     queryFn: () => medicationService.listPens(medId),
-    meta: { errorMessage: 'Failed to load pens/vials.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useMedications.failedToLoadPensVials',
+        'Failed to load pens/vials.'
+      ),
+    },
   });
 
 export const useMedicationInjections = (medId: string) =>
   useQuery({
     queryKey: medKeys.injections(medId),
     queryFn: () => medicationService.listInjections(medId),
-    meta: { errorMessage: 'Failed to load injections.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useMedications.failedToLoadInjections',
+        'Failed to load injections.'
+      ),
+    },
   });
 
 export const useMedicationTitration = (medId: string) =>
   useQuery({
     queryKey: medKeys.titration(medId),
     queryFn: () => medicationService.listTitration(medId),
-    meta: { errorMessage: 'Failed to load titration plan.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useMedications.failedToLoadTitrationPlan',
+        'Failed to load titration plan.'
+      ),
+    },
   });
 
 export const useAddTitrationStepMutation = (medId: string) => {
@@ -105,8 +126,14 @@ export const useAddTitrationStepMutation = (medId: string) => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not add titration step.',
-      successMessage: 'Titration step added.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotAddTitrationStep',
+        'Could not add titration step.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.titrationStepAdded',
+        'Titration step added.'
+      ),
     },
   });
 };
@@ -126,8 +153,14 @@ export const useUpdateTitrationStepMutation = (medId: string) => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not update titration step.',
-      successMessage: 'Titration step updated.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotUpdateTitrationStep',
+        'Could not update titration step.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.titrationStepUpdated',
+        'Titration step updated.'
+      ),
     },
   });
 };
@@ -140,7 +173,12 @@ export const useDeleteTitrationStepMutation = (medId: string) => {
       queryClient.invalidateQueries({ queryKey: medKeys.titration(medId) });
       invalidateReports(queryClient);
     },
-    meta: { errorMessage: 'Could not remove titration step.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotRemoveTitrationStep',
+        'Could not remove titration step.'
+      ),
+    },
   });
 };
 
@@ -148,14 +186,24 @@ export const useSerumCurve = (medId: string) =>
   useQuery({
     queryKey: medKeys.serumCurve(medId),
     queryFn: () => medicationService.getSerumCurve(medId),
-    meta: { errorMessage: 'Failed to load serum curve.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useMedications.failedToLoadSerumCurve',
+        'Failed to load serum curve.'
+      ),
+    },
   });
 
 export const useSiteSuggestion = (medId: string) =>
   useQuery({
     queryKey: medKeys.siteSuggestion(medId),
     queryFn: () => medicationService.getSiteSuggestion(medId),
-    meta: { errorMessage: 'Failed to load site suggestion.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useMedications.failedToLoadSiteSuggestion',
+        'Failed to load site suggestion.'
+      ),
+    },
   });
 
 // --- Mutations -------------------------------------------------------------
@@ -170,8 +218,14 @@ export const useCreateMedicationMutation = () => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not add medication.',
-      successMessage: 'Medication added.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotAddMedication',
+        'Could not add medication.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.medicationAdded',
+        'Medication added.'
+      ),
     },
   });
 };
@@ -186,8 +240,14 @@ export const useUpdateMedicationMutation = () => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not update medication.',
-      successMessage: 'Medication updated.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotUpdateMedication',
+        'Could not update medication.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.medicationUpdated',
+        'Medication updated.'
+      ),
     },
   });
 };
@@ -201,8 +261,14 @@ export const useDeleteMedicationMutation = () => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not remove medication.',
-      successMessage: 'Medication removed.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotRemoveMedication',
+        'Could not remove medication.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.medicationRemoved',
+        'Medication removed.'
+      ),
     },
   });
 };
@@ -227,8 +293,14 @@ export const useLogInjectionMutation = (medId: string) => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not log injection.',
-      successMessage: 'Injection logged.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotLogInjection',
+        'Could not log injection.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.injectionLogged',
+        'Injection logged.'
+      ),
     },
   });
 };
@@ -251,8 +323,14 @@ export const useUpdateInjectionMutation = (medId: string) => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not update injection entry.',
-      successMessage: 'Injection entry updated.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotUpdateInjectionEntry',
+        'Could not update injection entry.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.injectionEntryUpdated',
+        'Injection entry updated.'
+      ),
     },
   });
 };
@@ -275,8 +353,14 @@ export const useDeleteInjectionMutation = (medId: string) => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not remove injection entry.',
-      successMessage: 'Injection entry removed.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotRemoveInjectionEntry',
+        'Could not remove injection entry.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.injectionEntryRemoved',
+        'Injection entry removed.'
+      ),
     },
   });
 };
@@ -303,8 +387,14 @@ export const useLogGlpInjectionEntryMutation = () => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not log injection.',
-      successMessage: 'Injection logged.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotLogInjection',
+        'Could not log injection.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.injectionLogged',
+        'Injection logged.'
+      ),
     },
   });
 };
@@ -325,8 +415,14 @@ export const useUpdateInjectionEntryMutation = () => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not update injection entry.',
-      successMessage: 'Injection entry updated.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotUpdateInjectionEntry',
+        'Could not update injection entry.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.injectionEntryUpdated',
+        'Injection entry updated.'
+      ),
     },
   });
 };
@@ -348,8 +444,14 @@ export const useDeleteInjectionEntryMutation = () => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not remove injection entry.',
-      successMessage: 'Injection entry removed.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotRemoveInjectionEntry',
+        'Could not remove injection entry.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.injectionEntryRemoved',
+        'Injection entry removed.'
+      ),
     },
   });
 };
@@ -362,8 +464,14 @@ export const useCreatePenMutation = (medId: string) => {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: medKeys.pens(medId) }),
     meta: {
-      errorMessage: 'Could not add pen/vial.',
-      successMessage: 'Pen/vial added.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotAddPenVial',
+        'Could not add pen/vial.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.penVialAdded',
+        'Pen/vial added.'
+      ),
     },
   });
 };
@@ -376,8 +484,14 @@ export const useUpdatePenMutation = (medId: string) => {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: medKeys.pens(medId) }),
     meta: {
-      errorMessage: 'Could not update pen/vial.',
-      successMessage: 'Pen/vial updated.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotUpdatePenVial',
+        'Could not update pen/vial.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.penVialUpdated',
+        'Pen/vial updated.'
+      ),
     },
   });
 };
@@ -389,8 +503,14 @@ export const useDeletePenMutation = (medId: string) => {
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: medKeys.pens(medId) }),
     meta: {
-      errorMessage: 'Could not remove pen/vial.',
-      successMessage: 'Pen/vial removed.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotRemovePenVial',
+        'Could not remove pen/vial.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.penVialRemoved',
+        'Pen/vial removed.'
+      ),
     },
   });
 };
@@ -401,7 +521,12 @@ export const useMedicationEntries = (opts?: ListMedicationEntriesOptions) =>
   useQuery({
     queryKey: medKeys.entries(opts),
     queryFn: () => medicationService.listMedicationEntries(opts),
-    meta: { errorMessage: 'Failed to load logged doses.' },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useMedications.failedToLoadLoggedDoses',
+        'Failed to load logged doses.'
+      ),
+    },
   });
 
 export const useCreateMedicationEntryMutation = () => {
@@ -420,8 +545,11 @@ export const useCreateMedicationEntryMutation = () => {
       invalidateDiaryTotals(queryClient);
     },
     meta: {
-      errorMessage: 'Could not log dose.',
-      successMessage: 'Dose logged.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotLogDose',
+        'Could not log dose.'
+      ),
+      successMessage: i18n.t('hooks.useMedications.doseLogged', 'Dose logged.'),
     },
   });
 };
@@ -446,8 +574,14 @@ export const useUpdateMedicationEntryMutation = () => {
       invalidateDiaryTotals(queryClient);
     },
     meta: {
-      errorMessage: 'Could not update logged dose.',
-      successMessage: 'Logged dose updated.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotUpdateLoggedDose',
+        'Could not update logged dose.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.loggedDoseUpdated',
+        'Logged dose updated.'
+      ),
     },
   });
 };
@@ -466,8 +600,14 @@ export const useDeleteMedicationEntryMutation = () => {
       invalidateDiaryTotals(queryClient);
     },
     meta: {
-      errorMessage: 'Could not remove logged dose.',
-      successMessage: 'Logged dose removed.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotRemoveLoggedDose',
+        'Could not remove logged dose.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.loggedDoseRemoved',
+        'Logged dose removed.'
+      ),
     },
   });
 };
@@ -485,8 +625,14 @@ export const useAddScheduleMutation = (medId: string) => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not add schedule.',
-      successMessage: 'Schedule added.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotAddSchedule',
+        'Could not add schedule.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.scheduleAdded',
+        'Schedule added.'
+      ),
     },
   });
 };
@@ -500,8 +646,14 @@ export const useDeleteScheduleMutation = () => {
       invalidateReports(queryClient);
     },
     meta: {
-      errorMessage: 'Could not delete schedule.',
-      successMessage: 'Schedule deleted.',
+      errorMessage: i18n.t(
+        'hooks.useMedications.couldNotDeleteSchedule',
+        'Could not delete schedule.'
+      ),
+      successMessage: i18n.t(
+        'hooks.useMedications.scheduleDeleted',
+        'Schedule deleted.'
+      ),
     },
   });
 };

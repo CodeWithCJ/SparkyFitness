@@ -331,12 +331,20 @@ export default function CycleHistoryList() {
                       <div className="text-[11px] text-muted-foreground shrink-0 min-w-[70px] text-right font-medium">
                         <span>
                           {cycle.cycle_length
-                            ? `${cycle.cycle_length}d cycle`
+                            ? t(
+                                'cycle.cycleHistoryList.dCycle',
+                                '{{cycle_length}}d cycle',
+                                { cycle_length: cycle.cycle_length }
+                              )
                             : '—'}
                         </span>
                         <span className="block text-[9px] opacity-75">
                           {cycle.period_length
-                            ? `${cycle.period_length}d period`
+                            ? t(
+                                'cycle.cycleHistoryList.dPeriod',
+                                '{{period_length}}d period',
+                                { period_length: cycle.period_length }
+                              )
                             : '—'}
                         </span>
                       </div>

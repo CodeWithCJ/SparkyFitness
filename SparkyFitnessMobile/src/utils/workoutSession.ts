@@ -1592,12 +1592,14 @@ export function buildSessionExercisesPayload(
   session: PresetSessionResponse,
   completedSetIds: CompletedSetMap,
   prSetIds: PrSetMap,
-  startedAtMs?: number | null
+  startedAtMs?: number | null,
+  resumedDurationMinutes?: Record<string, number>
 ): PresetSessionExerciseRequest[] {
   const timing = buildSessionExerciseTiming(
     session,
     completedSetIds,
-    startedAtMs
+    startedAtMs,
+    resumedDurationMinutes
   );
 
   return session.exercises.map((exercise, index) => ({
@@ -1663,6 +1665,34 @@ export function toEntryTimeString(ms: number): string {
 }
 
 /**
+ * Stored duration of each strength entry that already has completed sets at
+ * the start of a run (a resumed session). Those completions can't be placed
+ * on the new run's clock, so `buildSessionExerciseTiming` adds the time spent
+ * after the start to this value. Captured once at start: the session is
+ * replaced by the server response after every autosave, so its
+ * `duration_minutes` would already include this run's time.
+ */
+export function captureResumedDurations(
+  session: PresetSessionResponse,
+  completedSetIds: CompletedSetMap,
+  startedAtMs: number
+): Record<string, number> {
+  const resumed: Record<string, number> = {};
+  for (const exercise of session.exercises) {
+    if (isCardioModality(resolveSnapshotModality(exercise.exercise_snapshot)))
+      continue;
+    const hasEarlierCompletion = exercise.sets.some((s) => {
+      const ms = completedSetIds[String(s.id)];
+      return ms != null && ms <= startedAtMs;
+    });
+    if (hasEarlierCompletion) {
+      resumed[exercise.id] = exercise.duration_minutes ?? 0;
+    }
+  }
+  return resumed;
+}
+
+/**
  * Walks the completed strength sets in the order they were ticked off and
  * gives each gap (previous completion, or the workout start, up to this
  * completion) to the exercise the set belongs to. That is the time spent on
@@ -1672,16 +1702,22 @@ export function toEntryTimeString(ms: number): string {
  *
  * An entry's start time is the beginning of its first gap. Cardio entries
  * are left out: their duration is the sum of their set durations.
+ *
+ * An entry that still has completions from before the start and a captured
+ * value in `resumedDurationMinutes` (see `captureResumedDurations`) gets that
+ * value plus this run's share, and keeps its stored start time.
  */
 export function buildSessionExerciseTiming(
   session: PresetSessionResponse,
   completedSetIds: CompletedSetMap,
-  startedAtMs?: number | null
+  startedAtMs?: number | null,
+  resumedDurationMinutes: Record<string, number> = {}
 ): SessionExerciseTiming | null {
   if (startedAtMs == null) return null;
 
   let anyCompletedAfterStart = false;
   const completedCountByEntryId = new Map<string, number>();
+  const resumedMinutesByEntryId = new Map<string, number>();
   const timeline: { ms: number; entryId: string }[] = [];
   for (const exercise of session.exercises) {
     const cardio = isCardioModality(
@@ -1695,8 +1731,15 @@ export function buildSessionExerciseTiming(
       if (cardio) continue;
       count++;
       // Completions before the start (a resumed session) can't be placed on
-      // this clock; their entry keeps its stored duration.
+      // this clock; their time is the captured resumed duration, or the
+      // stored one when the entry has no completions after the start.
       if (ms > startedAtMs) timeline.push({ ms, entryId: exercise.id });
+      else if (exercise.id in resumedDurationMinutes) {
+        resumedMinutesByEntryId.set(
+          exercise.id,
+          resumedDurationMinutes[exercise.id]
+        );
+      }
     }
     if (!cardio) completedCountByEntryId.set(exercise.id, count);
   }
@@ -1713,13 +1756,14 @@ export function buildSessionExerciseTiming(
   let previousMs = startedAtMs;
   for (const { ms, entryId } of timeline) {
     spanMs.set(entryId, (spanMs.get(entryId) ?? 0) + (ms - previousMs));
-    if (!startTimes.has(entryId)) {
+    if (!startTimes.has(entryId) && !resumedMinutesByEntryId.has(entryId)) {
       startTimes.set(entryId, toEntryTimeString(previousMs));
     }
     previousMs = ms;
   }
   for (const [entryId, ms] of spanMs) {
-    durations.set(entryId, Math.round((ms / 60_000) * 10) / 10);
+    const minutes = (resumedMinutesByEntryId.get(entryId) ?? 0) + ms / 60_000;
+    durations.set(entryId, Math.round(minutes * 10) / 10);
   }
   return { durations, startTimes };
 }

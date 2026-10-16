@@ -239,8 +239,11 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
                     onClick={() => handleSort('lapDistance')}
                   >
-                    {t('reports.activityReportLapTable.distance', 'Distance')} (
-                    {distanceUnit})
+                    {t(
+                      'reports.activityReportLapTable.distance2',
+                      'Distance ({{distanceUnit}})',
+                      { distanceUnit }
+                    )}
                     <FaRoute className="block text-blue-500 mx-auto" />
                     <span>{getSortIndicator('lapDistance')}</span>
                   </th>
@@ -249,10 +252,10 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     onClick={() => handleSort('cumulativeDistance')}
                   >
                     {t(
-                      'reports.activityReportLapTable.cumulativeDistance',
-                      'Cumulative Distance'
-                    )}{' '}
-                    ({distanceUnit})
+                      'reports.activityReportLapTable.cumulativeDistance2',
+                      'Cumulative Distance ({{distanceUnit}})',
+                      { distanceUnit }
+                    )}
                     <FaRoad className="block text-blue-500 mx-auto" />
                     <span>{getSortIndicator('cumulativeDistance')}</span>
                   </th>
@@ -266,11 +269,22 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
                     onClick={() => handleSort('avgPace')}
                   >
-                    {t('reports.activityReportLapTable.avgPace', 'Avg Pace')} (
-                    {distanceUnit === 'km'
-                      ? t('reports.activityReportLapTable.minPerKm', 'min/km')
-                      : t('reports.activityReportLapTable.minPerMi', 'min/mi')}
-                    )
+                    {t(
+                      'reports.activityReportLapTable.avgPace2',
+                      'Avg Pace ({{distanceUnit}})',
+                      {
+                        distanceUnit:
+                          distanceUnit === 'km'
+                            ? t(
+                                'reports.activityReportLapTable.minPerKm',
+                                'min/km'
+                              )
+                            : t(
+                                'reports.activityReportLapTable.minPerMi',
+                                'min/mi'
+                              ),
+                      }
+                    )}
                     <FaWalking className="block text-purple-500 mx-auto" />
                     <span>{getSortIndicator('avgPace')}</span>
                   </th>
@@ -280,17 +294,21 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                       onClick={() => handleSort('avgMovingPace')}
                     >
                       {t(
-                        'reports.activityReportLapTable.avgMovingPace',
-                        'Avg Moving Pace'
-                      )}{' '}
-                      (
-                      {distanceUnit === 'km'
-                        ? t('reports.activityReportLapTable.minPerKm', 'min/km')
-                        : t(
-                            'reports.activityReportLapTable.minPerMi',
-                            'min/mi'
-                          )}
-                      )
+                        'reports.activityReportLapTable.avgMovingPace2',
+                        'Avg Moving Pace ({{distanceUnit}})',
+                        {
+                          distanceUnit:
+                            distanceUnit === 'km'
+                              ? t(
+                                  'reports.activityReportLapTable.minPerKm',
+                                  'min/km'
+                                )
+                              : t(
+                                  'reports.activityReportLapTable.minPerMi',
+                                  'min/mi'
+                                ),
+                        }
+                      )}
                       <FaWalking className="block text-purple-500 mx-auto" />
                       <span>{getSortIndicator('avgMovingPace')}</span>
                     </th>
@@ -305,8 +323,10 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
                     onClick={() => handleSort('averageHR')}
                   >
-                    {t('reports.activityReportLapTable.avgHR', 'Avg HR')} (
-                    {t('reports.activityReportLapTable.bpm', 'bpm')})
+                    {t(
+                      'reports.activityReportLapTable.avgHRBpm',
+                      'Avg HR (bpm)'
+                    )}
                     <FaHeartbeat className="block text-pink-500 mx-auto" />
                     <span>{getSortIndicator('averageHR')}</span>
                   </th>
@@ -314,8 +334,10 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     className="py-3 px-4 text-center text-sm font-bold text-muted-foreground cursor-pointer"
                     onClick={() => handleSort('maxHR')}
                   >
-                    {t('reports.activityReportLapTable.maxHR', 'Max HR')} (
-                    {t('reports.activityReportLapTable.bpm', 'bpm')})
+                    {t(
+                      'reports.activityReportLapTable.maxHRBpm',
+                      'Max HR (bpm)'
+                    )}
                     <FaHeartbeat className="block text-pink-500 mx-auto" />
                     <span>{getSortIndicator('maxHR')}</span>
                   </th>
@@ -330,10 +352,9 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     onClick={() => handleSort('averageRunCadence')}
                   >
                     {t(
-                      'reports.activityReportLapTable.avgRunCadence',
-                      'Avg Cadence'
-                    )}{' '}
-                    ({t('reports.activityReportLapTable.spm', 'spm')})
+                      'reports.activityReportLapTable.avgCadenceSpm',
+                      'Avg Cadence (spm)'
+                    )}
                     <FaRunning className="block text-orange-500 mx-auto" />
                     <span>{getSortIndicator('averageRunCadence')}</span>
                   </th>
@@ -342,10 +363,9 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                     onClick={() => handleSort('maxRunCadence')}
                   >
                     {t(
-                      'reports.activityReportLapTable.maxRunCadence',
-                      'Max Cadence'
-                    )}{' '}
-                    ({t('reports.activityReportLapTable.spm', 'spm')})
+                      'reports.activityReportLapTable.maxCadenceSpm',
+                      'Max Cadence (spm)'
+                    )}
                     <FaRunning className="block text-orange-500 mx-auto" />
                     <span>{getSortIndicator('maxRunCadence')}</span>
                   </th>

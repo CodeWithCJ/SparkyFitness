@@ -1,4 +1,16 @@
 import { TextEncoder, TextDecoder } from 'util';
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+
+// Hooks and helpers call i18n.t() directly; initialise the shared instance so
+// they return their English default text in tests.
+void i18n.use(initReactI18next).init({
+  lng: 'en',
+  fallbackLng: 'en',
+  resources: {},
+  initAsync: false,
+  interpolation: { escapeValue: false },
+});
 
 // Polyfill for TextEncoder/TextDecoder in jsdom
 if (typeof globalThis.TextEncoder === 'undefined') {

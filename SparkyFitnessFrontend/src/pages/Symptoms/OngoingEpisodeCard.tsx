@@ -67,7 +67,7 @@ export default function OngoingEpisodeCard({
                 {episode.symptom_name_snapshot}
                 <span className="font-normal text-muted-foreground">
                   {' '}
-                  · {t('symptoms.episode.ongoing', 'ongoing')}
+                  {t('symptoms.episode.ongoing2', '· ongoing')}
                 </span>
               </button>
               <span className="shrink-0 tabular-nums text-sm text-primary">

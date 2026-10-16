@@ -14,7 +14,9 @@ import { debug, info } from '@/utils/logging';
 import { useRequestPasswordResetMutation } from '@/hooks/Auth/useAuth';
 import { getErrorMessage } from '@/utils/api';
 
+import { useTranslation } from 'react-i18next';
 const ForgotPassword = () => {
+  const { t } = useTranslation();
   const { loggingLevel } = usePreferences();
   debug(loggingLevel, 'ForgotPassword: Component rendered.');
 
@@ -50,7 +52,10 @@ const ForgotPassword = () => {
           <div className="flex items-center justify-center mb-4">
             <img
               src="/images/SparkyFitness.webp"
-              alt="SparkyFitness Logo"
+              alt={t(
+                'auth.forgotPasswordPage.sparkyFitnessLogo',
+                'SparkyFitness Logo'
+              )}
               className="h-10 w-10 mr-2"
             />
             <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-300">
@@ -58,17 +63,25 @@ const ForgotPassword = () => {
             </CardTitle>
           </div>
           <CardDescription>
-            Enter your email to receive a password reset link.
+            {t(
+              'auth.forgotPasswordPage.enterYourEmailToReceive',
+              'Enter your email to receive a password reset link.'
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">
+                {t('auth.forgotPasswordPage.email', 'Email')}
+              </Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="Enter your email"
+                placeholder={t(
+                  'auth.forgotPasswordPage.enterYourEmail',
+                  'Enter your email'
+                )}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -76,7 +89,9 @@ const ForgotPassword = () => {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Sending...' : 'Send Reset Link'}
+              {loading
+                ? t('auth.forgotPasswordPage.sending', 'Sending...')
+                : t('auth.forgotPasswordPage.sendResetLink', 'Send Reset Link')}
             </Button>
             {message && (
               <p className="text-center text-sm text-muted-foreground">
@@ -85,7 +100,7 @@ const ForgotPassword = () => {
             )}
             <div className="text-center text-sm">
               <a href="/" className="font-medium text-primary hover:underline">
-                Back to Sign In
+                {t('auth.forgotPasswordPage.backToSignIn', 'Back to Sign In')}
               </a>
             </div>
           </form>

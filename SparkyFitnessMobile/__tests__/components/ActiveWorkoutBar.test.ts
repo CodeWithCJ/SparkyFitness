@@ -1,7 +1,47 @@
+import { renderHook } from '@testing-library/react-native';
+
 import {
+  ACTIVE_WORKOUT_BAR_HEIGHT,
   isClosingToTabsTransition,
   shouldSuppressActiveWorkoutBar,
+  useActiveWorkoutBarPadding,
 } from '../../src/components/ActiveWorkoutBar';
+import { useHasGpsRecording } from '../../src/services/gpsRecordingService';
+import { useActiveWorkoutStore } from '../../src/stores/activeWorkoutStore';
+
+jest.mock('../../src/services/gpsRecordingService', () => ({
+  useGpsRecording: jest.fn(() => ({ session: null, points: [] })),
+  useHasGpsRecording: jest.fn(() => false),
+}));
+
+describe('useActiveWorkoutBarPadding', () => {
+  beforeEach(() => {
+    jest.mocked(useHasGpsRecording).mockReturnValue(false);
+    useActiveWorkoutStore.setState({ sessionId: null });
+  });
+
+  it('reserves nothing when there is no workout and no recording', () => {
+    expect(renderHook(() => useActiveWorkoutBarPadding()).result.current).toBe(
+      0
+    );
+  });
+
+  it('reserves room for a GPS recording the bar is showing', () => {
+    jest.mocked(useHasGpsRecording).mockReturnValue(true);
+
+    expect(renderHook(() => useActiveWorkoutBarPadding()).result.current).toBe(
+      ACTIVE_WORKOUT_BAR_HEIGHT
+    );
+  });
+
+  it('reserves room for a strength workout', () => {
+    useActiveWorkoutStore.setState({ sessionId: 42 });
+
+    expect(renderHook(() => useActiveWorkoutBarPadding()).result.current).toBe(
+      ACTIVE_WORKOUT_BAR_HEIGHT
+    );
+  });
+});
 
 describe('shouldSuppressActiveWorkoutBar', () => {
   it('keeps the HUD off meal-plan routes with sticky bottom actions', () => {

@@ -26,7 +26,7 @@ import {
   formatTooltipDate,
   formatXLabel30d90d,
   formatXLabel7d,
-  makeChartFont,
+  useChartFont,
   measureLabelColumnWidth,
 } from './charts/chartFormatting';
 import {
@@ -64,8 +64,6 @@ const PLOT_HEIGHT = 150;
  * leave to its left.
  */
 const FALLBACK_LABEL_COLUMN_WIDTH = 44;
-
-const axisFont = makeChartFont(CHART_LABEL_FONT_SIZE);
 
 /** Wide enough for `formatXLabel30d90d`'s "Aug 28" without truncating. */
 const X_LABEL_WIDTH = 56;
@@ -199,6 +197,7 @@ const CaloriesBarChart: React.FC<CaloriesBarChartProps> = ({
   goals,
 }) => {
   const { t } = useTranslation();
+  const axisFont = useChartFont(CHART_LABEL_FONT_SIZE);
   const averageLabel = buildCaloriesAverageLabel(averageCalories, t);
   const [plotWidth, setPlotWidth] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -244,7 +243,7 @@ const CaloriesBarChart: React.FC<CaloriesBarChartProps> = ({
         (text) => axisFont.getTextWidth(text),
         FALLBACK_LABEL_COLUMN_WIDTH
       ),
-    [yAxisScale.tickValues]
+    [yAxisScale.tickValues, axisFont]
   );
 
   const columns = useMemo(

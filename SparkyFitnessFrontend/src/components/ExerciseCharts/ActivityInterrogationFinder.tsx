@@ -230,10 +230,16 @@ export const ActivityInterrogationFinder = ({
                     )}
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
-                      {item.durationMinutes >= 10
-                        ? Math.round(item.durationMinutes)
-                        : Math.round(item.durationMinutes * 10) / 10}{' '}
-                      {t('common.min', 'min')}
+                      {t(
+                        'exerciseAnalytics.finder.min',
+                        '{{durationMinutes}} min',
+                        {
+                          durationMinutes:
+                            item.durationMinutes >= 10
+                              ? Math.round(item.durationMinutes)
+                              : Math.round(item.durationMinutes * 10) / 10,
+                        }
+                      )}
                     </span>
                   </div>
                 </div>

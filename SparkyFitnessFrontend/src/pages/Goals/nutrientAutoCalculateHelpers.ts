@@ -1,5 +1,5 @@
 import { normalizeNutrientName } from '@workspace/shared';
-import { getAutoCalculateFamily } from '@/services/nutrientCalculationService';
+import { getAutoCalculateFamily } from '@workspace/shared';
 import type { NutrientGoalType } from '@/constants/nutrients';
 
 // Recognized name variants for a user-created "Added Sugars" custom

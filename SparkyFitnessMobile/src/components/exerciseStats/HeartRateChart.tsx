@@ -5,13 +5,12 @@ import { useCSSVariable } from 'uniwind';
 import type { WorkoutHeartRatePoint } from '@workspace/shared';
 import { formatLocalizedNumber } from '../../localization';
 import {
-  makeChartFont,
+  useChartFont,
   CHART_LABEL_FONT_SIZE,
   computeNiceYAxisScale,
 } from '../charts/chartFormatting';
 import LineSeriesMark from '../charts/LineSeriesMark';
 
-const font = makeChartFont(CHART_LABEL_FONT_SIZE);
 /** Keeps the Skia path light on long sessions sampled every second. */
 const MAX_POINTS = 600;
 
@@ -26,6 +25,7 @@ const HeartRateChart: React.FC<HeartRateChartProps> = ({
   data,
   xAxisCaption,
 }) => {
+  const font = useChartFont(CHART_LABEL_FONT_SIZE);
   const [lineColor, textMuted] = useCSSVariable([
     '--color-heart-rate',
     '--color-text-muted',

@@ -11,6 +11,7 @@ let restChimePlayer: AudioPlayer | null = null;
 /** Key of the audio mode last applied, so a changed preference re-applies it. */
 let configuredModeKey: string | null = null;
 let intervalSessionActive = false;
+let recordingCueSessionActive = false;
 
 /**
  * Whether the rest-timer chime should play. Also consulted by the foreground
@@ -67,8 +68,14 @@ async function applyBaseAudioMode({
   force = false,
 }: { duck?: boolean; force?: boolean } = {}): Promise<void> {
   const playsInSilentMode =
-    intervalSessionActive || isRestChimeThroughSilentEnabled();
-  const shouldPlayInBackground = isBackgroundRestChimeEnabled();
+    intervalSessionActive ||
+    recordingCueSessionActive ||
+    isRestChimeThroughSilentEnabled();
+  // A recording speaks with the screen locked; the location task keeps the
+  // app running, so no keep-alive track is needed, only the session category.
+  const shouldPlayInBackground =
+    isBackgroundRestChimeEnabled() ||
+    (recordingCueSessionActive && Platform.OS === 'ios');
   const interruptionMode = duck ? 'duckOthers' : 'mixWithOthers';
   const key = `${playsInSilentMode}|${shouldPlayInBackground}|${interruptionMode}`;
   if (!force && key === configuredModeKey) return;
@@ -226,6 +233,36 @@ export async function stopIntervalAudioSession(): Promise<void> {
 }
 
 /**
+ * Configures the audio session for spoken cues during a GPS recording: audible
+ * with the silent switch on and, on iOS, with the screen locked.
+ */
+export async function startRecordingCueSession(): Promise<void> {
+  recordingCueSessionActive = true;
+  try {
+    await applyBaseAudioMode({ force: true });
+  } catch (err) {
+    addLog(
+      `startRecordingCueSession failed: ${(err as Error).message}`,
+      'WARNING'
+    );
+  }
+}
+
+/** Restores the standard audio mode once the recording ends. */
+export async function stopRecordingCueSession(): Promise<void> {
+  if (!recordingCueSessionActive) return;
+  recordingCueSessionActive = false;
+  try {
+    await applyBaseAudioMode({ force: true });
+  } catch (err) {
+    addLog(
+      `stopRecordingCueSession failed: ${(err as Error).message}`,
+      'WARNING'
+    );
+  }
+}
+
+/**
  * Plays a sound cue for interval transitions (work, rest, countdown beep, or workout finish).
  */
 export function playIntervalCue(
@@ -363,6 +400,7 @@ export function __resetSoundsForTests(): void {
   intervalRestPlayer = null;
   configuredModeKey = null;
   intervalSessionActive = false;
+  recordingCueSessionActive = false;
   stopKeepAlive();
   keepAlivePlayer = null;
   keepAliveWanted = false;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DashboardScreen from '../../src/screens/DashboardScreen';
@@ -243,5 +243,13 @@ describe('DashboardScreen Health Trends spacing', () => {
     }
 
     expect(node?.props.className).toContain('mb-3');
+  });
+
+  it('links to the Reports page from the Health Trends heading', () => {
+    renderDashboard();
+
+    fireEvent.press(screen.getByTestId('dashboard-reports-link'));
+
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('Reports');
   });
 });

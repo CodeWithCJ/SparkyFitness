@@ -21,6 +21,7 @@ export interface DailyGoals {
   water_goal_ml?: number;
   target_exercise_calories_burned?: number;
   target_exercise_duration_minutes?: number;
+  target_steps?: number;
   protein_percentage?: number;
   carbs_percentage?: number;
   fat_percentage?: number;
@@ -31,3 +32,30 @@ export interface DailyGoals {
   custom_nutrients?: Record<string, string | number>;
   custom_meal_percentages?: Record<string, number>;
 }
+
+/** A saved set of goals the user can apply to the goals form. */
+export interface GoalPreset extends DailyGoals {
+  id?: string;
+  preset_name: string;
+}
+
+export const WEEKDAY_KEYS = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+] as const;
+
+export type WeekdayKey = (typeof WEEKDAY_KEYS)[number];
+
+/** Assigns a goal preset to each day of the week between two dates. */
+export type WeeklyGoalPlan = {
+  id?: string;
+  plan_name: string;
+  start_date: string;
+  end_date: string | null;
+  is_active: boolean;
+} & Record<`${WeekdayKey}_preset_id`, string | null>;

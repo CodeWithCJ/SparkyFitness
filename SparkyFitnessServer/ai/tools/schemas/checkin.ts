@@ -125,7 +125,10 @@ const logMoodSchema = z
       .max(10)
       .optional()
       .default(5)
-      .describe('Mood score (1-10); defaults to 5 if omitted'),
+      .describe(
+        'Mood score (1-10); defaults to 5 if omitted. Converted to the stored ' +
+          '10-100 scale on write -- do not widen this range to match the column'
+      ),
     notes: z
       .string()
       .max(2000)
@@ -313,7 +316,7 @@ export const manageCheckinInput = z.object({
     .min(1)
     .max(10)
     .optional()
-    .describe('Mood score (1-10)'),
+    .describe('Mood score (1-10); converted to the stored 10-100 scale'),
   mood_tags: z
     .array(z.string())
     .optional()

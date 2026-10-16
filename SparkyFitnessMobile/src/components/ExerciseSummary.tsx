@@ -22,6 +22,8 @@ interface ExerciseSummaryProps {
   entryDate: string;
   onPressWorkout?: (session: ExerciseSessionResponse) => void;
   onAddExercise?: () => void;
+  /** A card shown with the workout-plan banners, e.g. today's training program. */
+  programBanner?: React.ReactNode;
   onPressPlanAssignment?: (
     plan: WorkoutPlanTemplate,
     assignment: WorkoutPlanAssignment
@@ -37,6 +39,7 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
   onPressWorkout,
   onAddExercise,
   onPressPlanAssignment,
+  programBanner,
   getImageSource,
   weightUnit = 'kg',
   distanceUnit = 'km',
@@ -88,7 +91,7 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
     }
   };
 
-  const planBanners =
+  const planBannersOnly =
     uncompletedActivePlans.length > 0 ? (
       <View className="mb-2">
         {uncompletedActivePlans.map((plan) => {
@@ -250,6 +253,12 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
         })}
       </View>
     ) : null;
+  const planBanners = (
+    <>
+      {programBanner}
+      {planBannersOnly}
+    </>
+  );
 
   if (exerciseEntries.length === 0) {
     const emptyContent = (

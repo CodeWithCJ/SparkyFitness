@@ -174,6 +174,18 @@ export function volumeFromMl(milliliters: number, unit: string): number {
   }
 }
 
+/** Inverse of `volumeFromMl`: a volume typed in the user's water unit, as millilitres. */
+export function volumeToMl(value: number, unit: string): number {
+  switch (unit) {
+    case 'oz':
+      return value * ML_PER_FLUID_OUNCE;
+    case 'liter':
+      return value * ML_PER_LITER;
+    default:
+      return value;
+  }
+}
+
 /** Decimal places a volume is shown to, per unit — ml is whole, oz one place, litres two. */
 function volumeDecimalsForUnit(unit: string): number {
   if (unit === 'oz') return 1;

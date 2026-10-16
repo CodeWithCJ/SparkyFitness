@@ -19,6 +19,7 @@ import {
   buildPresetUpdateExercises,
   buildSessionExercisesPayload,
   buildSingleExerciseStartPayload,
+  captureResumedDurations,
   draftExerciseToCardExercise,
   presetExerciseToCardExercise,
   DEFAULT_REST_SEC,
@@ -2497,6 +2498,104 @@ describe('workoutSession', () => {
           startedAt
         );
         expect(payload[0].duration_minutes).toBe(25);
+      });
+
+      describe('resumed entries with completions on both sides of the start', () => {
+        const resumedSession = (storedMinutes: number) =>
+          makePreset({
+            exercises: [
+              makeExercise({
+                duration_minutes: storedMinutes,
+                sets: [
+                  makeSet({ id: 101 }),
+                  makeSet({ id: 102, set_number: 2 }),
+                ],
+              }),
+            ],
+          });
+        const completed = { '101': startedAt - 10 * 60_000, '102': min(5) };
+
+        it('adds the time after the start to the captured duration', () => {
+          const payload = buildSessionExercisesPayload(
+            resumedSession(20),
+            completed,
+            {},
+            startedAt,
+            captureResumedDurations(resumedSession(20), completed, startedAt)
+          );
+          expect(payload[0].duration_minutes).toBe(25);
+          // The entry started before this run; its stored time stays.
+          expect('entry_time' in payload[0]).toBe(false);
+        });
+
+        it('does not add this run twice once the session holds the saved value', () => {
+          // After an autosave the session is the server response, so its
+          // duration already includes the 5 min after the start.
+          const payload = buildSessionExercisesPayload(
+            resumedSession(25),
+            completed,
+            {},
+            startedAt,
+            { [ENTRY_A]: 20 }
+          );
+          expect(payload[0].duration_minutes).toBe(25);
+        });
+
+        it('drops the captured duration once the earlier completions are cleared', () => {
+          const payload = buildSessionExercisesPayload(
+            resumedSession(25),
+            { '102': min(5) },
+            {},
+            startedAt,
+            { [ENTRY_A]: 20 }
+          );
+          expect(payload[0].duration_minutes).toBe(5);
+          expect('entry_time' in payload[0]).toBe(true);
+        });
+      });
+
+      describe('captureResumedDurations', () => {
+        it('captures stored durations of strength entries completed before the start', () => {
+          const session = makePreset({
+            exercises: [
+              makeExercise({
+                duration_minutes: 20,
+                sets: [makeSet({ id: 101 })],
+              }),
+              makeExercise({
+                id: ENTRY_B,
+                exercise_id: EX_2,
+                duration_minutes: null,
+                sets: [makeSet({ id: 201 })],
+              }),
+              makeExercise({
+                id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+                duration_minutes: 7,
+                sets: [makeSet({ id: 301 })],
+              }),
+              makeExercise({
+                id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+                duration_minutes: 12,
+                exercise_snapshot: {
+                  modality: 'duration_distance',
+                } as SessionExercise['exercise_snapshot'],
+                sets: [makeSet({ id: 401 })],
+              }),
+            ],
+          });
+          expect(
+            captureResumedDurations(
+              session,
+              {
+                '101': startedAt - 60_000,
+                '201': startedAt,
+                '301': min(1),
+                '401': startedAt - 60_000,
+              },
+              startedAt
+            )
+          ).toEqual({ [ENTRY_A]: 20, [ENTRY_B]: 0 });
+        });
       });
 
       it('round-trips existing durations when startedAt is not provided', () => {

@@ -4,15 +4,9 @@ import HydrationTrendChart from '@/pages/Reports/HydrationTrendChart';
 import { useHydrationNutritionRange } from '@/hooks/Reports/useReports';
 import { renderWithClient } from '../test-utils';
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
-  }),
-  initReactI18next: {
-    type: '3rdParty',
-    init: jest.fn(),
-  },
-}));
+jest.mock('react-i18next', () =>
+  jest.requireActual('@/tests/mocks/reactI18next')
+);
 
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({

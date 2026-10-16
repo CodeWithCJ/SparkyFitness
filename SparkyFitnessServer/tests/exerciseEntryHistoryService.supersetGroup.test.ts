@@ -130,6 +130,26 @@ describe('getGroupedExerciseSessionByIdWithClient superset_group', () => {
     expect(childSql).toContain('FOR UPDATE OF ee');
   });
 
+  it('orders children by sort_order, not by when their first set was logged', async () => {
+    const client = makeClient([
+      makeChildRow('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 0, null),
+    ]);
+
+    await getGroupedExerciseSessionByIdWithClient(
+      client,
+      USER_ID,
+      PRESET_ENTRY_ID
+    );
+
+    // A live session stamps entry_time on an exercise once a set is logged;
+    // ordering by it moved an exercise logged out of turn to the top.
+    const childSql = client.query.mock.calls
+      .map((call) => String(call[0]))
+      .find((sql) => sql.includes('FROM exercise_entries ee'));
+    expect(childSql).toMatch(/ORDER BY ee\.sort_order ASC, ee\.created_at ASC/);
+    expect(childSql).not.toContain('entry_time');
+  });
+
   it('maps rows without the column to superset_group null', async () => {
     const client = makeClient([
       makeChildRow('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 0, undefined),

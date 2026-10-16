@@ -110,7 +110,8 @@ async function saveNow(
         state.session,
         state.completedSetIds,
         state.prSetIds,
-        state.startedAt
+        state.startedAt,
+        state.resumedDurationMinutes
       ),
       activity_details: activityDetails,
     });

@@ -15,7 +15,6 @@ import Toast from 'react-native-toast-message';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
 import SegmentedControl from '../components/SegmentedControl';
-import FormInput from '../components/FormInput';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
@@ -24,37 +23,27 @@ import {
 } from '../hooks/useMindfulness';
 import { BreathworkModal } from '../components/mindfulness/BreathworkModal';
 import { MeditationTimerModal } from '../components/mindfulness/MeditationTimerModal';
-import { MindfulnessSessionModal } from '../components/mindfulness/MindfulnessSessionModal';
 import { toLocalDateString } from '../utils/dateUtils';
+import {
+  mindfulnessSessionTypeEmoji,
+  mindfulnessSessionTypeLabel,
+} from '../utils/mindfulnessSessionTypes';
 import type { RootStackScreenProps } from '../types/navigation';
-import type {
-  MindfulnessSessionResponse,
-  CreateMindfulnessSessionBody,
-} from '@workspace/shared';
+import type { MindfulnessSessionResponse } from '@workspace/shared';
 
 type Props = RootStackScreenProps<'MindfulnessDetail'>;
 
 type TabKey = 'practice' | 'history';
-
-const SESSION_TYPES = [
-  'meditation',
-  'breathwork',
-  'reflection',
-  'walking',
-  'yoga',
-  'guided',
-  'unguided',
-  'other',
-] as const;
 
 const MindfulnessDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { backColor } = useHeaderActionColors();
-  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [
-    string,
-  ];
+  const [accentPrimary, textMuted] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-muted',
+  ]) as [string, string];
 
   const selectedDate =
     route.params?.selectedDate || toLocalDateString(new Date());
@@ -64,86 +53,11 @@ const MindfulnessDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   // Modals state
   const [breathworkVisible, setBreathworkVisible] = useState(false);
   const [timerVisible, setTimerVisible] = useState(false);
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editingSession, setEditingSession] =
-    useState<MindfulnessSessionResponse | null>(null);
-
-  // Manual Log Form State
-  const [durationMinutes, setDurationMinutes] = useState('15');
-  const [durationSeconds, setDurationSeconds] = useState('0');
-  const [sessionType, setSessionType] =
-    useState<(typeof SESSION_TYPES)[number]>('meditation');
-  const [notes, setNotes] = useState('');
-  const [heartRateAvg, setHeartRateAvg] = useState('');
-  const [heartRateStart, setHeartRateStart] = useState('');
-  const [heartRateEnd, setHeartRateEnd] = useState('');
-  const [hrvRmssd, setHrvRmssd] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Data queries & mutations
   const { sessions, totalMindfulMinutes, isLoading } =
     useMindfulnessDay(selectedDate);
-  const { saveSession, updateSession, deleteSession } =
-    useMindfulnessMutations(selectedDate);
-
-  const getSessionTypeLabel = (type?: string | null) => {
-    switch (type) {
-      case 'meditation':
-        return t('mindfulness.types.meditation', {
-          defaultValue: 'Meditation',
-        });
-      case 'breathwork':
-        return t('mindfulness.types.breathwork', {
-          defaultValue: 'Breathwork',
-        });
-      case 'reflection':
-        return t('mindfulness.types.reflection', {
-          defaultValue: 'Reflection',
-        });
-      case 'walking':
-        return t('mindfulness.types.walking', {
-          defaultValue: 'Mindful Walking',
-        });
-      case 'yoga':
-        return t('mindfulness.types.yoga', {
-          defaultValue: 'Yoga',
-        });
-      case 'guided':
-        return t('mindfulness.types.guided', {
-          defaultValue: 'Guided',
-        });
-      case 'unguided':
-        return t('mindfulness.types.unguided', {
-          defaultValue: 'Unguided',
-        });
-      case 'other':
-      default:
-        return t('mindfulness.types.other', {
-          defaultValue: 'Other',
-        });
-    }
-  };
-
-  const getSessionTypeEmoji = (type: string) => {
-    switch (type) {
-      case 'meditation':
-        return '🧘';
-      case 'breathwork':
-        return '🌊';
-      case 'reflection':
-        return '🪞';
-      case 'walking':
-        return '🚶';
-      case 'yoga':
-        return '🧘‍♀️';
-      case 'guided':
-        return '🎧';
-      case 'unguided':
-        return '🕯️';
-      default:
-        return '✨';
-    }
-  };
+  const { saveSession, deleteSession } = useMindfulnessMutations(selectedDate);
 
   const formatDurationDisplay = (totalSecs: number) => {
     const mins = Math.floor(totalSecs / 60);
@@ -196,48 +110,6 @@ const MindfulnessDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         defaultValue: 'Session saved successfully',
       }),
     });
-  };
-
-  const handleManualSubmit = async () => {
-    const mins = parseInt(durationMinutes, 10) || 0;
-    const secs = parseInt(durationSeconds, 10) || 0;
-    const totalSeconds = mins * 60 + secs;
-    if (totalSeconds <= 0) return;
-
-    setIsSubmitting(true);
-    try {
-      const payload: CreateMindfulnessSessionBody = {
-        entry_date: selectedDate,
-        duration_seconds: totalSeconds,
-        session_type: sessionType,
-        provider: 'manual',
-        notes: notes.trim() || null,
-        heart_rate_avg: heartRateAvg ? parseFloat(heartRateAvg) : null,
-        heart_rate_start: heartRateStart ? parseInt(heartRateStart, 10) : null,
-        heart_rate_end: heartRateEnd ? parseInt(heartRateEnd, 10) : null,
-        hrv_rmssd: hrvRmssd ? parseFloat(hrvRmssd) : null,
-      };
-      await saveSession(payload);
-      // Reset form
-      setNotes('');
-      setHeartRateAvg('');
-      setHeartRateStart('');
-      setHeartRateEnd('');
-      setHrvRmssd('');
-      Toast.show({
-        type: 'success',
-        text1: t('mindfulness.detail.sessionSaved', {
-          defaultValue: 'Session saved successfully',
-        }),
-      });
-    } catch {
-      Toast.show({
-        type: 'error',
-        text1: t('common.error', { defaultValue: 'Error' }),
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   const handleDeleteSession = (sessionId: string) => {
@@ -432,158 +304,24 @@ const MindfulnessDetailScreen: React.FC<Props> = ({ route, navigation }) => {
               </View>
             </View>
 
-            {/* Manual Log Section */}
-            <View className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-xs">
-              <Text className="text-text-primary text-base font-bold mb-3">
+            {/* Logging by hand opens the same form as Add (+) -> Mindfulness */}
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('MindfulnessLog', { date: selectedDate })
+              }
+              className="bg-surface rounded-2xl p-4 border border-border-subtle shadow-xs flex-row items-center"
+              accessibilityRole="button"
+            >
+              <View className="w-9 h-9 rounded-xl bg-accent-primary/15 items-center justify-center mr-3">
+                <Icon name="pencil" size={16} color={accentPrimary} />
+              </View>
+              <Text className="flex-1 text-text-primary text-base font-bold">
                 {t('mindfulness.detail.logTitle', {
                   defaultValue: 'Log Mindful Session',
                 })}
               </Text>
-
-              {/* Session Type Chips */}
-              <Text className="text-text-secondary text-xs font-semibold mb-2 uppercase">
-                {t('mindfulness.modal.type', { defaultValue: 'Session Type' })}
-              </Text>
-              <View className="flex-row flex-wrap gap-2 mb-4">
-                {SESSION_TYPES.map((typeKey) => {
-                  const isSelected = sessionType === typeKey;
-                  return (
-                    <TouchableOpacity
-                      key={typeKey}
-                      onPress={() => setSessionType(typeKey)}
-                      className={`px-3 py-1.5 rounded-xl border ${
-                        isSelected
-                          ? 'bg-accent-primary/20 border-accent-primary'
-                          : 'bg-surface-elevated border-border-subtle'
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-medium ${
-                          isSelected
-                            ? 'text-accent-primary font-bold'
-                            : 'text-text-secondary'
-                        }`}
-                      >
-                        {getSessionTypeEmoji(typeKey)}{' '}
-                        {getSessionTypeLabel(typeKey)}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-
-              {/* Duration Inputs: Minutes & Seconds */}
-              <View className="flex-row gap-3 mb-3">
-                <View className="flex-1">
-                  <Text className="text-text-secondary text-xs font-semibold mb-1 uppercase">
-                    {t('mindfulness.modal.minutes', {
-                      defaultValue: 'Minutes',
-                    })}
-                  </Text>
-                  <FormInput
-                    value={durationMinutes}
-                    onChangeText={setDurationMinutes}
-                    keyboardType="number-pad"
-                    placeholder="15"
-                    accessibilityLabel={t(
-                      'mindfulness.modal.durationMinutesAccessibility',
-                      { defaultValue: 'Duration in minutes' }
-                    )}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-text-secondary text-xs font-semibold mb-1 uppercase">
-                    {t('mindfulness.modal.seconds', {
-                      defaultValue: 'Seconds',
-                    })}
-                  </Text>
-                  <FormInput
-                    value={durationSeconds}
-                    onChangeText={setDurationSeconds}
-                    keyboardType="number-pad"
-                    placeholder="0"
-                    accessibilityLabel={t(
-                      'mindfulness.modal.durationSecondsAccessibility',
-                      { defaultValue: 'Duration in seconds' }
-                    )}
-                  />
-                </View>
-              </View>
-
-              {/* Heart Rate & HRV Vitals */}
-              <View className="flex-row gap-3 mb-3">
-                <View className="flex-1">
-                  <Text className="text-text-secondary text-xs font-semibold mb-1 uppercase">
-                    {t('mindfulness.modal.avgHr', {
-                      defaultValue: 'Avg HR (bpm)',
-                    })}
-                  </Text>
-                  <FormInput
-                    value={heartRateAvg}
-                    onChangeText={setHeartRateAvg}
-                    keyboardType="numeric"
-                    placeholder="68"
-                    accessibilityLabel={t(
-                      'mindfulness.modal.avgHrAccessibility',
-                      { defaultValue: 'Average heart rate' }
-                    )}
-                  />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-text-secondary text-xs font-semibold mb-1 uppercase">
-                    {t('mindfulness.modal.hrv', {
-                      defaultValue: 'HRV (ms)',
-                    })}
-                  </Text>
-                  <FormInput
-                    value={hrvRmssd}
-                    onChangeText={setHrvRmssd}
-                    keyboardType="numeric"
-                    placeholder="55"
-                    accessibilityLabel={t(
-                      'mindfulness.modal.hrvAccessibility',
-                      { defaultValue: 'HRV RMSSD' }
-                    )}
-                  />
-                </View>
-              </View>
-
-              {/* Notes */}
-              <View className="mb-4">
-                <Text className="text-text-secondary text-xs font-semibold mb-1 uppercase">
-                  {t('mindfulness.modal.notes', {
-                    defaultValue: 'Notes (Optional)',
-                  })}
-                </Text>
-                <FormInput
-                  value={notes}
-                  onChangeText={setNotes}
-                  placeholder={t('mindfulness.modal.notesPlaceholder', {
-                    defaultValue: 'How was your practice?',
-                  })}
-                  accessibilityLabel={t(
-                    'mindfulness.modal.notesAccessibility',
-                    { defaultValue: 'Notes' }
-                  )}
-                  multiline
-                  numberOfLines={2}
-                />
-              </View>
-
-              <TouchableOpacity
-                onPress={handleManualSubmit}
-                disabled={isSubmitting}
-                className="py-3.5 rounded-xl bg-accent-primary items-center"
-              >
-                <Text className="text-white font-bold text-base">
-                  {isSubmitting
-                    ? t('common.saving', { defaultValue: 'Saving…' })
-                    : t('mindfulness.detail.saveSession', {
-                        defaultValue: 'Save Mindful Session',
-                      })}
-                </Text>
-              </TouchableOpacity>
-            </View>
+              <Icon name="chevron-forward" size={18} color={textMuted} />
+            </TouchableOpacity>
           </View>
         ) : (
           /* History Tab */
@@ -626,11 +364,16 @@ const MindfulnessDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                         <View className="flex-row items-center gap-2">
                           <View className="w-8 h-8 rounded-xl bg-surface-elevated items-center justify-center">
                             <Text className="text-base">
-                              {getSessionTypeEmoji(session.session_type)}
+                              {mindfulnessSessionTypeEmoji(
+                                session.session_type
+                              )}
                             </Text>
                           </View>
                           <Text className="text-text-primary text-sm font-semibold capitalize">
-                            {getSessionTypeLabel(session.session_type)}
+                            {mindfulnessSessionTypeLabel(
+                              session.session_type,
+                              t
+                            )}
                           </Text>
                           {session.provider &&
                             session.provider !== 'manual' && (
@@ -681,10 +424,12 @@ const MindfulnessDetailScreen: React.FC<Props> = ({ route, navigation }) => {
                           {formatDurationDisplay(session.duration_seconds)}
                         </Text>
                         <TouchableOpacity
-                          onPress={() => {
-                            setEditingSession(session);
-                            setEditModalVisible(true);
-                          }}
+                          onPress={() =>
+                            navigation.navigate('MindfulnessLog', {
+                              date: selectedDate,
+                              session,
+                            })
+                          }
                           hitSlop={8}
                           className="p-1.5 rounded-lg bg-surface-elevated border border-border-subtle"
                           accessibilityRole="button"
@@ -726,25 +471,6 @@ const MindfulnessDetailScreen: React.FC<Props> = ({ route, navigation }) => {
         visible={timerVisible}
         onClose={() => setTimerVisible(false)}
         onSave={handleTimerSave}
-      />
-
-      <MindfulnessSessionModal
-        visible={editModalVisible}
-        onClose={() => {
-          setEditModalVisible(false);
-          setEditingSession(null);
-        }}
-        onSave={async (data) => {
-          await saveSession(data);
-          setEditModalVisible(false);
-        }}
-        onUpdate={async (id, data) => {
-          await updateSession(id, data);
-          setEditModalVisible(false);
-          setEditingSession(null);
-        }}
-        initialSession={editingSession}
-        selectedDate={selectedDate}
       />
     </View>
   );

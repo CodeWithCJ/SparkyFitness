@@ -10,6 +10,7 @@ import {
   DEFAULT_WARMUP_METHOD,
   DEFAULT_WARMUP_PLATE_ROUNDING,
   normalizeWarmupMethod,
+  type PaceReferenceRace,
   type WarmupMethodStep,
 } from '@workspace/shared';
 import { create } from 'zustand';
@@ -28,7 +29,15 @@ import {
   type WatchPageKey,
   type WatchSetInputStyle,
 } from '../constants/watchPages';
+import {
+  DEFAULT_REPORT_NUTRIENTS,
+  DEFAULT_REPORT_RANGE,
+  REPORT_KEYS,
+  type ReportKey,
+  type ReportSectionKey,
+} from '../constants/reports';
 import type { LanguagePreference } from '../localization';
+import type { TrendRange } from '../utils/trendRange';
 import type { OwnershipFilter } from '../utils/shareStatus';
 
 const STORE_KEY = '@SparkyFitness/app-preferences';
@@ -85,6 +94,7 @@ export const PREFERENCE_DEFAULTS = {
   onDeviceLabelScanEnabled: true,
   healthTrendsCardVisible: true,
   mindfulnessCardVisible: true,
+  trainingLoadCardVisible: true,
   dashboardCardOrder: [...DASHBOARD_CARD_KEYS] as DashboardCardKey[],
   medicationRemindersEnabled: true,
   medicationReminderRepeats: true,
@@ -99,6 +109,8 @@ export const PREFERENCE_DEFAULTS = {
   diarySummaryVisible: false,
   diarySummaryExpanded: false,
   defaultRestSec: DEFAULT_REST_SEC as number,
+  paceReferenceRace: null as PaceReferenceRace | null,
+  paceReferenceOnWatch: false,
   restTimerSoundEnabled: true,
   restChimeThroughSilent: false,
   duckMusicDuringCues: false,
@@ -121,6 +133,12 @@ export const PREFERENCE_DEFAULTS = {
   watchNutrientOrder: [] as string[],
   shownWatchNutrients: [...DEFAULT_WATCH_NUTRIENTS] as string[],
   watchSetInputStyle: 'keypad' as WatchSetInputStyle,
+  reportOrder: [...REPORT_KEYS] as ReportKey[],
+  hiddenReports: [] as ReportKey[],
+  reportDefaultRange: DEFAULT_REPORT_RANGE as TrendRange,
+  hiddenReportSections: [] as ReportSectionKey[],
+  reportNutrientOrder: [] as string[],
+  shownReportNutrients: [...DEFAULT_REPORT_NUTRIENTS] as string[],
   foodSearchOwnershipFilter: 'all' as OwnershipFilter,
   foodsLibraryOwnershipFilter: 'all' as OwnershipFilter,
   mealsLibraryOwnershipFilter: 'all' as OwnershipFilter,
@@ -151,6 +169,7 @@ export type AppPreferencesData = {
   onDeviceLabelScanEnabled: boolean;
   healthTrendsCardVisible: boolean;
   mindfulnessCardVisible: boolean;
+  trainingLoadCardVisible: boolean;
   dashboardCardOrder: DashboardCardKey[];
   medicationRemindersEnabled: boolean;
   medicationReminderRepeats: boolean;
@@ -165,6 +184,13 @@ export type AppPreferencesData = {
   diarySummaryVisible: boolean;
   diarySummaryExpanded: boolean;
   defaultRestSec: number;
+  /**
+   * A recent race result the training paces are worked out from (device-local),
+   * or null to use the pace of recent sessions.
+   */
+  paceReferenceRace: PaceReferenceRace | null;
+  /** Also put the race-based pace ranges on the program workout offered on the Apple Watch. */
+  paceReferenceOnWatch: boolean;
   restTimerSoundEnabled: boolean;
   /**
    * Play the rest chime even with the ringer/silent switch off (#2506). On iOS
@@ -199,6 +225,18 @@ export type AppPreferencesData = {
   watchPageOrder: WatchPageKey[];
   /** Watch pages turned off in Settings → Apple Watch. */
   hiddenWatchPages: WatchPageKey[];
+  /** Order of the reports on the Reports hub. */
+  reportOrder: ReportKey[];
+  /** Reports turned off in Reports → Customize. */
+  hiddenReports: ReportKey[];
+  /** The 7/30/90d window a report opens on. */
+  reportDefaultRange: TrendRange;
+  /** Sections turned off inside a report, namespaced by report (`sleep.stages`). */
+  hiddenReportSections: ReportSectionKey[];
+  /** Order of the nutrients the Nutrition report can average; unknown ones follow in catalog order. */
+  reportNutrientOrder: string[];
+  /** Nutrients (standard keys or custom names) the Nutrition report's "Your nutrients" card shows. */
+  shownReportNutrients: string[];
   /** Whether the watch's double-tap gesture logs the current set. */
   watchDoubleTapEnabled: boolean;
   /** Whether the watch asks for an effort (RPE) after each logged set. */
@@ -242,6 +280,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setOnDeviceLabelScanEnabled: (value: boolean) => void;
   setHealthTrendsCardVisible: (value: boolean) => void;
   setMindfulnessCardVisible: (value: boolean) => void;
+  setTrainingLoadCardVisible: (value: boolean) => void;
   setDashboardCardOrder: (order: DashboardCardKey[]) => void;
   setMedicationRemindersEnabled: (value: boolean) => void;
   setMedicationReminderRepeats: (value: boolean) => void;
@@ -255,6 +294,8 @@ export interface AppPreferencesState extends AppPreferencesData {
   setDiarySummaryVisible: (value: boolean) => void;
   setDiarySummaryExpanded: (value: boolean) => void;
   setDefaultRestSec: (value: number) => void;
+  setPaceReferenceRace: (value: PaceReferenceRace | null) => void;
+  setPaceReferenceOnWatch: (value: boolean) => void;
   setRestTimerSoundEnabled: (value: boolean) => void;
   setRestChimeThroughSilent: (value: boolean) => void;
   setDuckMusicDuringCues: (value: boolean) => void;
@@ -272,6 +313,13 @@ export interface AppPreferencesState extends AppPreferencesData {
   setHealthTrendHidden: (key: HealthTrendKey, isHidden: boolean) => void;
   setWatchPageOrder: (order: WatchPageKey[]) => void;
   setWatchPageHidden: (key: WatchPageKey, isHidden: boolean) => void;
+  setReportOrder: (order: ReportKey[]) => void;
+  setReportHidden: (key: ReportKey, isHidden: boolean) => void;
+  setReportDefaultRange: (value: TrendRange) => void;
+  setReportSectionHidden: (key: ReportSectionKey, isHidden: boolean) => void;
+  setReportNutrientOrder: (order: string[]) => void;
+  setReportNutrientShown: (key: string, isShown: boolean) => void;
+  resetReportCustomization: () => void;
   setWatchDoubleTapEnabled: (value: boolean) => void;
   setWatchRpeEnabled: (value: boolean) => void;
   setWatchNutrientOrder: (order: string[]) => void;
@@ -368,6 +416,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ healthTrendsCardVisible: value }),
       setMindfulnessCardVisible: (value) =>
         set({ mindfulnessCardVisible: value }),
+      setTrainingLoadCardVisible: (value) =>
+        set({ trainingLoadCardVisible: value }),
       setDashboardCardOrder: (order) => set({ dashboardCardOrder: order }),
       setMedicationRemindersEnabled: (value) =>
         set({ medicationRemindersEnabled: value }),
@@ -389,6 +439,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setDiarySummaryVisible: (value) => set({ diarySummaryVisible: value }),
       setDiarySummaryExpanded: (value) => set({ diarySummaryExpanded: value }),
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
+      setPaceReferenceRace: (value) => set({ paceReferenceRace: value }),
+      setPaceReferenceOnWatch: (value) => set({ paceReferenceOnWatch: value }),
       setRestTimerSoundEnabled: (value) =>
         set({ restTimerSoundEnabled: value }),
       setRestChimeThroughSilent: (value) =>
@@ -428,6 +480,38 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
           ),
         })),
       setWatchPageOrder: (order) => set({ watchPageOrder: order }),
+      setReportOrder: (order) => set({ reportOrder: order }),
+      setReportHidden: (key, isHidden) =>
+        set((state) => ({
+          hiddenReports: withMembership(state.hiddenReports, key, isHidden),
+        })),
+      setReportDefaultRange: (value) => set({ reportDefaultRange: value }),
+      setReportSectionHidden: (key, isHidden) =>
+        set((state) => ({
+          hiddenReportSections: withMembership(
+            state.hiddenReportSections,
+            key,
+            isHidden
+          ),
+        })),
+      setReportNutrientOrder: (order) => set({ reportNutrientOrder: order }),
+      setReportNutrientShown: (key, isShown) =>
+        set((state) => ({
+          shownReportNutrients: withMembership(
+            state.shownReportNutrients,
+            key,
+            isShown
+          ),
+        })),
+      resetReportCustomization: () =>
+        set({
+          reportNutrientOrder: [],
+          shownReportNutrients: [...DEFAULT_REPORT_NUTRIENTS],
+          reportOrder: [...REPORT_KEYS],
+          hiddenReports: [],
+          reportDefaultRange: DEFAULT_REPORT_RANGE,
+          hiddenReportSections: [],
+        }),
       setWatchNutrientOrder: (order) => set({ watchNutrientOrder: order }),
       setWatchSetInputStyle: (value) => set({ watchSetInputStyle: value }),
       setWatchNutrientShown: (key, isShown) =>
@@ -489,6 +573,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         onDeviceLabelScanEnabled: state.onDeviceLabelScanEnabled,
         healthTrendsCardVisible: state.healthTrendsCardVisible,
         mindfulnessCardVisible: state.mindfulnessCardVisible,
+        trainingLoadCardVisible: state.trainingLoadCardVisible,
         dashboardCardOrder: state.dashboardCardOrder,
         medicationRemindersEnabled: state.medicationRemindersEnabled,
         medicationReminderRepeats: state.medicationReminderRepeats,
@@ -505,6 +590,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         diarySummaryVisible: state.diarySummaryVisible,
         diarySummaryExpanded: state.diarySummaryExpanded,
         defaultRestSec: state.defaultRestSec,
+        paceReferenceRace: state.paceReferenceRace,
+        paceReferenceOnWatch: state.paceReferenceOnWatch,
         restTimerSoundEnabled: state.restTimerSoundEnabled,
         restChimeThroughSilent: state.restChimeThroughSilent,
         duckMusicDuringCues: state.duckMusicDuringCues,
@@ -527,6 +614,12 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         watchNutrientOrder: state.watchNutrientOrder,
         shownWatchNutrients: state.shownWatchNutrients,
         watchSetInputStyle: state.watchSetInputStyle,
+        reportOrder: state.reportOrder,
+        hiddenReports: state.hiddenReports,
+        reportDefaultRange: state.reportDefaultRange,
+        hiddenReportSections: state.hiddenReportSections,
+        reportNutrientOrder: state.reportNutrientOrder,
+        shownReportNutrients: state.shownReportNutrients,
         foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,
         foodsLibraryOwnershipFilter: state.foodsLibraryOwnershipFilter,
         mealsLibraryOwnershipFilter: state.mealsLibraryOwnershipFilter,

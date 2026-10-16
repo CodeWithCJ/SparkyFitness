@@ -3,11 +3,14 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchExerciseDashboard } from '../services/api/reportsApi';
 import { exerciseDashboardQueryKey } from './queryKeys';
 import { useTrendRangeBounds } from './useTrendRangeBounds';
-import type { TrendRange } from '../utils/trendRange';
+import type { CustomRange, ReportRange } from '../utils/trendRange';
 
 const exerciseDashboardFamily = ['exerciseDashboard'] as const;
 
-export function useExerciseDashboard(range: TrendRange) {
+export function useExerciseDashboard(
+  range: ReportRange,
+  custom?: CustomRange | null
+) {
   const queryClient = useQueryClient();
   // Refetches whichever range is on screen.
   const refresh = useCallback(() => {
@@ -16,7 +19,7 @@ export function useExerciseDashboard(range: TrendRange) {
       refetchType: 'active',
     });
   }, [queryClient]);
-  const { startDate, endDate } = useTrendRangeBounds(range, refresh);
+  const { startDate, endDate } = useTrendRangeBounds(range, refresh, custom);
 
   const query = useQuery({
     queryKey: exerciseDashboardQueryKey(startDate, endDate),

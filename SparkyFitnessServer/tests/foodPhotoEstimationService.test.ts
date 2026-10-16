@@ -409,6 +409,30 @@ describe('estimateFoodPhotoNutrition', () => {
       if (!result.success) expect(result.code).toBe('UPSTREAM_ERROR');
     });
 
+    it('maps an openai patch limit 400 → IMAGE_TOO_LARGE', async () => {
+      mockOpenAi();
+      mockFetch(
+        JSON.stringify({
+          error: {
+            message:
+              'The image you provided requires 48960 patches after processing, exceeding the limit of 30000. Please resize the image and try again.',
+            type: 'invalid_request_error',
+            param: 'messages',
+            code: 'invalid_value',
+          },
+        }),
+        { ok: false, status: 400 }
+      );
+      const result = await estimate();
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.code).toBe('IMAGE_TOO_LARGE');
+        expect(result.error).toBe(
+          'The image is too large for AI analysis. Please try another photo.'
+        );
+      }
+    });
+
     it('maps an openai refusal → CONTENT_BLOCKED', async () => {
       mockOpenAi();
       global.fetch = vi.fn().mockResolvedValue({

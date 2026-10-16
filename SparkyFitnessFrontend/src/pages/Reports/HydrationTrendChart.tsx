@@ -84,12 +84,18 @@ const HydrationTrendChart = ({
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Droplet className="w-4 h-4 text-blue-500" />
-                {t('reports.hydration.title', 'Hydration')} (
-                {water_display_unit})
+                {t(
+                  'reports.hydration.hydration',
+                  'Hydration ({{water_display_unit}})',
+                  { water_display_unit }
+                )}
               </CardTitle>
               <div className="text-right text-xs text-muted-foreground font-normal">
-                {t('reports.average', 'Avg')}: {average.toFixed(decimals)}{' '}
-                {water_display_unit}
+                {t(
+                  'reports.hydration.avg',
+                  'Avg: {{average}} {{water_display_unit}}',
+                  { average: average.toFixed(decimals), water_display_unit }
+                )}
               </div>
             </div>
           </CardHeader>

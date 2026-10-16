@@ -18,6 +18,7 @@ import {
   KeyboardEvents,
   KeyboardStickyView,
 } from 'react-native-keyboard-controller';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useTranslation } from 'react-i18next';
 
@@ -301,6 +302,32 @@ export function SetInputAccessoryBar({
 }
 
 /**
+ * {@link SetInputAccessoryBar} as a screen-level bar that rides on top of the
+ * keyboard. Without the keyboard (while it slides in or out, or when a cell
+ * takes focus but the IME does not come up) it rests above the home indicator
+ * or Android's navigation bar: the app draws edge-to-edge, so `bottom: 0` is
+ * behind the system buttons. Render it at the screen root, as a sibling of
+ * the scroll view (a sticky view inside scroll content won't stick).
+ */
+export function StickySetInputAccessoryBar({
+  onDone,
+  actions,
+}: {
+  onDone: () => void;
+  actions: SetAccessoryAction[];
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <KeyboardStickyView
+      offset={{ closed: -insets.bottom, opened: 0 }}
+      style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}
+    >
+      <SetInputAccessoryBar onDone={onDone} actions={actions} />
+    </KeyboardStickyView>
+  );
+}
+
+/**
  * Deactivation grace on Android: right after the keyboard opens, a phantom
  * keyboardDidHide can arrive while the keyboard stays up —
  * react-native-keyboard-controller's inset-desync recovery
@@ -446,38 +473,34 @@ export function useSetEditAccessoryBar({
 
   const accessoryBar: ReactNode =
     activeSetKey == null ? null : (
-      <KeyboardStickyView
-        style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}
-      >
-        <SetInputAccessoryBar
-          onDone={handleDone}
-          actions={[
-            nextField != null
-              ? {
-                  key: 'next',
-                  label: t('common.next', { defaultValue: 'Next' }),
-                  onPress: () => {
-                    if (focusedSetClientId != null) {
-                      handlesRef.current[focusedSetClientId]?.focusField(
-                        nextField
-                      );
-                    }
-                  },
-                }
-              : {
-                  key: 'next-set',
-                  label: t('activeWorkout.nextSet', {
-                    defaultValue: 'Next Set',
-                  }),
-                  onPress: () => {
-                    if (focusedSetClientId != null) {
-                      handlesRef.current[focusedSetClientId]?.advance();
-                    }
-                  },
+      <StickySetInputAccessoryBar
+        onDone={handleDone}
+        actions={[
+          nextField != null
+            ? {
+                key: 'next',
+                label: t('common.next', { defaultValue: 'Next' }),
+                onPress: () => {
+                  if (focusedSetClientId != null) {
+                    handlesRef.current[focusedSetClientId]?.focusField(
+                      nextField
+                    );
+                  }
                 },
-          ]}
-        />
-      </KeyboardStickyView>
+              }
+            : {
+                key: 'next-set',
+                label: t('activeWorkout.nextSet', {
+                  defaultValue: 'Next Set',
+                }),
+                onPress: () => {
+                  if (focusedSetClientId != null) {
+                    handlesRef.current[focusedSetClientId]?.advance();
+                  }
+                },
+              },
+        ]}
+      />
     );
 
   return { onRegisterAccessoryHandle, accessoryBar };

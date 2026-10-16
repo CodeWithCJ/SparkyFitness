@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useState, useEffect, useCallback } from 'react';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -633,24 +633,24 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                                         <span>{calories.toFixed(0)} kcal</span>
                                         <span className="text-blue-500">
                                           {t(
-                                            'mealPlanTemplateForm.proteinShort',
-                                            'P:'
-                                          )}{' '}
-                                          {protein.toFixed(1)}g
+                                            'mealPlanTemplateForm.pProteing',
+                                            'P: {{protein}}g',
+                                            { protein: protein.toFixed(1) }
+                                          )}
                                         </span>
                                         <span className="text-green-500">
                                           {t(
-                                            'mealPlanTemplateForm.carbsShort',
-                                            'C:'
-                                          )}{' '}
-                                          {carbs.toFixed(1)}g
+                                            'mealPlanTemplateForm.cCarbsg',
+                                            'C: {{carbs}}g',
+                                            { carbs: carbs.toFixed(1) }
+                                          )}
                                         </span>
                                         <span className="text-yellow-500">
                                           {t(
-                                            'mealPlanTemplateForm.fatShort',
-                                            'F:'
-                                          )}{' '}
-                                          {fat.toFixed(1)}g
+                                            'mealPlanTemplateForm.fFatg',
+                                            'F: {{fat}}g',
+                                            { fat: fat.toFixed(1) }
+                                          )}
                                         </span>
                                       </div>
                                     </div>
@@ -660,19 +660,23 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                             </div>
                             {assignmentsForMealType.length > 0 && (
                               <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded">
-                                <strong>
-                                  {t(
-                                    'mealPlanTemplateForm.mealTotal',
-                                    'Total:'
-                                  )}
-                                </strong>{' '}
-                                {mealTypeTotals.totalCalories.toFixed(0)} kcal |{' '}
-                                {t('mealPlanTemplateForm.proteinShort', 'P:')}{' '}
-                                {mealTypeTotals.totalProtein.toFixed(1)}g |{' '}
-                                {t('mealPlanTemplateForm.carbsShort', 'C:')}{' '}
-                                {mealTypeTotals.totalCarbs.toFixed(1)}g |{' '}
-                                {t('mealPlanTemplateForm.fatShort', 'F:')}{' '}
-                                {mealTypeTotals.totalFat.toFixed(1)}g
+                                <Trans
+                                  i18nKey="mealPlanTemplateForm.totalKcalPGC"
+                                  defaults={
+                                    '<strong>Total:</strong> {{totalCalories}} kcal | P: {{totalProtein}}g | C: {{totalCarbs}}g | F: {{totalFat}}g'
+                                  }
+                                  values={{
+                                    totalCalories:
+                                      mealTypeTotals.totalCalories.toFixed(0),
+                                    totalProtein:
+                                      mealTypeTotals.totalProtein.toFixed(1),
+                                    totalCarbs:
+                                      mealTypeTotals.totalCarbs.toFixed(1),
+                                    totalFat:
+                                      mealTypeTotals.totalFat.toFixed(1),
+                                  }}
+                                  components={{ strong: <strong /> }}
+                                />
                               </div>
                             )}
                             <div className="flex space-x-2 mt-2">
@@ -703,16 +707,28 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                             {dailyTotals.totalCalories.toFixed(0)} kcal
                           </span>
                           <span className="text-blue-500">
-                            {t('mealPlanTemplateForm.proteinShort', 'P:')}{' '}
-                            {dailyTotals.totalProtein.toFixed(1)}g
+                            {t(
+                              'mealPlanTemplateForm.pTotalProteing',
+                              'P: {{totalProtein}}g',
+                              {
+                                totalProtein:
+                                  dailyTotals.totalProtein.toFixed(1),
+                              }
+                            )}
                           </span>
                           <span className="text-green-500">
-                            {t('mealPlanTemplateForm.carbsShort', 'C:')}{' '}
-                            {dailyTotals.totalCarbs.toFixed(1)}g
+                            {t(
+                              'mealPlanTemplateForm.cTotalCarbsg',
+                              'C: {{totalCarbs}}g',
+                              { totalCarbs: dailyTotals.totalCarbs.toFixed(1) }
+                            )}
                           </span>
                           <span className="text-yellow-500">
-                            {t('mealPlanTemplateForm.fatShort', 'F:')}{' '}
-                            {dailyTotals.totalFat.toFixed(1)}g
+                            {t(
+                              'mealPlanTemplateForm.fTotalFatg',
+                              'F: {{totalFat}}g',
+                              { totalFat: dailyTotals.totalFat.toFixed(1) }
+                            )}
                           </span>
                         </div>
                       </div>

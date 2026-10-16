@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Info, Clipboard } from 'lucide-react';
 import {
   Accordion,
@@ -259,16 +259,13 @@ const AuthenticationSettings: React.FC = () => {
           <div className="flex items-start p-4 mt-2 text-sm text-muted-foreground bg-secondary/20 border border-secondary/40 rounded-lg">
             <Info className="h-5 w-5 mr-3 mt-1 flex-shrink-0" />
             <div>
-              <strong>
-                {t(
-                  'admin.authenticationSettings.loginManagement.emergencyFailSafe',
-                  'Emergency Fail-Safe:'
-                )}
-              </strong>{' '}
-              {t(
-                'admin.authenticationSettings.loginManagement.emergencyFailSafeDescription',
-                'If you are ever locked out of your account, you can force email/password login to be enabled by setting the following environment variable on your server and restarting it:'
-              )}
+              <Trans
+                i18nKey="admin.authenticationSettings.loginManagement.emergencyFailSafeIfYou"
+                defaults={
+                  '<strong>Emergency Fail-Safe:</strong> If you are ever locked out of your account, you can force email/password login to be enabled by setting the following environment variable on your server and restarting it:'
+                }
+                components={{ strong: <strong /> }}
+              />
               <CopyableEnvVar value="SPARKY_FITNESS_FORCE_EMAIL_LOGIN=true" />
               <p className="mt-2">
                 {t(

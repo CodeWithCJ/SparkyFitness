@@ -1,4 +1,5 @@
 import {
+  applyNutrientDisplayPreference,
   getNetCarbsValue,
   toggleNutrientVisibility,
 } from '../../src/utils/nutrientUtils';
@@ -75,5 +76,46 @@ describe('toggleNutrientVisibility', () => {
 
     const removed = toggleNutrientVisibility(added, 'magnesium', false);
     expect(removed).toEqual(standards);
+  });
+});
+
+describe('applyNutrientDisplayPreference', () => {
+  const rows = [
+    { label: 'Fiber', preferenceKey: 'dietary_fiber' },
+    { label: 'Sugars', preferenceKey: 'sugars' },
+    { label: 'Total Carbs' },
+    { label: 'Sodium', preferenceKey: 'sodium' },
+  ];
+
+  it('returns the list unchanged without a preference', () => {
+    expect(applyNutrientDisplayPreference(rows, undefined)).toBe(rows);
+  });
+
+  it('drops rows that are not visible', () => {
+    const result = applyNutrientDisplayPreference(rows, ['sodium', 'sugars']);
+    expect(result.map((r) => r.label)).toEqual([
+      'Sodium',
+      'Total Carbs',
+      'Sugars',
+    ]);
+  });
+
+  it('reorders rows to follow the saved order', () => {
+    const result = applyNutrientDisplayPreference(rows, [
+      'sodium',
+      'sugars',
+      'dietary_fiber',
+    ]);
+    expect(result.map((r) => r.label)).toEqual([
+      'Sodium',
+      'Sugars',
+      'Total Carbs',
+      'Fiber',
+    ]);
+  });
+
+  it('keeps rows without a key', () => {
+    const result = applyNutrientDisplayPreference(rows, []);
+    expect(result.map((r) => r.label)).toEqual(['Total Carbs']);
   });
 });

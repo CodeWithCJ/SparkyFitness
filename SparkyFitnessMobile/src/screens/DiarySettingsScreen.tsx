@@ -161,7 +161,7 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
           <Text className="text-text-secondary text-sm">
             {t('diarySettings.customNutrientsDescription', {
               defaultValue:
-                'Custom nutrients are created in the SparkyFitness web app. Once you add some, they will appear here so you can choose which show on your Diary.',
+                'Add custom nutrients in Settings > Food Settings > Custom Nutrients. Once you add some, they will appear here so you can choose which show on your Diary.',
             })}
           </Text>
         </View>

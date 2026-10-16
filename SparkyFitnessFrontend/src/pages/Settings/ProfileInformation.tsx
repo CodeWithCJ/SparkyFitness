@@ -35,8 +35,11 @@ export const ProfileInformation = () => {
 
     if (!file.type.startsWith('image/')) {
       toast({
-        title: 'Error',
-        description: 'Please select an image file',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.profileInformation.pleaseSelectAnImageFile',
+          'Please select an image file'
+        ),
         variant: 'destructive',
       });
       return;
@@ -44,8 +47,11 @@ export const ProfileInformation = () => {
 
     if (file.size > 5 * 1024 * 1024) {
       toast({
-        title: 'Error',
-        description: 'Image must be less than 5MB',
+        title: t('common.error', 'Error'),
+        description: t(
+          'settings.profileInformation.imageMustBeLessThan',
+          'Image must be less than 5MB'
+        ),
         variant: 'destructive',
       });
       return;
@@ -80,7 +86,10 @@ export const ProfileInformation = () => {
             {profile?.avatar_url ? ( // Use avatar_url directly
               <AvatarImage
                 src={profile.avatar_url}
-                alt={profile?.full_name || 'User'}
+                alt={
+                  profile?.full_name ||
+                  t('settings.profileInformation.user', 'User')
+                }
               />
             ) : (
               <AvatarFallback className="text-lg">

@@ -41,12 +41,15 @@ const ResetPassword = () => {
     if (!token) {
       setMessage('Invalid or missing password reset token.');
       toast({
-        title: 'Error',
-        description: 'Invalid or missing password reset token.',
+        title: t('common.error', 'Error'),
+        description: t(
+          'auth.resetPassword.invalidOrMissingPasswordReset',
+          'Invalid or missing password reset token.'
+        ),
         variant: 'destructive',
       });
     }
-  }, [token]);
+  }, [token, t]);
 
   const validatePassword = (pwd: string) => {
     if (pwd.length < 8) {
@@ -114,23 +117,36 @@ const ResetPassword = () => {
           <div className="flex items-center justify-center mb-4">
             <img
               src="/images/SparkyFitness.webp"
-              alt="SparkyFitness Logo"
+              alt={t(
+                'auth.resetPassword.sparkyFitnessLogo',
+                'SparkyFitness Logo'
+              )}
               className="h-10 w-10 mr-2"
             />
             <CardTitle className="text-2xl font-bold text-gray-900 dark:text-gray-300">
               SparkyFitness
             </CardTitle>
           </div>
-          <CardDescription>Set your new password.</CardDescription>
+          <CardDescription>
+            {t(
+              'auth.resetPassword.setYourNewPassword',
+              'Set your new password.'
+            )}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2 relative">
-              <Label htmlFor="new-password">New Password</Label>
+              <Label htmlFor="new-password">
+                {t('auth.resetPassword.newPassword', 'New Password')}
+              </Label>
               <Input
                 id="new-password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Enter new password"
+                placeholder={t(
+                  'auth.resetPassword.enterNewPassword',
+                  'Enter new password'
+                )}
                 value={newPassword}
                 onChange={(e) => {
                   setNewPassword(e.target.value);
@@ -149,11 +165,19 @@ const ResetPassword = () => {
               )}
             </div>
             <div className="space-y-2 relative">
-              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Label htmlFor="confirm-password">
+                {t(
+                  'auth.resetPassword.confirmNewPassword',
+                  'Confirm New Password'
+                )}
+              </Label>
               <Input
                 id="confirm-password"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Confirm new password"
+                placeholder={t(
+                  'auth.resetPassword.confirmNewPassword2',
+                  'Confirm new password'
+                )}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -171,7 +195,9 @@ const ResetPassword = () => {
                 loading || !!passwordError || newPassword !== confirmPassword
               }
             >
-              {loading ? 'Resetting...' : 'Reset Password'}
+              {loading
+                ? t('auth.resetPassword.resetting', 'Resetting...')
+                : t('auth.resetPassword.resetPassword', 'Reset Password')}
             </Button>
             {message && (
               <p className="text-center text-sm text-muted-foreground">
@@ -180,7 +206,7 @@ const ResetPassword = () => {
             )}
             <div className="text-center text-sm">
               <a href="/" className="font-medium text-primary hover:underline">
-                Back to Sign In
+                {t('auth.resetPassword.backToSignIn', 'Back to Sign In')}
               </a>
             </div>
           </form>

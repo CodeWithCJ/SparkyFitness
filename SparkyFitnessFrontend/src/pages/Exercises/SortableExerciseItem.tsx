@@ -60,6 +60,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 
+import i18n from 'i18next';
 type PresetMetadata = WorkoutPreset | PresetSessionResponse;
 
 const SUPERSET_COLORS: Record<
@@ -70,25 +71,33 @@ const SUPERSET_COLORS: Record<
     border: 'border-l-blue-500',
     bg: 'bg-blue-500/15',
     text: 'text-blue-400',
-    label: 'SUPERSET A',
+    get label() {
+      return i18n.t('exercises.sortableExerciseItem.supersetA', 'SUPERSET A');
+    },
   },
   2: {
     border: 'border-l-purple-500',
     bg: 'bg-purple-500/15',
     text: 'text-purple-400',
-    label: 'SUPERSET B',
+    get label() {
+      return i18n.t('exercises.sortableExerciseItem.supersetB', 'SUPERSET B');
+    },
   },
   3: {
     border: 'border-l-emerald-500',
     bg: 'bg-emerald-500/15',
     text: 'text-emerald-400',
-    label: 'SUPERSET C',
+    get label() {
+      return i18n.t('exercises.sortableExerciseItem.supersetC', 'SUPERSET C');
+    },
   },
   4: {
     border: 'border-l-amber-500',
     bg: 'bg-amber-500/15',
     text: 'text-amber-400',
-    label: 'SUPERSET D',
+    get label() {
+      return i18n.t('exercises.sortableExerciseItem.supersetD', 'SUPERSET D');
+    },
   },
 };
 export type WorkoutSetField =
@@ -513,13 +522,19 @@ export const SortableExerciseItem = ({
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <Label className="text-[11px] font-semibold text-muted-foreground uppercase">
-                    Progression Mode
+                    {t(
+                      'exercises.sortableExerciseItem.progressionMode',
+                      'Progression Mode'
+                    )}
                   </Label>
                   <button
                     type="button"
                     onClick={() => setIsGuideOpen(true)}
                     className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded"
-                    title="Progression & Overload Guide"
+                    title={t(
+                      'exercises.sortableExerciseItem.progressionOverloadGuide',
+                      'Progression & Overload Guide'
+                    )}
                   >
                     <Info className="h-3.5 w-3.5" />
                   </button>
@@ -534,10 +549,30 @@ export const SortableExerciseItem = ({
                     )
                   }
                 >
-                  <option value="rep_goal">Total Rep Goal</option>
-                  <option value="fixed">Fixed Target</option>
-                  <option value="step_load">Step-Load (Reps Only)</option>
-                  <option value="manual">Manual (No Overload)</option>
+                  <option value="rep_goal">
+                    {t(
+                      'exercises.sortableExerciseItem.totalRepGoal',
+                      'Total Rep Goal'
+                    )}
+                  </option>
+                  <option value="fixed">
+                    {t(
+                      'exercises.sortableExerciseItem.fixedTarget',
+                      'Fixed Target'
+                    )}
+                  </option>
+                  <option value="step_load">
+                    {t(
+                      'exercises.sortableExerciseItem.stepLoadRepsOnly',
+                      'Step-Load (Reps Only)'
+                    )}
+                  </option>
+                  <option value="manual">
+                    {t(
+                      'exercises.sortableExerciseItem.manualNoOverload',
+                      'Manual (No Overload)'
+                    )}
+                  </option>
                 </select>
               </div>
               {/* Rep Goal Input: Only for rep_goal & step_load */}
@@ -546,8 +581,14 @@ export const SortableExerciseItem = ({
                   <Label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1 mb-1">
                     <Trophy className="h-3 w-3 text-primary" />
                     {progressionMode === 'fixed'
-                      ? 'Target Reps / Set'
-                      : 'Rep Goal (Total)'}
+                      ? t(
+                          'exercises.sortableExerciseItem.targetRepsSet',
+                          'Target Reps / Set'
+                        )
+                      : t(
+                          'exercises.sortableExerciseItem.repGoalTotal',
+                          'Rep Goal (Total)'
+                        )}
                   </Label>
                   <Input
                     type="number"
@@ -564,7 +605,10 @@ export const SortableExerciseItem = ({
                 progressionMode !== 'step_load' && (
                   <div>
                     <Label className="text-[11px] font-semibold text-muted-foreground uppercase mb-1 block">
-                      Increment Type
+                      {t(
+                        'exercises.sortableExerciseItem.incrementType',
+                        'Increment Type'
+                      )}
                     </Label>
                     <select
                       className="h-8 w-full text-xs rounded-md border border-input bg-background px-2 py-1 text-foreground disabled:opacity-50"
@@ -575,8 +619,19 @@ export const SortableExerciseItem = ({
                         )
                       }
                     >
-                      <option value="weight">Weight ({weightUnit})</option>
-                      <option value="reps">Reps (Rep Count)</option>
+                      <option value="weight">
+                        {t(
+                          'exercises.sortableExerciseItem.weight',
+                          'Weight ({{weightUnit}})',
+                          { weightUnit }
+                        )}
+                      </option>
+                      <option value="reps">
+                        {t(
+                          'exercises.sortableExerciseItem.repsRepCount',
+                          'Reps (Rep Count)'
+                        )}
+                      </option>
                     </select>
                   </div>
                 )}
@@ -586,8 +641,15 @@ export const SortableExerciseItem = ({
                 <div>
                   <Label className="text-[11px] font-semibold text-muted-foreground uppercase mb-1 block">
                     {progressionMode === 'step_load' || incrementType === 'reps'
-                      ? 'Increment (Reps)'
-                      : `Increment (${weightUnit})`}
+                      ? t(
+                          'exercises.sortableExerciseItem.incrementReps',
+                          'Increment (Reps)'
+                        )
+                      : t(
+                          'exercises.sortableExerciseItem.increment',
+                          'Increment ({{weightUnit}})',
+                          { weightUnit }
+                        )}
                   </Label>
                   <Input
                     type="number"
@@ -604,30 +666,64 @@ export const SortableExerciseItem = ({
               <div>
                 <Label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1 mb-1">
                   <Layers className="h-3 w-3 text-primary" />
-                  Superset Group
+                  {t(
+                    'exercises.sortableExerciseItem.supersetGroup',
+                    'Superset Group'
+                  )}
                 </Label>
                 <select
                   className="h-8 w-full text-xs rounded-md border border-input bg-background px-2 py-1 text-foreground"
                   value={supersetGroup ? String(supersetGroup) : 'none'}
                   onChange={(e) => handleSupersetChange(e.target.value)}
                 >
-                  <option value="none">Solo (No Superset)</option>
-                  <option value="1">Superset A (Blue)</option>
-                  <option value="2">Superset B (Purple)</option>
-                  <option value="3">Superset C (Green)</option>
-                  <option value="4">Superset D (Amber)</option>
+                  <option value="none">
+                    {t(
+                      'exercises.sortableExerciseItem.soloNoSuperset',
+                      'Solo (No Superset)'
+                    )}
+                  </option>
+                  <option value="1">
+                    {t(
+                      'exercises.sortableExerciseItem.supersetABlue',
+                      'Superset A (Blue)'
+                    )}
+                  </option>
+                  <option value="2">
+                    {t(
+                      'exercises.sortableExerciseItem.supersetBPurple',
+                      'Superset B (Purple)'
+                    )}
+                  </option>
+                  <option value="3">
+                    {t(
+                      'exercises.sortableExerciseItem.supersetCGreen',
+                      'Superset C (Green)'
+                    )}
+                  </option>
+                  <option value="4">
+                    {t(
+                      'exercises.sortableExerciseItem.supersetDAmber',
+                      'Superset D (Amber)'
+                    )}
+                  </option>
                 </select>
               </div>
 
               {/* Equipment / Brand */}
               <div>
                 <Label className="text-[11px] font-semibold text-muted-foreground uppercase mb-1 block">
-                  Equipment / Brand
+                  {t(
+                    'exercises.sortableExerciseItem.equipmentBrand',
+                    'Equipment / Brand'
+                  )}
                 </Label>
                 <Input
                   type="text"
                   className="h-8 text-xs bg-background"
-                  placeholder="e.g. Hammer Strength"
+                  placeholder={t(
+                    'exercises.sortableExerciseItem.eGHammerStrength',
+                    'e.g. Hammer Strength'
+                  )}
                   value={equipmentBrand}
                   onChange={(e) => handleEquipmentChange(e.target.value)}
                 />
@@ -667,12 +763,18 @@ export const SortableExerciseItem = ({
             <div>
               <Label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1 mb-1">
                 <StickyNote className="h-3 w-3 text-primary" />
-                Exercise Notes / Cues (Optional)
+                {t(
+                  'exercises.sortableExerciseItem.exerciseNotesCuesOptional',
+                  'Exercise Notes / Cues (Optional)'
+                )}
               </Label>
               <Input
                 type="text"
                 className="h-8 text-xs bg-background"
-                placeholder="e.g. Seat setting 4, wide grip, pause at bottom..."
+                placeholder={t(
+                  'exercises.sortableExerciseItem.eGSeatSetting4',
+                  'e.g. Seat setting 4, wide grip, pause at bottom...'
+                )}
                 value={notes}
                 onChange={(e) => handleNotesChange(e.target.value)}
               />
@@ -778,7 +880,8 @@ export const SortableExerciseItem = ({
                 className="h-8 text-xs font-semibold"
                 onClick={() => onAddSet(exerciseIndex)}
               >
-                <Plus className="h-3 w-3 mr-2" /> Add Set
+                <Plus className="h-3 w-3 mr-2" />{' '}
+                {t('exercises.sortableExerciseItem.addSet', 'Add Set')}
               </Button>
             ) : (
               <div />
@@ -792,8 +895,10 @@ export const SortableExerciseItem = ({
 
       {isWorkoutPreset && (
         <p className="text-[11px] text-muted-foreground italic px-7">
-          Workout Preset block: Edit individual exercises within the preset
-          manager.
+          {t(
+            'exercises.sortableExerciseItem.workoutPresetBlockEditIndividual',
+            'Workout Preset block: Edit individual exercises within the preset manager.'
+          )}
         </p>
       )}
       {/* Progression & Overload Information Dialog */}
@@ -802,11 +907,16 @@ export const SortableExerciseItem = ({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-lg">
               <Trophy className="h-5 w-5 text-primary" />
-              Progression & Overload Guide
+              {t(
+                'exercises.sortableExerciseItem.progressionOverloadGuide',
+                'Progression & Overload Guide'
+              )}
             </DialogTitle>
             <DialogDescription>
-              Understand progression techniques and configure automatic overload
-              targets for your routine.
+              {t(
+                'exercises.sortableExerciseItem.understandProgressionTechniquesAndConfig',
+                'Understand progression techniques and configure automatic overload targets for your routine.'
+              )}
             </DialogDescription>
           </DialogHeader>
 
@@ -814,78 +924,109 @@ export const SortableExerciseItem = ({
             {/* Progression Modes */}
             <div className="space-y-2">
               <h4 className="font-bold text-sm text-primary uppercase tracking-wider">
-                1. Progression Modes
+                {t(
+                  'exercises.sortableExerciseItem.n1ProgressionModes',
+                  '1. Progression Modes'
+                )}
               </h4>
 
               <div className="p-3 rounded-lg border border-border/60 bg-muted/30 space-y-1.5">
                 <div className="font-semibold text-foreground text-xs flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-blue-500" />
-                  Total Rep Goal (Cumulative / Autoregulation)
+                  {t(
+                    'exercises.sortableExerciseItem.totalRepGoalCumulativeAutoregulation',
+                    'Total Rep Goal (Cumulative / Autoregulation)'
+                  )}
                 </div>
                 <p className="text-muted-foreground">
-                  Aim for a total rep threshold across all sets combined. As
-                  sets progress and fatigue sets in (e.g. 18, 15, 15, 15, 15 =
-                  78 reps), reaching your total rep goal automatically triggers
-                  an overload weight bump for your next workout.
+                  {t(
+                    'exercises.sortableExerciseItem.aimForATotalRep',
+                    'Aim for a total rep threshold across all sets combined. As sets progress and fatigue sets in (e.g. 18, 15, 15, 15, 15 = 78 reps), reaching your total rep goal automatically triggers an overload weight bump for your next workout.'
+                  )}
                 </p>
                 <p className="text-primary font-medium">
-                  • Best for: Machines, cables, dumbbells, and hypertrophy
-                  accessories.
+                  {t(
+                    'exercises.sortableExerciseItem.bestForMachinesCablesDumbbells',
+                    '• Best for: Machines, cables, dumbbells, and hypertrophy accessories.'
+                  )}
                 </p>
                 <p className="text-muted-foreground italic">
-                  • Example: Goal is 75 reps at 7.5 lbs. You hit 78 reps → Next
-                  session auto-bumps to 10.0 lbs!
+                  {t(
+                    'exercises.sortableExerciseItem.exampleGoalIs75Reps',
+                    '• Example: Goal is 75 reps at 7.5 lbs. You hit 78 reps → Next session auto-bumps to 10.0 lbs!'
+                  )}
                 </p>
               </div>
 
               <div className="p-3 rounded-lg border border-border/60 bg-muted/30 space-y-1.5">
                 <div className="font-semibold text-foreground text-xs flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-purple-500" />
-                  Fixed Target (All Sets Hit)
+                  {t(
+                    'exercises.sortableExerciseItem.fixedTargetAllSetsHit',
+                    'Fixed Target (All Sets Hit)'
+                  )}
                 </div>
                 <p className="text-muted-foreground">
-                  Every working set must reach or exceed the target rep number.
-                  If any set falls short (e.g. 8, 8, 7 on an 8-rep target), the
-                  load stays the same until all sets hit the target.
+                  {t(
+                    'exercises.sortableExerciseItem.everyWorkingSetMustReach',
+                    'Every working set must reach or exceed the target rep number. If any set falls short (e.g. 8, 8, 7 on an 8-rep target), the load stays the same until all sets hit the target.'
+                  )}
                 </p>
                 <p className="text-primary font-medium">
-                  • Best for: Heavy barbell compound lifts (Bench Press, Squats,
-                  Overhead Press).
+                  {t(
+                    'exercises.sortableExerciseItem.bestForHeavyBarbellCompound',
+                    '• Best for: Heavy barbell compound lifts (Bench Press, Squats, Overhead Press).'
+                  )}
                 </p>
                 <p className="text-muted-foreground italic">
-                  • Example: Target 8 reps. You hit 8, 8, 8 → Next session
-                  increases by your increment (+5 lbs).
+                  {t(
+                    'exercises.sortableExerciseItem.exampleTarget8RepsYou',
+                    '• Example: Target 8 reps. You hit 8, 8, 8 → Next session increases by your increment (+5 lbs).'
+                  )}
                 </p>
               </div>
 
               <div className="p-3 rounded-lg border border-border/60 bg-muted/30 space-y-1.5">
                 <div className="font-semibold text-foreground text-xs flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                  Step-Load (Progress Reps Only)
+                  {t(
+                    'exercises.sortableExerciseItem.stepLoadProgressRepsOnly',
+                    'Step-Load (Progress Reps Only)'
+                  )}
                 </div>
                 <p className="text-muted-foreground">
-                  Keeps the load fixed (e.g. bodyweight or fixed dumbbells) and
-                  increments the target reps each time you achieve your rep goal
-                  before moving to heavier equipment.
+                  {t(
+                    'exercises.sortableExerciseItem.keepsTheLoadFixedE',
+                    'Keeps the load fixed (e.g. bodyweight or fixed dumbbells) and increments the target reps each time you achieve your rep goal before moving to heavier equipment.'
+                  )}
                 </p>
                 <p className="text-primary font-medium">
-                  • Best for: Calisthenics (Pull-ups, Dips, Pushups) and core
-                  exercises.
+                  {t(
+                    'exercises.sortableExerciseItem.bestForCalisthenicsPullUps',
+                    '• Best for: Calisthenics (Pull-ups, Dips, Pushups) and core exercises.'
+                  )}
                 </p>
                 <p className="text-muted-foreground italic">
-                  • Example: Target 40 reps at bodyweight, Increment 3 reps →
-                  Next session targets 43 reps!
+                  {t(
+                    'exercises.sortableExerciseItem.exampleTarget40RepsAt',
+                    '• Example: Target 40 reps at bodyweight, Increment 3 reps → Next session targets 43 reps!'
+                  )}
                 </p>
               </div>
 
               <div className="p-3 rounded-lg border border-border/60 bg-muted/30 space-y-1.5">
                 <div className="font-semibold text-foreground text-xs flex items-center gap-1.5">
                   <span className="h-2 w-2 rounded-full bg-muted-foreground" />
-                  Manual (No Overload)
+                  {t(
+                    'exercises.sortableExerciseItem.manualNoOverload',
+                    'Manual (No Overload)'
+                  )}
                 </div>
                 <p className="text-muted-foreground">
-                  Disables automated overload math for warmups, deload weeks, or
-                  freeform sessions.
+                  {t(
+                    'exercises.sortableExerciseItem.disablesAutomatedOverloadMathFor',
+                    'Disables automated overload math for warmups, deload weeks, or freeform sessions.'
+                  )}
                 </p>
               </div>
             </div>
@@ -893,59 +1034,94 @@ export const SortableExerciseItem = ({
             {/* Input Fields Explained */}
             <div className="space-y-2 pt-2 border-t">
               <h4 className="font-bold text-sm text-primary uppercase tracking-wider">
-                2. Configuration Fields & Examples
+                {t(
+                  'exercises.sortableExerciseItem.n2ConfigurationFieldsExamples',
+                  '2. Configuration Fields & Examples'
+                )}
               </h4>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div className="p-2.5 rounded-lg border border-border/50 bg-background space-y-1">
                   <span className="font-semibold text-foreground">
-                    Rep Goal (Total)
+                    {t(
+                      'exercises.sortableExerciseItem.repGoalTotal',
+                      'Rep Goal (Total)'
+                    )}
                   </span>
                   <p className="text-muted-foreground">
-                    The total rep ceiling for the exercise.
+                    {t(
+                      'exercises.sortableExerciseItem.theTotalRepCeilingFor',
+                      'The total rep ceiling for the exercise.'
+                    )}
                   </p>
                   <p className="text-primary italic">
-                    Examples: 24 (for 3×8), 45 (for 3×15), 75 (for 5×15).
+                    {t(
+                      'exercises.sortableExerciseItem.examples24For38',
+                      'Examples: 24 (for 3×8), 45 (for 3×15), 75 (for 5×15).'
+                    )}
                   </p>
                 </div>
 
                 <div className="p-2.5 rounded-lg border border-border/50 bg-background space-y-1">
                   <span className="font-semibold text-foreground">
-                    Increment Amount
+                    {t(
+                      'exercises.sortableExerciseItem.incrementAmount',
+                      'Increment Amount'
+                    )}
                   </span>
                   <p className="text-muted-foreground">
-                    The weight or rep jump applied once the goal is hit.
+                    {t(
+                      'exercises.sortableExerciseItem.theWeightOrRepJump',
+                      'The weight or rep jump applied once the goal is hit.'
+                    )}
                   </p>
                   <p className="text-primary italic">
-                    Examples: +2.5 lbs (cables/micro-plates), +5.0 lbs
-                    (dumbbells), +10.0 lbs (deadlifts).
+                    {t(
+                      'exercises.sortableExerciseItem.examples25LbsCables',
+                      'Examples: +2.5 lbs (cables/micro-plates), +5.0 lbs (dumbbells), +10.0 lbs (deadlifts).'
+                    )}
                   </p>
                 </div>
 
                 <div className="p-2.5 rounded-lg border border-border/50 bg-background space-y-1">
                   <span className="font-semibold text-foreground">
-                    Equipment / Brand
+                    {t(
+                      'exercises.sortableExerciseItem.equipmentBrand',
+                      'Equipment / Brand'
+                    )}
                   </span>
                   <p className="text-muted-foreground">
-                    The machine or station branding. Leverages vary drastically
-                    between manufacturers.
+                    {t(
+                      'exercises.sortableExerciseItem.theMachineOrStationBranding',
+                      'The machine or station branding. Leverages vary drastically between manufacturers.'
+                    )}
                   </p>
                   <p className="text-primary italic">
-                    Examples: Hammer Strength, LifeFitness, Cable Stack,
-                    Dumbbell, Power Rack.
+                    {t(
+                      'exercises.sortableExerciseItem.examplesHammerStrengthLifeFitnessCable',
+                      'Examples: Hammer Strength, LifeFitness, Cable Stack, Dumbbell, Power Rack.'
+                    )}
                   </p>
                 </div>
 
                 <div className="p-2.5 rounded-lg border border-border/50 bg-background space-y-1">
                   <span className="font-semibold text-foreground">
-                    Exercise Notes / Cues
+                    {t(
+                      'exercises.sortableExerciseItem.exerciseNotesCues',
+                      'Exercise Notes / Cues'
+                    )}
                   </span>
                   <p className="text-muted-foreground">
-                    Equipment setup and form reminders.
+                    {t(
+                      'exercises.sortableExerciseItem.equipmentSetupAndFormReminders',
+                      'Equipment setup and form reminders.'
+                    )}
                   </p>
                   <p className="text-primary italic">
-                    Examples: Seat setting 4, pin 3, Wide grip, 2s pause at
-                    chest.
+                    {t(
+                      'exercises.sortableExerciseItem.examplesSeatSetting4Pin',
+                      'Examples: Seat setting 4, pin 3, Wide grip, 2s pause at chest.'
+                    )}
                   </p>
                 </div>
               </div>

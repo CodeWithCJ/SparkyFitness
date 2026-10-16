@@ -228,8 +228,11 @@ const EditGoalsForm = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
         <div className="space-y-1.5">
           <Label>
-            {t('goals.goalsSettings.calories', 'Calories')} (
-            {getEnergyUnitString(energyUnit)})
+            {t(
+              'goals.goalsSettings.calories2',
+              'Calories ({{energyUnitString}})',
+              { energyUnitString: getEnergyUnitString(energyUnit) }
+            )}
           </Label>
           <NumericInput
             id="calories"
@@ -301,41 +304,43 @@ const EditGoalsForm = ({
           <div
             className={`text-sm font-medium text-right ${isMacroValid ? 'text-green-600' : 'text-destructive'}`}
           >
-            {t('goals.mealDistribution.total', 'Total')}: {currentMacroTotal}%{' '}
+            {t('goals.goalsSettings.total', 'Total: {{currentMacroTotal}}%', {
+              currentMacroTotal,
+            })}{' '}
             {!isMacroValid && (
               <span>{`(${t('goals.mealDistribution.mustBe100', 'Must be 100% to save')})`}</span>
             )}
           </div>
           <div className="p-3 bg-muted/50 rounded-md text-xs text-muted-foreground grid grid-cols-3 gap-2">
             <span>
-              {t('goals.mealDistribution.protein', 'Protein:')}{' '}
-              {calculateGrams(
-                goals.calories,
-                goals.protein_percentage || 0,
-                'protein',
-                goals.dietary_fiber
-              )}
-              g
+              {t('goals.goalsSettings.proteinG', 'Protein: {{grams}}g', {
+                grams: calculateGrams(
+                  goals.calories,
+                  goals.protein_percentage || 0,
+                  'protein',
+                  goals.dietary_fiber
+                ),
+              })}
             </span>
             <span>
-              {t('goals.mealDistribution.carbs', 'Carbs:')}{' '}
-              {calculateGrams(
-                goals.calories,
-                goals.carbs_percentage || 0,
-                'carbs',
-                goals.dietary_fiber
-              )}
-              g
+              {t('goals.goalsSettings.carbsG', 'Carbs: {{grams}}g', {
+                grams: calculateGrams(
+                  goals.calories,
+                  goals.carbs_percentage || 0,
+                  'carbs',
+                  goals.dietary_fiber
+                ),
+              })}
             </span>
             <span>
-              {t('goals.mealDistribution.fat', 'Fat:')}{' '}
-              {calculateGrams(
-                goals.calories,
-                goals.fat_percentage || 0,
-                'fat',
-                goals.dietary_fiber
-              )}
-              g
+              {t('goals.goalsSettings.fatG', 'Fat: {{grams}}g', {
+                grams: calculateGrams(
+                  goals.calories,
+                  goals.fat_percentage || 0,
+                  'fat',
+                  goals.dietary_fiber
+                ),
+              })}
             </span>
           </div>
         </div>

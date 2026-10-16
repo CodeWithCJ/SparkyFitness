@@ -4,7 +4,9 @@ import { useToast } from '@/hooks/use-toast';
 import { CallbackStatus } from './CallbackStatus';
 import { usePolarFlowMutation } from '@/hooks/Integrations/useIntegrations';
 
+import { useTranslation } from 'react-i18next';
 const PolarCallback = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -21,8 +23,14 @@ const PolarCallback = () => {
       if (!code) {
         setMessage('Error: Missing Polar authorization code.');
         toast({
-          title: 'Polar OAuth Error',
-          description: 'Missing authorization code in callback.',
+          title: t(
+            'integrations.polarCallback.polarOAuthError',
+            'Polar OAuth Error'
+          ),
+          description: t(
+            'integrations.polarCallback.missingAuthorizationCodeInCallback',
+            'Missing authorization code in callback.'
+          ),
           variant: 'destructive',
         });
         setLoading(false);
@@ -45,7 +53,7 @@ const PolarCallback = () => {
     };
 
     processCallback();
-  }, [location, navigate, toast, linkPolarAccount]);
+  }, [location, navigate, toast, linkPolarAccount, t]);
 
   return <CallbackStatus loading={loading} message={message} />;
 };

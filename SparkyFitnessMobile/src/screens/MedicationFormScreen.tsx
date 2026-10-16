@@ -37,6 +37,7 @@ import { useSupplementLabelScan } from '../hooks/useSupplementLabelScan';
 import { prepareLabelPhoto } from '../utils/labelPhoto';
 import { useExternalProviders } from '../hooks/useExternalProviders';
 import {
+  GLP1_DRUG_PROFILES,
   SUPPLEMENT_LOOKUP_PROVIDER_TYPE,
   type SupplementLookupProduct,
 } from '@workspace/shared';
@@ -44,6 +45,7 @@ import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
 import Switch from '../components/ui/Switch';
 import type { RootStackScreenProps } from '../types/navigation';
+import { glp1FormDefaults, isAutofilledGlp1Name } from '../utils/glp1';
 import { medicationTypeLabel } from '../utils/medicationLocalization';
 import { formatLocalizedTimeOfDay } from '../utils/medicationScheduleLocalization';
 import { MEDICATION_TYPES } from '../types/medications';
@@ -73,6 +75,8 @@ interface FormState {
   pharmacy: string;
   notes: string;
   isActive: boolean;
+  isGlp1: boolean;
+  glp1Drug: string;
   isSupplement: boolean;
 }
 
@@ -88,6 +92,8 @@ const EMPTY_FORM: FormState = {
   pharmacy: '',
   notes: '',
   isActive: true,
+  isGlp1: false,
+  glp1Drug: '',
   isSupplement: false,
 };
 
@@ -142,6 +148,11 @@ function baseFromMed(
     pharmacy: existingMed.pharmacy ?? '',
     notes: existingMed.notes ?? '',
     isActive: existingMed.is_active,
+    isGlp1: existingMed.is_glp1,
+    glp1Drug:
+      typeof existingMed.custom_fields?.glp1_drug === 'string'
+        ? existingMed.custom_fields.glp1_drug
+        : '',
     isSupplement: existingMed.is_supplement ?? false,
   };
 }
@@ -428,6 +439,23 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
     []
   );
 
+  const handleGlp1DrugSelect = useCallback(
+    (drugId: string) => {
+      const defaults = glp1FormDefaults(drugId);
+      setEdits((prev) => {
+        const next = { ...prev, glp1Drug: drugId };
+        if (!defaults) return next;
+        const currentName = prev.name ?? form.name;
+        if (isAutofilledGlp1Name(currentName)) next.name = defaults.name;
+        next.typeId = defaults.typeId;
+        next.strengthUnit = defaults.strengthUnit;
+        next.doseUnit = defaults.doseUnit;
+        return next;
+      });
+    },
+    [form.name]
+  );
+
   const handleSupplementToggle = useCallback(
     (value: boolean) => {
       setEdits((prev) => {
@@ -568,6 +596,16 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
         prescriber: isSupplement ? null : form.prescriber.trim() || null,
         pharmacy: isSupplement ? null : form.pharmacy.trim() || null,
         notes: form.notes.trim() || null,
+        // GLP-1 is a medication-only flag; a supplement never carries it.
+        is_glp1: isSupplement ? false : form.isGlp1,
+        // Merge so keys web set on the medication survive an edit here.
+        custom_fields: {
+          ...(existingMed?.custom_fields ?? {}),
+          glp1_drug:
+            !isSupplement && form.isGlp1 && form.glp1Drug
+              ? form.glp1Drug
+              : undefined,
+        },
       };
 
       if (isEditing && medicationId) {
@@ -780,6 +818,15 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
         value: id as string,
       })),
     [isSupplement, t]
+  );
+
+  const glp1DrugOptions = useMemo(
+    () =>
+      Object.values(GLP1_DRUG_PROFILES).map((profile) => ({
+        label: profile.displayName,
+        value: profile.id,
+      })),
+    []
   );
 
   return (
@@ -1049,6 +1096,47 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
               />
             </View>
           </View>
+        )}
+
+        {!isSupplement && (
+          <>
+            <View className="flex-row justify-between items-center">
+              <Text className="text-base text-text-primary">
+                {t('medications.glp1.form.isGlp1', {
+                  defaultValue: 'GLP-1 medication',
+                })}
+              </Text>
+              <Switch
+                value={form.isGlp1}
+                onValueChange={(v) => updateField('isGlp1', v)}
+              />
+            </View>
+
+            {form.isGlp1 && (
+              <View className="gap-1.5">
+                <Text className="text-text-secondary text-sm font-medium">
+                  {t('medications.glp1.form.drug', { defaultValue: 'Drug' })}
+                </Text>
+                <BottomSheetPicker
+                  value={form.glp1Drug}
+                  options={glp1DrugOptions}
+                  onSelect={handleGlp1DrugSelect}
+                  placeholder={t('medications.glp1.form.drugPlaceholder', {
+                    defaultValue: 'Choose a drug',
+                  })}
+                  title={t('medications.glp1.form.drug', {
+                    defaultValue: 'Drug',
+                  })}
+                />
+                <Text className="text-xs text-text-muted">
+                  {t('medications.glp1.form.drugHelp', {
+                    defaultValue:
+                      'Used for the modeled level and rotation. Injection pens, the body map and inventory show for the Injection type.',
+                  })}
+                </Text>
+              </View>
+            )}
+          </>
         )}
 
         <View className="flex-row justify-between items-center">

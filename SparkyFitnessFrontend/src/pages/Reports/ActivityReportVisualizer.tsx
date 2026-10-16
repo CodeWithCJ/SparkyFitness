@@ -418,8 +418,8 @@ const ActivityReportVisualizer = ({
     }
   };
 
-  const getXAxisLabel = () => {
-    switch (effectiveXAxisMode) {
+  const getXAxisLabel = (mode: XAxisMode = effectiveXAxisMode) => {
+    switch (mode) {
       case 'activityDuration':
         return t('reports.activityReport.activityDurationMin');
       case 'distance':
@@ -478,6 +478,21 @@ const ActivityReportVisualizer = ({
             )}
           </p>
         )}
+        {paceData.length > 0 ? (
+          <ActivityPaceChart
+            data={paceData}
+            // Pace against distance reads best for a run or ride, so use it
+            // whenever the track has distance, whatever the full report shows.
+            xAxisMode={hasDistanceData ? 'distance' : effectiveXAxisMode}
+            getXAxisDataKey={() =>
+              hasDistanceData ? 'distance' : getXAxisDataKey()
+            }
+            getXAxisLabel={() =>
+              getXAxisLabel(hasDistanceData ? 'distance' : effectiveXAxisMode)
+            }
+            distanceUnit={distanceUnit}
+          />
+        ) : null}
         {heartRateData.length > 0 || workoutHrSeries.length > 0 ? (
           <ActivityHeartRateChart
             data={heartRateData.length > 0 ? heartRateData : workoutHrSeries}

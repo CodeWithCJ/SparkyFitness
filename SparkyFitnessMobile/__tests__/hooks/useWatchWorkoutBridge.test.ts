@@ -451,6 +451,105 @@ describe('useWatchWorkoutBridge', () => {
     expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
   });
 
+  it('un-logs the matching set and ignores a re-delivered transfer on onSetUncompleted', async () => {
+    renderHook(() => useWatchWorkoutBridge(true));
+    act(() => {
+      getStore().startWorkout(makeSession());
+    });
+    await act(async () => {
+      fire('onSetCompleted', {
+        clientId: 'client-1',
+        sessionId: 'session-1',
+        setId: '101',
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(getStore().completedSetIds['101']).toBeDefined();
+
+    await act(async () => {
+      fire('onSetUncompleted', {
+        clientId: 'client-2',
+        sessionId: 'session-1',
+        setId: '101',
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(getStore().completedSetIds['101']).toBeUndefined();
+
+    // Logged again on the phone; the same transfer arriving twice must not
+    // undo that second log.
+    act(() => {
+      getStore().completeSet('101', Date.now());
+    });
+    await act(async () => {
+      fire('onSetUncompleted', {
+        clientId: 'client-2',
+        sessionId: 'session-1',
+        setId: '101',
+      });
+      await Promise.resolve();
+    });
+    expect(getStore().completedSetIds['101']).toBeDefined();
+  });
+
+  it('applies an un-log that arrived before the set was logged', async () => {
+    renderHook(() => useWatchWorkoutBridge(true));
+    act(() => {
+      getStore().startWorkout(makeSession());
+    });
+
+    await act(async () => {
+      fire('onSetUncompleted', {
+        clientId: 'client-9',
+        sessionId: 'session-1',
+        setId: '101',
+      });
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fire('onSetCompleted', {
+        clientId: 'client-1',
+        sessionId: 'session-1',
+        setId: '101',
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(getStore().completedSetIds['101']).toBeDefined();
+
+    await act(async () => {
+      fire('onSetUncompleted', {
+        clientId: 'client-9',
+        sessionId: 'session-1',
+        setId: '101',
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(getStore().completedSetIds['101']).toBeUndefined();
+  });
+
+  it('ignores an un-log for a session that is not live', async () => {
+    renderHook(() => useWatchWorkoutBridge(true));
+    act(() => {
+      getStore().startWorkout(makeSession());
+      getStore().completeSet('101', Date.now());
+    });
+
+    await act(async () => {
+      fire('onSetUncompleted', {
+        clientId: 'client-3',
+        sessionId: 'some-other-session',
+        setId: '101',
+      });
+      await Promise.resolve();
+    });
+    expect(getStore().completedSetIds['101']).toBeDefined();
+  });
+
   it.each([
     ['inside the workout', 0, true],
     ['an hour before the workout began', -60 * 60_000, false],

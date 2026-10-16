@@ -42,6 +42,7 @@ import {
   scanLabelOnDevice,
 } from '../services/onDeviceLabelScan';
 import { prepareLabelPhoto } from '../utils/labelPhoto';
+import { downscaleFoodPhoto } from '../utils/pickImage';
 import {
   rememberLabelScan,
   type LabelScanSource,
@@ -54,6 +55,7 @@ import {
   hasSeenFoodPhotoIntro,
   markFoodPhotoIntroSeen,
 } from '../services/foodPhotoIntro';
+import { addLog } from '../services/LogService';
 
 type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
 
@@ -89,13 +91,28 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   const [flashlight, setFlashlight] = useState(false);
   const scanLock = useRef(false);
   const pickerLock = useRef(false);
+  const labelRequestLock = useRef(false);
+  const labelScanActive = useRef(true);
+  useEffect(() => {
+    labelScanActive.current = true;
+    return () => {
+      labelScanActive.current = false;
+    };
+  }, []);
   const params = route.params;
   const captureParams = params?.mode === 'capture-barcode' ? params : undefined;
-  const lookupParams = params?.mode === 'capture-barcode' ? undefined : params;
+  const labelCaptureParams =
+    params?.mode === 'capture-label' ? params : undefined;
+  const lookupParams =
+    params?.mode === 'capture-barcode' || params?.mode === 'capture-label'
+      ? undefined
+      : params;
   const isCaptureBarcodeMode = !!captureParams;
+  const isCaptureLabelMode = !!labelCaptureParams;
   const captureReturnKey = captureParams?.returnKey;
   const mealTypeId = lookupParams?.mealTypeId;
   const [scanMode, setScanMode] = useState<ScanMode>(() => {
+    if (isCaptureLabelMode) return 'label';
     if (isCaptureBarcodeMode) {
       // Capture-only mode: lock to barcode regardless of any other params.
       return 'barcode';
@@ -144,6 +161,14 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   // in-progress multi-select basket. capture-barcode mode is barcode-only.
   const isBasketOriginScan = pickerMode === 'log-entry' && returnDepth != null;
   const scanSegments = useMemo(() => {
+    if (isCaptureLabelMode) {
+      return [
+        {
+          key: 'label' as const,
+          label: t('foodScan.segment.label', { defaultValue: 'Label' }),
+        },
+      ];
+    }
     if (isCaptureBarcodeMode) {
       return SCAN_SEGMENTS.filter((key) => key === 'barcode').map((key) => ({
         key,
@@ -163,7 +188,13 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
             ? t('foodScan.segment.label', { defaultValue: 'Label' })
             : t('foodScan.segment.photo', { defaultValue: 'Photo' }),
     }));
-  }, [isCaptureBarcodeMode, isSelectionMode, isBasketOriginScan, t]);
+  }, [
+    isCaptureBarcodeMode,
+    isCaptureLabelMode,
+    isSelectionMode,
+    isBasketOriginScan,
+    t,
+  ]);
 
   const aiSettingQuery = useActiveAiServiceSetting({
     // Skip the AI gating fetch in capture-barcode mode — Photo segment is
@@ -242,6 +273,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
           cholesterol: defaultVariant.cholesterol,
           vitaminA: defaultVariant.vitamin_a,
           vitaminC: defaultVariant.vitamin_c,
+          allergens: defaultVariant.allergens ?? null,
+          traces: defaultVariant.traces ?? null,
           variantId: defaultVariant.id,
           source: 'local',
           provider_verified: result.food.provider_verified,
@@ -301,6 +334,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
           cholesterol: displayVariant.cholesterol,
           vitaminA: displayVariant.vitamin_a,
           vitaminC: displayVariant.vitamin_c,
+          allergens: displayVariant.allergens ?? null,
+          traces: displayVariant.traces ?? null,
           variantId: displayVariant.id,
           source: 'external',
           provider_verified: result.food.provider_verified,
@@ -401,6 +436,17 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
     await performBarcodeLookup(barcode);
   };
 
+  const returnToLabelEditor = () => {
+    if (
+      !isCaptureLabelMode ||
+      !labelScanActive.current ||
+      !navigation.isFocused()
+    )
+      return;
+    labelScanActive.current = false;
+    navigation.goBack();
+  };
+
   // Both label paths share one shape: get an image (system camera or library),
   // let the user crop it to the label with the system editor's adjustable
   // handles, downscale (`prepareLabelPhoto`), scan. Vision models misread labels
@@ -416,7 +462,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
         quality: 1,
         base64: true,
       });
-      if (result.canceled) return;
+      if (result.canceled) {
+        returnToLabelEditor();
+        return;
+      }
       const asset = result.assets?.[0];
       if (!asset?.uri) {
         Toast.show({
@@ -426,6 +475,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
             defaultValue: 'Failed to capture photo.',
           }),
         });
+        returnToLabelEditor();
         return;
       }
       const prepared = await prepareLabelPhoto(asset);
@@ -437,10 +487,15 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
             defaultValue: 'Failed to process photo.',
           }),
         });
+        returnToLabelEditor();
         return;
       }
       setCapturedPhoto(prepared);
-    } catch {
+    } catch (error) {
+      addLog(
+        `[Food Scan] Label camera capture failed: ${error instanceof Error ? error.message : String(error)}`,
+        'ERROR'
+      );
       Toast.show({
         type: 'error',
         text1: t('common.error', { defaultValue: 'Error' }),
@@ -448,6 +503,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
           defaultValue: 'Failed to capture photo.',
         }),
       });
+      returnToLabelEditor();
     } finally {
       pickerLock.current = false;
     }
@@ -466,7 +522,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
         base64: true,
         allowsMultipleSelection: false,
       });
-      if (result.canceled) return;
+      if (result.canceled) {
+        returnToLabelEditor();
+        return;
+      }
       const asset = result.assets?.[0];
       if (!asset?.uri) {
         Toast.show({
@@ -476,6 +535,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
             defaultValue: 'No photo returned by picker.',
           }),
         });
+        returnToLabelEditor();
         return;
       }
       const prepared = await prepareLabelPhoto(asset);
@@ -487,31 +547,56 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
             defaultValue: 'Failed to process photo.',
           }),
         });
+        returnToLabelEditor();
         return;
       }
       setCapturedPhoto(prepared);
-    } catch {
-      const msg = t('foodScan.errors.loadPhoto', {
-        defaultValue: 'Failed to load photo.',
-      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[Food Scan] Label pick from library failed: ${message}`, 'ERROR');
+      const isLauncherError = message.includes(
+        'unregistered ActivityResultLauncher'
+      );
       Toast.show({
         type: 'error',
         text1: t('common.error', { defaultValue: 'Error' }),
-        text2: msg,
+        text2: isLauncherError
+          ? t('foodScan.errors.restartApp', {
+              defaultValue: 'Unable to open gallery. Please restart the app.',
+            })
+          : t('foodScan.errors.loadPhoto', {
+              defaultValue: 'Failed to load photo.',
+            }),
       });
+      returnToLabelEditor();
     } finally {
       pickerLock.current = false;
     }
   };
 
   const handleUsePhoto = async () => {
-    if (!capturedPhoto) return;
+    if (!capturedPhoto || labelRequestLock.current) return;
+    labelRequestLock.current = true;
     setLabelProcessing(true);
     try {
       const onDeviceResult = await scanLabelOnDevice(capturedPhoto.base64);
       const result =
         onDeviceResult ??
         (await scanNutritionLabel(capturedPhoto.base64, 'image/jpeg'));
+      if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error('Invalid nutrition label result');
+      }
+      if (labelCaptureParams) {
+        if (!labelScanActive.current || !navigation.isFocused()) return;
+        navigation.dispatch({
+          ...CommonActions.setParams({
+            pendingNutritionLabelScan: { result, nonce: Date.now() },
+          }),
+          source: labelCaptureParams.returnKey,
+        });
+        navigation.goBack();
+        return;
+      }
       const source: LabelScanSource = onDeviceResult ? 'device' : 'server';
       rememberLabelScan(capturedPhoto.base64, source);
       // The toast survives the navigation below, so it shows on the form. The
@@ -542,6 +627,11 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
         })
       );
     } catch {
+      if (
+        isCaptureLabelMode &&
+        (!labelScanActive.current || !navigation.isFocused())
+      )
+        return;
       Toast.show({
         type: 'error',
         text1: t('common.error', { defaultValue: 'Error' }),
@@ -549,7 +639,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
           defaultValue: 'Failed to analyze nutrition label. Please try again.',
         }),
       });
+      returnToLabelEditor();
     } finally {
+      labelRequestLock.current = false;
       setLabelProcessing(false);
     }
   };
@@ -643,13 +735,14 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
         });
         return;
       }
+      const prepared = await downscaleFoodPhoto(photo).catch(() => photo);
       // Mark seen even if user retakes — the intro shouldn't reappear later.
       await markFoodPhotoIntroSeen();
       navigation.replace('FoodPhotoFlow', {
         screen: 'Improve',
         params: {
           date,
-          photo: { uri: photo.uri },
+          photo: { uri: prepared.uri },
           mealTypeId: mealTypeId ?? undefined,
         },
       });
@@ -686,23 +779,32 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
         });
         return;
       }
+      const prepared = await downscaleFoodPhoto(asset).catch(() => asset);
       await markFoodPhotoIntroSeen();
       navigation.replace('FoodPhotoFlow', {
         screen: 'Improve',
         params: {
           date,
-          photo: { uri: asset.uri },
+          photo: { uri: prepared.uri },
           mealTypeId: mealTypeId ?? undefined,
         },
       });
-    } catch {
-      const msg = t('foodScan.errors.loadPhoto', {
-        defaultValue: 'Failed to load photo.',
-      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(`[Food Scan] Photo pick from library failed: ${message}`, 'ERROR');
+      const isLauncherError = message.includes(
+        'unregistered ActivityResultLauncher'
+      );
       Toast.show({
         type: 'error',
         text1: t('common.error', { defaultValue: 'Error' }),
-        text2: msg,
+        text2: isLauncherError
+          ? t('foodScan.errors.restartApp', {
+              defaultValue: 'Unable to open gallery. Please restart the app.',
+            })
+          : t('foodScan.errors.loadPhoto', {
+              defaultValue: 'Failed to load photo.',
+            }),
       });
     } finally {
       pickerLock.current = false;
@@ -849,7 +951,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
         style={{ top: Platform.OS === 'android' ? insets.top + 8 : 16 }}
       >
         <TouchableOpacity
-          onPress={() => navigation.goBack()}
+          onPress={() => {
+            labelScanActive.current = false;
+            navigation.goBack();
+          }}
           accessibilityRole="button"
           accessibilityLabel={t('foodScan.accessibility.back', {
             defaultValue: 'Go back',

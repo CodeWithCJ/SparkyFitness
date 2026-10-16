@@ -21,7 +21,25 @@ enum Haptics {
         play(.success)
     }
 
-    /// Only ever called from button actions, which run on the main actor.
+    /// An interval plan moved to its next step. Two firm taps so it reads on
+    /// a moving wrist, and differs from a button press.
+    static func step() {
+        play(.notification)
+    }
+
+    /// The pace has left the wearer's range. Down means ease off, up means
+    /// speed up, so it can be read without looking.
+    static func pace(tooFast: Bool) {
+        play(tooFast ? .directionDown : .directionUp)
+    }
+
+    /// The heart rate has left the wearer's range. Down means ease off, up
+    /// means speed up, the same as the pace alert's taps.
+    static func heartRate(tooHigh: Bool) {
+        play(tooHigh ? .directionDown : .directionUp)
+    }
+
+    /// Called from button actions and the recording store, which run on the main actor.
     private static func play(_ type: WKHapticType) {
         MainActor.assumeIsolated {
             guard CheckInStore.shared.context.effectiveHapticsEnabled else { return }

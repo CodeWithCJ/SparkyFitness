@@ -112,7 +112,9 @@ const SleepNeedBreakdown: React.FC<SleepNeedBreakdownProps> = ({ data }) => {
         {/* Summary */}
         <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
           <span className="capitalize">
-            {t('sleepScience.method', 'Method')}: {data.method}
+            {t('sleepScience.method2', 'Method: {{method}}', {
+              method: data.method,
+            })}
           </span>
           <span className="capitalize px-2 py-0.5 rounded bg-muted">
             {data.confidence}

@@ -10,6 +10,13 @@ import type {
   UpdateMedicationEntryInput,
   CreateScheduleInput,
   UpdateScheduleInput,
+  MedicationPen,
+  InjectionEntry,
+  LogInjectionInput,
+  TitrationStep,
+  UpdateTitrationStepInput,
+  SerumCurveResponse,
+  SiteSuggestionResponse,
   SupplementLabelExtraction,
   SupplementLookupResponse,
 } from '@workspace/shared';
@@ -192,4 +199,140 @@ export const deleteEntry = (id: string): Promise<void> =>
     serviceName: SERVICE_NAME,
     operation: 'delete entry',
     method: 'DELETE',
+  });
+
+// --- GLP-1: pens / vials ---------------------------------------------------
+
+export const listPens = async (
+  medicationId: string
+): Promise<MedicationPen[]> =>
+  (await apiFetch<MedicationPen[] | null>({
+    endpoint: `/api/v2/medications/${medicationId}/pens`,
+    serviceName: SERVICE_NAME,
+    operation: 'list pens',
+  })) ?? [];
+
+export const createPen = (
+  medicationId: string,
+  body: Partial<Omit<MedicationPen, 'id' | 'medication_id' | 'doses_used'>>
+): Promise<MedicationPen> =>
+  apiFetch<MedicationPen>({
+    endpoint: `/api/v2/medications/${medicationId}/pens`,
+    serviceName: SERVICE_NAME,
+    operation: 'create pen',
+    method: 'POST',
+    body,
+  });
+
+export const updatePen = (
+  id: string,
+  body: Partial<Omit<MedicationPen, 'id' | 'medication_id'>>
+): Promise<MedicationPen> =>
+  apiFetch<MedicationPen>({
+    endpoint: `/api/v2/medications/pens/${id}`,
+    serviceName: SERVICE_NAME,
+    operation: 'update pen',
+    method: 'PUT',
+    body,
+  });
+
+export const deletePen = (id: string): Promise<void> =>
+  apiFetch<void>({
+    endpoint: `/api/v2/medications/pens/${id}`,
+    serviceName: SERVICE_NAME,
+    operation: 'delete pen',
+    method: 'DELETE',
+  });
+
+// --- GLP-1: injections -----------------------------------------------------
+
+export const listInjections = async (
+  medicationId: string
+): Promise<InjectionEntry[]> =>
+  (await apiFetch<InjectionEntry[] | null>({
+    endpoint: `/api/v2/medications/${medicationId}/injections`,
+    serviceName: SERVICE_NAME,
+    operation: 'list injections',
+  })) ?? [];
+
+export const logInjection = (
+  body: LogInjectionInput
+): Promise<InjectionEntry & { pen: MedicationPen | null }> =>
+  apiFetch<InjectionEntry & { pen: MedicationPen | null }>({
+    endpoint: '/api/v2/medications/injections',
+    serviceName: SERVICE_NAME,
+    operation: 'log injection',
+    method: 'POST',
+    body,
+  });
+
+export const deleteInjection = (id: string): Promise<void> =>
+  apiFetch<void>({
+    endpoint: `/api/v2/medications/injections/${id}`,
+    serviceName: SERVICE_NAME,
+    operation: 'delete injection',
+    method: 'DELETE',
+  });
+
+// --- GLP-1: titration ------------------------------------------------------
+
+export const listTitration = async (
+  medicationId: string
+): Promise<TitrationStep[]> =>
+  (await apiFetch<TitrationStep[] | null>({
+    endpoint: `/api/v2/medications/${medicationId}/titration`,
+    serviceName: SERVICE_NAME,
+    operation: 'list titration',
+  })) ?? [];
+
+export const createTitrationStep = (
+  medicationId: string,
+  body: UpdateTitrationStepInput & { dose_mg: number }
+): Promise<TitrationStep> =>
+  apiFetch<TitrationStep>({
+    endpoint: `/api/v2/medications/${medicationId}/titration`,
+    serviceName: SERVICE_NAME,
+    operation: 'create titration step',
+    method: 'POST',
+    body,
+  });
+
+export const updateTitrationStep = (
+  id: string,
+  body: UpdateTitrationStepInput
+): Promise<TitrationStep> =>
+  apiFetch<TitrationStep>({
+    endpoint: `/api/v2/medications/titration/${id}`,
+    serviceName: SERVICE_NAME,
+    operation: 'update titration step',
+    method: 'PUT',
+    body,
+  });
+
+export const deleteTitrationStep = (id: string): Promise<void> =>
+  apiFetch<void>({
+    endpoint: `/api/v2/medications/titration/${id}`,
+    serviceName: SERVICE_NAME,
+    operation: 'delete titration step',
+    method: 'DELETE',
+  });
+
+// --- GLP-1: modeled serum level and site rotation --------------------------
+
+export const getSerumCurve = (
+  medicationId: string
+): Promise<SerumCurveResponse> =>
+  apiFetch<SerumCurveResponse>({
+    endpoint: `/api/v2/medications/${medicationId}/glp1/serum-curve`,
+    serviceName: SERVICE_NAME,
+    operation: 'get serum curve',
+  });
+
+export const getSiteSuggestion = (
+  medicationId: string
+): Promise<SiteSuggestionResponse> =>
+  apiFetch<SiteSuggestionResponse>({
+    endpoint: `/api/v2/medications/${medicationId}/glp1/site-suggestion`,
+    serviceName: SERVICE_NAME,
+    operation: 'get site suggestion',
   });

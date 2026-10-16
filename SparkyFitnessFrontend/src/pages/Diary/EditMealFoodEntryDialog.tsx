@@ -11,6 +11,7 @@ import FoodEntryImageOverride from './FoodEntryImageOverride';
 import { useEntryImageDraft } from '@/hooks/Diary/useEntryImageDraft';
 import type { FoodEntryMeal, MealFood } from '@/types/meal';
 
+import { useTranslation } from 'react-i18next';
 interface EditMealFoodEntryDialogProps {
   foodEntry: FoodEntryMeal;
   open: boolean;
@@ -22,6 +23,7 @@ const EditMealFoodEntryDialog = ({
   open,
   onOpenChange,
 }: EditMealFoodEntryDialogProps) => {
+  const { t } = useTranslation();
   // Pre-unscale component quantities synchronously using the entry's snapshotted
   // yield so MealBuilder mounts directly with the whole-dish recipe amounts
   // (preventing visual flicker between consumed and whole-dish amounts while the
@@ -66,13 +68,24 @@ const EditMealFoodEntryDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Logged Meal: {foodEntry?.name}</DialogTitle>{' '}
+          <DialogTitle>
+            {t(
+              'diary.editMealFoodEntryDialog.editLoggedMeal2',
+              'Edit Logged Meal: {{name}}',
+              { name: foodEntry?.name }
+            )}
+          </DialogTitle>{' '}
           <DialogDescription>
-            Modify the foods and quantities for this specific logged meal entry.
+            {t(
+              'diary.editMealFoodEntryDialog.modifyTheFoodsAndQuantities',
+              'Modify the foods and quantities for this specific logged meal entry.'
+            )}
           </DialogDescription>
           <p className="text-sm text-blue-500 mt-2">
-            Note: Changes made here will only affect this specific entry in your
-            food diary, not the master meal template.
+            {t(
+              'diary.editMealFoodEntryDialog.noteChangesMadeHereWill',
+              'Note: Changes made here will only affect this specific entry in your food diary, not the master meal template.'
+            )}
           </p>
         </DialogHeader>
         {/* Per-entry photo. Edits are staged and persisted on save, and only

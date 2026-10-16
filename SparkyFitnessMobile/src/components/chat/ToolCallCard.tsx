@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -13,6 +13,7 @@ import type { ToolCallMessagePart } from '@assistant-ui/react-native';
 import Icon from '../Icon';
 import MarkdownMessage from './MarkdownMessage';
 import { getToolDisplay, isLookupTool } from '../../constants/chat';
+import { syncAfterAssistantChange } from '../../services/runProgramService';
 
 /**
  * Generic collapsible card for a single tool call. The server's logging tools
@@ -69,6 +70,13 @@ export default function ToolCallCard({ part }: { part: ToolCallMessagePart }) {
   ]) as [string, string, string, string];
 
   const status = deriveStatus(part);
+  const finishedRunProgramCall =
+    part.toolName === 'sparky_manage_run_program' && status === 'complete';
+  // The assistant may have moved or paused the program: refresh what the Record
+  // screen and the weekly reminders are built from.
+  useEffect(() => {
+    if (finishedRunProgramCall) syncAfterAssistantChange(part.toolCallId);
+  }, [finishedRunProgramCall, part.toolCallId]);
   const { labelKey, defaultLabel, icon } = getToolDisplay(part.toolName);
   const label = getLocalizedToolLabel(t, labelKey, defaultLabel);
   const hasResult = part.result !== undefined;

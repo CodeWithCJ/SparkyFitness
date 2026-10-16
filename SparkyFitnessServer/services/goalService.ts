@@ -495,6 +495,7 @@ async function manageGoalTimeline(authenticatedUserId: string, goalData: any) {
       p_alcohol_g,
       p_target_exercise_calories_burned,
       p_target_exercise_duration_minutes,
+      p_target_steps,
       p_protein_percentage,
       p_carbs_percentage,
       p_fat_percentage,
@@ -626,6 +627,12 @@ async function manageGoalTimeline(authenticatedUserId: string, goalData: any) {
       target_exercise_duration_minutes: cleanNumber(
         p_target_exercise_duration_minutes
       ),
+      // Blank means "no steps goal", not 0; omitted (older client) leaves the
+      // stored goal alone.
+      target_steps:
+        p_target_steps === undefined
+          ? undefined
+          : cleanNumber(blankToNull(p_target_steps), true),
       protein_percentage: cleanNumber(p_protein_percentage, true),
       carbs_percentage: cleanNumber(p_carbs_percentage, true),
       fat_percentage: cleanNumber(p_fat_percentage, true),

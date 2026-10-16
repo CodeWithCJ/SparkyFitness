@@ -603,8 +603,11 @@ export default function SymptomsReport({
       {/* Printed for a clinician: the same episodes without the app around them. */}
       <div className="hidden print:block space-y-4 bg-white p-6 text-slate-900">
         <h1 className="text-xl font-bold">
-          {t('symptoms.report.printTitle', 'Symptom report')} · {startDate} –{' '}
-          {endDate}
+          {t(
+            'symptoms.report.symptomReport',
+            'Symptom report · {{startDate}} – {{endDate}}',
+            { startDate, endDate }
+          )}
         </h1>
         <p className="text-sm">
           {t(

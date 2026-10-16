@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   ShieldAlert,
   AlertCircle,
@@ -477,20 +477,46 @@ export default function SymptomHistoryCalendar({
           </div>
           <div className="flex gap-4 justify-center mt-4 text-[10px] text-muted-foreground">
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-muted/40 border"></span>{' '}
-              {t('medications.symptoms.clear', 'Clear')}
+              <Trans
+                i18nKey="medications.symptoms.clear2"
+                defaults={'<span></span> Clear'}
+                components={{
+                  span: <span className="h-3 w-3 rounded bg-muted/40 border" />,
+                }}
+              />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-green-500/20 border border-green-400"></span>{' '}
-              {t('medications.symptoms.mild', 'Mild (1-3)')}
+              <Trans
+                i18nKey="medications.symptoms.mild13"
+                defaults={'<span></span> Mild (1-3)'}
+                components={{
+                  span: (
+                    <span className="h-3 w-3 rounded bg-green-500/20 border border-green-400" />
+                  ),
+                }}
+              />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-amber-500/20 border border-amber-400"></span>{' '}
-              {t('medications.symptoms.moderate', 'Moderate (4-6)')}
+              <Trans
+                i18nKey="medications.symptoms.moderate46"
+                defaults={'<span></span> Moderate (4-6)'}
+                components={{
+                  span: (
+                    <span className="h-3 w-3 rounded bg-amber-500/20 border border-amber-400" />
+                  ),
+                }}
+              />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="h-3 w-3 rounded bg-red-500/20 border border-red-400"></span>{' '}
-              {t('medications.symptoms.severe', 'Severe (7-10)')}
+              <Trans
+                i18nKey="medications.symptoms.severe710"
+                defaults={'<span></span> Severe (7-10)'}
+                components={{
+                  span: (
+                    <span className="h-3 w-3 rounded bg-red-500/20 border border-red-400" />
+                  ),
+                }}
+              />
             </div>
           </div>
         </CardContent>

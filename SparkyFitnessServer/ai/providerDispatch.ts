@@ -1,5 +1,6 @@
 import undici from 'undici';
 import convert from 'heic-convert';
+import sharp from 'sharp';
 import { log } from '../config/logging.js';
 import {
   getDefaultModel,
@@ -84,6 +85,7 @@ export type DispatchErrorCategory =
   | 'custom_url_missing' // ollama/openai_compatible/custom require custom_url but it's absent/blank
   | 'private_network_forbidden' // custom URL resolved to a blocked internal/private address
   | 'unsupported_media' // e.g. HEIC sent to a provider that rejects it
+  | 'image_too_large' // image resolution/patches/dimensions exceeded provider limits
   | 'timeout'
   | 'upstream_error' // non-2xx, network failure, non-JSON body
   | 'refused' // explicit provider refusal / safety block
@@ -289,6 +291,67 @@ function sniffImageMime(head: Buffer): string | null {
   return null;
 }
 
+// Maximum pixel dimension (width or height) allowed for images dispatched to
+// AI vision services. OpenAI, Anthropic, and Gemini all recommend or enforce
+// images under 2048px (e.g. OpenAI's 30,000-patch limit and Claude's 1568px/8000px
+// bounds). Oversized camera shots (12-108 MP) are automatically downscaled while
+// preserving aspect ratio and EXIF orientation.
+const MAX_VISION_IMAGE_DIMENSION = 2048;
+
+async function downscaleImageForDispatch(
+  img: DispatchImage
+): Promise<DispatchImage> {
+  if (
+    !img.base64 ||
+    img.base64.length < 1024 ||
+    HEIC_MIME_TYPES.has(img.mimeType)
+  ) {
+    return img;
+  }
+
+  const maxDimension =
+    Number(process.env.TEST_MAX_VISION_IMAGE_DIMENSION) ||
+    MAX_VISION_IMAGE_DIMENSION;
+
+  try {
+    const inputBuf = Buffer.from(img.base64, 'base64');
+    const image = sharp(inputBuf);
+    const meta = await image.metadata();
+    const longEdge = Math.max(meta.width ?? 0, meta.height ?? 0);
+
+    if (longEdge > maxDimension && meta.width && meta.height) {
+      const startedAt = Date.now();
+      const resizedBuf = await sharp(inputBuf)
+        .rotate()
+        .resize({
+          width: maxDimension,
+          height: maxDimension,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .toBuffer();
+
+      log(
+        'info',
+        `providerDispatch: image downscaled (${meta.width}x${meta.height} -> long edge capped at ${maxDimension}) in ${Date.now() - startedAt}ms (${inputBuf.length}B -> ${resizedBuf.length}B)`
+      );
+
+      return {
+        base64: resizedBuf.toString('base64'),
+        mimeType: img.mimeType,
+      };
+    }
+  } catch (error) {
+    // If sharp cannot parse the buffer (e.g. test stub bytes), leave unchanged.
+    log(
+      'debug',
+      `providerDispatch: image downscale skipped: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
+
+  return img;
+}
+
 /**
  * Normalize each image for dispatch, trusting the actual bytes over the
  * client-declared mime type. Client mimes are unreliable — Android's photo
@@ -298,11 +361,12 @@ function sniffImageMime(head: Buffer): string | null {
  * every provider accepts) and pass everything else through with a corrected
  * mime. Only genuine HEIC that fails to decode is left as HEIC, so the caller
  * detects the leftover mime and fails loud with `unsupported_media`.
+ * Oversized images are subsequently downscaled to fit within vision provider limits.
  */
 async function normalizeImagesForDispatch(
   images: DispatchImage[]
 ): Promise<DispatchImage[]> {
-  return Promise.all(
+  const normalized = await Promise.all(
     images.map(async (img) => {
       // 48 bytes (64 base64 chars, a whole-quantum slice) covers every magic
       // number we check, including the HEIF `ftyp` brand at offset 8.
@@ -358,6 +422,8 @@ async function normalizeImagesForDispatch(
       }
     })
   );
+
+  return Promise.all(normalized.map(downscaleImageForDispatch));
 }
 
 function isBlank(value: string | undefined | null): boolean {
@@ -575,9 +641,16 @@ function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
       },
     };
   }
+  // DeepSeek's OpenAI-compatible endpoint supports JSON mode, not strict JSON Schema.
+  const isDeepSeek =
+    ctx.provider.service_type === 'openai_compatible' &&
+    /^https:\/\/(?:[^/]+\.)?deepseek\.com(?:[:/]|$)/i.test(
+      ctx.provider.custom_url ?? ''
+    );
   const useStrictSchema =
     ctx.jsonSchema !== undefined &&
-    STRICT_SCHEMA_PROVIDERS.has(ctx.provider.service_type);
+    STRICT_SCHEMA_PROVIDERS.has(ctx.provider.service_type) &&
+    !isDeepSeek;
   // `json_object` mode only guarantees syntactically valid JSON; the model
   // never sees the schema unless it is in the prompt, so embed it there.
   const prompt =
@@ -995,6 +1068,24 @@ function timeoutError(): DispatchFailure {
   };
 }
 
+function isImageSizeOrPatchLimitError(status: number, body: string): boolean {
+  if (status !== 400 && status !== 413) return false;
+  const lower = body.toLowerCase();
+  return (
+    lower.includes('patches after processing') ||
+    lower.includes('patch limit') ||
+    /exceeding the limit of \d+ patches/i.test(body) ||
+    /limit of \d+.*resize the image/i.test(body) ||
+    (lower.includes('resize the image') &&
+      (lower.includes('image') ||
+        lower.includes('patch') ||
+        lower.includes('resolution'))) ||
+    /image (?:dimensions?|resolution|size) exceeds?/i.test(body) ||
+    /image is too large/i.test(body) ||
+    /maximum image size exceeded/i.test(body)
+  );
+}
+
 async function readResponse(response: Response): Promise<HttpOutcome> {
   if (!response.ok) {
     let body = '';
@@ -1007,6 +1098,7 @@ async function readResponse(response: Response): Promise<HttpOutcome> {
     // user has to decode; say it in a sentence instead.
     const rejected = describeRejectedParam(response.status, body);
     let detail: string;
+    let category: DispatchErrorCategory = 'upstream_error';
     if (rejected) {
       detail = `The AI service rejected the '${rejected}' parameter for this model. ${truncateBody(body)}`;
     } else if (
@@ -1016,6 +1108,10 @@ async function readResponse(response: Response): Promise<HttpOutcome> {
     ) {
       detail =
         'Perplexity has retired the OpenAI-compatible Chat Completions API (/chat/completions) in favor of the Agent API (/v1/responses). Direct connections via OpenAI-compatible endpoints are not supported. Use OpenRouter with a Perplexity model (e.g., perplexity/sonar or perplexity/sonar-pro) instead.';
+    } else if (isImageSizeOrPatchLimitError(response.status, body)) {
+      category = 'image_too_large';
+      detail =
+        'The image is too large for AI analysis. Please try another photo.';
     } else {
       detail = `AI service returned status ${response.status}${
         body ? `: ${truncateBody(body)}` : ''
@@ -1024,7 +1120,7 @@ async function readResponse(response: Response): Promise<HttpOutcome> {
     return {
       error: {
         ok: false,
-        category: 'upstream_error',
+        category,
         status: response.status,
         detail,
       },

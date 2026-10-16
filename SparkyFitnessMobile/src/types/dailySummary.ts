@@ -28,6 +28,8 @@ export interface DailySummary {
   exerciseMinutes: number;
   exerciseMinutesGoal: number;
   exerciseCaloriesGoal: number;
+  /** The user's daily steps goal; 0 when none is set. */
+  stepsGoal: number;
   waterConsumed: number;
   waterGoal: number;
   /**

@@ -15,6 +15,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useCreateCustomNutrientMutation } from '@/hooks/Foods/useCustomNutrients';
 import { AliasChipInput } from './AliasChipInput';
 
+import { useTranslation } from 'react-i18next';
 interface CustomNutrientDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,6 +40,7 @@ export const CustomNutrientDialog = ({
   initialAliases = [],
   onCreated,
 }: CustomNutrientDialogProps) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { loadNutrientDisplayPreferences } = usePreferences();
   const { mutateAsync: createCustomNutrient, isPending } =
@@ -62,8 +64,11 @@ export const CustomNutrientDialog = ({
   const handleSave = async () => {
     if (!name.trim() || !unit.trim()) {
       toast({
-        title: 'Error',
-        description: 'Nutrient name and unit are required.',
+        title: t('common.error', 'Error'),
+        description: t(
+          'foods.customNutrientDialog.nutrientNameAndUnitAre',
+          'Nutrient name and unit are required.'
+        ),
         variant: 'destructive',
       });
       return;
@@ -77,14 +82,24 @@ export const CustomNutrientDialog = ({
       await loadNutrientDisplayPreferences();
       onCreated?.(name.trim(), unit.trim());
       toast({
-        title: 'Custom nutrient created',
-        description: `"${name.trim()}" was added.`,
+        title: t(
+          'foods.customNutrientDialog.customNutrientCreated',
+          'Custom nutrient created'
+        ),
+        description: t(
+          'foods.customNutrientDialog.nutrientAdded',
+          '"{{name}}" was added.',
+          { name: name.trim() }
+        ),
       });
       onOpenChange(false);
     } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to create custom nutrient. Please try again.',
+        title: t('common.error', 'Error'),
+        description: t(
+          'foods.customNutrientDialog.failedToCreateCustomNutrient',
+          'Failed to create custom nutrient. Please try again.'
+        ),
         variant: 'destructive',
       });
     }
@@ -94,46 +109,76 @@ export const CustomNutrientDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Custom Nutrient</DialogTitle>
+          <DialogTitle>
+            {t(
+              'foods.customNutrientDialog.addCustomNutrient',
+              'Add Custom Nutrient'
+            )}
+          </DialogTitle>
           <DialogDescription>
-            Set the display unit and the provider names (aliases) that should
-            import into this nutrient.
+            {t(
+              'foods.customNutrientDialog.setTheDisplayUnitAnd',
+              'Set the display unit and the provider names (aliases) that should import into this nutrient.'
+            )}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <Label htmlFor="customNutrientName">Nutrient Name</Label>
+            <Label htmlFor="customNutrientName">
+              {t('foods.customNutrientDialog.nutrientName', 'Nutrient Name')}
+            </Label>
             <Input
               id="customNutrientName"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Magnesium"
+              placeholder={t(
+                'foods.customNutrientDialog.eGMagnesium',
+                'e.g., Magnesium'
+              )}
             />
           </div>
           <div>
-            <Label htmlFor="customNutrientUnit">Unit</Label>
+            <Label htmlFor="customNutrientUnit">
+              {t('foods.customNutrientDialog.unit', 'Unit')}
+            </Label>
             <Input
               id="customNutrientUnit"
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
-              placeholder="e.g., mg, µg, IU"
+              placeholder={t(
+                'foods.customNutrientDialog.eGMgGIU',
+                'e.g., mg, µg, IU'
+              )}
             />
           </div>
           <div>
-            <Label>Provider aliases</Label>
+            <Label>
+              {t(
+                'foods.customNutrientDialog.providerAliases',
+                'Provider aliases'
+              )}
+            </Label>
             <AliasChipInput
               value={aliases}
               onChange={setAliases}
-              placeholder="Type a name, press Enter"
+              placeholder={t(
+                'foods.customNutrientDialog.typeANamePressEnter',
+                'Type a name, press Enter'
+              )}
             />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('common.cancel', 'Cancel')}
           </Button>
           <Button onClick={handleSave} disabled={isPending}>
-            {isPending ? 'Adding…' : 'Add Custom Nutrient'}
+            {isPending
+              ? t('foods.customNutrientDialog.adding', 'Adding…')
+              : t(
+                  'foods.customNutrientDialog.addCustomNutrient',
+                  'Add Custom Nutrient'
+                )}
           </Button>
         </DialogFooter>
       </DialogContent>

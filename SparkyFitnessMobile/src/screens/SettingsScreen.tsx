@@ -264,11 +264,29 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               {isConnected && (
                 <SettingsRow
                   icon="calorie-settings"
+                  title={t('settings.rows.goals', { defaultValue: 'Goals' })}
+                  onPress={() => navigation.navigate('Goals')}
+                  iconColor={catCalories}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
+                  icon="calorie-settings"
                   title={t('settings.rows.calories', {
                     defaultValue: 'Calories & BMR',
                   })}
                   onPress={() => navigation.navigate('CalorieSettings')}
                   iconColor={catCalories}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
+                  icon="microphone"
+                  title={t('voiceSettings.open', {
+                    defaultValue: 'Voice settings',
+                  })}
+                  onPress={() => navigation.navigate('ChatSettings')}
+                  iconColor={catBlue}
                 />
               )}
               {isConnected && (
@@ -303,6 +321,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   title={t('settings.rows.diary', { defaultValue: 'Diary' })}
                   onPress={() => navigation.navigate('DiarySettings')}
                   iconColor={catTeal}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
+                  icon="chart-bar"
+                  title={t('settings.rows.reports', {
+                    defaultValue: 'Reports',
+                  })}
+                  onPress={() => navigation.navigate('ReportsSettings')}
+                  iconColor={catBlue}
                 />
               )}
               {isConnected && (

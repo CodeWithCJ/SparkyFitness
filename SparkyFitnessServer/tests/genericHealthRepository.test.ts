@@ -170,7 +170,7 @@ describe('Generic Health & Workout Telemetry Repositories', () => {
 
     const delayedUpsertSql = String(mockQuery.mock.calls[1]?.[0]);
     expect(delayedUpsertSql).toMatch(
-      /total_calories = CASE[\s\S]*EXCLUDED\.total_calories IS NOT NULL[\s\S]*EXCLUDED\.total_calories_captured_at IS NOT NULL[\s\S]*daily_health_metrics\.total_calories_captured_at IS NULL[\s\S]*EXCLUDED\.total_calories_captured_at > daily_health_metrics\.total_calories_captured_at[\s\S]*THEN EXCLUDED\.total_calories[\s\S]*ELSE daily_health_metrics\.total_calories[\s\S]*END/
+      /total_calories = CASE[\s\S]*EXCLUDED\.total_calories IS NOT NULL[\s\S]*daily_health_metrics\.total_calories_captured_at IS NULL[\s\S]*EXCLUDED\.total_calories_captured_at > daily_health_metrics\.total_calories_captured_at[\s\S]*THEN EXCLUDED\.total_calories[\s\S]*ELSE daily_health_metrics\.total_calories[\s\S]*END/
     );
     expect(delayedUpsertSql).toMatch(
       /total_calories_captured_at = CASE[\s\S]*THEN EXCLUDED\.total_calories_captured_at[\s\S]*ELSE daily_health_metrics\.total_calories_captured_at[\s\S]*END/

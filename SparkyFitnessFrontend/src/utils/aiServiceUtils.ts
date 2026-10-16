@@ -39,6 +39,8 @@ export const requiresApiKey = (serviceType: string | undefined): boolean =>
   serviceType !== 'openai_compatible' &&
   serviceType !== 'custom';
 
+export { supportsVoiceTranscriptionServiceType } from '@workspace/shared';
+
 // The first entry in each list is the recommended default. OpenAI prioritizes
 // food/meal reasoning quality; cheaper models remain selectable. Keep the ordering,
 // since ServiceForm surfaces modelOptions[0] as the recommendation.

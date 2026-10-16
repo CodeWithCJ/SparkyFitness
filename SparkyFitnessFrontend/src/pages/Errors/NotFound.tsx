@@ -4,7 +4,9 @@ import { Home } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { error } from '@/utils/logging';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useTranslation } from 'react-i18next';
 const NotFound: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { loggingLevel } = usePreferences();
@@ -22,14 +24,17 @@ const NotFound: React.FC = () => {
       <div className="max-w-md">
         <h1 className="text-6xl font-bold mb-4 text-foreground">404</h1>
         <p className="text-xl text-muted-foreground mb-8">
-          Oops! Page not found or an unexpected error occurred.
+          {t(
+            'errors.notFound.oopsPageNotFoundOr',
+            'Oops! Page not found or an unexpected error occurred.'
+          )}
         </p>
         <Button
           onClick={() => navigate('/')}
           className="flex items-center gap-2 mx-auto"
         >
           <Home className="h-4 w-4" />
-          Return to Home
+          {t('errors.notFound.returnToHome', 'Return to Home')}
         </Button>
       </div>
     </div>

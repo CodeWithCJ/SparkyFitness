@@ -90,6 +90,83 @@ jest.mock('../../src/hooks/usePreferences', () => ({
 }));
 
 describe('FoodForm', () => {
+  it('merges a label into the live draft and submits the scanned precision', () => {
+    const onSubmit = jest.fn();
+    const initialValues = {
+      name: 'Yogurt',
+      brand: 'Original brand',
+      servingSize: '170',
+      servingUnit: 'g',
+      calories: '120',
+      protein: '10',
+      carbs: '8.23',
+      fat: '4',
+      fiber: '3',
+    };
+    const screen = render(
+      <FoodForm initialValues={initialValues} onSubmit={onSubmit} />
+    );
+    fireEvent.changeText(screen.getByDisplayValue('Yogurt'), 'My unsaved name');
+    fireEvent.changeText(
+      screen.getByDisplayValue('Original brand'),
+      'My unsaved brand'
+    );
+    const scan = {
+      result: {
+        name: 'Ignore me',
+        calories: 0,
+        protein: 12.345,
+        fiber: null,
+        serving_size: 100,
+      },
+      nonce: 1,
+    };
+    screen.rerender(
+      <FoodForm
+        initialValues={initialValues}
+        onSubmit={onSubmit}
+        nutritionLabelScan={scan}
+      />
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByText('Add Food'));
+    expect(onSubmit).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        name: 'My unsaved name',
+        brand: 'My unsaved brand',
+        servingSize: '100',
+        calories: '0',
+        protein: '12.345',
+        carbs: '8.23',
+        fat: '4',
+        fiber: '3',
+      })
+    );
+    fireEvent.changeText(screen.getByDisplayValue('12.3'), '17');
+    screen.rerender(
+      <FoodForm
+        initialValues={initialValues}
+        onSubmit={onSubmit}
+        nutritionLabelScan={scan}
+      />
+    );
+    fireEvent.press(screen.getByText('Add Food'));
+    expect(onSubmit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ protein: '17' })
+    );
+    screen.rerender(
+      <FoodForm
+        initialValues={initialValues}
+        onSubmit={onSubmit}
+        nutritionLabelScan={{ result: { protein: 0 }, nonce: 2 }}
+      />
+    );
+    fireEvent.press(screen.getByText('Add Food'));
+    expect(onSubmit).toHaveBeenLastCalledWith(
+      expect.objectContaining({ protein: '0' })
+    );
+  });
+
   beforeEach(() => {
     mockBottomSheetPicker.mockClear();
     mockFoodUnitSelectorSheet.mockClear();

@@ -779,6 +779,7 @@ const SUPPLEMENT_LABEL_ERROR_HTTP_STATUS: Record<
   custom_url_missing: 422,
   private_network_forbidden: 403,
   unsupported_media: 400,
+  image_too_large: 400,
   refused: 422,
   truncated: 422,
   no_content: 422,

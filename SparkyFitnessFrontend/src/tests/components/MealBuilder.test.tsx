@@ -4,25 +4,9 @@ import MealBuilder from '@/components/MealBuilder';
 import { renderWithClient } from '../test-utils';
 
 // Mock react-i18next
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, defaultValueOrOpts?: string | Record<string, unknown>) => {
-      if (typeof defaultValueOrOpts === 'string') return defaultValueOrOpts;
-      if (
-        defaultValueOrOpts &&
-        typeof defaultValueOrOpts === 'object' &&
-        'defaultValue' in defaultValueOrOpts
-      ) {
-        return defaultValueOrOpts['defaultValue'] as string;
-      }
-      return key;
-    },
-  }),
-  initReactI18next: {
-    type: '3rdParty',
-    init: () => {},
-  },
-}));
+jest.mock('react-i18next', () =>
+  jest.requireActual('@/tests/mocks/reactI18next')
+);
 
 // Mock contexts
 jest.mock('@/contexts/ActiveUserContext', () => ({

@@ -111,12 +111,22 @@ export default function Glp1RecentInjections({
                   '—'}
               </span>
               <span className="text-xs text-muted-foreground">
-                {inj.dose_mg ? `${inj.dose_mg} mg · ` : ''}
+                {inj.dose_mg
+                  ? t(
+                      'medications.glp1RecentInjections.mg',
+                      '{{dose_mg}} mg · ',
+                      { dose_mg: inj.dose_mg }
+                    )
+                  : ''}
                 {formatDate(inj.injected_at)}
               </span>
               {inj.notes && (
                 <span className="text-xs text-muted-foreground italic mt-0.5 block truncate">
-                  Note: {inj.notes}
+                  {t(
+                    'medications.glp1RecentInjections.note',
+                    'Note: {{notes}}',
+                    { notes: inj.notes }
+                  )}
                 </span>
               )}
             </div>
@@ -126,7 +136,10 @@ export default function Glp1RecentInjections({
                 size="icon"
                 className="h-7 w-7 text-muted-foreground"
                 onClick={() => openEdit(inj)}
-                aria-label="Edit injection entry"
+                aria-label={t(
+                  'medications.glp1RecentInjections.editInjectionEntry',
+                  'Edit injection entry'
+                )}
               >
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
@@ -136,7 +149,10 @@ export default function Glp1RecentInjections({
                 className="h-7 w-7 text-muted-foreground hover:text-destructive"
                 onClick={() => deleteInjMutation.mutate(inj.id)}
                 disabled={deleteInjMutation.isPending}
-                aria-label="Delete injection entry"
+                aria-label={t(
+                  'medications.glp1RecentInjections.deleteInjectionEntry',
+                  'Delete injection entry'
+                )}
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </Button>

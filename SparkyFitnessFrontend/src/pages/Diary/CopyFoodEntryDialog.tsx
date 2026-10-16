@@ -168,7 +168,7 @@ const CopyFoodEntryDialog = ({
                 <SelectContent>
                   {availableMealTypes?.length === 0 && (
                     <SelectItem value="loading" disabled>
-                      Loading...
+                      {t('common.loading', 'Loading...')}
                     </SelectItem>
                   )}
                   {availableMealTypes?.map((meal) => (

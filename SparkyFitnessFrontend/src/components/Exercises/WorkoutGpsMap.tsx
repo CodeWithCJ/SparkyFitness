@@ -11,6 +11,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Navigation, Mountain, Heart, Wind } from 'lucide-react';
 
+import { Trans, useTranslation } from 'react-i18next';
 interface WorkoutGpsMapProps {
   // The workout's trackpoint array (ExerciseEntryGpsPoints.points), not the
   // wrapping row -- callers pass `gpsData?.points`.
@@ -37,11 +38,15 @@ export const WorkoutGpsMap: React.FC<WorkoutGpsMapProps> = ({
   gpsPoints,
   isLoading,
 }) => {
+  const { t } = useTranslation();
   if (isLoading) {
     return (
       <div className="w-full h-80 bg-slate-900/40 border border-slate-800 rounded-xl p-4 animate-pulse flex items-center justify-center">
         <span className="text-slate-400 text-sm">
-          Loading workout GPS route...
+          {t(
+            'exercises.workoutGpsMap.loadingWorkoutGPSRoute',
+            'Loading workout GPS route...'
+          )}
         </span>
       </div>
     );
@@ -96,20 +101,36 @@ export const WorkoutGpsMap: React.FC<WorkoutGpsMapProps> = ({
         <div className="flex items-center gap-2">
           <Navigation className="h-5 w-5 text-teal-400" />
           <h3 className="text-base font-bold text-slate-100">
-            Workout GPS Route Map
+            {t(
+              'exercises.workoutGpsMap.workoutGPSRouteMap',
+              'Workout GPS Route Map'
+            )}
           </h3>
         </div>
         <div className="flex items-center gap-3 text-xs text-slate-400 font-mono">
           {!!avgHr && (
             <span className="text-rose-400">
               <Heart className="inline h-3.5 w-3.5 mr-1" />
-              {avgHr} avg bpm {maxHr ? `(${maxHr} max)` : ''}
+              {t(
+                'exercises.workoutGpsMap.avgBpm2',
+                '{{avgHr}} avg bpm {{maxHr}}',
+                {
+                  avgHr,
+                  maxHr: maxHr
+                    ? t('exercises.workoutGpsMap.max', '({{maxHr}} max)', {
+                        maxHr,
+                      })
+                    : '',
+                }
+              )}
             </span>
           )}
           {avgResp && (
             <span className="text-teal-400">
               <Wind className="inline h-3.5 w-3.5 mr-1" />
-              {avgResp} brpm
+              {t('exercises.workoutGpsMap.brpm', '{{avgResp}} brpm', {
+                avgResp,
+              })}
             </span>
           )}
           {minAlt != null && maxAlt != null && (
@@ -139,18 +160,34 @@ export const WorkoutGpsMap: React.FC<WorkoutGpsMapProps> = ({
           <Marker position={startPos} icon={startIcon}>
             <Popup>
               <div className="text-xs font-sans">
-                <strong>Start Point</strong>
-                <br />
-                Lat: {startPos[0].toFixed(5)}, Lon: {startPos[1].toFixed(5)}
+                <Trans
+                  i18nKey="exercises.workoutGpsMap.startPointLatLon"
+                  defaults={
+                    '<strong>Start Point</strong><br/>Lat: {{startPos}}, Lon: {{startPos2}}'
+                  }
+                  values={{
+                    startPos: startPos[0].toFixed(5),
+                    startPos2: startPos[1].toFixed(5),
+                  }}
+                  components={{ strong: <strong />, br: <br /> }}
+                />
               </div>
             </Popup>
           </Marker>
           <Marker position={endPos} icon={endIcon}>
             <Popup>
               <div className="text-xs font-sans">
-                <strong>Finish Point</strong>
-                <br />
-                Lat: {endPos[0].toFixed(5)}, Lon: {endPos[1].toFixed(5)}
+                <Trans
+                  i18nKey="exercises.workoutGpsMap.finishPointLatLon"
+                  defaults={
+                    '<strong>Finish Point</strong><br/>Lat: {{endPos}}, Lon: {{endPos2}}'
+                  }
+                  values={{
+                    endPos: endPos[0].toFixed(5),
+                    endPos2: endPos[1].toFixed(5),
+                  }}
+                  components={{ strong: <strong />, br: <br /> }}
+                />
               </div>
             </Popup>
           </Marker>

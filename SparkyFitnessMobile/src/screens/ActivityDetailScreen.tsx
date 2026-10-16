@@ -11,6 +11,8 @@ import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
 import SafeImage from '../components/SafeImage';
+import ProgramWorkoutBadge from '../components/recording/ProgramWorkoutBadge';
+import ShoePickerCard from '../components/ShoePickerCard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
@@ -726,8 +728,16 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </View>
 
+        {!isEditing && <ProgramWorkoutBadge entryId={session.id} />}
+
         {/* Stats grid */}
         {renderStatsGrid()}
+
+        {!isEditing && isCardioModality(modality) && (
+          <View className="mt-4">
+            <ShoePickerCard exerciseEntryId={session.id} />
+          </View>
+        )}
 
         {/* Sets section */}
         {isEditing ? (

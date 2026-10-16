@@ -2189,6 +2189,137 @@ export const customMeasurementHandler: HealthTypeHandler = {
   handleBatch: customMeasurementHandleBatch,
 };
 
+// ── Daily wearable summary readings ─────────────────────────────────────────
+
+// The Daily Wearable Health Summary reads resting heart rate and VO2 max from
+// daily_health_metrics. Health Connect and HealthKit deliver both as plain
+// records, so they only ever reached custom_measurements and the summary stayed
+// empty. Each record is still stored as a custom measurement exactly as before;
+// the latest valid reading per day and source is also copied onto that day's
+// daily_health_metrics row, the same way total_calories is.
+type DailySummaryColumn = 'resting_heart_rate' | 'vo2_max';
+
+function parseDailySummaryReading(rawValue: unknown): number | null {
+  const value =
+    typeof rawValue === 'number'
+      ? rawValue
+      : typeof rawValue === 'string' && rawValue.trim() !== ''
+        ? Number(rawValue)
+        : Number.NaN;
+  return Number.isFinite(value) ? value : null;
+}
+
+function createDailySummaryReadingHandler(
+  column: DailySummaryColumn,
+  bounds: { min: number; max: number; decimals: number }
+): HealthTypeHandler {
+  const scale = 10 ** bounds.decimals;
+  const handleBatch: HandleBatchFn = async (entries, ctx) => {
+    const outcomes = await customMeasurementHandleBatch(entries, ctx);
+
+    // One reading per day and source: the one taken last wins, whatever order
+    // the records arrived in.
+    const latest = new Map<
+      string,
+      {
+        parsedDate: string;
+        sourceProvider: string;
+        value: number;
+        takenAt: number;
+        indexes: number[];
+      }
+    >();
+    entries.forEach(({ entry, parsedDate, entryTimestamp }, i) => {
+      if (outcomes[i]?.status !== 'success') {
+        return;
+      }
+      const value = parseDailySummaryReading(entry.value);
+      if (value === null || value < bounds.min || value > bounds.max) {
+        log(
+          'info',
+          `healthDataHandlers: not copying ${entry?.type} ${entry?.value} for ${parsedDate} to the daily summary — outside ${bounds.min} to ${bounds.max}.`
+        );
+        return;
+      }
+      const sourceProvider = normalizeHealthSourceProvider(entry.source);
+      const key = `${parsedDate}|${sourceProvider}`;
+      const takenAt = Date.parse(entryTimestamp);
+      const current = latest.get(key);
+      if (!current) {
+        latest.set(key, {
+          parsedDate,
+          sourceProvider,
+          value,
+          takenAt,
+          indexes: [i],
+        });
+        return;
+      }
+      current.indexes.push(i);
+      if (!(takenAt < current.takenAt)) {
+        current.value = value;
+        current.takenAt = takenAt;
+      }
+    });
+
+    for (const reading of latest.values()) {
+      const value = Math.round(reading.value * scale) / scale;
+      try {
+        await genericHealthRepository.upsertDailyHealthMetrics(
+          String(ctx.userId),
+          String(ctx.actingUserId),
+          {
+            user_id: String(ctx.userId),
+            entry_date: reading.parsedDate,
+            source_provider: reading.sourceProvider,
+            ...(column === 'resting_heart_rate'
+              ? { resting_heart_rate: value }
+              : { vo2_max: value }),
+          }
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        for (const i of reading.indexes) {
+          outcomes[i] = {
+            status: 'error',
+            error: `Failed to update daily health metrics: ${message}`,
+          };
+        }
+      }
+    }
+    return outcomes;
+  };
+
+  return {
+    handle: async (entry, ctx) => {
+      const [outcome] = await handleBatch(
+        [
+          {
+            entry,
+            parsedDate: ctx.parsedDate,
+            entryTimestamp: ctx.entryTimestamp,
+            entryHour: ctx.entryHour,
+          },
+        ],
+        ctx
+      );
+      return outcome;
+    },
+    handleBatch,
+  };
+}
+
+const restingHeartRateHandler = createDailySummaryReadingHandler(
+  'resting_heart_rate',
+  { min: 20, max: 250, decimals: 0 }
+);
+
+const vo2MaxHandler = createDailySummaryReadingHandler('vo2_max', {
+  min: 10,
+  max: 100,
+  decimals: 1,
+});
+
 // ── Registry ────────────────────────────────────────────────────────────────
 
 // Handlers keyed by canonical type name.
@@ -2215,6 +2346,8 @@ export const HEALTH_TYPE_HANDLERS: Record<string, HealthTypeHandler> = {
   sleep_entry: sleepEntryHandler,
   Mood: moodHandler,
   MindfulnessSession: mindfulnessHandler,
+  resting_heart_rate: restingHeartRateHandler,
+  vo2_max: vo2MaxHandler,
 };
 
 // Lookup-only normalization of incoming type spellings to canonical handler
@@ -2244,6 +2377,8 @@ export const TYPE_ALIASES: Record<string, string> = {
   mindfulness_session: 'MindfulnessSession',
   mindfulness: 'MindfulnessSession',
   mindful: 'MindfulnessSession',
+  RestingHeartRate: 'resting_heart_rate',
+  Vo2Max: 'vo2_max',
 };
 
 /**

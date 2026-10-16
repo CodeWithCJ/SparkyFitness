@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,12 +23,15 @@ interface VitalsCardProps {
   pregnancyId: string;
   vitals: PregnancyVitals | null;
   date: string;
+  /** Current gestational week, shown beside the recommended weight gain range. */
+  week?: number;
 }
 
 export default function VitalsCard({
   pregnancyId: _pregnancyId,
   vitals,
   date,
+  week,
 }: VitalsCardProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -276,7 +279,10 @@ export default function VitalsCard({
               <Input
                 type="number"
                 step="0.1"
-                placeholder="Weight in kg"
+                placeholder={t(
+                  'pregnancy.vitalsCard.weightInKg',
+                  'Weight in kg'
+                )}
                 value={weightInput}
                 onChange={(e) => setWeightInput(e.target.value)}
                 className="h-8 text-xs max-w-[120px]"
@@ -301,14 +307,22 @@ export default function VitalsCard({
             <div className="flex flex-col gap-1.5">
               <div className="flex items-baseline gap-2">
                 <span className="text-xl font-bold">
-                  {vitals.latestWeight ? `${vitals.latestWeight} kg` : '-- kg'}
+                  {vitals.latestWeight
+                    ? `${vitals.latestWeight} kg`
+                    : t('pregnancy.vitalsCard.kg', '-- kg')}
                 </span>
                 {vitals.weightDelta != null && (
                   <span className="text-xs font-semibold text-muted-foreground">
-                    {vitals.weightDelta >= 0
-                      ? `+${vitals.weightDelta}`
-                      : vitals.weightDelta}{' '}
-                    kg {t('pregnancy.vitals.weight.sinceStart', 'since start')}
+                    {t(
+                      'pregnancy.vitals.kgSinceStart',
+                      '{{weightDelta}} kg since start',
+                      {
+                        weightDelta:
+                          vitals.weightDelta >= 0
+                            ? `+${vitals.weightDelta}`
+                            : vitals.weightDelta,
+                      }
+                    )}
                   </span>
                 )}
               </div>
@@ -316,18 +330,26 @@ export default function VitalsCard({
               {vitals.gainRange && (
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-muted/30 pt-2 text-xs">
                   <span className="text-muted-foreground">
-                    {t(
-                      'pregnancy.vitals.weight.iomRange',
-                      'IOM Range (Wk {{wk}}):',
-                      {
-                        wk: vitals.gainRange.lowKg
-                          ? Math.round(vitals.gainRange.lowKg)
-                          : 0, // Placeholder week just to translate
+                    <Trans
+                      i18nKey={
+                        week != null
+                          ? 'pregnancy.vitals.iomRangeWkKg'
+                          : 'pregnancy.vitals.iomRangeKg'
                       }
-                    )}{' '}
-                    <strong className="text-foreground">
-                      {vitals.gainRange.lowKg} – {vitals.gainRange.highKg} kg
-                    </strong>
+                      defaults={
+                        week != null
+                          ? 'IOM Range (Wk {{wk}}): <strong>{{lowKg}} – {{highKg}} kg</strong>'
+                          : 'IOM Range: <strong>{{lowKg}} – {{highKg}} kg</strong>'
+                      }
+                      values={{
+                        wk: week,
+                        lowKg: vitals.gainRange.lowKg,
+                        highKg: vitals.gainRange.highKg,
+                      }}
+                      components={{
+                        strong: <strong className="text-foreground" />,
+                      }}
+                    />
                   </span>
                   {getWeightGainBadge(vitals.weightGainStatus)}
                 </div>
@@ -389,7 +411,9 @@ export default function VitalsCard({
           ) : (
             <div className="flex items-baseline gap-2">
               <span className="text-xl font-bold">
-                {vitals.bpValue ? `${vitals.bpValue} mmHg` : '--/-- mmHg'}
+                {vitals.bpValue
+                  ? `${vitals.bpValue} mmHg`
+                  : t('pregnancy.vitalsCard.mmHg', '--/-- mmHg')}
               </span>
             </div>
           )}

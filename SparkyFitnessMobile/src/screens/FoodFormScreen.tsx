@@ -16,7 +16,13 @@ const FoodFormScreen: React.FC<FoodFormScreenProps> = ({
     );
   }
   if (route.params.mode === 'edit-food') {
-    return <EditFoodMode params={route.params} navigation={navigation} />;
+    return (
+      <EditFoodMode
+        params={route.params}
+        navigation={navigation}
+        routeKey={route.key}
+      />
+    );
   }
   return (
     <CreateFoodMode

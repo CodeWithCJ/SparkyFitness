@@ -190,6 +190,7 @@ describe('POST /food-crud/estimate-food-photo', () => {
   });
 
   it.each([
+    ['IMAGE_TOO_LARGE', 400],
     ['NO_AI_CONFIGURED', 422],
     ['UNSUPPORTED_PROVIDER', 422],
     ['API_KEY_MISSING', 422],

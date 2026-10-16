@@ -43,7 +43,11 @@ export const NutrientGrid = ({
             return (
               <div key="calories">
                 <Label className="text-sm">
-                  Calories ({getEnergyUnitString(energyUnit)})
+                  {t(
+                    'diary.nutrientsGrid.calories2',
+                    'Calories ({{energyUnitString}})',
+                    { energyUnitString: getEnergyUnitString(energyUnit) }
+                  )}
                 </Label>
                 <div className="text-lg font-medium">
                   {Math.round(
@@ -92,7 +96,11 @@ export const NutrientGrid = ({
       {baseVariant && (
         <div className="bg-muted p-4 rounded-lg mt-4">
           <h4 className="font-medium mb-2">
-            Base Values (per {formatServingLabel(baseVariant)}):
+            {t(
+              'diary.nutrientsGrid.baseValuesPer2',
+              'Base Values (per {{baseVariant}}):',
+              { baseVariant: formatServingLabel(baseVariant) }
+            )}
           </h4>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
@@ -101,9 +109,21 @@ export const NutrientGrid = ({
               )}{' '}
               {getEnergyUnitString(energyUnit)}
             </div>
-            <div>{baseVariant.protein || 0}g protein</div>
-            <div>{baseVariant.carbs || 0}g carbs</div>
-            <div>{baseVariant.fat || 0}g fat</div>
+            <div>
+              {t('diary.nutrientsGrid.gProtein2', '{{protein}}g protein', {
+                protein: baseVariant.protein || 0,
+              })}
+            </div>
+            <div>
+              {t('diary.nutrientsGrid.gCarbs2', '{{carbs}}g carbs', {
+                carbs: baseVariant.carbs || 0,
+              })}
+            </div>
+            <div>
+              {t('diary.nutrientsGrid.gFat2', '{{fat}}g fat', {
+                fat: baseVariant.fat || 0,
+              })}
+            </div>
           </div>
         </div>
       )}

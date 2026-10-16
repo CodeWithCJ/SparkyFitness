@@ -14,6 +14,7 @@ export const HEALTH_TREND_KEYS = [
   'sleep',
   'hydration',
   'calories',
+  'vo2max',
 ] as const;
 
 export type HealthTrendKey = (typeof HEALTH_TREND_KEYS)[number];
@@ -36,4 +37,5 @@ export const HEALTH_TREND_LABELS: Record<
   sleep: (t) => t('charts.sleep.title', { defaultValue: 'Sleep' }),
   hydration: (t) => t('charts.hydration.title', { defaultValue: 'Hydration' }),
   calories: (t) => t('charts.calories.title', { defaultValue: 'Calories' }),
+  vo2max: (t) => t('charts.vo2max.title', { defaultValue: 'VO2 max' }),
 };

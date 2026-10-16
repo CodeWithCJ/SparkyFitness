@@ -280,6 +280,9 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
             ):
                 steps_value = None
                 summary_data = None
+                # Stamped before the fetch so request-start order wins at the
+                # Node side's total_calories upsert gate.
+                summary_captured_at = datetime.now(timezone.utc)
                 try:
                     summary_data = garmin.get_user_summary(current_date)
                     logger.info(
@@ -413,6 +416,9 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                     "total_calories": total_kcal,
                                     "active_calories": active_kcal,
                                     "bmr_calories": bmr_kcal,
+                                    "captured_at": summary_captured_at.isoformat(
+                                        timespec="milliseconds"
+                                    ),
                                     "resting_heart_rate": resting_hr,
                                     "avg_stress_level": avg_stress,
                                     "max_stress_level": max_stress,

@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
+import { useTranslation } from 'react-i18next';
 const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -33,6 +34,7 @@ const DialogContent = React.forwardRef<
     requireConfirmation?: boolean;
   }
 >(({ className, children, requireConfirmation = false, ...props }, ref) => {
+  const { t } = useTranslation();
   const [showConfirm, setShowConfirm] = React.useState(false);
   const hiddenCloseRef = React.useRef<HTMLButtonElement>(null);
 
@@ -71,12 +73,12 @@ const DialogContent = React.forwardRef<
             className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
           >
             <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{t('common.close', 'Close')}</span>
           </button>
         ) : (
           <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
             <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{t('common.close', 'Close')}</span>
           </DialogPrimitive.Close>
         )}
 
@@ -90,11 +92,13 @@ const DialogContent = React.forwardRef<
             <DialogPrimitive.Content className="dialog-viewport-fit fixed left-[50%] top-[50%] z-[60] grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
               <div className="flex flex-col space-y-1.5 text-center sm:text-left">
                 <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
-                  Close Window
+                  {t('ui.dialog.closeWindow', 'Close Window')}
                 </DialogPrimitive.Title>
                 <DialogPrimitive.Description className="text-sm text-muted-foreground">
-                  Are you sure you want to close this? Any unsaved changes will
-                  be lost.
+                  {t(
+                    'ui.dialog.areYouSureYouWant',
+                    'Are you sure you want to close this? Any unsaved changes will be lost.'
+                  )}
                 </DialogPrimitive.Description>
               </div>
               <div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4">
@@ -103,7 +107,7 @@ const DialogContent = React.forwardRef<
                   onClick={() => setShowConfirm(false)}
                   className="inline-flex items-center justify-center rounded-md text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </button>
                 <button
                   type="button"
@@ -113,7 +117,7 @@ const DialogContent = React.forwardRef<
                   }}
                   className="inline-flex items-center justify-center rounded-md text-sm font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
                 >
-                  Close
+                  {t('common.close', 'Close')}
                 </button>
               </div>
             </DialogPrimitive.Content>

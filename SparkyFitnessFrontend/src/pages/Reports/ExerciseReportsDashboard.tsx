@@ -54,7 +54,15 @@ import {
   useMatchedCourses,
   queryExerciseActivities,
 } from '@/hooks/Reports/useExerciseStats';
-import { todayInZone, type ExerciseProgressResponse } from '@workspace/shared';
+import {
+  predictRaceTimes,
+  runningEfforts,
+  todayInZone,
+  toWeekStart,
+  type ExerciseProgressResponse,
+} from '@workspace/shared';
+import { useRunningTrends } from '@/hooks/Reports/useRunningTrends';
+import { RunningTrendsCard } from '@/components/ExerciseCharts/RunningTrendsCard';
 
 interface ExerciseReportsDashboardProps {
   exerciseDashboardData: ExerciseDashboardData | undefined;
@@ -107,8 +115,14 @@ const ExerciseReportsDashboard = ({
   endDate,
 }: ExerciseReportsDashboardProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, weightUnit, distanceUnit, timezone } =
-    usePreferences();
+  const {
+    formatDateInUserTimezone,
+    weightUnit,
+    distanceUnit,
+    timezone,
+    firstDayOfWeek,
+    convertDistance,
+  } = usePreferences();
   const unitSystem: 'metric' | 'imperial' =
     distanceUnit === 'miles' ? 'imperial' : 'metric';
 
@@ -168,6 +182,16 @@ const ExerciseReportsDashboard = ({
   const { data: prMatrix } = useExercisePRs(
     activeUserId ?? undefined,
     unitSystem
+  );
+  const { trends: runningTrends } = useRunningTrends(
+    heatmapToday,
+    toWeekStart(firstDayOfWeek),
+    activeUserId ?? undefined
+  );
+  const raceTimes = useMemo(
+    () =>
+      prMatrix ? predictRaceTimes(runningEfforts(prMatrix.cardioPRs)) : [],
+    [prMatrix]
   );
   const { data: matchedCourses } = useMatchedCourses(
     activeUserId ?? undefined,
@@ -891,6 +915,17 @@ const ExerciseReportsDashboard = ({
       {/* 3C: CARDIO & GPS VIEW */}
       {viewMode === 'cardio' && (
         <div className="space-y-6">
+          {runningTrends && runningTrends.totalRuns > 0 && (
+            <RunningTrendsCard
+              trends={runningTrends}
+              raceTimes={raceTimes}
+              distanceUnit={distanceUnit === 'miles' ? 'miles' : 'km'}
+              convertDistance={convertDistance}
+              formatWeekLabel={(weekStart) =>
+                formatDateInUserTimezone(weekStart, 'MMM d')
+              }
+            />
+          )}
           <CardioSessionList
             key={`${startDate ?? ''}-${endDate ?? ''}-${unitSystem}-${activeUserId ?? ''}`}
             startDate={startDate}

@@ -234,7 +234,7 @@ const SleepAnalyticsCharts = ({
             if (totalMin && totalMin > 0) {
               return (
                 <div className="mt-2 pt-2 border-t border-border/50 text-sm font-semibold flex justify-between">
-                  <span>{t('sleepAnalyticsCharts.total', 'Total')}:</span>
+                  <span>{t('sleepAnalyticsCharts.total2', 'Total:')}</span>
                   <span>{formatSecondsToHHMM(totalMin * 60)}</span>
                 </div>
               );

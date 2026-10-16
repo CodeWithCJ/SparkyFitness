@@ -205,6 +205,17 @@ struct WorkoutSummary: Equatable {
     var sessionId: String? = nil
 }
 
+/// A change the wearer makes to the running workout from the wrist. The phone
+/// owns the workout, so each one is a request it applies and answers with the
+/// updated plan.
+enum WorkoutEditAction: Equatable {
+    case addSet(exerciseEntryId: String)
+    case deleteSet(setId: String)
+    case setSetType(setId: String, type: String)
+    case addExercise(exerciseId: String)
+    case deleteExercise(exerciseEntryId: String)
+}
+
 /// What the wearer actually did for a set, once they have adjusted the
 /// targets. Absent fields mean "unchanged from target" — the watch only
 /// records an override when a value is edited.

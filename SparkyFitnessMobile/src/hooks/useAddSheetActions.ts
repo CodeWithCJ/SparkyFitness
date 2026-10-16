@@ -316,6 +316,15 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     navigateFromSheet('MoodLog', { date });
   }, [getActiveDiaryDate, navigateFromSheet]);
 
+  const handleAddMindfulness = useCallback(() => {
+    const date = getActiveDiaryDate();
+    navigateFromSheet('MindfulnessLog', { date });
+  }, [getActiveDiaryDate, navigateFromSheet]);
+
+  const handleRecordActivity = useCallback(() => {
+    navigateFromSheet('RecordActivity');
+  }, [navigateFromSheet]);
+
   const handleAskSparky = useCallback(() => {
     navigateFromSheet('Chat');
   }, [navigateFromSheet]);
@@ -395,6 +404,8 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     handleAddProgressPhotos,
     handleAddSymptoms,
     handleAddMood,
+    handleAddMindfulness,
+    handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,
     handleSyncHealthData,

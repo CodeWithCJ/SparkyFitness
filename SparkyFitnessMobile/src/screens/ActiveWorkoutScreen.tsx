@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import {
   KeyboardAwareScrollView,
-  KeyboardStickyView,
   type KeyboardAwareScrollViewRef,
 } from 'react-native-keyboard-controller';
 import {
@@ -33,7 +32,7 @@ import ActiveWorkoutRail, {
 import type { SetRowAccessoryHandle } from '../components/ActiveWorkoutSetRow';
 import KeyboardCollapsible from '../components/KeyboardCollapsible';
 import {
-  SetInputAccessoryBar,
+  StickySetInputAccessoryBar,
   useDeactivateOnKeyboardDismiss,
   type SetAccessoryAction,
   type SetInputField,
@@ -958,14 +957,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       )}
 
       {focusedSetKey != null && (
-        <KeyboardStickyView
-          style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}
-        >
-          <SetInputAccessoryBar
-            onDone={handleAccessoryDone}
-            actions={accessoryActions}
-          />
-        </KeyboardStickyView>
+        <StickySetInputAccessoryBar
+          onDone={handleAccessoryDone}
+          actions={accessoryActions}
+        />
       )}
 
       <ExerciseSetRestSheet

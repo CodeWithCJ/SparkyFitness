@@ -146,9 +146,9 @@ const WorkoutHeatmap = ({
   const baseDays = [
     { key: 'sunday', label: 'S' },
     { key: 'monday', label: 'M' },
-    { key: 'tuesday', label: 'Tu' },
+    { key: 'tuesday', label: t('reports.workoutHeatmap.tu', 'Tu') },
     { key: 'wednesday', label: 'W' },
-    { key: 'thursday', label: 'Th' },
+    { key: 'thursday', label: t('reports.workoutHeatmap.th', 'Th') },
     { key: 'friday', label: 'F' },
     { key: 'saturday', label: 'S' },
   ];

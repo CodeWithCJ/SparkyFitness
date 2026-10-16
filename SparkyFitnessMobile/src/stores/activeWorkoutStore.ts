@@ -26,6 +26,7 @@ import {
 } from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
 import {
+  captureResumedDurations,
   describeActiveSetAssumed,
   formatDurationSeconds,
   getDefaultRestSec,
@@ -223,6 +224,13 @@ export interface ActiveWorkoutState {
   prBaseline: Record<string, PrBaselineEntry | null>;
   /** Set ids that earned a PR this session. Persisted; see {@link PrSetMap}. */
   prSetIds: PrSetMap;
+  /**
+   * Stored duration of each strength entry that already had completed sets
+   * when this run started (a resumed session), keyed by entry id. Captured
+   * once at start so autosaves add this run's time to it instead of
+   * replacing it. Persisted so a cold-start resume keeps it.
+   */
+  resumedDurationMinutes: Record<string, number>;
   /**
    * Current set id → stable React render key. A set's birth id is its render
    * key, so a missing entry means "the id is its own key"; an entry appears
@@ -605,6 +613,7 @@ const initialData: Pick<
   | 'createdByLiveStart'
   | 'prBaseline'
   | 'prSetIds'
+  | 'resumedDurationMinutes'
   | 'setRenderKeys'
   | 'setTimerStartedAt'
   | 'plannedSetValues'
@@ -642,6 +651,7 @@ const initialData: Pick<
   createdByLiveStart: false,
   prBaseline: {},
   prSetIds: {},
+  resumedDurationMinutes: {},
   setRenderKeys: {},
   setTimerStartedAt: {},
   plannedSetValues: {},
@@ -1366,6 +1376,11 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           startedAt: startedMs,
           steps,
           completedSetIds,
+          resumedDurationMinutes: captureResumedDurations(
+            session,
+            completedSetIds,
+            startedMs
+          ),
           activeSetId:
             steps.find((s) => completedSetIds[s.setId] == null)?.setId ?? null,
           rest: READY_REST,
@@ -1416,6 +1431,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // checkmarks. Priors the server doesn't know about are stamped now,
         // and only those make the session dirty.
         const completedSetIds = seedCompletionFromSession(session);
+        // Backfilled priors are stamped at the start, so only the saved
+        // completions mark an entry as resumed.
+        const savedCompletedSetIds = { ...completedSetIds };
         let addedPriors = false;
         for (let i = 0; i < targetIndex; i++) {
           const id = steps[i].setId;
@@ -1424,13 +1442,19 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             addedPriors = true;
           }
         }
+        const startedMs = Date.now();
 
         set({
           sessionId: session.id,
           session,
-          startedAt: Date.now(),
+          startedAt: startedMs,
           steps,
           completedSetIds,
+          resumedDurationMinutes: captureResumedDurations(
+            session,
+            savedCompletedSetIds,
+            startedMs
+          ),
           activeSetId: setId,
           rest: READY_REST,
           sessionRevision: addedPriors ? 1 : 0,
@@ -2799,6 +2823,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // Baseline and stamps survive a cold-start resume.
         prBaseline: state.prBaseline,
         prSetIds: state.prSetIds,
+        resumedDurationMinutes: state.resumedDurationMinutes,
         // Placeholder sources survive a cold start: the plan can't be
         // recaptured (the create payload is gone), and lock-screen completes
         // may adopt before any card remounts to re-capture history.

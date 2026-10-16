@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, Globe2 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -114,21 +114,22 @@ const OpenFoodFactsContributionSettingsContent = ({
               )}
             </p>
             <p>
-              {t(
-                'settings.foodExerciseDataProviders.openFoodFacts.sharedDataWarning',
-                'Only data you entered from physical packaging is eligible. Open Food Facts publishes structured data under the ODbL and Database Contents License and your own photos under CC BY-SA. Each contribution requires separate data and photo rights confirmations.'
-              )}{' '}
-              <a
-                href="https://world.openfoodfacts.org/terms-of-use"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline underline-offset-2"
-              >
-                {t(
-                  'settings.foodExerciseDataProviders.openFoodFacts.contributorTerms',
-                  'Contributor terms'
-                )}
-              </a>
+              <Trans
+                i18nKey="settings.foodExerciseDataProviders.openFoodFacts.onlyDataYouEnteredFrom"
+                defaults={
+                  'Only data you entered from physical packaging is eligible. Open Food Facts publishes structured data under the ODbL and Database Contents License and your own photos under CC BY-SA. Each contribution requires separate data and photo rights confirmations. <link>Contributor terms</link>'
+                }
+                components={{
+                  link: (
+                    <a
+                      href="https://world.openfoodfacts.org/terms-of-use"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline underline-offset-2"
+                    />
+                  ),
+                }}
+              />
             </p>
           </AlertDescription>
         </Alert>

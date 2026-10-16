@@ -10,6 +10,7 @@ import MealBuilder from '../../components/MealBuilder';
 import FavoriteStarButton from '@/components/FavoriteStarButton';
 import type { Meal, MealFood } from '@/types/meal';
 
+import { useTranslation } from 'react-i18next';
 interface LogMealDialogProps {
   mealTemplate: Meal | null;
   open: boolean;
@@ -27,6 +28,7 @@ const LogMealDialog: React.FC<LogMealDialogProps> = ({
   mealType,
   initialEntryTime,
 }) => {
+  const { t } = useTranslation();
   const handleSave = () => {
     onOpenChange(false);
   };
@@ -44,13 +46,20 @@ const LogMealDialog: React.FC<LogMealDialogProps> = ({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <span>Log Meal: {mealTemplate.name}</span>
+            <span>
+              {t('diary.logMealDialog.logMeal', 'Log Meal: {{name}}', {
+                name: mealTemplate.name,
+              })}
+            </span>
             {mealTemplate.id && (
               <FavoriteStarButton type="meal" id={mealTemplate.id} />
             )}
           </DialogTitle>
           <DialogDescription>
-            Adjust the portion size or ingredients for this meal entry.
+            {t(
+              'diary.logMealDialog.adjustThePortionSizeOr',
+              'Adjust the portion size or ingredients for this meal entry.'
+            )}
           </DialogDescription>
         </DialogHeader>
         <MealBuilder

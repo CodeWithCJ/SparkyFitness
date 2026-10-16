@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { useAllergenPreferences } from '@/hooks/useAllergenPreferences';
 
+import { useTranslation } from 'react-i18next';
 interface AllergenBadgesProps {
   allergens?: string[] | null;
   traces?: string[] | null;
@@ -13,6 +14,7 @@ interface AllergenBadgesProps {
  * track allergens.
  */
 const AllergenBadges = ({ allergens, traces }: AllergenBadgesProps) => {
+  const { t } = useTranslation();
   const { data: preferences } = useAllergenPreferences();
   const userAllergens =
     preferences?.map((p) => p.allergen_name.toLowerCase()) ?? [];
@@ -41,12 +43,12 @@ const AllergenBadges = ({ allergens, traces }: AllergenBadgesProps) => {
           ⚠ {a}
         </Badge>
       ))}
-      {matchingTraces.map((t) => (
+      {matchingTraces.map((trace) => (
         <Badge
-          key={`trace-${t}`}
+          key={`trace-${trace}`}
           className="text-xs capitalize bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-orange-300"
         >
-          trace: {t}
+          {t('allergenBadges.trace', 'trace: {{trace}}', { trace })}
         </Badge>
       ))}
     </div>

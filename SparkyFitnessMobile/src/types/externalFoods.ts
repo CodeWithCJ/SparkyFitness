@@ -60,6 +60,8 @@ export interface ExternalFoodItem {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  allergens?: string[] | null;
+  traces?: string[] | null;
   serving_size: number;
   serving_unit: string;
   serving_description?: string;

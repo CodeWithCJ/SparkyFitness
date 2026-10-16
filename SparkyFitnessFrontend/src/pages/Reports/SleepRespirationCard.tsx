@@ -111,7 +111,9 @@ const SleepRespirationCard = ({ data }: SleepRespirationCardProps) => {
             <p className="text-4xl font-bold" style={{ color }}>
               {Math.round(latestValue)}
             </p>
-            <p className="text-xs text-muted-foreground">brpm</p>
+            <p className="text-xs text-muted-foreground">
+              {t('reports.sleepRespirationCard.brpm', 'brpm')}
+            </p>
             <p className="text-sm font-medium" style={{ color }}>
               {status}
             </p>

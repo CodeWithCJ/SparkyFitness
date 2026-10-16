@@ -29,6 +29,7 @@ export const useAIServices = () => {
     // is. Firing on "not yet known" means every page load spends one doomed
     // 403 against an endpoint the demo sandbox can never use.
     enabled: user?.isDemo === false,
+    staleTime: 0,
     meta: {
       errorMessage: t(
         'settings.aiService.userSettings.errorLoading',
@@ -64,6 +65,7 @@ export const useUserAIPreferences = () => {
   return useQuery({
     queryKey: userPreferencesKeys.ai(),
     queryFn: () => getPreferences(),
+    staleTime: 0,
     meta: {
       errorMessage: t(
         'settings.aiService.userSettings.errorLoadingPreferences',
@@ -162,9 +164,10 @@ export const useUpdateUserAIPreferences = () => {
   const { t } = useTranslation();
 
   return useMutation({
-    mutationFn: (preferences: UserPreferencesChat) =>
+    mutationFn: (preferences: Partial<UserPreferencesChat>) =>
       updateUserPreferences(preferences),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(userPreferencesKeys.ai(), data);
       queryClient.invalidateQueries({ queryKey: userPreferencesKeys.ai() });
       // Changing active_ai_service_id (Settings dropdown or chat switcher) must
       // also refetch the active-service query, since the next chat stream sends

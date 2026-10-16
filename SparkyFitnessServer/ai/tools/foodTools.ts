@@ -662,9 +662,16 @@ function projectFoodDiaryEntry(
     : isServingCount
       ? 1
       : null;
-  const consumedQuantity = isServingCount
-    ? quantity * (hasValidServingSize ? parsedServingSize : 1)
-    : quantity;
+  // A serving-denominated reference already counts servings: serving_size 4.5
+  // with serving_unit "serving" means the stored nutrients cover 4.5 servings
+  // (the shape the diary CSV import writes). Only a gram/ml reference needs the
+  // serving count converted into the reference unit first.
+  const servingSizeIsServingCount =
+    servingUnit !== null && normalizeFoodUnit(servingUnit) === 'serving';
+  const consumedQuantity =
+    isServingCount && !servingSizeIsServingCount
+      ? quantity * (hasValidServingSize ? parsedServingSize : 1)
+      : quantity;
 
   if (
     !isLegacyAmbiguous &&

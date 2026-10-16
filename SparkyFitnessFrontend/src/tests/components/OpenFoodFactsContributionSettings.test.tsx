@@ -5,11 +5,9 @@ import { OpenFoodFactsContributionSettingsCard } from '@/pages/Settings/OpenFood
 import { renderWithClient } from '../test-utils';
 
 jest.mock('@/api/api', () => ({ apiCall: jest.fn() }));
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback?: string) => fallback ?? key,
-  }),
-}));
+jest.mock('react-i18next', () =>
+  jest.requireActual('@/tests/mocks/reactI18next')
+);
 
 const contributionSettings = {
   serverEnabled: true,

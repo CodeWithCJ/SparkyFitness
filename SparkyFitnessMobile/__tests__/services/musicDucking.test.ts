@@ -98,6 +98,8 @@ describe('music ducking during cues (#1560)', () => {
     useAppPreferencesStore.getState().setDuckMusicDuringCues(true);
     useAppPreferencesStore.getState().setGuidedWorkoutEnabled(true);
     speakGuided(['Bench press, set one']);
+    // The first cue waits for the installed voices to be read.
+    await jest.advanceTimersByTimeAsync(0);
     const options = mockSpeak.mock.calls[0][1]!;
     options.onStart?.();
     expect(mockSetAudioMode).toHaveBeenLastCalledWith(

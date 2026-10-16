@@ -61,9 +61,32 @@ export const EXTRA_NUTRIENT_FIELDS = [
 
 type ExtraNutrientKey = (typeof EXTRA_NUTRIENT_FIELDS)[number]['key'];
 
+/**
+ * The key each extra nutrient goes by in the nutrient display preferences
+ * (`/api/preferences/nutrient-display`), which use the server's column names.
+ */
+const EXTRA_NUTRIENT_PREFERENCE_KEYS: Record<ExtraNutrientKey, string> = {
+  fiber: 'dietary_fiber',
+  sugars: 'sugars',
+  saturatedFat: 'saturated_fat',
+  transFat: 'trans_fat',
+  cholesterol: 'cholesterol',
+  sodium: 'sodium',
+  potassium: 'potassium',
+  calcium: 'calcium',
+  iron: 'iron',
+  vitaminA: 'vitamin_a',
+  vitaminC: 'vitamin_c',
+  caffeineMg: 'caffeine_mg',
+  waterMl: 'water_ml',
+  alcoholG: 'alcohol_g',
+};
+
 export interface NutrientDisplayItem {
   /** Application-owned key; custom nutrient names may remain literal. */
   label: string;
+  /** Key in the nutrient display preferences; absent for derived rows. */
+  preferenceKey?: string;
   value: number;
   unit: string;
 }
@@ -93,6 +116,7 @@ export function buildNutrientDisplayList(
         : field.label,
       value,
       unit: field.unit,
+      preferenceKey: EXTRA_NUTRIENT_PREFERENCE_KEYS[field.key],
     };
     if ('additional' in field && field.additional) {
       additional.push(item);
@@ -162,6 +186,8 @@ export interface FoodInfoItem {
   waterMl?: number;
   alcoholG?: number;
   customNutrients?: Record<string, string | number> | null;
+  allergens?: string[] | null;
+  traces?: string[] | null;
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];
   provider_verified?: boolean;
@@ -196,6 +222,8 @@ export const foodItemToFoodInfo = (
   notes: item.notes ?? null,
   userId: item.user_id,
   sharedWithPublic: item.shared_with_public,
+  allergens: item.default_variant.allergens ?? null,
+  traces: item.default_variant.traces ?? null,
   provider_type: item.provider_type ?? undefined,
   provider_external_id: item.provider_external_id ?? undefined,
   provider_verified: item.provider_verified,
@@ -257,6 +285,8 @@ export const externalFoodItemToFoodInfo = (
   caffeineMg: item.caffeine_mg,
   waterMl: item.water_ml,
   alcoholG: item.alcohol_g,
+  allergens: item.allergens ?? null,
+  traces: item.traces ?? null,
   externalVariants: item.variants,
   provider_verified: item.provider_verified,
   images: item.images ?? null,

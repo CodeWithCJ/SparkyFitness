@@ -44,10 +44,15 @@ export const PrVisualizationWidget = ({
               {t('exerciseReportsDashboard.estimated1RM', 'Estimated 1RM')}
             </span>
             <span className="text-xs text-muted-foreground">
-              ({data.reps} {t('exerciseReportsDashboard.repsAt', 'reps @')}{' '}
-              {formatWeight(data.weight, weightUnit)}{' '}
-              {t('exerciseReportsDashboard.on', 'on')}{' '}
-              {formatDate(data.date, 'MMM dd, yyyy')})
+              {t(
+                'exerciseReportsDashboard.repsOn',
+                '({{reps}} reps @ {{weight}} on {{date}})',
+                {
+                  reps: data.reps,
+                  weight: formatWeight(data.weight, weightUnit),
+                  date: formatDate(data.date, 'MMM dd, yyyy'),
+                }
+              )}
             </span>
           </div>
           <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
@@ -58,22 +63,31 @@ export const PrVisualizationWidget = ({
               {t('exerciseReportsDashboard.maxWeight', 'Max Weight')}
             </span>
             <span className="text-xs text-muted-foreground">
-              ({data.reps} {t('exerciseReportsDashboard.repsShort', 'reps')}{' '}
-              {t('exerciseReportsDashboard.on', 'on')}{' '}
-              {formatDate(data.date, 'MMM dd, yyyy')})
+              {t(
+                'exerciseReportsDashboard.repsOn2',
+                '({{reps}} reps on {{date}})',
+                { reps: data.reps, date: formatDate(data.date, 'MMM dd, yyyy') }
+              )}
             </span>
           </div>
           <div className="flex flex-col items-center justify-center p-4 border rounded-lg">
             <span className="text-xl font-bold">
-              {data.reps} {t('exerciseReportsDashboard.repsShort', 'reps')}
+              {t('exerciseReportsDashboard.reps2', '{{reps}} reps', {
+                reps: data.reps,
+              })}
             </span>
             <span className="text-sm text-muted-foreground">
               {t('exerciseReportsDashboard.maxReps', 'Max Reps')}
             </span>
             <span className="text-xs text-muted-foreground">
-              ({formatWeight(data.weight, weightUnit)}{' '}
-              {t('exerciseReportsDashboard.on', 'on')}{' '}
-              {formatDate(data.date, 'MMM dd, yyyy')})
+              {t(
+                'exerciseReportsDashboard.weightOnDate',
+                '({{weight}} on {{date}})',
+                {
+                  weight: formatWeight(data.weight, weightUnit),
+                  date: formatDate(data.date, 'MMM dd, yyyy'),
+                }
+              )}
             </span>
           </div>
         </div>

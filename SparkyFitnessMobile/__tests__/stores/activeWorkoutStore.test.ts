@@ -471,6 +471,26 @@ describe('activeWorkoutStore', () => {
       expect(state.hasUnsavedChanges).toBe(false);
     });
 
+    it('captures the stored duration of entries that already have completions', () => {
+      const session = makeSession();
+      session.exercises[0].sets[0].completed_at = new Date(
+        FIXED_NOW - 10 * 60_000
+      ).toISOString();
+      useActiveWorkoutStore.getState().startWorkoutAtSet(session, '102');
+      // Only the first entry was worked on before this run.
+      expect(useActiveWorkoutStore.getState().resumedDurationMinutes).toEqual({
+        'ex-uuid-1': 20,
+      });
+    });
+
+    it('does not treat backfilled priors as resumed', () => {
+      // No set was completed before; 101 and 102 are backfilled at start.
+      useActiveWorkoutStore.getState().startWorkoutAtSet(makeSession(), '201');
+      expect(useActiveWorkoutStore.getState().resumedDurationMinutes).toEqual(
+        {}
+      );
+    });
+
     it('keeps server timestamps on already-completed priors and stamps only new ones', () => {
       const session = makeSession();
       session.exercises[0].sets[0].completed_at = '2026-03-20T10:00:00.000Z';
