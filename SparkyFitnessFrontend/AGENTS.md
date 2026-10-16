@@ -48,6 +48,8 @@ Features are organized by domain, and the same domain folder name appears in `sr
 
 ## Source Map
 
+- MCP diary undo and deletion links open `src/pages/Diary/DiaryConfirmation.tsx` at `/diary-confirmation`. `src/hooks/Chatbot/useDiaryConfirmation.ts` loads an owner-scoped preview and submits the existing versioned diary action only after an explicit button press.
+
 - Food assistant state: owner-only preferences, recoverable tasks and operation history use `FoodAssistant.api.zod.ts` / `FoodAssistant.zod.ts` in shared. Server: `routes/v2/foodAssistantRoutes.ts`, `services/foodAssistantService.ts`, `models/foodAssistantRepository.ts`, `ai/tools/foodAssistantTools.ts`. Recipes: `ai/tools/recipeTools.ts`, `services/foodAssistantRecipeService.ts` and `services/recipeImageService.ts` implement resumable source imports, exact provider portions, atomic publication/readback and conflict-safe undo. Web: `src/components/ai/FoodAssistantState.tsx`, `src/api/Chatbot/foodAssistantService.ts`.
 
 - `src/main.tsx` - app bootstrap; creates the shared `QueryClient` with global `QueryCache`/`MutationCache` handlers that render toasts from query/mutation `meta` (`errorTitle`, `errorMessage`, `successMessage`).
