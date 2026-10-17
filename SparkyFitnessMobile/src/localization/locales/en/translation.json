@@ -120,6 +120,7 @@
       "dutch": "Nederlands",
       "brazilianPortuguese": "Português (Brasil)",
       "russian": "Русский",
+      "turkish": "Türkçe",
       "pickerHint": "Opens language selection menu",
       "changeFailed": "Couldn't change the language",
       "managedByIOS": "Managed by iOS",
