@@ -140,7 +140,9 @@ function deriveLocalOffsetMs(
   const utcMs = fitTimeToMs(activityMesg.timestamp);
   const localMs = fitTimeToMs(activityMesg.localTimestamp);
   if (utcMs === null || localMs === null) return null;
-  return localMs - utcMs;
+  const offset = localMs - utcMs;
+  // A real timezone offset is within ±14 h; anything else is a bad local timestamp.
+  return Math.abs(offset) <= 15 * 3600 * 1000 ? offset : null;
 }
 
 function buildRecordMetrics(
