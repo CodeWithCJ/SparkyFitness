@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import type { PresetSessionResponse } from '@workspace/shared';
 import ActiveWorkoutIntervalHud from '../../src/components/ActiveWorkoutIntervalHud';
 import {
@@ -109,15 +109,29 @@ describe('ActiveWorkoutIntervalHud in guided mode', () => {
   });
 
   it('keeps the HUD silent and unchanged with guided mode off', () => {
-    render(<ActiveWorkoutIntervalHud now={START + 6_000} />);
+    jest.setSystemTime(START + 6_000);
+    render(<ActiveWorkoutIntervalHud />);
     expect(mockSpeak).not.toHaveBeenCalled();
     expect(mockCue).toHaveBeenCalledWith('work');
     expect(screen.queryByTestId('interval-guided-step')).toBeNull();
   });
 
+  it('moves through the phases on its own clock', () => {
+    jest.setSystemTime(START + 1_000);
+    render(<ActiveWorkoutIntervalHud />);
+    expect(mockCue).not.toHaveBeenCalledWith('work');
+
+    // The 5s countdown runs out with no re-render from outside the HUD.
+    act(() => {
+      jest.advanceTimersByTime(5_000);
+    });
+    expect(mockCue).toHaveBeenCalledWith('work');
+  });
+
   it('narrates the countdown with the first exercise and shows it as next up', () => {
     useAppPreferencesStore.setState({ guidedWorkoutEnabled: true });
-    render(<ActiveWorkoutIntervalHud now={START + 1_000} />);
+    jest.setSystemTime(START + 1_000);
+    render(<ActiveWorkoutIntervalHud />);
     expect(mockSpeak).toHaveBeenCalledWith(['Get ready. Starting Burpee.'], {
       interrupt: true,
       language: 'en',
@@ -129,7 +143,8 @@ describe('ActiveWorkoutIntervalHud in guided mode', () => {
   it('announces the work phase over the existing chime', () => {
     useAppPreferencesStore.setState({ guidedWorkoutEnabled: true });
     // 5s countdown, then Burpee works for 20s.
-    render(<ActiveWorkoutIntervalHud now={START + 6_000} />);
+    jest.setSystemTime(START + 6_000);
+    render(<ActiveWorkoutIntervalHud />);
     expect(mockCue).toHaveBeenCalledWith('work');
     expect(mockSpeak).toHaveBeenCalledWith(['Burpee. 20 seconds.'], {
       interrupt: true,
@@ -142,7 +157,8 @@ describe('ActiveWorkoutIntervalHud in guided mode', () => {
   it('says rest and what comes next', () => {
     useAppPreferencesStore.setState({ guidedWorkoutEnabled: true });
     // countdown 5s + Burpee 20s → first rest.
-    render(<ActiveWorkoutIntervalHud now={START + 26_000} />);
+    jest.setSystemTime(START + 26_000);
+    render(<ActiveWorkoutIntervalHud />);
     expect(mockCue).toHaveBeenCalledWith('rest');
     expect(mockSpeak).toHaveBeenCalledWith(['Rest.', 'Next: Squat.'], {
       interrupt: true,

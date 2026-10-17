@@ -1056,6 +1056,24 @@ function normalizeSupersetGroups(
 }
 
 /**
+ * `prev` when `next` holds exactly the same keys and values, otherwise
+ * `next`. The session rebuilds below recreate the per-set maps on every edit;
+ * keeping the old object when nothing in it changed lets the memoized
+ * consumers (exercise cards, the rail) skip a value-only edit's re-render.
+ */
+function keepIfUnchanged<T extends Record<string, unknown>>(
+  prev: T,
+  next: T
+): T {
+  const keys = Object.keys(prev);
+  if (keys.length !== Object.keys(next).length) return next;
+  for (const key of keys) {
+    if (!Object.hasOwn(next, key) || next[key] !== prev[key]) return next;
+  }
+  return prev;
+}
+
+/**
  * Shared tail of every session-edit action: rebuild steps from the edited
  * session, prune/repoint completion and cursor (same rules as
  * `reconcileWithSession`), bump the revision, and mark unsaved changes.
@@ -1102,8 +1120,8 @@ function buildSessionEditState(
   return {
     session: nextSession,
     steps: newSteps,
-    completedSetIds: nextCompleted,
-    prSetIds: nextPr,
+    completedSetIds: keepIfUnchanged(state.completedSetIds, nextCompleted),
+    prSetIds: keepIfUnchanged(state.prSetIds, nextPr),
     activeSetId: nextActiveSetId,
     rest: nextRest,
     sessionRevision: state.sessionRevision + 1,
@@ -2094,9 +2112,12 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set({
           session,
           steps: newSteps,
-          completedSetIds: nextCompleted,
-          prSetIds: nextPr,
-          setRenderKeys: nextRenderKeys,
+          completedSetIds: keepIfUnchanged(
+            state.completedSetIds,
+            nextCompleted
+          ),
+          prSetIds: keepIfUnchanged(state.prSetIds, nextPr),
+          setRenderKeys: keepIfUnchanged(state.setRenderKeys, nextRenderKeys),
           activeSetId: nextActiveSetId,
           rest: nextRest,
           // Reconcile is the second session writer (WorkoutDetail edit-save).
@@ -2721,9 +2742,12 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           set({
             session: grafted,
             steps: newSteps,
-            completedSetIds: nextCompleted,
-            prSetIds: nextPr,
-            setRenderKeys: nextRenderKeys,
+            completedSetIds: keepIfUnchanged(
+              state.completedSetIds,
+              nextCompleted
+            ),
+            prSetIds: keepIfUnchanged(state.prSetIds, nextPr),
+            setRenderKeys: keepIfUnchanged(state.setRenderKeys, nextRenderKeys),
             setTimerStartedAt: nextTimers,
             activeSetId: nextActiveSetId,
             // hasUnsavedChanges stays true — the newer edits still need a save.
@@ -2792,9 +2816,12 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set({
           session: serverSession,
           steps: newSteps,
-          completedSetIds: nextCompleted,
-          prSetIds: nextPr,
-          setRenderKeys: nextRenderKeys,
+          completedSetIds: keepIfUnchanged(
+            state.completedSetIds,
+            nextCompleted
+          ),
+          prSetIds: keepIfUnchanged(state.prSetIds, nextPr),
+          setRenderKeys: keepIfUnchanged(state.setRenderKeys, nextRenderKeys),
           setTimerStartedAt: nextTimers,
           activeSetId: nextActiveSetId,
           rest: nextRest,

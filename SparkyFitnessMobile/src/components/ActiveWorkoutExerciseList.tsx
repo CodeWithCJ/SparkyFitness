@@ -99,12 +99,26 @@ function ActiveWorkoutExerciseList({
   onActivateRpe,
   onRegisterAccessoryHandle,
 }: ActiveWorkoutExerciseListProps) {
+  // The card holding the focused set is the only one handed the focus props;
+  // every other card keeps null/undefined so its memo holds while the lifter
+  // moves between cells (each move rewrites focusedSetKey/focusedField).
+  const focusedEntryId =
+    focusedSetKey == null
+      ? null
+      : (session.exercises.find((e) =>
+          e.sets.some((s) => {
+            const id = String(s.id);
+            return (setRenderKeys[id] ?? id) === focusedSetKey;
+          })
+        )?.id ?? null);
+
   return (
     <>
       {session.exercises.map((exercise) => {
         const isExpanded =
           userExpandedIds.has(exercise.id) || autoExpandedId === exercise.id;
         const supersetBorder = supersetBorders.get(exercise.id) ?? null;
+        const ownsFocus = exercise.id === focusedEntryId;
         const card = (
           <ActiveWorkoutExerciseCard
             exercise={exercise}
@@ -115,9 +129,9 @@ function ActiveWorkoutExerciseList({
             sourcePresetId={verifiedSourcePresetId}
             historyScopeSettled={historyScopeSettled}
             activeSetId={activeSetId}
-            focusedSetKey={focusedSetKey}
+            focusedSetKey={ownsFocus ? focusedSetKey : null}
             setRenderKeys={setRenderKeys}
-            activeField={focusedField}
+            activeField={ownsFocus ? focusedField : undefined}
             metricColumn={metricColumn}
             weightUnit={weightUnit}
             distanceUnit={distanceUnit}

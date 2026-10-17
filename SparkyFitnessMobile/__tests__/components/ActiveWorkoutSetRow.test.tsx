@@ -1,5 +1,6 @@
 import React from 'react';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, TextInput } from 'react-native';
+import { KeyboardController } from 'react-native-keyboard-controller';
 import { act, render, fireEvent } from '@testing-library/react-native';
 import { useCSSVariable } from 'uniwind';
 import type {
@@ -351,6 +352,22 @@ describe('ActiveWorkoutSetRow', () => {
       expect(weightCommits).toHaveLength(0);
     });
 
+    it('does not re-commit reps or RPE drafts that parse back to the stored values', () => {
+      // The Android hide blurs the focused cell; a draft that only differs in
+      // spelling from what is stored must not write anything.
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+        metricColumn: 'rpe',
+        set: { reps: 8, rpe: 8 },
+      });
+      fireEvent.changeText(getByLabelText('Reps'), '08');
+      fireEvent(getByLabelText('Reps'), 'blur');
+      fireEvent.changeText(getByLabelText('RPE'), '8.0');
+      fireEvent(getByLabelText('RPE'), 'blur');
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+    });
+
     it('commits reps on blur', () => {
       const { getByLabelText, callbacks } = renderRow({
         state: 'current',
@@ -474,6 +491,52 @@ describe('ActiveWorkoutSetRow', () => {
         '101',
         null
       );
+    });
+  });
+
+  describe('activation focus on Android', () => {
+    const mockedIsVisible = KeyboardController.isVisible as jest.Mock;
+    const mockedSetFocusTo = KeyboardController.setFocusTo as jest.Mock;
+    // The RN preset mocks these as jest.fn()s shared by every TextInput.
+    const mockedInputIsFocused = TextInput.prototype.isFocused as jest.Mock;
+    const mockedInputFocus = TextInput.prototype.focus as jest.Mock;
+    let osSpy: ReturnType<typeof jest.replaceProperty>;
+
+    beforeEach(() => {
+      osSpy = jest.replaceProperty(Platform, 'OS', 'android');
+      jest.useFakeTimers();
+      // A slow IME: the keyboard has not reported itself visible yet.
+      mockedIsVisible.mockReturnValue(false);
+      mockedSetFocusTo.mockClear();
+      mockedInputFocus.mockClear();
+      mockedInputIsFocused.mockReset();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      mockedIsVisible.mockReturnValue(true);
+      mockedInputIsFocused.mockReset();
+      osSpy.restore();
+    });
+
+    it('leaves a tapped cell alone: no second focus, no IME re-show mid-animation', () => {
+      // The tap focused the input natively and Android already asked the IME
+      // to show; a retry would issue a second showSoftInput while it animates.
+      mockedInputIsFocused.mockReturnValue(true);
+      renderRow({ state: 'current', isFocused: true, activeField: 'weight' });
+      act(() => jest.runAllTimers());
+      expect(mockedInputFocus).not.toHaveBeenCalled();
+      expect(mockedSetFocusTo).not.toHaveBeenCalled();
+    });
+
+    it('focuses a programmatic target and keeps the IME retry for it', () => {
+      // Next Set / rest expiry land on an unfocused input: focus it, and
+      // re-show the keyboard if the IME dropped the request.
+      mockedInputIsFocused.mockReturnValueOnce(false).mockReturnValue(true);
+      renderRow({ state: 'current', isFocused: true, activeField: 'reps' });
+      expect(mockedInputFocus).toHaveBeenCalledTimes(1);
+      act(() => jest.runAllTimers());
+      expect(mockedSetFocusTo).toHaveBeenCalledWith('current');
     });
   });
 
@@ -790,6 +853,18 @@ describe('ActiveWorkoutSetRow', () => {
           isFocused: false,
           set: { weight: null, reps: 45, duration: null },
         });
+        expect(callbacks.onCommitField).not.toHaveBeenCalled();
+      });
+
+      it('commits nothing when an untouched legacy cell blurs', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          modality: 'duration',
+          state: 'current',
+          isFocused: true,
+          activeField: 'duration',
+          set: { weight: null, reps: 45, duration: null },
+        });
+        fireEvent(getByLabelText('Duration'), 'blur');
         expect(callbacks.onCommitField).not.toHaveBeenCalled();
       });
 

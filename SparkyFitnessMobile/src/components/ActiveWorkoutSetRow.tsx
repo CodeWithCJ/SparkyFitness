@@ -392,11 +392,14 @@ function ActiveWorkoutSetRow({
   const rpeInputRef = useRef<TextInput>(null);
 
   // Move the keyboard to the commanded input when this row is the focused
-  // cell. All rows keep their inputs mounted, so a user tap focuses natively
-  // and this is a no-op backstop; it does the real work for programmatic
-  // moves (the accessory bar's Next Set landing on this row, live's
-  // tap-on-RPE-cell) — a native input-to-input move, so the keyboard never
-  // dips.
+  // cell. All rows keep their inputs mounted, so this does the real work only
+  // for programmatic moves (the accessory bar's Next Set landing on this row,
+  // a rest expiry, a stopped stopwatch handing the duration cell back) — a
+  // native input-to-input move, so the keyboard never dips — and those keep
+  // the Android IME retry. A user tap has already focused the input natively,
+  // and Android asked the IME to show as part of that tap: the effect stands
+  // down, because a retry firing while a slow IME is still animating in
+  // issues a second showSoftInput mid-animation and the keyboard stutters.
   useEffect(() => {
     if (!isFocusedRow) return;
     const ref =
@@ -409,6 +412,7 @@ function ActiveWorkoutSetRow({
             : activeField === 'rpe'
               ? rpeInputRef
               : weightInputRef;
+    if (ref.current?.isFocused()) return;
     return focusWithAndroidImeRetry(ref);
   }, [isFocusedRow, activeField]);
 
@@ -557,7 +561,10 @@ function ActiveWorkoutSetRow({
       // Unchanged reps need no re-commit — skip the spurious store write.
       if (text === (set.reps != null ? String(set.reps) : '')) return;
       const value = parseInt(text, 10);
-      onCommitField?.(setId, { reps: Number.isNaN(value) ? null : value });
+      const reps = Number.isNaN(value) ? null : value;
+      // A draft that parses back to the stored reps ("08") is unchanged too.
+      if (reps === (set.reps ?? null)) return;
+      onCommitField?.(setId, { reps });
     },
     [onCommitField, setId, set.reps]
   );
@@ -601,11 +608,15 @@ function ActiveWorkoutSetRow({
 
   // Store-commit only, no draft echo — the deactivation effect below may call
   // this, and setting state from an effect is forbidden. Unchanged RPE needs
-  // no re-commit; the draft already holds its snapped display form.
+  // no re-commit; the draft already holds its snapped display form. A draft
+  // that snaps to the stored value (an edit row's per-keystroke commit already
+  // landed it) is unchanged too.
   const commitRpeValue = useCallback(
     (text: string) => {
       if (text === (effortValue != null ? formatRpe(effortValue) : '')) return;
-      onCommitField?.(setId, effortPatch(parseEffortInput(text)));
+      const value = parseEffortInput(text);
+      if (value === effortValue) return;
+      onCommitField?.(setId, effortPatch(value));
     },
     [onCommitField, setId, effortValue, effortPatch, parseEffortInput]
   );

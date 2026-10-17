@@ -3,31 +3,10 @@ import { View } from 'react-native';
 import { render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
+  SET_ACCESSORY_BAR_HEIGHT,
   StickySetInputAccessoryBar,
   useSetEditAccessoryBar,
 } from '../../src/components/SetRowChrome';
-
-// The global mock drops KeyboardStickyView's offset; this one keeps it on the
-// rendered view so the tests can read where the bar rests without a keyboard.
-jest.mock('react-native-keyboard-controller', () => {
-  const React = require('react');
-  const { View } = require('react-native');
-  return {
-    KeyboardStickyView: ({
-      children,
-      offset,
-    }: {
-      children?: React.ReactNode;
-      offset?: { closed?: number; opened?: number };
-    }) =>
-      React.createElement(
-        View,
-        { testID: 'keyboard-sticky-view', stickyOffset: offset },
-        children
-      ),
-    KeyboardEvents: { addListener: jest.fn(() => ({ remove: jest.fn() })) },
-  };
-});
 
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
@@ -50,20 +29,25 @@ function EditFormBar() {
   return <View>{accessoryBar}</View>;
 }
 
+// Parked below the screen edge by its own height, whatever the bottom inset.
+const PARKED = { closed: SET_ACCESSORY_BAR_HEIGHT, opened: 0 };
+const INCLUDE_HIDDEN = { includeHiddenElements: true };
+
 describe('StickySetInputAccessoryBar', () => {
   // The app draws edge-to-edge, so a bar left at bottom: 0 while no keyboard
-  // is up sits on Android's navigation buttons.
-  it('rests above the navigation bar while no keyboard is up', () => {
+  // is up sits on Android's navigation buttons. The bar only comes up with
+  // the keyboard instead.
+  it('never rests on the navigation bar while no keyboard is up', () => {
     render(
       withBottomInset(
         48,
-        <StickySetInputAccessoryBar onDone={() => {}} actions={[]} />
+        <StickySetInputAccessoryBar visible onDone={() => {}} actions={[]} />
       )
     );
 
     expect(
-      screen.getByTestId('keyboard-sticky-view').props.stickyOffset
-    ).toEqual({ closed: -48, opened: 0 });
+      screen.getByTestId('set-accessory-sticky', INCLUDE_HIDDEN).props.offset
+    ).toEqual(PARKED);
     expect(screen.getByText('Done')).toBeTruthy();
   });
 
@@ -71,8 +55,8 @@ describe('StickySetInputAccessoryBar', () => {
     render(withBottomInset(48, <EditFormBar />));
 
     expect(
-      screen.getByTestId('keyboard-sticky-view').props.stickyOffset
-    ).toEqual({ closed: -48, opened: 0 });
+      screen.getByTestId('set-accessory-sticky', INCLUDE_HIDDEN).props.offset
+    ).toEqual(PARKED);
     expect(screen.getByText('Next')).toBeTruthy();
   });
 });

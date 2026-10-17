@@ -151,6 +151,9 @@ export default function CardioEffortForm({
   const commitMinutes = useCallback(
     (text: string) => {
       if (setId == null) return;
+      // Skip an unchanged value: the draft is seeded from the stored value's
+      // display form, so committing it untouched writes nothing new.
+      if (text === minutesDisplayText(set?.duration)) return;
       const minutes = parseDecimalInput(text);
       const seconds = Number.isNaN(minutes) ? null : Math.round(minutes * 60);
       if (seconds === (set?.duration ?? null)) return;
@@ -162,6 +165,10 @@ export default function CardioEffortForm({
   const commitDistance = useCallback(
     (text: string) => {
       if (setId == null) return;
+      // The seeded text is rounded to two display decimals, so re-parsing it
+      // untouched would drift the stored km (5 km shows as 3.11 mi, which
+      // converts back to 5.005 km). Only a real edit reaches the store.
+      if (text === distanceDisplayText(set?.distance, distanceUnit)) return;
       const value = parseDecimalInput(text);
       // Quantized so the stored km matches what the server echoes back and a
       // miles round-trip can't drift the value on every save.

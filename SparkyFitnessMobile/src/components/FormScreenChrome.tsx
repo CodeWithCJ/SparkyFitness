@@ -11,6 +11,7 @@ import {
   type HeaderItem,
 } from '../hooks/useScreenHeader';
 import Button from './ui/Button';
+import { SET_ACCESSORY_BAR_HEIGHT } from './SetRowChrome';
 
 interface FooterSaveBarProps {
   onPress: () => void;
@@ -84,6 +85,8 @@ interface FormScreenChromeProps {
   /**
    * Screen-level keyboard accessory (e.g. useSetEditAccessoryBar's bar),
    * rendered as a sibling of the scroll view so its sticky positioning works.
+   * Passing one also raises the scroll view's keyboard clearance by the bar's
+   * height, so the focused input lands above the bar, not under it.
    */
   keyboardAccessory?: React.ReactNode;
   children: React.ReactNode;
@@ -130,7 +133,9 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
         className="flex-1"
         contentContainerClassName="px-4 pt-4 pb-20 gap-4"
         keyboardShouldPersistTaps="handled"
-        bottomOffset={20}
+        bottomOffset={
+          keyboardAccessory != null ? SET_ACCESSORY_BAR_HEIGHT + 16 : 20
+        }
         contentInsetAdjustmentBehavior={
           usesNativeHeader ? 'automatic' : undefined
         }

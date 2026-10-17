@@ -20,7 +20,10 @@ import Button from '../components/ui/Button';
 import WorkoutFormExerciseList, {
   type WorkoutFormExerciseListHandle,
 } from '../components/WorkoutFormExerciseList';
-import { useSetEditAccessoryBar } from '../components/SetRowChrome';
+import {
+  SET_ACCESSORY_BAR_HEIGHT,
+  useSetEditAccessoryBar,
+} from '../components/SetRowChrome';
 import ActiveWorkoutExerciseCard from '../components/ActiveWorkoutExerciseCard';
 import ActionSheet, {
   type ActionSheetItem,
@@ -888,7 +891,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         contentContainerStyle={{
           paddingBottom: insets.bottom + 20 + activeWorkoutBarPadding,
         }}
-        bottomOffset={20}
+        // Clear of the set-entry bar riding on top of the keyboard.
+        bottomOffset={SET_ACCESSORY_BAR_HEIGHT + 16}
         keyboardShouldPersistTaps="handled"
         contentInsetAdjustmentBehavior={
           usesNativeHeader ? 'automatic' : undefined

@@ -1665,6 +1665,13 @@ function ActiveWorkoutExerciseCard({
                   ? 'current'
                   : 'upcoming';
             const nextSet = exercise.sets[index + 1];
+            const isFocusedRow = isLive && focusedSetKey === renderKey;
+            // Only the row holding the keyboard reads activeField (the edit
+            // cursor row, or live's tap-focused row); the rest get a stable
+            // undefined so a field move does not re-render them.
+            const ownsActiveField = isEdit
+              ? setId === activeSetId
+              : isFocusedRow;
 
             // In preview mode ('view'), display the calculated progression weight if goal was hit
             const effectiveSet = set;
@@ -1692,8 +1699,8 @@ function ActiveWorkoutExerciseCard({
                   onDelete={onDeleteSet}
                   onLongPress={onLongPressSetKeyed}
                   onPressSetType={onPressSetType}
-                  activeField={activeField}
-                  isFocused={isLive && focusedSetKey === renderKey}
+                  activeField={ownsActiveField ? activeField : undefined}
+                  isFocused={isFocusedRow}
                   nextSetId={nextSet != null ? String(nextSet.id) : null}
                   entryId={exercise.id}
                   rpeEditable={rpeEditable}

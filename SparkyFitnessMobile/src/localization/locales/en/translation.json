@@ -455,7 +455,8 @@
       "rir": "RIR",
       "fillFromPrevious": "Fill set {{setNumber}} from previous",
       "startTimer": "Start stopwatch",
-      "stopTimer": "Stop stopwatch"
+      "stopTimer": "Stop stopwatch",
+      "inputToolbar": "Set entry actions"
     },
     "columns": {
       "set": "Set",

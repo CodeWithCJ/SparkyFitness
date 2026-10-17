@@ -3160,6 +3160,92 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('per-set map identity across session rebuilds', () => {
+    const SENT_ENTRY_IDS = ['ex-uuid-1', 'ex-uuid-2'];
+
+    beforeEach(async () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101 done
+      await flushPromises();
+      useActiveWorkoutStore.setState({ prSetIds: { '101': true } });
+    });
+
+    it('keeps completedSetIds and prSetIds across a value-only set edit', () => {
+      const before = useActiveWorkoutStore.getState();
+      before.updateSetField('102', { weight: 72.5 });
+
+      const after = useActiveWorkoutStore.getState();
+      expect(after.session).not.toBe(before.session);
+      expect(after.completedSetIds).toBe(before.completedSetIds);
+      expect(after.prSetIds).toBe(before.prSetIds);
+    });
+
+    it('replaces them when an edit removes a logged set', () => {
+      const before = useActiveWorkoutStore.getState();
+      before.deleteSet('101');
+
+      const after = useActiveWorkoutStore.getState();
+      expect(after.completedSetIds).not.toBe(before.completedSetIds);
+      expect(after.completedSetIds).toEqual({});
+      expect(after.prSetIds).toEqual({});
+    });
+
+    it('keeps them and the render keys when a save echoes the same ids', () => {
+      const before = useActiveWorkoutStore.getState();
+      before.applyServerSession(
+        makeSession(),
+        before.sessionRevision,
+        SENT_ENTRY_IDS
+      );
+
+      const after = useActiveWorkoutStore.getState();
+      expect(after.hasUnsavedChanges).toBe(false);
+      expect(after.completedSetIds).toBe(before.completedSetIds);
+      expect(after.prSetIds).toBe(before.prSetIds);
+      expect(after.setRenderKeys).toBe(before.setRenderKeys);
+    });
+
+    it('keeps them when a response is grafted under newer edits', () => {
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+      useActiveWorkoutStore.getState().updateSetField('102', { reps: 6 });
+      const before = useActiveWorkoutStore.getState();
+
+      before.applyServerSession(makeSession(), sentRevision, SENT_ENTRY_IDS);
+
+      const after = useActiveWorkoutStore.getState();
+      expect(after.hasUnsavedChanges).toBe(true);
+      expect(after.session?.exercises[0].sets[1].reps).toBe(6);
+      expect(after.completedSetIds).toBe(before.completedSetIds);
+      expect(after.prSetIds).toBe(before.prSetIds);
+      expect(after.setRenderKeys).toBe(before.setRenderKeys);
+    });
+
+    it('re-keys them when the server assigns new ids', () => {
+      const before = useActiveWorkoutStore.getState();
+      const response = makeSession();
+      response.exercises[0].sets[0].id = 501;
+      before.applyServerSession(
+        response,
+        before.sessionRevision,
+        SENT_ENTRY_IDS
+      );
+
+      const after = useActiveWorkoutStore.getState();
+      expect(after.completedSetIds).toEqual({ '501': FIXED_NOW });
+      expect(after.prSetIds).toEqual({ '501': true });
+    });
+
+    it('keeps them across a reconcile that leaves the set ids alone', () => {
+      const before = useActiveWorkoutStore.getState();
+      before.reconcileWithSession(makeSession());
+
+      const after = useActiveWorkoutStore.getState();
+      expect(after.completedSetIds).toBe(before.completedSetIds);
+      expect(after.prSetIds).toBe(before.prSetIds);
+      expect(after.setRenderKeys).toBe(before.setRenderKeys);
+    });
+  });
+
   describe('setRenderKeys (stable render keys across id churn)', () => {
     const ENTRY_IDS = ['ex-uuid-1', 'ex-uuid-2'];
 

@@ -1,6 +1,8 @@
 import {
+  memo,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -9,16 +11,19 @@ import {
 import {
   Keyboard,
   Platform,
+  StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  type TextInput,
+  TextInput,
 } from 'react-native';
 import {
   KeyboardEvents,
   KeyboardStickyView,
+  useKeyboardState,
+  useReanimatedKeyboardAnimation,
 } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { useAnimatedStyle } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import { useTranslation } from 'react-i18next';
 
@@ -233,6 +238,7 @@ function AccessoryPillButton({
       <TouchableOpacity
         onPress={onPress}
         hitSlop={HIT_SLOP}
+        accessibilityRole="button"
         style={{ paddingHorizontal: 16, paddingVertical: 8 }}
       >
         <Text
@@ -302,30 +308,195 @@ export function SetInputAccessoryBar({
 }
 
 /**
- * {@link SetInputAccessoryBar} as a screen-level bar that rides on top of the
- * keyboard. Without the keyboard (while it slides in or out, or when a cell
- * takes focus but the IME does not come up) it rests above the home indicator
- * or Android's navigation bar: the app draws edge-to-edge, so `bottom: 0` is
- * behind the system buttons. Render it at the screen root, as a sibling of
- * the scroll view (a sticky view inside scroll content won't stick).
+ * Height of {@link StickySetInputAccessoryBar}'s button row until its first
+ * layout reports the real one. Screens add it to their
+ * KeyboardAwareScrollView `bottomOffset` so the focused cell clears the bar.
  */
-export function StickySetInputAccessoryBar({
-  onDone,
-  actions,
-}: {
+export const SET_ACCESSORY_BAR_HEIGHT = 52;
+
+/**
+ * How long the bar keeps its last content after `visible` turns false when
+ * the keyboard never reports hidden (focus moved to another input, or the
+ * hide event is lost); a normal dismissal drops it on keyboardDidHide.
+ */
+const HELD_CONTENT_FALLBACK_MS = 600;
+
+/**
+ * Keyboard progress below which the bar stays transparent, so the first
+ * frames of an open, before it has cleared the screen edge, never show.
+ */
+const OPACITY_GUARD_PROGRESS = 0.1;
+
+const STICKY_BAR_STYLE = {
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  right: 0,
+} as const;
+
+interface StickyBarContent {
   onDone: () => void;
   actions: SetAccessoryAction[];
-}) {
-  const insets = useSafeAreaInsets();
-  return (
-    <KeyboardStickyView
-      offset={{ closed: -insets.bottom, opened: 0 }}
-      style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}
-    >
-      <SetInputAccessoryBar onDone={onDone} actions={actions} />
-    </KeyboardStickyView>
-  );
+  restSlot: ReactNode;
 }
+
+interface StickySetInputAccessoryBarProps {
+  /** A set cell holds the keyboard, so the bar has live actions. */
+  visible: boolean;
+  onDone: () => void;
+  actions: SetAccessoryAction[];
+  /** A row above the buttons (the live screen's compact rest controls). */
+  restSlot?: ReactNode;
+}
+
+/**
+ * Screen-level Done / Next / Log bar for the set surfaces: the live workout
+ * screen, and the edit forms through {@link useSetEditAccessoryBar}. Callers
+ * render it unconditionally as a sibling of the scroll view (a sticky view
+ * inside scroll content won't stick) and say through `visible` whether a set
+ * cell is focused.
+ *
+ * The bar is on screen only together with the keyboard. KeyboardStickyView
+ * translates by the keyboard height plus `offset` interpolated over the
+ * keyboard progress, so `closed` = the bar's own height parks it just below
+ * the screen edge while the keyboard is down (never on Android's navigation
+ * buttons or over the rest bar), and it rises from behind the keyboard's top
+ * edge as the keyboard opens. On edge-to-edge Android the reported keyboard
+ * height includes the navigation bar, so `opened: 0` sits it on the keyboard.
+ * An opacity guard hides the first frames of the open. Nothing here animates
+ * a layout property: the bar only translates.
+ *
+ * When `visible` turns false with the keyboard still up (Done, Log), the last
+ * content stays, untappable, and rides the keyboard down instead of emptying
+ * mid-slide. It is dropped when the keyboard reports hidden, or after
+ * {@link HELD_CONTENT_FALLBACK_MS}.
+ *
+ * Android draws one opaque surface; iOS keeps the floating pills over a
+ * transparent strip, with the rest row on its own glass pill.
+ */
+export const StickySetInputAccessoryBar = memo(
+  function StickySetInputAccessoryBar({
+    visible,
+    onDone,
+    actions,
+    restSlot,
+  }: StickySetInputAccessoryBarProps) {
+    const { t } = useTranslation();
+    const keyboardVisible = useKeyboardState((state) => state.isVisible);
+    const { progress } = useReanimatedKeyboardAnimation();
+    const [chromeBorder] = useCSSVariable(['--color-chrome-border']) as [
+      string,
+    ];
+    const [barHeight, setBarHeight] = useState(SET_ACCESSORY_BAR_HEIGHT);
+
+    // The content of the last render with `visible` set: what a held bar
+    // shows once the caller has already moved on to its unfocused props.
+    const [lastVisibleContent, setLastVisibleContent] =
+      useState<StickyBarContent | null>(null);
+    if (
+      visible &&
+      (lastVisibleContent == null ||
+        lastVisibleContent.onDone !== onDone ||
+        lastVisibleContent.actions !== actions ||
+        lastVisibleContent.restSlot !== restSlot)
+    ) {
+      setLastVisibleContent({ onDone, actions, restSlot });
+    }
+
+    const [held, setHeld] = useState(false);
+    const [prevVisible, setPrevVisible] = useState(visible);
+    if (visible !== prevVisible) {
+      setPrevVisible(visible);
+      setHeld(!visible && keyboardVisible);
+    }
+    // The keyboard has finished leaving, taking the held content with it.
+    if (held && !keyboardVisible) setHeld(false);
+
+    useEffect(() => {
+      if (!held) return;
+      const timer = setTimeout(() => setHeld(false), HELD_CONTENT_FALLBACK_MS);
+      return () => clearTimeout(timer);
+    }, [held]);
+
+    const shown: StickyBarContent | null = visible
+      ? { onDone, actions, restSlot }
+      : held
+        ? lastVisibleContent
+        : null;
+
+    const offset = useMemo(
+      () => ({ closed: barHeight, opened: 0 }),
+      [barHeight]
+    );
+    const guardStyle = useAnimatedStyle(() => ({
+      opacity: progress.value < OPACITY_GUARD_PROGRESS ? 0 : 1,
+    }));
+
+    // Parked below the screen edge, or showing content it can no longer act
+    // on: either way nothing for a screen reader to land on.
+    const hiddenFromAccessibility = !keyboardVisible || !visible;
+
+    return (
+      <KeyboardStickyView
+        testID="set-accessory-sticky"
+        style={STICKY_BAR_STYLE}
+        offset={offset}
+        pointerEvents={visible ? 'auto' : 'none'}
+        accessibilityElementsHidden={hiddenFromAccessibility}
+        importantForAccessibility={
+          hiddenFromAccessibility ? 'no-hide-descendants' : 'auto'
+        }
+        onLayout={(e) => {
+          // An empty bar lays out at zero; keep the last real height so the
+          // next open is parked by the right amount from its first frame.
+          const height = Math.ceil(e.nativeEvent.layout.height);
+          if (height > 0) setBarHeight(height);
+        }}
+      >
+        <Animated.View style={guardStyle}>
+          {shown != null && (
+            <View
+              testID="set-accessory-bar"
+              accessibilityRole="toolbar"
+              accessibilityLabel={t('activeWorkout.setRow.inputToolbar', {
+                defaultValue: 'Set entry actions',
+              })}
+              className={
+                Platform.OS === 'android'
+                  ? 'bg-surface border-border-subtle'
+                  : undefined
+              }
+              style={
+                Platform.OS === 'android'
+                  ? { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 4 }
+                  : undefined
+              }
+            >
+              {shown.restSlot != null &&
+                (Platform.OS === 'android' ? (
+                  shown.restSlot
+                ) : (
+                  <LiquidGlassSurface
+                    style={createLiquidGlassPillStyle(chromeBorder, {
+                      marginHorizontal: 12,
+                      marginBottom: 4,
+                      borderRadius: 22,
+                    })}
+                  >
+                    {shown.restSlot}
+                  </LiquidGlassSurface>
+                ))}
+              <SetInputAccessoryBar
+                onDone={shown.onDone}
+                actions={shown.actions}
+              />
+            </View>
+          )}
+        </Animated.View>
+      </KeyboardStickyView>
+    );
+  }
+);
 
 /**
  * Deactivation grace on Android: right after the keyboard opens, a phantom
@@ -342,11 +513,33 @@ const ANDROID_PHANTOM_HIDE_GRACE_MS = 150;
  * Runs `onDeactivate` when the keyboard leaves — accessory Done, a tap
  * outside the grid, the Android back gesture — so the focused-cell edit
  * always ends with the keyboard. On Android the call is deferred by
- * {@link ANDROID_PHANTOM_HIDE_GRACE_MS} and cancelled by a keyboardDidShow
- * inside that window, so a phantom hide can't tear the accessory bar down
- * (and flush the row's drafts) under a live keyboard.
+ * {@link ANDROID_PHANTOM_HIDE_GRACE_MS} and cancelled by a keyboardWillShow
+ * or keyboardDidShow inside that window, so a phantom hide can't tear the
+ * accessory bar down (and flush the row's drafts) under a live keyboard.
+ *
+ * A real Android hide (the back gesture, the IME's own dismiss key) also
+ * blurs the input: Android leaves the cell focused with no keyboard, and a
+ * second tap on a focused cell brings the keyboard back without firing
+ * onFocus, so the bar would stay down. The blur is limited to that case:
+ * `active` (one of this screen's set cells held the keyboard) at the hide,
+ * and the same input still focused when the grace ends. Keyboard events are
+ * app-wide, so this keeps the blur off an input focused since — a Modal's
+ * field focused on show, after the synthetic hide the library emits when a
+ * Modal opens — and off inputs on other screens while this one stays mounted
+ * underneath. The surfaces' commit-on-blur skips values that did not change,
+ * so the blur writes nothing new.
  */
-export function useDeactivateOnKeyboardDismiss(onDeactivate: () => void): void {
+export function useDeactivateOnKeyboardDismiss(
+  onDeactivate: () => void,
+  active: boolean
+): void {
+  // Read by the hide listener; a ref so a focus change doesn't resubscribe
+  // and drop a pending grace timer.
+  const activeRef = useRef(active);
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
   useEffect(() => {
     if (Platform.OS !== 'android') {
       const subscription = KeyboardEvents.addListener(
@@ -356,21 +549,33 @@ export function useDeactivateOnKeyboardDismiss(onDeactivate: () => void): void {
       return () => subscription.remove();
     }
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const hide = KeyboardEvents.addListener('keyboardDidHide', () => {
+    const cancel = () => {
       if (timer != null) clearTimeout(timer);
+      timer = null;
+    };
+    const hide = KeyboardEvents.addListener('keyboardDidHide', () => {
+      cancel();
+      const leftFocused = activeRef.current
+        ? TextInput.State.currentlyFocusedInput()
+        : null;
       timer = setTimeout(() => {
         timer = null;
         onDeactivate();
+        if (
+          leftFocused != null &&
+          TextInput.State.currentlyFocusedInput() === leftFocused
+        ) {
+          Keyboard.dismiss();
+        }
       }, ANDROID_PHANTOM_HIDE_GRACE_MS);
     });
-    const show = KeyboardEvents.addListener('keyboardDidShow', () => {
-      if (timer != null) clearTimeout(timer);
-      timer = null;
-    });
+    const willShow = KeyboardEvents.addListener('keyboardWillShow', cancel);
+    const show = KeyboardEvents.addListener('keyboardDidShow', cancel);
     return () => {
       hide.remove();
+      willShow.remove();
       show.remove();
-      if (timer != null) clearTimeout(timer);
+      cancel();
     };
   }, [onDeactivate]);
 }
@@ -407,7 +612,9 @@ export interface SetRowAccessoryHandle {
  *
  * Render `accessoryBar` at the screen root as a sibling of the scroll view (a
  * sticky view inside scroll content won't stick) and pass
- * `onRegisterAccessoryHandle` to the exercise list.
+ * `onRegisterAccessoryHandle` to the exercise list. The bar is a
+ * {@link StickySetInputAccessoryBar}, mounted the whole time and parked
+ * behind the keyboard while no cell is focused.
  */
 export function useSetEditAccessoryBar({
   activeSetKey,
@@ -440,8 +647,8 @@ export function useSetEditAccessoryBar({
 
   // The keyboard leaving — accessory Done, a tap outside the grid, the
   // Android back gesture — always ends the cell edit: clearing the focus
-  // state flushes the row's drafts and unmounts the bar.
-  useDeactivateOnKeyboardDismiss(onDeactivateSet);
+  // state flushes the row's drafts and empties the bar.
+  useDeactivateOnKeyboardDismiss(onDeactivateSet, activeSetKey != null);
 
   const handleDone = useCallback(() => {
     onDeactivateSet();
@@ -471,37 +678,41 @@ export function useSetEditAccessoryBar({
         ? ('rpe' as const)
         : null;
 
-  const accessoryBar: ReactNode =
-    activeSetKey == null ? null : (
-      <StickySetInputAccessoryBar
-        onDone={handleDone}
-        actions={[
-          nextField != null
-            ? {
-                key: 'next',
-                label: t('common.next', { defaultValue: 'Next' }),
-                onPress: () => {
-                  if (focusedSetClientId != null) {
-                    handlesRef.current[focusedSetClientId]?.focusField(
-                      nextField
-                    );
-                  }
-                },
+  // Memoized so the always-mounted bar skips the form's unrelated re-renders.
+  const actions = useMemo<SetAccessoryAction[]>(
+    () => [
+      nextField != null
+        ? {
+            key: 'next',
+            label: t('common.next', { defaultValue: 'Next' }),
+            onPress: () => {
+              if (focusedSetClientId != null) {
+                handlesRef.current[focusedSetClientId]?.focusField(nextField);
               }
-            : {
-                key: 'next-set',
-                label: t('activeWorkout.nextSet', {
-                  defaultValue: 'Next Set',
-                }),
-                onPress: () => {
-                  if (focusedSetClientId != null) {
-                    handlesRef.current[focusedSetClientId]?.advance();
-                  }
-                },
-              },
-        ]}
-      />
-    );
+            },
+          }
+        : {
+            key: 'next-set',
+            label: t('activeWorkout.nextSet', {
+              defaultValue: 'Next Set',
+            }),
+            onPress: () => {
+              if (focusedSetClientId != null) {
+                handlesRef.current[focusedSetClientId]?.advance();
+              }
+            },
+          },
+    ],
+    [nextField, focusedSetClientId, t]
+  );
+
+  const accessoryBar: ReactNode = (
+    <StickySetInputAccessoryBar
+      visible={activeSetKey != null}
+      onDone={handleDone}
+      actions={actions}
+    />
+  );
 
   return { onRegisterAccessoryHandle, accessoryBar };
 }

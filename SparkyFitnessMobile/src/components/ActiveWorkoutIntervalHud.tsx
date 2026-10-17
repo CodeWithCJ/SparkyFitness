@@ -7,6 +7,7 @@ import {
   resolvePhaseAt,
   type GuidedSetTarget,
 } from '@workspace/shared';
+import { useClockTick } from '../hooks/useClockTick';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { playIntervalCue } from '../services/sounds';
@@ -29,7 +30,6 @@ import Icon from './Icon';
 import SafeImage from './SafeImage';
 
 interface Props {
-  now: number;
   /** Needed only for the guided-mode exercise image. */
   getImageSource?: GetImageSource;
 }
@@ -47,14 +47,14 @@ function formatClock(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(remS).padStart(2, '0')}`;
 }
 
-export default function ActiveWorkoutIntervalHud({
-  now,
-  getImageSource,
-}: Props) {
+export default function ActiveWorkoutIntervalHud({ getImageSource }: Props) {
   const { t, i18n } = useTranslation();
   const guidedEnabled = useAppPreferencesStore((s) => s.guidedWorkoutEnabled);
 
   const workoutFormat = useActiveWorkoutStore((s) => s.workoutFormat);
+  // The shared 1s clock drives the phase, its cues and the countdown. A
+  // standard workout renders no HUD, so it does not tick.
+  const now = useClockTick(workoutFormat !== 'standard');
   const timeCapSeconds = useActiveWorkoutStore((s) => s.timeCapSeconds);
   const intervalPhases = useActiveWorkoutStore((s) => s.intervalPhases);
   const intervalPhaseIndex = useActiveWorkoutStore((s) => s.intervalPhaseIndex);

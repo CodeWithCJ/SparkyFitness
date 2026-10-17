@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { act, render, fireEvent } from '@testing-library/react-native';
 import type { PresetSessionResponse } from '@workspace/shared';
 import ActiveWorkoutHeader, {
   buildExerciseProgress,
@@ -72,6 +72,16 @@ describe('buildExerciseProgress', () => {
 describe('ActiveWorkoutHeader', () => {
   const start = 1_700_000_000_000;
 
+  beforeEach(() => {
+    // The elapsed clock reads the wall clock and ticks on its own.
+    jest.useFakeTimers();
+    jest.setSystemTime(start + 62_000);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   function renderHeaderComponent(
     completedSetIds: Record<string, true>,
     overrides?: {
@@ -90,7 +100,6 @@ describe('ActiveWorkoutHeader', () => {
       <ActiveWorkoutHeader
         name="Push Day"
         startedAt={start}
-        now={start + 62_000}
         progress={progress}
         onBack={overrides?.onBack ?? jest.fn()}
         onDiscard={overrides?.onDiscard ?? jest.fn()}
@@ -110,6 +119,14 @@ describe('ActiveWorkoutHeader', () => {
     // (the gorhom mock always renders sheet children).
     expect(getAllByText('Push Day').length).toBeGreaterThanOrEqual(1);
     expect(getByText('01:02 elapsed')).toBeTruthy();
+  });
+
+  it('advances the elapsed clock every second on its own', () => {
+    const { getByText } = renderHeaderComponent({});
+    act(() => {
+      jest.advanceTimersByTime(1_000);
+    });
+    expect(getByText('01:03 elapsed')).toBeTruthy();
   });
 
   it('shows one segment per exercise and the done count', () => {
