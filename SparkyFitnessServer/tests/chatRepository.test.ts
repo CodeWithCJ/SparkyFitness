@@ -392,3 +392,31 @@ describe('chatRepository.getActiveVisionAiServiceSetting', () => {
     expect(result).toBeNull();
   });
 });
+
+describe('chat history transaction failures', () => {
+  it('discards a broken connection and preserves the original write error', async () => {
+    const writeError = new Error('write failed');
+    const client = {
+      query: vi.fn(async (sql: string) => {
+        if (sql.startsWith('INSERT')) throw writeError;
+        if (sql === 'ROLLBACK') throw new Error('connection lost');
+        return { rows: [], rowCount: 0 };
+      }),
+      release: vi.fn(),
+    };
+    vi.mocked(getClient).mockResolvedValue(
+      client as unknown as Awaited<ReturnType<typeof getClient>>
+    );
+    await expect(
+      chatRepository.saveChatHistory(
+        {
+          user_id: 'owner',
+          messageType: 'assistant',
+          content: 'Reply',
+        },
+        { parentUserEntryId: 'turn' }
+      )
+    ).rejects.toBe(writeError);
+    expect(client.release).toHaveBeenCalledWith(true);
+  });
+});

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import type { PoolClient } from 'pg';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { encrypt, decrypt, ENCRYPTION_KEY } from '../security/encryption.js';
 import { log } from '../config/logging.js';
@@ -456,37 +458,80 @@ async function deleteChatHistoryEntry(id: string, userId: string) {
     client.release();
   }
 }
-async function clearAllChatHistory(userId: string) {
-  const client = await getClient(userId); // User-specific operation
+/** Serialize short history writes and Clear across server processes, never model work. */
+async function withChatHistoryLock<T>(
+  userId: string,
+  operation: (client: PoolClient) => Promise<T>
+): Promise<T> {
+  const client = await getClient(userId);
+  let discard = false;
   try {
-    await client.query('DELETE FROM sparky_chat_history', []);
-    return true;
+    // The write after a lock wait must see any Clear that committed first.
+    await client.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtextextended('sparky_chat_history:' || $1::uuid::text, 0))",
+      [userId]
+    );
+    const result = await operation(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackError) {
+      discard = true;
+      log('error', 'Failed to roll back chat history write:', rollbackError);
+    }
+    throw error;
   } finally {
-    client.release();
+    client.release(discard);
   }
 }
+
+/** Clear saved messages and invalidate the parent rows of unfinished chat turns. */
+async function clearAllChatHistory(userId: string) {
+  return withChatHistoryLock(userId, async (client) => {
+    await client.query('DELETE FROM sparky_chat_history WHERE user_id = $1', [
+      userId,
+    ]);
+    return true;
+  });
+}
+
+interface ChatHistoryWriteOptions {
+  historyId?: string;
+  parentUserEntryId?: string;
+}
+
+/** Save a message, rejecting a late assistant reply if Clear removed its user turn. */
 async function saveChatHistory(
   historyData: Partial<SparkyChatHistory> & {
     messageType?: 'user' | 'assistant';
-  }
+  },
+  options: ChatHistoryWriteOptions = {}
 ) {
-  const client = await getClient(historyData.user_id); // User-specific operation
-  try {
-    await client.query(
-      `INSERT INTO sparky_chat_history (user_id, content, message_type, metadata, parts, created_at)
-       VALUES ($1, $2, $3, $4, $5, now())`,
+  const userId = historyData.user_id;
+  if (!userId) throw new Error('Chat history user ID is required.');
+  return withChatHistoryLock(userId, async (client) => {
+    const result = await client.query(
+      `INSERT INTO sparky_chat_history (id, user_id, content, message_type, metadata, parts, created_at)
+       SELECT $1::uuid, $2::uuid, $3, $4, $5::jsonb, $6::jsonb, now()
+       WHERE $7::uuid IS NULL OR EXISTS (
+         SELECT 1 FROM sparky_chat_history
+         WHERE id = $7::uuid AND user_id = $2::uuid AND message_type = 'user'
+       )`,
       [
-        historyData.user_id,
+        options.historyId ?? randomUUID(),
+        userId,
         historyData.content,
         historyData.messageType,
         historyData.metadata,
         historyData.parts ? JSON.stringify(historyData.parts) : null,
+        options.parentUserEntryId ?? null,
       ]
     );
-    return true;
-  } finally {
-    client.release();
-  }
+    return (result.rowCount ?? 0) > 0;
+  });
 }
 async function upsertGlobalAiServiceSetting(
   settingData: Partial<AiServiceSettings> & { api_key?: string | null }

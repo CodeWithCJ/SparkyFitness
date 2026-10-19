@@ -491,6 +491,86 @@ describe('chatService', () => {
       ]);
     });
 
+    it.each([
+      ['missing service', null],
+      ['missing API key', { ...aiServiceSetting, api_key: undefined }],
+      [
+        'unsupported provider',
+        { ...aiServiceSetting, service_type: 'unsupported_provider' },
+      ],
+    ])(
+      'removes the registered turn when setup fails: %s',
+      async (_label, setting) => {
+        vi.mocked(
+          chatRepository.getAiServiceSettingForBackend
+        ).mockResolvedValueOnce(setting);
+        await expect(
+          chatService.processChatMessage(
+            [
+              {
+                role: 'user',
+                content: 'Do not leave a failed setup in history',
+              },
+            ],
+            'svc-1',
+            activeUserId,
+            actorUserId
+          )
+        ).rejects.toThrow();
+        const parentId = vi.mocked(chatRepository.saveChatHistory).mock
+          .calls[0][1]?.historyId;
+        expect(parentId).toEqual(expect.any(String));
+        expect(chatRepository.deleteChatHistoryEntry).toHaveBeenCalledWith(
+          parentId,
+          activeUserId
+        );
+      }
+    );
+
+    it('retains the submitted user message when the provider fails after generation starts', async () => {
+      mockModelHolder.current = new MockLanguageModelV3({
+        doGenerate: async () => {
+          throw new Error('provider failed');
+        },
+      });
+      await expect(
+        chatService.processChatMessage(
+          [{ role: 'user', content: 'A submitted request' }],
+          'svc-1',
+          activeUserId,
+          actorUserId
+        )
+      ).rejects.toThrow('provider failed');
+      expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messageType: 'user',
+          content: 'A submitted request',
+        }),
+        expect.any(Object)
+      );
+      expect(chatRepository.deleteChatHistoryEntry).not.toHaveBeenCalled();
+    });
+
+    it('registers a blocking turn before provider setup and guards its reply with the same parent', async () => {
+      scriptModel([textStep('Done.')]);
+      vi.mocked(
+        chatRepository.getAiServiceSettingForBackend
+      ).mockImplementationOnce(async () => {
+        expect(chatRepository.saveChatHistory).toHaveBeenCalledTimes(1);
+        return aiServiceSetting;
+      });
+      await chatService.processChatMessage(
+        [{ role: 'user', content: 'Check my diary' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      const writes = vi.mocked(chatRepository.saveChatHistory).mock.calls;
+      const parentId = writes[0][1]?.historyId;
+      expect(parentId).toEqual(expect.any(String));
+      expect(writes[1][1]).toEqual({ parentUserEntryId: parentId });
+    });
+
     it('executes a log_food tool call in-process, derives food_added from call input, and saves history', async () => {
       vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
         {
@@ -551,14 +631,16 @@ describe('chatService', () => {
           user_id: activeUserId,
           messageType: 'user',
           content: 'log 2 eggs for breakfast',
-        })
+        }),
+        expect.any(Object)
       );
       expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: activeUserId,
           messageType: 'assistant',
           content: 'Logged 2 eggs for breakfast!',
-        })
+        }),
+        expect.any(Object)
       );
     });
 
@@ -1145,6 +1227,218 @@ describe('chatService', () => {
       return chunks;
     };
 
+    it.each(['error', 'other', 'length', undefined])(
+      'does not mark a partial %s completion as recoverable',
+      async (reason) => {
+        streamModel([
+          { type: 'stream-start', warnings: [] },
+          { type: 'text-start', id: 'text-1' },
+          { type: 'text-delta', id: 'text-1', delta: 'Incomplete reply' },
+          { type: 'text-end', id: 'text-1' },
+          ...(reason
+            ? [
+                {
+                  type: 'finish',
+                  finishReason: { unified: reason, raw: reason },
+                  usage,
+                },
+              ]
+            : []),
+        ]);
+        const { stream } = await chatService.processChatMessageStream(
+          [{ id: 'partial-turn', role: 'user', content: 'Check my diary' }],
+          'svc-1',
+          activeUserId,
+          actorUserId
+        );
+        await drainStream(stream);
+        await vi.waitFor(() => {
+          expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+            expect.objectContaining({
+              messageType: 'assistant',
+              content: 'Incomplete reply',
+              metadata: undefined,
+            }),
+            expect.any(Object)
+          );
+        });
+      }
+    );
+
+    it.each([
+      ['missing service', null],
+      ['missing API key', { ...aiServiceSetting, api_key: undefined }],
+      [
+        'unsupported provider',
+        { ...aiServiceSetting, service_type: 'unsupported_provider' },
+      ],
+    ])(
+      'removes the registered turn when setup fails: %s',
+      async (_label, setting) => {
+        vi.mocked(
+          chatRepository.getAiServiceSettingForBackend
+        ).mockResolvedValueOnce(setting);
+        await expect(
+          chatService.processChatMessageStream(
+            [
+              {
+                role: 'user',
+                content: 'Do not leave a failed setup in history',
+              },
+            ],
+            'svc-1',
+            activeUserId,
+            actorUserId
+          )
+        ).rejects.toThrow();
+        const parentId = vi.mocked(chatRepository.saveChatHistory).mock
+          .calls[0][1]?.historyId;
+        expect(parentId).toEqual(expect.any(String));
+        expect(chatRepository.deleteChatHistoryEntry).toHaveBeenCalledWith(
+          parentId,
+          activeUserId
+        );
+      }
+    );
+
+    it('retains the submitted user message when the streaming provider fails', async () => {
+      const model = streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'error', error: new Error('provider failed') },
+      ]);
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'A submitted request' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await Promise.allSettled([drainStream(stream)]);
+      expect(model.doStreamCalls).toHaveLength(1);
+      expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messageType: 'user',
+          content: 'A submitted request',
+        }),
+        expect.any(Object)
+      );
+      expect(chatRepository.deleteChatHistoryEntry).not.toHaveBeenCalled();
+    });
+
+    it('registers a streaming turn before provider setup and guards its detached reply', async () => {
+      streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 'reply' },
+        { type: 'text-delta', id: 'reply', delta: 'Done.' },
+        { type: 'text-end', id: 'reply' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: 'stop' },
+          usage,
+        },
+      ]);
+      vi.mocked(
+        chatRepository.getAiServiceSettingForBackend
+      ).mockImplementationOnce(async () => {
+        expect(chatRepository.saveChatHistory).toHaveBeenCalledTimes(1);
+        return aiServiceSetting;
+      });
+      const { stream } = await chatService.processChatMessageStream(
+        [{ id: 'client-correlation', role: 'user', content: 'Check my diary' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      const reader = stream.getReader();
+      await reader.read();
+      await reader.cancel();
+      await vi.waitFor(() =>
+        expect(chatRepository.saveChatHistory).toHaveBeenCalledTimes(2)
+      );
+      const writes = vi.mocked(chatRepository.saveChatHistory).mock.calls;
+      const parentId = writes[0][1]?.historyId;
+      expect(parentId).toEqual(expect.any(String));
+      expect(parentId).not.toBe('client-correlation');
+      expect(writes[1][1]).toEqual({ parentUserEntryId: parentId });
+    });
+
+    it('finishes and saves a correlated response without the client reading the stream', async () => {
+      streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 'text-1' },
+        { type: 'text-delta', id: 'text-1', delta: 'Your saved reply' },
+        { type: 'text-end', id: 'text-1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: 'stop' },
+          usage,
+        },
+      ]);
+      const { stream } = await chatService.processChatMessageStream(
+        [{ id: 'mobile-turn-1', role: 'user', content: 'Show my nutrition' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+
+      // A suspended mobile app makes no further reads. Completion and history
+      // persistence must proceed independently of that consumer's backpressure.
+      await vi.waitFor(() => {
+        expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+          expect.objectContaining({
+            messageType: 'assistant',
+            content: 'Your saved reply',
+            metadata: { client_message_id: 'mobile-turn-1' },
+          }),
+          expect.any(Object)
+        );
+      });
+      expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messageType: 'user',
+          metadata: { client_message_id: 'mobile-turn-1' },
+        }),
+        expect.any(Object)
+      );
+      await stream.cancel();
+    });
+
+    it('still saves the reply after the client disconnects', async () => {
+      streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 'text-1' },
+        {
+          type: 'text-delta',
+          id: 'text-1',
+          delta: 'Completed after disconnect',
+        },
+        { type: 'text-end', id: 'text-1' },
+        {
+          type: 'finish',
+          finishReason: { unified: 'stop', raw: 'stop' },
+          usage,
+        },
+      ]);
+      const { stream } = await chatService.processChatMessageStream(
+        [{ id: 'locked-turn', role: 'user', content: 'Check my diary' }],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      const reader = stream.getReader();
+      await reader.read();
+      await reader.cancel();
+      await vi.waitFor(() => {
+        expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
+          expect.objectContaining({
+            messageType: 'assistant',
+            content: 'Completed after disconnect',
+            metadata: { client_message_id: 'locked-turn' },
+          }),
+          expect.any(Object)
+        );
+      });
+    });
+
     beforeEach(() => {
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         aiServiceSetting
@@ -1298,7 +1592,8 @@ describe('chatService', () => {
           user_id: activeUserId,
           messageType: 'user',
           content: 'Show my goal timeline',
-        })
+        }),
+        expect.any(Object)
       );
     });
 
@@ -1384,14 +1679,16 @@ describe('chatService', () => {
           expect.objectContaining({
             messageType: 'assistant',
             content: 'Here is your timeline.',
-          })
+          }),
+          expect.any(Object)
         )
       );
       expect(chatRepository.saveChatHistory).toHaveBeenCalledWith(
         expect.objectContaining({
           messageType: 'user',
           content: 'Show my goal timeline',
-        })
+        }),
+        expect.any(Object)
       );
     });
 

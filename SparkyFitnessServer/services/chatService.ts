@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
@@ -20,6 +21,7 @@ import {
 } from '../ai/modelCapabilities.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { TtlCache } from '../utils/ttlCache.js';
+import { backgroundChatStream } from '../utils/backgroundChatStream.js';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
   createGuardedFetch,
@@ -63,6 +65,7 @@ interface ProcessedMessagePart {
 }
 
 interface ChatMessage {
+  id?: string;
   role: string;
   content?: string | ChatMessagePart[];
   parts?: ChatMessagePart[];
@@ -1767,6 +1770,53 @@ function describeUserMessage(msg?: LlmMessage): {
   return { content, parts };
 }
 
+/** Persist a turn before generation so Clear can invalidate its eventual reply. */
+async function saveUserChatTurn(messages: ChatMessage[], userId: string) {
+  const historyId = randomUUID();
+  const userMessage = toCoreMessages(messages)
+    .reverse()
+    .find((message) => message.role === 'user');
+  const { content, parts } = describeUserMessage(userMessage);
+  const clientMessageId = [...messages]
+    .reverse()
+    .find((message) => message.role === 'user')?.id;
+  const metadata =
+    typeof clientMessageId === 'string' &&
+    clientMessageId.length > 0 &&
+    clientMessageId.length <= 200
+      ? { client_message_id: clientMessageId }
+      : undefined;
+  await chatRepository
+    .saveChatHistory(
+      {
+        user_id: userId,
+        content,
+        messageType: 'user',
+        parts,
+        metadata,
+      },
+      { historyId }
+    )
+    .catch((error: unknown) =>
+      log('error', 'Failed to save user chat history:', error)
+    );
+  // A failed initial write also fails closed: no parent row can authorize a reply.
+  return { historyId, metadata };
+}
+
+/** Remove a registered user turn when setup fails before generation is attempted. */
+async function discardUnstartedChatTurn(
+  historyId: string | undefined,
+  userId: string
+) {
+  if (!historyId) return;
+  try {
+    await chatRepository.deleteChatHistoryEntry(historyId, userId);
+  } catch (error) {
+    log('error', 'Failed to remove unstarted chat turn:', error);
+  }
+}
+
 // Keyword rules for instant classification. Kept deliberately moderate
 // (stems and a handful of high-signal synonyms) rather than exhaustive:
 // wide-net keyword lists trade recall for false positives ("I ran out of
@@ -1986,6 +2036,7 @@ Your response must contain ONLY the matched domain names as a comma-separated li
   return [];
 }
 
+/** Generate a blocking reply and persist it only while its user turn still exists. */
 async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -1994,6 +2045,8 @@ async function processChatMessage(
   actorIsAdmin = false,
   toolCategories?: readonly string[]
 ) {
+  let registeredHistoryId: string | undefined;
+  let generationStarted = false;
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
@@ -2001,6 +2054,8 @@ async function processChatMessage(
     if (!serviceConfigId) {
       throw new Error('AI service configuration ID is missing.');
     }
+    const userTurn = await saveUserChatTurn(messages, userId);
+    registeredHistoryId = userTurn.historyId;
     const aiService = await chatRepository.getAiServiceSettingForBackend(
       serviceConfigId,
       userId
@@ -2084,6 +2139,7 @@ async function processChatMessage(
     }> = [];
     const toolOutputs: string[] = [];
 
+    generationStarted = true;
     const result = await runWithTemperatureFallback(
       aiService.service_type,
       modelName,
@@ -2150,23 +2206,6 @@ async function processChatMessage(
       `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${usage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${usage?.inputTokens ?? 0} noCacheTokens=${usage?.inputTokenDetails?.noCacheTokens ?? 0} cacheWriteTokens=${usage?.inputTokenDetails?.cacheWriteTokens ?? 0} outputTokens=${usage?.outputTokens ?? 0} totalTokens=${usage?.totalTokens ?? 0}`
     );
 
-    // Save history dynamically to DB (replacing frontend client-side saves)
-    const { content: userMessageContent, parts: userMessageParts } =
-      describeUserMessage(
-        conversationMessages[conversationMessages.length - 1]
-      );
-
-    await chatRepository
-      .saveChatHistory({
-        user_id: userId,
-        content: userMessageContent,
-        messageType: 'user',
-        parts: userMessageParts,
-      })
-      .catch((err: unknown) =>
-        log('error', 'Failed to save user chat history:', err)
-      );
-
     let finalContent = result.text.trim();
     if (!finalContent) {
       if (executedToolsList.length > 0) {
@@ -2205,12 +2244,15 @@ async function processChatMessage(
 
     if (finalContent) {
       await chatRepository
-        .saveChatHistory({
-          user_id: userId,
-          content: finalContent,
-          messageType: 'assistant',
-          parts: [{ type: 'text', text: finalContent }],
-        })
+        .saveChatHistory(
+          {
+            user_id: userId,
+            content: finalContent,
+            messageType: 'assistant',
+            parts: [{ type: 'text', text: finalContent }],
+          },
+          { parentUserEntryId: userTurn.historyId }
+        )
         .catch((err: unknown) =>
           log('error', 'Failed to save assistant chat history:', err)
         );
@@ -2262,6 +2304,8 @@ async function processChatMessage(
       executedTools: executedToolsList,
     };
   } catch (error) {
+    if (!generationStarted)
+      await discardUnstartedChatTurn(registeredHistoryId, userId);
     log('error', `Error processing chat message for user ${userId}:`, error);
     throw error;
   }
@@ -2534,6 +2578,7 @@ export function mapUsageToMetadata(u: LanguageModelUsage) {
   };
 }
 
+/** Stream and drain a reply independently of HTTP delivery, respecting history clears. */
 async function processChatMessageStream(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -2542,6 +2587,8 @@ async function processChatMessageStream(
   actorIsAdmin = false,
   toolCategories?: readonly string[]
 ) {
+  let registeredHistoryId: string | undefined;
+  let generationStarted = false;
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
@@ -2549,12 +2596,17 @@ async function processChatMessageStream(
     if (!serviceConfigId) {
       throw new Error('AI service configuration ID is missing.');
     }
+    const userTurn = await saveUserChatTurn(messages, userId);
+    registeredHistoryId = userTurn.historyId;
     const aiService = await chatRepository.getAiServiceSettingForBackend(
       serviceConfigId,
       userId
     );
     if (!aiService) {
       throw new Error('AI service setting not found for the provided ID.');
+    }
+    if (requiresApiKey(aiService.service_type) && !aiService.api_key) {
+      throw new Error('API key missing for selected AI service.');
     }
 
     const modelName =
@@ -2627,10 +2679,10 @@ async function processChatMessageStream(
       `[DEBUG] AI Transmission: Preparing ${llmMessages.length} messages. Last message content structure: ${JSON.stringify(llmMessages[llmMessages.length - 1]?.content || '').substring(0, 200)}`
     );
 
-    const { content: userMessageContent } = describeUserMessage(
-      llmMessages[llmMessages.length - 1]
-    );
+    const recoveryMetadata = userTurn.metadata;
 
+    let providerStreamFailed = false;
+    generationStarted = true;
     const result = streamText({
       model: modelInstance,
       system: systemPromptContent,
@@ -2657,6 +2709,7 @@ async function processChatMessageStream(
           temperature: CORE_PROFILE_CHAT_TEMPERATURE,
         }),
       onError({ error }) {
+        providerStreamFailed = true;
         // The one place a stream-time parameter rejection can be learned. The
         // intent classifier is not a reliable canary: it returns early on any
         // keyword match, and is skipped entirely when the user picks tool
@@ -2696,32 +2749,6 @@ async function processChatMessageStream(
           'info',
           `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${observedUsage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${observedUsage?.inputTokens ?? 0} noCacheTokens=${observedUsage?.inputTokenDetails?.noCacheTokens ?? 0} cacheWriteTokens=${observedUsage?.inputTokenDetails?.cacheWriteTokens ?? 0} outputTokens=${observedUsage?.outputTokens ?? 0} totalTokens=${observedUsage?.totalTokens ?? 0}`
         );
-
-        // Get the last user message from conversationMessages to ensure parts are captured
-        const lastUserMessage = [...conversationMessages]
-          .reverse()
-          .find((msg) => msg.role === 'user');
-
-        const userMessageParts = Array.isArray(lastUserMessage?.content)
-          ? lastUserMessage.content
-          : [
-              {
-                type: 'text' as const,
-                text: String(lastUserMessage?.content || ''),
-              },
-            ];
-
-        // Save to DB on completion
-        await chatRepository
-          .saveChatHistory({
-            user_id: userId,
-            content: userMessageContent,
-            messageType: 'user',
-            parts: userMessageParts,
-          })
-          .catch((err: unknown) =>
-            log('error', 'Failed to save user chat history:', err)
-          );
 
         // A photo estimate analysed this turn is persisted with the message.
         // Asking the user how to save it always ends the turn, so their answer
@@ -2764,37 +2791,52 @@ async function processChatMessageStream(
         }
 
         await chatRepository
-          .saveChatHistory({
-            user_id: userId,
-            // The question is the user-visible content when the model let the
-            // chips speak for it.
-            content:
-              text.trim() ||
-              askUserPartToText({
-                type: ASK_USER_PART_TYPE,
-                input: askCall?.input,
-              }) ||
-              '',
-            messageType: 'assistant',
-            parts: assistantParts,
-          })
+          .saveChatHistory(
+            {
+              user_id: userId,
+              // The question is the user-visible content when the model let the
+              // chips speak for it.
+              content:
+                text.trim() ||
+                askUserPartToText({
+                  type: ASK_USER_PART_TYPE,
+                  input: askCall?.input,
+                }) ||
+                '',
+              messageType: 'assistant',
+              parts: assistantParts,
+              metadata:
+                !providerStreamFailed &&
+                (finishReason === 'stop' ||
+                  (finishReason === 'tool-calls' &&
+                    Boolean(askCall || capturedEstimate)))
+                  ? recoveryMetadata
+                  : undefined,
+            },
+            { parentUserEntryId: userTurn.historyId }
+          )
           .catch((err: unknown) =>
             log('error', 'Failed to save assistant chat history:', err)
           );
       },
     });
 
+    const uiStream = result.toUIMessageStream({
+      messageMetadata: ({ part }) =>
+        part.type === 'finish'
+          ? mapUsageToMetadata(part.totalUsage)
+          : undefined,
+    });
+    // Create the UI branch first, then drain and release the SDK's retained
+    // branch. The optional ai patch preserves default multi-consumer behavior.
+    void result.consumeStream({ discardInternalStream: true });
+
     return {
-      stream: withEmptyCompletionGuard(
-        result.toUIMessageStream({
-          messageMetadata: ({ part }) =>
-            part.type === 'finish'
-              ? mapUsageToMetadata(part.totalUsage)
-              : undefined,
-        })
-      ),
+      stream: withEmptyCompletionGuard(backgroundChatStream(uiStream)),
     };
   } catch (error) {
+    if (!generationStarted)
+      await discardUnstartedChatTurn(registeredHistoryId, userId);
     log(
       'error',
       `Error in processChatMessageStream for user ${userId}:`,
