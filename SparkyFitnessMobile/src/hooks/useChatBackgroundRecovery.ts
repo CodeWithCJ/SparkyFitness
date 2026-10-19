@@ -5,9 +5,9 @@ import {
   type ChatHistoryEntry,
 } from '../services/api/chatApi';
 
-// Full food workflows can run for 15 minutes on the server. Allow the final
-// history writes a little extra time, without retrying the original AI request.
-const RECOVERY_TIMEOUT_MS = 16 * 60 * 1000;
+// The server ends a chat turn after five minutes (CHAT_REQUEST_TIMEOUT_MS).
+// Allow fifteen seconds for final history writes, without resending the turn.
+const RECOVERY_TIMEOUT_MS = 5 * 60 * 1000 + 15_000;
 const POLL_INTERVAL_MS = 3000;
 
 interface PendingTurn {
@@ -99,6 +99,16 @@ export function useChatBackgroundRecovery({
     if (!pending || appState !== 'active') return;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    // This timer also releases the composer if a history read never settles.
+    const deadlineTimer = setTimeout(
+      () => {
+        if (cancelled || turnRef.current !== pending) return;
+        turnRef.current = null;
+        setPending(null);
+        onRecoveryFailed();
+      },
+      Math.max(0, pending.deadline - Date.now())
+    );
 
     const poll = async () => {
       if (cancelled || turnRef.current !== pending) return;
@@ -134,6 +144,7 @@ export function useChatBackgroundRecovery({
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      clearTimeout(deadlineTimer);
     };
   }, [appState, onRecovered, onRecoveryFailed, pending]);
 

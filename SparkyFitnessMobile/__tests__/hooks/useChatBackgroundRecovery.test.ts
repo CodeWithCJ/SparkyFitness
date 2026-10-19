@@ -173,7 +173,7 @@ it('bounds recovery time and retains the transcript when no saved reply arrives'
   const { result, onRecoveryFailed, onRecovered } = setup();
   act(() => result.current.startTurn('turn'));
   await transition('background');
-  await act(async () => jest.advanceTimersByTime(16 * 60 * 1000));
+  await act(async () => jest.advanceTimersByTime(5 * 60 * 1000 + 15_000));
   await transition('active');
   expect(onRecoveryFailed).toHaveBeenCalledTimes(1);
   expect(onRecovered).not.toHaveBeenCalled();
@@ -195,4 +195,17 @@ it('ignores in-flight recovery after unmount and removes the app-state listener'
   await act(async () => resolveHistory([historyEntry('turn')]));
   expect(onRecovered).not.toHaveBeenCalled();
   expect(removeListener).toHaveBeenCalledTimes(1);
+});
+
+it('releases the composer at the server deadline even if the history read hangs', async () => {
+  mockLoadHistory.mockReturnValue(new Promise(() => {}));
+  const { result, onRecoveryFailed } = setup();
+  act(() => result.current.startTurn('hung-history'));
+  await transition('background');
+  await transition('active');
+  await act(async () => jest.advanceTimersByTime(5 * 60 * 1000));
+  expect(result.current.recovering).toBe(true);
+  await act(async () => jest.advanceTimersByTime(15_000));
+  expect(result.current.recovering).toBe(false);
+  expect(onRecoveryFailed).toHaveBeenCalledTimes(1);
 });

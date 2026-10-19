@@ -19,7 +19,10 @@ export function backgroundChatStream(
               const { done, value } = await reader.read();
               if (done) break;
               if (abandoned) continue;
-              if ((controller.desiredSize ?? 0) < chunkBytes(value)) {
+              const available = controller.desiredSize ?? 0;
+              // A single provider chunk can exceed the whole buffer. Let it
+              // through when empty so a fast reader can still receive it.
+              if (available < bufferBytes && available < chunkBytes(value)) {
                 abandoned = true;
                 controller.error(
                   new Error(

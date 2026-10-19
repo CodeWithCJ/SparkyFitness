@@ -739,79 +739,96 @@ function Composer({
   ]) as [string, string, string, string];
 
   return (
-    <ComposerPrimitive.Root
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        margin: 12,
-        gap: 8,
-      }}
-    >
-      {recording ? (
-        <VoiceWaveform level={voiceLevel} raised={raised} accent={accent} />
-      ) : (
-        <LocalComposerInput
-          autoFocusReady={autoFocusReady && !voiceBusy}
-          editable={!voiceBusy}
-          placeholder={t('chat.placeholder', {
-            defaultValue: 'Message Sparky…',
-          })}
-          placeholderTextColor={muted}
-          multiline
-          style={{
-            flex: 1,
-            color: textPrimary,
-            backgroundColor: raised,
-            borderRadius: 20,
-            paddingHorizontal: 16,
-            paddingVertical: 10,
-            maxHeight: 120,
-            fontSize: 16,
-          }}
-        />
-      )}
-      {voiceInputEnabled && (
-        // Keep the controller mounted while run-start cancellation finishes;
-        // unmounting here would strand the parent's recording/busy state.
-        <View style={running ? { display: 'none' } : undefined}>
-          {voiceServiceConfigId ? (
-            <AiVoiceDictationButton
-              serviceConfigId={voiceServiceConfigId}
-              textPrimary={textPrimary}
-              recording={recording}
-              onRecordingChange={handleRecordingChange}
-              onBusyChange={setVoiceBusy}
-              onVolumeChange={handleVoiceVolume}
-            />
-          ) : (
-            <SystemVoiceDictationButton
-              textPrimary={textPrimary}
-              recording={recording}
-              busy={voiceBusy}
-              onRecordingChange={handleRecordingChange}
-              onBusyChange={setVoiceBusy}
-              onVolumeChange={handleVoiceVolume}
-            />
-          )}
-        </View>
-      )}
-      {/* Keep the arrow visible, but disable it until recording has
-          stopped so recognition can never continue invisibly after a send. */}
-      <ThreadPrimitive.If running={false}>
-        <ComposerPrimitive.Send disabled={recording || voiceBusy}>
-          <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
-            <Icon name="arrow-up" size={20} color="#ffffff" />
-          </View>
-        </ComposerPrimitive.Send>
-      </ThreadPrimitive.If>
+    <>
       <ThreadPrimitive.If running>
-        <ComposerPrimitive.Cancel>
-          <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
-            <Icon name="stop" size={18} color="#ffffff" />
-          </View>
-        </ComposerPrimitive.Cancel>
+        <Text style={{ color: muted, marginHorizontal: 16 }}>
+          {t('chat.hideLiveReplyNotice', {
+            defaultValue:
+              'Hiding the live reply does not cancel Sparky. Tools can still save changes; reopen chat to load the saved reply.',
+          })}
+        </Text>
       </ThreadPrimitive.If>
-    </ComposerPrimitive.Root>
+      <ComposerPrimitive.Root
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          margin: 12,
+          gap: 8,
+        }}
+      >
+        {recording ? (
+          <VoiceWaveform level={voiceLevel} raised={raised} accent={accent} />
+        ) : (
+          <LocalComposerInput
+            autoFocusReady={autoFocusReady && !voiceBusy}
+            editable={!voiceBusy}
+            placeholder={t('chat.placeholder', {
+              defaultValue: 'Message Sparky…',
+            })}
+            placeholderTextColor={muted}
+            multiline
+            style={{
+              flex: 1,
+              color: textPrimary,
+              backgroundColor: raised,
+              borderRadius: 20,
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              maxHeight: 120,
+              fontSize: 16,
+            }}
+          />
+        )}
+        {voiceInputEnabled && (
+          // Keep the controller mounted while run-start cancellation finishes;
+          // unmounting here would strand the parent's recording/busy state.
+          <View style={running ? { display: 'none' } : undefined}>
+            {voiceServiceConfigId ? (
+              <AiVoiceDictationButton
+                serviceConfigId={voiceServiceConfigId}
+                textPrimary={textPrimary}
+                recording={recording}
+                onRecordingChange={handleRecordingChange}
+                onBusyChange={setVoiceBusy}
+                onVolumeChange={handleVoiceVolume}
+              />
+            ) : (
+              <SystemVoiceDictationButton
+                textPrimary={textPrimary}
+                recording={recording}
+                busy={voiceBusy}
+                onRecordingChange={handleRecordingChange}
+                onBusyChange={setVoiceBusy}
+                onVolumeChange={handleVoiceVolume}
+              />
+            )}
+          </View>
+        )}
+        {/* Keep the arrow visible, but disable it until recording has
+          stopped so recognition can never continue invisibly after a send. */}
+        <ThreadPrimitive.If running={false}>
+          <ComposerPrimitive.Send disabled={recording || voiceBusy}>
+            <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
+              <Icon name="arrow-up" size={20} color="#ffffff" />
+            </View>
+          </ComposerPrimitive.Send>
+        </ThreadPrimitive.If>
+        <ThreadPrimitive.If running>
+          <ComposerPrimitive.Cancel
+            accessibilityLabel={t('chat.hideLiveReply', {
+              defaultValue: 'Hide live reply',
+            })}
+          >
+            <View className="bg-accent-primary rounded-full px-3 h-10 flex-row items-center justify-center gap-1">
+              <Icon name="stop" size={18} color="#ffffff" />
+              <Text style={{ color: '#ffffff' }}>
+                {t('chat.hideLiveReply', { defaultValue: 'Hide live reply' })}
+              </Text>
+            </View>
+          </ComposerPrimitive.Cancel>
+        </ThreadPrimitive.If>
+      </ComposerPrimitive.Root>
+    </>
   );
 }
 
@@ -883,7 +900,13 @@ function ChatThread({
   onRecovered: (history: ChatHistoryEntry[]) => void;
 }) {
   const { t } = useTranslation();
+  const runtimeRef = useRef<ReturnType<typeof useSparkyChatRuntime> | null>(
+    null
+  );
   const onRecoveryFailed = useCallback(() => {
+    // A suspended transport may still report running after the server deadline.
+    // Release that local stream too so the composer becomes usable again.
+    runtimeRef.current?.thread.cancelRun();
     Toast.show({
       type: 'error',
       text1: t('chat.error', { defaultValue: 'Chat error' }),
@@ -900,6 +923,12 @@ function ChatThread({
     initialMessages,
     recovery,
   });
+  useEffect(() => {
+    runtimeRef.current = runtime;
+    return () => {
+      runtimeRef.current = null;
+    };
+  }, [runtime]);
 
   // Keep the message list pinned to the bottom as content grows — but only
   // while the user is at the bottom: lands on the latest message on mount

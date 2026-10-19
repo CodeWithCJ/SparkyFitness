@@ -15,6 +15,7 @@ import * as chatApi from '../../src/services/api/chatApi';
 const mockWakeAcquire = jest.fn();
 const mockWakeRelease = jest.fn();
 const mockPrepareCapture = jest.fn();
+const mockCancelRun = jest.fn();
 
 jest.mock('expo-keep-awake', () => ({
   useKeepAwake: (tag: string) => {
@@ -88,7 +89,7 @@ jest.mock('@assistant-ui/react-ai-sdk', () => ({
     callbacks.__mockCapturedOnError = options.onError;
     callbacks.__mockCapturedOnFinish = options.onFinish;
     callbacks.__mockCapturedMessages = options.messages;
-    return {};
+    return { thread: { cancelRun: mockCancelRun } };
   },
 }));
 
@@ -436,8 +437,8 @@ describe('ChatScreen thread', () => {
     expect(getByText('Suggest a high-protein snack')).toBeTruthy();
   });
 
-  it('shows the up-arrow send button while idle and swaps to a Stop button while running', async () => {
-    const { findByTestId, getByTestId, queryByTestId, rerender } =
+  it('shows the up-arrow send button while idle and swaps to an explicitly labelled hide-live-reply button while running', async () => {
+    const { findByTestId, getByTestId, getByText, queryByTestId, rerender } =
       renderScreen();
     await findByTestId('composer-send');
 
@@ -457,6 +458,12 @@ describe('ChatScreen thread', () => {
     expect(queryByTestId('composer-send')).toBeNull();
     expect(queryByTestId('icon-arrow-up')).toBeNull();
     expect(getByTestId('icon-stop')).toBeTruthy();
+    expect(getByText('Hide live reply')).toBeTruthy();
+    expect(
+      getByText(
+        'Hiding the live reply does not cancel Sparky. Tools can still save changes; reopen chat to load the saved reply.'
+      )
+    ).toBeTruthy();
   });
 
   it('surfaces a toast when the stream errors via the runtime onError handler', async () => {
@@ -1201,6 +1208,48 @@ describe('ChatScreen history seeding', () => {
       }
     }
   );
+
+  it('releases a stalled live runtime when background recovery reaches the server deadline', async () => {
+    const loadHistory = jest
+      .spyOn(chatApi, 'loadChatHistory')
+      .mockImplementation(() => new Promise(() => {}));
+    const screen = renderScreen();
+    await screen.findByTestId('composer-send');
+    const prepare = mockPrepareCapture.mock.calls.at(
+      -1
+    )?.[0] as PrepareChatRequest;
+    jest.useFakeTimers();
+    mockCancelRun.mockClear();
+    try {
+      act(() => {
+        prepare({ messages: [{ id: 'user-turn', role: 'user' }] });
+      });
+      await act(async () => {
+        AppState.currentState = 'background';
+        jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.forEach(([, handler]) => handler('background'));
+        AppState.currentState = 'active';
+        jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.forEach(([, handler]) => handler('active'));
+      });
+      expect(screen.getByText('Restoring Sparky’s reply…')).toBeTruthy();
+      await act(async () => jest.advanceTimersByTime(5 * 60 * 1000 + 15_000));
+      expect(mockCancelRun).toHaveBeenCalledTimes(1);
+      expect(screen.queryByText('Restoring Sparky’s reply…')).toBeNull();
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text2:
+            'Could not restore the reply. Reopen chat to check the saved history.',
+        })
+      );
+    } finally {
+      screen.unmount();
+      jest.useRealTimers();
+      loadHistory.mockRestore();
+    }
+  });
 
   it('seeds the runtime with the loaded history messages', async () => {
     const seed = [

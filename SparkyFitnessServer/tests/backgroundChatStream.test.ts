@@ -103,3 +103,20 @@ it('delivers every chunk while the client reads normally', async () => {
   while (!(await reader.read()).done) received++;
   expect(received).toBe(1000);
 });
+
+it('delivers a single oversized chunk to an active reader', async () => {
+  const chunk = {
+    type: 'text-delta' as const,
+    id: 'reply',
+    delta: 'x'.repeat(150_000),
+  };
+  const stream = new ReadableStream<UIMessageChunk>({
+    start(controller) {
+      controller.enqueue(chunk);
+      controller.close();
+    },
+  });
+  const reader = backgroundChatStream(stream).getReader();
+  expect(await reader.read()).toEqual({ done: false, value: chunk });
+  expect((await reader.read()).done).toBe(true);
+});

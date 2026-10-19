@@ -4310,6 +4310,8 @@
     "error": "Chat error",
     "errorRetry": "Something went wrong. Tap retry to try again.",
     "recovering": "Restoring Sparky’s reply…",
+    "hideLiveReply": "Hide live reply",
+    "hideLiveReplyNotice": "Hiding the live reply does not cancel Sparky. Tools can still save changes; reopen chat to load the saved reply.",
     "recoveryFailed": "Could not restore the reply. Reopen chat to check the saved history.",
     "retry": "Retry",
     "placeholder": "Message Sparky…",
