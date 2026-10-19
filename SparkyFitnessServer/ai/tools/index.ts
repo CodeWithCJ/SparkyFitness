@@ -25,6 +25,8 @@ import { buildBarcodeTools } from './barcodeTools.js';
 import { buildDashboardTools } from './dashboardTools.js';
 import { buildFavoritesTools } from './favoritesTools.js';
 import { buildFoodTools } from './foodTools.js';
+import { buildFoodAssistantTools } from './foodAssistantTools.js';
+import { buildRecipeTools } from './recipeTools.js';
 import { buildGoalTools } from './goalTools.js';
 import { buildHabitTools } from './habitTools.js';
 import { buildMealPlanTools } from './mealPlansTools.js';
@@ -64,6 +66,8 @@ type ToolMap = Record<string, Tool>;
  * and logged verbatim); every other builder ignores the argument.
  */
 export interface ToolBuildContext {
+  /** Trusted text from the current user turn, used to authorize lasting memory. */
+  latestUserText?: string;
   foodPhotoEstimateSink?: FoodPhotoEstimateSink;
   /**
    * The image attached to this turn, as a data URL.
@@ -77,6 +81,8 @@ export interface ToolBuildContext {
   latestImageDataUrl?: string | null;
   /** The active AI service config ID from the current chat session, if known. */
   serviceConfigId?: string | null;
+  /** Provider-executed web research, offered within the food category only. */
+  foodResearchTool?: Tool;
 }
 
 const CATEGORY_BUILDERS: Record<
@@ -90,7 +96,11 @@ const CATEGORY_BUILDERS: Record<
     (u, tz) => buildRunProgramTools(u, tz),
   ],
   food: [
+    (_u, _tz, ctx): ToolMap =>
+      ctx?.foodResearchTool ? { web_search: ctx.foodResearchTool } : {},
     (u, tz) => buildFoodTools(u, tz),
+    (u, _tz, ctx) => buildFoodAssistantTools(u, ctx),
+    (u, _tz, ctx) => buildRecipeTools(u, ctx),
     (u, tz) => buildFavoritesTools(u, tz),
     (u, tz) => buildMealPlanTools(u, tz),
     (u, tz) => buildCustomNutrientTools(u, tz),
@@ -237,15 +247,16 @@ function applyChatProviderTuning(tools: ToolMap): void {
   // runtime parse changes. Chat-only: MCP strips nulls upstream itself.
   for (const name of Object.keys(tools)) {
     const t = tools[name] as Tool & { inputSchema?: unknown };
-    if (t.inputSchema) {
+    if (t.inputSchema instanceof z.ZodType) {
       t.inputSchema = z.preprocess(
         stripNullValues,
         t.inputSchema as z.ZodType
       ) as unknown as typeof t.inputSchema;
     }
   }
-  // The published flat schemas are advisory; real validation is the strict
-  // per-action union inside each handler. Strict provider-side mode must stay
+  // Most published schemas are advisory flat objects, with strict per-action
+  // validation in their handlers. Recipes publish the correlated action union
+  // with object-root metadata for provider compatibility. Strict provider-side mode must stay
   // off: OpenAI's Responses API treats an omitted flag as "attempt strict
   // mode" and then forces models to emit every published property, producing
   // placeholder junk that the per-action validation rejects.

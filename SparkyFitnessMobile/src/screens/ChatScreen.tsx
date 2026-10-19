@@ -80,6 +80,7 @@ import {
   chatHistoryQueryKey,
 } from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { invalidateAssistantFoodCaches } from '../hooks/invalidateAssistantFoodCaches';
 import type { RootStackScreenProps } from '../types/navigation';
 
 /** Seed (initial) messages accepted by `useChatRuntime`. */
@@ -136,6 +137,7 @@ function useSparkyChatRuntime({
   initialMessages: InitialMessages;
 }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const transport = useMemo(
     () =>
       new AssistantChatTransport({
@@ -166,6 +168,10 @@ function useSparkyChatRuntime({
     transport,
     // Seed prior history (the runtime ignores changes after mount — see ChatThread's key).
     messages: initialMessages,
+    onFinish: () => {
+      invalidateAssistantFoodCaches(queryClient);
+      void queryClient.invalidateQueries({ queryKey: chatHistoryQueryKey });
+    },
     onError: (error: Error) => {
       addLog('Chat stream error', 'ERROR', [error?.message ?? String(error)]);
       Toast.show({
