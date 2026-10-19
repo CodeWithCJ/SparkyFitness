@@ -1,4 +1,5 @@
 import undici from 'undici';
+import { isGpt6Model } from '@workspace/shared';
 import convert from 'heic-convert';
 import sharp from 'sharp';
 import { log } from '../config/logging.js';
@@ -42,6 +43,7 @@ export interface ProviderConfig {
   api_key?: string;
   model_name?: string;
   custom_url?: string;
+  reasoning_effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 }
 
 export interface DispatchImage {
@@ -51,11 +53,11 @@ export interface DispatchImage {
 
 /** A minimal JSON Schema node. */
 export interface JsonSchemaNode {
-  type?: string;
-  properties?: Record<string, JsonSchemaNode>;
+  type?: string | string[];
+  properties?: Record<string, JsonSchemaNode | boolean>;
   required?: string[];
-  items?: JsonSchemaNode;
-  additionalProperties?: boolean;
+  items?: JsonSchemaNode | boolean | (JsonSchemaNode | boolean)[];
+  additionalProperties?: boolean | JsonSchemaNode;
   propertyOrdering?: string[];
   [k: string]: unknown;
 }
@@ -463,10 +465,16 @@ function stripCodeFences(content: string): string {
  */
 export function toStrictJsonSchema(input: unknown): JsonSchemaNode {
   const clone: JsonSchemaNode = JSON.parse(JSON.stringify(input));
-  const walk = (node: JsonSchemaNode): void => {
+  const walk = (
+    node: JsonSchemaNode | boolean | (JsonSchemaNode | boolean)[]
+  ): void => {
     if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
     delete node.propertyOrdering;
-    if (node.type === 'object') {
+    if (node.type === 'object' || node.type?.includes('object')) {
       node.additionalProperties = false;
       if (node.properties) {
         for (const child of Object.values(node.properties)) {
@@ -475,6 +483,12 @@ export function toStrictJsonSchema(input: unknown): JsonSchemaNode {
       }
     }
     if (node.items) walk(node.items);
+    for (const keyword of ['anyOf', 'allOf', 'oneOf', '$defs', 'definitions']) {
+      const children = node[keyword];
+      if (children && typeof children === 'object') {
+        for (const child of Object.values(children)) walk(child);
+      }
+    }
   };
   walk(clone);
   return clone;
@@ -487,8 +501,14 @@ export function toStrictJsonSchema(input: unknown): JsonSchemaNode {
  */
 function stripAdditionalProperties(input: JsonSchemaNode): JsonSchemaNode {
   const clone: JsonSchemaNode = JSON.parse(JSON.stringify(input));
-  const walk = (node: JsonSchemaNode): void => {
+  const walk = (
+    node: JsonSchemaNode | boolean | (JsonSchemaNode | boolean)[]
+  ): void => {
     if (!node || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
     delete node.additionalProperties;
     if (node.properties) {
       for (const child of Object.values(node.properties)) {
@@ -496,6 +516,12 @@ function stripAdditionalProperties(input: JsonSchemaNode): JsonSchemaNode {
       }
     }
     if (node.items) walk(node.items);
+    for (const keyword of ['anyOf', 'allOf', 'oneOf', '$defs', 'definitions']) {
+      const children = node[keyword];
+      if (children && typeof children === 'object') {
+        for (const child of Object.values(children)) walk(child);
+      }
+    }
   };
   walk(clone);
   return clone;
@@ -576,6 +602,43 @@ function buildGoogleRequest(
 }
 
 function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
+  // GPT-6 tool use and structured output use the Responses protocol. Keep
+  // user-hosted compatible endpoints on their configured Chat protocol.
+  if (ctx.provider.service_type === 'openai' && isGpt6Model(ctx.model)) {
+    const format = ctx.jsonSchema
+      ? {
+          type: 'json_schema',
+          name: ctx.toolName,
+          strict: true,
+          schema: toStrictJsonSchema(ctx.jsonSchema),
+        }
+      : undefined;
+    return {
+      url: 'https://api.openai.com/v1/responses',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${ctx.provider.api_key}`,
+      },
+      body: {
+        model: ctx.model,
+        store: false,
+        reasoning: { effort: ctx.provider.reasoning_effort ?? 'medium' },
+        input: [
+          {
+            role: 'user',
+            content: [
+              { type: 'input_text', text: ctx.prompt },
+              ...ctx.images.map((img) => ({
+                type: 'input_image',
+                image_url: `data:${img.mimeType};base64,${img.base64}`,
+              })),
+            ],
+          },
+        ],
+        ...(format ? { text: { format } } : {}),
+      },
+    };
+  }
   // DeepSeek's OpenAI-compatible endpoint supports JSON mode, not strict JSON Schema.
   const isDeepSeek =
     ctx.provider.service_type === 'openai_compatible' &&
@@ -816,6 +879,9 @@ function extractTextFromAgentOutput(output: unknown): string | null {
       output_text?: unknown;
       content?: unknown;
     };
+    // Responses reasoning and tool items are not assistant answer text.
+    if (obj.type && !['message', 'output_text', 'text'].includes(obj.type))
+      continue;
     if (typeof obj.text === 'string') {
       texts.push(obj.text);
     } else if (typeof obj.output_text === 'string') {
@@ -830,6 +896,7 @@ function extractTextFromAgentOutput(output: unknown): string | null {
           text?: unknown;
           output_text?: unknown;
         };
+        if (b.type && !['output_text', 'text'].includes(b.type)) continue;
         if (typeof b.text === 'string') {
           texts.push(b.text);
         } else if (typeof b.output_text === 'string') {
@@ -851,8 +918,43 @@ function extractOpenAiFamily(data: unknown): ExtractResult {
     }>;
     output_text?: unknown;
     output?: unknown;
+    status?: string;
+    incomplete_details?: { reason?: string };
   };
+  if (d?.status === 'incomplete') {
+    return {
+      kind: 'error',
+      category:
+        d.incomplete_details?.reason === 'content_filter'
+          ? 'refused'
+          : 'truncated',
+      detail: `AI service returned an incomplete response (${d.incomplete_details?.reason || 'unknown reason'}).`,
+    };
+  }
   // Perplexity Agent API responses (/v1/responses) return `output_text` or `output`
+  if (
+    Array.isArray(d?.output) &&
+    (d.output as unknown[]).some(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        'content' in item &&
+        Array.isArray(item.content) &&
+        (item.content as unknown[]).some(
+          (block) =>
+            block &&
+            typeof block === 'object' &&
+            'type' in block &&
+            block.type === 'refusal'
+        )
+    )
+  ) {
+    return {
+      kind: 'error',
+      category: 'refused',
+      detail: 'AI service refused the request.',
+    };
+  }
   if (typeof d?.output_text === 'string' && d.output_text.trim() !== '') {
     return { kind: 'text', text: d.output_text };
   }

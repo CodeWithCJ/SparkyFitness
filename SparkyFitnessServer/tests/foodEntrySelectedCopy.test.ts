@@ -153,7 +153,8 @@ describe('copySelectedFoodEntriesFromUser', () => {
           custom_nutrients: { magnesium: 12 },
         }),
       ],
-      ACTOR
+      ACTOR,
+      { copiedSnapshots: true }
     );
     expect(result).toEqual([{ id: 'copy-1' }]);
   });
@@ -206,7 +207,8 @@ describe('copySelectedFoodEntriesFromUser', () => {
         expect.objectContaining({ food_id: 'food-1', quantity: 150 }),
         expect.objectContaining({ food_id: 'food-2', quantity: 75 }),
       ],
-      ACTOR
+      ACTOR,
+      { copiedSnapshots: true }
     );
   });
 
@@ -278,7 +280,8 @@ describe('copySelectedFoodEntriesFromUser', () => {
     expect(foodRepository.getFoodEntryByDetails).not.toHaveBeenCalled();
     expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
       [expect.objectContaining({ food_id: null })],
-      ACTOR
+      ACTOR,
+      { copiedSnapshots: true }
     );
   });
 });

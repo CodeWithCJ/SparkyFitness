@@ -170,6 +170,9 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     // owner-only (no delegation)
     api_key: 'owner',
     sparky_chat_history: 'owner',
+    food_assistant_operations: 'owner',
+    food_assistant_preferences: 'owner',
+    food_assistant_tasks: 'owner',
     user_ignored_updates: 'owner',
     user_oidc_links: 'owner',
     cycle_daily_entries: 'owner',

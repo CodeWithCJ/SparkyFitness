@@ -542,13 +542,19 @@ async function findFoodByBarcode(barcode: string, userId: string) {
     client.release();
   }
 }
-async function getFoodById(foodId: string, userId: string) {
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
+async function getFoodById(
+  foodId: string,
+  userId: string,
+  transactionClient?: PoolClient,
+  withVariants = false
+) {
+  const client = transactionClient ?? (await getClient(userId)); // User-specific operation (RLS will handle access)
   try {
     const result = await client.query(
       `SELECT
         f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
         ${DEFAULT_VARIANT_JSON_SQL}
+        ${withVariants ? ', COALESCE((SELECT json_agg(all_fv ORDER BY all_fv.is_default DESC, all_fv.updated_at DESC, all_fv.id) FROM food_variants all_fv WHERE all_fv.food_id = f.id), json_build_array()) AS variants' : ''}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
       WHERE f.id = $1`,
@@ -556,7 +562,7 @@ async function getFoodById(foodId: string, userId: string) {
     );
     return result.rows[0];
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
 }
 async function getFoodOwnerId(foodId: string, userId: string) {
@@ -1698,9 +1704,10 @@ async function findVisibleFoodByName(
 async function findFoodByProviderExternalId(
   userId: string,
   providerExternalId: string,
-  providerType: string
+  providerType: string,
+  transactionClient?: PoolClient
 ) {
-  const client = await getClient(userId);
+  const client: PoolClient = transactionClient ?? (await getClient(userId));
   try {
     const result = await client.query(
       // Deliberately NOT filtered by is_quick_food, unlike the discovery
@@ -1721,7 +1728,7 @@ async function findFoodByProviderExternalId(
     );
     return result.rows[0] || null;
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
 }
 

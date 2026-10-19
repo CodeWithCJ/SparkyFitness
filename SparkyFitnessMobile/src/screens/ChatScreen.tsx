@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  ScrollView,
   KeyboardAvoidingView as RNKeyboardAvoidingView,
   Platform,
   Pressable,
@@ -53,6 +54,7 @@ import { ASK_USER_TOOL_NAME } from '@workspace/shared';
 import Icon from '../components/Icon';
 import AskUserToolCard from '../components/chat/AskUserToolCard';
 import ToolCallCard from '../components/chat/ToolCallCard';
+import FoodAssistantStatePanel from '../components/chat/FoodAssistantStatePanel';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import MarkdownMessage from '../components/chat/MarkdownMessage';
 import VoiceWaveform from '../components/chat/VoiceWaveform';
@@ -80,6 +82,7 @@ import {
   chatHistoryQueryKey,
 } from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { invalidateAssistantFoodCaches } from '../hooks/invalidateAssistantFoodCaches';
 import type { RootStackScreenProps } from '../types/navigation';
 
 /** Seed (initial) messages accepted by `useChatRuntime`. */
@@ -136,6 +139,7 @@ function useSparkyChatRuntime({
   initialMessages: InitialMessages;
 }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const transport = useMemo(
     () =>
       new AssistantChatTransport({
@@ -166,6 +170,10 @@ function useSparkyChatRuntime({
     transport,
     // Seed prior history (the runtime ignores changes after mount — see ChatThread's key).
     messages: initialMessages,
+    onFinish: () => {
+      invalidateAssistantFoodCaches(queryClient);
+      void queryClient.invalidateQueries({ queryKey: chatHistoryQueryKey });
+    },
     onError: (error: Error) => {
       addLog('Chat stream error', 'ERROR', [error?.message ?? String(error)]);
       Toast.show({
@@ -906,51 +914,60 @@ function ChatThread({
     <AssistantRuntimeProvider runtime={runtime}>
       <RunningReporter onRunningChange={handleRunningChange} />
       <ThreadPrimitive.Root style={{ flex: 1 }}>
-        <View style={{ flex: 1 }}>
+        <FoodAssistantStatePanel />
+        <View style={{ flex: 1, overflow: 'hidden' }}>
           <ThreadPrimitive.Empty>
-            <View className="flex-1 items-center justify-center p-8">
-              <Text className="text-text-muted text-center text-base mb-6">
-                {t('chat.emptyPrompt', {
-                  defaultValue:
-                    'Ask Sparky anything about your nutrition, exercise, or goals.',
-                })}
-              </Text>
-              {/* ThreadPrimitive.Suggestion IS the Pressable, so its child must be a
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View className="items-center p-8">
+                <Text className="text-text-muted text-center text-base mb-6">
+                  {t('chat.emptyPrompt', {
+                    defaultValue:
+                      'Ask Sparky anything about your nutrition, exercise, or goals.',
+                  })}
+                </Text>
+                {/* ThreadPrimitive.Suggestion IS the Pressable, so its child must be a
                   non-touchable styled View (nested pressables swallow touches). */}
-              <View className="w-full gap-2">
-                {CHAT_SUGGESTIONS.map((suggestion) => (
-                  <ThreadPrimitive.Suggestion
-                    key={suggestion.prompt}
-                    prompt={suggestion.prompt}
-                    send
-                    clearComposer
-                  >
-                    <View className="bg-surface border border-border-subtle rounded-2xl px-4 py-3">
-                      <Text className="text-text-primary text-sm text-center">
-                        {getLocalizedSuggestionLabel(
-                          t,
-                          suggestion.labelKey,
-                          suggestion.defaultLabel
-                        )}
-                      </Text>
-                    </View>
-                  </ThreadPrimitive.Suggestion>
-                ))}
+                <View className="w-full gap-2">
+                  {CHAT_SUGGESTIONS.map((suggestion) => (
+                    <ThreadPrimitive.Suggestion
+                      key={suggestion.prompt}
+                      prompt={suggestion.prompt}
+                      send
+                      clearComposer
+                    >
+                      <View className="bg-surface border border-border-subtle rounded-2xl px-4 py-3">
+                        <Text className="text-text-primary text-sm text-center">
+                          {getLocalizedSuggestionLabel(
+                            t,
+                            suggestion.labelKey,
+                            suggestion.defaultLabel
+                          )}
+                        </Text>
+                      </View>
+                    </ThreadPrimitive.Suggestion>
+                  ))}
+                </View>
               </View>
-            </View>
+            </ScrollView>
           </ThreadPrimitive.Empty>
 
-          <ThreadMessages
-            ref={messagesRef}
-            style={{ flex: 1 }}
-            contentContainerStyle={{ padding: 16 }}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            onContentSizeChange={scrollToBottomIfPinned}
-            onLayout={scrollToBottomIfPinned}
-          >
-            {({ message }) => <MessageBubble role={message.role} />}
-          </ThreadMessages>
+          <ThreadPrimitive.If empty={false}>
+            <ThreadMessages
+              ref={messagesRef}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ padding: 16 }}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              onContentSizeChange={scrollToBottomIfPinned}
+              onLayout={scrollToBottomIfPinned}
+            >
+              {({ message }) => <MessageBubble role={message.role} />}
+            </ThreadMessages>
+          </ThreadPrimitive.If>
         </View>
 
         <Composer

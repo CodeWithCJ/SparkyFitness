@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg';
+import { prepareCopiedFoodSnapshots } from './foodSnapshotReferenceRepository.js';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
@@ -950,7 +951,10 @@ async function copyReviewedFoodEntriesFromUser({
         )
     );
 
-    for (const entry of sourceEntries) {
+    for (const entry of await prepareCopiedFoodSnapshots(
+      client,
+      sourceEntries
+    )) {
       let targetFoodEntryMealId: string | null = null;
       if (entry.food_entry_meal_id) {
         targetFoodEntryMealId =
@@ -1123,8 +1127,12 @@ async function copyReviewedFoodEntriesFromUser({
  */
 async function bulkCreateFoodEntriesWithClient(
   client: PoolClient,
-  entriesData: FoodEntryInput[]
+  entriesData: FoodEntryInput[],
+  options?: { copiedSnapshots: boolean }
 ) {
+  const snapshots = options?.copiedSnapshots
+    ? await prepareCopiedFoodSnapshots(client, entriesData)
+    : entriesData;
   const query = `
       INSERT INTO food_entries (
         user_id, 
@@ -1168,7 +1176,7 @@ async function bulkCreateFoodEntriesWithClient(
         notes
       )
       VALUES %L RETURNING *`;
-  const values = entriesData.map((entry: FoodEntryInput) => [
+  const values = snapshots.map((entry: FoodEntryInput) => [
     entry.user_id,
     entry.food_id,
     entry.meal_type_id,
@@ -1217,7 +1225,8 @@ async function bulkCreateFoodEntriesWithClient(
 
 async function bulkCreateFoodEntries(
   entriesData: FoodEntryInput[],
-  authenticatedUserId: string
+  authenticatedUserId: string,
+  options?: { copiedSnapshots: boolean }
 ) {
   log(
     'info',
@@ -1225,11 +1234,35 @@ async function bulkCreateFoodEntries(
   );
   // For bulk create, assuming all entries belong to the same user,
   // and the first entry's user_id can be used for RLS context.
-  const client = await getClient(authenticatedUserId); // User-specific operation
+  const client: PoolClient = await getClient(authenticatedUserId); // User-specific operation
+  let releaseError: Error | undefined;
+  let transactionStarted = false;
   try {
-    return await bulkCreateFoodEntriesWithClient(client, entriesData);
+    if (options?.copiedSnapshots) {
+      await client.query('BEGIN');
+      transactionStarted = true;
+    }
+    const result = await bulkCreateFoodEntriesWithClient(
+      client,
+      entriesData,
+      options
+    );
+    if (transactionStarted) await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    if (transactionStarted) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackError) {
+        releaseError =
+          rollbackError instanceof Error
+            ? rollbackError
+            : new Error('Copy rollback failed.');
+      }
+    }
+    throw error;
   } finally {
-    client.release();
+    client.release(releaseError);
   }
 }
 async function getFoodEntryComponentsByFoodEntryMealId(
