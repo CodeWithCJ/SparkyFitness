@@ -1804,6 +1804,19 @@ async function saveUserChatTurn(messages: ChatMessage[], userId: string) {
   return { historyId, metadata };
 }
 
+/** Remove a registered user turn when setup fails before generation is attempted. */
+async function discardUnstartedChatTurn(
+  historyId: string | undefined,
+  userId: string
+) {
+  if (!historyId) return;
+  try {
+    await chatRepository.deleteChatHistoryEntry(historyId, userId);
+  } catch (error) {
+    log('error', 'Failed to remove unstarted chat turn:', error);
+  }
+}
+
 // Keyword rules for instant classification. Kept deliberately moderate
 // (stems and a handful of high-signal synonyms) rather than exhaustive:
 // wide-net keyword lists trade recall for false positives ("I ran out of
@@ -2032,6 +2045,8 @@ async function processChatMessage(
   actorIsAdmin = false,
   toolCategories?: readonly string[]
 ) {
+  let registeredHistoryId: string | undefined;
+  let generationStarted = false;
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
@@ -2040,6 +2055,7 @@ async function processChatMessage(
       throw new Error('AI service configuration ID is missing.');
     }
     const userTurn = await saveUserChatTurn(messages, userId);
+    registeredHistoryId = userTurn.historyId;
     const aiService = await chatRepository.getAiServiceSettingForBackend(
       serviceConfigId,
       userId
@@ -2123,6 +2139,7 @@ async function processChatMessage(
     }> = [];
     const toolOutputs: string[] = [];
 
+    generationStarted = true;
     const result = await runWithTemperatureFallback(
       aiService.service_type,
       modelName,
@@ -2287,6 +2304,8 @@ async function processChatMessage(
       executedTools: executedToolsList,
     };
   } catch (error) {
+    if (!generationStarted)
+      await discardUnstartedChatTurn(registeredHistoryId, userId);
     log('error', `Error processing chat message for user ${userId}:`, error);
     throw error;
   }
@@ -2568,6 +2587,8 @@ async function processChatMessageStream(
   actorIsAdmin = false,
   toolCategories?: readonly string[]
 ) {
+  let registeredHistoryId: string | undefined;
+  let generationStarted = false;
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
@@ -2576,12 +2597,16 @@ async function processChatMessageStream(
       throw new Error('AI service configuration ID is missing.');
     }
     const userTurn = await saveUserChatTurn(messages, userId);
+    registeredHistoryId = userTurn.historyId;
     const aiService = await chatRepository.getAiServiceSettingForBackend(
       serviceConfigId,
       userId
     );
     if (!aiService) {
       throw new Error('AI service setting not found for the provided ID.');
+    }
+    if (requiresApiKey(aiService.service_type) && !aiService.api_key) {
+      throw new Error('API key missing for selected AI service.');
     }
 
     const modelName =
@@ -2657,6 +2682,7 @@ async function processChatMessageStream(
     const recoveryMetadata = userTurn.metadata;
 
     let providerStreamFailed = false;
+    generationStarted = true;
     const result = streamText({
       model: modelInstance,
       system: systemPromptContent,
@@ -2809,6 +2835,8 @@ async function processChatMessageStream(
       stream: withEmptyCompletionGuard(backgroundChatStream(uiStream)),
     };
   } catch (error) {
+    if (!generationStarted)
+      await discardUnstartedChatTurn(registeredHistoryId, userId);
     log(
       'error',
       `Error in processChatMessageStream for user ${userId}:`,
