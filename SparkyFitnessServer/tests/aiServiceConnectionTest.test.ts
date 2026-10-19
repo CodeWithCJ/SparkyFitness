@@ -188,6 +188,33 @@ describe('chatService.testAiServiceConnection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+  it('tests the selected reasoning effort, with stored effort as the fallback', async () => {
+    mockDispatch.mockResolvedValue(okDispatch);
+    mockGetDecrypted.mockResolvedValue({
+      service_type: 'openai',
+      api_key: 'stored-key',
+      model_name: 'gpt-6-astra',
+      reasoning_effort: 'high',
+      custom_url: null,
+      is_public: false,
+    });
+    await chatService.testAiServiceConnection(
+      { id: 'setting', service_type: 'openai' },
+      USER_ID,
+      false
+    );
+    expect(mockDispatch.mock.calls.at(-1)?.[0].provider).toMatchObject({
+      reasoning_effort: 'high',
+    });
+    await chatService.testAiServiceConnection(
+      { id: 'setting', service_type: 'openai', reasoning_effort: 'medium' },
+      USER_ID,
+      false
+    );
+    expect(mockDispatch.mock.calls.at(-1)?.[0].provider).toMatchObject({
+      reasoning_effort: 'medium',
+    });
+  });
 
   it('returns { ok: true } and passes timeoutMs: 15000 on a successful completion', async () => {
     mockDispatch.mockResolvedValue(okDispatch);
