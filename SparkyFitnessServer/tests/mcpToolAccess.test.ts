@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
 import { buildChatbotTools } from '../ai/tools/index.js';
 import { buildDevTools } from '../ai/tools/devTools.js';
@@ -14,25 +15,38 @@ vi.mock('../services/foodEntryService', () => ({
 }));
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
 
-interface ActionSchema {
-  options?: unknown;
-  unwrap?: () => ActionSchema;
-  _def?: { entries?: Record<string, string>; innerType?: ActionSchema };
+interface PublishedSchema {
+  properties?: Record<string, PublishedSchema>;
+  enum?: unknown[];
+  const?: unknown;
+  anyOf?: PublishedSchema[];
+  oneOf?: PublishedSchema[];
 }
-
-// The action field is a zod enum, sometimes wrapped (optional/default).
-function enumValues(schema: ActionSchema | undefined): string[] | null {
-  if (!schema) return null;
-  if (Array.isArray(schema.options)) return schema.options as string[];
-  if (schema._def?.entries) return Object.values(schema._def.entries);
-  return enumValues(schema._def?.innerType ?? schema.unwrap?.());
+function publishedActions(schema: PublishedSchema): string[] {
+  const action = schema.properties?.action;
+  const direct =
+    typeof action?.const === 'string'
+      ? [action.const]
+      : (action?.enum ?? []).filter(
+          (value): value is string => typeof value === 'string'
+        );
+  return [
+    ...new Set([
+      ...direct,
+      ...(schema.anyOf ?? schema.oneOf ?? []).flatMap(publishedActions),
+    ]),
+  ];
 }
-
 function actionValues(tool: unknown): string[] | null {
-  const schema = (
-    tool as { inputSchema?: { shape?: Record<string, ActionSchema> } }
-  ).inputSchema;
-  return enumValues(schema?.shape?.action);
+  const schema = (tool as { inputSchema?: z.ZodType }).inputSchema;
+  if (!schema) return null;
+  const actions = publishedActions(
+    z.toJSONSchema(schema, {
+      io: 'input',
+      unrepresentable: 'any',
+    }) as PublishedSchema
+  );
+  return actions.length ? actions : null;
 }
 
 const ALL_TOOLS: Record<string, unknown> = {
@@ -87,4 +101,25 @@ describe('MCP_TOOL_READ_ACCESS (#2678)', () => {
     expect(isReadOnlyTool('sparky_manage_food')).toBe(false);
     expect(isReadOnlyTool('sparky_get_food_diary')).toBe(true);
   });
+});
+
+it('keeps recipe reads available while denying recipe writes to read-only keys', () => {
+  expect(
+    isToolCallAllowedReadOnly('sparky_manage_recipes', { action: 'get_recipe' })
+  ).toBe(true);
+  expect(
+    isToolCallAllowedReadOnly('sparky_manage_recipes', {
+      action: 'preview_recipe',
+    })
+  ).toBe(true);
+  expect(
+    isToolCallAllowedReadOnly('sparky_manage_recipes', {
+      action: 'publish_recipe',
+    })
+  ).toBe(false);
+  expect(
+    isToolCallAllowedReadOnly('sparky_manage_recipes', {
+      action: 'remove_recipe_ingredient',
+    })
+  ).toBe(false);
 });

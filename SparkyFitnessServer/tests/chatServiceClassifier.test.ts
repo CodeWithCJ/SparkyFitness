@@ -145,12 +145,13 @@ describe('hasImageParts', () => {
 
 describe('getSystemPrompt diary-editing guidance', () => {
   it.each(['core', 'full'] as const)(
-    'teaches name-based update_entry/delete_entry in the %s food prompt',
+    'requires inspecting exact entries before diary changes in the %s food prompt',
     (profile) => {
       const prompt = getSystemPrompt('UTC', 'None', profile, ['food']);
-      expect(prompt).toContain('delete_entry');
-      expect(prompt).toContain('update_entry');
-      expect(prompt).toMatch(/name is enough — pass food_name/i);
+      expect(prompt).toContain('sparky_manage_diary');
+      expect(prompt).toMatch(/inspect (?:the selection|the exact entry)/i);
+      expect(prompt).toMatch(/material ambiguity/i);
+      expect(prompt).toMatch(/replace it in place/i);
     }
   );
 });
