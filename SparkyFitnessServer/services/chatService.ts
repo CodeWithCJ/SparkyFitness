@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import chatRepository from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
@@ -1769,6 +1770,40 @@ function describeUserMessage(msg?: LlmMessage): {
   return { content, parts };
 }
 
+/** Persist a turn before generation so Clear can invalidate its eventual reply. */
+async function saveUserChatTurn(messages: ChatMessage[], userId: string) {
+  const historyId = randomUUID();
+  const userMessage = toCoreMessages(messages)
+    .reverse()
+    .find((message) => message.role === 'user');
+  const { content, parts } = describeUserMessage(userMessage);
+  const clientMessageId = [...messages]
+    .reverse()
+    .find((message) => message.role === 'user')?.id;
+  const metadata =
+    typeof clientMessageId === 'string' &&
+    clientMessageId.length > 0 &&
+    clientMessageId.length <= 200
+      ? { client_message_id: clientMessageId }
+      : undefined;
+  await chatRepository
+    .saveChatHistory(
+      {
+        user_id: userId,
+        content,
+        messageType: 'user',
+        parts,
+        metadata,
+      },
+      { historyId }
+    )
+    .catch((error: unknown) =>
+      log('error', 'Failed to save user chat history:', error)
+    );
+  // A failed initial write also fails closed: no parent row can authorize a reply.
+  return { historyId, metadata };
+}
+
 // Keyword rules for instant classification. Kept deliberately moderate
 // (stems and a handful of high-signal synonyms) rather than exhaustive:
 // wide-net keyword lists trade recall for false positives ("I ran out of
@@ -1988,6 +2023,7 @@ Your response must contain ONLY the matched domain names as a comma-separated li
   return [];
 }
 
+/** Generate a blocking reply and persist it only while its user turn still exists. */
 async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -2003,6 +2039,7 @@ async function processChatMessage(
     if (!serviceConfigId) {
       throw new Error('AI service configuration ID is missing.');
     }
+    const userTurn = await saveUserChatTurn(messages, userId);
     const aiService = await chatRepository.getAiServiceSettingForBackend(
       serviceConfigId,
       userId
@@ -2152,23 +2189,6 @@ async function processChatMessage(
       `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${usage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${usage?.inputTokens ?? 0} noCacheTokens=${usage?.inputTokenDetails?.noCacheTokens ?? 0} cacheWriteTokens=${usage?.inputTokenDetails?.cacheWriteTokens ?? 0} outputTokens=${usage?.outputTokens ?? 0} totalTokens=${usage?.totalTokens ?? 0}`
     );
 
-    // Save history dynamically to DB (replacing frontend client-side saves)
-    const { content: userMessageContent, parts: userMessageParts } =
-      describeUserMessage(
-        conversationMessages[conversationMessages.length - 1]
-      );
-
-    await chatRepository
-      .saveChatHistory({
-        user_id: userId,
-        content: userMessageContent,
-        messageType: 'user',
-        parts: userMessageParts,
-      })
-      .catch((err: unknown) =>
-        log('error', 'Failed to save user chat history:', err)
-      );
-
     let finalContent = result.text.trim();
     if (!finalContent) {
       if (executedToolsList.length > 0) {
@@ -2207,12 +2227,15 @@ async function processChatMessage(
 
     if (finalContent) {
       await chatRepository
-        .saveChatHistory({
-          user_id: userId,
-          content: finalContent,
-          messageType: 'assistant',
-          parts: [{ type: 'text', text: finalContent }],
-        })
+        .saveChatHistory(
+          {
+            user_id: userId,
+            content: finalContent,
+            messageType: 'assistant',
+            parts: [{ type: 'text', text: finalContent }],
+          },
+          { parentUserEntryId: userTurn.historyId }
+        )
         .catch((err: unknown) =>
           log('error', 'Failed to save assistant chat history:', err)
         );
@@ -2536,6 +2559,7 @@ export function mapUsageToMetadata(u: LanguageModelUsage) {
   };
 }
 
+/** Stream and drain a reply independently of HTTP delivery, respecting history clears. */
 async function processChatMessageStream(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -2551,6 +2575,7 @@ async function processChatMessageStream(
     if (!serviceConfigId) {
       throw new Error('AI service configuration ID is missing.');
     }
+    const userTurn = await saveUserChatTurn(messages, userId);
     const aiService = await chatRepository.getAiServiceSettingForBackend(
       serviceConfigId,
       userId
@@ -2629,21 +2654,7 @@ async function processChatMessageStream(
       `[DEBUG] AI Transmission: Preparing ${llmMessages.length} messages. Last message content structure: ${JSON.stringify(llmMessages[llmMessages.length - 1]?.content || '').substring(0, 200)}`
     );
 
-    const { content: userMessageContent } = describeUserMessage(
-      llmMessages[llmMessages.length - 1]
-    );
-
-    // Correlate a restored response with the exact client turn, including when
-    // two turns have identical text. Older clients do not send message IDs.
-    const clientMessageId = [...messages]
-      .reverse()
-      .find((message) => message.role === 'user')?.id;
-    const recoveryMetadata =
-      typeof clientMessageId === 'string' &&
-      clientMessageId.length > 0 &&
-      clientMessageId.length <= 200
-        ? { client_message_id: clientMessageId }
-        : undefined;
+    const recoveryMetadata = userTurn.metadata;
 
     let providerStreamFailed = false;
     const result = streamText({
@@ -2713,33 +2724,6 @@ async function processChatMessageStream(
           `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${observedUsage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${observedUsage?.inputTokens ?? 0} noCacheTokens=${observedUsage?.inputTokenDetails?.noCacheTokens ?? 0} cacheWriteTokens=${observedUsage?.inputTokenDetails?.cacheWriteTokens ?? 0} outputTokens=${observedUsage?.outputTokens ?? 0} totalTokens=${observedUsage?.totalTokens ?? 0}`
         );
 
-        // Get the last user message from conversationMessages to ensure parts are captured
-        const lastUserMessage = [...conversationMessages]
-          .reverse()
-          .find((msg) => msg.role === 'user');
-
-        const userMessageParts = Array.isArray(lastUserMessage?.content)
-          ? lastUserMessage.content
-          : [
-              {
-                type: 'text' as const,
-                text: String(lastUserMessage?.content || ''),
-              },
-            ];
-
-        // Save to DB on completion
-        await chatRepository
-          .saveChatHistory({
-            user_id: userId,
-            content: userMessageContent,
-            messageType: 'user',
-            parts: userMessageParts,
-            metadata: recoveryMetadata,
-          })
-          .catch((err: unknown) =>
-            log('error', 'Failed to save user chat history:', err)
-          );
-
         // A photo estimate analysed this turn is persisted with the message.
         // Asking the user how to save it always ends the turn, so their answer
         // arrives in a fresh one — and chat history strips images, so without
@@ -2781,27 +2765,30 @@ async function processChatMessageStream(
         }
 
         await chatRepository
-          .saveChatHistory({
-            user_id: userId,
-            // The question is the user-visible content when the model let the
-            // chips speak for it.
-            content:
-              text.trim() ||
-              askUserPartToText({
-                type: ASK_USER_PART_TYPE,
-                input: askCall?.input,
-              }) ||
-              '',
-            messageType: 'assistant',
-            parts: assistantParts,
-            metadata:
-              !providerStreamFailed &&
-              (finishReason === 'stop' ||
-                (finishReason === 'tool-calls' &&
-                  Boolean(askCall || capturedEstimate)))
-                ? recoveryMetadata
-                : undefined,
-          })
+          .saveChatHistory(
+            {
+              user_id: userId,
+              // The question is the user-visible content when the model let the
+              // chips speak for it.
+              content:
+                text.trim() ||
+                askUserPartToText({
+                  type: ASK_USER_PART_TYPE,
+                  input: askCall?.input,
+                }) ||
+                '',
+              messageType: 'assistant',
+              parts: assistantParts,
+              metadata:
+                !providerStreamFailed &&
+                (finishReason === 'stop' ||
+                  (finishReason === 'tool-calls' &&
+                    Boolean(askCall || capturedEstimate)))
+                  ? recoveryMetadata
+                  : undefined,
+            },
+            { parentUserEntryId: userTurn.historyId }
+          )
           .catch((err: unknown) =>
             log('error', 'Failed to save assistant chat history:', err)
           );

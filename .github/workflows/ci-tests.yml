@@ -59,6 +59,9 @@ jobs:
               - 'SparkyFitnessServer/tests/migrate.script.ts'
               - 'SparkyFitnessServer/tests/initializeDatabase.integration.test.ts'
               - 'SparkyFitnessServer/tests/rlsPermissionMatrix.integration.test.ts'
+              - 'SparkyFitnessServer/tests/chatHistoryClear.integration.test.ts'
+              - 'SparkyFitnessServer/models/chatRepository.ts'
+              - 'SparkyFitnessServer/services/chatService.ts'
               - 'SparkyFitnessServer/tests/stravaActivityDetailCleanup.integration.test.ts'
               - 'SparkyFitnessServer/tests/oidcProviderRepository.integration.test.ts'
               - 'SparkyFitnessServer/tests/providerSyncClaim.integration.test.ts'
@@ -267,9 +270,9 @@ jobs:
       # The schema + RLS policies are now applied and the non-superuser app role
       # exists, so the permission matrix can verify every table's real RLS
       # behaviour as the app role (superuser DB user seeds, app role is enforced).
-      - name: Verify RLS, Strava cleanup, OIDC providers, Better Auth schema, sign-in rate limits, provider sync claims, sleep entry and custom category uniqueness, concurrent check-ins and startup locking
+      - name: Verify RLS, chat-history Clear, Strava cleanup, OIDC providers, Better Auth schema, sign-in rate limits, provider sync claims, sleep entry and custom category uniqueness, concurrent check-ins and startup locking
         run: |
-          pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts tests/stravaActivityDetailCleanup.integration.test.ts tests/betterAuthSchemaCheck.integration.test.ts tests/oidcProviderRepository.integration.test.ts tests/authRateLimitDatabase.integration.test.ts tests/providerSyncClaim.integration.test.ts tests/uniqueWrites.integration.test.ts tests/checkInConcurrentWrites.integration.test.ts
+          pnpm exec vitest run tests/rlsPermissionMatrix.integration.test.ts tests/chatHistoryClear.integration.test.ts tests/stravaActivityDetailCleanup.integration.test.ts tests/betterAuthSchemaCheck.integration.test.ts tests/oidcProviderRepository.integration.test.ts tests/authRateLimitDatabase.integration.test.ts tests/providerSyncClaim.integration.test.ts tests/uniqueWrites.integration.test.ts tests/checkInConcurrentWrites.integration.test.ts
           # Initialization reapplies policies, so run it after the other database tests.
           RUN_DATABASE_INITIALIZATION_TEST=1 pnpm exec vitest run tests/initializeDatabase.integration.test.ts
         env:

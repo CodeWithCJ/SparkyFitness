@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-16_
+_Last updated: 2026-10-19_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -232,6 +232,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - `ai/config.ts` holds default model and vision-model selection per provider; `ai/providerDispatch.ts` is the unified dispatch helper used by chat, food-photo analysis, nutrition-label scan, and unit conversion
 - Prefer routing new AI features through `providerDispatch.ts` instead of calling provider SDKs directly
 - Web and mobile voice transcription use `POST /api/chat/transcribe` in `routes/chatRoutes.ts` and `services/voiceTranscriptionService.ts`; its multipart fields, response, MIME types, and 10 MB limit come from `shared/src/schemas/api/VoiceTranscription.api.zod.ts`. Audio stays in memory, uses actor-scoped AI settings with `supports_audio_input`, and all outbound calls use `createGuardedFetch`. Voice and chat providers are selected independently; transcription never executes chatbot tools or writes diary entries. `voice_input_enabled` and `active_voice_ai_service_id` in user preferences synchronize voice UI across clients; null selects System recognition, and disabling voice preserves the selection. Preference writes validate these fields using the shared voice-preferences schema.
+- Chat history generation registers its user row before provider work. Assistant saves require that row to still exist; `chatRepository.ts` serializes short history writes and Clear with a per-user transaction advisory lock so detached replies cannot reappear after a clear. No database connection or lock is held during model/tool work.
 - Chatbot tool calls run in-process through the registry in `ai/tools/`
 - `ai/tools/index.ts` exposes `buildChatbotTools(userId, tz)`, composing the per-domain builders (`build<Domain>Tools` in `ai/tools/<domain>Tools.ts`); handlers close over the authenticated user — so two-actor services receive `(userId, userId, ...)` — and the user's IANA timezone, used for "today" defaults and day bucketing
 - Tool handlers follow a fixed contract: publish a flat Zod schema, validate with a strict union `safeParse` inside `execute`, orchestrate through existing services and repositories, and never throw - errors come back as `ERRORS.*` strings from `ai/tools/errors.ts`
