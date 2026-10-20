@@ -3026,6 +3026,8 @@
       "description": "Manage authentication methods and OIDC providers.",
       "publicApiDocs": "Public API Documentation",
       "publicApiDocsDescription": "Allow Swagger API docs (/api/api-docs) to be accessed without requiring user authentication.",
+      "mcpOAuth": "Remote MCP OAuth",
+      "mcpOAuthDescription": "Allow remote MCP clients such as Claude to connect through OAuth 2.1. Existing API keys continue to work.",
       "devTools": "Developer Diagnostic Tools",
       "devToolsDescription": "Enable MCP and diagnostic database inspection tools for admins.",
       "loginManagement": {
@@ -6645,6 +6647,18 @@
     "failed": "Failed: {{errorsCount}}"
   },
   "auth": {
+    "oauth": {
+      "allow": "Allow",
+      "allowAccessDescription": "{{clientName}} wants to connect to your SparkyFitness account.",
+      "allowAccessTitle": "Allow access to SparkyFitness?",
+      "clientWillBeAbleTo": "This client will be able to:",
+      "deny": "Deny",
+      "loadingRequest": "Loading authorization request…",
+      "mcpAccessDescription": "Read and update your SparkyFitness data through MCP tools.",
+      "requestFailed": "Authorization failed",
+      "securityHint": "Only allow access if you trust this client.",
+      "unknownClient": "This application"
+    },
     "agreeAndEnter": "I Agree & Enter Demo",
     "demoAgreeCheckbox": "I accept the License terms and agree not to misuse this evaluation sandbox.",
     "demoLicenseDesc": "By using this demo, you agree to the project license.",

@@ -1,4 +1,4 @@
-import { authClient } from '@/lib/auth-client';
+import { authClient, followOAuthRedirect } from '@/lib/auth-client';
 import type {
   AccessibleUser,
   AuthResponse,
@@ -31,10 +31,16 @@ export interface SwitchContextResponse {
   activeUserId?: string;
 }
 
+function currentAuthenticationCallbackUrl(): string {
+  return new URLSearchParams(window.location.search).has('sig')
+    ? window.location.href
+    : window.location.origin;
+}
+
 export const requestMagicLink = async (email: string): Promise<void> => {
   const { error } = await authClient.signIn.magicLink({
     email,
-    callbackURL: window.location.origin,
+    callbackURL: currentAuthenticationCallbackUrl(),
   });
   if (error) throw error;
 };
@@ -59,6 +65,10 @@ export const registerUser = async (
       throw err;
     }
     throw error;
+  }
+
+  if (followOAuthRedirect(data)) {
+    return await new Promise<AuthResponse>(() => undefined);
   }
 
   const authData = data as Partial<BetterAuthResponse> | null;
@@ -94,6 +104,10 @@ export const loginUser = async (
       throw new Error('Invalid credentials.');
     }
     throw error;
+  }
+
+  if (followOAuthRedirect(data)) {
+    return await new Promise<AuthResponse>(() => undefined);
   }
 
   const authData = data as Partial<BetterAuthResponse> | null;
@@ -151,10 +165,11 @@ export const initiateOidcLogin = async ({
   providerId,
   requestSignUp = false,
 }: OidcLoginParams) => {
+  const callbackURL = currentAuthenticationCallbackUrl();
   await authClient.signIn.sso({
     providerId: providerId,
-    callbackURL: window.location.origin,
-    errorCallbackURL: window.location.origin,
+    callbackURL,
+    errorCallbackURL: callbackURL,
     requestSignUp: requestSignUp,
   });
 };

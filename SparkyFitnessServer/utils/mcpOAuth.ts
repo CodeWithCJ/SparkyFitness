@@ -1,0 +1,75 @@
+import { constantTimeEqual, makeSignature } from 'better-auth/crypto';
+
+export const MCP_OAUTH_SCOPE = 'sparky:mcp';
+
+function configuredPublicUrl(): string {
+  const configured =
+    process.env.BETTER_AUTH_URL || process.env.SPARKY_FITNESS_FRONTEND_URL;
+  if (!configured) {
+    return 'http://localhost:8080';
+  }
+  const withScheme = configured.startsWith('http')
+    ? configured
+    : `https://${configured}`;
+  return withScheme.replace(/\/$/, '');
+}
+
+function canonicalizeOAuthQueryParams(params: URLSearchParams): string {
+  return [...params.entries()]
+    .sort(([keyA, valueA], [keyB, valueB]) =>
+      keyA === keyB ? valueA.localeCompare(valueB) : keyA.localeCompare(keyB)
+    )
+    .reduce((canonical, [key, value]) => {
+      canonical.append(key, value);
+      return canonical;
+    }, new URLSearchParams())
+    .toString();
+}
+
+/** Verifies the signed, expiring query emitted by Better Auth's OAuth plugin. */
+export async function verifyMcpOAuthQuery(
+  query: string,
+  secret: string
+): Promise<boolean> {
+  const params = new URLSearchParams(query);
+  const signatures = params.getAll('sig');
+  const signature = signatures[0];
+  const expiresAt = Number(params.get('exp'));
+  params.delete('sig');
+  if (
+    signatures.length !== 1 ||
+    !signature ||
+    !Number.isFinite(expiresAt) ||
+    expiresAt * 1000 < Date.now()
+  ) {
+    return false;
+  }
+  const expected = await makeSignature(
+    canonicalizeOAuthQueryParams(params),
+    secret
+  );
+  return constantTimeEqual(signature, expected);
+}
+
+/** Public origin used by clients to reach SparkyFitness. */
+export function getPublicOrigin(): string {
+  return new URL(configuredPublicUrl()).origin;
+}
+
+/** Canonical RFC 8707 resource identifier for the remote MCP endpoint. */
+export function getMcpResourceUrl(): string {
+  return new URL('/mcp', getPublicOrigin()).toString();
+}
+
+/** Better Auth OAuth issuer, including its configured base path. */
+export function getOAuthIssuerUrl(): string {
+  return new URL('/api/auth', getPublicOrigin()).toString();
+}
+
+/** RFC 9728 metadata URL for the canonical MCP resource. */
+export function getMcpResourceMetadataUrl(): string {
+  return new URL(
+    '/.well-known/oauth-protected-resource/mcp',
+    getPublicOrigin()
+  ).toString();
+}
