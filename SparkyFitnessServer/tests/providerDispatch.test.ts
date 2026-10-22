@@ -1529,7 +1529,7 @@ describe('dispatchAiRequest — model defaulting', () => {
     expect(captured(m).body.model).toBe('gpt-4o-mini');
   });
 
-  it('ollama vision falls back to llava', async () => {
+  it('ollama vision falls back to gemma4', async () => {
     const m = mockFetch(ollamaBody(JSON.stringify(SAMPLE)));
     await dispatchAiRequest(
       baseRequest({
@@ -1543,7 +1543,7 @@ describe('dispatchAiRequest — model defaulting', () => {
         images: [IMG],
       })
     );
-    expect(captured(m).body.model).toBe('llava');
+    expect(captured(m).body.model).toBe('gemma4');
   });
 
   // Shared default: getDefaultModel also feeds normal, food-options, and

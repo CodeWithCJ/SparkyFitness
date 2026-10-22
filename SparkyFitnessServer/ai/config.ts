@@ -1,5 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getDefaultModel(serviceType: any) {
+function getDefaultModel(serviceType?: string | null): string {
   switch (serviceType) {
     case 'openai':
     case 'openai_compatible':
@@ -26,8 +25,8 @@ function getDefaultModel(serviceType: any) {
       return 'gpt-4o-mini';
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function getDefaultVisionModel(serviceType: any) {
+
+function getDefaultVisionModel(serviceType?: string | null): string {
   switch (serviceType) {
     case 'openai':
     case 'openai_compatible':
@@ -49,7 +48,7 @@ function getDefaultVisionModel(serviceType: any) {
     case 'meta':
       return 'muse-spark-1.1';
     case 'ollama':
-      return 'llava';
+      return 'gemma4';
     default:
       return 'gpt-4o-mini';
   }
