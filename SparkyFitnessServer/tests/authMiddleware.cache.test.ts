@@ -6,11 +6,13 @@ const {
   mockRequireMcpAuth,
   mockIsMcpOAuthEnabled,
   mockFindAuthIdentityById,
+  mockIsOAuthAuthorizationActive,
 } = vi.hoisted(() => ({
   mockGetSession: vi.fn(),
   mockRequireMcpAuth: vi.fn(),
   mockIsMcpOAuthEnabled: vi.fn(),
   mockFindAuthIdentityById: vi.fn(),
+  mockIsOAuthAuthorizationActive: vi.fn(),
 }));
 
 vi.mock('../auth.js', () => ({
@@ -46,6 +48,10 @@ vi.mock('@better-auth/mcp', () => ({
 
 vi.mock('../models/globalSettingsRepository.js', () => ({
   isMcpOAuthEnabled: mockIsMcpOAuthEnabled,
+}));
+
+vi.mock('../models/oauthClientRepository.js', () => ({
+  isOAuthAuthorizationActive: mockIsOAuthAuthorizationActive,
 }));
 
 vi.mock('better-call', () => ({
@@ -102,6 +108,7 @@ describe('authenticate middleware: API-key session cache (issue #1302)', () => {
     mockRequireMcpAuth.mockReset();
     mockIsMcpOAuthEnabled.mockReset().mockResolvedValue(false);
     mockFindAuthIdentityById.mockReset();
+    mockIsOAuthAuthorizationActive.mockReset().mockResolvedValue(true);
   });
 
   it('calls auth.api.getSession exactly once for repeated requests with the same API key within TTL', async () => {
@@ -174,11 +181,15 @@ describe('authenticate middleware: API-key session cache (issue #1302)', () => {
         _auth: unknown,
         handler: (
           request: globalThis.Request,
-          claims: { sub: string }
+          claims: { sub: string; client_id: string; iat: number }
         ) => globalThis.Response | Promise<globalThis.Response>
       ) =>
         async (request: globalThis.Request) => {
-          await handler(request, { sub: 'oauth-user' });
+          await handler(request, {
+            sub: 'oauth-user',
+            client_id: 'oauth-client',
+            iat: 1_700_000_000,
+          });
           return new globalThis.Response(null, { status: 204 });
         }
     );
@@ -191,6 +202,11 @@ describe('authenticate middleware: API-key session cache (issue #1302)', () => {
     await authenticateMcp(req, makeRes(), next);
 
     expect(mockRequireMcpAuth).toHaveBeenCalledOnce();
+    expect(mockIsOAuthAuthorizationActive).toHaveBeenCalledWith(
+      'oauth-user',
+      'oauth-client',
+      1_700_000_000
+    );
     expect(mockFindAuthIdentityById).toHaveBeenCalledWith('oauth-user');
     expect(mockGetSession).not.toHaveBeenCalled();
     expect(req.authenticatedUserId).toBe('oauth-user');

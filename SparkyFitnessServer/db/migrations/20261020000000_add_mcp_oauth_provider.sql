@@ -159,6 +159,16 @@ CREATE INDEX IF NOT EXISTS idx_oauth_consent_client_id
 CREATE INDEX IF NOT EXISTS idx_oauth_consent_user_id
   ON oauth_consent(user_id);
 
+-- A consent can be granted again after it is revoked. Keep the most recent
+-- revocation timestamp so JWTs issued before that point stay invalid even when
+-- a new consent for the same user/client pair is created later.
+CREATE TABLE IF NOT EXISTS oauth_authorization_revocation (
+  user_id uuid NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  client_id text NOT NULL REFERENCES oauth_client(client_id) ON DELETE CASCADE,
+  revoked_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, client_id)
+);
+
 CREATE TABLE IF NOT EXISTS oauth_client_assertion (
   id text PRIMARY KEY,
   expires_at timestamptz NOT NULL

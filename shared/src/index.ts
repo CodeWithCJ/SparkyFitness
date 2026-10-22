@@ -88,6 +88,7 @@ export * from './schemas/database/MedicationEntries.zod.ts';
 export * from './schemas/database/Medications.zod.ts';
 export * from './schemas/database/MoodEntries.zod.ts';
 export * from './schemas/database/OauthAccessToken.zod.ts';
+export * from './schemas/database/OauthAuthorizationRevocation.zod.ts';
 export * from './schemas/database/OauthClient.zod.ts';
 export * from './schemas/database/OauthClientAssertion.zod.ts';
 export * from './schemas/database/OauthClientResource.zod.ts';

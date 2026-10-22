@@ -335,12 +335,15 @@ app.use(passkeyLoginGuard);
 // Catch ALL requests starting with /api/auth early.
 app.use(async (req, res, next) => {
   if (req.originalUrl.startsWith('/api/auth') && betterAuthHandlerInstance) {
+    const normalizedAuthPath = req.path.replace(/\/+$/, '');
     if (
-      (req.path.startsWith('/api/auth/oauth2') ||
-        req.path === '/api/auth/jwks' ||
-        req.path === '/api/auth/oauth-consent-details' ||
-        req.path.includes('/.well-known/oauth-authorization-server') ||
-        req.path.includes('/.well-known/openid-configuration')) &&
+      (normalizedAuthPath.startsWith('/api/auth/oauth2') ||
+        normalizedAuthPath === '/api/auth/jwks' ||
+        normalizedAuthPath === '/api/auth/oauth-consent-details' ||
+        normalizedAuthPath.includes(
+          '/.well-known/oauth-authorization-server'
+        ) ||
+        normalizedAuthPath.includes('/.well-known/openid-configuration')) &&
       !(await isMcpOAuthEnabled())
     ) {
       return res.status(404).json({ error: 'not_found' });
@@ -348,11 +351,11 @@ app.use(async (req, res, next) => {
 
     // 1. Skip interceptor for discovery routes - let them fall through to authRoutes.js
     const isDiscovery =
-      req.path === '/api/auth/settings' ||
-      req.path === '/api/auth/mfa-factors' ||
-      req.path === '/api/auth/demo-login' ||
-      req.path === '/api/auth/oauth-consent-details' ||
-      req.path.startsWith('/api/auth/web-login');
+      normalizedAuthPath === '/api/auth/settings' ||
+      normalizedAuthPath === '/api/auth/mfa-factors' ||
+      normalizedAuthPath === '/api/auth/demo-login' ||
+      normalizedAuthPath === '/api/auth/oauth-consent-details' ||
+      normalizedAuthPath.startsWith('/api/auth/web-login');
     if (isDiscovery) {
       return next();
     }

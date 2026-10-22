@@ -119,6 +119,7 @@ These Better Auth tables support OAuth for the remote MCP endpoint. They have no
 | `oauth_refresh_token` | Refresh tokens, rotation state, scopes, and session/user links |
 | `oauth_access_token` | Access tokens, resource grants, scopes, and revocation state |
 | `oauth_consent` | OAuth consent grants |
+| `oauth_authorization_revocation` | OAuth JWT revocation watermarks |
 | `oauth_client_assertion` | Expiring client assertion replay-protection records |
 
 ### Tier 3: Delegate-Writable (Daily Logs & Schedules)

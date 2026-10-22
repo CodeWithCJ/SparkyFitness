@@ -43,6 +43,29 @@ describe('verifyMcpOAuthQuery', () => {
     ).resolves.toBe(true);
   });
 
+  it('matches Better Auth ordering for repeated and non-ASCII values', async () => {
+    const secret = 'test-oauth-secret';
+    const entries = [
+      ['scope', 'ä'],
+      ['client_id', 'claude'],
+      ['scope', 'z'],
+      ['exp', String(Math.floor(Date.now() / 1000) + 60)],
+    ] as Array<[string, string]>;
+    entries.sort(([keyA, valueA], [keyB, valueB]) => {
+      if (keyA < keyB) return -1;
+      if (keyA > keyB) return 1;
+      if (valueA < valueB) return -1;
+      if (valueA > valueB) return 1;
+      return 0;
+    });
+    const signed = new URLSearchParams(entries);
+    signed.append('sig', await makeSignature(signed.toString(), secret));
+
+    await expect(verifyMcpOAuthQuery(signed.toString(), secret)).resolves.toBe(
+      true
+    );
+  });
+
   it('rejects tampered, expired, and duplicate signatures', async () => {
     const secret = 'test-oauth-secret';
     const expired = new URLSearchParams([

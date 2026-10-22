@@ -181,9 +181,15 @@ router.get('/oauth-consent-details', async (req, res) => {
     return res.status(404).json({ error: 'OAuth client was not found.' });
   }
 
+  const redirectUri = params.get('redirect_uri');
+  if (!redirectUri) {
+    return res.status(400).json({ error: 'OAuth redirect URI is missing.' });
+  }
+
   return res.json({
     client,
     scopes: (params.get('scope') ?? '').split(' ').filter(Boolean),
+    redirectUri,
   });
 });
 

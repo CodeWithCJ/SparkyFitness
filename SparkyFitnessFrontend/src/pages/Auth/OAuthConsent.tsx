@@ -1,4 +1,4 @@
-import { ShieldCheck, Loader2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Loader2, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +32,10 @@ export default function OAuthConsent() {
     details?.client.name ||
     details?.client.clientId ||
     t('auth.oauth.unknownClient', 'This application');
+  const clientWebsite =
+    details?.client.uri && /^https?:\/\//i.test(details.client.uri)
+      ? details.client.uri
+      : null;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4 py-12">
@@ -69,28 +73,89 @@ export default function OAuthConsent() {
           )}
 
           {details && (
-            <div className="rounded-md border bg-muted/30 p-4 text-sm">
-              <p className="font-medium">
-                {t(
-                  'auth.oauth.clientWillBeAbleTo',
-                  'This client will be able to:'
-                )}
-              </p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-                <li>
+            <>
+              <Alert>
+                <ShieldAlert className="h-4 w-4" />
+                <AlertTitle>
+                  {t('auth.oauth.unverifiedClient', 'Unverified application')}
+                </AlertTitle>
+                <AlertDescription>
                   {t(
-                    'auth.oauth.mcpAccessDescription',
-                    'Read and update your SparkyFitness data through MCP tools.'
+                    'auth.oauth.unverifiedClientDescription',
+                    "SparkyFitness has not verified this application's identity. Its name and website were supplied by the application."
                   )}
-                </li>
-              </ul>
-              <p className="mt-3 text-xs text-muted-foreground">
-                {t(
-                  'auth.oauth.securityHint',
-                  'Only allow access if you trust this client.'
-                )}
-              </p>
-            </div>
+                </AlertDescription>
+              </Alert>
+
+              <div className="rounded-md border bg-muted/30 p-4 text-sm">
+                <p className="font-medium">
+                  {t(
+                    'auth.oauth.clientWillBeAbleTo',
+                    'This client is requesting permission to:'
+                  )}
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                  {details.scopes.map((scope) => (
+                    <li key={scope}>
+                      {scope === 'sparky:mcp'
+                        ? t(
+                            'auth.oauth.mcpAccessDescription',
+                            'Read and update your SparkyFitness data through MCP tools.'
+                          )
+                        : scope === 'offline_access'
+                          ? t(
+                              'auth.oauth.offlineAccessDescription',
+                              'Stay connected and access your account when you are not actively using SparkyFitness.'
+                            )
+                          : t(
+                              'auth.oauth.unknownScopeDescription',
+                              'Request the “{{scope}}” permission.',
+                              { scope }
+                            )}
+                    </li>
+                  ))}
+                </ul>
+
+                <dl className="mt-4 space-y-2 border-t pt-3 text-xs">
+                  {clientWebsite && (
+                    <div>
+                      <dt className="font-medium text-foreground">
+                        {t('auth.oauth.declaredWebsite', 'Declared website')}
+                      </dt>
+                      <dd className="break-all text-muted-foreground">
+                        <a
+                          href={clientWebsite}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="inline-flex items-center gap-1 underline"
+                        >
+                          {clientWebsite}
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </a>
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="font-medium text-foreground">
+                      {t(
+                        'auth.oauth.redirectDestination',
+                        'Redirect destination'
+                      )}
+                    </dt>
+                    <dd className="break-all text-muted-foreground">
+                      {details.redirectUri}
+                    </dd>
+                  </div>
+                </dl>
+
+                <p className="mt-3 text-xs font-medium text-muted-foreground">
+                  {t(
+                    'auth.oauth.securityHint',
+                    'Only allow access if you recognize and trust this application.'
+                  )}
+                </p>
+              </div>
+            </>
           )}
         </CardContent>
         <CardFooter className="flex justify-end gap-3">

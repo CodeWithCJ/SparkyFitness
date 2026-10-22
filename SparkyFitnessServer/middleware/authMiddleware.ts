@@ -23,6 +23,7 @@ import {
   MCP_OAUTH_SCOPE,
 } from '../utils/mcpOAuth.js';
 import { isMcpOAuthEnabled } from '../models/globalSettingsRepository.js';
+import { isOAuthAuthorizationActive } from '../models/oauthClientRepository.js';
 
 type ParamsDictionary = Record<string, string | string[]>;
 type AuthRequest<P extends ParamsDictionary = ParamsDictionary> = Request<P>;
@@ -234,45 +235,61 @@ const authenticateMcp = async <P extends ParamsDictionary>(
     !!bearerToken && bearerToken.length >= 64 && !bearerToken.includes('.');
 
   if (bearerToken && !looksLikeApiKey) {
-    const verified: JWTPayload[] = [];
-    const verifier = requireMcpAuth(
-      auth,
-      (_request, verifiedClaims) => {
-        verified.push(verifiedClaims);
-        return new globalThis.Response(null, { status: 204 });
-      },
-      {
-        resource: getMcpResourceUrl(),
-        requiredScopes: [MCP_OAUTH_SCOPE],
-        challengeScopes: [MCP_OAUTH_SCOPE],
-      }
-    );
-    const requestUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
-    const verificationResponse = await verifier(
-      new globalThis.Request(requestUrl, {
-        method: req.method,
-        headers: fromNodeHeaders(req.headers),
-      })
-    );
-    const challenge = verificationResponse.headers.get('www-authenticate');
-    if (challenge) req.mcpOAuthChallenge = challenge;
+    try {
+      const verified: JWTPayload[] = [];
+      const verifier = requireMcpAuth(
+        auth,
+        (_request, verifiedClaims) => {
+          verified.push(verifiedClaims);
+          return new globalThis.Response(null, { status: 204 });
+        },
+        {
+          resource: getMcpResourceUrl(),
+          requiredScopes: [MCP_OAUTH_SCOPE],
+          challengeScopes: [MCP_OAUTH_SCOPE],
+        }
+      );
+      const requestUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
+      const verificationResponse = await verifier(
+        new globalThis.Request(requestUrl, {
+          method: req.method,
+          headers: fromNodeHeaders(req.headers),
+        })
+      );
+      const challenge = verificationResponse.headers.get('www-authenticate');
+      if (challenge) req.mcpOAuthChallenge = challenge;
 
-    const subject = verified[0]?.sub;
-    if (verificationResponse.ok && typeof subject === 'string') {
-      const user = await userRepository.findAuthIdentityById(subject);
-      if (user) {
-        return finishAuthentication(
-          req,
-          res,
-          next,
-          user as AuthenticatedUser,
-          false
+      const claims = verified[0];
+      const subject = claims?.sub;
+      const clientId = claims?.client_id;
+      const issuedAt = claims?.iat;
+      if (
+        verificationResponse.ok &&
+        typeof subject === 'string' &&
+        typeof clientId === 'string' &&
+        typeof issuedAt === 'number' &&
+        (await isOAuthAuthorizationActive(subject, clientId, issuedAt))
+      ) {
+        const user = await userRepository.findAuthIdentityById(subject);
+        if (user) {
+          return finishAuthentication(
+            req,
+            res,
+            next,
+            user as AuthenticatedUser,
+            false
+          );
+        }
+        log(
+          'warn',
+          `[MCP OAuth] Token subject does not match a user: ${subject}`
         );
       }
-      log(
-        'warn',
-        `[MCP OAuth] Token subject does not match a user: ${subject}`
-      );
+    } catch (error) {
+      // OAuth infrastructure failures must not become a 500 or bypass the
+      // existing API-key/session fallback. The normal authentication path
+      // below will return the OAuth challenge only if all methods fail.
+      log('warn', `[MCP OAuth] Token validation failed: ${String(error)}`);
     }
   }
 

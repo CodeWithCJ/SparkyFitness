@@ -9,6 +9,23 @@ export interface OAuthConsentDetails {
     icon: string | null;
   };
   scopes: string[];
+  redirectUri: string;
+}
+
+export interface OAuthAuthorization {
+  consentId: string;
+  clientId: string;
+  name: string | null;
+  uri: string | null;
+  icon: string | null;
+  scopes: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OAuthAuthorizationsResponse {
+  enabled: boolean;
+  authorizations: OAuthAuthorization[];
 }
 
 export function getOAuthConsentDetails(
@@ -18,6 +35,16 @@ export function getOAuthConsentDetails(
     `/auth/oauth-consent-details?query=${encodeURIComponent(signedQuery)}`,
     { method: 'GET' }
   );
+}
+
+export function getOAuthAuthorizations(): Promise<OAuthAuthorizationsResponse> {
+  return apiCall('/identity/user/oauth-authorizations', { method: 'GET' });
+}
+
+export function revokeOAuthAuthorization(consentId: string): Promise<void> {
+  return apiCall(`/identity/user/oauth-authorizations/${consentId}`, {
+    method: 'DELETE',
+  });
 }
 
 export async function submitOAuthConsent(accept: boolean): Promise<void> {

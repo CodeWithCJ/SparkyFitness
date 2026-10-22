@@ -71,6 +71,7 @@ BEGIN
     'oauth_refresh_token',
     'oauth_access_token',
     'oauth_consent',
+    'oauth_authorization_revocation',
     'oauth_client_assertion',
     'user_goals',
     'user_ignored_updates',

@@ -82,6 +82,7 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | `oauth_refresh_token` | Refresh tokens, rotation state, scopes, and session/user links |
 | `oauth_access_token` | Access tokens, scopes, resource grants, and revocation state |
 | `oauth_consent` | User consent grants |
+| `oauth_authorization_revocation` | Per-user/client OAuth JWT revocation watermarks |
 | `oauth_client_assertion` | Client assertion replay-protection records |
 
 These tables are managed by Better Auth and are not exposed through family sharing or profile delegation.
