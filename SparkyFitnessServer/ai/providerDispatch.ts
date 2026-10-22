@@ -298,9 +298,30 @@ function sniffImageMime(head: Buffer): string | null {
 // bounds). Oversized camera shots (12-108 MP) are automatically downscaled while
 // preserving aspect ratio and EXIF orientation.
 const MAX_VISION_IMAGE_DIMENSION = 2048;
+// Local/self-hosted vision models (Ollama, local custom endpoints) running on
+// consumer GPUs (e.g. 8 GB VRAM) require significant CUDA buffers for high-res
+// vision patch grids (~1.9 GB buffer at 2048px on 12 MP phone shots), which
+// triggers `cudaMalloc failed` out-of-memory errors. Capping the long edge at
+// 1280px preserves food and label legibility while fitting comfortably within
+// consumer GPU VRAM.
+const LOCAL_MAX_VISION_IMAGE_DIMENSION = 1280;
+
+function resolveMaxImageDimension(
+  serviceType: string,
+  family: ProviderFamily
+): number {
+  if (process.env.TEST_MAX_VISION_IMAGE_DIMENSION) {
+    return Number(process.env.TEST_MAX_VISION_IMAGE_DIMENSION);
+  }
+  if (family === 'ollama' || requiresCustomUrl(serviceType)) {
+    return LOCAL_MAX_VISION_IMAGE_DIMENSION;
+  }
+  return MAX_VISION_IMAGE_DIMENSION;
+}
 
 async function downscaleImageForDispatch(
-  img: DispatchImage
+  img: DispatchImage,
+  maxDimension: number
 ): Promise<DispatchImage> {
   if (
     !img.base64 ||
@@ -309,10 +330,6 @@ async function downscaleImageForDispatch(
   ) {
     return img;
   }
-
-  const maxDimension =
-    Number(process.env.TEST_MAX_VISION_IMAGE_DIMENSION) ||
-    MAX_VISION_IMAGE_DIMENSION;
 
   try {
     const inputBuf = Buffer.from(img.base64, 'base64');
@@ -365,7 +382,8 @@ async function downscaleImageForDispatch(
  * Oversized images are subsequently downscaled to fit within vision provider limits.
  */
 async function normalizeImagesForDispatch(
-  images: DispatchImage[]
+  images: DispatchImage[],
+  maxDimension: number
 ): Promise<DispatchImage[]> {
   const normalized = await Promise.all(
     images.map(async (img) => {
@@ -424,7 +442,9 @@ async function normalizeImagesForDispatch(
     })
   );
 
-  return Promise.all(normalized.map(downscaleImageForDispatch));
+  return Promise.all(
+    normalized.map((img) => downscaleImageForDispatch(img, maxDimension))
+  );
 }
 
 function isBlank(value: string | undefined | null): boolean {
@@ -1459,7 +1479,8 @@ export async function dispatchAiRequest(
   // to convert the image stays HEIC and we fail loud below rather than shipping
   // bytes the provider might reject.
   if (hasImages) {
-    images = await normalizeImagesForDispatch(images);
+    const maxDimension = resolveMaxImageDimension(serviceType, family);
+    images = await normalizeImagesForDispatch(images, maxDimension);
     if (images.some((img) => HEIC_MIME_TYPES.has(img.mimeType))) {
       return {
         ok: false,

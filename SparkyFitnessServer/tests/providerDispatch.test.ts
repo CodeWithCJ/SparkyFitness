@@ -2246,6 +2246,46 @@ describe('dispatchAiRequest — image downscaling & oversized image handling', (
     expect(sentMeta.height).toBe(1365);
   });
 
+  it('downscales images to 1280px for ollama to fit consumer GPU VRAM', async () => {
+    const hugeJpeg = await sharp({
+      create: {
+        width: 3000,
+        height: 2000,
+        channels: 3,
+        background: { r: 100, g: 150, b: 200 },
+      },
+    })
+      .jpeg()
+      .toBuffer();
+
+    const m = mockFetch(ollamaBody(JSON.stringify(SAMPLE)));
+
+    const result = await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'ollama',
+          api_key: undefined,
+          custom_url: 'http://localhost:11434',
+        }),
+        networkPolicy: PRIVATE_NETWORK_POLICY,
+        images: [
+          { base64: hugeJpeg.toString('base64'), mimeType: 'image/jpeg' },
+        ],
+      })
+    );
+
+    expect(result.ok).toBe(true);
+    const sentBody = captured(m).body as {
+      messages: Array<{ images?: string[] }>;
+    };
+    const sentBase64 = sentBody.messages[0].images?.[0];
+    expect(sentBase64).toBeDefined();
+    const sentBuffer = Buffer.from(sentBase64!, 'base64');
+    const sentMeta = await sharp(sentBuffer).metadata();
+    expect(sentMeta.width).toBe(1280);
+    expect(sentMeta.height).toBe(853);
+  });
+
   it('translates OpenAI 400 patch-limit rejection into image_too_large category', async () => {
     mockFetch(
       {
