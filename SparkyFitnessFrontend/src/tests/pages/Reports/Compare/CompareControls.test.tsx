@@ -144,6 +144,40 @@ describe('CompareSentence', () => {
     expect(screen.getByText(/can only be compared by day/)).toBeInTheDocument();
   });
 
+  test('choosing Before vs. since clears weight trend', () => {
+    const onChange = jest.fn();
+    render(
+      <CompareSentence
+        question={{ a: 'meditated', b: 'weightTrend', choice: 'sameDay' }}
+        onChange={onChange}
+      />
+    );
+    open(screen.getByRole('combobox', { name: /When/ }));
+    fireEvent.click(screen.getByRole('option', { name: 'Before vs. since' }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      a: 'meditated',
+      b: undefined,
+      choice: 'sinceHabit',
+    });
+  });
+
+  test('the since outcome picker does not list Weight trend', () => {
+    render(
+      <CompareSentence
+        question={{ a: 'meditated', b: 'mood', choice: 'sinceHabit' }}
+        onChange={jest.fn()}
+      />
+    );
+    open(screen.getByRole('combobox', { name: /Second thing/ }));
+    const listbox = screen.getByRole('listbox');
+    expect(
+      within(listbox).getByRole('option', { name: 'Energy' })
+    ).toBeInTheDocument();
+    expect(
+      within(listbox).queryByRole('option', { name: /Weight trend/ })
+    ).toBeNull();
+  });
+
   test('the metric picker is grouped and leaves out the other side', () => {
     render(
       <CompareSentence

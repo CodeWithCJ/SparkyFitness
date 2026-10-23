@@ -8,6 +8,7 @@ import {
   type CompareQuestion,
   type CompareTimingChoice,
   isAskable,
+  offeredInMode,
   timingOf,
 } from '@workspace/shared';
 import {
@@ -41,14 +42,13 @@ const GROUP_ORDER: readonly CompareMetricDef['group'][] = [
   'body',
 ];
 
-/** Drops a metric that has no weekly form once the question is by the week. */
+/** Drops any chosen metric the question's mode doesn't offer (no weekly form by the week, no weight trend since a habit started). */
 function forMode(
   question: Partial<CompareQuestion>,
   mode: CompareMode
 ): Partial<CompareQuestion> {
-  if (mode !== 'week') return question;
   const keep = (key?: CompareMetricKey) =>
-    key && COMPARE_METRICS[key].weekly !== null ? key : undefined;
+    key && offeredInMode(key, mode) ? key : undefined;
   return { ...question, a: keep(question.a), b: keep(question.b) };
 }
 
@@ -104,10 +104,7 @@ export function CompareSentence({ question, onChange }: CompareSentenceProps) {
             const keys = COMPARE_METRIC_KEYS.filter((k) => {
               const def = COMPARE_METRICS[k];
               return (
-                def.group === group &&
-                k !== exclude &&
-                // Only week mode needs a weekly form.
-                (mode !== 'week' || def.weekly !== null)
+                def.group === group && k !== exclude && offeredInMode(k, mode)
               );
             });
             if (keys.length === 0) return null;
