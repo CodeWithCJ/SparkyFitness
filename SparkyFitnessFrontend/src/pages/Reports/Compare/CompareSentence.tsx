@@ -9,6 +9,7 @@ import {
   type CompareTimingChoice,
   isAskable,
   offeredInMode,
+  questionForMode,
   timingOf,
 } from '@workspace/shared';
 import {
@@ -42,16 +43,6 @@ const GROUP_ORDER: readonly CompareMetricDef['group'][] = [
   'body',
 ];
 
-/** Drops any chosen metric the question's mode doesn't offer (no weekly form by the week, no weight trend since a habit started). */
-function forMode(
-  question: Partial<CompareQuestion>,
-  mode: CompareMode
-): Partial<CompareQuestion> {
-  const keep = (key?: CompareMetricKey) =>
-    key && offeredInMode(key, mode) ? key : undefined;
-  return { ...question, a: keep(question.a), b: keep(question.b) };
-}
-
 export function CompareSentence({ question, onChange }: CompareSentenceProps) {
   const { t } = useTranslation();
   const mode: CompareMode = question.choice
@@ -70,7 +61,7 @@ export function CompareSentence({ question, onChange }: CompareSentenceProps) {
   };
 
   const chooseTiming = (choice: CompareTimingChoice) => {
-    onChange(forMode({ ...question, choice }, timingOf(choice).mode));
+    onChange(questionForMode({ ...question, choice }, timingOf(choice).mode));
   };
 
   const words = (text: string) => (

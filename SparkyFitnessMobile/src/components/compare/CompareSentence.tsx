@@ -7,7 +7,7 @@ import {
   type CompareQuestion,
   type CompareTimingChoice,
   isCompareMetricKey,
-  offeredInMode,
+  questionForMode,
   timingOf,
 } from '@workspace/shared';
 
@@ -22,16 +22,6 @@ interface CompareSentenceProps {
 
 type MetricValue = CompareMetricKey | '';
 type Slot = 'a' | 'b';
-
-/** Drops any chosen metric the question's mode doesn't offer (no weekly form by the week, no weight trend since a habit started). */
-function forMode(
-  question: Partial<CompareQuestion>,
-  mode: CompareMode
-): Partial<CompareQuestion> {
-  const keep = (key?: CompareMetricKey) =>
-    key && offeredInMode(key, mode) ? key : undefined;
-  return { ...question, a: keep(question.a), b: keep(question.b) };
-}
 
 const CompareSentence: React.FC<CompareSentenceProps> = ({
   question,
@@ -59,7 +49,7 @@ const CompareSentence: React.FC<CompareSentenceProps> = ({
   };
 
   const chooseTiming = (choice: CompareTimingChoice) => {
-    onChange(forMode({ ...question, choice }, timingOf(choice).mode));
+    onChange(questionForMode({ ...question, choice }, timingOf(choice).mode));
   };
 
   const timingSections: PickerSection<CompareTimingChoice>[] = [
