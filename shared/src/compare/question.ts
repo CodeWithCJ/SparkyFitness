@@ -1,5 +1,9 @@
 import { SINCE_START_MAX_DAYS_AGO } from './since.ts';
-import { COMPARE_METRICS, type CompareMetricKey } from './metrics.ts';
+import {
+  COMPARE_METRICS,
+  offeredInMode,
+  type CompareMetricKey,
+} from './metrics.ts';
 import {
   COMPARE_SPAN_DAYS,
   DEFAULT_COMPARE_SPAN,
@@ -103,9 +107,15 @@ export function knownCompareQuestions(stored: unknown): CompareQuestion[] {
   return stored.flatMap((item: unknown): CompareQuestion[] => {
     if (typeof item !== 'object' || item === null) return [];
     const { a, b, choice } = item as Record<string, unknown>;
-    return isCompareMetricKey(a) &&
-      isCompareMetricKey(b) &&
-      isTimingChoice(choice)
+    if (
+      !isCompareMetricKey(a) ||
+      !isCompareMetricKey(b) ||
+      !isTimingChoice(choice)
+    ) {
+      return [];
+    }
+    const { mode } = timingOf(choice);
+    return offeredInMode(a, mode) && offeredInMode(b, mode)
       ? [{ a, b, choice }]
       : [];
   });
@@ -124,10 +134,6 @@ export function withRecentQuestion(
 export function isAskable(q: Partial<CompareQuestion>): q is CompareQuestion {
   const { a, b, choice } = q;
   if (!a || !b || !choice || a === b) return false;
-  if (timingOf(choice).mode === 'week') {
-    return (
-      COMPARE_METRICS[a].weekly !== null && COMPARE_METRICS[b].weekly !== null
-    );
-  }
-  return true;
+  const { mode } = timingOf(choice);
+  return offeredInMode(a, mode) && offeredInMode(b, mode);
 }

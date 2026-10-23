@@ -609,6 +609,7 @@ function renderMetricList(): string {
     const notes = [def.group, UNIT_DESCRIPTIONS[def.unit] ?? def.unit];
     if (def.rolling) notes.push('read over the 7 days ending each day');
     if (def.weekly === null) notes.push('day only');
+    if (!def.since) notes.push('not for since questions');
     return `- ${key}: ${name(key)} (${notes.join(', ')})`;
   });
   return [

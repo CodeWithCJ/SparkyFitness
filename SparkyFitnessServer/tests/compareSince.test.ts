@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   addDays,
   analyzeSince,
+  compareSinceQuerySchema,
   biasCorrectedEffectiveNForMean,
   compareDays,
   dayOfWeek,
@@ -847,5 +848,46 @@ describe('compare since: false changes', () => {
     });
     expect(answered).toBe(400);
     expect(changed / answered).toBeGreaterThanOrEqual(0.95);
+  });
+});
+
+describe('compareSinceQuerySchema weight trend', () => {
+  const MESSAGE =
+    'weightTrend is not offered in since mode; it drifts too slowly to tell a change from its own wandering';
+
+  test('rejects weightTrend as the habit or the outcome', () => {
+    const asHabit = compareSinceQuerySchema.safeParse({
+      a: 'weightTrend',
+      b: 'mood',
+      mode: 'since',
+    });
+    expect(asHabit.success).toBe(false);
+    if (!asHabit.success) {
+      expect(asHabit.error.issues).toHaveLength(1);
+      expect(asHabit.error.issues[0]?.path).toEqual(['a']);
+      expect(asHabit.error.issues[0]?.message).toBe(MESSAGE);
+    }
+
+    const asOutcome = compareSinceQuerySchema.safeParse({
+      a: 'meditated',
+      b: 'weightTrend',
+      mode: 'since',
+    });
+    expect(asOutcome.success).toBe(false);
+    if (!asOutcome.success) {
+      expect(asOutcome.error.issues).toHaveLength(1);
+      expect(asOutcome.error.issues[0]?.path).toEqual(['b']);
+      expect(asOutcome.error.issues[0]?.message).toBe(MESSAGE);
+    }
+  });
+
+  test('still takes the other metrics', () => {
+    expect(
+      compareSinceQuerySchema.safeParse({
+        a: 'meditated',
+        b: 'mood',
+        mode: 'since',
+      }).success
+    ).toBe(true);
   });
 });
