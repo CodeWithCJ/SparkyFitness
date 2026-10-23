@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   addDays,
   analyzeSince,
-  cautiousEffectiveNForMean,
+  biasCorrectedEffectiveNForMean,
   compareDays,
   dayOfWeek,
   daysBetween,
@@ -17,7 +17,7 @@ import {
   type CompareSinceResult,
   type DaySeries,
 } from '@workspace/shared';
-import { normal } from './helpers/seededRandom.js';
+import { mulberry32, normal } from './helpers/seededRandom.js';
 
 const TODAY = '2026-09-01'; // a Tuesday
 const YESTERDAY = addDays(TODAY, -1);
@@ -387,8 +387,8 @@ describe('compare since: analysis', () => {
 
     const before = valuesIn(outcome, BEFORE_FROM, addDays(START, -1));
     const after = valuesIn(outcome, START, YESTERDAY);
-    const nEffBefore = cautiousEffectiveNForMean(before, 14);
-    const nEffAfter = cautiousEffectiveNForMean(after, 14);
+    const nEffBefore = biasCorrectedEffectiveNForMean(before, 14);
+    const nEffAfter = biasCorrectedEffectiveNForMean(after, 14);
     expect(nEffBefore).toBeLessThan(before.length / 2);
     expect(nEffAfter).toBeLessThan(after.length / 2);
     const expected = welch(after, before, nEffAfter, nEffBefore);
@@ -776,5 +776,76 @@ describe('compare since: false changes', () => {
 
     expect(answered).toBe(400);
     expect(changed / answered).toBeLessThanOrEqual(0.08);
+  });
+  /** `runs` seeded AR(rho) outcomes over BEFORE_FROM..YESTERDAY: how many answered, how many read as changed. `keep` thins the days. */
+  function falseChangeRuns(
+    runs: number,
+    seedBase: number,
+    rho: number,
+    options: { keep?: number; step?: number } = {}
+  ) {
+    let answered = 0;
+    let changed = 0;
+    for (let trial = 0; trial < runs; trial++) {
+      const noise = normal(seedBase + trial);
+      const kept = mulberry32(seedBase + 500000 + trial);
+      let level = noise() / Math.sqrt(1 - rho ** 2);
+      const outcome = series(BEFORE_FROM, YESTERDAY, (_, day) => {
+        level = rho * level + noise();
+        if (options.keep !== undefined && kept() >= options.keep) {
+          return undefined;
+        }
+        const after =
+          compareDays(day, START) >= 0
+            ? (options.step ?? 0) / Math.sqrt(1 - rho ** 2)
+            : 0;
+        return 60 + 10 * (level + after);
+      });
+      const result = since({
+        outcome: { key: 'sleepScore', values: outcome },
+        start: START,
+      });
+      if (result.status !== 'ok') continue;
+      answered++;
+      if (result.changed) changed++;
+    }
+    return { answered, changed };
+  }
+
+  // Calibration: 3000 runs of each scenario on other seeds read as changed 4.33% of the time at
+  // AR(0.95) (130 of 3000) and 4.07% at AR(0.98) (122 of 3000); these 400 seeded runs 4.50%
+  // (18 of 400) and 3.50% (14 of 400). Without the bias-corrected effective n the rates were
+  // about 10.7% and 14.3%. The bound is 8%, as for AR(0.7) above.
+  test.each([
+    [0.95, 31000],
+    [0.98, 32000],
+  ])(
+    'an unchanged very persistent outcome rarely reads as a change (AR %s)',
+    (rho, seedBase) => {
+      const { answered, changed } = falseChangeRuns(400, seedBase, rho);
+      expect(answered).toBe(400);
+      expect(changed / answered).toBeLessThanOrEqual(0.08);
+    }
+  );
+
+  // Calibration: 3000 runs on other seeds, AR(0.95) with each day kept at random with probability
+  // 0.6, read as changed 4.13% of the time (124 of 3000); these 400 seeded runs 4.75% (19 of 400).
+  // The bound is 8%.
+  test('an unchanged outcome logged on some days rarely reads as a change', () => {
+    const { answered, changed } = falseChangeRuns(400, 33000, 0.95, {
+      keep: 0.6,
+    });
+    expect(answered).toBe(400);
+    expect(changed / answered).toBeLessThanOrEqual(0.08);
+  });
+
+  // Calibration: 3000 runs on other seeds caught the +1 SD step at AR(0.3) 99.97% of the time
+  // (2999 of 3000); these 400 seeded runs 100% (400 of 400). The bound is 95%.
+  test('a real step in a fast outcome is still caught', () => {
+    const { answered, changed } = falseChangeRuns(400, 34000, 0.3, {
+      step: 1,
+    });
+    expect(answered).toBe(400);
+    expect(changed / answered).toBeGreaterThanOrEqual(0.95);
   });
 });

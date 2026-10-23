@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   autocorrelation,
+  biasCorrectedEffectiveNForMean,
   cautiousEffectiveN,
   correlationTest,
   cautiousEffectiveNForMean,
@@ -13,6 +14,7 @@ import {
   tTwoSidedP,
   welch,
 } from '@workspace/shared';
+import { normal } from './helpers/seededRandom.js';
 
 describe('compare stats', () => {
   const x = [
@@ -177,6 +179,46 @@ describe('single-series statistics', () => {
 
     test('null for an empty array', () => {
       expect(percentile([], 0.5)).toBeNull();
+    });
+  });
+
+  describe('biasCorrectedEffectiveNForMean', () => {
+    const noiseAt = (i: number) => {
+      const v = Math.sin((i + 1) * 12.9898) * 43758.5453;
+      return v - Math.floor(v) - 0.5;
+    };
+    const alternating = Array.from({ length: 40 }, (_, i) =>
+      i % 2 === 0 ? 1 : -1
+    );
+    const ramp = Array.from({ length: 40 }, (_, i) => i);
+    const white = Array.from({ length: 120 }, (_, i) => noiseAt(i * 7919));
+
+    test.each([
+      ['alternating', alternating],
+      ['a linear ramp', ramp],
+      ['white noise', white],
+    ])('is never above the cautious estimate: %s', (_name, xs) => {
+      expect(biasCorrectedEffectiveNForMean(xs, 14)).toBeLessThanOrEqual(
+        cautiousEffectiveNForMean(xs, 14)
+      );
+    });
+
+    test('is clearly smaller for a near-unit-root series', () => {
+      // A seeded AR(0.98) series of 120 (seed 75): the cautious count is 6.07 and the corrected one
+      // 4.05, two thirds of it. Across 300 seeds the cautious count was never more than 1.5 times
+      // the corrected one at best, so "half" is not reachable for one series; the false-change
+      // rates in compareSince.test.ts are what the correction is for.
+      const z = normal(75);
+      let level = 0;
+      const ar = Array.from({ length: 120 }, () => {
+        level = 0.98 * level + z();
+        return level;
+      });
+      const cautious = cautiousEffectiveNForMean(ar, 14);
+      expect(cautious).toBeGreaterThan(6);
+      expect(biasCorrectedEffectiveNForMean(ar, 14)).toBeLessThan(
+        cautious * 0.7
+      );
     });
   });
 
