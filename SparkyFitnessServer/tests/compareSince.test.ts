@@ -680,7 +680,7 @@ describe('compare since: not enough', () => {
     ).toBe(0);
   });
 
-  test.each<CompareMetricKey>(['alcohol', 'weightTrend'])(
+  test.each<CompareMetricKey>(['alcohol', 'steps'])(
     '%s as the habit gets no suggestion but works from a picked date, with no regularity',
     (key) => {
       const habit = series(BEFORE_FROM, YESTERDAY, (_, day) =>
@@ -752,9 +752,10 @@ describe('compare since: line', () => {
 });
 
 describe('compare since: false changes', () => {
-  // Calibration: 4000 runs of this scenario on other seeds read as changed 4.63% of the time
-  // (185 of 4000); these 400 seeded runs 4.50% (18 of 400). The bound is the plan's 8%, about
-  // 3 points above that.
+  // Calibration (with the bias-corrected effective n): 8000 runs of this scenario on other seeds
+  // (730000 up and 740000 up, 4000 each) read as changed 4.30% of the time (344 of 8000; 4.63% and
+  // 3.98% for the two halves); these 400 seeded runs 4.50% (18 of 400). The bound is the plan's 8%,
+  // about 3.5 points above that.
   test('an unchanged slow-moving outcome rarely reads as a change', () => {
     // 400 runs of 120 days before and 120 since: an AR(0.7) outcome with no change at the start.
     let answered = 0;
@@ -779,33 +780,36 @@ describe('compare since: false changes', () => {
     expect(changed / answered).toBeLessThanOrEqual(0.08);
   });
 
-  /** `runs` seeded AR(rho) outcomes over BEFORE_FROM..YESTERDAY: how many answered, how many read as changed. `keep` thins the days. */
+  /** `runs` seeded AR(rho) outcomes with `days` (default 120) before the start and since it: how many answered, how many read as changed. `keep` thins the days. */
   function falseChangeRuns(
     runs: number,
     seedBase: number,
     rho: number,
-    options: { keep?: number; step?: number } = {}
+    options: { keep?: number; step?: number; days?: number } = {}
   ) {
+    const days = options.days ?? 120;
+    const runStart = addDays(TODAY, -days);
+    const runFrom = addDays(runStart, -days);
     let answered = 0;
     let changed = 0;
     for (let trial = 0; trial < runs; trial++) {
       const noise = normal(seedBase + trial);
       const kept = mulberry32(seedBase + 500000 + trial);
       let level = noise() / Math.sqrt(1 - rho ** 2);
-      const outcome = series(BEFORE_FROM, YESTERDAY, (_, day) => {
+      const outcome = series(runFrom, YESTERDAY, (_, day) => {
         level = rho * level + noise();
         if (options.keep !== undefined && kept() >= options.keep) {
           return undefined;
         }
         const after =
-          compareDays(day, START) >= 0
+          compareDays(day, runStart) >= 0
             ? (options.step ?? 0) / Math.sqrt(1 - rho ** 2)
             : 0;
         return 60 + 10 * (level + after);
       });
       const result = since({
         outcome: { key: 'sleepScore', values: outcome },
-        start: START,
+        start: runStart,
       });
       if (result.status !== 'ok') continue;
       answered++;
@@ -850,6 +854,36 @@ describe('compare since: false changes', () => {
     expect(answered).toBe(400);
     expect(changed / answered).toBeGreaterThanOrEqual(0.95);
   });
+
+  // Calibration: 6000 runs on other seeds (700000 up and 750000 up, 3000 each) caught the +1 SD step
+  // at AR(0.7), the persistence of mood and sleep, 85.6% of the time (5137 of 6000; 85.2% and 86.0%
+  // for the two halves, about 1.8 points of sampling spread per 400 runs). The bound is 75%, well
+  // below that.
+  test('a real step in a persistent outcome is still caught (AR 0.7)', () => {
+    const { answered, changed } = falseChangeRuns(400, 35000, 0.7, {
+      step: 1,
+    });
+    expect(answered).toBe(400);
+    expect(changed / answered).toBeGreaterThanOrEqual(0.75);
+  });
+
+  // Calibration: on other seeds (710000 up, 4000 runs) AR(0.95) with 28 days before and since read
+  // as changed 5.33% of the time (213 of 4000); with 365 days each side (720000 up, 3000 runs)
+  // 4.83% (145 of 3000). The bound is 8% for both. The 365-day case runs fewer times because each
+  // run is longer (the 3000-run calibration took 3.2 s).
+  test.each([
+    [28, 400, 36000],
+    [365, 200, 37000],
+  ])(
+    'an unchanged very persistent outcome rarely reads as a change with %s days on each side',
+    (days, runs, seedBase) => {
+      const { answered, changed } = falseChangeRuns(runs, seedBase, 0.95, {
+        days,
+      });
+      expect(answered).toBe(runs);
+      expect(changed / answered).toBeLessThanOrEqual(0.08);
+    }
+  );
 });
 
 describe('compareSinceQuerySchema weight trend', () => {

@@ -161,6 +161,27 @@ describe('CompareSentence', () => {
     });
   });
 
+  test("choosing a week timing clears a metric that isn't offered weekly", () => {
+    const onChange = jest.fn();
+    render(
+      <CompareSentence
+        question={{
+          a: 'meditationSessions7d',
+          b: 'mood',
+          choice: 'sameDay',
+        }}
+        onChange={onChange}
+      />
+    );
+    open(screen.getByRole('combobox', { name: /When/ }));
+    fireEvent.click(screen.getByRole('option', { name: 'The same week' }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      a: undefined,
+      b: 'mood',
+      choice: 'sameWeek',
+    });
+  });
+
   test('the since outcome picker does not list Weight trend', () => {
     render(
       <CompareSentence

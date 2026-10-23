@@ -223,6 +223,32 @@ describe('single-series statistics', () => {
       }
       expect(total / 100).toBeLessThan(0.8);
     });
+
+    // By hand, for [1, 2, 1, 3, 2, 4, 3, 5, 4, 6, 5, 7] (n = 12, mean 43/12). Times 12 the deviations
+    // are -31, -19, -31, -7, -19, 5, -7, 17, 5, 29, 17, 41: their squares sum to 5892 and their
+    // neighbouring products to 2699, so the lag-1 autocorrelation is 2699/5892 = 0.45808. The bias
+    // correction gives rho = 0.45808 + (1 + 3 x 0.45808)/12 = 0.65593, so n(1 - rho)/(1 + rho) =
+    // 12 x 0.34407/1.65593 = 2.4934, which is below both 12 and the cautious count (3.6415).
+    test('matches the closed form on a small series', () => {
+      const xs = [1, 2, 1, 3, 2, 4, 3, 5, 4, 6, 5, 7];
+      const rhoHat = 2699 / 5892;
+      const rho = rhoHat + (1 + 3 * rhoHat) / 12;
+      const expected = (12 * (1 - rho)) / (1 + rho);
+      expect(expected).toBeCloseTo(2.4934, 4);
+      expect(biasCorrectedEffectiveNForMean(xs, 14)).toBeCloseTo(expected, 9);
+    });
+
+    test('is the series length for a single value and 2 for two values', () => {
+      expect(biasCorrectedEffectiveNForMean([5], 3)).toBe(1);
+      expect(biasCorrectedEffectiveNForMean([1, 2], 3)).toBe(2);
+    });
+
+    test('is finite for a constant series', () => {
+      const n = biasCorrectedEffectiveNForMean([4, 4, 4, 4, 4, 4], 3);
+      expect(Number.isFinite(n)).toBe(true);
+      expect(n).toBeGreaterThanOrEqual(2);
+      expect(n).toBeLessThanOrEqual(6);
+    });
   });
 
   describe('cautiousEffectiveNForMean', () => {
