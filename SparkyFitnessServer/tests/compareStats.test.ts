@@ -16,6 +16,11 @@ import {
 } from '@workspace/shared';
 import { normal } from './helpers/seededRandom.js';
 
+const noiseAt = (i: number) => {
+  const v = Math.sin((i + 1) * 12.9898) * 43758.5453;
+  return v - Math.floor(v) - 0.5;
+};
+
 describe('compare stats', () => {
   const x = [
     7.1, 6.2, 8.0, 5.5, 7.4, 6.8, 7.9, 6.0, 7.2, 6.5, 8.1, 5.9, 7.0, 6.6,
@@ -183,10 +188,6 @@ describe('single-series statistics', () => {
   });
 
   describe('biasCorrectedEffectiveNForMean', () => {
-    const noiseAt = (i: number) => {
-      const v = Math.sin((i + 1) * 12.9898) * 43758.5453;
-      return v - Math.floor(v) - 0.5;
-    };
     const alternating = Array.from({ length: 40 }, (_, i) =>
       i % 2 === 0 ? 1 : -1
     );
@@ -203,31 +204,29 @@ describe('single-series statistics', () => {
       );
     });
 
-    test('is clearly smaller for a near-unit-root series', () => {
-      // A seeded AR(0.98) series of 120 (seed 75): the cautious count is 6.07 and the corrected one
-      // 4.05, two thirds of it. Across 300 seeds the cautious count was never more than 1.5 times
-      // the corrected one at best, so "half" is not reachable for one series; the false-change
-      // rates in compareSince.test.ts are what the correction is for.
-      const z = normal(75);
-      let level = 0;
-      const ar = Array.from({ length: 120 }, () => {
-        level = 0.98 * level + z();
-        return level;
-      });
-      const cautious = cautiousEffectiveNForMean(ar, 14);
-      expect(cautious).toBeGreaterThan(6);
-      expect(biasCorrectedEffectiveNForMean(ar, 14)).toBeLessThan(
-        cautious * 0.7
-      );
+    // Calibration: over 2000 AR(0.98) series of 120 on other seeds (10001 to 12000) the corrected
+    // count was never above the cautious one, and the mean of corrected over cautious was 0.708
+    // (means of 100 series ranged 0.680 to 0.737). The bound of 0.8 sits above that range.
+    test('is smaller on average for a near-unit-root series', () => {
+      let total = 0;
+      for (let seed = 1; seed <= 100; seed++) {
+        const z = normal(seed);
+        let level = 0;
+        const ar = Array.from({ length: 120 }, () => {
+          level = 0.98 * level + z();
+          return level;
+        });
+        const cautious = cautiousEffectiveNForMean(ar, 14);
+        const corrected = biasCorrectedEffectiveNForMean(ar, 14);
+        expect(corrected).toBeLessThanOrEqual(cautious);
+        total += corrected / cautious;
+      }
+      expect(total / 100).toBeLessThan(0.8);
     });
   });
 
   describe('cautiousEffectiveNForMean', () => {
     // A seeded AR(0.7) series: x[t] = 0.7·x[t−1] + noise.
-    const noiseAt = (i: number) => {
-      const v = Math.sin((i + 1) * 12.9898) * 43758.5453;
-      return v - Math.floor(v) - 0.5;
-    };
     const ar = Array.from({ length: 120 }, (_, i) => i).reduce<number[]>(
       (acc, i) => {
         acc.push(0.7 * (acc[i - 1] ?? 0) + noiseAt(i));
