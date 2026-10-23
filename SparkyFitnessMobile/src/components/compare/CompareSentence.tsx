@@ -2,12 +2,12 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
-  COMPARE_METRICS,
   type CompareMetricKey,
   type CompareMode,
   type CompareQuestion,
   type CompareTimingChoice,
   isCompareMetricKey,
+  offeredInMode,
   timingOf,
 } from '@workspace/shared';
 
@@ -23,14 +23,13 @@ interface CompareSentenceProps {
 type MetricValue = CompareMetricKey | '';
 type Slot = 'a' | 'b';
 
-/** Drops a metric that has no weekly form once the question is by the week. */
+/** Drops any chosen metric the question's mode doesn't offer (no weekly form by the week, no weight trend since a habit started). */
 function forMode(
   question: Partial<CompareQuestion>,
   mode: CompareMode
 ): Partial<CompareQuestion> {
-  if (mode !== 'week') return question;
   const keep = (key?: CompareMetricKey) =>
-    key && COMPARE_METRICS[key].weekly !== null ? key : undefined;
+    key && offeredInMode(key, mode) ? key : undefined;
   return { ...question, a: keep(question.a), b: keep(question.b) };
 }
 
