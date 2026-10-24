@@ -64,7 +64,11 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
       ? t('screens.watchWalkLive', { defaultValue: 'Walk on your watch' })
       : run?.kind === 'run'
         ? t('screens.watchRunLiveRun', { defaultValue: 'Run on your watch' })
-        : t('screens.watchRunLive', { defaultValue: 'On your watch' });
+        : run?.kind === 'jumpRope'
+          ? t('screens.watchRunLiveJumpRope', {
+              defaultValue: 'Jump Rope on your watch',
+            })
+          : t('screens.watchRunLive', { defaultValue: 'On your watch' });
   const header = useScreenHeader({
     title,
     nativeTitle: title,
@@ -207,9 +211,13 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
                     ? t('watchRunLive.walking', {
                         defaultValue: 'Walking on your watch',
                       })
-                    : t('watchRunLive.running', {
-                        defaultValue: 'Running on your watch',
-                      })}
+                    : run.kind === 'jumpRope'
+                      ? t('watchRunLive.jumpingRope', {
+                          defaultValue: 'Jumping rope on your watch',
+                        })
+                      : t('watchRunLive.running', {
+                          defaultValue: 'Running on your watch',
+                        })}
               </Text>
               <Text
                 className="text-text-primary text-5xl font-bold mt-1"
@@ -240,28 +248,30 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             ) : null}
 
-            <View className="flex-row mb-3">
-              <Stat
-                label={t('recordActivity.distance', {
-                  defaultValue: 'Distance',
-                })}
-                value={number(run.distanceMeters / unitMeters)}
-                unit={unitLabel}
-              />
-              <Stat
-                label={t('recordActivity.avgPace', {
-                  defaultValue: 'Avg pace',
-                })}
-                value={formatPace(
-                  paceSecondsPerUnit(
-                    run.distanceMeters,
-                    run.elapsedNow,
-                    unitMeters
-                  )
-                )}
-                unit={paceUnit}
-              />
-            </View>
+            {run.kind !== 'jumpRope' ? (
+              <View className="flex-row mb-3">
+                <Stat
+                  label={t('recordActivity.distance', {
+                    defaultValue: 'Distance',
+                  })}
+                  value={number(run.distanceMeters / unitMeters)}
+                  unit={unitLabel}
+                />
+                <Stat
+                  label={t('recordActivity.avgPace', {
+                    defaultValue: 'Avg pace',
+                  })}
+                  value={formatPace(
+                    paceSecondsPerUnit(
+                      run.distanceMeters,
+                      run.elapsedNow,
+                      unitMeters
+                    )
+                  )}
+                  unit={paceUnit}
+                />
+              </View>
+            ) : null}
             <View className="flex-row mb-3">
               {run.heartRate != null ? (
                 <Stat

@@ -224,7 +224,9 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
       ? t('runSummary.walkSaved', { defaultValue: 'Walk saved' })
       : summary.activity === 'ride'
         ? t('runSummary.rideSaved', { defaultValue: 'Ride saved' })
-        : t('runSummary.runSaved', { defaultValue: 'Run saved' });
+        : summary.activity === 'jumpRope'
+          ? t('runSummary.jumpRopeSaved', { defaultValue: 'Jump Rope saved' })
+          : t('runSummary.runSaved', { defaultValue: 'Run saved' });
 
   const avgPace = paceSecondsPerUnit(
     distanceMeters,

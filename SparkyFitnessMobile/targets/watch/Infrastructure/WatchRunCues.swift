@@ -93,6 +93,12 @@ final class WatchRunCues: NSObject, AVSpeechSynthesizerDelegate {
             : String(localized: "watch.run.cue.finishedKm", defaultValue: "\(title) saved. \(amount) kilometers in \(time).")
     }
 
+    /// The finish words for a recording that covers no distance (a jump rope),
+    /// so no made-up distance is read out.
+    static func finishText(title: String, seconds: TimeInterval) -> String {
+        String(localized: "watch.run.cue.finishedNoDistance", defaultValue: "\(title) saved. \(duration(seconds)).")
+    }
+
     /// What is said when a plan step begins: "Run, 1 minute."
     static func stepText(label: String, seconds: TimeInterval) -> String {
         String(localized: "watch.run.cue.step", defaultValue: "\(label), \(duration(seconds)).")

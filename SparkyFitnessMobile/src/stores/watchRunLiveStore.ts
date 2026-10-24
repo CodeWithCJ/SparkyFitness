@@ -12,7 +12,7 @@ export const WATCH_RUN_LIVE_MAX_AGE_MS = 20_000;
 /** What the watch last said about the run it is recording, as it arrived. */
 export interface WatchRunLive {
   runId: string;
-  kind: 'run' | 'walk';
+  kind: 'run' | 'walk' | 'jumpRope';
   place: 'indoor' | 'outdoor';
   status: 'running' | 'paused';
   autoPaused: boolean;
@@ -80,7 +80,9 @@ export const useWatchRunLiveStore = create<WatchRunLiveState>((set) => ({
       if (
         !payload.runId ||
         (payload.status !== 'running' && payload.status !== 'paused') ||
-        (payload.kind !== 'run' && payload.kind !== 'walk') ||
+        (payload.kind !== 'run' &&
+          payload.kind !== 'walk' &&
+          payload.kind !== 'jumpRope') ||
         (payload.place !== 'indoor' && payload.place !== 'outdoor') ||
         !finite(payload.elapsed) ||
         !finite(payload.distanceMeters)

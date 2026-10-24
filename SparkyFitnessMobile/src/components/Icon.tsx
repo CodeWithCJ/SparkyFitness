@@ -106,6 +106,7 @@ const ICON_MAP = {
   'trophy-outline': { sf: 'trophy', ion: 'trophy-outline' },
   exercise: { sf: 'flame.fill', ion: 'flame' },
   'exercise-running': { sf: 'figure.run', ion: 'walk-outline' },
+  'exercise-jumprope': { sf: 'figure.jumprope', ion: 'fitness-outline' },
   'exercise-running-filled': { sf: 'figure.run', ion: 'walk' },
   'exercise-cycling': { sf: 'figure.outdoor.cycle', ion: 'bicycle-outline' },
   'exercise-swimming': { sf: 'figure.pool.swim', ion: 'water-outline' },

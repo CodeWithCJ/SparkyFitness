@@ -85,6 +85,8 @@ export const CATEGORY_ICON_MAP: Record<string, IconName> = {
   Strength: 'exercise-weights',
   Cardio: 'exercise-running',
   Running: 'exercise-running',
+  'Jump Rope': 'exercise-jumprope',
+  'Skipping Rope': 'exercise-jumprope',
   Cycling: 'exercise-cycling',
   Swimming: 'exercise-swimming',
   Walking: 'exercise-walking',
@@ -121,6 +123,9 @@ const NAME_KEYWORDS: [string, IconName][] = [
   ['stair', 'exercise-stair'],
   ['strength', 'exercise-weights'],
   ['weight', 'exercise-weights'],
+  ['jump', 'exercise-jumprope'],
+  ['rope', 'exercise-jumprope'],
+  ['skip', 'exercise-jumprope'],
   ['run', 'exercise-running'],
 ];
 
