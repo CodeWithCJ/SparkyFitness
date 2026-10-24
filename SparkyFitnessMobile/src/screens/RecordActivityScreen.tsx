@@ -33,6 +33,7 @@ import RecordingVoiceCard from '../components/recording/RecordingVoiceCard';
 import CheckInCard from '../components/recording/CheckInCard';
 import SegmentedControl from '../components/SegmentedControl';
 import { SplitRow, Stat } from '../components/recording/SplitRow';
+import SplitsTable from '../components/recording/SplitsTable';
 import RunProgramSelect from '../components/recording/RunProgramSelect';
 import {
   programTitle,
@@ -634,10 +635,6 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         : [],
     [points, session?.status, session?.finishedAt, lapMarks]
   );
-  const splitBarsFor = useMemo(
-    () => splitBars(splits, unitMeters),
-    [splits, unitMeters]
-  );
   const lapBarsFor = useMemo(
     () => splitBars(laps, unitMeters),
     [laps, unitMeters]
@@ -939,15 +936,15 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       // failed, or the person would be told to try again for no reason.
       let summaryParams: RunSummaryParams | null = null;
       try {
+        const heartRateSamples = await getHeartRateSamples().catch(() => []);
         summaryParams = buildRunSummary({
           activity: session.activity,
           entryDate: saved.entryDate,
           distanceUnit,
           points,
           lapMarks: session.laps,
-          avgHeartRate: averageHeartRate(
-            await getHeartRateSamples().catch(() => [])
-          ),
+          avgHeartRate: averageHeartRate(heartRateSamples),
+          heartRateSamples,
           program,
           entryId: saved.entryId,
           form: saved.form,
@@ -1714,28 +1711,11 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
             <Text className="text-text-primary text-base font-bold mb-2">
               {t('recordActivity.splits', { defaultValue: 'Splits' })}
             </Text>
-            {splits.map((split, i) => (
-              <SplitRow
-                key={split.index}
-                label={`${
-                  split.partial
-                    ? number(split.distanceMeters / unitMeters)
-                    : String(split.index)
-                } ${unitLabel}`}
-                pace={`${formatPace(
-                  paceSecondsPerUnit(
-                    split.distanceMeters,
-                    split.durationSeconds,
-                    unitMeters
-                  )
-                )} ${paceUnit}`}
-                fraction={splitBarsFor[i].fraction}
-                fastest={splitBarsFor[i].fastest}
-                fastestLabel={t('recordActivity.fastest', {
-                  defaultValue: 'Fastest',
-                })}
-              />
-            ))}
+            <SplitsTable
+              splits={splits}
+              unitMeters={unitMeters}
+              unit={distanceUnit}
+            />
           </View>
         ) : null}
         {finished && indoorSession ? (

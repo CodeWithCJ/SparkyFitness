@@ -87,9 +87,9 @@ it('shows the headline figures and the splits', () => {
   expect(screen.getByText('Run saved')).toBeTruthy();
   expect(screen.getByText('2.50')).toBeTruthy();
   expect(screen.getByText('12:30')).toBeTruthy();
-  expect(screen.getByText('5:00')).toBeTruthy();
+  expect(screen.getAllByText('5:00').length).toBeGreaterThan(0);
   expect(screen.getByText('Splits')).toBeTruthy();
-  expect(screen.getByText(/Fastest/)).toBeTruthy();
+  expect(screen.getByTestId('splits-table')).toBeTruthy();
   expect(screen.queryByText('Avg heart rate')).toBeNull();
   expect(screen.queryByText(/Workout \d+ of/)).toBeNull();
 });

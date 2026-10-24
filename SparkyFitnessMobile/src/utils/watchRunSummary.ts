@@ -34,6 +34,7 @@ export function watchRunSummary(
     points,
     lapMarks: payload.laps,
     avgHeartRate,
+    heartRateSamples: payload.heartRate.map(([t, bpm]) => ({ t, bpm })),
     program,
     entryId,
     form,

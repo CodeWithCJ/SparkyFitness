@@ -11,6 +11,7 @@ import RouteMap from '../components/exerciseStats/RouteMap';
 import PaceChart from '../components/exerciseStats/PaceChart';
 import { paceSeriesFromDistance } from '../utils/cardioSession';
 import { SplitRow, Stat } from '../components/recording/SplitRow';
+import SplitsTable from '../components/recording/SplitsTable';
 import {
   EASY_RATING,
   HARD_RATING,
@@ -555,38 +556,36 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
                 ? t('recordActivity.laps', { defaultValue: 'Laps' })
                 : t('recordActivity.splits', { defaultValue: 'Splits' })}
             </Text>
-            {rows.map((row, i) => (
-              <SplitRow
-                key={row.index}
-                label={
-                  usesLaps
-                    ? t('recordActivity.lapLabel', {
-                        defaultValue: 'Lap {{number}}',
-                        number: row.index,
-                      })
-                    : `${
-                        row.partial
-                          ? number(row.distanceMeters / unitMeters)
-                          : String(row.index)
-                      } ${unitLabel}`
-                }
-                detail={
-                  usesLaps
-                    ? `${number(row.distanceMeters / unitMeters, 2)} ${unitLabel} · ${formatClock(row.durationSeconds)}`
-                    : undefined
-                }
-                pace={`${formatPace(
-                  paceSecondsPerUnit(
-                    row.distanceMeters,
-                    row.durationSeconds,
-                    unitMeters
-                  )
-                )} ${paceUnit}`}
-                fraction={bars[i].fraction}
-                fastest={bars[i].fastest}
-                fastestLabel={fastestLabel}
+            {usesLaps ? (
+              <>
+                {rows.map((row, i) => (
+                  <SplitRow
+                    key={row.index}
+                    label={t('recordActivity.lapLabel', {
+                      defaultValue: 'Lap {{number}}',
+                      number: row.index,
+                    })}
+                    detail={`${number(row.distanceMeters / unitMeters, 2)} ${unitLabel} · ${formatClock(row.durationSeconds)}`}
+                    pace={`${formatPace(
+                      paceSecondsPerUnit(
+                        row.distanceMeters,
+                        row.durationSeconds,
+                        unitMeters
+                      )
+                    )} ${paceUnit}`}
+                    fraction={bars[i].fraction}
+                    fastest={bars[i].fastest}
+                    fastestLabel={fastestLabel}
+                  />
+                ))}
+              </>
+            ) : (
+              <SplitsTable
+                splits={rows}
+                unitMeters={unitMeters}
+                unit={summary.distanceUnit}
               />
-            ))}
+            )}
           </View>
         ) : null}
 
