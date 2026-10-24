@@ -9,6 +9,9 @@
  */
 import net, { type AddressInfo } from 'node:net';
 import pg, { type PoolClient } from 'pg';
+import express from 'express';
+// @ts-expect-error TS(7016): supertest does not publish declarations in this workspace
+import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const target = {
@@ -265,4 +268,41 @@ describe.runIf(reachable)('database connection loss (real PostgreSQL)', () => {
       await proxy.start();
     }
   }, 20_000);
+
+  it('answers 503, not 401, when the session cannot be looked up', async () => {
+    const { authenticate } = await import('../middleware/authMiddleware.js');
+    const guarded = express();
+    guarded.use((req, _res, next) => {
+      (req as unknown as { cookies: object }).cookies = {};
+      next();
+    });
+    guarded.get('/guarded', authenticate, (_req, res) => {
+      res.json({ ok: true });
+    });
+    const call = () =>
+      request(guarded)
+        .get('/guarded')
+        .set('Authorization', `Bearer ${crypto.randomUUID()}`);
+
+    // An unknown session with the database up is a real 401.
+    expect((await call()).status).toBe(401);
+
+    await stopDatabase();
+    try {
+      // Better Auth's pool retries the connect for the request window first.
+      const response = await call();
+      expect(response.status).toBe(503);
+      expect(response.headers['retry-after']).toBe('5');
+      expect(response.body).toEqual({
+        error: 'Authentication is temporarily unavailable.',
+      });
+      expect(response.text).not.toMatch(/127\.0\.0\.1|ECONN|password/);
+    } finally {
+      await proxy.start();
+    }
+    await vi.waitFor(async () => expect((await call()).status).toBe(401), {
+      timeout: 10_000,
+      interval: 200,
+    });
+  }, 30_000);
 });
