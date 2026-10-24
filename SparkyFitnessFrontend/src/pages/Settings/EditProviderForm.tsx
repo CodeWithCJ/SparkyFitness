@@ -11,6 +11,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Clipboard } from 'lucide-react';
 import { RoutingProviderFields } from './RoutingProviderFields';
+import { ProviderSyncFrequencyFields } from './ProviderSyncFrequencyFields';
 import { Trans, useTranslation } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { toast } from '@/hooks/use-toast';
@@ -1248,52 +1249,14 @@ export const EditProviderForm = ({
           </p>
         </>
       )}
-      {(editData.provider_type === 'withings' ||
-        editData.provider_type === 'garmin' ||
-        editData.provider_type === 'fitbit' ||
-        editData.provider_type === 'oura' ||
-        editData.provider_type === 'googlehealth' ||
-        editData.provider_type === 'strava' ||
-        editData.provider_type === 'polar' ||
-        editData.provider_type === 'coros_mcp' ||
-        editData.provider_type === 'hevy' ||
-        editData.provider_type === 'liftosaur' ||
-        editData.provider_type === 'intervals') && (
-        <div>
-          <Label htmlFor="edit_sync_frequency">
-            {t('settings.editProviderForm.syncFrequency', 'Sync Frequency')}
-          </Label>
-          <Select
-            value={editData.sync_frequency || 'manual'}
-            onValueChange={(value) =>
-              setEditData((prev) => ({
-                ...prev,
-                sync_frequency: value as 'hourly' | 'daily' | 'manual',
-              }))
-            }
-          >
-            <SelectTrigger id="edit_sync_frequency">
-              <SelectValue
-                placeholder={t(
-                  'settings.editProviderForm.selectSyncFrequency',
-                  'Select sync frequency'
-                )}
-              />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="manual">
-                {t('settings.editProviderForm.manual', 'Manual')}
-              </SelectItem>
-              <SelectItem value="hourly">
-                {t('settings.editProviderForm.hourly', 'Hourly')}
-              </SelectItem>
-              <SelectItem value="daily">
-                {t('settings.editProviderForm.daily', 'Daily')}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      )}
+      <ProviderSyncFrequencyFields
+        idPrefix="edit"
+        providerType={editData.provider_type}
+        frequency={editData.sync_frequency}
+        onFrequencyChange={(value) =>
+          setEditData((prev) => ({ ...prev, sync_frequency: value }))
+        }
+      />
       {editData.provider_type === 'swissfood' && (
         <div className="col-span-2 space-y-2">
           <p className="text-sm text-muted-foreground">
