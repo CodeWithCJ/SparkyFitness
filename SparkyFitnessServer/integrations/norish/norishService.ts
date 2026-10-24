@@ -37,8 +37,47 @@ export interface NorishRecipeStep {
   version: number;
 }
 
+// The other nutrients Norish knows per serving, by its keys: cholesterol,
+// sodium, potassium, calcium, iron and vitaminC in mg, vitaminA in µg RAE,
+// the rest in g.
+export type NorishExtraNutrient =
+  | 'saturatedFat'
+  | 'monounsaturatedFat'
+  | 'polyunsaturatedFat'
+  | 'transFat'
+  | 'sugars'
+  | 'fiber'
+  | 'cholesterol'
+  | 'sodium'
+  | 'potassium'
+  | 'calcium'
+  | 'iron'
+  | 'vitaminC'
+  | 'vitaminA';
+
+// Norish's nutrient keys as SparkyFitness's variant fields; the units match.
+const EXTRA_FIELDS: Record<
+  NorishExtraNutrient,
+  keyof SparkyFoodMapping['variant']
+> = {
+  saturatedFat: 'saturated_fat',
+  monounsaturatedFat: 'monounsaturated_fat',
+  polyunsaturatedFat: 'polyunsaturated_fat',
+  transFat: 'trans_fat',
+  sugars: 'sugars',
+  fiber: 'dietary_fiber',
+  cholesterol: 'cholesterol',
+  sodium: 'sodium',
+  potassium: 'potassium',
+  calcium: 'calcium',
+  iron: 'iron',
+  vitaminC: 'vitamin_c',
+  vitaminA: 'vitamin_a',
+};
+
 // GET /recipes/{id}/nutrition: the recipe's own numbers per serving, else the
-// total Norish works out from its ingredients. Older Norish versions lack it.
+// total Norish works out from its ingredients, and the other nutrients it
+// knows. Older Norish versions lack it, or lack the extras.
 export interface NorishNutrition {
   source: 'supplied' | 'worked-out' | 'none';
   perServing: {
@@ -46,6 +85,7 @@ export interface NorishNutrition {
     fat: number | null;
     carbs: number | null;
     protein: number | null;
+    extras?: Partial<Record<NorishExtraNutrient, number>>;
   } | null;
   estimated: boolean;
 }
@@ -56,6 +96,20 @@ function isNorishNutrition(value: unknown): value is NorishNutrition {
     !!nutrition &&
     ['supplied', 'worked-out', 'none'].includes(nutrition.source) &&
     (nutrition.perServing === null || typeof nutrition.perServing === 'object')
+  );
+}
+
+// The extras Norish knows as variant fields, to a tenth; unknown ones stay 0.
+function extraNutrients(
+  extras: Partial<Record<NorishExtraNutrient, number>> | undefined
+): Partial<SparkyFoodMapping['variant']> {
+  return Object.fromEntries(
+    Object.entries(extras ?? {}).flatMap(([key, value]) => {
+      const field = EXTRA_FIELDS[key as NorishExtraNutrient];
+      return field && typeof value === 'number' && Number.isFinite(value)
+        ? [[field, Math.round(value * 10) / 10]]
+        : [];
+    })
   );
 }
 
@@ -250,9 +304,9 @@ class NorishService {
       }
 
       const data: NorishRecipe = await response.json();
-      if (!hasStoredNutrition(data)) {
-        data.nutrition = await this.getRecipeNutrition(id, options);
-      }
+      // Asked even where the recipe states its macros: the other nutrients
+      // come from its ingredients.
+      data.nutrition = await this.getRecipeNutrition(id, options);
       log('debug', `Successfully retrieved details for Norish recipe: ${id}`);
       norishRecipeCache.set(cacheKey, {
         data,
@@ -394,6 +448,7 @@ class NorishService {
         vitamin_c: 0,
         calcium: 0,
         iron: 0,
+        ...extraNutrients(norishRecipe.nutrition?.perServing?.extras),
         is_default: true,
       },
     };
