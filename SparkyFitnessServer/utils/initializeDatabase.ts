@@ -1,10 +1,24 @@
 import type { PoolClient } from 'pg';
 import { log } from '../config/logging.js';
-import { getSystemClient } from '../db/poolManager.js';
+import { getRawOwnerPool } from '../db/poolManager.js';
 import { applyMigrations } from './dbMigrations.js';
 import { applyRlsPolicies } from './applyRlsPolicies.js';
+import {
+  retryOnConnectionError,
+  type ConnectRetryOptions,
+} from '../db/connectRetry.js';
 
 const lockName = 'sparkyfitness:schema-initialization';
+
+// Long enough to ride out a database restart or primary switchover while this
+// instance boots, short enough that a database that is really gone still ends
+// in a visible exit.
+const bootConnectRetry: ConnectRetryOptions = {
+  windowMs: 60_000,
+  initialDelayMs: 500,
+  maxDelayMs: 5_000,
+  message: 'Database not reachable yet',
+};
 
 /**
  * Serializes schema initialization across server instances on one connection.
@@ -12,7 +26,12 @@ const lockName = 'sparkyfitness:schema-initialization';
  * continue on another connection after the lock-owning session is lost.
  */
 async function initializeDatabase(): Promise<void> {
-  const client: PoolClient = await getSystemClient();
+  // Straight from the pool: getSystemClient's own shorter request retry
+  // would run inside this one.
+  const client: PoolClient = await retryOnConnectionError(
+    () => getRawOwnerPool().connect(),
+    bootConnectRetry
+  );
   let destroyClient = true;
   try {
     // An instance that vanishes without closing its connection (node loss,
