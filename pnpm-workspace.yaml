@@ -40,6 +40,7 @@ onlyBuiltDependencies:
 
 overrides:
   "@babel/core": "7.29.0"
+  "@better-auth/oauth-provider": "1.7.4"
   "@expo/dom-webview": "57.0.1"
   assistant-cloud: "0.2.0"
   # 7.1 turns on the React Compiler rule set (set-state-in-effect, refs,

@@ -37,6 +37,7 @@ import AllergenSettings from '@/pages/Settings/AllergenSettings';
 import { DeveloperResources } from './DevloperResources';
 import { AccountSecurity } from './AccountSecurity';
 import { ApiSettings } from './ApiSettings';
+import { OAuthClientSettings } from './OAuthClientSettings';
 import { WaterTrackingSettings } from './WaterTrackingSettings';
 import { FastingSettings } from './FastingSettings';
 import { GuidedWorkoutSettings } from './GuidedWorkoutSettings';
@@ -72,6 +73,7 @@ const SECTION_TO_TAB_MAP: Record<string, string> = {
   'food-and-exercise-data-providers': 'developer-integrations',
   'ai-service': 'developer-integrations',
   'api-settings': 'developer-integrations',
+  'oauth-clients': 'developer-integrations',
   'developer-resources': 'developer-integrations',
   integrations: 'developer-integrations',
 };
@@ -460,6 +462,7 @@ const Settings = () => {
               </AccordionContent>
             </AccordionItem>
             <ApiSettings />
+            <OAuthClientSettings />
             <DeveloperResources />
           </Accordion>
         </TabsContent>

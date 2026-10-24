@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Mail, QrCode, KeyRound, Loader2 } from 'lucide-react';
-import { authClient } from '@/lib/auth-client';
+import { authClient, followOAuthRedirect } from '@/lib/auth-client';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { getErrorMessage } from '@/utils/api';
@@ -75,6 +75,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
       if (error) {
         throw error;
       }
+      if (followOAuthRedirect(data)) return;
 
       const user = data?.user as unknown as BetterAuthUser;
       if (user) {
@@ -142,6 +143,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
       if (error) {
         throw error;
       }
+      if (followOAuthRedirect(data)) return;
 
       const user = data?.user as unknown as BetterAuthUser;
 
@@ -180,6 +182,7 @@ const MfaChallenge: React.FC<MfaChallengeProps> = ({
       if (error) {
         throw error;
       }
+      if (followOAuthRedirect(data)) return;
 
       const user = data?.user as unknown as BetterAuthUser;
 

@@ -75,6 +75,7 @@ async function getGlobalSettings() {
     settings.public_api_docs = !!settings.public_api_docs;
     settings.dev_tools_enabled = !!settings.dev_tools_enabled;
     settings.mock_data_enabled = !!settings.mock_data_enabled;
+    settings.mcp_oauth_enabled = !!settings.mcp_oauth_enabled;
 
     log(
       'info',
@@ -116,7 +117,8 @@ async function saveGlobalSettings(settings: any) {
                  public_api_docs = COALESCE($10, public_api_docs, false),
                  dev_tools_enabled = COALESCE($11, dev_tools_enabled, false),
                  mock_data_enabled = COALESCE($12, mock_data_enabled, false),
-                 enable_passkey_login = COALESCE($13, enable_passkey_login, true)
+                 enable_passkey_login = COALESCE($13, enable_passkey_login, true),
+                 mcp_oauth_enabled = COALESCE($14, mcp_oauth_enabled, false)
              WHERE id = 1
              RETURNING *`,
       [
@@ -135,6 +137,7 @@ async function saveGlobalSettings(settings: any) {
         settings.dev_tools_enabled ?? null,
         settings.mock_data_enabled ?? null,
         passkeyEnvForced ? null : (settings.enable_passkey_login ?? null),
+        settings.mcp_oauth_enabled ?? null,
       ]
     );
     // Return the full truth (DB + ENV overrides)
@@ -166,7 +169,8 @@ type BooleanSettingColumn =
   | 'allow_private_network_food_providers'
   | 'public_api_docs'
   | 'dev_tools_enabled'
-  | 'mock_data_enabled';
+  | 'mock_data_enabled'
+  | 'mcp_oauth_enabled';
 
 /**
  * Reads one boolean policy column from `global_settings`, failing closed.
@@ -208,6 +212,9 @@ async function isPublicApiDocsAllowed(): Promise<boolean> {
 }
 async function isDevToolsEnabled(): Promise<boolean> {
   return readBooleanSetting('dev_tools_enabled');
+}
+async function isMcpOAuthEnabled(): Promise<boolean> {
+  return readBooleanSetting('mcp_oauth_enabled');
 }
 /**
  * Admin master switch for the runtime mock-data options. While false, the
@@ -270,6 +277,7 @@ export {
   isPrivateNetworkFoodProvidersAllowed,
   isPublicApiDocsAllowed,
   isDevToolsEnabled,
+  isMcpOAuthEnabled,
   isMockDataEnabled,
 };
 export default {
@@ -283,5 +291,6 @@ export default {
   isPrivateNetworkFoodProvidersAllowed,
   isPublicApiDocsAllowed,
   isDevToolsEnabled,
+  isMcpOAuthEnabled,
   isMockDataEnabled,
 };

@@ -106,6 +106,22 @@ Key rules that must be maintained:
 
 A related trap: `food_entries.images` stores paths into `uploads/foods/<foodId>/`. Removing that directory on a plain `delete` blanks the picture on every preserved entry, including other users'. It is only cleared on `delete_with_history`, where no reference can remain.
 
+### MCP OAuth System Tables (System-Only)
+
+These Better Auth tables support OAuth for the remote MCP endpoint. They have no family-sharing or profile-switching access path.
+
+| Table Name | Description |
+| :--- | :--- |
+| `jwks` | OAuth signing public/private key pairs |
+| `oauth_client` | Registered OAuth clients and client metadata |
+| `oauth_resource` | Protected resources, allowed scopes, and token/signing policy |
+| `oauth_client_resource` | Client-to-resource authorization mappings |
+| `oauth_refresh_token` | Refresh tokens, rotation state, scopes, and session/user links |
+| `oauth_access_token` | Access tokens, resource grants, scopes, and revocation state |
+| `oauth_consent` | OAuth consent grants |
+| `oauth_authorization_revocation` | OAuth JWT revocation watermarks |
+| `oauth_client_assertion` | Expiring client assertion replay-protection records |
+
 ### Tier 3: Delegate-Writable (Daily Logs & Schedules)
 These tables contain daily diaries, logging entries, and scheduler items. **Caregivers/delegates with active delegation permissions are granted full read and write access to log or modify data on behalf of the owner.**
 

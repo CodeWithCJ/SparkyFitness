@@ -2414,6 +2414,21 @@
       "expires2": "Expires: {{value}}",
       "lastUsed2": "Last Used: {{value}}"
     },
+    "oauthClients": {
+      "authorizedAt": "Authorized:",
+      "description": "Review and revoke applications connected through Remote MCP OAuth",
+      "empty": "No applications currently have OAuth access to your account.",
+      "loadError": "Failed to load connected applications.",
+      "loading": "Loading connected applications…",
+      "permissions": "Permissions:",
+      "revoke": "Revoke",
+      "revokeDescription": "{{clientName}} will immediately lose access and must be authorized again to reconnect.",
+      "revokeError": "Failed to revoke access",
+      "revokeSuccess": "Application access revoked",
+      "revokeTitle": "Revoke application access?",
+      "title": "Connected MCP Applications",
+      "unverified": "Unverified application"
+    },
     "accountSecurity": {
       "title": "Account Security",
       "description": "Change your email or password",
@@ -3108,6 +3123,8 @@
       "description": "Manage authentication methods and OIDC providers.",
       "publicApiDocs": "Public API Documentation",
       "publicApiDocsDescription": "Allow Swagger API docs (/api/api-docs) to be accessed without requiring user authentication.",
+      "mcpOAuth": "Remote MCP OAuth",
+      "mcpOAuthDescription": "Allow remote MCP clients such as Claude to connect through OAuth 2.1. Existing API keys continue to work.",
       "devTools": "Developer Diagnostic Tools",
       "devToolsDescription": "Enable MCP and diagnostic database inspection tools for admins.",
       "loginManagement": {
@@ -6738,6 +6755,24 @@
     "failed": "Failed: {{errorsCount}}"
   },
   "auth": {
+    "oauth": {
+      "allow": "Allow",
+      "allowAccessDescription": "{{clientName}} wants to connect to your SparkyFitness account.",
+      "allowAccessTitle": "Allow access to SparkyFitness?",
+      "clientWillBeAbleTo": "This client will be able to:",
+      "deny": "Deny",
+      "loadingRequest": "Loading authorization request…",
+      "declaredWebsite": "Declared website",
+      "mcpAccessDescription": "Read and update your SparkyFitness data through MCP tools.",
+      "offlineAccessDescription": "Stay connected and access your account when you are not actively using SparkyFitness.",
+      "redirectDestination": "Redirect destination",
+      "requestFailed": "Authorization failed",
+      "securityHint": "Only allow access if you recognize and trust this application.",
+      "unknownClient": "This application",
+      "unknownScopeDescription": "Request the “{{scope}}” permission.",
+      "unverifiedClient": "Unverified application",
+      "unverifiedClientDescription": "SparkyFitness has not verified this application's identity. Its name and website were supplied by the application."
+    },
     "agreeAndEnter": "I Agree & Enter Demo",
     "demoAgreeCheckbox": "I accept the License terms and agree not to misuse this evaluation sandbox.",
     "demoLicenseDesc": "By using this demo, you agree to the project license.",

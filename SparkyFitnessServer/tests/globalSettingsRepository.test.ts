@@ -161,6 +161,19 @@ describe('globalSettingsRepository', () => {
       }
     );
 
+    it('saves the MCP OAuth feature switch', async () => {
+      mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
+      await globalSettingsRepository.saveGlobalSettings({
+        enable_email_password_login: true,
+        is_oidc_active: false,
+        is_mfa_mandatory: false,
+        mcp_oauth_enabled: true,
+      });
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(sql).toContain('mcp_oauth_enabled = COALESCE($14');
+      expect(params[13]).toBe(true);
+    });
+
     it('saves the passkey login setting', async () => {
       mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
       await globalSettingsRepository.saveGlobalSettings({
@@ -203,6 +216,7 @@ describe('globalSettingsRepository', () => {
           false,
           null,
           false,
+          null,
           null,
           null,
           null,

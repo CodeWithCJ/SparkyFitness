@@ -8,6 +8,7 @@ export interface GlobalSettings {
   allow_private_network_ai?: boolean;
   allow_private_network_food_providers?: boolean;
   public_api_docs?: boolean;
+  mcp_oauth_enabled?: boolean;
   dev_tools_enabled?: boolean;
   mock_data_enabled?: boolean;
   is_email_login_env_configured?: boolean;

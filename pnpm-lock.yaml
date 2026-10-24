@@ -7,6 +7,7 @@ settings:
 
 overrides:
   '@babel/core': 7.29.0
+  '@better-auth/oauth-provider': 1.7.4
   '@expo/dom-webview': 57.0.1
   assistant-cloud: 0.2.0
   eslint-plugin-react-hooks: 7.0.1
@@ -69,6 +70,9 @@ importers:
       '@better-auth/api-key':
         specifier: ^1.7.4
         version: 1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(better-auth@1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3)))(better-call@1.4.0(zod@4.6.1))
+      '@better-auth/oauth-provider':
+        specifier: 1.7.4
+        version: 1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3)))(better-call@1.4.0(zod@4.6.1))
       '@better-auth/passkey':
         specifier: ^1.7.4
         version: 1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3)))(better-call@1.4.0(zod@4.6.1))(nanostores@1.5.3)
@@ -689,6 +693,12 @@ importers:
       '@better-auth/expo':
         specifier: 1.7.4
         version: 1.7.4(085a24e22037e8034ede5a9dc533109a)
+      '@better-auth/mcp':
+        specifier: 1.7.4
+        version: 1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@2.0.2(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3)))(better-call@2.0.2(zod@4.6.1))
+      '@better-auth/oauth-provider':
+        specifier: 1.7.4
+        version: 1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@2.0.2(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3)))(better-call@2.0.2(zod@4.6.1))
       '@better-auth/passkey':
         specifier: ^1.7.4
         version: 1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@2.0.2(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3)))(better-call@2.0.2(zod@4.6.1))(nanostores@1.5.3)
@@ -1938,6 +1948,13 @@ packages:
       kysely:
         optional: true
 
+  '@better-auth/mcp@1.7.4':
+    resolution: {integrity: sha512-f/0/cxKYuZtkKgzOsILSzrtAkScEy+nFKpRPuhwlVBrSAg+nOt48UXmB35YDQc0JG14JKSdBILsmMdfrSaYYSg==}
+    peerDependencies:
+      '@better-auth/core': ^1.7.4
+      better-auth: ^1.7.4
+      better-call: 1.4.0
+
   '@better-auth/memory-adapter@1.7.4':
     resolution: {integrity: sha512-xAihOPh4mFjvKLzmu2XNzj7RchDmytA/d/xjrGyps1oHVGCTGDGghlSt/rIT5fagtTn2R9+TBLh5QrZnTvYu9g==}
     peerDependencies:
@@ -1953,6 +1970,15 @@ packages:
     peerDependenciesMeta:
       mongodb:
         optional: true
+
+  '@better-auth/oauth-provider@1.7.4':
+    resolution: {integrity: sha512-yQrQM6iXXlsq+nfmJcQEJmXu4bZB59ySn3GiDq+xZ1hHVbVttT/SwbGzpIFX+B0l5o4pmBpJqhoJz8Ugr/rP+w==}
+    peerDependencies:
+      '@better-auth/core': ^1.7.4
+      '@better-auth/utils': 0.4.2
+      '@better-fetch/fetch': 1.3.1
+      better-auth: ^1.7.4
+      better-call: 1.4.0
 
   '@better-auth/passkey@1.7.4':
     resolution: {integrity: sha512-992iumF7Zh+P69DQZLpSHlXeocevsWo283Ve5ltfTPgM198RfGTLNMCh03oghgx6P264j0FVbL2W8ZDOolweUw==}
@@ -13846,6 +13872,17 @@ snapshots:
     optionalDependencies:
       kysely: 0.29.5
 
+  '@better-auth/mcp@1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@2.0.2(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3)))(better-call@2.0.2(zod@4.6.1))':
+    dependencies:
+      '@better-auth/core': 1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@2.0.2(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3)
+      '@better-auth/oauth-provider': 1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@2.0.2(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3)))(better-call@2.0.2(zod@4.6.1))
+      better-auth: 1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3))
+      better-call: 2.0.2(zod@4.6.1)
+      jose: 6.2.12
+    transitivePeerDependencies:
+      - '@better-auth/utils'
+      - '@better-fetch/fetch'
+
   '@better-auth/memory-adapter@1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)':
     dependencies:
       '@better-auth/core': 1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3)
@@ -13857,6 +13894,26 @@ snapshots:
       '@better-auth/utils': 0.4.2
     optionalDependencies:
       mongodb: 7.1.0
+
+  '@better-auth/oauth-provider@1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3)))(better-call@1.4.0(zod@4.6.1))':
+    dependencies:
+      '@better-auth/core': 1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3)
+      '@better-auth/utils': 0.4.2
+      '@better-fetch/fetch': 1.3.1
+      better-auth: 1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3))
+      better-call: 1.4.0(zod@4.6.1)
+      jose: 6.2.12
+      zod: 4.6.1
+
+  '@better-auth/oauth-provider@1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@2.0.2(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3)))(better-call@2.0.2(zod@4.6.1))':
+    dependencies:
+      '@better-auth/core': 1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@2.0.2(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3)
+      '@better-auth/utils': 0.4.2
+      '@better-fetch/fetch': 1.3.1
+      better-auth: 1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3))
+      better-call: 2.0.2(zod@4.6.1)
+      jose: 6.2.12
+      zod: 4.6.1
 
   '@better-auth/passkey@1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.1))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.4(@opentelemetry/api@1.9.1)(mongodb@7.1.0)(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(solid-js@1.9.13)(vitest@5.0.0)(vue@3.5.30(typescript@6.0.3)))(better-call@1.4.0(zod@4.6.1))(nanostores@1.5.3)':
     dependencies:
@@ -18483,7 +18540,7 @@ snapshots:
   arraybuffer.prototype.slice@1.0.4:
     dependencies:
       array-buffer-byte-length: 1.0.2
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       define-properties: 1.2.1
       es-abstract: 1.24.1
       es-errors: 1.3.0
@@ -21010,7 +21067,7 @@ snapshots:
 
   function.prototype.name@1.1.8:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       call-bound: 1.0.4
       define-properties: 1.2.1
       functions-have-names: 1.2.3
@@ -21470,7 +21527,7 @@ snapshots:
 
   is-array-buffer@3.0.5:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       call-bound: 1.0.4
       get-intrinsic: 1.3.0
 
@@ -23832,7 +23889,7 @@ snapshots:
 
   object.assign@4.1.7:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       call-bound: 1.0.4
       define-properties: 1.2.1
       es-object-atoms: 1.1.1
@@ -24897,7 +24954,7 @@ snapshots:
 
   reflect.getprototypeof@1.0.10:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       define-properties: 1.2.1
       es-abstract: 1.24.1
       es-errors: 1.3.0
@@ -24928,7 +24985,7 @@ snapshots:
 
   regexp.prototype.flags@1.5.4:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       define-properties: 1.2.1
       es-errors: 1.3.0
       get-proto: 1.0.1
@@ -25128,7 +25185,7 @@ snapshots:
 
   safe-array-concat@1.1.3:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       call-bound: 1.0.4
       get-intrinsic: 1.3.0
       has-symbols: 1.1.0
@@ -25388,7 +25445,7 @@ snapshots:
 
   side-channel@1.0.6:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       es-errors: 1.3.0
       get-intrinsic: 1.3.0
       object-inspect: 1.13.4
@@ -25606,7 +25663,7 @@ snapshots:
 
   string.prototype.trim@1.2.10:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       call-bound: 1.0.4
       define-data-property: 1.1.4
       define-properties: 1.2.1
@@ -25641,7 +25698,7 @@ snapshots:
 
   string.prototype.trimstart@1.0.8:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       define-properties: 1.2.1
       es-object-atoms: 1.1.1
 
@@ -26106,7 +26163,7 @@ snapshots:
 
   typed-array-byte-length@1.0.3:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       for-each: 0.3.5
       gopd: 1.2.0
       has-proto: 1.2.0
@@ -26115,7 +26172,7 @@ snapshots:
   typed-array-byte-offset@1.0.4:
     dependencies:
       available-typed-arrays: 1.0.7
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       for-each: 0.3.5
       gopd: 1.2.0
       has-proto: 1.2.0
@@ -26124,7 +26181,7 @@ snapshots:
 
   typed-array-length@1.0.7:
     dependencies:
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       for-each: 0.3.5
       gopd: 1.2.0
       is-typed-array: 1.1.15
@@ -26727,7 +26784,7 @@ snapshots:
   which-typed-array@1.1.20:
     dependencies:
       available-typed-arrays: 1.0.7
-      call-bind: 1.0.8
+      call-bind: 1.0.9
       call-bound: 1.0.4
       for-each: 0.3.5
       get-proto: 1.0.1

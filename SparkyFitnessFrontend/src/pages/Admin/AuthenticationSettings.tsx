@@ -233,6 +233,29 @@ const AuthenticationSettings: React.FC = () => {
               </div>
               <div className="flex items-center justify-between p-4 border rounded-md">
                 <div className="flex flex-col">
+                  <Label htmlFor="mcp_oauth_enabled" className="font-medium">
+                    {t(
+                      'admin.authenticationSettings.mcpOAuth',
+                      'Remote MCP OAuth'
+                    )}
+                  </Label>
+                  <span className="text-sm text-muted-foreground mt-1">
+                    {t(
+                      'admin.authenticationSettings.mcpOAuthDescription',
+                      'Allow remote MCP clients such as Claude to connect through OAuth 2.1. Existing API keys continue to work.'
+                    )}
+                  </span>
+                </div>
+                <Switch
+                  id="mcp_oauth_enabled"
+                  checked={settings.mcp_oauth_enabled === true}
+                  onCheckedChange={(checked) =>
+                    handleSwitchChange('mcp_oauth_enabled', checked)
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between p-4 border rounded-md">
+                <div className="flex flex-col">
                   <Label htmlFor="dev_tools_enabled" className="font-medium">
                     {t(
                       'admin.authenticationSettings.devTools',

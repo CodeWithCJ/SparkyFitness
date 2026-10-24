@@ -12,7 +12,7 @@ import cookieParser from 'cookie-parser';
 import { bridgeBearerAuthHeader } from './utils/bearerAuthBridge.js';
 import { endPool } from './db/poolManager.js';
 import { log } from './config/logging.js';
-import { authenticate } from './middleware/authMiddleware.js';
+import { authenticate, authenticateMcp } from './middleware/authMiddleware.js';
 import { isReadOnlyApiKeyAuthMutation } from './middleware/readOnlyApiKeyGuard.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { applySignOutCookieCleanup } from './middleware/signOutCookieCleanup.js';
@@ -229,7 +229,7 @@ app.use(
           origin: allowed,
           methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
           allowedHeaders: CORS_ALLOWED_HEADERS,
-          exposedHeaders: ['mcp-session-id'],
+          exposedHeaders: ['mcp-session-id', 'www-authenticate'],
           credentials: true,
           maxAge: 86400,
         });
@@ -238,32 +238,58 @@ app.use(
     );
   })
 );
-// OAuth/OIDC discovery probes must 404, not 401.
-//
-// This server authenticates with API keys and session cookies; it is not an
-// OAuth authorization server. When an MCP client's first request is rejected it
-// follows the spec and probes for OAuth metadata. Falling through to
-// `authenticate` answered those probes with 401, which reads as "OAuth exists,
-// keep negotiating", so the client retried discovery in a loop (and then failed
-// Dynamic Client Registration with a 404 anyway). A 404 says "no OAuth here",
-// and the client falls back to the bearer token it was configured with.
-//
-// Registered before the /mcp mount and the global `authenticate` so it beats
-// both. Deliberately an explicit list rather than all of `/.well-known/*`, so
-// an ACME http-01 challenge served through this app is untouched.
-const OAUTH_DISCOVERY_PATHS = new Set([
-  '/.well-known/openid-configuration',
+// OAuth discovery is top-level even though Better Auth itself is mounted under
+// /api/auth. Hosted MCP clients probe both the origin and resource-specific
+// forms. Keep the explicit allowlist so unrelated /.well-known routes (such as
+// ACME challenges) are untouched. When the admin feature switch is off these
+// probes retain the old 404 behavior, preserving API-key-only deployments.
+const OAUTH_AUTHORIZATION_METADATA_PATHS = new Set([
   '/.well-known/oauth-authorization-server',
-  '/.well-known/oauth-protected-resource',
+  '/.well-known/oauth-authorization-server/api/auth',
+  '/api/auth/.well-known/oauth-authorization-server',
 ]);
-app.use((req, res, next) => {
-  // Strip an optional /mcp prefix: clients probe both the origin root and the
-  // MCP mount point, and Express has not applied the mount prefix yet here.
-  const path = req.path.startsWith('/mcp/')
-    ? req.path.slice('/mcp'.length)
-    : req.path;
-  if (!OAUTH_DISCOVERY_PATHS.has(path)) return next();
-  res.status(404).json({ error: 'not_found' });
+const UNSUPPORTED_OIDC_METADATA_PATH = '/.well-known/openid-configuration';
+const OAUTH_RESOURCE_METADATA_PATHS = new Set([
+  '/.well-known/oauth-protected-resource',
+  '/.well-known/oauth-protected-resource/mcp',
+  '/mcp/.well-known/oauth-protected-resource',
+]);
+app.use(async (req, res, next) => {
+  const isAuthorizationMetadata = OAUTH_AUTHORIZATION_METADATA_PATHS.has(
+    req.path
+  );
+  const isResourceMetadata = OAUTH_RESOURCE_METADATA_PATHS.has(req.path);
+  if (req.path === UNSUPPORTED_OIDC_METADATA_PATH) {
+    return res.status(404).json({ error: 'not_found' });
+  }
+  if (!isAuthorizationMetadata && !isResourceMetadata) return next();
+  if (!(await isMcpOAuthEnabled())) {
+    return res.status(404).json({ error: 'not_found' });
+  }
+
+  // Delegate to the plugin's canonical metadata endpoints rather than
+  // duplicating its advertised capabilities. MCP clients commonly probe the
+  // public root aliases served above, while Better Auth uses the
+  // issuer/resource-specific RFC forms internally.
+  const { auth } = authModule;
+  const internalMetadataUrl = new URL(
+    isResourceMetadata
+      ? '/.well-known/oauth-protected-resource/mcp'
+      : '/.well-known/oauth-authorization-server/api/auth',
+    getPublicOrigin()
+  );
+  const metadataResponse = await auth.handler(
+    new globalThis.Request(internalMetadataUrl, {
+      method: req.method,
+      headers: fromNodeHeaders(req.headers),
+    })
+  );
+  metadataResponse.headers.forEach((value, name) => {
+    res.setHeader(name, value);
+  });
+  res.status(metadataResponse.status);
+  if (req.method === 'HEAD' || !metadataResponse.body) return res.end();
+  return res.send(Buffer.from(await metadataResponse.arrayBuffer()));
 });
 // External MCP endpoint — a self-contained chain mounted top-level (not /api)
 // to skip the /api/auth interceptor and cache-control middleware. It sits
@@ -277,7 +303,7 @@ app.use(
   requestLogger({ logCompletion: true }),
   express.json({ limit: isDemoMode() ? '1mb' : '50mb' }),
   cookieParser(),
-  authenticate,
+  authenticateMcp,
   // /mcp mounts ahead of the global route table, so it needs the demo guard
   // explicitly — the app-level one below never sees these requests.
   demoRestrictionGuard,
@@ -310,12 +336,27 @@ app.use(passkeyLoginGuard);
 // Catch ALL requests starting with /api/auth early.
 app.use(async (req, res, next) => {
   if (req.originalUrl.startsWith('/api/auth') && betterAuthHandlerInstance) {
+    const normalizedAuthPath = req.path.replace(/\/+$/, '');
+    if (
+      (normalizedAuthPath.startsWith('/api/auth/oauth2') ||
+        normalizedAuthPath === '/api/auth/jwks' ||
+        normalizedAuthPath === '/api/auth/oauth-consent-details' ||
+        normalizedAuthPath.includes(
+          '/.well-known/oauth-authorization-server'
+        ) ||
+        normalizedAuthPath.includes('/.well-known/openid-configuration')) &&
+      !(await isMcpOAuthEnabled())
+    ) {
+      return res.status(404).json({ error: 'not_found' });
+    }
+
     // 1. Skip interceptor for discovery routes - let them fall through to authRoutes.js
     const isDiscovery =
-      req.path === '/api/auth/settings' ||
-      req.path === '/api/auth/mfa-factors' ||
-      req.path === '/api/auth/demo-login' ||
-      req.path.startsWith('/api/auth/web-login');
+      normalizedAuthPath === '/api/auth/settings' ||
+      normalizedAuthPath === '/api/auth/mfa-factors' ||
+      normalizedAuthPath === '/api/auth/demo-login' ||
+      normalizedAuthPath === '/api/auth/oauth-consent-details' ||
+      normalizedAuthPath.startsWith('/api/auth/web-login');
     if (isDiscovery) {
       return next();
     }
@@ -670,7 +711,11 @@ app.get(
     }
   }
 );
-import { isPublicApiDocsAllowed } from './models/globalSettingsRepository.js';
+import {
+  isMcpOAuthEnabled,
+  isPublicApiDocsAllowed,
+} from './models/globalSettingsRepository.js';
+import { getPublicOrigin } from './utils/mcpOAuth.js';
 
 const publicRoutes = [
   '/api/auth/settings',

@@ -17,13 +17,22 @@ import { createDefaultNutrientPreferencesForUser } from './services/nutrientDisp
 import { isPrivateNetworkAddress } from './utils/corsHelper.js';
 import { apiKey } from '@better-auth/api-key';
 import { v4 } from 'uuid';
-import { emailOTP, magicLink, admin, twoFactor } from 'better-auth/plugins';
+import {
+  emailOTP,
+  magicLink,
+  admin,
+  twoFactor,
+  jwt,
+} from 'better-auth/plugins';
 import { sso } from '@better-auth/sso';
 import { expo } from '@better-auth/expo';
 import { expoSsoCookieRelay } from './utils/expoSsoCookieRelay.js';
 import { passkey } from '@better-auth/passkey';
 import { isDemoMode } from './middleware/demoGuardMiddleware.js';
 import { isEmailLoginDisabled } from './utils/emailLogin.js';
+import { mcp } from '@better-auth/mcp';
+import { getMcpResourceUrl, MCP_OAUTH_SCOPE } from './utils/mcpOAuth.js';
+import { jwtSchema, mcpOAuthSchema } from './utils/mcpOAuthSchema.js';
 
 const { Pool } = pg;
 /**
@@ -296,8 +305,42 @@ try {
   // Fall back to default
 }
 
+const mcpResourceUrl = getMcpResourceUrl();
+// OAuth resource configuration is seeded asynchronously when Better Auth is
+// constructed. Unit tests deliberately run without PostgreSQL, so keep these
+// database-backed plugins out of that environment; production and development
+// always install the complete OAuth server.
+const mcpOAuthPlugins =
+  process.env.NODE_ENV === 'test'
+    ? []
+    : [
+        jwt({ schema: jwtSchema }),
+        mcp({
+          loginPage: '/login',
+          consentPage: '/oauth/consent',
+          resource: mcpResourceUrl,
+          resources: [
+            {
+              identifier: mcpResourceUrl,
+              name: 'SparkyFitness MCP',
+              allowedScopes: [MCP_OAUTH_SCOPE],
+            },
+          ],
+          scopes: [MCP_OAUTH_SCOPE, 'offline_access'],
+          clientRegistrationDefaultScopes: [MCP_OAUTH_SCOPE, 'offline_access'],
+          allowDynamicClientRegistration: true,
+          allowUnauthenticatedClientRegistration: true,
+          clientPrivileges: ({ user }) => user?.role === 'admin',
+          resourcePrivileges: ({ user }) => user?.role === 'admin',
+          schema: mcpOAuthSchema,
+        }),
+      ];
+
 const auth = betterAuth({
   database: authPool,
+  // The JWT plugin's generic /token endpoint overlaps the OAuth provider's
+  // standards-compliant /oauth2/token endpoint and must not be exposed.
+  disabledPaths: ['/token'],
   // @ts-expect-error
   secret: Buffer.from(process.env.BETTER_AUTH_SECRET, 'base64'),
   secrets: [
@@ -843,6 +886,10 @@ const auth = betterAuth({
     },
   },
   plugins: [
+    // OAuth 2.1 authorization for the top-level /mcp protected resource.
+    // API-key and session authentication remain available on /mcp; these
+    // plugins own discovery, authorization, DCR, token issuance, and JWT keys.
+    ...mcpOAuthPlugins,
     // Expo mobile app support: maps the app's expo-origin header to origin and
     // serves /expo-authorization-proxy so the system browser carries the OAuth
     // state cookie. The relay plugin forwards the session cookie to the app on
