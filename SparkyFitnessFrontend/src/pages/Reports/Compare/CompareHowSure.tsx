@@ -1,16 +1,12 @@
 import { useTranslation } from 'react-i18next';
-import type { CompareQuestion, CompareResponse } from '@workspace/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { howSureLines } from './compareCopy';
 
 interface CompareHowSureProps {
-  response: CompareResponse;
-  question: CompareQuestion;
+  lines: { label: string; value: string }[];
 }
 
-export const CompareHowSure = ({ response, question }: CompareHowSureProps) => {
+export const CompareHowSure = ({ lines }: CompareHowSureProps) => {
   const { t } = useTranslation();
-  const lines = howSureLines(response.result, question, t);
   if (lines.length === 0) return null;
 
   return (

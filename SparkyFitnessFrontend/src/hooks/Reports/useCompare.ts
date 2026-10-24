@@ -1,8 +1,17 @@
 import { useQueries, useQuery } from '@tanstack/react-query';
-import type { CompareQuery, CompareQuestion } from '@workspace/shared';
+import type {
+  CompareQuery,
+  CompareQuestion,
+  CompareSinceQuery,
+} from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 import { reportKeys } from '@/api/keys/reports';
-import { compareQueryFor, getCompare } from '@/api/Reports/compareApi';
+import {
+  compareQueryFor,
+  compareSinceQueryFor,
+  getCompare,
+  getCompareSince,
+} from '@/api/Reports/compareApi';
 import { useAuth } from '@/hooks/useAuth';
 
 // Short enough that coming back to the tab after logging something refetches.
@@ -74,3 +83,36 @@ export const useCompareQuestion = (
   const timings = useCompareTimings(query, answer.isSuccess || answer.isError);
   return { answer, timings };
 };
+
+export const useCompareSince = (query: CompareSinceQuery | null) => {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const userId = user?.activeUserId;
+  return useQuery({
+    queryKey: query
+      ? reportKeys.compareSince(query, userId)
+      : (['reports', 'compareSince', 'idle'] as const),
+    queryFn: () => getCompareSince(query!),
+    enabled: query !== null,
+    staleTime: COMPARE_STALE_MS,
+    meta: {
+      errorMessage: t(
+        'compareReport.loadFailed',
+        "Couldn't load this comparison"
+      ),
+    },
+  });
+};
+
+/**
+ * A picked since question with the habit start and line picked so far (null
+ * for one not picked yet, which the server then suggests). `picks` is null
+ * when nothing may be asked (acting on behalf), so no request fires.
+ */
+export const useCompareSinceQuestion = (
+  question: Partial<CompareQuestion>,
+  picks: { habitStart: string | null; line: number | null } | null
+) =>
+  useCompareSince(
+    picks ? compareSinceQueryFor(question, picks.habitStart, picks.line) : null
+  );

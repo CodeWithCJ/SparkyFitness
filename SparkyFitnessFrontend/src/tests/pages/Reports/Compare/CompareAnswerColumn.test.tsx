@@ -8,6 +8,8 @@ import type {
 import { CompareAnswerCard } from '@/pages/Reports/Compare/CompareAnswerCard';
 import { CompareChecks } from '@/pages/Reports/Compare/CompareChecks';
 import { CompareHowSure } from '@/pages/Reports/Compare/CompareHowSure';
+import { howSureLines } from '@/pages/Reports/Compare/compareCopy';
+import { translateForTest } from '@/tests/mocks/reactI18next';
 
 jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
@@ -107,13 +109,19 @@ describe('CompareAnswerCard', () => {
 
 describe('CompareHowSure', () => {
   test('words p = 0.02 as about 1 time in 50', () => {
-    render(<CompareHowSure response={LINKED} question={Q} />);
+    render(
+      <CompareHowSure
+        lines={howSureLines(LINKED.result, Q, translateForTest)}
+      />
+    );
     expect(screen.getByText(/about 1 time in 50/)).toBeInTheDocument();
   });
 
   test('is empty without an answer', () => {
     const { container } = render(
-      <CompareHowSure response={NOT_ENOUGH} question={Q} />
+      <CompareHowSure
+        lines={howSureLines(NOT_ENOUGH.result, Q, translateForTest)}
+      />
     );
     expect(container).toBeEmptyDOMElement();
   });

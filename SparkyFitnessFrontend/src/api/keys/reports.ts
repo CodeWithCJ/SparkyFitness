@@ -1,4 +1,4 @@
-import type { CompareQuery } from '@workspace/shared';
+import type { CompareQuery, CompareSinceQuery } from '@workspace/shared';
 
 export const reportKeys = {
   all: ['reports'] as const,
@@ -51,6 +51,16 @@ export const reportKeys = {
       query.timing,
       query.start,
       query.end,
+      { userId },
+    ] as const,
+  compareSince: (query: CompareSinceQuery, userId?: string) =>
+    [
+      'reports',
+      'compareSince',
+      query.a,
+      query.b,
+      query.habitStart ?? null,
+      query.line ?? null,
       { userId },
     ] as const,
   workoutDays: (startDate: string, endDate: string, userId?: string) =>
