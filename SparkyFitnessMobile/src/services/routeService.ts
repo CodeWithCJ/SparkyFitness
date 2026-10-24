@@ -1,13 +1,17 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { File } from 'expo-file-system';
 import * as DocumentPicker from 'expo-document-picker';
 import {
   ROUTE_MAX_GPX_CHARS,
+  resolveRouteGenerateCapabilities,
   serializeGpx,
   type CreateRouteBody,
   type GeneratedRoutePreview,
   type GenerateRouteBody,
+  type GenerateRouteResponse,
   type Route,
+  type RouteGenerateCapabilities,
   type RouteSummary,
   type UpdateRouteBody,
 } from '@workspace/shared';
@@ -65,13 +69,13 @@ export function useRoute(id: string): {
 const CAPABILITIES_STALE_MS = 10 * 60 * 1000;
 
 /**
- * Whether the server has a routing engine, so screens can hide route
- * generation when it does not. Cached for ten minutes; a failed check counts as
- * unavailable (and is not retried) so the feature stays hidden rather than
- * half working.
+ * What the server's routing engine supports, so screens show
+ * only what works. Cached for ten minutes; a failed check reads as nothing
+ * supported (and is not retried) so a feature stays hidden rather than half
+ * working, and an older server's shorter answer reads as the same.
  */
-export function useRouteGenerationAvailable(): {
-  available: boolean;
+export function useRouteGenerationCapabilities(): {
+  capabilities: RouteGenerateCapabilities;
   isLoading: boolean;
 } {
   const { data, isLoading } = useQuery({
@@ -80,10 +84,31 @@ export function useRouteGenerationAvailable(): {
     staleTime: CAPABILITIES_STALE_MS,
     retry: false,
   });
-  return { available: data?.available === true, isLoading };
+  // Stable between renders so it can sit in other hooks' dependency lists.
+  const capabilities = useMemo(
+    () => resolveRouteGenerateCapabilities(data),
+    [data]
+  );
+  return { capabilities, isLoading };
 }
 
-/** Asks the routing engine for a preview route. Nothing is saved. */
+/** Whether the server has a routing engine, so screens can hide route generation when it does not. */
+export function useRouteGenerationAvailable(): {
+  available: boolean;
+  isLoading: boolean;
+} {
+  const { capabilities, isLoading } = useRouteGenerationCapabilities();
+  return { available: capabilities.available, isLoading };
+}
+
+/** Asks the routing engine for preview routes. Nothing is saved. */
+export function generateRouteOptions(
+  body: GenerateRouteBody
+): Promise<GenerateRouteResponse> {
+  return generateRoute(body);
+}
+
+/** The first preview route the engine returns. Nothing is saved. */
 export async function generateRoutePreview(
   body: GenerateRouteBody
 ): Promise<GeneratedRoutePreview> {

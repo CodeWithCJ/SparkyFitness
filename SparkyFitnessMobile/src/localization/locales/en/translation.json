@@ -8496,6 +8496,24 @@
     "useMyLocation": "My location",
     "turnCount_one": "{{count}} turn",
     "turnCount_other": "{{count}} turns",
+    "style": {
+      "title": "Route style",
+      "surface": "Surface",
+      "hills": "Hills",
+      "any": "Any",
+      "trails": "Trails",
+      "roads": "Roads",
+      "flat": "Flatter",
+      "hilly": "Hillier",
+      "avoidSteps": "Avoid steps",
+      "avoidBusyRoads": "Avoid busy roads"
+    },
+    "option": {
+      "title": "Option {{n}}",
+      "flatter": "Flatter",
+      "moreTrail": "More trail",
+      "shorter": "Shorter"
+    },
     "followRoads": "Follow roads",
     "followRoadsNeedsProvider": "A routing provider is needed. Add one in Settings > External Providers on the web app.",
     "followRoadsUnrouted": "Stretches without a road line show straight. Retry, or turn off Follow roads to save them straight.",

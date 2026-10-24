@@ -4,7 +4,7 @@ import RouteDrawScreen from '../../src/screens/RouteDrawScreen';
 import {
   saveRouteEdits,
   useRoute,
-  useRouteGenerationAvailable,
+  useRouteGenerationCapabilities,
 } from '../../src/services/routeService';
 import { routeRequestBudget } from '../../src/utils/routeRequestBudget';
 import { useScreenHeader } from '../../src/hooks/useScreenHeader';
@@ -24,7 +24,7 @@ jest.mock('../../src/services/routeService', () => ({
   saveDrawnRoute: jest.fn(),
   saveRouteEdits: jest.fn(),
   useRoute: jest.fn(),
-  useRouteGenerationAvailable: jest.fn(),
+  useRouteGenerationCapabilities: jest.fn(),
 }));
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('react-native-safe-area-context', () => ({
@@ -35,9 +35,20 @@ jest.mock('react-native-toast-message', () => ({
   default: { show: jest.fn() },
 }));
 
-const capabilities = (available: boolean) => ({
-  available,
-  isLoading: false,
+const capabilities = (available: boolean, isLoading = false) => ({
+  capabilities: {
+    available,
+    maxAlternatives: 1,
+    style: {
+      surface: false,
+      hilliness: false,
+      avoidSteps: false,
+      avoidBusyRoads: false,
+    },
+    stops: false,
+    source: null,
+  },
+  isLoading,
 });
 
 const navigation = { replace: jest.fn(), goBack: jest.fn() };
@@ -81,7 +92,7 @@ const lastHeader = () => (useScreenHeader as jest.Mock).mock.calls.at(-1)?.[0];
 beforeEach(() => {
   jest.clearAllMocks();
   routeRequestBudget.reset();
-  (useRouteGenerationAvailable as jest.Mock).mockReturnValue(
+  (useRouteGenerationCapabilities as jest.Mock).mockReturnValue(
     capabilities(false)
   );
   (useRoute as jest.Mock).mockReturnValue({ route: undefined });
@@ -157,7 +168,7 @@ describe('RouteDrawScreen editor', () => {
   });
 
   it('offers straight/follow-roads choices per stretch only when roads are followed', () => {
-    (useRouteGenerationAvailable as jest.Mock).mockReturnValue(
+    (useRouteGenerationCapabilities as jest.Mock).mockReturnValue(
       capabilities(true)
     );
     const utils = renderScreen();

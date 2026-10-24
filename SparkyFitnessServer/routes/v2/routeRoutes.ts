@@ -2,6 +2,7 @@ import express from 'express';
 import {
   createRouteBodySchema,
   generateRouteBodySchema,
+  generateRouteResponseSchema,
   importGpxRouteBodySchema,
   parseGpx,
   routeFromActivityBodySchema,
@@ -224,14 +225,15 @@ router.post('/from-activity/:exerciseEntryId', async (req, res, next) => {
  *       Generation needs a routing provider: the Valhalla routing provider the
  *       person (or the admin, as a public provider, or a family member who
  *       shared theirs) added in Settings > External Providers. Clients use this
- *       to show or hide the feature.
+ *       to show or hide the feature and only the style controls the engine
+ *       supports.
  *     tags: [Exercise]
  *     responses:
  *       200:
  *         description: >
- *           `{ available, maxAlternatives, style, stops, source }`. One route
- *           per request: `maxAlternatives` is 1 and `style` and `stops` are
- *           unsupported. `source` is `provider` when `available`, else null.
+ *           `{ available, maxAlternatives, style: { surface, hilliness,
+ *           avoidSteps, avoidBusyRoads }, stops, source }`. `stops` is false.
+ *           `source` is `provider` when `available`, else null.
  */
 router.get('/generate/capabilities', async (req, res, next) => {
   try {
@@ -268,11 +270,23 @@ router.get('/generate/capabilities', async (req, res, next) => {
  *               distanceM: { type: number, description: 'Loop mode: target distance in metres.' }
  *               shape: { type: string, enum: [loop, out_and_back] }
  *               bearingDeg: { type: number }
+ *               alternatives: { type: integer, minimum: 1, maximum: 3, description: 'Loop mode: how many distinct candidates to return, at most.' }
+ *               style:
+ *                 type: object
+ *                 description: Preferences; ignored where the engine does not support them.
+ *                 properties:
+ *                   surface: { type: string, enum: [any, trails, roads] }
+ *                   hilliness: { type: string, enum: [any, flat, hilly] }
+ *                   avoidSteps: { type: boolean }
+ *                   avoidBusyRoads: { type: boolean }
  *               waypoints: { type: array, items: { type: object } }
  *               returnToStart: { type: boolean }
  *     responses:
  *       200:
- *         description: '`{ route }` with name, activity, source, points, cues, distanceM and elevationGainM.'
+ *         description: >
+ *           `{ route, options }`. `route` is the first candidate (name, activity,
+ *           source, points, cues, distanceM, elevationGainM); `options` lists the
+ *           candidates, each as `{ route, label, trailShare }`.
  *       400:
  *         description: Invalid body.
  *       422:
@@ -309,8 +323,8 @@ router.post('/generate', async (req, res, next) => {
         .status(429)
         .json({ error: 'Too many route requests. Try again shortly.' });
     }
-    const route = await generateRoute(resolved.provider, parsed.data);
-    res.json({ route });
+    const generated = await generateRoute(resolved.provider, parsed.data);
+    res.json(generateRouteResponseSchema.parse(generated));
   } catch (error) {
     if (error instanceof RoutingProviderError) {
       const status =

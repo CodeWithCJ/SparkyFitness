@@ -2,7 +2,7 @@
 
 SparkyFitness can generate a run, walk, ride or hike route for you: a loop or out-and-back of a distance you choose, or a route through points you pick. The result is a preview with turn-by-turn cues; saving it adds it to your saved routes.
 
-Route generation is **optional and off until a routing provider is added**. SparkyFitness doesn't ship a routing engine and the server needs no extra container or environment variable: you add a Valhalla routing service as an external provider, the same way you add Mealie or Hevy. Until one is added, the app reports the feature as unavailable.
+Route generation is **optional and off until a routing provider is added**. Route options and route style are part of the same feature and come with the Valhalla provider. SparkyFitness doesn't ship a routing engine and the server needs no extra container or environment variable: you add a Valhalla routing service as an external provider, the same way you add Mealie or Hevy. Until one is added, the app reports the feature as unavailable.
 
 ---
 
@@ -46,7 +46,7 @@ FOSSGIS runs a public Valhalla demo server (`valhalla1.openstreetmap.de`) for th
 
 SparkyFitness identifies itself with a `User-Agent` starting `SparkyFitness/`, as public servers expect.
 
-A loop request costs up to three engine calls, which is another reason to run your own server for regular use.
+A loop request costs up to three engine calls (more with a route style that measures surface, which adds elevation and surface lookups), and asking for alternatives (below) costs up to three times that, which is another reason to run your own server for regular use.
 
 If the provider's URL points at a private or LAN address, the usual rule for self-hosted providers applies: admins may, other users may not unless the operator allows it in **Admin → Global Provider Settings** (or `ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS=true`).
 
@@ -109,19 +109,19 @@ Returns what this server offers:
 ```json
 {
   "available": true,
-  "maxAlternatives": 1,
+  "maxAlternatives": 3,
   "style": {
-    "surface": false,
-    "hilliness": false,
-    "avoidSteps": false,
-    "avoidBusyRoads": false
+    "surface": true,
+    "hilliness": true,
+    "avoidSteps": true,
+    "avoidBusyRoads": true
   },
   "stops": false,
   "source": "provider"
 }
 ```
 
-The answer is for the signed-in person. `source` is `"provider"` when it comes from a routing provider (their own, a public one or a shared one) and `null` when `available` is false, which means there is no routing provider. The server returns one route per request, so `maxAlternatives` is always 1, and route-style preferences and stops are not supported (every `style` field and `stops` are false). The fields are there so a client can read them without version checks.
+The answer is for the signed-in person. `source` is `"provider"` when the routing engine comes from a routing provider (their own, a public one or a shared one) and `null` when `available` is false, which means there is no routing provider. With the Valhalla provider `maxAlternatives` is 3 and every `style` field is true; with no routing provider they read 1 and false. `stops` is always false for now.
 
 ### `POST /api/v2/routes/generate`
 
@@ -130,9 +130,9 @@ Generates a **preview**; nothing is saved. Send either:
 - **A loop or out-and-back**: `{ "mode": "loop", "start": { "lat", "lon" }, "activity": "run", "distanceM": 5000, "shape": "loop" | "out_and_back", "bearingDeg"?: 0-360 }`. Distance is 500 m to 100 km. Without `bearingDeg` the direction is random, so asking again gives a different route.
 - **Waypoints**: `{ "mode": "waypoints", "start": {...}, "activity": "ride", "waypoints": [{ "lat", "lon" }, ...], "returnToStart"?: boolean }` with 1 to 20 waypoints, routed in order.
 
-`activity` is `run`, `walk`, `ride` or `hike` (default `run`); `name` is optional.
+`activity` is `run`, `walk`, `ride` or `hike` (default `run`); `name` is optional. Both modes take an optional `style` (below), and a loop also takes `alternatives` (1 to 3, default 1).
 
-The response is `{ "route": { name, activity, source: "generated", points, cues, distanceM, elevationGainM } }`, thinned and measured the same way a save does. To keep it, send those fields to `POST /api/v2/routes` (it accepts `source: "generated"`).
+The response is `{ "route": {...}, "options": [{ "route": {...}, "label": "flatter" | "moreTrail" | "shorter" | null, "trailShare": 0-1 | null }] }`. A route is `{ name, activity, source: "generated", points, cues, distanceM, elevationGainM }`, thinned and measured the same way a save does. `route` is always the first option, so a client that ignores `options` still works. To keep one, send its fields to `POST /api/v2/routes` (it accepts `source: "generated"`).
 
 | Status | Meaning                                                                       |
 | ------ | ----------------------------------------------------------------------------- |
@@ -143,4 +143,20 @@ The response is `{ "route": { name, activity, source: "generated", points, cues,
 | `503`  | You have no routing provider (add one in Settings → External Providers)       |
 | `504`  | The engine took longer than 20 seconds                                        |
 
-The per-user limit is deliberately low because one request can cost up to three engine calls. It is counted in memory per server process.
+The per-user limit is deliberately low because one request can cost several engine calls. It is counted in memory per server process.
+
+---
+
+## Route options
+
+A loop request with `alternatives` above 1 returns up to that many **distinct** loops (never more than the provider's `maxAlternatives`). The server heads out in different directions, compares the results by measured overlap along their length and drops one that mostly repeats an earlier one, then tries another heading to make up the number. If some headings fail but at least one works, you get what worked.
+
+Each option is labelled **Flatter**, **More trail** or **Shorter** only when its numbers back it up: Flatter needs the flattest option to climb at least 20% and 15 m less than the steepest; More trail needs at least 20% of its length on paths or unpaved ways and 15 percentage points more than any other; Shorter needs to be at least 5% and 200 m shorter than the longest. A label goes to one option, and an option gets one label. The share on paths comes from the routing engine's own surface data when it can be read; without it there is simply no More trail label.
+
+Asking for three options costs up to three times as many engine calls (the first headings run in parallel). If fewer than three distinct loops come back, up to five headings are tried in all; the extra ones run one after another, each with its own resize requests, and stop early if the engine is failing rather than just finding no route.
+
+## Route style
+
+`style` is `{ surface: "any" | "trails" | "roads", hilliness: "any" | "flat" | "hilly", avoidSteps: boolean, avoidBusyRoads: boolean }`. The server keeps only what the provider supports (all of them, for Valhalla) and sends the rest as Valhalla `costing_options`; preferences change which route the engine picks, they don't guarantee one. Steps are never on a cycling route, so `avoidSteps` does nothing for a ride. A request without a style is sent to the engine exactly as before.
+
+---

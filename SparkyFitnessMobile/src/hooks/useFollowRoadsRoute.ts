@@ -4,6 +4,7 @@ import {
   followRoadsKey,
   type GeneratedRoutePreview,
   type RouteGenerateErrorKind,
+  type RouteStyle,
 } from '@workspace/shared';
 import { generateRoutePreview } from '../services/routeService';
 import { classifyRouteGenerateError } from '../utils/routeGenerateError';
@@ -50,11 +51,13 @@ interface Failure {
  * the server's rate limit: when that is used up, or the server answers 429,
  * automatic requests pause (the first resumes by itself when the window frees
  * up) and the unrouted pieces stay on screen as straight lines. A failed piece
- * is also drawn straight until `retry`, so the points are never lost.
+ * is also drawn straight until `retry`, so the points are never lost. A
+ * changed `style` counts as a changed request.
  */
 export function useFollowRoadsRoute(
   enabled: boolean,
-  state: EditorState
+  state: EditorState,
+  style?: RouteStyle
 ): FollowRoadsState {
   const [cache, setCache] = useState<
     ReadonlyMap<string, GeneratedRoutePreview>
@@ -79,11 +82,11 @@ export function useFollowRoadsRoute(
           const points = segmentPoints(state, segment);
           return {
             segment,
-            key: followRoadsKey(points),
-            request: buildFollowRoadsRequest(points),
+            key: followRoadsKey(points, 'run', style),
+            request: buildFollowRoadsRequest(points, 'run', style),
           };
         }),
-    [segments, state]
+    [segments, state, style]
   );
   const keyOf = useMemo(() => {
     const keys = new Map<SnapSegment, string>();

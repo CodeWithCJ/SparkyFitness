@@ -10,7 +10,21 @@ jest.mock('../../src/services/routeService', () => ({
   saveDrawnRoute: jest.fn(),
   saveRouteEdits: jest.fn(),
   useRoute: () => ({ route: undefined }),
-  useRouteGenerationAvailable: () => ({ available: false, isLoading: false }),
+  useRouteGenerationCapabilities: () => ({
+    capabilities: {
+      available: false,
+      maxAlternatives: 1,
+      style: {
+        surface: false,
+        hilliness: false,
+        avoidSteps: false,
+        avoidBusyRoads: false,
+      },
+      stops: false,
+      source: null,
+    },
+    isLoading: false,
+  }),
 }));
 jest.mock('expo-location', () => ({
   getForegroundPermissionsAsync: jest

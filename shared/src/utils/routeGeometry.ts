@@ -300,6 +300,101 @@ export function distanceToSegment(
   };
 }
 
+const MAX_OVERLAP_SAMPLES = 20000;
+
+/** Points every `stepM` along the line, always including both ends. */
+function sampleLine(line: readonly Xy[], stepM: number): Xy[] {
+  const samples: Xy[] = [];
+  const first = line[0];
+  if (!first) return samples;
+  samples.push(first);
+  for (let i = 1; i < line.length; i++) {
+    const a = line[i - 1] as Xy;
+    const b = line[i] as Xy;
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    const pieces = Math.max(1, Math.ceil(length / stepM));
+    for (let k = 1; k <= pieces; k++) {
+      const t = k / pieces;
+      samples.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+  }
+  return samples;
+}
+
+/**
+ * The share (0 to 1) of route `a` that lies within `toleranceM` of route `b`.
+ * Both are sampled along their length, so sparse points do not matter, and
+ * the work is bounded however long the routes are.
+ */
+export function routeOverlapFraction(
+  a: readonly RoutePoint[],
+  b: readonly RoutePoint[],
+  toleranceM = 30
+): number {
+  const origin = a[0];
+  if (!origin || a.length < 2 || b.length < 2) return 0;
+  const project = localProjector(origin);
+  const lineA = a.map(project);
+  const lineB = b.map(project);
+
+  const totalM = routeDistanceMeters(a) + routeDistanceMeters(b);
+  const stepM = Math.max(toleranceM / 2, totalM / MAX_OVERLAP_SAMPLES);
+  const samplesA = sampleLine(lineA, stepM);
+  const samplesB = sampleLine(lineB, stepM);
+
+  const cell = toleranceM;
+  const grid = new Map<string, Xy[]>();
+  // A sample within a quarter of the tolerance of one already in its cell adds
+  // nothing, and skipping it keeps a cell to a few dozen samples however
+  // tangled the line is (a track that doubles back over one spot would
+  // otherwise make the search below quadratic).
+  const dedupeM = toleranceM / 4;
+  for (const s of samplesB) {
+    const key = `${Math.floor(s.x / cell)},${Math.floor(s.y / cell)}`;
+    const bucket = grid.get(key);
+    if (!bucket) {
+      grid.set(key, [s]);
+    } else if (
+      !bucket.some((q) => Math.hypot(q.x - s.x, q.y - s.y) < dedupeM)
+    ) {
+      bucket.push(s);
+    }
+  }
+
+  let near = 0;
+  for (const s of samplesA) {
+    const cx = Math.floor(s.x / cell);
+    const cy = Math.floor(s.y / cell);
+    let found = false;
+    for (let dx = -1; dx <= 1 && !found; dx++) {
+      for (let dy = -1; dy <= 1 && !found; dy++) {
+        const bucket = grid.get(`${cx + dx},${cy + dy}`);
+        found =
+          bucket?.some((q) => Math.hypot(q.x - s.x, q.y - s.y) <= toleranceM) ??
+          false;
+      }
+    }
+    if (found) near++;
+  }
+  return near / samplesA.length;
+}
+
+/**
+ * Whether two routes really are different shapes: false when most of each
+ * lies on the other.
+ */
+export function routesAreDistinct(
+  a: readonly RoutePoint[],
+  b: readonly RoutePoint[],
+  { toleranceM = 30, maxOverlap = 0.7 } = {}
+): boolean {
+  const overlap = Math.min(
+    routeOverlapFraction(a, b, toleranceM),
+    routeOverlapFraction(b, a, toleranceM)
+  );
+  return overlap < maxOverlap;
+}
+
 /**
  * Filters out invalid GPS points (Null Island, out-of-range coordinates)
  * and extreme distance outliers (> maxRadiusMeters, default 500 km from the workout's median center).

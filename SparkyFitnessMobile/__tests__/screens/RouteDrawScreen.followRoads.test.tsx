@@ -6,7 +6,7 @@ import RouteDrawScreen from '../../src/screens/RouteDrawScreen';
 import {
   generateRoutePreview,
   saveDrawnRoute,
-  useRouteGenerationAvailable,
+  useRouteGenerationCapabilities,
 } from '../../src/services/routeService';
 import { useScreenHeader } from '../../src/hooks/useScreenHeader';
 import { FOLLOW_ROADS_DEBOUNCE_MS } from '../../src/hooks/useFollowRoadsRoute';
@@ -28,7 +28,7 @@ jest.mock('../../src/services/routeService', () => ({
   saveDrawnRoute: jest.fn(),
   saveRouteEdits: jest.fn(),
   useRoute: () => ({ route: undefined }),
-  useRouteGenerationAvailable: jest.fn(),
+  useRouteGenerationCapabilities: jest.fn(),
 }));
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('react-native-toast-message', () => ({
@@ -36,7 +36,22 @@ jest.mock('react-native-toast-message', () => ({
   default: { show: jest.fn() },
 }));
 
-const mockAvailable = useRouteGenerationAvailable as jest.Mock;
+const mockCapabilities = useRouteGenerationCapabilities as jest.Mock;
+const caps = (available: boolean, isLoading = false) => ({
+  capabilities: {
+    available,
+    maxAlternatives: 1,
+    style: {
+      surface: false,
+      hilliness: false,
+      avoidSteps: false,
+      avoidBusyRoads: false,
+    },
+    stops: false,
+    source: null,
+  },
+  isLoading,
+});
 const mockGenerate = generateRoutePreview as jest.Mock;
 const mockSave = saveDrawnRoute as jest.Mock;
 const mockHeader = useScreenHeader as jest.Mock;
@@ -110,12 +125,12 @@ describe('RouteDrawScreen follow roads', () => {
     jest.useFakeTimers();
     jest.clearAllMocks();
     routeRequestBudget.reset();
-    mockAvailable.mockReturnValue({ available: true, isLoading: false });
+    mockCapabilities.mockReturnValue(caps(true, false));
   });
   afterEach(() => jest.useRealTimers());
 
   it('shows a disabled Follow roads row that says a routing provider is needed', () => {
-    mockAvailable.mockReturnValue({ available: false, isLoading: false });
+    mockCapabilities.mockReturnValue(caps(false, false));
     const utils = renderScreen();
     expect(utils.getByText('Follow roads')).toBeTruthy();
     expect(
@@ -130,7 +145,7 @@ describe('RouteDrawScreen follow roads', () => {
   });
 
   it('does not flash the disabled row while capabilities are loading', () => {
-    mockAvailable.mockReturnValue({ available: false, isLoading: true });
+    mockCapabilities.mockReturnValue(caps(false, true));
     const utils = renderScreen();
     expect(utils.queryByText('Follow roads')).toBeNull();
   });
@@ -142,7 +157,7 @@ describe('RouteDrawScreen follow roads', () => {
   });
 
   it('keeps working as before without a routing engine', () => {
-    mockAvailable.mockReturnValue({ available: false, isLoading: false });
+    mockCapabilities.mockReturnValue(caps(false, false));
     const utils = renderScreen();
     tapMap(utils, 40);
     tapMap(utils, 40.01);
