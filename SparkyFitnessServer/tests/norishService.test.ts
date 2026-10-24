@@ -203,3 +203,106 @@ describe('NorishService API requests', () => {
     expect(result?.name).toBe('Chicken Rice');
   });
 });
+
+describe('NorishService worked-out nutrition', () => {
+  const service = new NorishService(
+    'https://norish.example.com/api/v1',
+    'test-api-key'
+  );
+  const recipe = (overrides: Partial<NorishRecipe> = {}): NorishRecipe => ({
+    id: 'uuid-456',
+    name: 'Insalata di mare',
+    servings: 6,
+    systemUsed: 'metric',
+    createdAt: '2026-10-24T12:00:00Z',
+    updatedAt: '2026-10-24T12:00:00Z',
+    categories: [],
+    version: 1,
+    recipeIngredients: [],
+    steps: [],
+    calories: null,
+    fat: null,
+    carbs: null,
+    protein: null,
+    ...overrides,
+  });
+  const workedOut = {
+    source: 'worked-out' as const,
+    perServing: {
+      calories: 390.588,
+      fat: 19.4504,
+      carbs: 4.7496,
+      protein: 48.8754,
+    },
+    estimated: true,
+  };
+  const json = (body: unknown, status = 200) =>
+    ({
+      ok: status < 400,
+      status,
+      statusText: status < 400 ? 'OK' : 'Not Found',
+      json: async () => body,
+      text: async () => JSON.stringify(body),
+    }) as any;
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  it('maps the worked-out total of a recipe that states no nutrition', () => {
+    const result = service.mapNorishRecipeToSparkyFood(
+      recipe({ nutrition: workedOut }),
+      'user-123'
+    );
+
+    expect(result.variant.calories).toBe(391);
+    expect(result.variant.fat).toBe(19.5);
+    expect(result.variant.carbs).toBe(4.7);
+    expect(result.variant.protein).toBe(48.9);
+  });
+
+  it('keeps the stored values when the recipe states them', () => {
+    const result = service.mapNorishRecipeToSparkyFood(
+      recipe({ calories: 520, fat: '9.00', nutrition: workedOut }),
+      'user-123'
+    );
+
+    expect(result.variant.calories).toBe(520);
+    expect(result.variant.fat).toBe(9);
+    expect(result.variant.protein).toBe(0);
+  });
+
+  it('asks Norish for nutrition only when the recipe states none', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(json(recipe({ id: 'stated', calories: 520 })))
+      .mockResolvedValueOnce(json(recipe({ id: 'empty' })))
+      .mockResolvedValueOnce(json(workedOut));
+
+    const stated = await service.getRecipeDetails('stated');
+    const empty = await service.getRecipeDetails('empty');
+
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(fetch).toHaveBeenLastCalledWith(
+      'https://norish.example.com/api/v1/recipes/empty/nutrition',
+      expect.objectContaining({
+        method: 'GET',
+        headers: expect.objectContaining({ 'x-api-key': 'test-api-key' }),
+      })
+    );
+    expect(stated?.nutrition).toBeUndefined();
+    expect(empty?.nutrition).toEqual(workedOut);
+  });
+
+  it('imports at zero when Norish has no nutrition endpoint', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(json(recipe({ id: 'older' })))
+      .mockResolvedValueOnce(json({ message: 'Not found' }, 404));
+
+    const details = await service.getRecipeDetails('older');
+
+    expect(details?.nutrition).toBeNull();
+    expect(
+      service.mapNorishRecipeToSparkyFood(details!, 'user-123').variant.calories
+    ).toBe(0);
+  });
+});
