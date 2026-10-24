@@ -1,4 +1,20 @@
 {
+  "barcodeSources": {
+    "currentSource": "Source: {{name}}",
+    "local": "Your foods",
+    "external": "Online provider",
+    "fallback": "Open Food Facts fallback",
+    "otherSources": "Other sources",
+    "empty": "No other sources available",
+    "error": "Could not load barcode sources. Please try again.",
+    "comparison": "Compare the labeled amount for each result. Grams and milliliters are different bases.",
+    "retry": "Could not load sources. Tap to retry.",
+    "providerError": "Source unavailable",
+    "noMatch": "No match",
+    "basis": "Per {{size}} {{unit}}",
+    "macros": "{{calories}} kcal · Protein {{protein}} g · Carbs {{carbs}} g · Fat {{fat}} g",
+    "unknown": "—"
+  },
   "muscles": {
     "abdominals": "Abdominals",
     "abductors": "Abductors",

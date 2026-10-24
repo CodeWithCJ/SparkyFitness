@@ -1,4 +1,23 @@
 {
+  "barcodeLookup": {
+    "title": "Barcode results",
+    "yourFoods": "Your foods",
+    "fallback": "Fallback",
+    "basis": "Per {{quantity}} {{unit}}",
+    "protein": "Protein: {{value}} g",
+    "carbs": "Carbs: {{value}} g",
+    "fat": "Fat: {{value}} g",
+    "sourceFailed": "This source could not be reached.",
+    "sourceNotFound": "No product found in this source.",
+    "useFood": "Use food",
+    "notFound": "No product found. Check other sources or add a food manually.",
+    "otherSources": "Other sources",
+    "loading": "Checking other sources…",
+    "alternativesFailed": "Could not load other sources.",
+    "retry": "Retry",
+    "noAlternatives": "No other sources are available.",
+    "useSource": "Use this source"
+  },
   "numericInput": {
     "mathHint": "Supports +, -, *, / and parentheses, e.g. 30*5.",
     "invalidExpression": "Enter a valid calculation within the allowed range."
@@ -8912,7 +8931,7 @@
     "barcodeScannedSuccessfully": "Barcode scanned successfully",
     "foundProduct": "Found product: {{name}}",
     "productNotFound": "Product not found",
-    "noProductFoundForThis": "No product found for this barcode using selected provider.",
+    "noProductFoundForThis": "No product found for this barcode. Check other sources or add a food manually.",
     "failedToSearchBarcode": "Failed to search barcode.",
     "foodAdded": "Food added",
     "hasBeenAddedAndIs": "{{name}} has been added and is ready to be added to your meal",

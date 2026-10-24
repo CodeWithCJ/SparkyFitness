@@ -7,6 +7,12 @@ import type {
   FoodDeleteMode,
 } from '@/types/food';
 import { MealFilter } from '@/types/meal';
+import {
+  barcodeLookupResponseSchema,
+  barcodeAlternativesResponseSchema,
+  type BarcodeLookupResponse,
+  type BarcodeAlternativesResponse,
+} from '@workspace/shared';
 
 interface FoodPayload {
   name: string;
@@ -220,23 +226,30 @@ export const searchFoodsV2 = async (
   });
 };
 
-export interface V2BarcodeResponse {
-  source: string;
-  food: Food | null;
-}
-
 export const searchBarcodeV2 = async (
   barcode: string,
   providerId?: string
-): Promise<V2BarcodeResponse> => {
+): Promise<BarcodeLookupResponse> => {
   const params: Record<string, string> = {};
   if (providerId) params['providerId'] = providerId;
 
-  return apiCall(`/v2/foods/barcode/${barcode}`, {
-    method: 'GET',
-    params,
-  });
+  return barcodeLookupResponseSchema.parse(
+    await apiCall(`/v2/foods/barcode/${barcode}`, {
+      method: 'GET',
+      params,
+    })
+  );
 };
+
+export const getBarcodeAlternatives = async (
+  barcode: string
+): Promise<BarcodeAlternativesResponse> =>
+  barcodeAlternativesResponseSchema.parse(
+    await apiCall(`/v2/foods/barcode/${barcode}/alternatives`, {
+      method: 'GET',
+      suppressErrorToast: true,
+    })
+  );
 
 export const getFoodDetailsV2 = async (
   providerType: string,

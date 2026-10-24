@@ -18,6 +18,22 @@ import { useAddFoodEntryMeal } from '../../src/hooks/useAddFoodEntryMeal';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
 import { setPendingMealPlanSelection } from '../../src/services/mealPlanSelection';
 import { buildMealIngredientDraft } from '../../src/utils/mealBuilderDraft';
+import type { BarcodeLookupContext } from '../../src/utils/barcodeFoods';
+import type { FoodInfoItem } from '../../src/types/foodInfo';
+import type { RootStackParamList } from '../../src/types/navigation';
+import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
+
+const mockBarcodeSources = jest.fn();
+jest.mock('../../src/components/BarcodeSources', () => ({
+  __esModule: true,
+  default: (props: {
+    context: BarcodeLookupContext;
+    onSelect: (item: FoodInfoItem, context: BarcodeLookupContext) => void;
+  }) => {
+    mockBarcodeSources(props);
+    return null;
+  },
+}));
 
 const mockPop = jest.fn((count: number) => ({
   type: 'POP',
@@ -28,6 +44,7 @@ const mockPopToTop = jest.fn(() => ({ type: 'POP_TO_TOP' }));
 const mockNavigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
+  replace: jest.fn(),
   setParams: jest.fn(),
   dispatch: jest.fn(),
   setOptions: jest.fn(),
@@ -441,6 +458,188 @@ describe('FoodEntryAddScreen', () => {
       isPending: false,
       invalidateCache: mockInvalidateMealCache,
     }));
+  });
+
+  it.each(['meal-builder', 'meal-plan', undefined] as const)(
+    'switches barcode source with a fresh item and preserves %s return context',
+    (pickerMode) => {
+      const barcodeLookup: BarcodeLookupContext = {
+        barcode: '1234567890123',
+        providerId: 'local',
+      };
+      const mealPlanTarget = {
+        dayOfWeek: 2,
+        mealTypeId: 'meal-1',
+        mealTypeName: 'Breakfast',
+      };
+      renderScreen({
+        item: baseLocalItem,
+        barcodeLookup,
+        date: '2026-04-23',
+        mealTypeId: 'meal-1',
+        pickerMode,
+        returnDepth: 2,
+        mealPlanTarget,
+        entryNotes: 'Keep my note',
+        entryTime: '08:15',
+      });
+      const nextItem: FoodInfoItem = {
+        ...baseExternalItem,
+        provider_type: 'example',
+        provider_external_id: 'external-1',
+        originalItem: {
+          name: baseExternalItem.name,
+          brand: null,
+          is_custom: false,
+          default_variant: {
+            serving_size: 1,
+            serving_unit: 'bar',
+            calories: 200,
+            protein: 20,
+            carbs: 22,
+            fat: 7,
+            is_default: true,
+          },
+        },
+      };
+      const nextContext = { ...barcodeLookup, providerId: 'provider-two' };
+      const props = mockBarcodeSources.mock.calls.at(-1)?.[0] as {
+        onSelect: (item: FoodInfoItem, context: BarcodeLookupContext) => void;
+      };
+      props.onSelect(nextItem, nextContext);
+      expect(mockNavigation.replace).toHaveBeenCalledWith('FoodEntryAdd', {
+        item: nextItem,
+        barcodeLookup: nextContext,
+        date: '2026-04-23',
+        mealTypeId: 'meal-1',
+        pickerMode,
+        returnDepth: 2,
+        mealPlanTarget,
+        entryNotes: 'Keep my note',
+        entryTime: '08:15',
+      });
+      expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+      expect(mockAddEntry).not.toHaveBeenCalled();
+    }
+  );
+
+  describe('entry time after switching barcode source', () => {
+    let previousDiaryDate: string;
+
+    beforeEach(() => {
+      previousDiaryDate = useDiaryDateStore.getState().selectedDate;
+      mockUseMealTypes.mockReturnValue({
+        ...mockUseMealTypes(),
+        mealTypes: [
+          {
+            id: 'meal-1',
+            name: 'Breakfast target',
+            user_id: 'test-user',
+            created_at: '2020-01-01T00:00:00Z',
+            is_visible: true,
+            show_in_quick_log: true,
+            sort_order: 1,
+            default_time: '08:00',
+          },
+          {
+            id: 'meal-2',
+            name: 'Lunch target',
+            user_id: 'test-user',
+            created_at: '2020-01-01T00:00:00Z',
+            is_visible: true,
+            show_in_quick_log: true,
+            sort_order: 2,
+            default_time: '12:30',
+          },
+        ],
+      });
+    });
+
+    afterEach(() => {
+      useDiaryDateStore.getState().setSelectedDate(previousDiaryDate);
+    });
+
+    const switchToLocalSource = (screen: ReturnType<typeof render>) => {
+      const props = mockBarcodeSources.mock.lastCall?.[0] as {
+        onSelect: (item: FoodInfoItem, context: BarcodeLookupContext) => void;
+      };
+      props.onSelect(baseLocalItem, {
+        barcode: '1234567890123',
+        providerId: 'local',
+      });
+      const params = mockNavigation.replace.mock.lastCall?.[1] as
+        RootStackParamList['FoodEntryAdd'] | undefined;
+      if (!params)
+        throw new Error('Source switch did not replace the add screen');
+      screen.unmount();
+      return renderScreen(params);
+    };
+
+    const renderBarcodeEntry = (entryTime?: string) =>
+      renderScreen({
+        item: baseExternalItem,
+        barcodeLookup: { barcode: '1234567890123', providerId: 'provider-one' },
+        date: '2020-04-23',
+        mealTypeId: 'meal-1',
+        entryTime,
+      });
+
+    it('recalculates an untouched automatic time when the meal changes after a source switch', () => {
+      const screen = switchToLocalSource(renderBarcodeEntry());
+      fireEvent.press(screen.getByText('Lunch target'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({ entry_time: '12:30' }),
+        })
+      );
+    });
+
+    it('fills an untouched time when a past entry changes to today after a source switch', () => {
+      mockUseMealTypes.mockReturnValue({
+        ...mockUseMealTypes(),
+        mealTypes: mockUseMealTypes().mealTypes.map((mealType) => ({
+          ...mealType,
+          default_time: null,
+        })),
+      });
+      const screen = switchToLocalSource(renderBarcodeEntry());
+      fireEvent.press(screen.getByText('Use Today'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            entry_time: expect.stringMatching(/^([01]\d|2[0-3]):[0-5]\d$/),
+          }),
+        })
+      );
+    });
+
+    it('keeps an explicitly selected time through a source switch and meal/date changes', () => {
+      const screen = switchToLocalSource(renderBarcodeEntry('09:45'));
+      fireEvent.press(screen.getByText('Lunch target'));
+      fireEvent.press(screen.getByText('Use Today'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({ entry_time: '09:45' }),
+        })
+      );
+    });
+
+    it('keeps an intentional clear as a null entry time after a source switch and meal/date changes', () => {
+      const initialScreen = renderBarcodeEntry();
+      fireEvent.press(initialScreen.getByText('Clear'));
+      const screen = switchToLocalSource(initialScreen);
+      fireEvent.press(screen.getByText('Lunch target'));
+      fireEvent.press(screen.getByText('Use Today'));
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({ entry_time: null }),
+        })
+      );
+    });
   });
 
   it('stores a pending ingredient and pops back for local foods in meal-builder mode', async () => {

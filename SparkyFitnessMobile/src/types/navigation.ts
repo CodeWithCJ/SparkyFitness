@@ -1,3 +1,4 @@
+import type { BarcodeLookupContext } from '../utils/barcodeFoods';
 import type { RunSummaryParams } from '../utils/runSummary';
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -158,6 +159,9 @@ export type RootStackParamList = {
       }
     | undefined;
   FoodEntryAdd: {
+    barcodeLookup?: BarcodeLookupContext;
+    entryNotes?: string;
+    entryTime?: string;
     item: FoodInfoItem;
     date?: string;
     adjustedValues?: FoodFormData;

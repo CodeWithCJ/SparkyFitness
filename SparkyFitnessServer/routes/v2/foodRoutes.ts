@@ -1,5 +1,6 @@
 import express, { RequestHandler } from 'express';
 import openFoodFactsContributionRoutes from './openFoodFactsContributionRoutes.js';
+import barcodeRoutes from './barcodeRoutes.js';
 import {
   BarcodeResponseSchema,
   NormalizedFoodSchema,
@@ -25,6 +26,7 @@ const router = express.Router();
 
 router.use(checkPermissionMiddleware('diary'));
 router.use(openFoodFactsContributionRoutes);
+router.use(barcodeRoutes);
 
 // --- Barcode endpoint ---
 
@@ -50,7 +52,8 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
       req.userId,
       // Absent means "use the user's default provider", so preserve undefined.
       providerId === undefined ? undefined : String(providerId),
-      req.authenticatedUserId
+      req.authenticatedUserId,
+      { includeProviderMetadata: true }
     );
 
     // Ensure barcode is preserved on the food when present

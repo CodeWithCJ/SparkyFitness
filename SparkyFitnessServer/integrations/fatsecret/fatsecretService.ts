@@ -247,8 +247,10 @@ function assertNoFatSecretApiError(data?: FatSecretApiResponse | null): void {
 async function getFatSecretAccessToken(
   clientId: string | undefined,
   clientSecret: string | undefined,
-  requestedScope = 'basic'
+  requestedScope = 'basic',
+  signal?: AbortSignal
 ): Promise<string> {
+  signal?.throwIfAborted();
   if (!clientId || !clientSecret) {
     throw new Error('FatSecret API credentials are not configured.');
   }
@@ -267,6 +269,7 @@ async function getFatSecretAccessToken(
     );
     const response = await fetch(FATSECRET_OAUTH_TOKEN_URL, {
       method: 'POST',
+      ...(signal && { signal }),
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
@@ -277,11 +280,13 @@ async function getFatSecretAccessToken(
         client_secret: clientSecret,
       }).toString(),
     });
+    signal?.throwIfAborted();
     if (!response.ok) {
       const errorData = (await response.json()) as {
         error?: string;
         error_description?: string;
       };
+      signal?.throwIfAborted();
       log(
         'error',
         `FatSecret OAuth Token API error for scope "${requestedScope}":`,
@@ -296,7 +301,7 @@ async function getFatSecretAccessToken(
           'warn',
           'FatSecret "barcode" scope invalid, falling back to "basic"'
         );
-        return getFatSecretAccessToken(clientId, clientSecret, 'basic');
+        return getFatSecretAccessToken(clientId, clientSecret, 'basic', signal);
       }
       // Keep FatSecret's OAuth code (e.g. invalid_scope) in the message: premier
       // entitlement detection matches on it to start the premier cooldown.
@@ -311,11 +316,13 @@ async function getFatSecretAccessToken(
       access_token: string;
       expires_in: number;
     };
+    signal?.throwIfAborted();
     const token = data.access_token;
     const expiry = Date.now() + data.expires_in * 1000 - 60000; // Set expiry 1 minute early
     tokensByScope.set(cacheKey, { token, expiry });
     return token;
   } catch (error) {
+    signal?.throwIfAborted();
     // A rejection from FatSecret itself is not a network error; rethrow it as is.
     if ((error as { fatSecretOAuthError?: unknown }).fatSecretOAuthError) {
       throw error;
@@ -335,15 +342,19 @@ async function getFatSecretAccessToken(
 async function searchFatSecretByBarcode(
   barcode: string,
   clientId: string,
-  clientSecret: string
+  clientSecret: string,
+  surfaceErrors = false,
+  signal?: AbortSignal
 ) {
   try {
     // Specifically request barcode scope for this call
     const accessToken = await getFatSecretAccessToken(
       clientId,
       clientSecret,
-      'basic barcode'
+      'basic barcode',
+      signal
     );
+    signal?.throwIfAborted();
     const url = `${FATSECRET_API_BASE_URL}/food/barcode/find-by-id/v2?${new URLSearchParams(
       {
         barcode: barcode,
@@ -353,13 +364,23 @@ async function searchFatSecretByBarcode(
     log('info', `FatSecret Barcode Lookup URL: ${url}`);
     const response = await fetch(url, {
       method: 'GET',
+      ...(signal && { signal }),
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
     });
+    signal?.throwIfAborted();
     if (!response.ok) {
+      if (surfaceErrors && response.status !== 404) {
+        throw Object.assign(
+          new Error(
+            `FatSecret barcode lookup failed (HTTP ${response.status}).`
+          ),
+          { status: 502 }
+        );
+      }
       if (response.status === 404) {
         const alt = altBarcode(barcode);
 
@@ -372,20 +393,36 @@ async function searchFatSecretByBarcode(
           ).toString()}`;
           const altResponse = await fetch(altUrl, {
             method: 'GET',
+            ...(signal && { signal }),
             headers: {
               Authorization: `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
               Accept: 'application/json',
             },
           });
+          signal?.throwIfAborted();
           if (altResponse.ok) {
             const data = await altResponse.json();
+            signal?.throwIfAborted();
+            if (surfaceErrors) {
+              if (data.error && String(data.error.code) === '211') return null;
+              assertNoFatSecretApiError(data);
+            }
             return data;
+          }
+          if (surfaceErrors && altResponse.status !== 404) {
+            throw Object.assign(
+              new Error(
+                `FatSecret barcode lookup failed (HTTP ${altResponse.status}).`
+              ),
+              { status: 502 }
+            );
           }
         }
         return null;
       }
       const errorText = await response.text();
+      signal?.throwIfAborted();
       log('error', 'FatSecret Barcode API error:', errorText);
       // If we get an error related to scope/permission, we know barcode API isn't available
       if (response.status === 403 || response.status === 401) {
@@ -398,6 +435,7 @@ async function searchFatSecretByBarcode(
       throw new Error(`FatSecret Barcode API error: ${errorText}`);
     }
     const data = await response.json();
+    signal?.throwIfAborted();
     if (data.error && String(data.error.code) === '211') {
       return null; // No food item detected
     }

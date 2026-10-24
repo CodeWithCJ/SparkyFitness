@@ -279,3 +279,6 @@ export * from './compare/spans.ts';
 export * from './compare/question.ts';
 export * from './compare/chartData.ts';
 export * from './schemas/api/Compare.api.zod.ts';
+export * from './schemas/api/FoodLookup.api.zod.ts';
+export * from './schemas/api/BarcodeLookup.api.zod.ts';
+export * from './utils/barcodeNutrition.ts';

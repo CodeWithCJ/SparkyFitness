@@ -1,4 +1,5 @@
 import { exerciseSearchKeys } from '@/api/keys/exercises';
+import { barcodeKeys } from '@/api/keys/barcodes';
 import {
   externalProviderKeys,
   openFoodFactsContributionKeys,
@@ -32,6 +33,7 @@ const invalidateProviderConsumers = (
   includeExerciseProviders = false
 ) => {
   const invalidations = [
+    queryClient.invalidateQueries({ queryKey: barcodeKeys.all }),
     queryClient.invalidateQueries({ queryKey: externalProviderKeys.all }),
     queryClient.invalidateQueries({
       queryKey: openFoodFactsContributionKeys.user(),

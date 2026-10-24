@@ -50,11 +50,16 @@ async function fetchWithTimeout(
   fetchImpl: typeof fetch = fetch
 ): Promise<Response> {
   try {
+    init.signal?.throwIfAborted();
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
     return await fetchImpl(url, {
       ...init,
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: init.signal
+        ? AbortSignal.any([init.signal, timeoutSignal])
+        : timeoutSignal,
     });
   } catch (error) {
+    init.signal?.throwIfAborted();
     if (isTimeoutError(error)) {
       log(
         'warn',
@@ -295,19 +300,23 @@ async function fetchOpenFoodFacts(
     sessionCookie,
     timeoutMs = OFF_FETCH_TIMEOUT_MS,
     rateLimitProductRead = false,
+    signal,
   }: {
     authenticatedUserId?: string;
     providerId?: string;
     sessionCookie?: string | null;
     timeoutMs?: number;
     rateLimitProductRead?: boolean;
+    signal?: AbortSignal;
   } = {}
 ): Promise<Response> {
+  signal?.throwIfAborted();
   // The unauthenticated retry shares this request's deadline, so a 429/5xx
   // answered near the end of the budget cannot double the wall-clock time.
   const requestDeadline = Date.now() + timeoutMs;
   const remainingBudget = Math.max(0, requestDeadline - Date.now());
   const fetchImpl = await resolveOffFetch(authenticatedUserId, remainingBudget);
+  signal?.throwIfAborted();
   const baseHeaders = { ...OFF_HEADERS };
 
   const headers = sessionCookie
@@ -318,6 +327,7 @@ async function fetchOpenFoodFacts(
     requestHeaders: Record<string, string>
   ): Promise<Response> => {
     const operation = (): Promise<Response> => {
+      signal?.throwIfAborted();
       const remainingTimeoutMs = requestDeadline - Date.now();
       if (remainingTimeoutMs <= 0) {
         log('warn', `OpenFoodFacts request deadline exhausted: ${url}`);
@@ -333,6 +343,7 @@ async function fetchOpenFoodFacts(
           method: 'GET',
           headers: requestHeaders,
           redirect: 'manual',
+          signal,
         },
         remainingTimeoutMs,
         fetchImpl
@@ -350,6 +361,7 @@ async function fetchOpenFoodFacts(
   };
 
   const response = await performGet(headers);
+  signal?.throwIfAborted();
 
   if (sessionCookie && (response.status === 429 || response.status >= 500)) {
     log(
@@ -674,7 +686,8 @@ async function searchOpenFoodFactsByBarcodeFields(
   language = 'en',
   authenticatedUserId?: string,
   providerId?: string,
-  credentialScope: OpenFoodFactsCredentialScope = 'personal'
+  credentialScope: OpenFoodFactsCredentialScope = 'personal',
+  signal?: AbortSignal
 ): Promise<{
   status: number;
   status_verbose: string;
@@ -682,6 +695,7 @@ async function searchOpenFoodFactsByBarcodeFields(
   [key: string]: unknown;
 }> {
   try {
+    signal?.throwIfAborted();
     const fieldSet = new Set(fields);
     if (language !== 'en') {
       fieldSet.add(`product_name_${language}`);
@@ -693,13 +707,16 @@ async function searchOpenFoodFactsByBarcodeFields(
       providerId,
       credentialScope
     );
+    signal?.throwIfAborted();
     const searchUrl = `${baseUrl}/api/v2/product/${barcode}.json?fields=${fieldsParam}&lc=${language}`;
     const response = await fetchOpenFoodFacts(searchUrl, {
       authenticatedUserId,
       providerId,
       sessionCookie,
       rateLimitProductRead: true,
+      signal,
     });
+    signal?.throwIfAborted();
     if (!response.ok) {
       if (response.status === 404) {
         log(
@@ -709,6 +726,7 @@ async function searchOpenFoodFactsByBarcodeFields(
         return { status: 0, status_verbose: 'product not found' };
       }
       const errorText = await response.text();
+      signal?.throwIfAborted();
       log('error', 'OpenFoodFacts Barcode Fields Search API error:', errorText);
       throw new Error(`OpenFoodFacts API error (HTTP ${response.status})`);
     }
@@ -718,6 +736,7 @@ async function searchOpenFoodFactsByBarcodeFields(
       product?: OffProduct;
       [key: string]: unknown;
     };
+    signal?.throwIfAborted();
 
     if (data.status !== 1 || !data.product) {
       const alt = altBarcode(barcode);
@@ -729,7 +748,9 @@ async function searchOpenFoodFactsByBarcodeFields(
           providerId,
           sessionCookie,
           rateLimitProductRead: true,
+          signal,
         });
+        signal?.throwIfAborted();
         if (altResponse.ok) {
           const altData = (await altResponse.json()) as {
             status: number;
@@ -737,6 +758,7 @@ async function searchOpenFoodFactsByBarcodeFields(
             product?: OffProduct;
             [key: string]: unknown;
           };
+          signal?.throwIfAborted();
           if (altData.status === 1 && altData.product) {
             data = altData;
           }
