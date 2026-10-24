@@ -10,6 +10,7 @@ import {
   CALORIE_CALCULATION_CONSTANTS,
   instantHourMinute,
   instantToDay,
+  entryCaloriesCounted,
   resolveExerciseCalories,
   computeSparkyfitnessBurned,
   computeCaloriesRemaining,
@@ -199,7 +200,7 @@ export function extractExerciseStats(
 
   for (const session of sessions) {
     if (session.type === 'individual') {
-      const cal = session.calories_burned || 0;
+      const cal = entryCaloriesCounted(session);
       if (session.name === ACTIVE_CALORIES_EXERCISE_NAME) {
         activeCalories += cal;
       } else {
@@ -208,7 +209,7 @@ export function extractExerciseStats(
       activitySteps += session.steps || 0;
     } else {
       for (const exercise of session.exercises) {
-        otherCalories += exercise.calories_burned || 0;
+        otherCalories += entryCaloriesCounted(exercise);
         activitySteps += exercise.steps || 0;
       }
     }

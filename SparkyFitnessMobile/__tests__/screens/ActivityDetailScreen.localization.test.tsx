@@ -56,6 +56,7 @@ jest.mock('../../src/services/nativeTabBarPreference', () => ({
   useNativeIOSHeadersActive: jest.fn(() => false),
 }));
 jest.mock('../../src/components/EditableSetList', () => () => null);
+jest.mock('../../src/components/LinkSyncedWorkoutSheet', () => () => null);
 jest.mock('../../src/components/CalendarSheet', () => {
   const ReactModule = require('react');
   const MockCalendar = ReactModule.forwardRef(() => null);

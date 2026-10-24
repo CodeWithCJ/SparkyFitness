@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import { clearCalorieLinksForPresetEntryWithClient } from '../services/exerciseCalorieLinkService.js';
 const PRESET_ENTRY_SELECT = `
   SELECT id, user_id, workout_preset_id, name, description, entry_date, created_at,
          updated_at, created_by_user_id, notes, source, location
@@ -219,6 +220,18 @@ async function deleteExercisePresetEntry(id: any, userId: any) {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
+    // Lock the session before its exercises. A reorder locks this row first;
+    // clearing linked calories first would let that reorder hold the exercise
+    // rows and commit ahead of the delete.
+    const locked = await client.query(
+      'SELECT id FROM exercise_preset_entries WHERE id = $1 AND user_id = $2 FOR UPDATE',
+      [id, userId]
+    );
+    if (!locked.rowCount) {
+      await client.query('ROLLBACK');
+      return false;
+    }
+    await clearCalorieLinksForPresetEntryWithClient(client, userId, id);
     const result = await client.query(
       'DELETE FROM exercise_preset_entries WHERE id = $1 AND user_id = $2 RETURNING id',
       [id, userId]

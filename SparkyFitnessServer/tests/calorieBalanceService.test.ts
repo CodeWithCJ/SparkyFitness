@@ -579,6 +579,32 @@ describe('extractExerciseStats', () => {
     });
   });
 
+  test('counts calories_applied instead of the estimate, including zero', () => {
+    const sessions = [
+      {
+        type: 'individual',
+        name: 'Other workout',
+        calories_burned: 425,
+        calories_applied: null,
+        steps: 0,
+      },
+      {
+        type: 'preset',
+        name: 'Strength',
+        exercises: [
+          { calories_burned: 475, calories_applied: 0, steps: 0 },
+          { calories_burned: 100, calories_applied: 60, steps: 0 },
+        ],
+      },
+    ] as unknown as ExerciseSessionResponse[];
+
+    expect(extractExerciseStats(sessions)).toEqual({
+      activeCalories: 0,
+      otherCalories: 485,
+      activitySteps: 0,
+    });
+  });
+
   /**
    * A preset is a user-built workout, so its children are logged exercise regardless of
    * what any child is named. The ranged SQL mirrors this with its

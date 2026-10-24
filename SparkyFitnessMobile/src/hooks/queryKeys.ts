@@ -192,6 +192,10 @@ export const latestManualCustomEntriesRootQueryKey = [
 export const latestManualCustomEntriesQueryKey = (date: string) =>
   [...latestManualCustomEntriesRootQueryKey, date] as const;
 
+/** Synced workouts that may match a logged workout, and its current link. */
+export const calorieLinkQueryKey = (entryId: string) =>
+  ['calorieLink', entryId] as const;
+
 export const exerciseHistoryQueryKey = ['exerciseHistory'] as const;
 
 /** Per-exercise filtered history; extends the root so prefix invalidation covers it. */

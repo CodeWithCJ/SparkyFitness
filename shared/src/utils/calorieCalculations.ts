@@ -179,6 +179,18 @@ export function resolveBackgroundStepCalories({
   });
 }
 
+/**
+ * What an exercise entry adds to the daily balance: the applied override when the
+ * person set one (0 included), otherwise the entry's own estimate. `calories_burned`
+ * is never rewritten, so the estimate survives next to the figure that is counted.
+ */
+export function entryCaloriesCounted(entry: {
+  calories_burned?: number | null;
+  calories_applied?: number | null;
+}): number {
+  return entry.calories_applied ?? entry.calories_burned ?? 0;
+}
+
 export function resolveExerciseCalories(
   loggedExerciseCalories: number,
   activeCaloriesFromExercise: number,

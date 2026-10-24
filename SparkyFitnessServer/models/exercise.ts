@@ -7,6 +7,10 @@ import {
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import {
+  clearCalorieLinksOfEntriesWithClient,
+  lockCalorieLinkParticipantsWithClient,
+} from '../services/exerciseCalorieLinkService.js';
+import {
   buildSqlSearch,
   buildSqlExactMatchOrder,
 } from '../utils/dbSearchHelper.js';
@@ -1049,6 +1053,16 @@ async function deleteExerciseAndDependencies(
             r.exercise_preset_entry_id
         )
         .filter(Boolean);
+
+      const entriesToDeleteResult = await client.query(
+        'SELECT id FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2',
+        [exerciseId, userId]
+      );
+      const entryIds = entriesToDeleteResult.rows.map(
+        (row: { id: string }) => row.id
+      );
+      await lockCalorieLinkParticipantsWithClient(client, userId, entryIds);
+      await clearCalorieLinksOfEntriesWithClient(client, userId, entryIds);
 
       const entriesResult = await client.query(
         'DELETE FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2',

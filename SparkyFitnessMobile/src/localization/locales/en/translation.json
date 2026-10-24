@@ -4163,6 +4163,32 @@
       "deleteWorkout": "Delete Workout"
     }
   },
+  "calorieLink": {
+    "action": "Link a synced workout",
+    "linked": "Linked to a synced workout",
+    "title": "Link a synced workout",
+    "description": "If a watch or health app recorded this session too, link the two so its calories count once. Both estimates are kept.",
+    "loading": "Looking for synced workouts...",
+    "loadError": "Could not load synced workouts.",
+    "none": "No synced workouts found for this day.",
+    "workoutFallback": "Workout",
+    "minutes": "{{value}} min",
+    "calories": "{{value}} cal",
+    "sameSession": "Same session",
+    "sameTime": "Overlaps in time",
+    "countHeading": "Count in the daily total",
+    "sparkyfitness": "This workout ({{value}})",
+    "synced": "The synced workout ({{value}})",
+    "higher": "The higher of the two ({{value}})",
+    "lower": "The lower of the two ({{value}})",
+    "average": "The average ({{value}})",
+    "custom": "A custom total",
+    "customLabel": "Total for the session (cal)",
+    "link": "Link workouts",
+    "unlink": "Unlink",
+    "linkError": "Failed to link the workouts.",
+    "unlinkError": "Failed to unlink the workouts."
+  },
   "activityDetail": {
     "errors": {
       "saveFailed": "Failed to save activity"
@@ -4172,6 +4198,7 @@
       "calories": "Calories",
       "distance": "Distance",
       "avgHeartRate": "Avg Heart Rate",
+      "caloriesCounted": "Counted in daily total",
       "steps": "Steps",
       "pace": "Pace",
       "effort": "Effort"

@@ -13,8 +13,45 @@ import {
   ExerciseProgressResponse,
   PresetSessionResponse,
   presetSessionResponseSchema,
+  calorieLinkSuggestionsResponseSchema,
+  CalorieLinkSuggestionsResponse,
+  SetCalorieLinkRequest,
 } from '@workspace/shared';
 import z from 'zod';
+
+/** Synced workouts that may be the same session as this logged workout. */
+export const fetchCalorieLinkSuggestions = async (
+  entryId: string
+): Promise<CalorieLinkSuggestionsResponse> => {
+  const data = await apiCall(
+    `/exercise-entries/${encodeURIComponent(entryId)}/calorie-link/suggestions`,
+    { method: 'GET' }
+  );
+  return calorieLinkSuggestionsResponseSchema.parse(data);
+};
+
+export const setCalorieLink = async (
+  entryId: string,
+  body: SetCalorieLinkRequest
+): Promise<void> => {
+  await apiCall(
+    `/exercise-entries/${encodeURIComponent(entryId)}/calorie-link`,
+    {
+      method: 'PUT',
+      body,
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+};
+
+export const clearCalorieLink = async (entryId: string): Promise<void> => {
+  await apiCall(
+    `/exercise-entries/${encodeURIComponent(entryId)}/calorie-link`,
+    {
+      method: 'DELETE',
+    }
+  );
+};
 
 /** The user's own previously logged workout locations, most recent first. */
 export const fetchWorkoutLocations = async (): Promise<string[]> => {
@@ -178,6 +215,11 @@ export const updateExerciseEntry = async (
     // from sets or preserve the old value instead of clearing.
     if (entryData.distance === null) {
       formData.append('distance', '');
+    }
+
+    // And for calories_applied: null means "count the estimate again".
+    if (entryData.calories_applied === null) {
+      formData.append('calories_applied', '');
     }
 
     return apiCall(`/exercise-entries/${entryId}`, {

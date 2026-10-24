@@ -159,7 +159,11 @@ describe('createExerciseEntry when the matched parent is deleted mid-request', (
     let dedupLookups = 0;
     mockClient.query.mockImplementation((sql: string, params?: unknown[]) => {
       if (/^\s*(BEGIN|COMMIT|ROLLBACK)/i.test(sql)) return { rows: [] };
-      if (/SELECT id FROM exercise_entries/i.test(sql)) {
+      if (
+        /SELECT id FROM exercise_entries WHERE user_id = \$1 AND source = \$2 AND source_id = \$3/i.test(
+          sql
+        )
+      ) {
         dedupLookups += 1;
         // The competitor's delete and re-insert both commit between our first
         // lookup and the re-check, which is one pass of its normal sync.

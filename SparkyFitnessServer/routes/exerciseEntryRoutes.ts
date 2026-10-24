@@ -27,8 +27,12 @@ import {
   attachExerciseEntryDistanceSeriesRequestSchema,
   setExerciseEntryDistanceRequestSchema,
   setExerciseEntryEffortRequestSchema,
+  setCalorieLinkRequestSchema,
   isEntryTimeString,
 } from '@workspace/shared';
+import exerciseCalorieLinkService, {
+  CalorieLinkError,
+} from '../services/exerciseCalorieLinkService.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -378,6 +382,18 @@ router.post(
         ); // Permission check
         if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
       }
+      let caloriesApplied = entryData.calories_applied;
+      if (caloriesApplied === '') {
+        caloriesApplied = null;
+      } else if (caloriesApplied !== null && caloriesApplied !== undefined) {
+        const applied = Number(caloriesApplied);
+        if (!Number.isFinite(applied) || applied < 0) {
+          return res
+            .status(400)
+            .json({ error: 'calories_applied must be a number of 0 or more.' });
+        }
+        caloriesApplied = applied;
+      }
       const newEntry = await exerciseService.createExerciseEntry(
         targetUserId,
 
@@ -387,6 +403,7 @@ router.post(
           exercise_name,
           duration_minutes,
           calories_burned,
+          calories_applied: caloriesApplied,
           entry_date,
           entry_time,
           notes,
@@ -761,6 +778,23 @@ router.put(
       // "clear distance" — without it the omitted field would fall back to
       // derive-from-sets/preserve instead of clearing.
       updateData.distance = null;
+    }
+    if (updateData.calories_applied === '') {
+      // Same contract as distance: an empty string clears the override, so the
+      // entry's own estimate counts again.
+      updateData.calories_applied = null;
+    }
+    if (
+      updateData.calories_applied !== null &&
+      updateData.calories_applied !== undefined
+    ) {
+      const applied = Number(updateData.calories_applied);
+      if (!Number.isFinite(applied) || applied < 0) {
+        return res
+          .status(400)
+          .json({ error: 'calories_applied must be a number of 0 or more.' });
+      }
+      updateData.calories_applied = applied;
     }
     // Extract new fields from updateData
     const { distance, avg_heart_rate } = updateData;
@@ -1352,6 +1386,174 @@ router.post('/:id/effort', authenticate, demoGuard, async (req, res, next) => {
     next(error);
   }
 });
+/**
+ * @swagger
+ * /exercise-entries/{id}/calorie-link/suggestions:
+ *   get:
+ *     summary: Synced workouts that may be the same session
+ *     tags: [Fitness & Workouts]
+ *     description: >
+ *       For a workout logged in SparkyFitness (the entry, or any entry of its
+ *       strength session), lists that day's synced workouts that could be the
+ *       same session. `match` is `sets_within` when every set with a completion
+ *       time falls inside the synced workout's window (plus 10 minutes),
+ *       `overlap` when only the workout's own times overlap, and null when the
+ *       person has to decide. Also returns the current link, if any.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200:
+ *         description: Candidates and the current link.
+ *       400:
+ *         description: Invalid entry ID, or the entry was not logged in SparkyFitness.
+ *       404:
+ *         description: Exercise entry not found.
+ * /exercise-entries/{id}/calorie-link:
+ *   put:
+ *     summary: Link a workout to a synced workout so its calories count once
+ *     tags: [Fitness & Workouts]
+ *     description: >
+ *       Links the workout to a synced one and sets what each counts in the
+ *       daily balance (`calories_applied`); both keep their own
+ *       `calories_burned`. `resolution` is `sparkyfitness`, `synced`, `higher`,
+ *       `lower`, `average` or `custom` (then `custom_calories` is the session's
+ *       total). Replaces an earlier link of the same workout.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [synced_entry_id, resolution]
+ *             properties:
+ *               synced_entry_id: { type: string, format: uuid }
+ *               resolution:
+ *                 type: string
+ *                 enum: [sparkyfitness, synced, higher, lower, average, custom]
+ *               custom_calories: { type: number, minimum: 0 }
+ *     responses:
+ *       200:
+ *         description: >
+ *           Linked. `applied` lists what each entry of the workout now counts
+ *           (`calories_applied`, null for its own estimate).
+ *       400:
+ *         description: Invalid body, or an entry that cannot be linked.
+ *       404:
+ *         description: Entry not found.
+ *       409:
+ *         description: The synced workout is linked to another workout.
+ *   delete:
+ *     summary: Remove a calorie link
+ *     tags: [Fitness & Workouts]
+ *     description: >
+ *       Clears the link and the counted calories on both sides, so each counts
+ *       its own estimate again.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       204:
+ *         description: Unlinked.
+ *       404:
+ *         description: Entry not found, or it is not linked.
+ */
+const sendCalorieLinkError = (
+  error: unknown,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  if (error instanceof CalorieLinkError) {
+    return res.status(error.status).json({ error: error.message });
+  }
+  next(error);
+};
+
+router.get(
+  '/:id/calorie-link/suggestions',
+  authenticate,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id || typeof id !== 'string' || !isValidUuid(id)) {
+      return res.status(400).json({
+        error: 'Exercise Entry ID is required and must be a valid UUID.',
+      });
+    }
+    try {
+      const suggestions =
+        await exerciseCalorieLinkService.getCalorieLinkSuggestions(
+          req.userId,
+          req.originalUserId || req.userId,
+          id
+        );
+      res.status(200).json(suggestions);
+    } catch (error) {
+      sendCalorieLinkError(error, res, next);
+    }
+  }
+);
+
+router.put(
+  '/:id/calorie-link',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id || typeof id !== 'string' || !isValidUuid(id)) {
+      return res.status(400).json({
+        error: 'Exercise Entry ID is required and must be a valid UUID.',
+      });
+    }
+    const parsed = setCalorieLinkRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.message });
+    }
+    try {
+      const result = await exerciseCalorieLinkService.setCalorieLink(
+        req.userId,
+        req.originalUserId || req.userId,
+        id,
+        parsed.data
+      );
+      res.status(200).json(result);
+    } catch (error) {
+      sendCalorieLinkError(error, res, next);
+    }
+  }
+);
+
+router.delete(
+  '/:id/calorie-link',
+  authenticate,
+  demoGuard,
+  async (req, res, next) => {
+    const { id } = req.params;
+    if (!id || typeof id !== 'string' || !isValidUuid(id)) {
+      return res.status(400).json({
+        error: 'Exercise Entry ID is required and must be a valid UUID.',
+      });
+    }
+    try {
+      await exerciseCalorieLinkService.clearCalorieLink(
+        req.userId,
+        req.originalUserId || req.userId,
+        id
+      );
+      res.status(204).send();
+    } catch (error) {
+      sendCalorieLinkError(error, res, next);
+    }
+  }
+);
 /**
  * @swagger
  * /exercise-entries/progress/{exerciseId}:

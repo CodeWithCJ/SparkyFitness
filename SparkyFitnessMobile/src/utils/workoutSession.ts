@@ -24,6 +24,7 @@ import {
   decideAdaptiveAdjustment,
   distributeProgressionReps,
   effectiveLoadKg,
+  entryCaloriesCounted,
   evaluateProgression,
   isBodyweightModality,
   isCardioModality,
@@ -202,9 +203,12 @@ export function getFirstImage(session: ExerciseSessionResponse): string | null {
 
 export function getSessionCalories(session: ExerciseSessionResponse): number {
   if (session.type === 'preset') {
-    return session.exercises.reduce((sum, e) => sum + e.calories_burned, 0);
+    return session.exercises.reduce(
+      (sum, e) => sum + entryCaloriesCounted(e),
+      0
+    );
   }
-  return session.calories_burned || 0;
+  return entryCaloriesCounted(session);
 }
 
 // --- Exercise stats (single-pass over sessions array) ---
@@ -235,7 +239,7 @@ export function calculateExerciseStats(
       const isActiveCals =
         session.exercise_snapshot?.name === 'Active Calories';
       if (isActiveCals) {
-        activeCalories += session.calories_burned || 0;
+        activeCalories += entryCaloriesCounted(session);
       } else {
         otherExerciseCalories += sessionCals;
         durationMinutes += session.duration_minutes ?? 0;
