@@ -281,6 +281,8 @@ For a run, the app also works out your **cadence** (steps per minute while you w
 
 **Library → Personal records** lists your best efforts at 1 km, 1 mile, 5 km, 10 km, 15 km, the half marathon and the marathon, grouped by sport (running, walking, cycling and so on). Records come from your recorded and imported cardio activities, are only compared within one sport, and are the same ones the web Reports page shows.
 
+A record is the time for exactly that distance. For an activity with a GPS track (or the distance series of an indoor run), SparkyFitness finds the fastest stretch of that distance inside it, so your fastest 5 km within a 10 km run counts as a 5 km record. An activity with no track only counts when its distance is within about 2% under to 5% over the standard, and its time is scaled to the exact distance by its average pace. A 5.8 km run with no track is not a 5 km record.
+
 When a run you just saved set one or more of them, the summary screen shows a **New personal record** card with the distance and time, and a link to the full list. A run recorded on the watch shows it too.
 
 ## Correcting a treadmill distance

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-23_
+_Last updated: 2026-10-24_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -284,6 +284,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   For an indoor run's pace chart, `POST`/`GET /exercise-entries/:id/distance-series` (`attachDistanceSeriesToExerciseEntry`, `getExerciseEntryDistanceSeries`, table `exercise_entry_distance_series`, rows of `[active seconds, metres]`; `setExerciseEntryDistance` rescales them with the laps).
 - Correcting the distance of an entry with no GPS track (a treadmill run, from the summary screen):
   inspect `POST /exercise-entries/:id/distance` in `routes/exerciseEntryRoutes.ts`, `services/exerciseEntryService.ts`'s `setExerciseEntryDistance` and `setExerciseEntryDistanceRequestSchema` in `shared/src/schemas/api/ExerciseEntries.api.zod.ts`. It changes only the entry's `distance`, its sets' distance and any laps (`distance_meters` and speed scaled by new over old distance), in one transaction, so measured heart rate and energy are kept; an entry with a GPS track is refused with 409.
+- Personal records or distance best-effort issue:
+  `services/exerciseStatsService.ts` `getPersonalRecordMatrix`. A distance record is the time for exactly that distance: the fastest stretch inside the activity's GPS track or distance series (`utils/bestSplit.ts`, `timeBasis: 'best_split'`), else, for an activity with no track within about 2% under to 5% over the standard, its pace scaled to the exact distance (`'activity_pace'`). Never report a longer or shorter activity's total time as a standard's time. Splits are cached in memory per activity, keyed by the track's `updated_at` and size, so a track is walked once (`splitCache`); the haversine fallback drops segments above a per-sport speed ceiling (`MAX_SPEED_MPS`). Matched courses (`getMatchedCourses`) compare only activities within 5% of the median distance.
 - Water, hydration, caffeine, or alcohol issue:
   inspect `services/hydrationTotalsService.ts` (the single owner of the daily water formula), `services/measurementService.ts` (the container "+/-" path and the container->food link), `services/caffeineKineticsService.ts` / `services/alcoholWeekService.ts`, `models/waterContainerRepository.ts`, and the shared maths in `../shared/src/nutrients/`
 - Self-service "delete synced data by source" issue:
