@@ -9,7 +9,7 @@ import {
   toWorkoutGpsPoints,
   type RecordedPoint,
   type RecordedSplit,
-  type RecordingActivity,
+  type DiaryActivity,
 } from './gpsRecording';
 
 /** Route points kept for the summary's map: enough for the shape, small for navigation params. */
@@ -21,7 +21,7 @@ const SUMMARY_ROUTE_POINTS = 250;
  * the screen cannot read it back.
  */
 export interface RunSummaryParams {
-  activity: RecordingActivity;
+  activity: DiaryActivity;
   /** The diary day the activity was filed on, YYYY-MM-DD. */
   entryDate: string;
   distanceUnit: 'km' | 'miles';
@@ -74,7 +74,7 @@ export function buildRunSummary({
   entryId,
   form,
 }: {
-  activity: RecordingActivity;
+  activity: DiaryActivity;
   entryDate: string;
   distanceUnit: 'km' | 'miles';
   points: readonly RecordedPoint[];

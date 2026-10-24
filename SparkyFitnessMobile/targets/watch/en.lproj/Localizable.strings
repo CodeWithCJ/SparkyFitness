@@ -48,8 +48,10 @@
 "watch.run.title.outdoorWalk" = "Outdoor walk";
 "watch.run.title.indoorRun" = "Indoor run";
 "watch.run.title.outdoorRun" = "Outdoor run";
+"watch.run.title.jumpRope" = "Jump Rope";
 "watch.run.cue.finishedMiles" = "%@ saved. %@ miles in %@.";
 "watch.run.cue.finishedKm" = "%@ saved. %@ kilometers in %@.";
+"watch.run.cue.finishedNoDistance" = "%@ saved. %@.";
 "watch.run.cue.step" = "%@, %@.";
 "watch.run.cue.splitMile" = "Mile %lld. %@.";
 "watch.run.cue.splitKm" = "Kilometer %lld. %@.";
@@ -91,10 +93,12 @@
 "watch.activity.walk" = "Walk";
 "watch.activity.run" = "Run";
 "watch.activity.ride" = "Ride";
+"watch.activity.jumpRope" = "Jump Rope";
 "watch.run.titleWithStatus" = "%@, %@";
 "watch.cardio.title" = "Cardio";
 "watch.cardio.followPlan" = "Follow a plan";
 "watch.cardio.routes" = "Routes";
+"watch.cardio.jumpRope.section" = "Jump rope";
 "watch.cardio.alerts" = "Alerts";
 "watch.cardio.summary.pace" = "Pace %@";
 "watch.cardio.summary.heartRate" = "Heart rate %lld–%lld";

@@ -648,6 +648,7 @@
     "personalRecords": "Personal records",
     "watchRunLive": "On your watch",
     "watchRunLiveRun": "Run on your watch",
+    "watchRunLiveJumpRope": "Jump Rope on your watch",
     "watchWalkLive": "Walk on your watch",
     "allergenSettings": "Allergens",
     "runProgramCalendar": "Program calendar",
@@ -7425,7 +7426,8 @@
       "outdoorWalk": "Outdoor walk",
       "indoorWalk": "Indoor walk",
       "outdoorRide": "Outdoor ride",
-      "indoorRide": "Indoor ride"
+      "indoorRide": "Indoor ride",
+      "jumpRope": "Jump Rope"
     },
     "gps": {
       "good": "GPS good",
@@ -7949,6 +7951,7 @@
     "runSaved": "Run saved",
     "walkSaved": "Walk saved",
     "rideSaved": "Ride saved",
+    "jumpRopeSaved": "Jump Rope saved",
     "avgHeartRate": "Avg heart rate",
     "programDone": "Program complete",
     "programProgress": "Workout {{done}} of {{total}} done",
@@ -8343,6 +8346,7 @@
     "autoPaused": "Auto-paused",
     "walking": "Walking on your watch",
     "running": "Running on your watch",
+    "jumpingRope": "Jumping rope on your watch",
     "next": "Next: {{step}}",
     "calories": "Calories",
     "kcal": "kcal",

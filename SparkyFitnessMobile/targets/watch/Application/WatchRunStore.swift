@@ -860,8 +860,9 @@ final class WatchRunStore: ObservableObject {
                 // Indoors the wearer is asked for the treadmill's distance
                 // first (the program's done cue waits for `confirmDistance`, so it
                 // is heard once, in the finish cue); the snapshot stays until the answer is sent, so a
-                // relaunch in between still delivers the run.
-                if save, endingPlace == .indoor, let scaled {
+                // relaunch in between still delivers the run. A jump rope covers
+                // no distance, so it is never asked.
+                if save, endingPlace == .indoor, ending.showsDistance, let scaled {
                     self.pendingResult = scaled
                     self.pendingElapsed = elapsed
                     self.phase = .confirmingDistance
@@ -872,12 +873,17 @@ final class WatchRunStore: ObservableObject {
                 // cue that reaches it behind that work is confirmed late, so the
                 // watch gave up waiting and said the cue too (heard twice).
                 if save {
-                    let finished = WatchRunCues.finishText(
-                        title: ending.title(endingPlace),
-                        distanceMeters: metrics.distanceMeters,
-                        seconds: elapsed,
-                        usesMiles: self.usesMiles
-                    )
+                    let finished = ending.showsDistance
+                        ? WatchRunCues.finishText(
+                            title: ending.title(endingPlace),
+                            distanceMeters: metrics.distanceMeters,
+                            seconds: elapsed,
+                            usesMiles: self.usesMiles
+                        )
+                        : WatchRunCues.finishText(
+                            title: ending.title(endingPlace),
+                            seconds: elapsed
+                        )
                     self.cue(self.programDoneText(completed: scaled?.planCompleted ?? false).map { "\(finished) \($0)" } ?? finished)
                 }
                 // The Health workout is stamped so the phone's import skips
@@ -936,7 +942,7 @@ final class WatchRunStore: ObservableObject {
 
     /// The learned indoor factor for a new run; outdoors the GPS needs none.
     private static func scale(for kind: WatchRunKind, place: WatchRunPlace) -> Double {
-        guard place == .indoor else { return 1 }
+        guard place == .indoor, kind != .jumpRope else { return 1 }
         return CheckInStore.shared.context.indoorDistanceScale?.factor(for: kind) ?? 1
     }
 

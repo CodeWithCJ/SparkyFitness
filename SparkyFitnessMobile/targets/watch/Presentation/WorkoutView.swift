@@ -2145,6 +2145,10 @@ private struct CardioChoicesView: View {
                             .buttonStyle(.plain)
                         }
                     }
+                    sectionTitle(String(localized: "watch.cardio.jumpRope.section", defaultValue: "Jump rope"))
+                    HStack(spacing: WatchStyle.s(6)) {
+                        tile(.jumpRope, .indoor)
+                    }
                     if !plans.isEmpty {
                         sectionTitle(String(localized: "watch.cardio.followPlan", defaultValue: "Follow a plan"))
                         ForEach(plans) { plan in
@@ -2227,7 +2231,7 @@ private struct CardioChoicesView: View {
                 Image(systemName: kind.symbol)
                     .font(.system(size: WatchStyle.s(22), weight: .semibold))
                     .foregroundStyle(.green)
-                Text(kind == .run ? String(localized: "watch.activity.run", defaultValue: "Run") : String(localized: "watch.activity.walk", defaultValue: "Walk"))
+                Text(kind.shortLabel)
                     .font(.system(size: WatchStyle.s(15), weight: .semibold))
                     .foregroundStyle(.white)
             }
