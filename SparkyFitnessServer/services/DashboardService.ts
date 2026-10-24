@@ -4,6 +4,8 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import calorieRuleHistoryRepository from '../models/calorieRuleHistoryRepository.js';
+import { preferencesOnDay } from './calorieRuleHistoryService.js';
 import nutrientGoalPreferenceService from './nutrientGoalPreferenceService.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import { log } from '../config/logging.js';
@@ -36,6 +38,7 @@ async function getDashboardStats(
       exerciseSplits,
       userProfile,
       userPreferences,
+      calorieRuleHistory,
       effectiveGoalTypes,
       measurements,
       checkInMeasurements,
@@ -63,6 +66,7 @@ async function getDashboardStats(
       ),
       userRepository.getUserProfile(userId),
       preferenceRepository.getUserPreferences(userId),
+      calorieRuleHistoryRepository.getCalorieRuleHistory(userId, date, date),
       nutrientGoalPreferenceService.getEffectiveGoalTypes(userId),
       includeCheckin
         ? measurementRepository.getLatestCheckInMeasurementsOnOrBeforeDate(
@@ -126,6 +130,7 @@ async function getDashboardStats(
     });
 
     const balance = computeCalorieBalance({
+      date,
       eatenCalories:
         nutritionData.length > 0
           ? parseFloat(nutritionData[0].calories) || 0
@@ -135,7 +140,9 @@ async function getDashboardStats(
       adjustedGoalCalories:
         parseFloat(String((goals as { calories?: unknown })?.calories)) || 2000,
       userProfile,
-      userPreferences,
+      userPreferences:
+        userPreferences &&
+        preferencesOnDay(userPreferences, calorieRuleHistory, date),
       measurements,
       ...deviceProjectionSnapshot,
     });

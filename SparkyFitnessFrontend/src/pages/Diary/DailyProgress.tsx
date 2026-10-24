@@ -29,20 +29,13 @@ import {
   useDailySteps,
   useAdaptiveTdee,
   useDailySummary,
-  useMostRecentWeightQuery,
-  useMostRecentHeightQuery,
-  useMostRecentBodyFatQuery,
 } from '@/hooks/Diary/useDailyProgress';
 import { DailyProgressSkeleton } from './DailyProgressSkeleton';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { formatWeight } from '@/utils/numberFormatting';
 import { EnergyCircle } from './EnergyProgressCircle';
-import { useAuth } from '@/hooks/useAuth';
-import { useProfileQuery } from '@/hooks/Settings/useProfile';
-import { useMostRecentMeasurement } from '@/hooks/CheckIn/useCheckIn';
 import {
   ACTIVITY_MULTIPLIERS,
-  calculateAge,
   computeCalorieTarget,
   isAdaptiveTdeeMature,
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
@@ -52,6 +45,7 @@ import {
   resolveCalorieSafetyFloor,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   isAdaptiveActivitySeparated,
+  withCalorieRuleDefaults,
 } from '@workspace/shared';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 import { getAdaptiveTdeeForGoal } from '@/utils/adaptiveTdee';
@@ -62,42 +56,13 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
   const navigate = useNavigate();
   const {
     loggingLevel,
-    calorieGoalAdjustmentMode: storedCalorieGoalAdjustmentMode,
     energyUnit,
     convertEnergy,
     weightUnit,
-    bmrAlgorithm,
     bodyFatAlgorithm,
-    goalMode,
-    goalModeCalculationMethod,
-    adaptiveActivitySeparate,
-    goalModeCustomPercentage,
-    goalModeWeeklyChangeKg,
-    calorieSafetyFloorMode,
-    calorieSafetyFloorValue,
-    activityLevel,
-    timezone,
   } = usePreferences();
 
-  // `smart` computes identically to `tdee` server-side and arrives with a populated
-  // `tdeeProjection`, but it has no UI of its own — so the untranslated value fell
-  // through the `=== 'tdee'` check below and hid the Daily Burn panel entirely.
-  const calorieGoalAdjustmentMode = normalizeCalorieGoalAdjustmentMode(
-    storedCalorieGoalAdjustmentMode
-  );
-
-  const { user } = useAuth();
-  const { data: userProfile } = useProfileQuery(user?.id);
   const { data: goalTypePreferences } = useNutrientGoalPreferences();
-  const { data: weightData } = useMostRecentWeightQuery();
-  const { data: heightData } = useMostRecentHeightQuery();
-  const { data: bodyFatData } = useMostRecentBodyFatQuery();
-  const { data: waistData } = useMostRecentMeasurement('waist');
-  const { data: neckData } = useMostRecentMeasurement('neck');
-  const { data: hipsData } = useMostRecentMeasurement('hips');
-
-  const isLeanMassBmr =
-    bmrAlgorithm === 'Katch-McArdle' || bmrAlgorithm === 'Cunningham';
 
   const { data: adaptiveTdeeData, isLoading: loadingAdaptiveTdee } =
     useAdaptiveTdee(selectedDate);
@@ -112,6 +77,31 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     isError: summaryError,
   } = useDailySummary(selectedDate);
 
+  // The calorie settings and measurements this day was worked out from
+  // (#1795), so a past day is not explained with today's settings or weight.
+  const {
+    bmr_algorithm: bmrAlgorithm,
+    goal_mode: goalMode,
+    goal_mode_calculation_method: goalModeCalculationMethod,
+    adaptive_activity_separate: adaptiveActivitySeparate,
+    goal_mode_custom_percentage: goalModeCustomPercentage,
+    goal_mode_weekly_change_kg: goalModeWeeklyChangeKg,
+    calorie_safety_floor_mode: calorieSafetyFloorMode,
+    calorie_safety_floor_value: calorieSafetyFloorValue,
+    activity_level: activityLevel,
+    calorie_goal_adjustment_mode: dayCalorieGoalAdjustmentMode,
+  } = withCalorieRuleDefaults(summaryData?.calorieInputs?.rules);
+
+  // `smart` computes identically to `tdee` server-side and arrives with a populated
+  // `tdeeProjection`, but it has no UI of its own — so the untranslated value fell
+  // through the `=== 'tdee'` check below and hid the Daily Burn panel entirely.
+  const calorieGoalAdjustmentMode = normalizeCalorieGoalAdjustmentMode(
+    dayCalorieGoalAdjustmentMode
+  );
+
+  const isLeanMassBmr =
+    bmrAlgorithm === 'Katch-McArdle' || bmrAlgorithm === 'Cunningham';
+
   const isLoading =
     loadingExercise ||
     loadingSteps ||
@@ -122,7 +112,13 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
     return <DailyProgressSkeleton />;
   }
 
-  if (summaryError || !summaryData?.calorieBalance) {
+  // An older server sends no calorieInputs; show the summary error rather
+  // than crash on it.
+  if (
+    summaryError ||
+    !summaryData?.calorieBalance ||
+    !summaryData.calorieInputs
+  ) {
     return (
       <Card className="h-full">
         <CardContent className="pt-6 pb-4">
@@ -242,16 +238,15 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
         )
       : calorieProgress;
 
-  const displayWeight = weightData?.weight || 70;
-  const displayHeight = heightData?.height || 170;
-  const displayBodyFat = bodyFatData?.body_fat_percentage ?? 0;
-  const displayWaist = waistData?.waist;
-  const displayNeck = neckData?.neck;
-  const displayHips = hipsData?.hips;
-  const displayGender = (userProfile?.gender || 'male') as 'male' | 'female';
-  const displayAge = userProfile?.date_of_birth
-    ? calculateAge(userProfile.date_of_birth, timezone)
-    : 30;
+  const calorieInputs = summaryData.calorieInputs;
+  const displayWeight = calorieInputs.weightKg;
+  const displayHeight = calorieInputs.heightCm;
+  const displayBodyFat = calorieInputs.bodyFatPercentage ?? 0;
+  const displayWaist = calorieInputs.waistCm;
+  const displayNeck = calorieInputs.neckCm;
+  const displayHips = calorieInputs.hipsCm;
+  const displayGender = calorieInputs.gender as 'male' | 'female';
+  const displayAge = calorieInputs.age;
 
   const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;
 

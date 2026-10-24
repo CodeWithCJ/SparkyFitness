@@ -12,6 +12,9 @@ import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: async () => [] },
+}));
 vi.mock('../models/userRepository.js');
 vi.mock('../models/preferenceRepository.js');
 vi.mock('../models/measurementRepository.js');
@@ -96,6 +99,7 @@ describe('adaptive activity separation', () => {
     'credits daily activity once and never adds BMR again (include BMR: %s)',
     (includeBmr) => {
       const balance = computeCalorieBalance({
+        date: '2026-10-01',
         eatenCalories: 2500,
         adjustedGoalCalories: 2000,
         exercise: { activeCalories: 800, otherCalories: 700, activitySteps: 0 },

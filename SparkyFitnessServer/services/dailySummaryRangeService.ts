@@ -4,6 +4,8 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import calorieRuleHistoryRepository from '../models/calorieRuleHistoryRepository.js';
+import { preferencesOnDay } from './calorieRuleHistoryService.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import { log } from '../config/logging.js';
 import {
@@ -108,6 +110,7 @@ export async function getDailySummaryRange({
     latestWeightHeight,
     userProfile,
     userPreferences,
+    calorieRuleHistory,
     healthConnectTotalRows,
   ] = await Promise.all([
     // Only `calories` is needed, so the custom-nutrient catalog is deliberately not
@@ -145,6 +148,11 @@ export async function getDailySummaryRange({
       : { weightKg: null, heightCm: null },
     userRepository.getUserProfile(targetUserId),
     preferenceRepository.getUserPreferences(targetUserId),
+    calorieRuleHistoryRepository.getCalorieRuleHistory(
+      targetUserId,
+      startDate,
+      endDate
+    ),
     includeCheckin
       ? genericHealthRepository
           .getHealthConnectTotalCaloriesByDateRange(
@@ -274,12 +282,15 @@ export async function getDailySummaryRange({
       date,
       stepCalories,
       ...computeCalorieBalance({
+        date,
         eatenCalories: eatenByDate.get(date) ?? 0,
         exercise,
         backgroundStepCalories: stepCalories,
         adjustedGoalCalories: Number(dayGoals?.calories) || 2000,
         userProfile,
-        userPreferences,
+        userPreferences:
+          userPreferences &&
+          preferencesOnDay(userPreferences, calorieRuleHistory, date),
         measurements: { ...carried, bmr: bmrByDate.get(date) ?? null },
         ...deviceProjectionSnapshot,
       }),

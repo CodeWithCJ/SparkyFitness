@@ -6,6 +6,7 @@ import {
 import { dailyGoalsResponseSchema } from './DailyGoals.api.zod.ts';
 import { foodEntryResponseSchema } from './FoodEntries.api.zod.ts';
 import { exerciseSessionResponseSchema } from './ExerciseEntries.api.zod.ts';
+import { calorieRulesSchema } from '../database/UserCalorieRuleHistory.zod.ts';
 
 export const calorieBalanceSchema = z.object({
   eaten: z.number(),
@@ -113,6 +114,27 @@ export const waterIntakeBreakdownSchema = z.object({
 
 export type WaterIntakeBreakdown = z.infer<typeof waterIntakeBreakdownSchema>;
 
+/**
+ * What the day's calorie target and BMR were worked out from: the calorie
+ * settings in force on that day (#1795) and the measurements on or before it,
+ * with the server's defaults applied. The Diary explains a day with these, so
+ * a past day is not explained with today's settings or today's weight.
+ */
+export const calorieInputsSchema = z.object({
+  /** With `CALORIE_RULE_DEFAULTS` applied, as the server calculated. */
+  rules: calorieRulesSchema.required(),
+  age: z.number(),
+  gender: z.string(),
+  weightKg: z.number(),
+  heightCm: z.number(),
+  bodyFatPercentage: z.number().nullable(),
+  waistCm: z.number().nullable(),
+  neckCm: z.number().nullable(),
+  hipsCm: z.number().nullable(),
+});
+
+export type CalorieInputs = z.infer<typeof calorieInputsSchema>;
+
 export const dailySummaryResponseSchema = z.object({
   goals: dailyGoalsResponseSchema,
   foodEntries: z.array(foodEntryResponseSchema),
@@ -121,6 +143,7 @@ export const dailySummaryResponseSchema = z.object({
   waterIntakeBreakdown: waterIntakeBreakdownSchema.nullable().optional(),
   stepCalories: z.number(),
   calorieBalance: calorieBalanceSchema,
+  calorieInputs: calorieInputsSchema,
   adjustedGoals: adjustedGoalsSchema.nullable(),
   supplementTotals: supplementTotalsSchema,
 });

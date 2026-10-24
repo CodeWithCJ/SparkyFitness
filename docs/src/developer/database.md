@@ -175,6 +175,7 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | `user_custom_nutrients` | Custom nutrient definitions |
 | `user_nutrient_goal_preferences` | Per-user minimum/maximum/target goal direction override per nutrient (predefined or custom) |
 | `user_water_containers` | Configured container sizes |
+| `user_calorie_rule_history` | Calorie settings in force from each change on, so past days keep their target |
 | `user_dashboard_layouts` | Rearranged dashboard widget positions |
 | `user_medication_display_preferences` | GLP-1/Medication display preferences |
 | `user_mood_display_preferences` | Mood picker visibility settings |

@@ -1,6 +1,6 @@
 import bmrService from './bmrService.js';
 import { log } from '../config/logging.js';
-import { userAge } from '../utils/dateHelpers.js';
+import { ageOnDay } from '../utils/dateHelpers.js';
 import type {
   ExerciseSessionResponse,
   CalorieBalance,
@@ -80,6 +80,8 @@ export interface FoodEntryCalorieLike {
 }
 
 export interface CalorieBalanceInputs {
+  /** The calendar day balanced, 'YYYY-MM-DD'. */
+  date: string;
   /** Food + supplement kcal for the day, already scaled by quantity/serving size. */
   eatenCalories: number;
   /** The day's exercise entries, split by source. */
@@ -101,6 +103,39 @@ export interface CalorieBalanceInputs {
    * See `resolveDayFraction` -- pass 1 for a completed day.
    */
   dayFraction: number;
+}
+
+export interface BmrInputs {
+  age: number;
+  gender: string;
+  weightKg: number;
+  heightCm: number;
+  bodyFatPercentage?: number;
+}
+
+/**
+ * The body inputs the BMR formula uses on `date`, with the defaults applied.
+ * Shared with the daily summary so the Diary explains the BMR with these same
+ * values. Age is taken on that day, so a birthday does not move past days.
+ */
+export function resolveBmrInputs(
+  userProfile: CalorieBalanceUserProfile | null,
+  measurements: CalorieBalanceMeasurements | null,
+  date: string
+): BmrInputs {
+  return {
+    age: ageOnDay(userProfile?.date_of_birth, date) ?? 30,
+    gender: userProfile?.gender || 'male',
+    weightKg:
+      parseFloat(String(measurements?.weight ?? '')) ||
+      CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG,
+    heightCm:
+      parseFloat(String(measurements?.height ?? '')) ||
+      CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM,
+    bodyFatPercentage: measurements?.body_fat_percentage
+      ? parseFloat(String(measurements.body_fat_percentage))
+      : undefined,
+  };
 }
 
 /** Below this the day is too young to extrapolate from without wild swings (~72 min). */
@@ -242,6 +277,7 @@ export function sumFoodEntryCalories(
  * Explicit Device Projection modes continue to use their device-based goal.
  */
 export function computeCalorieBalance({
+  date,
   eatenCalories,
   exercise,
   backgroundStepCalories,
@@ -259,19 +295,9 @@ export function computeCalorieBalance({
   const includeInNet = userPreferences?.include_bmr_in_net_calories || false;
 
   if (userProfile && userPreferences) {
-    const tz = userPreferences.timezone || 'UTC';
-    const age = userAge(userProfile.date_of_birth ?? '', tz) ?? 30;
-    const gender = userProfile.gender || 'male';
     const bmrAlgorithm = userPreferences.bmr_algorithm || 'Mifflin-St Jeor';
-    const weightKg =
-      parseFloat(String(measurements?.weight ?? '')) ||
-      CALORIE_CALCULATION_CONSTANTS.DEFAULT_WEIGHT_KG;
-    const heightCm =
-      parseFloat(String(measurements?.height ?? '')) ||
-      CALORIE_CALCULATION_CONSTANTS.DEFAULT_HEIGHT_CM;
-    const bodyFat = measurements?.body_fat_percentage
-      ? parseFloat(String(measurements.body_fat_percentage))
-      : undefined;
+    const { age, gender, weightKg, heightCm, bodyFatPercentage } =
+      resolveBmrInputs(userProfile, measurements, date);
 
     try {
       bmr = bmrService.calculateBmr(
@@ -280,7 +306,7 @@ export function computeCalorieBalance({
         heightCm,
         age,
         gender,
-        bodyFat
+        bodyFatPercentage
       );
     } catch (error: unknown) {
       log(

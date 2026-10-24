@@ -4,6 +4,8 @@ import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import calorieRuleHistoryRepository from '../models/calorieRuleHistoryRepository.js';
+import { preferencesOnDay } from './calorieRuleHistoryService.js';
 import bmrService from './bmrService.js';
 import { getAdaptiveActivityCalories } from './adaptiveActivityService.js';
 import { log } from '../config/logging.js';
@@ -471,13 +473,19 @@ async function calculateAdaptiveTdee(
     // Fetch all necessary data in parallel
     const [
       userProfile,
-      userPreferences,
+      currentPreferences,
+      calorieRuleHistory,
       checkInMeasurements,
       nutritionData,
       latestMeasurement,
     ] = await Promise.all([
       userRepository.getUserProfile(userId),
       preferenceRepository.getUserPreferences(userId),
+      calorieRuleHistoryRepository.getCalorieRuleHistory(
+        userId,
+        endDateStr,
+        endDateStr
+      ),
       measurementRepository.getCheckInMeasurementsByDateRange(
         userId,
         startDateStr,
@@ -486,6 +494,10 @@ async function calculateAdaptiveTdee(
       reportRepository.getNutritionData(userId, startDateStr, endDateStr, []),
       measurementRepository.getLatestMeasurement(userId),
     ]);
+    // The settings in force on the calculation day, not today's (#1795).
+    const userPreferences =
+      currentPreferences &&
+      preferencesOnDay(currentPreferences, calorieRuleHistory, endDateStr);
 
     const result = computeAdaptiveTdeeFromData(
       {
@@ -563,12 +575,18 @@ async function calculateAdaptiveTdeeRange(
     const [
       userProfile,
       userPreferences,
+      calorieRuleHistory,
       checkInMeasurements,
       nutritionData,
       latestMeasurement,
     ] = await Promise.all([
       userRepository.getUserProfile(userId),
       preferenceRepository.getUserPreferences(userId),
+      calorieRuleHistoryRepository.getCalorieRuleHistory(
+        userId,
+        startDateStr,
+        endDateStr
+      ),
       measurementRepository.getCheckInMeasurementsByDateRange(
         userId,
         fetchStartDateStr,
@@ -583,11 +601,18 @@ async function calculateAdaptiveTdeeRange(
       measurementRepository.getLatestMeasurement(userId),
     ]);
 
-    const activityCaloriesByDate = isAdaptiveActivitySeparated(
-      userPreferences?.calorie_goal_adjustment_mode,
-      userPreferences?.goal_mode_calculation_method,
-      userPreferences?.adaptive_activity_separate
-    )
+    // Each day uses the settings in force on it, not today's (#1795).
+    const preferencesOn = (dateStr: string) =>
+      userPreferences &&
+      preferencesOnDay(userPreferences, calorieRuleHistory, dateStr);
+    const activityCaloriesByDate = days.some((day) => {
+      const dayPreferences = preferencesOn(format(day, 'yyyy-MM-dd'));
+      return isAdaptiveActivitySeparated(
+        dayPreferences?.calorie_goal_adjustment_mode,
+        dayPreferences?.goal_mode_calculation_method,
+        dayPreferences?.adaptive_activity_separate
+      );
+    })
       ? await getAdaptiveActivityCalories(
           userId,
           fetchStartDateStr,
@@ -603,7 +628,7 @@ async function calculateAdaptiveTdeeRange(
       const result = computeAdaptiveTdeeFromData(
         {
           profile: userProfile,
-          preferences: userPreferences,
+          preferences: preferencesOn(dateStr),
           latestMeasurement,
           checkInMeasurements: checkInMeasurements || [],
           nutritionData: nutritionData || [],

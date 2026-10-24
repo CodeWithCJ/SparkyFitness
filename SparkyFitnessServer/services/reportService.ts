@@ -3,6 +3,8 @@ import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import goalService from './goalService.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import calorieRuleHistoryRepository from '../models/calorieRuleHistoryRepository.js';
+import { preferencesOnDay } from './calorieRuleHistoryService.js';
 import bmrService from './bmrService.js';
 import sleepAnalyticsService from './sleepAnalyticsService.js';
 import customNutrientService from './customNutrientService.js';
@@ -34,7 +36,7 @@ import {
   TRAINING_CONSISTENCY_WEEKS,
   type TrainingConsistency,
 } from '@workspace/shared';
-import { userAge } from '../utils/dateHelpers.js';
+import { ageOnDay } from '../utils/dateHelpers.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import heartRateZoneService from './heartRateZoneService.js';
 import { loadFirstDayOfWeek } from '../utils/firstDayOfWeek.js';
@@ -157,6 +159,7 @@ async function getReportsData(
       customCategoriesResult,
       userProfile,
       userPreferences,
+      calorieRuleHistory,
       sleepAnalyticsData,
       medications,
       medicationEntries,
@@ -181,6 +184,11 @@ async function getReportsData(
       measurementRepository.getCustomCategories(targetUserId),
       userRepository.getUserProfile(targetUserId),
       preferenceRepository.getUserPreferences(targetUserId),
+      calorieRuleHistoryRepository.getCalorieRuleHistory(
+        targetUserId,
+        startDate,
+        endDate
+      ),
       sleepAnalyticsService.getSleepAnalytics(targetUserId, startDate, endDate),
       medicationRepository.listMedications(targetUserId),
       medicationEntryRepository.listEntries(targetUserId, {
@@ -300,11 +308,19 @@ async function getReportsData(
     );
     // BMR Calculation
     if (userProfile && userPreferences) {
-      const tz = userPreferences?.timezone || 'UTC';
-      const age = userAge(userProfile.date_of_birth, tz);
       const gender = userProfile.gender;
-      const bmrAlgorithm = userPreferences.bmr_algorithm;
       nutritionData.forEach((day: Record<string, unknown>) => {
+        // The settings in force on that day, not today's (#1795).
+        const dayPreferences = preferencesOnDay(
+          userPreferences,
+          calorieRuleHistory,
+          String(day.date).slice(0, 10)
+        );
+        const bmrAlgorithm = dayPreferences.bmr_algorithm;
+        const age = ageOnDay(
+          userProfile.date_of_birth,
+          String(day.date).slice(0, 10)
+        );
         // Find the most recent measurement on or before the current day
         const relevantMeasurements = (measurementData as MeasurementEntry[])
           .filter(
@@ -366,12 +382,12 @@ async function getReportsData(
         // own formula estimate; with no estimate to compare, the absolute bounds
         // decide on their own.
         day.bmr =
-          userPreferences?.use_external_bmr &&
+          dayPreferences.use_external_bmr &&
           isUsableMeasuredBmr(measuredBmr, formulaBmr)
             ? Number(measuredBmr)
             : formulaBmr;
         day.include_bmr_in_net_calories =
-          userPreferences.include_bmr_in_net_calories;
+          dayPreferences.include_bmr_in_net_calories;
       });
     }
     const exerciseEntries = exerciseEntriesRaw.map((entry: WorkoutEntry) => ({

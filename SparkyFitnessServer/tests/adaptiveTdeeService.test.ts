@@ -11,6 +11,9 @@ import reportRepository from '../models/reportRepository.js';
 import bmrService from '../services/bmrService.js';
 import { subDays, format, startOfDay } from 'date-fns';
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: async () => [] },
+}));
 vi.mock('../models/userRepository');
 vi.mock('../models/preferenceRepository');
 vi.mock('../models/measurementRepository');

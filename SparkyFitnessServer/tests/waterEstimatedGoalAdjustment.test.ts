@@ -9,6 +9,9 @@ import measurementRepository from '../models/measurementRepository.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import customNutrientService from '../services/customNutrientService.js';
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: async () => [] },
+}));
 vi.mock('../models/goalRepository');
 vi.mock('../models/weeklyGoalPlanRepository');
 vi.mock('../models/goalPresetRepository');

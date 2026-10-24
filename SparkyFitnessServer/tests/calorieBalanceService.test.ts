@@ -9,6 +9,7 @@ import {
   type CalorieBalanceInputs,
 } from '../services/calorieBalanceService.js';
 import bmrService from '../services/bmrService.js';
+import { ageOnDay } from '../utils/dateHelpers.js';
 
 vi.mock('../services/bmrService.js', () => ({
   default: { calculateBmr: vi.fn() },
@@ -66,6 +67,7 @@ beforeEach(() => {
 const inputs = (
   overrides: Partial<CalorieBalanceInputs> = {}
 ): CalorieBalanceInputs => ({
+  date: '2026-10-01',
   eatenCalories: 2000,
   exercise: { activeCalories: 0, otherCalories: 0, activitySteps: 0 },
   backgroundStepCalories: 0,
@@ -80,6 +82,52 @@ const inputs = (
   measurements: { weight: 80, height: 180 },
   dayFraction: 1,
   ...overrides,
+});
+
+describe('ageOnDay', () => {
+  test.each([
+    ['1990-06-15', '2026-06-14', 35],
+    ['1990-06-15', '2026-06-15', 36],
+    ['2000-02-29', '2026-02-28', 25],
+    ['2000-02-29', '2026-03-01', 26],
+    ['1990-12-31', '2026-12-31', 36],
+    ['1990-12-31', '2027-01-01', 36],
+  ])('born %s is the right age on %s', (dob, day, age) => {
+    expect(ageOnDay(dob, day)).toBe(age);
+  });
+
+  // pg reads a DATE column as local midnight.
+  test('takes a date of birth read from the database', () => {
+    expect(ageOnDay(new Date(1990, 5, 15), '2026-06-14')).toBe(35);
+    expect(ageOnDay(new Date(1990, 5, 15), '2026-06-15')).toBe(36);
+  });
+
+  test('is null without a date of birth', () => {
+    expect(ageOnDay(null, '2026-06-15')).toBeNull();
+  });
+});
+
+describe('age in the BMR formula', () => {
+  test.each([
+    ['2026-06-14', 35],
+    ['2026-06-15', 36],
+  ])('on %s is the age that day', (date, age) => {
+    computeCalorieBalance(
+      inputs({
+        date,
+        userProfile: { date_of_birth: '1990-06-15', gender: 'male' },
+      })
+    );
+
+    expect(bmrService.calculateBmr).toHaveBeenCalledWith(
+      expect.any(String),
+      80,
+      180,
+      age,
+      'male',
+      undefined
+    );
+  });
 });
 
 describe('resolveExerciseCalories via computeCalorieBalance', () => {
