@@ -14,6 +14,7 @@ import {
 import { Platform, Alert } from 'react-native';
 import { addLog } from '../LogService';
 import i18n from '../../localization/i18n';
+import { isAuthorizationNotDeterminedError } from '../../utils/healthErrors';
 import {
   AggregatedHealthRecord,
   MetricConfig,
@@ -130,6 +131,11 @@ const recordReadError = (error: unknown, label: string): string => {
     addLog(
       `[HealthKitService] ${label} failed: database inaccessible (device likely locked)`,
       'WARNING'
+    );
+  } else if (isAuthorizationNotDeterminedError(error)) {
+    addLog(
+      `[HealthKitService] ${label}: authorization not determined (permission not yet granted)`,
+      'INFO'
     );
   } else {
     addLog(`[HealthKitService] ${label} failed: ${message}`, 'ERROR');

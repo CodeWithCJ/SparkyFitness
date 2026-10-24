@@ -72,6 +72,7 @@ describe('HealthTrendsSettingsScreen', () => {
         'weight',
         'hydration',
         'calories',
+        'heartRate',
         'vo2max',
       ],
     });
@@ -84,6 +85,7 @@ describe('HealthTrendsSettingsScreen', () => {
       'weight',
       'hydration',
       'calories',
+      'heartRate',
       'vo2max',
     ]);
     expect(orderedRowKeys()).toHaveLength(HEALTH_TREND_KEYS.length);
@@ -120,6 +122,7 @@ describe('HealthTrendsSettingsScreen', () => {
       'sleep',
       'hydration',
       'calories',
+      'heartRate',
       'vo2max',
     ]);
   });

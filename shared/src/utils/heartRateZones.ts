@@ -13,6 +13,14 @@
 
 export const HR_ZONE_COUNT = 5;
 
+/** Standard 4-tier zone color palette: Light (cyan), Moderate (green), Vigorous (amber), Peak (red). */
+export const HEART_RATE_ZONE_COLORS = [
+  '#06b6d4',
+  '#22c55e',
+  '#eab308',
+  '#ef4444',
+] as const;
+
 /** How the five zone floors are worked out. */
 export const HR_ZONE_METHODS = [
   'percent_max',

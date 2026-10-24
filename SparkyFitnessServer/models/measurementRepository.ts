@@ -69,6 +69,7 @@ const ALLOWED_CHECK_IN_COLUMNS = [
   'bone_mass_kg',
   'body_water_percentage',
   'bmr',
+  'resting_heart_rate',
 ];
 // Column types for the batch-UPDATE unnest casts in bulkUpsertCheckInMeasurements.
 const CHECK_IN_COLUMN_TYPES: Record<string, string> = {
@@ -83,6 +84,7 @@ const CHECK_IN_COLUMN_TYPES: Record<string, string> = {
   bone_mass_kg: 'numeric',
   body_water_percentage: 'numeric',
   bmr: 'numeric',
+  resting_heart_rate: 'integer',
 };
 // Tolerance in milliliters for matching historical manual records with incoming sync data
 const WATER_ADOPTION_TOLERANCE_ML = 5;
@@ -636,6 +638,7 @@ async function getLatestCheckInMeasurementsOnOrBeforeDate(
          -- Exact date, like steps: a measured BMR applies to the day it was taken
          -- and no other, so days without a reading fall back to the user's formula.
          (SELECT bmr FROM check_in_measurements WHERE user_id = $1 AND entry_date = $2 AND bmr IS NOT NULL AND bmr > 0 LIMIT 1) as bmr,
+         (SELECT resting_heart_rate FROM check_in_measurements WHERE user_id = $1 AND entry_date <= $2 AND resting_heart_rate IS NOT NULL AND resting_heart_rate > 0 ORDER BY entry_date DESC LIMIT 1) as resting_heart_rate,
          le.created_at,
          le.updated_at,
          le.created_by_user_id,

@@ -367,7 +367,7 @@ async function getMeasurementData(
   const client = await getClient(userId); // User-specific operation
   try {
     const result = await client.query(
-      "SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, weight, neck, waist, hips, steps, height, body_fat_percentage, muscle_mass_kg, bone_mass_kg, body_water_percentage, bmr FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date",
+      "SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date, weight, neck, waist, hips, steps, height, body_fat_percentage, muscle_mass_kg, bone_mass_kg, body_water_percentage, bmr, resting_heart_rate FROM check_in_measurements WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3 ORDER BY entry_date",
       [userId, startDate, endDate]
     );
     return result.rows;
@@ -557,8 +557,19 @@ async function getExerciseEntries(
     let query = `SELECT
          ee.id,
          TO_CHAR(ee.entry_date, 'YYYY-MM-DD') AS entry_date,
+         ee.entry_time,
          ee.duration_minutes,
          ee.calories_burned,
+         ee.distance,
+         ee.avg_heart_rate,
+         ee.max_heart_rate,
+         ee.heart_rate_recovery_1min,
+         ee.avg_speed_mps,
+         ee.max_speed_mps,
+         ee.avg_cadence,
+         ee.max_cadence,
+         ee.avg_power_watts,
+         ee.elevation_gain_meters,
          ee.notes,
          ee.exercise_id,
          ee.exercise_name,

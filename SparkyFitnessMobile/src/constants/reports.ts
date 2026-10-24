@@ -14,6 +14,7 @@ export const REPORT_KEYS = [
   'measurements',
   'mood',
   'exercise',
+  'heartRate',
   'compare',
 ] as const;
 
@@ -40,6 +41,7 @@ export const REPORT_LABELS: Record<ReportKey, (t: Translator) => string> = {
     t('reports.measurements', { defaultValue: 'Measurements' }),
   mood: (t) => t('reports.mood', { defaultValue: 'Mood' }),
   exercise: (t) => t('reports.exercise', { defaultValue: 'Exercise' }),
+  heartRate: (t) => t('reports.heartRate', { defaultValue: 'Heart Rate' }),
   compare: (t) => t('reports.compare', { defaultValue: 'Compare' }),
 };
 
@@ -123,6 +125,13 @@ export const MOOD_SECTIONS = [
   'mood.topMoods',
 ] as const;
 
+export const HEART_RATE_SECTIONS = [
+  'heartRate.overview',
+  'heartRate.insights',
+  'heartRate.restingHrChart',
+  'heartRate.zones',
+] as const;
+
 /** One chart per overnight reading on the sleep report; each can be hidden. */
 export const sleepMetricSection = (metric: SleepAnalyticsMetric) =>
   `sleep.metric.${metric}` as const;
@@ -135,6 +144,7 @@ export type ReportSectionKey =
   | (typeof MEASUREMENTS_SECTIONS)[number]
   | (typeof SLEEP_SECTIONS)[number]
   | (typeof MOOD_SECTIONS)[number]
+  | (typeof HEART_RATE_SECTIONS)[number]
   | ReturnType<typeof sleepMetricSection>;
 
 /** What a report opens on until the wearer picks, and what `reportDefaultRange` starts as. */

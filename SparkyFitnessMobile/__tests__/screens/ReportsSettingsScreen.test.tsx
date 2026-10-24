@@ -73,6 +73,7 @@ describe('ReportsSettingsScreen', () => {
       'sleep',
       'measurements',
       'exercise',
+      'heartRate',
       'compare',
     ]);
   });
@@ -98,6 +99,7 @@ describe('ReportsSettingsScreen', () => {
         'measurements',
         'mood',
         'exercise',
+        'heartRate',
       ],
     });
 

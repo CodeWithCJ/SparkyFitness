@@ -13,6 +13,7 @@ import { useCustomNutrients } from '../hooks/useCustomNutrients';
 import { useServerConnection } from '../hooks/useServerConnection';
 import {
   EXERCISE_SECTIONS,
+  HEART_RATE_SECTIONS,
   HYDRATION_SECTIONS,
   MEASUREMENTS_SECTIONS,
   MOOD_SECTIONS,
@@ -215,6 +216,18 @@ const SECTION_LABELS: Record<
     }),
   'mood.topMoods': (t) =>
     t('reportsSettings.sections.moodTopMoods', { defaultValue: 'Most logged' }),
+  'heartRate.insights': (t) =>
+    t('reportsSettings.sections.insights', { defaultValue: 'What stood out' }),
+  'heartRate.overview': (t) =>
+    t('reportsSettings.sections.overview', { defaultValue: 'Key figures' }),
+  'heartRate.restingHrChart': (t) =>
+    t('reportsSettings.sections.restingHrChart', {
+      defaultValue: 'Resting heart rate chart',
+    }),
+  'heartRate.zones': (t) =>
+    t('reportsSettings.sections.heartRateZones', {
+      defaultValue: 'Intensity zones',
+    }),
 };
 
 const SLEEP_METRIC_LABELS: Record<
@@ -500,6 +513,14 @@ const ReportsSettingsScreen: React.FC<ReportsSettingsScreenProps> = () => {
           t('reportsSettings.moodSections', { defaultValue: 'Mood report' }),
           'reports-section',
           MOOD_SECTIONS,
+          sectionLabel
+        )}
+        {renderSections(
+          t('reportsSettings.heartRateSections', {
+            defaultValue: 'Heart rate report',
+          }),
+          'reports-section',
+          HEART_RATE_SECTIONS,
           sectionLabel
         )}
       </ScrollView>

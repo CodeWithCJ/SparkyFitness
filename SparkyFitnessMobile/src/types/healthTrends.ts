@@ -42,3 +42,12 @@ export type CaloriesDataPoint = {
   carbs: number;
   fat: number;
 };
+
+/** A day's resting heart rate and min/max/average stats, in bpm. */
+export type HeartRateDataPoint = {
+  day: string;
+  restingHr: number;
+  minHr?: number | null;
+  maxHr?: number | null;
+  avgHr?: number | null;
+};

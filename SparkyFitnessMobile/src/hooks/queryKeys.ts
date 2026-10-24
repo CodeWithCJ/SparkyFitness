@@ -130,6 +130,16 @@ export const vo2MaxRangeQueryKeyRoot = ['vo2MaxRange'] as const;
 export const vo2MaxRangeQueryKey = (startDate: string, endDate: string) =>
   [...vo2MaxRangeQueryKeyRoot, startDate, endDate] as const;
 
+export const heartRateRangeQueryKeyRoot = ['heartRateRange'] as const;
+
+export const heartRateRangeQueryKey = (startDate: string, endDate: string) =>
+  [...heartRateRangeQueryKeyRoot, startDate, endDate] as const;
+
+export const heartRateReportQueryKeyRoot = ['heartRateReport'] as const;
+
+export const heartRateReportQueryKey = (startDate: string, endDate: string) =>
+  [...heartRateReportQueryKeyRoot, startDate, endDate] as const;
+
 export const waterIntakeRangeQueryKey = (startDate: string, endDate: string) =>
   ['waterIntakeRange', startDate, endDate] as const;
 

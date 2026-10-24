@@ -111,7 +111,7 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 ### Measurements & Health (Tier 1/3: Owner-Only or Delegate-Write)
 | Table | Purpose |
 |-------|---------|
-| `check_in_measurements` | Weight, body composition, BMR, and circumference measurements |
+| `check_in_measurements` | Weight, body composition, BMR, circumference measurements, and resting heart rate |
 | `check_in_photos` | Progress photos |
 | `custom_measurements` | User-defined custom measurement types |
 | `custom_categories` | User-defined measurement categories |
@@ -123,7 +123,7 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | `sleep_need_calculations` | AI sleep need calculations |
 | `daily_sleep_need` | Sleep goals calculated for the day |
 | `health_metric_samples` | Intraday wearable telemetry — heart rate, HRV, respiration, SpO2, stress, body battery, skin temperature. One JSONB-bucketed row per user/metric/day/provider (not one row per sample) |
-| `vitals_entries` | Blood pressure, blood glucose, and temperature logs |
+| `vitals_entries` | Blood pressure, blood glucose, temperature, and pulse logs |
 | `daily_health_metrics` | Daily automated wearable summary, scores, and source-timed total calories |
 
 ### Fasting, Mood, Medications, & Symptoms (Tier 1/3: Owner-Only or Delegate-Write)

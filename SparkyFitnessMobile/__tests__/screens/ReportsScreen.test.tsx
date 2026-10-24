@@ -53,6 +53,7 @@ describe('ReportsScreen', () => {
     ['measurements', 'MeasurementsReport'],
     ['mood', 'MoodReport'],
     ['exercise', 'ExerciseStatistics'],
+    ['heartRate', 'HeartRateReport'],
     ['compare', 'CompareReport'],
   ])('opens the %s report', (key, route) => {
     const { getByTestId } = render(<ReportsScreen {...props} />);
@@ -81,6 +82,7 @@ describe('ReportsScreen', () => {
       'hydration',
       'substances',
       'measurements',
+      'heartRate',
       'compare',
     ]);
     expect(queryByTestId('reports-link-sleep')).toBeNull();

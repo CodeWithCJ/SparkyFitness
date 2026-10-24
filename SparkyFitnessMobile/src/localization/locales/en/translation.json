@@ -643,6 +643,7 @@
     "hydrationReport": "Hydration",
     "measurementsReport": "Measurements",
     "substancesReport": "Caffeine and alcohol",
+    "heartRateReport": "Heart Rate",
     "runSummary": "Activity saved",
     "runPrograms": "Training programs",
     "personalRecords": "Personal records",
@@ -5158,6 +5159,13 @@
     },
     "allTrendsHidden": "All graphs are hidden. Choose which to show in Dashboard Settings.",
     "noTrendData": "No data to graph yet.",
+    "heartRate": {
+      "title": "Resting Heart Rate",
+      "avgLabel": "AVG",
+      "rangeLabel": "RANGE",
+      "loadFailed": "Failed to load heart rate data",
+      "empty": "No heart rate data for this period"
+    },
     "vo2max": {
       "title": "VO2 max",
       "loadFailed": "Failed to load VO2 max data",
@@ -7658,7 +7666,33 @@
     "substances": "Caffeine and alcohol",
     "substancesSubtitle": "Daily caffeine, alcohol totals and week by week",
     "compare": "Compare",
-    "compareSubtitle": "How two things move together"
+    "compareSubtitle": "How two things move together",
+    "heartRate": "Heart Rate",
+    "heartRateSubtitle": "Resting HR trends and zone distribution",
+    "details": "View report details",
+    "heartRateChangeVsPrevious": "{{change}} bpm vs previous period",
+    "averageRestingHr": "Average Resting Heart Rate",
+    "restingHrRange": "Resting HR Range",
+    "heartRateRecovery1Min": "1-Min Recovery",
+    "heartRateRecoveryHint": "Heart rate drop 1 minute post-exercise",
+    "recordedDays": "Recorded Days",
+    "daysRatio": "{{daysWithData}} of {{totalDays}} days",
+    "heartRateLoadFailed": "Failed to load heart rate data",
+    "heartRateEmpty": "No heart rate data recorded for this period",
+    "restingHeartRateTrend": "Resting Heart Rate Trend",
+    "heartRateZones": "Heart Rate Intensity Zones",
+    "zoneLight": "Light",
+    "zoneLightRange": "< {{max}} bpm · Warm-up & active recovery",
+    "zoneModerate": "Moderate",
+    "zoneModerateRange": "{{min}} - {{max}} bpm · Aerobic & fat burn",
+    "zoneVigorous": "Vigorous",
+    "zoneVigorousRange": "{{min}} - {{max}} bpm · Cardio endurance",
+    "zonePeak": "Peak",
+    "zonePeakRange": "{{min}}+ bpm · Maximum effort & anaerobic",
+    "heartRateSummary": "Heart Rate Summary",
+    "heartRateInsights": "Resting Heart Rate Insights",
+    "insightAthletic": "Your average resting heart rate is in the athletic range (<60 bpm), reflecting strong cardiovascular efficiency.",
+    "insightNormal": "A typical healthy adult resting heart rate ranges from 60 to 100 bpm. Lower rates generally reflect higher cardiovascular fitness."
   },
   "nutritionReport": {
     "title": "Nutrition",
@@ -7843,7 +7877,9 @@
       "caffeineSummary": "Caffeine summary",
       "alcoholChart": "Alcohol chart",
       "alcoholSummary": "Alcohol summary",
-      "substancesWeekly": "Week by week"
+      "substancesWeekly": "Week by week",
+      "restingHrChart": "Resting heart rate chart",
+      "heartRateZones": "Intensity zones"
     },
     "hydrationSections": "Hydration report",
     "measurementsSections": "Measurements report",
@@ -7851,7 +7887,8 @@
     "nutrientsDescription": "Pick the vitamins, minerals and other nutrients the Nutrition report averages under Your nutrients, and drag to set their order. Custom nutrients are included.",
     "nutrientReorderHint": "Changes where this nutrient sits in the report",
     "substancesSections": "Caffeine and alcohol report",
-    "exerciseSections": "Exercise report"
+    "exerciseSections": "Exercise report",
+    "heartRateSections": "Heart rate report"
   },
   "hydrationReport": {
     "title": "Hydration",

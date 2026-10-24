@@ -22,6 +22,8 @@ export const checkInMeasurementsResponseSchema = checkInMeasurementsSchema
     bone_mass_kg: z.number().nullish(),
     body_water_percentage: z.number().nullish(),
     bmr: z.number().nullish(),
+    // Whole beats per minute, matching the column's CHECK (25 to 250)
+    resting_heart_rate: z.number().int().min(25).max(250).nullish(),
   })
   .omit({
     created_at: true,
@@ -39,6 +41,7 @@ export const recentCheckInMeasurementsSchema = z.object({
   bone_mass_kg: z.number().nullish(),
   body_water_percentage: z.number().nullish(),
   bmr: z.number().nullish(),
+  resting_heart_rate: z.number().nullish(),
 });
 
 export const updateCheckInMeasurementsRequestSchema =

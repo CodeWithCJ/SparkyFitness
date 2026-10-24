@@ -158,7 +158,7 @@ Symptoms are their own domain (they used to share the medications permission). P
 
 | Table Name | Description | Write (insert/update/delete) | Read (select) |
 | :--- | :--- | :--- | :--- |
-| `check_in_measurements` | Weight, body composition, BMR, and circumference measurements | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
+| `check_in_measurements` | Weight, body composition, BMR, circumference measurements, and resting heart rate | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 | `check_in_photos` | Progress photos (image bytes served only via the authenticated `GET /api/measurements/check-in-photos/file/{id}`; excluded from the public `/uploads` static mount) | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 | `sleep_entries` | Sleep logs (bedtime, wake time) | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 | `sleep_entry_stages` | Sleep stage breakdowns (REM, Deep, Light) | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
@@ -176,7 +176,7 @@ Symptoms are their own domain (they used to share the medications permission). P
 | `exercise_entry_gps_points` | GPS trackpoints & telemetry for exercise entries (one row per workout; `points` holds the whole track as JSONB) | Delegate with `can_manage_diary` | Delegate with `can_manage_diary` or `can_view_reports` |
 | `exercise_entry_hr_zones` | Time-in-heart-rate-zone splits for exercise entries (`zone_method` records the zone method each breakdown was stored with and is not rewritten when zone settings change) | Delegate with `can_manage_diary` | Delegate with `can_manage_diary` or `can_view_reports` |
 | `health_metric_samples` | Intraday wearable telemetry — heart rate, HRV, respiration, SpO2, stress, body battery, skin temperature (one JSONB-bucketed row per user/metric/day/provider) | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
-| `vitals_entries` | Blood pressure, blood glucose, and body temperature telemetry | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
+| `vitals_entries` | Blood pressure, blood glucose, body temperature, and pulse telemetry | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 | `daily_health_metrics` | Daily automated wearable summary, scores, total calories, and the total-calorie source capture time | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 
 ---
