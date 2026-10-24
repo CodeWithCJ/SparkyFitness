@@ -37,6 +37,34 @@ export interface NorishRecipeStep {
   version: number;
 }
 
+// GET /recipes/{id}/nutrition: the recipe's own numbers per serving, else the
+// total Norish works out from its ingredients. Older Norish versions lack it.
+export interface NorishNutrition {
+  source: 'supplied' | 'worked-out' | 'none';
+  perServing: {
+    calories: number | null;
+    fat: number | null;
+    carbs: number | null;
+    protein: number | null;
+  } | null;
+  estimated: boolean;
+}
+
+function isNorishNutrition(value: unknown): value is NorishNutrition {
+  const nutrition = value as NorishNutrition | null;
+  return (
+    !!nutrition &&
+    ['supplied', 'worked-out', 'none'].includes(nutrition.source) &&
+    (nutrition.perServing === null || typeof nutrition.perServing === 'object')
+  );
+}
+
+function hasStoredNutrition(recipe: NorishRecipe): boolean {
+  return [recipe.calories, recipe.fat, recipe.carbs, recipe.protein].some(
+    (value) => value !== null && value !== undefined && value !== ''
+  );
+}
+
 export interface NorishRecipe {
   id: string;
   userId?: string | null;
@@ -60,6 +88,7 @@ export interface NorishRecipe {
   version: number;
   recipeIngredients: NorishRecipeIngredient[];
   steps: NorishRecipeStep[];
+  nutrition?: NorishNutrition | null;
 }
 
 export interface SparkyFoodMapping {
@@ -126,6 +155,12 @@ class NorishService {
     this.networkPolicy = networkPolicy;
   }
 
+  private authHeaders(): Record<string, string> {
+    return this.accessToken.startsWith('Bearer ')
+      ? { Authorization: this.accessToken }
+      : { 'x-api-key': this.accessToken };
+  }
+
   async searchRecipes(
     query: string,
     options: RequestInit = {}
@@ -138,13 +173,8 @@ class NorishService {
       const authHeaders: Record<string, string> = {
         Accept: 'application/json',
         'Content-Type': 'application/json',
+        ...this.authHeaders(),
       };
-
-      if (this.accessToken.startsWith('Bearer ')) {
-        authHeaders['Authorization'] = this.accessToken;
-      } else {
-        authHeaders['x-api-key'] = this.accessToken;
-      }
 
       const response = await resolveFoodFetch(this.networkPolicy)(url, {
         method: 'POST',
@@ -201,13 +231,8 @@ class NorishService {
     try {
       const authHeaders: Record<string, string> = {
         Accept: 'application/json',
+        ...this.authHeaders(),
       };
-
-      if (this.accessToken.startsWith('Bearer ')) {
-        authHeaders['Authorization'] = this.accessToken;
-      } else {
-        authHeaders['x-api-key'] = this.accessToken;
-      }
 
       const response = await resolveFoodFetch(this.networkPolicy)(url, {
         method: 'GET',
@@ -225,6 +250,9 @@ class NorishService {
       }
 
       const data: NorishRecipe = await response.json();
+      if (!hasStoredNutrition(data)) {
+        data.nutrition = await this.getRecipeNutrition(id, options);
+      }
       log('debug', `Successfully retrieved details for Norish recipe: ${id}`);
       norishRecipeCache.set(cacheKey, {
         data,
@@ -234,6 +262,38 @@ class NorishService {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       log('error', `Error during Norish recipe details retrieval: ${msg}`);
+      return null;
+    }
+  }
+
+  // The worked-out nutrition of a recipe that states none, or null where this
+  // Norish cannot say (no such endpoint before it, or nothing countable).
+  async getRecipeNutrition(
+    id: string,
+    options: RequestInit = {}
+  ): Promise<NorishNutrition | null> {
+    const url = `${this.baseUrl}/recipes/${encodeURIComponent(id)}/nutrition`;
+    try {
+      const response = await resolveFoodFetch(this.networkPolicy)(url, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          ...this.authHeaders(),
+          ...options.headers,
+        } as HeadersInit,
+      });
+      if (!response.ok) {
+        log(
+          'debug',
+          `Norish nutrition for ${id} unavailable: ${response.status} ${response.statusText}`
+        );
+        return null;
+      }
+      const data: unknown = await response.json();
+      return isNorishNutrition(data) ? data : null;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log('error', `Error during Norish recipe nutrition retrieval: ${msg}`);
       return null;
     }
   }
@@ -256,10 +316,27 @@ class NorishService {
       return isNaN(parsed) ? 0 : parsed;
     };
 
-    const calories = norishRecipe.calories || 0;
-    const protein = parseNutrientValue(norishRecipe.protein);
-    const carbs = parseNutrientValue(norishRecipe.carbs);
-    const fat = parseNutrientValue(norishRecipe.fat);
+    // Stored values win; a recipe that states none uses Norish's worked-out total.
+    const workedOut =
+      !hasStoredNutrition(norishRecipe) &&
+      norishRecipe.nutrition?.source === 'worked-out'
+        ? norishRecipe.nutrition.perServing
+        : null;
+    const roundedWorkedOut = (value: number | null | undefined): number =>
+      Math.round((value ?? 0) * 10) / 10;
+
+    const calories = workedOut
+      ? Math.round(workedOut.calories ?? 0)
+      : norishRecipe.calories || 0;
+    const protein = workedOut
+      ? roundedWorkedOut(workedOut.protein)
+      : parseNutrientValue(norishRecipe.protein);
+    const carbs = workedOut
+      ? roundedWorkedOut(workedOut.carbs)
+      : parseNutrientValue(norishRecipe.carbs);
+    const fat = workedOut
+      ? roundedWorkedOut(workedOut.fat)
+      : parseNutrientValue(norishRecipe.fat);
 
     return {
       food: {
