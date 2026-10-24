@@ -272,16 +272,13 @@ describe('NorishService worked-out nutrition', () => {
     expect(result.variant.protein).toBe(0);
   });
 
-  it('asks Norish for nutrition only when the recipe states none', async () => {
+  it('asks Norish for the nutrition of every recipe, stated or not, for the other nutrients', async () => {
     vi.mocked(fetch)
-      .mockResolvedValueOnce(json(recipe({ id: 'stated', calories: 520 })))
       .mockResolvedValueOnce(json(recipe({ id: 'empty' })))
       .mockResolvedValueOnce(json(workedOut));
 
-    const stated = await service.getRecipeDetails('stated');
     const empty = await service.getRecipeDetails('empty');
 
-    expect(fetch).toHaveBeenCalledTimes(3);
     expect(fetch).toHaveBeenLastCalledWith(
       'https://norish.example.com/api/v1/recipes/empty/nutrition',
       expect.objectContaining({
@@ -289,8 +286,44 @@ describe('NorishService worked-out nutrition', () => {
         headers: expect.objectContaining({ 'x-api-key': 'test-api-key' }),
       })
     );
-    expect(stated?.nutrition).toBeUndefined();
     expect(empty?.nutrition).toEqual(workedOut);
+  });
+
+  it('maps the other nutrients Norish knows onto the variant, leaving the unknown at 0', () => {
+    const result = service.mapNorishRecipeToSparkyFood(
+      recipe({
+        calories: 560,
+        fat: '12.00',
+        nutrition: {
+          source: 'supplied',
+          estimated: false,
+          perServing: {
+            calories: 560,
+            fat: 12,
+            carbs: 88,
+            protein: 22,
+            extras: {
+              fiber: 11.04,
+              sugars: 4,
+              saturatedFat: 1.8,
+              sodium: 420,
+              vitaminA: 12.5,
+            },
+          },
+        },
+      }),
+      'user-123'
+    );
+
+    expect(result.variant).toMatchObject({
+      dietary_fiber: 11,
+      sugars: 4,
+      saturated_fat: 1.8,
+      sodium: 420,
+      vitamin_a: 12.5,
+      potassium: 0,
+      iron: 0,
+    });
   });
 
   it('imports at zero when Norish has no nutrition endpoint', async () => {
