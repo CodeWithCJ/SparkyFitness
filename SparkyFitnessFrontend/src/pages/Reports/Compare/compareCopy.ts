@@ -36,7 +36,8 @@ function upperFirst(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-function isYesNo(key: CompareMetricKey): boolean {
+/** A yes/no metric: a day is yes or no, and an average is the share of days it was yes. */
+export function isYesNo(key: CompareMetricKey): boolean {
   return COMPARE_METRICS[key].kind === 'binary';
 }
 
@@ -164,10 +165,9 @@ const DAY_TIMING: Record<SleepSides, Record<Step, Phrase>> = {
 };
 
 /**
- * The timing words for a day or week choice. The website asks day and week
- * questions only for now: nothing passes `sinceHabit` here, and since-mode
- * wording ("Since I started …") comes in a later change. A since choice throws
- * rather than reading as "the same day".
+ * The timing words for a choice. A day or week choice reads as the day or week
+ * relation; a since choice reads "Since", as the phone words it ("Since I
+ * started … regularly, has … changed?").
  */
 function timingWords(
   choice: CompareTimingChoice,
@@ -176,9 +176,7 @@ function timingWords(
 ): string {
   const { mode, timing } = timingOf(choice);
   if (mode === 'since') {
-    throw new Error(
-      'Compare wording covers day and week questions; since questions are not worded yet'
-    );
+    return t('compareReport.sentence.since', { defaultValue: 'Since' });
   }
   if (mode === 'week') {
     return timing === 1
@@ -190,8 +188,7 @@ function timingWords(
 
 /**
  * The timing words alone for a pair, as the sentence says them: "that night",
- * "the next day", "the same week". Day and week choices only (see
- * `timingWords`).
+ * "the next day", "the same week", "Since" (see `timingWords`).
  */
 export function timingLabel(
   choice: CompareTimingChoice,
@@ -719,7 +716,7 @@ export function verdictCopy(
 }
 
 /** Numbers are formatted for the language the app is shown in. */
-function formatNumber(
+export function formatNumber(
   value: number,
   options: Intl.NumberFormatOptions
 ): string {
@@ -809,33 +806,61 @@ function pValueText(p: number, t: Translator): string {
 
 /**
  * The p-value in plain words: how often a result this strong would turn up if
- * there were no real link. It says nothing about the chance that this result
- * is real, because a p-value can't.
+ * there were no real link (or, for a before-and-since `subject` of 'change', no
+ * real change). It says nothing about the chance that this result is real,
+ * because a p-value can't.
  */
-function pPlainWords(p: number, t: Translator): string {
+export function pPlainWords(
+  p: number,
+  t: Translator,
+  subject: 'link' | 'change' = 'link'
+): string {
   const pText = pValueText(p, t);
+  const change = subject === 'change';
   if (p < 0.001) {
-    return t('compareReport.howSure.pRare', {
-      defaultValue:
-        'With no real link, a result this strong would show up less than 1 time in {{n}} ({{p}})',
-      n: formatNumber(1000, {}),
-      p: pText,
-    });
+    const n = formatNumber(1000, {});
+    return change
+      ? t('compareReport.howSure.pRareChange', {
+          defaultValue:
+            'With no real change, a difference this big would show up less than 1 time in {{n}} ({{p}})',
+          n,
+          p: pText,
+        })
+      : t('compareReport.howSure.pRare', {
+          defaultValue:
+            'With no real link, a result this strong would show up less than 1 time in {{n}} ({{p}})',
+          n,
+          p: pText,
+        });
   }
   if (p < 0.5) {
     // 1/p as a whole number, to two significant figures: 769 reads as 770.
     const times = Number(Math.round(1 / p).toPrecision(2));
-    return t('compareReport.howSure.pAbout', {
-      defaultValue:
-        'With no real link, a result this strong would show up about 1 time in {{n}} ({{p}})',
-      n: formatNumber(times, { maximumFractionDigits: 0 }),
-      p: pText,
-    });
+    const n = formatNumber(times, { maximumFractionDigits: 0 });
+    return change
+      ? t('compareReport.howSure.pAboutChange', {
+          defaultValue:
+            'With no real change, a difference this big would show up about 1 time in {{n}} ({{p}})',
+          n,
+          p: pText,
+        })
+      : t('compareReport.howSure.pAbout', {
+          defaultValue:
+            'With no real link, a result this strong would show up about 1 time in {{n}} ({{p}})',
+          n,
+          p: pText,
+        });
   }
-  return t('compareReport.howSure.pCommon', {
-    defaultValue: 'Results like this are common with no real link ({{p}})',
-    p: pText,
-  });
+  return change
+    ? t('compareReport.howSure.pCommonChange', {
+        defaultValue:
+          'Differences like this are common with no real change ({{p}})',
+        p: pText,
+      })
+    : t('compareReport.howSure.pCommon', {
+        defaultValue: 'Results like this are common with no real link ({{p}})',
+        p: pText,
+      });
 }
 
 /**

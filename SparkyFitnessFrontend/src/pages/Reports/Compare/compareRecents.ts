@@ -13,9 +13,8 @@ const STORAGE_PREFIX = 'sparky.compareRecentQuestions.v1';
 const storageKey = (userId: string) => `${STORAGE_PREFIX}.${userId}`;
 
 /**
- * The account's stored recents this build still knows. Since-habit questions
- * are not offered on the web yet, so a stored one is dropped too. Without an
- * account there are none.
+ * The account's stored recents this build still knows, since-habit questions
+ * included. Without an account there are none.
  */
 export function loadRecentQuestions(
   userId: string | undefined
@@ -24,9 +23,7 @@ export function loadRecentQuestions(
   try {
     const raw = window.localStorage.getItem(storageKey(userId));
     if (!raw) return [];
-    return knownCompareQuestions(JSON.parse(raw) as unknown).filter(
-      (q) => q.choice !== 'sinceHabit'
-    );
+    return knownCompareQuestions(JSON.parse(raw) as unknown);
   } catch {
     // Storage blocked or the value is not JSON.
     return [];

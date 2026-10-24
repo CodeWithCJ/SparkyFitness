@@ -2,7 +2,14 @@ import fs from 'fs';
 import path from 'path';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { SUGGESTED_QUESTIONS, type CompareQuestion } from '@workspace/shared';
+import {
+  SUGGESTED_QUESTIONS,
+  type CompareMetricKey,
+  type CompareQuestion,
+  type CompareSinceResponse,
+  type CompareSinceResult,
+} from '@workspace/shared';
+import { CompareSinceControls } from '@/pages/Reports/Compare/CompareSinceControls';
 import { CompareSentence } from '@/pages/Reports/Compare/CompareSentence';
 import { CompareSpanControl } from '@/pages/Reports/Compare/CompareSpanControl';
 import { clampCustomRange } from '@/pages/Reports/Compare/compareCustomRange';
@@ -66,7 +73,7 @@ describe('CompareSentence', () => {
     expect(screen.getByText('?')).toBeInTheDocument();
   });
 
-  test('the timing picker lists five choices and no "since"', () => {
+  test('the timing picker lists six choices, the last "Before vs. since"', () => {
     const onChange = jest.fn();
     render(
       <CompareSentence
@@ -82,13 +89,44 @@ describe('CompareSentence', () => {
       'The day before',
       'The same week',
       'The next week',
+      'Before vs. since',
     ]);
-    expect(screen.queryByText(/since/i)).toBeNull();
+    expect(screen.getByText('Since a habit started')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('option', { name: 'Before vs. since' }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      a: 'timeAsleep',
+      b: 'energy',
+      choice: 'sinceHabit',
+    });
+    open(screen.getByRole('combobox', { name: /When/ }));
     fireEvent.click(screen.getByRole('option', { name: 'The next day' }));
     expect(onChange).toHaveBeenCalledWith({
       a: 'timeAsleep',
       b: 'energy',
       choice: 'nextDay',
+    });
+  });
+
+  test('a since question reads "Since I started … regularly, has … changed?"', () => {
+    const onChange = jest.fn();
+    render(
+      <CompareSentence
+        question={{ a: 'meditated', b: 'mood', choice: 'sinceHabit' }}
+        onChange={onChange}
+      />
+    );
+    expect(screen.queryByText('Does')).toBeNull();
+    expect(screen.getByRole('combobox', { name: /When: Since/ })).toBeTruthy();
+    expect(screen.getByText('I started')).toBeInTheDocument();
+    expect(screen.getByText('regularly, has')).toBeInTheDocument();
+    expect(screen.getByText('changed?')).toBeInTheDocument();
+    open(screen.getByRole('combobox', { name: /When/ }));
+    // The timing picker is how the person switches back to a day question.
+    fireEvent.click(screen.getByRole('option', { name: 'The same day' }));
+    expect(onChange).toHaveBeenCalledWith({
+      a: 'meditated',
+      b: 'mood',
+      choice: 'sameDay',
     });
   });
 
@@ -104,6 +142,61 @@ describe('CompareSentence', () => {
       />
     );
     expect(screen.getByText(/can only be compared by day/)).toBeInTheDocument();
+  });
+
+  test('choosing Before vs. since clears weight trend', () => {
+    const onChange = jest.fn();
+    render(
+      <CompareSentence
+        question={{ a: 'meditated', b: 'weightTrend', choice: 'sameDay' }}
+        onChange={onChange}
+      />
+    );
+    open(screen.getByRole('combobox', { name: /When/ }));
+    fireEvent.click(screen.getByRole('option', { name: 'Before vs. since' }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      a: 'meditated',
+      b: undefined,
+      choice: 'sinceHabit',
+    });
+  });
+
+  test("choosing a week timing clears a metric that isn't offered weekly", () => {
+    const onChange = jest.fn();
+    render(
+      <CompareSentence
+        question={{
+          a: 'meditationSessions7d',
+          b: 'mood',
+          choice: 'sameDay',
+        }}
+        onChange={onChange}
+      />
+    );
+    open(screen.getByRole('combobox', { name: /When/ }));
+    fireEvent.click(screen.getByRole('option', { name: 'The same week' }));
+    expect(onChange).toHaveBeenLastCalledWith({
+      a: undefined,
+      b: 'mood',
+      choice: 'sameWeek',
+    });
+  });
+
+  test('the since outcome picker does not list Weight trend', () => {
+    render(
+      <CompareSentence
+        question={{ a: 'meditated', b: 'mood', choice: 'sinceHabit' }}
+        onChange={jest.fn()}
+      />
+    );
+    open(screen.getByRole('combobox', { name: /Second thing/ }));
+    const listbox = screen.getByRole('listbox');
+    expect(
+      within(listbox).getByRole('option', { name: 'Energy' })
+    ).toBeInTheDocument();
+    expect(
+      within(listbox).queryByRole('option', { name: /Weight trend/ })
+    ).toBeNull();
   });
 
   test('the metric picker is grouped and leaves out the other side', () => {
@@ -139,6 +232,20 @@ describe('CompareStartState', () => {
       })
     );
     expect(onPick).toHaveBeenCalledWith(first);
+  });
+
+  test('a recent since question reads its since sentence', () => {
+    render(
+      <CompareStartState
+        recent={[{ a: 'meditated', b: 'mood', choice: 'sinceHabit' }]}
+        onPick={jest.fn()}
+      />
+    );
+    expect(
+      screen.getByRole('button', {
+        name: 'Since I started meditating regularly, has mood changed?',
+      })
+    ).toBeInTheDocument();
   });
 
   test('shows at most five recent questions', () => {
@@ -220,6 +327,161 @@ describe('CompareSpanControl', () => {
     expect(screen.getByRole('button', { name: /End date/ })).toHaveTextContent(
       'fmt:2026-10-01'
     );
+  });
+});
+
+describe('CompareSinceControls', () => {
+  const today = '2026-10-22';
+
+  function answer(
+    outcome: CompareMetricKey,
+    result: Partial<CompareSinceResult>
+  ): CompareSinceResponse {
+    return {
+      mode: 'since',
+      habit: { key: 'meditated', values: {} },
+      outcome: { key: outcome, values: {} },
+      result: {
+        status: 'ok',
+        start: '2026-04-01',
+        suggestedStart: '2026-04-01',
+        line: 50,
+        ...result,
+      },
+    };
+  }
+
+  function renderControls(
+    props: Partial<React.ComponentProps<typeof CompareSinceControls>>
+  ) {
+    const onStartChange = jest.fn();
+    const onLineChange = jest.fn();
+    render(
+      <CompareSinceControls
+        response={undefined}
+        outcome="mood"
+        today={today}
+        habitStart={null}
+        line={null}
+        onStartChange={onStartChange}
+        onLineChange={onLineChange}
+        {...props}
+      />
+    );
+    return { onStartChange, onLineChange };
+  }
+
+  test('the suggested start shows with "(suggested)" until a day is picked', () => {
+    const response = answer('mood', { suggestedStart: '2026-04-01' });
+    const { unmount } = render(
+      <CompareSinceControls
+        response={response}
+        outcome="mood"
+        today={today}
+        habitStart={null}
+        line={null}
+        onStartChange={jest.fn()}
+        onLineChange={jest.fn()}
+      />
+    );
+    expect(screen.getByText('Since')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Start date/ })
+    ).toHaveTextContent('fmt:2026-04-01');
+    expect(screen.getByText('(suggested)')).toBeInTheDocument();
+    unmount();
+    renderControls({ response, habitStart: '2026-05-05' });
+    expect(
+      screen.getByRole('button', { name: /Start date/ })
+    ).toHaveTextContent('fmt:2026-05-05');
+    expect(screen.queryByText('(suggested)')).toBeNull();
+  });
+
+  test('with no start and no suggestion the chip reads "Pick a date" and no line row shows', () => {
+    renderControls({
+      response: answer('mood', {
+        status: 'not_enough',
+        reason: 'noStart',
+        start: null,
+        suggestedStart: null,
+      }),
+    });
+    expect(
+      screen.getByRole('button', { name: /Start date/ })
+    ).toHaveTextContent('Pick a date');
+    expect(screen.queryByText('(suggested)')).toBeNull();
+    expect(screen.queryByRole('combobox')).toBeNull();
+  });
+
+  test('days outside 730 days ago to yesterday are disabled', () => {
+    const day = (n: string) =>
+      screen
+        .getAllByRole('gridcell')
+        .map((c) => c.querySelector('button'))
+        .find((b) => b?.textContent === n && !b.closest('[data-outside]'));
+
+    // Today is 2026-10-22: the latest start is the 21st.
+    const { unmount } = render(
+      <CompareSinceControls
+        response={undefined}
+        outcome="mood"
+        today={today}
+        habitStart="2026-10-10"
+        line={null}
+        onStartChange={jest.fn()}
+        onLineChange={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Start date/ }));
+    expect(day('21')?.hasAttribute('disabled')).toBe(false);
+    expect(day('22')?.hasAttribute('disabled')).toBe(true);
+    unmount();
+
+    // 730 days before is 2024-10-22.
+    renderControls({ habitStart: '2024-10-25' });
+    fireEvent.click(screen.getByRole('button', { name: /Start date/ }));
+    expect(day('21')?.hasAttribute('disabled')).toBe(true);
+    expect(day('22')?.hasAttribute('disabled')).toBe(false);
+  });
+
+  test('picking a day sends it', () => {
+    const { onStartChange } = renderControls({ habitStart: '2026-10-10' });
+    fireEvent.click(screen.getByRole('button', { name: /Start date/ }));
+    const btn = screen
+      .getAllByRole('gridcell')
+      .map((c) => c.querySelector('button'))
+      .find((b) => b?.textContent === '12' && !b.closest('[data-outside]'));
+    fireEvent.click(btn as HTMLElement);
+    expect(onStartChange).toHaveBeenCalledWith('2026-10-12');
+  });
+
+  test('a yes/no outcome has no line row', () => {
+    renderControls({
+      outcome: 'meditated',
+      response: answer('meditated', { line: 1 }),
+    });
+    expect(screen.getByRole('button', { name: /Start date/ })).toBeTruthy();
+    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.queryByText(/Line:/)).toBeNull();
+  });
+
+  test('picking a line sends its stored-scale value', () => {
+    const { onLineChange } = renderControls({
+      response: answer('mood', { line: 50 }),
+    });
+    expect(screen.getByText('Line: Mood ≥')).toBeInTheDocument();
+    const trigger = screen.getByRole('combobox', { name: /at or above/ });
+    expect(trigger).toHaveTextContent('5.0');
+    open(trigger);
+    fireEvent.click(screen.getByRole('option', { name: '7.0' }));
+    expect(onLineChange).toHaveBeenCalledWith(70);
+  });
+
+  test("a picked line wins over the answer's", () => {
+    renderControls({ response: answer('mood', { line: 50 }), line: 80 });
+    expect(
+      screen.getByRole('combobox', { name: /at or above/ })
+    ).toHaveTextContent('8');
   });
 });
 

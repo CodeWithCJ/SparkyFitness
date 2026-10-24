@@ -8,6 +8,8 @@ import {
   type CompareQuestion,
   type CompareTimingChoice,
   isAskable,
+  offeredInMode,
+  questionForMode,
   timingOf,
 } from '@workspace/shared';
 import {
@@ -41,17 +43,6 @@ const GROUP_ORDER: readonly CompareMetricDef['group'][] = [
   'body',
 ];
 
-/** Drops a metric that has no weekly form once the question is by the week. */
-function forMode(
-  question: Partial<CompareQuestion>,
-  mode: CompareMode
-): Partial<CompareQuestion> {
-  if (mode !== 'week') return question;
-  const keep = (key?: CompareMetricKey) =>
-    key && COMPARE_METRICS[key].weekly !== null ? key : undefined;
-  return { ...question, a: keep(question.a), b: keep(question.b) };
-}
-
 export function CompareSentence({ question, onChange }: CompareSentenceProps) {
   const { t } = useTranslation();
   const mode: CompareMode = question.choice
@@ -70,7 +61,7 @@ export function CompareSentence({ question, onChange }: CompareSentenceProps) {
   };
 
   const chooseTiming = (choice: CompareTimingChoice) => {
-    onChange(forMode({ ...question, choice }, timingOf(choice).mode));
+    onChange(questionForMode({ ...question, choice }, timingOf(choice).mode));
   };
 
   const words = (text: string) => (
@@ -104,10 +95,7 @@ export function CompareSentence({ question, onChange }: CompareSentenceProps) {
             const keys = COMPARE_METRIC_KEYS.filter((k) => {
               const def = COMPARE_METRICS[k];
               return (
-                def.group === group &&
-                k !== exclude &&
-                // Only week mode needs a weekly form.
-                (mode !== 'week' || def.weekly !== null)
+                def.group === group && k !== exclude && offeredInMode(k, mode)
               );
             });
             if (keys.length === 0) return null;
@@ -169,6 +157,14 @@ export function CompareSentence({ question, onChange }: CompareSentenceProps) {
             {t('compareReport.sentence.nextWeek', 'The next week')}
           </SelectItem>
         </SelectGroup>
+        <SelectGroup>
+          <SelectLabel>
+            {t('compareReport.sentence.sinceHabit', 'Since a habit started')}
+          </SelectLabel>
+          <SelectItem value="sinceHabit">
+            {t('compareReport.sentence.beforeVsSince', 'Before vs. since')}
+          </SelectItem>
+        </SelectGroup>
       </SelectContent>
     </Select>
   );
@@ -184,14 +180,27 @@ export function CompareSentence({ question, onChange }: CompareSentenceProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        {words(t('compareReport.sentence.does', 'Does'))}
-        {metricPicker('a')}
-        {words(t('compareReport.sentence.goWith', 'go with'))}
-        {metricPicker('b')}
-        {timingPicker}
-        {words(t('compareReport.sentence.questionMark', '?'))}
-      </div>
+      {mode === 'since' ? (
+        // "Since I started [X] regularly, has [Y] changed?" The "Since" is the
+        // timing picker, so the person can switch back to day or week.
+        <div className="flex flex-wrap items-center gap-2">
+          {timingPicker}
+          {words(t('compareReport.sentence.iStarted', 'I started'))}
+          {metricPicker('a')}
+          {words(t('compareReport.sentence.regularlyHas', 'regularly, has'))}
+          {metricPicker('b')}
+          {words(t('compareReport.sentence.changed', 'changed?'))}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          {words(t('compareReport.sentence.does', 'Does'))}
+          {metricPicker('a')}
+          {words(t('compareReport.sentence.goWith', 'go with'))}
+          {metricPicker('b')}
+          {timingPicker}
+          {words(t('compareReport.sentence.questionMark', '?'))}
+        </div>
+      )}
       {dayOnly && (
         <p className="text-sm text-muted-foreground">
           {t('compareReport.dayOnly', {

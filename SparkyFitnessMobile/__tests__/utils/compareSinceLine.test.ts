@@ -1,7 +1,11 @@
-import type { CompareSinceResult } from '@workspace/shared';
+import {
+  sinceLineOptions,
+  type CompareMetricKey,
+  type CompareSinceResult,
+} from '@workspace/shared';
 
 import { initializeI18n } from '../../src/localization/i18n';
-import { sinceLineOptions } from '../../src/utils/compareSinceLine';
+import { compareValueText } from '../../src/utils/compareCopy';
 
 beforeAll(async () => {
   await initializeI18n('en');
@@ -28,9 +32,18 @@ function ranges(before: [number, number], since: [number, number]): Ranges {
 const values = (options: { value: number }[]) => options.map((o) => o.value);
 const labels = (options: { label: string }[]) => options.map((o) => o.label);
 
+function lineOptions(key: CompareMetricKey, current: number, result?: Ranges) {
+  return sinceLineOptions(
+    key,
+    current,
+    (v) => compareValueText(key, v),
+    result
+  );
+}
+
 describe('sinceLineOptions', () => {
   it('offers mood on 1-10, as the 10-100 the server keeps', () => {
-    const options = sinceLineOptions('mood', 70);
+    const options = lineOptions('mood', 70);
     expect(values(options)).toEqual([10, 20, 30, 40, 50, 60, 70, 80, 90, 100]);
     expect(labels(options)).toEqual([
       '1.0',
@@ -47,12 +60,12 @@ describe('sinceLineOptions', () => {
   });
 
   it('offers energy and focus 1 to 5', () => {
-    expect(values(sinceLineOptions('energy', 4))).toEqual([1, 2, 3, 4, 5]);
-    expect(values(sinceLineOptions('focus', 4))).toEqual([1, 2, 3, 4, 5]);
+    expect(values(lineOptions('energy', 4))).toEqual([1, 2, 3, 4, 5]);
+    expect(values(lineOptions('focus', 4))).toEqual([1, 2, 3, 4, 5]);
   });
 
   it('steps round numbers across both typical ranges and keeps the line in use', () => {
-    const options = sinceLineOptions(
+    const options = lineOptions(
       'steps',
       8734.5,
       ranges([5200, 9800], [6100, 11800])
@@ -70,18 +83,12 @@ describe('sinceLineOptions', () => {
 
   it('steps hours by the half hour', () => {
     expect(
-      values(
-        sinceLineOptions('timeAsleep', 7.5, ranges([6.1, 8.4], [6.4, 8.2]))
-      )
+      values(lineOptions('timeAsleep', 7.5, ranges([6.1, 8.4], [6.4, 8.2])))
     ).toEqual([6, 6.5, 7, 7.5, 8, 8.5]);
   });
 
   it('steps bedtime by the quarter hour, as clock times', () => {
-    const options = sinceLineOptions(
-      'bedtime',
-      300,
-      ranges([240, 330], [250, 320])
-    );
+    const options = lineOptions('bedtime', 300, ranges([240, 330], [250, 320]));
     expect(values(options)).toEqual([240, 255, 270, 285, 300, 315, 330]);
     expect(labels(options)[0]).toMatch(/^10:00\sPM$/);
     expect(labels(options)[6]).toMatch(/^11:30\sPM$/);
@@ -89,18 +96,18 @@ describe('sinceLineOptions', () => {
 
   it('never steps a count below one', () => {
     expect(
-      values(sinceLineOptions('steps', 100, ranges([100, 101], [100, 101])))
+      values(lineOptions('steps', 100, ranges([100, 101], [100, 101])))
     ).toEqual([100, 101]);
   });
 
   it('spreads round steps around the line when there is no range yet', () => {
-    expect(values(sinceLineOptions('steps', 5000))).toEqual([
+    expect(values(lineOptions('steps', 5000))).toEqual([
       4000, 4500, 5000, 5500, 6000,
     ]);
   });
 
   it('drops a step that reads the same as the line in use', () => {
-    const options = sinceLineOptions(
+    const options = lineOptions(
       'steps',
       8000.4,
       ranges([5200, 9800], [6100, 11800])
@@ -111,9 +118,7 @@ describe('sinceLineOptions', () => {
 
   it('never goes below zero', () => {
     expect(
-      Math.min(
-        ...values(sinceLineOptions('alcohol', 2, ranges([0, 4], [0, 3])))
-      )
+      Math.min(...values(lineOptions('alcohol', 2, ranges([0, 4], [0, 3]))))
     ).toBe(0);
   });
 });

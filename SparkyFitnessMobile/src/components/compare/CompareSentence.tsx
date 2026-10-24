@@ -2,12 +2,12 @@ import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
-  COMPARE_METRICS,
   type CompareMetricKey,
   type CompareMode,
   type CompareQuestion,
   type CompareTimingChoice,
   isCompareMetricKey,
+  questionForMode,
   timingOf,
 } from '@workspace/shared';
 
@@ -22,17 +22,6 @@ interface CompareSentenceProps {
 
 type MetricValue = CompareMetricKey | '';
 type Slot = 'a' | 'b';
-
-/** Drops a metric that has no weekly form once the question is by the week. */
-function forMode(
-  question: Partial<CompareQuestion>,
-  mode: CompareMode
-): Partial<CompareQuestion> {
-  if (mode !== 'week') return question;
-  const keep = (key?: CompareMetricKey) =>
-    key && COMPARE_METRICS[key].weekly !== null ? key : undefined;
-  return { ...question, a: keep(question.a), b: keep(question.b) };
-}
 
 const CompareSentence: React.FC<CompareSentenceProps> = ({
   question,
@@ -60,7 +49,7 @@ const CompareSentence: React.FC<CompareSentenceProps> = ({
   };
 
   const chooseTiming = (choice: CompareTimingChoice) => {
-    onChange(forMode({ ...question, choice }, timingOf(choice).mode));
+    onChange(questionForMode({ ...question, choice }, timingOf(choice).mode));
   };
 
   const timingSections: PickerSection<CompareTimingChoice>[] = [

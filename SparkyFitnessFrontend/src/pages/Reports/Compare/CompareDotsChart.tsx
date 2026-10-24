@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ZoomableChart from '@/components/ZoomableChart';
 import { ChartErrorBoundary } from '@/pages/Errors/ChartErrorFallback';
 import { CompareBars } from './CompareBars';
+import { TOOLTIP_STYLE } from './compareChartTheme';
 import { compareShownAmountText, dotsAxisCaption } from './compareCopy';
 import { COMPARE_METRIC_LABELS } from './compareMetricLabels';
 import { hasDeviation } from './compareTables';
@@ -36,12 +37,6 @@ interface CompareDotsChartProps {
 }
 
 const DOT_COLOR = '#8884d8';
-const TOOLTIP_STYLE = {
-  backgroundColor: 'hsl(var(--background))',
-  border: '1px solid hsl(var(--border))',
-  borderRadius: '6px',
-  color: 'hsl(var(--foreground))',
-};
 // The dots are already on the display scale, so they are formatted as shown
 // amounts to the metric's precision and never rescaled. A deviation is signed;
 // a yes/no side by day is its 0/1 flag, which is not.

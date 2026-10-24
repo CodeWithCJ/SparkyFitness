@@ -17,7 +17,7 @@ describe('compareRecents', () => {
   beforeEach(() => window.localStorage.clear());
   afterEach(() => jest.restoreAllMocks());
 
-  test('loadRecentQuestions drops an unknown metric, a sinceHabit choice and non-JSON, and returns [] when localStorage.getItem throws', () => {
+  test('loadRecentQuestions drops an unknown metric and non-JSON, keeps a sinceHabit choice, and returns [] when localStorage.getItem throws', () => {
     window.localStorage.setItem(
       KEY,
       JSON.stringify([
@@ -26,7 +26,10 @@ describe('compareRecents', () => {
         { a: 'meditated', b: 'mood', choice: 'sinceHabit' },
       ])
     );
-    expect(loadRecentQuestions('user-1')).toEqual([Q('energy')]);
+    expect(loadRecentQuestions('user-1')).toEqual([
+      Q('energy'),
+      { a: 'meditated', b: 'mood', choice: 'sinceHabit' },
+    ]);
 
     window.localStorage.setItem(KEY, 'not json {');
     expect(loadRecentQuestions('user-1')).toEqual([]);
@@ -35,6 +38,20 @@ describe('compareRecents', () => {
       throw new Error('blocked');
     });
     expect(loadRecentQuestions('user-1')).toEqual([]);
+  });
+
+  test('a stored weight-trend since recent is dropped', () => {
+    window.localStorage.setItem(
+      KEY,
+      JSON.stringify([
+        { a: 'meditated', b: 'weightTrend', choice: 'sinceHabit' },
+        { a: 'weightTrend', b: 'mood', choice: 'sinceHabit' },
+        { a: 'meditated', b: 'weightTrend', choice: 'sameDay' },
+      ])
+    );
+    expect(loadRecentQuestions('user-1')).toEqual([
+      { a: 'meditated', b: 'weightTrend', choice: 'sameDay' },
+    ]);
   });
 
   test('saveRecentQuestion keeps the newest five without duplicates', () => {

@@ -2,7 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { CompareQuestion, CompareResponse } from '@workspace/shared';
+import type {
+  CompareMetricKey,
+  CompareQuestion,
+  CompareResponse,
+  CompareSinceResponse,
+} from '@workspace/shared';
+import { CompareSinceMonthTable } from '@/pages/Reports/Compare/CompareSinceMonthTable';
 import { CompareDaysTable } from '@/pages/Reports/Compare/CompareDaysTable';
 import { CompareTimingTable } from '@/pages/Reports/Compare/CompareTimingTable';
 import type { CompareTimingRow } from '@/pages/Reports/Compare/compareTables';
@@ -467,6 +473,148 @@ describe('CompareDaysTable', () => {
   });
 });
 
+function sinceResponse(
+  habit: CompareMetricKey,
+  outcome: CompareMetricKey,
+  habitValues: Record<string, number>,
+  outcomeValues: Record<string, number>
+): CompareSinceResponse {
+  return {
+    mode: 'since',
+    habit: { key: habit, values: habitValues },
+    outcome: { key: outcome, values: outcomeValues },
+    result: {
+      status: 'ok',
+      start: '2026-06-17',
+      suggestedStart: null,
+      before: { from: '2026-05-20', to: '2026-06-16', days: 28, valueDays: 0 },
+      since: { from: '2026-06-17', to: '2026-07-14', days: 28, valueDays: 0 },
+      line: 70,
+    },
+  };
+}
+
+describe('CompareSinceMonthTable', () => {
+  const bodyRows = () => screen.getAllByRole('row').slice(1) as HTMLElement[];
+
+  test('months oldest first with the start month marked', () => {
+    render(
+      <CompareSinceMonthTable
+        response={sinceResponse(
+          'meditated',
+          'mood',
+          { '2026-06-17': 1, '2026-06-18': 1, '2026-07-01': 1 },
+          {
+            '2026-05-21': 50,
+            '2026-06-17': 80,
+            '2026-06-18': 60,
+            '2026-07-01': 90,
+          }
+        )}
+      />
+    );
+    const rows = bodyRows();
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toHaveTextContent('fmt:2026-05-01');
+    expect(rows[1]).toHaveTextContent('fmt:2026-06-01');
+    expect(rows[2]).toHaveTextContent('fmt:2026-07-01');
+    expect(within(rows[1]!).getByText('Started')).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('table')).getAllByText('Started')
+    ).toHaveLength(1);
+    // June: 2 days done; mood averages 70 (7.0); one of two days at or above 70.
+    expect(rows[1]).toHaveTextContent('2 days');
+    expect(rows[1]).toHaveTextContent('7.0');
+    expect(rows[1]).toHaveTextContent('50%');
+    // May has no habit days.
+    expect(rows[0]).toHaveTextContent('0 days');
+    expect(
+      screen.getByRole('columnheader', { name: /At or above 7\.0/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: /Days with a value/ })
+    ).toBeInTheDocument();
+  });
+
+  test('an event habit shows days and the total', () => {
+    render(
+      <CompareSinceMonthTable
+        response={sinceResponse(
+          'meditationMinutes',
+          'mood',
+          { '2026-06-17': 10, '2026-06-18': 0, '2026-06-19': 25 },
+          { '2026-06-17': 80 }
+        )}
+      />
+    );
+    expect(bodyRows()[1]).toHaveTextContent('2 days · 35');
+  });
+
+  test('a non-event habit shows its mean, or a dash with no values', () => {
+    render(
+      <CompareSinceMonthTable
+        response={sinceResponse(
+          'timeAsleep',
+          'mood',
+          { '2026-07-01': 400, '2026-07-02': 440 },
+          {}
+        )}
+      />
+    );
+    const rows = bodyRows();
+    expect(rows[2]).toHaveTextContent('420');
+    expect(rows[0]).toHaveTextContent('—');
+  });
+
+  test('a start more than a year ago says when it started and that the months between are left out', () => {
+    const longAgo = sinceResponse(
+      'meditated',
+      'mood',
+      { '2025-03-20': 1, '2026-01-05': 1 },
+      { '2025-03-10': 60, '2025-03-20': 70, '2026-01-05': 80 }
+    );
+    longAgo.result = {
+      ...longAgo.result,
+      start: '2025-03-15',
+      before: { from: '2024-03-15', to: '2025-03-14', days: 365, valueDays: 1 },
+      since: { from: '2025-10-21', to: '2026-10-20', days: 365, valueDays: 1 },
+    };
+    render(<CompareSinceMonthTable response={longAgo} />);
+    expect(
+      screen.getByText(
+        'You started on fmt:2025-03-15. The months between the before and since stretches are left out.'
+      )
+    ).toBeInTheDocument();
+    expect(bodyRows()[0]).toHaveTextContent('fmt:2024-03-01');
+  });
+
+  test('a start within the last year has no left-out months line', () => {
+    render(
+      <CompareSinceMonthTable
+        response={sinceResponse('meditated', 'mood', {}, { '2026-06-17': 80 })}
+      />
+    );
+    expect(screen.queryByText(/are left out/)).not.toBeInTheDocument();
+  });
+
+  test('a yes/no outcome leaves out the line column', () => {
+    render(
+      <CompareSinceMonthTable
+        response={sinceResponse(
+          'meditationMinutes',
+          'meditated',
+          { '2026-06-17': 10 },
+          { '2026-06-17': 1, '2026-06-18': 0, '2026-06-19': 0, '2026-06-20': 1 }
+        )}
+      />
+    );
+    expect(
+      screen.queryByRole('columnheader', { name: /At or above/ })
+    ).not.toBeInTheDocument();
+    expect(bodyRows()[1]).toHaveTextContent('50%');
+  });
+});
+
 // Runs last, so it sees every key the tests above asked for.
 describe('en/translation.json', () => {
   test('says the same English as every default the sections pass', () => {
@@ -491,7 +639,8 @@ describe('en/translation.json', () => {
       .filter(
         ([k]) =>
           k.startsWith('compareReport.timing.') ||
-          k.startsWith('compareReport.days.')
+          k.startsWith('compareReport.days.') ||
+          k.startsWith('compareReport.since.months.')
       );
     expect(keys.length).toBeGreaterThan(10);
     const mismatches = keys

@@ -5,13 +5,13 @@ import {
   COMPARE_METRICS,
   type CompareMetricKey,
   type CompareSinceResponse,
+  sinceLineOptions,
   sinceStartBounds,
 } from '@workspace/shared';
 
 import BottomSheetPicker from '../BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../CalendarSheet';
 import { compareValueText, metricName } from '../../utils/compareCopy';
-import { sinceLineOptions } from '../../utils/compareSinceLine';
 import { formatDateWithYear } from '../../utils/dayLabel';
 
 interface CompareSinceRowsProps {
@@ -127,7 +127,12 @@ const CompareSinceRows: React.FC<CompareSinceRowsProps> = ({
           </Text>
           <BottomSheetPicker<number>
             value={shownLine}
-            options={sinceLineOptions(outcome, shownLine, result)}
+            options={sinceLineOptions(
+              outcome,
+              shownLine,
+              (v) => compareValueText(outcome, v),
+              result
+            )}
             title={lineTitle}
             onSelect={onLineChange}
             renderTrigger={({ onPress }) => (

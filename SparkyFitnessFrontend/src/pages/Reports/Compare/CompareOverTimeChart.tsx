@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ChartErrorBoundary } from '@/pages/Errors/ChartErrorFallback';
+import { TOOLTIP_STYLE } from './compareChartTheme';
 import { compareValueText } from './compareCopy';
 import { COMPARE_METRIC_LABELS } from './compareMetricLabels';
 
@@ -26,12 +27,6 @@ interface CompareOverTimeChartProps {
   question: CompareQuestion;
 }
 
-const TOOLTIP_STYLE = {
-  backgroundColor: 'hsl(var(--background))',
-  border: '1px solid hsl(var(--border))',
-  borderRadius: '6px',
-  color: 'hsl(var(--foreground))',
-};
 const COLOR_A = '#8884d8';
 const COLOR_B = '#f97316';
 

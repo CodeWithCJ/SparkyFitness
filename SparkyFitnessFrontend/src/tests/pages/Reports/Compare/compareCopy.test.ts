@@ -179,13 +179,12 @@ describe('phrases', () => {
 });
 
 describe('timingLabel', () => {
-  test('refuses a since choice rather than reading it as the same day', () => {
-    expect(() => timingLabel('sinceHabit', 'meditated', 'mood', t)).toThrow(
-      /since questions are not worded yet/
-    );
-    expect(() =>
+  test('a since choice reads Since', () => {
+    expect(timingLabel('sinceHabit', 'meditated', 'mood', t)).toBe('Since');
+    expect(
       questionParts({ a: 'meditated', b: 'mood', choice: 'sinceHabit' }, t)
-    ).toThrow(/since questions are not worded yet/);
+        .timing
+    ).toBe('Since');
   });
 
   test('lists the three day timings for caffeine → time asleep as two nights before / the night before / that night', () => {
