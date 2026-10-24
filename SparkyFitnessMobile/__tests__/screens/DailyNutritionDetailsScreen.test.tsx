@@ -1,6 +1,11 @@
 import { render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DailyNutritionDetailsScreen from '../../src/screens/DailyNutritionDetailsScreen';
+
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => true,
+}));
 import { useDailySummary } from '../../src/hooks/useDailySummary';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
@@ -61,6 +66,13 @@ function summaryWithSupplementFiber() {
     isError: false,
     summary: {
       caloriesConsumed: 500,
+      calorieGoal: 2000,
+      calorieBalance: {
+        eaten: 500,
+        remaining: 1500,
+        goal: 2000,
+        progress: 25,
+      },
       caloriesBurned: 0,
       netCalories: 500,
       remainingCalories: 1500,
@@ -125,6 +137,36 @@ describe('DailyNutritionDetailsScreen fiber row', () => {
     ).toBeTruthy();
     // The food-only figure must not appear: that was the disagreement.
     expect(screen.queryByText(`${FOOD_FIBER}g / 30g`)).toBeNull();
+  });
+});
+
+describe('DailyNutritionDetailsScreen calorie progress', () => {
+  it('uses the same activity-adjusted percentage and budget as the diary', () => {
+    const data = summaryWithSupplementFiber();
+    data.summary!.caloriesConsumed = 1225;
+    data.summary!.calorieGoal = 1800;
+    Object.assign(data.summary!.calorieBalance, {
+      eaten: 1225,
+      remaining: 1256,
+      goal: 1800,
+      progress: 49,
+    });
+    mockUseDailySummary.mockReturnValue(data);
+    const { getByText } = render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: 0, left: 0, right: 0, bottom: 0 },
+        }}
+      >
+        <DailyNutritionDetailsScreen
+          navigation={mockNavigation}
+          route={route}
+        />
+      </SafeAreaProvider>
+    );
+    expect(getByText(/49%/)).toBeTruthy();
+    expect(getByText(/2,481/)).toBeTruthy();
   });
 });
 

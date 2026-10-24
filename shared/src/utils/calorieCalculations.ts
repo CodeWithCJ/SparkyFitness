@@ -310,14 +310,17 @@ export function computeExerciseCredited(
 }
 
 /**
- * Progress percentage (0–100+) towards the daily calorie goal.
+ * Food eaten as a percentage (0–100+) of the day's effective food budget.
+ * Remaining already includes the selected mode's activity credit, so using
+ * eaten + remaining keeps the filled and unfilled portions proportional to food.
  */
 export function computeCalorieProgress(
-  goalCalories: number,
+  eatenCalories: number,
   caloriesRemaining: number
 ): number {
-  const effectiveConsumed = goalCalories - caloriesRemaining;
-  return Math.max(0, (effectiveConsumed / goalCalories) * 100);
+  const budget = eatenCalories + caloriesRemaining;
+  if (budget <= 0) return 0;
+  return Math.max(0, (eatenCalories / budget) * 100);
 }
 
 /** A set row carrying per-set duration and rest, both in SECONDS. */

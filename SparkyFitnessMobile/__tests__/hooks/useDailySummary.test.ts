@@ -276,7 +276,7 @@ describe('useDailySummary', () => {
       expect(result.current.summary?.fiber.consumed).toBe(4);
     });
 
-    test('preserves the server-computed calorie balance', async () => {
+    test('preserves server calorie totals and normalizes older progress', async () => {
       const serverBalance = makeCalorieBalance({
         eaten: 1600,
         burned: 1200,
@@ -326,7 +326,10 @@ describe('useDailySummary', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      expect(result.current.summary?.calorieBalance).toEqual(serverBalance);
+      expect(result.current.summary?.calorieBalance).toEqual({
+        ...serverBalance,
+        progress: 47,
+      });
     });
 
     test('includes water intake from API', async () => {

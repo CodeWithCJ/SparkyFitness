@@ -13,6 +13,7 @@ export const calorieBalanceSchema = z.object({
   remaining: z.number(),
   goal: z.number(),
   net: z.number(),
+  /** Percentage eaten of the effective food budget (eaten + remaining). Can exceed 100. */
   progress: z.number(),
   bmr: z.number(),
   bmrSource: z.enum(['formula', 'measured']).optional(),

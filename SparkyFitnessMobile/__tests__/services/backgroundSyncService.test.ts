@@ -416,7 +416,7 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
         date: '2024-01-15',
         remaining: 1850,
         goal: 2100,
-        progress: 0.17,
+        progress: 0.16,
       });
       expect(mockReloadCalorieWidget).toHaveBeenCalledTimes(1);
 

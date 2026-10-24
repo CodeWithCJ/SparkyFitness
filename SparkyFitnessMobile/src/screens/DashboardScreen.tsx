@@ -573,7 +573,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   key="calorieRing"
                   caloriesConsumed={eaten}
                   caloriesBurned={burned}
-                  calorieGoal={goal}
+                  calorieGoal={eaten + remaining}
                   remainingCalories={remaining}
                   progressPercent={progress / 100}
                 />
