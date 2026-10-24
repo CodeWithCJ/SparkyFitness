@@ -1202,6 +1202,52 @@ export const EditProviderForm = ({
           </p>
         </>
       )}
+      {editData.provider_type === 'intervals' && (
+        <>
+          <div>
+            <Label>{t('integrations.intervalsAthleteId', 'Athlete ID')}</Label>
+            <Input
+              type="text"
+              value={editData.app_id || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  app_id: e.target.value,
+                }))
+              }
+              placeholder={t(
+                'integrations.intervalsAthleteIdPlaceholder',
+                'Enter Athlete ID (i12345)'
+              )}
+              autoComplete="off"
+            />
+          </div>
+          <div>
+            <Label>{t('settings.editProviderForm.apiKey', 'API Key')}</Label>
+            <Input
+              type="password"
+              value={editData.app_key || ''}
+              onChange={(e) =>
+                setEditData((prev) => ({
+                  ...prev,
+                  app_key: e.target.value,
+                }))
+              }
+              placeholder={t(
+                'integrations.intervalsApiKeyPlaceholder',
+                'Enter API Key'
+              )}
+              autoComplete="off"
+            />
+          </div>
+          <p className="text-sm text-muted-foreground col-span-2">
+            {t(
+              'integrations.intervalsCredentialsHelp',
+              'Find your Athlete ID and API Key on intervals.icu under Settings > Developer Settings.'
+            )}
+          </p>
+        </>
+      )}
       {(editData.provider_type === 'withings' ||
         editData.provider_type === 'garmin' ||
         editData.provider_type === 'fitbit' ||
@@ -1211,7 +1257,8 @@ export const EditProviderForm = ({
         editData.provider_type === 'polar' ||
         editData.provider_type === 'coros_mcp' ||
         editData.provider_type === 'hevy' ||
-        editData.provider_type === 'liftosaur') && (
+        editData.provider_type === 'liftosaur' ||
+        editData.provider_type === 'intervals') && (
         <div>
           <Label htmlFor="edit_sync_frequency">
             {t('settings.editProviderForm.syncFrequency', 'Sync Frequency')}

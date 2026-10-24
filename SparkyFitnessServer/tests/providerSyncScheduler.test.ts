@@ -6,6 +6,7 @@ import garminService from '../services/garminService.js';
 import fitbitService from '../services/fitbitService.js';
 import corosService from '../services/corosService.js';
 import hevyService from '../integrations/hevy/hevyService.js';
+import intervalsService from '../integrations/intervals/intervalsService.js';
 import {
   PROVIDER_SYNC_CONFIGS,
   runProviderSync,
@@ -59,6 +60,12 @@ vi.mock('../integrations/hevy/hevyService.js', () => ({
   },
 }));
 
+vi.mock('../integrations/intervals/intervalsService.js', () => ({
+  default: {
+    syncIntervalsData: vi.fn(),
+  },
+}));
+
 vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
@@ -75,8 +82,8 @@ describe('providerSyncScheduler', () => {
     }));
   });
 
-  it('contains configurations for all 10 providers', () => {
-    expect(PROVIDER_SYNC_CONFIGS).toHaveLength(10);
+  it('contains configurations for all 11 providers', () => {
+    expect(PROVIDER_SYNC_CONFIGS).toHaveLength(11);
     const providerNames = PROVIDER_SYNC_CONFIGS.map((c) => c.name);
     expect(providerNames).toEqual([
       'Withings',
@@ -89,6 +96,7 @@ describe('providerSyncScheduler', () => {
       'Google Health',
       'Hevy',
       'Liftosaur',
+      'Intervals.icu',
     ]);
   });
 
@@ -290,10 +298,34 @@ describe('providerSyncScheduler', () => {
     );
   });
 
+  it('runs Intervals.icu once a day with the provider id', async () => {
+    vi.mocked(externalProviderRepository.getProvidersByType).mockResolvedValue([
+      {
+        id: 'p-intervals',
+        user_id: 'u-intervals',
+        is_active: true,
+        sync_frequency: 'daily',
+      } as never,
+    ]);
+
+    const intervalsConfig = PROVIDER_SYNC_CONFIGS.find(
+      (c) => c.name === 'Intervals.icu'
+    ) as ProviderSyncConfig;
+
+    expect(intervalsConfig.cronExpression).toBe('30 4 * * *');
+    await runProviderSync(intervalsConfig);
+
+    expect(intervalsService.syncIntervalsData).toHaveBeenCalledWith(
+      'u-intervals',
+      'u-intervals',
+      'p-intervals'
+    );
+  });
+
   it('registers cron jobs on startup for each configured provider', () => {
     const tasks = startProviderSyncSchedulers();
-    expect(tasks).toHaveLength(10);
-    expect(cron.schedule).toHaveBeenCalledTimes(10);
+    expect(tasks).toHaveLength(11);
+    expect(cron.schedule).toHaveBeenCalledTimes(11);
     expect(cron.schedule).toHaveBeenCalledWith(
       '0 * * * *',
       expect.any(Function),

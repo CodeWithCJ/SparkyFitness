@@ -17,6 +17,7 @@ export const providerRequirements: Record<string, string[]> = {
   usda: ['app_key'],
   hevy: ['app_key'],
   liftosaur: ['app_key'],
+  intervals: ['app_id', 'app_key'],
   yazio: ['app_id', 'app_key', 'yazio_client_id', 'yazio_client_secret'],
   coros_mcp: [],
 };
@@ -30,6 +31,10 @@ const providerFieldLabels: Record<string, Record<string, string>> = {
   },
   liftosaur: {
     app_key: 'Liftosaur API Key',
+  },
+  intervals: {
+    app_id: 'Athlete ID',
+    app_key: 'API Key',
   },
 };
 

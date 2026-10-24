@@ -150,6 +150,20 @@ describe('classifyActivitySport — provider-declared', () => {
     ).toEqual({ sport: 'strength', confidence: 'declared' });
   });
 
+  it('reads the Intervals.icu activity type, from details or notes', () => {
+    expect(
+      classifyActivitySport({
+        providerName: 'Intervals.icu',
+        detailData: { type: 'VirtualRide' },
+      })
+    ).toEqual({ sport: 'cycling', confidence: 'declared' });
+    expect(
+      classifyActivitySport({
+        notes: 'Synced from Intervals.icu. Type: Run. Elevation: 42m',
+      }).sport
+    ).toBe('running');
+  });
+
   it('treats Liftosaur as strength', () => {
     expect(
       classifyActivitySport({

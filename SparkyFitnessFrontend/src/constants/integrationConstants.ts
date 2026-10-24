@@ -8,6 +8,7 @@ export const MANUAL_SYNC_PROVIDERS = [
   'garmin',
   'hevy',
   'liftosaur',
+  'intervals',
 ] as const;
 
 export type ManualSyncProvider = (typeof MANUAL_SYNC_PROVIDERS)[number];

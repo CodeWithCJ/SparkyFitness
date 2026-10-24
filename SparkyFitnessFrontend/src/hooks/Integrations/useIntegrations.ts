@@ -9,6 +9,8 @@ import {
   syncHevyData,
   syncLiftosaurData,
   LiftosaurSyncResult,
+  syncIntervalsData,
+  IntervalsSyncResult,
   loginGarmin,
   GarminLoginPayload,
 } from '@/api/Integrations/integrations';
@@ -41,6 +43,7 @@ import {
   handleDisconnectStrava,
   handleManualSyncStrava,
   handleDisconnectLiftosaur,
+  handleDisconnectIntervals,
   fetchGarminStatus,
   GarminMfaPayload,
   resumeGarminLogin,
@@ -288,6 +291,63 @@ export const useDisconnectLiftosaurMutation = () => {
 
   return useMutation({
     mutationFn: (providerId?: string) => handleDisconnectLiftosaur(providerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+    },
+  });
+};
+interface SyncIntervalsVariables {
+  providerId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export const useSyncIntervalsMutation = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const invalidateDiary = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ providerId, startDate, endDate }: SyncIntervalsVariables) =>
+      syncIntervalsData(providerId, startDate, endDate),
+    onSuccess: (data: IntervalsSyncResult) => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+      invalidateDiary();
+      toast({
+        title: t(
+          'integrations.intervalsSyncSuccessTitle',
+          'Intervals.icu synced successfully'
+        ),
+        description: t(
+          'integrations.intervalsSyncDetails',
+          'Synced: {{activitiesImported}} activities ({{activitiesSkipped}} skipped), {{wellnessDays}} wellness days.',
+          {
+            activitiesImported: data?.activitiesImported ?? 0,
+            activitiesSkipped: data?.activitiesSkipped ?? 0,
+            wellnessDays: data?.wellnessDays ?? 0,
+          }
+        ),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'integrations.intervalsSyncError',
+        'Intervals.icu sync failed. Please check your athlete ID and API key in settings.'
+      ),
+    },
+  });
+};
+
+export const useDisconnectIntervalsMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (providerId?: string) => handleDisconnectIntervals(providerId),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: externalProviderKeys.lists(),

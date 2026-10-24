@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-23_
+_Last updated: 2026-10-24_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -86,6 +86,7 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - `utils/oauthState.ts` - server-issued single-use OAuth `state` nonces for provider linking (`issueOAuthState`, `persistOAuthState`, `claimOAuthState`); use it instead of hand-rolling a state value
 - `utils/outboundHttp.ts` - process-wide outbound HTTP defaults, applied from `index.ts`: the axios request timeout and the per-address-family connect attempt timeout (`net.setDefaultAutoSelectFamilyAttemptTimeout`). Both are fixed constants on purpose - do not add env overrides, and read the sizing note there before changing either, because the two values interact
 - `utils/errors.ts` - `ValidationError` plus `describeError(error)`; prefer it over `error.message` when logging any caught value, because an `AggregateError` or a non-Error throw renders as an empty string; and `publicErrorMessage(error)` for the error text of a hand-written 5xx response (it hides database and system errors the way the shared error handler does)
+- `routes/intervalsRoutes.ts` - Intervals.icu pull sync (`/api/integrations/intervals`: `POST /sync` (range up to 365 days, default yesterday and today), `GET /status`, `POST /disconnect`). `integrations/intervals/intervalsService.ts` reads the athlete ID (`app_id`) and API key (`app_key`) and calls the API with Basic auth; `intervalsDataProcessor.ts` maps activities to exercise entries (source `Intervals.icu`, skipping Strava stubs and Garmin activities (from Garmin Connect, or uploaded as `<id>_ACTIVITY.fit`) while Garmin is connected or already imported, and any activity starting in the same local minute as a stored Garmin entry; a sync also deletes its own earlier copies that now have such a stored Garmin match) and wellness to check-ins, `daily_health_metrics` and `hrv` samples (source provider `intervals`)
 - `middleware/requireSelfMiddleware.ts` - `requireSelfActor`, which rejects a switched/delegated context outright; attach per-route to account-linking routes
 - `integrations/` - provider adapters and ingest pipelines
 - `schemas/` - Zod route schemas
@@ -228,8 +229,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 ### Integrations and Background Work
 
 - Provider-specific adapters live under `integrations/`; coordinating logic usually lives in `services/` and persistence in `models/`
-- Current adapters span food/nutrition (OpenFoodFacts, FatSecret, Nutritionix, USDA, Mealie, Tandoor, Norish, SwissFood, Yazio), fitness devices (Garmin Connect sync plus FIT file import via `integrations/garminfit/` + `services/fitImportService.ts`, Withings, Fitbit, Oura, Polar, Strava, COROS, Hevy), exercise databases (Wger, FreeExerciseDB), and health-data import (Google Health, generic/mobile health data)
-- Scheduled jobs currently include backups, session cleanup, and hourly sync loops for Withings, Garmin, Fitbit, Oura, Polar, Strava, and COROS
+- Current adapters span food/nutrition (OpenFoodFacts, FatSecret, Nutritionix, USDA, Mealie, Tandoor, Norish, SwissFood, Yazio), fitness devices (Garmin Connect sync plus FIT file import via `integrations/garminfit/` + `services/fitImportService.ts`, Withings, Fitbit, Oura, Polar, Strava, COROS, Hevy, Liftosaur, Intervals.icu), exercise databases (Wger, FreeExerciseDB), and health-data import (Google Health, generic/mobile health data)
+- Scheduled jobs currently include backups, session cleanup, hourly sync loops for Withings, Garmin, Fitbit, Oura, Polar, Strava, COROS, Hevy and Liftosaur, and a daily Intervals.icu sync
 - Integration work often spans route, service, repository, cron, and external-provider settings code; inspect the whole path before calling the work complete
 - **OAuth linking (`/authorize`, `/callback`) is self-only, and `state` is a server-issued single-use nonce.** Never derive a user id from a callback request body, and never gate an authorize route with `checkPermissionMiddleware('diary')` — on GET that resolves to `diary_read`, which would hand a read-only delegate the owner's decrypted OAuth client id. Use `requireSelfActor` plus `utils/oauthState.ts`. Withings and Polar follow this pattern; Oura, Fitbit and Strava are self-only but still send `state = userId` and ignore it on callback (tracked follow-up)
 

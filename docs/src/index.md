@@ -57,7 +57,7 @@ features:
     linkText: Mobile App Setup →
   - icon: ⚙️
     title: Settings & Integrations
-    details: Connect Garmin, Polar, Health Connect, Liftosaur, Oura, Fitbit, COROS, and custom providers.
+    details: Connect Garmin, Polar, Health Connect, Liftosaur, Intervals.icu, Oura, Fitbit, COROS, and custom providers.
     link: /features/settings/preferences
     linkText: View Integrations →
   - icon: 📊
