@@ -271,6 +271,29 @@ describe('NorishService worked-out nutrition', () => {
     expect(result.variant.fat).toBe(19.5);
   });
 
+  it('keeps a stored value written with its unit', () => {
+    const result = service.mapNorishRecipeToSparkyFood(
+      recipe({ fat: '12g', nutrition: workedOut }),
+      'user-123'
+    );
+
+    expect(result.variant.fat).toBe(12);
+    expect(result.variant.calories).toBe(0);
+  });
+
+  it('ignores a nutrition answer whose numbers are not finite', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(json(recipe({ id: 'odd' })))
+      .mockResolvedValueOnce(
+        json({
+          ...workedOut,
+          perServing: { ...workedOut.perServing, calories: 'Infinity' },
+        })
+      );
+
+    expect((await service.getRecipeDetails('odd'))?.nutrition).toBeNull();
+  });
+
   it('returns the recipe without nutrition when Norish is too slow to give it', async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(json(recipe({ id: 'slow' })))
