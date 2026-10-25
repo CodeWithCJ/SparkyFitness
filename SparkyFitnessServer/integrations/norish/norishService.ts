@@ -94,10 +94,22 @@ export interface NorishNutrition {
 
 function isNorishNutrition(value: unknown): value is NorishNutrition {
   const nutrition = value as NorishNutrition | null;
+  const perServing = nutrition?.perServing;
   return (
     !!nutrition &&
     ['supplied', 'worked-out', 'none'].includes(nutrition.source) &&
-    (nutrition.perServing === null || typeof nutrition.perServing === 'object')
+    (perServing === null ||
+      (typeof perServing === 'object' &&
+        [
+          perServing.calories,
+          perServing.fat,
+          perServing.carbs,
+          perServing.protein,
+        ].every(
+          (amount) =>
+            amount === null ||
+            (typeof amount === 'number' && Number.isFinite(amount))
+        )))
   );
 }
 
@@ -115,13 +127,21 @@ function extraNutrients(
   );
 }
 
+// A stored macro as a number, reading strings like '12g'; null where none is stated.
+function storedNumber(
+  value: string | number | null | undefined
+): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed =
+    typeof value === 'number'
+      ? value
+      : parseFloat(value.replace(/[^\d.]/g, ''));
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function hasStoredNutrition(recipe: NorishRecipe): boolean {
   return [recipe.calories, recipe.fat, recipe.carbs, recipe.protein].some(
-    (value) =>
-      value !== null &&
-      value !== undefined &&
-      value !== '' &&
-      Number.isFinite(Number(value))
+    (value) => storedNumber(value) !== null
   );
 }
 
@@ -370,12 +390,7 @@ class NorishService {
 
     const parseNutrientValue = (
       val: string | number | null | undefined
-    ): number => {
-      if (val === null || val === undefined || val === '') return 0;
-      if (typeof val === 'number') return val;
-      const parsed = parseFloat(val.replace(/[^\d.]/g, ''));
-      return isNaN(parsed) ? 0 : parsed;
-    };
+    ): number => storedNumber(val) ?? 0;
 
     // Stored values win; a recipe that states none uses Norish's worked-out total.
     const workedOut =
