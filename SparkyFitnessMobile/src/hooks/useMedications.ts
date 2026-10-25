@@ -374,6 +374,93 @@ export function useLogDose(
     [entryForDue, deleteEntryMutation, logDose, showEntryError, t]
   );
 
+  /**
+   * Batch-logs a group of dose slots in one user action (e.g. every
+   * pending dose at a given time). Slots that already carry a terminal
+   * entry (taken/skipped) are left untouched. Resolves with the number
+   * of slots changed; failures surface as a single error toast rather
+   * than one per dose.
+   */
+  const logDosesBatch = useCallback(
+    async (dues: DueDose[], status: 'taken' | 'skipped'): Promise<number> => {
+      if (dues.length === 0) return 0;
+      const now = new Date().toISOString();
+      const results = await Promise.allSettled(
+        dues.map(async (due) => {
+          const existing = entryForDue(due);
+          if (
+            existing &&
+            (existing.status === 'taken' ||
+              existing.status === 'prn_taken' ||
+              existing.status === 'skipped')
+          ) {
+            return false;
+          }
+          if (existing) {
+            // Re-attributes schedule-less (web-logged) entries to the slot,
+            // mirroring the single-dose path.
+            await updateEntryMutation.mutateAsync({
+              id: existing.id,
+              body: {
+                schedule_id: due.schedule.id,
+                status,
+                taken_at: status === 'taken' ? now : undefined,
+              },
+            });
+          } else {
+            await createEntryMutation.mutateAsync({
+              medication_id: due.medication.id,
+              schedule_id: due.schedule.id,
+              status,
+              entry_date: selectedDate,
+              taken_at: status === 'taken' ? now : undefined,
+            });
+          }
+          return true;
+        })
+      );
+      const changed = results.filter(
+        (r) => r.status === 'fulfilled' && r.value === true
+      ).length;
+      if (results.some((r) => r.status === 'rejected')) {
+        const reason = (
+          results.find((r) => r.status === 'rejected') as PromiseRejectedResult
+        ).reason;
+        addLog(
+          `Batch dose log failed: ${reason instanceof Error ? reason.message : String(reason)}`,
+          'ERROR'
+        );
+        Toast.show({
+          type: 'error',
+          text1:
+            status === 'taken'
+              ? t('medications.timeGroups.takenFailed', {
+                  defaultValue: 'Failed to mark some doses as taken',
+                })
+              : t('medications.timeGroups.skippedFailed', {
+                  defaultValue: 'Failed to mark some doses as skipped',
+                }),
+        });
+      } else if (changed > 0) {
+        Toast.show({
+          type: status === 'taken' ? 'success' : 'info',
+          text1:
+            status === 'taken'
+              ? t('medications.timeGroups.takenToast', {
+                  defaultValue: 'Marked {{count}} doses as taken',
+                  count: changed,
+                })
+              : t('medications.timeGroups.skippedToast', {
+                  defaultValue: 'Marked {{count}} doses as skipped',
+                  count: changed,
+                }),
+        });
+      }
+      return changed;
+    },
+    [entryForDue, createEntryMutation, updateEntryMutation, selectedDate, t]
+  );
+
   // Unlike scheduled slots, a PRN log has no toggle surface to undo a
   // mis-tap, so the success toast itself is the undo affordance.
   const logPrn = useCallback(
@@ -434,5 +521,5 @@ export function useLogDose(
     [createEntryMutation, deleteEntryMutation, selectedDate, showEntryError, t]
   );
 
-  return { entryForDue, logDose, toggleTaken, logPrn };
+  return { entryForDue, logDose, toggleTaken, logDosesBatch, logPrn };
 }

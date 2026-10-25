@@ -18,6 +18,7 @@ import MedicationChecklistCard from '../components/medications/MedicationCheckli
 import MedicationDayLog from '../components/medications/MedicationDayLog';
 import MedicationDoseListCard from '../components/medications/MedicationDoseListCard';
 import MedicationLogCalendar from '../components/medications/MedicationLogCalendar';
+import MedicationTimeGroupsCard from '../components/medications/MedicationTimeGroupsCard';
 import { useDeleteInjection } from '../hooks/useGlp1';
 import { useMedicationAdherence } from '../hooks/useMedicationAdherence';
 import { useDeleteMedicationEntry, useLogDose } from '../hooks/useMedications';
@@ -239,6 +240,7 @@ const MedicationAdherenceScreen: React.FC<MedicationAdherenceScreenProps> = ({
         pointerEvents={adherence.isPlaceholderData ? 'none' : 'auto'}
         style={adherence.isPlaceholderData ? { opacity: 0.5 } : undefined}
       >
+        <MedicationTimeGroupsCard dueDoses={dueDoses} dose={dose} />
         {cards.medications && (
           <MedicationDoseListCard
             title={
