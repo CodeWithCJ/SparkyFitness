@@ -261,6 +261,32 @@ describe('NorishService worked-out nutrition', () => {
     expect(result.variant.protein).toBe(48.9);
   });
 
+  it('uses the worked-out total where the stored values are not numbers', () => {
+    const result = service.mapNorishRecipeToSparkyFood(
+      recipe({ fat: 'N/A', nutrition: workedOut }),
+      'user-123'
+    );
+
+    expect(result.variant.calories).toBe(391);
+    expect(result.variant.fat).toBe(19.5);
+  });
+
+  it('returns the recipe without nutrition when Norish is too slow to give it', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(json(recipe({ id: 'slow' })))
+      .mockRejectedValueOnce(
+        new DOMException('The operation timed out.', 'TimeoutError')
+      );
+
+    const details = await service.getRecipeDetails('slow');
+
+    expect(vi.mocked(fetch).mock.lastCall?.[1]?.signal).toBeInstanceOf(
+      AbortSignal
+    );
+    expect(details?.id).toBe('slow');
+    expect(details?.nutrition).toBeNull();
+  });
+
   it('keeps the stored values when the recipe states them', () => {
     const result = service.mapNorishRecipeToSparkyFood(
       recipe({ calories: 520, fat: '9.00', nutrition: workedOut }),

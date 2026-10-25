@@ -18,6 +18,8 @@ const norishRecipeCache = new Map<
   { data: NorishRecipe; expiry: number }
 >();
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+// The nutrition is extra: a Norish slow to answer it must not hold up the recipe.
+const NUTRITION_TIMEOUT_MS = 10_000;
 
 export interface NorishRecipeIngredient {
   id: string;
@@ -115,7 +117,11 @@ function extraNutrients(
 
 function hasStoredNutrition(recipe: NorishRecipe): boolean {
   return [recipe.calories, recipe.fat, recipe.carbs, recipe.protein].some(
-    (value) => value !== null && value !== undefined && value !== ''
+    (value) =>
+      value !== null &&
+      value !== undefined &&
+      value !== '' &&
+      Number.isFinite(Number(value))
   );
 }
 
@@ -335,6 +341,7 @@ class NorishService {
           ...this.authHeaders(),
           ...options.headers,
         } as HeadersInit,
+        signal: AbortSignal.timeout(NUTRITION_TIMEOUT_MS),
       });
       if (!response.ok) {
         log(
