@@ -20,7 +20,7 @@ export const CATEGORY_SUMMARIES: Record<ChatToolCategorySlug, string> = {
   goals:
     'view/change goals and targets (tools: sparky_manage_goals, sparky_get_goal_snapshot)',
   reports:
-    'daily/weekly summaries, progress reports, trends, TDEE, the daily dashboard calorie-balance summary, and whether two tracked things go together or changed since a habit started (tools: sparky_get_report, sparky_get_daily_report, sparky_get_dashboard, sparky_compare_metrics)',
+    'daily/weekly summaries, progress reports, trends, TDEE, the daily dashboard calorie-balance summary, whether two tracked things go together or changed since a habit started, and the intraday heart-rate series (tools: sparky_get_report, sparky_get_daily_report, sparky_get_dashboard, sparky_compare_metrics, sparky_get_heart_rate_samples)',
   coaching:
     'coaching plans, nudges, patterns, and check-in wizard (tools: sparky_generate_coaching_plan, sparky_get_health_summary, sparky_analyze_trends, sparky_get_30_day_trends, sparky_detect_patterns, sparky_check_engagement, sparky_get_logging_streak, sparky_get_contextual_nudge, sparky_daily_checkin_wizard)',
   vision:

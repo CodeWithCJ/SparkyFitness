@@ -2311,6 +2311,34 @@ async function getRecentExerciseEntries(userId: string, limit: number) {
   }
 }
 
+// Display names of the given exercise entries, keyed by id (missing ids are
+// left out). Backs the chatbot sparky_get_heart_rate_samples tool, which labels
+// each workout's heart-rate series.
+async function getExerciseEntryNames(
+  userId: string,
+  ids: string[]
+): Promise<Map<string, string>> {
+  const names = new Map<string, string>();
+  if (ids.length === 0) return names;
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT id, exercise_name FROM exercise_entries
+       WHERE user_id = $1 AND id = ANY($2::uuid[])`,
+      [userId, ids]
+    );
+    for (const row of result.rows as {
+      id: string;
+      exercise_name: string | null;
+    }[]) {
+      names.set(row.id, row.exercise_name ?? 'Workout');
+    }
+    return names;
+  } finally {
+    client.release();
+  }
+}
+
 // Paged entries for one exercise in a date range, plus the total count.
 // Backs the chatbot sparky_get_exercise_usage tool.
 async function getExerciseUsage(
@@ -2439,6 +2467,7 @@ export { getWorkoutDayCounts };
 export { getDailyExerciseCalorieSplitRange };
 export { getExerciseDiaryRange };
 export { getRecentExerciseEntries };
+export { getExerciseEntryNames };
 export { getExerciseUsage };
 export { getWaterEstimatedSumForDate };
 export { getWaterEstimatedSumForDateRange };
@@ -2474,6 +2503,7 @@ export default {
   getWorkoutDayCounts,
   getExerciseDiaryRange,
   getRecentExerciseEntries,
+  getExerciseEntryNames,
   getExerciseUsage,
   getWaterEstimatedSumForDate,
   getWaterEstimatedSumForDateRange,
