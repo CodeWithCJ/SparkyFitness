@@ -6,6 +6,10 @@
 // both become exercise entries: the day's duration, distance, steps and
 // calories double.
 //
+// The two copies need not agree on the activity: a watch may call a session
+// "Running" while the phone calls it "Walking". On-foot activities therefore
+// count as one kind (see activityGroup); anything else must match by name.
+//
 // This module only decides; it has no database access. The handler gathers the
 // candidates, asks classifyIncomingWorkout, and acts on the answer.
 
@@ -13,9 +17,21 @@
 export const WORKOUT_DEDUPE_THRESHOLDS = {
   /** Shared time as a share of the LONGER of the two workouts. */
   minOverlapRatio: 0.8,
-  /** Largest relative difference (of the larger value) for duration, distance and steps. */
-  maxRelativeDiff: 0.05,
+  /**
+   * Largest relative difference (of the larger value) for a measure to count
+   * as agreeing: duration, distance, steps, heart rate (avg and max).
+   */
+  maxRelativeDiff: 0.15,
+  /** How many of those measures must agree, among the ones both copies have. */
+  minAgreeingSignals: 2,
 };
+
+/**
+ * Activities that are all "moving on foot": two apps often label the same
+ * session differently (Walking vs Running, Hike vs Walk). Word stems, matched
+ * as substrings of the lowercased label, like workoutActivityMapping.
+ */
+const ON_FOOT_ACTIVITY_STEMS = ['walk', 'run', 'jog', 'hik', 'trek'];
 
 /** Opt-in: SPARKY_FITNESS_HEALTH_WORKOUT_DEDUPE=true turns the check on. */
 export function isWorkoutDedupeEnabled(): boolean {
@@ -33,6 +49,8 @@ export interface WorkoutSummary {
   durationMinutes: number;
   distanceKm: number | null;
   steps: number | null;
+  avgHeartRate: number | null;
+  maxHeartRate: number | null;
   /** How much detail the record carries (see completenessScore). */
   completeness: number;
   /**
@@ -42,11 +60,17 @@ export interface WorkoutSummary {
   isManual: boolean;
 }
 
+export type DuplicateSignal = 'duration' | 'distance' | 'steps' | 'heart rate';
+
 export interface DuplicateMetrics {
   overlapRatio: number;
-  durationDiff: number;
+  durationDiff: number | null;
   distanceDiff: number | null;
   stepsDiff: number | null;
+  /** The larger of the avg and max heart-rate differences. */
+  heartRateDiff: number | null;
+  /** The measures within maxRelativeDiff. */
+  agreeing: DuplicateSignal[];
 }
 
 export type IncomingWorkoutDecision =
@@ -83,6 +107,7 @@ export interface CompletenessFields {
   steps?: unknown;
   calories_burned?: unknown;
   hasGps?: boolean;
+  hasHrSamples?: boolean;
 }
 
 const isPositive = (value: unknown) => {
@@ -96,6 +121,7 @@ export function completenessScore(fields: CompletenessFields): number {
   if (isPositive(fields.avg_heart_rate)) score += 2;
   if (isPositive(fields.max_heart_rate)) score += 1;
   if (fields.hasGps) score += 2;
+  if (fields.hasHrSamples) score += 1;
   if (isPositive(fields.elevation_gain_meters)) score += 1;
   if (isPositive(fields.moving_time_seconds)) score += 1;
   if (isPositive(fields.distance)) score += 1;
@@ -126,7 +152,21 @@ export function relativeDiff(
   );
 }
 
-const normaliseActivity = (activity: string) => activity.trim().toLowerCase();
+/** 'on-foot' for walking, running, hiking and the like; otherwise the label itself. */
+export function activityGroup(activity: string): string {
+  const label = activity.trim().toLowerCase();
+  return ON_FOOT_ACTIVITY_STEMS.some((stem) => label.includes(stem))
+    ? 'on-foot'
+    : label;
+}
+
+/** Avg heart rate difference, or the max one when larger; null without avg on both. */
+function heartRateDiff(a: WorkoutSummary, b: WorkoutSummary): number | null {
+  const avg = relativeDiff(a.avgHeartRate, b.avgHeartRate);
+  if (avg === null) return null;
+  const max = relativeDiff(a.maxHeartRate, b.maxHeartRate);
+  return max === null ? avg : Math.max(avg, max);
+}
 
 /** Metrics for a pair that qualifies as a probable duplicate, or null when it does not. */
 export function compareWorkouts(
@@ -134,28 +174,39 @@ export function compareWorkouts(
   existing: WorkoutSummary
 ): DuplicateMetrics | null {
   const limits = WORKOUT_DEDUPE_THRESHOLDS;
-  if (
-    normaliseActivity(incoming.activity) !==
-    normaliseActivity(existing.activity)
-  ) {
+  if (activityGroup(incoming.activity) !== activityGroup(existing.activity)) {
     return null;
   }
   const overlap = overlapRatio(incoming, existing);
   if (overlap < limits.minOverlapRatio) return null;
-  const durationDiff = relativeDiff(
-    incoming.durationMinutes,
-    existing.durationMinutes
+  // A measure only counts when both copies have it: one app may not record
+  // steps or heart rate at all, which says nothing about whether it is the
+  // same walk. The two apps also estimate distance differently, so no single
+  // measure can veto the match; enough of the others have to agree.
+  const diffs: [DuplicateSignal, number | null][] = [
+    [
+      'duration',
+      relativeDiff(incoming.durationMinutes, existing.durationMinutes),
+    ],
+    ['distance', relativeDiff(incoming.distanceKm, existing.distanceKm)],
+    ['steps', relativeDiff(incoming.steps, existing.steps)],
+    ['heart rate', heartRateDiff(incoming, existing)],
+  ];
+  const agreeing = diffs
+    .filter(([, diff]) => diff !== null && diff <= limits.maxRelativeDiff)
+    .map(([signal]) => signal);
+  if (agreeing.length < limits.minAgreeingSignals) return null;
+  const [durationDiff, distanceDiff, stepsDiff, hrDiff] = diffs.map(
+    ([, diff]) => diff
   );
-  if (durationDiff === null || durationDiff > limits.maxRelativeDiff)
-    return null;
-  // Distance and steps only count when both copies have them: one app may not
-  // record steps at all, which says nothing about whether it is the same walk.
-  const distanceDiff = relativeDiff(incoming.distanceKm, existing.distanceKm);
-  if (distanceDiff !== null && distanceDiff > limits.maxRelativeDiff)
-    return null;
-  const stepsDiff = relativeDiff(incoming.steps, existing.steps);
-  if (stepsDiff !== null && stepsDiff > limits.maxRelativeDiff) return null;
-  return { overlapRatio: overlap, durationDiff, distanceDiff, stepsDiff };
+  return {
+    overlapRatio: overlap,
+    durationDiff,
+    distanceDiff,
+    stepsDiff,
+    heartRateDiff: hrDiff,
+    agreeing,
+  };
 }
 
 /**
@@ -205,9 +256,10 @@ export function describeMatch(
   metrics: DuplicateMetrics
 ): string {
   return (
-    `'${incoming.activity}' ${incoming.source}/${incoming.sourceId} vs entry ${existing.id} ` +
+    `'${incoming.activity}' ${incoming.source}/${incoming.sourceId} vs '${existing.activity}' entry ${existing.id} ` +
     `(${existing.source}/${existing.sourceId ?? 'no source_id'}): overlap ${pct(metrics.overlapRatio)}, ` +
     `duration diff ${pct(metrics.durationDiff)}, distance diff ${pct(metrics.distanceDiff)}, ` +
-    `steps diff ${pct(metrics.stepsDiff)}, completeness ${incoming.completeness} vs ${existing.completeness}`
+    `steps diff ${pct(metrics.stepsDiff)}, heart rate diff ${pct(metrics.heartRateDiff)}, ` +
+    `agreeing: ${metrics.agreeing.join(', ')}, completeness ${incoming.completeness} vs ${existing.completeness}`
   );
 }

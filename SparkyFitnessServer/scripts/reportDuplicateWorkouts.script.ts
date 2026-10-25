@@ -28,7 +28,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 interface ReportedPair {
   user_id: string;
   kind: 'synced-pair' | 'overlaps-manual';
-  activity: string;
   suggested_keep: string;
   suggested_review: string;
   entries: ReturnType<typeof summarize>[];
@@ -50,10 +49,13 @@ const summarize = (w: WorkoutSummary) => ({
   id: w.id,
   source: w.source,
   sourceId: w.sourceId,
+  activity: w.activity,
   start: w.startMs === null ? null : new Date(w.startMs).toISOString(),
   durationMinutes: Math.round(w.durationMinutes * 10) / 10,
   distanceKm: w.distanceKm,
   steps: w.steps,
+  avgHeartRate: w.avgHeartRate,
+  maxHeartRate: w.maxHeartRate,
   completeness: w.completeness,
 });
 
@@ -84,7 +86,6 @@ export function findStoredDuplicatePairs(
           decision.kind === 'manual-overlap'
             ? 'overlaps-manual'
             : 'synced-pair',
-        activity: later.activity,
         suggested_keep: keep.id as string,
         suggested_review: review.id as string,
         entries: [summarize(earlier), summarize(later)],
@@ -138,13 +139,18 @@ async function run() {
   if (args.json) {
     process.stdout.write(`${JSON.stringify(pairs, null, 2)}\n`);
   } else {
+    const line = (e: ReturnType<typeof summarize>) =>
+      `  ${e.start}  ${e.activity}  ${e.durationMinutes} min  ${e.distanceKm ?? '-'} km  ${e.steps ?? '-'} steps  ` +
+      `HR ${e.avgHeartRate ?? '-'}/${e.maxHeartRate ?? '-'}  completeness ${e.completeness}  ` +
+      `${e.source}/${e.sourceId ?? '-'}  entry ${e.id}\n`;
     for (const p of pairs) {
       const [a, b] = p.entries;
       process.stdout.write(
-        `${p.kind}  ${p.activity}  user ${p.user_id}\n` +
-          `  ${a.start}  ${a.durationMinutes} min  ${a.distanceKm ?? '-'} km  ${a.steps ?? '-'} steps  ${a.source}/${a.sourceId ?? '-'}  entry ${a.id}\n` +
-          `  ${b.start}  ${b.durationMinutes} min  ${b.distanceKm ?? '-'} km  ${b.steps ?? '-'} steps  ${b.source}/${b.sourceId ?? '-'}  entry ${b.id}\n` +
-          `  overlap ${(p.metrics.overlapRatio * 100).toFixed(1)}%  keep ${p.suggested_keep}, review ${p.suggested_review}\n\n`
+        `${p.kind}  user ${p.user_id}\n` +
+          line(a) +
+          line(b) +
+          `  overlap ${(p.metrics.overlapRatio * 100).toFixed(1)}%  agreeing: ${p.metrics.agreeing.join(', ')}  ` +
+          `keep ${p.suggested_keep}, review ${p.suggested_review}\n\n`
       );
     }
     process.stdout.write(

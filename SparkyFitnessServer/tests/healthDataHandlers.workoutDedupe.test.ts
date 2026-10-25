@@ -81,6 +81,8 @@ const storedA: WorkoutSummary = {
   durationMinutes: 86.1,
   distanceKm: 7.29,
   steps: 9522,
+  avgHeartRate: 107,
+  maxHeartRate: 146,
   completeness: 5,
   isManual: false,
 };
@@ -136,6 +138,50 @@ describe('workout handler duplicate check', () => {
     });
   });
 
+  it('skips a Walking copy of a stored Running session (25/10) and records it', async () => {
+    const storedRun: WorkoutSummary = {
+      id: 'entry-run-25',
+      source: 'Health Connect',
+      sourceId: 'ddde2682',
+      activity: 'Running',
+      startMs: Date.parse('2026-10-25T11:47:00Z'),
+      durationMinutes: 78.93,
+      distanceKm: 7.25,
+      steps: 9601,
+      avgHeartRate: 137,
+      maxHeartRate: 174,
+      completeness: 8,
+      isManual: false,
+    };
+    (dupRepo.findWorkoutDedupeCandidates as Mock).mockResolvedValue([
+      storedRun,
+    ]);
+    const walk25 = {
+      ...walkB,
+      source_id: 'walk-25',
+      duration: 80.8 * 60,
+      distance: 7.35,
+      steps: 9840,
+      telemetry: { avg_heart_rate: 137, max_heart_rate: 174 },
+    };
+
+    const outcome = await handler.handle(walk25, {
+      ...ctx,
+      parsedDate: '2026-10-25',
+      entryTimestamp: '2026-10-25T11:47:00.000Z',
+    } as HealthEntryContext);
+
+    expect(outcome.status).toBe('skipped');
+    expect(exerciseEntryDb.createExerciseEntry).not.toHaveBeenCalled();
+    const [, keptId, , data] = (dupRepo.recordMergedDuplicate as Mock).mock
+      .calls[0];
+    expect({ keptId, sourceId: data.source_id }).toEqual({
+      keptId: 'entry-run-25',
+      sourceId: 'walk-25',
+    });
+    expect(data.agreeing).toContain('heart rate');
+  });
+
   it('skips a re-sent record already recorded as merged, without comparing again', async () => {
     (dupRepo.findMergedDuplicateOwner as Mock).mockResolvedValue('entry-a');
 
@@ -153,6 +199,8 @@ describe('workout handler duplicate check', () => {
       sourceId: '50cd4679-b',
       startMs: Date.parse('2026-10-18T10:49:00Z'),
       durationMinutes: 84,
+      avgHeartRate: null,
+      maxHeartRate: null,
       completeness: 2,
     };
     (dupRepo.findWorkoutDedupeCandidates as Mock).mockResolvedValue([storedB]);

@@ -35,6 +35,7 @@ interface CandidateRow {
   elevation_gain_meters: string | number | null;
   moving_time_seconds: number | null;
   has_gps: boolean;
+  has_hr_samples: boolean;
   is_manual: boolean;
 }
 
@@ -56,7 +57,13 @@ export function candidateRowToSummary(row: CandidateRow): WorkoutSummary {
     durationMinutes: toNumber(row.duration_minutes) ?? 0,
     distanceKm: toNumber(row.distance),
     steps: toNumber(row.steps),
-    completeness: completenessScore({ ...row, hasGps: row.has_gps }),
+    avgHeartRate: toNumber(row.avg_heart_rate),
+    maxHeartRate: toNumber(row.max_heart_rate),
+    completeness: completenessScore({
+      ...row,
+      hasGps: row.has_gps,
+      hasHrSamples: row.has_hr_samples,
+    }),
     isManual: row.is_manual,
   };
 }
@@ -89,6 +96,9 @@ export async function findWorkoutDedupeCandidates(
               ee.moving_time_seconds,
               EXISTS (SELECT 1 FROM exercise_entry_gps_points g
                       WHERE g.exercise_entry_id = ee.id) AS has_gps,
+              -- Zones are only computed from a heart-rate series sent with the workout.
+              EXISTS (SELECT 1 FROM exercise_entry_hr_zones z
+                      WHERE z.exercise_entry_id = ee.id) AS has_hr_samples,
               (COALESCE(ee.source, 'manual') = 'manual'
                OR ee.exercise_preset_entry_id IS NOT NULL
                OR ee.workout_plan_assignment_id IS NOT NULL) AS is_manual

@@ -2041,12 +2041,21 @@ const workoutHandler: HealthTypeHandler = {
           durationMinutes: duration ? duration / 60 : 0,
           distanceKm: typeof distance === 'number' ? distance : null,
           steps: typeof steps === 'number' ? steps : null,
+          avgHeartRate:
+            typeof telemetry.avg_heart_rate === 'number'
+              ? telemetry.avg_heart_rate
+              : null,
+          maxHeartRate:
+            typeof telemetry.max_heart_rate === 'number'
+              ? telemetry.max_heart_rate
+              : null,
           completeness: completenessScore({
             ...telemetry,
             distance,
             steps,
             calories_burned: caloriesBurned,
             hasGps: gpsPoints.length > 0,
+            hasHrSamples: hrSamples.length > 0,
           }),
           isManual: false,
         };
