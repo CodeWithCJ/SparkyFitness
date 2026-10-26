@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-25_
+_Last updated: 2026-10-26_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -145,6 +145,7 @@ npx expo prebuild --clean
 - Core check-in measurements use `measurementsApi.ts` and `MeasurementsAddScreen`; preserve `upsertCheckIn` omitted-vs-null semantics.
 - "Import Full History" (`ImportHistoryScreen`, reached from `SyncScreen`) is a one-time resumable backfill: `backfillService.ts` walks 30-day day-aligned windows newest-first from start-of-today down to a probe-derived floor (`readEarliestRecord` on both providers), one upload per window, with a per-server checkpoint in `backfillCheckpoint.ts`. It never advances `lastSyncedTime` and never runs writeback; while it runs, `isBackfillRunning()` (autoSyncCoordinator) makes background sync skip.
 - The backfill's metric set is FROZEN in its checkpoint at first run; resume uses the frozen set verbatim and toggle changes require Start Over. Quota exhaustion, locked device, and app-inactive are expected mid-run stops — the checkpoint keeps them resumable.
+- Sleeping wrist temperature (iOS only, `SleepingWristTemperature` -> `HKQuantityTypeIdentifierAppleSleepingWristTemperature`, toggle `syncSleepingWristTemperatureEnabled`) syncs as a plain `skin_temperature` record keyed to the sample's end (the wake day). The server stores it as a `skin_temperature` sample, not a custom measurement. `SleepDetailScreen` reads it through `useSkinTemperature` (`GET /api/generic-health/samples?metric=skin_temperature`, 14 nights back, key under `skinTemperatureQueryKeyRoot`, invalidated by `refreshHealthSyncCache`) and `utils/skinTemperature.ts` `nightSkinTemperature`: a source's own `deviation_celsius` (Polar) wins, else the night against the median of the earlier nights from the same source once there are `MIN_BASELINE_NIGHTS`. `SleepBiometrics` shows the °C row and the signed deviation row; Android has no equivalent.
 
 ## Health Writeback
 

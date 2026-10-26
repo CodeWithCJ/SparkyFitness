@@ -468,6 +468,7 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
 
   BasalBodyTemperature: formatTemperature,
   BodyTemperature: formatTemperature,
+  SleepingWristTemperature: formatTemperature,
 
   BloodGlucose: (records) => {
     const latestGlucose = (

@@ -377,6 +377,59 @@ describe('transformHealthRecords', () => {
     });
   });
 
+  describe('SleepingWristTemperature records', () => {
+    const config = {
+      recordType: 'SleepingWristTemperature',
+      unit: 'celsius',
+      type: 'skin_temperature',
+    };
+
+    test('keys the reading to the sample end, the wake day', () => {
+      const result = transformHealthRecords(
+        [
+          {
+            time: atLocalTime('2024-01-14', '23:30'),
+            endTime: atLocalTime('2024-01-15', '07:00'),
+            temperature: { inCelsius: 35.2 },
+          },
+        ],
+        config
+      ) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].value).toBe(35.2);
+      expect(result[0].date).toBe('2024-01-15');
+      expect(result[0].type).toBe('skin_temperature');
+      expect(result[0].timestamp).toBe(
+        new Date(atLocalTime('2024-01-15', '07:00')).toISOString()
+      );
+    });
+
+    test('falls back to the start time when there is no end', () => {
+      const result = transformHealthRecords(
+        [
+          {
+            time: atLocalTime('2024-01-15', '03:00'),
+            temperature: { inCelsius: 35.2 },
+          },
+        ],
+        config
+      ) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toBe('2024-01-15');
+    });
+
+    test('skips a record with no temperature', () => {
+      expect(
+        transformHealthRecords(
+          [{ time: atLocalTime('2024-01-15', '03:00') }],
+          config
+        )
+      ).toHaveLength(0);
+    });
+  });
+
   describe('percentage conversions (decimal to percentage)', () => {
     test('BloodAlcoholContent multiplies decimal by 100', () => {
       const records = [{ startTime: '2024-01-15T08:00:00Z', value: 0.08 }];

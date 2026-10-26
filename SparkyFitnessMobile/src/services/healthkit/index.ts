@@ -160,6 +160,7 @@ const SUPPORTED_HK_TYPES = new Set<string>([
   'HKQuantityTypeIdentifierBloodPressureSystolic',
   'HKQuantityTypeIdentifierBloodPressureDiastolic',
   'HKQuantityTypeIdentifierBodyTemperature',
+  'HKQuantityTypeIdentifierAppleSleepingWristTemperature',
   'HKQuantityTypeIdentifierBloodGlucose',
   'HKQuantityTypeIdentifierOxygenSaturation',
   'HKQuantityTypeIdentifierVO2Max',
@@ -239,6 +240,7 @@ const HEALTHKIT_UNIT_MAP: Record<string, string> = {
   Hydration: 'L',
   BodyTemperature: 'degC',
   BasalBodyTemperature: 'degC',
+  SleepingWristTemperature: 'degC',
   BloodGlucose: 'mg/dL',
   HeartRateVariabilitySDNN: 'ms',
   // Add other metrics that need explicit units as needed
@@ -258,6 +260,8 @@ export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   BloodPressureSystolic: 'HKQuantityTypeIdentifierBloodPressureSystolic',
   BloodPressureDiastolic: 'HKQuantityTypeIdentifierBloodPressureDiastolic',
   BodyTemperature: 'HKQuantityTypeIdentifierBodyTemperature',
+  SleepingWristTemperature:
+    'HKQuantityTypeIdentifierAppleSleepingWristTemperature',
   BloodGlucose: 'HKQuantityTypeIdentifierBloodGlucose',
   OxygenSaturation: 'HKQuantityTypeIdentifierOxygenSaturation',
   Vo2Max: 'HKQuantityTypeIdentifierVO2Max',
@@ -1665,6 +1669,10 @@ const QUANTITY_TRANSFORMS: Record<
   Height: (base, q) => ({ ...base, height: { inMeters: q } }),
   BodyFat: (base, q) => ({ ...base, percentage: { inPercent: q * 100 } }),
   BodyTemperature: (base, q) => ({ ...base, temperature: { inCelsius: q } }),
+  SleepingWristTemperature: (base, q) => ({
+    ...base,
+    temperature: { inCelsius: q },
+  }),
   BloodGlucose: (base, q) => ({
     ...base,
     level: { inMilligramsPerDeciliter: q },

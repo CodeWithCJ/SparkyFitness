@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 
 import SleepDetailScreen from '../../src/screens/SleepDetailScreen';
+import { useSkinTemperature } from '../../src/hooks/useSkinTemperature';
 import { useSleepDetail } from '../../src/hooks/useSleepDetail';
 import { initializeI18n } from '../../src/localization/i18n';
 import { addDays, getTodayDate } from '../../src/utils/dateUtils';
@@ -9,6 +10,10 @@ import { buildSleepEntry, buildStageEvent } from '../helpers/sleepFixtures';
 
 jest.mock('../../src/hooks/useSleepDetail', () => ({
   useSleepDetail: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/useSkinTemperature', () => ({
+  useSkinTemperature: jest.fn(() => null),
 }));
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
@@ -167,6 +172,29 @@ describe('SleepDetailScreen', () => {
     expect(getByTestId('sleep-biometrics')).toBeTruthy();
     expect(getByTestId('sleep-biometric-overnightHrv')).toBeTruthy();
     expect(getByText('48 ms')).toBeTruthy();
+  });
+
+  test('renders skin temperature and its deviation from usual', () => {
+    (useSkinTemperature as jest.Mock).mockReturnValueOnce({
+      celsius: 35.1,
+      deviation: -0.3,
+    });
+    const { getByTestId, getByText } = setupScreen({
+      entry: buildSleepEntry({
+        id: ENTRY_ID,
+        average_spo2_value: null,
+        lowest_spo2_value: null,
+        highest_spo2_value: null,
+        resting_heart_rate: null,
+      }),
+    });
+
+    expect(getByTestId('sleep-biometric-skinTemperature')).toBeTruthy();
+    expect(getByText('35.1 °C')).toBeTruthy();
+    expect(
+      getByTestId('sleep-biometric-skinTemperatureDeviation')
+    ).toBeTruthy();
+    expect(getByText('-0.3 °C')).toBeTruthy();
   });
 
   test('leads the content with a Sleep title and the session’s date', () => {

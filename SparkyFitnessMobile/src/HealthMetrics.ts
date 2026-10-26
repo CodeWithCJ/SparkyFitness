@@ -275,6 +275,24 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
     category: 'Vitals',
   },
   {
+    id: 'sleepingWristTemperature',
+    labelKey: 'healthMetrics.sleepingWristTemperature',
+    defaultLabel: 'Sleeping Wrist Temperature',
+    stateKey: 'isSleepingWristTemperatureSyncEnabled',
+    preferenceKey: 'syncSleepingWristTemperatureEnabled',
+    recordType: 'SleepingWristTemperature',
+    unit: 'celsius',
+    icon: require('../assets/icons/health-metrics/body_temperature.png'),
+    permissions: [
+      { accessType: 'read', recordType: 'SleepingWristTemperature' },
+    ],
+    type: 'skin_temperature',
+    platforms: ['ios'],
+    category: 'Vitals',
+    // Apple writes the night's value after waking, so look back a couple of days.
+    rollingLookbackDays: 2,
+  },
+  {
     id: 'distance',
     labelKey: 'healthMetrics.distance',
     defaultLabel: 'Distance',
@@ -1166,6 +1184,10 @@ export function getHealthMetricLabel(
     case 'bodyTemperature':
       return t('healthMetrics.bodyTemperature', {
         defaultValue: 'Body Temperature',
+      });
+    case 'sleepingWristTemperature':
+      return t('healthMetrics.sleepingWristTemperature', {
+        defaultValue: 'Sleeping Wrist Temperature',
       });
     case 'distance':
       return t('healthMetrics.distance', { defaultValue: 'Distance' });

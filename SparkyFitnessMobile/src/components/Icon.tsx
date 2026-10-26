@@ -187,6 +187,7 @@ const ICON_MAP = {
   'sleep-score': { sf: 'star.fill', ion: 'star' },
   spo2: { sf: 'lungs.fill', ion: 'pulse' },
   'heart-rate': { sf: 'heart.fill', ion: 'heart' },
+  'skin-temperature': { sf: 'thermometer.medium', ion: 'thermometer-outline' },
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;

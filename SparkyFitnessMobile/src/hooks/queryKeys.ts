@@ -147,6 +147,11 @@ export const sleepRangeQueryKeyRoot = ['sleepRange'] as const;
 export const sleepRangeQueryKey = (startDate: string, endDate: string) =>
   [...sleepRangeQueryKeyRoot, startDate, endDate] as const;
 
+/** Skin temperature samples around one night, for the Sleep Details row. */
+export const skinTemperatureQueryKeyRoot = ['skinTemperature'] as const;
+export const skinTemperatureQueryKey = (startDate: string, endDate: string) =>
+  [...skinTemperatureQueryKeyRoot, startDate, endDate] as const;
+
 export const sleepDayQueryKeyRoot = ['sleep'] as const;
 export const sleepDayQueryKey = (day: string) =>
   [...sleepDayQueryKeyRoot, 'day', day] as const;

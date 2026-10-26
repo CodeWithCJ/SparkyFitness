@@ -264,6 +264,23 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
     return value !== null && date ? { value, date } : null;
   },
 
+  // Apple stamps the night's value across the sleep, so key it to the wake day
+  // (the sample's end) like the sleep session it belongs to.
+  SleepingWristTemperature: (rec) => {
+    const value = extractNestedValue(rec, 'temperature', 'inCelsius');
+    const instant = rec.endTime ?? rec.time;
+    const date = getDateString(instant);
+    return value !== null && date
+      ? {
+          value,
+          date,
+          ...(typeof instant === 'string' || instant instanceof Date
+            ? { timestamp: new Date(instant).toISOString() }
+            : {}),
+        }
+      : null;
+  },
+
   // Percentage records
   BodyFat: (rec) => {
     const value = extractNestedValue(rec, 'percentage', 'inPercent');

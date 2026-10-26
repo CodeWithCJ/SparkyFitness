@@ -14,6 +14,7 @@ import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import * as mindfulnessRepository from '../models/mindfulnessRepository.js';
 import moodRepository from '../models/moodRepository.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { upsertSamplesByDay } from '../services/healthMetricSampleWriter.js';
 import type { WaterContainerResponse } from '@workspace/shared';
 
 vi.mock('../models/measurementRepository.js', () => ({
@@ -45,6 +46,9 @@ vi.mock('../utils/timezoneLoader.js', () => ({
 }));
 vi.mock('../models/mindfulnessRepository.js', () => ({
   createMindfulnessSession: vi.fn(),
+}));
+vi.mock('../services/healthMetricSampleWriter.js', () => ({
+  upsertSamplesByDay: vi.fn(),
 }));
 
 // Guards the registry against alias drift: every case label from the old
@@ -101,6 +105,7 @@ describe('health data handler registry', () => {
     ['RestingHeartRate', 'resting_heart_rate'],
     ['vo2_max', 'vo2_max'],
     ['Vo2Max', 'vo2_max'],
+    ['skin_temperature', 'skin_temperature'],
   ])("resolves '%s' to the '%s' handler", (rawType, canonicalKey) => {
     expect(resolveHandler(rawType)).toBe(HEALTH_TYPE_HANDLERS[canonicalKey]);
   });
@@ -1013,5 +1018,74 @@ describe('moodHandler', () => {
       expect(call[2].entryDate).toBe('2026-10-05');
     }
     expect(moodRepository.createCheckin).not.toHaveBeenCalled();
+  });
+});
+
+describe('skinTemperatureHandler', () => {
+  const handler = HEALTH_TYPE_HANDLERS['skin_temperature'];
+  const ctx = {
+    userId: 'user-1',
+    actingUserId: 'actor-1',
+    parsedDate: '2026-08-23',
+    entryTimestamp: '2026-08-23T07:30:00.000Z',
+    entryHour: 7,
+  } as unknown as HealthEntryContext;
+
+  beforeEach(() => {
+    vi.mocked(upsertSamplesByDay).mockReset();
+    vi.mocked(upsertSamplesByDay).mockResolvedValue(1);
+  });
+
+  it('stores a reading as a skin_temperature sample on the wake day', async () => {
+    const outcome = await handler.handle(
+      { type: 'skin_temperature', value: 35.126, source: 'HealthKit' },
+      ctx
+    );
+
+    expect(outcome.status).toBe('success');
+    expect(upsertSamplesByDay).toHaveBeenCalledTimes(1);
+    const [userId, actingUserId, metric, provider, samples, options] =
+      vi.mocked(upsertSamplesByDay).mock.calls[0];
+    expect([userId, actingUserId, metric, provider]).toEqual([
+      'user-1',
+      'actor-1',
+      'skin_temperature',
+      'healthkit',
+    ]);
+    expect(samples).toEqual([
+      expect.objectContaining({
+        entry_date: '2026-08-23',
+        celsius: 35.13,
+        timestamp: new Date('2026-08-23T07:30:00.000Z'),
+      }),
+    ]);
+    expect(options).toMatchObject({ mode: 'merge' });
+  });
+
+  it.each([['abc'], [''], [12], [60]])(
+    'rejects the out-of-range value %j without writing',
+    async (value) => {
+      const outcome = await handler.handle(
+        { type: 'skin_temperature', value, source: 'HealthKit' },
+        ctx
+      );
+
+      expect(outcome.status).toBe('error');
+      expect(upsertSamplesByDay).not.toHaveBeenCalled();
+    }
+  );
+
+  it('reports an error when the write fails', async () => {
+    vi.mocked(upsertSamplesByDay).mockRejectedValue(new Error('db down'));
+
+    const outcome = await handler.handle(
+      { type: 'skin_temperature', value: 35, source: 'HealthKit' },
+      ctx
+    );
+
+    expect(outcome).toEqual({
+      status: 'error',
+      error: 'Failed to store skin temperature: db down',
+    });
   });
 });

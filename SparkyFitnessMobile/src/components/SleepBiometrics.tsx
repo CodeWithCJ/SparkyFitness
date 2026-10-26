@@ -5,6 +5,7 @@ import { useCSSVariable } from 'uniwind';
 
 import { formatLocalizedNumber } from '../localization';
 import type { SleepEntry } from '../types/sleep';
+import type { NightSkinTemperature } from '../utils/skinTemperature';
 import Icon, { type IconName } from './Icon';
 
 interface BiometricRow {
@@ -13,16 +14,31 @@ interface BiometricRow {
   label: string;
   value: number;
   unit: string;
+  format?: Intl.NumberFormatOptions;
 }
 
 interface SleepBiometricsProps {
   entry: SleepEntry;
+  /** The night's skin temperature, from a source that reports one. */
+  skinTemperature?: NightSkinTemperature | null;
 }
 
+const TEMPERATURE_FORMAT: Intl.NumberFormatOptions = {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+};
+const TEMPERATURE_DEVIATION_FORMAT: Intl.NumberFormatOptions = {
+  ...TEMPERATURE_FORMAT,
+  signDisplay: 'exceptZero',
+};
+
 /**
- * Overnight SpO2, resting heart rate and HRV.
+ * Overnight SpO2, resting heart rate, HRV and skin temperature.
  */
-const SleepBiometrics: React.FC<SleepBiometricsProps> = ({ entry }) => {
+const SleepBiometrics: React.FC<SleepBiometricsProps> = ({
+  entry,
+  skinTemperature,
+}) => {
   const { t } = useTranslation();
   const [accentPrimary, textMuted] = useCSSVariable([
     '--color-accent-primary',
@@ -32,6 +48,7 @@ const SleepBiometrics: React.FC<SleepBiometricsProps> = ({ entry }) => {
   const percentUnit = t('sleep.percentUnit', { defaultValue: '%' });
   const bpmUnit = t('sleep.bpmUnit', { defaultValue: 'bpm' });
   const msUnit = t('sleep.msUnit', { defaultValue: 'ms' });
+  const celsiusUnit = t('sleep.celsiusUnit', { defaultValue: '°C' });
 
   const rows: BiometricRow[] = [
     {
@@ -71,6 +88,24 @@ const SleepBiometrics: React.FC<SleepBiometricsProps> = ({ entry }) => {
       value: entry.avg_overnight_hrv,
       unit: msUnit,
     },
+    {
+      key: 'skinTemperature',
+      icon: 'skin-temperature',
+      label: t('sleep.skinTemperature', { defaultValue: 'Skin temperature' }),
+      value: skinTemperature?.celsius,
+      unit: celsiusUnit,
+      format: TEMPERATURE_FORMAT,
+    },
+    {
+      key: 'skinTemperatureDeviation',
+      icon: 'skin-temperature',
+      label: t('sleep.skinTemperatureDeviation', {
+        defaultValue: 'Skin temp. vs usual',
+      }),
+      value: skinTemperature?.deviation,
+      unit: celsiusUnit,
+      format: TEMPERATURE_DEVIATION_FORMAT,
+    },
   ].filter((row): row is BiometricRow => row.value != null);
 
   if (rows.length === 0) return null;
@@ -100,7 +135,7 @@ const SleepBiometrics: React.FC<SleepBiometricsProps> = ({ entry }) => {
             <Text className="text-base text-text-primary">{row.label}</Text>
           </View>
           <Text className="text-base font-semibold text-text-primary">
-            {formatLocalizedNumber(row.value)} {row.unit}
+            {formatLocalizedNumber(row.value, row.format)} {row.unit}
           </Text>
         </View>
       ))}

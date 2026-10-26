@@ -10,6 +10,7 @@ import SleepStagesBreakdown from '../components/SleepStagesBreakdown';
 import StatusView from '../components/StatusView';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useSkinTemperature } from '../hooks/useSkinTemperature';
 import { useSleepDetail } from '../hooks/useSleepDetail';
 import { getAppLocale } from '../localization';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -132,6 +133,7 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
     day
   );
   const { preferences } = usePreferences();
+  const skinTemperature = useSkinTemperature(entry?.entry_date);
 
   // Resolved once for the whole screen so the header's bedtime-to-wake range and the
   // hypnogram's axis labels can never disagree about which clock they are on.
@@ -200,7 +202,7 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
         <SleepDetailHeader entry={entry} zone={zone} />
         <Hypnogram stages={stages} zone={zone} />
         <SleepStagesBreakdown entry={entry} />
-        <SleepBiometrics entry={entry} />
+        <SleepBiometrics entry={entry} skinTemperature={skinTemperature} />
       </ScrollView>
     );
   };
