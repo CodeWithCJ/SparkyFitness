@@ -281,6 +281,7 @@ const OWNER_ONLY_PREFERENCE_FIELDS = [
   'resting_heart_rate',
   'hr_zone_method',
   'hr_zone_custom_floors',
+  'hr_zone_display_count',
 ] as const;
 async function getUserPreferences(
   authenticatedUserId: string | undefined,

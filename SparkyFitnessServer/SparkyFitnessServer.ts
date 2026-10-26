@@ -11,6 +11,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { bridgeBearerAuthHeader } from './utils/bearerAuthBridge.js';
 import { endPool } from './db/poolManager.js';
+import { installShutdownHandlers } from './utils/gracefulShutdown.js';
 import { log } from './config/logging.js';
 import { authenticate } from './middleware/authMiddleware.js';
 import { isReadOnlyApiKeyAuthMutation } from './middleware/readOnlyApiKeyGuard.js';
@@ -99,6 +100,8 @@ import nutritionKineticsRoutesV2 from './routes/v2/nutritionKineticsRoutes.js';
 import mindfulnessRoutesV2 from './routes/v2/mindfulnessRoutes.js';
 import heartRateZoneRoutesV2 from './routes/v2/heartRateZoneRoutes.js';
 import runProgramRoutesV2 from './routes/v2/runProgramRoutes.js';
+import fitnessTestRoutesV2 from './routes/v2/fitnessTestRoutes.js';
+import runGoalRoutesV2 from './routes/v2/runGoalRoutes.js';
 import shoeRoutesV2 from './routes/v2/shoeRoutes.js';
 import routeRoutesV2 from './routes/v2/routeRoutes.js';
 import backupRoutes from './routes/backupRoutes.js';
@@ -792,6 +795,8 @@ app.use('/api/v2/nutrition', nutritionKineticsRoutesV2);
 app.use('/api/v2/mindfulness', mindfulnessRoutesV2);
 app.use('/api/v2/heart-rate-zones', heartRateZoneRoutesV2);
 app.use('/api/v2/run-program', runProgramRoutesV2);
+app.use('/api/v2/fitness-tests', fitnessTestRoutesV2);
+app.use('/api/v2/run-goals', runGoalRoutesV2);
 app.use('/api/v2/shoes', shoeRoutesV2);
 app.use('/api/v2/routes', routeRoutesV2);
 app.use('/api/workout-presets', workoutPresetRoutes);
@@ -884,33 +889,7 @@ app.get('/api/api-docs', (_req, res) => res.redirect('/api/api-docs/swagger'));
   // Fix for reverse proxies using HTTP keepalive (e.g. Traefik, Caddy)
   server.keepAliveTimeout = 181000; // Must be > proxy's idle timeout (nginx=75s, traefik=default 180s)
   server.headersTimeout = 182000; // Must be slightly > keepAliveTimeout
-  // Graceful shutdown
-  let shuttingDown = false;
-  // @ts-expect-error TS7006
-  const shutdown = async (signal) => {
-    if (shuttingDown) return;
-    shuttingDown = true;
-    log('info', `${signal} received, shutting down gracefully...`);
-    server.close(async () => {
-      log('info', 'HTTP server closed, draining database pools...');
-      try {
-        await endPool();
-        log('info', 'Database pools closed. Exiting.');
-      } catch (err) {
-        log('error', 'Error closing database pools:', err);
-      }
-      // eslint-disable-next-line n/no-process-exit
-      process.exit(0);
-    });
-    // Force exit if graceful shutdown takes too long
-    setTimeout(() => {
-      log('error', 'Graceful shutdown timed out after 15s, forcing exit.');
-      // eslint-disable-next-line n/no-process-exit
-      process.exit(1);
-    }, 15000).unref();
-  };
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  installShutdownHandlers(server);
 })().catch(async (error) => {
   console.error('Failed to start server:', error);
   // A failed boot must stop the process. Setting process.exitCode alone leaves

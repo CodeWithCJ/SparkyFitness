@@ -7,16 +7,21 @@ import {
   addDays,
   buildRacePlan,
   customProgramId,
+  levelFromFiveK,
+  PACE_REFERENCE_RACES,
+  racePaceFromFiveK,
   RACE_DISTANCES,
   RACE_LEVELS,
   type RaceDistance,
   type RaceLevel,
 } from '@workspace/shared';
 import Button from '../components/ui/Button';
+import RecordingSwitchRow from '../components/recording/RecordingSwitchRow';
 import CalendarSheet, {
   type CalendarSheetRef,
 } from '../components/CalendarSheet';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useFitnessTests } from '../services/fitnessTestService';
 import {
   saveCustomProgram,
   setProgramSchedule,
@@ -28,6 +33,8 @@ import { formatLocalizedNumber, getAppLocale } from '../localization';
 import type { RootStackScreenProps } from '../types/navigation';
 import { toLocalDateString } from '../utils/dateUtils';
 import { formatDayLabel } from '../utils/dayLabel';
+import { fitnessTestName, paceText } from '../utils/fitnessTest';
+import { usePreferences } from '../hooks/usePreferences';
 
 type Props = RootStackScreenProps<'RunProgramRace'>;
 
@@ -81,6 +88,24 @@ const RunProgramRaceScreen: React.FC<Props> = ({ navigation, route }) => {
   );
   const [runDays, setRunDays] = useState<number[]>([2, 4, 0]);
   const [saving, setSaving] = useState(false);
+  // The latest fitness test sets the level and the race-day pace, instead of
+  // a guess from how much the person says they run.
+  const { latest: latestTest } = useFitnessTests();
+  const { preferences } = usePreferences();
+  const unit = (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
+  const [useTest, setUseTest] = useState(true);
+  const fromTest = useTest && latestTest !== null;
+  const testFiveK = latestTest?.paces.equivalent5kSeconds ?? null;
+  const planLevel: RaceLevel =
+    fromTest && testFiveK !== null ? levelFromFiveK(testFiveK) : level;
+  const racePace =
+    fromTest && testFiveK !== null
+      ? (racePaceFromFiveK(
+          testFiveK,
+          PACE_REFERENCE_RACES.find((race) => race.id === distance)
+            ?.distanceKm ?? 10
+        ) ?? undefined)
+      : undefined;
   // What a failed attempt already did, so a retry does only the rest instead
   // of saving the plan again. Cleared when the plan itself changes.
   const progress = useRef<{ planKey: string; id?: string; started?: boolean }>({
@@ -133,10 +158,11 @@ const RunProgramRaceScreen: React.FC<Props> = ({ navigation, route }) => {
     () =>
       buildRacePlan({
         distance,
-        level,
+        level: planLevel,
         raceDay,
         today,
         runDays,
+        racePaceSecondsPerKm: racePace,
         titles: {
           easy: t('runPrograms.race.title.easy', { defaultValue: 'Easy run' }),
           long: t('runPrograms.race.title.long', { defaultValue: 'Long run' }),
@@ -156,7 +182,7 @@ const RunProgramRaceScreen: React.FC<Props> = ({ navigation, route }) => {
         },
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [distance, level, raceDay, today, runDays, t]
+    [distance, planLevel, racePace, raceDay, today, runDays, t]
   );
 
   const tooFewDays = runDays.length < 2;
@@ -287,22 +313,55 @@ const RunProgramRaceScreen: React.FC<Props> = ({ navigation, route }) => {
           ))}
         </View>
 
-        <Text className="text-text-primary text-sm font-semibold mt-2 mb-2">
-          {t('runPrograms.race.levelLabel', {
-            defaultValue: 'How much do you run now?',
-          })}
-        </Text>
-        <View className="flex-row flex-wrap">
-          {RACE_LEVELS.map((id) => (
-            <Chip
-              key={id}
-              label={levelLabel(id)}
-              selected={level === id}
-              onPress={() => setLevel(id)}
-              testID={`race-level-${id}`}
-            />
-          ))}
-        </View>
+        {latestTest ? (
+          <RecordingSwitchRow
+            testID="race-use-test"
+            title={t('runPrograms.race.useTest', {
+              defaultValue: 'Plan from my latest test',
+            })}
+            description={t('runPrograms.race.useTestDescription', {
+              test: fitnessTestName(t, latestTest.test_type),
+              date: formatDayLabel(latestTest.test_date, 'long'),
+              defaultValue:
+                'Uses your {{test}} on {{date}} for your level and race-day pace.',
+            })}
+            value={useTest}
+            onValueChange={setUseTest}
+          />
+        ) : null}
+
+        {fromTest ? (
+          <Text
+            className="text-text-secondary text-sm mt-3"
+            testID="race-from-test"
+          >
+            {t('runPrograms.race.fromTest', {
+              level: levelLabel(planLevel),
+              pace: racePace ? paceText(t, racePace, unit) : '',
+              defaultValue:
+                'Starting level: {{level}}. Race-day pace about {{pace}}.',
+            })}
+          </Text>
+        ) : (
+          <>
+            <Text className="text-text-primary text-sm font-semibold mt-2 mb-2">
+              {t('runPrograms.race.levelLabel', {
+                defaultValue: 'How much do you run now?',
+              })}
+            </Text>
+            <View className="flex-row flex-wrap">
+              {RACE_LEVELS.map((id) => (
+                <Chip
+                  key={id}
+                  label={levelLabel(id)}
+                  selected={level === id}
+                  onPress={() => setLevel(id)}
+                  testID={`race-level-${id}`}
+                />
+              ))}
+            </View>
+          </>
+        )}
 
         <Text className="text-text-primary text-sm font-semibold mt-2 mb-2">
           {t('runPrograms.race.dayLabel', { defaultValue: 'Race day' })}
@@ -374,11 +433,17 @@ const RunProgramRaceScreen: React.FC<Props> = ({ navigation, route }) => {
                 })}
               </Text>
               <Text className="text-text-muted text-xs mt-1">
-                {t('runPrograms.race.estimate', {
-                  minutes: formatLocalizedNumber(plan.raceMinutes),
-                  defaultValue:
-                    'Race day is planned at about {{minutes}} minutes at an easy pace; you can change it in the plan afterwards.',
-                })}
+                {fromTest
+                  ? t('runPrograms.race.estimateFromTest', {
+                      minutes: formatLocalizedNumber(plan.raceMinutes),
+                      defaultValue:
+                        'Race day is planned at about {{minutes}} minutes, at the pace your fitness test points to; you can change it in the plan afterwards.',
+                    })
+                  : t('runPrograms.race.estimate', {
+                      minutes: formatLocalizedNumber(plan.raceMinutes),
+                      defaultValue:
+                        'Race day is planned at about {{minutes}} minutes at an easy pace; you can change it in the plan afterwards.',
+                    })}
               </Text>
             </>
           )}

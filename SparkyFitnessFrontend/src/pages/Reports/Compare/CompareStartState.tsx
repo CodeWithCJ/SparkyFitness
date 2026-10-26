@@ -1,7 +1,12 @@
 import { useTranslation } from 'react-i18next';
-import { SUGGESTED_QUESTIONS, type CompareQuestion } from '@workspace/shared';
+import {
+  SUGGESTED_QUESTIONS,
+  type CompareQuestion,
+  timingOf,
+} from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { sentenceText } from './compareCopy';
+import { sinceSentence } from './compareSinceCopy';
 
 interface CompareStartStateProps {
   recent: readonly CompareQuestion[];
@@ -24,7 +29,9 @@ export function CompareStartState({ recent, onPick }: CompareStartStateProps) {
         className="h-auto justify-start whitespace-normal py-3 text-left font-normal"
         onClick={() => onPick(q)}
       >
-        {sentenceText(q, t)}
+        {timingOf(q.choice).mode === 'since'
+          ? sinceSentence(q, t)
+          : sentenceText(q, t)}
       </Button>
     ));
 

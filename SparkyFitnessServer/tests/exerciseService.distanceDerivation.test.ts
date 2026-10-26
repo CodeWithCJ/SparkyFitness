@@ -117,6 +117,15 @@ describe('entry distance derivation on create', () => {
   });
 });
 
+// The service hands the model a callback that fills the omitted fields from
+// the entry the model reads under its lock; run it against a stored entry.
+const resolvedUpdate = (stored: Record<string, unknown>) => {
+  const resolveUpdate = vi.mocked(exerciseEntryDb.updateExerciseEntry).mock
+    .calls[0][5];
+  expect(resolveUpdate).toBeDefined();
+  return resolveUpdate!(stored);
+};
+
 describe('entry distance contract on individual update', () => {
   const existingEntry = {
     id: 'entry-1',
@@ -143,11 +152,8 @@ describe('entry distance contract on individual update', () => {
     exerciseEntryDb.updateExerciseEntry.mockResolvedValue({ id: 'entry-1' });
   });
 
-  const updatedDistance = () => {
-    const [, , , updateData] = vi.mocked(exerciseEntryDb.updateExerciseEntry)
-      .mock.calls[0];
-    return updateData.distance;
-  };
+  const updatedDistance = () =>
+    resolvedUpdate(existingEntry).updateData.distance;
 
   it('lets an explicit number win over set-derived totals', async () => {
     await exerciseService.updateExerciseEntry('user-1', 'actor-1', 'entry-1', {
@@ -187,6 +193,22 @@ describe('entry distance contract on individual update', () => {
     });
     expect(updatedDistance()).toBe(7.5);
   });
+
+  it('fills omitted fields from the locked entry, not the earlier read', async () => {
+    await exerciseService.updateExerciseEntry('user-1', 'actor-1', 'entry-1', {
+      notes: 'still a run',
+    });
+    const { updateData } = resolvedUpdate({
+      ...existingEntry,
+      distance: 9,
+      avg_heart_rate: 150,
+    });
+    expect(updateData).toMatchObject({
+      notes: 'still a run',
+      distance: 9,
+      avg_heart_rate: 150,
+    });
+  });
 });
 
 describe('calorie estimate on individual update', () => {
@@ -208,8 +230,7 @@ describe('calorie estimate on individual update', () => {
   };
 
   const savedCalories = () =>
-    vi.mocked(exerciseEntryDb.updateExerciseEntry).mock.calls[0][3]
-      .calories_burned;
+    resolvedUpdate(existingEntry).updateData.calories_burned;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -231,6 +252,19 @@ describe('calorie estimate on individual update', () => {
       sets: [{ set_number: 1, reps: 10, weight: 60 }],
     });
     expect(savedCalories()).toBe(120);
+  });
+
+  it('keeps the stored calories when the locked entry has moved to another exercise', async () => {
+    await exerciseService.updateExerciseEntry('user-1', 'actor-1', 'entry-1', {
+      duration_minutes: 12,
+      sets: [{ set_number: 1, reps: 10, weight: 60 }],
+    });
+    const { updateData } = resolvedUpdate({
+      ...existingEntry,
+      exercise_id: 'another-exercise',
+    });
+    expect(updateData.calories_burned).toBe(123);
+    expect(updateData.exercise_id).toBe('another-exercise');
   });
 
   it('keeps the stored calories on a partial update with no sets or exercise_id', async () => {
@@ -264,8 +298,8 @@ describe('manual_fields on individual update', () => {
     source_id: 'hc-run-1',
   };
 
-  const markedFields = () =>
-    vi.mocked(exerciseEntryDb.updateExerciseEntry).mock.calls[0][4];
+  const markedFields = (stored: Record<string, unknown> = syncedEntry) =>
+    resolvedUpdate(stored).markManualFields;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -286,17 +320,14 @@ describe('manual_fields on individual update', () => {
   });
 
   it('marks nothing on an entry that did not come from a sync', async () => {
+    const manualEntry = { ...syncedEntry, source: 'manual', source_id: null };
     // @ts-expect-error TS(2339): mockResolvedValue on mocked fn
-    exerciseEntryDb.getExerciseEntryById.mockResolvedValue({
-      ...syncedEntry,
-      source: 'manual',
-      source_id: null,
-    });
+    exerciseEntryDb.getExerciseEntryById.mockResolvedValue(manualEntry);
 
     await exerciseService.updateExerciseEntry('user-1', 'actor-1', 'entry-1', {
       distance: 6.25,
     });
 
-    expect(markedFields()).toEqual([]);
+    expect(markedFields(manualEntry)).toEqual([]);
   });
 });

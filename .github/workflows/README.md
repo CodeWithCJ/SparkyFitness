@@ -17,12 +17,10 @@ This directory contains all GitHub Actions workflows for the SparkyFitness proje
 - Detects which components changed using path filters
 - Runs component-specific test suites:
   - **Frontend**: `pnpm run validate` + `pnpm run test:ci` (type check, lint, format, tests)
-  - **Backend**: Format check, lint, tests (currently disabled)
+  - **Backend**: Format check, lint, tests
   - **Mobile**: Lint + `pnpm run test:ci`
   - **Garmin**: Python pytest with coverage
 - Uploads coverage reports as artifacts
-
-**Note**: Backend tests are currently disabled (`if: false`) per maintainer request.
 
 ---
 
@@ -38,9 +36,13 @@ This directory contains all GitHub Actions workflows for the SparkyFitness proje
 - Validates required checkboxes based on change type:
   - **All PRs**: Integrity & License checkbox
   - **New Features**: Alignment checkbox (issue approval)
-  - **Frontend Changes**: Quality checkbox (`pnpm run validate`)
-  - **Backend Changes**: Code Quality checkbox (TypeScript, Zod, Tests)
-  - **UI Changes**: Screenshots checkbox with before/after images
+  - **Mobile Changes**: Tested on device or emulator checkbox
+  - **UI Changes**: If the Validation proof checkbox is ticked, the body must contain an image or video
+  - **AI assistance**: exactly one of four review-depth options. The last two (partly understood / tested only) add the neutral `needs-extra-review` label, which is add-only. Owner and bots are exempt.
+- Enforces the PR title prefix (`feat:`, `fix:`, `docs:`, ...), because labels and the changelog are built from it
+- Fails PRs that touch more than one SQL migration under `SparkyFitnessServer/db/migrations/` (one idempotent migration per PR)
+- Warns when a migration creates a table but `rls_policies.sql` was not updated
+- Typecheck, lint, format, knip and tests are not checkbox items; `ci-tests.yml` enforces them
 - Posts validation results as a comment on the PR
 - Fails the check if required checkboxes are missing
 - Updates the same comment on subsequent edits (no spam)
@@ -61,11 +63,13 @@ hasUIChanges = .tsx/.jsx/.css files in components/screens/pages/
 - ❌ **ERRORS** (fail the check):
   - Missing "Integrity & License" checkbox (ALL)
   - Missing "Alignment" checkbox (NEW FEATURES)
-  - Missing "Quality" checkbox (FRONTEND)
-  - Missing "Code Quality" checkbox (BACKEND)
+  - Missing "Tested on device or emulator" checkbox (MOBILE)
+  - Missing or unknown PR title prefix
+  - More than one SQL migration file in the PR
+  - Zero or more than one "AI assistance" option ticked
+  - "Validation proof" ticked but no image or video in the body
 - ⚠️ **WARNINGS** (informational):
-  - Missing "Screenshots" checkbox (UI)
-  - Missing/incomplete screenshots sections
+  - Migration creates a table without an `rls_policies.sql` change
   - Missing description
   - Missing linked issue
 

@@ -1,8 +1,8 @@
 diff --git a/build/with-xcode-changes.js b/build/with-xcode-changes.js
-index 15a7aa237f41a7fb01fcf74b3e0ec4d933f95597..5f979f6b2f3e423908292805c18af876fcee4078 100644
+index 343bcb93acde6926388ad54e309922d4962c2a38..40cbe3297b37f49ecfb45b29c27390994da92841 100644
 --- a/build/with-xcode-changes.js
 +++ b/build/with-xcode-changes.js
-@@ -60,7 +60,10 @@ async function applyXcodeChanges(config, project, props) {
+@@ -61,7 +61,10 @@ async function applyXcodeChanges(config, project, props) {
      }
      const targets = getExtensionTargets();
      const productName = props.productName;
@@ -14,7 +14,7 @@ index 15a7aa237f41a7fb01fcf74b3e0ec4d933f95597..5f979f6b2f3e423908292805c18af876
      if (targetToUpdate) {
          (0, util_1.warnOnce)(`Target "${targetToUpdate.props.productName}" already exists, updating instead of creating a new one`);
      }
-@@ -184,20 +187,28 @@ async function applyXcodeChanges(config, project, props) {
+@@ -207,20 +210,28 @@ async function applyXcodeChanges(config, project, props) {
          }
      }
      if (targetToUpdate) {

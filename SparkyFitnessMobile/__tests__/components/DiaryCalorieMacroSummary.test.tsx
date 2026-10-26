@@ -72,6 +72,24 @@ describe('DiaryCalorieMacroSummary', () => {
     __resetAppPreferencesStoreForTests();
   });
 
+  it('shows the food budget including credited activity beside eaten calories', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true });
+    const { getByText } = renderWidget({
+      summary: buildSummary({
+        calorieBalance: {
+          ...buildSummary().calorieBalance,
+          eaten: 1225,
+          goal: 1800,
+          burned: 681,
+          remaining: 1256,
+          progress: 49,
+        },
+      }),
+    });
+    expect(getByText(/1,225 \/ 2,481 kcal/)).toBeTruthy();
+    expect(getByText(/1,256/)).toBeTruthy();
+  });
+
   it('renders nothing when diarySummaryVisible is off', () => {
     useAppPreferencesStore.setState({ diarySummaryVisible: false });
     const { toJSON } = renderWidget();

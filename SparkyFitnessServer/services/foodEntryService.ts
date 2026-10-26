@@ -32,6 +32,14 @@ import customNutrientService from './customNutrientService.js';
 import { removeOrphanedImages } from '../middleware/imageUpload.js';
 import express from 'express';
 // Helper functions (already defined)
+
+/** What an exercise row adds to the day: the applied override when set, else the estimate. */
+function countedExerciseCalories(ex: {
+  calories_burned: number | string;
+  calories_applied?: number | string | null;
+}): number {
+  return Number(ex.calories_applied ?? ex.calories_burned) || 0;
+}
 /**
  * A parsed row from a food-diary CSV import.
  *
@@ -3466,9 +3474,10 @@ async function exportAllDiaryEntriesToCSVStream(
           (ex: {
             entry_date: string | Date;
             calories_burned: number | string;
+            calories_applied?: number | string | null;
           }) => {
             if (getDayString(ex.entry_date) === dateStr) {
-              caloriesBurned += Number(ex.calories_burned) || 0;
+              caloriesBurned += countedExerciseCalories(ex);
             }
           }
         );
@@ -3809,8 +3818,9 @@ async function exportAllDiaryEntriesToCSVStream(
         (ex: {
           entry_date: string | Date;
           calories_burned: number | string;
+          calories_applied?: number | string | null;
         }) => {
-          caloriesBurned += Number(ex.calories_burned) || 0;
+          caloriesBurned += countedExerciseCalories(ex);
         }
       );
 

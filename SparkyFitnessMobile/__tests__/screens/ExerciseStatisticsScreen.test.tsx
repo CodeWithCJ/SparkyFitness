@@ -56,6 +56,20 @@ const mockTrainingLoad = jest.fn();
 jest.mock('../../src/hooks/useTrainingLoad', () => ({
   useTrainingLoad: () => mockTrainingLoad(),
 }));
+jest.mock('../../src/hooks/useRunEstimates', () => ({
+  useRunEstimates: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+  }),
+}));
+jest.mock('../../src/hooks/useFitnessFatigue', () => ({
+  useFitnessFatigue: () => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+  }),
+}));
 const mockUsePaceZones = jest.fn();
 jest.mock('../../src/hooks/usePaceZones', () => ({
   usePaceZones: (...args: unknown[]) => mockUsePaceZones(...args),

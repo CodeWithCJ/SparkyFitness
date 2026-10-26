@@ -1,8 +1,10 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import {
+  generateRouteOptions,
   generateRoutePreview,
   saveGeneratedRoute,
   useRouteGenerationAvailable,
+  useRouteGenerationCapabilities,
 } from '../../src/services/routeService';
 import {
   createRoute,
@@ -82,6 +84,82 @@ describe('route generation service', () => {
     });
   });
 
+  describe('useRouteGenerationCapabilities', () => {
+    const render = () => {
+      const client = createTestQueryClient();
+      return renderHook(() => useRouteGenerationCapabilities(), {
+        wrapper: createQueryWrapper(client),
+      });
+    };
+
+    it('reads everything the server offers', async () => {
+      mockCapabilities.mockResolvedValue({
+        available: true,
+        maxAlternatives: 3,
+        style: {
+          surface: true,
+          hilliness: false,
+          avoidSteps: true,
+          avoidBusyRoads: false,
+        },
+        stops: true,
+      });
+      const { result } = render();
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      expect(result.current.capabilities).toEqual({
+        available: true,
+        maxAlternatives: 3,
+        style: {
+          surface: true,
+          hilliness: false,
+          avoidSteps: true,
+          avoidBusyRoads: false,
+        },
+        stops: true,
+        source: null,
+      });
+    });
+
+    it('reads an older server’s answer as nothing extra', async () => {
+      mockCapabilities.mockResolvedValue({ available: true });
+      const { result } = render();
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      expect(result.current.capabilities).toMatchObject({
+        available: true,
+        maxAlternatives: 1,
+        stops: false,
+        style: { surface: false, hilliness: false },
+      });
+    });
+
+    it('keeps the same object between renders', async () => {
+      mockCapabilities.mockResolvedValue({ available: true });
+      const { result, rerender } = render();
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      const first = result.current.capabilities;
+      rerender({});
+      expect(result.current.capabilities).toBe(first);
+    });
+  });
+
+  it('returns every option from the generate endpoint', async () => {
+    const response = {
+      route: previewRoute,
+      options: [{ route: previewRoute, label: null, trailShare: null }],
+    };
+    mockGenerate.mockResolvedValue(response);
+    const body = {
+      mode: 'loop' as const,
+      start: { lat: 1, lon: 2 },
+      activity: 'run' as const,
+      distanceM: 5000,
+      shape: 'loop' as const,
+      alternatives: 3,
+    };
+    await expect(generateRouteOptions(body)).resolves.toBe(response);
+    expect(mockGenerate).toHaveBeenCalledWith(body);
+  });
+
   it('returns the preview from the generate endpoint', async () => {
     mockGenerate.mockResolvedValue({ route: previewRoute });
     const body = {
@@ -90,6 +168,7 @@ describe('route generation service', () => {
       activity: 'run' as const,
       distanceM: 5000,
       shape: 'loop' as const,
+      alternatives: 1,
     };
     await expect(generateRoutePreview(body)).resolves.toBe(previewRoute);
     expect(mockGenerate).toHaveBeenCalledWith(body);

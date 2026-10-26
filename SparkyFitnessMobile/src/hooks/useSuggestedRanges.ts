@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { paceZone } from '@workspace/shared';
 import type {
+  FitnessTestResponse,
   HeartRateBand,
   HeartRateZonesResponse,
   PaceBand,
@@ -9,6 +10,7 @@ import type {
 } from '@workspace/shared';
 import { useCardioSessions } from './useCardioSessions';
 import { useHeartRateZones } from './useHeartRateZones';
+import { useFitnessTests } from '../services/fitnessTestService';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getTodayDate } from '../utils/dateUtils';
 import { paceZonesFromSessions } from '../utils/paceZones';
@@ -18,23 +20,26 @@ import {
   suggestedHeartRateRanges,
   suggestedPaceRanges,
   suggestedPaceRangesFromRace,
+  suggestedPaceRangesFromTest,
   warmPaceFromEasy,
   type SuggestedPair,
 } from '../utils/suggestedRanges';
 
 export interface SuggestedRanges {
   /**
-   * Fast, easy and warm-up pace ranges, from the person's recent race when they
-   * have set one (`race`), else from their pace zones or recent sessions
-   * (`sessions`); null without any.
+   * Fast, easy and warm-up pace ranges, from the person's latest fitness test
+   * when they have one (`fitnessTest`), else from the recent race they have
+   * set (`race`), else from their pace zones or recent sessions (`sessions`);
+   * null without any.
    */
   pace:
     | (SuggestedPair<PaceBand> & {
         sessions: number;
         race: PaceReferenceRace | null;
+        fitnessTest: FitnessTestResponse | null;
       })
     | null;
-  /** Ranges for tempo, marathon-pace and stride efforts; only from a race. */
+  /** Ranges for tempo, marathon-pace and stride efforts; only from a fitness test or a race. */
   byEffort: Partial<Record<StepEffort, PaceBand>> | null;
   /** Fast, easy and warm-up heart-rate ranges from the person's age, or null without a birth date. */
   heartRate:
@@ -67,13 +72,20 @@ export function useSuggestedRanges(
   paceShift = 0
 ): SuggestedRanges {
   const race = useAppPreferencesStore((s) => s.paceReferenceRace);
+  const { latest: fitnessTest } = useFitnessTests(
+    enabled && activity === 'run'
+  );
   const { sessions } = useCardioSessions('90d', enabled && activity !== 'ride');
   const { zones: heartRateZones } = useHeartRateZones(enabled);
 
   return useMemo(() => {
-    const fromRace = race ? suggestedPaceRangesFromRace(race, activity) : null;
+    const fromTest = fitnessTest
+      ? suggestedPaceRangesFromTest(fitnessTest.paces, activity, paceShift)
+      : null;
+    const fromRace =
+      !fromTest && race ? suggestedPaceRangesFromRace(race, activity) : null;
     const reference =
-      activity === 'ride' || fromRace
+      activity === 'ride' || fromRace || fromTest
         ? null
         : referencePace(sessions, activity, getTodayDate());
     const zones =
@@ -98,27 +110,34 @@ export function useSuggestedRanges(
         resolved.max_hr_source === 'user' ||
         resolved.max_hr_source === 'age');
     return {
-      pace: fromRace
-        ? { ...fromRace.pair, sessions: 0, race }
-        : pace && (zones || reference)
-          ? {
-              work: {
-                minSecondsPerKm: pace.work.minSecondsPerKm,
-                maxSecondsPerKm: pace.work.maxSecondsPerKm,
-              },
-              easy: {
-                minSecondsPerKm: pace.easy.minSecondsPerKm,
-                maxSecondsPerKm: pace.easy.maxSecondsPerKm,
-              },
-              warm: {
-                minSecondsPerKm: pace.warm.minSecondsPerKm,
-                maxSecondsPerKm: pace.warm.maxSecondsPerKm,
-              },
-              sessions: zones?.sessions ?? reference?.sessions ?? 0,
-              race: null,
-            }
+      pace: fromTest
+        ? { ...fromTest.pair, sessions: 0, race: null, fitnessTest }
+        : fromRace
+          ? { ...fromRace.pair, sessions: 0, race, fitnessTest: null }
+          : pace && (zones || reference)
+            ? {
+                work: {
+                  minSecondsPerKm: pace.work.minSecondsPerKm,
+                  maxSecondsPerKm: pace.work.maxSecondsPerKm,
+                },
+                easy: {
+                  minSecondsPerKm: pace.easy.minSecondsPerKm,
+                  maxSecondsPerKm: pace.easy.maxSecondsPerKm,
+                },
+                warm: {
+                  minSecondsPerKm: pace.warm.minSecondsPerKm,
+                  maxSecondsPerKm: pace.warm.maxSecondsPerKm,
+                },
+                sessions: zones?.sessions ?? reference?.sessions ?? 0,
+                race: null,
+                fitnessTest: null,
+              }
+            : null,
+      byEffort: fromTest
+        ? fromTest.byEffort
+        : fromRace
+          ? fromRace.byEffort
           : null,
-      byEffort: fromRace ? fromRace.byEffort : null,
       heartRate:
         resolved && knownMax
           ? {
@@ -131,5 +150,5 @@ export function useSuggestedRanges(
             }
           : null,
     };
-  }, [activity, sessions, heartRateZones, paceShift, race]);
+  }, [activity, sessions, heartRateZones, paceShift, race, fitnessTest]);
 }

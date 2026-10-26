@@ -8,6 +8,9 @@ import measurementRepository from '../models/measurementRepository.js';
 import bmrService from '../services/bmrService.js';
 import adaptiveTdeeService from '../services/AdaptiveTdeeService.js';
 import { getAdaptiveActivityCalories } from '../services/adaptiveActivityService.js';
+import calorieRuleHistoryRepository from '../models/calorieRuleHistoryRepository.js';
+import * as genericHealthRepository from '../models/genericHealthRepository.js';
+import { CALORIE_RULE_DEFAULTS } from '@workspace/shared';
 
 vi.mock('../models/goalRepository.js');
 vi.mock('../models/weeklyGoalPlanRepository.js');
@@ -15,6 +18,9 @@ vi.mock('../models/goalPresetRepository.js');
 vi.mock('../models/userRepository.js');
 vi.mock('../models/preferenceRepository.js');
 vi.mock('../models/measurementRepository.js');
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: vi.fn().mockResolvedValue([]) },
+}));
 vi.mock('../models/exerciseEntry.js');
 vi.mock('../models/genericHealthRepository.js', () => ({
   getHealthConnectTotalCaloriesByDateRange: vi.fn().mockResolvedValue([]),
@@ -56,6 +62,9 @@ const expectMacros = (goals: unknown, calories: number) => {
 describe('percentage macro exercise earn-back', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(
+      calorieRuleHistoryRepository.getCalorieRuleHistory
+    ).mockResolvedValue([]);
     vi.mocked(
       weeklyGoalPlanRepository.getActiveWeeklyGoalPlan
     ).mockResolvedValue(null);
@@ -187,6 +196,62 @@ describe('percentage macro exercise earn-back', () => {
       calorie_goal_adjustment_mode: 'tdee',
     });
     expectMacros((await goalsFor())[date], 2300);
+  });
+
+  it("uses each diary day's recorded earn-back rules after today's rules change", async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      ...basePreferences,
+      calorie_goal_adjustment_mode: 'fixed',
+    });
+    vi.mocked(
+      calorieRuleHistoryRepository.getCalorieRuleHistory
+    ).mockResolvedValue([
+      {
+        ...CALORIE_RULE_DEFAULTS,
+        effective_date: date,
+        calorie_goal_adjustment_mode: 'percentage',
+        exercise_calorie_percentage: 50,
+      },
+      {
+        ...CALORIE_RULE_DEFAULTS,
+        effective_date: '2026-10-21',
+        calorie_goal_adjustment_mode: 'dynamic',
+      },
+    ]);
+    vi.mocked(getAdaptiveActivityCalories).mockResolvedValue(
+      new Map([
+        [date, 500],
+        ['2026-10-21', 500],
+      ])
+    );
+    const goals = await goalService.getUserGoalsForRange(
+      'user-1',
+      date,
+      '2026-10-21',
+      true
+    );
+    expectMacros(goals[date], 2250);
+    expectMacros(goals['2026-10-21'], 2500);
+  });
+
+  it('loads device totals for a past projection day even when today uses a fixed budget', async () => {
+    vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+      ...basePreferences,
+      calorie_goal_adjustment_mode: 'fixed',
+    });
+    vi.mocked(
+      calorieRuleHistoryRepository.getCalorieRuleHistory
+    ).mockResolvedValue([
+      {
+        ...CALORIE_RULE_DEFAULTS,
+        effective_date: date,
+        calorie_goal_adjustment_mode: 'tdee',
+      },
+    ]);
+    expectMacros((await goalsFor())[date], 2300);
+    expect(
+      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    ).toHaveBeenCalledWith('user-1', 'user-1', date, date);
   });
 
   it('does not count resting-only projection changes as exercise', async () => {

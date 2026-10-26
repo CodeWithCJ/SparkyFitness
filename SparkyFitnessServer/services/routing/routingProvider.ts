@@ -1,4 +1,9 @@
-import type { RouteCue, RoutePoint } from '@workspace/shared';
+import type {
+  RouteCue,
+  RouteGenerateCapabilities,
+  RoutePoint,
+  RouteStyle,
+} from '@workspace/shared';
 
 export type RoutingActivity = 'run' | 'walk' | 'ride' | 'hike';
 
@@ -11,12 +16,25 @@ export interface RoutingRequest {
   /** Start, any via points in order, and the finish; at least two. */
   locations: LatLon[];
   activity: RoutingActivity;
+  /** Preferences, already limited to what `capabilities.style` supports. */
+  style?: RouteStyle;
+  /** Also work out how much of the route is on paths and unpaved ways. */
+  measureSurface?: boolean;
 }
 
 export interface RoutingResult {
   points: RoutePoint[];
   cues: RouteCue[];
   distanceM: number;
+  /** Share (0 to 1) of the route on paths and unpaved ways, when measured. */
+  trailShare?: number | null;
+}
+
+/** What an engine can do beyond plain routing. */
+export interface RoutingCapabilities {
+  style: RouteGenerateCapabilities['style'];
+  /** The most distinct loop candidates worth asking for. */
+  maxAlternatives: number;
 }
 
 export type RoutingFailureKind =
@@ -46,5 +64,6 @@ export class RoutingProviderError extends Error {
  */
 export interface RoutingProvider {
   readonly kind: string;
+  readonly capabilities: RoutingCapabilities;
   route(request: RoutingRequest): Promise<RoutingResult>;
 }

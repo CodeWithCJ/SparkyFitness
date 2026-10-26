@@ -952,6 +952,10 @@ const isSleepInstant = (value: unknown): value is string | Date =>
   (typeof value === 'string' || value instanceof Date) &&
   !Number.isNaN(new Date(value).getTime());
 
+/** An entry_date as the Garmin service sends it: a plain YYYY-MM-DD day. */
+const isCalendarDay = (value: unknown): value is string =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
 export async function processGarminSleepData(
   userId: string,
   actingUserId: string,
@@ -962,16 +966,30 @@ export async function processGarminSleepData(
   const processedResults: Array<Record<string, unknown>> = [];
   const errors: Array<Record<string, unknown>> = [];
 
+  // Clear only the nights Garmin returned, each on its own date. One delete
+  // over the whole requested range also removed any night the response left
+  // out (an older day that 503'd, say), and that night stayed missing until a
+  // later run happened to return it. With the scheduled look-back the window
+  // is several days, so the hourly sync would have hit the same path.
+  const returnedNights = Array.from(
+    new Set(
+      sleepDataArray
+        .map((sleepEntry) => sleepEntry.entry_date)
+        .filter(isCalendarDay)
+    )
+  );
   log(
     'info',
-    `[garminHealthProcessor] Performing comprehensive cleanup for Garmin sleep data for user ${userId} from ${startDate} to ${endDate}.`
+    `[garminHealthProcessor] Clearing ${returnedNights.length} Garmin sleep night(s) returned for user ${userId} within ${startDate} to ${endDate} before re-inserting them.`
   );
-  await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(
-    userId,
-    'garmin',
-    startDate,
-    endDate
-  );
+  for (const night of returnedNights) {
+    await sleepRepository.deleteSleepEntriesByEntrySourceAndDate(
+      userId,
+      'garmin',
+      night,
+      night
+    );
+  }
 
   for (const sleepEntry of sleepDataArray) {
     try {

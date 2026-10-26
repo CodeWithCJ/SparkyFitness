@@ -79,7 +79,7 @@ Uses height, weight, and age to estimate body fat:
 
 This setting determines **how physical activity changes your calorie budget** throughout the day:
 
-- **Adaptive TDEE:** Dynamically computes your metabolic expenditure by correlating your actual weight changes with your historical calorie intake over the last 28 days. _(Best for high-precision tracking)._
+- **Adaptive TDEE:** Dynamically computes your metabolic expenditure by correlating your actual weight changes with your historical calorie intake over the last 28 completed days. _(Best for high-precision tracking)._ The window ends the day before the date you are viewing, so food or a weigh-in logged today counts from tomorrow and your target does not move while you eat. Viewing a past day shows the estimate as it stood then.
   - **Expenditure (Adaptive TDEE):** On the Diary page, "Expenditure" represents your calculated Total Daily Energy Expenditure (TDEE). This is the baseline number from which your deficit/surplus is subtracted.
   - **Fallback Behavior:** If you have insufficient history (less than 14 days of weight and calorie data, or fewer than 7 days of calorie entries ≥ 200 kcal), the system will use a fallback estimate based on the standard `BMR × Activity Multiplier` formula until enough data is collected.
   - **The formula:** `TDEE = Average Daily Calories - (Daily Weight Change in kg × 6,000 kcal/kg)`. The average covers only days with at least 200 kcal logged — unlogged days are skipped, not counted as zero — while the weight change spans the whole 28-day window.

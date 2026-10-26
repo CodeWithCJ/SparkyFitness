@@ -24,6 +24,7 @@ function createEmptyDraft(): ActivityDraft {
     distance: '',
     calories: '',
     caloriesManuallySet: false,
+    caloriesApplied: '',
     avgHeartRate: '',
     entryDate: getTodayDate(),
     notes: '',
@@ -57,6 +58,8 @@ export interface ActivityDraftSubmission {
   exerciseName: string | null;
   durationMinutes: number;
   caloriesBurned: number;
+  /** Null counts `caloriesBurned` in the daily total; 0 counts nothing. */
+  caloriesApplied: number | null;
   entryDate: string;
   distanceKm: number | null;
   avgHeartRate: number | null;
@@ -73,6 +76,7 @@ export function getActivityDraftSubmission(
 ): ActivityDraftSubmission {
   const durationMinutes = parseDecimalInput(state.duration);
   const caloriesBurned = parseDecimalInput(state.calories);
+  const caloriesApplied = parseDecimalInput(state.caloriesApplied ?? '');
   const distanceValue = parseDecimalInput(state.distance);
   const hasDuration = !isNaN(durationMinutes) && durationMinutes > 0;
   const hasCalories = !isNaN(caloriesBurned) && caloriesBurned > 0;
@@ -86,6 +90,8 @@ export function getActivityDraftSubmission(
     exerciseName: state.name.trim() || state.exerciseName || null,
     durationMinutes: hasDuration ? durationMinutes : 0,
     caloriesBurned: hasCalories ? caloriesBurned : 0,
+    caloriesApplied:
+      !isNaN(caloriesApplied) && caloriesApplied >= 0 ? caloriesApplied : null,
     entryDate: state.entryDate,
     distanceKm: hasDistance ? distanceToKm(distanceValue, distanceUnit) : null,
     avgHeartRate:
@@ -108,6 +114,7 @@ type ActivityFormAction =
   | { type: 'SET_DURATION'; value: string }
   | { type: 'SET_DISTANCE'; value: string }
   | { type: 'SET_CALORIES'; value: string }
+  | { type: 'SET_CALORIES_APPLIED'; value: string }
   | { type: 'SET_AVG_HEART_RATE'; value: string }
   | { type: 'SET_DATE'; value: string }
   | { type: 'SET_NOTES'; value: string }
@@ -174,6 +181,9 @@ export function activityFormReducer(
         caloriesManuallySet: action.value !== '',
       };
 
+    case 'SET_CALORIES_APPLIED':
+      return { ...state, caloriesApplied: action.value };
+
     case 'SET_AVG_HEART_RATE':
       return { ...state, avgHeartRate: action.value };
 
@@ -211,6 +221,8 @@ export function activityFormReducer(
         distance,
         calories: String(entry.calories_burned),
         caloriesManuallySet: true,
+        caloriesApplied:
+          entry.calories_applied != null ? String(entry.calories_applied) : '',
         avgHeartRate:
           entry.avg_heart_rate != null ? String(entry.avg_heart_rate) : '',
         entryDate: entry.entry_date
@@ -273,6 +285,10 @@ export function useActivityForm({
     dispatch({ type: 'SET_CALORIES', value });
   }, []);
 
+  const setCaloriesApplied = useCallback((value: string) => {
+    dispatch({ type: 'SET_CALORIES_APPLIED', value });
+  }, []);
+
   const setAvgHeartRate = useCallback((value: string) => {
     dispatch({ type: 'SET_AVG_HEART_RATE', value });
   }, []);
@@ -312,6 +328,7 @@ export function useActivityForm({
     setDuration,
     setDistance,
     setCalories,
+    setCaloriesApplied,
     setAvgHeartRate,
     setDate,
     setNotes,

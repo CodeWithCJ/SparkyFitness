@@ -1,10 +1,14 @@
 import {
+  routeGenerateCapabilitiesSchema,
   ROUTE_GENERATE_MAX_DISTANCE_M,
   ROUTE_GENERATE_MAX_WAYPOINTS,
   ROUTE_GENERATE_MIN_DISTANCE_M,
   type GenerateRouteBody,
   type RouteCue,
+  type RouteGenerateCapabilities,
+  type RouteOptionLabel,
   type RoutePoint,
+  type RouteStyle,
 } from '../schemas/api/Route.api.zod.ts';
 
 type LatLon = Pick<RoutePoint, 'lat' | 'lon'>;
@@ -48,7 +52,8 @@ export function limitWaypoints<T>(
  */
 export function buildFollowRoadsRequest(
   taps: readonly LatLon[],
-  activity: RouteActivity = 'run'
+  activity: RouteActivity = 'run',
+  style?: RouteStyle
 ): WaypointsBody | null {
   const [start, ...rest] = taps;
   if (!start || rest.length === 0) return null;
@@ -58,15 +63,17 @@ export function buildFollowRoadsRequest(
     activity,
     waypoints: limitWaypoints(rest).map((p) => ({ lat: p.lat, lon: p.lon })),
     returnToStart: false,
+    ...(style ? { style } : {}),
   };
 }
 
 /** A stable string for the taps, to tell whether a result is still current. */
 export function followRoadsKey(
   taps: readonly LatLon[],
-  activity: RouteActivity = 'run'
+  activity: RouteActivity = 'run',
+  style?: RouteStyle
 ): string {
-  return `${activity}|${taps.map((p) => `${p.lat.toFixed(6)},${p.lon.toFixed(6)}`).join(';')}`;
+  return `${activity}|${styleKey(style)}|${taps.map((p) => `${p.lat.toFixed(6)},${p.lon.toFixed(6)}`).join(';')}`;
 }
 
 export type RouteGenerateErrorKind =
@@ -156,6 +163,8 @@ export function buildLoopRequest(input: {
   distance: number;
   unit: 'km' | 'miles';
   bearingDeg: number;
+  style?: RouteStyle;
+  alternatives?: number;
 }): LoopBody | null {
   const distanceM = routeDistanceToMeters(input.distance, input.unit);
   if (
@@ -172,5 +181,166 @@ export function buildLoopRequest(input: {
     shape: input.shape,
     distanceM: Math.round(distanceM),
     bearingDeg: input.bearingDeg,
+    alternatives: input.alternatives ?? 1,
+    ...(input.style ? { style: input.style } : {}),
   };
+}
+
+export const DEFAULT_ROUTE_STYLE: RouteStyle = {
+  surface: 'any',
+  hilliness: 'any',
+  avoidSteps: false,
+  avoidBusyRoads: false,
+};
+
+/** True when the style asks for nothing beyond the engine's own defaults. */
+export function isDefaultRouteStyle(style: RouteStyle | undefined): boolean {
+  return (
+    !style ||
+    (style.surface === 'any' &&
+      style.hilliness === 'any' &&
+      !style.avoidSteps &&
+      !style.avoidBusyRoads)
+  );
+}
+
+/** A stable string for a style, so a changed choice reads as a changed request. */
+export function styleKey(style: RouteStyle | undefined): string {
+  const s = style ?? DEFAULT_ROUTE_STYLE;
+  return `${s.surface}/${s.hilliness}/${s.avoidSteps ? 1 : 0}/${s.avoidBusyRoads ? 1 : 0}`;
+}
+
+/**
+ * Keeps only the preferences the engine supports; undefined when none remain,
+ * so a request carries no `style` at all rather than an empty one.
+ */
+export function restrictRouteStyle(
+  style: RouteStyle | undefined,
+  supported: RouteGenerateCapabilities['style']
+): RouteStyle | undefined {
+  if (!style) return undefined;
+  const restricted: RouteStyle = {
+    surface: supported.surface ? style.surface : 'any',
+    hilliness: supported.hilliness ? style.hilliness : 'any',
+    avoidSteps: supported.avoidSteps && style.avoidSteps,
+    avoidBusyRoads: supported.avoidBusyRoads && style.avoidBusyRoads,
+  };
+  return isDefaultRouteStyle(restricted) ? undefined : restricted;
+}
+
+/** Whether any style control is worth showing. */
+export function hasRouteStyleControls(
+  supported: RouteGenerateCapabilities['style']
+): boolean {
+  return (
+    supported.surface ||
+    supported.hilliness ||
+    supported.avoidSteps ||
+    supported.avoidBusyRoads
+  );
+}
+
+/**
+ * Reads a capabilities answer from any server version: fields an older
+ * server does not send read as unsupported, and nonsense reads as off.
+ */
+export function resolveRouteGenerateCapabilities(
+  raw: unknown
+): RouteGenerateCapabilities {
+  const parsed = routeGenerateCapabilitiesSchema.safeParse(raw);
+  if (parsed.success) return parsed.data;
+  return routeGenerateCapabilitiesSchema.parse({ available: false });
+}
+
+export interface RouteOptionStats {
+  distanceM: number;
+  elevationGainM: number | null;
+  trailShare: number | null;
+}
+
+/** A climb difference smaller than this is not worth a label. */
+const FLATTER_MIN_DIFF_M = 15;
+const FLATTER_MIN_RATIO = 0.8;
+const TRAIL_MIN_SHARE = 0.2;
+const TRAIL_MIN_DIFF = 0.15;
+const SHORTER_MIN_DIFF_M = 200;
+const SHORTER_MIN_RATIO = 0.95;
+
+/**
+ * A short label for each candidate, only where the numbers back it up: the
+ * flattest is "flatter" if it climbs clearly less than the steepest, the one
+ * with the most path is "moreTrail" if it has clearly more than the next, the
+ * shortest is "shorter" if it is clearly shorter than the longest. Each label
+ * goes to one candidate, and a candidate gets at most one.
+ */
+export function labelRouteOptions(
+  options: readonly RouteOptionStats[]
+): (RouteOptionLabel | null)[] {
+  const labels: (RouteOptionLabel | null)[] = options.map(() => null);
+  if (options.length < 2) return labels;
+
+  const extreme = (
+    value: (o: RouteOptionStats) => number | null,
+    pick: 'min' | 'max'
+  ): number => {
+    let best = -1;
+    options.forEach((option, i) => {
+      const v = value(option);
+      if (v === null || labels[i] !== null) return;
+      const bestValue =
+        best < 0 ? null : value(options[best] as RouteOptionStats);
+      if (
+        bestValue === null ||
+        (pick === 'min' ? v < bestValue : v > bestValue)
+      ) {
+        best = i;
+      }
+    });
+    return best;
+  };
+  const values = (value: (o: RouteOptionStats) => number | null): number[] =>
+    options.map(value).filter((v): v is number => v !== null);
+
+  const climb = (o: RouteOptionStats) => o.elevationGainM;
+  const climbs = values(climb);
+  if (climbs.length === options.length) {
+    const flattest = extreme(climb, 'min');
+    const flattestClimb = climbs[flattest] as number;
+    if (
+      flattestClimb <= Math.max(...climbs) * FLATTER_MIN_RATIO &&
+      Math.max(...climbs) - flattestClimb >= FLATTER_MIN_DIFF_M
+    ) {
+      labels[flattest] = 'flatter';
+    }
+  }
+
+  const trail = (o: RouteOptionStats) => o.trailShare;
+  const shares = values(trail);
+  if (shares.length === options.length) {
+    const mostTrail = extreme(trail, 'max');
+    if (mostTrail >= 0) {
+      const share = shares[mostTrail] as number;
+      const others = shares.filter((_, i) => i !== mostTrail);
+      if (
+        share >= TRAIL_MIN_SHARE &&
+        share - Math.max(...others) >= TRAIL_MIN_DIFF
+      ) {
+        labels[mostTrail] = 'moreTrail';
+      }
+    }
+  }
+
+  const length = (o: RouteOptionStats) => o.distanceM;
+  const lengths = values(length);
+  const shortest = extreme(length, 'min');
+  if (shortest >= 0) {
+    const shortestLength = lengths[shortest] as number;
+    if (
+      shortestLength <= Math.max(...lengths) * SHORTER_MIN_RATIO &&
+      Math.max(...lengths) - shortestLength >= SHORTER_MIN_DIFF_M
+    ) {
+      labels[shortest] = 'shorter';
+    }
+  }
+  return labels;
 }

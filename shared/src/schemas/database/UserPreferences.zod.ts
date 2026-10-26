@@ -102,6 +102,7 @@ export const userPreferencesSchema = z.object({
   resting_heart_rate: z.number().int().min(25).max(150).nullable(),
   hr_zone_method: z.enum(HR_ZONE_METHODS),
   hr_zone_custom_floors: z.array(z.number().int()).length(5).nullable(),
+  hr_zone_display_count: z.union([z.literal(4), z.literal(5)]),
 });
 
 export const userPreferencesInitializerSchema = z.object({
@@ -197,6 +198,7 @@ export const userPreferencesInitializerSchema = z.object({
     .length(5)
     .nullable()
     .optional(),
+  hr_zone_display_count: z.union([z.literal(4), z.literal(5)]).optional(),
 });
 
 export const userPreferencesMutatorSchema = z.object({
@@ -292,6 +294,7 @@ export const userPreferencesMutatorSchema = z.object({
     .length(5)
     .nullable()
     .optional(),
+  hr_zone_display_count: z.union([z.literal(4), z.literal(5)]).optional(),
 });
 
 export type UserPreferences = z.infer<typeof userPreferencesSchema>;

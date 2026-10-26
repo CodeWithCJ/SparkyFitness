@@ -119,7 +119,94 @@ function isAutomation(pr) {
   );
 }
 
+// Conventional-commit prefixes. Labels, release-please and the changelog all key off the
+// title, so a missing or misspelled prefix silently drops the PR from release notes.
+const TITLE_PREFIX_RE =
+  /^(feat|fix|docs|refactor|security|perf|test|chore|ci|build|style|revert)(\([^)]+\))?!?:\s+\S/i;
+
+const hasValidTitlePrefix = title => TITLE_PREFIX_RE.test(title || '');
+
+// One idempotent migration per PR, edited in place while the PR is open.
+const MIGRATIONS_PATH = /^SparkyFitnessServer\/db\/migrations\/[^/]+\.sql$/;
+
+/**
+ * Migration files a PR adds, modifies or renames. Deleted files are ignored.
+ *
+ * @param {Array<{filename: string, status?: string}>} files `pulls.listFiles` entries
+ * @returns {string[]}
+ */
+const getMigrationFiles = files =>
+  (files || [])
+    .filter(f => f.status !== 'removed' && MIGRATIONS_PATH.test(f.filename))
+    .map(f => f.filename);
+
+// A migration that adds a table normally needs an entry in rls_policies.sql. GitHub omits `patch`
+// for very large diffs, in which case this returns false and the (warning-only) check is skipped.
+const addsTable = files =>
+  (files || []).some(
+    f =>
+      f.status !== 'removed' &&
+      MIGRATIONS_PATH.test(f.filename) &&
+      /^\+\s*CREATE\s+TABLE\b/im.test(f.patch || ''),
+  );
+
+// How much of the change the author understands. Pick exactly one; the options are descriptive
+// and carry no judgement so authors report honestly. `needsExtraReview` flags the answers where
+// a maintainer should look harder. The trailing `**` keeps one label from prefix-matching another.
+const AI_ASSISTANCE_OPTIONS = [
+  {
+    key: 'none',
+    label: 'No AI**',
+    text: '**No AI**: I wrote this change without AI tools.',
+    needsExtraReview: false,
+  },
+  {
+    key: 'reviewed',
+    label: 'AI, reviewed line by line**',
+    text: '**AI, reviewed line by line**: AI wrote part of this. I read every generated line and edited it before accepting.',
+    needsExtraReview: false,
+  },
+  {
+    key: 'partly-understood',
+    label: 'AI, tested and partly understood**',
+    text: '**AI, tested and partly understood**: AI wrote most of this. I tested the behavior, but I only partly understand the generated code.',
+    needsExtraReview: true,
+  },
+  {
+    key: 'tested-only',
+    label: 'AI, tested only**',
+    text: '**AI, tested only**: AI wrote this and I did not review the code myself. I tested the behavior only.',
+    needsExtraReview: true,
+  },
+];
+const NEEDS_EXTRA_REVIEW_LABEL = 'needs-extra-review';
+
+/** Which AI-assistance options are ticked, and which are present at all. */
+function getAiAssistance(body) {
+  const selected = AI_ASSISTANCE_OPTIONS.filter(o => isChecked(body, o.label));
+  const present = AI_ASSISTANCE_OPTIONS.filter(o => isPresent(body, o.label));
+  return {
+    selected,
+    present,
+    needsExtraReview: selected.some(o => o.needsExtraReview),
+  };
+}
+
+// PR Type group. Plain boxes (no bold prefix), so they are matched on their own line.
+const PR_TYPE_OPTIONS = [
+  { re: /-\s*\[[ xX]\]\s*Issue/i, text: 'Issue (bug fix)' },
+  { re: /-\s*\[[ xX]\]\s*New Feature/i, text: 'New Feature' },
+  { re: /-\s*\[[ xX]\]\s*Refactor/i, text: 'Refactor' },
+  { re: /-\s*\[[ xX]\]\s*Documentation/i, text: 'Documentation' },
+];
+
+/** PR Type options that are no longer in the body (the template was edited or replaced). */
+const getMissingPrTypes = body =>
+  PR_TYPE_OPTIONS.filter(o => !o.re.test(body || ''));
+
 module.exports = {
+  PR_TYPE_OPTIONS,
+  getMissingPrTypes,
   LICENSE_LABEL,
   LICENSE_LABEL_COLOR,
   LICENSE_LABEL_DESCRIPTION,
@@ -133,4 +220,10 @@ module.exports = {
   isPresent,
   getExemption,
   isAutomation,
+  hasValidTitlePrefix,
+  getMigrationFiles,
+  addsTable,
+  AI_ASSISTANCE_OPTIONS,
+  NEEDS_EXTRA_REVIEW_LABEL,
+  getAiAssistance,
 };

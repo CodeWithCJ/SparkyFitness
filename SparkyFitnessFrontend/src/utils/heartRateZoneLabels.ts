@@ -1,5 +1,7 @@
 import type { TFunction } from 'i18next';
 import type {
+  HeartRateDisplayBand,
+  HeartRateTier,
   HrZoneMethod,
   MaxHrSource,
   StoredZoneMethod,
@@ -77,3 +79,28 @@ export const storedZoneMethodOf = (
   if (methods.size !== 1) return methods.size > 1 ? 'mixed' : null;
   return [...methods][0] ?? null;
 };
+
+const tierName = (t: TFunction, tier: HeartRateTier): string => {
+  switch (tier) {
+    case 'light':
+      return t('settings.heartRateZones.tier.light', 'Light');
+    case 'moderate':
+      return t('settings.heartRateZones.tier.moderate', 'Moderate');
+    case 'vigorous':
+      return t('settings.heartRateZones.tier.vigorous', 'Vigorous');
+    default:
+      return t('settings.heartRateZones.tier.peak', 'Peak');
+  }
+};
+
+/** "Zone 3", or the tier name ("Light") when four tiers are shown. */
+export const displayBandLabel = (
+  t: TFunction,
+  band: Pick<HeartRateDisplayBand, 'index' | 'tier'>
+): string =>
+  band.tier
+    ? tierName(t, band.tier)
+    : t('settings.heartRateZones.zone', {
+        defaultValue: 'Zone {{zone}}',
+        zone: band.index,
+      });

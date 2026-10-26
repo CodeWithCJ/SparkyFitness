@@ -7,7 +7,12 @@ import {
   activitySportLabel,
   PR_SPORT_GROUPS,
 } from '@workspace/shared';
-import type { ActivitySport, SportConfidence } from '@workspace/shared';
+import type {
+  ActivitySport,
+  GpsTrackPoint,
+  PrSportGroup,
+  SportConfidence,
+} from '@workspace/shared';
 import type {
   ExerciseStatsSummaryQuery,
   ExerciseStatsSummaryResponse,
@@ -24,22 +29,86 @@ import {
   cardioPredicateSql,
   setLoadSql,
 } from '../utils/exerciseLoadSql.js';
+import {
+  bestSplitSeconds,
+  samplesFromDistanceSeries,
+  samplesFromGpsPoints,
+} from '../utils/bestSplit.js';
+import type { SplitSample } from '../utils/bestSplit.js';
 
 interface SqlRow {
   [key: string]: unknown;
 }
 
 /**
- * How many of the fastest entries per distance band the PR query returns.
- * Sport is derived per row rather than filtered in SQL, so the query cannot ask
- * for "the best run" directly — it returns a shortlist and the reduction below
- * picks the best of each sport out of it.
+ * An activity with no stored track can only stand in for a distance it nearly
+ * matches: its time is scaled to the exact distance by its average pace, so a
+ * 5.8 km run is never reported as a 5K. Tracked activities need no tolerance,
+ * their best stretch is measured directly.
  */
-const PR_CANDIDATES_PER_STANDARD = 25;
+const UNTRACKED_MIN_RATIO = 0.98;
+const UNTRACKED_MAX_RATIO = 1.05;
+
+/**
+ * Fastest plausible speed per sport group, in metres per second (the same
+ * ceilings the mobile recorder rejects glitches with). A straight-line segment
+ * faster than this in a stored track is a GPS jump, not movement.
+ */
+/** A sport group that has distance standards (every group but 'other'). */
+type StandardSportGroup = Exclude<PrSportGroup, 'other'>;
+
+const MAX_SPEED_MPS: Record<StandardSportGroup, number> = {
+  run: 12,
+  walk: 7,
+  ride: 30,
+  swim: 5,
+};
+
+/**
+ * Best split per standard, remembered per activity. Measuring a split reads and
+ * walks a whole track, so it is done once and reused until the track changes:
+ * the key carries the track's last update and size, and the sport group the
+ * speed ceiling came from. A value is seconds, or null when the activity does
+ * not cover the distance. In memory and bounded, oldest evicted first; a
+ * restart just recomputes.
+ */
+const SPLIT_CACHE_MAX_ENTRIES = 20000;
+const splitCache = new Map<string, Record<string, number | null>>();
+
+function rememberSplits(
+  key: string,
+  splits: Record<string, number | null>
+): void {
+  if (splitCache.size >= SPLIT_CACHE_MAX_ENTRIES) {
+    const oldest = splitCache.keys().next().value;
+    if (oldest !== undefined) splitCache.delete(oldest);
+  }
+  splitCache.set(key, splits);
+}
+
+/**
+ * Upper bound on the stored size of an empty jsonb array. `pg_column_size` reads
+ * the stored size without detoasting the value (`jsonb_array_length` would
+ * detoast every track just to be asked "is it empty"). An empty array is a 4
+ * byte container header plus a 1 or 4 byte varlena header, 8 bytes at most; the
+ * smallest non-empty one adds an entry and its value, 11 bytes at least.
+ */
+const EMPTY_JSONB_ARRAY_MAX_BYTES = 8;
+
+/** Activities whose tracks are loaded per query when looking for best splits. */
+const TRACK_BATCH_SIZE = 25;
+
+/** Distance spread within which activities of one course are comparable. */
+const COURSE_DISTANCE_TOLERANCE = 0.05;
+
+/** Most activities of one course read when looking for its best time. */
+const COURSE_MAX_ACTIVITIES = 500;
+
+/** Most activities one PR request will look at. */
+const PR_MAX_ACTIVITIES = 5000;
 
 /** A PR-query row, with the columns needed to recover its sport. */
 interface PrCandidateRow {
-  std_key?: string;
   id: string;
   exercise_name: string | null;
   category: string | null;
@@ -50,14 +119,21 @@ interface PrCandidateRow {
   provider_name: string | null;
   detail_data: unknown;
   exercise_source_id: string | null;
+  has_gps_track?: boolean;
+  has_distance_series?: boolean;
+  /** Identifies the stored track revision, for the split cache. */
+  track_version?: string | null;
 }
+
+type PrTimeBasis = NonNullable<ExercisePersonalRecordItem['timeBasis']>;
 
 interface PrCandidate {
   row: PrCandidateRow;
   sport: ActivitySport;
   confidence: SportConfidence;
-  /** Seconds per km, unrounded — used to pick the winner within a band. */
-  paceSeconds: number;
+  /** Seconds for the standard distance itself. */
+  seconds: number;
+  basis: PrTimeBasis;
 }
 
 /** Converts kilometers to km or miles based on unit system preference */
@@ -141,6 +217,17 @@ const DISTANCE_STANDARDS: Record<
   '15k': { min: 14.0, max: 16.5, label: '15 km Best' },
   half_marathon: { min: 19.5, max: 23.0, label: 'Half Marathon (21.1 km)' },
   marathon: { min: 40.0, max: 45.0, label: 'Marathon (42.2 km)' },
+};
+
+/** Exact length of each distance standard, in kilometers. */
+const STANDARD_DISTANCE_KM: Record<string, number> = {
+  '1k': 1,
+  '1mi': 1.609344,
+  '5k': 5,
+  '10k': 10,
+  '15k': 15,
+  half_marathon: 21.0975,
+  marathon: 42.195,
 };
 
 /**
@@ -657,73 +744,71 @@ async function getPersonalRecordMatrix(
   try {
     const cardioPRs: ExercisePersonalRecordItem[] = [];
 
-    // One LATERAL query for every distance standard rather than a query per
-    // standard in a loop — same best-per-band result, a single round trip.
     const standardEntries = Object.entries(DISTANCE_STANDARDS);
-    const standardsValues = standardEntries
-      .map(
-        (_, i) =>
-          `($${i * 3 + 2}, $${i * 3 + 3}::numeric, $${i * 3 + 4}::numeric)`
-      )
-      .join(', ');
-    // Sport is not a column — it has to be recovered per row from the provider
-    // blob, notes, or name (see classifyActivitySport). So the LATERAL returns
-    // the fastest PR_CANDIDATES_PER_STANDARD rows per band instead of a single
-    // winner, and the best-per-sport is reduced in TS below. A sport would need
-    // that many faster efforts from other sports in the same band, with none of
-    // its own, to be crowded out.
+
+    // Every activity long enough for the shortest standard. Which standards it
+    // can stand in for is decided below, per activity, because that depends on
+    // its sport (not a column; see classifyActivitySport) and on whether it has
+    // a track to measure a split from.
+    const minStandardKm = Math.min(...Object.values(STANDARD_DISTANCE_KM));
     const prSql = `
-      WITH standards(std_key, min_km, max_km) AS (VALUES ${standardsValues})
-      SELECT s.std_key, e.id, e.exercise_name, e.category, e.notes, e.entry_date,
-             e.duration_minutes, e.distance, e.provider_name, e.detail_data,
-             e.exercise_source_id
-      FROM standards s
-      CROSS JOIN LATERAL (
-        SELECT ee.id, ee.exercise_name, ee.category, ee.notes, ee.entry_date,
-               ee.duration_minutes, ee.distance,
-               d.provider_name, d.detail_data,
-               x.source_id AS exercise_source_id
-        FROM public.exercise_entries ee
-        LEFT JOIN public.exercises x ON x.id = ee.exercise_id
-        LEFT JOIN LATERAL (
-          SELECT provider_name, detail_data
-          FROM public.exercise_entry_activity_details
-          WHERE exercise_entry_id = ee.id
-          ORDER BY CASE WHEN detail_type LIKE '%activity_data%' THEN 0 ELSE 1 END
-          LIMIT 1
-        ) d ON TRUE
-        WHERE ee.user_id = $1
-          AND ee.distance >= s.min_km AND ee.distance <= s.max_km
-          AND ee.duration_minutes > 0
-          AND ee.exercise_name != 'Active Calories'
-        ORDER BY (ee.duration_minutes * 60 / NULLIF(ee.distance, 0)) ASC
-        LIMIT ${PR_CANDIDATES_PER_STANDARD}
-      ) e
+      SELECT ee.id, ee.exercise_name, ee.category, ee.notes, ee.entry_date,
+             ee.duration_minutes, ee.distance,
+             d.provider_name, d.detail_data,
+             x.source_id AS exercise_source_id,
+             EXISTS (
+               SELECT 1 FROM public.exercise_entry_gps_points g
+               WHERE g.exercise_entry_id = ee.id
+                 AND pg_column_size(g.points) > ${EMPTY_JSONB_ARRAY_MAX_BYTES}
+             ) AS has_gps_track,
+             EXISTS (
+               SELECT 1 FROM public.exercise_entry_distance_series ds
+               WHERE ds.exercise_entry_id = ee.id
+                 AND pg_column_size(ds.points) > ${EMPTY_JSONB_ARRAY_MAX_BYTES}
+             ) AS has_distance_series,
+             COALESCE((SELECT g.updated_at::text || ':' || pg_column_size(g.points)
+                FROM public.exercise_entry_gps_points g
+               WHERE g.exercise_entry_id = ee.id), '') || '/' ||
+             COALESCE((SELECT ds.updated_at::text || ':' || pg_column_size(ds.points)
+                FROM public.exercise_entry_distance_series ds
+               WHERE ds.exercise_entry_id = ee.id), '') AS track_version
+      FROM public.exercise_entries ee
+      LEFT JOIN public.exercises x ON x.id = ee.exercise_id
+      LEFT JOIN LATERAL (
+        SELECT provider_name, detail_data
+        FROM public.exercise_entry_activity_details
+        WHERE exercise_entry_id = ee.id
+        ORDER BY CASE WHEN detail_type LIKE '%activity_data%' THEN 0 ELSE 1 END
+        LIMIT 1
+      ) d ON TRUE
+      WHERE ee.user_id = $1
+        AND ee.distance >= $2
+        AND ee.duration_minutes > 0
+        AND ee.exercise_name != 'Active Calories'
+      ORDER BY ee.entry_date DESC
+      LIMIT ${PR_MAX_ACTIVITIES}
     `;
     const prResult = await client.query(prSql, [
       targetUserId,
-      ...standardEntries.flatMap(([key, config]) => [
-        key,
-        config.min,
-        config.max,
-      ]),
+      minStandardKm * UNTRACKED_MIN_RATIO,
     ]);
 
-    // Reduce to the fastest row per (sport group, standard) by comparing paces
-    // rather than trusting arrival order. The ORDER BY inside the LATERAL only
-    // decides which rows that invocation returns; the outer query has no
-    // ORDER BY, so Postgres may emit them in any order under a parallel or
-    // materialized plan. Taking "first row seen" would then record a slower
-    // effort as the PR — the exact class of wrong record this endpoint exists
-    // to stop.
-    const bestBySportAndStandard = new Map<string, PrCandidate>();
+    // Sport first, so tracks are only loaded for activities that can hold a
+    // record: a skiing or rowing-machine entry never competes in these bands.
+    const classified: {
+      row: PrCandidateRow;
+      sport: ActivitySport;
+      confidence: SportConfidence;
+      sportGroup: StandardSportGroup;
+      distKm: number;
+      durSecs: number;
+    }[] = [];
     for (const row of prResult.rows as PrCandidateRow[]) {
       const distKm = parseFloat(String(row.distance));
-      const durMins = parseFloat(String(row.duration_minutes));
-      // The SQL already excludes non-positive values; this also drops any row
-      // whose numerics fail to parse, so a NaN pace can never win a band.
-      if (!(distKm > 0) || !(durMins > 0)) continue;
-      const paceSeconds = (durMins * 60) / distKm;
+      const durSecs = parseFloat(String(row.duration_minutes)) * 60;
+      // Drops any row whose numerics fail to parse, so a NaN time can never
+      // win a band.
+      if (!(distKm > 0) || !(durSecs > 0)) continue;
       const { sport, confidence } = classifyActivitySport({
         exerciseName: row.exercise_name,
         category: row.category,
@@ -732,15 +817,139 @@ async function getPersonalRecordMatrix(
         detailData: row.detail_data,
         exerciseSourceId: row.exercise_source_id,
       });
-      const key = `${toPrSportGroup(sport)}:${String(row.std_key)}`;
-      const current = bestBySportAndStandard.get(key);
-      if (!current || paceSeconds < current.paceSeconds) {
-        bestBySportAndStandard.set(key, {
-          row,
-          sport,
-          confidence,
-          paceSeconds,
-        });
+      const sportGroup = toPrSportGroup(sport);
+      if (sportGroup === 'other') continue;
+      classified.push({ row, sport, confidence, sportGroup, distKm, durSecs });
+    }
+
+    // Measured splits for the activities that have a track or a distance
+    // series. Ones already measured come from the cache; the rest have their
+    // tracks loaded in small batches, so a long history never holds every track
+    // in memory at once, and are cached for the next request.
+    const splitsById = new Map<string, Record<string, number | null>>();
+    const cacheKeys = new Map<string, string>();
+    const misses: typeof classified = [];
+    for (const item of classified) {
+      const { row, sportGroup } = item;
+      if (row.has_gps_track !== true && row.has_distance_series !== true) {
+        continue;
+      }
+      const id = String(row.id);
+      const cacheKey = `${id}:${sportGroup}:${row.track_version ?? ''}`;
+      cacheKeys.set(id, cacheKey);
+      // Without a track version (nothing to tell revisions apart) never cache.
+      const cached = row.track_version ? splitCache.get(cacheKey) : undefined;
+      if (cached) splitsById.set(id, cached);
+      else misses.push(item);
+    }
+    for (let i = 0; i < misses.length; i += TRACK_BATCH_SIZE) {
+      const batch = misses.slice(i, i + TRACK_BATCH_SIZE);
+      const ids = batch.map(({ row }) => String(row.id));
+      const speedCeilingById = new Map(
+        batch.map(({ row, sportGroup }) => [
+          String(row.id),
+          MAX_SPEED_MPS[sportGroup],
+        ])
+      );
+      const gpsById = new Map<string, SplitSample[]>();
+      const seriesById = new Map<string, SplitSample[]>();
+      if (batch.some(({ row }) => row.has_gps_track === true)) {
+        const gpsResult = await client.query(
+          `SELECT exercise_entry_id, points
+           FROM public.exercise_entry_gps_points
+           WHERE exercise_entry_id = ANY($1::uuid[])`,
+          [ids]
+        );
+        for (const track of gpsResult.rows as SqlRow[]) {
+          const id = String(track.exercise_entry_id);
+          const samples = samplesFromGpsPoints(
+            track.points as GpsTrackPoint[],
+            speedCeilingById.get(id)
+          );
+          if (samples) gpsById.set(id, samples);
+        }
+      }
+      // An indoor run has a distance series instead of a track. It is read for
+      // every activity that has one, not only those without a usable track: a
+      // track that stops short of a standard can still be covered by the series.
+      if (batch.some(({ row }) => row.has_distance_series === true)) {
+        const seriesResult = await client.query(
+          `SELECT exercise_entry_id, points
+           FROM public.exercise_entry_distance_series
+           WHERE exercise_entry_id = ANY($1::uuid[])`,
+          [ids]
+        );
+        for (const row of seriesResult.rows as SqlRow[]) {
+          const samples = samplesFromDistanceSeries(
+            row.points as [number, number][]
+          );
+          if (samples) seriesById.set(String(row.exercise_entry_id), samples);
+        }
+      }
+      for (const id of ids) {
+        const gps = gpsById.get(id);
+        const series = seriesById.get(id);
+        if (!gps && !series) continue;
+        // The track decides a standard when it yields a split; the series only
+        // answers the standards the track does not cover.
+        const splits: Record<string, number | null> = {};
+        for (const [stdKey, standardKm] of Object.entries(
+          STANDARD_DISTANCE_KM
+        )) {
+          const meters = standardKm * 1000;
+          splits[stdKey] =
+            (gps ? bestSplitSeconds(gps, meters) : null) ??
+            (series ? bestSplitSeconds(series, meters) : null);
+        }
+        splitsById.set(id, splits);
+        const cacheKey = cacheKeys.get(id);
+        const version = batch.find(({ row }) => String(row.id) === id)?.row
+          .track_version;
+        if (cacheKey && version) rememberSplits(cacheKey, splits);
+      }
+    }
+
+    // Fastest time for the exact standard distance per (sport group, standard).
+    // Comparing times, all for one distance, picks the real record whatever
+    // order the rows arrived in.
+    const bestBySportAndStandard = new Map<string, PrCandidate>();
+    for (const {
+      row,
+      sport,
+      confidence,
+      sportGroup,
+      distKm,
+      durSecs,
+    } of classified) {
+      const splits = splitsById.get(String(row.id));
+      for (const [stdKey] of standardEntries) {
+        const standardKm = STANDARD_DISTANCE_KM[stdKey];
+        if (standardKm === undefined) continue;
+        let seconds: number | null = null;
+        let basis: PrTimeBasis = 'best_split';
+        if (splits) seconds = splits[stdKey] ?? null;
+        if (
+          seconds === null &&
+          distKm >= standardKm * UNTRACKED_MIN_RATIO &&
+          distKm <= standardKm * UNTRACKED_MAX_RATIO
+        ) {
+          // No measured split (no track, or too short a one): the activity's
+          // own pace over this distance, for an activity that nearly matches it.
+          seconds = (durSecs / distKm) * standardKm;
+          basis = 'activity_pace';
+        }
+        if (seconds === null) continue;
+        const key = `${sportGroup}:${stdKey}`;
+        const current = bestBySportAndStandard.get(key);
+        if (!current || seconds < current.seconds) {
+          bestBySportAndStandard.set(key, {
+            row,
+            sport,
+            confidence,
+            seconds,
+            basis,
+          });
+        }
       }
     }
 
@@ -755,10 +964,9 @@ async function getPersonalRecordMatrix(
         const candidate = bestBySportAndStandard.get(`${sportGroup}:${stdKey}`);
         if (!candidate) continue;
         const bestRow = candidate.row;
-        const distKm = parseFloat(String(bestRow.distance));
-        const durMins = parseFloat(String(bestRow.duration_minutes));
-        const totalSecs = Math.round(durMins * 60);
-        const paceSecs = Math.round(totalSecs / distKm);
+        const standardKm = STANDARD_DISTANCE_KM[stdKey] ?? 0;
+        const totalSecs = Math.round(candidate.seconds);
+        const paceSecs = Math.round(candidate.seconds / standardKm);
         const entryDateStr =
           bestRow.entry_date instanceof Date
             ? toDayString(bestRow.entry_date)
@@ -792,6 +1000,7 @@ async function getPersonalRecordMatrix(
           formattedTime: formatTimeDuration(totalSecs),
           avgPaceSecondsPerKm: paceSecs,
           formattedPace: formatPace(paceSecs, unitSystem),
+          timeBasis: candidate.basis,
           activityId: String(bestRow.id),
           activityName: String(
             bestRow.exercise_name || activitySportLabel(candidate.sport)
@@ -939,8 +1148,7 @@ async function getMatchedCourses(
         exercise_name,
         category,
         COUNT(id) as activity_count,
-        AVG(distance) as avg_distance_km,
-        MIN(duration_minutes) as min_duration
+        AVG(distance) as avg_distance_km
       FROM public.exercise_entries
       WHERE user_id = $1 
         AND distance > 0.5 
@@ -958,54 +1166,89 @@ async function getMatchedCourses(
 
     for (const row of coursesResult.rows) {
       const avgDistKm = parseFloat(String(row.avg_distance_km || '0'));
-      const minDurMins = parseFloat(String(row.min_duration || '0'));
       const courseKey = String(row.course_key);
 
-      const recentSql = `
+      // Every activity of the course, newest first: the recent list shows the
+      // first few, the best time is found across all of them.
+      const activitiesSql = `
         SELECT id, exercise_name, entry_date, duration_minutes, distance, avg_heart_rate
         FROM public.exercise_entries
         WHERE user_id = $1 AND LOWER(exercise_name) = $2
         ORDER BY entry_date DESC
-        LIMIT 5
+        LIMIT ${COURSE_MAX_ACTIVITIES}
       `;
-      const recentRes = await client.query(recentSql, [
+      const activitiesRes = await client.query(activitiesSql, [
         targetUserId,
         courseKey,
       ]);
 
-      const recentActivities = recentRes.rows.map((act: SqlRow) => {
-        const dKm = parseFloat(String(act.distance || '0'));
-        const dMins = parseFloat(String(act.duration_minutes || '0'));
-        const roundedDMins = Math.round(dMins * 10) / 10;
-        const paceSecs = dKm > 0 ? Math.round((dMins * 60) / dKm) : 0;
-        return {
-          activityId: String(act.id),
-          activityName: String(act.exercise_name || 'Activity'),
-          entryDate:
-            act.entry_date instanceof Date
-              ? toDayString(act.entry_date)
-              : String(act.entry_date),
-          durationMinutes: roundedDMins,
-          avgPaceFormatted: formatPace(paceSecs, unitSystem),
-          avgHeartRate: act.avg_heart_rate
-            ? Math.round(parseFloat(String(act.avg_heart_rate)))
-            : null,
-        };
-      });
+      const recentActivities = activitiesRes.rows
+        .slice(0, 5)
+        .map((act: SqlRow) => {
+          const dKm = parseFloat(String(act.distance || '0'));
+          const dMins = parseFloat(String(act.duration_minutes || '0'));
+          const roundedDMins = Math.round(dMins * 10) / 10;
+          const paceSecs = dKm > 0 ? Math.round((dMins * 60) / dKm) : 0;
+          return {
+            activityId: String(act.id),
+            activityName: String(act.exercise_name || 'Activity'),
+            entryDate:
+              act.entry_date instanceof Date
+                ? toDayString(act.entry_date)
+                : String(act.entry_date),
+            durationMinutes: roundedDMins,
+            avgPaceFormatted: formatPace(paceSecs, unitSystem),
+            avgHeartRate: act.avg_heart_rate
+              ? Math.round(parseFloat(String(act.avg_heart_rate)))
+              : null,
+          };
+        });
 
-      // bestPace: find the best (fastest) pace across recent activities
-      // using each activity's own duration and distance so it's a real pace
-      let bestPaceSecs = 0;
-      for (const act of recentRes.rows) {
+      // A course is matched by name, so its activities can differ in length (a
+      // shortened loop, an extended one). The best time is only compared across
+      // activities close to the course's own distance, as the pace over that
+      // distance, so a short version can never post a faster "course time".
+      const measured: { distKm: number; paceSecs: number }[] = [];
+      for (const act of activitiesRes.rows) {
         const dKm = parseFloat(String(act.distance || '0'));
         const dMins = parseFloat(String(act.duration_minutes || '0'));
-        if (dKm > 0) {
-          const pace = Math.round((dMins * 60) / dKm);
-          if (bestPaceSecs === 0 || pace < bestPaceSecs) {
-            bestPaceSecs = pace;
-          }
+        if (dKm > 0 && dMins > 0) {
+          measured.push({ distKm: dKm, paceSecs: (dMins * 60) / dKm });
         }
       }
+      // The reference is the median of the measured distances, not the SQL
+      // average: a few shortened runs drag the average away from every real run
+      // of the course and leave nothing comparable.
+      const sortedDistances = measured
+        .map((m) => m.distKm)
+        .sort((x, y) => x - y);
+      const referenceKm =
+        sortedDistances.length === 0
+          ? avgDistKm
+          : sortedDistances.length % 2 === 1
+            ? (sortedDistances[(sortedDistances.length - 1) / 2] as number)
+            : ((sortedDistances[sortedDistances.length / 2 - 1] as number) +
+                (sortedDistances[sortedDistances.length / 2] as number)) /
+              2;
+      let comparable = measured.filter(
+        ({ distKm }) =>
+          Math.abs(distKm - referenceKm) <=
+          referenceKm * COURSE_DISTANCE_TOLERANCE
+      );
+      if (comparable.length === 0 && measured.length > 0) {
+        // A course whose runs are all different lengths: use the one nearest
+        // the reference rather than showing no time.
+        const nearest = measured.reduce((best, m) =>
+          Math.abs(m.distKm - referenceKm) < Math.abs(best.distKm - referenceKm)
+            ? m
+            : best
+        );
+        comparable = [nearest];
+      }
+      const bestPaceSecs =
+        comparable.length > 0
+          ? Math.round(Math.min(...comparable.map((m) => m.paceSecs)))
+          : 0;
 
       courses.push({
         courseId: `course-${courseKey.replace(/\s+/g, '-')}`,
@@ -1017,10 +1260,10 @@ async function getMatchedCourses(
           exerciseName: row.exercise_name ? String(row.exercise_name) : null,
           category: row.category ? String(row.category) : null,
         }).sport,
-        totalDistanceMeters: Math.round(avgDistKm * 1000),
-        avgDistanceFormatted: convertDistance(avgDistKm, unitSystem),
+        totalDistanceMeters: Math.round(referenceKm * 1000),
+        avgDistanceFormatted: convertDistance(referenceKm, unitSystem),
         activityCount: parseInt(String(row.activity_count), 10),
-        bestTimeSeconds: Math.round(minDurMins * 60),
+        bestTimeSeconds: Math.round(bestPaceSecs * referenceKm),
         bestPaceFormatted: formatPace(bestPaceSecs, unitSystem),
         recentActivities,
       });

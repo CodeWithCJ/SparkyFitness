@@ -11,6 +11,9 @@ import reportRepository from '../models/reportRepository.js';
 import bmrService from '../services/bmrService.js';
 import { subDays, format, startOfDay } from 'date-fns';
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: async () => [] },
+}));
 vi.mock('../models/userRepository');
 vi.mock('../models/preferenceRepository');
 vi.mock('../models/measurementRepository');
@@ -116,10 +119,13 @@ describe('AdaptiveTdeeService', () => {
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements: [
         {
-          entry_date: format(subDays(calculationDate, 47), 'yyyy-MM-dd'),
+          entry_date: format(subDays(calculationDate, 20), 'yyyy-MM-dd'),
           weight: 80,
         },
-        { entry_date: format(calculationDate, 'yyyy-MM-dd'), weight: 79 },
+        {
+          entry_date: format(subDays(calculationDate, 1), 'yyyy-MM-dd'),
+          weight: 79,
+        },
       ],
       nutritionData: Array.from({ length: 91 }, (_, i) => ({
         date: format(subDays(calculationDate, i), 'yyyy-MM-dd'),
@@ -211,10 +217,13 @@ describe('AdaptiveTdeeService', () => {
       latestMeasurement: { weight: 80, height: 180 },
       checkInMeasurements: [
         {
-          entry_date: format(subDays(calculationDate, 70), 'yyyy-MM-dd'),
+          entry_date: format(subDays(calculationDate, 20), 'yyyy-MM-dd'),
           weight: 80,
         },
-        { entry_date: format(calculationDate, 'yyyy-MM-dd'), weight: 80 },
+        {
+          entry_date: format(subDays(calculationDate, 1), 'yyyy-MM-dd'),
+          weight: 80,
+        },
       ],
       nutritionData: Array.from({ length: 91 }, (_, i) => ({
         date: format(subDays(calculationDate, i), 'yyyy-MM-dd'),
@@ -394,21 +403,23 @@ describe('AdaptiveTdeeService', () => {
   test('should calculate adaptive TDEE using ~6000 kcal/kg energy density constant', () => {
     // BMR fallback = 1400 * 1.55 = 2170
     // minTdee = 2170 - 500 = 1670, maxTdee = 2170 + 500 = 2670
-    // User eats 2000 kcal/day for 28 days and loses 1.0 kg (from 81.0 kg down to 80.0 kg)
-    // TDEE = 2000 - (-1.0 / 28) * 6000 = 2000 + 214.28 = 2214 kcal
+    // The window is the 28 days before the calculation date. User eats 2000
+    // kcal/day over it and loses 1.0 kg (from 81.0 kg down to 80.0 kg), spread
+    // over the 27 gaps between its first and last day.
+    // TDEE = 2000 - (-1.0 / 27) * 6000 = 2000 + 222.2 = 2222 kcal (before smoothing)
     // @ts-expect-error
     bmrService.calculateBmr.mockReturnValue(1400);
     bmrService.ActivityMultiplier = { moderate: 1.55 };
 
     const checkInMeasurements = [];
     // 70 days of history so tracking age >= 6 weeks and confidence is HIGH
-    for (let i = 0; i < 70; i++) {
+    for (let i = 1; i <= 70; i++) {
       let weight: number;
-      if (i > 27) {
+      if (i > 28) {
         weight = 81.0;
       } else {
         // Linear weight loss from 81.0 down to 80.0 over the 28-day window
-        weight = 80.0 + (i / 27) * 1.0;
+        weight = 80.0 + ((i - 1) / 27) * 1.0;
       }
       checkInMeasurements.push({
         entry_date: format(subDays(calculationDate, i), 'yyyy-MM-dd'),
@@ -432,8 +443,121 @@ describe('AdaptiveTdeeService', () => {
     };
 
     const result = computeAdaptiveTdeeFromData(testData, calculationDateStr);
-    // 2000 kcal intake + (~0.88 kg smoothed weight loss * 6000) / 28 = ~2190 kcal
-    expect(result.tdee).toBe(2190);
+    // 2000 kcal intake + (~0.89 kg smoothed weight loss * 6000) / 27 = ~2198 kcal
+    expect(result.tdee).toBe(2198);
+  });
+
+  describe('window and checklist counts (#3142)', () => {
+    const profile = { date_of_birth: '1990-01-01', gender: 'male' };
+    const preferences = {
+      bmr_algorithm: 'Mifflin-St Jeor',
+      activity_level: 'moderate',
+      use_external_bmr: true,
+    };
+    const day = (ago: number) =>
+      format(subDays(calculationDate, ago), 'yyyy-MM-dd');
+    const calories = (from: number, to: number, kcal = 2000) =>
+      Array.from({ length: to - from + 1 }, (_, i) => ({
+        date: day(from + i),
+        calories: kcal,
+      }));
+    const run = (
+      checkInMeasurements: { entry_date: string; weight: number }[],
+      nutritionData: { date: string; calories: number }[]
+    ) =>
+      computeAdaptiveTdeeFromData(
+        {
+          profile,
+          preferences,
+          latestMeasurement: { weight: 80, height: 180 },
+          checkInMeasurements,
+          nutritionData,
+        },
+        calculationDateStr
+      );
+
+    beforeEach(() => {
+      // @ts-expect-error
+      bmrService.calculateBmr.mockReturnValue(1800);
+      bmrService.ActivityMultiplier = { moderate: 1.55 };
+    });
+
+    test('reports calorie days when weight entries are missing', () => {
+      const result = run([{ entry_date: day(3), weight: 80 }], calories(1, 7));
+      expect(result.isFallback).toBe(true);
+      expect(result.fallbackReason).toMatch(/weight/i);
+      expect(result.daysOfData).toBe(7);
+    });
+
+    test('reports calorie days when weights span less than 7 days', () => {
+      const result = run(
+        [
+          { entry_date: day(7), weight: 80 },
+          { entry_date: day(1), weight: 80 },
+        ],
+        [...calories(1, 7), { date: day(8), calories: 150 }]
+      );
+      expect(result.isFallback).toBe(true);
+      expect(result.fallbackReason).toMatch(/less than 7 days/i);
+      // The sub-200 kcal day is not counted.
+      expect(result.daysOfData).toBe(7);
+    });
+
+    test('does not count the calculation day itself', () => {
+      const weights = [
+        { entry_date: day(20), weight: 80 },
+        { entry_date: day(1), weight: 80 },
+      ];
+      const closed = run(weights, calories(1, 28));
+      const withToday = run(weights, [
+        { date: day(0), calories: 6000 },
+        ...calories(1, 28),
+      ]);
+      expect(withToday.tdee).toBe(closed.tdee);
+      expect(withToday.daysOfData).toBe(28);
+      expect(closed.windowEndDate).toBe(day(1));
+    });
+
+    test('a weight logged on the calculation day does not satisfy the weight rule', () => {
+      const result = run(
+        [
+          { entry_date: day(10), weight: 80 },
+          { entry_date: day(0), weight: 80 },
+        ],
+        calories(1, 28)
+      );
+      expect(result.isFallback).toBe(true);
+      expect(result.fallbackReason).toMatch(/at least 2/i);
+    });
+
+    test('weights older than the 28-day window do not satisfy the weight rule', () => {
+      const result = run(
+        [
+          { entry_date: day(80), weight: 80 },
+          { entry_date: day(2), weight: 80 },
+        ],
+        calories(1, 28)
+      );
+      expect(result.isFallback).toBe(true);
+      expect(result.fallbackReason).toMatch(/at least 2/i);
+    });
+
+    test('divides the weight change by the 27 gaps in a 28-day window', () => {
+      const result = run(
+        [
+          { entry_date: day(28), weight: 90 },
+          { entry_date: day(1), weight: 80 },
+        ],
+        calories(1, 28)
+      );
+      expect(result.daysInWindow).toBe(28);
+      // About -8.9 kg: dividing by 28 instead would land 0.012 away.
+      expect(result.weightChangeKg).toBeLessThan(-5);
+      expect(result.dailyWeightChangeKg).toBeCloseTo(
+        (result.weightChangeKg ?? 0) / 27,
+        3
+      );
+    });
   });
 
   describe('measured BMR is scoped to its own day', () => {

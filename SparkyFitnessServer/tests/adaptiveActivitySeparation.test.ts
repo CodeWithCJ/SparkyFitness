@@ -12,6 +12,9 @@ import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: async () => [] },
+}));
 vi.mock('../models/userRepository.js');
 vi.mock('../models/preferenceRepository.js');
 vi.mock('../models/measurementRepository.js');
@@ -57,8 +60,9 @@ describe('adaptive activity separation', () => {
 
   it('uses the same qualifying food days for the activity average', () => {
     const inputs = data();
-    inputs.nutritionData[90].calories = 199;
-    inputs.activityCaloriesByDate.set(date, 10000);
+    // The last day of the window is the day before the calculation date.
+    inputs.nutritionData[89].calories = 199;
+    inputs.activityCaloriesByDate.set(days[89], 10000);
     const result = computeAdaptiveTdeeFromData(inputs, date);
     expect(result.averageActivityCalories).toBe(900);
     expect(result.activityDaysOfData).toBe(27);
@@ -96,6 +100,7 @@ describe('adaptive activity separation', () => {
     'credits daily activity once and never adds BMR again (include BMR: %s)',
     (includeBmr) => {
       const balance = computeCalorieBalance({
+        date: '2026-10-01',
         eatenCalories: 2500,
         adjustedGoalCalories: 2000,
         exercise: { activeCalories: 800, otherCalories: 700, activitySteps: 0 },

@@ -13,7 +13,7 @@ import { formatDayLabel } from '../../utils/dayLabel';
 import Button from '../ui/Button';
 
 /** Runs listed before "Show all". */
-const PREVIEW_RUNS = 7;
+const PREVIEW_RUNS = 4;
 
 const dayText = (day: string, style: 'long' | 'short'): string =>
   formatDayLabel(day, style);

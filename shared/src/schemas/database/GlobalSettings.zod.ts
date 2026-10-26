@@ -22,6 +22,7 @@ export const globalSettingsSchema = z.object({
   dev_tools_enabled: z.boolean(),
   mock_data_enabled: z.boolean(),
   enable_passkey_login: z.boolean(),
+  enable_version_check: z.boolean(),
 });
 
 export const globalSettingsInitializerSchema = z.object({
@@ -39,6 +40,7 @@ export const globalSettingsInitializerSchema = z.object({
   dev_tools_enabled: z.boolean().optional(),
   mock_data_enabled: z.boolean().optional(),
   enable_passkey_login: z.boolean().optional(),
+  enable_version_check: z.boolean().optional(),
 });
 
 export const globalSettingsMutatorSchema = z.object({
@@ -56,6 +58,7 @@ export const globalSettingsMutatorSchema = z.object({
   dev_tools_enabled: z.boolean().optional(),
   mock_data_enabled: z.boolean().optional(),
   enable_passkey_login: z.boolean().optional(),
+  enable_version_check: z.boolean().optional(),
 });
 
 export type GlobalSettings = z.infer<typeof globalSettingsSchema>;

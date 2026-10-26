@@ -94,6 +94,11 @@ export interface RacePlanInput {
   /** Weekdays to run on, 0 = Sunday. The race day's weekday is always added. */
   runDays: readonly number[];
   titles: RacePlanTitles;
+  /**
+   * The pace to plan race day at, in seconds per kilometre, for example from a
+   * fitness test. Without it the race is planned at a guess for the level.
+   */
+  racePaceSecondsPerKm?: number;
 }
 
 export interface RacePlanWorkout {
@@ -212,6 +217,12 @@ function planDays(
   return out;
 }
 
+/** A pace worth planning a race at: faster than 2:30 or slower than 12:00 per km is not. */
+function usablePace(pace: number | undefined): number | null {
+  if (pace === undefined || !Number.isFinite(pace)) return null;
+  return pace >= 150 && pace <= 720 ? pace : null;
+}
+
 export function buildRacePlan(input: RacePlanInput): RacePlan {
   const { distance, level, raceDay, today, titles } = input;
   const days = new Set([...input.runDays, dayOfWeek(raceDay)]);
@@ -241,7 +252,8 @@ export function buildRacePlan(input: RacePlanInput): RacePlan {
   const buildBlocks = Math.max(1, blocks - taper);
   const start = START_LONG_MINUTES[level];
   const peak = Math.max(PEAK_LONG_MINUTES[distance], start);
-  const raceMinutes = Math.round((KM[distance] * RACE_PACE[level]) / 60);
+  const racePace = usablePace(input.racePaceSecondsPerKm) ?? RACE_PACE[level];
+  const raceMinutes = Math.round((KM[distance] * racePace) / 60);
 
   const longFor = (block: number): number => {
     if (block >= buildBlocks) {

@@ -1140,8 +1140,12 @@ describe('chatService', () => {
       outputTokens: { total: 5, text: 5, reasoning: 0 },
     };
 
-    const streamModel = (parts: unknown[]) => {
+    const streamModel = (
+      parts: unknown[],
+      supportedUrls?: Record<string, RegExp[]>
+    ) => {
       const model = new MockLanguageModelV3({
+        supportedUrls,
         doStream: async () => ({
           stream: simulateReadableStream({
             chunks: parts as never[],
@@ -1555,22 +1559,8 @@ describe('chatService', () => {
     });
 
     it('maps remote image URLs with detected media types based on extension', async () => {
-      const originalFetch = global.fetch;
-      global.fetch = vi
-        .fn()
-        .mockImplementation(async (url: string | URL | Request) => {
-          const urlStr = typeof url === 'string' ? url : url.toString();
-          if (urlStr.includes('example.com/meal.webp')) {
-            return new Response(new Uint8Array([0x52, 0x49, 0x46, 0x46]), {
-              status: 200,
-              headers: { 'content-type': 'image/webp' },
-            });
-          }
-          return originalFetch(url as RequestInfo, undefined);
-        });
-
-      try {
-        const model = streamModel([
+      const model = streamModel(
+        [
           { type: 'stream-start', warnings: [] },
           { type: 'text-start', id: 't1' },
           { type: 'text-delta', id: 't1', delta: 'ok' },
@@ -1580,37 +1570,39 @@ describe('chatService', () => {
             finishReason: { unified: 'stop', raw: undefined },
             usage,
           },
-        ]);
+        ],
+        // Declared as natively supported so the SDK passes the URL through
+        // instead of downloading it (the SDK's own guarded fetcher is not the
+        // global fetch).
+        { 'image/*': [/^https:\/\/.*$/] }
+      );
 
-        const { stream } = await chatService.processChatMessageStream(
-          [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: 'Analyze this photo' },
-                {
-                  type: 'image_url',
-                  image_url: { url: 'https://example.com/meal.webp' },
-                },
-              ],
-            },
-          ],
-          'svc-1',
-          activeUserId,
-          actorUserId
-        );
-        await drainStream(stream);
+      const { stream } = await chatService.processChatMessageStream(
+        [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Analyze this photo' },
+              {
+                type: 'image_url',
+                image_url: { url: 'https://example.com/meal.webp' },
+              },
+            ],
+          },
+        ],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
 
-        const prompt = model.doStreamCalls[0].prompt;
-        const userMessage = prompt.find((m) => m.role === 'user');
-        const filePart = (
-          userMessage?.content as Array<{ type: string; mediaType?: string }>
-        ).find((p) => p.type === 'file');
-        expect(filePart).toBeDefined();
-        expect(filePart?.mediaType).toBe('image/webp');
-      } finally {
-        global.fetch = originalFetch;
-      }
+      const prompt = model.doStreamCalls[0].prompt;
+      const userMessage = prompt.find((m) => m.role === 'user');
+      const filePart = (
+        userMessage?.content as Array<{ type: string; mediaType?: string }>
+      ).find((p) => p.type === 'file');
+      expect(filePart).toBeDefined();
+      expect(filePart?.mediaType).toBe('image/webp');
     });
 
     it('trims old history to a token budget but always keeps the current turn', async () => {

@@ -169,6 +169,14 @@ export function CompareSentence({ question, onChange }: CompareSentenceProps) {
             {t('compareReport.sentence.nextWeek', 'The next week')}
           </SelectItem>
         </SelectGroup>
+        <SelectGroup>
+          <SelectLabel>
+            {t('compareReport.sentence.sinceHabit', 'Since a habit started')}
+          </SelectLabel>
+          <SelectItem value="sinceHabit">
+            {t('compareReport.sentence.beforeVsSince', 'Before vs. since')}
+          </SelectItem>
+        </SelectGroup>
       </SelectContent>
     </Select>
   );
@@ -184,14 +192,27 @@ export function CompareSentence({ question, onChange }: CompareSentenceProps) {
 
   return (
     <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2">
-        {words(t('compareReport.sentence.does', 'Does'))}
-        {metricPicker('a')}
-        {words(t('compareReport.sentence.goWith', 'go with'))}
-        {metricPicker('b')}
-        {timingPicker}
-        {words(t('compareReport.sentence.questionMark', '?'))}
-      </div>
+      {mode === 'since' ? (
+        // "Since I started [X] regularly, has [Y] changed?" The "Since" is the
+        // timing picker, so the person can switch back to day or week.
+        <div className="flex flex-wrap items-center gap-2">
+          {timingPicker}
+          {words(t('compareReport.sentence.iStarted', 'I started'))}
+          {metricPicker('a')}
+          {words(t('compareReport.sentence.regularlyHas', 'regularly, has'))}
+          {metricPicker('b')}
+          {words(t('compareReport.sentence.changed', 'changed?'))}
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
+          {words(t('compareReport.sentence.does', 'Does'))}
+          {metricPicker('a')}
+          {words(t('compareReport.sentence.goWith', 'go with'))}
+          {metricPicker('b')}
+          {timingPicker}
+          {words(t('compareReport.sentence.questionMark', '?'))}
+        </div>
+      )}
       {dayOnly && (
         <p className="text-sm text-muted-foreground">
           {t('compareReport.dayOnly', {

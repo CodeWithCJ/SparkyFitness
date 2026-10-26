@@ -65,6 +65,12 @@ export const ADAPTIVE_TDEE_CLAMP_KCAL = 500;
  */
 export const ADAPTIVE_TDEE_GOAL_MIN_DAYS = 14;
 
+/**
+ * Qualifying calorie-log days (at least 200 kcal each) before the log-derived
+ * adaptive TDEE estimate is released in place of the BMR-based fallback.
+ */
+export const ADAPTIVE_TDEE_MIN_CALORIE_DAYS = 7;
+
 export const CALORIE_SAFETY_FLOOR_MODES = [
   'standard',
   'custom',

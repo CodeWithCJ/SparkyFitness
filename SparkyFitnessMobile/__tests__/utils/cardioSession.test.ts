@@ -13,6 +13,7 @@ import {
   projectRoute,
   routeRegion,
   usableRoutePoints,
+  splitsFromTrack,
 } from '../../src/utils/cardioSession';
 
 const point = (lat: number, lon: number, t = '2026-09-20T12:00:00Z') =>
@@ -516,5 +517,41 @@ describe('paceSeriesFromDistance', () => {
         1000
       )
     ).toEqual([]);
+  });
+});
+
+describe('splitsFromTrack', () => {
+  const track = (count: number, metersPerStep = 20, alt = false) =>
+    Array.from({ length: count }, (_, i) => ({
+      t: new Date(Date.UTC(2026, 9, 6, 10, 0, i * 5)).toISOString(),
+      lat: 51.5 + (i * metersPerStep) / 111_195,
+      lon: -0.12,
+      ...(alt ? { alt: 100 + i } : {}),
+    }));
+
+  it('cuts a stored track into kilometres with pace, climb and heart rate', () => {
+    const points = track(120, 20, true);
+    const t0 = Date.UTC(2026, 9, 6, 10, 0, 0);
+    const splits = splitsFromTrack(points, 1000, [
+      { timestamp: t0 + 60_000, bpm: 150 },
+    ]);
+    expect(splits.length).toBeGreaterThanOrEqual(2);
+    expect(splits[0].partial).toBe(false);
+    expect(splits[0].durationSeconds).toBeCloseTo(250, 0);
+    expect(splits[0].elevationChangeMeters).toBeGreaterThan(0);
+    expect(splits[0].avgHeartRate).toBe(150);
+    expect(splits[1].avgHeartRate).toBeNull();
+  });
+
+  it('returns nothing for a track too short to split', () => {
+    expect(splitsFromTrack(track(1), 1000)).toEqual([]);
+  });
+
+  it('skips repeated and out-of-order timestamps', () => {
+    const points = track(60, 20);
+    const shuffled = [points[0], points[0], ...points.slice(1)];
+    expect(splitsFromTrack(shuffled, 1000)).toEqual(
+      splitsFromTrack(points, 1000)
+    );
   });
 });

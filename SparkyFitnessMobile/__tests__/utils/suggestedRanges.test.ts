@@ -1,10 +1,12 @@
 import type { ExerciseActivityQueryItem } from '@workspace/shared';
+import { fitnessTest } from '../helpers/fitnessTestFixture';
 import {
   referencePace,
   suggestedHeartRateRanges,
   suggestedPaceRanges,
   warmPaceFromEasy,
   suggestedPaceRangesFromRace,
+  suggestedPaceRangesFromTest,
 } from '../../src/utils/suggestedRanges';
 
 const session = (
@@ -206,6 +208,60 @@ describe('suggestedPaceRangesFromRace', () => {
   it('has none for a result that cannot be right', () => {
     expect(
       suggestedPaceRangesFromRace({ distanceKm: 5, seconds: 60 }, 'run')
+    ).toBeNull();
+  });
+});
+
+describe('suggestedPaceRangesFromTest', () => {
+  const paces = fitnessTest().paces;
+
+  it('puts fast stretches in the interval zone and easy ones in the easy zone', () => {
+    const ranges = suggestedPaceRangesFromTest(paces, 'run')!;
+    const interval = paces.zones.find((zone) => zone.id === 'interval')!;
+    const easy = paces.zones.find((zone) => zone.id === 'easy')!;
+    expect(ranges.pair.work).toMatchObject({
+      minSecondsPerKm: interval.minSecondsPerKm,
+      maxSecondsPerKm: interval.maxSecondsPerKm,
+    });
+    expect(ranges.pair.easy).toMatchObject({
+      minSecondsPerKm: easy.minSecondsPerKm,
+      maxSecondsPerKm: easy.maxSecondsPerKm,
+    });
+    expect(ranges.pair.warm.maxSecondsPerKm).toBeGreaterThan(
+      ranges.pair.easy.maxSecondsPerKm
+    );
+  });
+
+  it('adds the tempo, marathon-pace and stride ranges the test stored', () => {
+    const ranges = suggestedPaceRangesFromTest(paces, 'run')!;
+    expect(ranges.byEffort.tempo).toEqual(paces.raceZones.tempo);
+    expect(ranges.byEffort.marathon).toEqual(paces.raceZones.marathon);
+    expect(ranges.byEffort.stride).toEqual(paces.raceZones.stride);
+    expect(ranges.byEffort.easy).toBeDefined();
+  });
+
+  it('shifts every range together', () => {
+    const base = suggestedPaceRangesFromTest(paces, 'run', 0)!;
+    const eased = suggestedPaceRangesFromTest(paces, 'run', 0.03)!;
+    expect(eased.pair.work.minSecondsPerKm).toBeGreaterThan(
+      base.pair.work.minSecondsPerKm
+    );
+    expect(eased.byEffort.tempo!.minSecondsPerKm).toBeGreaterThan(
+      base.byEffort.tempo!.minSecondsPerKm
+    );
+  });
+
+  it('gives a walk or ride nothing', () => {
+    expect(suggestedPaceRangesFromTest(paces, 'walk')).toBeNull();
+    expect(suggestedPaceRangesFromTest(paces, 'ride')).toBeNull();
+  });
+
+  it('gives nothing for a threshold that cannot be used', () => {
+    expect(
+      suggestedPaceRangesFromTest(
+        { ...paces, thresholdSecondsPerKm: 30 },
+        'run'
+      )
     ).toBeNull();
   });
 });

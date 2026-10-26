@@ -129,6 +129,7 @@ const saveEntry = async () => {
       duration_minutes: number;
       calories_burned?: number;
       avg_heart_rate: number | null;
+      calories_applied: number | null;
       steps: number | null;
       sets: Array<{
         duration?: number | null;
@@ -266,6 +267,33 @@ describe('EditExerciseEntryDialog untouched fields', () => {
     const { data } = await saveEntry();
     expect(data.distance).toBe(6);
     expect(data.duration_minutes).toBe(30.4567);
+  });
+
+  it('sends the counted calories typed in the advanced section', async () => {
+    renderDialog(makeEntry());
+
+    fireEvent.click(screen.getByText('Advanced'));
+    fireEvent.change(screen.getByLabelText(/Calories counted in daily total/), {
+      target: { value: '0' },
+    });
+    const { data } = await saveEntry();
+    expect(data.calories_applied).toBe(0);
+    expect(data.calories_burned).toBe(300);
+  });
+
+  it('clears the override with null when the field is blank', async () => {
+    renderDialog(makeEntry({ calories_applied: 120 }));
+
+    const { data } = await saveEntry();
+    expect(data.calories_applied).toBe(120);
+
+    mockUpdateExerciseEntry.mockClear();
+    fireEvent.click(screen.getByText('Advanced'));
+    fireEvent.change(screen.getByLabelText(/Calories counted in daily total/), {
+      target: { value: '' },
+    });
+    const cleared = await saveEntry();
+    expect(cleared.data.calories_applied).toBeNull();
   });
 
   it('writes the stored values into the single cardio set too', async () => {

@@ -1,9 +1,12 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchCustomCategories,
   fetchCustomMeasurementsRange,
   fetchDailyVo2Max,
 } from '../services/api/measurementsApi';
+import type { RunningEstimatesResponse } from '@workspace/shared';
+import { useRunEstimates } from './useRunEstimates';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { vo2MaxRangeQueryKey } from './queryKeys';
 import { addDays, getTodayDate } from '../utils/dateUtils';
@@ -40,6 +43,22 @@ async function customVo2Max(
   return [...latest.entries()].map(([day, { value }]) => [day, value]);
 }
 
+/**
+ * The run-based estimate as chart points inside the window. Whether there is
+ * an estimate at all is the server's call (it needs enough qualifying runs),
+ * and its series is one point per day, so two runs on one day are one point
+ * here: the point count is not gated.
+ */
+export function estimatedVo2MaxPoints(
+  estimate: RunningEstimatesResponse['vo2Max'] | undefined,
+  startDate: string,
+  endDate: string
+): Vo2MaxDataPoint[] {
+  return (estimate?.series ?? [])
+    .filter((point) => point.day >= startDate && point.day <= endDate)
+    .map((point) => ({ day: point.day, vo2max: point.value }));
+}
+
 interface UseVo2MaxRangeOptions {
   range: HealthTrendDateRange;
   enabled?: boolean;
@@ -47,7 +66,9 @@ interface UseVo2MaxRangeOptions {
 
 /**
  * VO2 max over the window, one reading per day (the latest if there are
- * several). Empty when nothing has synced it, which hides the trend.
+ * several). With no synced reading it falls back to the estimate from logged
+ * runs (`isEstimate`); a real reading always wins, and the two are never mixed.
+ * Empty when neither exists, which hides the trend.
  */
 export function useVo2MaxRange({
   range,
@@ -83,9 +104,21 @@ export function useVo2MaxRange({
 
   useRefetchOnFocus(query.refetch, enabled);
 
+  const needsEstimate = enabled && query.isSuccess && query.data.length === 0;
+  const estimates = useRunEstimates(needsEstimate);
+  const estimated = useMemo(
+    () =>
+      needsEstimate
+        ? estimatedVo2MaxPoints(estimates.data?.vo2Max, startDate, today)
+        : [],
+    [needsEstimate, estimates.data, startDate, today]
+  );
+  const isEstimate = estimated.length > 0;
+
   return {
-    vo2MaxData: query.data ?? [],
-    isLoading: query.isLoading,
+    vo2MaxData: isEstimate ? estimated : (query.data ?? []),
+    isEstimate,
+    isLoading: query.isLoading || (needsEstimate && estimates.isLoading),
     isError: query.isError,
     refetch: query.refetch,
   };

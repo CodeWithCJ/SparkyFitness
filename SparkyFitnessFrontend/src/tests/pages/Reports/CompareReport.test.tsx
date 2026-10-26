@@ -1,27 +1,48 @@
 import fs from 'fs';
 import path from 'path';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import {
   compareWindow,
   SUGGESTED_QUESTIONS,
+  sinceStartBounds,
   todayInZone,
   type CompareQuery,
   type CompareQuestion,
   type CompareResponse,
+  type CompareSinceQuery,
+  type CompareSinceResponse,
   type CompareTimingChoice,
 } from '@workspace/shared';
 import { CompareReport } from '@/pages/Reports/Compare/CompareReport';
 import { renderWithClient } from '@/tests/test-utils';
 
 const mockGetCompare = jest.fn();
+const mockGetCompareSince = jest.fn();
+// When set, the page's "today"; otherwise the real day in the zone.
+let mockToday: string | null = null;
 let mockActingOnBehalf = false;
+let mockActiveUserId = 'user-1';
 
 // Every key the page asks for, so the last test can check en/translation.json
 // says the same English.
 const defaultsByKey = new Map<string, string>();
+
+jest.mock('@workspace/shared', () => {
+  const actual = jest.requireActual('@workspace/shared');
+  return {
+    ...actual,
+    todayInZone: (tz: string) => mockToday ?? actual.todayInZone(tz),
+  };
+});
 
 jest.mock('react-i18next', () => {
   const actual = jest.requireActual('@/tests/mocks/reactI18next');
@@ -48,10 +69,11 @@ jest.mock('react-i18next', () => {
 jest.mock('@/api/Reports/compareApi', () => ({
   ...jest.requireActual('@/api/Reports/compareApi'),
   getCompare: (q: unknown) => mockGetCompare(q),
+  getCompareSince: (q: unknown) => mockGetCompareSince(q),
 }));
 
 jest.mock('@/hooks/useAuth', () => ({
-  useAuth: () => ({ user: { activeUserId: 'user-1' } }),
+  useAuth: () => ({ user: { activeUserId: mockActiveUserId } }),
 }));
 
 jest.mock('@/contexts/ActiveUserContext', () => ({
@@ -103,6 +125,53 @@ jest.mock('@/pages/Reports/Compare/CompareDaysTable', () => ({
   CompareDaysTable: () => <div data-testid="days-table" />,
 }));
 
+jest.mock('@/pages/Reports/Compare/CompareSinceAnswer', () => ({
+  CompareSinceAnswer: () => <div data-testid="since-answer" />,
+}));
+jest.mock('@/pages/Reports/Compare/CompareSinceChart', () => ({
+  CompareSinceChart: () => <div data-testid="since-chart" />,
+}));
+jest.mock('@/pages/Reports/Compare/CompareSinceMonthTable', () => ({
+  CompareSinceMonthTable: () => <div data-testid="since-month-table" />,
+}));
+// The real controls are tested on their own; this one shows what the page
+// hands it and lets a test pick a start or a line.
+jest.mock('@/pages/Reports/Compare/CompareSinceControls', () => ({
+  CompareSinceControls: ({
+    response,
+    outcome,
+    habitStart,
+    line,
+    onStartChange,
+    onLineChange,
+  }: {
+    response: CompareSinceResponse | undefined;
+    outcome: string;
+    habitStart: string | null;
+    line: number | null;
+    onStartChange: (day: string) => void;
+    onLineChange: (line: number) => void;
+  }) => (
+    <div
+      data-testid="since-controls"
+      data-outcome={outcome}
+      data-start={habitStart ?? ''}
+      data-line={line ?? ''}
+      data-kept={response ? response.outcome.key : ''}
+    >
+      <button type="button" onClick={() => onStartChange('2026-09-01')}>
+        pick a start
+      </button>
+      <button type="button" onClick={() => onStartChange('2024-01-01')}>
+        pick an old start
+      </button>
+      <button type="button" onClick={() => onLineChange(7)}>
+        pick a line
+      </button>
+    </div>
+  ),
+}));
+
 const RESPONSE = {
   through: '2026-10-21',
   result: { status: 'ok' },
@@ -111,6 +180,13 @@ const RESPONSE = {
 /** A response that names the timing it answers, as "timing 1". */
 const byTiming = (q: CompareQuery) =>
   Promise.resolve({ ...RESPONSE, through: `timing ${q.timing}` });
+
+const SINCE_OK = {
+  mode: 'since',
+  habit: { key: 'meditated' },
+  outcome: { key: 'mood' },
+  result: { status: 'ok' },
+} as unknown as CompareSinceResponse;
 
 beforeAll(() => {
   // Radix Select leans on these, which jsdom lacks.
@@ -123,9 +199,13 @@ beforeAll(() => {
 describe('CompareReport', () => {
   beforeEach(() => {
     mockActingOnBehalf = false;
+    mockActiveUserId = 'user-1';
     window.localStorage.clear();
     mockGetCompare.mockReset();
     mockGetCompare.mockResolvedValue(RESPONSE);
+    mockGetCompareSince.mockReset();
+    mockGetCompareSince.mockResolvedValue(SINCE_OK);
+    mockToday = null;
   });
 
   const first = SUGGESTED_QUESTIONS[0]!;
@@ -236,6 +316,29 @@ describe('CompareReport', () => {
     ).toEqual([]);
   });
 
+  it('a trip through since mode keeps the day span', async () => {
+    renderWithClient(<CompareReport />);
+    fireEvent.click(
+      screen.getByTestId('compare-suggestion-meditated-mood-sameDay')
+    );
+    await screen.findByTestId('answer-card');
+    fireEvent.click(screen.getByRole('button', { name: '30 days' }));
+
+    pickTiming('Before vs. since');
+    await screen.findByTestId('since-answer');
+    expect(screen.queryByRole('button', { name: '30 days' })).toBeNull();
+
+    // Back to day: still 30 days, not the day default.
+    pickTiming('The next day');
+    expect(pressed('30 days')).toBe('true');
+    expect(pressed('90 days')).toBe('false');
+    await screen.findByTestId('answer-card');
+
+    // Day to week still starts the span over.
+    pickTiming('The same week');
+    expect(pressed('6 months')).toBe('true');
+  });
+
   it('a timing-row pick switches the question and shows the answer for that timing', async () => {
     mockGetCompare.mockImplementation(byTiming);
     renderWithClient(<CompareReport />);
@@ -296,6 +399,227 @@ describe('CompareReport', () => {
     expect(
       screen.queryByText("Couldn't load this comparison")
     ).not.toBeInTheDocument();
+  });
+
+  describe('since mode', () => {
+    const SINCE_RECENT = { a: 'meditated', b: 'mood', choice: 'sinceHabit' };
+    const recentId = 'compare-recent-meditated-mood-sinceHabit';
+
+    const askedSince = (): CompareSinceQuery[] =>
+      mockGetCompareSince.mock.calls.map(([q]) => q as CompareSinceQuery);
+
+    const startSince = async () => {
+      window.localStorage.setItem(
+        'sparky.compareRecentQuestions.v1.user-1',
+        JSON.stringify([SINCE_RECENT])
+      );
+      renderWithClient(<CompareReport />);
+      fireEvent.click(screen.getByTestId(recentId));
+      await screen.findByTestId('since-answer');
+    };
+
+    test('Before vs. since asks mode=since with no start or line', async () => {
+      await startSince();
+      expect(askedSince()).toEqual([
+        { a: 'meditated', b: 'mood', mode: 'since' },
+      ]);
+      expect(mockGetCompare).not.toHaveBeenCalled();
+      for (const id of ['since-controls', 'since-chart', 'since-month-table']) {
+        expect(screen.getByTestId(id)).toBeInTheDocument();
+      }
+      // Day and week sections and the span control do not apply.
+      expect(screen.queryByRole('button', { name: '90 days' })).toBeNull();
+      expect(screen.queryByTestId('answer-card')).toBeNull();
+      expect(screen.queryByTestId('timing-table')).toBeNull();
+      expect(screen.queryByTestId('days-table')).toBeNull();
+    });
+
+    test('picking a start sends habitStart; picking a new habit drops it', async () => {
+      await startSince();
+      fireEvent.click(screen.getByRole('button', { name: 'pick a start' }));
+      await waitFor(() =>
+        expect(askedSince()).toContainEqual({
+          a: 'meditated',
+          b: 'mood',
+          mode: 'since',
+          habitStart: '2026-09-01',
+        })
+      );
+      expect(screen.getByTestId('since-controls')).toHaveAttribute(
+        'data-start',
+        '2026-09-01'
+      );
+
+      fireEvent.keyDown(screen.getByRole('combobox', { name: /First thing/ }), {
+        key: 'Enter',
+      });
+      fireEvent.click(screen.getByRole('option', { name: 'Caffeine' }));
+      await waitFor(() =>
+        expect(askedSince()).toContainEqual({
+          a: 'caffeine',
+          b: 'mood',
+          mode: 'since',
+        })
+      );
+      expect(screen.getByTestId('since-controls')).toHaveAttribute(
+        'data-start',
+        ''
+      );
+    });
+
+    test('a picked line belongs to its outcome', async () => {
+      await startSince();
+      fireEvent.click(screen.getByRole('button', { name: 'pick a line' }));
+      await waitFor(() =>
+        expect(askedSince()).toContainEqual({
+          a: 'meditated',
+          b: 'mood',
+          mode: 'since',
+          line: 7,
+        })
+      );
+      expect(screen.getByTestId('since-controls')).toHaveAttribute(
+        'data-line',
+        '7'
+      );
+
+      fireEvent.keyDown(
+        screen.getByRole('combobox', { name: /Second thing/ }),
+        { key: 'Enter' }
+      );
+      fireEvent.click(screen.getByRole('option', { name: 'Energy' }));
+      await waitFor(() =>
+        expect(askedSince()).toContainEqual({
+          a: 'meditated',
+          b: 'energy',
+          mode: 'since',
+        })
+      );
+      expect(screen.getByTestId('since-controls')).toHaveAttribute(
+        'data-line',
+        ''
+      );
+    });
+
+    test('a start older than 730 days is clamped before it is sent', async () => {
+      mockToday = '2026-10-23';
+      await startSince();
+      fireEvent.click(screen.getByRole('button', { name: 'pick a start' }));
+      await waitFor(() =>
+        expect(screen.getByTestId('since-controls')).toHaveAttribute(
+          'data-start',
+          '2026-09-01'
+        )
+      );
+
+      // A year and more later, the picked day is past the two-year limit.
+      mockToday = '2028-10-23';
+      fireEvent.click(screen.getByRole('button', { name: 'pick a line' }));
+      const { min } = sinceStartBounds('2028-10-23');
+      await waitFor(() =>
+        expect(askedSince()).toContainEqual({
+          a: 'meditated',
+          b: 'mood',
+          mode: 'since',
+          habitStart: min,
+          line: 7,
+        })
+      );
+      expect(min > '2026-09-01').toBe(true);
+      expect(
+        askedSince().filter(
+          (q) =>
+            q.habitStart !== undefined && q.habitStart < min && q.line === 7
+        )
+      ).toEqual([]);
+    });
+
+    test('keeps the last answer for the controls while a new start loads', async () => {
+      await startSince();
+      mockGetCompareSince.mockReturnValue(new Promise(() => undefined));
+      fireEvent.click(screen.getByRole('button', { name: 'pick a start' }));
+      await waitFor(() => expect(askedSince()).toHaveLength(2));
+      expect(screen.getByTestId('since-controls')).toHaveAttribute(
+        'data-kept',
+        'mood'
+      );
+    });
+
+    test('a failed first load says so and Retry asks again', async () => {
+      mockGetCompareSince.mockRejectedValue(new Error('offline'));
+      window.localStorage.setItem(
+        'sparky.compareRecentQuestions.v1.user-1',
+        JSON.stringify([SINCE_RECENT])
+      );
+      renderWithClient(<CompareReport />);
+      fireEvent.click(screen.getByTestId(recentId));
+      expect(
+        await screen.findByText("Couldn't load this comparison")
+      ).toBeInTheDocument();
+      mockGetCompareSince.mockResolvedValue(SINCE_OK);
+      fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+      expect(await screen.findByTestId('since-answer')).toBeInTheDocument();
+    });
+
+    test('the month table shows only when the answer is ok', async () => {
+      mockGetCompareSince.mockResolvedValue({
+        ...SINCE_OK,
+        result: {
+          status: 'not_enough',
+          reason: 'fewSince',
+          start: '2026-09-01',
+          suggestedStart: '2026-09-01',
+          line: 70,
+        },
+      });
+      await startSince();
+      expect(screen.getByTestId('since-chart')).toBeInTheDocument();
+      expect(screen.queryByTestId('since-month-table')).toBeNull();
+    });
+
+    test('an answered since question is saved as a recent', async () => {
+      await startSince();
+      await waitFor(() =>
+        expect(
+          window.localStorage.getItem('sparky.compareRecentQuestions.v1.user-1')
+        ).toContain('sinceHabit')
+      );
+    });
+
+    test('acting on behalf sends no since request', async () => {
+      window.localStorage.setItem(
+        'sparky.compareRecentQuestions.v1.user-1',
+        JSON.stringify([SINCE_RECENT])
+      );
+      const { rerender } = renderWithClient(<CompareReport />);
+      fireEvent.click(screen.getByTestId(recentId));
+      await screen.findByTestId('since-answer');
+      const callsBefore = mockGetCompareSince.mock.calls.length;
+      expect(callsBefore).toBeGreaterThan(0);
+
+      // Acting on behalf switches the active user, which would key a new
+      // since request for the same question if the page still asked.
+      mockActingOnBehalf = true;
+      mockActiveUserId = 'user-2';
+      rerender(<CompareReport />);
+      expect(
+        screen.getByText('Compare shows only your own data')
+      ).toBeInTheDocument();
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(mockGetCompareSince.mock.calls.length).toBe(callsBefore);
+    });
+
+    test('the start state lists a recent since question', () => {
+      window.localStorage.setItem(
+        'sparky.compareRecentQuestions.v1.user-1',
+        JSON.stringify([SINCE_RECENT])
+      );
+      renderWithClient(<CompareReport />);
+      expect(screen.getByTestId(recentId)).toBeInTheDocument();
+      expect(screen.getByTestId(recentId)).toHaveTextContent(/since/i);
+    });
   });
 });
 

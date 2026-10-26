@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react-native';
 import PaceZonesCard from '../../src/components/exerciseStats/PaceZonesCard';
 import type { PaceZonesResult } from '../../src/utils/paceZones';
 
-const result = (source: 'effort' | 'typical'): PaceZonesResult => ({
+const result = (source: 'test' | 'effort' | 'typical'): PaceZonesResult => ({
   thresholdSecondsPerKm: 300,
   source,
   sessions: 3,
@@ -35,6 +35,17 @@ describe('PaceZonesCard', () => {
   it('says when the zones are only an estimate', () => {
     render(<PaceZonesCard result={result('typical')} distanceUnit="km" />);
     expect(screen.getByText(/less precise/)).toBeTruthy();
+    expect(screen.queryByText(/best recent run/)).toBeNull();
+  });
+
+  it('says when a fitness test set the zones', () => {
+    render(<PaceZonesCard result={result('test')} distanceUnit="km" />);
+    expect(
+      screen.getByText(
+        'Set by your latest fitness test. Threshold pace is about 5:00 /km.'
+      )
+    ).toBeTruthy();
+    expect(screen.queryByText(/less precise/)).toBeNull();
     expect(screen.queryByText(/best recent run/)).toBeNull();
   });
 });

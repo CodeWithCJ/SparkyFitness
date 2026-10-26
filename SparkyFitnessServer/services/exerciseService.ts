@@ -349,7 +349,7 @@ async function prepareExerciseEntryForCreate(
     ? await exerciseDb.getExerciseById(resolvedExerciseId, authenticatedUserId)
     : null;
   if (hasLibraryExercise && !exercise) {
-    throw new Error('Exercise not found for snapshot.');
+    throw createServiceError(404, 'Exercise not found.');
   }
   const durationMinutes =
     typeof entryData.duration_minutes === 'number'
@@ -505,13 +505,6 @@ async function updateExerciseEntry(
     if (!existingEntry) {
       throw new Error('Exercise entry not found.');
     }
-    // A synced entry remembers which fields this edit changed, so the same
-    // workout sent again by the provider does not overwrite them. Taken from
-    // the request as sent, before the defaults and the calorie estimate below
-    // fill in the rest.
-    const manualFields = existingEntry.source_id
-      ? editedSyncFields(updateData, existingEntry)
-      : [];
     // If a new image is being uploaded or the image is being cleared, delete the old one
     if (
       (updateData.image_url || updateData.image_url === null) &&
@@ -533,85 +526,109 @@ async function updateExerciseEntry(
     const estimateExerciseId =
       updateData.exercise_id ??
       (updateData.sets ? existingEntry.exercise_id : undefined);
-    if (
+    const estimateCalories =
       estimateExerciseId &&
       updateData.duration_minutes !== null &&
       updateData.duration_minutes !== undefined &&
-      updateData.calories_burned === undefined
-    ) {
+      updateData.calories_burned === undefined;
+    let caloriesPerHour: number | null = null;
+    if (estimateCalories) {
       const exercise = await exerciseDb.getExerciseById(
         estimateExerciseId,
         authenticatedUserId
       );
-      let estimated = existingEntry.calories_burned ?? 0;
       if (exercise) {
-        const caloriesPerHour =
+        caloriesPerHour =
           await calorieCalculationService.estimateCaloriesBurnedPerHour(
             exercise,
             authenticatedUserId,
             updateData.sets
           );
-        estimated = (caloriesPerHour / 60) * updateData.duration_minutes;
       } else {
         log(
           'warn',
           `Exercise ${estimateExerciseId} not found. Cannot auto-calculate calories_burned.`
         );
       }
-      // A watch-measured figure (active_calories) beats the formula, same
-      // rule as the grouped-session edit path.
-      updateData.calories_burned = resolveEditedCaloriesBurned(
-        undefined,
-        existingEntry,
-        estimated
-      );
-    } else if (updateData.calories_burned === undefined) {
-      // If calories_burned is not in updateData, use existing value or 0
-      updateData.calories_burned = existingEntry.calories_burned || 0;
     }
+    // The fields the request left out are filled in from the entry as the
+    // model reads it under the entry's lock, not from the read above: a watch
+    // upload or another edit committed in between would be overwritten with
+    // the values read here.
+    const resolveUpdate = (existingEntry: Record<string, unknown>) => {
+      let caloriesBurned = updateData.calories_burned;
+      // The estimate is for the exercise read above; if another edit has
+      // since moved the entry to a different one, keep the stored calories.
+      if (
+        estimateCalories &&
+        (updateData.exercise_id !== undefined ||
+          existingEntry.exercise_id === estimateExerciseId)
+      ) {
+        // A watch-measured figure (active_calories) beats the formula, same
+        // rule as the grouped-session edit path.
+        caloriesBurned = resolveEditedCaloriesBurned(
+          undefined,
+          existingEntry,
+          caloriesPerHour === null
+            ? Number(existingEntry.calories_burned ?? 0)
+            : (caloriesPerHour / 60) * updateData.duration_minutes
+        );
+      }
+      return {
+        updateData: {
+          ...updateData,
+          exercise_id: updateData.exercise_id ?? existingEntry.exercise_id,
+          duration_minutes:
+            updateData.duration_minutes ?? existingEntry.duration_minutes ?? 0,
+          calories_burned: caloriesBurned ?? existingEntry.calories_burned ?? 0,
+          entry_date: updateData.entry_date ?? existingEntry.entry_date,
+          notes: updateData.notes ?? existingEntry.notes,
+          workout_plan_assignment_id:
+            updateData.workout_plan_assignment_id ??
+            existingEntry.workout_plan_assignment_id,
+          image_url:
+            updateData.image_url === undefined
+              ? existingEntry.image_url
+              : updateData.image_url,
+          // Explicit value (including null-to-clear) wins; omitted derives the
+          // total from per-set distances, else preserves the existing value.
+          distance:
+            updateData.distance !== undefined
+              ? updateData.distance
+              : (setsDistanceKm(updateData.sets) ?? existingEntry.distance),
+          avg_heart_rate:
+            updateData.avg_heart_rate ?? existingEntry.avg_heart_rate,
+          steps: updateData.steps ?? existingEntry.steps,
+          sort_order: updateData.sort_order ?? existingEntry.sort_order,
+          exercise_name:
+            updateData.exercise_name ?? existingEntry.exercise_name,
+          // Preserve when omitted; explicit null clears (leaving a superset).
+          superset_group:
+            updateData.superset_group === undefined
+              ? (existingEntry.superset_group ?? null)
+              : updateData.superset_group,
+          // Preserve when omitted; explicit null clears the time of day.
+          entry_time:
+            updateData.entry_time === undefined
+              ? (existingEntry.entry_time ?? null)
+              : updateData.entry_time,
+        },
+        // A synced entry remembers which fields this edit changed, so the same
+        // workout sent again by the provider does not overwrite them. Taken
+        // from the request as sent, before the defaults and the calorie
+        // estimate above fill in the rest.
+        markManualFields: existingEntry.source_id
+          ? editedSyncFields(updateData, existingEntry)
+          : [],
+      };
+    };
     const updatedEntry = await exerciseEntryDb.updateExerciseEntry(
       id,
       authenticatedUserId,
       actingUserId,
-      {
-        ...updateData,
-        exercise_id: updateData.exercise_id ?? existingEntry.exercise_id,
-        duration_minutes:
-          updateData.duration_minutes ?? existingEntry.duration_minutes ?? 0,
-        calories_burned:
-          updateData.calories_burned ?? existingEntry.calories_burned ?? 0,
-        entry_date: updateData.entry_date ?? existingEntry.entry_date,
-        notes: updateData.notes ?? existingEntry.notes,
-        workout_plan_assignment_id:
-          updateData.workout_plan_assignment_id ??
-          existingEntry.workout_plan_assignment_id,
-        image_url:
-          updateData.image_url === undefined
-            ? existingEntry.image_url
-            : updateData.image_url,
-        // Explicit value (including null-to-clear) wins; omitted derives the
-        // total from per-set distances, else preserves the existing value.
-        distance:
-          updateData.distance !== undefined
-            ? updateData.distance
-            : (setsDistanceKm(updateData.sets) ?? existingEntry.distance),
-        avg_heart_rate:
-          updateData.avg_heart_rate ?? existingEntry.avg_heart_rate,
-        steps: updateData.steps ?? existingEntry.steps,
-        sort_order: updateData.sort_order ?? existingEntry.sort_order,
-        exercise_name: updateData.exercise_name ?? existingEntry.exercise_name,
-        // Preserve when omitted; explicit null clears (leaving a superset).
-        superset_group:
-          updateData.superset_group === undefined
-            ? (existingEntry.superset_group ?? null)
-            : updateData.superset_group,
-        // Preserve when omitted; explicit null clears the time of day.
-        entry_time:
-          updateData.entry_time === undefined
-            ? (existingEntry.entry_time ?? null)
-            : updateData.entry_time,
-      },
-      manualFields
+      updateData,
+      [],
+      resolveUpdate
     );
     if (!updatedEntry) {
       throw new Error('Exercise entry not found or not authorized to update.');
@@ -990,35 +1007,6 @@ async function getOrCreateActiveCaloriesExercise(userId: any) {
     throw error;
   }
 }
-async function upsertExerciseEntryData(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  exerciseId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  caloriesBurned: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  date: any
-) {
-  try {
-    // @ts-expect-error TS(2554): Expected 5 arguments, but got 4.
-    const entry = await exerciseEntryDb.upsertExerciseEntryData(
-      userId,
-      exerciseId,
-      caloriesBurned,
-      date
-    );
-    return entry;
-  } catch (error) {
-    log(
-      'error',
-      `Error upserting exercise entry data for user ${userId}, exercise ${exerciseId}:`,
-      error
-    );
-    throw error;
-  }
-}
-
 interface FreeExerciseDBResult {
   totalCount: number;
   exercises: {
@@ -2735,7 +2723,6 @@ async function importExercisesFromJson(
 }
 export { getExerciseById };
 export { getOrCreateActiveCaloriesExercise };
-export { upsertExerciseEntryData };
 export { getExercisesWithPagination };
 export { searchExercises };
 export { searchExercisesPaginated };
@@ -2774,7 +2761,6 @@ export { getGroupedWorkoutSessionById };
 export default {
   getExerciseById,
   getOrCreateActiveCaloriesExercise,
-  upsertExerciseEntryData,
   getExercisesWithPagination,
   searchExercises,
   searchExercisesPaginated,

@@ -643,6 +643,7 @@
     "hydrationReport": "Hydration",
     "measurementsReport": "Measurements",
     "substancesReport": "Caffeine and alcohol",
+    "heartRateReport": "Heart Rate",
     "runSummary": "Activity saved",
     "runPrograms": "Training programs",
     "personalRecords": "Personal records",
@@ -655,6 +656,8 @@
     "runProgramEdit": "Edit plan",
     "runProgramNew": "New plan",
     "runProgramRace": "Plan a race",
+    "fitnessTest": "Fitness tests",
+    "fitnessTestResult": "Fitness test",
     "heartRateZonesSettings": "Heart Rate Zones",
     "routes": "Routes",
     "routeDraw": "Draw a route",
@@ -4165,6 +4168,32 @@
       "deleteWorkout": "Delete Workout"
     }
   },
+  "calorieLink": {
+    "action": "Link a synced workout",
+    "linked": "Linked to a synced workout",
+    "title": "Link a synced workout",
+    "description": "If a watch or health app recorded this session too, link the two so its calories count once. Both estimates are kept.",
+    "loading": "Looking for synced workouts...",
+    "loadError": "Could not load synced workouts.",
+    "none": "No synced workouts found for this day.",
+    "workoutFallback": "Workout",
+    "minutes": "{{value}} min",
+    "calories": "{{value}} cal",
+    "sameSession": "Same session",
+    "sameTime": "Overlaps in time",
+    "countHeading": "Count in the daily total",
+    "sparkyfitness": "This workout ({{value}})",
+    "synced": "The synced workout ({{value}})",
+    "higher": "The higher of the two ({{value}})",
+    "lower": "The lower of the two ({{value}})",
+    "average": "The average ({{value}})",
+    "custom": "A custom total",
+    "customLabel": "Total for the session (cal)",
+    "link": "Link workouts",
+    "unlink": "Unlink",
+    "linkError": "Failed to link the workouts.",
+    "unlinkError": "Failed to unlink the workouts."
+  },
   "activityDetail": {
     "errors": {
       "saveFailed": "Failed to save activity"
@@ -4174,6 +4203,7 @@
       "calories": "Calories",
       "distance": "Distance",
       "avgHeartRate": "Avg Heart Rate",
+      "caloriesCounted": "Counted in daily total",
       "steps": "Steps",
       "pace": "Pace",
       "effort": "Effort"
@@ -5160,8 +5190,17 @@
     },
     "allTrendsHidden": "All graphs are hidden. Choose which to show in Dashboard Settings.",
     "noTrendData": "No data to graph yet.",
+    "heartRate": {
+      "title": "Resting Heart Rate",
+      "avgLabel": "AVG",
+      "rangeLabel": "RANGE",
+      "loadFailed": "Failed to load heart rate data",
+      "empty": "No heart rate data for this period"
+    },
     "vo2max": {
       "title": "VO2 max",
+      "estimateTitle": "VO2 max (estimated)",
+      "estimateNote": "Estimated from your logged runs. Not a measurement; a synced reading replaces it.",
       "loadFailed": "Failed to load VO2 max data",
       "empty": "No VO2 max data for this period"
     }
@@ -6744,6 +6783,7 @@
       },
       "kilometersAxis": "Kilometers from start",
       "milesAxis": "Miles from start",
+      "splits": "Splits",
       "bestPace": "Best {{value}}",
       "perKm": "/km",
       "perMile": "/mi",
@@ -6772,6 +6812,19 @@
         "spike": "A big jump from your usual. Ramping up this fast raises the risk of injury, so ease off."
       }
     },
+    "runEstimates": {
+      "title": "Running Estimates",
+      "subtitle": "Estimated from your pace, heart rate, weight and climb. Not a measurement, so expect it to be off by several percent.",
+      "loadFailed": "Could not load your running estimates.",
+      "about": "≈ {{value}}",
+      "vo2Unit": "VO₂ max (ml/kg/min)",
+      "vo2Basis_one": "From {{count}} run in the last 6 weeks",
+      "vo2Basis_other": "From {{count}} runs in the last 6 weeks",
+      "watts": "≈ {{value}} W",
+      "powerUnit": "Running power ({{perKg}} W/kg)",
+      "powerBasis_one": "Average of {{count}} run in the last 4 weeks",
+      "powerBasis_other": "Average of {{count}} runs in the last 4 weeks"
+    },
     "consistency": {
       "title": "Training Consistency",
       "subtitle_one": "Last {{formattedCount}} week, {{first}} to {{last}}",
@@ -6793,6 +6846,39 @@
       "noSets": "No sets logged this week or last.",
       "loadFailed": "Could not load your training consistency."
     },
+    "fitness": {
+      "level": {
+        "high": "Ready for a hard session.",
+        "moderate": "Fine for a normal session, but not your hardest.",
+        "low": "Not recovered. An easy day or rest is the better call.",
+        "noData": "Not enough to go on yet. Log workouts and sleep to see your readiness."
+      },
+      "form": {
+        "fresh": "Fresh: recent training is light against what you have built.",
+        "tired": "Tired: recent training is heavy against what you have built.",
+        "neutral": "Balanced: recent training matches what you have built.",
+        "learning": "Still learning your normal. Keep logging."
+      },
+      "factor": {
+        "form": "Training form",
+        "sleep": "Sleep",
+        "restingHeartRate": "Resting heart rate",
+        "hrv": "HRV"
+      },
+      "vital": {
+        "hrv": "{{current}} ms against your usual {{baseline}} ms",
+        "hrvNights": "{{current}} ms against your usual {{baseline}} ms (median of {{count}} nights)",
+        "restingHeartRate": "{{current}} bpm against your usual {{baseline}} bpm",
+        "restingHeartRateNights": "{{current}} bpm against your usual {{baseline}} bpm (median of {{count}} nights)"
+      },
+      "loadFailed": "Could not load your readiness.",
+      "outOf": "readiness out of 100",
+      "fitness": "Fitness",
+      "fatigue": "Fatigue",
+      "formLabel": "Form",
+      "title": "Readiness and Form",
+      "subtitle": "How ready you are today, from training form, sleep and resting heart rate."
+    },
     "paceZones": {
       "title": "Pace zones",
       "perKm": "/km",
@@ -6805,7 +6891,8 @@
       "range": "{{fast}} – {{slow}} {{unit}}",
       "fromEffort": "Built from your best recent run. Threshold pace is about {{pace}} {{unit}}.",
       "fromTypical_one": "Estimated from your last {{formattedCount}} run, so less precise. A hard run of 3 km or more sharpens it.",
-      "fromTypical_other": "Estimated from your last {{formattedCount}} runs, so less precise. A hard run of 3 km or more sharpens it."
+      "fromTypical_other": "Estimated from your last {{formattedCount}} runs, so less precise. A hard run of 3 km or more sharpens it.",
+      "fromTest": "Set by your latest fitness test. Threshold pace is about {{pace}} {{unit}}."
     }
   },
   "aiSettings": {
@@ -7262,6 +7349,13 @@
     "currentPace": "Pace",
     "elevationGain": "Elevation gain",
     "splits": "Splits",
+    "splitsTable": {
+      "km": "Km",
+      "mi": "Mi",
+      "pace": "Pace",
+      "elev": "Elev",
+      "hr": "HR"
+    },
     "laps": "Laps",
     "lap": "Lap",
     "lapLabel": "Lap {{number}}",
@@ -7407,7 +7501,8 @@
       "switchMessage": "You will start the new program at week 1. Your place in the current one is not kept.",
       "switchConfirm": "Switch",
       "startDayPast": "Started {{date}}. Your next workout is scheduled from today.",
-      "customWorkoutLabel": "{{name}} · {{workout}}"
+      "customWorkoutLabel": "{{name}} · {{workout}}",
+      "goalUseRaceDay": "Use race day ({{date}})"
     },
     "watch": {
       "title": "Record with",
@@ -7481,6 +7576,7 @@
       "marathonPace": "marathon pace {{range}}",
       "strides": "strides {{range}}",
       "paceSourceRace": "Based on your recent race: {{race}}.",
+      "paceSourceTest": "Based on your {{test}} on {{date}}.",
       "heartRateSourceUser": "From your maximum heart rate of {{max}} bpm.",
       "heartRateSourceReserve": "From your heart rate reserve zones, with a maximum of {{max}} bpm.",
       "heartRateSourceCustom": "From your custom heart rate zones."
@@ -7660,7 +7756,28 @@
     "substances": "Caffeine and alcohol",
     "substancesSubtitle": "Daily caffeine, alcohol totals and week by week",
     "compare": "Compare",
-    "compareSubtitle": "How two things move together"
+    "compareSubtitle": "How two things move together",
+    "heartRate": "Heart Rate",
+    "heartRateSubtitle": "Resting HR trends and zone distribution",
+    "details": "View report details",
+    "heartRateChangeVsPrevious": "{{change}} bpm vs previous period",
+    "averageRestingHr": "Average Resting Heart Rate",
+    "restingHrRange": "Resting HR Range",
+    "heartRateRecovery1Min": "1-Min Recovery",
+    "heartRateRecoveryHint": "Heart rate drop 1 minute post-exercise",
+    "recordedDays": "Recorded Days",
+    "daysRatio": "{{daysWithData}} of {{totalDays}} days",
+    "heartRateLoadFailed": "Failed to load heart rate data",
+    "heartRateEmpty": "No heart rate data recorded for this period",
+    "restingHeartRateTrend": "Resting Heart Rate Trend",
+    "heartRateZones": "Heart Rate Zones",
+    "zoneSource": "Your zones: {{method}}, max heart rate {{max}} bpm ({{source}}).",
+    "zoneSourceDefault": "Typical zones (% of a 190 bpm max) until your own zones load.",
+    "zoneSettingsLink": "Heart rate zone settings",
+    "heartRateSummary": "Heart Rate Summary",
+    "heartRateInsights": "Resting Heart Rate Insights",
+    "insightAthletic": "Your average resting heart rate is in the athletic range (<60 bpm), reflecting strong cardiovascular efficiency.",
+    "insightNormal": "A typical healthy adult resting heart rate ranges from 60 to 100 bpm. Lower rates generally reflect higher cardiovascular fitness."
   },
   "nutritionReport": {
     "title": "Nutrition",
@@ -7845,7 +7962,9 @@
       "caffeineSummary": "Caffeine summary",
       "alcoholChart": "Alcohol chart",
       "alcoholSummary": "Alcohol summary",
-      "substancesWeekly": "Week by week"
+      "substancesWeekly": "Week by week",
+      "restingHrChart": "Resting heart rate chart",
+      "heartRateZones": "Intensity zones"
     },
     "hydrationSections": "Hydration report",
     "measurementsSections": "Measurements report",
@@ -7853,7 +7972,8 @@
     "nutrientsDescription": "Pick the vitamins, minerals and other nutrients the Nutrition report averages under Your nutrients, and drag to set their order. Custom nutrients are included.",
     "nutrientReorderHint": "Changes where this nutrient sits in the report",
     "substancesSections": "Caffeine and alcohol report",
-    "exerciseSections": "Exercise report"
+    "exerciseSections": "Exercise report",
+    "heartRateSections": "Heart rate report"
   },
   "hydrationReport": {
     "title": "Hydration",
@@ -8106,6 +8226,38 @@
       "setUp": "Set up a program"
     },
     "partOfProgram": "Part of your training program",
+    "goals": {
+      "title": "Running goals",
+      "intro": "Set a weekly distance to aim for and a race to count down to.",
+      "set": "Set a goal",
+      "edit": "Edit",
+      "none": "None",
+      "unit": {
+        "km": "km",
+        "miles": "mi"
+      },
+      "weeklyLabel": "Weekly distance ({{unit}})",
+      "weeklyProgress": "{{done}} of {{target}} {{unit}} this week",
+      "weeklyReached": "Weekly goal reached",
+      "weeklyNeeded_one": "{{amount}} {{unit}} today to reach it ({{count}} day left)",
+      "weeklyNeeded_other": "About {{amount}} {{unit}} a day to reach it ({{count}} days left)",
+      "raceNameLabel": "Race name",
+      "raceDefaultName": "Race day",
+      "raceDistanceLabel": "Race distance ({{unit}})",
+      "raceDateLabel": "Race day",
+      "pickDate": "Pick a date",
+      "clearRace": "Remove race",
+      "raceToday": "Race day is today",
+      "raceIn_one": "{{count}} day to go",
+      "raceIn_other": "{{count}} days to go",
+      "racePast_one": "{{count}} day ago",
+      "racePast_other": "{{count}} days ago",
+      "errors": {
+        "distance": "Enter a distance above zero, or leave it empty.",
+        "raceDay": "Pick the race day, or clear the race name and distance.",
+        "save": "Could not save your goals. Please try again."
+      }
+    },
     "openCalendar": "Open the program calendar",
     "openCalendarHint": "Every workout on a month view",
     "monthGrid": {
@@ -8256,7 +8408,11 @@
       "tooShort": "That is less time than we suggest: at least {{min}} weeks for this distance. Pick a later race day.",
       "tooFewDays": "Pick at least two days to run.",
       "create": "Create and start the plan",
-      "open": "Plan a race"
+      "open": "Plan a race",
+      "useTest": "Plan from my latest test",
+      "useTestDescription": "Uses your {{test}} on {{date}} for your level and race-day pace.",
+      "fromTest": "Starting level: {{level}}. Race-day pace about {{pace}}.",
+      "estimateFromTest": "Race day is planned at about {{minutes}} minutes, at the pace your fitness test points to; you can change it in the plan afterwards."
     },
     "realign": {
       "title": "Realign your plan",
@@ -8367,7 +8523,11 @@
     "spike": "A big jump: ease off",
     "takeRest": "Take a rest day or an easy session.",
     "ready": "You are rested and ready.",
-    "explain": "Adds up how long and how hard your workouts were. Usual is your 4-week average. Bars show the last 4 weeks; green is this week."
+    "explain": "Adds up how long and how hard your workouts were. Usual is your 4-week average. Bars show the last 4 weeks; green is this week.",
+    "readiness": "Readiness {{score}}",
+    "readinessHigh": "ready for a hard session",
+    "readinessModerate": "fine for a normal session",
+    "readinessLow": "go easy today"
   },
   "paceReference": {
     "title": "Your race pace",
@@ -8391,7 +8551,10 @@
     "clear": "Clear",
     "watch": "Also use on my Apple Watch",
     "wearOs": "Also use on my Wear OS watch",
-    "watchHint": "Holds the program workout offered on the watch to these ranges. Runs only."
+    "watchHint": "Holds the program workout offered on the watch to these ranges. Runs only.",
+    "testNote": "You have a fitness test, so your latest test sets your paces while it is saved. This race time is used again if you delete your tests.",
+    "collapsedTest": "Your fitness test sets your paces",
+    "collapsedEmpty": "Add a recent race time to set your paces"
   },
   "allergens": {
     "trace": "trace: {{name}}",
@@ -8440,6 +8603,143 @@
       "mustard": "mustard",
       "lupin": "lupin",
       "sulphites": "sulphites"
+    }
+  },
+  "fitnessTest": {
+    "cue": {
+      "complete": "Test complete. Slow down and finish."
+    },
+    "retest": {
+      "dueTitle": "Time for a retest",
+      "overdueTitle": "Your paces may be out of date",
+      "body_one": "Your last fitness test was {{formattedCount}} week ago. A retest updates your training paces and shows how your fitness has changed.",
+      "body_other": "Your last fitness test was {{formattedCount}} weeks ago. A retest updates your training paces and shows how your fitness has changed.",
+      "action": "Retest",
+      "later": "Later",
+      "sameTreadmill": "You tested on a treadmill last time, so the retest starts on a treadmill too.",
+      "sameOutdoor": "You tested outdoors last time, so the retest starts outdoors too."
+    },
+    "badge": {
+      "title": "Fitness test",
+      "line": "{{test}}: {{result}}"
+    },
+    "live": {
+      "complete": "Test complete. Slow down and tap Finish.",
+      "5k": "Run evenly and hard. {{remaining}} {{unit}} to go until 5 km.",
+      "cooper": "Cover as much distance as you can. {{time}} left.",
+      "30minLast20": "Hold this pace: the last 20 minutes set your threshold. {{time}} left.",
+      "30minFirst10": "Settle into a hard, steady effort. The last 20 minutes start in {{time}}.",
+      "5kIndoor": "Run evenly and hard. Tap Finish when your treadmill reaches 5 km. Time {{time}}.",
+      "30minFirst10Indoor": "Settle into a hard, steady effort. At 10:00, in {{time}}, note the distance on your treadmill."
+    },
+    "finished": {
+      "threshold": "Threshold pace {{pace}}, about {{time}} for 5K. Saving sets your training paces.",
+      "incomplete": "The test was stopped before its mark, so it will be saved as an ordinary run and your paces stay as they were.",
+      "adjusted": "Adjusted for {{incline}}% incline: {{raw}} counts as {{adjusted}}.",
+      "needDistance": "Enter the distance your treadmill shows to save the test. Until then it will be saved as an ordinary run.",
+      "badSplit": "The distance at 10:00 must be more than zero and less than the total.",
+      "badTime": "Enter your time to 5 km as minutes and seconds, like 24:30."
+    },
+    "paces": {
+      "tempo": "Tempo {{range}}",
+      "marathon": "Marathon pace {{range}}",
+      "stride": "Strides {{range}}"
+    },
+    "panel": {
+      "emptyTitle": "Find your training paces",
+      "emptyBody": "Run a guided fitness test: a 5K time trial, a 30-minute all-out run or a 12-minute Cooper test. The result sets your training paces and can start a plan.",
+      "take": "Take a fitness test",
+      "title": "Your fitness test",
+      "latest": "{{test}} on {{date}}: {{result}}",
+      "paces": "Threshold pace {{pace}}, about {{time}} for 5K. Your training paces follow this test.",
+      "startProgram": "Start {{program}} from my test",
+      "planRace": "Plan a race",
+      "open": "Tests and paces",
+      "compactHint": "Take a guided fitness test"
+    },
+    "steps": {
+      "warmUp": "Warm up with 10 to 15 minutes of easy running, then come back here and start.",
+      "flat": "Pick a flat, open route and keep your phone with you. Pauses are not counted.",
+      "5k": "Run 5 km as fast as you can hold evenly. Your time to 5 km is the result; keep going to cool down.",
+      "30min": "Run as hard as you can keep steady for 30 minutes. Your threshold pace is the average pace of the last 20 minutes, so do not start too fast.",
+      "cooper": "Cover as much distance as you can in 12 minutes. The distance you reach is the result."
+    },
+    "setup": {
+      "voiceDescription": "Speaks when the test is complete.",
+      "start": "Start the test",
+      "outdoor": "Outdoor (GPS)",
+      "indoor": "Treadmill",
+      "indoorNote": "On a treadmill nothing is tracked by GPS. The test is timed, and when you finish you enter the distance your treadmill shows and its incline. It is saved as an indoor run and marked as a fitness test.",
+      "outdoorNote": "Outdoors the test is recorded with your phone’s GPS, as a run, and marked as a fitness test on the activity.",
+      "sameAsLast": "Suggested because your last test was the same."
+    },
+    "delete": {
+      "title": "Delete this test?",
+      "message": "The activity stays in your diary. Your training paces follow your latest remaining test.",
+      "confirm": "Delete",
+      "error": "Could not delete the test",
+      "action": "Delete this test"
+    },
+    "result": {
+      "missing": "This test is no longer saved.",
+      "when": "{{date}} · {{test}}",
+      "derived": "Threshold pace {{pace}}. As a 5K that is about {{time}}.",
+      "changeTitle": "Since your test on {{date}}",
+      "changeThreshold": "Threshold pace: {{change}}.",
+      "pacesTitle": "Your training paces",
+      "pacesBody": "These now set your pace zones and the suggested ranges for plans and races.",
+      "plan": "Start a plan from this test",
+      "5k": "5K in {{time}}",
+      "cooperMiles": "{{distance}} mi in 12 minutes",
+      "cooperMeters": "{{distance}} m in 12 minutes",
+      "30min": "{{pace}} over the last 20 minutes"
+    },
+    "describe": {
+      "5k": "Run 5 km as fast as you can hold evenly. Your time sets your paces.",
+      "30min": "Run 30 minutes all-out. Your threshold pace is the average pace of the last 20 minutes.",
+      "cooper": "Cover as far as you can in 12 minutes. Your distance is turned into a 5K time."
+    },
+    "intro": "A fitness test is one hard, measured run. It is recorded with your phone’s GPS, and the result sets your training paces for easy runs, tempo, intervals and race plans.",
+    "choose": "Start this test",
+    "history": {
+      "title": "Your tests",
+      "empty": "No tests yet. Your results and the paces they gave will be listed here.",
+      "rowTitle": "{{date}} · {{test}}",
+      "paces": "Threshold {{threshold}} · Easy {{easy}}",
+      "limit": "Showing your latest {{limit}} tests."
+    },
+    "type": {
+      "5k": "5K time trial",
+      "30min": "30-minute all-out run",
+      "cooper": "12-minute Cooper test"
+    },
+    "pacePerUnit": "{{pace}}/{{unit}}",
+    "perMile": "mi",
+    "perKm": "km",
+    "paceRange": "{{fast}}–{{slow}}/{{unit}}",
+    "change": {
+      "same": "no change",
+      "faster": "{{seconds}} s/{{unit}} faster",
+      "slower": "{{seconds}} s/{{unit}} slower"
+    },
+    "indoor": {
+      "timeTitle": "Time to 5 km",
+      "timeHint": "Your clock time is filled in. Change it if your treadmill showed another time at 5 km.",
+      "splitTitle": "Distance at 10:00",
+      "splitHint": "The distance your treadmill showed after 10 minutes. The last 20 minutes set your threshold pace. Leave it empty to assume a steady pace.",
+      "cooperHint": "Enter the distance your treadmill showed after 12 minutes in the Distance box above.",
+      "inclineTitle": "Incline",
+      "inclineHint": "A treadmill at 0% understates outdoor effort; 1% is about the same as running flat outdoors. Enter the incline you ran at.",
+      "inclineInvalid": "Enter an incline from 0 to 15.",
+      "adjustTitle": "Adjust for incline",
+      "adjustDescription": "Counts your effort as it would be on a flat outdoor course, using the running cost of each percent of incline. At 1% nothing changes. Turn off to use the numbers as they are."
+    },
+    "lastSurface": "Your last test was on: {{surface}}. A new test starts on the same, and you can change it before you start.",
+    "surface": {
+      "indoor": "Treadmill",
+      "outdoor": "Outdoor",
+      "inclineAdjusted": "Treadmill, {{incline}}% incline, adjusted",
+      "inclineNotAdjusted": "Treadmill, {{incline}}% incline, not adjusted"
     }
   },
   "routes": {
@@ -8498,6 +8798,24 @@
     "useMyLocation": "My location",
     "turnCount_one": "{{count}} turn",
     "turnCount_other": "{{count}} turns",
+    "style": {
+      "title": "Route style",
+      "surface": "Surface",
+      "hills": "Hills",
+      "any": "Any",
+      "trails": "Trails",
+      "roads": "Roads",
+      "flat": "Flatter",
+      "hilly": "Hillier",
+      "avoidSteps": "Avoid steps",
+      "avoidBusyRoads": "Avoid busy roads"
+    },
+    "option": {
+      "title": "Option {{n}}",
+      "flatter": "Flatter",
+      "moreTrail": "More trail",
+      "shorter": "Shorter"
+    },
     "followRoads": "Follow roads",
     "followRoadsNeedsProvider": "A routing provider is needed. Add one in Settings > External Providers on the web app.",
     "followRoadsUnrouted": "Stretches without a road line show straight. Retry, or turn off Follow roads to save them straight.",
@@ -8561,6 +8879,18 @@
     "maxHrSummary": "Max heart rate {{max}} bpm. {{source}}.",
     "zoneRange": "{{lower}}–{{upper}} bpm",
     "zoneRangeOpen": "{{lower}}+ bpm",
+    "tier": {
+      "light": "Light",
+      "moderate": "Moderate",
+      "vigorous": "Vigorous",
+      "peak": "Peak"
+    },
+    "display": {
+      "title": "Show",
+      "five": "5 zones",
+      "four": "4 tiers",
+      "hint": "Four tiers are Light (zones 1 and 2), Moderate (zone 3), Vigorous (zone 4) and Peak (zone 5). Only what you see changes: zones are still worked out and stored as five."
+    },
     "fellBack": "Your chosen method needs more information, so zones are shown as % of max heart rate.",
     "maxHr": "Max heart rate (bpm)",
     "maxHrHint": "Leave empty to work it out from your date of birth.",

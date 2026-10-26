@@ -2,9 +2,12 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import type { CompareQuery, CompareResponse } from '@workspace/shared';
-import { getCompare } from '@/api/Reports/compareApi';
+import { apiCall } from '@/api/api';
+import { compareSinceQueryFor, getCompare } from '@/api/Reports/compareApi';
 import {
   useCompare,
+  useCompareSince,
+  useCompareSinceQuestion,
   useCompareQuestion,
   useCompareTimings,
 } from '@/hooks/Reports/useCompare';
@@ -14,6 +17,7 @@ jest.mock('@/api/Reports/compareApi', () => ({
   ...jest.requireActual('@/api/Reports/compareApi'),
   getCompare: jest.fn(),
 }));
+jest.mock('@/api/api', () => ({ apiCall: jest.fn() }));
 jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: { activeUserId: 'u1' } }),
 }));
@@ -21,6 +25,7 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (_key: string, fallback: string) => fallback }),
 }));
 
+const mockedApiCall = apiCall as jest.MockedFunction<typeof apiCall>;
 const mockedGetCompare = getCompare as jest.MockedFunction<typeof getCompare>;
 
 const wrapper = ({ children }: { children: ReactNode }) => {
@@ -139,5 +144,99 @@ describe('the other timings wait for the main answer', () => {
     );
     renderHook(() => useCompareQuestion(question, window), { wrapper });
     await waitFor(() => expect(mockedGetCompare).toHaveBeenCalledTimes(3));
+  });
+});
+
+describe('since questions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // Rejecting skips response parsing: these tests check the request only.
+    mockedApiCall.mockRejectedValue(new Error('offline'));
+  });
+
+  const sinceQuery = { a: 'meditated', b: 'mood', mode: 'since' } as const;
+
+  test('a since question asks mode=since without a start or line until they are picked', async () => {
+    renderHook(() => useCompareSince(sinceQuery), { wrapper });
+    await waitFor(() => expect(mockedApiCall).toHaveBeenCalledTimes(1));
+    expect(mockedApiCall).toHaveBeenCalledWith('/v2/reports/compare', {
+      method: 'GET',
+      params: { a: 'meditated', b: 'mood', mode: 'since' },
+    });
+    const params = mockedApiCall.mock.calls[0]![1]!.params as object;
+    expect(params).not.toHaveProperty('habitStart');
+    expect(params).not.toHaveProperty('line');
+  });
+
+  test('a picked start and line are sent', async () => {
+    renderHook(
+      () =>
+        useCompareSince({ ...sinceQuery, habitStart: '2026-07-01', line: 70 }),
+      { wrapper }
+    );
+    await waitFor(() => expect(mockedApiCall).toHaveBeenCalledTimes(1));
+    expect(mockedApiCall).toHaveBeenCalledWith('/v2/reports/compare', {
+      method: 'GET',
+      params: {
+        a: 'meditated',
+        b: 'mood',
+        mode: 'since',
+        habitStart: '2026-07-01',
+        line: 70,
+      },
+    });
+  });
+
+  test('no query, no request', () => {
+    renderHook(() => useCompareSince(null), { wrapper });
+    renderHook(
+      () => useCompareSinceQuestion({ a: 'meditated', b: 'mood' }, null),
+      { wrapper }
+    );
+    expect(mockedApiCall).not.toHaveBeenCalled();
+  });
+
+  test('useCompareSinceQuestion builds the query from the question and picks', async () => {
+    renderHook(
+      () =>
+        useCompareSinceQuestion(
+          { a: 'meditated', b: 'mood', choice: 'sinceHabit' },
+          { habitStart: '2026-07-01', line: null }
+        ),
+      { wrapper }
+    );
+    await waitFor(() => expect(mockedApiCall).toHaveBeenCalledTimes(1));
+    expect(mockedApiCall.mock.calls[0]![1]!.params).toEqual({
+      a: 'meditated',
+      b: 'mood',
+      mode: 'since',
+      habitStart: '2026-07-01',
+    });
+  });
+
+  test('compareSinceQueryFor returns null for a day question and for an incomplete one', () => {
+    expect(
+      compareSinceQueryFor(
+        { a: 'timeAsleep', b: 'mood', choice: 'sameDay' },
+        null,
+        null
+      )
+    ).toBeNull();
+    expect(
+      compareSinceQueryFor({ a: 'meditated', choice: 'sinceHabit' }, null, null)
+    ).toBeNull();
+    expect(
+      compareSinceQueryFor(
+        { a: 'meditated', b: 'mood', choice: 'sinceHabit' },
+        '2026-07-01',
+        70
+      )
+    ).toEqual({
+      a: 'meditated',
+      b: 'mood',
+      mode: 'since',
+      habitStart: '2026-07-01',
+      line: 70,
+    });
   });
 });

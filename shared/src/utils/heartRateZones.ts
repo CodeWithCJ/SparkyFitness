@@ -13,6 +13,15 @@
 
 export const HR_ZONE_COUNT = 5;
 
+/** One color per zone, easy to hard: zone 1 (slate) to zone 5 (red). */
+export const HEART_RATE_ZONE_COLORS = [
+  '#94a3b8',
+  '#3b82f6',
+  '#22c55e',
+  '#f59e0b',
+  '#ef4444',
+] as const;
+
 /** How the five zone floors are worked out. */
 export const HR_ZONE_METHODS = [
   'percent_max',
@@ -22,6 +31,16 @@ export const HR_ZONE_METHODS = [
 export type HrZoneMethod = (typeof HR_ZONE_METHODS)[number];
 
 export const DEFAULT_HR_ZONE_METHOD: HrZoneMethod = 'percent_max';
+
+/**
+ * How many bands the person sees: all five zones, or four tiers (Light is
+ * zones 1 and 2, then Moderate, Vigorous and Peak are zones 3, 4 and 5).
+ * Only the display changes. Zones are always worked out, stored and weighted
+ * as five.
+ */
+export const HR_ZONE_DISPLAY_COUNTS = [4, 5] as const;
+export type HrZoneDisplayCount = (typeof HR_ZONE_DISPLAY_COUNTS)[number];
+export const DEFAULT_HR_ZONE_DISPLAY_COUNT: HrZoneDisplayCount = 5;
 
 /** Zone floors as a fraction of max HR (percent of max) or of reserve (Karvonen). */
 export const HR_ZONE_FRACTIONS = [0.5, 0.6, 0.7, 0.8, 0.9] as const;
@@ -44,6 +63,8 @@ export interface HeartRateZoneSettings {
   method: HrZoneMethod;
   /** Five ascending bpm floors for the `custom` method; null otherwise. */
   customFloors: number[] | null;
+  /** Show five zones or four tiers. */
+  displayZones: HrZoneDisplayCount;
 }
 
 export const DEFAULT_HEART_RATE_ZONE_SETTINGS: HeartRateZoneSettings = {
@@ -51,6 +72,7 @@ export const DEFAULT_HEART_RATE_ZONE_SETTINGS: HeartRateZoneSettings = {
   restingHeartRate: null,
   method: DEFAULT_HR_ZONE_METHOD,
   customFloors: null,
+  displayZones: DEFAULT_HR_ZONE_DISPLAY_COUNT,
 };
 
 /** Where the maximum heart rate in use came from. */
@@ -282,6 +304,116 @@ export function heartRateZoneRange(
     lowerBpm: found.lowerBpm,
     upperBpm: found.upperBpm ?? Math.max(resolved.maxHr, found.lowerBpm),
   };
+}
+
+/**
+ * The zones a person gets before anything is set or loaded: percent of the
+ * fallback max heart rate. The server returns the same when there is no date
+ * of birth, so a screen that has not loaded yet shows what it would show for
+ * someone with nothing set.
+ */
+export function defaultHeartRateZones(): ResolvedHeartRateZones {
+  const floors = percentMaxFloors(FALLBACK_MAX_HR);
+  return {
+    maxHr: FALLBACK_MAX_HR,
+    maxHrSource: 'fallback',
+    restingHr: null,
+    method: DEFAULT_HR_ZONE_METHOD,
+    effectiveMethod: 'percent_max',
+    floors,
+    zones: zonesFromFloors(floors),
+  };
+}
+
+/** One color per tier when four tiers are shown: Light, Moderate, Vigorous, Peak. */
+export const HEART_RATE_TIER_COLORS = [
+  '#06b6d4',
+  '#22c55e',
+  '#eab308',
+  '#ef4444',
+] as const;
+
+export type HeartRateTier = 'light' | 'moderate' | 'vigorous' | 'peak';
+const HEART_RATE_TIERS: readonly HeartRateTier[] = [
+  'light',
+  'moderate',
+  'vigorous',
+  'peak',
+];
+/** The zones in each tier, in order. */
+const TIER_ZONES: readonly (readonly number[])[] = [[1, 2], [3], [4], [5]];
+
+/** A zone with the color every chart and legend draws it in. */
+export interface HeartRateZoneBand extends HeartRateZone {
+  color: string;
+}
+
+/**
+ * The five zones with their colors, for legends, range lists and line
+ * gradients. Reports show this instead of working out their own bands.
+ */
+export function heartRateZoneBands(
+  zones: readonly HeartRateZone[]
+): HeartRateZoneBand[] {
+  return zones.map((zone) => ({
+    ...zone,
+    color:
+      HEART_RATE_ZONE_COLORS[
+        Math.min(Math.max(zone.zone, 1), HR_ZONE_COUNT) - 1
+      ] ?? HEART_RATE_ZONE_COLORS[0],
+  }));
+}
+
+/**
+ * What a legend, range list or chart shows: five bands (one per zone) or four
+ * (one per tier). `zones` are the zone numbers the band covers, so time or
+ * readings in them can be summed. `tier` is null when showing five zones.
+ */
+export interface HeartRateDisplayBand {
+  /** Zone number (five zones) or tier number 1-4 (four tiers). */
+  index: number;
+  tier: HeartRateTier | null;
+  zones: number[];
+  lowerBpm: number;
+  /** null for the open-ended top band. */
+  upperBpm: number | null;
+  color: string;
+}
+
+export function heartRateDisplayBands(
+  zones: readonly HeartRateZone[],
+  displayZones: HrZoneDisplayCount
+): HeartRateDisplayBand[] {
+  const bands = heartRateZoneBands(zones);
+  if (displayZones === 5) {
+    return bands.map((band) => ({
+      index: band.zone,
+      tier: null,
+      zones: [band.zone],
+      lowerBpm: band.lowerBpm,
+      upperBpm: band.upperBpm,
+      color: band.color,
+    }));
+  }
+  const result: HeartRateDisplayBand[] = [];
+  TIER_ZONES.forEach((zoneNumbers, i) => {
+    const first = bands.find((b) => b.zone === zoneNumbers[0]);
+    const last = bands.find(
+      (b) => b.zone === zoneNumbers[zoneNumbers.length - 1]
+    );
+    const tier = HEART_RATE_TIERS[i];
+    const color = HEART_RATE_TIER_COLORS[i];
+    if (!first || !last || !tier || !color) return;
+    result.push({
+      index: i + 1,
+      tier,
+      zones: [...zoneNumbers],
+      lowerBpm: first.lowerBpm,
+      upperBpm: last.upperBpm,
+      color,
+    });
+  });
+  return result;
 }
 
 /** Zone 1-5 for a reading, or 0 when it is below zone 1. */

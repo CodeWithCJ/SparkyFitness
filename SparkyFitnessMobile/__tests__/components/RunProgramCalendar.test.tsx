@@ -29,7 +29,7 @@ test('lists the next runs with their dates and the finish day, and shows them al
       today={today}
     />
   );
-  expect(screen.getAllByText(/Week \d, run \d/).length).toBe(7);
+  expect(screen.getAllByText(/Week \d, run \d/).length).toBe(4);
   expect(screen.getByText(/Finishes on/)).toBeTruthy();
   fireEvent.press(screen.getByText('Show all 27'));
   expect(screen.getAllByText(/Week \d, run \d/).length).toBe(27);

@@ -7,6 +7,10 @@ import {
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import {
+  clearCalorieLinksOfEntriesWithClient,
+  lockCalorieLinkParticipantsWithClient,
+} from '../services/exerciseCalorieLinkService.js';
+import {
   buildSqlSearch,
   buildSqlExactMatchOrder,
 } from '../utils/dbSearchHelper.js';
@@ -59,13 +63,12 @@ async function getOrCreateActiveCaloriesExercise(
   source = 'Health Data'
 ) {
   const exerciseName = 'Active Calories';
+  const findSql =
+    'SELECT id FROM exercises WHERE name = $1 AND user_id = $2 ORDER BY created_at, id LIMIT 1';
   const client = await getClient(userId);
   let exercise;
   try {
-    const result = await client.query(
-      'SELECT id FROM exercises WHERE name = $1 AND user_id = $2 ORDER BY created_at, id LIMIT 1',
-      [exerciseName, userId]
-    );
+    const result = await client.query(findSql, [exerciseName, userId]);
     exercise = result.rows[0];
   } catch (error) {
     log('error', 'Error fetching active calories exercise:', error);
@@ -78,30 +81,47 @@ async function getOrCreateActiveCaloriesExercise(
     client.release();
   }
   if (!exercise) {
-    log(
-      'info',
-      `Creating default exercise: ${exerciseName} for user ${userId}`
-    );
     const insertClient = await getClient(userId);
-    let newExercise;
     try {
-      const result = await insertClient.query(
-        `INSERT INTO exercises (user_id, name, category, calories_per_hour, description, is_custom, shared_with_public, source, modality)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
-        [
-          userId,
-          exerciseName,
-          'Cardio',
-          600,
-          'Automatically logged active calories from a health tracking shortcut.',
-          true,
-          false,
-          source,
-          deriveExerciseModality('Cardio'),
-        ]
+      await insertClient.query('BEGIN');
+      // Two first imports for one user (two devices, or a retry served by
+      // another instance) would otherwise both miss and both insert. There is
+      // no unique key to conflict on: exercise names are not unique per user,
+      // and the source differs between importers.
+      await insertClient.query(
+        "SELECT pg_advisory_xact_lock(hashtext('active-calories-exercise:' || $1))",
+        [userId]
       );
-      newExercise = result.rows[0];
+      const existing = await insertClient.query(findSql, [
+        exerciseName,
+        userId,
+      ]);
+      exercise = existing.rows[0];
+      if (!exercise) {
+        log(
+          'info',
+          `Creating default exercise: ${exerciseName} for user ${userId}`
+        );
+        const result = await insertClient.query(
+          `INSERT INTO exercises (user_id, name, category, calories_per_hour, description, is_custom, shared_with_public, source, modality)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+          [
+            userId,
+            exerciseName,
+            'Cardio',
+            600,
+            'Automatically logged active calories from a health tracking shortcut.',
+            true,
+            false,
+            source,
+            deriveExerciseModality('Cardio'),
+          ]
+        );
+        exercise = result.rows[0];
+      }
+      await insertClient.query('COMMIT');
     } catch (createError) {
+      await insertClient.query('ROLLBACK').catch(() => {});
       log('error', 'Error creating active calories exercise:', createError);
       throw new Error(
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -111,7 +131,6 @@ async function getOrCreateActiveCaloriesExercise(
     } finally {
       insertClient.release();
     }
-    exercise = newExercise;
   }
   return exercise.id;
 }
@@ -1049,6 +1068,16 @@ async function deleteExerciseAndDependencies(
             r.exercise_preset_entry_id
         )
         .filter(Boolean);
+
+      const entriesToDeleteResult = await client.query(
+        'SELECT id FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2',
+        [exerciseId, userId]
+      );
+      const entryIds = entriesToDeleteResult.rows.map(
+        (row: { id: string }) => row.id
+      );
+      await lockCalorieLinkParticipantsWithClient(client, userId, entryIds);
+      await clearCalorieLinksOfEntriesWithClient(client, userId, entryIds);
 
       const entriesResult = await client.query(
         'DELETE FROM exercise_entries WHERE exercise_id = $1 AND user_id = $2',

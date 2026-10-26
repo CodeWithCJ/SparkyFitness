@@ -98,6 +98,20 @@ describe('globalSettingsRepository', () => {
         );
       }
     );
+    it.each([
+      [true, true],
+      [false, false],
+      [undefined, false],
+    ])(
+      'reports the version check from saved=%s as %s',
+      async (saved, expected) => {
+        mockClient.query.mockResolvedValue({
+          rows: [{ id: 1, enable_version_check: saved }],
+        });
+        const result = await globalSettingsRepository.getGlobalSettings();
+        expect(result.enable_version_check).toBe(expected);
+      }
+    );
     it('should handle database errors', async () => {
       const error = new Error('DB Error');
       mockClient.query.mockRejectedValue(error);
@@ -175,6 +189,21 @@ describe('globalSettingsRepository', () => {
       );
       expect(params[12]).toBe(false);
     });
+
+    it('saves the version check setting', async () => {
+      mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
+      await globalSettingsRepository.saveGlobalSettings({
+        enable_email_password_login: true,
+        is_oidc_active: false,
+        is_mfa_mandatory: false,
+        enable_version_check: false,
+      });
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(sql).toContain(
+        'enable_version_check = COALESCE($14, enable_version_check, true)'
+      );
+      expect(params[13]).toBe(false);
+    });
     it('should update and return global settings', async () => {
       const inputSettings = {
         enable_email_password_login: true,
@@ -203,6 +232,7 @@ describe('globalSettingsRepository', () => {
           false,
           null,
           false,
+          null,
           null,
           null,
           null,
@@ -316,6 +346,23 @@ describe('globalSettingsRepository', () => {
       const result = await globalSettingsRepository.isUserAiConfigAllowed();
       expect(result).toBe(true);
     });
+  });
+  describe('isVersionCheckEnabled', () => {
+    it.each([true, false])(
+      'returns the stored enable_version_check (%s)',
+      async (stored) => {
+        mockClient.query.mockResolvedValue({
+          rows: [{ enable_version_check: stored }],
+        });
+        await expect(
+          globalSettingsRepository.isVersionCheckEnabled()
+        ).resolves.toBe(stored);
+        expect(mockClient.query).toHaveBeenCalledWith(
+          'SELECT enable_version_check FROM global_settings WHERE id = 1'
+        );
+        expect(mockClient.release).toHaveBeenCalled();
+      }
+    );
   });
   describe('getMfaMandatorySetting', () => {
     it('should return mfa_mandatory value', async () => {

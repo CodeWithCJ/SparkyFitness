@@ -423,7 +423,9 @@ describe('exerciseStatsService', () => {
 
       expect(res.cardioPRs.length).toBe(1);
       expect(res.cardioPRs[0].distanceStandard).toBe('half_marathon');
-      expect(res.cardioPRs[0].formattedTime).toBe('1:40:00');
+      // 21.1 km in 100 min, scaled to the exact 21.0975 km standard.
+      expect(res.cardioPRs[0].formattedTime).toBe('1:39:59');
+      expect(res.cardioPRs[0].timeBasis).toBe('activity_pace');
       expect(res.cardioPRs[0].sportGroup).toBe('run');
       expect(res.cardioPRs[0].id).toBe('pr-run-half_marathon');
       expect(res.strength1RMs.length).toBe(1);
@@ -669,6 +671,234 @@ describe('exerciseStatsService', () => {
       expect(runPr?.bestTimeSeconds).toBe(22 * 60);
     });
 
+    // The reported bug: bestTimeSeconds was the whole activity's duration, so a
+    // 5.8 km run was a slow "5K" and a 4.0 km run a too-fast one.
+    it('does not count an untracked activity outside its distance as that standard', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'long-run',
+            exercise_name: 'Long Run',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-07-01'),
+            duration_minutes: 34,
+            distance: 5.8,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+          },
+          {
+            id: 'short-run',
+            exercise_name: 'Short Run',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-07-02'),
+            duration_minutes: 20,
+            distance: 4.0,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      expect(
+        res.cardioPRs.find((pr) => pr.distanceStandard === '5k')
+      ).toBeUndefined();
+    });
+
+    it('scales a near-exact untracked activity to the standard distance', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'parkrun',
+            exercise_name: 'Parkrun',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-07-12'),
+            duration_minutes: 25.5,
+            distance: 5.1,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      const pr = res.cardioPRs.find((p) => p.distanceStandard === '5k');
+      expect(pr?.bestTimeSeconds).toBe(1500);
+      expect(pr?.timeBasis).toBe('activity_pace');
+    });
+
+    it('reports the fastest 5 km inside a longer run from its GPS track', async () => {
+      // 10 km at a steady 6:00/km, except km 4 to 9 are run at 4:00/km, so the
+      // best 5 km is 20:00 although the whole run averages 5:00/km (50:00).
+      const start = Date.parse('2026-07-01T07:00:00Z');
+      const points: { t: string; lat: number; lon: number; dist: number }[] =
+        [];
+      let seconds = 0;
+      for (let km = 0; km <= 10; km += 0.5) {
+        points.push({
+          t: new Date(start + seconds * 1000).toISOString(),
+          lat: 50,
+          lon: 4,
+          dist: km * 1000,
+        });
+        const pace = km >= 4 && km < 9 ? 240 : 360;
+        seconds += pace * 0.5;
+      }
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'long-run',
+            exercise_name: 'Long Run',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-07-01'),
+            duration_minutes: seconds / 60,
+            distance: 10,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+            has_gps_track: true,
+            has_distance_series: false,
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ exercise_entry_id: 'long-run', points }],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      const fiveK = res.cardioPRs.find((p) => p.distanceStandard === '5k');
+      expect(fiveK?.bestTimeSeconds).toBe(20 * 60);
+      expect(fiveK?.timeBasis).toBe('best_split');
+      expect(fiveK?.avgPaceSecondsPerKm).toBe(240);
+      const tenK = res.cardioPRs.find((p) => p.distanceStandard === '10k');
+      expect(tenK?.timeBasis).toBe('best_split');
+      expect(tenK?.bestTimeSeconds).toBe(Math.round(10 * 60 * 5));
+    });
+
+    // A GPS track that stops short of a standard must not hide a distance
+    // series that covers it.
+    it('falls back to the distance series for a standard the GPS track does not cover', async () => {
+      const start = Date.parse('2026-08-05T07:00:00Z');
+      // 3 km of GPS (device distance), but the series covers the full 5 km.
+      const gps = [0, 1, 2, 3].map((km) => ({
+        t: new Date(start + km * 360 * 1000).toISOString(),
+        lat: 50,
+        lon: 4,
+        dist: km * 1000,
+      }));
+      const series: [number, number][] = [0, 1, 2, 3, 4, 5].map((km) => [
+        km * 300,
+        km * 1000,
+      ]);
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'mixed-run',
+            exercise_name: 'Mixed Run',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-08-05'),
+            duration_minutes: 25,
+            distance: 5,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'running' } },
+            exercise_source_id: null,
+            has_gps_track: true,
+            has_distance_series: true,
+            track_version: 'mixed-1',
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ exercise_entry_id: 'mixed-run', points: gps }],
+      });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ exercise_entry_id: 'mixed-run', points: series }],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+      const res =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+      const oneK = res.cardioPRs.find((p) => p.distanceStandard === '1k');
+      const fiveK = res.cardioPRs.find((p) => p.distanceStandard === '5k');
+      // GPS (6:00/km) decides the standard it covers, the series (5:00/km) the rest.
+      expect(oneK?.bestTimeSeconds).toBe(360);
+      expect(fiveK?.bestTimeSeconds).toBe(25 * 60);
+      expect(fiveK?.timeBasis).toBe('best_split');
+    });
+
+    it('measures a track once and reuses the split until the track changes', async () => {
+      const start = Date.parse('2026-08-01T07:00:00Z');
+      const points = [0, 1, 2, 3, 4, 5, 6].map((km) => ({
+        t: new Date(start + km * 300 * 1000).toISOString(),
+        lat: 50,
+        lon: 4,
+        dist: km * 1000,
+      }));
+      const row = {
+        id: 'cached-run',
+        exercise_name: 'Cached Run',
+        category: 'cardio',
+        notes: null,
+        entry_date: new Date('2026-08-01'),
+        duration_minutes: 30,
+        distance: 6,
+        provider_name: 'garmin',
+        detail_data: { activityType: { typeKey: 'running' } },
+        exercise_source_id: null,
+        has_gps_track: true,
+        has_distance_series: false,
+        track_version: '2026-08-01 07:30:00+00:7/',
+      };
+      mockClient.query.mockResolvedValueOnce({ rows: [row] });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ exercise_entry_id: 'cached-run', points }],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+      const first =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+      expect(mockClient.query).toHaveBeenCalledTimes(3);
+
+      // Same track version: no track query this time.
+      mockClient.query.mockClear();
+      mockClient.query.mockResolvedValueOnce({ rows: [row] });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+      const second =
+        await exerciseStatsService.getPersonalRecordMatrix('user-123');
+      expect(mockClient.query).toHaveBeenCalledTimes(2);
+      expect(second.cardioPRs).toEqual(first.cardioPRs);
+
+      // A changed track is measured again.
+      mockClient.query.mockClear();
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ ...row, track_version: '2026-08-02 08:00:00+00:7/' }],
+      });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ exercise_entry_id: 'cached-run', points }],
+      });
+      mockClient.query.mockResolvedValueOnce({ rows: [] });
+      await exerciseStatsService.getPersonalRecordMatrix('user-123');
+      expect(mockClient.query).toHaveBeenCalledTimes(3);
+    });
+
     it('labels the no-banded-records fallback with the entry sport', async () => {
       mockClient.query.mockResolvedValueOnce({ rows: [] });
       mockClient.query.mockResolvedValueOnce({
@@ -735,6 +965,98 @@ describe('exerciseStatsService', () => {
       expect(res.courses[0].sport).toBe('running');
       expect(res.courses[0].recentActivities.length).toBe(1);
       expect(mockClient.release).toHaveBeenCalled();
+    });
+
+    // A course is matched by name, so a shortened version of the loop must not
+    // post a faster "course time" than the full loop.
+    it('does not let a shorter run of the same name set the course time', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            course_key: 'river loop',
+            exercise_name: 'River Loop',
+            category: 'running',
+            activity_count: '3',
+            avg_distance_km: 6.67, // the SQL average, dragged down by the short run
+          },
+        ],
+      });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'full',
+            exercise_name: 'River Loop',
+            entry_date: new Date('2026-07-24'),
+            duration_minutes: 40, // 5:00 /km over 8 km
+            distance: 8.0,
+            avg_heart_rate: 150,
+          },
+          {
+            id: 'cut-short',
+            exercise_name: 'River Loop',
+            entry_date: new Date('2026-07-20'),
+            duration_minutes: 20, // only 4 km
+            distance: 4.0,
+            avg_heart_rate: 150,
+          },
+          {
+            id: 'faster-full',
+            exercise_name: 'River Loop',
+            entry_date: new Date('2026-06-01'),
+            duration_minutes: 38,
+            distance: 8.0,
+            avg_heart_rate: 150,
+          },
+        ],
+      });
+
+      const res = await exerciseStatsService.getMatchedCourses('user-123');
+
+      expect(res.courses[0].bestTimeSeconds).toBe(38 * 60);
+      expect(res.courses[0].bestPaceFormatted).toBe('4:45 /km');
+      // The distance shown is the one the time is for, not the SQL average.
+      expect(res.courses[0].totalDistanceMeters).toBe(8000);
+      expect(res.courses[0].avgDistanceFormatted).toBe(8);
+    });
+
+    it('finds the best time across more than the five most recent runs', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            course_key: 'hill loop',
+            exercise_name: 'Hill Loop',
+            category: 'running',
+            activity_count: '7',
+            avg_distance_km: 5.0,
+          },
+        ],
+      });
+      const recent = Array.from({ length: 6 }, (_, i) => ({
+        id: `recent-${i}`,
+        exercise_name: 'Hill Loop',
+        entry_date: new Date(`2026-07-${20 - i}`),
+        duration_minutes: 30,
+        distance: 5.0,
+        avg_heart_rate: 150,
+      }));
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          ...recent,
+          {
+            id: 'old-best',
+            exercise_name: 'Hill Loop',
+            entry_date: new Date('2025-01-01'),
+            duration_minutes: 25,
+            distance: 5.0,
+            avg_heart_rate: 150,
+          },
+        ],
+      });
+
+      const res = await exerciseStatsService.getMatchedCourses('user-123');
+
+      expect(res.courses[0].recentActivities.length).toBe(5);
+      expect(res.courses[0].bestTimeSeconds).toBe(25 * 60);
     });
 
     it('no longer labels every course as running', async () => {

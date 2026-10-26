@@ -1519,7 +1519,17 @@ const options = {
               type: 'string',
               description: 'Display label, e.g. "Half Marathon (21.1 km)".',
             },
-            bestTimeSeconds: { type: 'number' },
+            timeBasis: {
+              type: 'string',
+              enum: ['best_split', 'activity_pace'],
+              description:
+                'How bestTimeSeconds was found. best_split: the fastest stretch of exactly the standard distance, measured inside the activity from its GPS track or distance series. activity_pace: an activity with no measured split that nearly matches the distance, scaled to it by its average pace. Absent on older servers.',
+            },
+            bestTimeSeconds: {
+              type: 'number',
+              description:
+                'Time for the standard distance itself, never a longer activity total.',
+            },
             formattedTime: {
               type: 'string',
               description: 'e.g. "1:42:15".',

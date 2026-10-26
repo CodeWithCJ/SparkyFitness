@@ -4,6 +4,9 @@ const mocks = vi.hoisted(() => ({
   getUserProfile: vi.fn(),
 }));
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: async () => [] },
+}));
 vi.mock('../models/userRepository.js', () => ({
   default: { getUserProfile: mocks.getUserProfile },
 }));

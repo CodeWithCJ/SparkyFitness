@@ -7,6 +7,7 @@ import {
 
 export const RUN_PROGRAM_ACTIONS = [
   'get_run_program',
+  'get_fitness_tests',
   'start_run_program',
   'set_run_program_enabled',
   'repeat_run_program_week',
@@ -59,6 +60,7 @@ const daySchema = z
 
 export const manageRunProgramSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('get_run_program') }).strict(),
+  z.object({ action: z.literal('get_fitness_tests') }).strict(),
   z
     .object({
       action: z.literal('start_run_program'),

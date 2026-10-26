@@ -33,7 +33,7 @@ vi.mock('../models/exercisePresetEntryRepository.js', () => ({
 }));
 vi.mock('../models/workoutPresetRepository.js', () => ({
   default: {
-    getWorkoutPresetByName: vi.fn(),
+    getWorkoutPresetByName: vi.fn().mockResolvedValue({ id: 7 }),
     createWorkoutPreset: vi.fn(),
     addExerciseToWorkoutPreset: vi.fn(),
   },
@@ -57,6 +57,8 @@ vi.mock('../services/garmin/garminExerciseMapper.js', () => ({
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
+import workoutPresetRepository from '../models/workoutPresetRepository.js';
+import { getOrCreateGarminExercise } from '../services/garmin/garminExerciseMapper.js';
 import { processActivitiesAndWorkouts } from '../services/garmin/garminActivityProcessor.js';
 
 const UID = 'user-1';
@@ -68,6 +70,22 @@ const simpleActivity = {
     activityType: { typeKey: 'running' },
   },
 };
+
+const bodyweightWorkout = (name: string) => ({
+  workoutName: name,
+  workoutSegments: [
+    {
+      workoutSteps: [
+        {
+          type: 'ExecutableStepDTO',
+          exerciseName: 'PUSH_UP',
+          category: 'PUSH_UP',
+          endConditionValue: 10,
+        },
+      ],
+    },
+  ],
+});
 
 const issuedStatements = () => clientQuery.mock.calls.map((c) => c[0]);
 
@@ -91,7 +109,7 @@ describe('processActivitiesAndWorkouts transaction boundary', () => {
       'UTC'
     );
 
-    expect(result).toEqual({ processedEntries: 1 });
+    expect(result).toEqual({ processedEntries: 1, failedDefinitions: 0 });
     expect(issuedStatements()).toEqual(['BEGIN', 'COMMIT']);
     expect(
       exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
@@ -154,5 +172,30 @@ describe('processActivitiesAndWorkouts transaction boundary', () => {
       'Active Calories'
     );
     expect(clientRelease).toHaveBeenCalled();
+  });
+
+  it('commits activities and keeps going when one workout definition fails', async () => {
+    // First call serves the activity, the second fails definition A.
+    vi.mocked(getOrCreateGarminExercise)
+      .mockResolvedValueOnce({ id: 'exercise-1', name: 'running' })
+      .mockRejectedValueOnce(new Error('definition blew up'));
+
+    const result = await processActivitiesAndWorkouts(
+      UID,
+      {
+        activities: [simpleActivity],
+        workouts: [bodyweightWorkout('A'), bodyweightWorkout('B')],
+      },
+      '2026-08-01',
+      '2026-08-02',
+      'UTC'
+    );
+
+    expect(issuedStatements()).toEqual(['BEGIN', 'COMMIT']);
+    expect(clientRelease).toHaveBeenCalledTimes(1);
+    expect(
+      workoutPresetRepository.addExerciseToWorkoutPreset
+    ).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ processedEntries: 2, failedDefinitions: 1 });
   });
 });

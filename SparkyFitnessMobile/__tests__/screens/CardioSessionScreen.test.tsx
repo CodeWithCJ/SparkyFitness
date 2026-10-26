@@ -10,6 +10,15 @@ import { saveActivityAsRoute } from '../../src/services/routeService';
 import { initializeI18n } from '../../src/localization/i18n';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
+jest.mock('../../src/services/fitnessTestService', () => ({
+  useFitnessTests: jest.fn(() => ({
+    tests: [],
+    latest: null,
+    loaded: true,
+    isLoading: false,
+    refetch: jest.fn(),
+  })),
+}));
 jest.mock('../../src/services/gpxExport', () => ({
   shareRouteAsGpx: jest.fn(() => Promise.resolve(true)),
 }));

@@ -2,6 +2,7 @@ import {
   acceptFix,
   computeLaps,
   computeSplits,
+  withSplitHeartRate,
   cumulativeDistances,
   currentPaceSecondsPerUnit,
   elevationGainLoss,
@@ -225,6 +226,21 @@ describe('computeSplits', () => {
     expect(splits[4].distanceMeters).toBeCloseTo(400, -1);
   });
 
+  it('reports the height change over each split from the altitude at its ends', () => {
+    // 4 m/s climbing 0.02 m per metre: 20 m per kilometre.
+    const points: RecordedPoint[] = [];
+    for (let s = 0; s <= 500; s += 5)
+      points.push(point(s, s * 4, { alt: 100 + s * 4 * 0.02 }));
+    const splits = computeSplits(points, METERS_PER_KM);
+    expect(splits[0].elevationChangeMeters).toBeCloseTo(20, 1);
+    expect(splits[1].elevationChangeMeters).toBeCloseTo(20, 1);
+  });
+
+  it('has no height change for a track without altitude', () => {
+    const [first] = computeSplits(steadyTrack(300, 4, 5), METERS_PER_KM);
+    expect(first.elevationChangeMeters).toBeNull();
+  });
+
   it('drops a trailing sliver', () => {
     // 1020 m: 20 m remainder is under 5% of a km.
     const splits = computeSplits(steadyTrack(255, 4, 5), METERS_PER_KM);
@@ -405,5 +421,24 @@ describe('gpsSignalLevel', () => {
     expect(gpsSignalLevel(null, now)).toBe('none');
     expect(gpsSignalLevel({ hacc: -1, t: now }, now)).toBe('none');
     expect(gpsSignalLevel({ hacc: 5, t: now - 16_000 }, now)).toBe('none');
+  });
+});
+
+describe('withSplitHeartRate', () => {
+  it('averages the readings that fall inside each split', () => {
+    const base = computeSplits(steadyTrack(600, 4, 5), METERS_PER_KM);
+    const t0 = Date.UTC(2026, 9, 6, 10, 0, 0);
+    const splits = withSplitHeartRate(base, [
+      { t: t0 + 60_000, bpm: 150 },
+      { t: t0 + 120_000, bpm: 160 },
+      { t: t0 + 300_000, bpm: 170 },
+    ]);
+    expect(splits[0].avgHeartRate).toBe(155);
+    expect(splits[1].avgHeartRate).toBe(170);
+  });
+
+  it('leaves a split with no readings at null', () => {
+    const base = computeSplits(steadyTrack(600, 4, 5), METERS_PER_KM);
+    expect(withSplitHeartRate(base, [])[0].avgHeartRate).toBeNull();
   });
 });

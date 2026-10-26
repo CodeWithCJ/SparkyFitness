@@ -7,7 +7,13 @@ import type {
   WorkoutHeartRatePoint,
 } from '@workspace/shared';
 import { canEditGroupedWorkout } from '@workspace/shared';
-import { haversineMeters } from './gpsRecording';
+import {
+  computeSplits,
+  haversineMeters,
+  withSplitHeartRate,
+  type RecordedPoint,
+  type RecordedSplit,
+} from './gpsRecording';
 import { toFiniteNumber } from './numericInput';
 import { distanceFromKm } from './unitConversions';
 
@@ -440,4 +446,39 @@ function paceSeriesFromSamples(
   if (insertAt === -1) kept.push(fastestPoint);
   else kept.splice(insertAt, 0, fastestPoint);
   return kept;
+}
+
+/**
+ * Per-km or per-mile splits for a stored workout, cut from its GPS track the
+ * way a recording is. Heart rate per split comes from the readings that fall
+ * inside it, when there are any. A stored track has no pause marks, so any
+ * stop counts as time in the split.
+ */
+export function splitsFromTrack(
+  points: readonly GpsTrackPoint[],
+  unitMeters: number,
+  heartRate: readonly { timestamp: number; bpm: number }[] = []
+): RecordedSplit[] {
+  const fixes: RecordedPoint[] = [];
+  for (const point of points) {
+    const t = Date.parse(point.t);
+    if (!Number.isFinite(t)) continue;
+    // Out of order or repeated: keep the first.
+    if (fixes.length > 0 && t <= fixes[fixes.length - 1].t) continue;
+    fixes.push({
+      t,
+      lat: point.lat,
+      lon: point.lon,
+      alt: typeof point.alt === 'number' ? point.alt : null,
+      hacc: null,
+      vacc: null,
+      speed: null,
+      course: null,
+      seg: 0,
+    });
+  }
+  return withSplitHeartRate(
+    computeSplits(fixes, unitMeters),
+    heartRate.map((sample) => ({ t: sample.timestamp, bpm: sample.bpm }))
+  );
 }

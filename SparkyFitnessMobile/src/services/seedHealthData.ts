@@ -356,33 +356,85 @@ const EXERCISE_TYPES = [
 
 const seedHeartRate = async (dates: Date[]): Promise<number> => {
   let totalRecords = 0;
+  const now = new Date();
 
   for (const date of dates) {
-    const baseHour = getSafeHour(date, 8);
-    const startTime = new Date(date);
-    startTime.setHours(baseHour, 0, 0, 0);
-    const endTime = new Date(date);
-    endTime.setHours(baseHour, 30, 0, 0);
+    const today = isToday(date);
+    const samples: { time: string; beatsPerMinute: number }[] = [];
 
-    const samples = [];
-    for (let i = 0; i < 3; i++) {
-      const sampleTime = new Date(date);
-      sampleTime.setHours(baseHour, 5 + i * 8, 0, 0);
-      samples.push({
-        time: sampleTime.toISOString(),
-        beatsPerMinute: randomInt(60, 100),
-      });
+    // Step through the day in 15-minute intervals (4 intervals per hour = 96 points)
+    for (let hour = 0; hour < 24; hour++) {
+      for (let min = 0; min < 60; min += 15) {
+        const sampleTime = new Date(date);
+        sampleTime.setHours(hour, min, 0, 0);
+        if (today && sampleTime > now) continue;
+
+        let bpm: number;
+        if (hour < 7) {
+          // Night sleep: 48 - 56 bpm. Nocturnal dip near 4:30 AM
+          const dip = Math.sin(((hour * 60 + min) / 420) * Math.PI) * 6;
+          bpm = Math.round(54 - dip + (Math.random() * 3 - 1.5));
+        } else if (hour >= 12 && hour < 13 && min >= 11 && min <= 42) {
+          // Handled in detailed workout loop below
+          continue;
+        } else if (hour === 16 && min === 30) {
+          // Elevated HR spike outside exercise (matching mockup alert)
+          bpm = 105;
+        } else if (hour >= 21) {
+          // Evening wind-down
+          bpm = Math.round(65 - (hour - 21) * 3 + (Math.random() * 4 - 2));
+        } else {
+          // Daytime baseline
+          bpm = Math.round(72 + (Math.random() * 6 - 3));
+        }
+        samples.push({
+          time: sampleTime.toISOString(),
+          beatsPerMinute: Math.max(45, Math.min(185, bpm)),
+        });
+      }
     }
 
-    const record = {
-      recordType: 'HeartRate' as const,
-      startTime: startTime.toISOString(),
-      endTime: endTime.toISOString(),
-      samples,
-    };
+    // High-resolution workout samples: 12:11 - 12:42 (Outdoor Cardio Session matching mockups)
+    const workoutStart = new Date(date);
+    workoutStart.setHours(12, 11, 0, 0);
+    const workoutPoints = [
+      { offsetMin: 0, bpm: 85 },
+      { offsetMin: 3, bpm: 102 },
+      { offsetMin: 5, bpm: 118 },
+      { offsetMin: 9, bpm: 132 },
+      { offsetMin: 14, bpm: 134 },
+      { offsetMin: 18, bpm: 142 },
+      { offsetMin: 20, bpm: 162 }, // peak 162 bpm
+      { offsetMin: 24, bpm: 140 },
+      { offsetMin: 27, bpm: 138 },
+      { offsetMin: 30, bpm: 130 },
+      { offsetMin: 31, bpm: 98 }, // 1-min recovery (-32 bpm drop)
+    ];
+    for (const pt of workoutPoints) {
+      const ptTime = new Date(workoutStart.getTime() + pt.offsetMin * 60000);
+      if (!today || ptTime <= now) {
+        samples.push({
+          time: ptTime.toISOString(),
+          beatsPerMinute: pt.bpm,
+        });
+      }
+    }
 
-    await insertRecords([record]);
-    totalRecords++;
+    // Sort samples chronologically
+    samples.sort(
+      (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+    );
+
+    if (samples.length > 0) {
+      const record = {
+        recordType: 'HeartRate' as const,
+        startTime: samples[0].time,
+        endTime: samples[samples.length - 1].time,
+        samples,
+      };
+      await insertRecords([record]);
+      totalRecords++;
+    }
   }
 
   return totalRecords;

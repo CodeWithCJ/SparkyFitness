@@ -55,6 +55,7 @@ import { useWorkoutPresets } from '../hooks/useWorkoutPresets';
 import { getWorkoutPresetById } from '../services/api/workoutPresetsApi';
 import RunProgramBanner from '../components/recording/RunProgramBanner';
 import RunEffortPrompt from '../components/recording/RunEffortPrompt';
+import ProgramRetestPrompt from '../components/recording/ProgramRetestPrompt';
 import { useActiveWorkoutPlans } from '../hooks/useActiveWorkoutPlan';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
 import {
@@ -677,6 +678,11 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
                   <RunEffortPrompt
                     date={selectedDate}
                     today={toLocalDateString(new Date())}
+                  />
+                  <ProgramRetestPrompt
+                    date={selectedDate}
+                    today={toLocalDateString(new Date())}
+                    onRetest={() => navigation.navigate('FitnessTest')}
                   />
                   <RunProgramBanner
                     date={selectedDate}

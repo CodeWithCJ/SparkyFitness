@@ -6,6 +6,8 @@ import {
   parseGpx,
   routeDistanceMeters,
   routeElevationGainMeters,
+  routeOverlapFraction,
+  routesAreDistinct,
   serializeGpx,
   simplifyRoute,
   type RoutePoint,
@@ -395,5 +397,38 @@ describe('parseGpx at the largest accepted size', () => {
       1
     );
     expect(distanceToSegment(beside, a, a).t).toBe(0);
+  });
+});
+
+// Bounds are far above the few tens of milliseconds measured in the sandbox so
+// a slow CI runner does not flake, and far below the minutes an unbounded
+// comparison takes on this input.
+describe('route comparison on hostile input', () => {
+  const pt = (lat: number, lon: number) => ({ lat, lon });
+
+  it('compares two 50,000-point tracks in bounded time', () => {
+    const a = Array.from({ length: 50_000 }, (_, i) =>
+      pt(40 + i * 0.000004, -74 + Math.sin(i / 80) * 0.001)
+    );
+    const b = Array.from({ length: 50_000 }, (_, i) =>
+      pt(40 + i * 0.000004, -74.0005 + Math.sin(i / 80) * 0.001)
+    );
+    const started = performance.now();
+    const overlap = routeOverlapFraction(a, b);
+    expect(performance.now() - started).toBeLessThan(5_000);
+    expect(overlap).toBeGreaterThanOrEqual(0);
+    expect(overlap).toBeLessThanOrEqual(1);
+  });
+
+  it('compares a track that doubles back over one spot in bounded time', () => {
+    // 50,000 points zigzagging inside a single 30 m cell: every sample lands
+    // in the same bucket, which made the nearest-sample search quadratic.
+    const zigzag = Array.from({ length: 50_000 }, (_, i) =>
+      pt(40 + (i % 2) * 0.00005, -74 + (i % 3) * 0.00003)
+    );
+    const started = performance.now();
+    const distinct = routesAreDistinct(zigzag, zigzag);
+    expect(performance.now() - started).toBeLessThan(5_000);
+    expect(distinct).toBe(false);
   });
 });

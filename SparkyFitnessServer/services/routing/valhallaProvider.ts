@@ -15,6 +15,10 @@ import {
   type ValhallaLeg,
 } from './valhallaManeuvers.js';
 import {
+  trailShareFromEdges,
+  valhallaCostingOptions,
+} from './valhallaCosting.js';
+import {
   RoutingProviderError,
   type RoutingActivity,
   type RoutingProvider,
@@ -61,6 +65,8 @@ const NO_ROUTE_ERROR_CODES = new Set([171, 442, 443, 444]);
 const MAX_ROUTE_LEGS = ROUTE_GENERATE_MAX_WAYPOINTS + 2;
 const MAX_LEG_SHAPE_CHARS = 400_000;
 const MAX_ROUTE_RESPONSE_BYTES = 8 * 1024 * 1024;
+/** A traced route has at most one edge per shape point, so this sits above any leg we accept. */
+const MAX_TRACE_EDGES = 50_000;
 
 const routeResponseSchema = z.object({
   trip: z.object({
@@ -126,6 +132,27 @@ function isBoundedHeightAnswer(data: unknown, pointCount: number): boolean {
     isRecord(data) &&
     Array.isArray(data.height) &&
     data.height.length === pointCount
+  );
+}
+
+const traceResponseSchema = z.object({
+  edges: z
+    .array(
+      z.object({
+        length: z.number().optional(),
+        use: z.string().optional(),
+        surface: z.string().optional(),
+      })
+    )
+    .max(MAX_TRACE_EDGES),
+});
+
+/** Count the edges before Zod visits them, as for the route answer above. */
+function isBoundedTraceAnswer(data: unknown): boolean {
+  return (
+    isRecord(data) &&
+    Array.isArray(data.edges) &&
+    data.edges.length <= MAX_TRACE_EDGES
   );
 }
 
@@ -217,8 +244,45 @@ export function createValhallaProvider(
     }
   }
 
+  /** Best effort: no surface data just means no "more trail" label. */
+  async function fetchTrailShare(
+    shape: string,
+    costing: string
+  ): Promise<number | null> {
+    try {
+      const response = await axios.post(
+        `${base}/trace_attributes`,
+        {
+          encoded_polyline: shape,
+          shape_match: 'edge_walk',
+          costing,
+          filters: {
+            attributes: ['edge.length', 'edge.use', 'edge.surface'],
+            action: 'include',
+          },
+        },
+        config
+      );
+      if (!isBoundedTraceAnswer(response.data)) return null;
+      const parsed = traceResponseSchema.safeParse(response.data);
+      return parsed.success ? trailShareFromEdges(parsed.data.edges) : null;
+    } catch {
+      log('debug', 'Routing engine returned no surface data');
+      return null;
+    }
+  }
+
   return {
     kind: 'valhalla',
+    capabilities: {
+      style: {
+        surface: true,
+        hilliness: true,
+        avoidSteps: true,
+        avoidBusyRoads: true,
+      },
+      maxAlternatives: 3,
+    },
     async route(request: RoutingRequest): Promise<RoutingResult> {
       const last = request.locations.length - 1;
       const body = {
@@ -230,6 +294,10 @@ export function createValhallaProvider(
           type: i === 0 || i === last ? 'break' : 'through',
         })),
         costing: COSTING[request.activity],
+        costing_options: valhallaCostingOptions(
+          request.activity,
+          request.style
+        ),
         directions_options: { units: 'kilometers', language: 'en-US' },
       };
 
@@ -273,10 +341,19 @@ export function createValhallaProvider(
         }
       }
 
+      let trailShare: number | null | undefined;
+      if (request.measureSurface && legs.length === 1) {
+        trailShare = await fetchTrailShare(
+          legs[0].shape,
+          COSTING[request.activity]
+        );
+      }
+
       return {
         points,
         cues: mapped.cues,
         distanceM: parsed.data.trip.summary.length * 1000,
+        trailShare,
       };
     },
   };

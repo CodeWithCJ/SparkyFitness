@@ -34,6 +34,7 @@ jest.mock('../../src/services/api/sleepApi', () => ({
 
 jest.mock('../../src/services/api/reportsApi', () => ({
   fetchNutritionTrends: jest.fn(),
+  fetchRunEstimates: jest.fn().mockResolvedValue({ vo2Max: null, power: null }),
 }));
 
 jest.mock('../../src/services/api/goalsApi', () => ({

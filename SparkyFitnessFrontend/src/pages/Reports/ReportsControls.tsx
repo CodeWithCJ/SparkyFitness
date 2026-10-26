@@ -10,6 +10,7 @@ import {
   Table as TableIcon,
   Pill,
   HeartPulse,
+  Heart,
   GitCompareArrows,
 } from 'lucide-react';
 
@@ -44,6 +45,11 @@ const ReportsControls = ({
       id: 'measurements',
       label: t('reports.measurementsTab', 'Measurements'),
       icon: Activity,
+    },
+    {
+      id: 'heart-rate',
+      label: t('reports.heartRateTab', 'Heart Rate'),
+      icon: Heart,
     },
     {
       id: 'fasting',

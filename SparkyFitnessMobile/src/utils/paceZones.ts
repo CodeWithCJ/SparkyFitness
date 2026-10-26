@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import {
   MAX_EFFORT_METERS,
   MIN_EFFORT_METERS,
@@ -6,7 +7,9 @@ import {
   paceZones,
   thresholdPaceFromEffort,
   type ExerciseActivityQueryItem,
+  type FitnessTestResponse,
   type PaceZone,
+  type PaceZoneId,
 } from '@workspace/shared';
 import { referencePace } from './suggestedRanges';
 
@@ -20,12 +23,57 @@ export interface PaceZonesResult {
   thresholdSecondsPerKm: number;
   zones: PaceZone[];
   /**
-   * `effort` when a recent hard run set the reference; `typical` when only an
-   * average of recent runs was available, which is less precise.
+   * `test` when the person's latest fitness test set the reference; `effort`
+   * when a recent hard run did; `typical` when only an average of recent runs
+   * was available, which is less precise.
    */
-  source: 'effort' | 'typical';
+  source: 'test' | 'effort' | 'typical';
   /** Runs the reference was drawn from. */
   sessions: number;
+}
+
+/** The zone's name in the app language. */
+export function paceZoneName(t: TFunction, id: PaceZoneId): string {
+  switch (id) {
+    case 'easy':
+      return t('exerciseStatistics.paceZones.easy', { defaultValue: 'Easy' });
+    case 'steady':
+      return t('exerciseStatistics.paceZones.steady', {
+        defaultValue: 'Steady',
+      });
+    case 'threshold':
+      return t('exerciseStatistics.paceZones.threshold', {
+        defaultValue: 'Threshold',
+      });
+    case 'interval':
+      return t('exerciseStatistics.paceZones.interval', {
+        defaultValue: 'Interval',
+      });
+    default:
+      return t('exerciseStatistics.paceZones.repetition', {
+        defaultValue: 'Repetition',
+      });
+  }
+}
+
+/**
+ * Pace zones from the person's latest fitness test, which beat any estimate
+ * from their runs. `shift` re-paces them like `paceZonesFromSessions` does.
+ */
+export function paceZonesFromTest(
+  test: FitnessTestResponse | null,
+  shift = 0
+): PaceZonesResult | null {
+  if (!test) return null;
+  const threshold = test.paces.thresholdSecondsPerKm;
+  const zones = paceZones(threshold, shift);
+  if (!zones) return null;
+  return {
+    thresholdSecondsPerKm: threshold,
+    zones,
+    source: 'test',
+    sessions: 0,
+  };
 }
 
 const isOutdoorRun = (item: ExerciseActivityQueryItem): boolean =>

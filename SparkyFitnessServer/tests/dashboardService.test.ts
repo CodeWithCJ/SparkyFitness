@@ -8,6 +8,9 @@ import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: async () => [] },
+}));
 vi.mock('../services/goalService.js', () => ({
   default: { getUserGoals: vi.fn() },
 }));

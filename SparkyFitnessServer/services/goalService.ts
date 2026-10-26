@@ -7,8 +7,9 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import bmrService from './bmrService.js';
 import goalPresetService from './goalPresetService.js';
 import adaptiveTdeeService from './AdaptiveTdeeService.js';
+import { loadPreferencesByDay } from './calorieRuleHistoryService.js';
 import type { AdaptiveTdeeResult } from './AdaptiveTdeeService.js';
-import { userAge } from '../utils/dateHelpers.js';
+import { ageOnDay } from '../utils/dateHelpers.js';
 import { log } from '../config/logging.js';
 import { addDays, format, getDay, isAfter, parseISO } from 'date-fns';
 import { localDateToDay } from '@workspace/shared';
@@ -152,6 +153,10 @@ async function getUserGoalsForRange(
     );
   }
 
+  const preferencesOn = adjust
+    ? await loadPreferencesByDay(userId, userPreferences, startDate, endDate)
+    : () => null;
+
   let waterEstimatedMap: Record<string, number> = {};
   let adaptiveTdeeMap: Record<string, AdaptiveTdeeResult> = {};
   let activityCaloriesByDate = new Map<string, number>();
@@ -162,10 +167,21 @@ async function getUserGoalsForRange(
     userId;
   let includeMacroCheckin = false;
   if (adjust && userPreferences) {
-    const adjustmentMode =
-      userPreferences.calorie_goal_adjustment_mode || 'dynamic';
-    const goalModeCalculationMethod =
-      userPreferences.goal_mode_calculation_method || 'manual';
+    let anyAdaptiveDay = false;
+    let anyDeviceProjectionDay = false;
+    for (
+      let day = parseISO(startDate);
+      !isAfter(day, end);
+      day = addDays(day, 1)
+    ) {
+      const dayPreferences = preferencesOn(format(day, 'yyyy-MM-dd'));
+      const adjustmentMode = dayPreferences?.calorie_goal_adjustment_mode;
+      anyAdaptiveDay ||=
+        adjustmentMode === 'adaptive' ||
+        dayPreferences?.goal_mode_calculation_method === 'adaptive';
+      anyDeviceProjectionDay ||=
+        adjustmentMode === 'tdee' || adjustmentMode === 'smart';
+    }
     if (userPreferences.adjust_macros_with_exercise) {
       includeMacroCheckin =
         activityAccess.includeCheckin ??
@@ -177,10 +193,7 @@ async function getUserGoalsForRange(
         allMeasurements,
         includeMacroCheckin
       );
-      if (
-        includeMacroCheckin &&
-        (adjustmentMode === 'tdee' || adjustmentMode === 'smart')
-      ) {
+      if (includeMacroCheckin && anyDeviceProjectionDay) {
         const totals =
           await genericHealthRepository.getHealthConnectTotalCaloriesByDateRange(
             userId,
@@ -196,10 +209,7 @@ async function getUserGoalsForRange(
         );
       }
     }
-    if (
-      adjustmentMode === 'adaptive' ||
-      goalModeCalculationMethod === 'adaptive'
-    ) {
+    if (anyAdaptiveDay) {
       try {
         adaptiveTdeeMap = await adaptiveTdeeService.calculateAdaptiveTdeeRange(
           userId,
@@ -288,17 +298,18 @@ async function getUserGoalsForRange(
     }
 
     if (adjust) {
+      const dayPreferences = preferencesOn(dateStr);
       let goalCalories =
         parseFloat(String(processedGoals.calories ?? '')) || 2000;
       const adjustmentMode =
-        userPreferences?.calorie_goal_adjustment_mode || 'dynamic';
-      const goalMode = userPreferences?.goal_mode || 'maintain';
+        dayPreferences?.calorie_goal_adjustment_mode || 'dynamic';
+      const goalMode = dayPreferences?.goal_mode || 'maintain';
       const goalModeCalculationMethod =
-        userPreferences?.goal_mode_calculation_method || 'manual';
+        dayPreferences?.goal_mode_calculation_method || 'manual';
       const goalModeCustomPercentage =
-        userPreferences?.goal_mode_custom_percentage ?? 0;
-      const activityLevel = userPreferences?.activity_level || 'not_much';
-      const bmrAlgorithm = userPreferences?.bmr_algorithm || 'Mifflin-St Jeor';
+        dayPreferences?.goal_mode_custom_percentage ?? 0;
+      const activityLevel = dayPreferences?.activity_level || 'not_much';
+      const bmrAlgorithm = dayPreferences?.bmr_algorithm || 'Mifflin-St Jeor';
       const gender = (userProfile?.gender || 'male') as 'male' | 'female';
 
       const weightKg =
@@ -313,9 +324,8 @@ async function getUserGoalsForRange(
       const measuredBmr = getMeasurementFieldOnDate(dateStr, 'bmr');
 
       let formulaBmr = 0;
-      if (userProfile && userPreferences) {
-        const tz = userPreferences.timezone || 'UTC';
-        const age = userAge(userProfile.date_of_birth ?? '', tz) ?? 30;
+      if (userProfile && dayPreferences) {
+        const age = ageOnDay(userProfile.date_of_birth, dateStr) ?? 30;
         try {
           formulaBmr = bmrService.calculateBmr(
             bmrAlgorithm,
@@ -336,7 +346,7 @@ async function getUserGoalsForRange(
       // be computed, and on the absolute bounds alone when it could not — a failed
       // or impossible formula must not discard an otherwise good reading.
       const bmr =
-        userPreferences?.use_external_bmr &&
+        dayPreferences?.use_external_bmr &&
         isUsableMeasuredBmr(measuredBmr, formulaBmr || null)
           ? (measuredBmr as number)
           : formulaBmr;
@@ -391,8 +401,8 @@ async function getUserGoalsForRange(
           : Math.round(bmr * activityMultiplier);
         const adaptiveGoal = Math.round(adaptiveBaseline + calorieGoalOffset);
         const adaptiveGoalFloor = resolveCalorieSafetyFloor(
-          userPreferences?.calorie_safety_floor_mode,
-          userPreferences?.calorie_safety_floor_value,
+          dayPreferences?.calorie_safety_floor_mode,
+          dayPreferences?.calorie_safety_floor_value,
           DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR
         );
         goalCalories =
@@ -412,22 +422,21 @@ async function getUserGoalsForRange(
         goalModeCalculationMethod === 'manual' &&
         goalCalories > 0;
       if (bmr > 0 || hasWeeklyManualBaseline) {
-        const tz = userPreferences?.timezone || 'UTC';
         const age = userProfile
-          ? (userAge(userProfile.date_of_birth ?? '', tz) ?? 30)
+          ? (ageOnDay(userProfile.date_of_birth, dateStr) ?? 30)
           : 30;
         const targetResult = computeCalorieTarget({
           goalMode,
           calculationMethod: goalModeCalculationMethod,
           customPercentage: goalModeCustomPercentage,
-          weeklyChangeKg: userPreferences?.goal_mode_weekly_change_kg ?? 0,
+          weeklyChangeKg: dayPreferences?.goal_mode_weekly_change_kg ?? 0,
           bmr,
           activityLevelMultiplier: activityMultiplier,
           adaptiveTdee: adaptiveTdeeData
             ? isAdaptiveActivitySeparated(
                 adjustmentMode,
                 goalModeCalculationMethod,
-                userPreferences?.adaptive_activity_separate
+                dayPreferences?.adaptive_activity_separate
               )
               ? (adaptiveTdeeData.activityAdjustedTdee ?? adaptiveTdeeData.tdee)
               : adaptiveTdeeData.tdee
@@ -447,14 +456,14 @@ async function getUserGoalsForRange(
           currentGoalCalories: goalCalories,
           calculateBmrFn: bmrService.calculateBmr,
           calorieSafetyFloorMode:
-            userPreferences?.calorie_safety_floor_mode || 'standard',
+            dayPreferences?.calorie_safety_floor_mode || 'standard',
           calorieSafetyFloorValue:
-            userPreferences?.calorie_safety_floor_value ||
+            dayPreferences?.calorie_safety_floor_value ||
             DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
           // computeCalorieTarget re-validates this against its own formula estimate
           // before letting it become the RMR safety floor.
           measuredBmr:
-            userPreferences?.use_external_bmr &&
+            dayPreferences?.use_external_bmr &&
             isUsableMeasuredBmr(measuredBmr, formulaBmr || null)
               ? measuredBmr
               : undefined,
@@ -479,9 +488,11 @@ async function getUserGoalsForRange(
     ) {
       let macroCalories = Number(processedGoals.calories);
       if (adjust && userPreferences?.adjust_macros_with_exercise) {
+        const dayPreferences = preferencesOn(dateStr);
         // Use the same budget policy as the diary, including adaptive suppression
         // and Device Projection. Resting BMR is not exercise earn-back.
         const credit = computeExerciseMacroCredit({
+          date: dateStr,
           eatenCalories: 0,
           adjustedGoalCalories: macroCalories,
           exercise: {
@@ -492,7 +503,7 @@ async function getUserGoalsForRange(
           backgroundStepCalories: 0,
           userProfile,
           userPreferences: {
-            ...userPreferences,
+            ...dayPreferences,
             include_bmr_in_net_calories: false,
           },
           measurements: includeMacroCheckin

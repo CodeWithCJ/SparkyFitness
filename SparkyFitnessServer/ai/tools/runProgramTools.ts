@@ -11,13 +11,16 @@ import {
   realignInputFromProgram,
   realignProgram,
   repeatWeek,
+  retestStatus,
   suggestFromEffort,
   todayInZone,
+  type FitnessTestResponse,
   type RaceDistance,
   type RunProgramRealignPreview,
   type RunProgramResponse,
 } from '@workspace/shared';
 import { log } from '../../config/logging.js';
+import { listFitnessTests } from '../../models/fitnessTestRepository.js';
 import {
   adjustRunProgram,
   getRunProgram,
@@ -107,6 +110,85 @@ function summarise(program: RunProgramResponse): string {
   return lines.join('\n');
 }
 
+const FITNESS_TEST_NAMES: Record<FitnessTestResponse['test_type'], string> = {
+  '5k': '5K time trial',
+  '30min': '30-minute all-out run',
+  cooper: '12-minute Cooper test',
+};
+
+const clock = (totalSeconds: number): string => {
+  const whole = Math.round(totalSeconds);
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+};
+
+// result_value is calculated after any incline adjustment, so the measured
+// numbers come from duration_seconds and distance_meters and the adjusted
+// equivalent is labelled as such.
+function describeTestResult(test: FitnessTestResponse): string {
+  const adjusted = test.incline_percent !== null && test.incline_adjusted;
+  if (test.test_type === '5k') {
+    const measured = `5K in ${clock(test.duration_seconds)}`;
+    return adjusted
+      ? `${measured} (incline-adjusted equivalent ${clock(test.result_value)})`
+      : measured;
+  }
+  if (test.test_type === 'cooper') {
+    const measured = `${Math.round(test.distance_meters)} m in 12 minutes`;
+    return adjusted
+      ? `${measured} (incline-adjusted equivalent ${Math.round(test.result_value)} m)`
+      : measured;
+  }
+  const split = test.split_distance_meters;
+  const lastTwenty = `${clock(test.result_value)}/km over the last 20 minutes`;
+  if (!adjusted || split === null) return lastTwenty;
+  const measuredPace = (20 * 60) / ((test.distance_meters - split) / 1000);
+  return `${clock(measuredPace)}/km over the last 20 minutes (incline-adjusted equivalent ${clock(test.result_value)}/km)`;
+}
+
+function describeSurface(test: FitnessTestResponse): string {
+  if (test.surface === 'outdoor') return 'outdoors';
+  if (test.incline_percent === null) return 'on a treadmill';
+  return `on a treadmill at ${test.incline_percent}% incline${test.incline_adjusted ? ', adjusted for incline' : ', not adjusted'}`;
+}
+
+function summariseFitnessTests(
+  tests: FitnessTestResponse[],
+  today: string
+): string {
+  const [latest] = tests;
+  if (!latest) {
+    return 'The user has not run a fitness test. They can run a 5K time trial, a 30-minute all-out run or a 12-minute Cooper test from the Record screen in the mobile app; the result sets their training paces.';
+  }
+  const status = retestStatus(latest.test_date, today);
+  const lines = [
+    '# Fitness tests (newest first)',
+    ...tests
+      .slice(0, 5)
+      .map(
+        (test) =>
+          `- ${test.test_date}: ${FITNESS_TEST_NAMES[test.test_type]} (${describeSurface(test)}), ${describeTestResult(test)}, threshold pace ${clock(test.paces.thresholdSecondsPerKm)}/km`
+      ),
+    '',
+    `Latest test training paces (per km), from ${latest.test_date}:`,
+    `Equivalent 5K time: ${clock(latest.paces.equivalent5kSeconds)}`,
+    ...[...latest.paces.zones]
+      .reverse()
+      .map(
+        (zone) =>
+          `- ${zone.id}: ${clock(zone.minSecondsPerKm)} to ${clock(zone.maxSecondsPerKm)}`
+      ),
+  ];
+  if (status !== 'recent') {
+    lines.push(
+      '',
+      status === 'due'
+        ? 'The latest test is six to eight weeks old: a retest is due.'
+        : 'The latest test is more than eight weeks old: a retest is overdue.'
+    );
+  }
+  return lines.join('\n');
+}
+
 function describeRealign(preview: RunProgramRealignPreview): string {
   const lines = [preview.summary];
   for (const change of preview.changes) {
@@ -166,6 +248,7 @@ To judge progress, read the user's recent runs first (sparky_get_exercise_stats 
 
 Actions:
 - action: 'get_run_program' — progress, the next workouts and recent changes
+- action: 'get_fitness_tests' — the user's running fitness tests (5K time trial, 30-minute all-out run, 12-minute Cooper test), the training paces the latest one gave and whether a retest is due. Use these paces rather than guessing when you talk about pace.
 - action: 'start_run_program' (fields: program_id? default beginner5k, confirmed) — starts a program from workout 1, or switches it on keeping the user's place if they already have that same program (to go back to the beginning use move_run_program with week 1). Programs: walkFit (8 weeks, three brisk walks a week building to 30 minutes, no running; for someone who does not want to run or is just starting to move), beginner5k (9 weeks, run/walk to 30 min), fiveToTenK (8 weeks, for people who can run 30 min), faster5k (6 weeks of speed work), halfMarathon (12 weeks), marathon (16 weeks, for people who already run regularly). Also: walk10k (10 weeks of brisk walking to a 10K walk, no running), returnToRunning (4 weeks to ease back in after a break; if the user is coming back from an injury, tell them to check with a physio or doctor first), gentle5k (12 weeks, a slower start than beginner5k), beginner10k (12 weeks from walking to a 10K), faster10k (8 weeks of speed work for people who run 10K), tenKToHalf (10 weeks from 10K to a half marathon), fasterHalf (10 weeks of speed work for a faster half marathon), beginnerMarathon (18 weeks, three runs a week, for people who can run 10K), advancedMarathon (16 weeks, five runs a week, for experienced runners). tenKToHalf, halfMarathon, fasterHalf and beginnerMarathon have three runs a week; add a 4 to the id (tenKToHalf4, halfMarathon4, fasterHalf4, beginnerMarathon4) for the version with a fourth run, which makes the long run a smaller share of the week. Offer it if the user can run four days a week. Starting a different program than the current one replaces it and drops their adjusted workouts, so say so before asking to confirm. Pick by what the user says they can do now; if unsure, ask.
 - action: 'set_run_program_enabled' (fields: enabled, confirmed) — switches the program on or off, keeping their place
 - action: 'repeat_run_program_week' (fields: week (1-based), confirmed) — goes back to the start of a week to do it again
@@ -192,6 +275,11 @@ Every change needs confirmed=true after the user has agreed.`,
             return program
               ? `${summarise(program)}${realignHint(program, tz)}`
               : NO_PROGRAM;
+          }
+
+          if (args.action === 'get_fitness_tests') {
+            const tests = await listFitnessTests(userId, userId, 5);
+            return summariseFitnessTests(tests, todayInZone(tz));
           }
 
           if (args.action === 'start_run_program') {

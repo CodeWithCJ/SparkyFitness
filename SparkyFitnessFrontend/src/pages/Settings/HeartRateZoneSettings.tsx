@@ -9,7 +9,9 @@ import {
   MIN_MAX_HR,
   MIN_RESTING_HR,
   customFloorsProblem,
+  heartRateDisplayBands,
   type HeartRateZonesResponse,
+  type HrZoneDisplayCount,
   type HrZoneMethod,
 } from '@workspace/shared';
 import { AccordionContent, AccordionTrigger } from '@/components/ui/accordion';
@@ -27,19 +29,25 @@ import {
   useHeartRateZones,
   useUpdateHeartRateZonesMutation,
 } from '@/hooks/Settings/useHeartRateZones';
-import { maxHrSourceLabel, zoneMethodName } from '@/utils/heartRateZoneLabels';
+import {
+  displayBandLabel,
+  maxHrSourceLabel,
+  zoneMethodName,
+} from '@/utils/heartRateZoneLabels';
 
 interface Draft {
   maxHr: string;
   restingHr: string;
   method: HrZoneMethod;
   floors: string[];
+  displayZones: HrZoneDisplayCount;
 }
 
 const draftFrom = (data: HeartRateZonesResponse): Draft => ({
   maxHr: data.settings.max_heart_rate?.toString() ?? '',
   restingHr: data.settings.resting_heart_rate?.toString() ?? '',
   method: data.settings.method,
+  displayZones: data.settings.display_zones,
   // Custom zones start from the zones in use, so switching to Custom edits
   // what the person already sees.
   floors:
@@ -49,8 +57,6 @@ const draftFrom = (data: HeartRateZonesResponse): Draft => ({
 
 const parseWhole = (text: string): number | null =>
   text.trim() === '' ? null : Number(text);
-
-const ZONE_COLORS = ['#3b82f6', '#22c55e', '#eab308', '#f97316', '#ef4444'];
 
 export const HeartRateZoneSettings = () => {
   const { t } = useTranslation();
@@ -128,6 +134,7 @@ export const HeartRateZoneSettings = () => {
         max_heart_rate: maxHeartRate,
         resting_heart_rate: restingHeartRate,
         method: draft.method,
+        display_zones: draft.displayZones,
         ...(draft.method === 'custom' ? { custom_floors: customFloors } : {}),
       },
       { onSuccess: () => setDraft(null) }
@@ -172,32 +179,36 @@ export const HeartRateZoneSettings = () => {
                 })}
               </p>
               <ul className="divide-y rounded-md border">
-                {resolved.zones.map((zone) => (
+                {heartRateDisplayBands(
+                  resolved.zones.map((zone) => ({
+                    zone: zone.zone,
+                    lowerBpm: zone.lower_bpm,
+                    upperBpm: zone.upper_bpm,
+                  })),
+                  draft.displayZones
+                ).map((band) => (
                   <li
-                    key={zone.zone}
-                    data-testid={`hr-zone-${zone.zone}`}
+                    key={band.index}
+                    data-testid={`hr-zone-${band.index}`}
                     className="flex items-center justify-between px-3 py-2 text-sm"
                   >
                     <span className="flex items-center gap-2">
                       <span
                         className="inline-block h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: ZONE_COLORS[zone.zone - 1] }}
+                        style={{ backgroundColor: band.color }}
                       />
-                      {t('settings.heartRateZones.zone', {
-                        defaultValue: 'Zone {{zone}}',
-                        zone: zone.zone,
-                      })}
+                      {displayBandLabel(t, band)}
                     </span>
                     <span className="text-muted-foreground">
-                      {zone.upper_bpm === null
+                      {band.upperBpm === null
                         ? t('settings.heartRateZones.zoneRangeOpen', {
                             defaultValue: '{{lower}}+ bpm',
-                            lower: zone.lower_bpm,
+                            lower: band.lowerBpm,
                           })
                         : t('settings.heartRateZones.zoneRange', {
                             defaultValue: '{{lower}}–{{upper}} bpm',
-                            lower: zone.lower_bpm,
-                            upper: zone.upper_bpm,
+                            lower: band.lowerBpm,
+                            upper: band.upperBpm,
                           })}
                     </span>
                   </li>
@@ -280,6 +291,39 @@ export const HeartRateZoneSettings = () => {
                   }
                 />
               </div>
+            </div>
+
+            <div className="max-w-xs">
+              <Label htmlFor="hr_zone_display">
+                {t('settings.heartRateZones.display.title', 'Show')}
+              </Label>
+              <Select
+                value={String(draft.displayZones)}
+                onValueChange={(value) =>
+                  setDraft({
+                    ...draft,
+                    displayZones: value === '4' ? 4 : 5,
+                  })
+                }
+              >
+                <SelectTrigger id="hr_zone_display">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">
+                    {t('settings.heartRateZones.display.five', '5 zones')}
+                  </SelectItem>
+                  <SelectItem value="4">
+                    {t('settings.heartRateZones.display.four', '4 tiers')}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t(
+                  'settings.heartRateZones.display.hint',
+                  'Four tiers are Light (zones 1 and 2), Moderate (zone 3), Vigorous (zone 4) and Peak (zone 5). Only what you see changes: zones are still worked out and stored as five.'
+                )}
+              </p>
             </div>
 
             {draft.method === 'custom' && (

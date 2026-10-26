@@ -45,6 +45,7 @@ const response = {
     resting_heart_rate: null,
     method: 'percent_max',
     custom_floors: null,
+    display_zones: 5,
   },
   resolved: {
     max_hr: 188,

@@ -4,6 +4,7 @@ import axios from 'axios';
 import https from 'https';
 import { fileURLToPath } from 'url';
 import { log } from '../config/logging.js';
+import { isVersionCheckEnabled } from '../models/globalSettingsRepository.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -82,6 +83,16 @@ function fetchDirect(url: string): Promise<GitHubRawRelease> {
   });
 }
 
+function localVersionFallback(currentVersion: string): GitHubReleaseResponse {
+  return {
+    version: `v${currentVersion}`,
+    releaseNotes: '',
+    publishedAt: new Date().toISOString(),
+    htmlUrl: '',
+    isNewVersionAvailable: false,
+  };
+}
+
 // Function to get the application version from package.json
 function getAppVersion(): string {
   try {
@@ -98,6 +109,18 @@ async function getLatestGitHubRelease(
   bypassCache = false
 ): Promise<GitHubReleaseResponse> {
   const currentVersion = getAppVersion();
+
+  // Admin setting (global_settings.enable_version_check). Read before the
+  // cache so turning it off takes effect at once: no request leaves the
+  // server and the app reports the running version as the latest.
+  if (!(await isVersionCheckEnabled())) {
+    log(
+      'debug',
+      'GitHub release check is turned off in the admin settings; reporting the local version.'
+    );
+    return localVersionFallback(currentVersion);
+  }
+
   const now = Date.now();
 
   const isDev = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
@@ -182,13 +205,7 @@ async function getLatestGitHubRelease(
     );
 
     // Graceful fallback: assume no update is available so the app functions normally
-    return {
-      version: `v${currentVersion}`,
-      releaseNotes: '',
-      publishedAt: new Date().toISOString(),
-      htmlUrl: '',
-      isNewVersionAvailable: false,
-    };
+    return localVersionFallback(currentVersion);
   }
 }
 

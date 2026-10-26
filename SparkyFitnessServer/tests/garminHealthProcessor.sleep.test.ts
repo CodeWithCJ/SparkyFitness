@@ -94,4 +94,71 @@ describe('processGarminSleepData', () => {
     expect(processSleepEntry).toHaveBeenCalledTimes(1);
     expect(processSleepEntry).toHaveBeenCalledWith('user-1', 'user-1', night());
   });
+  it('clears only the nights Garmin returned, not the whole requested range', async () => {
+    const earlier = night({
+      entry_date: '2026-10-13',
+      bedtime: '2026-10-12T23:00:00',
+      wake_time: '2026-10-13T07:00:00',
+    });
+
+    await processGarminSleepData(
+      'user-1',
+      'user-1',
+      [earlier, night()],
+      '2026-10-12',
+      '2026-10-15'
+    );
+
+    expect(deleteSleepEntriesByEntrySourceAndDate.mock.calls).toEqual([
+      ['user-1', 'garmin', '2026-10-13', '2026-10-13'],
+      ['user-1', 'garmin', '2026-10-15', '2026-10-15'],
+    ]);
+  });
+
+  it('clears a night once when Garmin returns it twice', async () => {
+    await processGarminSleepData(
+      'user-1',
+      'user-1',
+      [night({ duration_in_seconds: 3600 }), night()],
+      '2026-10-15',
+      '2026-10-15'
+    );
+
+    expect(deleteSleepEntriesByEntrySourceAndDate).toHaveBeenCalledTimes(1);
+    expect(deleteSleepEntriesByEntrySourceAndDate).toHaveBeenCalledWith(
+      'user-1',
+      'garmin',
+      '2026-10-15',
+      '2026-10-15'
+    );
+  });
+
+  it('clears every returned night before inserting any of them', async () => {
+    await processGarminSleepData(
+      'user-1',
+      'user-1',
+      [night({ entry_date: '2026-10-14' }), night()],
+      '2026-10-14',
+      '2026-10-15'
+    );
+
+    const lastDelete = Math.max(
+      ...deleteSleepEntriesByEntrySourceAndDate.mock.invocationCallOrder
+    );
+    const firstInsert = Math.min(...processSleepEntry.mock.invocationCallOrder);
+    expect(lastDelete).toBeLessThan(firstInsert);
+  });
+
+  it('leaves the table alone for an entry without a calendar entry_date', async () => {
+    await processGarminSleepData(
+      'user-1',
+      'user-1',
+      [night({ entry_date: undefined })],
+      '2026-10-15',
+      '2026-10-15'
+    );
+
+    expect(deleteSleepEntriesByEntrySourceAndDate).not.toHaveBeenCalled();
+    expect(processSleepEntry).toHaveBeenCalledTimes(1);
+  });
 });

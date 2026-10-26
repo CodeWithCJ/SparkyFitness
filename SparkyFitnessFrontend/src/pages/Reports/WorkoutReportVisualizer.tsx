@@ -34,6 +34,13 @@ interface WorkoutStep {
   weightUnit?: WorkoutWeightUnit;
 }
 
+// Garmin sends weightValue -1 for "no weight"; keep in sync with
+// garminActivityProcessor.ts.
+const hasStepWeight = (
+  step: WorkoutStep
+): step is WorkoutStep & { weightValue: number } =>
+  typeof step.weightValue === 'number' && step.weightValue > 0;
+
 interface WorkoutSegment {
   segmentOrder?: number;
   workoutSteps?: WorkoutStep[];
@@ -91,7 +98,10 @@ const WorkoutReportVisualizer = ({
 
   const totalVolume =
     allExecutableSteps.reduce((total, step) => {
-      if (step.weightValue && step.endCondition?.conditionTypeKey === 'reps') {
+      if (
+        hasStepWeight(step) &&
+        step.endCondition?.conditionTypeKey === 'reps'
+      ) {
         const weight = convertWeight(
           step.weightValue,
           step.weightUnit?.unitKey === 'pound' ? 'lbs' : 'kg',
@@ -117,7 +127,7 @@ const WorkoutReportVisualizer = ({
     if (step.exerciseName) {
       const exerciseName = step.exerciseName;
       const setName = `Set ${stepIndex + 1}`;
-      const weight = step.weightValue
+      const weight = hasStepWeight(step)
         ? convertWeight(
             step.weightValue,
             step.weightUnit?.unitKey === 'pound' ? 'lbs' : 'kg',
@@ -141,15 +151,13 @@ const WorkoutReportVisualizer = ({
   const today = formatDateToYYYYMMDD(new Date());
 
   allExecutableSteps.forEach((step) => {
-    if (step.exerciseName) {
+    if (step.exerciseName && hasStepWeight(step)) {
       const exerciseName = step.exerciseName;
-      const weight = step.weightValue
-        ? convertWeight(
-            step.weightValue,
-            step.weightUnit?.unitKey === 'pound' ? 'lbs' : 'kg',
-            'kg'
-          )
-        : 0;
+      const weight = convertWeight(
+        step.weightValue,
+        step.weightUnit?.unitKey === 'pound' ? 'lbs' : 'kg',
+        'kg'
+      );
       const reps = step.endConditionValue || 0;
       const oneRM = weight * (1 + reps / 30);
 
@@ -291,7 +299,7 @@ const WorkoutReportVisualizer = ({
                       <span>{step.endCondition?.conditionTypeKey}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {step.weightValue
+                      {hasStepWeight(step)
                         ? formatWeight(
                             convertWeight(
                               step.weightValue,

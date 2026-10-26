@@ -95,6 +95,25 @@ type IndividualSession = Extract<
   { type: 'individual' }
 >;
 type PresetSession = Extract<ExerciseSessionResponse, { type: 'preset' }>;
+type PresetExercise = PresetSession['exercises'][number];
+
+const presetExercise = (
+  overrides: Partial<PresetExercise> &
+    Pick<PresetExercise, 'exercise_id' | 'calories_burned'>
+): PresetExercise => ({
+  id: overrides.id ?? overrides.exercise_id ?? 'entry',
+  duration_minutes: 0,
+  entry_date: '2026-03-20',
+  notes: null,
+  distance: null,
+  avg_heart_rate: null,
+  source: null,
+  sets: [],
+  exercise_snapshot: null,
+  activity_details: [],
+  superset_group: null,
+  ...overrides,
+});
 
 /** Format a number the same way the source does (runtime-locale toLocaleString). */
 const fmt = (n: number) => n.toLocaleString();
@@ -475,6 +494,30 @@ describe('workoutSession', () => {
   });
 
   describe('getSessionCalories', () => {
+    it('counts calories_applied instead of calories_burned, including 0', () => {
+      expect(
+        getSessionCalories(
+          makeIndividual({ calories_burned: 425, calories_applied: 0 })
+        )
+      ).toBe(0);
+      const preset = makePreset({
+        exercises: [
+          presetExercise({
+            exercise_id: 'ex-1',
+            calories_burned: 475,
+            calories_applied: 100,
+          }),
+          presetExercise({
+            id: 'entry-2',
+            exercise_id: 'ex-2',
+            calories_burned: 50,
+            calories_applied: null,
+          }),
+        ],
+      });
+      expect(getSessionCalories(preset)).toBe(150);
+    });
+
     it('sums exercise calories for preset sessions', () => {
       const session = makePreset({
         exercises: [

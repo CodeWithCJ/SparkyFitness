@@ -25,6 +25,8 @@ export const heartRateZoneSettingsResponseSchema = z.object({
   resting_heart_rate: z.number().int().nullable(),
   method: hrZoneMethodSchema,
   custom_floors: z.array(z.number().int()).length(HR_ZONE_COUNT).nullable(),
+  /** Five zones or four tiers in the app's displays. */
+  display_zones: z.union([z.literal(4), z.literal(5)]),
 });
 export type HeartRateZoneSettingsResponse = z.infer<
   typeof heartRateZoneSettingsResponseSchema
@@ -82,6 +84,7 @@ export const updateHeartRateZonesBodySchema = z
       .optional(),
     method: hrZoneMethodSchema.optional(),
     custom_floors: z.array(z.number().int()).nullable().optional(),
+    display_zones: z.union([z.literal(4), z.literal(5)]).optional(),
     reset: z.boolean().optional(),
   })
   .superRefine((body, ctx) => {

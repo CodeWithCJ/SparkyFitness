@@ -1,9 +1,11 @@
+import { APIError } from 'better-auth/api';
 import { log } from '../config/logging.js';
 import userRepository from '../models/userRepository.js';
 import { auth } from '../auth.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
 import { dbContextStorage } from '../db/poolManager.js';
+import { isConnectionError } from '../db/connectRetry.js';
 import {
   getCachedSession,
   setCachedSession,
@@ -13,6 +15,7 @@ import {
   isApiKeyReadOnly,
   isRequestAllowedForReadOnlyKey,
 } from '../utils/apiKeyScope.js';
+const authUnavailableRetryAfterSeconds = 5;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const authenticate = async (req: any, res: any, next: any) => {
   //log("debug", `authenticate middleware: req.path = ${req.path}, req.headers.cookie = ${req.headers.cookie}`);
@@ -168,6 +171,27 @@ const authenticate = async (req: any, res: any, next: any) => {
     }
     if (code === 'USAGE_EXCEEDED') {
       return res.status(429).json({ error: 'API key usage limit exceeded.' });
+    }
+    // Only Better Auth's own 4xx answers mean there is no valid identity.
+    // Anything else thrown here means the identity could not be checked (no
+    // check in this block refuses by throwing), and a 401 would make clients
+    // sign the user out over a database restart or a server bug. Better Auth
+    // reports any failure of its session lookup, a lost database included, as
+    // a 500 APIError without the cause, so that counts as unavailable too.
+    const status = error instanceof APIError ? error.statusCode : undefined;
+    const rejected =
+      typeof status === 'number' && status >= 400 && status < 500;
+    if (!rejected) {
+      if (
+        isConnectionError(error) ||
+        (typeof status === 'number' && status >= 500)
+      ) {
+        res.set('Retry-After', String(authUnavailableRetryAfterSeconds));
+        return res
+          .status(503)
+          .json({ error: 'Authentication is temporarily unavailable.' });
+      }
+      return res.status(500).json({ error: 'Internal Server Error' });
     }
   }
   // No valid authentication found

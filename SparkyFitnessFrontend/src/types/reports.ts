@@ -82,6 +82,7 @@ export interface DailyExerciseEntry {
   entry_date: string;
   duration_minutes: number;
   calories_burned: number;
+  calories_applied?: number | null;
   notes?: string;
   exercises: Exercise; // Use the comprehensive Exercise interface
   exercise_entry_id?: string; // New field
@@ -97,7 +98,7 @@ export interface DailyExerciseEntry {
     rest_time?: number; // seconds
     notes?: string;
   }[];
-  [key: string]: string | number | boolean | object | undefined;
+  [key: string]: string | number | boolean | object | null | undefined;
 }
 
 export interface ExerciseDashboardData extends ExerciseDashboardSummary {

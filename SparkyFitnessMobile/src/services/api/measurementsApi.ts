@@ -419,6 +419,33 @@ export const fetchDailyVo2Max = async (
   return response?.data ?? [];
 };
 
+/**
+ * Daily heart rate metrics from /api/generic-health/metrics.
+ */
+export const fetchDailyHeartRateMetrics = async (
+  startDate: string,
+  endDate: string
+): Promise<
+  {
+    entry_date: string;
+    resting_heart_rate: number | null;
+    heart_rate_recovery_1min?: number | null;
+  }[]
+> => {
+  const response = await apiFetch<{
+    data: {
+      entry_date: string;
+      resting_heart_rate: number | null;
+      heart_rate_recovery_1min?: number | null;
+    }[];
+  }>({
+    endpoint: `/api/generic-health/metrics?startDate=${startDate}&endDate=${endDate}`,
+    serviceName: 'Measurements API',
+    operation: 'fetch daily heart rate metrics',
+  });
+  return response?.data ?? [];
+};
+
 export const fetchCustomMeasurementsByDate = async (
   date: string
 ): Promise<CustomMeasurementEntry[]> => {

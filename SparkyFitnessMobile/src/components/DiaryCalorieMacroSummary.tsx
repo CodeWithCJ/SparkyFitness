@@ -266,7 +266,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
         </View>
         <CalorieBar
           eaten={eaten}
-          goal={goal}
+          goal={goal > 0 ? eaten + remaining : 0}
           remaining={remaining}
           progressPercent={progress / 100}
         />

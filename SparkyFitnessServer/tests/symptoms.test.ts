@@ -7,6 +7,7 @@ import symptomRepository from '../models/symptomRepository.js';
 import type {
   SymptomDefinitionRow,
   SymptomEntryWithDetails,
+  SymptomEntryWrite,
 } from '../models/symptomRepository.js';
 import symptomOptionRepository from '../models/symptomOptionRepository.js';
 import symptomService, {
@@ -124,6 +125,18 @@ function entryRow(
     photo_ids: [],
     ...overrides,
   };
+}
+
+/**
+ * The fields updateEntry writes: those it sends plus those it works out from
+ * `stored`, the entry as the update finds it under the row lock.
+ */
+function written(
+  call: Parameters<typeof symptomRepository.updateSymptomEntry>,
+  stored: SymptomEntryWithDetails
+): SymptomEntryWrite {
+  const [, , data, , fromCurrent] = call;
+  return { ...data, ...fromCurrent?.(stored) };
 }
 
 describe('Symptom Pattern Hints Shared Logic', () => {
@@ -443,6 +456,59 @@ describe('Symptom Repository', () => {
     ).toBeNull();
     const sqls = mockClient.query.mock.calls.map((c: unknown[]) => c[0]);
     expect(sqls).toContain('ROLLBACK');
+  });
+
+  it('updateSymptomEntry works out fromCurrent from the row it locked', async () => {
+    const stored = entryRow({ severity: 4 });
+    mockClient.query.mockImplementation(async (sql: string) =>
+      sql.includes('FOR UPDATE') || sql.includes('UPDATE symptom_entries')
+        ? { rows: [stored] }
+        : { rows: [] }
+    );
+    const fromCurrent = vi.fn(() => ({ peak_severity: 9 }));
+
+    await symptomRepository.updateSymptomEntry(
+      'testUser',
+      UID,
+      { severity: 9 },
+      undefined,
+      fromCurrent
+    );
+
+    expect(fromCurrent).toHaveBeenCalledWith(stored);
+    const sqls: string[] = mockClient.query.mock.calls.map(
+      (c: unknown[]) => c[0] as string
+    );
+    const lock = sqls.findIndex((q) => q.includes('FOR UPDATE'));
+    const update = sqls.findIndex((q) =>
+      q.trimStart().startsWith('UPDATE symptom_entries')
+    );
+    expect(sqls.indexOf('BEGIN')).toBeLessThan(lock);
+    expect(lock).toBeLessThan(update);
+    expect(sqls[update]).toContain('peak_severity');
+  });
+
+  it('updateSymptomEntry returns null without updating when the locked entry is missing', async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+    const fromCurrent = vi.fn(() => ({}));
+
+    expect(
+      await symptomRepository.updateSymptomEntry(
+        'testUser',
+        UID,
+        { severity: 1 },
+        undefined,
+        fromCurrent
+      )
+    ).toBeNull();
+    expect(fromCurrent).not.toHaveBeenCalled();
+    const sqls: string[] = mockClient.query.mock.calls.map(
+      (c: unknown[]) => c[0] as string
+    );
+    expect(sqls).toContain('ROLLBACK');
+    expect(
+      sqls.some((q) => q.trimStart().startsWith('UPDATE symptom_entries'))
+    ).toBe(false);
   });
 
   it('listSymptomEntries applies every filter', async () => {
@@ -866,21 +932,20 @@ describe('Symptom Service', () => {
   });
 
   it('updateEntry appends a timeline point and recomputes the peak for an episode', async () => {
-    vi.spyOn(symptomRepository, 'getSymptomEntry').mockResolvedValue(
-      entryRow({
-        started_at: new Date('2026-06-25T09:00:00Z'),
-        severity: 7,
-        peak_severity: 7,
-        severity_timeline: [{ at: '2026-06-25T09:00:00.000Z', severity: 7 }],
-      })
-    );
+    const stored = entryRow({
+      started_at: new Date('2026-06-25T09:00:00Z'),
+      severity: 7,
+      peak_severity: 7,
+      severity_timeline: [{ at: '2026-06-25T09:00:00.000Z', severity: 7 }],
+    });
+    vi.spyOn(symptomRepository, 'getSymptomEntry').mockResolvedValue(stored);
     const update = vi
       .spyOn(symptomRepository, 'updateSymptomEntry')
       .mockResolvedValue(entryRow());
 
     await symptomService.updateEntry('testUser', UID, { severity: 3 });
 
-    const write = update.mock.calls[0][2];
+    const write = written(update.mock.calls[0], stored);
     expect(write.severity_timeline).toHaveLength(2);
     expect(write.severity_timeline?.[1].severity).toBe(3);
     // The peak reflects the whole episode, not the latest reading.
@@ -888,14 +953,13 @@ describe('Symptom Service', () => {
   });
 
   it('updateEntry does not append to severity_timeline when severity is unchanged', async () => {
-    vi.spyOn(symptomRepository, 'getSymptomEntry').mockResolvedValue(
-      entryRow({
-        started_at: new Date('2026-06-25T09:00:00Z'),
-        severity: 7,
-        peak_severity: 7,
-        severity_timeline: [{ at: '2026-06-25T09:00:00.000Z', severity: 7 }],
-      })
-    );
+    const stored = entryRow({
+      started_at: new Date('2026-06-25T09:00:00Z'),
+      severity: 7,
+      peak_severity: 7,
+      severity_timeline: [{ at: '2026-06-25T09:00:00.000Z', severity: 7 }],
+    });
+    vi.spyOn(symptomRepository, 'getSymptomEntry').mockResolvedValue(stored);
     const update = vi
       .spyOn(symptomRepository, 'updateSymptomEntry')
       .mockResolvedValue(entryRow());
@@ -905,25 +969,24 @@ describe('Symptom Service', () => {
       context_text: 'updated note',
     });
 
-    const write = update.mock.calls[0][2];
+    const write = written(update.mock.calls[0], stored);
     expect(write.severity_timeline).toBeUndefined();
   });
 
   it('updateEntry appends an impact point when an episode impact changes', async () => {
-    vi.spyOn(symptomRepository, 'getSymptomEntry').mockResolvedValue(
-      entryRow({
-        started_at: new Date('2026-06-25T09:00:00Z'),
-        impact: 'severe',
-        impact_timeline: [{ at: '2026-06-25T09:00:00.000Z', impact: 'severe' }],
-      })
-    );
+    const stored = entryRow({
+      started_at: new Date('2026-06-25T09:00:00Z'),
+      impact: 'severe',
+      impact_timeline: [{ at: '2026-06-25T09:00:00.000Z', impact: 'severe' }],
+    });
+    vi.spyOn(symptomRepository, 'getSymptomEntry').mockResolvedValue(stored);
     const update = vi
       .spyOn(symptomRepository, 'updateSymptomEntry')
       .mockResolvedValue(entryRow());
 
     await symptomService.updateEntry('testUser', UID, { impact: 'mild' });
 
-    const write = update.mock.calls[0][2];
+    const write = written(update.mock.calls[0], stored);
     expect(write.impact).toBe('mild');
     expect(write.impact_timeline).toHaveLength(2);
     expect(write.impact_timeline?.[0].impact).toBe('severe');
@@ -935,22 +998,27 @@ describe('Symptom Service', () => {
       .spyOn(symptomRepository, 'updateSymptomEntry')
       .mockResolvedValue(entryRow());
 
+    const episode = entryRow({
+      started_at: new Date('2026-06-25T09:00:00Z'),
+      impact: 'mild',
+      impact_timeline: [{ at: '2026-06-25T09:00:00.000Z', impact: 'mild' }],
+    });
     vi.spyOn(symptomRepository, 'getSymptomEntry').mockResolvedValueOnce(
-      entryRow({
-        started_at: new Date('2026-06-25T09:00:00Z'),
-        impact: 'mild',
-        impact_timeline: [{ at: '2026-06-25T09:00:00.000Z', impact: 'mild' }],
-      })
+      episode
     );
     await symptomService.updateEntry('testUser', UID, { impact: 'mild' });
-    expect(update.mock.calls[0][2].impact_timeline).toBeUndefined();
+    expect(
+      written(update.mock.calls[0], episode).impact_timeline
+    ).toBeUndefined();
 
+    const quickLog = entryRow({ impact: 'mild' });
     vi.spyOn(symptomRepository, 'getSymptomEntry').mockResolvedValueOnce(
-      entryRow({ impact: 'mild' })
+      quickLog
     );
     await symptomService.updateEntry('testUser', UID, { impact: 'severe' });
-    expect(update.mock.calls[1][2].impact).toBe('severe');
-    expect(update.mock.calls[1][2].impact_timeline).toBeUndefined();
+    const write = written(update.mock.calls[1], quickLog);
+    expect(write.impact).toBe('severe');
+    expect(write.impact_timeline).toBeUndefined();
   });
 
   it('updateEntry never changes the source of a row', async () => {

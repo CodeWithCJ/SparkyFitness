@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import {
@@ -11,10 +12,14 @@ import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
 import { UserCustomNutrient } from '@/types/customNutrient';
 import type { GlycemicIndex, NumericFoodVariantKeys } from '@/types/food';
 import type { FormFoodVariant } from '@/utils/foodForm';
+import { saltGramsToSodiumMg, sodiumMgToSaltGrams } from '@/utils/saltSodium';
 import { useTranslation } from 'react-i18next';
 import { NumericInput } from '../NumericInput';
 
 import i18n from 'i18next';
+
+/** How the sodium field is typed: as the stored sodium (mg) or as the salt (g) printed on a label. */
+type SodiumEntryUnit = 'sodium_mg' | 'salt_g';
 const GLYCEMIC_INDEX_OPTIONS: { value: GlycemicIndex; label: string }[] = [
   {
     value: 'None',
@@ -131,6 +136,11 @@ export function NutrientGrid({
   onRemove,
 }: NutrientGridProps) {
   const { t } = useTranslation();
+  // European labels print salt in grams where the record stores sodium in mg.
+  // The toggle only changes how the sodium field is typed; the value handed to
+  // onUpdate is always sodium (mg), so saving and every consumer are unchanged.
+  const [sodiumEntryUnit, setSodiumEntryUnit] =
+    useState<SodiumEntryUnit>('sodium_mg');
   // Auto-Scale (is_locked) controls whether changing the serving size rescales
   // the nutrition values; it no longer disables the inputs, so the user can
   // auto-scale and still edit any value directly. A manual edit re-captures the
@@ -199,6 +209,70 @@ export function NutrientGrid({
           decimals={0}
           onChange={update('calories')}
         />
+      );
+    }
+
+    // --- Sodium, typed either as sodium (mg) or as label salt (g) ---
+    if (key === 'sodium') {
+      const sodiumCfg = CENTRAL_NUTRIENT_CONFIG['sodium'];
+      const sodiumLabel = sodiumCfg
+        ? `${t(sodiumCfg.label, { defaultValue: sodiumCfg.defaultLabel })} (${sodiumCfg.unit})`
+        : t('nutrition.sodium', 'Sodium') + ' (mg)';
+      const sodiumDecimals = sodiumCfg?.decimals ?? 1;
+      const asSalt = sodiumEntryUnit === 'salt_g';
+      const inputId = gridId(variantIndex, 'sodium');
+      return (
+        <div className="flex h-full flex-col gap-1">
+          <Label htmlFor={inputId} className="flex-1">
+            {asSalt
+              ? t('foodSearch.nutrientFormGrid.saltG', 'Salt (g)')
+              : sodiumLabel}
+          </Label>
+          <div className="flex gap-1">
+            <NumericInput
+              id={inputId}
+              className="min-w-0 flex-1"
+              step={asSalt ? '0.01' : '0.1'}
+              min="0"
+              value={
+                asSalt ? sodiumMgToSaltGrams(variant.sodium) : variant.sodium
+              }
+              decimals={asSalt ? 2 : sodiumDecimals}
+              onValueChange={(val) =>
+                update('sodium')(asSalt ? saltGramsToSodiumMg(val) : val)
+              }
+              placeholder="0"
+            />
+            <Select
+              value={sodiumEntryUnit}
+              onValueChange={(val: SodiumEntryUnit) => setSodiumEntryUnit(val)}
+            >
+              <SelectTrigger
+                id={gridId(variantIndex, 'sodium-entry-unit')}
+                className="w-24 shrink-0"
+                aria-label={t(
+                  'foodSearch.nutrientFormGrid.sodiumEntryUnit',
+                  'Enter sodium as'
+                )}
+              >
+                {/* Short word in the trigger; the field label above carries the unit. */}
+                <SelectValue>
+                  {asSalt
+                    ? t('foodSearch.nutrientFormGrid.saltShort', 'salt')
+                    : t('foodSearch.nutrientFormGrid.sodiumShort', 'sodium')}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sodium_mg">
+                  {t('foodSearch.nutrientFormGrid.sodiumOption', 'Sodium (mg)')}
+                </SelectItem>
+                <SelectItem value="salt_g">
+                  {t('foodSearch.nutrientFormGrid.saltOption', 'Salt (g)')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       );
     }
 

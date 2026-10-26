@@ -22,6 +22,7 @@ import type {
 import {
   resolveSupplementTotals,
   addSupplementCustomNutrients,
+  computeCalorieProgress,
 } from '@workspace/shared';
 import type { WaterIntake } from '../types/measurements';
 
@@ -84,20 +85,25 @@ export function buildDailySummary(
   const remainingCalories = calorieGoal - netCalories;
 
   const fallbackRemaining = calorieGoal - caloriesConsumed;
-  const resolvedCalorieBalance: CalorieBalance = calorieBalance ?? {
+  const balance: CalorieBalance = calorieBalance ?? {
     eaten: Math.round(caloriesConsumed),
     burned: Math.round(caloriesBurned),
     remaining: Math.round(fallbackRemaining),
     goal: Math.round(calorieGoal),
     net: Math.round(netCalories),
-    progress:
-      calorieGoal > 0
-        ? Math.max(0, Math.round((caloriesConsumed / calorieGoal) * 100))
-        : 0,
+    progress: 0,
     bmr: 0,
     bmrSource: 'formula' as const,
     exerciseSource: 'none',
     tdeeProjection: null,
+  };
+  // Older servers report net calories / base goal here. Derive the food-budget
+  // percentage from their authoritative totals so every mobile surface agrees.
+  const resolvedCalorieBalance: CalorieBalance = {
+    ...balance,
+    progress: Math.round(
+      computeCalorieProgress(balance.eaten, balance.remaining)
+    ),
   };
 
   return {

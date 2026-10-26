@@ -130,6 +130,16 @@ export const vo2MaxRangeQueryKeyRoot = ['vo2MaxRange'] as const;
 export const vo2MaxRangeQueryKey = (startDate: string, endDate: string) =>
   [...vo2MaxRangeQueryKeyRoot, startDate, endDate] as const;
 
+export const heartRateRangeQueryKeyRoot = ['heartRateRange'] as const;
+
+export const heartRateRangeQueryKey = (startDate: string, endDate: string) =>
+  [...heartRateRangeQueryKeyRoot, startDate, endDate] as const;
+
+export const heartRateReportQueryKeyRoot = ['heartRateReport'] as const;
+
+export const heartRateReportQueryKey = (startDate: string, endDate: string) =>
+  [...heartRateReportQueryKeyRoot, startDate, endDate] as const;
+
 export const waterIntakeRangeQueryKey = (startDate: string, endDate: string) =>
   ['waterIntakeRange', startDate, endDate] as const;
 
@@ -191,6 +201,10 @@ export const latestManualCustomEntriesRootQueryKey = [
 /** Latest manual value per custom category on or before the day. */
 export const latestManualCustomEntriesQueryKey = (date: string) =>
   [...latestManualCustomEntriesRootQueryKey, date] as const;
+
+/** Synced workouts that may match a logged workout, and its current link. */
+export const calorieLinkQueryKey = (entryId: string) =>
+  ['calorieLink', entryId] as const;
 
 export const exerciseHistoryQueryKey = ['exerciseHistory'] as const;
 
@@ -342,6 +356,11 @@ export const trainingLoadRootQueryKey = ['trainingLoad'] as const;
 export const trainingLoadQueryKey = (today: string) =>
   [...trainingLoadRootQueryKey, today] as const;
 
+export const runEstimatesQueryKey = (today: string) =>
+  ['runEstimates', today] as const;
+export const fitnessFatigueQueryKey = (today: string) =>
+  ['fitnessFatigue', today] as const;
+
 export const cardioSessionsQueryKey = (
   startDate: string,
   endDate: string,
@@ -441,7 +460,11 @@ export const runningRecordsQueryKey = () =>
 
 /** The person's run program and place in it (server-backed). */
 export const runProgramQueryKey = ['runProgram'] as const;
+/** The person's running fitness tests and the paces they gave (server-backed). */
+export const fitnessTestsQueryKey = ['fitnessTests'] as const;
 
+/** The person's weekly running distance target and race (server-backed). */
+export const runGoalsQueryKey = ['runGoals'] as const;
 /** The person's own saved run programs. */
 export const customRunProgramsQueryKey = ['customRunPrograms'] as const;
 

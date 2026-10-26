@@ -246,7 +246,7 @@ describe('routes API', () => {
     expect(gpx.headers['content-type']).toContain('application/gpx+xml');
     expect(gpx.text).toContain('<trkpt lat="40" lon="-74">');
     expect(gpx.headers['content-disposition']).toMatch(
-      /^attachment; filename="[^"]+\.gpx"/
+      /^attachment; filename="?[^";]+\.gpx"?/
     );
   });
 

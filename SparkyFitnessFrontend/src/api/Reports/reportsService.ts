@@ -3,6 +3,8 @@ import { ExerciseDashboardData, ReportResponse } from '@/types/reports';
 import type {
   AlcoholWeekResponse,
   HydrationNutritionRangeResponse,
+  FitnessFatigueResponse,
+  RunningEstimatesResponse,
   TrainingConsistency,
   WorkoutDaysResponse,
 } from '@workspace/shared';
@@ -55,6 +57,28 @@ export const getTrainingConsistency = async (
   if (userId) params.append('userId', userId);
   const query = params.toString();
   return apiCall(`/reports/training-consistency${query ? `?${query}` : ''}`, {
+    method: 'GET',
+  });
+};
+
+export const getFitnessFatigue = async (
+  userId?: string
+): Promise<FitnessFatigueResponse> => {
+  const params = new URLSearchParams();
+  if (userId) params.append('userId', userId);
+  const query = params.toString();
+  return apiCall(`/reports/fitness-fatigue${query ? `?${query}` : ''}`, {
+    method: 'GET',
+  });
+};
+
+export const getRunEstimates = async (
+  userId?: string
+): Promise<RunningEstimatesResponse> => {
+  const params = new URLSearchParams();
+  if (userId) params.append('userId', userId);
+  const query = params.toString();
+  return apiCall(`/reports/run-estimates${query ? `?${query}` : ''}`, {
     method: 'GET',
   });
 };

@@ -51,6 +51,7 @@ const AuthenticationSettings: React.FC = () => {
     if (!settings) return;
 
     const newSettings = { ...settings, [id]: checked };
+    const isVersionCheck = id === 'enable_version_check';
 
     updateSettings(newSettings, {
       onSuccess: () => {
@@ -59,19 +60,29 @@ const AuthenticationSettings: React.FC = () => {
             'admin.authenticationSettings.settingsSaved',
             'Settings Saved'
           ),
-          description: t(
-            'admin.authenticationSettings.loginSettingUpdated',
-            'Login setting updated successfully.'
-          ),
+          description: isVersionCheck
+            ? t(
+                'admin.authenticationSettings.versionCheckUpdated',
+                'Release check setting updated successfully.'
+              )
+            : t(
+                'admin.authenticationSettings.loginSettingUpdated',
+                'Login setting updated successfully.'
+              ),
         });
       },
       onError: () => {
         toast({
           title: t('admin.authenticationSettings.error', 'Error'),
-          description: t(
-            'admin.authenticationSettings.failedToSaveLoginSettings',
-            'Failed to save login settings.'
-          ),
+          description: isVersionCheck
+            ? t(
+                'admin.authenticationSettings.failedToSaveVersionCheck',
+                'Failed to save the release check setting.'
+              )
+            : t(
+                'admin.authenticationSettings.failedToSaveLoginSettings',
+                'Failed to save login settings.'
+              ),
           variant: 'destructive',
         });
       },
@@ -251,6 +262,29 @@ const AuthenticationSettings: React.FC = () => {
                   checked={settings.dev_tools_enabled === true}
                   onCheckedChange={(checked) =>
                     handleSwitchChange('dev_tools_enabled', checked)
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between p-4 border rounded-md">
+                <div className="flex flex-col">
+                  <Label htmlFor="enable_version_check" className="font-medium">
+                    {t(
+                      'admin.authenticationSettings.versionCheck',
+                      'Check for New Releases'
+                    )}
+                  </Label>
+                  <span className="text-sm text-muted-foreground mt-1">
+                    {t(
+                      'admin.authenticationSettings.versionCheckDescription',
+                      'Ask GitHub (api.github.com) for the latest release and tell users when a newer version is available. Turn this off if updates are managed outside the app or the server should not contact GitHub.'
+                    )}
+                  </span>
+                </div>
+                <Switch
+                  id="enable_version_check"
+                  checked={settings.enable_version_check ?? true}
+                  onCheckedChange={(checked) =>
+                    handleSwitchChange('enable_version_check', checked)
                   }
                 />
               </div>

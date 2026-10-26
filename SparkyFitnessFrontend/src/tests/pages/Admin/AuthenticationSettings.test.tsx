@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import AuthenticationSettings from '@/pages/Admin/AuthenticationSettings';
 import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
+import { toast } from '@/hooks/use-toast';
 
 jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
@@ -76,6 +77,89 @@ describe('AuthenticationSettings passkey switch', () => {
     fireEvent.click(passkeyFailSafe.querySelector('button')!);
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       'SPARKY_FITNESS_FORCE_PASSKEY_LOGIN=true'
+    );
+  });
+});
+
+describe('AuthenticationSettings release check switch', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  it('turns the release check off', () => {
+    renderWith({ enable_version_check: true });
+    const toggle = screen.getByRole('switch', {
+      name: 'Check for New Releases',
+    });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ enable_version_check: false }),
+      expect.anything()
+    );
+  });
+
+  it('shows the release check as on when the server does not report it', () => {
+    renderWith({});
+    expect(
+      screen.getByRole('switch', { name: 'Check for New Releases' })
+    ).toBeChecked();
+  });
+
+  it('turns the release check back on', () => {
+    renderWith({ enable_version_check: false });
+    const toggle = screen.getByRole('switch', {
+      name: 'Check for New Releases',
+    });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ enable_version_check: true }),
+      expect.anything()
+    );
+  });
+
+  const saveCallbacks = () =>
+    updateSettings.mock.calls[0][1] as {
+      onSuccess: () => void;
+      onError: () => void;
+    };
+
+  it('confirms a release check change with its own message', () => {
+    renderWith({ enable_version_check: true });
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Check for New Releases' })
+    );
+    saveCallbacks().onSuccess();
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'Release check setting updated successfully.',
+      })
+    );
+  });
+
+  it('reports a failed release check save with its own message', () => {
+    renderWith({ enable_version_check: true });
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Check for New Releases' })
+    );
+    saveCallbacks().onError();
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'Failed to save the release check setting.',
+        variant: 'destructive',
+      })
+    );
+  });
+
+  it('keeps the login message for the login switches', () => {
+    renderWith({ enable_passkey_login: true });
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Enable Passkey Login' })
+    );
+    saveCallbacks().onSuccess();
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: 'Login setting updated successfully.',
+      })
     );
   });
 });

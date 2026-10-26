@@ -573,7 +573,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   key="calorieRing"
                   caloriesConsumed={eaten}
                   caloriesBurned={burned}
-                  calorieGoal={goal}
+                  calorieGoal={eaten + remaining}
                   remainingCalories={remaining}
                   progressPercent={progress / 100}
                 />
@@ -882,6 +882,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                     sleep={trends.sleep}
                     hydration={trends.hydration}
                     calories={trends.calories}
+                    heartRate={trends.heartRate}
                     vo2max={trends.vo2max}
                     range={trendsRange}
                     weightUnit={weightUnit}

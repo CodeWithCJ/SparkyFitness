@@ -3,8 +3,9 @@ import {
   type CompareMetricKey,
   type CompareQuestion,
   type CompareSinceResponse,
-  SINCE_STRETCH_MIN_DAYS,
-  SINCE_STRETCH_MIN_VALUES,
+  sinceAlreadyChanging,
+  sinceVerdictCase,
+  type SinceVerdictCase,
 } from '@workspace/shared';
 import type { Translator } from '../constants/reports';
 import { formatLocalizedNumber } from '../localization';
@@ -98,25 +99,18 @@ export function sinceSentence(q: SinceKeys, t: Translator): string {
 }
 
 /**
- * Why there is no answer yet. The server needs 28 days and 14 days with a
- * value in each stretch. Before is never longer than since, so a start under
- * 28 days ago leaves both short: that is about the days since the start,
- * whichever stretch the server named. Otherwise the named stretch is short of
- * values, or (before only) the records begin too close to the start.
+ * Why there is no answer yet, from the case `sinceVerdictCase` picks
+ * (`shared/src/compare/sinceVerdict.ts`): the days since a recent start, the
+ * days before it, or the stretch's days with a value.
  */
 function notEnoughCopy(
-  result: CompareSinceResponse['result'],
+  verdict: Extract<SinceVerdictCase, { kind: 'notEnough' }>,
   start: string,
   outcome: string,
   t: Translator
 ): { headline: string; detail: string } {
-  const { since } = result;
-  const sinceTooShort =
-    since !== undefined && since.days < SINCE_STRETCH_MIN_DAYS;
-  const side =
-    sinceTooShort || result.reason !== 'fewBefore' ? 'since' : 'before';
   const headline =
-    side === 'before'
+    verdict.side === 'before'
       ? t('compareReport.since.fewBeforeHeadline', {
           defaultValue: 'Not enough before {{start}} yet',
           start,
@@ -125,35 +119,28 @@ function notEnoughCopy(
           defaultValue: 'Not enough since {{start}} yet',
           start,
         });
-  const needed = days(SINCE_STRETCH_MIN_DAYS, t);
+  const { detail } = verdict;
 
-  if (sinceTooShort) {
+  if (detail.kind === 'shortSince') {
     return {
       headline,
       detail: t('compareReport.since.shortSinceDetail', {
         defaultValue:
           "It's been {{days}} since then; an answer needs {{needed}}.",
-        days: days(since.days, t),
-        needed,
+        days: days(detail.days, t),
+        needed: days(detail.needed, t),
       }),
     };
   }
-  const stretch = result[side];
-  const valueDays = stretch?.valueDays ?? 0;
-  const length = stretch?.days ?? 0;
-  if (
-    side === 'before' &&
-    valueDays >= SINCE_STRETCH_MIN_VALUES &&
-    length < SINCE_STRETCH_MIN_DAYS
-  ) {
+  if (detail.kind === 'shortBefore') {
     return {
       headline,
       detail: t('compareReport.since.shortBeforeDetail', {
         defaultValue:
           'Your {{outcome}} records begin {{days}} before then; an answer needs {{needed}}.',
         outcome,
-        days: days(length, t),
-        needed,
+        days: days(detail.days, t),
+        needed: days(detail.needed, t),
       }),
     };
   }
@@ -162,9 +149,9 @@ function notEnoughCopy(
     detail: t('compareReport.since.fewValuesDetail', {
       defaultValue:
         'You have {{n}} with {{outcome}}; an answer needs {{needed}}.',
-      n: days(valueDays, t),
+      n: days(detail.valueDays, t),
       outcome,
-      needed: SINCE_STRETCH_MIN_VALUES,
+      needed: detail.needed,
     }),
   };
 }
@@ -173,11 +160,11 @@ export function sinceVerdictCopy(
   response: CompareSinceResponse,
   t: Translator
 ): { headline: string; detail: string } {
-  const { result } = response;
   const key = response.outcome.key;
   const { outcome } = sinceParts(responseKeys(response), t);
+  const verdict = sinceVerdictCase(response.result);
 
-  if (result.reason === 'noStart' || result.start === null) {
+  if (verdict.kind === 'noStart') {
     return {
       headline: t('compareReport.since.noStartHeadline', {
         defaultValue: 'Pick the day you started',
@@ -190,31 +177,24 @@ export function sinceVerdictCopy(
     };
   }
 
-  const start = formatDateWithYear(result.start);
-  if (result.status === 'not_enough') {
-    return notEnoughCopy(result, start, outcome, t);
+  const start = formatDateWithYear(verdict.start);
+  if (verdict.kind === 'notEnough') {
+    return notEnoughCopy(verdict, start, outcome, t);
   }
 
-  const { before, since, diff } = result;
-  const averages =
-    before?.mean === undefined || since?.mean === undefined
-      ? null
-      : {
-          start,
-          outcome,
-          since: averageText(key, since.mean),
-          before: averageText(key, before.mean),
-        };
-  // A start over a year ago: the server compares the last year with the year before the start.
-  const lastYear = since !== undefined && since.from !== result.start;
-
-  if (result.changed && averages && diff !== undefined) {
-    const change = { ...averages, diff: changeText(key, diff, t) };
+  if (verdict.kind === 'changed') {
+    const change = {
+      start,
+      outcome,
+      since: averageText(key, verdict.since),
+      before: averageText(key, verdict.before),
+      diff: changeText(key, verdict.diff, t),
+    };
     return {
       headline: t('compareReport.since.changedHeadline', {
         defaultValue: 'Yes, it changed',
       }),
-      detail: lastYear
+      detail: verdict.lastYear
         ? t('compareReport.since.changedDetailLastYear', {
             defaultValue:
               'Over the last year, your {{outcome}} averaged {{since}} vs {{before}} in the year before you started ({{diff}}).',
@@ -228,8 +208,14 @@ export function sinceVerdictCopy(
     };
   }
   let detail = '';
-  if (averages) {
-    detail = lastYear
+  if (verdict.averages) {
+    const averages = {
+      start,
+      outcome,
+      since: averageText(key, verdict.averages.since),
+      before: averageText(key, verdict.averages.before),
+    };
+    detail = verdict.lastYear
       ? t('compareReport.since.noChangeDetailLastYear', {
           defaultValue:
             'Over the last year, your {{outcome}} averaged {{since}} vs {{before}} in the year before you started, not different enough to rule out chance.',
@@ -354,8 +340,9 @@ export function sinceDetails(
     };
   }
   const key = response.outcome.key;
-  const { before, since, regularity, diff } = result;
+  const { before, since, regularity } = result;
   const scaled = !isYesNo(key);
+  const changing = sinceAlreadyChanging(result);
 
   const typicalRange =
     scaled &&
@@ -399,9 +386,7 @@ export function sinceDetails(
           })
         : null,
     alreadyChanging:
-      result.alreadyChanging && diff !== undefined
-        ? alreadyChangingText(key, diff > 0, t)
-        : null,
+      changing === null ? null : alreadyChangingText(key, changing === 'up', t),
     stats: statsText(response, t),
   };
 }

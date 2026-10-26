@@ -5,6 +5,29 @@ import PaceReferenceCard from '../../src/components/recording/PaceReferenceCard'
 const type = (key: 'hours' | 'minutes' | 'seconds', value: string) =>
   fireEvent.changeText(screen.getByTestId(`pace-reference-${key}`), value);
 
+describe('PaceReferenceCard when collapsible', () => {
+  it('folds away behind a row until it is tapped', () => {
+    render(<PaceReferenceCard collapsible race={null} onSave={jest.fn()} />);
+    expect(screen.queryByTestId('pace-reference-minutes')).toBeNull();
+    expect(
+      screen.getByText('Add a recent race time to set your paces')
+    ).toBeTruthy();
+    fireEvent.press(screen.getByTestId('pace-reference-toggle'));
+    expect(screen.getByTestId('pace-reference-minutes')).toBeTruthy();
+  });
+
+  it('says what is saved while folded', () => {
+    render(
+      <PaceReferenceCard
+        collapsible
+        race={{ distanceKm: 5, seconds: 1500 }}
+        onSave={jest.fn()}
+      />
+    );
+    expect(screen.getByText('Saved: 5K in 25:00.')).toBeTruthy();
+  });
+});
+
 describe('PaceReferenceCard', () => {
   it('saves a 5K time as kilometres and seconds', () => {
     const onSave = jest.fn();

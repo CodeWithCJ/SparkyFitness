@@ -239,10 +239,19 @@ describe('habitRepository', () => {
     expect(params).toEqual(['user-1']);
   });
 
+  const habitStatements = () =>
+    mockClient.query.mock.calls.map(([sql]: [string]) =>
+      sql.trim().split(/\s+/).slice(0, 2).join(' ')
+    );
+  const habitCall = (prefix: string) =>
+    mockClient.query.mock.calls.find(([sql]: [string]) => sql.includes(prefix));
+
   it('upsertHabitLog updates the existing row when one exists', async () => {
-    mockClient.query
-      .mockResolvedValueOnce({ rows: [{ id: 'cm-1' }] })
-      .mockResolvedValueOnce({ rows: [] });
+    mockClient.query.mockImplementation(async (sql: string) =>
+      sql.startsWith('SELECT id FROM custom_measurements')
+        ? { rows: [{ id: 'cm-1' }] }
+        : { rows: [] }
+    );
 
     await habitRepository.upsertHabitLog(
       'user-1',
@@ -251,17 +260,20 @@ describe('habitRepository', () => {
       'true'
     );
 
-    expect(mockClient.query).toHaveBeenCalledTimes(2);
-    const [updateSql, updateParams] = mockClient.query.mock.calls[1];
-    expect(updateSql).toContain('UPDATE custom_measurements');
+    expect(habitStatements()).toEqual([
+      'BEGIN',
+      'SELECT pg_advisory_xact_lock(lock_key)',
+      'SELECT id',
+      'UPDATE custom_measurements',
+      'COMMIT',
+    ]);
+    const [, lockParams] = habitCall('pg_advisory_xact_lock');
+    expect(lockParams).toEqual(['user-1', ['habit-1'], ['2026-06-11']]);
+    const [, updateParams] = habitCall('UPDATE custom_measurements');
     expect(updateParams).toEqual(['true', 'cm-1']);
   });
 
   it('upsertHabitLog inserts when no row exists', async () => {
-    mockClient.query
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [] });
-
     await habitRepository.upsertHabitLog(
       'user-1',
       'habit-1',
@@ -269,9 +281,9 @@ describe('habitRepository', () => {
       'false'
     );
 
-    const [insertSql, insertParams] = mockClient.query.mock.calls[1];
-    expect(insertSql).toContain('INSERT INTO custom_measurements');
+    const [, insertParams] = habitCall('INSERT INTO custom_measurements');
     expect(insertParams).toEqual(['user-1', 'habit-1', 'false', '2026-06-11']);
+    expect(habitStatements().at(-1)).toBe('COMMIT');
   });
 
   it('getHabitHistory adds range clauses only for provided bounds', async () => {

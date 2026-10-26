@@ -11,8 +11,10 @@ If you want to add a new feature, you **must first raise a GitHub Issue**. Get i
 Every PR must include:
 
 - **Tests**: Automated tests for your changes if applicable.
-- **Screenshots**: Attach "Before" vs "After" screenshots for any UI changes.
-- **Quality Checks**: You must run these before submitting:
+- **Validation proof**: Attach screenshots or a screen recording showing the change working (before/after for UI changes). It saves maintainers from re-testing by hand and gets your PR merged faster.
+- **One SQL migration per PR**: Keep a single idempotent migration file and edit it in place as the PR evolves. CI fails PRs with more than one.
+- **AI assistance**: Pick one option in the PR template. It tells maintainers how closely to review and is not a judgment on AI use. You remain responsible for fully understanding what you submit.
+- **Quality Checks**: CI enforces these, so run them locally first:
   - **Frontend**: Run `pnpm format && pnpm test && pnpm validate` in `SparkyFitnessFrontend/`
   - **Backend**: Run `pnpm format && pnpm test && pnpm validate` in `SparkyFitnessServer/`
   - **Mobile**: Run `pnpm test && pnpm validate` in `SparkyFitnessMobile/`
@@ -32,7 +34,7 @@ Every PR must include:
 
 1. Fork the repo and create a branch.
 2. Commit your changes using [Conventional Commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, `chore:`, …). Release versions are derived from them: `feat:` bumps the minor version, `fix:` the patch, and `feat!:` or a `BREAKING CHANGE:` footer the major.
-3. Submit a PR with the required screenshots and test confirmation.
+3. Submit a PR with validation proof (screenshots or a recording) and test confirmation.
 
 ### 4. Automated PR Validation
 

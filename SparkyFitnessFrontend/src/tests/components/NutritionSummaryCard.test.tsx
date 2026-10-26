@@ -4,6 +4,7 @@ import NutritionSummaryCard from '@/pages/Diary/NutritionSummaryCard';
 import { DEFAULT_GOALS } from '@/constants/goals';
 
 let mockShowNetCarbs = false;
+let mockVisibleNutrients = ['carbs'];
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -18,7 +19,7 @@ jest.mock('@/contexts/PreferencesContext', () => ({
       {
         view_group: 'summary',
         platform: 'desktop',
-        visible_nutrients: ['carbs'],
+        visible_nutrients: mockVisibleNutrients,
       },
     ],
     showNetCarbs: mockShowNetCarbs,
@@ -68,6 +69,7 @@ const renderSummary = () =>
 describe('NutritionSummaryCard net carbs summary', () => {
   beforeEach(() => {
     mockShowNetCarbs = false;
+    mockVisibleNutrients = ['carbs'];
   });
 
   it('shows total carbohydrates by default', () => {
@@ -84,5 +86,32 @@ describe('NutritionSummaryCard net carbs summary', () => {
     expect(screen.getByText('Net Carbs')).toBeInTheDocument();
     expect(screen.getByText('22.0g')).toBeInTheDocument();
     expect(screen.getByText('of 50.0g')).toBeInTheDocument();
+  });
+});
+
+describe('NutritionSummaryCard calorie budget', () => {
+  it('uses the activity-adjusted budget for the calorie label and bar', () => {
+    mockVisibleNutrients = ['calories'];
+    const { container } = render(
+      <NutritionSummaryCard
+        selectedDate="2026-10-24"
+        dayTotals={{
+          calories: 1225,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+          dietary_fiber: 0,
+        }}
+        goals={{ ...DEFAULT_GOALS, calories: 1800 }}
+        calorieBudget={2481}
+        energyUnit="kcal"
+        convertEnergy={(value) => value}
+      />
+    );
+    expect(screen.getByText('of 2481kcal')).toBeInTheDocument();
+    const bar = container.querySelector<HTMLElement>(
+      '.h-1\\.5.rounded-full[style]'
+    );
+    expect(parseFloat(bar?.style.width ?? '0')).toBeCloseTo(49.375);
   });
 });

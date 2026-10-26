@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import SuggestedRangesCard from '../../src/components/recording/SuggestedRangesCard';
+import { fitnessTest } from '../helpers/fitnessTestFixture';
 
 const band = (fastest: number, slowest: number) => ({ fastest, slowest });
 
@@ -42,6 +43,26 @@ describe('SuggestedRangesCard', () => {
     expect(
       screen.getByText('Based on your recent race: 5K in 25:00.')
     ).toBeTruthy();
+  });
+
+  it('says the ranges came from the latest fitness test, ahead of a race', () => {
+    render(
+      <SuggestedRangesCard
+        {...base}
+        pace={{
+          work: band(290, 310),
+          easy: band(360, 405),
+          warm: band(365, 810),
+          sessions: 0,
+          race: { distanceKm: 5, seconds: 1500 },
+          fitnessTest: fitnessTest({ test_date: '2026-10-01' }),
+        }}
+      />
+    );
+    expect(
+      screen.getByText(/Based on your 5K time trial on .*October 1\./)
+    ).toBeTruthy();
+    expect(screen.queryByText(/recent race/)).toBeNull();
   });
 
   it('keeps the session wording when the ranges come from recent runs', () => {

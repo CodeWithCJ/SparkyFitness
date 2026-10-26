@@ -14,15 +14,6 @@ vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
 
-vi.mock('better-call', () => ({
-  serializeSignedCookie: vi
-    .fn()
-    .mockImplementation(
-      async (name: string, value: string) =>
-        `${name}=${value}.signature; Path=/; HttpOnly`
-    ),
-}));
-
 import { bridgeBearerAuthHeader } from '../utils/bearerAuthBridge.js';
 
 const COOKIE_NAME = 'sparky.session_token';
@@ -42,6 +33,12 @@ function cookieNames(header: string): string[] {
   return header.split(';').map((part) => part.trim().split('=')[0]);
 }
 
+/** A real HMAC signature follows the token: `<token>.<base64 signature>`. */
+function expectSignedSession(value: string | undefined, token: string) {
+  expect(value?.startsWith(`${token}.`)).toBe(true);
+  expect(value?.slice(token.length + 1)).toMatch(/^[A-Za-z0-9%_-]{20,}$/);
+}
+
 function cookieValue(header: string, name: string): string | undefined {
   for (const part of header.split(';')) {
     const trimmed = part.trim();
@@ -57,8 +54,9 @@ describe('bridgeBearerAuthHeader', () => {
 
     await bridgeBearerAuthHeader(req);
 
-    expect(cookieValue(req.headers.cookie as string, COOKIE_NAME)).toBe(
-      `${SESSION_A}.signature`
+    expectSignedSession(
+      cookieValue(req.headers.cookie as string, COOKIE_NAME),
+      SESSION_A
     );
     expect(req.headers.authorization).toBeUndefined();
   });
@@ -79,7 +77,7 @@ describe('bridgeBearerAuthHeader', () => {
     expect(cookieNames(header).filter((n) => n === COOKIE_NAME)).toHaveLength(
       1
     );
-    expect(cookieValue(header, COOKIE_NAME)).toBe(`${SESSION_A}.signature`);
+    expectSignedSession(cookieValue(header, COOKIE_NAME), SESSION_A);
     expect(header).not.toContain(SESSION_B);
   });
 
@@ -94,7 +92,7 @@ describe('bridgeBearerAuthHeader', () => {
     const header = req.headers.cookie as string;
     expect(cookieValue(header, 'theme')).toBe('dark');
     expect(cookieValue(header, 'locale')).toBe('es');
-    expect(cookieValue(header, COOKIE_NAME)).toBe(`${SESSION_A}.signature`);
+    expectSignedSession(cookieValue(header, COOKIE_NAME), SESSION_A);
   });
 
   it('leaves a valueless cookie part intact', async () => {

@@ -93,6 +93,12 @@ jobs:
               f === `${mobileLocalesRoot}en/translation.json`
             );
             const hasSQLChanges = changedFiles.some(f => f.includes('rls_policies.sql'));
+            const migrationFiles = policy.getMigrationFiles(files);
+            const migrationAddsTable = policy.addsTable(files);
+
+            // Self-reported, so it only tells maintainers how closely to review. Owner, bots and
+            // automation branches are exempt like the license box.
+            const ai = policy.getAiAssistance(body);
 
             // ---- Checkbox helpers ----
             // checked: "- [x] **<str>". present: same line ticked or not — a missing box means the
@@ -108,14 +114,17 @@ jobs:
 
             // ---- Labels ----
             const toAdd = [];
-            if (/^fix(\(.+\))?:/i.test(title)      || isIssue)      toAdd.push('bug');
-            if (/^feat(\(.+\))?:/i.test(title)     || isNewFeature) toAdd.push('enhancement');
-            if (/^docs(\(.+\))?:/i.test(title)     || isDocs)       toAdd.push('documentation');
-            if (/^refactor(\(.+\))?:/i.test(title) || isRefactor)   toAdd.push('refactor');
-            if (/^security(\(.+\))?:/i.test(title))                 toAdd.push('security');
+            if (/^fix(\(.+\))?!?:/i.test(title)      || isIssue)      toAdd.push('bug');
+            if (/^feat(\(.+\))?!?:/i.test(title)     || isNewFeature) toAdd.push('enhancement');
+            if (/^docs(\(.+\))?!?:/i.test(title)     || isDocs)       toAdd.push('documentation');
+            if (/^refactor(\(.+\))?!?:/i.test(title) || isRefactor)   toAdd.push('refactor');
+            if (/^security(\(.+\))?!?:/i.test(title))                 toAdd.push('security');
             if (hasFrontendChanges) toAdd.push('frontend');
             if (hasBackendChanges)  toAdd.push('backend');
             if (hasMobileChanges)   toAdd.push('mobile');
+            // Add-only on purpose: a maintainer clears it once satisfied, and an author flipping the
+            // box after the fact cannot quietly drop the flag.
+            if (ai.needsExtraReview && !licenseExempt) toAdd.push(policy.NEEDS_EXTRA_REVIEW_LABEL);
 
             if (canWrite && toAdd.length > 0) {
               await github.rest.issues.addLabels({
@@ -125,6 +134,15 @@ jobs:
                 labels: toAdd,
               });
             }
+
+            // A `feat:` title counts as a new feature even when the PR Type section was deleted, so
+            // removing it cannot skip the Alignment box. Exempt authors (owner, bots) keep relying on
+            // the PR Type box alone.
+            const requiresAlignment =
+              isNewFeature || (!licenseExempt && /^feat(\(.+\))?!?:/i.test(title));
+
+            const PROOF_ITEM = '[MANDATORY for UI changes] Validation proof';
+            const LEGACY_PROOF_ITEM = '[MANDATORY for UI changes] Screenshots';
 
             // ---- Restore deleted template checklist items ----
             // Contributors often replace the whole template with their own summary, which removes
@@ -138,28 +156,15 @@ jobs:
               },
               {
                 label: '[MANDATORY for new feature] Alignment',
-                required: isNewFeature,
+                required: requiresAlignment,
                 text: '**[MANDATORY for new feature] Alignment**: I have raised a GitHub issue and it was reviewed/approved by maintainers or it was approved on Discord.',
               },
               {
-                label: '[MANDATORY for Frontend changes] Quality',
-                required: hasFrontendChanges,
-                text: '**[MANDATORY for Frontend changes] Quality**: I have run `pnpm run validate` and it passes.',
-              },
-              {
-                label: '[MANDATORY for Backend changes] Code Quality',
-                required: hasBackendChanges,
-                text: '**[MANDATORY for Backend changes] Code Quality**: I have run typecheck, lint, and tests. New files use TypeScript, new endpoints have Zod schemas, and new endpoints include tests.',
-              },
-              {
-                label: '[MANDATORY for Backend changes] Database Security',
-                required: hasSQLChanges,
-                text: '**[MANDATORY for Backend changes] Database Security**: I have updated `rls_policies.sql` for any new user-specific tables.',
-              },
-              {
-                label: '[MANDATORY for UI changes] Screenshots',
+                label: PROOF_ITEM,
+                // Older PR descriptions carry the pre-rename "Screenshots" box; honour it.
+                aliases: [LEGACY_PROOF_ITEM],
                 required: hasFrontendChanges || hasMobileChanges,
-                text: '**[MANDATORY for UI changes] Screenshots**: I have attached Before/After screenshots below.',
+                text: `**${PROOF_ITEM}**: I have attached screenshots or a screen recording showing the change working. This saves maintainers from re-testing by hand.`,
               },
               {
                 label: '[MANDATORY for Mobile changes] Tested on device or emulator',
@@ -168,7 +173,19 @@ jobs:
               },
             ];
 
-            const missingItems = checklistItems.filter(i => i.required && !present(i.label));
+            const missingItems = checklistItems.filter(
+              i => i.required && ![i.label, ...(i.aliases || [])].some(present)
+            );
+
+            // Any AI-assistance option that was deleted comes back, so the picker is always whole.
+            const aiMissingOptions = policy.AI_ASSISTANCE_OPTIONS.filter(
+              o => !ai.present.includes(o)
+            );
+            const aiMissing = aiMissingOptions.length > 0;
+
+            // PR Type drives labels and the Alignment rule, so a deleted option comes back too.
+            const typeMissingOptions = policy.getMissingPrTypes(body);
+            const typeMissing = typeMissingOptions.length > 0;
 
             // Never rewrite the description of an exempt PR: those are our own bot-authored
             // PRs (schema sync, nix hashes, translations) and maintainer PRs, and injecting a
@@ -178,7 +195,7 @@ jobs:
             // events for GITHUB_TOKEN actions, so our own edit below cannot re-enter here.
             const senderIsSelf = context.payload.sender?.login === 'github-actions[bot]';
 
-            if (canWrite && missingItems.length > 0 && !licenseExempt && !senderIsSelf) {
+            if (canWrite && (missingItems.length > 0 || aiMissing || typeMissing) && !licenseExempt && !senderIsSelf) {
               const restored = [
                 '<!-- restored-checklist -->',
                 '---',
@@ -190,6 +207,28 @@ jobs:
                 '> no new commit is needed.',
                 '',
                 ...missingItems.map(i => `- [ ] ${i.text}`),
+                ...(typeMissing
+                  ? [
+                      '',
+                      '**PR Type (pick the one that fits):**',
+                      '',
+                      ...typeMissingOptions.map(o => `- [ ] ${o.text}`),
+                    ]
+                  : []),
+                ...(aiMissing
+                  ? [
+                      '',
+                      '**AI assistance (pick one):',
+                      '',
+                      ...aiMissingOptions.map(o => `- [ ] ${o.text}`),
+                    ]
+                  : []),
+                '',
+                `_Added back: ${[
+                  ...missingItems.map(i => i.label.replace(/^\[MANDATORY[^\]]*\]\s*/, '')),
+                  ...(typeMissing ? ['PR Type'] : []),
+                  ...(aiMissing ? ['AI assistance'] : []),
+                ].join(', ')}._`,
               ].join('\n');
 
               await github.rest.pulls.update({
@@ -199,7 +238,7 @@ jobs:
                 body: `${body.trimEnd()}\n\n${restored}\n`,
               });
 
-              core.notice(`Restored ${missingItems.length} missing checklist item(s) to the PR description.`);
+              core.notice(`Restored ${missingItems.length + (typeMissing ? 1 : 0) + (aiMissing ? 1 : 0)} missing checklist item(s) to the PR description.`);
             }
 
             // ---- Validation ----
@@ -218,14 +257,42 @@ jobs:
             }
 
             // New features
-            if (isNewFeature && !checked('[MANDATORY for new feature] Alignment')) {
+            if (requiresAlignment && !checked('[MANDATORY for new feature] Alignment')) {
               errors.push('**[MANDATORY for new features]** Check the "Alignment" checkbox.');
             }
 
-            // Frontend
-            if (hasFrontendChanges && !checked('[MANDATORY for Frontend changes] Quality')) {
-              errors.push('**[MANDATORY for Frontend changes]** Run `pnpm run validate` and check the "Quality" checkbox.');
+            // Typecheck, lint, format, knip and tests are enforced by ci-tests.yml, so the
+            // template no longer asks contributors to attest to them.
+            if (!isAutomation && !policy.hasValidTitlePrefix(title)) {
+              errors.push(
+                '**[MANDATORY]** Start the PR title with a type prefix such as `feat:`, `fix:`, `docs:`, ' +
+                '`refactor:`, `security:`, `perf:`, `test:` or `chore:` (optionally scoped, e.g. `fix(mobile): ...`). ' +
+                'Labels and the release changelog are built from it.'
+              );
             }
+
+            if (migrationFiles.length > 1) {
+              errors.push(
+                `**[MANDATORY]** Only one SQL migration per PR is allowed, but this PR touches ${migrationFiles.length}: ` +
+                `${migrationFiles.map(f => '`' + f + '`').join(', ')}. ` +
+                'Fold the changes into a single idempotent migration file and edit it in place as the PR evolves.'
+              );
+            }
+            if (migrationAddsTable && !hasSQLChanges) {
+              warnings.push(
+                'A migration creates a table but `SparkyFitnessServer/db/rls_policies.sql` was not updated. ' +
+                'User-specific tables need row-level security policies (see `agent-docs/new-migration-checklist.md`).'
+              );
+            }
+
+            if (!licenseExempt) {
+              if (ai.selected.length === 0) {
+                errors.push('**[MANDATORY]** Pick one "AI assistance" option. It helps maintainers choose review depth and is not a judgment on AI use.');
+              } else if (ai.selected.length > 1) {
+                errors.push('**[MANDATORY]** Pick only one "AI assistance" option.');
+              }
+            }
+
             if (nonEnLocaleFiles.length > 0) {
               errors.push(
                 `**[MANDATORY]** Only the \`en\` translation files may be modified. ` +
@@ -234,29 +301,24 @@ jobs:
               );
             }
 
-            // Backend
-            if (hasBackendChanges && !checked('[MANDATORY for Backend changes] Code Quality')) {
-              errors.push('**[MANDATORY for Backend changes]** Check the "Code Quality" checkbox.');
-            }
-            if (hasSQLChanges && !checked('[MANDATORY for Backend changes] Database Security')) {
-              errors.push('**[MANDATORY for Backend changes]** `rls_policies.sql` was modified. Check the "Database Security" checkbox.');
-            }
-
             // Mobile
             if (hasMobileChanges && !checked('[MANDATORY for Mobile changes] Tested on device or emulator')) {
               errors.push('**[MANDATORY for Mobile changes]** Check the "Tested on device or emulator" checkbox.');
             }
 
-            // Screenshots — validate the box is backed by actual images or videos
-            const screenshotsChecked = checked('[MANDATORY for UI changes] Screenshots');
-            if (screenshotsChecked) {
+            // Validation proof — a ticked box must be backed by actual images or videos. Left
+            // unticked is allowed: not every frontend change is visible (types, tests, refactors).
+            const proofChecked = checked(PROOF_ITEM) || checked(LEGACY_PROOF_ITEM);
+            if (proofChecked) {
               const hasMedia =
                 /!\[.*?\]\(.+?\)/i.test(body) ||
                 /<(?:img|video)\s/i.test(body) ||
-                /\[[^\]]+\]\([^)]*\.(?:apng|avif|gif|jpe?g|mov|mp4|png|svg|webm)(?:[?#][^)]*)?\)/i.test(body)
+                /\[[^\]]+\]\([^)]*\.(?:apng|avif|gif|jpe?g|mov|mp4|png|svg|webm)(?:[?#][^)]*)?\)/i.test(body) ||
+                // Videos dragged into the editor land as a bare GitHub upload URL, not markdown.
+                /https:\/\/(?:github\.com\/user-attachments\/(?:assets|files)\/|(?:user-images|private-user-images)\.githubusercontent\.com\/)\S+/i.test(body)
 
               if (!hasMedia) {
-                errors.push('**[MANDATORY for UI changes]** You checked the Screenshots box but no images or videos were found in the PR body.');
+                errors.push('**[MANDATORY for UI changes]** You checked the Validation proof box but no images or videos were found in the PR body.');
               }
             }
 
@@ -328,8 +390,8 @@ jobs:
               warnings.push('Please provide a meaningful description of your changes.');
             }
 
-            if (!body.match(/Linked Issue:\s*(Closes|Fixes|Resolves)?\s*#\d+/i)) {
-              warnings.push('Please link a related GitHub issue (`Linked Issue: Closes #123`).');
+            if (!body.match(/Linked Issue:\s*(Closes|Fixes|Resolves|Part of|Related to|Relates to|Refs?)?\s*#\d+/i)) {
+              warnings.push('Please link a related GitHub issue (`Linked Issue: Closes #123`, or `Part of #123` if the issue needs more PRs).');
             }
 
             // ---- License countdown label ----
@@ -419,6 +481,7 @@ jobs:
             if (hasEnTranslationChange)  message += '- 🌐 `en` translation file modified\n';
             if (nonEnLocaleFiles.length) message += `- ⚠️ Non-English locale files modified: ${nonEnLocaleFiles.map(f => '`' + f + '`').join(', ')}\n`;
             if (hasSQLChanges)           message += '- 🗄️ `rls_policies.sql` modified\n';
+            if (migrationFiles.length)   message += `- 🗄️ SQL migration(s): ${migrationFiles.map(f => '`' + f + '`').join(', ')}\n`;
             if (!hasFrontendChanges && !hasBackendChanges && !hasMobileChanges) {
               message += '- ℹ️ No tracked directory changes detected\n';
             }

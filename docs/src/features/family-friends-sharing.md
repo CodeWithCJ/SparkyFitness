@@ -53,7 +53,9 @@ Certain tables contain private user data that is **never** accessible to any fam
 * Personal Fasting Preferences and auto-calculation configuration (`user_fasting_preferences` table)
 * Cycle & Pregnancy hub data (`cycle_settings`, `cycle_daily_entries`, `cycles`, `user_cycle_display_preferences`, `cycle_test_entries`, `pregnancies`, `pregnancy_kick_sessions`, `pregnancy_contractions`, `pregnancy_photos`, `pregnancy_checklist_state`, `health_appointments` tables) — this reproductive-health data is **never** shared or delegated, even with `can_view_reports`. It is strictly owner-only. Bump photo *files* are owner-only too: they are excluded from the public uploads URLs and can only be fetched through an authenticated request by their owner.
 * Run program (`run_programs` table): your Beginner 5K program, your place in it, the days it shows in your Diary, its first day and your goal date, and any changes the AI assistant or you made to its workouts. A training plan is personal, so it is never shared or delegated.
+* Running goals (`run_goals` table): your weekly running distance target and the race you are counting down to. Like the run program, they are personal and never shared or delegated.
 * Your own run plans (`custom_run_programs` table): plans you wrote yourself, with their names and workouts. They are personal, so they are never shared or delegated.
+* Running fitness tests (`fitness_tests` table): your 5K time trials, 30-minute runs and Cooper tests (outdoors or on a treadmill), their results and the training paces each one gave. They are personal training data, so they are never shared or delegated, and they are not available while you act on behalf of someone else.
 * Your saved routes (`routes` table): routes you drew, imported or saved from a workout, with their points and turn cues. They are personal, so they are never shared or delegated.
 
 ### 2. Tier 2: Read-Only Profile & Settings Data
@@ -61,6 +63,7 @@ The following data can be **read** by delegates who hold at least one of `can_ma
 * Profile information (`profiles` table — name, date of birth, height, avatar, etc.)
 * General preferences (`user_preferences` table — themes, units, calculation methods, the optional separate activity-calorie and exercise-adjusted percentage macro settings, calorie safety-floor settings, weekly weight-change goals, report chart scaling, heart rate zone settings (max and resting heart rate, zone method, custom zones — the Heart Rate Zones screen is also owner-only for family members), and Chat/Vision/Voice selections). Weekly weight-change goals sync across web and mobile and use the same owner-only editing rules as other calculation preferences; changing them does not grant family members additional access. Voice visibility, the System/AI selection, and the separate activity-calorie choice also sync across web and mobile. Only the owner can change them; disabling voice preserves the selected model.
 * Nutrient column display preferences (`user_nutrient_display_preferences`)
+* Calorie settings history (`user_calorie_rule_history` — the goal mode, activity level, BMR and other calorie settings in force from each change on, so past days keep the calorie target they were logged against). It is recorded automatically when the owner changes those settings; family members can see it alongside the preferences, but cannot change it.
 * Dashboard widget layout (`user_dashboard_layouts`)
 * Onboarding data and completion status (`onboarding_data`, `onboarding_status`)
 

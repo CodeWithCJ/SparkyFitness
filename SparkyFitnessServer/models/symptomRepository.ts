@@ -460,19 +460,37 @@ async function createSymptomEntry(
 
 /**
  * Applies the given fields to an entry. `treatments`, when provided, replaces the
- * entry's whole treatment list (an empty array clears it).
+ * entry's whole treatment list (an empty array clears it). `fromCurrent`, when
+ * provided, adds the fields worked out from the entry as stored, read under a
+ * row lock, so two overlapping updates both build on the other's result.
  */
 async function updateSymptomEntry(
   userId: string,
   id: string,
   data: SymptomEntryWrite,
-  treatments?: SymptomTreatmentInput[]
+  treatments?: SymptomTreatmentInput[],
+  fromCurrent?: (current: SymptomEntryRow) => SymptomEntryWrite
 ): Promise<SymptomEntryWithDetails | null> {
   const client = await getClient(userId);
   try {
     await client.query('BEGIN');
     try {
-      const { sql, params } = buildSetClause(entryColumns(data), 3);
+      let write = data;
+      if (fromCurrent) {
+        const locked = await client.query(
+          `SELECT ${ENTRY_COLS} FROM symptom_entries
+            WHERE id = $1 AND user_id = $2
+            FOR UPDATE`,
+          [id, userId]
+        );
+        const current = locked.rows[0] as SymptomEntryRow | undefined;
+        if (!current) {
+          await client.query('ROLLBACK');
+          return null;
+        }
+        write = { ...data, ...fromCurrent(current) };
+      }
+      const { sql, params } = buildSetClause(entryColumns(write), 3);
       const result = await client.query(
         `UPDATE symptom_entries
             SET ${sql ? sql + ', ' : ''}updated_at = NOW()

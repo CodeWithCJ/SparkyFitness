@@ -20,3 +20,5 @@ It appears once you have at least one run in the last twelve weeks.
 Estimates are a guide, not a promise. They run optimistic for distances you have not trained for, and heat, hills and a bad day are not in the formula.
 
 Only runs count. Walks, rides, hikes and gym cardio are left out, and so are runs with no distance. Distances use your kilometer or mile setting. The runs can come from anywhere: recorded in SparkyFitness, or imported from Apple Health, Garmin, Strava and the others.
+
+Run a [fitness test](/features/exercises/fitness-tests) for training paces that follow your fitness rather than an estimate from these runs. On the web, the Fitness tests card sits above this one.

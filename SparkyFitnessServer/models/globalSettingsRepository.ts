@@ -75,6 +75,9 @@ async function getGlobalSettings() {
     settings.public_api_docs = !!settings.public_api_docs;
     settings.dev_tools_enabled = !!settings.dev_tools_enabled;
     settings.mock_data_enabled = !!settings.mock_data_enabled;
+    // The column is NOT NULL DEFAULT TRUE; a missing row reads as off, matching
+    // isVersionCheckEnabled.
+    settings.enable_version_check = !!settings.enable_version_check;
 
     log(
       'info',
@@ -116,7 +119,8 @@ async function saveGlobalSettings(settings: any) {
                  public_api_docs = COALESCE($10, public_api_docs, false),
                  dev_tools_enabled = COALESCE($11, dev_tools_enabled, false),
                  mock_data_enabled = COALESCE($12, mock_data_enabled, false),
-                 enable_passkey_login = COALESCE($13, enable_passkey_login, true)
+                 enable_passkey_login = COALESCE($13, enable_passkey_login, true),
+                 enable_version_check = COALESCE($14, enable_version_check, true)
              WHERE id = 1
              RETURNING *`,
       [
@@ -135,6 +139,7 @@ async function saveGlobalSettings(settings: any) {
         settings.dev_tools_enabled ?? null,
         settings.mock_data_enabled ?? null,
         passkeyEnvForced ? null : (settings.enable_passkey_login ?? null),
+        settings.enable_version_check ?? null,
       ]
     );
     // Return the full truth (DB + ENV overrides)
@@ -166,7 +171,8 @@ type BooleanSettingColumn =
   | 'allow_private_network_food_providers'
   | 'public_api_docs'
   | 'dev_tools_enabled'
-  | 'mock_data_enabled';
+  | 'mock_data_enabled'
+  | 'enable_version_check';
 
 /**
  * Reads one boolean policy column from `global_settings`, failing closed.
@@ -218,6 +224,16 @@ async function isDevToolsEnabled(): Promise<boolean> {
  */
 async function isMockDataEnabled(): Promise<boolean> {
   return readBooleanSetting('mock_data_enabled');
+}
+/**
+ * Whether the server may ask GitHub for the latest release
+ * (`/api/version/latest-github`). On by default; an admin turns it off when
+ * updates are managed outside the app or the server must not contact
+ * api.github.com. Fails closed like the lookups above, so an unreadable
+ * setting skips the request instead of making it.
+ */
+async function isVersionCheckEnabled(): Promise<boolean> {
+  return readBooleanSetting('enable_version_check');
 }
 async function isUserAiConfigAllowed() {
   const client = await getSystemClient();
@@ -271,6 +287,7 @@ export {
   isPublicApiDocsAllowed,
   isDevToolsEnabled,
   isMockDataEnabled,
+  isVersionCheckEnabled,
 };
 export default {
   getGlobalSettings,
@@ -284,4 +301,5 @@ export default {
   isPublicApiDocsAllowed,
   isDevToolsEnabled,
   isMockDataEnabled,
+  isVersionCheckEnabled,
 };

@@ -535,7 +535,7 @@ describe('CalorieTargetBreakdown weight-trend units', () => {
     const { container } = render(<CalorieTargetBreakdown {...trendProps} />);
 
     expect(
-      screen.getByText(/114\.6 kg → 110\.9 kg \(-3\.72 kg across all 28 days/)
+      screen.getByText(/114\.6 kg → 110\.9 kg \(-3\.72 kg over the 27 days/)
     ).toBeInTheDocument();
     expect(screen.getByText(/= -0\.1328 kg\/day/)).toBeInTheDocument();
     expect(
@@ -554,9 +554,7 @@ describe('CalorieTargetBreakdown weight-trend units', () => {
     const { container } = render(<CalorieTargetBreakdown {...trendProps} />);
 
     expect(
-      screen.getByText(
-        /252\.6 lbs → 244\.5 lbs \(-8\.20 lbs across all 28 days/
-      )
+      screen.getByText(/252\.6 lbs → 244\.5 lbs \(-8\.20 lbs over the 27 days/)
     ).toBeInTheDocument();
     expect(screen.getByText(/= -0\.2928 lbs\/day/)).toBeInTheDocument();
     expect(
@@ -591,10 +589,43 @@ describe('CalorieTargetBreakdown weight-trend units', () => {
     const { container } = render(<CalorieTargetBreakdown {...trendProps} />);
 
     expect(
-      screen.getByText(
-        /252\.6 lbs → 244\.5 lbs \(-8\.20 lbs across all 28 days/
-      )
+      screen.getByText(/252\.6 lbs → 244\.5 lbs \(-8\.20 lbs over the 27 days/)
     ).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/\{\{/);
+  });
+});
+
+describe('CalorieTargetBreakdown adaptive checklist', () => {
+  const renderFallback = (daysOfData: number, fallbackReason: string) =>
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        previewResult={{
+          ...defaultProps.previewResult,
+          insufficientHistory: true,
+        }}
+        adaptiveTdeeData={{
+          tdee: 0,
+          isFallback: true,
+          fallbackReason,
+          daysOfData,
+        }}
+      />
+    );
+
+  it('shows the real calorie-day count as met when only the weight rule fails (#3142)', () => {
+    renderFallback(7, 'Insufficient weight entries (need at least 2)');
+    expect(screen.getByText('✓ Met (7/7 days logged)')).toBeInTheDocument();
+    expect(
+      screen.getByText('⚠️ Missing (7/14 days logged)')
+    ).toBeInTheDocument();
+  });
+
+  it('does not mark the calorie rule met below the required days', () => {
+    renderFallback(3, 'Weight entries span less than 7 days');
+    expect(
+      screen.getByText('❌ Missing (3/7 days logged)')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Met \(3\/7/)).not.toBeInTheDocument();
   });
 });

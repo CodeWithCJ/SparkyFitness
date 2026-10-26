@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,7 +14,15 @@ import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
-import { ROUTE_MAX_CUES, countRouteTurns } from '@workspace/shared';
+import {
+  DEFAULT_ROUTE_STYLE,
+  ROUTE_MAX_CUES,
+  countRouteTurns,
+  hasRouteStyleControls,
+  restrictRouteStyle,
+  type RouteStyle,
+} from '@workspace/shared';
+import RouteStyleControls from '../components/RouteStyleControls';
 import Button from '../components/ui/Button';
 import Switch from '../components/ui/Switch';
 import { useFollowRoadsRoute } from '../hooks/useFollowRoadsRoute';
@@ -25,7 +33,7 @@ import {
   saveDrawnRoute,
   saveRouteEdits,
   useRoute,
-  useRouteGenerationAvailable,
+  useRouteGenerationCapabilities,
 } from '../services/routeService';
 import {
   EMPTY_EDITOR_STATE,
@@ -91,11 +99,17 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
   const [followRoads, setFollowRoads] = useState(false);
-  const { available, isLoading: checkingCapabilities } =
-    useRouteGenerationAvailable();
+  const [style, setStyle] = useState<RouteStyle>(DEFAULT_ROUTE_STYLE);
+  const { capabilities, isLoading: checkingCapabilities } =
+    useRouteGenerationCapabilities();
+  const available = capabilities.available;
   const snapping = available && followRoads;
   const saved = useRoute(routeId ?? '');
-  const snap = useFollowRoadsRoute(snapping, editor);
+  const followStyle = useMemo(
+    () => restrictRouteStyle(style, capabilities.style),
+    [style, capabilities.style]
+  );
+  const snap = useFollowRoadsRoute(snapping, editor, followStyle);
   const line = snap.line;
   const atPointLimit = editor.points.length >= ROUTE_EDITOR_MAX_POINTS;
 
@@ -387,6 +401,16 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
                       'A routing provider is needed. Add one in Settings > External Providers on the web app.',
                   })}
                 </Text>
+              </View>
+            ) : null}
+            {snapping && hasRouteStyleControls(capabilities.style) ? (
+              <View className="mt-3">
+                <RouteStyleControls
+                  value={style}
+                  onChange={setStyle}
+                  supported={capabilities.style}
+                  activity="run"
+                />
               </View>
             ) : null}
             {snapping && snap.errorKind ? (

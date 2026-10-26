@@ -59,6 +59,16 @@ vi.mock('axios', async (importOriginal) => {
 
 const START = { lat: 40, lon: -74 };
 
+const NO_STYLE_SUPPORT = {
+  style: {
+    surface: false,
+    hilliness: false,
+    avoidSteps: false,
+    avoidBusyRoads: false,
+  },
+  maxAlternatives: 1,
+};
+
 const providerLookup =
   externalProviderRepository.getActiveProviderWithKeyByType;
 
@@ -69,6 +79,7 @@ function straightLineProvider(
 ): RoutingProvider {
   return {
     kind: 'fake',
+    capabilities: NO_STYLE_SUPPORT,
     async route(req) {
       calls.push(req);
       const points = req.locations.map((l) => ({ ...l }));
@@ -91,7 +102,7 @@ describe('generateRoute', () => {
       { lat: 40.01, lon: -74 },
       { lat: 40.01, lon: -74.01 },
     ];
-    const route = await generateRoute(straightLineProvider(1, calls), {
+    const { route } = await generateRoute(straightLineProvider(1, calls), {
       mode: 'waypoints',
       start: START,
       waypoints,
@@ -107,7 +118,7 @@ describe('generateRoute', () => {
   });
 
   it('uses the requested name', async () => {
-    const route = await generateRoute(straightLineProvider(), {
+    const { route } = await generateRoute(straightLineProvider(), {
       mode: 'waypoints',
       start: START,
       waypoints: [{ lat: 40.01, lon: -74 }],
@@ -121,13 +132,14 @@ describe('generateRoute', () => {
   it('resizes a loop that comes back too long, then stops within tolerance', async () => {
     const calls: RoutingRequest[] = [];
     // The "engine" returns 1.6x the straight-line distance of what it is asked.
-    const route = await generateRoute(straightLineProvider(1.6, calls), {
+    const { route } = await generateRoute(straightLineProvider(1.6, calls), {
       mode: 'loop',
       start: START,
       distanceM: 5000,
       shape: 'loop',
       bearingDeg: 90,
       activity: 'run',
+      alternatives: 1,
     });
     expect(calls.length).toBeGreaterThan(1);
     expect(calls.length).toBeLessThanOrEqual(3);
@@ -151,6 +163,7 @@ describe('generateRoute', () => {
       shape: 'out_and_back',
       bearingDeg: 0,
       activity: 'ride',
+      alternatives: 1,
     });
     const [from, turn, back] = calls[0].locations;
     expect(from).toEqual(START);
@@ -162,6 +175,7 @@ describe('generateRoute', () => {
   it('propagates provider failures', async () => {
     const provider: RoutingProvider = {
       kind: 'fake',
+      capabilities: NO_STYLE_SUPPORT,
       route: () =>
         Promise.reject(
           new RoutingProviderError('timeout', 'The routing engine timed out')
@@ -247,6 +261,79 @@ describe('Valhalla provider over HTTP (axios mocked)', () => {
     expect(result.points.every((p) => p.alt === undefined)).toBe(true);
   });
 
+  const routeAnswer = {
+    data: {
+      trip: {
+        summary: { length: 1.11 },
+        legs: [
+          {
+            shape: '_c`|@_gayB_c`|@?',
+            maneuvers: [{ type: 1, length: 1.11, begin_shape_index: 0 }],
+          },
+        ],
+      },
+    },
+  };
+
+  it('sends costing options for the style, and none without one', async () => {
+    post.mockImplementation(async (url: string) => {
+      if (url.endsWith('/route')) return routeAnswer;
+      throw axiosError('ECONNREFUSED');
+    });
+    await engine().route({ ...req, activity: 'run' });
+    const plain = post.mock.calls[0][1] as { costing_options?: unknown };
+    expect(plain.costing_options).toBeUndefined();
+
+    post.mockClear();
+    await engine().route({
+      ...req,
+      activity: 'run',
+      style: {
+        surface: 'trails',
+        hilliness: 'flat',
+        avoidSteps: true,
+        avoidBusyRoads: false,
+      },
+    });
+    const styled = post.mock.calls[0][1] as {
+      costing_options: { pedestrian: Record<string, number> };
+    };
+    expect(styled.costing_options.pedestrian).toMatchObject({
+      use_hills: 0,
+      use_tracks: 1,
+      step_penalty: 600,
+    });
+  });
+
+  it('measures the trail share only when asked, and survives it failing', async () => {
+    post.mockImplementation(async (url: string) => {
+      if (url.endsWith('/route')) return routeAnswer;
+      if (url.endsWith('/trace_attributes')) {
+        return {
+          data: {
+            edges: [
+              { length: 0.5, use: 'path' },
+              { length: 0.5, use: 'road', surface: 'paved' },
+            ],
+          },
+        };
+      }
+      throw axiosError('ECONNREFUSED');
+    });
+    const without = await engine().route(req);
+    expect(without.trailShare).toBeUndefined();
+    const measured = await engine().route({ ...req, measureSurface: true });
+    expect(measured.trailShare).toBeCloseTo(0.5);
+
+    post.mockImplementation(async (url: string) => {
+      if (url.endsWith('/route')) return routeAnswer;
+      throw axiosError('ECONNREFUSED');
+    });
+    const failed = await engine().route({ ...req, measureSurface: true });
+    expect(failed.trailShare).toBeNull();
+    expect(failed.distanceM).toBeCloseTo(1110);
+  });
+
   it.each([
     [axiosError('ECONNABORTED'), 'timeout'],
     [axiosError('ECONNREFUSED'), 'unreachable'],
@@ -317,6 +404,23 @@ describe('Valhalla provider over HTTP (axios mocked)', () => {
     expect(performance.now() - started).toBeLessThan(1_000);
   });
 
+  it('refuses a surface answer with too many edges without validating it', async () => {
+    post.mockImplementation(async (url: string) => {
+      if (url.endsWith('/route')) return routeAnswer;
+      if (url.endsWith('/trace_attributes')) {
+        // Bad entries, so the schema would record an issue object for each.
+        return {
+          data: { edges: Array.from({ length: 2_000_000 }, () => 'x') },
+        };
+      }
+      throw axiosError('ECONNREFUSED');
+    });
+    const started = performance.now();
+    const result = await engine().route({ ...req, measureSurface: true });
+    expect(result.trailShare).toBeNull();
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
+
   it('refuses an elevation answer longer than the route without validating it', async () => {
     post.mockImplementation(async (url: string) => {
       if (url.endsWith('/route')) {
@@ -380,7 +484,11 @@ describe('route generation endpoints', () => {
 
   beforeEach(() => {
     post.mockReset();
-    vi.mocked(providerLookup).mockReset().mockResolvedValue(providerRow);
+    vi.mocked(providerLookup)
+      .mockReset()
+      .mockImplementation(async (_user, type) =>
+        type === 'valhalla' ? providerRow : null
+      );
     vi.mocked(resolveIsAdminByUserId).mockReset().mockResolvedValue(true);
     generateRateLimiter.reset();
     actingAs = 'test-user-id';
@@ -401,12 +509,12 @@ describe('route generation endpoints', () => {
     let res = await request(app).get('/api/v2/routes/generate/capabilities');
     expect(res.body).toEqual({
       available: true,
-      maxAlternatives: 1,
+      maxAlternatives: 3,
       style: {
-        surface: false,
-        hilliness: false,
-        avoidSteps: false,
-        avoidBusyRoads: false,
+        surface: true,
+        hilliness: true,
+        avoidSteps: true,
+        avoidBusyRoads: true,
       },
       stops: false,
       source: 'provider',
@@ -446,7 +554,7 @@ describe('route generation endpoints', () => {
     expect(res.status).toBe(200);
     expect(res.body.route.source).toBe('generated');
     expect(res.body.route.points.length).toBeGreaterThan(1);
-    expect(Object.keys(res.body)).toEqual(['route']);
+    expect(Object.keys(res.body).sort()).toEqual(['options', 'route']);
   });
 
   it('refuses a delegated context', async () => {
@@ -685,7 +793,7 @@ describe('route generation endpoints with a routing provider', () => {
     res = await request(app).get('/api/v2/routes/generate/capabilities');
     expect(res.body).toMatchObject({
       available: true,
-      maxAlternatives: 1,
+      maxAlternatives: 3,
       source: 'provider',
     });
   });

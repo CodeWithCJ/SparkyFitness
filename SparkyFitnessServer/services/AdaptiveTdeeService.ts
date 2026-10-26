@@ -4,6 +4,8 @@ import measurementRepository from '../models/measurementRepository.js';
 import reportRepository from '../models/reportRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
+import calorieRuleHistoryRepository from '../models/calorieRuleHistoryRepository.js';
+import { preferencesOnDay } from './calorieRuleHistoryService.js';
 import bmrService from './bmrService.js';
 import { getAdaptiveActivityCalories } from './adaptiveActivityService.js';
 import { log } from '../config/logging.js';
@@ -13,6 +15,7 @@ import {
   dayToPickerDate,
   ENERGY_DENSITY_KCAL_PER_KG,
   ADAPTIVE_TDEE_CLAMP_KCAL,
+  ADAPTIVE_TDEE_MIN_CALORIE_DAYS,
   isUsableMeasuredBmr,
   isAdaptiveActivitySeparated,
 } from '@workspace/shared';
@@ -179,44 +182,29 @@ function computeAdaptiveTdeeFromData(
 
   const fallbackTdee = baseBmr * multiplier;
 
-  // Check if we have enough data (at least 2 weight entries separated by 7 days)
+  // The estimate looks only at closed days: the window ends the day before the
+  // calculation date, so food logged part-way through today neither counts as a
+  // full day nor moves today's budget, and a past date shows what was known then.
+  // Weights are held to the same span, so a reading taken after the calculation
+  // date (range mode fetches up to its last day) cannot count for an earlier one.
+  const windowEnd = subDays(calculationDate, 1);
+  const windowEndStr = format(windowEnd, 'yyyy-MM-dd');
+  const startDateStr = format(startDate, 'yyyy-MM-dd');
   const weightEntries = checkInMeasurements
-    .filter((m) => m.weight !== null)
+    .filter((m) => {
+      if (m.weight === null) return false;
+      const day = String(m.entry_date).slice(0, 10);
+      return day >= startDateStr && day <= windowEndStr;
+    })
     .sort(
       (a, b) =>
         new Date(a.entry_date).getTime() - new Date(b.entry_date).getTime()
     );
 
-  if (weightEntries.length < 2) {
-    return returnFallback(
-      fallbackTdee,
-      'LOW',
-      'Insufficient weight entries (need at least 2)',
-      null,
-      0
-    );
-  }
-
-  const firstWeightDate = new Date(weightEntries[0]!.entry_date);
-  const lastWeightDate = new Date(
-    weightEntries[weightEntries.length - 1]!.entry_date
-  );
-  const dayDiff = differenceInDays(lastWeightDate, firstWeightDate);
-  if (dayDiff < 7) {
-    return returnFallback(
-      fallbackTdee,
-      'LOW',
-      'Weight entries span less than 7 days',
-      null,
-      0
-    );
-  }
-
-  // --- ALGORITHM START ---
-  // 1. Interpolation & Calorie Mapping
+  // 1. Per-day weights and calories up to the last closed day
   const dayInterval = eachDayOfInterval({
     start: startDate,
-    end: calculationDate,
+    end: windowEnd,
   });
   const dailyData: DailyDataEntry[] = dayInterval.map((day) => {
     const dateStr = format(day, 'yyyy-MM-dd');
@@ -237,6 +225,48 @@ function computeAdaptiveTdeeFromData(
     return { date: day, dateStr, actualWeight, calories };
   });
 
+  // TDEE calculation window (last 28 closed days). Counted before the weight
+  // checks so a weight fallback still reports how many calorie days are logged.
+  const calculationWindow = dailyData.slice(-28);
+  const filteredCalories = calculationWindow
+    .filter((d) => d.calories >= 200) // Filter days with at least 200 kcal
+    .map((d) => d.calories);
+  const calorieDays = filteredCalories.length;
+
+  // Need at least 2 weight entries, 7 days apart, inside the calculation window.
+  const windowWeights = calculationWindow.filter(
+    (d) => d.actualWeight !== null
+  );
+  if (windowWeights.length < 2) {
+    return returnFallback(
+      fallbackTdee,
+      'LOW',
+      'Insufficient weight entries (need at least 2)',
+      null,
+      calorieDays
+    );
+  }
+  const windowDayDiff = differenceInDays(
+    windowWeights[windowWeights.length - 1]!.date,
+    windowWeights[0]!.date
+  );
+  if (windowDayDiff < 7) {
+    return returnFallback(
+      fallbackTdee,
+      'LOW',
+      'Weight entries span less than 7 days',
+      null,
+      calorieDays
+    );
+  }
+  // Span of every weight in the fetch, used for the confidence grade below.
+  const dayDiff = differenceInDays(
+    new Date(weightEntries[weightEntries.length - 1]!.entry_date),
+    new Date(weightEntries[0]!.entry_date)
+  );
+
+  // ---- ALGORITHM START ----
+  // 2. Interpolation
   // Linear Interpolation for weight
   for (let i = 0; i < dailyData.length; i++) {
     const current = dailyData[i]!;
@@ -278,7 +308,7 @@ function computeAdaptiveTdeeFromData(
     }
   }
 
-  // 2. 7-Day SMA Weight Smoothing
+  // 3. 7-Day SMA Weight Smoothing
   for (let i = 0; i < dailyData.length; i++) {
     const current = dailyData[i]!;
     if (i < 6) {
@@ -293,21 +323,14 @@ function computeAdaptiveTdeeFromData(
     current.weightTrend = sum / 7;
   }
 
-  // 3. TDEE Calculation Window (Last 28 days)
-  const calculationWindow = dailyData.slice(-28);
-  const filteredCalories = calculationWindow
-    .filter((d) => d.calories >= 200) // Filter days with at least 200 kcal
-    .map((d) => d.calories);
-  const calorieDays = filteredCalories.length;
   const lastEntry = dailyData[dailyData.length - 1];
   const currentWeightTrend =
     lastEntry && typeof lastEntry.weightTrend === 'number'
       ? Math.round(lastEntry.weightTrend * 10) / 10
       : null;
 
-  if (calorieDays < 7) {
-    const reason =
-      'Insufficient calorie logs (need at least 7 days with at least 200 kcal)';
+  if (calorieDays < ADAPTIVE_TDEE_MIN_CALORIE_DAYS) {
+    const reason = `Insufficient calorie logs (need at least ${ADAPTIVE_TDEE_MIN_CALORIE_DAYS} days with at least 200 kcal)`;
     return returnFallback(
       fallbackTdee,
       'LOW',
@@ -325,7 +348,8 @@ function computeAdaptiveTdeeFromData(
     calculationWindow[calculationWindow.length - 1]?.weightTrend ?? 0;
   const weightChange = endWeightTrend - startWeightTrend;
   const daysInWindow = calculationWindow.length;
-  const dailyWeightChange = weightChange / daysInWindow;
+  // The trend spans the gaps between the window's days, one fewer than its days.
+  const dailyWeightChange = weightChange / Math.max(1, daysInWindow - 1);
 
   // TDEE = (Avg_Daily_Intake) - (Avg_Daily_Weight_Change_kg * kcal_per_kg)
   // Losing weight on a given intake means expenditure exceeded it, so a negative
@@ -471,13 +495,19 @@ async function calculateAdaptiveTdee(
     // Fetch all necessary data in parallel
     const [
       userProfile,
-      userPreferences,
+      currentPreferences,
+      calorieRuleHistory,
       checkInMeasurements,
       nutritionData,
       latestMeasurement,
     ] = await Promise.all([
       userRepository.getUserProfile(userId),
       preferenceRepository.getUserPreferences(userId),
+      calorieRuleHistoryRepository.getCalorieRuleHistory(
+        userId,
+        endDateStr,
+        endDateStr
+      ),
       measurementRepository.getCheckInMeasurementsByDateRange(
         userId,
         startDateStr,
@@ -486,6 +516,10 @@ async function calculateAdaptiveTdee(
       reportRepository.getNutritionData(userId, startDateStr, endDateStr, []),
       measurementRepository.getLatestMeasurement(userId),
     ]);
+    // The settings in force on the calculation day, not today's (#1795).
+    const userPreferences =
+      currentPreferences &&
+      preferencesOnDay(currentPreferences, calorieRuleHistory, endDateStr);
 
     const result = computeAdaptiveTdeeFromData(
       {
@@ -563,12 +597,18 @@ async function calculateAdaptiveTdeeRange(
     const [
       userProfile,
       userPreferences,
+      calorieRuleHistory,
       checkInMeasurements,
       nutritionData,
       latestMeasurement,
     ] = await Promise.all([
       userRepository.getUserProfile(userId),
       preferenceRepository.getUserPreferences(userId),
+      calorieRuleHistoryRepository.getCalorieRuleHistory(
+        userId,
+        startDateStr,
+        endDateStr
+      ),
       measurementRepository.getCheckInMeasurementsByDateRange(
         userId,
         fetchStartDateStr,
@@ -583,11 +623,18 @@ async function calculateAdaptiveTdeeRange(
       measurementRepository.getLatestMeasurement(userId),
     ]);
 
-    const activityCaloriesByDate = isAdaptiveActivitySeparated(
-      userPreferences?.calorie_goal_adjustment_mode,
-      userPreferences?.goal_mode_calculation_method,
-      userPreferences?.adaptive_activity_separate
-    )
+    // Each day uses the settings in force on it, not today's (#1795).
+    const preferencesOn = (dateStr: string) =>
+      userPreferences &&
+      preferencesOnDay(userPreferences, calorieRuleHistory, dateStr);
+    const activityCaloriesByDate = days.some((day) => {
+      const dayPreferences = preferencesOn(format(day, 'yyyy-MM-dd'));
+      return isAdaptiveActivitySeparated(
+        dayPreferences?.calorie_goal_adjustment_mode,
+        dayPreferences?.goal_mode_calculation_method,
+        dayPreferences?.adaptive_activity_separate
+      );
+    })
       ? await getAdaptiveActivityCalories(
           userId,
           fetchStartDateStr,
@@ -603,7 +650,7 @@ async function calculateAdaptiveTdeeRange(
       const result = computeAdaptiveTdeeFromData(
         {
           profile: userProfile,
-          preferences: userPreferences,
+          preferences: preferencesOn(dateStr),
           latestMeasurement,
           checkInMeasurements: checkInMeasurements || [],
           nutritionData: nutritionData || [],

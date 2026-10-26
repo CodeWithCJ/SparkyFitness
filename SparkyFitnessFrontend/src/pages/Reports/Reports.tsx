@@ -24,6 +24,7 @@ import ExerciseReportsDashboard from '@/pages/Reports/ExerciseReportsDashboard';
 import SleepReport from '@/pages/Reports/SleepReport';
 import BodyBatteryCard from '@/pages/Reports/BodyBatteryCard';
 import RespirationCard from '@/pages/Reports/RespirationCard';
+import HeartRateAnalyticsCard from '@/pages/Reports/HeartRateAnalyticsCard';
 
 import StressChart from '@/pages/Reports/StressChart';
 import { debug, info } from '@/utils/logging';
@@ -269,6 +270,20 @@ const Reports = () => {
               />
             </ChartErrorBoundary>
           </div>
+        );
+      case 'heart-rate':
+        return (
+          <ChartErrorBoundary>
+            <HeartRateAnalyticsCard
+              startDate={startDate}
+              endDate={endDate}
+              exerciseEntries={exerciseEntries}
+              restingHeartRateData={measurementData.map((m) => ({
+                date: m.entry_date,
+                resting_heart_rate: m.resting_heart_rate ?? null,
+              }))}
+            />
+          </ChartErrorBoundary>
         );
       case 'fasting':
         return (

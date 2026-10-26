@@ -1,5 +1,10 @@
 import type { ExerciseActivityQueryItem } from '@workspace/shared';
-import { paceZonesFromSessions } from '../../src/utils/paceZones';
+import {
+  paceZoneName,
+  paceZonesFromSessions,
+  paceZonesFromTest,
+} from '../../src/utils/paceZones';
+import { fitnessTest } from '../helpers/fitnessTestFixture';
 
 const run = (
   overrides: Partial<ExerciseActivityQueryItem> = {}
@@ -83,5 +88,46 @@ describe('paceZonesFromSessions', () => {
     expect(eased.zones[0].minSecondsPerKm).toBeGreaterThan(
       base.zones[0].minSecondsPerKm
     );
+  });
+});
+
+describe('paceZonesFromTest', () => {
+  it('builds the zones from the threshold pace of the test', () => {
+    const test = fitnessTest();
+    const result = paceZonesFromTest(test)!;
+    expect(result.source).toBe('test');
+    expect(result.thresholdSecondsPerKm).toBe(test.paces.thresholdSecondsPerKm);
+    expect(result.zones.map((zone) => zone.id)).toEqual([
+      'easy',
+      'steady',
+      'threshold',
+      'interval',
+      'repetition',
+    ]);
+    expect(result.zones).toEqual(test.paces.zones);
+  });
+
+  it('re-paces the zones by the effort shift', () => {
+    const base = paceZonesFromTest(fitnessTest())!;
+    const eased = paceZonesFromTest(fitnessTest(), 0.03)!;
+    expect(eased.zones[0].minSecondsPerKm).toBeGreaterThan(
+      base.zones[0].minSecondsPerKm
+    );
+  });
+
+  it('has nothing without a test', () => {
+    expect(paceZonesFromTest(null)).toBeNull();
+  });
+});
+
+describe('paceZoneName', () => {
+  it('names every zone', () => {
+    const t = ((_key: string, options?: { defaultValue?: string }) =>
+      options?.defaultValue ?? '') as never;
+    expect(
+      (['easy', 'steady', 'threshold', 'interval', 'repetition'] as const).map(
+        (id) => paceZoneName(t, id)
+      )
+    ).toEqual(['Easy', 'Steady', 'Threshold', 'Interval', 'Repetition']);
   });
 });

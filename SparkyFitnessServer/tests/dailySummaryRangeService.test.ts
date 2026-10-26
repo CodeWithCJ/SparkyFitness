@@ -19,6 +19,9 @@ import foodRepository from '../models/foodMisc.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import bmrService from '../services/bmrService.js';
 
+vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
+  default: { getCalorieRuleHistory: async () => [] },
+}));
 vi.mock('../services/goalService.js', () => ({
   default: { getUserGoals: vi.fn(), getUserGoalsForRange: vi.fn() },
 }));

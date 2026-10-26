@@ -1,10 +1,16 @@
 import React from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import type { HeartRateBand, PaceReferenceRace } from '@workspace/shared';
+import type {
+  FitnessTestResponse,
+  HeartRateBand,
+  PaceReferenceRace,
+} from '@workspace/shared';
 import { formatLocalizedNumber } from '../../localization';
 import { formatClock } from '../../utils/gpsRecording';
 import { raceResultText } from '../../utils/paceReference';
+import { fitnessTestName } from '../../utils/fitnessTest';
+import { formatDayLabel } from '../../utils/dayLabel';
 import type { PaceBandChoice } from './PaceBandCard';
 
 export interface SuggestedRangesCardProps {
@@ -20,6 +26,8 @@ export interface SuggestedRangesCardProps {
     warm: PaceBandChoice;
     sessions: number;
     race?: PaceReferenceRace | null;
+    /** Set when they come from the latest fitness test. */
+    fitnessTest?: FitnessTestResponse | null;
     efforts?: {
       tempo?: PaceBandChoice;
       marathon?: PaceBandChoice;
@@ -112,21 +120,27 @@ const SuggestedRangesCard: React.FC<SuggestedRangesCardProps> = ({
             </Text>
           ) : null}
           <Text className="text-text-secondary text-xs mt-0.5">
-            {pace.race
-              ? t('recordActivity.suggestedRanges.paceSourceRace', {
-                  race: raceResultText(t, pace.race),
-                  defaultValue: 'Based on your recent race: {{race}}.',
+            {pace.fitnessTest
+              ? t('recordActivity.suggestedRanges.paceSourceTest', {
+                  test: fitnessTestName(t, pace.fitnessTest.test_type),
+                  date: formatDayLabel(pace.fitnessTest.test_date, 'long'),
+                  defaultValue: 'Based on your {{test}} on {{date}}.',
                 })
-              : t('recordActivity.suggestedRanges.paceSource', {
-                  count: pace.sessions,
-                  formattedCount: formatLocalizedNumber(pace.sessions),
-                  defaultValue_one:
-                    'Based on your last {{formattedCount}} session.',
-                  defaultValue_other:
-                    'Based on your last {{formattedCount}} sessions.',
-                  defaultValue:
-                    'Based on your last {{formattedCount}} sessions.',
-                })}
+              : pace.race
+                ? t('recordActivity.suggestedRanges.paceSourceRace', {
+                    race: raceResultText(t, pace.race),
+                    defaultValue: 'Based on your recent race: {{race}}.',
+                  })
+                : t('recordActivity.suggestedRanges.paceSource', {
+                    count: pace.sessions,
+                    formattedCount: formatLocalizedNumber(pace.sessions),
+                    defaultValue_one:
+                      'Based on your last {{formattedCount}} session.',
+                    defaultValue_other:
+                      'Based on your last {{formattedCount}} sessions.',
+                    defaultValue:
+                      'Based on your last {{formattedCount}} sessions.',
+                  })}
           </Text>
         </View>
       ) : null}

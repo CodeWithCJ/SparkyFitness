@@ -111,7 +111,7 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 ### Measurements & Health (Tier 1/3: Owner-Only or Delegate-Write)
 | Table | Purpose |
 |-------|---------|
-| `check_in_measurements` | Weight, body composition, BMR, and circumference measurements |
+| `check_in_measurements` | Weight, body composition, BMR, circumference measurements, and resting heart rate |
 | `check_in_photos` | Progress photos |
 | `custom_measurements` | User-defined custom measurement types |
 | `custom_categories` | User-defined measurement categories |
@@ -123,7 +123,7 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | `sleep_need_calculations` | AI sleep need calculations |
 | `daily_sleep_need` | Sleep goals calculated for the day |
 | `health_metric_samples` | Intraday wearable telemetry — heart rate, HRV, respiration, SpO2, stress, body battery, skin temperature. One JSONB-bucketed row per user/metric/day/provider (not one row per sample) |
-| `vitals_entries` | Blood pressure, blood glucose, and temperature logs |
+| `vitals_entries` | Blood pressure, blood glucose, temperature, and pulse logs |
 | `daily_health_metrics` | Daily automated wearable summary, scores, and source-timed total calories |
 
 ### Fasting, Mood, Medications, & Symptoms (Tier 1/3: Owner-Only or Delegate-Write)
@@ -156,7 +156,9 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | `cycle_test_entries` | Ovulation and pregnancy test logs |
 | `pregnancies` | Pregnancy records (due date, status) |
 | `run_programs` | A person's run program, their place in it, its Diary schedule, goal date, adjustments to it and which diary entries its workouts were done as |
+| `run_goals` | A person's weekly running distance target and the race they are counting down to |
 | `custom_run_programs` | A person's own run or walk plans: a name, the activity and an ordered list of workouts, each a list of timed steps. Starting one copies it into `run_programs` |
+| `fitness_tests` | A person's running fitness tests (5K time trial, 30-minute run, Cooper test): measurements, whether it was run outdoors or on a treadmill (and the incline), result, the training paces derived from them and the recorded activity it was run as |
 | `routes` | A person's saved routes: name, activity, source (drawn, GPX, activity), distance, elevation gain, a simplified track of points and optional turn cues |
 | `pregnancy_kick_sessions` | Fetal kick-counter sessions |
 | `pregnancy_contractions` | Contraction timer logs |
@@ -175,6 +177,7 @@ Quick reference of all tables by domain and purpose. For detailed security tier,
 | `user_custom_nutrients` | Custom nutrient definitions |
 | `user_nutrient_goal_preferences` | Per-user minimum/maximum/target goal direction override per nutrient (predefined or custom) |
 | `user_water_containers` | Configured container sizes |
+| `user_calorie_rule_history` | Calorie settings in force from each change on, so past days keep their target |
 | `user_dashboard_layouts` | Rearranged dashboard widget positions |
 | `user_medication_display_preferences` | GLP-1/Medication display preferences |
 | `user_mood_display_preferences` | Mood picker visibility settings |

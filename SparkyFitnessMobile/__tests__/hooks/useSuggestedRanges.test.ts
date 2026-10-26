@@ -1,10 +1,22 @@
 import { renderHook } from '@testing-library/react-native';
-import type { ExerciseActivityQueryItem } from '@workspace/shared';
+import type {
+  ExerciseActivityQueryItem,
+  FitnessTestResponse,
+} from '@workspace/shared';
+import { fitnessTest } from '../helpers/fitnessTestFixture';
+import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
 import { useSuggestedRanges } from '../../src/hooks/useSuggestedRanges';
 
 const mockSessions: { current: ExerciseActivityQueryItem[] } = { current: [] };
 jest.mock('../../src/hooks/useCardioSessions', () => ({
   useCardioSessions: () => ({ sessions: mockSessions.current }),
+}));
+const mockTests: { current: FitnessTestResponse[] } = { current: [] };
+jest.mock('../../src/services/fitnessTestService', () => ({
+  useFitnessTests: () => ({
+    tests: mockTests.current,
+    latest: mockTests.current[0] ?? null,
+  }),
 }));
 const mockZones: {
   current: {
@@ -46,6 +58,7 @@ const run = (id: string): ExerciseActivityQueryItem => ({
 describe('useSuggestedRanges pace', () => {
   beforeEach(() => {
     mockSessions.current = [run('a'), run('b')];
+    mockTests.current = [];
   });
 
   it('puts fast stretches in the interval zone and easy ones in the easy zone', () => {
@@ -87,6 +100,57 @@ describe('useSuggestedRanges pace', () => {
     expect(
       renderHook(() => useSuggestedRanges('walk', true)).result.current.pace
     ).not.toBeNull();
+    expect(
+      renderHook(() => useSuggestedRanges('ride', true)).result.current.pace
+    ).toBeNull();
+  });
+
+  it('uses the latest fitness test over session history and a typed race', () => {
+    mockTests.current = [fitnessTest()];
+    useAppPreferencesStore.setState({
+      paceReferenceRace: { distanceKm: 10, seconds: 3600 },
+    });
+    const { result } = renderHook(() => useSuggestedRanges('run', true));
+    const pace = result.current.pace!;
+    expect(pace.fitnessTest?.id).toBe('test-1');
+    expect(pace.race).toBeNull();
+    expect(pace.sessions).toBe(0);
+    // A 25:00 5K (5:00/km): the interval zone sits around it, easy well slower.
+    expect(pace.work.minSecondsPerKm).toBeLessThan(300);
+    expect(pace.work.maxSecondsPerKm).toBeGreaterThan(280);
+    expect(pace.easy.minSecondsPerKm).toBeGreaterThan(
+      pace.work.maxSecondsPerKm
+    );
+    expect(Object.keys(result.current.byEffort ?? {}).sort()).toEqual([
+      'easy',
+      'marathon',
+      'stride',
+      'tempo',
+    ]);
+    useAppPreferencesStore.setState({ paceReferenceRace: null });
+  });
+
+  it('re-paces the ranges from a test by the effort shift', () => {
+    mockTests.current = [fitnessTest()];
+    const base = renderHook(() => useSuggestedRanges('run', true, 0)).result
+      .current.pace!;
+    const eased = renderHook(() => useSuggestedRanges('run', true, 0.03)).result
+      .current;
+    expect(eased.pace!.easy.minSecondsPerKm).toBeGreaterThan(
+      base.easy.minSecondsPerKm
+    );
+    expect(eased.byEffort?.tempo?.minSecondsPerKm).toBeGreaterThan(
+      renderHook(() => useSuggestedRanges('run', true, 0)).result.current
+        .byEffort!.tempo!.minSecondsPerKm
+    );
+  });
+
+  it('gives a walk or ride nothing from a test', () => {
+    mockTests.current = [fitnessTest()];
+    mockSessions.current = [];
+    expect(
+      renderHook(() => useSuggestedRanges('walk', true)).result.current.pace
+    ).toBeNull();
     expect(
       renderHook(() => useSuggestedRanges('ride', true)).result.current.pace
     ).toBeNull();
