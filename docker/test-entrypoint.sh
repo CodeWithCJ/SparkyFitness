@@ -20,6 +20,9 @@ assert_eq() {
 
 assert_eq "root path is unchanged" "/" "$(normalize_base_path "/" 2>/dev/null)"
 assert_eq "already-normalized sub-path is unchanged" "/sparky/" "$(normalize_base_path "/sparky/" 2>/dev/null)"
+assert_eq "protocol-relative path is rejected" "/" "$(normalize_base_path "//sparky/" 2>/dev/null)"
+assert_eq "protocol-relative path without trailing slash is rejected" "/" "$(normalize_base_path "//sparky" 2>/dev/null)"
+assert_eq "multiple leading slashes are rejected" "/" "$(normalize_base_path "///sparky/" 2>/dev/null)"
 assert_eq "missing trailing slash is appended" "/sparky/" "$(normalize_base_path "/sparky" 2>/dev/null)"
 assert_eq "missing leading slash is prepended" "/sparky/" "$(normalize_base_path "sparky" 2>/dev/null)"
 assert_eq "missing both slashes are added" "/sparky/" "$(normalize_base_path "sparky/" 2>/dev/null)"

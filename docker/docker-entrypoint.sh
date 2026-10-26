@@ -13,8 +13,8 @@ normalize_base_path() {
         echo "WARNING: SPARKY_BASE_PATH should end with '/'; using '${value}/'" >&2
         value="${value}/"
     fi
-    if [[ ! "$value" =~ ^/[A-Za-z0-9._~/-]*$ ]] || [[ "$value" == *".."* ]]; then
-        echo "WARNING: SPARKY_BASE_PATH contains characters outside [A-Za-z0-9._~/-] or a '..' path segment; ignoring and using '/'" >&2
+    if [[ ! "$value" =~ ^/[A-Za-z0-9._~/-]*$ ]] || [[ "$value" == //* ]] || [[ "$value" == *".."* ]]; then
+        echo "WARNING: SPARKY_BASE_PATH starts with '//', contains characters outside [A-Za-z0-9._~/-] or a '..' path segment; ignoring and using '/'" >&2
         value="/"
     fi
     echo "$value"
