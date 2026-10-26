@@ -9,6 +9,12 @@ jest.mock('@/api/api', () => ({
   apiCall: jest.fn(),
 }));
 
+jest.mock('@/lib/auth-client', () => ({
+  authClient: {
+    useSession: () => ({ refetch: jest.fn() }),
+  },
+}));
+
 jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'user-1', activeUserId: 'user-1' } }),
 }));

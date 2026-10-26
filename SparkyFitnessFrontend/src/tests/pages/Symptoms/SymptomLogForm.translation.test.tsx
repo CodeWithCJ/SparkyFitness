@@ -4,6 +4,12 @@ import SymptomLogForm from '@/pages/Symptoms/SymptomLogForm';
 import { simulatePageTranslation } from '../../utils/simulatePageTranslation';
 import { buildHooksMock, resetSymptomHooks } from './symptomTestKit';
 
+jest.mock('@/lib/auth-client', () => ({
+  authClient: {
+    useSession: () => ({ refetch: jest.fn() }),
+  },
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, fallback?: string) => fallback ?? key,
