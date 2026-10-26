@@ -293,6 +293,26 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
     rollingLookbackDays: 2,
   },
   {
+    id: 'overnightBodyTemperature',
+    labelKey: 'healthMetrics.overnightBodyTemperature',
+    defaultLabel: 'Overnight Body Temperature',
+    stateKey: 'isOvernightBodyTemperatureSyncEnabled',
+    preferenceKey: 'syncOvernightBodyTemperatureEnabled',
+    recordType: 'OvernightBodyTemperature',
+    unit: 'celsius',
+    icon: require('../assets/icons/health-metrics/body_temperature.png'),
+    // Reads Body Temperature inside each sleep session, so it needs both.
+    permissions: [
+      { accessType: 'read', recordType: 'BodyTemperature' },
+      { accessType: 'read', recordType: 'SleepSession' },
+    ],
+    type: 'skin_temperature',
+    platforms: ['ios'],
+    category: 'Vitals',
+    // The night's value is known only after waking, so look back a couple of days.
+    rollingLookbackDays: 2,
+  },
+  {
     id: 'distance',
     labelKey: 'healthMetrics.distance',
     defaultLabel: 'Distance',
@@ -1184,6 +1204,10 @@ export function getHealthMetricLabel(
     case 'bodyTemperature':
       return t('healthMetrics.bodyTemperature', {
         defaultValue: 'Body Temperature',
+      });
+    case 'overnightBodyTemperature':
+      return t('healthMetrics.overnightBodyTemperature', {
+        defaultValue: 'Overnight Body Temperature',
       });
     case 'sleepingWristTemperature':
       return t('healthMetrics.sleepingWristTemperature', {

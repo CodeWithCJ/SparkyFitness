@@ -26,9 +26,11 @@ import {
 import { getSyncStartDate } from '../../utils/syncUtils';
 import { getDeviceTimezone } from '../../utils/dateUtils';
 import {
+  aggregateSleepSessions,
   toLocalDateString,
   mapDayStatisticsToMinMaxAvg,
 } from './dataAggregation';
+import { overnightBodyTemperatures } from './overnightBodyTemperature';
 import { BLOOD_GLUCOSE_MG_DL_PER_MMOL_L } from '../shared/dataTransformation';
 import {
   WATCH_SESSION_METADATA_KEY,
@@ -241,6 +243,7 @@ const HEALTHKIT_UNIT_MAP: Record<string, string> = {
   BodyTemperature: 'degC',
   BasalBodyTemperature: 'degC',
   SleepingWristTemperature: 'degC',
+  OvernightBodyTemperature: 'degC',
   BloodGlucose: 'mg/dL',
   HeartRateVariabilitySDNN: 'ms',
   // Add other metrics that need explicit units as needed
@@ -262,6 +265,8 @@ export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   BodyTemperature: 'HKQuantityTypeIdentifierBodyTemperature',
   SleepingWristTemperature:
     'HKQuantityTypeIdentifierAppleSleepingWristTemperature',
+  // Body Temperature read against the person's sleep, one mean per night.
+  OvernightBodyTemperature: 'HKQuantityTypeIdentifierBodyTemperature',
   BloodGlucose: 'HKQuantityTypeIdentifierBloodGlucose',
   OxygenSaturation: 'HKQuantityTypeIdentifierOxygenSaturation',
   Vo2Max: 'HKQuantityTypeIdentifierVO2Max',
@@ -2053,9 +2058,65 @@ const handleNutrition: RecordHandler = async (
   return [...correlationRecords, ...looseRecords];
 };
 
+// Body Temperature (a smart ring writes it through the night) as one reading per
+// night: the mean of the readings inside each sleep session. The stored Body
+// Temperature value is one per day, so the night is worked out here from the raw
+// readings. Emits pre-aggregated { value, date, timestamp } records that the
+// shared transformer passes through as the metric's `skin_temperature` type.
+const handleOvernightBodyTemperature: RecordHandler = async (
+  identifier,
+  startDate,
+  endDate,
+  telemetry
+) => {
+  const sleepRecords = await handleSleepSession(
+    HEALTHKIT_TYPE_MAP.SleepSession,
+    startDate,
+    endDate,
+    telemetry
+  );
+  const sessions = aggregateSleepSessions(
+    sleepRecords as Parameters<typeof aggregateSleepSessions>[0]
+  );
+  if (sessions.length === 0) return [];
+
+  const spanStart = new Date(
+    Math.min(...sessions.map((s) => Date.parse(s.bedtime)))
+  );
+  const spanEnd = new Date(
+    Math.max(...sessions.map((s) => Date.parse(s.wake_time)))
+  );
+  if (
+    !Number.isFinite(spanStart.getTime()) ||
+    !Number.isFinite(spanEnd.getTime())
+  ) {
+    return [];
+  }
+
+  const samples = await queryQuantitySamples(
+    identifier as Parameters<typeof queryQuantitySamples>[0],
+    {
+      ascending: false,
+      limit: 0,
+      unit: HEALTHKIT_UNIT_MAP.OvernightBodyTemperature,
+      filter: { date: { startDate: spanStart, endDate: spanEnd } },
+    }
+  );
+  if (!Array.isArray(samples)) return [];
+
+  return overnightBodyTemperatures(
+    sessions,
+    samples.map((s) => ({
+      ms: new Date(s.startDate).getTime(),
+      celsius: s.quantity,
+    }))
+  );
+};
+
 // Registry mapping record types to their handlers
 const RECORD_HANDLERS: Record<string, RecordHandler> = {
   SleepSession: handleSleepSession,
+  OvernightBodyTemperature: handleOvernightBodyTemperature,
   Stress: handleStress,
   MindfulnessSession: handleMindfulnessSession,
   IntermenstrualBleeding: handleReproductiveHealth,

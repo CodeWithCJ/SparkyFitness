@@ -699,6 +699,7 @@
     "bodyFat": "Body Fat",
     "bodyTemperature": "Body Temperature",
     "sleepingWristTemperature": "Sleeping Wrist Temperature",
+    "overnightBodyTemperature": "Overnight Body Temperature",
     "distance": "Distance",
     "exerciseSession": "Exercise Session",
     "floorsClimbed": "Floors Climbed",
