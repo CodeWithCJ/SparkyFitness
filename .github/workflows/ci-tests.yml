@@ -9,6 +9,7 @@ on:
       - "SparkyFitnessServer/**"
       - "SparkyFitnessGarmin/**"
       - "shared/**"
+      - "docker/**"
       - ".github/workflows/ci-tests.yml"
   push:
     branches: [main]
@@ -18,6 +19,7 @@ on:
       - "SparkyFitnessServer/**"
       - "SparkyFitnessGarmin/**"
       - "shared/**"
+      - "docker/**"
       - ".github/workflows/ci-tests.yml"
 
 jobs:
@@ -44,6 +46,7 @@ jobs:
             frontend:
               - 'SparkyFitnessFrontend/**'
               - 'shared/**'
+              - 'docker/**'
             mobile:
               - 'SparkyFitnessMobile/**'
               - 'shared/**'
@@ -170,6 +173,15 @@ jobs:
           name: frontend-coverage
           path: SparkyFitnessFrontend/coverage/
           retention-days: 7
+
+      # Build output is what docker/test-entrypoint.sh's dist/ assertions check
+      # (base href, manifest, service worker denylist); validate already ran above.
+      - name: Build frontend (for docker/test-entrypoint.sh)
+        working-directory: SparkyFitnessFrontend
+        run: pnpm exec vite build
+
+      - name: Run docker entrypoint / nginx template tests
+        run: bash docker/test-entrypoint.sh
 
   mobile-tests:
     name: Mobile Tests
