@@ -7,6 +7,8 @@ aside: false
 
 Use this interactive questionnaire to quickly generate a clean, secure `.env` file tailored for your deployment.
 
+For a [sub-path deployment](/administration/reverse-proxy#deploying-at-a-sub-path), enable **Nginx, Ports & Reverse Proxy Headers** and **Server Runtime**. Set the frontend base path (e.g. `/sparky/`), include that path in **Access URL**, add the URL's origin to **Extra Trusted Origins**, and set **Better Auth URL** to the origin followed by `/api/auth`. The generator checks these settings before allowing export. Your reverse proxy must strip the frontend path before forwarding requests.
+
 <EnvGenerator />
 
 ---

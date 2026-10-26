@@ -347,6 +347,10 @@ frontend:
   # to the image entrypoint, which envsubsts it into the rendered nginx config).
   # Format: "<requests>r/s" or "<requests>r/m".
   rateLimit: 5r/s
+  # -- Sub-path to serve the frontend from when routed behind an ingress path
+  # prefix instead of a dedicated host, e.g. "/sparky/". Must end with a
+  # trailing slash. Defaults to "/" (root deployment).
+  basePath: "/"
   livenessProbe:
     httpGet:
       path: /

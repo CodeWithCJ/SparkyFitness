@@ -56,6 +56,8 @@ spec:
               value: {{ .Values.frontend.port | quote }}
             - name: NGINX_RATE_LIMIT
               value: {{ .Values.frontend.rateLimit | default "5r/s" | quote }}
+            - name: SPARKY_BASE_PATH
+              value: {{ .Values.frontend.basePath | default "/" | quote }}
             {{- if kindIs "slice" .Values.frontend.extraEnv }}
             {{- toYaml .Values.frontend.extraEnv | nindent 12 }}
             {{- else }}

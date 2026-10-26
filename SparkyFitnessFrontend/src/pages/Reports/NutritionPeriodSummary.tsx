@@ -42,6 +42,7 @@ import {
   calculateAverage,
   effectiveCalorieGoal as calorieBudgetFor,
 } from '@/utils/reportUtil';
+import { svgFragmentUrl } from '@/utils/basePath';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -931,7 +932,7 @@ const NutritionPeriodSummary = ({
                         dataKey={`${primaryNutrient}_cumulative`}
                         stroke={selectedOption?.chartColor || '#8884d8'}
                         fillOpacity={1}
-                        fill="url(#colorNutrient)"
+                        fill={svgFragmentUrl('colorNutrient')}
                         baseValue={0}
                       />
                       {selectedNutrients

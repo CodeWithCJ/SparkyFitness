@@ -9,6 +9,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Camera, Trash2 } from 'lucide-react';
+import { withBasePath } from '@/utils/basePath';
 
 interface BumpPhotoJournalProps {
   pregnancyId: string;
@@ -78,7 +79,7 @@ export default function BumpPhotoJournal({
                   // Served through the authenticated, owner-checked route (the
                   // session cookie travels with the same-origin request), not
                   // the public /uploads static mount.
-                  src={`/api/v2/pregnancy/photos/file/${p.id}`}
+                  src={withBasePath(`/api/v2/pregnancy/photos/file/${p.id}`)}
                   alt={t('pregnancy.photos.weekAlt', 'Week {{n}} bump photo', {
                     n: p.week,
                   })}

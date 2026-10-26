@@ -6,6 +6,12 @@ import type { WorkoutPreset } from '@/types/workout';
 const mockCreatePreset = jest.fn();
 const mockUseWorkoutPresets = jest.fn();
 
+jest.mock('@/lib/auth-client', () => ({
+  authClient: {
+    useSession: () => ({ refetch: jest.fn() }),
+  },
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, defaultOrValues?: string | Record<string, unknown>) => {

@@ -6,6 +6,7 @@ import type {
   LoginSettings,
 } from '@/types/auth';
 import { apiCall } from '../api';
+import { getRouterBasename, withBasePath } from '@/utils/basePath';
 
 import i18n from 'i18next';
 interface AuthError extends Error {
@@ -34,7 +35,7 @@ export interface SwitchContextResponse {
 export const requestMagicLink = async (email: string): Promise<void> => {
   const { error } = await authClient.signIn.magicLink({
     email,
-    callbackURL: window.location.origin,
+    callbackURL: window.location.origin + getRouterBasename(),
   });
   if (error) throw error;
 };
@@ -127,7 +128,7 @@ export const loginUser = async (
 export const requestPasswordReset = async (email: string): Promise<void> => {
   const { error } = await authClient.requestPasswordReset({
     email,
-    redirectTo: window.location.origin + '/reset-password',
+    redirectTo: window.location.origin + withBasePath('/reset-password'),
   });
   if (error) throw error;
 };
@@ -153,8 +154,8 @@ export const initiateOidcLogin = async ({
 }: OidcLoginParams) => {
   await authClient.signIn.sso({
     providerId: providerId,
-    callbackURL: window.location.origin,
-    errorCallbackURL: window.location.origin,
+    callbackURL: window.location.origin + getRouterBasename(),
+    errorCallbackURL: window.location.origin + getRouterBasename(),
     requestSignUp: requestSignUp,
   });
 };

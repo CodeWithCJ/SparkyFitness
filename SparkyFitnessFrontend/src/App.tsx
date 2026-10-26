@@ -27,6 +27,7 @@ import {
   createBrowserRouter,
   RouterProvider,
   Outlet,
+  useLocation,
   useNavigate,
   Navigate,
   useOutletContext,
@@ -46,6 +47,7 @@ import { error as logError } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences.ts';
 import { lazyWithChunkRecovery } from '@/utils/chunkRecovery';
 import { useTranslation } from 'react-i18next';
+import { getRouterBasename } from '@/utils/basePath';
 const Auth = lazyWithChunkRecovery(() => import('@/pages/Auth/Auth'));
 const ForgotPassword = lazyWithChunkRecovery(
   () => import('@/pages/Auth/ForgotPassword')
@@ -158,6 +160,7 @@ const Root = () => {
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
   const { data: appVersion } = useCurrentVersionQuery();
   const navigate = useNavigate();
+  const { pathname, search, hash } = useLocation();
   const invalidateGithubVersion = useInvalidateGithubVersion();
 
   const handleShowNewReleaseDialog = () => {
@@ -176,11 +179,11 @@ const Root = () => {
   };
 
   useEffect(() => {
-    if (window.location.pathname.includes('//')) {
-      const normalizedPath = window.location.pathname.replace(/\/+/g, '/');
-      navigate(normalizedPath + window.location.search, { replace: true });
+    if (pathname.includes('//')) {
+      const normalizedPath = pathname.replace(/\/+/g, '/');
+      navigate({ pathname: normalizedPath, search, hash }, { replace: true });
     }
-  }, [navigate]);
+  }, [pathname, search, hash, navigate]);
 
   return (
     <AuthProvider>
@@ -312,7 +315,7 @@ const ReportsWrapper = () => {
   return <Reports key={timezone} />;
 };
 
-const router = createBrowserRouter([
+const routes = [
   {
     Component: Root,
     ErrorBoundary: RootErrorBoundary,
@@ -388,7 +391,11 @@ const router = createBrowserRouter([
         ),
         ErrorBoundary: RootErrorBoundary,
         children: [
-          { index: true, Component: Diary, ErrorBoundary: RouteErrorBoundary },
+          {
+            index: true,
+            Component: Diary,
+            ErrorBoundary: RouteErrorBoundary,
+          },
           {
             path: 'checkin',
             Component: CheckIn,
@@ -486,7 +493,11 @@ const router = createBrowserRouter([
       { path: '*', Component: NotFound },
     ],
   },
-]);
+];
+
+const router = createBrowserRouter(routes, {
+  basename: getRouterBasename(),
+});
 
 const App = () => {
   return (

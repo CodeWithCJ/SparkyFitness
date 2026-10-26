@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -13,6 +14,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { debug, info } from '@/utils/logging';
 import { useRequestPasswordResetMutation } from '@/hooks/Auth/useAuth';
 import { getErrorMessage } from '@/utils/api';
+import { withBasePath } from '@/utils/basePath';
 
 import { useTranslation } from 'react-i18next';
 const ForgotPassword = () => {
@@ -51,7 +53,7 @@ const ForgotPassword = () => {
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <img
-              src="/images/SparkyFitness.webp"
+              src={withBasePath('/images/SparkyFitness.webp')}
               alt={t(
                 'auth.forgotPasswordPage.sparkyFitnessLogo',
                 'SparkyFitness Logo'
@@ -99,9 +101,9 @@ const ForgotPassword = () => {
               </p>
             )}
             <div className="text-center text-sm">
-              <a href="/" className="font-medium text-primary hover:underline">
+              <Link to="/" className="font-medium text-primary hover:underline">
                 {t('auth.forgotPasswordPage.backToSignIn', 'Back to Sign In')}
-              </a>
+              </Link>
             </div>
           </form>
         </CardContent>

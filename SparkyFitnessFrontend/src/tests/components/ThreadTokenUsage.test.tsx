@@ -2,6 +2,12 @@ import { render } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { ChatbotVisibilityProvider } from '@/contexts/ChatbotVisibilityContext';
 
+jest.mock('@/lib/auth-client', () => ({
+  authClient: {
+    useSession: () => ({ refetch: jest.fn() }),
+  },
+}));
+
 // thread.tsx imports assistant-ui ESM (plus markdown/attachment trees) that jest
 // cannot load from node_modules. Mock just those boundaries so the pure
 // token-usage pieces under test load in isolation. `mockAuiState` feeds the

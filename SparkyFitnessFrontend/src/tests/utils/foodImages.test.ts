@@ -7,6 +7,10 @@ import {
 import type { FoodEntry } from '@/types/food';
 
 describe('resolveFoodImageSrc', () => {
+  afterEach(() => {
+    document.head.innerHTML = '';
+  });
+
   it('passes through absolute provider URLs so they hotlink', () => {
     expect(resolveFoodImageSrc('https://cdn.example.com/a.png')).toBe(
       'https://cdn.example.com/a.png'
@@ -21,6 +25,11 @@ describe('resolveFoodImageSrc', () => {
 
   it('prefixes a bare filename with the foods upload directory', () => {
     expect(resolveFoodImageSrc('1.png')).toBe('/uploads/foods/1.png');
+  });
+
+  it('base-path-prefixes a bare filename under a sub-path deployment', () => {
+    document.head.innerHTML = '<base href="/sparky/">';
+    expect(resolveFoodImageSrc('1.png')).toBe('/sparky/uploads/foods/1.png');
   });
 
   it.each([null, undefined, '', '   ', '[]'])(

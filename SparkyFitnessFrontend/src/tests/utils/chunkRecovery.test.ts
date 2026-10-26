@@ -29,6 +29,13 @@ describe('chunkRecovery', () => {
     Object.assign(new Error('Chunk failed to load'), {
       name: 'ChunkLoadError',
     }),
+    // Firefox's wording for the same failure (reported live: issue surfaced
+    // after a sub-path deployment was rebuilt mid-session, where an
+    // already-loaded page tried to dynamically import a chunk hash from the
+    // previous build that no longer exists on the server).
+    new TypeError(
+      'error loading dynamically imported module: https://example.com/assets/Index-abc123.js'
+    ),
   ])('detects stale chunk load failures', (error) => {
     expect(isStaleChunkLoadError(error)).toBe(true);
   });

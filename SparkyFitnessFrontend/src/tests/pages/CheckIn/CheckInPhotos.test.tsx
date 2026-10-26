@@ -4,6 +4,12 @@ import { CheckInPhotos } from '@/pages/CheckIn/CheckInPhotos';
 
 const deletePhoto = jest.fn();
 
+jest.mock('@/lib/auth-client', () => ({
+  authClient: {
+    useSession: () => ({ refetch: jest.fn() }),
+  },
+}));
+
 jest.mock('@/hooks/CheckIn/useCheckInPhotos', () => ({
   checkInPhotoFileUrl: (id: string) =>
     `/api/measurements/check-in-photos/file/${id}`,

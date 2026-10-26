@@ -4,6 +4,10 @@ import {
 } from '@/utils/exercises';
 
 describe('resolveExerciseImageSrc', () => {
+  afterEach(() => {
+    document.head.innerHTML = '';
+  });
+
   it('prefixes relative upload paths with /uploads/exercises/', () => {
     // Saved wger / free-exercise-db exercises persist a relative path whose
     // files are served from the uploads directory.
@@ -44,6 +48,27 @@ describe('resolveExerciseImageSrc', () => {
   it('returns an empty string for missing values', () => {
     expect(resolveExerciseImageSrc(undefined)).toBe('');
     expect(resolveExerciseImageSrc('')).toBe('');
+  });
+
+  it('prefixes a relative upload path with the configured sub-path', () => {
+    document.head.innerHTML = '<base href="/sparky/">';
+    expect(resolveExerciseImageSrc('Machine_Bicep_Curl/0.jpg')).toBe(
+      '/sparky/uploads/exercises/Machine_Bicep_Curl/0.jpg'
+    );
+  });
+
+  it('prefixes an already-rooted app path with the configured sub-path', () => {
+    document.head.innerHTML = '<base href="/sparky/">';
+    expect(
+      resolveExerciseImageSrc('/uploads/exercises/Bench_Press/0_abc123.jpg')
+    ).toBe('/sparky/uploads/exercises/Bench_Press/0_abc123.jpg');
+  });
+
+  it('does not prefix an absolute http(s) URL under a sub-path deployment', () => {
+    document.head.innerHTML = '<base href="/sparky/">';
+    expect(resolveExerciseImageSrc('http://example.com/a.png')).toBe(
+      'http://example.com/a.png'
+    );
   });
 });
 

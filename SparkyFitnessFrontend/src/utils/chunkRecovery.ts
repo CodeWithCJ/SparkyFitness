@@ -3,8 +3,9 @@ import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 const CHUNK_RECOVERY_STORAGE_PREFIX = 'sparkyfitness:chunk-recovery';
 const NEVER_RESOLVING_IMPORT = new Promise<never>(() => {});
 const STALE_CHUNK_ERROR_PATTERNS = [
-  /Failed to fetch dynamically imported module/i,
-  /Importing a module script failed/i,
+  /Failed to fetch dynamically imported module/i, // Chrome/Edge
+  /Importing a module script failed/i, // Safari
+  /error loading dynamically imported module/i, // Firefox
 ];
 
 export const CHUNK_RECOVERY_TTL_MS = 30_000;

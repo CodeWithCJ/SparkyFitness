@@ -1,4 +1,5 @@
 import { apiCall } from '@/api/api';
+import { withBasePath } from '@/utils/basePath';
 import { debug } from '@/utils/logging';
 import { getUserLoggingLevel } from '@/utils/userPreferences';
 import type { ActivityDetailsResponse } from '@/types/exercises';
@@ -299,9 +300,12 @@ export const getActivityDetails = async (
   );
 };
 export async function fetchExerciseProgressionStats(exerciseId: string) {
-  const response = await fetch(`/api/v2/exercises/${exerciseId}/stats`, {
-    credentials: 'include',
-  });
+  const response = await fetch(
+    withBasePath(`/api/v2/exercises/${exerciseId}/stats`),
+    {
+      credentials: 'include',
+    }
+  );
   if (!response.ok) return null;
   return response.json();
 }

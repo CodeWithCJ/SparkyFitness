@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useTheme } from '@/contexts/ThemeContext';
+import { svgFragmentUrl } from '@/utils/basePath';
 import { EnergyCurveData } from '@workspace/shared';
 import type React from 'react';
 import { ReactNode, useMemo } from 'react';
@@ -188,9 +189,9 @@ const EnergySchedule: React.FC<EnergyScheduleProps> = ({ data }) => {
             <Area
               type="monotone"
               dataKey="energy"
-              stroke="url(#energyStrokeGradient)"
+              stroke={svgFragmentUrl('energyStrokeGradient')}
               strokeWidth={3}
-              fill="url(#energyFillGradient)"
+              fill={svgFragmentUrl('energyFillGradient')}
               dot={false}
               activeDot={{
                 r: 5,

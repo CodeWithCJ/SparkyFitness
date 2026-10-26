@@ -69,6 +69,8 @@ const serverPort = ref("3010");
 const nginxRateLimit = ref("5r/s");
 const nginxResolver = ref("");
 const nginxListenPort = ref("80");
+const sparkyBasePath = ref("/");
+const betterAuthUrl = ref("");
 const realIpHeader = ref<
   "none" | "CF-Connecting-IP" | "X-Forwarded-For" | "True-Client-IP"
 >("none");
@@ -216,6 +218,8 @@ function rerollSecrets() {
 
 function applyPreset(preset: "simple" | "full") {
   selectedPreset.value = preset;
+  sparkyBasePath.value = "/";
+  betterAuthUrl.value = "";
   // Both branches assign every preset-controlled value. Leaving one out lets
   // the previous selection leak into the generated file — a earlier version
   // carried ALLOW_PRIVATE_NETWORK_CORS=true from one preset into another.
@@ -298,8 +302,126 @@ function setQuickUrl(url: string) {
   customFrontendUrl.value = url;
 }
 
+function parseDeploymentUrl(value: string): URL | null {
+  // These URLs are emitted as unquoted .env values; reject control characters,
+  // Compose interpolation, and credentials before URL parsing normalizes them.
+  if (
+    !/^https?:\/\//.test(value) ||
+    /[\s\u0000-\u001f\u007f\\"'`$#]/.test(value)
+  ) {
+    return null;
+  }
+  try {
+    const url = new URL(value);
+    if (
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      url.hostname.includes("*")
+    ) {
+      return null;
+    }
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+const configurationErrors = computed(() => {
+  if (!enableNetworkNginx.value) return [];
+  const errors: string[] = [];
+  const basePath = sparkyBasePath.value.trim() || "/";
+  if (
+    /[\u0000-\u001f\u007f]/.test(sparkyBasePath.value) ||
+    !/^\/(?:[A-Za-z0-9._~-]+\/)*$/.test(basePath) ||
+    basePath.includes("..") ||
+    basePath.includes("/./")
+  ) {
+    errors.push(
+      "Frontend Base Path must be / or a path such as /sparky/, with leading and trailing slashes and no empty or dot segments. Use letters, numbers, dots, hyphens, underscores or tildes only.",
+    );
+  }
+
+  const authUrl = betterAuthUrl.value
+    ? parseDeploymentUrl(betterAuthUrl.value)
+    : null;
+  if (betterAuthUrl.value && !authUrl) {
+    errors.push(
+      "Better Auth URL must be an HTTP(S) URL without credentials, whitespace, quotes, query parameters or fragments.",
+    );
+  }
+
+  if (basePath !== "/" || betterAuthUrl.value) {
+    const frontendUrl = parseDeploymentUrl(customFrontendUrl.value);
+    if (!frontendUrl) {
+      errors.push("Set Access URL to a valid HTTP(S) frontend URL.");
+    }
+    if (frontendUrl?.protocol === "https:" && authUrl?.protocol === "http:") {
+      errors.push("Use HTTPS for Better Auth URL when Access URL uses HTTPS.");
+    }
+    if (basePath !== "/") {
+      if (frontendUrl) {
+        if (
+          frontendUrl.pathname.replace(/\/+$/, "") !== basePath.slice(0, -1)
+        ) {
+          errors.push(
+            "Access URL must include the same path as Frontend Base Path.",
+          );
+        }
+        const origins = extraTrustedOrigins.value
+          .split(",")
+          .map((o) => o.trim());
+        if (
+          !enableServerRuntime.value ||
+          !origins.some(
+            (origin) => origin.replace(/\/$/, "") === frontendUrl.origin,
+          )
+        ) {
+          errors.push(
+            `Enable Server Runtime and add ${frontendUrl.origin} to Extra Trusted Origins for this sub-path deployment.`,
+          );
+        }
+        if (
+          enableServerRuntime.value &&
+          origins.some((origin) => {
+            const url = parseDeploymentUrl(origin);
+            return !url || url.pathname !== "/";
+          })
+        ) {
+          errors.push(
+            "Extra Trusted Origins must contain exact HTTP(S) origins without paths or wildcards.",
+          );
+        }
+      }
+      if (
+        !authUrl ||
+        authUrl.pathname !== "/api/auth" ||
+        (frontendUrl && authUrl.origin !== frontendUrl.origin)
+      ) {
+        errors.push(
+          "For sub-path deployment, set Better Auth URL to the Access URL origin followed by /api/auth, without the frontend sub-path.",
+        );
+      }
+    }
+  }
+  return errors;
+});
+
+const insecureTrustedOrigins = computed(
+  () =>
+    enableServerRuntime.value &&
+    customFrontendUrl.value.startsWith("https://") &&
+    extraTrustedOrigins.value.includes("http://"),
+);
+
+const exportDisabled = computed(
+  () => cryptoUnavailable.value || configurationErrors.value.length > 0,
+);
+
 // Reactive .env output
 const generatedEnv = computed(() => {
+  if (configurationErrors.value.length) return "";
   const isMinimal =
     !enableDbIdentity.value &&
     !enableServerRuntime.value &&
@@ -460,9 +582,13 @@ SPARKY_FITNESS_APP_DB_USER=${appDbUser.value}
   if (enableNetworkNginx.value) {
     out += `\n# --- Frontend & Nginx Settings ---
 SPARKY_FITNESS_FRONTEND_PORT=${frontendPort.value}
+SPARKY_BASE_PATH=${sparkyBasePath.value.trim() || "/"}
 NGINX_RATE_LIMIT=${nginxRateLimit.value}
 NGINX_LISTEN_PORT=${nginxListenPort.value}
 `;
+    if (betterAuthUrl.value) {
+      out += `BETTER_AUTH_URL=${betterAuthUrl.value}\n`;
+    }
     if (nginxResolver.value.trim()) {
       out += `NGINX_RESOLVER=${nginxResolver.value.trim()}\n`;
     }
@@ -511,7 +637,7 @@ const unsafeEnvKeys = computed(() =>
 );
 
 async function copyToClipboard() {
-  if (cryptoUnavailable.value) return;
+  if (exportDisabled.value) return;
   try {
     await navigator.clipboard.writeText(generatedEnv.value);
     copied.value = true;
@@ -533,7 +659,7 @@ async function copyToClipboard() {
 }
 
 function downloadEnvFile() {
-  if (cryptoUnavailable.value) return;
+  if (exportDisabled.value) return;
   const blob = new Blob([generatedEnv.value], {
     type: "text/plain;charset=utf-8",
   });
@@ -1000,7 +1126,10 @@ onMounted(() => {
               />
               <span class="field-hint"
                 >Comma-separated additional origins Better Auth should trust.
-                Leave blank unless you reach the app on more than one URL.</span
+                For sub-path deployments, include the Access URL origin without
+                its path, e.g. <code>https://home.example.com</code>. Otherwise,
+                leave blank unless you reach the app on more than one URL.
+                Adding an HTTP origin disables secure session cookies.</span
               >
             </div>
           </div>
@@ -1686,10 +1815,55 @@ onMounted(() => {
         </div>
         <div v-if="enableNetworkNginx" class="module-body">
           <div class="field-explanation">
-            Configure host port mappings, Nginx brute-force protection, and real
-            client IP header resolution.
+            Configure host port mappings, frontend base path, Nginx brute-force
+            protection, and real client IP header resolution.
           </div>
           <div class="grid-2">
+            <div class="form-group">
+              <label for="sparky-base-path"
+                >Frontend Base Path
+                <code class="var-badge">SPARKY_BASE_PATH</code></label
+              >
+              <input
+                id="sparky-base-path"
+                v-model="sparkyBasePath"
+                type="text"
+                class="text-input font-mono"
+                placeholder="/sparky/"
+              />
+              <span class="field-hint"
+                >Default: <code>/</code>. For <code>/sparky/</code>, include
+                <code>/sparky</code> in Access URL, enable Server Runtime and
+                add its origin to Extra Trusted Origins. Your reverse proxy must
+                strip this prefix before forwarding requests.
+                <a
+                  :href="
+                    withBase(
+                      '/administration/reverse-proxy#deploying-at-a-sub-path',
+                    )
+                  "
+                  >Sub-path setup guide</a
+                >.</span
+              >
+            </div>
+            <div class="form-group">
+              <label for="better-auth-url"
+                >Better Auth URL
+                <code class="var-badge">BETTER_AUTH_URL</code></label
+              >
+              <input
+                id="better-auth-url"
+                v-model="betterAuthUrl"
+                type="url"
+                class="text-input font-mono"
+                placeholder="https://home.example.com/api/auth"
+              />
+              <span class="field-hint"
+                >Leave blank for the default root deployment. For a sub-path,
+                use the Access URL origin followed by <code>/api/auth</code>,
+                e.g. <code>https://home.example.com/api/auth</code>.</span
+              >
+            </div>
             <div class="form-group">
               <label
                 >Frontend Host Port
@@ -1964,6 +2138,16 @@ onMounted(() => {
         >. Choose values without those characters, or wrap the value in single
         quotes in the file you save.
       </div>
+      <div v-if="configurationErrors.length" class="beta-warning" role="alert">
+        <strong>Fix these settings before copying or downloading:</strong>
+        <ul>
+          <li v-for="error in configurationErrors" :key="error">{{ error }}</li>
+        </ul>
+      </div>
+      <div v-if="insecureTrustedOrigins" class="beta-warning" role="alert">
+        An HTTP Extra Trusted Origin disables secure session cookies even though
+        Access URL uses HTTPS. Use HTTPS origins to keep cookies secure.
+      </div>
       <div v-if="cryptoUnavailable" class="beta-warning">
         ⚠️ This browser does not expose the Web Crypto API, so no secrets can be
         generated here. Generation, copying and downloading are disabled rather
@@ -1984,7 +2168,7 @@ onMounted(() => {
         <button
           type="button"
           class="action-btn primary"
-          :disabled="cryptoUnavailable"
+          :disabled="exportDisabled"
           @click="copyToClipboard"
         >
           {{ copied ? "✅ Copied to Clipboard!" : "📋 Copy .env" }}
@@ -1992,7 +2176,7 @@ onMounted(() => {
         <button
           type="button"
           class="action-btn secondary"
-          :disabled="cryptoUnavailable"
+          :disabled="exportDisabled"
           @click="downloadEnvFile"
         >
           ⬇️ Download .env File

@@ -4,6 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
 import unusedImports from 'eslint-plugin-unused-imports';
+import { noHardcodedBasePathSelectors } from './eslint-rules/noHardcodedBasePathSelectors.cjs';
 
 export default tseslint.config(
   { ignores: ['dist', 'build', 'coverage', 'node_modules'] },
@@ -130,6 +131,13 @@ export default tseslint.config(
     files: ['src/contexts/**/*.{ts,tsx}'],
     rules: {
       'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/tests/**'],
+    rules: {
+      'no-restricted-syntax': ['error', ...noHardcodedBasePathSelectors],
     },
   }
 );

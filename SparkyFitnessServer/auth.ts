@@ -24,6 +24,11 @@ import { expoSsoCookieRelay } from './utils/expoSsoCookieRelay.js';
 import { passkey } from '@better-auth/passkey';
 import { isDemoMode } from './middleware/demoGuardMiddleware.js';
 import { isEmailLoginDisabled } from './utils/emailLogin.js';
+import {
+  getFrontendSubPath,
+  withPublicAuthPrefix,
+  getSharedSsoRedirectUri,
+} from './utils/publicAuthUrl.js';
 
 const { Pool } = pg;
 /**
@@ -295,6 +300,12 @@ try {
 } catch {
   // Fall back to default
 }
+// SPARKY_FITNESS_FRONTEND_URL's path (e.g. "/sparky"), used to correct
+// Better Auth's generated public URLs (reset-password/magic-link emails,
+// SSO redirect URI) under a sub-path deployment. See utils/publicAuthUrl.ts.
+const frontendSubPath = getFrontendSubPath(
+  process.env.SPARKY_FITNESS_FRONTEND_URL
+);
 
 const auth = betterAuth({
   database: authPool,
@@ -369,7 +380,10 @@ const auth = betterAuth({
     requireEmailVerification: false,
     minPasswordLength: 8,
     sendResetPassword: async ({ user, url }) => {
-      await sendPasswordResetEmail(user.email, url);
+      await sendPasswordResetEmail(
+        user.email,
+        withPublicAuthPrefix(url, frontendSubPath)
+      );
     },
     password: {
       // Use bcrypt for compatibility with existing hashes
@@ -858,7 +872,10 @@ const auth = betterAuth({
     magicLink({
       expiresIn: 900, // 15 minutes (matches email template)
       sendMagicLink: async ({ email, url }) => {
-        await sendMagicLinkEmail(email, url);
+        await sendMagicLinkEmail(
+          email,
+          withPublicAuthPrefix(url, frontendSubPath)
+        );
       },
     }),
     // The admin plugin contributes its own user/session columns, and those are
@@ -920,6 +937,16 @@ const auth = betterAuth({
       modelName: 'sso_provider', // Map to my snake_case table
       trustEmailVerified: true, // Trust that OIDC provider emails are verified
       disableImplicitSignUp: false, // Allow implicit sign-up for OIDC users
+      // Under a sub-path deployment, register a single shared callback URL
+      // (with the sub-path) instead of the default per-provider one, since
+      // the default is built from the unprefixed internal auth base path.
+      // undefined for root deployments preserves the plugin's default
+      // per-provider callback, so already-registered OIDC providers keep
+      // working unchanged.
+      redirectURI: getSharedSsoRedirectUri(
+        process.env.SPARKY_FITNESS_FRONTEND_URL,
+        frontendSubPath
+      ),
       fields: {
         id: 'id',
         providerId: 'provider_id',
