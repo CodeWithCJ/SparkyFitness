@@ -20,7 +20,7 @@ interface SleepBiometricsProps {
 }
 
 /**
- * Overnight SpO2 and resting heart rate.
+ * Overnight SpO2, resting heart rate and HRV.
  */
 const SleepBiometrics: React.FC<SleepBiometricsProps> = ({ entry }) => {
   const { t } = useTranslation();
@@ -31,6 +31,7 @@ const SleepBiometrics: React.FC<SleepBiometricsProps> = ({ entry }) => {
 
   const percentUnit = t('sleep.percentUnit', { defaultValue: '%' });
   const bpmUnit = t('sleep.bpmUnit', { defaultValue: 'bpm' });
+  const msUnit = t('sleep.msUnit', { defaultValue: 'ms' });
 
   const rows: BiometricRow[] = [
     {
@@ -62,6 +63,13 @@ const SleepBiometrics: React.FC<SleepBiometricsProps> = ({ entry }) => {
       }),
       value: entry.resting_heart_rate,
       unit: bpmUnit,
+    },
+    {
+      key: 'overnightHrv',
+      icon: 'heart-rate',
+      label: t('sleep.overnightHrv', { defaultValue: 'Overnight HRV' }),
+      value: entry.avg_overnight_hrv,
+      unit: msUnit,
     },
   ].filter((row): row is BiometricRow => row.value != null);
 

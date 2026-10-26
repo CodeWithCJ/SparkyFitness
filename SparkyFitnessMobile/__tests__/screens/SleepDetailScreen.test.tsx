@@ -152,6 +152,23 @@ describe('SleepDetailScreen', () => {
     expect(queryByTestId('sleep-biometric-highestSpo2')).toBeNull();
   });
 
+  test('renders the overnight HRV row when the entry has an HRV value', () => {
+    const { getByTestId, getByText } = setupScreen({
+      entry: buildSleepEntry({
+        id: ENTRY_ID,
+        average_spo2_value: null,
+        lowest_spo2_value: null,
+        highest_spo2_value: null,
+        resting_heart_rate: null,
+        avg_overnight_hrv: 48,
+      }),
+    });
+
+    expect(getByTestId('sleep-biometrics')).toBeTruthy();
+    expect(getByTestId('sleep-biometric-overnightHrv')).toBeTruthy();
+    expect(getByText('48 ms')).toBeTruthy();
+  });
+
   test('leads the content with a Sleep title and the session’s date', () => {
     const { getByText, getByTestId } = setupScreen({
       entry: buildSleepEntry({ id: ENTRY_ID, entry_date: '2026-08-23' }),

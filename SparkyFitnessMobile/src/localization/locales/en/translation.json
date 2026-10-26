@@ -6412,8 +6412,10 @@
     "lowestSpo2": "Lowest SpO2",
     "highestSpo2": "Highest SpO2",
     "restingHeartRate": "Resting heart rate",
+    "overnightHrv": "Overnight HRV",
     "percentUnit": "%",
     "bpmUnit": "bpm",
+    "msUnit": "ms",
     "quality": "Sleep Quality"
   },
   "foodProvenance": {
