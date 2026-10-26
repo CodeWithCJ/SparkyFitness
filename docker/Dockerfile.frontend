@@ -39,6 +39,7 @@ COPY --from=builder /app/SparkyFitnessFrontend/dist /usr/share/nginx/html
 
 # Copy the nginx configuration template
 COPY docker/nginx.conf /etc/nginx/templates/default.conf.template
+COPY docker/security-headers.conf /etc/nginx/snippets/security-headers.conf
 
 # Copy and set up the entrypoint script
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh

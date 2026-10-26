@@ -40,6 +40,7 @@ export SPARKY_FITNESS_FRONTEND_URL="http://localhost"
 export NGINX_LISTEN_PORT="80"
 export NGINX_ACCESS_LOG="/dev/stdout"
 export NGINX_ERROR_LOG="/dev/stderr"
+export NGINX_RESOLVER="127.0.0.11"
 export SPARKY_BASE_PATH="/sparky/"
 
 envsubst "${NGINX_TEMPLATE_VARS}" < "${SCRIPT_DIR}/nginx.conf" > "$TMP_CONF"
@@ -125,6 +126,41 @@ if [[ -f "${FRONTEND_DIR}/dist/manifest.webmanifest" ]]; then
   fi
 else
   echo "SKIP: ${FRONTEND_DIR}/dist/manifest.webmanifest not found -- run 'pnpm run build' in SparkyFitnessFrontend/ first to include this check"
+fi
+
+# nginx's add_header inheritance is all-or-nothing per block: a location that
+# declares its own add_header stops inheriting the server block's security
+# headers entirely, unless it re-includes them. Statically verify the
+# invariant that keeps that working, instead of proving nginx's own
+# documented inheritance behavior by spinning up a container -- a future
+# location block forgetting the include is the regression that actually
+# matters here.
+MISSING_INCLUDE="$(awk '
+  /^[[:space:]]*location[[:space:]]/ && !in_location {
+    in_location = 1
+    loc_depth = 0
+    loc_name = $0
+    buffer = ""
+  }
+  in_location {
+    buffer = buffer $0 "\n"
+    loc_depth += gsub(/\{/, "{", $0) - gsub(/\}/, "}", $0)
+    if (loc_depth <= 0) {
+      if (buffer ~ /add_header/ && buffer !~ /include[ \t]+\/etc\/nginx\/snippets\/security-headers\.conf/) {
+        print loc_name
+      }
+      in_location = 0
+    }
+  }
+' "$TMP_CONF")"
+
+if [[ -z "$MISSING_INCLUDE" ]]; then
+  echo "PASS: every location block with its own add_header also includes security-headers.conf"
+  pass=$((pass + 1))
+else
+  echo "FAIL: these location blocks declare add_header but don't include security-headers.conf -- add_header inheritance is all-or-nothing, so their CSP/X-Frame-Options/X-Content-Type-Options/HSTS are silently dropped:"
+  echo "$MISSING_INCLUDE" | sed 's/^/  /'
+  fail=$((fail + 1))
 fi
 
 echo ""
