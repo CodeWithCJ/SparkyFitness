@@ -82,4 +82,56 @@ describe('no-hardcoded-base-path selectors', () => {
   it('does not flag fetch called with a variable', () => {
     expect(lintMessageCount('fetch(url);')).toBe(0);
   });
+
+  it('flags a hardcoded path assigned to window.location.href', () => {
+    expect(lintMessageCount("window.location.href = '/';")).toBe(1);
+  });
+
+  it('flags a hardcoded path assigned to window.location.pathname', () => {
+    expect(lintMessageCount("window.location.pathname = '/login';")).toBe(1);
+  });
+
+  it('flags a template literal assigned to window.location.href', () => {
+    expect(lintMessageCount('window.location.href = `/reset/${token}`;')).toBe(
+      1
+    );
+  });
+
+  it('does not flag window.location.href assigned a non-literal', () => {
+    expect(
+      lintMessageCount('window.location.href = getRouterBasename();')
+    ).toBe(0);
+  });
+
+  it('flags a hardcoded path passed to new URL()', () => {
+    expect(lintMessageCount("new URL('/api/auth');")).toBe(1);
+  });
+
+  it('flags a template literal passed to new URL()', () => {
+    expect(lintMessageCount('new URL(`/api/${path}`);')).toBe(1);
+  });
+
+  it('does not flag new URL() called with a variable', () => {
+    expect(lintMessageCount('new URL(someUrl);')).toBe(0);
+  });
+
+  it('flags a hardcoded path in a url-shaped object property', () => {
+    expect(lintMessageCount("const x = { api: '/api/chat/stream' };")).toBe(1);
+  });
+
+  it('flags a hardcoded path in an endpoint-shaped object property', () => {
+    expect(
+      lintMessageCount('const x = { endpoint: `/api/${id}/stream` };')
+    ).toBe(1);
+  });
+
+  it('does not flag an external absolute URL in a url-shaped object property', () => {
+    expect(
+      lintMessageCount("const x = { url: 'https://example.com/settings' };")
+    ).toBe(0);
+  });
+
+  it('does not flag a url-shaped object property assigned a variable', () => {
+    expect(lintMessageCount('const x = { api: someEndpoint };')).toBe(0);
+  });
 });

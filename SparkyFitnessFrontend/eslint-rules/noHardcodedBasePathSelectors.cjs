@@ -49,4 +49,48 @@ exports.noHardcodedBasePathSelectors = [
     message:
       'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
   },
+  {
+    selector:
+      'AssignmentExpression[left.object.object.name="window"][left.object.property.name="location"][left.property.name=/^(href|pathname)$/] > Literal[value=/^\\/(?!\\/)/]',
+    message:
+      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() or getRouterBasename() from @/utils/basePath.',
+  },
+  {
+    selector:
+      'AssignmentExpression[left.object.object.name="window"][left.object.property.name="location"][left.property.name=/^(href|pathname)$/] > TemplateLiteral > TemplateElement:first-child[value.raw=/^\\/(?!\\/)/]',
+    message:
+      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() or getRouterBasename() from @/utils/basePath.',
+  },
+  {
+    selector: 'NewExpression[callee.name="URL"] > Literal[value=/^\\/(?!\\/)/]',
+    message:
+      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
+  },
+  {
+    selector:
+      'NewExpression[callee.name="URL"] > TemplateLiteral > TemplateElement:first-child[value.raw=/^\\/(?!\\/)/]',
+    message:
+      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
+  },
+  // Narrowed to these specific key names (not "any property starting with /")
+  // to avoid false-positiving on unrelated strings that happen to start with
+  // a slash. Does not catch string-literal keys (e.g. {'api': '/x'}) -- an
+  // identifier key is overwhelmingly the common style in this codebase.
+  {
+    selector:
+      'Property[key.name=/^(api|url|src|href|endpoint)$/] > Literal[value=/^\\/(?!\\/)/]',
+    message:
+      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
+  },
+  {
+    selector:
+      'Property[key.name=/^(api|url|src|href|endpoint)$/] > TemplateLiteral > TemplateElement:first-child[value.raw=/^\\/(?!\\/)/]',
+    message:
+      'Hardcoded absolute path bypasses SPARKY_BASE_PATH. Wrap it with withBasePath() from @/utils/basePath.',
+  },
 ];
+// Known gap, not solvable with no-restricted-syntax: a helper function that
+// *returns* a hardcoded absolute path (e.g. the resolveFoodImageSrc-class
+// bug) isn't caught by any selector above. That needs data-flow/type
+// analysis -- which string literal a function returns, and where callers use
+// that return value -- which plain AST pattern matching can't express.
