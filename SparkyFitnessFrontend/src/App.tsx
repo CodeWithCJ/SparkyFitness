@@ -27,6 +27,7 @@ import {
   createBrowserRouter,
   RouterProvider,
   Outlet,
+  useLocation,
   useNavigate,
   Navigate,
   useOutletContext,
@@ -159,6 +160,7 @@ const Root = () => {
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
   const { data: appVersion } = useCurrentVersionQuery();
   const navigate = useNavigate();
+  const { pathname, search, hash } = useLocation();
   const invalidateGithubVersion = useInvalidateGithubVersion();
 
   const handleShowNewReleaseDialog = () => {
@@ -177,11 +179,11 @@ const Root = () => {
   };
 
   useEffect(() => {
-    if (window.location.pathname.includes('//')) {
-      const normalizedPath = window.location.pathname.replace(/\/+/g, '/');
-      navigate(normalizedPath + window.location.search, { replace: true });
+    if (pathname.includes('//')) {
+      const normalizedPath = pathname.replace(/\/+/g, '/');
+      navigate({ pathname: normalizedPath, search, hash }, { replace: true });
     }
-  }, [navigate]);
+  }, [pathname, search, hash, navigate]);
 
   return (
     <AuthProvider>
