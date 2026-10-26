@@ -51,6 +51,7 @@ const mockUseLogDose = useLogDose as jest.MockedFunction<typeof useLogDose>;
 const mockEntryForDue = jest.fn();
 const mockLogDose = jest.fn();
 const mockToggleTaken = jest.fn();
+const mockLogDosesBatch = jest.fn();
 const mockLogPrn = jest.fn();
 
 const mockNavigate = jest.fn();
@@ -136,22 +137,22 @@ describe('MedicationsCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockEntryForDue.mockReturnValue(undefined);
+    mockLogDosesBatch.mockResolvedValue(0);
     mockUseLogDose.mockReturnValue({
       entryForDue: mockEntryForDue,
       logDose: mockLogDose,
       toggleTaken: mockToggleTaken,
+      logDosesBatch: mockLogDosesBatch,
       logPrn: mockLogPrn,
     });
   });
 
-  it('renders a due dose with time leading the subtitle, and visible Take/Skip', () => {
+  it('renders a time header above the dose row, with visible Take/Skip', () => {
     const screen = setupCard([buildMedication()]);
 
     expect(screen.getByText('Lisinopril')).toBeTruthy();
     expect(screen.getByText('8:00 AM')).toBeTruthy();
-    expect(
-      screen.getByText('8:00 AM · Pill · 1 tablet', { exact: false })
-    ).toBeTruthy();
+    expect(screen.getByText('Pill · 1 tablet', { exact: false })).toBeTruthy();
     fireEvent.press(screen.getByText('Log'));
     expect(mockLogDose).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -216,9 +217,7 @@ describe('MedicationsCard', () => {
       buildMedication({ schedules: [buildSchedule({ dose_amount: 2 })] }),
     ]);
 
-    expect(
-      screen.getByText('8:00 AM · Pill · 2 tablet', { exact: false })
-    ).toBeTruthy();
+    expect(screen.getByText('Pill · 2 tablet', { exact: false })).toBeTruthy();
   });
 
   it('logs PRN medications from the circle and the Log button', () => {
@@ -256,6 +255,73 @@ describe('MedicationsCard', () => {
 
     fireEvent.press(screen.getByText('Medications'));
     expect(mockNavigate).toHaveBeenCalledWith('MedicationsList');
+  });
+
+  it('renders a time header with pending count and mark-all button', () => {
+    const screen = setupCard([
+      buildMedication({
+        id: 'med-a',
+        name: 'Med A',
+        schedules: [buildSchedule({ id: 'sched-a', medication_id: 'med-a' })],
+      }),
+      buildMedication({
+        id: 'med-b',
+        name: 'Med B',
+        schedules: [buildSchedule({ id: 'sched-b', medication_id: 'med-b' })],
+      }),
+    ]);
+
+    expect(screen.getByText('8:00 AM')).toBeTruthy();
+    expect(screen.getByText('2 doses pending')).toBeTruthy();
+    expect(screen.getByText('Mark all as taken')).toBeTruthy();
+  });
+
+  it('marks the whole time group taken from the header button', () => {
+    const screen = setupCard([
+      buildMedication({
+        id: 'med-a',
+        name: 'Med A',
+        schedules: [buildSchedule({ id: 'sched-a', medication_id: 'med-a' })],
+      }),
+      buildMedication({
+        id: 'med-b',
+        name: 'Med B',
+        schedules: [buildSchedule({ id: 'sched-b', medication_id: 'med-b' })],
+      }),
+    ]);
+
+    fireEvent.press(screen.getByText('Mark all as taken'));
+
+    expect(mockLogDosesBatch).toHaveBeenCalledTimes(1);
+    const [dues, status] = mockLogDosesBatch.mock.calls[0] as [
+      Pick<import('../../src/utils/medications').DueDose, 'schedule'>[],
+      string,
+    ];
+    expect(status).toBe('taken');
+    expect(dues.map((d) => d.schedule.id).sort()).toEqual([
+      'sched-a',
+      'sched-b',
+    ]);
+  });
+
+  it('hides the mark-all button when every dose in the group is logged', () => {
+    mockEntryForDue.mockReturnValue({ status: 'taken' });
+    const screen = setupCard([
+      buildMedication({
+        id: 'med-a',
+        name: 'Med A',
+        schedules: [buildSchedule({ id: 'sched-a', medication_id: 'med-a' })],
+      }),
+      buildMedication({
+        id: 'med-b',
+        name: 'Med B',
+        schedules: [buildSchedule({ id: 'sched-b', medication_id: 'med-b' })],
+      }),
+    ]);
+
+    expect(screen.getByText('8:00 AM')).toBeTruthy();
+    expect(screen.queryByText('Mark all as taken')).toBeNull();
+    expect(screen.queryByText('2 doses pending')).toBeNull();
   });
 
   it('renders nothing when no doses are due and no PRN meds exist', () => {
