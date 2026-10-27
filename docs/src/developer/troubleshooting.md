@@ -210,8 +210,12 @@ docker exec -it sparkyfitness-frontend-1 ping sparkyfitness-server
 
 **API endpoint testing:**
 ```bash
-# Test backend health endpoint
+# Test backend health endpoint (answers while the process runs)
 curl http://localhost:3010/api/health
+
+# Test readiness: 200 only when the database and authentication tables answer,
+# 503 with the failing check otherwise (the container health check uses this)
+curl http://localhost:3010/api/health/ready
 
 # Test with authentication
 curl -H "Authorization: Bearer <token>" http://localhost:3010/api/users/profile

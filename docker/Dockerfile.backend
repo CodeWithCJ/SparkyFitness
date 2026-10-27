@@ -43,8 +43,8 @@ COPY --from=backend_builder /deploy/package.json /app/package.json
 # Expose the port your backend server listens on
 EXPOSE 3010
 
-# Healthcheck
-HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["/usr/bin/curl", "-f", "http://127.0.0.1:3010/api/health"]
+# Healthcheck on readiness: unhealthy while the database is unreachable
+HEALTHCHECK --interval=5s --timeout=10s --retries=5 CMD ["/usr/bin/curl", "-f", "http://127.0.0.1:3010/api/health/ready"]
 
 # node itself runs the server, with tsx loaded as a hook for the .ts imports.
 # The tsx CLI would run it as a child and SIGKILL it when it does not answer a
