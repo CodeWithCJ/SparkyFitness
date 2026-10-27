@@ -122,6 +122,7 @@ export const MCP_TOOL_READ_ACCESS: Readonly<Record<string, ToolReadAccess>> = {
   sparky_get_daily_report: 'read',
   sparky_get_dashboard: 'read',
   sparky_compare_metrics: 'read',
+  sparky_get_heart_rate_samples: 'read',
   // medications
   sparky_manage_medications: [
     'list_medications',

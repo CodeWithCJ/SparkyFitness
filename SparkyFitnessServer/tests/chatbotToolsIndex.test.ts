@@ -41,6 +41,7 @@ const EXPECTED_TOOLS = [
   'sparky_get_food_usage',
   'sparky_get_goal_snapshot',
   'sparky_get_health_summary',
+  'sparky_get_heart_rate_samples',
   'sparky_get_integrations',
   'sparky_get_logging_streak',
   'sparky_get_nutrition_summary',
