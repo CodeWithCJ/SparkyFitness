@@ -18,8 +18,9 @@ interface RouteTileMapProps {
  * plain line.
  *
  * The map is a still picture of the route: panning and zooming are off so it
- * never takes the screen's scroll, and on iOS it renders in lite mode (a
- * static image, cheaper inside a scroll view).
+ * never takes the screen's scroll. On Android builds with a Google Maps key it
+ * renders in lite mode; MapLibre and Apple Maps stay on their standard still
+ * view.
  */
 const RouteTileMap: React.FC<RouteTileMapProps> = ({
   points,

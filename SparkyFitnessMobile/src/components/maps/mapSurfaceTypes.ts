@@ -58,7 +58,7 @@ export interface MapSurfaceProps {
   satellite?: boolean;
   /** Pan, zoom, rotate and pitch. Off for a still preview inside a scroll view. */
   interactive?: boolean;
-  /** Android MapLibre has no lite-mode equivalent; iOS draws a static image. */
+  /** Google Maps lite mode only (Android with a key). Apple Maps and MapLibre ignore it. */
   lite?: boolean;
   showUserLocation?: boolean;
   /** Hides the map itself from screen readers; the wrapper carries the label. */

@@ -94,6 +94,9 @@ describe('MapLibreMapSurface', () => {
     expect(renderMap(true).getByTestId('ml-map').props.mapStyle).toBe(
       MAP_STYLE_DARK
     );
+
+    expect(resolveMapLibreStyle(false)).toBe(MAP_STYLE_LIGHT);
+    expect(resolveMapLibreStyle(true)).toBe(MAP_STYLE_DARK);
   });
 
   it('sends route coordinates as GeoJSON in [longitude, latitude] order', () => {
