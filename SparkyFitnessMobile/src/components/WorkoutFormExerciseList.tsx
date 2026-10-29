@@ -14,11 +14,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  LinearTransition,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { linearLayoutTransition } from '../utils/layoutTransition';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import ActiveWorkoutExerciseCard from './ActiveWorkoutExerciseCard';
@@ -783,7 +780,7 @@ const WorkoutFormExerciseList = forwardRef<
   ]);
 
   return (
-    <Animated.View layout={LinearTransition.duration(300)}>
+    <Animated.View layout={linearLayoutTransition(300)}>
       {cardExercises.map((cardExercise) => {
         const clientId = cardExercise.id;
         const isExpanded = !collapsedIds[clientId];
@@ -841,7 +838,7 @@ const WorkoutFormExerciseList = forwardRef<
             key={clientId}
             entering={FadeIn.duration(200)}
             exiting={FadeOut.duration(150)}
-            layout={LinearTransition.duration(300)}
+            layout={linearLayoutTransition(300)}
           >
             {supersetBorder ? (
               // Grouped members carry a flat 3px left rail. Interior rails run
@@ -870,7 +867,7 @@ const WorkoutFormExerciseList = forwardRef<
         );
       })}
 
-      <Animated.View className="py-4" layout={LinearTransition.duration(300)}>
+      <Animated.View className="py-4" layout={linearLayoutTransition(300)}>
         <TouchableOpacity
           className="flex-row items-center self-center py-2 px-3 rounded-lg"
           onPress={onAddExercisePress}

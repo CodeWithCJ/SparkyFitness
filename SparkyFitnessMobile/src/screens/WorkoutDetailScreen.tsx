@@ -9,7 +9,8 @@ import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import { linearLayoutTransition } from '../utils/layoutTransition';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -587,10 +588,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           />
         );
         return (
-          <Animated.View
-            key={exercise.id}
-            layout={LinearTransition.duration(300)}
-          >
+          <Animated.View key={exercise.id} layout={linearLayoutTransition(300)}>
             {supersetBorder ? (
               // Grouped members carry a flat 3px left rail. Interior rails
               // run the full wrapper height, meeting the next member's rail at

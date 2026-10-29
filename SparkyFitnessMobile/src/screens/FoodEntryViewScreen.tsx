@@ -15,11 +15,8 @@ import {
   ScrollView,
 } from 'react-native';
 import Button from '../components/ui/Button';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  LinearTransition,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { linearLayoutTransition } from '../utils/layoutTransition';
 import FadeView from '../components/FadeView';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -1003,7 +1000,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding,
         }}
       >
-        <Animated.View layout={LinearTransition.duration(300)}>
+        <Animated.View layout={linearLayoutTransition(300)}>
           <View className="flex-row items-start gap-2">
             <Text className="text-text-primary text-3xl font-bold flex-shrink">
               {(isEditing && adjustedValues?.name) ||
@@ -1125,7 +1122,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         </Animated.View>
 
         <Animated.View
-          layout={LinearTransition.duration(300)}
+          layout={linearLayoutTransition(300)}
           className="bg-surface rounded-xl p-4 shadow-sm"
         >
           <Pressable
@@ -1141,7 +1138,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
             }
           >
             <Animated.View
-              layout={LinearTransition.duration(300)}
+              layout={linearLayoutTransition(300)}
               className="flex-row items-center"
             >
               <View className="flex-1 items-center pr-10">
@@ -1155,7 +1152,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 </Text>
               </View>
               <Animated.View
-                layout={LinearTransition.duration(300)}
+                layout={linearLayoutTransition(300)}
                 className="flex-2 gap-3"
               >
                 {(isEditing
@@ -1266,7 +1263,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
 
         {(primaryNutrients.length > 0 || hasAdditional) && (
           <Animated.View
-            layout={LinearTransition.duration(300)}
+            layout={linearLayoutTransition(300)}
             className="my-2 gap-2"
           >
             {(primaryNutrients.length > 0 || customNutrientRows.length > 0) && (
@@ -1295,7 +1292,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                   <Animated.View
                     entering={FadeIn.duration(250)}
                     exiting={FadeOut.duration(150)}
-                    layout={LinearTransition.duration(250)}
+                    layout={linearLayoutTransition(250)}
                   >
                     {additionalNutrients.map((nutrient, index) => (
                       <View
@@ -1337,7 +1334,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               </View>
             )}
             {hasAdditional && (
-              <Animated.View layout={LinearTransition.duration(250)}>
+              <Animated.View layout={linearLayoutTransition(250)}>
                 <Button
                   variant="ghost"
                   onPress={() => setShowMoreNutrients((prev) => !prev)}
@@ -1363,7 +1360,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         )}
 
         <Animated.View
-          layout={LinearTransition.duration(300)}
+          layout={linearLayoutTransition(300)}
           className="mt-2 flex-row items-center"
         >
           <View className="flex-1 flex-row items-center">
@@ -1446,7 +1443,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         </Animated.View>
 
         <Animated.View
-          layout={LinearTransition.duration(300)}
+          layout={linearLayoutTransition(300)}
           className="mt-2 flex-row items-center"
         >
           <Text className="text-text-secondary text-base mr-2">
@@ -1504,7 +1501,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           )}
         </Animated.View>
 
-        <Animated.View layout={LinearTransition.duration(300)} className="mt-3">
+        <Animated.View layout={linearLayoutTransition(300)} className="mt-3">
           {isEditing ? (
             <MarkdownNotesField
               images={[
@@ -1538,7 +1535,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           ) : null}
         </Animated.View>
 
-        <Animated.View layout={LinearTransition.duration(300)}>
+        <Animated.View layout={linearLayoutTransition(300)}>
           <Button
             variant="destructive"
             onPress={confirmAndDelete}
