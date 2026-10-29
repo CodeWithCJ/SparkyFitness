@@ -394,6 +394,9 @@ importers:
       '@kingstinct/react-native-healthkit':
         specifier: ^16.2.0
         version: 16.2.0(react-native-nitro-modules@0.37.1(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
+      '@maplibre/maplibre-react-native':
+        specifier: ^11.5.0
+        version: 11.5.0(@types/geojson@7946.0.16)(@types/react@19.2.18)(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       '@react-native-async-storage/async-storage':
         specifier: ^2.2.0
         version: 2.2.0(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))
@@ -3211,6 +3214,33 @@ packages:
   '@levischuck/tiny-cbor@0.2.11':
     resolution: {integrity: sha512-llBRm4dT4Z89aRsm6u2oEZ8tfwL/2l6BwpZ7JcyieouniDECM5AqNgr/y08zalEIvW3RSK4upYyybDcmjXqAow==}
 
+  '@mapbox/jsonlint-lines-primitives@2.0.3':
+    resolution: {integrity: sha512-0SElaV0uMxEnxzBhhX9WTuPyUeMsAN/SS0i16tjuba4/mio63MG9khjC1a0JAiPGXAwvwm4UfHJURCN7nyudQg==}
+    engines: {node: '>= 22'}
+
+  '@mapbox/unitbezier@1.0.0':
+    resolution: {integrity: sha512-fqd515fjBmANKGGsQ286E2Wvj/XvDFpGzwJxq4CI6jMQue6Oy04uCKp+JWKF00xRTmk6cEu1jPJ9p3xqH8YWqQ==}
+
+  '@maplibre/maplibre-gl-style-spec@26.2.1':
+    resolution: {integrity: sha512-QFKCXkOeSzOr8jF75jm6kySOg+dUvOehPhRi68gcOYPHb7U5JloUq0dJW0Y5/fZV8ygfT0Vp2RWodvq+fyxFWA==}
+    hasBin: true
+
+  '@maplibre/maplibre-react-native@11.5.0':
+    resolution: {integrity: sha512-O+iDUY+nrPjT5CHCIwOheJDzKpFhUmQ4Rn9x4mYud4MubVTo5y82nxTII3LVIlbzP1L1fYqFfh4+Umr7UmYFOw==}
+    peerDependencies:
+      '@types/geojson': ^7946.0.0
+      '@types/react': '>=19.1.0'
+      expo: '>=54.0.0'
+      react: '>=19.1.0'
+      react-native: '>=0.80.0'
+    peerDependenciesMeta:
+      '@types/geojson':
+        optional: true
+      '@types/react':
+        optional: true
+      expo:
+        optional: true
+
   '@modelcontextprotocol/sdk@1.32.1':
     resolution: {integrity: sha512-2DdE+SJDtzLEEWzY1ZjY7Q+VcPhcV1KisD3zI4u0XZyktsjHum1mwbMI+JaulUBi2OZk+KJAi2uPXzxichPkdw==}
     engines: {node: '>=18'}
@@ -5126,6 +5156,24 @@ packages:
   '@tootallnate/once@2.0.0':
     resolution: {integrity: sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==}
     engines: {node: '>= 10'}
+
+  '@turf/distance@7.4.0':
+    resolution: {integrity: sha512-ODkopQDG1m/U6Mx7OMmShncaCvneomwX3lZY1CDA7x40bhDdTTRYP/n/6LicZVyIO4/oK+aXkov4NOtWYthA2g==}
+
+  '@turf/helpers@7.4.0':
+    resolution: {integrity: sha512-7PAwLZqOdRzTI5g9bHvUwlloAXPDH/mlajtryk0tw4ZwGMtmXsAyF4QundsAMfy4u48Fyd3AUqMXY0SMxqJGWg==}
+
+  '@turf/invariant@7.4.0':
+    resolution: {integrity: sha512-OAsc3qdNx+tRqzWmMNFMnVlWWACIqnYqIejZKvb2oKkKPYJJrURPXZ6OdrGD58ljJMolLoqwIZGSx3VndaEjxg==}
+
+  '@turf/length@7.4.0':
+    resolution: {integrity: sha512-vQsJLuL7uy8m6HAMuJJKoiOHYY1de1Hd6mY/fM90qfu2RyIrkoF8J4bRUb72XZNCVnvob/eHpUMdhZeoUhSyfQ==}
+
+  '@turf/meta@7.4.0':
+    resolution: {integrity: sha512-3cLUvlEyDuSnMSzrjhaLAEiYR8xhbfWyTVQlrlEw40xL81d4KF4PqUWbjTXKpXZStdYbet2GCurl79KMypNw6g==}
+
+  '@turf/nearest-point-on-line@7.4.0':
+    resolution: {integrity: sha512-eKTKf/qODIsPankYMZrNfI3LjLaVtQvYV/1hcj9kH/Zr3GfLUszevjhTRDZtMgTFrv8+awW3+MyhmN+PJGuLdQ==}
 
   '@tybys/wasm-util@0.10.3':
     resolution: {integrity: sha512-F3fo1MYrRJYL3zER0OUOmkutjr1Vp23m7OsSgp7nq4SP6OqX6C/56XFIPAl5bt3zaBRjmW7SGz3u/6LwFpYcOg==}
@@ -8961,6 +9009,9 @@ packages:
   json-stable-stringify-without-jsonify@1.0.1:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
 
+  json-stringify-pretty-compact@4.0.0:
+    resolution: {integrity: sha512-3CNZ2DnrpByG9Nqj6Xo8vqbjT4F6N+tb4Gb28ESAZjYZ5yqvmc56J+/kuIwkaAMOyblTQhUW7PxMkUb8Q36N3Q==}
+
   json5@1.0.2:
     resolution: {integrity: sha512-g1MWMLBiz8FKi1e4w0UyVL3w+iJceWAFBAaBnnGKOpNa5f8TLktkbre1+s6oICydWAm+HRUGTmI+//xv2hvXYA==}
     hasBin: true
@@ -10282,6 +10333,9 @@ packages:
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
 
+  quickselect@3.0.0:
+    resolution: {integrity: sha512-XdjUArbK4Bm5fLLvlm5KpTFOiOThgfWWI4axAZDWg4E/0mKdZyI9tNEfds27qCi1ze/vwTR16kvmmGhRra3c2g==}
+
   radix-ui@1.8.1:
     resolution: {integrity: sha512-HPfpVGizO9xANlsFSauruLhRe/3+iOt3vPX0MXYle/UQi3gorQrSYtBcdiv0BZYewcl2rvL59qrIuLFMGAmUrw==}
     peerDependencies:
@@ -11514,6 +11568,9 @@ packages:
   tinyglobby@0.2.17:
     resolution: {integrity: sha512-wXR/dYpcqKmfWpEdZjiKJOwCNFndD0DMnrW/cYjVGttEkBfVgcLFHoNrlj47mjOVic9yyNu65alsgF4NQyTa2g==}
     engines: {node: '>=12.0.0'}
+
+  tinyqueue@3.0.0:
+    resolution: {integrity: sha512-gRa9gwYU3ECmQYv3lslts5hxuIa90veaEcxDYuu3QGOIAEM2mOZkVHp48ANJuu1CURtRdHKUBY5Lm1tHV+sD4g==}
 
   tinyrainbow@3.2.0:
     resolution: {integrity: sha512-LgO3D9yZJjApUiuUfl9iFAwrtaX4+lok3wJIqttGoKCHlWUqHqbQpnxCf82L8FjgKsh4iGo78hqJwgL8F6To2A==}
@@ -15517,6 +15574,33 @@ snapshots:
 
   '@levischuck/tiny-cbor@0.2.11': {}
 
+  '@mapbox/jsonlint-lines-primitives@2.0.3': {}
+
+  '@mapbox/unitbezier@1.0.0': {}
+
+  '@maplibre/maplibre-gl-style-spec@26.2.1':
+    dependencies:
+      '@mapbox/jsonlint-lines-primitives': 2.0.3
+      '@mapbox/unitbezier': 1.0.0
+      json-stringify-pretty-compact: 4.0.0
+      minimist: 1.2.8
+      quickselect: 3.0.0
+      tinyqueue: 3.0.0
+
+  '@maplibre/maplibre-react-native@11.5.0(@types/geojson@7946.0.16)(@types/react@19.2.18)(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)':
+    dependencies:
+      '@maplibre/maplibre-gl-style-spec': 26.2.1
+      '@turf/distance': 7.4.0
+      '@turf/helpers': 7.4.0
+      '@turf/length': 7.4.0
+      '@turf/nearest-point-on-line': 7.4.0
+      react: 19.2.3
+      react-native: 0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3)
+    optionalDependencies:
+      '@types/geojson': 7946.0.16
+      '@types/react': 19.2.18
+      expo: 57.0.31(@babel/core@7.29.0)(@expo/dom-webview@57.0.1)(expo-widgets@57.0.27)(react-native-worklets@0.10.1(@babel/core@7.29.0)(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
+
   '@modelcontextprotocol/sdk@1.32.1(zod@4.6.7)':
     dependencies:
       '@hono/node-server': 2.1.1(hono@4.13.7)
@@ -17596,6 +17680,47 @@ snapshots:
       '@types/react-dom': 19.3.0(@types/react@19.3.0)
 
   '@tootallnate/once@2.0.0': {}
+
+  '@turf/distance@7.4.0':
+    dependencies:
+      '@turf/helpers': 7.4.0
+      '@turf/invariant': 7.4.0
+      '@types/geojson': 7946.0.16
+      tslib: 2.8.1
+
+  '@turf/helpers@7.4.0':
+    dependencies:
+      '@types/geojson': 7946.0.16
+      tslib: 2.8.1
+
+  '@turf/invariant@7.4.0':
+    dependencies:
+      '@turf/helpers': 7.4.0
+      '@types/geojson': 7946.0.16
+      tslib: 2.8.1
+
+  '@turf/length@7.4.0':
+    dependencies:
+      '@turf/distance': 7.4.0
+      '@turf/helpers': 7.4.0
+      '@turf/meta': 7.4.0
+      '@types/geojson': 7946.0.16
+      tslib: 2.8.1
+
+  '@turf/meta@7.4.0':
+    dependencies:
+      '@turf/helpers': 7.4.0
+      '@types/geojson': 7946.0.16
+      tslib: 2.8.1
+
+  '@turf/nearest-point-on-line@7.4.0':
+    dependencies:
+      '@turf/distance': 7.4.0
+      '@turf/helpers': 7.4.0
+      '@turf/invariant': 7.4.0
+      '@turf/meta': 7.4.0
+      '@types/geojson': 7946.0.16
+      tslib: 2.8.1
 
   '@tybys/wasm-util@0.10.3':
     dependencies:
@@ -22546,6 +22671,8 @@ snapshots:
 
   json-stable-stringify-without-jsonify@1.0.1: {}
 
+  json-stringify-pretty-compact@4.0.0: {}
+
   json5@1.0.2:
     dependencies:
       minimist: 1.2.8
@@ -24201,6 +24328,8 @@ snapshots:
 
   queue-microtask@1.2.3:
     optional: true
+
+  quickselect@3.0.0: {}
 
   radix-ui@1.8.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
@@ -25860,6 +25989,8 @@ snapshots:
     dependencies:
       fdir: 6.5.0(picomatch@4.0.7)
       picomatch: 4.0.7
+
+  tinyqueue@3.0.0: {}
 
   tinyrainbow@3.2.0: {}
 

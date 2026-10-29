@@ -14,9 +14,9 @@ const IOS_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
 const DEV_APPLE_TEAM_ID = process.env.EXPO_DEV_APPLE_TEAM_ID || '';
 const PROD_APPLE_TEAM_ID = process.env.EXPO_PROD_APPLE_TEAM_ID || '';
 // Optional. With it, Android draws cardio routes over Google Maps; without
-// it, Android keeps the plain route line and nothing else changes. iOS uses
-// Apple Maps and needs no key. Supply it from the build environment (an EAS
-// secret, for instance), never from the repo.
+// it, Android draws them over OpenStreetMap vector tiles with MapLibre, no key
+// needed. iOS uses Apple Maps and needs no key either. Supply it from the
+// build environment (an EAS secret, for instance), never from the repo.
 const GOOGLE_MAPS_ANDROID_API_KEY =
   process.env.GOOGLE_MAPS_ANDROID_API_KEY || '';
 
@@ -283,6 +283,9 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       './plugins/withWearOs',
       './plugins/withEnrichedMarkdownNoMath',
       './plugins/withSceneLifecycle',
+      // Android route maps without a Google Maps key: MapLibre Native over
+      // OpenStreetMap vector tiles (OpenFreeMap). Keyless iOS keeps Apple Maps.
+      '@maplibre/maplibre-react-native',
       [
         'react-native-maps',
         {
@@ -321,8 +324,8 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       ...config.extra,
       APP_VARIANT: environment,
       iosAppGroup: getIosAppGroup(),
-      // Whether the Android build has a Maps key. The key itself stays out
-      // of the JS bundle; the route screen only needs to know it is there.
+      // Whether the Android build has a Google Maps key. The key itself stays
+      // out of the JS bundle; the map surface only needs to know it is there.
       androidGoogleMapsEnabled: GOOGLE_MAPS_ANDROID_API_KEY !== '',
       eas: {
         projectId: '498a86c5-344f-4d2c-9033-dfd720e4a383',
