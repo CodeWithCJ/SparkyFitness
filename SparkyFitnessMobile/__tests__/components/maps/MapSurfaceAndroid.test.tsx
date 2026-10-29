@@ -196,8 +196,10 @@ describe('MapLibreMapSurface', () => {
     ];
     act(() => ref.current?.fitPoints(dateLinePoints));
 
+    // -179.9° is unwrapped to 180.1° so east >= west, preventing MapLibre
+    // LatLngBounds.from on Android from throwing an IllegalArgumentException.
     expect(__cameraMethods.fitBounds).toHaveBeenCalledWith(
-      [179.9, -16.6, -179.9, -16.5],
+      [179.9, -16.6, 180.1, -16.5],
       expect.objectContaining({ duration: 0 })
     );
   });

@@ -283,9 +283,6 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       './plugins/withWearOs',
       './plugins/withEnrichedMarkdownNoMath',
       './plugins/withSceneLifecycle',
-      // Android route maps without a Google Maps key: MapLibre Native over
-      // OpenStreetMap vector tiles (OpenFreeMap). Keyless iOS keeps Apple Maps.
-      '@maplibre/maplibre-react-native',
       [
         'react-native-maps',
         {

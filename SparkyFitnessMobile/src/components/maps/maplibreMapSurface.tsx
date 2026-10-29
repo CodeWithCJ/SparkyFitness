@@ -69,7 +69,9 @@ const shortestLongitudeBounds = (
     return [sorted[0] ?? 0, sorted[last] ?? 0];
   }
   const east = sorted[gapIndex] ?? 0;
-  return [west, east];
+  // MapLibre Android (LatLngBounds.from) requires east >= west. When crossing
+  // the 180° antimeridian, unwrap the eastern longitude by adding 360°.
+  return [west, east < west ? east + 360 : east];
 };
 
 const boundsForPoints = (
