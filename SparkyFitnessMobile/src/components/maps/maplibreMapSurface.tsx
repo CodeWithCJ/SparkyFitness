@@ -46,25 +46,44 @@ const fromLngLat = ([lon, lat]: [number, number]): MapCoordinate => ({
 const clampLat = (lat: number) =>
   Math.min(Math.max(lat, -MERCATOR_MAX_LAT), MERCATOR_MAX_LAT);
 
+const shortestLongitudeBounds = (
+  points: readonly MapCoordinate[]
+): [number, number] => {
+  if (points.length === 0) return [0, 0];
+  if (points.length === 1) return [points[0].lon, points[0].lon];
+  const sorted = points.map((p) => p.lon).sort((a, b) => a - b);
+  const last = sorted.length - 1;
+  let gapIndex = last;
+  let widestGap = (sorted[0] ?? 0) + 360 - (sorted[last] ?? 0);
+  for (let i = 0; i < last; i++) {
+    const gap = (sorted[i + 1] ?? 0) - (sorted[i] ?? 0);
+    if (gap > widestGap) {
+      widestGap = gap;
+      gapIndex = i;
+    }
+  }
+  if (widestGap <= 0) return [sorted[0] ?? 0, sorted[last] ?? 0];
+  const west = sorted[(gapIndex + 1) % sorted.length] ?? 0;
+  // If the widest gap wraps around the 180° meridian, no date-line crossing is needed.
+  if (gapIndex === last) {
+    return [sorted[0] ?? 0, sorted[last] ?? 0];
+  }
+  const east = sorted[gapIndex] ?? 0;
+  return [west, east];
+};
+
 const boundsForPoints = (
   points: readonly MapCoordinate[]
 ): [number, number, number, number] => {
-  let west = points[0].lon;
-  let east = points[0].lon;
+  if (points.length === 0) return [0, 0, 0, 0];
+  const [west, east] = shortestLongitudeBounds(points);
   let south = points[0].lat;
   let north = points[0].lat;
   for (const point of points) {
-    west = Math.min(west, point.lon);
-    east = Math.max(east, point.lon);
     south = Math.min(south, point.lat);
     north = Math.max(north, point.lat);
   }
-  return [
-    Math.max(west, -180),
-    clampLat(south),
-    Math.min(east, 180),
-    clampLat(north),
-  ];
+  return [west, clampLat(south), east, clampLat(north)];
 };
 
 const lineFeature = (points: readonly MapCoordinate[]) =>

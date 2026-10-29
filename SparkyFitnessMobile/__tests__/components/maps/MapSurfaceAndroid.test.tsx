@@ -182,4 +182,23 @@ describe('MapLibreMapSurface', () => {
     expect(screen.getByTestId('ml-marker')).toBeTruthy();
     expect(screen.getByTestId('ml-view-annotation')).toBeTruthy();
   });
+
+  it('computes shortest-arc longitude bounds when crossing the antimeridian', () => {
+    const ref = createRef<MapSurfaceHandle>();
+    const screen = render(
+      <MapLibreMapSurface ref={ref} initialViewport={VIEWPORT} />
+    );
+    act(() => screen.getByTestId('ml-map').props.onDidFinishLoadingStyle());
+
+    const dateLinePoints = [
+      { lat: -16.5, lon: 179.9 },
+      { lat: -16.6, lon: -179.9 },
+    ];
+    act(() => ref.current?.fitPoints(dateLinePoints));
+
+    expect(__cameraMethods.fitBounds).toHaveBeenCalledWith(
+      [179.9, -16.6, -179.9, -16.5],
+      expect.objectContaining({ duration: 0 })
+    );
+  });
 });

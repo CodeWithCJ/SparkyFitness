@@ -231,8 +231,8 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
   const legBefore = selected !== null ? editor.legs[selected - 1] : undefined;
   const legAfter = selected !== null ? editor.legs[selected] : undefined;
 
-  // An Android build without a Google Maps key draws a blank map, and the
-  // entry points are hidden there; this covers a stale link or screen state.
+  // Fallback for non-mobile platforms (e.g. web) where real route maps
+  // are unavailable; this covers a stale link or unsupported screen state.
   if (!canShowRouteMap()) {
     return (
       <>
