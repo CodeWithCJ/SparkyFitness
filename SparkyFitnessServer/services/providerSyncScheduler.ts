@@ -10,24 +10,50 @@ import corosService from './corosService.js';
 import stravaService from './stravaService.js';
 import googleHealthService from './googleHealthService.js';
 import hevyService from '../integrations/hevy/hevyService.js';
+import hevyProviderRepository from '../integrations/hevy/hevyProviderRepository.js';
 import liftosaurService from '../integrations/liftosaur/liftosaurService.js';
 import intervalsService from '../integrations/intervals/intervalsService.js';
 import { log } from '../config/logging.js';
 import { startProviderSync } from './providerSyncClaim.js';
 import { isShuttingDown } from '../utils/shutdownHooks.js';
+import {
+  compareDays,
+  instantHourMinute,
+  instantToDay,
+} from '@workspace/shared';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 
 export interface ProviderSyncTarget {
   id: string;
   user_id: string;
   is_active: boolean;
-  sync_frequency: string;
+  sync_frequency?: string | null;
+  last_sync_at?: Date | string | null;
 }
 
 export interface ProviderSyncConfig {
   name: string;
   types: string[];
   cronExpression?: string;
+  isDue?: (provider: ProviderSyncTarget) => Promise<boolean>;
   sync: (provider: ProviderSyncTarget) => Promise<void>;
+}
+
+async function isHevySyncDue(p: ProviderSyncTarget): Promise<boolean> {
+  if (p.sync_frequency === 'hourly') return true;
+  if (p.sync_frequency !== 'daily') return false;
+  const timezone = await loadUserTimezone(p.user_id);
+  const now = new Date();
+  if (instantHourMinute(now, timezone).hour < 21) return false;
+  if (!p.last_sync_at) return true;
+  const lastSyncAt = new Date(p.last_sync_at);
+  return (
+    Number.isNaN(lastSyncAt.getTime()) ||
+    compareDays(
+      instantToDay(lastSyncAt, timezone),
+      instantToDay(now, timezone)
+    ) < 0
+  );
 }
 
 export const PROVIDER_SYNC_CONFIGS: readonly ProviderSyncConfig[] = [
@@ -109,7 +135,15 @@ export const PROVIDER_SYNC_CONFIGS: readonly ProviderSyncConfig[] = [
   {
     name: 'Hevy',
     types: ['hevy'],
+    isDue: isHevySyncDue,
     sync: async (p) => {
+      // The callback runs after acquiring the account's sync claim. An earlier
+      // account may have taken a long time, so discard the batch's stale state.
+      const current = await hevyProviderRepository.getSyncSettings(
+        p.user_id,
+        p.id
+      );
+      if (!current?.is_active || !(await isHevySyncDue(current))) return;
       await hevyService.syncHevyData(p.user_id, p.user_id, false, p.id);
     },
   },
@@ -156,6 +190,7 @@ export const runProviderSync = async (
       }
       if (provider.is_active && provider.sync_frequency !== 'manual') {
         try {
+          if (config.isDue && !(await config.isDue(provider))) continue;
           const started = await startProviderSync(
             { userId: provider.user_id, providerId: provider.id },
             () => config.sync(provider)

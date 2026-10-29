@@ -2939,6 +2939,8 @@
       "manual": "Manual",
       "hourly": "Hourly",
       "daily": "Daily",
+      "hevyDaily": "Daily at 21:00",
+      "hevyDailyHelp": "Daily Hevy sync runs once per day at or after 21:00 in your SparkyFitness timezone. A successful sync earlier that day also counts. Automatic sync requires an active provider.",
       "selectRegion": "Select region",
       "activateThisProvider": "Activate this provider",
       "openFoodFactsIsA2": "Open Food Facts is a community-driven database that supports localization. Sparky automatically queries products in your active language setting in SparkyFitness. For more information, visit the <link>Open Food Facts Portal</link> or learn about language support in the <link2>Open Food Facts Translations Wiki</link2>.",

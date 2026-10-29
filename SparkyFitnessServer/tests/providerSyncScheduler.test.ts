@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import cron from 'node-cron';
 import externalProviderRepository from '../models/externalProviderRepository.js';
 import withingsServiceCentral from '../services/withingsService.js';
@@ -7,6 +7,7 @@ import fitbitService from '../services/fitbitService.js';
 import corosService from '../services/corosService.js';
 import hevyService from '../integrations/hevy/hevyService.js';
 import intervalsService from '../integrations/intervals/intervalsService.js';
+import hevyProviderRepository from '../integrations/hevy/hevyProviderRepository.js';
 import {
   PROVIDER_SYNC_CONFIGS,
   runProviderSync,
@@ -17,6 +18,7 @@ import {
 import { startProviderSync } from '../services/providerSyncClaim.js';
 import { log } from '../config/logging.js';
 import { isShuttingDown } from '../utils/shutdownHooks.js';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 
 vi.mock('node-cron', () => ({
   default: {
@@ -60,6 +62,9 @@ vi.mock('../integrations/hevy/hevyService.js', () => ({
     syncHevyData: vi.fn(),
   },
 }));
+vi.mock('../integrations/hevy/hevyProviderRepository.js', () => ({
+  default: { getSyncSettings: vi.fn() },
+}));
 
 vi.mock('../integrations/intervals/intervalsService.js', () => ({
   default: {
@@ -79,12 +84,33 @@ vi.mock('../utils/shutdownHooks.js', () => ({
   isShuttingDown: vi.fn(() => false),
 }));
 
+vi.mock('../utils/timezoneLoader.js', () => ({
+  loadUserTimezone: vi.fn(),
+}));
+
 describe('providerSyncScheduler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(loadUserTimezone).mockResolvedValue('Europe/Berlin');
+    vi.mocked(hevyProviderRepository.getSyncSettings).mockImplementation(
+      async (userId, providerId) => {
+        const providers =
+          await externalProviderRepository.getProvidersByType('hevy');
+        return (
+          providers.find(
+            (p: { id: string; user_id: string }) =>
+              p.id === providerId && p.user_id === userId
+          ) ?? null
+        );
+      }
+    );
     vi.mocked(startProviderSync).mockImplementation(async (_target, sync) => ({
       running: sync(),
     }));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('contains configurations for all 11 providers', () => {
@@ -313,6 +339,77 @@ describe('providerSyncScheduler', () => {
     ).not.toHaveBeenCalled();
   });
 
+  it('rechecks daily sync state under its claim when another account synced meanwhile', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-24T19:00:00Z'));
+    const first = {
+      id: 'hevy-a',
+      user_id: 'user-a',
+      is_active: true,
+      sync_frequency: 'daily',
+      last_sync_at: '2026-10-23T19:00:00Z',
+    };
+    const second = {
+      id: 'hevy-b',
+      user_id: 'user-b',
+      is_active: true,
+      sync_frequency: 'daily',
+      last_sync_at: '2026-10-23T19:00:00Z',
+    };
+    vi.mocked(externalProviderRepository.getProvidersByType).mockResolvedValue([
+      first,
+      second,
+    ] as never);
+    const persistedSecond = { ...second };
+    vi.mocked(hevyProviderRepository.getSyncSettings).mockImplementation(
+      async (_uid, id) => (id === first.id ? first : persistedSecond)
+    );
+    vi.mocked(hevyService.syncHevyData).mockImplementationOnce(async () => {
+      // Account B finishes a manual sync while cron is busy processing A.
+      persistedSecond.last_sync_at = '2026-10-24T19:00:00Z';
+      return { success: true, processedCount: 1, source: 'live_api' };
+    });
+    await runProviderSync(
+      PROVIDER_SYNC_CONFIGS.find((c) => c.name === 'Hevy')!
+    );
+    expect(hevyService.syncHevyData).toHaveBeenCalledTimes(1);
+    expect(hevyService.syncHevyData).toHaveBeenCalledWith(
+      'user-a',
+      'user-a',
+      false,
+      'hevy-a'
+    );
+  });
+
+  it.each([
+    { is_active: false, sync_frequency: 'daily' },
+    { is_active: true, sync_frequency: 'manual' },
+  ])(
+    'respects Hevy setting changes made after the initial batch read: %j',
+    async (changes) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-10-24T19:00:00Z'));
+      const provider = {
+        id: 'hevy-b',
+        user_id: 'user-b',
+        is_active: true,
+        sync_frequency: 'daily',
+        last_sync_at: null,
+      };
+      vi.mocked(
+        externalProviderRepository.getProvidersByType
+      ).mockResolvedValue([provider] as never);
+      vi.mocked(hevyProviderRepository.getSyncSettings).mockResolvedValue({
+        ...provider,
+        ...changes,
+      });
+      await runProviderSync(
+        PROVIDER_SYNC_CONFIGS.find((c) => c.name === 'Hevy')!
+      );
+      expect(hevyService.syncHevyData).not.toHaveBeenCalled();
+    }
+  );
+
   it('runs Hevy sync with correct parameters', async () => {
     vi.mocked(externalProviderRepository.getProvidersByType).mockResolvedValue([
       {
@@ -335,6 +432,158 @@ describe('providerSyncScheduler', () => {
       false,
       'p-hevy'
     );
+    expect(loadUserTimezone).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: 'waits until the evening in the user timezone',
+      now: '2026-10-24T18:59:59Z',
+      timezone: 'Europe/Berlin',
+      lastSyncAt: null,
+      expectedRuns: 0,
+    },
+    {
+      name: 'runs at 21:00 local time',
+      now: '2026-10-24T19:00:00Z',
+      timezone: 'Europe/Berlin',
+      lastSyncAt: null,
+      expectedRuns: 1,
+    },
+    {
+      name: 'retries a missed evening tick before midnight',
+      now: '2026-10-24T21:00:00Z',
+      timezone: 'Europe/Berlin',
+      lastSyncAt: '2026-10-23T19:00:00Z',
+      expectedRuns: 1,
+    },
+    {
+      name: 'does not repeat a successful evening sync on the same local day',
+      now: '2026-10-24T20:00:00Z',
+      timezone: 'Europe/Berlin',
+      lastSyncAt: '2026-10-24T19:01:00Z',
+      expectedRuns: 0,
+    },
+    {
+      name: 'does not repeat a manual sync performed earlier that local day',
+      now: '2026-10-24T19:00:00Z',
+      timezone: 'Europe/Berlin',
+      lastSyncAt: '2026-10-24T10:00:00Z',
+      expectedRuns: 0,
+    },
+    {
+      name: 'uses the local date when UTC has crossed midnight',
+      now: '2026-10-24T01:00:00Z',
+      timezone: 'America/New_York',
+      lastSyncAt: '2026-10-23T12:00:00Z',
+      expectedRuns: 0,
+    },
+    {
+      name: 'allows a new local day even when less than 24 hours elapsed',
+      now: '2026-10-24T12:00:00Z',
+      timezone: 'Asia/Tokyo',
+      lastSyncAt: '2026-10-23T14:00:00Z',
+      expectedRuns: 1,
+    },
+    {
+      name: 'uses standard time after the DST fall-back',
+      now: '2026-10-25T19:00:00Z',
+      timezone: 'Europe/Berlin',
+      lastSyncAt: '2026-10-24T19:00:00Z',
+      expectedRuns: 0,
+    },
+    {
+      name: 'runs at 21:00 after the DST fall-back',
+      now: '2026-10-25T20:00:00Z',
+      timezone: 'Europe/Berlin',
+      lastSyncAt: '2026-10-24T19:00:00Z',
+      expectedRuns: 1,
+    },
+    {
+      name: 'does not catch up yesterday after local midnight',
+      now: '2026-10-24T22:00:00Z',
+      timezone: 'Europe/Berlin',
+      lastSyncAt: null,
+      expectedRuns: 0,
+    },
+    {
+      name: 'does not sync before a future last successful sync date',
+      now: '2026-10-24T19:00:00Z',
+      timezone: 'Europe/Berlin',
+      lastSyncAt: '2026-10-25T19:00:00Z',
+      expectedRuns: 0,
+    },
+  ])(
+    'Hevy daily sync $name',
+    async ({ now, timezone, lastSyncAt, expectedRuns }) => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date(now));
+      vi.mocked(loadUserTimezone).mockResolvedValue(timezone);
+      vi.mocked(
+        externalProviderRepository.getProvidersByType
+      ).mockResolvedValue([
+        {
+          id: 'p-hevy',
+          user_id: 'u-hevy',
+          is_active: true,
+          sync_frequency: 'daily',
+          last_sync_at: lastSyncAt,
+        } as never,
+      ]);
+
+      await runProviderSync(
+        PROVIDER_SYNC_CONFIGS.find((c) => c.name === 'Hevy')!
+      );
+
+      expect(hevyService.syncHevyData).toHaveBeenCalledTimes(expectedRuns);
+    }
+  );
+
+  it.each(['manual', 'weekly', '', null, undefined])(
+    'does not automatically sync Hevy with frequency %s',
+    async (frequency) => {
+      vi.mocked(
+        externalProviderRepository.getProvidersByType
+      ).mockResolvedValue([
+        {
+          id: 'p-hevy',
+          user_id: 'u-hevy',
+          is_active: true,
+          sync_frequency: frequency,
+        } as never,
+      ]);
+
+      await runProviderSync(
+        PROVIDER_SYNC_CONFIGS.find((c) => c.name === 'Hevy')!
+      );
+
+      expect(hevyService.syncHevyData).not.toHaveBeenCalled();
+      expect(loadUserTimezone).not.toHaveBeenCalled();
+    }
+  );
+
+  it('keeps the existing daily scheduling behavior for other providers', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-24T08:00:00Z'));
+    vi.mocked(externalProviderRepository.getProvidersByType).mockResolvedValue([
+      {
+        id: 'p-withings',
+        user_id: 'u-withings',
+        is_active: true,
+        sync_frequency: 'daily',
+        last_sync_at: '2026-10-24T07:00:00Z',
+      } as never,
+    ]);
+
+    await runProviderSync(
+      PROVIDER_SYNC_CONFIGS.find((c) => c.name === 'Withings')!
+    );
+
+    expect(withingsServiceCentral.syncWithingsData).toHaveBeenCalledWith(
+      'u-withings',
+      'scheduled'
+    );
+    expect(loadUserTimezone).not.toHaveBeenCalled();
   });
 
   it('runs Intervals.icu hourly with the provider id', async () => {
