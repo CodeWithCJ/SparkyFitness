@@ -27,6 +27,10 @@ export const getServiceTypes = (t: (key: string) => string): ServiceType[] => [
     label: t('settings.aiService.serviceTypes.perplexity'),
   },
   { value: 'meta', label: t('settings.aiService.serviceTypes.meta') },
+  {
+    value: 'opencode_go',
+    label: t('settings.aiService.serviceTypes.opencodeGo'),
+  },
   { value: 'custom', label: t('settings.aiService.serviceTypes.custom') },
 ];
 
@@ -125,10 +129,10 @@ export const getModelOptions = (serviceType: string): string[] => {
       // Meta Superintelligence Labs' Muse Spark, served over an
       // OpenAI-compatible Chat Completions API. One published model for now.
       return ['muse-spark-1.1'];
+    // 'opencode_go' loads models from its API endpoint at runtime.
     // 'openai_compatible' and 'custom' point at arbitrary user-hosted servers,
     // so there is no model name we can suggest — OpenAI's names won't exist on
-    // most of them. Returning [] makes the form fall back to the custom-model
-    // text input where the user supplies their server's own model name.
+    // most of them. Returning [] makes the form fall back to a model text input.
     default:
       return [];
   }

@@ -1,13 +1,16 @@
-import { vi, beforeEach, describe, expect, it } from 'vitest';
+import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'supertest'.
 import request from 'supertest';
 import express from 'express';
 import chatRoutes from '../routes/chatRoutes.js';
 import chatService from '../services/chatService.js';
+import { createChatModelInstance } from '../services/chatService.js';
 import chatRepository from '../models/chatRepository.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import { dispatchAiRequest } from '../ai/providerDispatch.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
+import { PUBLIC_ONLY_AI_NETWORK_POLICY } from '../utils/outboundUrlPolicy.js';
+import { createOpenAI } from '@ai-sdk/openai';
 
 // We exercise the REAL chatService.testAiServiceConnection and the REAL route,
 // mocking only the lower-level seams (repository, dispatch, admin/config gates).
@@ -75,6 +78,7 @@ const mockIsUserAiConfigAllowed = vi.mocked(
   globalSettingsRepository.isUserAiConfigAllowed
 );
 const mockResolveIsAdmin = vi.mocked(resolveIsAdmin);
+const mockCreateOpenAI = vi.mocked(createOpenAI);
 
 const okDispatch = { ok: true as const, text: 'OK', json: null };
 
@@ -87,6 +91,10 @@ app.use((err: any, _req: any, res: any, _next: any) => {
 });
 
 const USER_ID = 'user-123';
+const originalFetch = global.fetch;
+afterEach(() => {
+  global.fetch = originalFetch;
+});
 
 describe('POST /chat/ai-service-settings/test — gate #1 (per-user AI config)', () => {
   beforeEach(() => {
@@ -181,6 +189,29 @@ describe('POST /chat save_ai_service_settings — gate #4 (SSRF)', () => {
 
     expect(res.statusCode).toBe(200);
     expect(mockUpsert).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('POST /chat/ai-service-settings/opencode-go/models', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('requires the per-user AI setting gate and returns model IDs', async () => {
+    mockResolveIsAdmin.mockResolvedValue(false);
+    mockIsUserAiConfigAllowed.mockResolvedValue(true);
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ id: 'glm-5.3-flash' }] }),
+    }) as typeof global.fetch;
+
+    const response = await request(app)
+      .post('/chat/ai-service-settings/opencode-go/models')
+      .send({ api_key: 'go-key' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ models: ['glm-5.3-flash'] });
+    expect(mockIsUserAiConfigAllowed).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -518,5 +549,114 @@ describe('chatService.testAiServiceConnection', () => {
 
     expect(result).toEqual({ ok: true });
     expect(mockDispatch).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('chatService.listOpenCodeGoModels', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('requests the fixed models endpoint and normalizes OpenAI-compatible model data', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ id: 'model-z' }, { id: 'model-a' }, { id: 'model-z' }],
+      }),
+    });
+    global.fetch = fetchMock as typeof global.fetch;
+
+    const result = await chatService.listOpenCodeGoModels(
+      { api_key: 'go-key' },
+      USER_ID,
+      false
+    );
+
+    expect(result).toEqual({ models: ['model-a', 'model-z'] });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://opencode.ai/inference/go/v1/models',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer go-key',
+          Accept: 'application/json',
+        }),
+      })
+    );
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      headers: {
+        'x-opencode-session': expect.stringMatching(/^[0-9a-f-]{36}$/),
+      },
+    });
+  });
+
+  it('uses the saved OpenCode Go key for editing without exposing it to the client', async () => {
+    mockGetDecrypted.mockResolvedValue({
+      service_type: 'opencode_go',
+      api_key: 'stored-go-key',
+      custom_url: null,
+      model_name: 'glm-5.3-flash',
+      is_public: false,
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ models: ['glm-5.3-flash'] }),
+    });
+    global.fetch = fetchMock as typeof global.fetch;
+
+    await expect(
+      chatService.listOpenCodeGoModels({ id: 'service-1' }, USER_ID, false)
+    ).resolves.toEqual({ models: ['glm-5.3-flash'] });
+    expect(mockGetDecrypted).toHaveBeenCalledWith('service-1', USER_ID);
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      headers: { Authorization: 'Bearer stored-go-key' },
+    });
+  });
+
+  it('does not reuse a saved key belonging to another provider', async () => {
+    mockGetDecrypted.mockResolvedValue({
+      service_type: 'openai',
+      api_key: 'unrelated-key',
+      custom_url: null,
+      model_name: 'gpt-4o',
+      is_public: false,
+    });
+
+    await expect(
+      chatService.listOpenCodeGoModels({ id: 'service-1' }, USER_ID, false)
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(global.fetch).toBe(originalFetch);
+  });
+
+  it('blocks non-admin access to a saved global API key', async () => {
+    mockGetDecrypted.mockResolvedValue({
+      service_type: 'opencode_go',
+      api_key: 'operator-key',
+      custom_url: null,
+      model_name: 'glm-5.3-flash',
+      is_public: true,
+    });
+
+    await expect(
+      chatService.listOpenCodeGoModels({ id: 'global-1' }, USER_ID, false)
+    ).rejects.toMatchObject({ statusCode: 403 });
+    expect(global.fetch).toBe(originalFetch);
+  });
+});
+
+describe('OpenCode Go chat model session header', () => {
+  it('adds the supplied stable session ID to OpenAI SDK requests', () => {
+    mockCreateOpenAI.mockClear();
+    createChatModelInstance(
+      { service_type: 'opencode_go', api_key: 'go-key' },
+      'glm-5.3-flash',
+      PUBLIC_ONLY_AI_NETWORK_POLICY,
+      'stable-session-id'
+    );
+
+    expect(mockCreateOpenAI).toHaveBeenCalledWith({
+      baseURL: 'https://opencode.ai/inference/go/openai/v1',
+      apiKey: 'go-key',
+      headers: { 'x-opencode-session': 'stable-session-id' },
+    });
   });
 });

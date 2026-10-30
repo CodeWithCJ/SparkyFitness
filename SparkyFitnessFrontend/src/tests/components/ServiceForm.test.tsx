@@ -105,6 +105,31 @@ describe('ServiceForm — model validation', () => {
     expect(mockToast).not.toHaveBeenCalled();
   });
 
+  it('offers Custom as a model dropdown choice for OpenCode Go', async () => {
+    const onFormDataChange = jest.fn();
+    renderWithClient(
+      <ServiceForm
+        formData={makeFormData({ service_type: 'opencode_go' })}
+        onFormDataChange={onFormDataChange}
+        onSubmit={jest.fn()}
+        onCancel={jest.fn()}
+        translationPrefix="settings.aiService.userSettings"
+      />
+    );
+
+    fireEvent.click(document.getElementById('model_name_select')!);
+    const customOption = await screen.findByRole('option', {
+      name: 'settings.aiService.userSettings.customModelName',
+    });
+    fireEvent.click(customOption);
+
+    expect(onFormDataChange).toHaveBeenCalledWith({
+      showCustomModelInput: true,
+      custom_model_name: '',
+      model_name: '',
+    });
+  });
+
   // Preset providers (openai, anthropic, ...) have a sensible server-side
   // default, so a blank model is allowed and must not block submission.
   it('allows a preset provider to submit without a model', () => {

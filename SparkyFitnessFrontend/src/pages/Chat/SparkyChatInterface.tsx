@@ -145,6 +145,9 @@ const SparkyChatInner = ({
             // closure never sends a stale set). Empty => server falls back to
             // the service's profile default.
             toolCategories: hasCustomSelection ? getSelected() : undefined,
+            // OpenCode Go uses this stable assistant-ui thread ID for its
+            // required x-opencode-session affinity header.
+            opencodeSessionId: options.id,
             messages: processedMessages,
           },
         };

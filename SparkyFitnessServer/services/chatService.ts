@@ -35,11 +35,13 @@ import {
   SparkyChatHistory,
   SparkyChatHistoryMutator,
   TestAiServiceConnectionRequest,
+  ListOpenCodeGoModelsRequest,
   ChatToolCategorySlug,
   CHAT_TOOL_CATEGORY_SLUGS,
   isChatToolCategorySlug,
   isGpt6Model,
 } from '@workspace/shared';
+import { createHash, randomUUID } from 'node:crypto';
 
 interface ChatMessagePart {
   // AI SDK tool parts arrive as `tool-<toolName>`; only sparky_ask_user is
@@ -860,7 +862,7 @@ export function buildChatProviderOptions(
   modelName: string,
   reasoningEffort: 'low' | 'medium' | 'high' | 'xhigh' | 'max' = 'medium'
 ): Record<string, Record<string, JSONValue>> | undefined {
-  if (serviceType === 'openai_compatible') {
+  if (serviceType === 'openai_compatible' || serviceType === 'opencode_go') {
     return { openai: { systemMessageMode: 'system' } };
   }
   if (serviceType === 'anthropic') {
@@ -1507,7 +1509,8 @@ function createPerplexityFetch(baseFetch: typeof fetch = fetch): typeof fetch {
 function createChatModelInstance(
   aiService: ChatAiServiceConfig,
   modelName: string,
-  networkPolicy: AiNetworkPolicy
+  networkPolicy: AiNetworkPolicy,
+  sessionId: string = randomUUID()
 ): Parameters<typeof generateText>[0]['model'] {
   const apiKey = aiService.api_key ?? undefined;
 
@@ -1523,6 +1526,7 @@ function createChatModelInstance(
   if (
     aiService.service_type === 'ollama' ||
     aiService.service_type === 'openai_compatible' ||
+    aiService.service_type === 'opencode_go' ||
     aiService.service_type === 'custom' ||
     aiService.service_type === 'mistral' ||
     aiService.service_type === 'groq' ||
@@ -1547,6 +1551,9 @@ function createChatModelInstance(
     const providerOptions: Parameters<typeof createOpenAI>[0] = {
       baseURL,
       apiKey: apiKey || 'no-key',
+      ...(aiService.service_type === 'opencode_go' && {
+        headers: { 'x-opencode-session': sessionId },
+      }),
     };
     if (aiService.service_type === 'perplexity') {
       const baseFetch = requiresUserSuppliedAiUrl(aiService.service_type)
@@ -2136,7 +2143,8 @@ async function processChatMessage(
   userId: string,
   authenticatedUserId: string,
   actorIsAdmin = false,
-  toolCategories?: readonly string[]
+  toolCategories?: readonly string[],
+  opencodeSessionId?: string
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -2166,11 +2174,17 @@ async function processChatMessage(
     const modelName =
       aiService.model_name || getDefaultModel(aiService.service_type);
     const networkPolicy = await resolveAiNetworkPolicy(aiService, actorIsAdmin);
+    const sessionId = createHash('sha256')
+      .update(
+        `${authenticatedUserId}:${opencodeSessionId?.trim() || randomUUID()}`
+      )
+      .digest('hex');
 
     const modelInstance = createChatModelInstance(
       aiService,
       modelName,
-      networkPolicy
+      networkPolicy,
+      sessionId
     );
 
     // A non-empty toolCategories here is the user's explicit in-chat selection
@@ -2484,12 +2498,14 @@ const TEST_CONNECTION_PROMPT = 'Reply with the single word: OK.';
 // for the 90s/120s dispatch defaults. Retry behavior is safe: only HTTP 429 is
 // retried; timeouts and 401/403 return immediately.
 const TEST_CONNECTION_TIMEOUT_MS = 15_000;
+const OPENCODE_GO_MODELS_URL = 'https://opencode.ai/inference/go/v1/models';
 // Types without preset models point at user-hosted servers with no reliable
 // default, so a blank effective model would let dispatch substitute a
 // meaningless getDefaultModel default the UI never intends.
 const NO_PRESET_SERVICE_TYPES = new Set([
   'ollama',
   'openai_compatible',
+  'opencode_go',
   'custom',
 ]);
 
@@ -2608,6 +2624,97 @@ async function testAiServiceConnection(
   }
   return { ok: true };
 }
+
+async function listOpenCodeGoModels(
+  payload: ListOpenCodeGoModelsRequest,
+  userId: string,
+  isAdmin: boolean
+): Promise<{ models: string[] }> {
+  let apiKey = payload.api_key?.trim() || undefined;
+
+  if (payload.id && !apiKey) {
+    const stored = await chatRepository.getDecryptedAiServiceSettingById(
+      payload.id,
+      userId
+    );
+    if (stored) {
+      if (stored.is_public && !isAdmin) {
+        throw statusError(
+          'Only administrators can access global AI service credentials.',
+          403
+        );
+      }
+      if (stored.service_type === 'opencode_go') {
+        apiKey = stored.api_key ?? undefined;
+      }
+    }
+  }
+
+  if (!apiKey) {
+    throw statusError(
+      'An OpenCode Go API key is required to load models.',
+      400
+    );
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(OPENCODE_GO_MODELS_URL, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: 'application/json',
+        'x-opencode-session': randomUUID(),
+      },
+      signal: AbortSignal.timeout(TEST_CONNECTION_TIMEOUT_MS),
+    });
+  } catch {
+    throw statusError('Could not reach the OpenCode Go models endpoint.', 502);
+  }
+
+  if (!response.ok) {
+    throw statusError(
+      `OpenCode Go model listing failed (HTTP ${response.status}).`,
+      502
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw statusError('OpenCode Go returned an invalid models response.', 502);
+  }
+
+  if (!body || typeof body !== 'object') {
+    throw statusError('OpenCode Go returned an invalid models response.', 502);
+  }
+
+  const modelData = body as { data?: unknown; models?: unknown };
+  const items = Array.isArray(modelData.data)
+    ? modelData.data
+    : Array.isArray(modelData.models)
+      ? modelData.models
+      : null;
+  if (!items) {
+    throw statusError('OpenCode Go returned an invalid models response.', 502);
+  }
+
+  const models = items
+    .map((item: unknown) => {
+      if (typeof item === 'string') return item.trim();
+      if (!item || typeof item !== 'object') return '';
+      const record = item as { id?: unknown; name?: unknown };
+      const id = typeof record.id === 'string' ? record.id : record.name;
+      return typeof id === 'string' ? id.trim() : '';
+    })
+    .filter((model: string) => model.length > 0);
+
+  return {
+    models: [...new Set(models)].sort((left, right) =>
+      left.localeCompare(right)
+    ),
+  };
+}
 const EMPTY_TOOL_RESPONSE_TEXT =
   'Tools ran, but the AI service returned no summary. Check your diary and saved changes before retrying.';
 const EMPTY_RESPONSE_ERROR_TEXT =
@@ -2676,7 +2783,8 @@ async function processChatMessageStream(
   userId: string,
   authenticatedUserId: string,
   actorIsAdmin = false,
-  toolCategories?: readonly string[]
+  toolCategories?: readonly string[],
+  opencodeSessionId?: string
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -2696,6 +2804,11 @@ async function processChatMessageStream(
     const modelName =
       aiService.model_name || getDefaultModel(aiService.service_type);
     const networkPolicy = await resolveAiNetworkPolicy(aiService, actorIsAdmin);
+    const sessionId = createHash('sha256')
+      .update(
+        `${authenticatedUserId}:${opencodeSessionId?.trim() || randomUUID()}`
+      )
+      .digest('hex');
 
     log(
       'info',
@@ -2705,7 +2818,8 @@ async function processChatMessageStream(
     const modelInstance = createChatModelInstance(
       aiService,
       modelName,
-      networkPolicy
+      networkPolicy,
+      sessionId
     );
 
     // A non-empty toolCategories here is the user's explicit in-chat selection
@@ -2977,6 +3091,7 @@ export { saveSparkyChatHistory };
 export { processChatMessage };
 export { processFoodOptionsRequest };
 export { testAiServiceConnection };
+export { listOpenCodeGoModels };
 export { processChatMessageStream };
 export { createPerplexityFetch };
 export { createChatModelInstance };
@@ -2995,6 +3110,7 @@ export default {
   processChatMessage,
   processFoodOptionsRequest,
   testAiServiceConnection,
+  listOpenCodeGoModels,
   processChatMessageStream,
   createPerplexityFetch,
 };

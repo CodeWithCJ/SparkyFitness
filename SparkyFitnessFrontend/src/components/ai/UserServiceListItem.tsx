@@ -56,6 +56,7 @@ export const UserServiceListItem = ({
 
   if (isEditing) {
     const formData: UpdateAiServiceSettingsFormInput = {
+      id: service.id,
       service_name: editData.service_name || service.service_name,
       service_type: editData.service_type || service.service_type,
       api_key: editData.api_key || '',

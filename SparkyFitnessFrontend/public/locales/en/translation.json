@@ -2244,6 +2244,9 @@
         "selectModel": "Select a model",
         "customModelName": "Custom Model Name",
         "customModelNamePlaceholder": "Enter custom model name",
+        "loadModels": "Load models",
+        "loadingModels": "Loading models…",
+        "openCodeGoModelsLoadFailed": "Couldn't load OpenCode Go models. Check the API key and try again.",
         "recommendedModel": "Recommended: {{- model}} — a good balance of cost and capability.",
         "supportsAudioInput": "Show this configuration in the Voice list",
         "supportsAudioInputDescription": "Turn this on only if the selected model accepts audio files. When this configuration is selected for Voice, recorded audio is sent to that model for transcription.",
@@ -2336,6 +2339,9 @@
         "customModelName": "Custom Model Name",
         "customModelNamePlaceholder": "Enter custom model name",
         "customModelNameDescription": "Enter the exact name of your custom model.",
+        "loadModels": "Load models",
+        "loadingModels": "Loading models…",
+        "openCodeGoModelsLoadFailed": "Couldn't load OpenCode Go models. Check the API key and try again.",
         "recommendedModel": "Recommended: {{- model}} — a good balance of cost and capability.",
         "supportsAudioInput": "Show this configuration in the Voice list",
         "supportsAudioInputDescription": "Turn this on only if the selected model accepts audio files. When this configuration is selected for Voice, recorded audio is sent to that model for transcription.",
@@ -2406,6 +2412,7 @@
         "xai": "xAI (Grok)",
         "perplexity": "Perplexity AI",
         "meta": "Meta",
+        "opencodeGo": "OpenCode Go",
         "custom": "Custom"
       },
       "reasoningEffort": {

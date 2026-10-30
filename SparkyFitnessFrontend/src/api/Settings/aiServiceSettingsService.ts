@@ -12,6 +12,9 @@ import {
   TestAiServiceConnectionRequest,
   TestAiServiceConnectionResponse,
   testAiServiceConnectionResponseSchema,
+  ListOpenCodeGoModelsRequest,
+  ListOpenCodeGoModelsResponse,
+  listOpenCodeGoModelsResponseSchema,
 } from '@workspace/shared';
 
 export const getAIServices = async (): Promise<AiServiceSettingsResponse[]> => {
@@ -110,6 +113,19 @@ export const testAIServiceConnection = async (
     body: payload,
   });
   return testAiServiceConnectionResponseSchema.parse(response);
+};
+
+export const listOpenCodeGoModels = async (
+  payload: ListOpenCodeGoModelsRequest
+): Promise<ListOpenCodeGoModelsResponse> => {
+  const response = await apiCall(
+    '/chat/ai-service-settings/opencode-go/models',
+    {
+      method: 'POST',
+      body: payload,
+    }
+  );
+  return listOpenCodeGoModelsResponseSchema.parse(response);
 };
 
 export const updateUserPreferences = async (
