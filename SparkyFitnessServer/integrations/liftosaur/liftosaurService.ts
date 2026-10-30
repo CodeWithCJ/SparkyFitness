@@ -273,6 +273,7 @@ async function syncLiftosaurData(
 
   // 2. Ingest measurements from Liftosaur into SparkyFitness
   let measurementsImported = 0;
+  let measurementsFailed = false;
   try {
     measurementsImported = await importMeasurementsFromLiftosaur(
       userId,
@@ -290,18 +291,28 @@ async function syncLiftosaurData(
       'error',
       `[liftosaurService] Error importing measurements for user ${userId}: ${errorMessage(mErr)}`
     );
+    measurementsFailed = true;
   }
 
-  const client = await getSystemClient();
-  try {
-    await client.query(
-      `UPDATE external_data_providers
-       SET last_sync_at = NOW(), updated_at = NOW()
-       WHERE id = $1`,
-      [resolvedProviderId]
+  // The scheduler reads last_sync_at to decide when a daily sync is due, so a
+  // sync whose measurements failed leaves it alone to be retried next tick.
+  if (!measurementsFailed) {
+    const client = await getSystemClient();
+    try {
+      await client.query(
+        `UPDATE external_data_providers
+         SET last_sync_at = NOW(), updated_at = NOW()
+         WHERE id = $1`,
+        [resolvedProviderId]
+      );
+    } finally {
+      client.release();
+    }
+  } else {
+    log(
+      'warn',
+      `[liftosaurService] Liftosaur sync for user ${userId} imported workouts but not measurements; last_sync_at not updated.`
     );
-  } finally {
-    client.release();
   }
 
   const totalProcessed = workoutsImported + measurementsImported;

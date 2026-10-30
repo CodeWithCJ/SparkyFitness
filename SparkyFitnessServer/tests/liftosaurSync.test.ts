@@ -118,4 +118,41 @@ describe('liftosaurSync', () => {
     expect(vi.mocked(axios.get)).toHaveBeenCalledTimes(2);
     expect(result.workoutsImported).toBe(2);
   });
+
+  it('keeps imported workouts but leaves last_sync_at alone when measurements fail', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: {
+        data: {
+          records: [
+            {
+              id: 1,
+              text: '2026-03-01T10:00:00Z / exercises: {\n  Squat / 3x5 100kg\n}',
+            },
+          ],
+          hasMore: false,
+        },
+      },
+    });
+    vi.mocked(
+      measurementsService.importMeasurementsFromLiftosaur
+    ).mockRejectedValueOnce(new Error('Liftosaur unavailable'));
+
+    const result = await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123'
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.workoutsImported).toBe(1);
+    expect(result.measurementsImported).toBe(0);
+    expect(
+      liftosaurDataProcessor.processLiftosaurWorkouts
+    ).toHaveBeenCalledTimes(1);
+    expect(mockClient.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('last_sync_at'),
+      expect.anything()
+    );
+  });
 });
