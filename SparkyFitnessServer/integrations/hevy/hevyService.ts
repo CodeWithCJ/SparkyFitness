@@ -268,8 +268,10 @@ async function syncHevyData(
   try {
     const failedFetches: string[] = [];
     // Helper to safely fetch and log raw data without stopping the whole sync
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async function safeFetch(dataType: any, fetchFn: any) {
+    async function safeFetch<T>(
+      dataType: string,
+      fetchFn: () => Promise<T>
+    ): Promise<T | null> {
       try {
         const data = await fetchFn();
         if (data) {

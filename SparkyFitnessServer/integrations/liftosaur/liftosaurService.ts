@@ -275,17 +275,25 @@ async function syncLiftosaurData(
   let measurementsImported = 0;
   let measurementsFailed = false;
   try {
-    measurementsImported = await importMeasurementsFromLiftosaur(
+    const measurements = await importMeasurementsFromLiftosaur(
       userId,
       createdByUserId,
       apiKey,
       tz,
       cutoffMs
     );
+    measurementsImported = measurements.imported;
     log(
       'info',
       `[liftosaurService] Imported ${measurementsImported} measurement records for user ${userId}.`
     );
+    if (measurements.failedKeys.length > 0) {
+      log(
+        'warn',
+        `[liftosaurService] Liftosaur measurement keys failed for user ${userId}: ${measurements.failedKeys.join(', ')}`
+      );
+      measurementsFailed = true;
+    }
   } catch (mErr) {
     log(
       'error',

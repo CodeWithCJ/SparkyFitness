@@ -20,7 +20,9 @@ vi.mock('../integrations/liftosaur/liftosaurDataProcessor.js', () => ({
   },
 }));
 vi.mock('../integrations/liftosaur/liftosaurMeasurementsService.js', () => ({
-  importMeasurementsFromLiftosaur: vi.fn().mockResolvedValue(3),
+  importMeasurementsFromLiftosaur: vi
+    .fn()
+    .mockResolvedValue({ imported: 3, failedKeys: [] }),
   parseLiftosaurValue: vi.fn(),
 }));
 
@@ -150,6 +152,29 @@ describe('liftosaurSync', () => {
     expect(
       liftosaurDataProcessor.processLiftosaurWorkouts
     ).toHaveBeenCalledTimes(1);
+    expect(mockClient.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('last_sync_at'),
+      expect.anything()
+    );
+  });
+
+  it('saves the measurements it got but leaves last_sync_at alone when a key fails', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: { data: { records: [], hasMore: false } },
+    });
+    vi.mocked(
+      measurementsService.importMeasurementsFromLiftosaur
+    ).mockResolvedValueOnce({ imported: 2, failedKeys: ['waist'] });
+
+    const result = await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123'
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.measurementsImported).toBe(2);
     expect(mockClient.query).not.toHaveBeenCalledWith(
       expect.stringContaining('last_sync_at'),
       expect.anything()
