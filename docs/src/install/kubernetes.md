@@ -21,6 +21,8 @@ helm install sparkyfitness ./SparkyFitness/helm/chart -f my-values.yaml
 
 For all configuration options (external database, ingress, OIDC, email, etc.) see the [Helm chart README](https://github.com/CodeWithCJ/SparkyFitness/blob/main/helm/README.md).
 
+To run more than one server replica, read [Running Multiple Instances](./multiple-instances.md) first: replicas above 1 need `ReadWriteMany` volumes for uploads and backups.
+
 ## Flux
 
 Flux can install the chart straight from its OCI registry, with no Helm repository to add. Create the `sparkyfitness` namespace first, then apply:

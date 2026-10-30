@@ -1,10 +1,4 @@
-{{- if .Values.server.podDisruptionBudget.enabled }}
-{{- if and .Values.server.podDisruptionBudget.minAvailable .Values.server.podDisruptionBudget.maxUnavailable }}
-{{- fail "server.podDisruptionBudget: set exactly one of minAvailable or maxUnavailable, not both" }}
-{{- end }}
-{{- if and (not .Values.server.podDisruptionBudget.minAvailable) (not .Values.server.podDisruptionBudget.maxUnavailable) }}
-{{- fail "server.podDisruptionBudget: set one of minAvailable or maxUnavailable" }}
-{{- end }}
+{{- if include "sparkyfitness.pdbEnabled" (dict "pdb" .Values.server.podDisruptionBudget "replicas" .Values.server.replicas) }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -13,12 +7,7 @@ metadata:
     {{- include "sparkyfitness.labels" . | nindent 4 }}
     app.kubernetes.io/component: server
 spec:
-  {{- with .Values.server.podDisruptionBudget.minAvailable }}
-  minAvailable: {{ . }}
-  {{- end }}
-  {{- with .Values.server.podDisruptionBudget.maxUnavailable }}
-  maxUnavailable: {{ . }}
-  {{- end }}
+  {{- include "sparkyfitness.pdbSpec" (dict "pdb" .Values.server.podDisruptionBudget "component" "server") | nindent 2 }}
   selector:
     matchLabels:
       {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
