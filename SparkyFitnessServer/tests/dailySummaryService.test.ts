@@ -269,6 +269,31 @@ describe('dailySummaryService', () => {
     });
   });
 
+  test('returns adjusted macro targets even when the calorie goal is unchanged', async () => {
+    const savedGoals = { calories: 2000, protein: 150, carbs: 250, fat: 44.4 };
+    vi.mocked(goalService.getUserGoals)
+      .mockResolvedValueOnce(savedGoals)
+      .mockResolvedValueOnce({
+        ...savedGoals,
+        protein: 187.5,
+        carbs: 312.5,
+        fat: 55.6,
+      });
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: false,
+    });
+    expect(result.goals).toEqual(savedGoals);
+    expect(result.adjustedGoals).toEqual({
+      calories: 2000,
+      protein: 188,
+      carbs: 313,
+      fat: 56,
+    });
+  });
+
   test('does not double-count Garmin active calories with workouts and steps', async () => {
     const garminActiveCalories: ExerciseSessionResponse = {
       ...activeCaloriesSession,

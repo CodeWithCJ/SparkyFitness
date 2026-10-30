@@ -1186,7 +1186,9 @@
     },
     "useExternalBmr": "Use measured BMR from check-ins and synced devices",
     "useExternalBmrHint": "Off by default — your chosen formula is always used until you turn this on. When enabled, a BMR recorded on a check-in or synced from a smart scale or health provider replaces the formula for that day, provided it is physiologically plausible for you.",
-    "useExternalBmrIosNote": "Apple Health’s Resting Energy already includes light daily activity, so consider setting Activity Level to None (×1.0) to avoid counting it twice."
+    "useExternalBmrIosNote": "Apple Health’s Resting Energy already includes light daily activity, so consider setting Activity Level to None (×1.0) to avoid counting it twice.",
+    "adjustMacrosWithExercise": "Adjust percentage macro goals with exercise calories",
+    "adjustMacrosWithExerciseHint": "Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged."
   },
   "dashboardSettings": {
     "updateFailed": "Failed to update setting.",
