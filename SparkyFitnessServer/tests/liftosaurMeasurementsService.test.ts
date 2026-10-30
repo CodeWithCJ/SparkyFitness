@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import axios from 'axios';
+import axios, { AxiosHeaders, type AxiosResponse } from 'axios';
 import {
   parseLiftosaurValue,
   importMeasurementsFromLiftosaur,
@@ -11,6 +11,16 @@ vi.mock('../services/measurementService.js');
 vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
+
+function axiosOk<T>(data: T): AxiosResponse<T> {
+  return {
+    data,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+  };
+}
 
 describe('liftosaurMeasurementsService', () => {
   beforeEach(() => {
@@ -118,20 +128,20 @@ describe('liftosaurMeasurementsService', () => {
           });
         }
         if (url.includes('/weight')) {
-          return Promise.resolve({
-            data: {
+          return Promise.resolve(
+            axiosOk({
               data: {
                 key: 'weight',
                 category: 'weight',
                 values: [{ timestamp: nowMs, value: '80kg' }],
                 hasMore: false,
               },
-            },
-          }) as any;
+            })
+          );
         }
-        return Promise.resolve({
-          data: { data: { key: 'other', values: [], hasMore: false } },
-        }) as any;
+        return Promise.resolve(
+          axiosOk({ data: { key: 'other', values: [], hasMore: false } })
+        );
       });
       return nowMs;
     };
