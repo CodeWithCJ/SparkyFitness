@@ -17,6 +17,28 @@ export const HEALTH_METRIC_SAMPLES_WRITE_MAX_WINDOW_DAYS = 31;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Source names the built-in integrations write samples under. A passive
+ * write with one of these would replace that integration's rows, so they are
+ * refused. Compared without case, spaces, dots, dashes and underscores.
+ */
+export const HEALTH_METRIC_SAMPLES_RESERVED_SOURCES = [
+  'garmin',
+  'polar',
+  'intervals',
+  'intervals.icu',
+  'SparkyFitness Watch',
+  'HealthKit',
+  'apple_health',
+  'Health Connect',
+] as const;
+
+const sourceKey = (source: string) =>
+  source.toLowerCase().replace(/[\s._-]+/g, '');
+const RESERVED_SOURCE_KEYS = new Set(
+  HEALTH_METRIC_SAMPLES_RESERVED_SOURCES.map(sourceKey)
+);
+
 // Passive all-day readings belong to no workout or sleep session, so the
 // `ex`/`sl` links the stored shape allows are not accepted from clients.
 const NO_LINKS = { ex: true, sl: true } as const;
@@ -33,9 +55,16 @@ const writeWindowSchema = z
 
 const writeBodyBase = {
   // Stored as health_metric_samples.source_provider. A write only touches
-  // rows of this source, so readings from other providers on the same day
-  // are never replaced.
-  source: z.string().trim().min(1).max(64),
+  // rows of this source, and the built-in integrations' names are refused,
+  // so readings from other providers on the same day are never replaced.
+  source: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .refine((source) => !RESERVED_SOURCE_KEYS.has(sourceKey(source)), {
+      message: 'source is reserved for a built-in integration',
+    }),
   device_name: z.string().trim().min(1).max(128).optional(),
   // `merge` replaces only the stored samples inside `window` and keeps the
   // rest of the day; `replace` overwrites every day the samples touch.

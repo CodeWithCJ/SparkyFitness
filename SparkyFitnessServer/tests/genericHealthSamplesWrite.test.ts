@@ -15,9 +15,8 @@ const { permissionState } = vi.hoisted(() => ({
 }));
 
 vi.mock('../middleware/checkPermissionMiddleware.js', () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   default: vi.fn(
-    () => (_req: any, res: any, next: any) =>
+    () => (_req: Request, res: Response, next: NextFunction) =>
       permissionState.allow
         ? next()
         : res.status(403).json({ error: 'Forbidden' })
@@ -108,9 +107,40 @@ describe('POST /api/generic-health/samples', () => {
           startMs: Date.parse('2026-10-27T23:00:00Z'),
           endMs: Date.parse('2026-10-28T23:00:00Z'),
         },
+        days: ['2026-10-28', '2026-10-29'],
       }
     );
   });
+
+  it('lists every day the window touches, also days without samples', async () => {
+    await request(app)
+      .post('/api/generic-health/samples')
+      .send({
+        ...heartRateBody,
+        window: {
+          start: '2026-10-28T00:00:00+01:00',
+          end: '2026-10-30T12:00:00+01:00',
+        },
+      })
+      .expect(200);
+
+    expect(upsertMock.mock.calls[0]?.[5]).toMatchObject({
+      mode: 'merge',
+      days: ['2026-10-28', '2026-10-29', '2026-10-30'],
+    });
+  });
+
+  it.each(['garmin', 'Garmin', 'health-connect', 'SparkyFitness Watch'])(
+    'rejects the source name %s of a built-in integration',
+    async (source) => {
+      const res = await request(app)
+        .post('/api/generic-health/samples')
+        .send({ ...heartRateBody, source });
+
+      expect(res.statusCode).toBe(400);
+      expect(upsertMock).not.toHaveBeenCalled();
+    }
+  );
 
   it("buckets samples by the user's calendar day, not the UTC day", async () => {
     await request(app)

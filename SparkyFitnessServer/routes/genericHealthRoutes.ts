@@ -12,6 +12,8 @@ import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
   healthMetricSchema,
   healthMetricSamplesWriteBodySchema,
+  addDays,
+  compareDays,
   instantToDay,
 } from '@workspace/shared';
 
@@ -223,16 +225,28 @@ const postHealthMetricSamplesHandler: RequestHandler = async (
         ...fields,
       })
     );
-    const options: SampleWriteOptions =
-      body.mode === 'merge' && body.window
-        ? {
-            mode: 'merge',
-            window: {
-              startMs: Date.parse(body.window.start),
-              endMs: Date.parse(body.window.end),
-            },
-          }
-        : { mode: 'replace' };
+    let options: SampleWriteOptions = { mode: 'replace' };
+    if (body.mode === 'merge' && body.window) {
+      // Every day the window touches, so a day whose readings are gone from
+      // a resend is cleared too, not only the days that still have samples.
+      const days: string[] = [];
+      const lastDay = instantToDay(body.window.end, tz);
+      for (
+        let day = instantToDay(body.window.start, tz);
+        compareDays(day, lastDay) <= 0;
+        day = addDays(day, 1)
+      ) {
+        days.push(day);
+      }
+      options = {
+        mode: 'merge',
+        window: {
+          startMs: Date.parse(body.window.start),
+          endMs: Date.parse(body.window.end),
+        },
+        days,
+      };
+    }
 
     const daysWritten = await upsertSamplesByDay(
       userId,
