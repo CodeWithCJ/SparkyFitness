@@ -63,7 +63,8 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `openfoodfacts_product_read_rate_limit` | Singleton coordination lease and cooldown for Open Food Facts product reads, including manual previews; contains no user data or credentials | System services only | Deny all |
 | `openfoodfacts_sync_queue` | Dormant automatic Open Food Facts upload state and retained history; stores food/user identifiers and retry metadata, never provider credentials. The manual first release does not enqueue or process these rows. | System worker and owning user | Owner-Only |
 | `rate_limit` | Sign-in rate limit counters shared by every server instance, keyed by client address and route; holds no account data or credentials | Better Auth only | Deny all |
-| `system.rate_limit_windows` | Fixed-window counters shared by every server instance for the per-address limits of the server's own routes (MFA factor lookup, demo login, passkey tickets), keyed by limiter and client address; holds no account data or credentials | Rate limiter via the owner pool only | Deny all; the app role has no grant on the `system` schema's tables, so no RLS policy is needed |
+| `system.rate_limit_windows` | Fixed-window counters shared by every server instance for the per-address limits of the server's own routes (MFA factor lookup, demo login, passkey tickets), keyed by limiter and client address; holds no account data or credentials | Rate limiter via the owner pool only | Deny all; the app role has no grant on this table, so no RLS policy is needed |
+| `system.rls_policy_state` | One row recording the `rls_policies.sql` apply the server last made (the file's sha256 and a fingerprint of the policy catalogs), so startup skips an unchanged apply; holds no user data or credentials | Startup via the owner pool only | Deny all; the app role has no grant on this table, so no RLS policy is needed |
 
 ---
 
@@ -110,6 +111,22 @@ Key rules that must be maintained:
 3. **Shared items fallback to hide.** When `otherUserReferences > 0`, genuine deletion is refused because cascading would strip other users' templates; the item is hidden instead (`is_quick_exercise` / `is_quick_food`).
 
 A related trap: `food_entries.images` stores paths into `uploads/foods/<foodId>/`. Removing that directory on a plain `delete` blanks the picture on every preserved entry, including other users'. It is only cleared on `delete_with_history`, where no reference can remain.
+
+### MCP OAuth System Tables (Tier 1 – System-Only)
+
+These Better Auth tables support OAuth for the remote MCP endpoint. They have no family-sharing or profile-switching access path. RLS denies the app role entirely; Better Auth and the explicit OAuth repositories access them only through owner-pool/system connections.
+
+| Table Name | Description |
+| :--- | :--- |
+| `jwks` | OAuth signing public/private key pairs |
+| `oauth_client` | Registered OAuth clients and client metadata |
+| `oauth_resource` | Protected resources, allowed scopes, and token/signing policy |
+| `oauth_client_resource` | Client-to-resource authorization mappings |
+| `oauth_refresh_token` | Refresh tokens, rotation state, scopes, and session/user links |
+| `oauth_access_token` | Access tokens, resource grants, scopes, and revocation state |
+| `oauth_consent` | OAuth consent grants |
+| `oauth_authorization_revocation` | OAuth JWT revocation watermarks |
+| `oauth_client_assertion` | Expiring client assertion replay-protection records |
 
 ### Tier 3: Delegate-Writable (Daily Logs & Schedules)
 These tables contain daily diaries, logging entries, and scheduler items. **Caregivers/delegates with active delegation permissions are granted full read and write access to log or modify data on behalf of the owner.**
@@ -172,6 +189,8 @@ Symptoms are their own domain (they used to share the medications permission). P
 | `fasting_logs` | Logs of fasting timelines (start/end fast) | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 | `mood_entries` | Logged mood check-ins, several per day: optional mood, energy and focus ratings, tags and journal notes, with a timestamp and a `source` (`manual`, `garmin` or `import`) | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 | `mindfulness_sessions` | Logged mindfulness, meditation, and breathwork sessions | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
+| `lab_markers` | A user's own lab markers (name, unit, optional default reference range). Built-in markers such as HbA1c are identified by key in `@workspace/shared` and are not stored | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
+| `lab_results` | Lab results for a built-in marker (`marker_key`) or a custom marker (`custom_marker_id`), each with its own unit and reference range, a numeric or text value, and a `source` (`manual`, `report` or `fhir`). Several results per marker per day are allowed. Only the owner's own markers can be referenced | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 | `day_classification_cache` | Daily summary caching logs | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 | `custom_categories` | User-defined custom measurement categories (e.g. GLP-1 daily check-in metrics) | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
 | `custom_measurements` | Logged values for custom measurement categories | Delegate with `can_manage_checkin` | Delegate with `can_manage_checkin` or `can_view_reports` |
@@ -191,11 +210,11 @@ These tables store global configuration settings, lookup values, and reference m
 
 | Table Name | Description | Write (insert/update/delete) | Read (select) |
 | :--- | :--- | :--- | :--- |
-| `global_settings` | Application global feature flags and system configurations, including whether the server asks GitHub for the latest release (`enable_version_check`, on by default) | Admin-Only | Authenticated Users |
+| `global_settings` | Application global feature flags and system configurations, including release checks and the Remote MCP OAuth switch plus redirect URI allowlist | Admin-Only | Authenticated Users |
 | `backup_settings` | Automated database backup timing and storage credentials | Admin-Only | Admin-Only |
 | `sso_provider` | Active Single Sign-On providers (Google, Apple, etc.) | Admin-Only | Public (Login page) |
 | `oidc_providers` | OpenID Connect integration settings and metadata | Admin-Only | Public |
-| `external_provider_types` | Search provider configurations lookup (FatSecret, USDA, Canadian Nutrient File, Livsmedelsverket, Valhalla routing) | Admin-Only | Authenticated Users |
+| `external_provider_types` | Search provider configurations lookup (FatSecret, USDA, Canadian Nutrient File, Livsmedelsverket, Valhalla routing, Open-Meteo weather) | Admin-Only | Authenticated Users |
 | `medication_types` | Medication categories lookup (GLP-1, Insulin, ADHD, etc.) | Admin-Only | Authenticated Users |
 | `medication_route_types` | Medication administration route lookup (Subcutaneous, Oral) | Admin-Only | Authenticated Users |
 | `medication_schedule_types`| Medication scheduling frequencies lookup (Daily, Weekly) | Admin-Only | Authenticated Users |

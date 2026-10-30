@@ -13,6 +13,7 @@ import { Clipboard } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { RoutingProviderFields } from './RoutingProviderFields';
+import { WeatherProviderFields } from './WeatherProviderFields';
 
 // Developer dashboards where each OAuth provider's Client ID/Secret and callback
 // URL are configured. Kept in sync with the per-provider text in EditProviderForm.
@@ -150,6 +151,19 @@ export const ProviderSpecificFields = ({
 
       {provider.provider_type === 'valhalla' && (
         <RoutingProviderFields
+          idPrefix="new"
+          baseUrl={provider.base_url}
+          appKey={provider.app_key}
+          onBaseUrlChange={(value) =>
+            setProvider((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setProvider((prev) => ({ ...prev, app_key: value }))
+          }
+        />
+      )}
+      {provider.provider_type === 'open_meteo' && (
+        <WeatherProviderFields
           idPrefix="new"
           baseUrl={provider.base_url}
           appKey={provider.app_key}

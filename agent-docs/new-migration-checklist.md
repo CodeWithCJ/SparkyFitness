@@ -17,6 +17,7 @@ Follow this checklist whenever you add or change a server database migration —
 - [ ] Add or update policies in `SparkyFitnessServer/db/rls_policies.sql`.
 - [ ] Decide who can read/write rows: owner only (like cycle/pregnancy), family-shared (which delegatable permission: `diary`, `checkin`, `medications`, or `reports`?), or system/admin. Prefer an existing `create_*_policy(...)` generator in `rls_policies.sql`.
 - [ ] Remember `getClient(userId, authenticatedUserId?)` sets the RLS context; `getSystemClient()` bypasses RLS and is only for admin/startup/migration work.
+- [ ] Classify every new table in the `DOMAIN` map of `SparkyFitnessServer/tests/rlsPermissionMatrix.integration.test.ts` (for example `lab_results: 'checkin'`), using the permission its policy uses. The test's completeness guard fails CI when an RLS-enabled table is missing from the map, and the wiring check fails if the classification disagrees with the policy.
 
 ## 3. Boot server and let migration apply
 
@@ -50,4 +51,5 @@ Follow this checklist whenever you add or change a server database migration —
 
 - [ ] Run `pnpm run validate` in `SparkyFitnessServer/` — typecheck, lint, format.
 - [ ] Run tests nearest the touched surface: `pnpm exec vitest run tests/<domain>*.test.ts`.
+- [ ] For a new table or policy, run `tests/rlsPermissionMatrix.integration.test.ts` against a Postgres that has the schema and `rls_policies.sql` applied (the same `SPARKY_FITNESS_DB_*` and `SPARKY_FITNESS_APP_DB_*` env the server uses). It skips silently when no database is reachable, so a plain `pnpm test` can pass without ever running it; CI runs it in the migration-check job.
 - [ ] If the API changed, validate from the consuming packages (frontend, mobile) too.

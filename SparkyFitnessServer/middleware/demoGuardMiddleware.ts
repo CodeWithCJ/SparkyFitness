@@ -14,6 +14,23 @@ export function isDemoMode(): boolean {
   return process.env.SPARKY_FITNESS_DEMO_MODE === 'true';
 }
 
+const DEMO_RESTRICTED_AUTH_PREFIXES = [
+  '/api/auth/two-factor',
+  '/api/auth/passkey',
+  '/api/auth/change-password',
+  '/api/auth/set-password',
+  '/api/auth/change-email',
+  '/api/auth/update-user',
+  '/api/auth/delete-user',
+  '/api/auth/oauth2',
+];
+
+export function isDemoRestrictedAuthPath(path: string): boolean {
+  return DEMO_RESTRICTED_AUTH_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(prefix + '/')
+  );
+}
+
 export function getDemoEmail(): string {
   return (
     process.env.SPARKY_FITNESS_DEMO_EMAIL?.toLowerCase().trim() ||

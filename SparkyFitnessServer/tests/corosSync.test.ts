@@ -62,6 +62,7 @@ const mockCorosIntegration = {
 
 vi.mock('../integrations/coros/corosService.js', () => ({
   default: mockCorosIntegration,
+  CorosReauthRequiredError: class CorosReauthRequiredError extends Error {},
 }));
 
 const mockDataProcessor = {
@@ -77,12 +78,53 @@ const mockExerciseEntry = {
 
 vi.mock('../models/exerciseEntry.js', () => mockExerciseEntry);
 
+const mockFitBudget = {
+  reserveFitDownload: vi.fn(),
+  releaseFitDownload: vi.fn(),
+};
+
+vi.mock('../models/corosFitBudgetRepository.js', () => mockFitBudget);
+
+const TWO_RECORDS_PAYLOAD = {
+  content: [
+    {
+      type: 'text',
+      text: 'Sport Records — 2024-12-01 to 2024-12-31 (2 records)\n========================\n\n1. Indoor Run — 2024-12-21\n   Time Window: startTimestamp=1734814685 | endTimestamp=1734816535\n   LabelId: 480644884506640590 | SportType: 101\n\n2. Outdoor Run — 2024-12-20\n   Time Window: startTimestamp=1734728285 | endTimestamp=1734730135\n   LabelId: 480644884506640591 | SportType: 100',
+    },
+  ],
+  isError: false,
+};
+
+function mcpReturning(
+  records: unknown,
+  download: () => Promise<unknown>
+): ReturnType<typeof vi.fn> {
+  const call = vi.fn().mockImplementation(async (name: string) => {
+    if (name === 'querySportRecords') return records;
+    if (name === 'downloadActivityFitFiles') return download();
+    return { content: [{ type: 'text', text: '{}' }] };
+  });
+  mockCorosIntegration.withCorosMcp.mockImplementation(
+    async (_userId, _providerId, fn) => fn(call)
+  );
+  return call;
+}
+
+const countDownloads = (call: ReturnType<typeof vi.fn>) =>
+  call.mock.calls.filter(([name]) => name === 'downloadActivityFitFiles')
+    .length;
+
 const { syncCorosData } = await import('../services/corosService.js');
 
 describe('corosService syncCorosData', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockExerciseEntry.getExistingSourceIds.mockResolvedValue(new Set());
+    mockFitBudget.reserveFitDownload.mockResolvedValue({
+      day: '2026-10-16',
+      used: 1,
+    });
+    mockFitBudget.releaseFitDownload.mockResolvedValue(undefined);
     mockDb.query.mockImplementation(async (sql: string) => {
       if (typeof sql === 'string' && sql.includes('external_data_providers')) {
         return {
@@ -189,5 +231,138 @@ describe('corosService syncCorosData', () => {
     expect(result.success).toBe(true);
     expect(result.imported).toBe(0);
     expect(mockDataProcessor.importCorosActivityFromFit).not.toHaveBeenCalled();
+  });
+
+  describe('daily FIT download budget on the provider row', () => {
+    beforeEach(() => {
+      mockDataProcessor.importCorosActivityFromFit.mockResolvedValue({
+        status: 'created',
+      });
+    });
+
+    it('takes one download from the provider row before each FIT request', async () => {
+      const call = mcpReturning(
+        TWO_RECORDS_PAYLOAD,
+        async () => MOCK_FIT_PAYLOAD
+      );
+
+      const result = await syncCorosData(
+        USER_ID,
+        'manual',
+        null,
+        '2024-12-01',
+        '2024-12-31'
+      );
+
+      expect(result.imported).toBe(2);
+      expect(countDownloads(call)).toBe(2);
+      expect(mockFitBudget.reserveFitDownload).toHaveBeenCalledTimes(2);
+      expect(mockFitBudget.reserveFitDownload).toHaveBeenCalledWith(
+        '11111111-1111-4111-8111-111111111111',
+        45
+      );
+      expect(mockFitBudget.releaseFitDownload).not.toHaveBeenCalled();
+    });
+
+    it('defers every download when another server already spent today’s budget', async () => {
+      mockFitBudget.reserveFitDownload.mockResolvedValue(null);
+      const call = mcpReturning(
+        TWO_RECORDS_PAYLOAD,
+        async () => MOCK_FIT_PAYLOAD
+      );
+
+      const result = await syncCorosData(
+        USER_ID,
+        'scheduled',
+        null,
+        '2024-12-01',
+        '2024-12-31'
+      );
+
+      expect(countDownloads(call)).toBe(0);
+      expect(result.deferred).toBe(2);
+      expect(result.imported).toBe(0);
+      // Spent once means spent for the rest of this sync: no second query.
+      expect(mockFitBudget.reserveFitDownload).toHaveBeenCalledTimes(1);
+      expect(result.warnings).toContain(
+        'Daily COROS file download limit reached. Remaining activities will be imported after the limit resets (next UTC day).'
+      );
+    });
+
+    it('stops after the download that used the last of the budget', async () => {
+      mockFitBudget.reserveFitDownload.mockResolvedValueOnce({
+        day: '2026-10-16',
+        used: 45,
+      });
+      const call = mcpReturning(
+        TWO_RECORDS_PAYLOAD,
+        async () => MOCK_FIT_PAYLOAD
+      );
+
+      const result = await syncCorosData(
+        USER_ID,
+        'manual',
+        null,
+        '2024-12-01',
+        '2024-12-31'
+      );
+
+      expect(countDownloads(call)).toBe(1);
+      expect(mockFitBudget.reserveFitDownload).toHaveBeenCalledTimes(1);
+      expect(result.imported).toBe(1);
+      expect(result.deferred).toBe(1);
+      expect(result.warnings).toContain(
+        'Daily COROS file download limit reached. Remaining activities will be imported after the limit resets (next UTC day).'
+      );
+    });
+
+    it('gives the download back when the request failed', async () => {
+      mockFitBudget.reserveFitDownload.mockResolvedValue({
+        day: '2026-10-16',
+        used: 45,
+      });
+      const call = mcpReturning(TWO_RECORDS_PAYLOAD, async () => {
+        throw new Error('socket hang up');
+      });
+
+      const result = await syncCorosData(
+        USER_ID,
+        'manual',
+        null,
+        '2024-12-01',
+        '2024-12-31'
+      );
+
+      // A failed request does not count, so the 45th slot is tried again.
+      expect(countDownloads(call)).toBe(2);
+      expect(mockFitBudget.releaseFitDownload).toHaveBeenCalledTimes(2);
+      expect(mockFitBudget.releaseFitDownload).toHaveBeenCalledWith(
+        '11111111-1111-4111-8111-111111111111',
+        '2026-10-16'
+      );
+      expect(result.deferred).toBe(2);
+      expect(result.warnings).not.toContain(
+        'Daily COROS file download limit reached. Remaining activities will be imported after the limit resets (next UTC day).'
+      );
+    });
+
+    it('keeps a download COROS answered, even with a limit error', async () => {
+      const call = mcpReturning(TWO_RECORDS_PAYLOAD, async () => ({
+        content: [{ type: 'text', text: 'Daily download limit exceeded' }],
+        isError: true,
+      }));
+
+      const result = await syncCorosData(
+        USER_ID,
+        'manual',
+        null,
+        '2024-12-01',
+        '2024-12-31'
+      );
+
+      expect(countDownloads(call)).toBe(1);
+      expect(mockFitBudget.releaseFitDownload).not.toHaveBeenCalled();
+      expect(result.deferred).toBe(2);
+    });
   });
 });

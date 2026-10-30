@@ -11,6 +11,10 @@ import backupSettingsRepository from '../models/backupSettingsRepository.js';
 import { endPool, resetPool } from '../db/poolManager.js';
 import { UPLOAD_STAGING_DIR } from '../utils/uploadsPath.js';
 import { describeError } from '../utils/errors.js';
+import {
+  assertRestoreAllowed,
+  RestoreRefusedError,
+} from './onlineRestoreGuard.js';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -429,6 +433,9 @@ async function applyRetentionPolicy() {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function performRestore(backupFilePath: any) {
+  // Also checked by the route before the upload; repeated here so no caller
+  // starts a restore without it.
+  await assertRestoreAllowed();
   log('info', `Starting restore process from ${backupFilePath}`);
   let tempRestoreDir; // Declare tempRestoreDir outside the try block
   try {
@@ -459,6 +466,9 @@ async function performRestore(backupFilePath: any) {
     const extractedDbDumpPath = path.join(tempRestoreDir, dbDumpFile);
     const extractedUploadsTarPath = path.join(tempRestoreDir, uploadsTarFile);
     // 4. Wipe current database and uploads
+    // Extracting a large archive takes a while; another instance may have
+    // started meanwhile.
+    await assertRestoreAllowed();
     log('warn', 'Wiping current database...');
     // End all connections in the pool
     await endPool();
@@ -587,6 +597,7 @@ async function performRestore(backupFilePath: any) {
         );
       }
     }
+    if (error instanceof RestoreRefusedError) throw error;
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     return { success: false, error: error.message };
   }

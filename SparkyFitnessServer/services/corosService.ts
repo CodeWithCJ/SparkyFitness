@@ -32,19 +32,10 @@ import {
   type CorosToolCallResult,
 } from '../integrations/coros/corosMcpText.js';
 import { getExistingSourceIds } from '../models/exerciseEntry.js';
-
-// In-process daily FIT download budget tracker keyed by userId/external_user_id
-const fitBudgetMap = new Map<string, { day: string; used: number }>();
-
-function getFitBudget(key: string): { day: string; used: number } {
-  const todayUtc = new Date().toISOString().slice(0, 10);
-  let budget = fitBudgetMap.get(key);
-  if (!budget || budget.day !== todayUtc) {
-    budget = { day: todayUtc, used: 0 };
-    fitBudgetMap.set(key, budget);
-  }
-  return budget;
-}
+import {
+  reserveFitDownload,
+  releaseFitDownload,
+} from '../models/corosFitBudgetRepository.js';
 
 function formatDateYmd(dateStr: string): string {
   return dateStr.replace(/-/g, '');
@@ -209,7 +200,6 @@ export async function syncCorosData(
   // --- LIVE API BRANCH ---
   const client = await getSystemClient();
   let finalProviderId: string;
-  let externalUserId = '';
   try {
     let q =
       'SELECT id, external_user_id, encrypted_access_token, encrypted_refresh_token, is_active FROM external_data_providers WHERE user_id = $1 AND provider_type = $2';
@@ -277,7 +267,6 @@ export async function syncCorosData(
       );
     }
     finalProviderId = row.id;
-    externalUserId = row.external_user_id || '';
   } finally {
     client.release();
   }
@@ -398,9 +387,7 @@ export async function syncCorosData(
         }
       }
 
-      // Track FIT budget
-      const budgetKey = externalUserId || userId;
-      const budget = getFitBudget(budgetKey);
+      let budgetSpent = false;
       let hitDailyLimit = false;
 
       // Sort records newest first
@@ -418,11 +405,22 @@ export async function syncCorosData(
           continue;
         }
 
-        if (hitDailyLimit || budget.used >= COROS_FIT_BUDGET_PER_DAY) {
+        if (hitDailyLimit || budgetSpent) {
           deferred++;
           continue;
         }
 
+        const reserved = await reserveFitDownload(
+          finalProviderId!,
+          COROS_FIT_BUDGET_PER_DAY
+        );
+        if (!reserved) {
+          budgetSpent = true;
+          deferred++;
+          continue;
+        }
+
+        let downloaded = false;
         try {
           const captureKey = `raw_fit_${record.labelId}`;
           const fitResult = await call(
@@ -434,7 +432,10 @@ export async function syncCorosData(
             captureKey
           );
 
-          budget.used++;
+          downloaded = true;
+          if (reserved.used >= COROS_FIT_BUDGET_PER_DAY) {
+            budgetSpent = true;
+          }
 
           const fitResources = extractFitResources(fitResult);
           if (fitResources.length > 0) {
@@ -510,6 +511,15 @@ export async function syncCorosData(
             );
           }
         } catch (err) {
+          if (!downloaded) {
+            await releaseFitDownload(finalProviderId!, reserved.day).catch(
+              (releaseErr) =>
+                log(
+                  'warn',
+                  `Could not return COROS FIT download budget for ${record.labelId}: ${releaseErr}`
+                )
+            );
+          }
           if (
             err instanceof CorosReauthRequiredError ||
             (err as { name?: string })?.name === 'CorosReauthRequiredError'
@@ -527,10 +537,7 @@ export async function syncCorosData(
         }
       }
 
-      if (
-        (hitDailyLimit || budget.used >= COROS_FIT_BUDGET_PER_DAY) &&
-        deferred > 0
-      ) {
+      if ((hitDailyLimit || budgetSpent) && deferred > 0) {
         warnings.push(
           'Daily COROS file download limit reached. Remaining activities will be imported after the limit resets (next UTC day).'
         );

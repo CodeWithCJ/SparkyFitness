@@ -28,6 +28,8 @@
     "@ai-sdk/openai": "^4.0.101",
     "@better-auth/api-key": "^1.7.12",
     "@better-auth/expo": "1.7.12",
+    "@better-auth/mcp": "1.7.12",
+    "@better-auth/oauth-provider": "1.7.12",
     "@better-auth/passkey": "^1.7.12",
     "@better-auth/sso": "^1.7.12",
     "@garmin/fitsdk": "^21.218.0",

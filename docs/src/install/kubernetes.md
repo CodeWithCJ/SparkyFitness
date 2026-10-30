@@ -35,7 +35,7 @@ spec:
   interval: 1h
   url: oci://ghcr.io/codewithcj/charts/sparkyfitness
   ref:
-    tag: 1.9.0 # the release to run; bump it to upgrade
+    tag: 1.10.0 # the release to run; bump it to upgrade
   # Pick the chart layer explicitly; the artifact can also carry a provenance layer.
   layerSelector:
     mediaType: application/vnd.cncf.helm.chart.content.v1.tar+gzip

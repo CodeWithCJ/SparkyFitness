@@ -81,6 +81,58 @@ describe('AuthenticationSettings passkey switch', () => {
   });
 });
 
+describe('AuthenticationSettings MCP OAuth settings', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  it('warns that approved applications receive write access', () => {
+    renderWith({ mcp_oauth_enabled: false, mcp_oauth_available: true });
+
+    expect(
+      screen.getByText(/full MCP access, including tools that can write/i)
+    ).toBeInTheDocument();
+  });
+
+  it('disables the switch and explains when the public URL is unsupported', () => {
+    renderWith({
+      mcp_oauth_enabled: false,
+      mcp_oauth_available: false,
+      mcp_oauth_unavailable_reason: 'Public HTTPS is required.',
+    });
+
+    expect(
+      screen.getByRole('switch', { name: 'Remote MCP OAuth' })
+    ).toBeDisabled();
+    expect(screen.getByText('Public HTTPS is required.')).toBeInTheDocument();
+  });
+
+  it('saves one trimmed redirect allowlist entry per line', () => {
+    renderWith({
+      mcp_oauth_allowed_redirect_uris: [
+        'https://claude.ai/api/mcp/auth_callback',
+      ],
+    });
+    fireEvent.change(screen.getByLabelText('Allowed OAuth redirect URIs'), {
+      target: {
+        value:
+          'https://claude.com/api/mcp/auth_callback\n\nhttp://localhost:*  ',
+      },
+    });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Save OAuth redirect allowlist' })
+    );
+
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mcp_oauth_allowed_redirect_uris: [
+          'https://claude.com/api/mcp/auth_callback',
+          'http://localhost:*',
+        ],
+      }),
+      expect.anything()
+    );
+  });
+});
+
 describe('AuthenticationSettings release check switch', () => {
   afterEach(() => jest.clearAllMocks());
 

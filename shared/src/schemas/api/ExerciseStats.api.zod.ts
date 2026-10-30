@@ -168,6 +168,10 @@ export const exerciseActivityQueryItemSchema = z.object({
   floorsClimbed: z.number().nullable().optional(),
   /** Total ascent in metres, whatever the unit system of the request. */
   elevationGainMeters: z.number().nullable().optional(),
+  /** Air temperature at the start, in °C whatever the unit system of the request. */
+  weatherTempCelsius: z.number().nullable().optional(),
+  /** Short description such as "Light rain". */
+  weatherCondition: z.string().nullable().optional(),
   /** The person's own 1 (easy) to 10 (maximal) rating of the workout. */
   workoutEffort: z.number().int().min(1).max(10).nullable().optional(),
   /** Average running cadence in steps per minute. */

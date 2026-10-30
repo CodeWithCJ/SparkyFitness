@@ -43,11 +43,19 @@ async function isDbReachable(): Promise<boolean> {
   if (!process.env.SPARKY_FITNESS_DB_HOST) return false;
   const probe = client();
   try {
-    await probe.connect();
-    await probe.query('SELECT 1 FROM system.rate_limit_windows LIMIT 0');
-    return true;
-  } catch {
-    return false;
+    try {
+      await probe.connect();
+    } catch {
+      return false;
+    }
+    try {
+      await probe.query('SELECT 1 FROM system.rate_limit_windows LIMIT 0');
+      return true;
+    } catch (error) {
+      // CI always migrates its database, so a missing table there is a failure, not a skip.
+      if (process.env.CI === 'true') throw error;
+      return false;
+    }
   } finally {
     await probe.end().catch(() => {});
   }

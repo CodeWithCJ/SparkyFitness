@@ -1,5 +1,7 @@
 import { resolveIsAdmin } from '../utils/adminCheck.js';
+import { mcpOAuthAllowedRedirectUriSchema } from '@workspace/shared';
 import express from 'express';
+import { z } from 'zod';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import { log } from '../config/logging.js';
 import { isAdmin, authenticate } from '../middleware/authMiddleware.js';
@@ -8,6 +10,14 @@ import {
   saveGlobalSettingsWithOpenFoodFactsSync,
 } from '../services/openFoodFactsSyncSettingsService.js';
 const router = express.Router();
+
+const globalSettingsUpdateSchema = z
+  .object({
+    mcp_oauth_allowed_redirect_uris: z
+      .array(mcpOAuthAllowedRedirectUriSchema)
+      .optional(),
+  })
+  .passthrough();
 
 router.get(
   '/openfoodfacts-contributions/status',
@@ -70,9 +80,17 @@ router.get('/', isAdmin, async (req, res) => {
  */
 router.put('/', isAdmin, async (req, res) => {
   try {
-    const settingsData = req.body;
-    const newSettings =
-      await saveGlobalSettingsWithOpenFoodFactsSync(settingsData);
+    const parsed = globalSettingsUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: 'Invalid global settings',
+        errors: parsed.error.issues.map((issue) => issue.message),
+      });
+    }
+
+    const newSettings = await saveGlobalSettingsWithOpenFoodFactsSync(
+      parsed.data
+    );
     log('info', 'Global auth settings updated successfully.');
     res.status(200).json(newSettings);
   } catch (error) {

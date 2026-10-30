@@ -1865,7 +1865,7 @@
     "formatTabata": "Tabata",
     "formatEmom": "EMOM",
     "formatAmrap": "AMRAP",
-    "formatForTime": "For Time",
+    "formatForTime": "Por tempo",
     "timeCapLabel": "Tempo limite (minutos)",
     "rampLabel": "Aumento por série (neste treino, {{unit}})",
     "rampPlaceholder": "Desligado",
@@ -2254,7 +2254,7 @@
       "drinksOver_other": "{{count}} doses acima",
       "upcomingDay": "Ainda não",
       "stdDrinksG": "doses-padrão ({{total_g}} g)",
-      "limitG": "Limite: {{limit_standard_drinks}} (<span>{{limit_g}}</span> g)"
+      "limitG": "Limite: {{limit_standard_drinks}} (<span>{{limit_g}}</span>g)"
     },
     "hydration": {
       "title": "Hidratação",
@@ -4455,7 +4455,7 @@
     "legs": "Pernas",
     "calves": "Panturrilhas",
     "forearms": "Antebraços",
-    "_comment": "muscleGroups is a coarser UI grouping for RecoveryTracker (MuscleGroupRecoveryTracker.tsx). Do not consolidate with muscles."
+    "_comment": "muscleGroups é um grupo de interface mais amplo para RecoveryTracker (MuscleGroupRecoveryTracker.tsx). Não consolidar com músculos."
   },
   "common": {
     "active": "Ativo",

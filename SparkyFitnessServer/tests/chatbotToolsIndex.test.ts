@@ -69,6 +69,7 @@ const EXPECTED_TOOLS = [
   'sparky_manage_symptoms',
   'sparky_manage_water_containers',
   'sparky_manage_workout_plans',
+  'sparky_review_calorie_target',
   'sparky_scan_label',
   'sparky_search_exercises',
   'sparky_search_foods',

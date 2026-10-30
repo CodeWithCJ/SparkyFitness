@@ -1,0 +1,92 @@
+name: What's New Drift
+
+# Keeps one open issue that lists the feat commits which changed the mobile app
+# since WHATS_NEW_CONTENT_VERSION was last bumped, so the What's New screen does
+# not quietly fall behind. The issue closes itself once the version is bumped.
+# It only reports; writing the cards stays a human (or `whats-new` skill) job.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "SparkyFitnessMobile/src/**"
+      - ".github/scripts/whats-new-drift.sh"
+      - ".github/workflows/whats-new-drift.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: whats-new-drift
+  cancel-in-progress: true
+
+jobs:
+  check:
+    # The issue is the report for main, so a manual run from another branch must
+    # not replace or close it.
+    if: github.event.repository.has_issues && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: List features since the last What's New bump
+        run: .github/scripts/whats-new-drift.sh > commits.txt
+
+      - name: Update tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: What's New screen is out of date
+          MAX_LISTED: "40"
+        run: |
+          set -euo pipefail
+          # Only an issue this workflow created counts as the tracker, so an
+          # outsider cannot redirect it by opening one with the same title.
+          number=$(gh issue list --state open --author "app/github-actions" \
+            --search "\"$TITLE\" in:title" \
+            --json number,title \
+            --jq "map(select(.title == \"$TITLE\"))[0].number // empty")
+          count=$(wc -l < commits.txt)
+
+          if [ "$count" -eq 0 ]; then
+            if [ -n "$number" ]; then
+              gh issue close "$number" --comment "The What's New content version was bumped, so the screen is up to date."
+            fi
+            exit 0
+          fi
+
+          {
+            echo "$count feature commits have changed the mobile app since \`WHATS_NEW_CONTENT_VERSION\` was last bumped in \`SparkyFitnessMobile/src/services/whatsNewBanner.ts\`."
+            echo
+            echo "Add or update cards in \`SparkyFitnessMobile/src/screens/WhatsNewScreen.tsx\`, then bump the version. The \`whats-new\` skill walks through it."
+            echo
+            head -n "$MAX_LISTED" commits.txt | while IFS='|' read -r sha subject; do
+              # Commit subjects are contributor-controlled: strip control
+              # characters and show them as inline code so links, @mentions and
+              # HTML in a subject stay inert.
+              subject=$(printf '%s' "$subject" | tr -d '\000-\037\177' | tr '`' "'" | cut -c1-200)
+              echo "- [\`$sha\`]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$sha) \`$subject\`"
+            done
+            if [ "$count" -gt "$MAX_LISTED" ]; then
+              echo
+              echo "...and $((count - MAX_LISTED)) more. Run \`.github/scripts/whats-new-drift.sh\` for the full list."
+            fi
+            echo
+            echo "**This list is a heads-up, not a complete audit.** It only matches commit subjects starting with \`feat(\`, \`feat:\` or \`feat!\`, and shows at most $MAX_LISTED commits. A feature committed under another type is missed, so also audit the rest of the mobile commits:"
+            echo
+            echo "\`\`\`"
+            echo "git log --no-merges --format='%h %s' \"\$(.github/scripts/whats-new-drift.sh --marker)..HEAD\" -- SparkyFitnessMobile/src"
+            echo "\`\`\`"
+            echo
+            echo "Not every feature needs a card. Group related commits and skip internal or minor ones."
+          } > body.md
+
+          if [ -n "$number" ]; then
+            gh issue edit "$number" --body-file body.md
+          else
+            gh issue create --title "$TITLE" --body-file body.md
+          fi

@@ -13,6 +13,7 @@ import {
 import {
   createGuardedDispatcher,
   createGuardedFetch,
+  forNativeFetch,
   assertOutboundUrlShapeAndLiteralAllowed,
   getOutboundUrlBlockedError,
   OutboundUrlShapeError,
@@ -1288,7 +1289,7 @@ async function performOllama(
         body: JSON.stringify(built.body),
         redirect: 'manual',
         // @ts-expect-error undici dispatcher option is not in fetch DOM types
-        dispatcher: agent,
+        dispatcher: forNativeFetch(agent),
       });
     } catch (error) {
       const name = (error as { name?: string } | null)?.name;

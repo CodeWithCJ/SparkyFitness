@@ -8,6 +8,10 @@ export interface GlobalSettings {
   allow_private_network_ai?: boolean;
   allow_private_network_food_providers?: boolean;
   public_api_docs?: boolean;
+  mcp_oauth_enabled?: boolean;
+  mcp_oauth_allowed_redirect_uris?: string[];
+  mcp_oauth_available?: boolean;
+  mcp_oauth_unavailable_reason?: string | null;
   dev_tools_enabled?: boolean;
   mock_data_enabled?: boolean;
   enable_version_check?: boolean;

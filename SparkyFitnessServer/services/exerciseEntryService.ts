@@ -21,6 +21,7 @@ import {
 import { getClient } from '../db/poolManager.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { describeError } from '../utils/errors.js';
+import { attachWeatherToExerciseEntry } from './weatherService.js';
 import { upsertSamplesByDay } from './healthMetricSampleWriter.js';
 import * as workoutTelemetryRepo from '../models/workoutTelemetryRepository.js';
 import {
@@ -573,6 +574,15 @@ async function attachGpsTrackToExerciseEntry(
   } finally {
     client.release();
   }
+
+  // After the response's own work is done and without waiting on it: a slow
+  // weather service must not hold up saving a run. It never throws.
+  const first = points[0]!;
+  void attachWeatherToExerciseEntry(userId, exerciseEntryId, {
+    lat: first.lat,
+    lon: first.lon,
+    t: first.t,
+  });
 }
 
 /**

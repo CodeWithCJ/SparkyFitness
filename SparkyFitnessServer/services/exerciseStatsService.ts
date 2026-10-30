@@ -654,6 +654,7 @@ async function queryExerciseActivities(
         duration_minutes, distance, avg_heart_rate, calories_burned, source, notes,
         floors_climbed, elevation_gain_meters, workout_effort,
         avg_cadence, stride_length_cm, modality,
+        weather_temp_celsius, weather_condition,
         EXISTS (
           SELECT 1 FROM public.exercise_entry_gps_points g
           WHERE g.exercise_entry_id = exercise_entries.id
@@ -715,6 +716,16 @@ async function queryExerciseActivities(
             row.workout_effort !== null && row.workout_effort !== undefined
               ? Number(row.workout_effort)
               : null,
+          // Unlike elevation, 0 °C is a real reading, so only null is "none".
+          weatherTempCelsius:
+            row.weather_temp_celsius !== null &&
+            row.weather_temp_celsius !== undefined
+              ? Math.round(parseFloat(String(row.weather_temp_celsius)) * 10) /
+                10
+              : null,
+          weatherCondition: row.weather_condition
+            ? String(row.weather_condition)
+            : null,
           source: row.source ? String(row.source) : null,
           notes: row.notes ? String(row.notes) : null,
           hasGpsTrack: row.has_gps_track === true,

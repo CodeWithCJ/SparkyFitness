@@ -1,8 +1,11 @@
+import http from 'node:http';
 import net from 'node:net';
 import { describe, expect, it, vi } from 'vitest';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
   createGuardedDispatcher,
+  createGuardedFetch,
+  forNativeFetch,
   isOutboundUrlBlockedError,
   OutboundUrlBlockedError,
   OutboundUrlShapeError,
@@ -160,7 +163,7 @@ describe('outboundUrlPolicy', () => {
       const outcome = await Promise.race([
         fetch(`https://127.0.0.1:${address.port}`, {
           // Undici-specific option supported by Node's fetch implementation.
-          dispatcher,
+          dispatcher: forNativeFetch(dispatcher),
         } as RequestInit & { dispatcher: unknown }).then(
           () => 'resolved',
           () => 'rejected'
@@ -180,5 +183,75 @@ describe('outboundUrlPolicy', () => {
       await dispatcher.destroy();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     }
+  });
+});
+
+// Real requests through Node's built-in fetch, no fetch mock: the dispatcher
+// handed to it must speak the handler API of the undici copy bundled with Node.
+describe('createGuardedFetch over a real connection', () => {
+  async function withEchoServer(
+    run: (baseUrl: string) => Promise<void>
+  ): Promise<void> {
+    const server = http.createServer((req, res) => {
+      let body = '';
+      req.on('data', (chunk) => (body += chunk));
+      req.on('end', () => {
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify({ method: req.method, url: req.url, body }));
+      });
+    });
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    const address = server.address();
+    if (!address || typeof address === 'string') {
+      throw new Error('Test server did not bind to a TCP address.');
+    }
+    try {
+      await run(`http://127.0.0.1:${address.port}`);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  }
+
+  it('completes a GET to an allowed address', async () => {
+    await withEchoServer(async (baseUrl) => {
+      const response = await createGuardedFetch(PRIVATE_ALLOWED_POLICY)(
+        `${baseUrl}/food?code=123`
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        method: 'GET',
+        url: '/food?code=123',
+        body: '',
+      });
+    });
+  });
+
+  it('sends the method and body of a Request object', async () => {
+    await withEchoServer(async (baseUrl) => {
+      const response = await createGuardedFetch(PRIVATE_ALLOWED_POLICY)(
+        new Request(`${baseUrl}/estimate`, { method: 'POST', body: 'payload' })
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        method: 'POST',
+        url: '/estimate',
+        body: 'payload',
+      });
+    });
+  });
+
+  it('still blocks a private address under the public-only policy', async () => {
+    await withEchoServer(async (baseUrl) => {
+      await expect(
+        Promise.resolve().then(() =>
+          createGuardedFetch(PUBLIC_ONLY_AI_NETWORK_POLICY)(`${baseUrl}/x`)
+        )
+      ).rejects.toBeInstanceOf(OutboundUrlBlockedError);
+    });
   });
 });

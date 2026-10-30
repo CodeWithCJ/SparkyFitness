@@ -315,6 +315,14 @@ export function cardioSessionFromDiaryEntry(
   // matching the server's activity item, so a walk shows no "0 floors".
   const floors = toFiniteNumber(session.floors_climbed);
   const elevationGain = toFiniteNumber(session.elevation_gain_meters);
+  // Unlike the counts above, 0 °C is a real reading; only a missing value is null.
+  const rawWeatherTemp: unknown = session.weather_temp_celsius;
+  const weatherTemp =
+    rawWeatherTemp == null ||
+    (typeof rawWeatherTemp === 'string' && rawWeatherTemp.trim() === '') ||
+    !Number.isFinite(Number(rawWeatherTemp))
+      ? null
+      : Number(rawWeatherTemp);
   return {
     id: session.id,
     userId: '',
@@ -337,6 +345,8 @@ export function cardioSessionFromDiaryEntry(
     avgHeartRate: session.avg_heart_rate,
     floorsClimbed: floors > 0 ? floors : null,
     elevationGainMeters: elevationGain > 0 ? elevationGain : null,
+    weatherTempCelsius: weatherTemp,
+    weatherCondition: session.weather_condition ?? null,
     source: session.source,
     notes: session.notes,
     hasGpsTrack: false,

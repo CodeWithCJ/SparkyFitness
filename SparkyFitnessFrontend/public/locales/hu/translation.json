@@ -1656,6 +1656,21 @@
     },
     "waterTracking": {
       "title": "Vízfogyasztás nyomon követése"
+    },
+    "aiService": {
+      "globalSettings": {
+        "setAsActive": "Konfiguráció engedélyezése",
+        "activeService": "Konfiguráció engedélyezve"
+      },
+      "userSettings": {
+        "activeProvider": "Chat konfiguráció"
+      }
+    }
+  },
+  "admin": {
+    "backupSettings": {
+      "backupCount_one": "{{count}} biztonsági mentés",
+      "backupCount_other": "{{count}} biztonsági mentés"
     }
   }
 }

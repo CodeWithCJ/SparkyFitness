@@ -247,6 +247,70 @@ describe('CardioSessionScreen', () => {
     expect(screen.getByText('1 floor')).toBeTruthy();
   });
 
+  describe('weather', () => {
+    const withWeather = (extra: Partial<ExerciseActivityQueryItem>) =>
+      ({ ...STAIRS, ...extra }) as ExerciseActivityQueryItem;
+    const imperial = (session: ExerciseActivityQueryItem) =>
+      ({
+        ...props(session),
+        route: {
+          key: 'CardioSession',
+          name: 'CardioSession',
+          params: { session, distanceUnit: 'miles' },
+        },
+      }) as unknown as RootStackScreenProps<'CardioSession'>;
+
+    it('shows the temperature and conditions at the start', () => {
+      mockDetail.mockReturnValue(detail({ route: [] }));
+      const screen = render(
+        <CardioSessionScreen
+          {...props(
+            withWeather({
+              weatherTempCelsius: 9.4,
+              weatherCondition: 'Light rain',
+            })
+          )}
+        />
+      );
+
+      expect(screen.getByText('Weather')).toBeTruthy();
+      expect(screen.getByText('9°C · Light rain')).toBeTruthy();
+    });
+
+    it('shows Fahrenheit with the miles setting', () => {
+      mockDetail.mockReturnValue(detail({ route: [] }));
+      const screen = render(
+        <CardioSessionScreen
+          {...imperial(
+            withWeather({ weatherTempCelsius: 10, weatherCondition: 'Clear' })
+          )}
+        />
+      );
+
+      expect(screen.getByText('50°F · Clear')).toBeTruthy();
+    });
+
+    it('treats 0° as a reading, not as missing', () => {
+      mockDetail.mockReturnValue(detail({ route: [] }));
+      const screen = render(
+        <CardioSessionScreen
+          {...props(
+            withWeather({ weatherTempCelsius: 0, weatherCondition: null })
+          )}
+        />
+      );
+
+      expect(screen.getByText('0°C')).toBeTruthy();
+    });
+
+    it('leaves the tile out when there is no weather', () => {
+      mockDetail.mockReturnValue(detail({ route: [] }));
+      const screen = render(<CardioSessionScreen {...props(STAIRS)} />);
+
+      expect(screen.queryByText('Weather')).toBeNull();
+    });
+  });
+
   it('leaves out floors and elevation when the workout has none', () => {
     mockDetail.mockReturnValue(detail());
     const screen = render(<CardioSessionScreen {...props()} />);

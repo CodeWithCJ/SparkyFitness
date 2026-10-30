@@ -20,7 +20,16 @@ vi.mock('undici', () => {
     return { destroy: vi.fn() };
   });
   const buildConnector = vi.fn(() => vi.fn());
-  return { default: { Agent, buildConnector }, Agent, buildConnector };
+  // Pass-through, so assertions on the dispatcher still see the Agent.
+  const Dispatcher1Wrapper = vi.fn(function (inner: unknown) {
+    return inner;
+  });
+  return {
+    default: { Agent, buildConnector, Dispatcher1Wrapper },
+    Agent,
+    buildConnector,
+    Dispatcher1Wrapper,
+  };
 });
 vi.mock('../models/globalSettingsRepository.js', () => ({
   isPrivateNetworkAiAllowed: vi.fn().mockResolvedValue(false),

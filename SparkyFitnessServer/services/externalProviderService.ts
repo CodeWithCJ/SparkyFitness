@@ -26,7 +26,10 @@ import {
 import { resolveIsAdminByUserId } from '../utils/adminCheck.js';
 import { resolveCorosMcpUrl } from '../integrations/coros/corosConstants.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
-import { ROUTING_PROVIDER_TYPE } from '@workspace/shared';
+import {
+  ROUTING_PROVIDER_TYPE,
+  WEATHER_PROVIDER_TYPE,
+} from '@workspace/shared';
 
 // Provider types whose stored base_url is fetched server-side, making it an
 // SSRF surface. Their base_url is validated against the food-provider network
@@ -37,9 +40,11 @@ const BASE_URL_FETCHING_PROVIDER_TYPES = new Set([
   'norish',
   OPEN_FOOD_FACTS_PROVIDER_TYPE,
   ROUTING_PROVIDER_TYPE,
+  WEATHER_PROVIDER_TYPE,
 ]);
 
-// Reject a private/internal base_url for the self-hosted recipe providers.
+// Reject a private/internal base_url for the self-hosted providers (recipe,
+// routing and weather).
 // Admins may point at a private/LAN address (a single-user self-host is an
 // admin, so no config is needed); a non-admin on a multi-user server is
 // blocked unless the operator opts in, either with the admin
@@ -60,11 +65,7 @@ async function validateFoodProviderBaseUrl(
   // https:// (e.g. "mealie.example.com"). Normalize the same way before
   // validating so a bare host/IP isn't rejected as a malformed URL.
   let normalized = String(baseUrl).trim();
-  if (
-    normalized &&
-    !normalized.startsWith('http://') &&
-    !normalized.startsWith('https://')
-  ) {
+  if (normalized && !/^https?:\/\//i.test(normalized)) {
     normalized = `https://${normalized}`;
   }
   const isAdmin = await resolveIsAdminByUserId(authenticatedUserId);
@@ -80,7 +81,7 @@ async function validateFoodProviderBaseUrl(
   } catch (error) {
     if (isOutboundUrlBlockedError(error)) {
       throw badRequest(
-        'Provider base URL resolves to a private or internal address. Only admins can use a local/self-hosted address by default; to allow all users, enable "Allow Private / LAN Recipe Providers" in Admin > Global Provider Settings (or set ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS=true in your server environment).'
+        'Provider base URL resolves to a private or internal address. Only admins can use a local/self-hosted address by default; to allow all users, enable "Allow Private / LAN Recipe Providers" in Admin > Global Provider Settings (the setting covers every self-hosted provider, including routing and weather) or set ALLOW_PRIVATE_NETWORK_FOOD_PROVIDERS=true in your server environment.'
       );
     }
     if (error instanceof OutboundUrlShapeError) {

@@ -75,18 +75,6 @@ function readPolicySql(): string {
   );
 }
 
-async function ensureStateTable(client: PoolClient): Promise<void> {
-  await client.query(`
-    CREATE SCHEMA IF NOT EXISTS system;
-    CREATE TABLE IF NOT EXISTS system.rls_policy_state (
-      id BOOLEAN PRIMARY KEY DEFAULT TRUE CHECK (id),
-      file_sha256 TEXT NOT NULL,
-      catalog_fingerprint TEXT NOT NULL,
-      applied_at TIMESTAMP WITH TIME ZONE NOT NULL
-    );
-  `);
-}
-
 async function policiesAreCurrent(
   client: PoolClient,
   fileSha256: string
@@ -131,7 +119,6 @@ async function applyRlsPolicies(
   try {
     const sql = options.sql ?? readPolicySql();
     const fileSha256 = crypto.createHash('sha256').update(sql).digest('hex');
-    await ensureStateTable(client);
     if (await policiesAreCurrent(client, fileSha256)) {
       log('info', 'RLS policies match rls_policies.sql; nothing to apply.');
       return 'current';

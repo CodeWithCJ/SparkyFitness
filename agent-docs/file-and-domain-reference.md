@@ -58,6 +58,7 @@ Paths are relative to each package root. `—` means that layer does not exist f
 | **Water Intake** | `routes/waterContainerRoutes.ts` `routes/v2/waterIntakeRoutes.ts`, `services/waterContainerService.ts`, `models/waterContainerRepository.ts` | `pages/Diary/` (water) `api/Diary/waterIntakteService.ts` *(sic — real filename)* | `hooks/useWaterIntakeMutation.ts` | — |
 | **Custom Measurements / Nutrients** | `routes/customNutrientRoutes.ts`, `services/customNutrientService.ts` | `pages/CheckIn/` `api/CheckIn/` | `services/api/customNutrientsApi.ts` `hooks/useCustomNutrients.ts` | `schemas/database/CustomMeasurements.zod.ts` `schemas/database/CustomCategories.zod.ts` `schemas/api/CustomMeasurements.api.zod.ts` |
 | **Mindfulness & Meditation** | `routes/v2/mindfulnessRoutes.ts`, `models/mindfulnessRepository.ts` | `pages/CheckIn/MindfulnessSection.tsx` `api/CheckIn/mindfulnessService.ts` `hooks/CheckIn/useMindfulness.ts` | `components/mindfulness/` `screens/DiaryScreen.tsx` `screens/MeasurementsAddScreen.tsx` `services/api/mindfulnessApi.ts` `hooks/useMindfulness.ts` | `schemas/database/MindfulnessSessions.zod.ts` `schemas/api/Mindfulness.api.zod.ts` |
+| **Lab Results** | `routes/v2/labResultRoutes.ts`, `models/labResultRepository.ts`, `db/migrations/20261029120000_create_lab_tables.sql` | (not built yet) | (not built yet) | `shared/src/constants/labMarkers.ts`, `shared/src/schemas/api/LabResults.api.zod.ts`, `shared/src/schemas/database/LabMarkers.zod.ts`, `shared/src/schemas/database/LabResults.zod.ts` |
 
 ### Sleep, Fasting, Mood, Medications
 

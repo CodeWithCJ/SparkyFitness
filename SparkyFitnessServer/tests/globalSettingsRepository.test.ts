@@ -175,6 +175,33 @@ describe('globalSettingsRepository', () => {
       }
     );
 
+    it('saves the MCP OAuth feature switch', async () => {
+      mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
+      await globalSettingsRepository.saveGlobalSettings({
+        enable_email_password_login: true,
+        is_oidc_active: false,
+        is_mfa_mandatory: false,
+        mcp_oauth_enabled: true,
+      });
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(sql).toContain('mcp_oauth_enabled = COALESCE($14');
+      expect(params[13]).toBe(true);
+    });
+
+    it('saves the MCP OAuth redirect allowlist', async () => {
+      mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
+      const redirects = [
+        'https://claude.ai/api/mcp/auth_callback',
+        'http://localhost:*',
+      ];
+      await globalSettingsRepository.saveGlobalSettings({
+        mcp_oauth_allowed_redirect_uris: redirects,
+      });
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(sql).toContain('mcp_oauth_allowed_redirect_uris = COALESCE($16');
+      expect(params[15]).toEqual(redirects);
+    });
+
     it('saves the passkey login setting', async () => {
       mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
       await globalSettingsRepository.saveGlobalSettings({
@@ -200,9 +227,9 @@ describe('globalSettingsRepository', () => {
       });
       const [sql, params] = mockClient.query.mock.calls[0];
       expect(sql).toContain(
-        'enable_version_check = COALESCE($14, enable_version_check, true)'
+        'enable_version_check = COALESCE($15, enable_version_check, true)'
       );
-      expect(params[13]).toBe(false);
+      expect(params[14]).toBe(false);
     });
     it('should update and return global settings', async () => {
       const inputSettings = {
@@ -232,6 +259,8 @@ describe('globalSettingsRepository', () => {
           false,
           null,
           false,
+          null,
+          null,
           null,
           null,
           null,

@@ -4099,7 +4099,7 @@
     },
     "calendar": {
       "loggedCount_one": "{{count}} geregistreerd symptoom",
-      "loggedCount_other": "",
+      "loggedCount_other": "{{count}} geregistreerd symptomen",
       "maxSeverity": "Maximale ernst: {{n}}",
       "title": "Kalender voor medicatieoverzicht",
       "noMeds": "Voeg hier een medicijn toe om de bijbehorende kalender te bekijken.",
@@ -4637,7 +4637,10 @@
   },
   "foods": {
     "providerVerified": "Gecertificeerde voedingsmiddelen",
-    "removeNutrient": "Verwijder: {{nutrient}}"
+    "removeNutrient": "Verwijder: {{nutrient}}",
+    "aliasChipInput": {
+      "remove": "Verwijder {{alias}}"
+    }
   },
   "sync": {
     "syncAll": "Synchroniseer alle actieve databases",

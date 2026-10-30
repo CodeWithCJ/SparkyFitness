@@ -15,6 +15,9 @@ import {
 } from '../../services/passkeyTicketService.js';
 import { isDemoMode } from '../../middleware/demoGuardMiddleware.js';
 import { makeIpRateLimit } from '../../middleware/ipRateLimit.js';
+import { z } from 'zod';
+import { getOAuthClientSummary } from '../../models/oauthClientRepository.js';
+import { verifyMcpOAuthQuery } from '../../utils/mcpOAuth.js';
 import { isPasskeyLoginDisabled } from '../../utils/passkeyLogin.js';
 import {
   getDemoCredentials,
@@ -25,6 +28,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
+
+const oauthConsentDetailsQuerySchema = z.object({
+  query: z.string().min(1).max(8192),
+});
+
 // Rate limiter for the /mfa-factors endpoint to prevent account enumeration.
 // This endpoint reveals whether an email has an account, so it needs tighter limits
 // than the global 100/min. Better Auth's rate limiter doesn't apply here because
@@ -115,6 +123,40 @@ router.get('/settings', async (req, res) => {
       demo_mode: isDemoMode(),
     });
   }
+});
+
+router.get('/oauth-consent-details', async (req, res) => {
+  const parsed = oauthConsentDetailsQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid OAuth consent request.' });
+  }
+
+  const { auth } = authModule;
+  const { secret } = await auth.$context;
+  if (!(await verifyMcpOAuthQuery(parsed.data.query, secret))) {
+    return res.status(400).json({ error: 'Invalid OAuth consent signature.' });
+  }
+
+  const params = new URLSearchParams(parsed.data.query);
+  const clientId = params.get('client_id');
+  if (!clientId) {
+    return res.status(400).json({ error: 'OAuth client is missing.' });
+  }
+  const client = await getOAuthClientSummary(clientId);
+  if (!client) {
+    return res.status(404).json({ error: 'OAuth client was not found.' });
+  }
+
+  const redirectUri = params.get('redirect_uri');
+  if (!redirectUri) {
+    return res.status(400).json({ error: 'OAuth redirect URI is missing.' });
+  }
+
+  return res.json({
+    client,
+    scopes: (params.get('scope') ?? '').split(' ').filter(Boolean),
+    redirectUri,
+  });
 });
 
 /**

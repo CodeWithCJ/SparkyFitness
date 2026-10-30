@@ -30,6 +30,7 @@ import {
   hasExactReviewedFoodEntrySnapshot,
   isDayString,
   foodVolumeToMl,
+  resolveExerciseCalories,
 } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
 import { removeOrphanedImages } from '../middleware/imageUpload.js';
@@ -42,6 +43,30 @@ function countedExerciseCalories(ex: {
   calories_applied?: number | string | null;
 }): number {
   return Number(ex.calories_applied ?? ex.calories_burned) || 0;
+}
+
+/**
+ * The day's exercise calories for the CSV summary row. A device "Active Calories"
+ * entry already includes the logged workouts, so take the larger of the two
+ * instead of adding both, as the diary's exercise card does.
+ */
+export function exportedExerciseCalories(
+  entries: {
+    exercise_name?: string | null;
+    calories_burned: number | string;
+    calories_applied?: number | string | null;
+  }[]
+): number {
+  let active = 0;
+  let logged = 0;
+  for (const ex of entries) {
+    if (ex.exercise_name === 'Active Calories') {
+      active += countedExerciseCalories(ex);
+    } else {
+      logged += countedExerciseCalories(ex);
+    }
+  }
+  return resolveExerciseCalories(logged, active, 0).calories;
 }
 /**
  * A parsed row from a food-diary CSV import.
@@ -3497,17 +3522,11 @@ async function exportAllDiaryEntriesToCSVStream(
         );
         const waterTotal = parseFloat(String(water?.water_ml)) || 0;
 
-        let caloriesBurned = 0;
-        exerciseEntries.forEach(
-          (ex: {
-            entry_date: string | Date;
-            calories_burned: number | string;
-            calories_applied?: number | string | null;
-          }) => {
-            if (getDayString(ex.entry_date) === dateStr) {
-              caloriesBurned += countedExerciseCalories(ex);
-            }
-          }
+        const caloriesBurned = exportedExerciseCalories(
+          exerciseEntries.filter(
+            (ex: { entry_date: string | Date }) =>
+              getDayString(ex.entry_date) === dateStr
+          )
         );
 
         const drinkLogs = waterIntakeLogs.filter(
@@ -3841,16 +3860,7 @@ async function exportAllDiaryEntriesToCSVStream(
         null
       );
 
-      let caloriesBurned = 0;
-      exEntries.forEach(
-        (ex: {
-          entry_date: string | Date;
-          calories_burned: number | string;
-          calories_applied?: number | string | null;
-        }) => {
-          caloriesBurned += countedExerciseCalories(ex);
-        }
-      );
+      const caloriesBurned = exportedExerciseCalories(exEntries);
 
       const lastDateDrinkLogs =
         await measurementRepository.getWaterIntakeLogsByDates(userId, [

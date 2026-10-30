@@ -327,6 +327,30 @@ describe('cardioSessionFromDiaryEntry', () => {
     });
   });
 
+  it('carries the weather, reading a temperature that arrives as text', () => {
+    const item = cardioSessionFromDiaryEntry(
+      entry({
+        weather_temp_celsius: '0.0' as unknown as number,
+        weather_condition: 'Light rain',
+      }),
+      'km'
+    );
+    expect(item).toMatchObject({
+      weatherTempCelsius: 0,
+      weatherCondition: 'Light rain',
+    });
+  });
+
+  it('leaves the weather temperature null when none was recorded', () => {
+    for (const missing of [null, undefined, '']) {
+      const item = cardioSessionFromDiaryEntry(
+        entry({ weather_temp_celsius: missing as unknown as number }),
+        'km'
+      );
+      expect(item?.weatherTempCelsius).toBeNull();
+    }
+  });
+
   it('reads floors and elevation that arrive as numeric strings', () => {
     // The diary entry is a raw database row; numeric columns come back as text.
     const item = cardioSessionFromDiaryEntry(

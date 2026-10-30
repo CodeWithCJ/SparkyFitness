@@ -31,6 +31,42 @@ export const spmText = (t: TFunction, cadence: number) =>
     value: formatLocalizedNumber(Math.round(cadence)),
   });
 
+/**
+ * "9° · Light rain" for the air temperature and conditions at the start. The
+ * temperature is stored in °C and shown in °F with the miles setting, as
+ * elevation is shown in feet; 0° is a real reading, so only null is skipped.
+ */
+function weatherText(
+  t: TFunction,
+  session: Pick<
+    ExerciseActivityQueryItem,
+    'weatherTempCelsius' | 'weatherCondition'
+  >,
+  distanceUnit: 'km' | 'miles'
+): string | null {
+  const parts: string[] = [];
+  if (session.weatherTempCelsius != null) {
+    const fahrenheit = distanceUnit === 'miles';
+    const degrees = fahrenheit
+      ? session.weatherTempCelsius * 1.8 + 32
+      : session.weatherTempCelsius;
+    const value = formatLocalizedNumber(Math.round(degrees));
+    parts.push(
+      fahrenheit
+        ? t('exerciseStatistics.cardio.degreesF', {
+            defaultValue: '{{value}}°F',
+            value,
+          })
+        : t('exerciseStatistics.cardio.degreesC', {
+            defaultValue: '{{value}}°C',
+            value,
+          })
+    );
+  }
+  if (session.weatherCondition) parts.push(session.weatherCondition);
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 /** A stride stored in centimetres, shown in feet with the miles setting. */
 export function strideText(
   t: TFunction,
@@ -147,6 +183,16 @@ export function sessionStats(
         defaultValue: 'Stride length',
       }),
       value: strideText(t, session.strideLengthCm, distanceUnit),
+    });
+  }
+  const weather = weatherText(t, session, distanceUnit);
+  if (weather) {
+    stats.push({
+      key: 'weather',
+      label: t('exerciseStatistics.cardio.weather', {
+        defaultValue: 'Weather',
+      }),
+      value: weather,
     });
   }
   if (session.avgHeartRate != null && session.avgHeartRate > 0) {
