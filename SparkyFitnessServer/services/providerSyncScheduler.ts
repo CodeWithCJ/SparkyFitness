@@ -21,6 +21,7 @@ export interface ProviderSyncTarget {
   user_id: string;
   is_active: boolean;
   sync_frequency: string;
+  last_sync_at?: Date | string | null;
 }
 
 export interface ProviderSyncConfig {
@@ -135,6 +136,23 @@ export const PROVIDER_SYNC_CONFIGS: readonly ProviderSyncConfig[] = [
   },
 ];
 
+// The cron fires on the hour and a sync finishes a few minutes later, so
+// last_sync_at lands just past the hour. A 24 h threshold would then miss the
+// next day's tick and slip a daily sync to every other day; 23 h does not.
+const DAILY_SYNC_INTERVAL_MS = 23 * 60 * 60 * 1000;
+
+export const isProviderSyncDue = (
+  provider: Pick<ProviderSyncTarget, 'sync_frequency' | 'last_sync_at'>,
+  now: Date = new Date()
+): boolean => {
+  if (provider.sync_frequency === 'manual') return false;
+  if (provider.sync_frequency !== 'daily') return true;
+  if (!provider.last_sync_at) return true;
+  const lastSyncMs = new Date(provider.last_sync_at).getTime();
+  if (Number.isNaN(lastSyncMs)) return true;
+  return now.getTime() - lastSyncMs >= DAILY_SYNC_INTERVAL_MS;
+};
+
 export const runProviderSync = async (
   config: ProviderSyncConfig
 ): Promise<void> => {
@@ -154,26 +172,34 @@ export const runProviderSync = async (
         );
         return;
       }
-      if (provider.is_active && provider.sync_frequency !== 'manual') {
-        try {
-          const started = await startProviderSync(
-            { userId: provider.user_id, providerId: provider.id },
-            () => config.sync(provider)
-          );
-          if (started) {
-            await started.running;
-          } else {
-            log(
-              'info',
-              `[CRON] ${config.name} sync skipped for user ${provider.user_id}: another sync for this account is still running.`
-            );
-          }
-        } catch (error) {
+      if (!provider.is_active) continue;
+      if (!isProviderSyncDue(provider)) {
+        if (provider.sync_frequency === 'daily') {
           log(
-            'error',
-            `[CRON] ${config.name} sync failed for user ${provider.user_id}: ${error instanceof Error ? error.message : String(error)}`
+            'debug',
+            `[CRON] ${config.name} sync skipped for user ${provider.user_id}: daily sync already ran in the last 23 hours.`
           );
         }
+        continue;
+      }
+      try {
+        const started = await startProviderSync(
+          { userId: provider.user_id, providerId: provider.id },
+          () => config.sync(provider)
+        );
+        if (started) {
+          await started.running;
+        } else {
+          log(
+            'info',
+            `[CRON] ${config.name} sync skipped for user ${provider.user_id}: another sync for this account is still running.`
+          );
+        }
+      } catch (error) {
+        log(
+          'error',
+          `[CRON] ${config.name} sync failed for user ${provider.user_id}: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
   } catch (error) {
