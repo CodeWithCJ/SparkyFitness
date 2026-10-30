@@ -3,6 +3,7 @@ import {
   type SymptomDayWindow,
   type SymptomEntryResponse,
   type SymptomFreeDayResponse,
+  type SymptomImpact,
 } from '@workspace/shared';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -101,6 +102,9 @@ export interface SeverityChartInput {
   ended_at: string | null;
   severity: number | null;
   severity_timeline: readonly { at: string; severity: number }[];
+  impact?: SymptomImpact | null;
+  /** Missing on servers that predate it; the current impact stands in. */
+  impact_timeline?: readonly { at: string; impact: SymptomImpact }[];
   treatments: readonly {
     id: string;
     name_snapshot: string;
@@ -110,6 +114,8 @@ export interface SeverityChartInput {
 
 export interface SeverityChartLayout {
   points: { x: number; y: number; at: string; severity: number }[];
+  /** One section per recorded effect on the day, from its time to the next. */
+  band: { x: number; width: number; at: string; impact: SymptomImpact }[];
   marks: { x: number; id: string; name: string }[];
   ticks: { value: number; y: number }[];
   startIso: string;
@@ -130,7 +136,8 @@ export interface ChartBox {
 }
 
 /**
- * Where each reading, treatment marker and gridline goes. An episode still
+ * Where each reading, treatment marker, gridline and section of the effect
+ * band goes. An episode still
  * running ends at its latest reading (or 30 minutes after the start when there
  * is only one), so the chart never needs the clock.
  */
@@ -170,6 +177,27 @@ export function layoutSeverityChart(
       : [];
   });
 
+  // Sorted by time: an effect changed through an edit is appended with the
+  // current time, which can come before a reading recorded for later.
+  const impactPoints = (
+    entry.impact_timeline && entry.impact_timeline.length > 0
+      ? [...entry.impact_timeline]
+      : entry.impact != null
+        ? [{ at: startIso, impact: entry.impact }]
+        : []
+  ).sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+  const band = impactPoints.map((p, i) => {
+    const from = Math.max(new Date(p.at).getTime(), start);
+    const next = impactPoints[i + 1];
+    const to = Math.min(next ? new Date(next.at).getTime() : end, end);
+    return {
+      x: x(from),
+      width: Math.max(x(to) - x(from), 2),
+      at: p.at,
+      impact: p.impact,
+    };
+  });
+
   return {
     points: timeline.map((p) => ({
       x: x(new Date(p.at).getTime()),
@@ -177,6 +205,7 @@ export function layoutSeverityChart(
       at: p.at,
       severity: p.severity,
     })),
+    band,
     marks,
     ticks: [0, Math.round(max / 2), max].map((value) => ({
       value,
