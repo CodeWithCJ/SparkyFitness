@@ -105,7 +105,7 @@ describe('ServiceForm — model validation', () => {
     expect(mockToast).not.toHaveBeenCalled();
   });
 
-  it('offers Custom as a model dropdown choice for OpenCode Go', async () => {
+  it('uses the standard custom-model toggle for OpenCode Go', () => {
     const onFormDataChange = jest.fn();
     renderWithClient(
       <ServiceForm
@@ -117,16 +117,14 @@ describe('ServiceForm — model validation', () => {
       />
     );
 
-    fireEvent.click(document.getElementById('model_name_select')!);
-    const customOption = await screen.findByRole('option', {
-      name: 'settings.aiService.userSettings.customModelName',
-    });
-    fireEvent.click(customOption);
+    fireEvent.click(
+      screen.getByRole('switch', {
+        name: 'settings.aiService.userSettings.useCustomModel',
+      })
+    );
 
     expect(onFormDataChange).toHaveBeenCalledWith({
       showCustomModelInput: true,
-      custom_model_name: '',
-      model_name: '',
     });
   });
 

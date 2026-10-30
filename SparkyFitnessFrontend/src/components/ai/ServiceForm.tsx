@@ -201,89 +201,6 @@ export const ServiceForm = ({
         )}
       </div>
 
-      {isOpenCodeGo && (
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="flex-1">
-              <Label htmlFor="model_name_select">
-                {t(`${translationPrefix}.model`)}
-              </Label>
-              <Select
-                value={
-                  formData.showCustomModelInput
-                    ? '__custom__'
-                    : (formData.model_name ?? '')
-                }
-                onValueChange={(value) => {
-                  if (value === '__custom__') {
-                    onFormDataChange({
-                      showCustomModelInput: true,
-                      custom_model_name: '',
-                      model_name: '',
-                    });
-                    return;
-                  }
-                  onFormDataChange({
-                    showCustomModelInput: false,
-                    model_name: value,
-                  });
-                }}
-              >
-                <SelectTrigger id="model_name_select">
-                  <SelectValue
-                    placeholder={t(`${translationPrefix}.selectModel`)}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableOpenCodeModels.map((model) => (
-                    <SelectItem key={model} value={model}>
-                      {model}
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="__custom__">
-                    {t(`${translationPrefix}.customModelName`)}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void loadOpenCodeModels()}
-              disabled={
-                loadingModels ||
-                (!formData.api_key?.trim() &&
-                  !('id' in formData && formData.id))
-              }
-            >
-              {loadingModels && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
-              {loadingModels
-                ? t(`${translationPrefix}.loadingModels`)
-                : t(`${translationPrefix}.loadModels`)}
-            </Button>
-          </div>
-          {formData.showCustomModelInput && (
-            <div>
-              <Label htmlFor="custom_model_name_input">
-                {t(`${translationPrefix}.customModelName`)}
-              </Label>
-              <Input
-                id="custom_model_name_input"
-                value={formData.custom_model_name ?? ''}
-                onChange={(e) =>
-                  onFormDataChange({ custom_model_name: e.target.value })
-                }
-                placeholder={t(
-                  `${translationPrefix}.customModelNamePlaceholder`
-                )}
-              />
-            </div>
-          )}
-        </div>
-      )}
-
       {formData.service_type === 'openai' &&
         isGpt6Model(selectedModel ?? '') && (
           <div>
@@ -407,18 +324,64 @@ export const ServiceForm = ({
         </>
       )}
 
-      {!isOpenCodeGo && (
-        <div className="flex items-center space-x-2 mb-4">
-          <Switch
-            id="use_custom_model"
-            checked={formData.showCustomModelInput ?? false}
-            onCheckedChange={(checked) =>
-              onFormDataChange({ showCustomModelInput: checked })
-            }
-          />
-          <Label htmlFor="use_custom_model">
-            {t(`${translationPrefix}.useCustomModel`)}
-          </Label>
+      <div className="flex items-center space-x-2 mb-4">
+        <Switch
+          id="use_custom_model"
+          checked={formData.showCustomModelInput ?? false}
+          onCheckedChange={(checked) =>
+            onFormDataChange({ showCustomModelInput: checked })
+          }
+        />
+        <Label htmlFor="use_custom_model">
+          {t(`${translationPrefix}.useCustomModel`)}
+        </Label>
+      </div>
+
+      {isOpenCodeGo && !formData.showCustomModelInput && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex-1">
+              <Label htmlFor="model_name_select">
+                {t(`${translationPrefix}.model`)}
+              </Label>
+              <Select
+                value={formData.model_name ?? ''}
+                onValueChange={(value) =>
+                  onFormDataChange({ model_name: value })
+                }
+              >
+                <SelectTrigger id="model_name_select">
+                  <SelectValue
+                    placeholder={t(`${translationPrefix}.selectModel`)}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableOpenCodeModels.map((model) => (
+                    <SelectItem key={model} value={model}>
+                      {model}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void loadOpenCodeModels()}
+              disabled={
+                loadingModels ||
+                (!formData.api_key?.trim() &&
+                  !('id' in formData && formData.id))
+              }
+            >
+              {loadingModels && (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              )}
+              {loadingModels
+                ? t(`${translationPrefix}.loadingModels`)
+                : t(`${translationPrefix}.loadModels`)}
+            </Button>
+          </div>
         </div>
       )}
 
@@ -454,7 +417,7 @@ export const ServiceForm = ({
           </div>
         )}
 
-      {!isOpenCodeGo && formData.showCustomModelInput && (
+      {formData.showCustomModelInput && (
         <div>
           <Label htmlFor="custom_model_name_input">
             {t(`${translationPrefix}.customModelName`)}
