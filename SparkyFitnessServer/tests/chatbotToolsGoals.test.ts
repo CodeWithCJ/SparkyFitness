@@ -140,8 +140,32 @@ describe('sparky_manage_goals', () => {
       p_vitamin_c: undefined,
       p_calcium: undefined,
       p_iron: undefined,
-      custom_nutrients: undefined,
+      custom_nutrients: {},
     });
+  });
+
+  it('set_goals merges custom nutrient goals into the stored ones', async () => {
+    vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+      message: 'ok',
+    });
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      custom_nutrients: { Iron: 18, Zinc: 8 },
+    });
+
+    await tools.sparky_manage_goals.execute!(
+      {
+        action: 'set_goals',
+        start_date: '2026-06-15',
+        custom_nutrients: { Zinc: 11 },
+      },
+      opts
+    );
+
+    expect(goalService.manageGoalTimeline).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ custom_nutrients: { Iron: 18, Zinc: 11 } })
+    );
   });
 
   // set_goals has no parameters for the exercise targets, the macro/meal

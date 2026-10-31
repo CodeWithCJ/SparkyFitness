@@ -222,9 +222,12 @@ Actions:
                 p_iron: args.iron ?? existingGoals.iron,
                 p_caffeine_mg: args.caffeine_mg ?? existingGoals.caffeine_mg,
                 p_alcohol_g: args.alcohol_g ?? existingGoals.alcohol_g,
-                // Preserve custom nutrients if not provided
-                custom_nutrients:
-                  args.custom_nutrients ?? existingGoals.custom_nutrients,
+                // Merge the given custom nutrient goals into the stored ones so
+                // setting one does not erase the others.
+                custom_nutrients: {
+                  ...(existingGoals.custom_nutrients ?? {}),
+                  ...(args.custom_nutrients ?? {}),
+                },
                 // No tool parameters exist for these; manageGoalTimeline would
                 // otherwise zero the exercise targets and clear the meal/macro
                 // distribution (cleanNumber), unlike the web UI which always sends them.
