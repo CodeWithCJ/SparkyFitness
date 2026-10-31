@@ -103,8 +103,11 @@ function describeContents(
   return onlyEmpty ? { kind: 'empty' } : { kind: 'other' };
 }
 
-// The request that is starting or waiting for a tag. Cleared once a tag is found.
-let activeRequest: { cancelled: boolean } | null = null;
+// The read or write in progress, from the moment it starts until its final
+// cleanup. The native API has no request identity, so an older request's
+// cleanup must not cancel a newer one; each cleanup checks it still owns this.
+type ActiveRequest = { cancelled: boolean };
+let activeRequest: ActiveRequest | null = null;
 
 const CANCEL_RETRY_MS = 100;
 const CANCEL_RETRIES = 10;
@@ -127,7 +130,9 @@ export async function cancelNfcRequest(): Promise<void> {
   }
 }
 
-async function releaseSession(): Promise<void> {
+async function releaseSession(request?: ActiveRequest): Promise<void> {
+  // A request that has since been replaced must not cancel its successor.
+  if (request && activeRequest !== request) return;
   try {
     await NfcManager.cancelTechnologyRequest();
   } catch {
@@ -135,19 +140,17 @@ async function releaseSession(): Promise<void> {
   }
 }
 
-async function waitForTag(alertMessage: string): Promise<void> {
-  const request = { cancelled: false };
+async function waitForTag(
+  alertMessage: string,
+  request: ActiveRequest
+): Promise<void> {
   activeRequest = request;
-  try {
-    await ensureStarted();
-    if (request.cancelled) throw new Error('NFC request cancelled');
-    await NfcManager.requestTechnology(
-      NfcTech.Ndef,
-      sessionOptions(alertMessage)
-    );
-  } finally {
-    if (activeRequest === request) activeRequest = null;
-  }
+  await ensureStarted();
+  if (request.cancelled) throw new Error('NFC request cancelled');
+  await NfcManager.requestTechnology(
+    NfcTech.Ndef,
+    sessionOptions(alertMessage)
+  );
 }
 
 /**
@@ -155,8 +158,9 @@ async function waitForTag(alertMessage: string): Promise<void> {
  * button, for when tapping the sticker does not open the app by itself.
  */
 export async function readTag(alertMessage: string): Promise<ReadTagResult> {
+  const request: ActiveRequest = { cancelled: false };
   try {
-    await waitForTag(alertMessage);
+    await waitForTag(alertMessage, request);
     const tag = await NfcManager.getTag();
     return {
       status: 'read',
@@ -167,7 +171,8 @@ export async function readTag(alertMessage: string): Promise<ReadTagResult> {
     addLog(`[NFC] Read failed: ${String(error)}`, 'WARNING');
     return { status: 'error', message: String(error) };
   } finally {
-    await releaseSession();
+    await releaseSession(request);
+    if (activeRequest === request) activeRequest = null;
   }
 }
 
@@ -184,8 +189,9 @@ export async function writeTag(
     overwrite?: boolean;
   }
 ): Promise<WriteTagResult> {
+  const request: ActiveRequest = { cancelled: false };
   try {
-    await waitForTag(options.alertMessage);
+    await waitForTag(options.alertMessage, request);
     const existing = await NfcManager.getTag();
     const contents = describeContents(existing?.ndefMessage ?? null);
     if (contents.kind !== 'empty' && !options.overwrite) {
@@ -202,6 +208,7 @@ export async function writeTag(
     addLog(`[NFC] Write failed: ${String(error)}`, 'WARNING');
     return { status: 'error', message: String(error) };
   } finally {
-    await releaseSession();
+    await releaseSession(request);
+    if (activeRequest === request) activeRequest = null;
   }
 }

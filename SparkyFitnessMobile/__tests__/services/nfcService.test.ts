@@ -95,6 +95,38 @@ describe('cancelNfcRequest', () => {
     expect(manager.cancelTechnologyRequest).toHaveBeenCalledTimes(1);
   });
 
+  it('does not let a finishing scan cancel a newer one', async () => {
+    let finishFirstRead: (tag: unknown) => void = () => {};
+    manager.getTag.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishFirstRead = resolve;
+        }) as never
+    );
+    // The first scan has its tag and is still reading it.
+    const first = readTag('hold');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // A newer scan starts and waits for a tag.
+    let rejectSecond: (error: Error) => void = () => {};
+    manager.requestTechnology.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectSecond = reject;
+        })
+    );
+    const second = readTag('hold');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    manager.cancelTechnologyRequest.mockClear();
+
+    finishFirstRead({ ndefMessage: [] });
+    await first;
+
+    // The older scan's cleanup left the newer request alone.
+    expect(manager.cancelTechnologyRequest).not.toHaveBeenCalled();
+    rejectSecond(new Error('cancelled'));
+    expect(await second).toEqual({ status: 'cancelled' });
+  });
+
   it('never starts a request cancelled while NFC is still starting', async () => {
     let finishStart: () => void = () => {};
     let service: typeof import('../../src/services/nfc/nfcService');
