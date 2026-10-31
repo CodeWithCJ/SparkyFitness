@@ -125,18 +125,33 @@ class CustomNutrientService {
           typeof defaultTarget === 'number' && Number.isFinite(defaultTarget)
             ? defaultTarget
             : 0;
+        // COALESCE guards rows whose custom_nutrients is NULL (jsonb_set on
+        // NULL yields NULL), and the `?` check never overwrites a value the
+        // user already has under this name.
         await client.query(
           `UPDATE goal_presets
-           SET custom_nutrients = jsonb_set(custom_nutrients, ARRAY[$1], to_jsonb($2::numeric))
-           WHERE user_id = $3`,
+           SET custom_nutrients = jsonb_set(COALESCE(custom_nutrients, '{}'::jsonb), ARRAY[$1], to_jsonb($2::numeric))
+           WHERE user_id = $3 AND NOT (COALESCE(custom_nutrients, '{}'::jsonb) ? $1)`,
           [name, target, userId]
         );
         const tz = await loadUserTimezone(userId);
         const today = todayInZone(tz);
+        // Goals cascade from the latest dated row on or before a day, so the
+        // goal in effect today can be dated in the past. Include it along with
+        // future rows and the undated default.
         await client.query(
           `UPDATE user_goals
-           SET custom_nutrients = jsonb_set(custom_nutrients, ARRAY[$1], to_jsonb($2::numeric))
-           WHERE user_id = $3 AND (goal_date >= $4 OR goal_date IS NULL)`,
+           SET custom_nutrients = jsonb_set(COALESCE(custom_nutrients, '{}'::jsonb), ARRAY[$1], to_jsonb($2::numeric))
+           WHERE user_id = $3
+             AND NOT (COALESCE(custom_nutrients, '{}'::jsonb) ? $1)
+             AND (
+               goal_date IS NULL
+               OR goal_date >= (
+                 SELECT COALESCE(MAX(goal_date), $4::date)
+                 FROM user_goals
+                 WHERE user_id = $3 AND goal_date <= $4::date
+               )
+             )`,
           [name, target, userId, today]
         );
       } catch (autoAddError) {
