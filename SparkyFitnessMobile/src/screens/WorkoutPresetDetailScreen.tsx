@@ -1,7 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, View, Text, ScrollView } from 'react-native';
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import { linearLayoutTransition } from '../utils/layoutTransition';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Button from '../components/ui/Button';
@@ -414,7 +415,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
               // to the wrapper's bottom so consecutive members read as one line.
               <Animated.View
                 key={cardExercise.id}
-                layout={LinearTransition.duration(300)}
+                layout={linearLayoutTransition(300)}
                 style={supersetBorder ? { paddingLeft: 10 } : undefined}
               >
                 {supersetBorder && (

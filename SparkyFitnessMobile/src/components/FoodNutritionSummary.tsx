@@ -1,11 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text } from 'react-native';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  LinearTransition,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { linearLayoutTransition } from '../utils/layoutTransition';
 import { useCSSVariable } from 'uniwind';
 import Button from './ui/Button';
 import VerifiedBadge from './VerifiedBadge';
@@ -202,7 +199,7 @@ export const FoodNutrientBreakdown: React.FC<FoodNutrientBreakdownProps> = ({
   const hasAdditional =
     additionalNutrients.length > 0 || customNutrientRows.length > 0;
   const showAdditionalRows = showMoreNutrients && hasAdditional;
-  const layoutTransition = LinearTransition.duration(250);
+  const layoutTransition = linearLayoutTransition(250);
 
   return (
     <Animated.View className="gap-4" layout={layoutTransition}>
@@ -266,7 +263,7 @@ interface FoodNutritionSummaryProps
 
 /** Combined header + nutrient breakdown, preserved for existing single-block callers. */
 const FoodNutritionSummary: React.FC<FoodNutritionSummaryProps> = (props) => {
-  const layoutTransition = LinearTransition.duration(250);
+  const layoutTransition = linearLayoutTransition(250);
   return (
     <Animated.View className="gap-4" layout={layoutTransition}>
       <FoodNutritionHeader {...props} />

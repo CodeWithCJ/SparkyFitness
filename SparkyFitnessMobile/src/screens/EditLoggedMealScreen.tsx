@@ -9,7 +9,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { getLocalizedMealLabel } from '../constants/meals';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import { linearLayoutTransition } from '../utils/layoutTransition';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -554,7 +555,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
 
         {/* Date row */}
         <Animated.View
-          layout={LinearTransition.duration(300)}
+          layout={linearLayoutTransition(300)}
           className="flex-row items-center"
         >
           <View className="flex-1 flex-row items-center">
@@ -635,7 +636,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
 
         {/* Time row */}
         <Animated.View
-          layout={LinearTransition.duration(300)}
+          layout={linearLayoutTransition(300)}
           className="flex-row items-center"
         >
           <Text className="text-text-secondary text-base mr-2">

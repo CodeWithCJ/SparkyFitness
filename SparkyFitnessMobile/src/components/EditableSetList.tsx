@@ -3,11 +3,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, TouchableOpacity, View } from 'react-native';
-import Animated, {
-  FadeIn,
-  FadeOut,
-  LinearTransition,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { linearLayoutTransition } from '../utils/layoutTransition';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import EditableSetRow from './EditableSetRow';
@@ -67,7 +64,7 @@ function EditableSetList({
   return (
     <>
       {sets.length > 0 && (
-        <Animated.View className="mt-2" layout={LinearTransition.duration(300)}>
+        <Animated.View className="mt-2" layout={linearLayoutTransition(300)}>
           <View className="flex-row items-center py-1 mb-1">
             <Text className="text-xs font-semibold text-text-muted w-10 text-center">
               {t('activeWorkout.columns.set', { defaultValue: 'Set' })}
@@ -108,7 +105,7 @@ function EditableSetList({
                 key={set.clientId}
                 entering={FadeIn.duration(200)}
                 exiting={FadeOut.duration(150)}
-                layout={LinearTransition.duration(300)}
+                layout={linearLayoutTransition(300)}
               >
                 <EditableSetRow
                   exerciseClientId={exerciseClientId}

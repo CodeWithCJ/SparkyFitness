@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView, Platform } from 'react-native';
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import { linearLayoutTransition } from '../utils/layoutTransition';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -449,8 +450,8 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     }
   }, [goalModePercentageText, mutation, normalized.goalModeCustomPercentage]);
 
-  const optionsLayout = LinearTransition.delay(0).duration(250);
-  const pipelineLayout = LinearTransition.delay(50).duration(250);
+  const optionsLayout = linearLayoutTransition(250);
+  const pipelineLayout = linearLayoutTransition(250, 50);
 
   // Match goalService: without a usable BMR the stored manual target remains
   // active. Keep its earn-back control available until the balance is known.
