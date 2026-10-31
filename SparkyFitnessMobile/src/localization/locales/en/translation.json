@@ -169,6 +169,7 @@
       "shareReport": "Share Diagnostic Report",
       "watch": "Apple Watch",
       "addMenu": "Quick Actions",
+      "nfcTags": "NFC tags",
       "wearOs": "Wear OS",
       "customMeasurements": "Custom Measurements",
       "ai": "AI",
@@ -6049,6 +6050,100 @@
     "multipleNoPrimaryMobile": "You have multiple water containers but none is marked as primary. Tap to choose one.",
     "configureMobile": "Add a water container to start tracking hydration.",
     "defaultContainer": "Default"
+  },
+  "actionTags": {
+    "scan": {
+      "logged": "Logged {{summary}}",
+      "tapToUndo": "Tap to undo",
+      "undoFailed": "Could not undo that",
+      "tooSoon": "Already logged a moment ago",
+      "title": "NFC tag",
+      "noServer": "Could not reach your server",
+      "noServerSubtitle": "Check your connection, then tap the tag again.",
+      "running": "Logging…",
+      "confirmTitle": "Log {{label}}?",
+      "confirmAction": "Log it",
+      "unknownTitle": "This tag is not set up on your account",
+      "unknownSubtitle": "Nothing was logged. Set it up to choose what a tap does.",
+      "setUp": "Set up this tag",
+      "missingTitle": "This tag points to something that was deleted",
+      "missingSubtitle": "Nothing was logged. Choose what the tag should do.",
+      "fix": "Fix this tag",
+      "serverTooOld": "Your server does not support NFC tags yet",
+      "failed": "Could not log that",
+      "serverTooOldSubtitle": "Update your SparkyFitness server, then try again.",
+      "failedSubtitle": "Nothing was logged. Check your connection and try again."
+    },
+    "form": {
+      "errors": {
+        "labelRequired": "Give the tag a name",
+        "containerRequired": "Choose a water container",
+        "drinks": "Drinks per tap must be a whole number from 1 to {{max}}"
+      },
+      "holdToWrite": "Hold your phone to the NFC tag",
+      "written": "Tag is ready",
+      "overwriteTitle": "This tag already has data",
+      "overwriteSparky": "It is already set up as another SparkyFitness tag. Replacing it stops that tag from working.",
+      "overwriteOther": "It holds something else, such as a link or a card. Replace it with this tag?",
+      "replace": "Replace",
+      "writeFailed": "Could not write to the tag",
+      "writeFailedHint": "Hold the phone steady against the tag. A locked or metal-backed tag cannot be written.",
+      "saved": "Tag saved",
+      "saveFailed": "Could not save the tag",
+      "deleteTitle": "Remove this tag?",
+      "deleteMessage": "The sticker keeps its link, but tapping it will no longer log anything.",
+      "deleteFailed": "Could not remove the tag",
+      "editTitle": "Edit NFC tag",
+      "createTitle": "Set up NFC tag",
+      "loading": "Loading tag…",
+      "action": "What should it do?",
+      "container": "Container",
+      "containerPlaceholder": "Choose a container",
+      "drinks": "Drinks per tap",
+      "name": "Name",
+      "namePlaceholder": "e.g. Desk bottle",
+      "askFirst": "Ask before logging",
+      "askFirstHint": "Shows a Log or Cancel prompt on every tap instead of logging at once.",
+      "writeHint": "When you save, hold your phone to the tag to write it. On metal, such as a steel bottle, use an on-metal tag.",
+      "writeAgain": "Write to a tag again",
+      "delete": "Remove this tag"
+    },
+    "unsupportedTitle": "This phone cannot use NFC tags",
+    "unsupportedSubtitle": "NFC tags need a phone with NFC.",
+    "disabledTitle": "NFC is turned off",
+    "disabledSubtitle": "Turn on NFC in your phone settings, then come back.",
+    "list": {
+      "holdToScan": "Hold your phone to the NFC tag",
+      "notOurs": "That is not a SparkyFitness tag",
+      "scanFailed": "Could not read the tag",
+      "add": "Set up a tag",
+      "asksFirst": "Asks before logging",
+      "noServer": "No server configured",
+      "noServerSubtitle": "Configure your server connection to manage NFC tags.",
+      "goToSettings": "Go to Settings",
+      "loading": "Loading tags…",
+      "serverTooOld": "Your server does not support NFC tags yet",
+      "loadFailed": "Failed to load NFC tags",
+      "serverTooOldSubtitle": "Update your SparkyFitness server to use them.",
+      "loadFailedSubtitle": "Check your connection and try again.",
+      "emptyTitle": "No NFC tags yet",
+      "emptySubtitle": "Stick an NFC tag on a bottle or cup, set it up here, and tap it to log a drink.",
+      "scan": "Scan a tag"
+    },
+    "title": "NFC tags",
+    "action": {
+      "water": "{{drinks}} × {{name}}",
+      "waterMissing": "Water container no longer exists"
+    },
+    "type": {
+      "water": "Water or drink"
+    },
+    "container": {
+      "add": "Add NFC tag",
+      "count_one": "{{formattedCount}} tag logs this container",
+      "count_other": "{{formattedCount}} tags log this container",
+      "hint": "Tap a sticker on this bottle to log a drink"
+    }
   },
   "waterContainers": {
     "settings": {

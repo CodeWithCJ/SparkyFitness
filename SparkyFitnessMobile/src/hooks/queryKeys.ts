@@ -36,6 +36,9 @@ export const profileQueryKey = ['userProfile'] as const;
 
 export const waterContainersQueryKey = ['waterContainers'] as const;
 
+/** The person's NFC tags and the action each one runs. */
+export const actionTagsQueryKey = ['actionTags'] as const;
+
 /** A day's individual logged drinks — the rows behind the day's water total. */
 export const waterIntakeLogQueryKey = (date: string) =>
   ['waterIntakeLog', date] as const;
