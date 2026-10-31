@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.12.0](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.11.0...v1.12.0) (2026-10-31)
+
+
+### Features
+
+* add tag.sparkyfitness.com site for NFC tag links ([dd1e71e](https://github.com/CodeWithCJ/SparkyFitness/commit/dd1e71ee2024b03bcffa1b0984d05c8834161c10))
+* add tag.sparkyfitness.com site for NFC tag links ([814374f](https://github.com/CodeWithCJ/SparkyFitness/commit/814374f4f26369ae1a5b86efeb640749ae0366cf))
+* list the dev app in the tag site's iPhone link file ([126c0d7](https://github.com/CodeWithCJ/SparkyFitness/commit/126c0d78ffb15fe906b8c653459a1f2c8d66eb28))
+* list the dev app in the tag site's iPhone link file ([853dec5](https://github.com/CodeWithCJ/SparkyFitness/commit/853dec5a95fbe92c7206281d27427077709eb747))
+* **mobile:** build the Wear OS app in the EAS production workflow ([e803d99](https://github.com/CodeWithCJ/SparkyFitness/commit/e803d990c9167243cd42d9c8091ad2f901649414))
+* **mobile:** build the Wear OS app in the EAS production workflow ([d608fe3](https://github.com/CodeWithCJ/SparkyFitness/commit/d608fe303a919af63d10725c291ea3d0179ad4a2))
+
+
+### Bug Fixes
+
+* add App Store and TestFlight links to the tag landing page ([2ab813a](https://github.com/CodeWithCJ/SparkyFitness/commit/2ab813aed33e52588ce223c41dd7bce16fa5855c))
+* add App Store and TestFlight links to the tag landing page ([74aa32d](https://github.com/CodeWithCJ/SparkyFitness/commit/74aa32d5be9e5b830cab85e21b399b81fc1b6f13))
+* **mobile:** keep Active Energy for a day whose Move ring is 0 and document the setting ([5f84867](https://github.com/CodeWithCJ/SparkyFitness/commit/5f84867505d72d122fc289e4ffb53cfe39b352b9))
+* **mobile:** pair saved exercises with the server reply by id ([753d04a](https://github.com/CodeWithCJ/SparkyFitness/commit/753d04a791145e193a957f552afff37f79decccb))
+* **mobile:** say that other apps' workouts can add to the Move ring and that days without a ring use Active Energy ([a58a3e0](https://github.com/CodeWithCJ/SparkyFitness/commit/a58a3e084a321feaffdcc7e4f681ba44f92a3a53))
+
+
+### Documentation
+
+* **agents:** move long feature notes out of the package guides ([2014ef4](https://github.com/CodeWithCJ/SparkyFitness/commit/2014ef40c795d745c73fa903a77258603b82e60d))
+* **agents:** move long feature notes out of the package guides (the mobile guide had grown to 270 KB, mostly detail few tasks need) ([27bf534](https://github.com/CodeWithCJ/SparkyFitness/commit/27bf53447f2411e2bb2af2839766a1f25c0e4e83))
+* **mobile:** say the Wear OS closed testing track must be named alpha ([934abc0](https://github.com/CodeWithCJ/SparkyFitness/commit/934abc01419b0b1d177494eb8034f17b0c11f36b))
+
 ## [1.11.0](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.10.0...v1.11.0) (2026-10-30)
 
 
