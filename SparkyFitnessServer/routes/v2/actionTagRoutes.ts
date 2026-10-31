@@ -1,4 +1,5 @@
 import express from 'express';
+import { z } from 'zod';
 import {
   createActionTagBodySchema,
   scanActionTagBodySchema,
@@ -28,6 +29,10 @@ router.use(
     message: 'Forbidden: NFC tags are only available for your own account.',
   })
 );
+
+// A non-UUID id would reach a UUID column and raise a database error (22P02)
+// the shared error handler answers with 500; it is simply not a tag.
+const idParamSchema = z.uuid();
 
 const PG_UNIQUE_VIOLATION = '23505';
 
@@ -224,9 +229,13 @@ router.patch('/:id', async (req, res, next) => {
         details: parsed.error.format(),
       });
     }
+    const id = idParamSchema.safeParse(req.params.id);
+    if (!id.success) {
+      return res.status(404).json({ error: 'Tag not found' });
+    }
     const updated = await updateActionTag(
       req.userId,
-      req.params.id,
+      id.data,
       parsed.data,
       req.authenticatedUserId || req.userId
     );
@@ -266,9 +275,13 @@ router.patch('/:id', async (req, res, next) => {
  */
 router.delete('/:id', async (req, res, next) => {
   try {
+    const id = idParamSchema.safeParse(req.params.id);
+    if (!id.success) {
+      return res.status(404).json({ error: 'Tag not found' });
+    }
     const deleted = await deleteActionTag(
       req.userId,
-      req.params.id,
+      id.data,
       req.authenticatedUserId || req.userId
     );
     if (!deleted) {

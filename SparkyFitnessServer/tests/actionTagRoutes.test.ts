@@ -59,6 +59,7 @@ app.use('/api/v2/action-tags', actionTagRoutes);
 app.use(errorHandler);
 
 const CODE = 'b'.repeat(32);
+const TAG_ID = '3f2b8c1e-7d4a-4e5b-9a6c-1d2e3f4a5b6c';
 const WATER = { type: 'water', container_id: 3, drinks: 1 };
 
 describe('Action tag routes (v2)', () => {
@@ -125,11 +126,22 @@ describe('Action tag routes (v2)', () => {
     vi.mocked(repo.updateActionTag).mockResolvedValue(null);
     vi.mocked(repo.deleteActionTag).mockResolvedValue(false);
     const patch = await request(app)
-      .patch('/api/v2/action-tags/missing')
+      .patch(`/api/v2/action-tags/${TAG_ID}`)
       .send({ label: 'New' });
-    const del = await request(app).delete('/api/v2/action-tags/missing');
+    const del = await request(app).delete(`/api/v2/action-tags/${TAG_ID}`);
     expect(patch.statusCode).toBe(404);
     expect(del.statusCode).toBe(404);
+  });
+
+  it('answers 404 for an id that is not a UUID, without touching the database', async () => {
+    const patch = await request(app)
+      .patch('/api/v2/action-tags/abc')
+      .send({ label: 'New' });
+    const del = await request(app).delete('/api/v2/action-tags/abc');
+    expect(patch.statusCode).toBe(404);
+    expect(del.statusCode).toBe(404);
+    expect(repo.updateActionTag).not.toHaveBeenCalled();
+    expect(repo.deleteActionTag).not.toHaveBeenCalled();
   });
 
   it('scans a tag with the device day', async () => {

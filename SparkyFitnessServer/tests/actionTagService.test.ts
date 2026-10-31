@@ -43,6 +43,7 @@ describe('scanActionTag', () => {
     vi.mocked(repo.releaseActionTagRun).mockResolvedValue(undefined);
     vi.mocked(repo.claimActionTagRun).mockResolvedValue({
       previousRunAt: null,
+      claimedAt: new Date('2026-10-30T12:00:00.000Z'),
     });
     vi.mocked(waterContainerRepository.getWaterContainerById).mockResolvedValue(
       { id: 7, name: 'Stanley (1 L)' } as Awaited<

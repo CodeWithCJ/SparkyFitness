@@ -174,7 +174,11 @@ export async function deleteActionTag(
   }
 }
 
-export type RunClaim = { previousRunAt: Date | null };
+export type RunClaim = {
+  previousRunAt: Date | null;
+  /** The timestamp this claim wrote, so a rollback never undoes a newer claim. */
+  claimedAt: Date;
+};
 
 /**
  * Claims the run in one statement: succeeds only when the tag has not run in
@@ -190,7 +194,9 @@ export async function claimActionTagRun(
   const client = await getClient(userId, authenticatedUserId);
   try {
     const result = await client.query(
-      `UPDATE action_tags t SET last_run_at = NOW()
+      // Truncated to milliseconds so the value read back (a JS Date) equals the
+      // stored one exactly, which releaseActionTagRun compares against.
+      `UPDATE action_tags t SET last_run_at = date_trunc('milliseconds', NOW())
        FROM (
          SELECT id, last_run_at AS previous
          FROM action_tags WHERE id = $1 AND user_id = $2 FOR UPDATE
@@ -198,20 +204,22 @@ export async function claimActionTagRun(
        WHERE t.id = o.id
          AND (o.previous IS NULL
               OR o.previous < NOW() - make_interval(secs => $3))
-       RETURNING o.previous AS previous_run_at`,
+       RETURNING o.previous AS previous_run_at, t.last_run_at AS claimed_at`,
       [id, userId, debounceSeconds]
     );
     const row = result.rows[0];
     if (!row) return null;
     return {
       previousRunAt: row.previous_run_at ? new Date(row.previous_run_at) : null,
+      claimedAt: new Date(row.claimed_at),
     };
   } finally {
     client.release();
   }
 }
 
-/** Puts back the timestamp a failed run claimed, so the next tap is not dropped. */
+/** Puts back the timestamp a failed run claimed, so the next tap is not dropped,
+ * unless a newer scan has claimed the tag since. */
 export async function releaseActionTagRun(
   userId: string,
   id: string,
@@ -220,9 +228,12 @@ export async function releaseActionTagRun(
 ): Promise<void> {
   const client = await getClient(userId, authenticatedUserId);
   try {
+    // Only while this claim is still the latest: a slow action that fails after
+    // another scan has claimed the tag must not make the next tap run at once.
     await client.query(
-      'UPDATE action_tags SET last_run_at = $3 WHERE id = $1 AND user_id = $2',
-      [id, userId, claim.previousRunAt]
+      `UPDATE action_tags SET last_run_at = $3
+       WHERE id = $1 AND user_id = $2 AND last_run_at = $4`,
+      [id, userId, claim.previousRunAt, claim.claimedAt]
     );
   } finally {
     client.release();
