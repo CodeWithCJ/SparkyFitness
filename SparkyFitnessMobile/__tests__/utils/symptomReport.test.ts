@@ -31,47 +31,150 @@ describe('shiftMonth', () => {
 });
 
 describe('summarizeDays', () => {
+  const OCTOBER = {
+    from: '2026-10-01',
+    to: '2026-10-31',
+    today: '2026-10-31',
+    timezone: 'UTC',
+  };
+  const log = { started_at: null, ended_at: null };
+
   it('tints by the worst entry, marks free days and skips cycle entries', () => {
     const days = summarizeDays(
       [
         {
+          ...log,
           entry_date: '2026-10-01',
           severity: 3,
           peak_severity: null,
           source: 'manual',
         },
         {
+          ...log,
           entry_date: '2026-10-01',
           severity: 4,
           peak_severity: 9,
           source: 'manual',
         },
         {
+          ...log,
           entry_date: '2026-10-02',
           severity: 2,
           peak_severity: null,
           source: 'manual',
         },
         {
+          ...log,
           entry_date: '2026-10-03',
           severity: 9,
           peak_severity: null,
           source: 'cycle',
         },
         {
+          ...log,
           entry_date: '2026-10-04',
           severity: null,
           peak_severity: null,
           source: 'manual',
         },
       ],
-      [{ entry_date: '2026-10-02' }, { entry_date: '2026-10-05' }]
+      [{ entry_date: '2026-10-02' }, { entry_date: '2026-10-05' }],
+      OCTOBER
     );
     expect(days.get('2026-10-01')).toEqual({ tone: 'severe', count: 2 });
     expect(days.get('2026-10-02')).toEqual({ tone: 'mild', count: 1 });
     expect(days.has('2026-10-03')).toBe(false);
     expect(days.get('2026-10-04')?.tone).toBe('mild');
     expect(days.get('2026-10-05')).toEqual({ tone: 'free', count: 0 });
+  });
+
+  it('marks every day an episode covers and counts it on each', () => {
+    const days = summarizeDays(
+      [
+        {
+          entry_date: '2026-10-12',
+          started_at: '2026-10-12T21:00:00.000Z',
+          ended_at: '2026-10-14T09:30:00.000Z',
+          severity: 8,
+          peak_severity: 8,
+          source: 'manual',
+        },
+        {
+          ...log,
+          entry_date: '2026-10-13',
+          severity: 2,
+          peak_severity: null,
+          source: 'manual',
+        },
+      ],
+      [{ entry_date: '2026-10-13' }],
+      OCTOBER
+    );
+    expect(days.get('2026-10-12')).toEqual({ tone: 'severe', count: 1 });
+    expect(days.get('2026-10-13')).toEqual({ tone: 'severe', count: 2 });
+    expect(days.get('2026-10-14')).toEqual({ tone: 'severe', count: 1 });
+    expect(days.has('2026-10-11')).toBe(false);
+    expect(days.has('2026-10-15')).toBe(false);
+  });
+
+  it('runs an episode still going up to today', () => {
+    const days = summarizeDays(
+      [
+        {
+          entry_date: '2026-10-18',
+          started_at: '2026-10-18T10:00:00.000Z',
+          ended_at: null,
+          severity: 3,
+          peak_severity: 3,
+          source: 'manual',
+        },
+      ],
+      [],
+      { ...OCTOBER, today: '2026-10-20' }
+    );
+    expect([...days.keys()]).toEqual([
+      '2026-10-18',
+      '2026-10-19',
+      '2026-10-20',
+    ]);
+    expect(days.get('2026-10-19')?.tone).toBe('mild');
+  });
+
+  it('marks the days of an episode that started the month before', () => {
+    const days = summarizeDays(
+      [
+        {
+          entry_date: '2026-09-29',
+          started_at: '2026-09-29T20:00:00.000Z',
+          ended_at: '2026-10-02T07:00:00.000Z',
+          severity: 5,
+          peak_severity: 5,
+          source: 'manual',
+        },
+      ],
+      [],
+      OCTOBER
+    );
+    expect([...days.keys()]).toEqual(['2026-10-01', '2026-10-02']);
+  });
+
+  it('reads the end day in the profile timezone', () => {
+    // 02:00 UTC on the 15th is still the evening of the 14th in New York.
+    const days = summarizeDays(
+      [
+        {
+          entry_date: '2026-10-13',
+          started_at: '2026-10-13T14:00:00.000Z',
+          ended_at: '2026-10-15T02:00:00.000Z',
+          severity: 5,
+          peak_severity: 5,
+          source: 'manual',
+        },
+      ],
+      [],
+      { ...OCTOBER, timezone: 'America/New_York' }
+    );
+    expect([...days.keys()]).toEqual(['2026-10-13', '2026-10-14']);
   });
 });
 

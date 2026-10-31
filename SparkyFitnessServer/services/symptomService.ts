@@ -244,6 +244,11 @@ function reconcileLocations(
 }
 
 async function listEntries(userId: string, query: ListSymptomEntriesQuery) {
+  // An overlapping range is read in the profile timezone, like entry_date.
+  const timezone =
+    query.overlapping && (query.fromDate || query.toDate)
+      ? await loadUserTimezone(userId)
+      : undefined;
   const rows = await symptomRepository.listSymptomEntries(userId, {
     fromDate: query.fromDate ?? undefined,
     toDate: query.toDate ?? undefined,
@@ -252,6 +257,8 @@ async function listEntries(userId: string, query: ListSymptomEntriesQuery) {
     medicationId: query.medicationId,
     source: query.source,
     episodesOnly: query.episodesOnly,
+    overlapping: query.overlapping,
+    timezone,
   });
   return rows.map(toEntryResponse);
 }
