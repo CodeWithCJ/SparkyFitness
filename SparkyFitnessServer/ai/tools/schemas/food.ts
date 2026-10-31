@@ -599,6 +599,12 @@ const updateFoodVariantSchema = z
     gi: giIndexEnum
       .optional()
       .describe('Updated Glycemic Index classification'),
+    custom_nutrients: z
+      .record(z.string(), z.coerce.number().min(0))
+      .optional()
+      .describe(
+        'Custom nutrient amounts per serving_size, keyed by the exact custom nutrient name (see list_custom_nutrients). Merged into the stored values: only the names given change.'
+      ),
     update_existing_entries: z.coerce
       .boolean()
       .optional()
@@ -958,6 +964,12 @@ export const manageFoodInput = z.object({
       'Water content (ml) — for create_food/update_food_variant, per serving_size. Skip when the food is logged in a volume unit (ml, l, fl oz); that logged volume is already credited as water automatically.'
     ),
   gi: giIndexEnum.optional().describe('Glycemic index classification'),
+  custom_nutrients: z
+    .record(z.string(), z.coerce.number().min(0))
+    .optional()
+    .describe(
+      'For update_food_variant: custom nutrient amounts per serving_size, keyed by the exact custom nutrient name. Merged into the stored values.'
+    ),
   // entry / diary management
   entry_id: uuidSchema.optional().describe('Diary entry UUID'),
   entry_type: entryTypeEnum.optional().describe('food_entry | food_entry_meal'),

@@ -28,6 +28,7 @@ import type {
 } from '../../types/foodUnitVariants';
 import {
   buildCreateFoodVariantPayload,
+  customNutrientsMatch,
   diffSiblingRows,
   formatServingSizeForDisplay,
   groupEquivalentVariants,
@@ -251,7 +252,11 @@ export function AdjustNutritionMode({
           const createdVariant = await createVariant(
             buildCreateFoodVariantPayload(
               foodId,
-              buildVariantFromFormData(data, draftSelection)
+              buildVariantFromFormData(
+                data,
+                draftSelection,
+                currentCustomNutrients
+              )
             )
           );
           nextUnitSelection = {
@@ -288,7 +293,7 @@ export function AdjustNutritionMode({
             const createdVariant = await createVariant(
               buildCreateFoodVariantPayload(
                 foodId,
-                buildVariantFromFormData(data)
+                buildVariantFromFormData(data, null, currentCustomNutrients)
               )
             );
             nextUnitSelection = { kind: 'existing', variant: createdVariant };
@@ -342,6 +347,8 @@ export function AdjustNutritionMode({
                 customNutrients: currentCustomNutrients,
                 data,
                 variantInitialValues: initialValues,
+                // The variant was just created with these values.
+                variantInitialCustomNutrients: currentCustomNutrients,
                 foodInitialValues: initialValues,
               });
             }
@@ -356,8 +363,15 @@ export function AdjustNutritionMode({
             const variantValues = existingSelection
               ? buildFormValuesFromVariant(existingSelection.variant)
               : null;
+            // Custom nutrients sit outside the form fields; a change to them
+            // alone still differs from the stored variant.
             const nutritionChanged = variantValues
-              ? hasFoodFormChanges(variantValues, data, FOOD_VARIANT_FIELDS)
+              ? hasFoodFormChanges(variantValues, data, FOOD_VARIANT_FIELDS) ||
+                (currentCustomNutrients != null &&
+                  !customNutrientsMatch(
+                    currentCustomNutrients,
+                    existingSelection?.variant.custom_nutrients
+                  ))
               : false;
 
             let saveVariantId = nextVariantId;
@@ -371,7 +385,11 @@ export function AdjustNutritionMode({
                   const createdVariant = await createVariant(
                     buildCreateFoodVariantPayload(
                       foodId,
-                      buildVariantFromFormData(data, existingSelection)
+                      buildVariantFromFormData(
+                        data,
+                        existingSelection,
+                        currentCustomNutrients
+                      )
                     )
                   );
                   nextUnitSelection = {
@@ -444,7 +462,11 @@ export function AdjustNutritionMode({
                 const createdVariant = await createVariant(
                   buildCreateFoodVariantPayload(
                     foodId,
-                    buildVariantFromFormData(data, existingSelection)
+                    buildVariantFromFormData(
+                      data,
+                      existingSelection,
+                      currentCustomNutrients
+                    )
                   )
                 );
                 nextUnitSelection = {
@@ -467,6 +489,8 @@ export function AdjustNutritionMode({
                   customNutrients: currentCustomNutrients,
                   data,
                   variantInitialValues: dbVariantValues,
+                  variantInitialCustomNutrients:
+                    matchingDbVariant.custom_nutrients,
                   foodInitialValues: initialValues,
                 });
                 if (!saved) {
