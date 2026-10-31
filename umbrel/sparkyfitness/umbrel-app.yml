@@ -2,7 +2,7 @@ manifestVersion: 1
 id: sparkyfitness
 category: files
 name: SparkyFitness
-version: "v1.10.0"
+version: "v1.11.0"
 tagline: Self-hosted nutrition, exercise, and body metrics tracker
 description: >-
   🥗 SparkyFitness is a self-hosted alternative to MyFitnessPal for tracking
@@ -42,29 +42,29 @@ description: >-
 releaseNotes: >-
   - **Adaptive calorie budgets:** Dynamic Goal and Percentage Earn-Back no longer add activity calories or optional BMR credit to an Adaptive target a second time. Remaining calories may be lower after upgrading because these duplicate credits are removed. Recorded activity remains visible, and Manual targets retain their existing earn-back behavior.
 
-  - Use Testflight app for the latest App as the live PROD is usually outdated.
+  - Lab-result markers table
 
-  - Daily mood check-in reminders
+  - Add OAuth 2.1 authorization
 
-  - Track impact over time next to severity
+  - Add a whats-new skill and a drift check for the What's New screen
 
-  - Time-weighted daily heart rate average on Health Connect
+  - Look up the weather for GPS-recorded activities
 
-  - Read mindfulness sessions from Health Connect
+  - Add a training review to the AI assistant's exercise stats tool
 
-  - Compare any two tracked metrics (statistics + endpoint)
+  - Ship the Wear OS app through GitHub releases and EAS
 
-  - Separate daily activity from adaptive baseline
+  - Enter sodium as grams of salt in the food form
 
-  - Show running cadence and stride for watch runs, the run summary and trends
+  - Count device Active Calories once in the CSV burned calories row
 
-  - Add photo attachments to Sparky chat
+  - Classify the lab tables in the RLS permission matrix
 
-  - Generate routes with a routing provider
+  - Create the RLS policy state table in a migration
 
-  - Add Wear OS companion app and Android watch-connectivity bridge
+  - Refuse an in-app restore while other instances are connected
 
-  Full release notes: https://github.com/CodeWithCJ/SparkyFitness/releases/tag/v1.10.0
+  Full release notes: https://github.com/CodeWithCJ/SparkyFitness/releases/tag/v1.11.0
 
 developer: CodeWithCJ
 website: https://codewithcj.github.io/SparkyFitness/
