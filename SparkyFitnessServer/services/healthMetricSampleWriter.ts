@@ -53,6 +53,12 @@ export interface SampleWriteOptions {
    * overlapping workouts do not erase each other's charts.
    */
   ex?: string;
+  /**
+   * Days (YYYY-MM-DD) a `merge` also processes when no incoming sample falls
+   * on them, so a resend clears the window on a day that no longer has
+   * readings. A listed day without a stored row is skipped, not created.
+   */
+  days?: string[];
 }
 
 /**
@@ -69,7 +75,7 @@ export interface SampleWriteOptions {
  * provider) row blocks until this transaction commits instead of reading a
  * stale snapshot and silently dropping this write's samples (or vice versa).
  *
- * Returns the number of day buckets written.
+ * Returns the number of day rows written.
  */
 export async function upsertSamplesByDay(
   userId: string,
@@ -79,9 +85,9 @@ export async function upsertSamplesByDay(
   flatSamples: FlatHealthSample[],
   options: SampleWriteOptions = {}
 ): Promise<number> {
-  if (flatSamples.length === 0) return 0;
-
   const mode: SampleWriteMode = options.mode ?? 'replace';
+  const extraDays = mode === 'merge' ? (options.days ?? []) : [];
+  if (flatSamples.length === 0 && extraDays.length === 0) return 0;
 
   const byDate = new Map<string, SampleBucket>();
   for (const s of flatSamples) {
@@ -101,6 +107,15 @@ export async function upsertSamplesByDay(
     if (!bucket.device_name && device_name) bucket.device_name = device_name;
     byDate.set(entry_date, bucket);
   }
+  // Days with nothing incoming: merged like the others, but only written when
+  // a stored row exists (see the skip below).
+  const daysWithoutIncoming = new Set<string>();
+  for (const day of extraDays) {
+    if (byDate.has(day)) continue;
+    byDate.set(day, { entry_date: day, device_name: null, samples: [] });
+    daysWithoutIncoming.add(day);
+  }
+  let written = 0;
 
   const client = await getClient(userId, actingUserId);
   try {
@@ -138,6 +153,9 @@ export async function upsertSamplesByDay(
             bucket.entry_date,
             sourceProvider
           );
+        if (!existingRow && daysWithoutIncoming.has(bucket.entry_date)) {
+          continue;
+        }
         const existing = Array.isArray(existingRow?.samples)
           ? (existingRow.samples as Record<string, unknown>[])
           : [];
@@ -188,6 +206,7 @@ export async function upsertSamplesByDay(
         userId,
         row
       );
+      written++;
     }
 
     await client.query('COMMIT');
@@ -198,5 +217,5 @@ export async function upsertSamplesByDay(
     client.release();
   }
 
-  return byDate.size;
+  return written;
 }
