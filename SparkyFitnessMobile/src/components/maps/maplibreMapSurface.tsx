@@ -82,7 +82,10 @@ const toLineFeatureCollection = (
     .filter((l) => (l.dashed ?? false) === dashed && l.points.length >= 2)
     .map((l) => ({
       type: 'Feature' as const,
-      properties: {},
+      properties: {
+        color: l.color,
+        width: l.width ?? 4,
+      },
       geometry: {
         type: 'LineString' as const,
         coordinates: l.points.map(toLngLat),
@@ -170,10 +173,6 @@ const MapLibreMapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
       () => toLineFeatureCollection(lines, true),
       [lines]
     );
-    const solidColor = lines.find((l) => !l.dashed)?.color ?? '#3b82f6';
-    const solidWidth = lines.find((l) => !l.dashed)?.width ?? 4;
-    const dashedColor = lines.find((l) => l.dashed)?.color ?? '#3b82f6';
-    const dashedWidth = lines.find((l) => l.dashed)?.width ?? 4;
 
     // A camera move asked for before the style is ready is dropped by
     // MapLibre, so keep the last one and apply it once the style loads.
@@ -308,7 +307,10 @@ const MapLibreMapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
             id="route-lines-solid"
             type="line"
             layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-            paint={{ 'line-color': solidColor, 'line-width': solidWidth }}
+            paint={{
+              'line-color': ['coalesce', ['get', 'color'], '#3b82f6'],
+              'line-width': ['coalesce', ['get', 'width'], 4],
+            }}
           />
         </GeoJSONSource>
         <GeoJSONSource id="route-lines-dashed-source" data={dashedData}>
@@ -317,8 +319,8 @@ const MapLibreMapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
             type="line"
             layout={{ 'line-cap': 'round', 'line-join': 'round' }}
             paint={{
-              'line-color': dashedColor,
-              'line-width': dashedWidth,
+              'line-color': ['coalesce', ['get', 'color'], '#3b82f6'],
+              'line-width': ['coalesce', ['get', 'width'], 4],
               'line-dasharray': [2, 2],
             }}
           />

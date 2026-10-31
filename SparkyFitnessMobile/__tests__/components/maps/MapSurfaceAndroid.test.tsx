@@ -109,9 +109,13 @@ describe('MapLibreMapSurface', () => {
         [-0.11, 51.51],
       ],
     });
-    expect(screen.getAllByTestId('ml-layer')[0].props.paint['line-color']).toBe(
-      '#2563eb'
-    );
+    expect(solidSource.props.data.features[0].properties).toEqual({
+      color: '#2563eb',
+      width: 4,
+    });
+    expect(
+      screen.getAllByTestId('ml-layer')[0].props.paint['line-color']
+    ).toEqual(['coalesce', ['get', 'color'], '#3b82f6']);
   });
 
   it('turns a map press into a lat/lon point', () => {
