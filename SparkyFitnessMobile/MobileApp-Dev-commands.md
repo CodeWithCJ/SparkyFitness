@@ -67,7 +67,7 @@ The `create-production-builds.yml` workflow builds the phone, watch and iOS apps
 eas build --platform android --profile wearos --auto-submit
 ```
 
-Submitting uses the `eas.json` `submit` profile with the same name as the build profile, so the phone goes to the `alpha` track and the watch to `wear:alpha`. These are Play's IDs for the default closed testing tracks; change them if yours have different names. EAS needs a Google service account key with release access to the app, added once through `eas credentials`. Play reviews the phone and watch releases separately.
+Submitting uses the `eas.json` `submit` profile with the same name as the build profile, so the phone goes to the `alpha` track and the watch to `wear:alpha`. These names must match your tracks in Play Console. Closed testing tracks have names you choose, and a Wear OS one is `wear:<name>`, so `wear:alpha` needs a closed testing track named `alpha` under the dedicated Wear OS track from step 1. Change them in `eas.json` if yours have different names. EAS needs a Google service account key with release access to the app, added once through `eas credentials`. Play reviews the phone and watch releases separately.
 
 A watch release build's version code is minutes since the epoch, because Play requires a code that is unique across form factors and rises with each upload. Two builds in the same minute get the same code, so rebuild if Play rejects one. Set `SPARKY_WEAR_VERSION_CODE` to override it, with a number above the one on Play.
 
