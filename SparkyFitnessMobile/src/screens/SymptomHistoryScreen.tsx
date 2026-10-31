@@ -1,4 +1,9 @@
-import { scaleMax } from '@workspace/shared';
+import {
+  isValidTimeZone,
+  scaleMax,
+  symptomEntryDays,
+  todayInZone,
+} from '@workspace/shared';
 import { useState, useMemo } from 'react';
 import {
   View,
@@ -20,8 +25,10 @@ import {
   useSymptomFreeDays,
   useSymptomActions,
 } from '../hooks/useSymptoms';
+import { usePreferences } from '../hooks/usePreferences';
 import SymptomCalendar from '../components/symptoms/SymptomCalendar';
-import { addDays, getTodayDate } from '../utils/dateUtils';
+import { addDays, getDeviceTimezone, getTodayDate } from '../utils/dateUtils';
+import { monthGrid } from '../utils/symptomReport';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 
@@ -33,6 +40,17 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
   const usesNativeHeader = useNativeIOSHeadersActive();
   const today = getTodayDate();
   const thirtyDaysAgo = addDays(today, -29);
+  // Episode days are read in the profile timezone, the one the server files a
+  // symptom's day in: UTC when none is saved, as on the server, and the
+  // device's only until the preferences have loaded.
+  const { preferences } = usePreferences();
+  const timezone =
+    preferences?.timezone && isValidTimeZone(preferences.timezone)
+      ? preferences.timezone
+      : preferences
+        ? 'UTC'
+        : getDeviceTimezone();
+  const zoneToday = todayInZone(timezone);
 
   const [selectedSymptomFilter, setSelectedSymptomFilter] = useState<
     string | null
@@ -55,9 +73,19 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
     fromDate: thirtyDaysAgo,
     toDate: today,
   });
+  // A tapped day lists every entry that covers it, read from the month the
+  // calendar shows (the same query), so the list and the tint always agree,
+  // even on an older server that ignores `overlapping`.
+  const selectedMonth = selectedDate
+    ? monthGrid(
+        Number(selectedDate.slice(0, 4)),
+        Number(selectedDate.slice(5, 7))
+      )
+    : null;
   const { entries: listEntries, isLoading } = useSymptomEntriesDetailed({
-    fromDate: selectedDate ?? thirtyDaysAgo,
-    toDate: selectedDate ?? today,
+    fromDate: selectedMonth?.first ?? thirtyDaysAgo,
+    toDate: selectedMonth?.last ?? today,
+    overlapping: selectedMonth != null,
   });
   const { freeDays } = useSymptomFreeDays({
     fromDate: thirtyDaysAgo,
@@ -117,11 +145,28 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
     };
   }, [entries, freeDays]);
 
+  // Narrow the month to the entries the calendar marks on the tapped day.
+  const dayEntries = useMemo(
+    () =>
+      selectedDate
+        ? listEntries.filter(
+            (e) =>
+              symptomEntryDays(e, {
+                from: selectedDate,
+                to: selectedDate,
+                today: zoneToday,
+                timezone,
+              }).length > 0
+          )
+        : listEntries,
+    [listEntries, selectedDate, zoneToday, timezone]
+  );
+
   const filteredEntries = selectedSymptomFilter
-    ? listEntries.filter(
+    ? dayEntries.filter(
         (e) => e.symptom_name_snapshot === selectedSymptomFilter
       )
-    : listEntries;
+    : dayEntries;
 
   const formatDuration = (start: string | null, end: string | null) => {
     if (!start) return '';
@@ -249,6 +294,7 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
           selectedDate={selectedDate}
           initialDate={today}
           onSelectDate={setSelectedDate}
+          timezone={timezone}
         />
 
         {/* 30-Day Insights Card */}

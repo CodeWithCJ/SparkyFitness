@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { todayInZone } from '@workspace/shared';
 import { getAppLocale } from '../../localization';
 import {
   useSymptomEntriesDetailed,
@@ -19,6 +20,11 @@ interface SymptomCalendarProps {
   /** Month shown first, `YYYY-MM-DD`. */
   initialDate: string;
   onSelectDate: (day: string | null) => void;
+  /**
+   * The profile timezone: where an episode's start and end fall on a day, and
+   * the today an episode still going is marked up to.
+   */
+  timezone: string;
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -31,16 +37,20 @@ const TONE_CLASS: Record<DayTone, string> = {
 };
 
 /**
- * A month of symptom history. Days marked symptom-free are green, days with an
- * entry are tinted by the worst one, and days with neither are left blank
- * because they are unknown, not symptom-free.
+ * A month of symptom history. Days marked symptom-free are green, days an
+ * entry covers are tinted by the worst one (an episode tints every day from
+ * its start to its end, or to today while it is still going), and days with
+ * neither are left blank because they are unknown, not symptom-free.
  */
 const SymptomCalendar: React.FC<SymptomCalendarProps> = ({
   selectedDate,
   initialDate,
   onSelectDate,
+  timezone,
 }) => {
   const { t } = useTranslation();
+  // Read on every render, so changing month after midnight moves it on.
+  const today = todayInZone(timezone);
   const toneLabels = {
     free: t('symptoms.calendar.free', { defaultValue: 'Symptom-free' }),
     mild: t('symptoms.calendar.mild', { defaultValue: 'Mild to moderate' }),
@@ -53,14 +63,21 @@ const SymptomCalendar: React.FC<SymptomCalendarProps> = ({
   const { entries } = useSymptomEntriesDetailed({
     fromDate: grid.first,
     toDate: grid.last,
+    overlapping: true,
   });
   const { freeDays } = useSymptomFreeDays({
     fromDate: grid.first,
     toDate: grid.last,
   });
   const days = useMemo(
-    () => summarizeDays(entries, freeDays),
-    [entries, freeDays]
+    () =>
+      summarizeDays(entries, freeDays, {
+        from: grid.first,
+        to: grid.last,
+        today,
+        timezone,
+      }),
+    [entries, freeDays, grid.first, grid.last, today, timezone]
   );
 
   const shift = (delta: number) => {

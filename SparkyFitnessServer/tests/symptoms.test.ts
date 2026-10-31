@@ -540,6 +540,101 @@ describe('Symptom Repository', () => {
     );
   });
 
+  it('listSymptomEntries with overlapping also returns episodes that run into the range', async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+
+    await symptomRepository.listSymptomEntries('testUser', {
+      fromDate: '2026-10-01',
+      toDate: '2026-10-31',
+      overlapping: true,
+      timezone: 'Europe/Madrid',
+    });
+
+    // October in Madrid runs from 22:00 UTC on 30 September (summer time) to
+    // 23:00 UTC on 31 October (winter time).
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'WHERE user_id = $1 AND ((entry_date >= $2 AND entry_date <= $3) OR (started_at IS NOT NULL AND started_at < $4 AND (ended_at IS NULL OR ended_at >= $5)))'
+      ),
+      [
+        'testUser',
+        '2026-10-01',
+        '2026-10-31',
+        new Date('2026-10-31T23:00:00.000Z'),
+        new Date('2026-09-30T22:00:00.000Z'),
+      ]
+    );
+  });
+
+  it('listSymptomEntries with overlapping and one bound keeps the other filters after it', async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+
+    await symptomRepository.listSymptomEntries('testUser', {
+      fromDate: '2026-10-01',
+      overlapping: true,
+      timezone: 'UTC',
+      symptomId: UID,
+    });
+    await symptomRepository.listSymptomEntries('testUser', {
+      toDate: '2026-10-31',
+      overlapping: true,
+      timezone: 'UTC',
+    });
+
+    expect(mockClient.query).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining(
+        'WHERE user_id = $1 AND ((entry_date >= $2) OR (started_at IS NOT NULL AND (ended_at IS NULL OR ended_at >= $3))) AND symptom_id = $4'
+      ),
+      ['testUser', '2026-10-01', new Date('2026-10-01T00:00:00.000Z'), UID]
+    );
+    expect(mockClient.query).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining(
+        'WHERE user_id = $1 AND ((entry_date <= $2) OR (started_at IS NOT NULL AND started_at < $3))'
+      ),
+      ['testUser', '2026-10-31', new Date('2026-11-01T00:00:00.000Z')]
+    );
+  });
+
+  it('listSymptomEntries leaves a side of an overlapping range open when its day cannot be placed', async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+
+    // 9999-12-31 is a common "no limit" value; its end is past what the date
+    // helpers can represent, so there is no upper bound on started_at.
+    await symptomRepository.listSymptomEntries('testUser', {
+      fromDate: '2026-10-01',
+      toDate: '9999-12-31',
+      overlapping: true,
+      timezone: 'UTC',
+    });
+
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'WHERE user_id = $1 AND ((entry_date >= $2 AND entry_date <= $3) OR (started_at IS NOT NULL AND (ended_at IS NULL OR ended_at >= $4)))'
+      ),
+      [
+        'testUser',
+        '2026-10-01',
+        '9999-12-31',
+        new Date('2026-10-01T00:00:00.000Z'),
+      ]
+    );
+  });
+
+  it('listSymptomEntries ignores overlapping without a date range', async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+
+    await symptomRepository.listSymptomEntries('testUser', {
+      overlapping: true,
+    });
+
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringMatching(/WHERE user_id = \$1\s+ORDER BY/),
+      ['testUser']
+    );
+  });
+
   it('listSymptomEntries attaches treatments and photo ids per entry', async () => {
     const a = entryRow({ id: UID });
     const b = entryRow({ id: OTHER_UID });
@@ -1499,6 +1594,63 @@ describe('Symptom Routes V2', () => {
     it('GET /entries rejects a malformed date', async () => {
       const res = await request(app)
         .get('/api/v2/symptoms/entries?fromDate=yesterday')
+        .set('Cookie', cookie);
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('GET /entries with overlapping reads the range in the profile timezone', async () => {
+      const { loadUserTimezone } = await import('../utils/timezoneLoader.js');
+      vi.mocked(loadUserTimezone).mockResolvedValueOnce('America/New_York');
+      const list = vi
+        .spyOn(symptomRepository, 'listSymptomEntries')
+        .mockResolvedValue([entryRow()]);
+
+      const res = await request(app)
+        .get(
+          '/api/v2/symptoms/entries?fromDate=2026-10-01&toDate=2026-10-31&overlapping=true'
+        )
+        .set('Cookie', cookie);
+
+      expect(res.statusCode).toBe(200);
+      expect(loadUserTimezone).toHaveBeenCalledWith('testUser');
+      expect(list).toHaveBeenCalledWith(
+        'testUser',
+        expect.objectContaining({
+          fromDate: '2026-10-01',
+          toDate: '2026-10-31',
+          overlapping: true,
+          timezone: 'America/New_York',
+        })
+      );
+    });
+
+    it('GET /entries looks up no timezone unless an overlapping range is asked for', async () => {
+      const { loadUserTimezone } = await import('../utils/timezoneLoader.js');
+      const list = vi
+        .spyOn(symptomRepository, 'listSymptomEntries')
+        .mockResolvedValue([]);
+
+      await request(app)
+        .get('/api/v2/symptoms/entries?fromDate=2026-10-01&toDate=2026-10-31')
+        .set('Cookie', cookie);
+      await request(app)
+        .get('/api/v2/symptoms/entries?overlapping=true')
+        .set('Cookie', cookie);
+
+      expect(loadUserTimezone).not.toHaveBeenCalled();
+      expect(list.mock.calls[0][1]).toMatchObject({
+        overlapping: undefined,
+        timezone: undefined,
+      });
+      expect(list.mock.calls[1][1]).toMatchObject({
+        overlapping: true,
+        timezone: undefined,
+      });
+    });
+
+    it('GET /entries rejects an overlapping value other than true or false', async () => {
+      const res = await request(app)
+        .get('/api/v2/symptoms/entries?fromDate=2026-10-01&overlapping=yes')
         .set('Cookie', cookie);
       expect(res.statusCode).toBe(400);
     });

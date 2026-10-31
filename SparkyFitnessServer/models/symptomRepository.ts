@@ -1,3 +1,4 @@
+import { dayToUtcRange } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 import type {
   CreateCustomSymptomBody,
@@ -116,6 +117,14 @@ export interface ListSymptomEntriesOptions {
   medicationId?: string;
   source?: string;
   episodesOnly?: boolean;
+  /**
+   * Also return episodes that overlap the date range without being logged in
+   * it: one that started before fromDate and was still going on it, or one
+   * logged under a later day that started by toDate.
+   */
+  overlapping?: boolean;
+  /** The timezone the range's days are read in when `overlapping` is set. */
+  timezone?: string;
 }
 
 const DEFINITION_COLS = `id, user_id, name, display_name, scale_type, unit, is_glp1_flagged, category, template,
@@ -517,6 +526,19 @@ async function updateSymptomEntry(
   }
 }
 
+/**
+ * The instant a day starts or ends in `tz`, or null when the date helpers
+ * cannot place it (such as the end of 9999-12-31, a common "no limit" value);
+ * that side of an overlapping range is then left open instead of failing.
+ */
+function dayEdge(day: string, tz: string, edge: 'start' | 'end'): Date | null {
+  try {
+    return dayToUtcRange(day, tz)[edge];
+  } catch {
+    return null;
+  }
+}
+
 async function listSymptomEntries(
   userId: string,
   opts: ListSymptomEntriesOptions = {}
@@ -526,13 +548,35 @@ async function listSymptomEntries(
     const params: unknown[] = [userId];
     const where: string[] = ['user_id = $1'];
 
+    const dayRange: string[] = [];
     if (opts.fromDate) {
       params.push(opts.fromDate);
-      where.push(`entry_date >= $${params.length}`);
+      dayRange.push(`entry_date >= $${params.length}`);
     }
     if (opts.toDate) {
       params.push(opts.toDate);
-      where.push(`entry_date <= $${params.length}`);
+      dayRange.push(`entry_date <= $${params.length}`);
+    }
+    if (opts.overlapping && dayRange.length > 0) {
+      // An episode overlaps the range when it started before the range ends
+      // and had not ended before it began; one still going has no end.
+      const tz = opts.timezone ?? 'UTC';
+      const span: string[] = ['started_at IS NOT NULL'];
+      const rangeEnd = opts.toDate ? dayEdge(opts.toDate, tz, 'end') : null;
+      if (rangeEnd) {
+        params.push(rangeEnd);
+        span.push(`started_at < $${params.length}`);
+      }
+      const rangeStart = opts.fromDate
+        ? dayEdge(opts.fromDate, tz, 'start')
+        : null;
+      if (rangeStart) {
+        params.push(rangeStart);
+        span.push(`(ended_at IS NULL OR ended_at >= $${params.length})`);
+      }
+      where.push(`((${dayRange.join(' AND ')}) OR (${span.join(' AND ')}))`);
+    } else {
+      where.push(...dayRange);
     }
     if (opts.symptomName) {
       params.push(opts.symptomName.toLowerCase().trim());
