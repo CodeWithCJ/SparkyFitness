@@ -66,6 +66,14 @@ const connectionFailingSince = new Map<string, number>();
 // than on every failing probe.
 const lastResults = new Map<string, CheckResult>();
 
+// The endpoint is public and not rate limited, and probes queue on the pools
+// that serve requests. A probe that times out leaves its connection request
+// queued until the pool's own connect timeout, so a check still waiting for
+// one repeats its last result instead of queuing another; together with
+// sharing one evaluation between concurrent requests, a flood of probes adds
+// at most one waiting caller to each pool.
+const waitingForConnection = new Set<string>();
+
 function describeResult(result: CheckResult, failure: unknown): string {
   switch (result) {
     case 'busy':
@@ -83,6 +91,9 @@ async function runCheck(
   name: string,
   check: ReadinessCheck
 ): Promise<CheckResult> {
+  if (waitingForConnection.has(name)) {
+    return lastResults.get(name) ?? 'timeout';
+  }
   let timer: NodeJS.Timeout | undefined;
   let timedOut = false;
   let acquired = false;
@@ -100,7 +111,13 @@ async function runCheck(
     }, readinessTimeoutMs);
   });
   const attempt = async () => {
-    const client = await check.connect();
+    waitingForConnection.add(name);
+    let client: pg.PoolClient;
+    try {
+      client = await check.connect();
+    } finally {
+      waitingForConnection.delete(name);
+    }
     if (timedOut) {
       client.release();
       return;
@@ -190,6 +207,33 @@ router.get('/', async (req, res) => {
   });
 });
 
+interface Readiness {
+  code: 200 | 503;
+  body: { status: string; checks: Record<string, CheckResult> };
+}
+
+let pendingReadiness: Promise<Readiness> | undefined;
+
+async function evaluateReadiness(): Promise<Readiness> {
+  const checks = Object.fromEntries(
+    await Promise.all(
+      Object.entries(readinessChecks).map(
+        async ([name, check]) => [name, await runCheck(name, check)] as const
+      )
+    )
+  );
+  const results = Object.values(checks);
+  const ready = results.every(
+    (result) => result === 'ok' || result === 'busy' || result === 'retrying'
+  );
+  const status = !ready
+    ? 'NOT_READY'
+    : results.includes('retrying')
+      ? 'DEGRADED'
+      : 'READY';
+  return { code: ready ? 200 : 503, body: { status, checks } };
+}
+
 /**
  * @swagger
  * /health/ready:
@@ -221,23 +265,11 @@ router.get('/ready', async (req, res) => {
   if (isShuttingDown()) {
     return res.status(503).json({ status: 'DRAINING' });
   }
-  const checks = Object.fromEntries(
-    await Promise.all(
-      Object.entries(readinessChecks).map(
-        async ([name, check]) => [name, await runCheck(name, check)] as const
-      )
-    )
-  );
-  const results = Object.values(checks);
-  const ready = results.every(
-    (result) => result === 'ok' || result === 'busy' || result === 'retrying'
-  );
-  const status = !ready
-    ? 'NOT_READY'
-    : results.includes('retrying')
-      ? 'DEGRADED'
-      : 'READY';
-  return res.status(ready ? 200 : 503).json({ status, checks });
+  pendingReadiness ??= evaluateReadiness().finally(() => {
+    pendingReadiness = undefined;
+  });
+  const { code, body } = await pendingReadiness;
+  return res.status(code).json(body);
 });
 
 export default router;

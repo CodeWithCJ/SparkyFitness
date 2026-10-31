@@ -66,6 +66,18 @@ beforeEach(() => {
 
 const never = () => new Promise<never>(() => {});
 
+// pg-pool always gives up on a connection request after its connect timeout;
+// these stall until the test ends, then time out the same way.
+const queuedConnects: ((error: Error) => void)[] = [];
+const stalledConnect = () =>
+  new Promise<never>((_, reject) => queuedConnects.push(reject));
+
+afterEach(async () => {
+  const timedOut = new Error('timeout exceeded when trying to connect');
+  queuedConnects.splice(0).forEach((reject) => reject(timedOut));
+  await new Promise((resolve) => setImmediate(resolve));
+});
+
 describe('GET /api/health/ready', () => {
   it('is ready when the database and authentication answer', async () => {
     const response = await request(app).get('/api/health/ready');
@@ -126,7 +138,7 @@ describe('GET /api/health/ready', () => {
   });
 
   it('stays ready while it waits for a connection from a busy pool', async () => {
-    appConnect.mockImplementation(never);
+    appConnect.mockImplementation(stalledConnect);
     appPoolBusy.mockReturnValue(true);
 
     const started = Date.now();
@@ -143,7 +155,7 @@ describe('GET /api/health/ready', () => {
   });
 
   it('stays ready while authentication waits on its busy pool', async () => {
-    authConnect.mockImplementation(never);
+    authConnect.mockImplementation(stalledConnect);
     authPoolBusy.mockReturnValue(true);
 
     const response = await request(app).get('/api/health/ready');
@@ -153,7 +165,7 @@ describe('GET /api/health/ready', () => {
   });
 
   it('is not ready when waiting for a connection from a pool that is not busy', async () => {
-    appConnect.mockImplementation(never);
+    appConnect.mockImplementation(stalledConnect);
 
     const response = await request(app).get('/api/health/ready');
 
@@ -232,6 +244,45 @@ describe('GET /api/health/ready', () => {
     );
     expect(appQuery).not.toHaveBeenCalled();
   });
+
+  it('answers concurrent probes from one check', async () => {
+    appQuery.mockImplementation(
+      () =>
+        new Promise((resolve) => setTimeout(() => resolve({ rows: [] }), 300))
+    );
+
+    const responses = await Promise.all(
+      Array.from({ length: 5 }, () => request(app).get('/api/health/ready'))
+    );
+
+    for (const response of responses) {
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('READY');
+    }
+    expect(appConnect).toHaveBeenCalledOnce();
+    expect(authConnect).toHaveBeenCalledOnce();
+  });
+
+  it('queues no second connection request while the last one still waits', async () => {
+    appConnect.mockImplementation(stalledConnect);
+    appPoolBusy.mockReturnValue(true);
+
+    for (let i = 0; i < 2; i++) {
+      const response = await request(app).get('/api/health/ready');
+      expect(response.status).toBe(200);
+      expect(response.body.checks).toEqual({ database: 'busy', auth: 'ok' });
+    }
+    expect(appConnect).toHaveBeenCalledOnce();
+    expect(authConnect).toHaveBeenCalledTimes(2);
+
+    queuedConnects.splice(0).forEach((reject) => reject(new Error('timeout')));
+    appConnect.mockResolvedValue({ query: appQuery, release: appRelease });
+    await vi.waitFor(async () => {
+      const response = await request(app).get('/api/health/ready');
+      expect(response.body.checks).toEqual({ database: 'ok', auth: 'ok' });
+    });
+    expect(appConnect).toHaveBeenCalledTimes(2);
+  }, 10_000);
 
   it('is not ready while draining, without touching the database', async () => {
     draining.value = true;
