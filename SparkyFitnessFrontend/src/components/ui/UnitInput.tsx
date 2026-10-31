@@ -46,10 +46,10 @@ const toSplitDisplayStrings = (
 ): [string, string] => {
   const precision = getPrecision(type, unit);
   if (unit === 'st_lbs') {
-    const { stones, lbs } = kgToStonesLbs(metricValue);
+    const { stones, lbs } = kgToStonesLbs(metricValue, precision);
     return [stones.toString(), Number(lbs.toFixed(precision)).toString()];
   }
-  const { feet, inches } = cmToFeetInches(metricValue);
+  const { feet, inches } = cmToFeetInches(metricValue, precision);
   return [feet.toString(), Number(inches.toFixed(precision)).toString()];
 };
 
