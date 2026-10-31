@@ -272,6 +272,10 @@ async function importExerciseEntriesFromCsv(
  * `activeEnergyKcal` overwrites `calories_burned`, which the server otherwise
  * derives from duration and sets. A watch on the wearer's wrist measured it;
  * the derivation is a formula, so the measurement wins.
+ *
+ * `seriesSource` names the provider the stored heart rate series is kept
+ * under; the Google Health sync passes its own name when it attaches a
+ * tracker's readings to a workout logged in SparkyFitness.
  */
 async function attachWatchTelemetryToExerciseEntry(
   userId: string,
@@ -281,7 +285,8 @@ async function attachWatchTelemetryToExerciseEntry(
   activeEnergyKcal?: number,
   durationMinutes?: number,
   appleZones?: unknown,
-  strideLengthCm?: number | null
+  strideLengthCm?: number | null,
+  seriesSource = 'SparkyFitness Watch'
 ): Promise<void> {
   // Fail closed: family/delegate diary *read* can SELECT another user's
   // entry via RLS, but this route must not 204 after an UPDATE that
@@ -375,7 +380,13 @@ async function attachWatchTelemetryToExerciseEntry(
       fields,
       zones,
       () =>
-        storeHeartRateSeries(userId, actingUserId, exerciseEntryId, accepted),
+        storeHeartRateSeries(
+          userId,
+          actingUserId,
+          exerciseEntryId,
+          accepted,
+          seriesSource
+        ),
       sessionZones
     );
   } else {
@@ -403,7 +414,8 @@ async function storeHeartRateSeries(
   userId: string,
   actingUserId: string,
   exerciseEntryId: string,
-  hrSamples: HeartRateSampleRequest[]
+  hrSamples: HeartRateSampleRequest[],
+  source: string
 ): Promise<void> {
   try {
     const tz = await loadUserTimezone(userId);
@@ -414,7 +426,7 @@ async function storeHeartRateSeries(
       userId,
       actingUserId,
       'heart_rate',
-      'SparkyFitness Watch',
+      source,
       valid.map((s) => ({
         entry_date: instantToDay(s.t, tz),
         timestamp: new Date(s.t),

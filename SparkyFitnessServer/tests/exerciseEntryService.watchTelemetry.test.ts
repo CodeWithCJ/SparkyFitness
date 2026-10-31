@@ -461,6 +461,35 @@ describe('attachWatchTelemetryToExerciseEntry heart rate series', () => {
     expect(options).toMatchObject({ mode: 'merge', ex: entryId });
   });
 
+  it('keeps the series under the watch provider by default', async () => {
+    await attachWatchTelemetryToExerciseEntry(
+      userId,
+      userId,
+      entryId,
+      series(150)
+    );
+    expect(vi.mocked(upsertSamplesByDay).mock.calls[0][3]).toBe(
+      'SparkyFitness Watch'
+    );
+  });
+
+  it('keeps the series under the provider the caller names', async () => {
+    await attachWatchTelemetryToExerciseEntry(
+      userId,
+      userId,
+      entryId,
+      series(150),
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      'Google Health'
+    );
+    expect(vi.mocked(upsertSamplesByDay).mock.calls[0][3]).toBe(
+      'Google Health'
+    );
+  });
+
   it('writes no series when the snapshot was rejected', async () => {
     vi.mocked(
       exerciseEntryRepository.applyWatchTelemetryAtomically
