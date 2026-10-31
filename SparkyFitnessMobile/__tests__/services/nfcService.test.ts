@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import NfcManager, { Ndef } from 'react-native-nfc-manager';
 import {
+  cancelNfcRequest,
   generateTagCode,
   readTag,
   writeTag,
@@ -57,6 +58,66 @@ describe('readTag', () => {
   it('reports a cancelled scan quietly', async () => {
     manager.requestTechnology.mockRejectedValueOnce(new Error('UserCancel'));
     expect(await readTag('hold')).toEqual({ status: 'cancelled' });
+  });
+});
+
+describe('cancelNfcRequest', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('tries again when the cancel reached the phone before the request did', async () => {
+    let rejectRequest: (error: Error) => void = () => {};
+    manager.requestTechnology.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          rejectRequest = reject;
+        })
+    );
+    // The first cancel finds nothing; the native request exists by the second.
+    manager.cancelTechnologyRequest
+      .mockImplementationOnce(() => Promise.resolve())
+      .mockImplementationOnce(() => {
+        rejectRequest(new Error('cancelled'));
+        return Promise.resolve();
+      });
+
+    const scan = readTag('hold');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await cancelNfcRequest();
+
+    expect(await scan).toEqual({ status: 'cancelled' });
+    expect(manager.cancelTechnologyRequest.mock.calls.length).toBeGreaterThan(
+      1
+    );
+  });
+
+  it('does not retry when nothing is waiting', async () => {
+    await cancelNfcRequest();
+    expect(manager.cancelTechnologyRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it('never starts a request cancelled while NFC is still starting', async () => {
+    let finishStart: () => void = () => {};
+    let service: typeof import('../../src/services/nfc/nfcService');
+    let isolated: typeof manager;
+    jest.isolateModules(() => {
+      isolated = require('react-native-nfc-manager').default;
+      service = require('../../src/services/nfc/nfcService');
+    });
+    isolated!.start.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishStart = resolve;
+        })
+    );
+
+    const scan = service!.readTag('hold');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const cancelled = service!.cancelNfcRequest();
+    finishStart();
+
+    expect(await scan).toEqual({ status: 'cancelled' });
+    await cancelled;
+    expect(isolated!.requestTechnology).not.toHaveBeenCalled();
   });
 });
 

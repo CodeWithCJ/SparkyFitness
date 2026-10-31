@@ -33,6 +33,9 @@ jest.mock('../../src/services/nfc/nfcService', () => ({
   generateTagCode: () => '0123456789abcdef0123456789abcdef',
   writeTag: jest.fn(),
 }));
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: jest.fn(),
+}));
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: () => null,
 }));

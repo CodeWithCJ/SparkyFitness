@@ -17,7 +17,7 @@ import {
   useActionTagsQuery,
   useUpdateActionTagMutation,
 } from '../hooks/useActionTags';
-import { useCancelNfcOnUnmount } from '../hooks/useCancelNfcOnUnmount';
+import { useCancelNfcOnBlur } from '../hooks/useCancelNfcOnBlur';
 import { useNfcSupport } from '../hooks/useNfcSupport';
 import { useWaterContainersQuery } from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -71,7 +71,7 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
   const [busy, setBusy] = useState(false);
   // True while the phone is waiting to touch a tag (Android shows no sheet).
   const [waitingForTag, setWaitingForTag] = useState(false);
-  useCancelNfcOnUnmount(waitingForTag);
+  useCancelNfcOnBlur(waitingForTag);
 
   // Seed from the saved tag the first time it arrives (state adjusted during
   // render, as the container form does, so no blank frame is painted).

@@ -103,9 +103,28 @@ function describeContents(
   return onlyEmpty ? { kind: 'empty' } : { kind: 'other' };
 }
 
-/** Stops a read or write that is still waiting for a tag (the Cancel button). */
+// The request that is starting or waiting for a tag. Cleared once a tag is found.
+let activeRequest: { cancelled: boolean } | null = null;
+
+const CANCEL_RETRY_MS = 100;
+const CANCEL_RETRIES = 10;
+
+/**
+ * Stops a read or write that is still waiting for a tag (the Cancel button, or
+ * leaving the screen). A cancel can arrive before the native request exists,
+ * since the library registers for tag events first, and then finds nothing to
+ * cancel. So it tries again until the request has ended, and a request that is
+ * still starting does not go ahead.
+ */
 export async function cancelNfcRequest(): Promise<void> {
+  const request = activeRequest;
+  if (request) request.cancelled = true;
   await releaseSession();
+  for (let i = 0; request && i < CANCEL_RETRIES; i++) {
+    if (activeRequest !== request) return;
+    await new Promise((resolve) => setTimeout(resolve, CANCEL_RETRY_MS));
+    if (activeRequest === request) await releaseSession();
+  }
 }
 
 async function releaseSession(): Promise<void> {
@@ -116,17 +135,28 @@ async function releaseSession(): Promise<void> {
   }
 }
 
+async function waitForTag(alertMessage: string): Promise<void> {
+  const request = { cancelled: false };
+  activeRequest = request;
+  try {
+    await ensureStarted();
+    if (request.cancelled) throw new Error('NFC request cancelled');
+    await NfcManager.requestTechnology(
+      NfcTech.Ndef,
+      sessionOptions(alertMessage)
+    );
+  } finally {
+    if (activeRequest === request) activeRequest = null;
+  }
+}
+
 /**
  * Holds the phone to a sticker and reports what it carries. Used by the Scan
  * button, for when tapping the sticker does not open the app by itself.
  */
 export async function readTag(alertMessage: string): Promise<ReadTagResult> {
   try {
-    await ensureStarted();
-    await NfcManager.requestTechnology(
-      NfcTech.Ndef,
-      sessionOptions(alertMessage)
-    );
+    await waitForTag(alertMessage);
     const tag = await NfcManager.getTag();
     return {
       status: 'read',
@@ -155,11 +185,7 @@ export async function writeTag(
   }
 ): Promise<WriteTagResult> {
   try {
-    await ensureStarted();
-    await NfcManager.requestTechnology(
-      NfcTech.Ndef,
-      sessionOptions(options.alertMessage)
-    );
+    await waitForTag(options.alertMessage);
     const existing = await NfcManager.getTag();
     const contents = describeContents(existing?.ndefMessage ?? null);
     if (contents.kind !== 'empty' && !options.overwrite) {
