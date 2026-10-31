@@ -14,8 +14,8 @@ interface RouteLineProps {
 
 /**
  * The GPS track drawn as a line, with start and finish dots, and no map
- * under it. Shows the shape of the route only; used where no map can be
- * drawn (Android builds without a Google Maps key).
+ * under it. Shows the shape of the route only; used where a map cannot be
+ * drawn, or as an offline fallback when map styles or tiles fail to load.
  */
 const RouteLine: React.FC<RouteLineProps> = ({
   points,

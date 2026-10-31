@@ -68,4 +68,6 @@ export interface MapSurfaceProps {
   onPress?: (point: MapCoordinate) => void;
   onViewportChange?: (latitudeDelta: number) => void;
   onReady?: () => void;
+  /** Fired when map style or tiles fail to load (e.g. offline on keyless MapLibre). */
+  onDidFailLoadingMap?: () => void;
 }

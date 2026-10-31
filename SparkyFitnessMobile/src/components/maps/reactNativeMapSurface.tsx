@@ -163,7 +163,7 @@ const ReactNativeMapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
           <Marker
             key={`marker-${index}`}
             coordinate={toCoordinate(marker.point)}
-            anchor={MARKER_CENTER}
+            anchor={marker.shape === 'pin' ? undefined : MARKER_CENTER}
             draggable={marker.draggable}
             opacity={marker.opacity}
             pinColor={marker.shape === 'pin' ? marker.color : undefined}

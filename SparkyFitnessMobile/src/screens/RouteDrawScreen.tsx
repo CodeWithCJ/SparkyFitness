@@ -226,7 +226,7 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
         ? 'green'
         : index === lastIndex
           ? 'red'
-          : 'azure';
+          : '#0284c7';
   const selectedPoint = selected !== null ? editor.points[selected] : undefined;
   const legBefore = selected !== null ? editor.legs[selected - 1] : undefined;
   const legAfter = selected !== null ? editor.legs[selected] : undefined;

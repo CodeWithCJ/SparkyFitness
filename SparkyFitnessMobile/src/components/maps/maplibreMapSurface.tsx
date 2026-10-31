@@ -18,6 +18,7 @@ import {
   type ViewAnnotationEvent,
 } from '@maplibre/maplibre-react-native';
 import { resolveMapLibreStyle, zoomForLatitudeDelta } from './mapStyles';
+import { longitudeSpan } from '../../utils/cardioSession';
 import type {
   MapCoordinate,
   MapLine,
@@ -51,24 +52,7 @@ const shortestLongitudeBounds = (
 ): [number, number] => {
   if (points.length === 0) return [0, 0];
   if (points.length === 1) return [points[0].lon, points[0].lon];
-  const sorted = points.map((p) => p.lon).sort((a, b) => a - b);
-  const last = sorted.length - 1;
-  let gapIndex = last;
-  let widestGap = (sorted[0] ?? 0) + 360 - (sorted[last] ?? 0);
-  for (let i = 0; i < last; i++) {
-    const gap = (sorted[i + 1] ?? 0) - (sorted[i] ?? 0);
-    if (gap > widestGap) {
-      widestGap = gap;
-      gapIndex = i;
-    }
-  }
-  if (widestGap <= 0) return [sorted[0] ?? 0, sorted[last] ?? 0];
-  const west = sorted[(gapIndex + 1) % sorted.length] ?? 0;
-  // If the widest gap wraps around the 180° meridian, no date-line crossing is needed.
-  if (gapIndex === last) {
-    return [sorted[0] ?? 0, sorted[last] ?? 0];
-  }
-  const east = sorted[gapIndex] ?? 0;
+  const { west, east } = longitudeSpan(points.map((p) => p.lon));
   // MapLibre Android (LatLngBounds.from) requires east >= west. When crossing
   // the 180° antimeridian, unwrap the eastern longitude by adding 360°.
   return [west, east < west ? east + 360 : east];
@@ -114,14 +98,16 @@ const RouteLineLayer: React.FC<{ line: MapLine; index: number }> = ({
     >
       {line.dashed ? (
         <Layer
-          id={`route-line-${index}`}
+          id={`route-line-dashed-${index}`}
+          key={`route-line-dashed-${index}`}
           type="line"
           layout={{ 'line-cap': 'round', 'line-join': 'round' }}
           paint={{ ...paint, 'line-dasharray': [2, 2] }}
         />
       ) : (
         <Layer
-          id={`route-line-${index}`}
+          id={`route-line-solid-${index}`}
+          key={`route-line-solid-${index}`}
           type="line"
           layout={{ 'line-cap': 'round', 'line-join': 'round' }}
           paint={paint}
@@ -190,6 +176,7 @@ const MapLibreMapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
       onPress,
       onViewportChange,
       onReady,
+      onDidFailLoadingMap,
     },
     ref
   ) {
@@ -295,6 +282,9 @@ const MapLibreMapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
           onViewportChange?.(north - south);
         }}
         onDidFinishLoadingStyle={handleStyleLoaded}
+        onDidFailLoadingMap={
+          onDidFailLoadingMap ? () => onDidFailLoadingMap() : undefined
+        }
         importantForAccessibility={
           hideFromAccessibility ? 'no-hide-descendants' : undefined
         }
@@ -330,10 +320,11 @@ const MapLibreMapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
         ))}
         {markers.map((marker, index) => {
           const shape = <MarkerShape marker={marker} />;
+          const markerKey = `marker-${index}-${marker.color}-${marker.opacity ?? 1}-${marker.shape}-${marker.size ?? 0}`;
           if (marker.draggable) {
             return (
               <ViewAnnotation
-                key={`marker-${index}`}
+                key={markerKey}
                 id={`route-marker-${index}`}
                 lngLat={toLngLat(marker.point)}
                 draggable
@@ -350,7 +341,7 @@ const MapLibreMapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
           }
           return (
             <Marker
-              key={`marker-${index}`}
+              key={markerKey}
               id={`route-marker-${index}`}
               lngLat={toLngLat(marker.point)}
               onPress={() => handleMarkerPress(marker)}
