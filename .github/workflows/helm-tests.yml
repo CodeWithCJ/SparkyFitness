@@ -54,7 +54,7 @@ jobs:
 
       - name: Render — every server pod gets the startup probe
         run: |
-          out=$(helm template t helm/chart --set server.replicas=2 --show-only templates/server/deployment.yaml)
+          out=$(helm template t helm/chart --set server.replicas=2 --set server.persistence.allowSingleNodeVolumes=true --show-only templates/server/deployment.yaml)
           test "$(grep -c 'startupProbe:' <<< "$out")" = 2
           if helm template t helm/chart --set server.startupProbe=null --show-only templates/server/deployment.yaml | grep -q 'startupProbe:'; then
             echo "server.startupProbe=null should drop the probe"; exit 1
@@ -87,11 +87,22 @@ jobs:
           grep -q '^  dbpass: ' <<< "$out"
           grep -q 'key: dbpass' <<< "$out"
 
-      - name: Render — shutdown timeout sets the grace period on every server pod
+      - name: Render — the grace period covers the shutdown timeout and the preStop delay
         run: |
-          out=$(helm template t helm/chart --set server.replicas=2 --set server.shutdownTimeoutSeconds=60)
-          test "$(grep -c 'terminationGracePeriodSeconds: 65' <<< "$out")" = 2
+          out=$(helm template t helm/chart --set server.replicas=2 --set server.persistence.allowSingleNodeVolumes=true --set server.shutdownTimeoutSeconds=60)
+          # The 5 s preStop sleep above one replica runs inside the grace period too.
+          test "$(grep -c 'terminationGracePeriodSeconds: 70' <<< "$out")" = 2
           test "$(grep -A1 'name: SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS' <<< "$out" | grep -c 'value: "60"')" = 2
+          helm template t helm/chart --set server.shutdownTimeoutSeconds=60 | grep -q 'terminationGracePeriodSeconds: 65'
+          # Without a timeout, the server's default 15 s plus a long preStop can pass Kubernetes' 30 s default.
+          helm template t helm/chart --set server.preStopDelaySeconds=20 | grep -q 'terminationGracePeriodSeconds: 40'
+          helm template t helm/chart --set frontend.preStopDelaySeconds=60 --show-only templates/frontend/deployment.yaml | grep -q 'terminationGracePeriodSeconds: 80'
+          if helm template t helm/chart --set frontend.replicas=2 --show-only templates/frontend/deployment.yaml | grep -q terminationGracePeriodSeconds; then
+            echo "the frontend's default grace period already covers a 5 s preStop"; exit 1
+          fi
+          if helm template t helm/chart --set server.replicas=2 --set server.persistence.allowSingleNodeVolumes=true --show-only templates/server/deployment.yaml | grep -q terminationGracePeriodSeconds; then
+            echo "the default grace period already covers 15 s + a 5 s preStop"; exit 1
+          fi
           for bad in 0 3601; do
             if helm template t helm/chart --set server.shutdownTimeoutSeconds=$bad > /dev/null 2>&1; then
               echo "a timeout of $bad should fail to render"; exit 1
@@ -117,6 +128,114 @@ jobs:
           grep -q 'claimName: "123"' <<< "$out"
           grep -q 'claimName: "456"' <<< "$out"
           grep -q 'claimName: "789"' <<< "$out"
+
+      - name: Render — more than one server replica needs shared volumes
+        run: |
+          err=$(helm template t helm/chart --set server.replicas=2 2>&1 > /dev/null || true)
+          grep -q 'server.persistence.backup.accessMode, server.persistence.uploads.accessMode' <<< "$err"
+          err=$(helm template t helm/chart --set server.replicas=2 \
+            --set server.persistence.backup.accessMode=ReadWriteMany 2>&1 > /dev/null || true)
+          grep -q 'not ReadWriteMany: server.persistence.uploads.accessMode\.' <<< "$err"
+          # An existing claim declared ReadWriteMany is accepted.
+          helm template t helm/chart --set server.replicas=2 \
+            --set server.persistence.uploads.existingClaim=my-uploads \
+            --set server.persistence.uploads.accessMode=ReadWriteMany \
+            --set server.persistence.backup.existingClaim=my-backup \
+            --set server.persistence.backup.accessMode=ReadWriteMany > /dev/null
+          # Single-node opt-out accepts ReadWriteOnce, never ReadWriteOncePod.
+          helm template t helm/chart --set server.replicas=2 \
+            --set server.persistence.allowSingleNodeVolumes=true > /dev/null
+          if helm template t helm/chart --set server.replicas=2 \
+              --set server.persistence.allowSingleNodeVolumes=true \
+              --set server.persistence.uploads.accessMode=ReadWriteOncePod > /dev/null 2>&1; then
+            echo "ReadWriteOncePod should fail above one replica even with allowSingleNodeVolumes"; exit 1
+          fi
+
+      - name: Render — server defaults above one replica
+        run: |
+          rwx="--set server.persistence.uploads.accessMode=ReadWriteMany --set server.persistence.backup.accessMode=ReadWriteMany"
+          out=$(helm template t helm/chart --set server.replicas=3 $rwx \
+            --show-only templates/server/deployment.yaml --show-only templates/server/pdb.yaml)
+          # -server rolls one pod at a time; -jobs keeps Recreate.
+          grep -q 'maxUnavailable: 0' <<< "$out"
+          test "$(grep -c 'type: Recreate' <<< "$out")" = 1
+          test "$(grep -c 'whenUnsatisfiable: ScheduleAnyway' <<< "$out")" = 2
+          test "$(grep -c 'command: \["sleep", "5"\]' <<< "$out")" = 2
+          test "$(grep -c 'minReadySeconds: 5' <<< "$out")" = 2
+          grep -q 'kind: PodDisruptionBudget' <<< "$out"
+          grep -q '^  maxUnavailable: 1' <<< "$out"
+          # One replica on ReadWriteOnce: Recreate, and none of the above.
+          out=$(helm template t helm/chart --show-only templates/server/deployment.yaml)
+          grep -q 'type: Recreate' <<< "$out"
+          if grep -qE 'topologySpreadConstraints|preStop|minReadySeconds' <<< "$out"; then
+            echo "a single replica should render no spread, preStop or minReadySeconds"; exit 1
+          fi
+          if helm template t helm/chart --show-only templates/server/pdb.yaml > /dev/null 2>&1; then
+            echo "a single replica should render no PodDisruptionBudget"; exit 1
+          fi
+          # One replica on ReadWriteMany can surge.
+          helm template t helm/chart $rwx --show-only templates/server/deployment.yaml | grep -q 'type: RollingUpdate'
+
+      - name: Render — overrides of the multi-replica defaults
+        run: |
+          rwx="--set server.replicas=3 --set server.persistence.uploads.accessMode=ReadWriteMany --set server.persistence.backup.accessMode=ReadWriteMany"
+          if helm template t helm/chart $rwx --set server.podDisruptionBudget.enabled=false \
+              --show-only templates/server/pdb.yaml > /dev/null 2>&1; then
+            echo "podDisruptionBudget.enabled=false should drop the PDB"; exit 1
+          fi
+          helm template t helm/chart --set server.podDisruptionBudget.enabled=true \
+            --show-only templates/server/pdb.yaml | grep -q '^  maxUnavailable: 1'
+          helm template t helm/chart $rwx --set server.podDisruptionBudget.minAvailable=2 \
+            --show-only templates/server/pdb.yaml | grep -q '^  minAvailable: 2'
+          out=$(helm template t helm/chart $rwx --set server.defaultTopologySpread=false \
+            --set server.preStopDelaySeconds=0 --set server.minReadySeconds=0 \
+            --show-only templates/server/deployment.yaml)
+          if grep -qE 'topologySpreadConstraints|preStop' <<< "$out"; then
+            echo "defaultTopologySpread=false and preStopDelaySeconds=0 should drop them"; exit 1
+          fi
+          test "$(grep -c 'minReadySeconds: 0' <<< "$out")" = 2
+          out=$(helm template t helm/chart $rwx \
+            --set 'server.topologySpreadConstraints[0].maxSkew=2' \
+            --set 'server.topologySpreadConstraints[0].topologyKey=topology.kubernetes.io/zone' \
+            --set 'server.topologySpreadConstraints[0].whenUnsatisfiable=DoNotSchedule' \
+            --set server.strategy.type=Recreate \
+            --show-only templates/server/deployment.yaml)
+          test "$(grep -c 'whenUnsatisfiable: DoNotSchedule' <<< "$out")" = 2
+          if grep -q 'ScheduleAnyway' <<< "$out"; then
+            echo "configured topologySpreadConstraints should replace the default"; exit 1
+          fi
+          test "$(grep -c 'type: Recreate' <<< "$out")" = 2
+
+      - name: Render — a PodDisruptionBudget limit of 0 is kept
+        run: |
+          rwx="--set server.replicas=3 --set server.persistence.uploads.accessMode=ReadWriteMany --set server.persistence.backup.accessMode=ReadWriteMany"
+          for c in server frontend; do
+            for limit in maxUnavailable minAvailable; do
+              out=$(helm template t helm/chart $rwx --set frontend.replicas=2 \
+                --set "$c.podDisruptionBudget.$limit=0" \
+                --show-only "templates/$c/pdb.yaml")
+              grep -q "^  $limit: 0$" <<< "$out"
+              test "$(grep -cE '^  (minAvailable|maxUnavailable):' <<< "$out")" = 1
+            done
+            if helm template t helm/chart $rwx --set frontend.replicas=2 \
+                --set "$c.podDisruptionBudget.maxUnavailable=0" \
+                --set "$c.podDisruptionBudget.minAvailable=0" > /dev/null 2>&1; then
+              echo "$c: setting both PDB limits, even to 0, should fail"; exit 1
+            fi
+          done
+
+      - name: Render — frontend above one replica
+        run: |
+          out=$(helm template t helm/chart --set frontend.replicas=2 \
+            --show-only templates/frontend/deployment.yaml --show-only templates/frontend/pdb.yaml)
+          grep -q 'kind: PodDisruptionBudget' <<< "$out"
+          grep -q 'whenUnsatisfiable: ScheduleAnyway' <<< "$out"
+          grep -q 'command: \["sleep", "5"\]' <<< "$out"
+          grep -q 'minReadySeconds: 5' <<< "$out"
+          out=$(helm template t helm/chart --show-only templates/frontend/deployment.yaml)
+          if grep -qE 'topologySpreadConstraints|preStop|minReadySeconds' <<< "$out"; then
+            echo "a single frontend replica should render no spread, preStop or minReadySeconds"; exit 1
+          fi
 
       - name: Render — external DB with NetworkPolicy
         run: |
@@ -246,6 +365,12 @@ jobs:
             --set server.podDisruptionBudget.enabled=true \
             --set server.podDisruptionBudget.minAvailable=1 \
             > /tmp/manifests.yaml
+          helm template m helm/chart \
+            --set server.replicas=3 \
+            --set server.persistence.uploads.accessMode=ReadWriteMany \
+            --set server.persistence.backup.accessMode=ReadWriteMany \
+            --set frontend.replicas=2 \
+            >> /tmp/manifests.yaml
 
       - name: Validate against k8s ${{ matrix.k8s }}
         run: |

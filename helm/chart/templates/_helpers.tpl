@@ -323,6 +323,129 @@ http://localhost:3004
 {{- end }}
 
 {{/* ================================================================== */}}
+{{/* Availability helpers                                               */}}
+{{/* ================================================================== */}}
+
+{{/*
+Whether a server volume can only be attached on one node. accessMode
+describes the claim the server mounts, including an existingClaim.
+Usage: {{ include "sparkyfitness.serverVolumeSingleNode" (dict "root" . "volume" "uploads") }}
+*/}}
+{{- define "sparkyfitness.serverVolumeSingleNode" -}}
+{{- $p := index .root.Values.server.persistence .volume -}}
+{{- if has ($p.accessMode | default "ReadWriteOnce") (list "ReadWriteOnce" "ReadWriteOncePod") -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
+Whether a PodDisruptionBudget is rendered. enabled unset (the default)
+means "only when replicas > 1": a PDB on a single replica blocks node
+drains without protecting anything.
+Usage: {{ include "sparkyfitness.pdbEnabled" (dict "pdb" .Values.server.podDisruptionBudget "replicas" .Values.server.replicas) }}
+*/}}
+{{- define "sparkyfitness.pdbEnabled" -}}
+{{- if kindIs "invalid" .pdb.enabled -}}
+{{- if gt (int .replicas) 1 }}true{{ end -}}
+{{- else if .pdb.enabled -}}
+true
+{{- end -}}
+{{- end }}
+
+{{/*
+PodDisruptionBudget spec body. Without minAvailable or maxUnavailable,
+one pod at a time may be disrupted. A limit counts as set unless it is
+null or "", so an explicit 0 (e.g. maxUnavailable: 0) is kept.
+Usage: {{ include "sparkyfitness.pdbSpec" (dict "pdb" .Values.server.podDisruptionBudget "component" "server") }}
+*/}}
+{{- define "sparkyfitness.pdbSpec" -}}
+{{- $min := .pdb.minAvailable -}}
+{{- $max := .pdb.maxUnavailable -}}
+{{- $hasMin := and (not (kindIs "invalid" $min)) (ne (toString $min) "") -}}
+{{- $hasMax := and (not (kindIs "invalid" $max)) (ne (toString $max) "") -}}
+{{- if and $hasMin $hasMax -}}
+{{- fail (printf "%s.podDisruptionBudget: set exactly one of minAvailable or maxUnavailable, not both" .component) -}}
+{{- end -}}
+{{- if $hasMin -}}
+minAvailable: {{ $min }}
+{{- else if $hasMax -}}
+maxUnavailable: {{ $max }}
+{{- else -}}
+maxUnavailable: 1
+{{- end -}}
+{{- end }}
+
+{{/*
+topologySpreadConstraints for a component: the configured list, or above
+one replica a soft spread across nodes. Soft (ScheduleAnyway) so a
+single-node cluster still schedules every replica.
+Usage: {{ include "sparkyfitness.topologySpread" (dict "values" .Values.server "replicas" $replicas "selector" $selectorYaml) }}
+*/}}
+{{- define "sparkyfitness.topologySpread" -}}
+{{- if .values.topologySpreadConstraints -}}
+{{- toYaml .values.topologySpreadConstraints -}}
+{{- else if and (gt (int .replicas) 1) .values.defaultTopologySpread -}}
+- maxSkew: 1
+  topologyKey: kubernetes.io/hostname
+  whenUnsatisfiable: ScheduleAnyway
+  labelSelector:
+    matchLabels:
+      {{- .selector | nindent 6 }}
+{{- end -}}
+{{- end }}
+
+{{/*
+Container lifecycle: the configured one, or a preStop sleep so the pod is
+removed from the Service endpoints before the process stops accepting
+connections. That only matters while another pod keeps serving, so an
+unset preStopDelaySeconds gets a default only when $rolling.
+Usage: {{ include "sparkyfitness.lifecycle" (dict "values" .Values.server "rolling" $rolling) }}
+*/}}
+{{- define "sparkyfitness.lifecycle" -}}
+{{- if .values.lifecycle -}}
+{{- toYaml .values.lifecycle -}}
+{{- else -}}
+{{- $delay := include "sparkyfitness.preStopDelay" . | int -}}
+{{- if gt $delay 0 -}}
+preStop:
+  exec:
+    command: ["sleep", "{{ $delay }}"]
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Seconds of the chart's preStop sleep: preStopDelaySeconds, or 5 when unset
+and $rolling; 0 with a custom lifecycle, whose length the chart cannot know.
+Usage: {{ include "sparkyfitness.preStopDelay" (dict "values" .Values.server "rolling" $rolling) }}
+*/}}
+{{- define "sparkyfitness.preStopDelay" -}}
+{{- $delay := .values.preStopDelaySeconds -}}
+{{- if .values.lifecycle -}}
+0
+{{- else if not (kindIs "invalid" $delay) -}}
+{{- max 0 (int $delay) -}}
+{{- else if .rolling -}}
+5
+{{- else -}}
+0
+{{- end -}}
+{{- end }}
+
+{{/*
+minReadySeconds: the configured value, or 5 when $rolling so a pod that
+fails right after its first ready probe does not let the rollout continue.
+Usage: {{ include "sparkyfitness.minReadySeconds" (dict "values" .Values.server "rolling" $rolling) }}
+*/}}
+{{- define "sparkyfitness.minReadySeconds" -}}
+{{- if not (kindIs "invalid" .values.minReadySeconds) -}}
+{{- int .values.minReadySeconds -}}
+{{- else if .rolling -}}
+5
+{{- end -}}
+{{- end }}
+
+{{/* ================================================================== */}}
 {{/* StorageClass helper                                                */}}
 {{/* ================================================================== */}}
 
