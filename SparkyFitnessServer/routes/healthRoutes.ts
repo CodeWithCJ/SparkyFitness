@@ -10,6 +10,7 @@ import {
   isAuthPoolBusy,
 } from '../auth.js';
 import { isShuttingDown } from '../utils/shutdownHooks.js';
+import { isRestoreRunning } from '../services/onlineRestoreGuard.js';
 import { describeError } from '../utils/errors.js';
 
 const router = express.Router();
@@ -239,7 +240,7 @@ async function evaluateReadiness(): Promise<Readiness> {
  * /health/ready:
  *   get:
  *     summary: Readiness check
- *     description: Whether this instance can serve requests now. Runs a query on the database and on the authentication tables, each limited to 2 seconds, and fails while the server shuts down. A check still waiting for a connection from a busy pool after 2 seconds reports busy and counts as ready. A check that cannot connect to the database reports retrying and counts as ready (status DEGRADED) until the failure has lasted longer than the 10-second window in which requests retry their connection.
+ *     description: Whether this instance can serve requests now. Runs a query on the database and on the authentication tables, each limited to 2 seconds, and fails while the server shuts down or restores a backup. A check still waiting for a connection from a busy pool after 2 seconds reports busy and counts as ready. A check that cannot connect to the database reports retrying and counts as ready (status DEGRADED) until the failure has lasted longer than the 10-second window in which requests retry their connection.
  *     tags: [System & Admin]
  *     responses:
  *       200:
@@ -258,12 +259,15 @@ async function evaluateReadiness(): Promise<Readiness> {
  *                     type: string
  *                     enum: [ok, busy, retrying, failed, timeout]
  *       503:
- *         description: Not ready (status NOT_READY with the failing checks), or shutting down (status DRAINING).
+ *         description: Not ready (status NOT_READY with the failing checks), shutting down (status DRAINING), or restoring a backup (status RESTORING).
  */
 router.get('/ready', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   if (isShuttingDown()) {
     return res.status(503).json({ status: 'DRAINING' });
+  }
+  if (isRestoreRunning()) {
+    return res.status(503).json({ status: 'RESTORING' });
   }
   pendingReadiness ??= evaluateReadiness().finally(() => {
     pendingReadiness = undefined;

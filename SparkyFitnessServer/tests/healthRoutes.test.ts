@@ -14,6 +14,7 @@ const {
   checkAuthSchema,
   authPoolBusy,
   draining,
+  restoring,
 } = vi.hoisted(() => ({
   appConnect: vi.fn(),
   appQuery: vi.fn(),
@@ -25,6 +26,7 @@ const {
   checkAuthSchema: vi.fn(),
   authPoolBusy: vi.fn(),
   draining: { value: false },
+  restoring: { value: false },
 }));
 
 vi.mock('../db/poolManager.js', () => ({
@@ -38,6 +40,9 @@ vi.mock('../auth.js', () => ({
 }));
 vi.mock('../utils/shutdownHooks.js', () => ({
   isShuttingDown: () => draining.value,
+}));
+vi.mock('../services/onlineRestoreGuard.js', () => ({
+  isRestoreRunning: () => restoring.value,
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
@@ -55,6 +60,7 @@ const secretError = Object.assign(
 beforeEach(() => {
   vi.resetAllMocks();
   draining.value = false;
+  restoring.value = false;
   appConnect.mockResolvedValue({ query: appQuery, release: appRelease });
   appQuery.mockResolvedValue({ rows: [{ '?column?': 1 }] });
   appPoolBusy.mockReturnValue(false);
@@ -291,6 +297,19 @@ describe('GET /api/health/ready', () => {
 
     expect(response.status).toBe(503);
     expect(response.body).toEqual({ status: 'DRAINING' });
+    expect(appConnect).not.toHaveBeenCalled();
+    expect(authConnect).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /api/health/ready during a restore', () => {
+  it('is not ready and leaves the database alone', async () => {
+    restoring.value = true;
+
+    const response = await request(app).get('/api/health/ready');
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({ status: 'RESTORING' });
     expect(appConnect).not.toHaveBeenCalled();
     expect(authConnect).not.toHaveBeenCalled();
   });
