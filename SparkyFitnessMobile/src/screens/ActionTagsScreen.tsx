@@ -12,6 +12,7 @@ import StatusView from '../components/StatusView';
 import Button from '../components/ui/Button';
 import { useServerConnection, useWaterContainersQuery } from '../hooks';
 import { useActionTagsQuery } from '../hooks/useActionTags';
+import { useCancelNfcOnUnmount } from '../hooks/useCancelNfcOnUnmount';
 import { useNfcSupport } from '../hooks/useNfcSupport';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { ApiError } from '../services/api/errors';
@@ -29,6 +30,7 @@ const ActionTagsScreen: React.FC<ActionTagsScreenProps> = ({ navigation }) => {
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const [refreshing, setRefreshing] = useState(false);
   const [scanning, setScanning] = useState(false);
+  useCancelNfcOnUnmount(scanning);
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const { tags, isLoading, isError, error, refetch } = useActionTagsQuery({
     enabled: isConnected,
