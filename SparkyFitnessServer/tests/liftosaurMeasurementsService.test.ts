@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import axios from 'axios';
+import axios, { AxiosHeaders, type AxiosResponse } from 'axios';
 import {
   parseLiftosaurValue,
   importMeasurementsFromLiftosaur,
@@ -11,6 +11,16 @@ vi.mock('../services/measurementService.js');
 vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
+
+function axiosOk<T>(data: T): AxiosResponse<T> {
+  return {
+    data,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    config: { headers: new AxiosHeaders() },
+  };
+}
 
 describe('liftosaurMeasurementsService', () => {
   beforeEach(() => {
@@ -81,7 +91,7 @@ describe('liftosaurMeasurementsService', () => {
         }) as any;
       });
 
-      const count = await importMeasurementsFromLiftosaur(
+      const result = await importMeasurementsFromLiftosaur(
         'user-1',
         'user-1',
         'test-key',
@@ -89,7 +99,7 @@ describe('liftosaurMeasurementsService', () => {
         nowMs - 100000
       );
 
-      expect(count).toBe(2);
+      expect(result).toEqual({ imported: 2, failedKeys: [] });
       expect(measurementService.processHealthData).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -106,6 +116,67 @@ describe('liftosaurMeasurementsService', () => {
         'user-1',
         'user-1'
       );
+    });
+
+    const mockKeyFailure = (failingKey: string, status: number) => {
+      const nowMs = Date.now();
+      vi.mocked(axios.get).mockImplementation((url) => {
+        if (url.includes(`/${failingKey}`)) {
+          return Promise.reject({
+            message: `Request failed with status code ${status}`,
+            response: { status },
+          });
+        }
+        if (url.includes('/weight')) {
+          return Promise.resolve(
+            axiosOk({
+              data: {
+                key: 'weight',
+                category: 'weight',
+                values: [{ timestamp: nowMs, value: '80kg' }],
+                hasMore: false,
+              },
+            })
+          );
+        }
+        return Promise.resolve(
+          axiosOk({ data: { key: 'other', values: [], hasMore: false } })
+        );
+      });
+      return nowMs;
+    };
+
+    it('reports a key that fails with a server error and still saves the rest', async () => {
+      const nowMs = mockKeyFailure('waist', 500);
+
+      const result = await importMeasurementsFromLiftosaur(
+        'user-1',
+        'user-1',
+        'test-key',
+        'UTC',
+        nowMs - 100000
+      );
+
+      expect(result).toEqual({ imported: 1, failedKeys: ['waist'] });
+      expect(measurementService.processHealthData).toHaveBeenCalledWith(
+        [expect.objectContaining({ type: 'weight', value: 80 })],
+        'user-1',
+        'user-1'
+      );
+    });
+
+    it('does not report a key Liftosaur does not have (404)', async () => {
+      const nowMs = mockKeyFailure('waist', 404);
+
+      const result = await importMeasurementsFromLiftosaur(
+        'user-1',
+        'user-1',
+        'test-key',
+        'UTC',
+        nowMs - 100000
+      );
+
+      expect(result).toEqual({ imported: 1, failedKeys: [] });
     });
   });
 });

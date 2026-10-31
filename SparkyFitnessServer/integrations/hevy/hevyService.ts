@@ -266,9 +266,12 @@ async function syncHevyData(
     }
   }
   try {
+    const failedFetches: string[] = [];
     // Helper to safely fetch and log raw data without stopping the whole sync
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async function safeFetch(dataType: any, fetchFn: any) {
+    async function safeFetch<T>(
+      dataType: string,
+      fetchFn: () => Promise<T>
+    ): Promise<T | null> {
       try {
         const data = await fetchFn();
         if (data) {
@@ -281,6 +284,7 @@ async function syncHevyData(
           // @ts-expect-error TS(2571): Object is of type 'unknown'.
           `[hevyService] Failed to fetch ${dataType} for user ${userId}: ${error.message}`
         );
+        failedFetches.push(dataType);
         return null;
       }
     }
@@ -344,17 +348,30 @@ async function syncHevyData(
       );
     }
     const totalProcessed = allWorkouts.length;
-    // 3. Update last sync time
-    const client = await getSystemClient();
-    try {
-      await client.query(
-        `UPDATE external_data_providers
-                 SET last_sync_at = NOW(), updated_at = NOW()
-                 WHERE id = $1`,
-        [providerId || (await getHevyProviderId(userId))]
+    // 3. Update last sync time, unless a workout page failed: the scheduler
+    // reads last_sync_at to decide when a daily sync is due, so a partial sync
+    // must leave it alone to be retried on the next tick. A failed user-info
+    // fetch does not block it.
+    const failedWorkoutPages = failedFetches.filter((key) =>
+      key.startsWith('raw_workouts_page')
+    );
+    if (failedWorkoutPages.length === 0) {
+      const client = await getSystemClient();
+      try {
+        await client.query(
+          `UPDATE external_data_providers
+                   SET last_sync_at = NOW(), updated_at = NOW()
+                   WHERE id = $1`,
+          [providerId || (await getHevyProviderId(userId))]
+        );
+      } finally {
+        client.release();
+      }
+    } else {
+      log(
+        'warn',
+        `[hevyService] Hevy sync for user ${userId} could not fetch ${failedWorkoutPages.join(', ')}; last_sync_at not updated.`
       );
-    } finally {
-      client.release();
     }
     log(
       'info',

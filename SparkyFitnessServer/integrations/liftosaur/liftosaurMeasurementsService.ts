@@ -161,6 +161,8 @@ async function getMeasurementPage(
 
 /**
  * Ingest measurements from Liftosaur into SparkyFitness.
+ * `failedKeys` lists keys whose fetch failed; a key Liftosaur does not have
+ * (400/404) is not a failure. Values collected before a failure are still saved.
  */
 export async function importMeasurementsFromLiftosaur(
   userId: string,
@@ -168,7 +170,7 @@ export async function importMeasurementsFromLiftosaur(
   apiKey: string,
   tz: string,
   cutoffMs: number
-): Promise<number> {
+): Promise<{ imported: number; failedKeys: string[] }> {
   const healthDataToProcess: Array<{
     type: string;
     value: number;
@@ -177,6 +179,7 @@ export async function importMeasurementsFromLiftosaur(
     dataType: string;
     measurementType: string;
   }> = [];
+  const failedKeys: string[] = [];
 
   for (const def of SUPPORTED_KEYS) {
     try {
@@ -243,6 +246,7 @@ export async function importMeasurementsFromLiftosaur(
         'warn',
         `[liftosaurMeasurements] Error importing key ${def.key}: ${errorMessage(err)}`
       );
+      failedKeys.push(def.key);
     }
   }
 
@@ -254,7 +258,7 @@ export async function importMeasurementsFromLiftosaur(
     );
   }
 
-  return healthDataToProcess.length;
+  return { imported: healthDataToProcess.length, failedKeys };
 }
 
 export default {
