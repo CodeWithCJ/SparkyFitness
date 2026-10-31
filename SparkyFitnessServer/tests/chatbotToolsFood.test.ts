@@ -439,6 +439,17 @@ describe('search_food', () => {
 });
 
 describe('lookup_food_nutrition', () => {
+  it('tells the AI to quote an exact USDA name, escaping inner quotes', () => {
+    const { description } = tools.sparky_manage_food;
+
+    expect(description).toContain(
+      'wrap the whole name in double quotes and write any " inside it as \\"'
+    );
+    expect(description).toContain(
+      'with provider_type "usda" quote an exact name'
+    );
+  });
+
   it('returns the internal match without touching external providers', async () => {
     vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([
       eggsRow,
