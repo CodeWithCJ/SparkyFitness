@@ -4,10 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import DiarySettingsScreen from '../../src/screens/DiarySettingsScreen';
-import {
-  PREFERENCE_DEFAULTS,
-  useAppPreferencesStore,
-} from '../../src/stores/appPreferencesStore';
+import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
 import { initializeI18n } from '../../src/localization/i18n';
 
 jest.mock('../../src/hooks', () => ({
@@ -61,10 +58,7 @@ describe('DiarySettingsScreen', () => {
   });
 
   beforeEach(() => {
-    useAppPreferencesStore.setState({
-      diarySummaryVisible: false,
-      guidedCheckInEnabled: PREFERENCE_DEFAULTS.guidedCheckInEnabled,
-    });
+    useAppPreferencesStore.setState({ diarySummaryVisible: false });
   });
 
   test('renders the Diary Summary row with a Switch reflecting the stored preference', () => {
@@ -94,45 +88,10 @@ describe('DiarySettingsScreen', () => {
     expect(getByLabelText('Diary Summary')).toBeTruthy();
   });
 
-  describe('Guided check-in', () => {
-    test('renders the Guided check-in row with its Switch off by default', () => {
-      const { getByText, getByLabelText } = renderScreen();
+  test('has no guided check-in switch: Quick Actions shows or hides Check-In', () => {
+    const { queryByText, queryByLabelText } = renderScreen();
 
-      expect(getByText('Guided check-in')).toBeTruthy();
-      expect(
-        getByText(
-          'Adds Check-In to the Add menu: log your mood, measurements and progress photos for the day, one step at a time.'
-        )
-      ).toBeTruthy();
-      expect(getByLabelText('Guided check-in').props.value).toBe(false);
-      expect(useAppPreferencesStore.getState().guidedCheckInEnabled).toBe(
-        false
-      );
-    });
-
-    test('the Guided check-in Switch reflects a stored opt-in', () => {
-      useAppPreferencesStore.setState({ guidedCheckInEnabled: true });
-
-      const { getByLabelText } = renderScreen();
-
-      expect(getByLabelText('Guided check-in').props.value).toBe(true);
-    });
-
-    test('toggling the Guided check-in Switch writes the opt-in to the store', () => {
-      const { getByLabelText } = renderScreen();
-
-      fireEvent(getByLabelText('Guided check-in'), 'valueChange', true);
-
-      expect(useAppPreferencesStore.getState().guidedCheckInEnabled).toBe(true);
-      expect(getByLabelText('Guided check-in').props.value).toBe(true);
-      // The Diary Summary switch is a separate preference.
-      expect(useAppPreferencesStore.getState().diarySummaryVisible).toBe(false);
-
-      fireEvent(getByLabelText('Guided check-in'), 'valueChange', false);
-
-      expect(useAppPreferencesStore.getState().guidedCheckInEnabled).toBe(
-        false
-      );
-    });
+    expect(queryByText('Guided check-in')).toBeNull();
+    expect(queryByLabelText('Guided check-in')).toBeNull();
   });
 });

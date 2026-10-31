@@ -1245,9 +1245,7 @@
     "summarySubtitle": "Show calories and macronutrients",
     "customNutrientDisplay": "Custom Nutrient Display",
     "limitDescription_one": "Up to {{count}} custom nutrients can be shown here.",
-    "limitDescription_other": "Up to {{count}} custom nutrients can be shown here.",
-    "guidedCheckIn": "Guided check-in",
-    "guidedCheckInSubtitle": "Adds Check-In to the Add menu: log your mood, measurements and progress photos for the day, one step at a time."
+    "limitDescription_other": "Up to {{count}} custom nutrients can be shown here."
   },
   "about": {
     "title": "About",
@@ -3425,8 +3423,8 @@
       "checkIn": {
         "eyebrow": "GUIDED CHECK-IN",
         "headline": "Check in in one flow",
-        "body": "Log your mood, measurements, and a progress photo in three quick steps. Turn it on in Diary settings.",
-        "cta": "Open diary settings"
+        "body": "Log your mood, measurements, and a progress photo in three quick steps. Find Daily Check-In in the + menu.",
+        "cta": "Start a check-in"
       },
       "strength": {
         "eyebrow": "STRENGTH TOOLS",
@@ -3839,7 +3837,6 @@
     "previewTitle": "Preview",
     "previewDescription": "How Quick Actions looks with your choices.",
     "lineNumber": "Line {{number}}",
-    "needsCheckIn": "Not shown: guided check-in is off",
     "needsCycle": "Not shown: cycle tracking is off",
     "showAs": "Show as",
     "showAsValue": "Show as {{style}}",
