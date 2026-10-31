@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import NfcManager, { Ndef } from 'react-native-nfc-manager';
 import {
   generateTagCode,
@@ -56,6 +57,33 @@ describe('readTag', () => {
   it('reports a cancelled scan quietly', async () => {
     manager.requestTechnology.mockRejectedValueOnce(new Error('UserCancel'));
     expect(await readTag('hold')).toEqual({ status: 'cancelled' });
+  });
+});
+
+describe('session options', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('uses reader mode on Android so the system does not open the link', async () => {
+    const restore = jest.replaceProperty(Platform, 'OS', 'android');
+    try {
+      await readTag('hold');
+      expect(manager.requestTechnology).toHaveBeenCalledWith(
+        'Ndef',
+        expect.objectContaining({
+          isReaderModeEnabled: true,
+          readerModeFlags: 15,
+        })
+      );
+    } finally {
+      restore.restore();
+    }
+  });
+
+  it('keeps the plain session on iPhone', async () => {
+    await readTag('hold');
+    expect(manager.requestTechnology).toHaveBeenCalledWith('Ndef', {
+      alertMessage: 'hold',
+    });
   });
 });
 

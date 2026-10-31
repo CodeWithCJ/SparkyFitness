@@ -6,6 +6,7 @@ import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import type { ActionTagResponse } from '@workspace/shared';
 import FooterActionBar from '../components/FooterActionBar';
+import NfcWaitingCard from '../components/NfcWaitingCard';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
 import Button from '../components/ui/Button';
@@ -15,7 +16,7 @@ import { useNfcSupport } from '../hooks/useNfcSupport';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { ApiError } from '../services/api/errors';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { readTag } from '../services/nfc/nfcService';
+import { cancelNfcRequest, readTag } from '../services/nfc/nfcService';
 import { describeTagAction } from '../services/tagActions';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -254,6 +255,10 @@ const ActionTagsScreen: React.FC<ActionTagsScreenProps> = ({ navigation }) => {
     >
       {header}
       {content()}
+      <NfcWaitingCard
+        visible={scanning}
+        onCancel={() => void cancelNfcRequest()}
+      />
       {supported && isConnected && !isError ? (
         <FooterActionBar>
           <Button

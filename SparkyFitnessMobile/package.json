@@ -12,6 +12,7 @@
   "scripts": {
     "set-version": "pnpm -w run set-version",
     "android": "expo run:android",
+    "android:device": "expo run:android --device",
     "android:release": "expo run:android --variant release --device",
     "android:release:clean": "expo prebuild --platform android --clean && expo run:android --variant release --device",
     "ios": "expo run:ios",

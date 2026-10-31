@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import FormInput from '../components/FormInput';
+import NfcWaitingCard from '../components/NfcWaitingCard';
 import StatusView from '../components/StatusView';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import Switch from '../components/ui/Switch';
@@ -21,7 +22,11 @@ import { useWaterContainersQuery } from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getApiErrorMessage } from '../services/api/errors';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
-import { generateTagCode, writeTag } from '../services/nfc/nfcService';
+import {
+  cancelNfcRequest,
+  generateTagCode,
+  writeTag,
+} from '../services/nfc/nfcService';
 import { tagActionTypeLabel } from '../services/tagActions';
 import type { RootStackScreenProps } from '../types/navigation';
 import { parseDecimalInput } from '../utils/numericInput';
@@ -63,6 +68,8 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
   const [drinks, setDrinks] = useState(String(presetAction?.drinks ?? 1));
   const [askFirst, setAskFirst] = useState(false);
   const [busy, setBusy] = useState(false);
+  // True while the phone is waiting to touch a tag (Android shows no sheet).
+  const [waitingForTag, setWaitingForTag] = useState(false);
 
   // Seed from the saved tag the first time it arrives (state adjusted during
   // render, as the container form does, so no blank frame is painted).
@@ -118,6 +125,7 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
     code: string,
     overwrite = false
   ): Promise<boolean> => {
+    setWaitingForTag(true);
     const result = await writeTag(code, {
       alertMessage: t('actionTags.form.holdToWrite', {
         defaultValue: 'Hold your phone to the NFC tag',
@@ -126,7 +134,7 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
         defaultValue: 'Tag is ready',
       }),
       overwrite,
-    });
+    }).finally(() => setWaitingForTag(false));
     switch (result.status) {
       case 'written':
         return true;
@@ -465,6 +473,10 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
           </View>
         ) : null}
       </KeyboardAwareScrollView>
+      <NfcWaitingCard
+        visible={waitingForTag}
+        onCancel={() => void cancelNfcRequest()}
+      />
       {!usesNativeHeader ? (
         <FooterSaveBar
           onPress={() => void save()}

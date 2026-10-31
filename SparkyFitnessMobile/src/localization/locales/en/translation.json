@@ -6052,6 +6052,10 @@
     "defaultContainer": "Default"
   },
   "actionTags": {
+    "waiting": {
+      "title": "Hold your phone to the NFC tag",
+      "hint": "Keep the back of the phone still against the tag until it finishes."
+    },
     "scan": {
       "logged": "Logged {{summary}}",
       "tapToUndo": "Tap to undo",

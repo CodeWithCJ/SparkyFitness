@@ -13,6 +13,23 @@ export function generateTagCode(): string {
 
 let started = false;
 
+// Android: read through the app's own reader mode, not the system's tag
+// dispatch. Dispatch also hands a web-link tag to the browser (Android 16 and
+// later always do), so a scan inside the app would open the site as well.
+// Reader mode keeps the tag to this app while it waits, with no browser and no
+// extra prompt. The flags name the tag types to read (NFC-A, B, F and V); the
+// library's default of 0 would match none.
+const NFC_READER_FLAGS = 1 | 2 | 4 | 8;
+function sessionOptions(alertMessage: string) {
+  return Platform.OS === 'android'
+    ? {
+        alertMessage,
+        isReaderModeEnabled: true,
+        readerModeFlags: NFC_READER_FLAGS,
+      }
+    : { alertMessage };
+}
+
 async function ensureStarted(): Promise<void> {
   if (started) return;
   await NfcManager.start();
@@ -86,6 +103,11 @@ function describeContents(
   return onlyEmpty ? { kind: 'empty' } : { kind: 'other' };
 }
 
+/** Stops a read or write that is still waiting for a tag (the Cancel button). */
+export async function cancelNfcRequest(): Promise<void> {
+  await releaseSession();
+}
+
 async function releaseSession(): Promise<void> {
   try {
     await NfcManager.cancelTechnologyRequest();
@@ -101,7 +123,10 @@ async function releaseSession(): Promise<void> {
 export async function readTag(alertMessage: string): Promise<ReadTagResult> {
   try {
     await ensureStarted();
-    await NfcManager.requestTechnology(NfcTech.Ndef, { alertMessage });
+    await NfcManager.requestTechnology(
+      NfcTech.Ndef,
+      sessionOptions(alertMessage)
+    );
     const tag = await NfcManager.getTag();
     return {
       status: 'read',
@@ -131,9 +156,10 @@ export async function writeTag(
 ): Promise<WriteTagResult> {
   try {
     await ensureStarted();
-    await NfcManager.requestTechnology(NfcTech.Ndef, {
-      alertMessage: options.alertMessage,
-    });
+    await NfcManager.requestTechnology(
+      NfcTech.Ndef,
+      sessionOptions(options.alertMessage)
+    );
     const existing = await NfcManager.getTag();
     const contents = describeContents(existing?.ndefMessage ?? null);
     if (contents.kind !== 'empty' && !options.overwrite) {
