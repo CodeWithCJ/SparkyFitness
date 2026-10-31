@@ -112,6 +112,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `exercise_entry_activity_details` | Heart rate, distance, activity data |
 | `shoes` | Running-shoe inventory with retirement mileage; linked from `exercise_entries.shoe_id` |
 | `plate_inventories` | Bars and plates a person owns, for the plate calculator (one row per user) |
+| `action_tags` | NFC tags: a random tag code plus the saved action a tap runs (owner-only) |
 | `exercise_entry_laps` | Lap split intervals for workouts |
 | `exercise_entry_hr_zones` | Heart-rate time-in-zone splits per workout |
 | `exercise_entry_distance_series` | Distance-against-time rows for an indoor entry with no route, behind its pace chart. One row per workout (`points` is JSONB) |

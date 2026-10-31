@@ -4,6 +4,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type {
   ExerciseActivityQueryItem,
+  TagAction,
   FitnessTestType,
   ExerciseRecentSessionSet,
   FoodPhotoEstimateResponse,
@@ -136,6 +137,12 @@ export type RootStackParamList = {
   // #2115, Phase 12: mobile-only water-container CRUD.
   WaterContainers: undefined;
   WaterContainerEdit: { containerId?: number } | undefined;
+  // NFC tags (#941): the list, the setup form and the screen a tag link opens.
+  ActionTags: undefined;
+  /** `tagId` edits a saved tag; `tagCode` saves a tapped tag the account does not know; `presetAction` pre-fills a new one. */
+  ActionTagForm:
+    { tagId?: string; tagCode?: string; presetAction?: TagAction } | undefined;
+  ActionTagScan: { code: string };
   ExercisesLibrary: undefined;
   WorkoutPresetsLibrary: undefined;
   WorkoutPresetDetail: { preset: WorkoutPreset; updatedPreset?: WorkoutPreset };

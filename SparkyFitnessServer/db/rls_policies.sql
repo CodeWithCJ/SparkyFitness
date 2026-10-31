@@ -54,6 +54,7 @@ BEGIN
     'run_goals',
     'shoes',
     'plate_inventories',
+    'action_tags',
     'custom_run_programs',
     'fitness_tests',
     'routes',
@@ -723,6 +724,9 @@ SELECT create_diary_policy('exercise_entries');
 SELECT create_diary_policy('shoes');
 -- Plate inventories are the person's own gear: owner-only, no delegates.
 SELECT create_owner_policy('plate_inventories');
+-- NFC tag actions can span diary, check-in and medication data, so they are
+-- owner-only: a delegate must not define an action that logs on the owner's behalf.
+SELECT create_owner_policy('action_tags');
 -- Custom policy for exercise_entries to allow access if linked to an owned exercise_preset_entry
 CREATE POLICY select_exercise_preset_entry_linked_policy ON public.exercise_entries FOR SELECT TO PUBLIC
 USING (
