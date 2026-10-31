@@ -1643,6 +1643,27 @@ COMMENT ON TABLE public.account IS 'Better Auth account table - stores credentia
 
 
 --
+-- Name: action_tags; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.action_tags (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    tag_code character varying(64) NOT NULL,
+    label character varying(120) NOT NULL,
+    action jsonb NOT NULL,
+    ask_before_running boolean DEFAULT false NOT NULL,
+    last_run_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by_user_id uuid,
+    updated_by_user_id uuid,
+    CONSTRAINT action_tags_action_check CHECK (((jsonb_typeof(action) = 'object'::text) AND (action ? 'type'::text))),
+    CONSTRAINT action_tags_code_check CHECK ((char_length((tag_code)::text) >= 16))
+);
+
+
+--
 -- Name: admin_activity_logs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -6098,6 +6119,22 @@ ALTER TABLE ONLY public.account
 
 
 --
+-- Name: action_tags action_tags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_tags
+    ADD CONSTRAINT action_tags_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: action_tags action_tags_user_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_tags
+    ADD CONSTRAINT action_tags_user_code_unique UNIQUE (user_id, tag_code);
+
+
+--
 -- Name: admin_activity_logs admin_activity_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -7585,6 +7622,13 @@ CREATE INDEX food_assistant_tasks_user_updated ON public.food_assistant_tasks US
 --
 
 CREATE INDEX idx_account_user_id ON public.account USING btree (user_id);
+
+
+--
+-- Name: idx_action_tags_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_action_tags_user_id ON public.action_tags USING btree (user_id);
 
 
 --
@@ -9140,6 +9184,30 @@ CREATE TRIGGER update_workout_presets_timestamp BEFORE UPDATE ON public.workout_
 
 ALTER TABLE ONLY public.account
     ADD CONSTRAINT account_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: action_tags action_tags_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_tags
+    ADD CONSTRAINT action_tags_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: action_tags action_tags_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_tags
+    ADD CONSTRAINT action_tags_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: action_tags action_tags_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_tags
+    ADD CONSTRAINT action_tags_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -11151,6 +11219,12 @@ ALTER TABLE ONLY public.workout_presets
 
 
 --
+-- Name: action_tags; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.action_tags ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: admin_activity_logs; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -12271,6 +12345,13 @@ ALTER TABLE public.openfoodfacts_product_read_rate_limit ENABLE ROW LEVEL SECURI
 --
 
 ALTER TABLE public.openfoodfacts_sync_queue ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: action_tags owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.action_tags USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
 
 --
 -- Name: api_key owner_policy; Type: POLICY; Schema: public; Owner: -
@@ -13853,6 +13934,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_app;
+
+
+--
+-- Name: TABLE action_tags; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.action_tags TO sparky_app;
 
 
 --
