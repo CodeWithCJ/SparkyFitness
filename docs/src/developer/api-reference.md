@@ -270,7 +270,7 @@ Example Error Response:
 *   **Authentication**: Session or API key with write access; requires the `checkin` permission when acting for another user.
 *   **Request Body**:
     *   `metric` (required): one of `heart_rate`, `hrv`, `respiration`, `spo2`, `stress`, `body_battery`, `skin_temperature`.
-    *   `source` (required, string, 1–64 characters): stored as the provider name. The names the server writes samples under (`manual`, `garmin`, `polar`, `intervals`, `SparkyFitness Watch`, `HealthKit`, `apple_health`, `Health Connect`) are refused, compared without case, spaces, dots, dashes and underscores.
+    *   `source` (required, string, 1–64 characters): stored as the provider name. The names the server writes samples under (`manual`, `garmin`, `polar`, `intervals`, `SparkyFitness Watch`, `HealthKit`, `apple_health`, `Health Connect`) are refused, compared without case, spaces, dots, dashes and underscores. Use a source name that none of your workouts sent to `/health-data` use: a passive write replaces the stored samples of its `source` (inside `window` for `merge`, the whole day for `replace`), including the heart rate samples a workout stored under the same source.
     *   `device_name` (optional, string).
     *   `mode` (optional): `merge` (default) replaces only this source's stored samples inside `window`, on every day the window touches, and keeps the rest of those days, so sending the same window again replaces instead of duplicating; `replace` overwrites every day the samples touch.
     *   `window` (required for `merge`): `{ "start": ISO 8601, "end": ISO 8601 }`, at most 31 days. Every sample must lie inside it.
