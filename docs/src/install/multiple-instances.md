@@ -24,6 +24,10 @@ Uploaded images and backups are stored on the server's disk. Every instance must
 
 With Helm, the chart's default volumes are `ReadWriteOnce`, which usually cannot be attached to pods on different nodes. Set `server.persistence.uploads.accessMode` and `server.persistence.backup.accessMode` to `ReadWriteMany` with a StorageClass that supports it, and switch `server.strategy.type` to `RollingUpdate`. The access mode is fixed when a volume is created, so an existing install needs new volumes with its data copied over.
 
+## Point the load balancer at the readiness check
+
+Have your load balancer check `/api/health/ready` on each instance and send traffic only to instances that answer 200. It answers 503 once that instance has been unable to reach the database for more than about 10 seconds, and while it shuts down or restores a backup, so traffic moves to the others. `/api/health` only says the process is running.
+
 ## Run scheduled jobs on one instance
 
 Scheduled jobs (nightly cleanup, hourly integration syncs, automatic backups, Open Food Facts syncing and the demo reset) run on every instance by default. Set `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` on every instance except one, so exactly one instance runs them. With `SPARKY_FITNESS_LOG_LEVEL` set to `INFO` or `DEBUG`, each instance with jobs disabled says so in its startup log.
