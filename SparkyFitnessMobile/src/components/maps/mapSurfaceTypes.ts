@@ -58,6 +58,8 @@ export interface MapSurfaceProps {
   satellite?: boolean;
   /** Pan, zoom, rotate and pitch. Off for a still preview inside a scroll view. */
   interactive?: boolean;
+  /** Controls native map attribution button visibility. Defaults to true. */
+  attribution?: boolean;
   /** Google Maps lite mode only (Android with a key). Apple Maps and MapLibre ignore it. */
   lite?: boolean;
   showUserLocation?: boolean;

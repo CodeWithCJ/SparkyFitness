@@ -15,6 +15,7 @@ import Icon from '../components/Icon';
 import { useRefetchOnFocus } from '../hooks/useRefetchOnFocus';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { addLog } from '../services/LogService';
 import {
   GpxFileTooLargeError,
@@ -32,6 +33,7 @@ type Props = RootStackScreenProps<'Routes'>;
 const RoutesScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const { routes, isLoading, isError, refetch } = useRoutes();
   const { preferences } = usePreferences();
   const unit = preferences?.default_distance_unit ?? 'km';
@@ -115,7 +117,10 @@ const RoutesScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1 bg-background"
@@ -170,7 +175,7 @@ const RoutesScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         )}
       </ScrollView>
-    </>
+    </View>
   );
 };
 

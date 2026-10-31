@@ -101,15 +101,15 @@ describe('MapLibreMapSurface', () => {
 
   it('sends route coordinates as GeoJSON in [longitude, latitude] order', () => {
     const screen = renderMap();
-    const source = screen.getByTestId('ml-source');
-    expect(source.props.data.geometry).toEqual({
+    const [solidSource] = screen.getAllByTestId('ml-source');
+    expect(solidSource.props.data.features[0].geometry).toEqual({
       type: 'LineString',
       coordinates: [
         [-0.12, 51.5],
         [-0.11, 51.51],
       ],
     });
-    expect(screen.getByTestId('ml-layer').props.paint['line-color']).toBe(
+    expect(screen.getAllByTestId('ml-layer')[0].props.paint['line-color']).toBe(
       '#2563eb'
     );
   });
