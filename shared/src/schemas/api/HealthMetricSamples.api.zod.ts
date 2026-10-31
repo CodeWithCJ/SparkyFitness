@@ -18,11 +18,14 @@ export const HEALTH_METRIC_SAMPLES_WRITE_MAX_WINDOW_DAYS = 31;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Source names the built-in integrations write samples under. A passive
- * write with one of these would replace that integration's rows, so they are
- * refused. Compared without case, spaces, dots, dashes and underscores.
+ * Source names the server writes samples under: the built-in integrations,
+ * and `manual`, the default source of a workout imported through
+ * `/health-data`, whose heart rate samples are stored under it. A passive
+ * write with one of these would replace those rows, so they are refused.
+ * Compared without case, spaces, dots, dashes and underscores.
  */
 export const HEALTH_METRIC_SAMPLES_RESERVED_SOURCES = [
+  'manual',
   'garmin',
   'polar',
   'intervals',

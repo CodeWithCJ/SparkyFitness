@@ -130,8 +130,15 @@ describe('POST /api/generic-health/samples', () => {
     });
   });
 
-  it.each(['garmin', 'Garmin', 'health-connect', 'SparkyFitness Watch'])(
-    'rejects the source name %s of a built-in integration',
+  it.each([
+    'garmin',
+    'Garmin',
+    'health-connect',
+    'SparkyFitness Watch',
+    'manual',
+    'Manual',
+  ])(
+    'rejects the source name %s the server writes samples under',
     async (source) => {
       const res = await request(app)
         .post('/api/generic-health/samples')
