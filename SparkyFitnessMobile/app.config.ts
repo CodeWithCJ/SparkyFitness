@@ -20,6 +20,10 @@ const PROD_APPLE_TEAM_ID = process.env.EXPO_PROD_APPLE_TEAM_ID || '';
 const GOOGLE_MAPS_ANDROID_API_KEY =
   process.env.GOOGLE_MAPS_ANDROID_API_KEY || '';
 
+// The project-owned tag link host; keep in step with ACTION_TAG_HOST in
+// @workspace/shared and the SparkyFitnessTag site.
+const TAG_HOST = 'tag.sparkyfitness.com';
+
 const DEV_PACKAGE = DEV_BUNDLE_IDENTIFIER;
 const PROD_PACKAGE = ANDROID_PROD_BUNDLE_IDENTIFIER;
 
@@ -127,17 +131,25 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
 
   const isDev = environment === 'dev' || environment === 'development';
 
+  // NFC tag links (#941) are on for production builds. A dev build keeps them
+  // only when ENABLE_NFC_LINKS=1 (and it is signed with a paid team): a free
+  // Personal Team cannot sign the NFC or Associated Domains capabilities, and
+  // the tag site must list the dev app id (the maintainer's own is listed).
+  const nfcLinks = !isDev || process.env.ENABLE_NFC_LINKS === '1';
+
   if (isDev) {
     androidPermissions.push(...devAndroidPermissions);
   }
 
   // Plugins only included in production builds
   const prodPlugins = ['./plugins/withNetworkSecurityConfig'];
+  const nfcLinkPlugins = ['./plugins/withNfcTagIntent'];
 
   // Plugins only included in dev builds. The push-notification entitlement is
   // stripped because free Apple "Personal Team" accounts cannot sign a build
   // that declares the Push Notifications capability, and only local
-  // notifications are used. See plugins/withoutPushNotificationEntitlement.ts.
+  // notifications are used. See plugins/withoutPaidTeamEntitlements.ts (it also strips the NFC
+  // entitlement, for the same reason).
   //
   // MUST be spread FIRST in the `plugins` array below, not last. For a given
   // mod type (e.g. "entitlements"), @expo/config-plugins wraps each newly
@@ -149,7 +161,10 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
   // stripped anything. Registering first makes our delete run last, after
   // every other plugin has had its say — which is what "must come last"
   // actually requires.
-  const devPlugins = ['./plugins/withoutPushNotificationEntitlement'];
+  const devPlugins = [
+    './plugins/withoutPaidTeamEntitlements',
+    './plugins/withDevAppName',
+  ];
 
   return {
     ...config,
@@ -205,6 +220,10 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         APP_GROUP_IDENTIFIER: getIosAppGroup(),
         SparkyKeychainGroup: `$(AppIdentifierPrefix)${getIosAppGroup()}`,
       },
+      // NFC tag links (#941): production, or a dev build with ENABLE_NFC_LINKS=1.
+      // Without it a dev build uses the in-app Scan button, since a free Personal
+      // Team cannot sign Associated Domains.
+      ...(nfcLinks ? { associatedDomains: [`applinks:${TAG_HOST}`] } : {}),
       entitlements: {
         'com.apple.security.application-groups': [getIosAppGroup()],
         'keychain-access-groups': [`$(AppIdentifierPrefix)${getIosAppGroup()}`],
@@ -217,6 +236,23 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
     android: {
       package: isDev ? DEV_PACKAGE : PROD_PACKAGE,
       permissions: androidPermissions,
+      // NFC tag links (#941): production, or a dev build with ENABLE_NFC_LINKS=1.
+      // The tag site lists the production package and signing keys, so an
+      // unlisted dev build would only add a chooser. This is the verified web link Android 16 and later use; older
+      // versions dispatch an NDEF_DISCOVERED intent instead, which Expo's
+      // `intentFilters` cannot express (see plugins/withNfcTagIntent.ts).
+      ...(!nfcLinks
+        ? {}
+        : {
+            intentFilters: [
+              {
+                action: 'VIEW',
+                autoVerify: true,
+                data: [{ scheme: 'https', host: TAG_HOST, pathPrefix: '/t/' }],
+                category: ['BROWSABLE', 'DEFAULT'],
+              },
+            ],
+          }),
       adaptiveIcon: {
         foregroundImage: './assets/icons/adaptiveicon.png',
         backgroundColor: '#FFFFFF',
@@ -272,6 +308,16 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
           isIosBackgroundLocationEnabled: false,
         },
       ],
+      [
+        // Reads and writes the NFC tags behind the tag links (#941). Only the
+        // `TAG` reader format is requested; the deprecated `NDEF` one is not.
+        'react-native-nfc-manager',
+        {
+          nfcPermission:
+            'SparkyFitness uses NFC to read and write the tags that log water and other entries when tapped.',
+          includeNdefEntitlement: false,
+        },
+      ],
       './plugins/withGlanceAndroidSupport',
       './plugins/withAppLanguage',
       './plugins/withCalorieWidget',
@@ -316,6 +362,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         },
       ],
       ...(!isDev ? prodPlugins : []),
+      ...(nfcLinks ? nfcLinkPlugins : []),
     ],
     extra: {
       ...config.extra,
