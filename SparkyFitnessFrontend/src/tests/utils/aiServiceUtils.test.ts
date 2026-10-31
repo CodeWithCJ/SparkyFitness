@@ -1,4 +1,17 @@
-import { getModelOptions, requiresApiKey } from '@/utils/aiServiceUtils';
+import {
+  getModelOptions,
+  getServiceTypes,
+  requiresApiKey,
+} from '@/utils/aiServiceUtils';
+
+describe('getServiceTypes', () => {
+  it('includes OpenCode Go as a selectable AI service', () => {
+    expect(getServiceTypes((key) => key)).toContainEqual({
+      value: 'opencode_go',
+      label: 'settings.aiService.serviceTypes.opencodeGo',
+    });
+  });
+});
 
 describe('getModelOptions', () => {
   // Regression: 'openai_compatible' and 'custom' point at arbitrary user-hosted
@@ -28,6 +41,11 @@ describe('getModelOptions', () => {
 
   it('returns an empty list for an unknown service type', () => {
     expect(getModelOptions('totally-unknown')).toEqual([]);
+  });
+
+  it('leaves OpenCode Go models to its runtime model endpoint', () => {
+    expect(getModelOptions('opencode_go')).toEqual([]);
+    expect(requiresApiKey('opencode_go')).toBe(true);
   });
 
   it('returns the Muse Spark preset for meta', () => {

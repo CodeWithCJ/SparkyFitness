@@ -15,6 +15,7 @@ import {
 } from '../utils/outboundUrlPolicy.js';
 import {
   testAiServiceConnectionRequestSchema,
+  listOpenCodeGoModelsRequestSchema,
   normalizeChatToolCategories,
   aiServiceSettingsMutatorSchema,
   MAX_VOICE_UPLOAD_BYTES,
@@ -283,7 +284,10 @@ router.post('/', authenticate, async (req, res, next) => {
       req.userId,
       req.authenticatedUserId,
       isAdmin,
-      toolCategories
+      toolCategories,
+      typeof req.body?.opencodeSessionId === 'string'
+        ? req.body.opencodeSessionId
+        : undefined
     );
     return res.status(200).json({ content, action: actionType, executedTools });
   } catch (error) {
@@ -345,7 +349,10 @@ router.post('/stream', authenticate, async (req, res, next) => {
       req.userId,
       req.authenticatedUserId,
       isAdmin,
-      toolCategories
+      toolCategories,
+      typeof req.body?.opencodeSessionId === 'string'
+        ? req.body.opencodeSessionId
+        : undefined
     );
 
     pipeUIMessageStreamToResponse({ response: res, stream });
@@ -529,6 +536,69 @@ router.post(
       }
       // Gates #2 (global-key) and #3 (provider-mismatch) live in the service.
       const result = await chatService.testAiServiceConnection(
+        parsed.data,
+        req.userId,
+        isAdmin
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * @swagger
+ * /chat/ai-service-settings/opencode-go/models:
+ *   post:
+ *     summary: List models available to an OpenCode Go API key
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 format: uuid
+ *               api_key:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OpenCode Go model IDs.
+ *       400:
+ *         description: Invalid request or missing API key.
+ *       403:
+ *         description: Per-user AI configuration is disabled or a global key is protected.
+ *       502:
+ *         description: OpenCode Go models endpoint failed.
+ */
+router.post(
+  '/ai-service-settings/opencode-go/models',
+  authenticate,
+  async (req, res, next) => {
+    const parsed = listOpenCodeGoModelsRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json({ error: 'Invalid OpenCode Go model request.' });
+    }
+    try {
+      const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
+      if (
+        !isAdmin &&
+        !(await globalSettingsRepository.isUserAiConfigAllowed())
+      ) {
+        return res.status(403).json({
+          error:
+            'Per-user AI service configuration is disabled. Please contact your administrator.',
+        });
+      }
+      const result = await chatService.listOpenCodeGoModels(
         parsed.data,
         req.userId,
         isAdmin

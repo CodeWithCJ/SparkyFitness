@@ -1,4 +1,5 @@
 import undici from 'undici';
+import { randomUUID } from 'node:crypto';
 import { isGpt6Model } from '@workspace/shared';
 import convert from 'heic-convert';
 import sharp from 'sharp';
@@ -79,6 +80,8 @@ export interface DispatchRequest {
   temperature?: number;
   /** Default 90_000; 300_000 for custom-URL services (ollama, openai_compatible, custom). */
   timeoutMs?: number;
+  /** Stable conversation identifier for providers that require session affinity. */
+  sessionId?: string;
 }
 
 export type DispatchErrorCategory =
@@ -168,6 +171,7 @@ const STRICT_SCHEMA_PROVIDERS = new Set([
   'openrouter',
   'xai',
   'perplexity',
+  'opencode_go',
 ]);
 
 function providerFamily(serviceType: string): ProviderFamily | null {
@@ -175,6 +179,7 @@ function providerFamily(serviceType: string): ProviderFamily | null {
     case 'google':
       return 'google';
     case 'openai':
+    case 'opencode_go':
     case 'openai_compatible':
     case 'mistral':
     case 'groq':
@@ -553,6 +558,7 @@ interface BuildContext {
   jsonSchema?: JsonSchemaNode;
   toolName: string;
   temperature?: number;
+  sessionId: string;
 }
 
 interface BuiltRequest {
@@ -758,6 +764,9 @@ function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
       // Local/self-hosted types may have no key; send the chat path's `no-key`
       // sentinel so a keyless server sees the same header from both paths.
       Authorization: `Bearer ${ctx.provider.api_key || 'no-key'}`,
+      ...(ctx.provider.service_type === 'opencode_go' && {
+        'x-opencode-session': ctx.sessionId,
+      }),
     },
     body,
   };
@@ -1494,6 +1503,7 @@ export async function dispatchAiRequest(
     (hasImages
       ? getDefaultVisionModel(serviceType)
       : getDefaultModel(serviceType));
+  const sessionId = req.sessionId?.trim() || randomUUID();
 
   const toolName = schemaName ?? DEFAULT_SCHEMA_NAME;
 
@@ -1508,6 +1518,7 @@ export async function dispatchAiRequest(
     jsonSchema,
     toolName,
     temperature,
+    sessionId,
   });
   const temperature = supportsTemperature(serviceType, model)
     ? req.temperature
