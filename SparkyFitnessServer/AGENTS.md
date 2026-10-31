@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-29_
+_Last updated: 2026-10-30_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -251,6 +251,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - Provider-specific adapters live under `integrations/`; coordinating logic usually lives in `services/` and persistence in `models/`
 - Current adapters span food/nutrition (OpenFoodFacts, FatSecret, Nutritionix, USDA, Mealie, Tandoor, Norish, SwissFood, Yazio), fitness devices (Garmin Connect sync plus FIT file import via `integrations/garminfit/` + `services/fitImportService.ts`, Withings, Fitbit, Oura, Polar, Strava, COROS, Hevy, Liftosaur, Intervals.icu), exercise databases (Wger, FreeExerciseDB), and health-data import (Google Health, generic/mobile health data)
 - Scheduled jobs currently include backups, session cleanup, and hourly sync loops for Withings, Garmin, Fitbit, Oura, Polar, Strava, COROS, Hevy, Liftosaur and Intervals.icu
+- Google Health heart rate for logged workouts (#3285): at the end of each sync `integrations/googlehealth/googleHealthWorkoutHeartRate.ts` takes the workouts logged in SparkyFitness in the sync range that have a start time but no heart rate (`workoutTelemetryRepository.getWorkoutEntriesWithoutHeartRate`; sources `''`/`manual`/`sparky`), works out each one's span with the shared `workoutClockWindow`, fetches the `heart-rate` readings for those spans (`fetchHeartRateSamples`, filtered by instant with no unfiltered fallback) and attaches them through `exerciseEntryService.attachWatchTelemetryToExerciseEntry` with the series kept under `Google Health`. A workout is filled only once the readings reach its end (the request looks 5 minutes past it), so a tracker that has not uploaded yet is retried by the next sync; calories are left alone
 - Integration work often spans route, service, repository, cron, and external-provider settings code; inspect the whole path before calling the work complete
 - **OAuth linking (`/authorize`, `/callback`) is self-only, and `state` is a server-issued single-use nonce.** Never derive a user id from a callback request body, and never gate an authorize route with `checkPermissionMiddleware('diary')` — on GET that resolves to `diary_read`, which would hand a read-only delegate the owner's decrypted OAuth client id. Use `requireSelfActor` plus `utils/oauthState.ts`. Withings and Polar follow this pattern; Oura, Fitbit and Strava are self-only but still send `state = userId` and ignore it on callback (tracked follow-up)
 
