@@ -1,8 +1,8 @@
 import {
+  instantToDay,
   isValidTimeZone,
   scaleMax,
   symptomEntryDays,
-  todayInZone,
 } from '@workspace/shared';
 import { useState, useMemo } from 'react';
 import {
@@ -41,16 +41,18 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
   const today = getTodayDate();
   const thirtyDaysAgo = addDays(today, -29);
   // Episode days are read in the profile timezone, the one the server files a
-  // symptom's day in: UTC when none is saved, as on the server, and the
-  // device's only until the preferences have loaded.
+  // symptom's day in. Until one is saved (the app saves the device's at
+  // startup) or the preferences load, the device's stands in for it.
   const { preferences } = usePreferences();
   const timezone =
     preferences?.timezone && isValidTimeZone(preferences.timezone)
       ? preferences.timezone
-      : preferences
-        ? 'UTC'
-        : getDeviceTimezone();
-  const zoneToday = todayInZone(timezone);
+      : getDeviceTimezone();
+  // The clock is kept in state and read again on each tap of a day: the React
+  // Compiler caches what render works out, so a today read there would stay on
+  // the old day after midnight.
+  const [now, setNow] = useState(() => Date.now());
+  const zoneToday = instantToDay(now, timezone);
 
   const [selectedSymptomFilter, setSelectedSymptomFilter] = useState<
     string | null
@@ -65,9 +67,12 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
     );
     return max > 0 ? max : null;
   };
-  const [now] = useState(() => Date.now());
   const { episodes: ongoing } = useOngoingEpisodes();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const selectDate = (day: string | null) => {
+    setNow(Date.now());
+    setSelectedDate(day);
+  };
   // Insights always cover the last 30 days; the list narrows to a tapped day.
   const { entries } = useSymptomEntriesDetailed({
     fromDate: thirtyDaysAgo,
@@ -293,7 +298,7 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
         <SymptomCalendar
           selectedDate={selectedDate}
           initialDate={today}
-          onSelectDate={setSelectedDate}
+          onSelectDate={selectDate}
           timezone={timezone}
         />
 

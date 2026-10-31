@@ -29,11 +29,12 @@ const earlierDay = (a: string, b: string) => (compareDays(a, b) <= 0 ? a : b);
 
 /**
  * The day of an instant in `timezone`, or null when it is not a valid time or
- * falls outside the years 1000 to 9999 that a day string holds.
+ * falls outside the years 1000 to 9999 that a day string holds. Intl prints
+ * other years unpadded, or without their BC era, so both are checked.
  */
 function dayOfInstant(iso: string, timezone: string): string | null {
   const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return null;
+  if (Number.isNaN(at.getTime()) || at.getUTCFullYear() < 1000) return null;
   const day = instantToDay(at, timezone);
   return isDayString(day) ? day : null;
 }

@@ -12,6 +12,7 @@ import {
 } from '../../src/hooks/useSymptoms';
 import { usePreferences } from '../../src/hooks/usePreferences';
 import { initializeI18n } from '../../src/localization/i18n';
+import { addDays, getTodayDate } from '../../src/utils/dateUtils';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
 type ScreenProps = RootStackScreenProps<'SymptomHistory'>;
@@ -173,11 +174,25 @@ describe('SymptomHistoryScreen day list', () => {
     ).toBeTruthy();
   });
 
+  it('reads the clock again when a day is tapped after midnight', () => {
+    const screen = renderScreen();
+    expect(screen.getByLabelText('2026-10-30')).toBeTruthy();
+
+    jest.setSystemTime(new Date('2026-10-30T08:00:00.000Z'));
+    fireEvent.press(screen.getByLabelText('2026-10-30'));
+
+    // The nausea still going now reaches the new day, in the list and the tint.
+    expect(screen.getByText('Nausea')).toBeTruthy();
+    expect(screen.getByLabelText('2026-10-30, Mild to moderate')).toBeTruthy();
+  });
+
   it('keeps the plain 30-day list until a day is tapped', () => {
     renderScreen();
+    // The 30 days end on the device's day, which depends on where tests run.
+    const deviceToday = getTodayDate();
     expect(mockEntriesDetailed).toHaveBeenCalledWith({
-      fromDate: '2026-09-30',
-      toDate: '2026-10-29',
+      fromDate: addDays(deviceToday, -29),
+      toDate: deviceToday,
       overlapping: false,
     });
   });

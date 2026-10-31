@@ -622,6 +622,31 @@ describe('Symptom Repository', () => {
     );
   });
 
+  it('listSymptomEntries keeps the lower bound when the range starts on 9999-12-31', async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+
+    await symptomRepository.listSymptomEntries('testUser', {
+      fromDate: '9999-12-31',
+      toDate: '9999-12-31',
+      overlapping: true,
+      timezone: 'UTC',
+    });
+
+    // Its start can be placed even though its end cannot, so ended episodes
+    // stay out and only the ones still going come back.
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'WHERE user_id = $1 AND ((entry_date >= $2 AND entry_date <= $3) OR (started_at IS NOT NULL AND (ended_at IS NULL OR ended_at >= $4)))'
+      ),
+      [
+        'testUser',
+        '9999-12-31',
+        '9999-12-31',
+        new Date('9999-12-31T00:00:00.000Z'),
+      ]
+    );
+  });
+
   it('listSymptomEntries ignores overlapping without a date range', async () => {
     mockClient.query.mockResolvedValue({ rows: [] });
 

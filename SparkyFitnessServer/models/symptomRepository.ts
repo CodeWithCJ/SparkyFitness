@@ -1,4 +1,4 @@
-import { dayToUtcRange } from '@workspace/shared';
+import { addDays, dayToUtcRange } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 import type {
   CreateCustomSymptomBody,
@@ -533,7 +533,11 @@ async function updateSymptomEntry(
  */
 function dayEdge(day: string, tz: string, edge: 'start' | 'end'): Date | null {
   try {
-    return dayToUtcRange(day, tz)[edge];
+    // A day starts where the one before ends, which still works on the last
+    // day the helpers can place.
+    return edge === 'start'
+      ? dayToUtcRange(addDays(day, -1), tz).end
+      : dayToUtcRange(day, tz).end;
   } catch {
     return null;
   }

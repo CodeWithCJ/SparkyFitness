@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { todayInZone } from '@workspace/shared';
+import { instantToDay } from '@workspace/shared';
 import { getAppLocale } from '../../localization';
 import {
   useSymptomEntriesDetailed,
@@ -49,8 +49,11 @@ const SymptomCalendar: React.FC<SymptomCalendarProps> = ({
   timezone,
 }) => {
   const { t } = useTranslation();
-  // Read on every render, so changing month after midnight moves it on.
-  const today = todayInZone(timezone);
+  // The clock is read when the calendar opens and again on each month change
+  // or tapped day, and kept in state: the React Compiler caches what render
+  // works out, so a today read there would stay on the old day after midnight.
+  const [now, setNow] = useState(() => Date.now());
+  const today = instantToDay(now, timezone);
   const toneLabels = {
     free: t('symptoms.calendar.free', { defaultValue: 'Symptom-free' }),
     mild: t('symptoms.calendar.mild', { defaultValue: 'Mild to moderate' }),
@@ -82,6 +85,7 @@ const SymptomCalendar: React.FC<SymptomCalendarProps> = ({
 
   const shift = (delta: number) => {
     const next = shiftMonth(year, month, delta);
+    setNow(Date.now());
     setYear(next.year);
     setMonth(next.month);
     if (
@@ -166,7 +170,10 @@ const SymptomCalendar: React.FC<SymptomCalendarProps> = ({
             return (
               <View key={c} className="flex-1 p-0.5">
                 <TouchableOpacity
-                  onPress={() => onSelectDate(selected ? null : day)}
+                  onPress={() => {
+                    setNow(Date.now());
+                    onSelectDate(selected ? null : day);
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel={
                     summary && summary.tone !== 'none'

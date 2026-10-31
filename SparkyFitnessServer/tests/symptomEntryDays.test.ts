@@ -224,6 +224,17 @@ describe('symptomEntryDays', () => {
         OCTOBER
       )
     ).toEqual(['2026-10-12']);
+    // 1500 BC: Intl prints it as 1500 without the era.
+    expect(
+      symptomEntryDays(
+        {
+          entry_date: '2026-10-12',
+          started_at: '-001499-06-15T10:00:00.000Z',
+          ended_at: null,
+        },
+        OCTOBER
+      )
+    ).toEqual(['2026-10-12']);
   });
 
   it('returns nothing for an entry wholly outside the window', () => {
