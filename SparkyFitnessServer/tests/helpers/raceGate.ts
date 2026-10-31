@@ -2,6 +2,32 @@ import type pg from 'pg';
 import { expect, vi } from 'vitest';
 
 /**
+ * Counts the sessions waiting on a lock that `pid` holds, directly or through
+ * a chain of other waiting sessions.
+ */
+export async function countBehind(
+  observer: pg.Client,
+  pid: number
+): Promise<number> {
+  const waiting = await observer.query(
+    `WITH RECURSIVE waiting AS (
+       SELECT pid, pg_blocking_pids(pid) AS blockers
+       FROM pg_stat_activity
+       WHERE datname = current_database() AND wait_event_type = 'Lock'
+     ),
+     behind AS (
+       SELECT pid FROM waiting WHERE $1 = ANY(blockers)
+       UNION
+       SELECT w.pid FROM waiting w
+       JOIN behind b ON b.pid = ANY(w.blockers)
+     )
+     SELECT count(*)::int AS n FROM behind`,
+    [pid]
+  );
+  return waiting.rows[0].n;
+}
+
+/**
  * Runs overlapping writes against a real database in the interleaving that
  * exposes a check-then-write race: `table` is held in SHARE mode, which lets
  * every write read but not write, until each write is waiting, either on the
@@ -35,22 +61,9 @@ export async function raceWrites<T>(
   try {
     await vi.waitFor(
       async () => {
-        const waiting = await observer.query(
-          `WITH RECURSIVE waiting AS (
-             SELECT pid, pg_blocking_pids(pid) AS blockers
-             FROM pg_stat_activity
-             WHERE datname = current_database() AND wait_event_type = 'Lock'
-           ),
-           behind_gate AS (
-             SELECT pid FROM waiting WHERE $1 = ANY(blockers)
-             UNION
-             SELECT w.pid FROM waiting w
-             JOIN behind_gate b ON b.pid = ANY(w.blockers)
-           )
-           SELECT count(*)::int AS n FROM behind_gate`,
-          [gatePid]
+        expect(await countBehind(observer, gatePid)).toBeGreaterThanOrEqual(
+          waiters
         );
-        expect(waiting.rows[0].n).toBeGreaterThanOrEqual(waiters);
       },
       { timeout: 10000, interval: 50 }
     );
