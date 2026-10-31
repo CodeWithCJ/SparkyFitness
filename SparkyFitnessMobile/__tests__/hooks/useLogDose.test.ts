@@ -255,6 +255,158 @@ describe('useLogDose', () => {
     });
   });
 
+  test('logDosesBatch creates entries for every pending slot with one toast', async () => {
+    const { result } = renderLogDose([]);
+    const dues = [
+      buildDue(),
+      buildDue({
+        medication: buildMedication({ id: 'med-2', name: 'Metformin' }),
+        schedule: {
+          id: 'sched-2',
+          schedule_type_id: 'daily',
+          time_of_day: '08:00',
+        },
+      }),
+    ];
+
+    let batch: Promise<number>;
+    act(() => {
+      batch = result.current.logDosesBatch(dues, 'taken');
+    });
+    await waitFor(() => {
+      expect(batch).resolves.toBe(2);
+    });
+    expect(mockCreateEntry).toHaveBeenCalledTimes(2);
+    expect(mockCreateEntry).toHaveBeenNthCalledWith(1, {
+      medication_id: 'med-1',
+      schedule_id: 'sched-1',
+      status: 'taken',
+      entry_date: SELECTED_DATE,
+      taken_at: expect.any(String),
+    });
+    expect(mockCreateEntry).toHaveBeenNthCalledWith(2, {
+      medication_id: 'med-2',
+      schedule_id: 'sched-2',
+      status: 'taken',
+      entry_date: SELECTED_DATE,
+      taken_at: expect.any(String),
+    });
+    expect(Toast.show).toHaveBeenCalledTimes(1);
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'success',
+      text1: 'Marked 2 doses as taken',
+    });
+  });
+
+  test('logDosesBatch skips slots that are already taken or skipped', async () => {
+    const entries = [
+      buildEntry({ status: 'taken' }),
+      buildEntry({
+        id: 'entry-2',
+        medication_id: 'med-2',
+        schedule_id: 'sched-2',
+        status: 'skipped',
+      }),
+    ];
+    const { result } = renderLogDose(entries);
+    const dues = [
+      buildDue(),
+      buildDue({
+        medication: buildMedication({ id: 'med-2', name: 'Metformin' }),
+        schedule: {
+          id: 'sched-2',
+          schedule_type_id: 'daily',
+          time_of_day: '08:00',
+        },
+      }),
+    ];
+
+    act(() => {
+      void result.current.logDosesBatch(dues, 'taken');
+    });
+
+    await waitFor(() => {
+      expect(mockCreateEntry).not.toHaveBeenCalled();
+    });
+    expect(mockUpdateEntry).not.toHaveBeenCalled();
+    expect(mockDeleteEntry).not.toHaveBeenCalled();
+    expect(Toast.show).not.toHaveBeenCalled();
+  });
+
+  test('logDosesBatch re-attributes schedule-less entries and toasts the changed count', async () => {
+    const entries = [
+      buildEntry({ schedule_id: null, status: 'snoozed' }),
+      buildEntry({
+        id: 'entry-2',
+        medication_id: 'med-2',
+        schedule_id: 'sched-2',
+        status: 'snoozed',
+      }),
+    ];
+    const { result } = renderLogDose(entries);
+    const dues = [
+      buildDue(),
+      buildDue({
+        medication: buildMedication({ id: 'med-2', name: 'Metformin' }),
+        schedule: {
+          id: 'sched-2',
+          schedule_type_id: 'daily',
+          time_of_day: '08:00',
+        },
+      }),
+    ];
+
+    act(() => {
+      void result.current.logDosesBatch(dues, 'taken');
+    });
+
+    await waitFor(() => {
+      expect(mockUpdateEntry).toHaveBeenCalledTimes(2);
+    });
+    expect(mockUpdateEntry).toHaveBeenCalledWith('entry-1', {
+      schedule_id: 'sched-1',
+      status: 'taken',
+      taken_at: expect.any(String),
+    });
+    expect(mockUpdateEntry).toHaveBeenCalledWith('entry-2', {
+      schedule_id: 'sched-2',
+      status: 'taken',
+      taken_at: expect.any(String),
+    });
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'success',
+      text1: 'Marked 2 doses as taken',
+    });
+  });
+
+  test('a failed batch surfaces a single error toast', async () => {
+    mockCreateEntry.mockRejectedValue(new Error('offline'));
+    const { result } = renderLogDose([]);
+    const dues = [
+      buildDue(),
+      buildDue({
+        medication: buildMedication({ id: 'med-2', name: 'Metformin' }),
+        schedule: {
+          id: 'sched-2',
+          schedule_type_id: 'daily',
+          time_of_day: '08:00',
+        },
+      }),
+    ];
+
+    act(() => {
+      void result.current.logDosesBatch(dues, 'taken');
+    });
+
+    await waitFor(() => {
+      expect(Toast.show).toHaveBeenCalledTimes(1);
+    });
+    expect(Toast.show).toHaveBeenCalledWith({
+      type: 'error',
+      text1: 'Failed to mark some doses as taken',
+    });
+  });
+
   test('logPrn creates a prn_taken entry with an undo toast', async () => {
     const { result } = renderLogDose([]);
 
