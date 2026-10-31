@@ -9212,6 +9212,7 @@
     "mapSatellite": "Satellite",
     "mapStandard": "Map",
     "mapUnavailable": "Routes cannot be drawn on a map in this build.",
+    "osmAttribution": "© OpenStreetMap",
     "redo": "Redo",
     "findingRoute": "Finding a route",
     "turns": "Turns",

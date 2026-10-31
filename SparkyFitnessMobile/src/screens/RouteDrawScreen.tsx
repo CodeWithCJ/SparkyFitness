@@ -3,17 +3,15 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import MapView, { Marker, Polyline, type Region } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { useCSSVariable } from 'uniwind';
+import { useCSSVariable, useUniwind } from 'uniwind';
 import {
   DEFAULT_ROUTE_STYLE,
   ROUTE_MAX_CUES,
@@ -28,6 +26,8 @@ import Switch from '../components/ui/Switch';
 import { useFollowRoadsRoute } from '../hooks/useFollowRoadsRoute';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import MapSurface from '../components/maps/MapSurface';
+import type { MapSurfaceHandle } from '../components/maps/mapSurfaceTypes';
 import { addLog } from '../services/LogService';
 import {
   saveDrawnRoute,
@@ -54,15 +54,14 @@ import {
 } from '../utils/routeEditor';
 import { routeGenerateKindMessage } from '../utils/routeGenerateError';
 import { formatRouteDistance } from '../utils/routeDisplay';
-import { canShowRouteMap } from '../utils/routeMapSupport';
+import { canShowRouteMap, canShowSatelliteMap } from '../utils/routeMapSupport';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'RouteDraw'>;
 
 /** Shows most of a continent until the person's position is known. */
-const FALLBACK_REGION = {
-  latitude: 39.8,
-  longitude: -98.6,
+const FALLBACK_VIEWPORT = {
+  center: { lat: 39.8, lon: -98.6 },
   latitudeDelta: 40,
   longitudeDelta: 40,
 };
@@ -88,8 +87,12 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
   const { preferences } = usePreferences();
   const unit = preferences?.default_distance_unit ?? 'km';
   const lineColor = useCSSVariable('--color-accent-primary') as string;
-  const mapRef = useRef<MapView>(null);
-  const regionRef = useRef<Region>(FALLBACK_REGION);
+  const { theme } = useUniwind();
+  const isDark = theme === 'dark' || theme === 'amoled';
+  const mapRef = useRef<MapSurfaceHandle>(null);
+  // Degrees of latitude on screen: a tap this close to the line inserts a
+  // point on it instead of appending one.
+  const visibleDeltaRef = useRef(FALLBACK_VIEWPORT.latitudeDelta);
   const [history, setHistory] = useState<EditorHistory>(() =>
     emptyHistory(EMPTY_EDITOR_STATE)
   );
@@ -127,12 +130,10 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
   const savedPoints = saved.route?.points;
   useEffect(() => {
     if (!opened || !savedPoints) return;
-    mapRef.current?.fitToCoordinates(
-      savedPoints.map((p) => ({ latitude: p.lat, longitude: p.lon })),
-      {
-        edgePadding: { top: 60, right: 40, bottom: 320, left: 40 },
-        animated: false,
-      }
+    mapRef.current?.fitPoints(
+      savedPoints.map((p) => ({ lat: p.lat, lon: p.lon })),
+      { top: 60, right: 40, bottom: 320, left: 40 },
+      false
     );
   }, [opened, savedPoints]);
 
@@ -155,14 +156,9 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
       if (!permission.granted) return;
       const last = await Location.getLastKnownPositionAsync();
       if (!last) return;
-      mapRef.current?.animateToRegion(
-        {
-          latitude: last.coords.latitude,
-          longitude: last.coords.longitude,
-          latitudeDelta: 0.03,
-          longitudeDelta: 0.03,
-        },
-        0
+      mapRef.current?.centerOn(
+        { lat: last.coords.latitude, lon: last.coords.longitude },
+        0.03
       );
     })().catch(() => undefined);
   };
@@ -213,7 +209,7 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
     if (!editable || atPointLimit) return;
     const point = { lat: latitude, lon: longitude };
     const reach =
-      regionRef.current.latitudeDelta * METERS_PER_DEGREE_LAT * LINE_TAP_SHARE;
+      visibleDeltaRef.current * METERS_PER_DEGREE_LAT * LINE_TAP_SHARE;
     const hit = hitTestLine(line, point, reach);
     if (hit) {
       edit((state) => insertPoint(state, hit.leg, hit.point));
@@ -223,12 +219,20 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
   };
 
   const lastIndex = editor.points.length - 1;
+  const markerColor = (index: number) =>
+    index === selected
+      ? 'yellow'
+      : index === 0
+        ? 'green'
+        : index === lastIndex
+          ? 'red'
+          : '#0284c7';
   const selectedPoint = selected !== null ? editor.points[selected] : undefined;
   const legBefore = selected !== null ? editor.legs[selected - 1] : undefined;
   const legAfter = selected !== null ? editor.legs[selected] : undefined;
 
-  // An Android build without a Google Maps key draws a blank map, and the
-  // entry points are hidden there; this covers a stale link or screen state.
+  // Fallback for non-mobile platforms (e.g. web) where real route maps
+  // are unavailable; this covers a stale link or unsupported screen state.
   if (!canShowRouteMap()) {
     return (
       <>
@@ -248,80 +252,51 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
     <>
       {header}
       <View className="flex-1 bg-background">
-        <MapView
+        <MapSurface
           ref={mapRef}
-          style={StyleSheet.absoluteFill}
-          initialRegion={FALLBACK_REGION}
-          mapType={satellite ? 'hybrid' : 'standard'}
-          onMapReady={centerOnPerson}
-          onRegionChangeComplete={(region) => {
-            regionRef.current = region;
+          initialViewport={FALLBACK_VIEWPORT}
+          dark={isDark}
+          satellite={canShowSatelliteMap() && satellite}
+          onReady={centerOnPerson}
+          onViewportChange={(latitudeDelta) => {
+            visibleDeltaRef.current = latitudeDelta;
           }}
-          onPress={(event) => {
-            const { latitude, longitude } = event.nativeEvent.coordinate;
-            onMapPress(latitude, longitude);
-          }}
-          showsUserLocation
-          toolbarEnabled={false}
-        >
-          {line.legLines.map((leg, index) => (
-            <Polyline
-              key={`leg-${index}`}
-              coordinates={leg.map((p) => ({
-                latitude: p.lat,
-                longitude: p.lon,
-              }))}
-              strokeColor={lineColor}
-              strokeWidth={4}
-              lineCap="round"
-              lineJoin="round"
-              lineDashPattern={
-                snapping && editor.legs[index]?.straight ? [10, 8] : undefined
-              }
-            />
-          ))}
-          {editor.points.map((point, index) => (
-            <Marker
-              key={index}
-              coordinate={{ latitude: point.lat, longitude: point.lon }}
-              draggable
-              onPress={(event) => {
-                event.stopPropagation();
-                setSelected(index);
-              }}
-              onDragEnd={(event) => {
-                const { latitude, longitude } = event.nativeEvent.coordinate;
-                edit((state) =>
-                  movePoint(state, index, { lat: latitude, lon: longitude })
-                );
-              }}
-              pinColor={
-                index === selected
-                  ? 'yellow'
-                  : index === 0
-                    ? 'green'
-                    : index === lastIndex
-                      ? 'red'
-                      : 'azure'
-              }
-              opacity={
-                index === 0 || index === lastIndex || index === selected
-                  ? 1
-                  : 0.7
-              }
-            />
-          ))}
-        </MapView>
-        <View
-          className="absolute right-3 bg-surface rounded-xl"
-          style={{ top: 12 }}
-        >
-          <Button variant="secondary" onPress={() => setSatellite((v) => !v)}>
-            {satellite
-              ? t('routes.mapStandard', { defaultValue: 'Map' })
-              : t('routes.mapSatellite', { defaultValue: 'Satellite' })}
-          </Button>
-        </View>
+          onPress={(point) => onMapPress(point.lat, point.lon)}
+          showUserLocation
+          lines={line.legLines.map((leg, index) => ({
+            points: leg.map((p) => ({ lat: p.lat, lon: p.lon })),
+            color: lineColor,
+            width: 4,
+            dashed: snapping && editor.legs[index]?.straight,
+          }))}
+          markers={editor.points.map((point, index) => ({
+            point,
+            shape: 'pin',
+            color: markerColor(index),
+            draggable: true,
+            onPress: () => setSelected(index),
+            onDragEnd: (moved) =>
+              edit((state) => movePoint(state, index, moved)),
+            opacity:
+              index === 0 || index === lastIndex || index === selected
+                ? 1
+                : 0.7,
+          }))}
+        />
+        {/* Apple Maps and (keyed) Google Maps have imagery; the keyless OSM
+            styles have none. */}
+        {canShowSatelliteMap() ? (
+          <View
+            className="absolute right-3 bg-surface rounded-xl"
+            style={{ top: 12 }}
+          >
+            <Button variant="secondary" onPress={() => setSatellite((v) => !v)}>
+              {satellite
+                ? t('routes.mapStandard', { defaultValue: 'Map' })
+                : t('routes.mapSatellite', { defaultValue: 'Satellite' })}
+            </Button>
+          </View>
+        ) : null}
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           className="absolute left-0 right-0 bottom-0 bg-surface"
