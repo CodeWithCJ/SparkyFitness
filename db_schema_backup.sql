@@ -5104,6 +5104,7 @@ CREATE TABLE public.user_preferences (
     hr_zone_custom_floors smallint[],
     goal_mode_weekly_change_kg double precision DEFAULT 0 NOT NULL,
     hr_zone_display_count smallint DEFAULT 5 NOT NULL,
+    use_move_ring_active_calories boolean DEFAULT false NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_caffeine_half_life_range CHECK (((caffeine_half_life_hours >= 2.0) AND (caffeine_half_life_hours <= 8.0))),
@@ -5283,6 +5284,13 @@ COMMENT ON COLUMN public.user_preferences.goal_mode_weekly_change_kg IS 'Signed 
 --
 
 COMMENT ON COLUMN public.user_preferences.hr_zone_display_count IS 'Heart rate bands shown in reports and settings: 5 zones or 4 tiers (zones 1-2 merged as Light). Storage and training load always use five zones.';
+
+
+--
+-- Name: COLUMN user_preferences.use_move_ring_active_calories; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.use_move_ring_active_calories IS 'iPhone sync reads daily active calories from the Apple Move ring instead of the Apple Health Active Energy total.';
 
 
 --

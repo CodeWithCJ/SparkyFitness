@@ -1,5 +1,6 @@
 import {
   ensureTimezoneBootstrapped,
+  fetchMoveRingActiveCaloriesSetting,
   fetchPreferences,
 } from '../../../src/services/api/preferencesApi';
 import {
@@ -245,5 +246,26 @@ describe('preferencesApi', () => {
         'Network request failed'
       );
     });
+  });
+});
+
+describe('fetchMoveRingActiveCaloriesSetting', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('reads the account setting; an older server without it reads as off', async () => {
+    mockApiFetch.mockResolvedValueOnce({ use_move_ring_active_calories: true });
+    await expect(fetchMoveRingActiveCaloriesSetting()).resolves.toBe(true);
+
+    mockApiFetch.mockResolvedValueOnce({ timezone: deviceTz });
+    await expect(fetchMoveRingActiveCaloriesSetting()).resolves.toBe(false);
+  });
+
+  test('a failed fetch throws rather than guessing', async () => {
+    mockApiFetch.mockRejectedValueOnce(new Error('offline'));
+    await expect(fetchMoveRingActiveCaloriesSetting()).rejects.toThrow(
+      'offline'
+    );
   });
 });

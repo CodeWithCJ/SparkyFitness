@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import CalorieSettingsScreen from '../../src/screens/CalorieSettingsScreen';
 
@@ -432,6 +433,32 @@ describe('CalorieSettingsScreen', () => {
     fireEvent(toggle, 'valueChange', true);
 
     expect(mockMutate).toHaveBeenCalledWith({ use_external_bmr: true });
+  });
+
+  it('saves the Move ring opt-in as an account setting on iPhone', () => {
+    const { getByLabelText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    fireEvent(
+      getByLabelText('Use Move ring for active calories'),
+      'valueChange',
+      true
+    );
+
+    expect(mockMutate).toHaveBeenCalledWith({
+      use_move_ring_active_calories: true,
+    });
+  });
+
+  it('hides the Move ring opt-in on Android', () => {
+    const osSpy = jest.replaceProperty(Platform, 'OS', 'android');
+    const { queryByLabelText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    expect(queryByLabelText('Use Move ring for active calories')).toBeNull();
+    osSpy.restore();
   });
 
   it('saves a bounded custom Goal Mode percentage', () => {

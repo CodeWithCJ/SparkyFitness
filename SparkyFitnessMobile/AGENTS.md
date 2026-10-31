@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-30_
+_Last updated: 2026-10-31_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -136,7 +136,7 @@ npx expo prebuild --clean
 - Health uploads are chunked. Simple measurements use large chunks; sleep sessions use smaller session chunks; exercise/workout records are grouped by source to match server delete-then-insert behavior.
 - Sync result objects include `syncErrors`; callers should surface partial failures and avoid advancing `lastSyncedTime` when any metric read failed.
 - `backgroundSyncService.ts` uses overlap windows for sessions and day-aligned rolling windows for cumulative metrics and nutrition. Do not collapse those into one naive window.
-- On iOS, cumulative metrics should use HealthKit statistics queries, not raw sample summation.
+- On iOS, cumulative metrics should use HealthKit statistics queries, not raw sample summation. Active energy (Active Calories, and the active part of Total Calories) can instead use the Move ring: with the account setting `use_move_ring_active_calories` on (an iPhone-only switch on `CalorieSettingsScreen`; `healthkit/provider.ts` and the Sync screen preview read it through `fetchMoveRingActiveCaloriesSetting` on every read; a failed fetch fails the calorie read so the sync retries, never a remembered answer that could belong to another account), each day uses the ring's calories (`HKActivitySummary`, `activeEnergyByDay`) so it matches the Fitness app, and a day with no ring keeps the statistics sum, because a denied or unanswered activity summary permission reads as no rings rather than an error. The activity summary read is requested with both calorie metrics whether the setting is on or not, so the switch needs no permission step and a new phone already has it.
 - On Android, cumulative metrics (`Steps`, `Distance`, `ActiveCaloriesBurned`, `TotalCaloriesBurned`, `FloorsClimbed`) use Health Connect `aggregateGroupByPeriod` once per range. Native source-priority dedup should match Health Connect UI; do not reintroduce JS `Math.max` or source allowlist dedup.
 - Android read helpers return `{ records, error }` via `readHealthRecordsDetailed` and `aggregateCumulativeMetricByDayDetailed`; legacy wrappers unwrap only records.
 - Android sleep sessions are uploaded with one per night: `postProcessRaw` passes them through `keepMostDetailedSleepSessions` (`services/healthconnect/index.ts`) before the HRV/RHR enrichment, so when two apps wrote the same night (same wake day, overlapping for at least half of the shorter session) only the more detailed session goes up, by the shared `keepMostDetailedSleep` rule (`shared/src/utils/sleepSameNight.ts`: among sessions at least 80% as long as the longest, more stage kinds, then more stages, then the longer session). Every session is sent as `Health Connect`, so the server would otherwise merge both apps' nights into one entry (#2839). A nap that does not overlap the night still goes up. iOS does not do this yet.

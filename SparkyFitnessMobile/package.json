@@ -48,7 +48,7 @@
     "@expo/ui": "~57.0.20",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.14",
-    "@kingstinct/react-native-healthkit": "^15.1.0",
+    "@kingstinct/react-native-healthkit": "^16.2.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-clipboard/clipboard": "^1.16.0",
     "@react-navigation/bottom-tabs": "^7.21.0",

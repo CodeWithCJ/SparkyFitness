@@ -1,11 +1,12 @@
 ---
-id: 20261024-sparkyfitness-asd
-active: false
-title: SparkyFitness asd! 🌟
+id: 20261024-sparkyfitness-github-apk
+active: true
+title: Android App - Github APK! 🌟
 ---
 
-## 🌍 TBD
+## 🌍 Only for Android users installing APK from Github
 
 
-TBD
+Signing certificate is updated to PROD release instead of debug. So there could be a warning when you install. So you might need to uninstall and install or ignore the warning. 
+
 

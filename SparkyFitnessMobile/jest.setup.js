@@ -66,6 +66,8 @@ jest.mock('@kingstinct/react-native-healthkit', () => ({
   queryStatisticsCollectionForQuantity: jest.fn().mockResolvedValue([]),
   queryWorkoutSamples: jest.fn(),
   queryCorrelationSamples: jest.fn(),
+  queryActivitySummary: jest.fn().mockResolvedValue([]),
+  ActivitySummaryTypeIdentifier: 'HKActivitySummaryTypeIdentifier',
   // Writeback saves return the persisted sample (orchestrator reads .uuid off it);
   // a bare `true` would make UUID-tracking assertions silently test nothing.
   saveQuantitySample: jest.fn().mockResolvedValue({ uuid: 'hk-quantity-uuid' }),
