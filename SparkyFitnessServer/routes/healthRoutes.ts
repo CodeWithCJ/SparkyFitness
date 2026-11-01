@@ -67,14 +67,6 @@ const connectionFailingSince = new Map<string, number>();
 // than on every failing probe.
 const lastResults = new Map<string, CheckResult>();
 
-// The endpoint is public and not rate limited, and probes queue on the pools
-// that serve requests. A probe that times out leaves its connection request
-// queued until the pool's own connect timeout, so a check still waiting for
-// one repeats its last result instead of queuing another; together with
-// sharing one evaluation between concurrent requests, a flood of probes adds
-// at most one waiting caller to each pool.
-const waitingForConnection = new Set<string>();
-
 function describeResult(result: CheckResult, failure: unknown): string {
   switch (result) {
     case 'busy':
@@ -92,9 +84,6 @@ async function runCheck(
   name: string,
   check: ReadinessCheck
 ): Promise<CheckResult> {
-  if (waitingForConnection.has(name)) {
-    return lastResults.get(name) ?? 'timeout';
-  }
   let timer: NodeJS.Timeout | undefined;
   let timedOut = false;
   let acquired = false;
@@ -112,12 +101,13 @@ async function runCheck(
     }, readinessTimeoutMs);
   });
   const attempt = async () => {
-    waitingForConnection.add(name);
-    let client: pg.PoolClient;
-    try {
-      client = await check.connect();
-    } finally {
-      waitingForConnection.delete(name);
+    const client = await check.connect();
+    if (isRestoreRunning()) {
+      // A restore began while this probe waited and has terminated every
+      // session; DROP DATABASE waits a few seconds for stragglers to go, so
+      // hand this one back at once.
+      client.release(true);
+      throw new Error('a restore started while connecting');
     }
     if (timedOut) {
       client.release();
@@ -213,6 +203,11 @@ interface Readiness {
   body: { status: string; checks: Record<string, CheckResult> };
 }
 
+// The endpoint is public and not rate limited, and probes queue on the pools
+// that serve requests, so concurrent requests share one evaluation. A probe
+// that times out still leaves its connection request queued until the pool's
+// 5 s connect timeout; with evaluations taking turns, at least 2 s each when
+// a pool stalls, a flood of probes keeps at most three in each pool's queue.
 let pendingReadiness: Promise<Readiness> | undefined;
 
 async function evaluateReadiness(): Promise<Readiness> {
@@ -273,6 +268,10 @@ router.get('/ready', async (req, res) => {
     pendingReadiness = undefined;
   });
   const { code, body } = await pendingReadiness;
+  // An evaluation that started before a restore must not report it ready.
+  if (isRestoreRunning()) {
+    return res.status(503).json({ status: 'RESTORING' });
+  }
   return res.status(code).json(body);
 });
 
