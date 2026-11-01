@@ -10,12 +10,29 @@ vi.mock('../models/exerciseEntry.js', () => ({
 }));
 vi.mock('../models/exercise.js', () => ({
   default: {
-    findExerciseByNameAndUserId: vi
-      .fn()
-      .mockImplementation((name: string) =>
-        Promise.resolve({ id: `exercise-${name}` })
-      ),
+    findExerciseByNameAndUserId: vi.fn().mockImplementation((name: string) =>
+      Promise.resolve({
+        id: `exercise-${name}`,
+        user_id: 'user-1',
+        source: 'Hevy',
+      })
+    ),
     createExercise: vi.fn().mockResolvedValue({ id: 'exercise-new' }),
+  },
+}));
+vi.mock('../integrations/hevy/hevyExerciseRepository.js', () => ({
+  default: {
+    findByTemplateId: vi.fn().mockResolvedValue(null),
+    findLegacyByName: vi
+      .fn()
+      .mockImplementation((_userId: string, name: string) =>
+        Promise.resolve({
+          id: `exercise-${name}`,
+          user_id: 'user-1',
+          source: 'Hevy',
+        })
+      ),
+    fillMissingMuscles: vi.fn().mockResolvedValue(undefined),
   },
 }));
 vi.mock('../models/measurementRepository.js', () => ({
@@ -141,21 +158,29 @@ function sampleWorkout(): HevyWorkout {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function callForExercise(name: string): any[] | undefined {
-  return (
-    exerciseEntryRepository.createExerciseEntry as unknown as {
-      mock: { calls: unknown[][] };
-    }
-  ).mock.calls.find(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (c) => (c[1] as any).exercise_id === `exercise-${name}`
-  );
+interface TestEntryData {
+  exercise_id: string;
+  entry_time: string;
+  source_id: string;
+  superset_group: number | null;
+  duration_minutes: number;
+  distance: number | null;
+  exercise_preset_entry_id: string;
+  sets: { duration: number | null }[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function entryArgForExercise(name: string): any {
-  return callForExercise(name)?.[1];
+type EntryCall = [string, TestEntryData, string, string, string];
+
+function callForExercise(name: string): EntryCall {
+  const calls = vi.mocked(exerciseEntryRepository.createExerciseEntry).mock
+    .calls as unknown as EntryCall[];
+  const call = calls.find((c) => c[1].exercise_id === `exercise-${name}`);
+  if (!call) throw new Error(`Missing entry for ${name}`);
+  return call;
+}
+
+function entryArgForExercise(name: string): TestEntryData {
+  return callForExercise(name)[1];
 }
 
 beforeEach(() => {
@@ -288,13 +313,11 @@ describe('processHevyWorkouts — field mapping', () => {
 
   it('stores per-set duration in integer seconds (issue #1903)', async () => {
     await processHevyWorkouts(UID, CID, [sampleWorkout()], 'UTC');
+    expect(entryArgForExercise('Plank').sets.map((s) => s.duration)).toEqual([
+      90, 90,
+    ]);
     expect(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      entryArgForExercise('Plank').sets.map((s: any) => s.duration)
-    ).toEqual([90, 90]);
-    expect(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      entryArgForExercise('Pull Up').sets.every((s: any) => s.duration === null)
+      entryArgForExercise('Pull Up').sets.every((s) => s.duration === null)
     ).toBe(true);
   });
 });
@@ -381,32 +404,20 @@ describe('processHevyWorkouts — duplicate workout guard', () => {
   });
 });
 
-describe('processHevyWorkouts — result counts', () => {
-  it('counts processed and failed workouts and keeps going after a failure', async () => {
+describe('processHevyWorkouts — required processing failures', () => {
+  it('rejects the batch when a workout cannot be saved', async () => {
     const second = sampleWorkout();
     second.id = 'workout-2';
     vi.mocked(
       exercisePresetEntryRepository.createExercisePresetEntry
     ).mockRejectedValueOnce(new Error('insert failed'));
 
-    const result = await processHevyWorkouts(
-      UID,
-      CID,
-      [sampleWorkout(), second],
-      'UTC'
-    );
-
-    expect(result).toEqual({ processed: 1, failed: 1 });
-  });
-
-  it('does not count a repeated workout id or an empty batch', async () => {
     await expect(
-      processHevyWorkouts(UID, CID, [sampleWorkout(), sampleWorkout()], 'UTC')
-    ).resolves.toEqual({ processed: 1, failed: 0 });
-    await expect(processHevyWorkouts(UID, CID, [], 'UTC')).resolves.toEqual({
-      processed: 0,
-      failed: 0,
-    });
+      processHevyWorkouts(UID, CID, [sampleWorkout(), second], 'UTC')
+    ).rejects.toThrow('Failed to import 1 Hevy workout(s).');
+    expect(
+      exercisePresetEntryRepository.createExercisePresetEntry
+    ).toHaveBeenCalledTimes(2);
   });
 });
 

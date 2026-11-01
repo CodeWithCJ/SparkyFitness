@@ -4,60 +4,27 @@ import measurementRepository from '../../models/measurementRepository.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
 import exercisePresetEntryRepository from '../../models/exercisePresetEntryRepository.js';
+import hevyExerciseRepository from './hevyExerciseRepository.js';
+import type {
+  HevyWorkout,
+  HevyUserInfoResponse,
+  HevyExerciseTemplate,
+} from './hevyTypes.js';
+export type { HevyWorkout } from './hevyTypes.js';
 import { log } from '../../config/logging.js';
 import {
   todayInZone,
   instantToDay,
   instantHourMinute,
+  normalizeMuscleList,
 } from '@workspace/shared';
-
-/** A single set within a Hevy exercise. */
-interface HevySet {
-  index: number;
-  type: string;
-  weight_kg: number | null;
-  reps: number | null;
-  distance_meters: number | null;
-  duration_seconds: number | null;
-  rpe: number | null;
-  custom_metric?: number | null;
-}
-
-/** One exercise within a Hevy workout. */
-interface HevyExercise {
-  index: number;
-  title: string;
-  notes?: string | null;
-  exercise_template_id?: string | null;
-  superset_id?: string | number | null;
-  sets?: HevySet[] | null;
-}
-
-/** A logged Hevy workout (one session). */
-export interface HevyWorkout {
-  id: string;
-  title: string;
-  routine_id?: string | null;
-  description?: string | null;
-  start_time: string;
-  end_time: string;
-  updated_at?: string | null;
-  created_at?: string | null;
-  exercises?: HevyExercise[] | null;
-}
-
-/** The Hevy user-info payload we read body metrics from. */
-interface HevyUserInfoResponse {
-  user?: {
-    weight_kg?: number | null;
-    height_cm?: number | null;
-    updated_at?: string | null;
-  } | null;
-}
 
 /** Minimal shapes for the repository rows we consume by id. */
 interface ExerciseRow {
   id: string;
+  user_id?: string | null;
+  source?: string | null;
+  source_id?: string | null;
 }
 interface WorkoutPresetRow {
   id: number;
@@ -85,7 +52,7 @@ async function processHevyUserInfo(
   if (!data || !data.user) return;
   const { weight_kg, height_cm, updated_at } = data.user;
   const entryDate = updated_at
-    ? updated_at.split('T')[0]
+    ? instantToDay(new Date(updated_at), timezone)
     : todayInZone(timezone);
   try {
     const measurements: { weight?: number; height?: number } = {};
@@ -113,14 +80,14 @@ async function processHevyUserInfo(
 
 /**
  * Process a list of workouts from Hevy.
- * A workout that fails is logged and counted in `failed`; the rest still run.
  */
 async function processHevyWorkouts(
   userId: string,
   createdByUserId: string,
   workouts: HevyWorkout[],
-  timezone = 'UTC'
-): Promise<{ processed: number; failed: number }> {
+  timezone = 'UTC',
+  templates: readonly HevyExerciseTemplate[] = []
+) {
   log(
     'info',
     `Processing ${workouts.length} Hevy workouts for user ${userId}...`
@@ -154,6 +121,7 @@ async function processHevyWorkouts(
         'error',
         `Failed to clear existing Hevy data before re-sync for user ${userId}: ${errorMessage(error)}`
       );
+      throw error;
     }
   }
   // The raw bundle can hold the same workout under overlapping page keys
@@ -162,8 +130,10 @@ async function processHevyWorkouts(
   // second pass creates a duplicate preset-entry session whose exercises stay
   // deduped on the first one, leaving an empty orphan session.
   const seenWorkoutIds = new Set<string>();
-  let processed = 0;
-  let failed = 0;
+  const templatesById = new Map(
+    templates.map((template) => [template.id, template])
+  );
+  let failures = 0;
   for (const workout of workouts) {
     if (workout.id) {
       if (seenWorkoutIds.has(workout.id)) {
@@ -173,17 +143,24 @@ async function processHevyWorkouts(
       seenWorkoutIds.add(workout.id);
     }
     try {
-      await processSingleWorkout(userId, createdByUserId, workout, timezone);
-      processed += 1;
+      await processSingleWorkout(
+        userId,
+        createdByUserId,
+        workout,
+        timezone,
+        templatesById
+      );
     } catch (error) {
-      failed += 1;
+      failures++;
       log(
         'error',
         `Failed to process Hevy workout ${workout.id}: ${errorMessage(error)}`
       );
     }
   }
-  return { processed, failed };
+  if (failures > 0) {
+    throw new Error(`Failed to import ${failures} Hevy workout(s).`);
+  }
 }
 
 /**
@@ -193,7 +170,8 @@ async function processSingleWorkout(
   userId: string,
   createdByUserId: string,
   workout: HevyWorkout,
-  timezone = 'UTC'
+  timezone = 'UTC',
+  templatesById: ReadonlyMap<string, HevyExerciseTemplate> = new Map()
 ) {
   const startTime = new Date(workout.start_time);
   const endTime = new Date(workout.end_time);
@@ -257,24 +235,53 @@ async function processSingleWorkout(
     exerciseIndex++
   ) {
     const hevyExercise = exercises[exerciseIndex]!;
+    const templateId = hevyExercise.exercise_template_id;
+    const template = templateId ? templatesById.get(templateId) : undefined;
+    const primaryMuscles = normalizeMuscleList([
+      template?.primary_muscle_group?.replaceAll('_', ' '),
+    ]);
+    const secondaryMuscles = normalizeMuscleList(
+      template?.secondary_muscle_groups?.map((muscle) =>
+        muscle.replaceAll('_', ' ')
+      )
+    ).filter((muscle) => !primaryMuscles.includes(muscle));
     // 1. Find or create exercise template
-    let exercise: ExerciseRow | null =
-      await exerciseRepository.findExerciseByNameAndUserId(
-        hevyExercise.title,
-        userId
-      );
+    let exercise: ExerciseRow | null = templateId
+      ? await hevyExerciseRepository.findByTemplateId(userId, templateId)
+      : null;
     if (!exercise) {
-      exercise = await exerciseRepository.createExercise(
-        {
-          user_id: userId,
-          name: hevyExercise.title,
-          source: 'Hevy',
-          is_custom: true,
-          shared_with_public: false,
-        },
-        // @ts-expect-error TS(2554): repository accepts createdByUserId at runtime
-        createdByUserId
+      // Filter legacy records in the query itself: an unrelated public row
+      // returned first by a general name search must not hide the owned row.
+      exercise = templateId
+        ? await hevyExerciseRepository.findLegacyByName(
+            userId,
+            hevyExercise.title
+          )
+        : await exerciseRepository.findExerciseByNameAndUserId(
+            hevyExercise.title,
+            userId
+          );
+    }
+    if (exercise && templateId && template) {
+      await hevyExerciseRepository.fillMissingMuscles(
+        userId,
+        exercise.id,
+        templateId,
+        primaryMuscles,
+        secondaryMuscles
       );
+    }
+    if (!exercise) {
+      exercise = await exerciseRepository.createExercise({
+        user_id: userId,
+        name: hevyExercise.title,
+        source: 'Hevy',
+        source_id: templateId,
+        primary_muscles: primaryMuscles,
+        secondary_muscles: secondaryMuscles,
+        is_custom: true,
+        shared_with_public: false,
+      });
     }
     if (!exercise) {
       log(

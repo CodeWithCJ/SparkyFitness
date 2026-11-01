@@ -80,6 +80,7 @@ export const createExternalProvider = async (
         'strava',
         'polar',
         'coros_mcp',
+        'hevy',
       ].includes(payload.provider_type)
         ? payload.sync_frequency
         : null,
