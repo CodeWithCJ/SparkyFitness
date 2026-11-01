@@ -15,20 +15,19 @@ jest.mock('../../../src/utils/routeMapSupport', () => ({
 }));
 
 jest.mock('../../../src/components/maps/MapSurface', () => {
-  const React = require('react');
-  const { View } = require('react-native');
+  const React = require('react') as typeof import('react');
+  const { View } = require('react-native') as typeof import('react-native');
 
   const MockMapSurface = React.forwardRef<MapSurfaceHandle, MapSurfaceProps>(
-    ({ children, ...props }, ref) => {
+    (props, ref) => {
       React.useImperativeHandle(ref, () => ({
         fitPoints: mockFitPoints,
         centerOn: jest.fn(),
       }));
-      return React.createElement(
-        View,
-        { testID: 'route-map-surface', ...props },
-        children
-      );
+      return React.createElement(View, {
+        testID: 'route-map-surface',
+        ...props,
+      });
     }
   );
 
