@@ -5,10 +5,14 @@ import withingsServiceCentral from '../services/withingsService.js';
 import garminService from '../services/garminService.js';
 import fitbitService from '../services/fitbitService.js';
 import corosService from '../services/corosService.js';
+import ouraService from '../services/ouraService.js';
+import stravaService from '../services/stravaService.js';
+import googleHealthService from '../services/googleHealthService.js';
 import hevyService from '../integrations/hevy/hevyService.js';
 import intervalsService from '../integrations/intervals/intervalsService.js';
 import {
   PROVIDER_SYNC_CONFIGS,
+  isProviderSyncDue,
   runProviderSync,
   scheduleProviderSync,
   startProviderSyncSchedulers,
@@ -53,6 +57,18 @@ vi.mock('../services/corosService.js', () => ({
   default: {
     syncCorosData: vi.fn(),
   },
+}));
+
+vi.mock('../services/ouraService.js', () => ({
+  default: { syncOuraData: vi.fn() },
+}));
+
+vi.mock('../services/stravaService.js', () => ({
+  default: { syncStravaData: vi.fn() },
+}));
+
+vi.mock('../services/googleHealthService.js', () => ({
+  default: { syncGoogleHealthData: vi.fn() },
 }));
 
 vi.mock('../integrations/hevy/hevyService.js', () => ({
@@ -154,6 +170,10 @@ describe('providerSyncScheduler', () => {
         sync_frequency: 'hourly',
       } as never,
     ]);
+    vi.mocked(corosService.syncCorosData).mockResolvedValueOnce({
+      failedRequiredFetches: [],
+      activitiesFailed: 0,
+    } as never);
 
     const corosConfig = PROVIDER_SYNC_CONFIGS.find(
       (c) => c.name === 'COROS'
@@ -313,6 +333,176 @@ describe('providerSyncScheduler', () => {
     ).not.toHaveBeenCalled();
   });
 
+  describe.each([
+    {
+      name: 'Oura',
+      sync: () => vi.mocked(ouraService.syncOuraData),
+    },
+    {
+      name: 'Strava',
+      sync: () => vi.mocked(stravaService.syncStravaData),
+    },
+    {
+      name: 'Google Health',
+      sync: () => vi.mocked(googleHealthService.syncGoogleHealthData),
+    },
+    {
+      name: 'COROS',
+      sync: () => vi.mocked(corosService.syncCorosData),
+    },
+  ])('$name required fetches', ({ name, sync }) => {
+    const run = async () => {
+      vi.mocked(
+        externalProviderRepository.getProvidersByType
+      ).mockResolvedValue([
+        {
+          id: 'p-1',
+          user_id: 'u-1',
+          is_active: true,
+          sync_frequency: 'hourly',
+        } as never,
+      ]);
+      await runProviderSync(
+        PROVIDER_SYNC_CONFIGS.find((c) => c.name === name) as ProviderSyncConfig
+      );
+    };
+
+    it('does not update last_sync_at when a required fetch failed', async () => {
+      sync().mockResolvedValueOnce({
+        success: true,
+        failedRequiredFetches: ['steps'],
+      } as never);
+
+      await run();
+
+      expect(
+        externalProviderRepository.updateProviderLastSync
+      ).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith(
+        'warn',
+        expect.stringContaining('last_sync_at not updated: steps')
+      );
+    });
+
+    it('updates last_sync_at when no required fetch failed', async () => {
+      sync().mockResolvedValueOnce({
+        success: true,
+        failedRequiredFetches: [],
+      } as never);
+
+      await run();
+
+      expect(
+        externalProviderRepository.updateProviderLastSync
+      ).toHaveBeenCalledWith('p-1', expect.any(Date));
+    });
+  });
+
+  it.each([
+    {
+      name: 'Oura',
+      mockResult: () =>
+        vi.mocked(ouraService.syncOuraData).mockResolvedValueOnce({
+          success: true,
+          failedRequiredFetches: [],
+          workoutsFailed: 2,
+        } as never),
+    },
+    {
+      name: 'Strava',
+      mockResult: () =>
+        vi.mocked(stravaService.syncStravaData).mockResolvedValueOnce({
+          success: true,
+          failedRequiredFetches: [],
+          activitiesFailed: 2,
+        } as never),
+    },
+    {
+      name: 'COROS',
+      mockResult: () =>
+        vi.mocked(corosService.syncCorosData).mockResolvedValueOnce({
+          success: true,
+          failedRequiredFetches: [],
+          activitiesFailed: 2,
+        } as never),
+    },
+  ])(
+    'does not update last_sync_at when $name failed to save items',
+    async ({ name, mockResult }) => {
+      vi.mocked(
+        externalProviderRepository.getProvidersByType
+      ).mockResolvedValue([
+        {
+          id: 'p-1',
+          user_id: 'u-1',
+          is_active: true,
+          sync_frequency: 'hourly',
+        } as never,
+      ]);
+      mockResult();
+
+      await runProviderSync(
+        PROVIDER_SYNC_CONFIGS.find((c) => c.name === name) as ProviderSyncConfig
+      );
+
+      expect(
+        externalProviderRepository.updateProviderLastSync
+      ).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith(
+        'warn',
+        expect.stringContaining('last_sync_at not updated: 2 items not saved')
+      );
+    }
+  );
+
+  describe('COROS deferred downloads', () => {
+    const runCoros = async (deferred: number) => {
+      vi.mocked(
+        externalProviderRepository.getProvidersByType
+      ).mockResolvedValue([
+        {
+          id: 'p-1',
+          user_id: 'u-1',
+          is_active: true,
+          sync_frequency: 'hourly',
+        } as never,
+      ]);
+      vi.mocked(corosService.syncCorosData).mockResolvedValueOnce({
+        success: true,
+        failedRequiredFetches: [],
+        activitiesFailed: 0,
+        deferred,
+      } as never);
+      await runProviderSync(
+        PROVIDER_SYNC_CONFIGS.find(
+          (c) => c.name === 'COROS'
+        ) as ProviderSyncConfig
+      );
+    };
+
+    it('does not update last_sync_at and names them when a download was deferred', async () => {
+      await runCoros(3);
+
+      expect(
+        externalProviderRepository.updateProviderLastSync
+      ).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith(
+        'warn',
+        expect.stringContaining(
+          'last_sync_at not updated: 3 deferred downloads'
+        )
+      );
+    });
+
+    it('updates last_sync_at when everything was imported', async () => {
+      await runCoros(0);
+
+      expect(
+        externalProviderRepository.updateProviderLastSync
+      ).toHaveBeenCalledWith('p-1', expect.any(Date));
+    });
+  });
+
   it('runs Hevy sync with correct parameters', async () => {
     vi.mocked(externalProviderRepository.getProvidersByType).mockResolvedValue([
       {
@@ -393,5 +583,129 @@ describe('providerSyncScheduler', () => {
     finishSync();
     await run;
     expect(settled).toBe(true);
+  });
+
+  describe('sync frequency', () => {
+    const hoursAgo = (hours: number) =>
+      new Date(Date.now() - hours * 60 * 60 * 1000);
+    const fitbitConfig = () =>
+      PROVIDER_SYNC_CONFIGS.find(
+        (c) => c.name === 'Fitbit'
+      ) as ProviderSyncConfig;
+    const runWith = async (provider: Record<string, unknown>) => {
+      vi.mocked(
+        externalProviderRepository.getProvidersByType
+      ).mockResolvedValue([
+        {
+          id: 'p-1',
+          user_id: 'u-1',
+          is_active: true,
+          ...provider,
+        } as never,
+      ]);
+      await runProviderSync(fitbitConfig());
+    };
+
+    it('skips a daily provider that synced 2 hours ago', async () => {
+      await runWith({ sync_frequency: 'daily', last_sync_at: hoursAgo(2) });
+
+      expect(fitbitService.syncFitbitData).not.toHaveBeenCalled();
+      expect(startProviderSync).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith(
+        'debug',
+        expect.stringContaining('Fitbit sync skipped for user u-1')
+      );
+    });
+
+    it('runs a daily provider that synced 25 hours ago', async () => {
+      await runWith({ sync_frequency: 'daily', last_sync_at: hoursAgo(25) });
+
+      expect(fitbitService.syncFitbitData).toHaveBeenCalledWith(
+        'u-1',
+        'scheduled'
+      );
+    });
+
+    it('runs a daily provider that has never synced', async () => {
+      await runWith({ sync_frequency: 'daily', last_sync_at: null });
+
+      expect(fitbitService.syncFitbitData).toHaveBeenCalledOnce();
+    });
+
+    it('runs an hourly provider regardless of last_sync_at', async () => {
+      await runWith({
+        sync_frequency: 'hourly',
+        last_sync_at: new Date(Date.now() - 60 * 1000),
+      });
+
+      expect(fitbitService.syncFitbitData).toHaveBeenCalledOnce();
+    });
+
+    it('never runs a manual provider', async () => {
+      await runWith({ sync_frequency: 'manual', last_sync_at: hoursAgo(48) });
+
+      expect(fitbitService.syncFitbitData).not.toHaveBeenCalled();
+      expect(startProviderSync).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('isProviderSyncDue', () => {
+  const now = new Date('2026-10-30T12:00:00Z');
+  const hoursBefore = (hours: number) =>
+    new Date(now.getTime() - hours * 60 * 60 * 1000);
+
+  it('is never due for manual providers', () => {
+    expect(isProviderSyncDue({ sync_frequency: 'manual' }, now)).toBe(false);
+    expect(
+      isProviderSyncDue(
+        { sync_frequency: 'manual', last_sync_at: hoursBefore(100) },
+        now
+      )
+    ).toBe(false);
+  });
+
+  it('is due for a daily provider without last_sync_at', () => {
+    expect(isProviderSyncDue({ sync_frequency: 'daily' }, now)).toBe(true);
+    expect(
+      isProviderSyncDue({ sync_frequency: 'daily', last_sync_at: null }, now)
+    ).toBe(true);
+  });
+
+  it('is due for a daily provider once 23 hours have passed', () => {
+    expect(
+      isProviderSyncDue(
+        { sync_frequency: 'daily', last_sync_at: hoursBefore(22.9) },
+        now
+      )
+    ).toBe(false);
+    expect(
+      isProviderSyncDue(
+        { sync_frequency: 'daily', last_sync_at: hoursBefore(23) },
+        now
+      )
+    ).toBe(true);
+  });
+
+  it('accepts last_sync_at as an ISO string', () => {
+    expect(
+      isProviderSyncDue(
+        {
+          sync_frequency: 'daily',
+          last_sync_at: hoursBefore(2).toISOString(),
+        },
+        now
+      )
+    ).toBe(false);
+  });
+
+  it('is always due for other frequencies', () => {
+    expect(
+      isProviderSyncDue(
+        { sync_frequency: 'hourly', last_sync_at: hoursBefore(0) },
+        now
+      )
+    ).toBe(true);
+    expect(isProviderSyncDue({ sync_frequency: 'weekly' }, now)).toBe(true);
   });
 });

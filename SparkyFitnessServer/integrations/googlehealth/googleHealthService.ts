@@ -4,6 +4,7 @@ import { encrypt, decrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
 import { log } from '../../config/logging.js';
 import { logRawResponse } from '../../utils/diagnosticLogger.js';
 import { withProviderTokenLock } from '../../models/externalProviderRepository.js';
+import { isPermissionRejection } from '../../services/providerFetchResult.js';
 
 function anonymizeGoogleHealthData(data: unknown): unknown {
   if (Array.isArray(data)) return data.map(anonymizeGoogleHealthData);
@@ -710,6 +711,7 @@ async function fetchDailyRollupRange(
   const start = new Date(startDate);
   const end = new Date(endDate);
   const allPoints: Record<string, unknown>[] = [];
+  const failedDays: string[] = [];
   const current = new Date(start);
   while (current <= end) {
     const dateStr = current.toISOString().split('T')[0];
@@ -718,8 +720,17 @@ async function fetchDailyRollupRange(
       if (response?.rollupDataPoints?.length) {
         allPoints.push(...response.rollupDataPoints);
       }
-    } catch {
-      // individual day failure is non-fatal
+    } catch (error) {
+      // A failed day does not stop the range; callers see it in failedDays. A
+      // permission rejection repeats on every run, so it is left out of both
+      // failedDays and the log.
+      if (!isPermissionRejection(error)) {
+        failedDays.push(dateStr);
+        log(
+          'warn',
+          `[googleHealthService] Failed to fetch ${dataType} rollup for ${dateStr}: ${(error as Error).message}`
+        );
+      }
     }
     current.setUTCDate(current.getUTCDate() + 1);
   }
@@ -728,7 +739,7 @@ async function fetchDailyRollupRange(
     `raw_rollup_${dataType.replace(/-/g, '_')}`,
     anonymizeGoogleHealthData({ rollupDataPoints: allPoints })
   );
-  return { rollupDataPoints: allPoints };
+  return { rollupDataPoints: allPoints, failedDays };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
