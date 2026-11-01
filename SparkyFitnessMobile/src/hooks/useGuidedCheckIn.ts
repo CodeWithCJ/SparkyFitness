@@ -250,9 +250,10 @@ export function useGuidedCheckIn({
 }
 
 /**
- * Starts the guided check-in for `date` from the Add menu. When one was left
- * part-way on the same day it asks first: Continue opens the step it stopped
- * at, Start over a new check-in from step 1.
+ * Starts the guided check-in for `date`, from the Add menu (the Diary's day)
+ * or the What's New card (today). When one was left part-way on the same day
+ * it asks first: Continue opens the step it stopped at, Start over a new
+ * check-in from step 1.
  */
 export function startGuidedCheckIn(
   date: string,

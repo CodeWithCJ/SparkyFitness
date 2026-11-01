@@ -131,7 +131,6 @@ describe('AddMenuSettingsScreen', () => {
       useAppPreferencesStore
         .getState()
         .setAddMenuRowStyle('checkIn', 'compact');
-      useAppPreferencesStore.setState({ guidedCheckInEnabled: true });
     });
     renderScreen();
 
@@ -157,29 +156,38 @@ describe('AddMenuSettingsScreen', () => {
       act(() => {
         useAppPreferencesStore
           .getState()
+          .setAddMenuRowStyle('wellness', 'compact');
+      });
+      renderScreen();
+
+      const wellness = screen.getByTestId('add-menu-row-wellness');
+      expect(
+        within(wellness).getByText('Not shown: cycle tracking is off')
+      ).toBeTruthy();
+      expect(within(wellness).queryByText(/^Line /)).toBeNull();
+      // Mood and Mindfulness pair up on line 1: the missing item takes no
+      // slot, so Mindfulness is not pushed to line 2.
+      const mood = screen.getByTestId('add-menu-row-mood');
+      expect(within(mood).getByText('Line 1')).toBeTruthy();
+      const mindfulness = screen.getByTestId('add-menu-row-mindfulness');
+      expect(within(mindfulness).getByText('Line 1')).toBeTruthy();
+    });
+
+    test('never include Check-In, which needs no setting', () => {
+      act(() => {
+        useAppPreferencesStore
+          .getState()
           .setAddMenuRowStyle('checkIn', 'compact');
       });
       renderScreen();
 
       const checkIn = screen.getByTestId('add-menu-row-checkIn');
-      expect(
-        within(checkIn).getByText('Not shown: guided check-in is off')
-      ).toBeTruthy();
-      expect(within(checkIn).queryByText(/^Line /)).toBeNull();
-      // Mood is still on line 1, not pushed down by the missing item.
-      const mood = screen.getByTestId('add-menu-row-mood');
-      expect(within(mood).getByText('Line 1')).toBeTruthy();
-      const wellness = screen.getByTestId('add-menu-row-wellness');
-      expect(
-        within(wellness).getByText('Not shown: cycle tracking is off')
-      ).toBeTruthy();
+      expect(within(checkIn).queryByText(/^Not shown:/)).toBeNull();
+      expect(within(checkIn).getByText('Line 1')).toBeTruthy();
     });
 
     test('are shown normally once the feature is on', () => {
       Object.assign(mockCycle, { enabled: true });
-      act(() => {
-        useAppPreferencesStore.setState({ guidedCheckInEnabled: true });
-      });
       renderScreen();
 
       expect(screen.queryByText(/^Not shown:/)).toBeNull();

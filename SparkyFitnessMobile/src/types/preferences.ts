@@ -33,6 +33,9 @@ export interface UserPreferences {
   /** When on, override the formula BMR with the synced Apple Health Resting Energy /
    *  Health Connect BasalMetabolicRate value for the day (mobile-only toggle). */
   use_external_bmr?: boolean;
+  /** iPhone sync reads daily active calories from the Move ring instead of the
+   *  Apple Health Active Energy total (mobile-only toggle). */
+  use_move_ring_active_calories?: boolean;
   show_net_carbs?: boolean;
   calorie_goal_adjustment_mode?: string;
   goal_mode?: GoalMode;

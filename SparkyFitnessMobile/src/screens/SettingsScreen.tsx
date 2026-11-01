@@ -36,6 +36,7 @@ import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import WatchConnectivity from '../../modules/watch-connectivity';
+import { useNfcSupport } from '../hooks/useNfcSupport';
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -56,6 +57,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const usesNativeTabs = useNativeIOSTabsActive();
 
   // Only offered with a watch paired: the settings do nothing without one.
+  const { supported: nfcSupported } = useNfcSupport();
   const hasPairedWatch =
     WatchConnectivity?.isSupported() === true &&
     WatchConnectivity.isPaired() === true;
@@ -389,6 +391,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                 onPress={() => navigation.navigate('WorkoutSettings')}
                 iconColor={catBlue}
               />
+              {nfcSupported && (
+                <SettingsRow
+                  icon="nfc"
+                  title={t('settings.rows.nfcTags', {
+                    defaultValue: 'NFC tags',
+                  })}
+                  onPress={() => navigation.navigate('ActionTags')}
+                  iconColor={catBlue}
+                />
+              )}
               {hasPairedWatch && (
                 <SettingsRow
                   icon="watch-settings"

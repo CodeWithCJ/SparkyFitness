@@ -1643,6 +1643,27 @@ COMMENT ON TABLE public.account IS 'Better Auth account table - stores credentia
 
 
 --
+-- Name: action_tags; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.action_tags (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    tag_code character varying(64) NOT NULL,
+    label character varying(120) NOT NULL,
+    action jsonb NOT NULL,
+    ask_before_running boolean DEFAULT false NOT NULL,
+    last_run_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by_user_id uuid,
+    updated_by_user_id uuid,
+    CONSTRAINT action_tags_action_check CHECK (((jsonb_typeof(action) = 'object'::text) AND (action ? 'type'::text))),
+    CONSTRAINT action_tags_code_check CHECK ((char_length((tag_code)::text) >= 16))
+);
+
+
+--
 -- Name: admin_activity_logs; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -5104,6 +5125,7 @@ CREATE TABLE public.user_preferences (
     hr_zone_custom_floors smallint[],
     goal_mode_weekly_change_kg double precision DEFAULT 0 NOT NULL,
     hr_zone_display_count smallint DEFAULT 5 NOT NULL,
+    use_move_ring_active_calories boolean DEFAULT false NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_caffeine_half_life_range CHECK (((caffeine_half_life_hours >= 2.0) AND (caffeine_half_life_hours <= 8.0))),
@@ -5283,6 +5305,13 @@ COMMENT ON COLUMN public.user_preferences.goal_mode_weekly_change_kg IS 'Signed 
 --
 
 COMMENT ON COLUMN public.user_preferences.hr_zone_display_count IS 'Heart rate bands shown in reports and settings: 5 zones or 4 tiers (zones 1-2 merged as Light). Storage and training load always use five zones.';
+
+
+--
+-- Name: COLUMN user_preferences.use_move_ring_active_calories; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.user_preferences.use_move_ring_active_calories IS 'iPhone sync reads daily active calories from the Apple Move ring instead of the Apple Health Active Energy total.';
 
 
 --
@@ -6087,6 +6116,22 @@ ALTER TABLE ONLY auth.users
 
 ALTER TABLE ONLY public.account
     ADD CONSTRAINT account_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: action_tags action_tags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_tags
+    ADD CONSTRAINT action_tags_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: action_tags action_tags_user_code_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_tags
+    ADD CONSTRAINT action_tags_user_code_unique UNIQUE (user_id, tag_code);
 
 
 --
@@ -7577,6 +7622,13 @@ CREATE INDEX food_assistant_tasks_user_updated ON public.food_assistant_tasks US
 --
 
 CREATE INDEX idx_account_user_id ON public.account USING btree (user_id);
+
+
+--
+-- Name: idx_action_tags_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_action_tags_user_id ON public.action_tags USING btree (user_id);
 
 
 --
@@ -9132,6 +9184,30 @@ CREATE TRIGGER update_workout_presets_timestamp BEFORE UPDATE ON public.workout_
 
 ALTER TABLE ONLY public.account
     ADD CONSTRAINT account_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: action_tags action_tags_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_tags
+    ADD CONSTRAINT action_tags_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: action_tags action_tags_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_tags
+    ADD CONSTRAINT action_tags_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id);
+
+
+--
+-- Name: action_tags action_tags_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.action_tags
+    ADD CONSTRAINT action_tags_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
@@ -11143,6 +11219,12 @@ ALTER TABLE ONLY public.workout_presets
 
 
 --
+-- Name: action_tags; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.action_tags ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: admin_activity_logs; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -12263,6 +12345,13 @@ ALTER TABLE public.openfoodfacts_product_read_rate_limit ENABLE ROW LEVEL SECURI
 --
 
 ALTER TABLE public.openfoodfacts_sync_queue ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: action_tags owner_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY owner_policy ON public.action_tags USING ((user_id = public.authenticated_user_id())) WITH CHECK ((user_id = public.authenticated_user_id()));
+
 
 --
 -- Name: api_key owner_policy; Type: POLICY; Schema: public; Owner: -
@@ -13845,6 +13934,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE auth.users TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.account TO sparky_app;
+
+
+--
+-- Name: TABLE action_tags; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.action_tags TO sparky_app;
 
 
 --

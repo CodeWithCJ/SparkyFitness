@@ -85,6 +85,8 @@ module.exports = (config) => {
   return {
     type: 'watch',
     name: 'SparkyFitnessWatch',
+    // Dev builds read "DevSparkyFitness" so they differ from the production app.
+    ...(isDev ? { displayName: 'DevSparkyFitness' } : {}),
     bundleIdentifier,
     // Its own icon: the phone's adaptive icon is a small logo on white, which
     // reads as a white disc on the watch face. This one fills the round mask

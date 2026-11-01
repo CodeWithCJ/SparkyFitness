@@ -163,13 +163,9 @@ const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
                   className="text-xs text-text-muted ml-2"
                   numberOfLines={1}
                 >
-                  {key === 'checkIn'
-                    ? t('addMenuSettings.needsCheckIn', {
-                        defaultValue: 'Not shown: guided check-in is off',
-                      })
-                    : t('addMenuSettings.needsCycle', {
-                        defaultValue: 'Not shown: cycle tracking is off',
-                      })}
+                  {t('addMenuSettings.needsCycle', {
+                    defaultValue: 'Not shown: cycle tracking is off',
+                  })}
                 </Text>
               ) : lineOf.has(key) ? (
                 <Text className="text-xs text-text-muted ml-2">

@@ -24,6 +24,11 @@ export interface SymptomEntryFilters {
   medicationId?: string;
   source?: string;
   episodesOnly?: boolean;
+  /**
+   * Also return episodes that overlap the range without being logged in it,
+   * such as one that started the month before. Older servers ignore it.
+   */
+  overlapping?: boolean;
 }
 
 // --- Definitions -------------------------------------------------------------

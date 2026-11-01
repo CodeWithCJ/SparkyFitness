@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { useSymptomEntries, useSymptomFreeDays } from '@/hooks/useSymptoms';
 import { cn } from '@/lib/utils';
-import { scaleMax } from '@workspace/shared';
+import { scaleMax, symptomEntryDays, todayInZone } from '@workspace/shared';
 
 interface SymptomCalendarProps {
   selectedDate: string;
@@ -27,15 +28,19 @@ function monthDays(year: number, month: number) {
 const WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 /**
- * A month of symptom history. Days you marked symptom-free are green, days with
- * an entry are tinted by how severe the worst one was, and days with neither are
- * left blank because they are unknown, not symptom-free.
+ * A month of symptom history. Days you marked symptom-free are green, days an
+ * entry covers are tinted by how severe the worst one was (an episode tints
+ * every day from its start to its end, or to today while it is still going),
+ * and days with neither are left blank because they are unknown, not
+ * symptom-free.
  */
 export default function SymptomCalendar({
   selectedDate,
   onDateChange,
 }: SymptomCalendarProps) {
   const { t } = useTranslation();
+  const { timezone } = usePreferences();
+  const today = todayInZone(timezone);
   const [year, setYear] = useState(() => Number(selectedDate.slice(0, 4)));
   const [month, setMonth] = useState(() => Number(selectedDate.slice(5, 7)));
   const { offset, count } = monthDays(year, month);
@@ -45,6 +50,7 @@ export default function SymptomCalendar({
   const { data: entries = [] } = useSymptomEntries({
     fromDate: first,
     toDate: last,
+    overlapping: true,
   });
   const { data: freeDays = [] } = useSymptomFreeDays({
     fromDate: first,
@@ -53,21 +59,21 @@ export default function SymptomCalendar({
 
   const { worst, free } = useMemo(() => {
     const worstByDay = new Map<string, number>();
+    const window = { from: first, to: last, today, timezone };
     for (const e of entries) {
       const ratio =
         e.severity != null
           ? (e.peak_severity ?? e.severity) / Math.max(scaleMax('1-10'), 1)
           : 0.1;
-      worstByDay.set(
-        e.entry_date,
-        Math.max(worstByDay.get(e.entry_date) ?? 0, ratio)
-      );
+      for (const day of symptomEntryDays(e, window)) {
+        worstByDay.set(day, Math.max(worstByDay.get(day) ?? 0, ratio));
+      }
     }
     return {
       worst: worstByDay,
       free: new Set(freeDays.map((d) => d.entry_date)),
     };
-  }, [entries, freeDays]);
+  }, [entries, freeDays, first, last, today, timezone]);
 
   const shift = (delta: number) => {
     const next = new Date(Date.UTC(year, month - 1 + delta, 1));
