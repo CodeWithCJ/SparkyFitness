@@ -46,10 +46,12 @@ const LabResultsCard: React.FC<{ navigation: LabResultsCardNavigation }> = ({
   // Nothing to show until the user has tracked a lab marker.
   if (markers.length === 0) return null;
 
-  // Only a result judged low or high counts: text-only results and markers
-  // with no range have no status to be out of range.
-  const outOfRange = rows.filter(({ marker, result }) => {
-    const status = labResultStatus(result, marker);
+  // Counted over every marker with a result, not just the rows shown, so a
+  // low or high result past the first few never goes unmentioned. Text-only
+  // results and markers with no range have no status to be out of range.
+  const outOfRange = markers.filter((marker) => {
+    if (!marker.latest) return false;
+    const status = labResultStatus(marker.latest, marker);
     return status === 'low' || status === 'high';
   }).length;
 

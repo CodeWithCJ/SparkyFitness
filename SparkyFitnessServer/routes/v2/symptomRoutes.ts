@@ -216,6 +216,14 @@ const deleteOption: RequestHandler = async (req, res, next) => {
  *       - in: query
  *         name: episodesOnly
  *         schema: { type: boolean }
+ *       - in: query
+ *         name: overlapping
+ *         schema: { type: boolean }
+ *         description: >-
+ *           Also return episodes that overlap fromDate to toDate without being
+ *           logged in it, such as one that started before fromDate and was
+ *           still going, read in the profile timezone. Calendars use it to
+ *           mark every day an episode covers.
  *     responses:
  *       200:
  *         description: Entries, newest first.

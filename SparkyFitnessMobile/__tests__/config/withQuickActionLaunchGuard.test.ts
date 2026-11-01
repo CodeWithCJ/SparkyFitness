@@ -45,6 +45,15 @@ describe('addQuickActionLaunchGuard', () => {
     expect(LAUNCH_GUARD).toContain('.setData(null)');
   });
 
+  it('also drops an NFC tag tap, so a restored app does not log it twice', () => {
+    expect(LAUNCH_GUARD).toContain(
+      'intent?.action == "android.nfc.action.NDEF_DISCOVERED"'
+    );
+    expect(LAUNCH_GUARD).toContain(
+      'intent?.data?.host == "tag.sparkyfitness.com"'
+    );
+  });
+
   it('changes nothing on a second run', () => {
     const once = addQuickActionLaunchGuard(mainActivityFixture());
     expect(addQuickActionLaunchGuard(once)).toBe(once);

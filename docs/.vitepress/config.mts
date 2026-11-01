@@ -124,6 +124,7 @@ export default defineConfig({
             { text: 'Features Index', link: '/features/' },
             { text: 'Check-in', link: '/features/check-in' },
             { text: 'Medications & Supplements', link: '/features/medications' },
+            { text: 'NFC Tags', link: '/features/nfc-tags' },
             { text: 'Reports', link: '/features/reports' },
             { text: 'Goals', link: '/features/goals' },
             { text: 'Family & Friends Sharing', link: '/features/family-friends-sharing' },

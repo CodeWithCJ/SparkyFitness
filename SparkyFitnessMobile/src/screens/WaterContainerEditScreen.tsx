@@ -24,6 +24,8 @@ import {
   plainHydrationExample,
 } from '@workspace/shared';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useActionTagsQuery } from '../hooks/useActionTags';
+import { useNfcSupport } from '../hooks/useNfcSupport';
 import { consumePendingContainerLinkSelection } from '../services/waterContainerLinkSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -114,6 +116,16 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
   );
 
   const { mealTypes } = useMealTypes();
+
+  // NFC tags that log this container (#941). Setting one up is offered only on
+  // a phone with NFC, for a container that is already saved.
+  const { supported: nfcSupported } = useNfcSupport();
+  const { tags: actionTags } = useActionTagsQuery({
+    enabled: isEditing && nfcSupported,
+  });
+  const tagsForContainer = actionTags.filter(
+    (tag) => tag.action.container_id === containerId
+  ).length;
 
   const [form, setForm] = useState<FormState>(() =>
     formStateFromContainer(existingContainer)
@@ -670,6 +682,47 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
               </>
             ) : null}
           </>
+        ) : null}
+
+        {isEditing && nfcSupported ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              navigation.navigate('ActionTagForm', {
+                presetAction: {
+                  type: 'water',
+                  container_id: containerId,
+                  drinks: 1,
+                },
+              })
+            }
+            className="flex-row items-center justify-between bg-surface rounded-xl px-4 py-3 mt-6 shadow-sm"
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+          >
+            <View className="flex-1 mr-3">
+              <Text className="text-base text-text-primary">
+                {t('actionTags.container.add', { defaultValue: 'Add NFC tag' })}
+              </Text>
+              <Text className="text-sm text-text-secondary mt-0.5">
+                {tagsForContainer > 0
+                  ? t('actionTags.container.count', {
+                      count: tagsForContainer,
+                      formattedCount: String(tagsForContainer),
+                      defaultValue:
+                        '{{formattedCount}} tags log this container',
+                      defaultValue_one:
+                        '{{formattedCount}} tag logs this container',
+                      defaultValue_other:
+                        '{{formattedCount}} tags log this container',
+                    })
+                  : t('actionTags.container.hint', {
+                      defaultValue:
+                        'Tap a sticker on this bottle to log a drink',
+                    })}
+              </Text>
+            </View>
+            <Icon name="chevron-forward" size={20} color="#999" />
+          </Pressable>
         ) : null}
 
         {isEditing ? (
