@@ -1,6 +1,9 @@
 import { createRef } from 'react';
 import { act, render } from '@testing-library/react-native';
-import type { MapSurfaceHandle } from '../../../src/components/maps/mapSurfaceTypes';
+import type {
+  MapLine,
+  MapSurfaceHandle,
+} from '../../../src/components/maps/mapSurfaceTypes';
 
 interface CameraMethods {
   fitBounds: jest.Mock;
@@ -101,17 +104,67 @@ describe('MapLibreMapSurface', () => {
 
   it('sends route coordinates as GeoJSON in [longitude, latitude] order', () => {
     const screen = renderMap();
-    const source = screen.getByTestId('ml-source');
-    expect(source.props.data.geometry).toEqual({
+    const [solidSource] = screen.getAllByTestId('ml-source');
+    expect(solidSource.props.data.features[0].geometry).toEqual({
       type: 'LineString',
       coordinates: [
         [-0.12, 51.5],
         [-0.11, 51.51],
       ],
     });
-    expect(screen.getByTestId('ml-layer').props.paint['line-color']).toBe(
-      '#2563eb'
+    expect(solidSource.props.data.features[0].properties).toEqual({
+      color: '#2563eb',
+      width: 4,
+    });
+    expect(
+      screen.getAllByTestId('ml-layer')[0].props.paint['line-color']
+    ).toEqual(['coalesce', ['get', 'color'], '#3b82f6']);
+  });
+
+  it('groups dashed lines into the dashed source and layer', () => {
+    const dashedLine: MapLine = {
+      points: [
+        { lat: 51.5, lon: -0.12 },
+        { lat: 51.52, lon: -0.1 },
+      ],
+      color: '#ef4444',
+      width: 3,
+      dashed: true,
+    };
+    const screen = render(
+      <MapLibreMapSurface
+        initialViewport={VIEWPORT}
+        lines={[{ points: LINE, color: '#2563eb' }, dashedLine]}
+      />
     );
+    const [solidSource, dashedSource] = screen.getAllByTestId('ml-source');
+    expect(solidSource.props.data.features).toHaveLength(1);
+    expect(dashedSource.props.data.features).toHaveLength(1);
+    expect(dashedSource.props.data.features[0].geometry).toEqual({
+      type: 'LineString',
+      coordinates: [
+        [-0.12, 51.5],
+        [-0.1, 51.52],
+      ],
+    });
+    expect(dashedSource.props.data.features[0].properties).toEqual({
+      color: '#ef4444',
+      width: 3,
+    });
+    const layers = screen.getAllByTestId('ml-layer');
+    expect(layers[1].props.paint['line-dasharray']).toEqual([2, 2]);
+  });
+
+  it('passes attribution prop to the native Map component', () => {
+    const screenDefault = render(
+      <MapLibreMapSurface initialViewport={VIEWPORT} />
+    );
+    expect(screenDefault.getByTestId('ml-map').props.attribution).toBe(true);
+
+    const screenHidden = render(
+      <MapLibreMapSurface initialViewport={VIEWPORT} attribution={false} />
+    );
+    expect(screenHidden.getByTestId('ml-map').props.attribution).toBe(false);
   });
 
   it('turns a map press into a lat/lon point', () => {

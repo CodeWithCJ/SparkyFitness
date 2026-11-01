@@ -33,6 +33,11 @@ export interface MapMarkerSpec {
   color: string;
   /** Diameter in points for `dot` and `ring`. */
   size?: number;
+  /**
+   * Opacity for `dot` and `ring`. On MapLibre Native, `pin` markers remain
+   * fully opaque so the underlying route line does not bleed through;
+   * Apple Maps and Google Maps honor fractional opacity on all shapes.
+   */
   opacity?: number;
   draggable?: boolean;
   onPress?: () => void;
@@ -58,6 +63,8 @@ export interface MapSurfaceProps {
   satellite?: boolean;
   /** Pan, zoom, rotate and pitch. Off for a still preview inside a scroll view. */
   interactive?: boolean;
+  /** Shows or hides the MapLibre attribution control. Defaults to true. Apple Maps and Google Maps ignore it. */
+  attribution?: boolean;
   /** Google Maps lite mode only (Android with a key). Apple Maps and MapLibre ignore it. */
   lite?: boolean;
   showUserLocation?: boolean;
