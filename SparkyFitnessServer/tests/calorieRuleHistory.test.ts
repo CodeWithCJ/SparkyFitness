@@ -44,6 +44,7 @@ const rules: CalorieRules = {
   activity_level: 'not_much',
   use_external_bmr: false,
   include_bmr_in_net_calories: false,
+  adjust_macros_with_exercise: false,
 };
 
 const row = (
@@ -129,12 +130,7 @@ describe('preferences the calorie maths reads', () => {
     'services'
   );
   // Settings that do not change a day's calorie target.
-  const notCalorieRules = [
-    'timezone',
-    'add_exercise_water_to_goal',
-    // The opt-in changes percentage macro grams, never the day's calorie target.
-    'adjust_macros_with_exercise',
-  ];
+  const notCalorieRules = ['timezone', 'add_exercise_water_to_goal'];
 
   // A setting read here but missing from CALORIE_RULE_FIELDS would rewrite
   // past days again whenever it changes (#1795). Add it to the shared list,

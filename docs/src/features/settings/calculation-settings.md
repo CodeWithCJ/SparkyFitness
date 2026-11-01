@@ -119,8 +119,11 @@ base goal, without adding the workout again. Resting-only projection changes are
 not added as exercise.
 
 Targets follow the selected diary date and update when activity is edited, removed
-or synced. The saved base goals and percentage split remain unchanged. Turn the
-option off to restore the existing macro calculation.
+or synced. The saved base goals and percentage split remain unchanged. Changes to
+this option apply from today in your timezone, alongside the other recorded
+calorie settings. Earlier days keep their own on/off choice: enabling it does not
+raise past macro targets, and disabling it does not remove past exercise credit.
+Turning it off restores the existing macro calculation from today onward.
 
 ## 4. Goal Mode & Caloric Deficits
 

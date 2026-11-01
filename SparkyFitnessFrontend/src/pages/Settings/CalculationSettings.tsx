@@ -1462,7 +1462,7 @@ const CalculationSettings = () => {
           >
             {t(
               'calculationSettings.adjustMacrosWithExerciseHint',
-              'Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged.'
+              'Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged. Changes apply from today; earlier days keep their setting.'
             )}
           </p>
         </div>

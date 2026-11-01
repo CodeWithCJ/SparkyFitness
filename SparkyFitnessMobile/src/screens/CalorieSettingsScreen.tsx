@@ -692,7 +692,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             <Text className="text-sm text-text-secondary mt-1">
               {t('calorieSettings.adjustMacrosWithExerciseHint', {
                 defaultValue:
-                  'Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged.',
+                  'Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged. Changes apply from today; earlier days keep their setting.',
               })}
             </Text>
           </View>

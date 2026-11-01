@@ -663,7 +663,7 @@ CREATE POLICY select_policy ON public.user_preferences FOR SELECT TO PUBLIC USIN
 CREATE POLICY modify_policy ON public.user_preferences FOR ALL TO PUBLIC
 USING (authenticated_user_id() = user_id)
 WITH CHECK (authenticated_user_id() = user_id);
--- The calorie settings each past day used (#1795), written by a trigger when
+-- The calorie and percentage-macro settings each past day used (#1795), written by a trigger when
 -- user_preferences changes, so they follow the same owner-write/delegate-read rules.
 CREATE POLICY select_policy ON public.user_calorie_rule_history FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_calorie_rule_history FOR ALL TO PUBLIC

@@ -203,6 +203,7 @@ describe('dailySummaryService', () => {
       activity_level: 'active',
       use_external_bmr: false,
       include_bmr_in_net_calories: false,
+      adjust_macros_with_exercise: false,
     };
     vi.mocked(
       calorieRuleHistoryRepository.getCalorieRuleHistory

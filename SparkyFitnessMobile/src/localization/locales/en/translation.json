@@ -1189,7 +1189,7 @@
     "useExternalBmrHint": "Off by default — your chosen formula is always used until you turn this on. When enabled, a BMR recorded on a check-in or synced from a smart scale or health provider replaces the formula for that day, provided it is physiologically plausible for you.",
     "useExternalBmrIosNote": "Apple Health’s Resting Energy already includes light daily activity, so consider setting Activity Level to None (×1.0) to avoid counting it twice.",
     "adjustMacrosWithExercise": "Adjust percentage macro goals with exercise calories",
-    "adjustMacrosWithExerciseHint": "Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged.",
+    "adjustMacrosWithExerciseHint": "Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged. Changes apply from today; earlier days keep their setting.",
     "useMoveRingActiveCalories": "Use Move ring for active calories",
     "useMoveRingActiveCaloriesHint": "Off by default, active calories come from the Apple Health Active Energy total. When on, they come from your Move ring, so they match the Fitness app. The ring counts what your Apple Watch and iPhone measure, and workouts other apps save to Apple Health can add to it too. A day with no ring, such as when Activity access is off, uses the Active Energy total. Applies to days synced after the change."
   },

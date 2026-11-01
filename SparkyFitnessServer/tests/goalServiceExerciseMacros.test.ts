@@ -240,12 +240,14 @@ describe('percentage macro exercise earn-back', () => {
         ...CALORIE_RULE_DEFAULTS,
         effective_date: date,
         calorie_goal_adjustment_mode: 'percentage',
+        adjust_macros_with_exercise: true,
         exercise_calorie_percentage: 50,
       },
       {
         ...CALORIE_RULE_DEFAULTS,
         effective_date: '2026-10-21',
         calorie_goal_adjustment_mode: 'dynamic',
+        adjust_macros_with_exercise: true,
       },
     ]);
     vi.mocked(getAdaptiveActivityCalories).mockResolvedValue(
@@ -264,6 +266,49 @@ describe('percentage macro exercise earn-back', () => {
     expectMacros(goals['2026-10-21'], 2500);
   });
 
+  it.each([
+    { current: false, past: true, pastCalories: 2500, currentCalories: 2000 },
+    { current: true, past: false, pastCalories: 2000, currentCalories: 2500 },
+  ])(
+    'keeps the historical macro opt-in $past when the current setting is $current',
+    async ({ current, past, pastCalories, currentCalories }) => {
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        ...basePreferences,
+        adjust_macros_with_exercise: current,
+      });
+      vi.mocked(
+        calorieRuleHistoryRepository.getCalorieRuleHistory
+      ).mockResolvedValue([
+        {
+          ...CALORIE_RULE_DEFAULTS,
+          effective_date: date,
+          adjust_macros_with_exercise: past,
+        },
+        {
+          ...CALORIE_RULE_DEFAULTS,
+          effective_date: '2026-10-21',
+          adjust_macros_with_exercise: current,
+        },
+      ]);
+      vi.mocked(getAdaptiveActivityCalories).mockResolvedValue(
+        new Map([
+          [date, 500],
+          ['2026-10-21', 500],
+        ])
+      );
+
+      const goals = await goalService.getUserGoalsForRange(
+        'user-1',
+        date,
+        '2026-10-21',
+        true
+      );
+      expectMacros(goals[date], pastCalories);
+      expectMacros(goals['2026-10-21'], currentCalories);
+      expect(getAdaptiveActivityCalories).toHaveBeenCalledTimes(1);
+    }
+  );
+
   it('loads device totals for a past projection day even when today uses a fixed budget', async () => {
     vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
       ...basePreferences,
@@ -276,6 +321,7 @@ describe('percentage macro exercise earn-back', () => {
         ...CALORIE_RULE_DEFAULTS,
         effective_date: date,
         calorie_goal_adjustment_mode: 'tdee',
+        adjust_macros_with_exercise: true,
       },
     ]);
     expectMacros((await goalsFor())[date], 2300);

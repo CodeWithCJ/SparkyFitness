@@ -173,6 +173,7 @@ async function getUserGoalsForRange(
   if (adjust && userPreferences) {
     let anyAdaptiveDay = false;
     let anyDeviceProjectionDay = false;
+    let anyExerciseMacroDay = false;
     for (
       let day = parseISO(startDate);
       !isAfter(day, end);
@@ -180,13 +181,14 @@ async function getUserGoalsForRange(
     ) {
       const dayPreferences = preferencesOn(format(day, 'yyyy-MM-dd'));
       const adjustmentMode = dayPreferences?.calorie_goal_adjustment_mode;
+      anyExerciseMacroDay ||= !!dayPreferences?.adjust_macros_with_exercise;
       anyAdaptiveDay ||=
         adjustmentMode === 'adaptive' ||
         dayPreferences?.goal_mode_calculation_method === 'adaptive';
       anyDeviceProjectionDay ||=
         adjustmentMode === 'tdee' || adjustmentMode === 'smart';
     }
-    if (userPreferences.adjust_macros_with_exercise) {
+    if (anyExerciseMacroDay) {
       includeMacroCheckin =
         activityAccess.includeCheckin ??
         (await canAccessUserData(userId, 'checkin_read', actorUserId));
@@ -492,8 +494,8 @@ async function getUserGoalsForRange(
       )
     ) {
       let macroCalories = Number(processedGoals.calories);
-      if (adjust && userPreferences?.adjust_macros_with_exercise) {
-        const dayPreferences = preferencesOn(dateStr);
+      const dayPreferences = adjust ? preferencesOn(dateStr) : null;
+      if (dayPreferences?.adjust_macros_with_exercise) {
         // Use the same budget policy as the diary, including adaptive suppression
         // and Device Projection. Resting BMR is not exercise earn-back.
         const credit = computeExerciseMacroCredit({

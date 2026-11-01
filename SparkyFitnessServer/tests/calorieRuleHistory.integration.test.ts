@@ -8,6 +8,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import pg from 'pg';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { CALORIE_RULE_FIELDS, todayInZone } from '@workspace/shared';
@@ -61,6 +62,7 @@ const before: CalorieRules = {
   activity_level: 'not_much',
   use_external_bmr: false,
   include_bmr_in_net_calories: false,
+  adjust_macros_with_exercise: false,
 };
 
 // Typed by field, so a new calorie rule cannot be added without a value here.
@@ -79,6 +81,7 @@ const changed: Record<CalorieRuleField, CalorieRules[CalorieRuleField]> = {
   activity_level: 'active',
   use_external_bmr: true,
   include_bmr_in_net_calories: true,
+  adjust_macros_with_exercise: true,
 };
 
 describe.runIf(RUN)('calorie rule history', () => {
@@ -204,6 +207,75 @@ describe.runIf(RUN)('calorie rule history', () => {
         ...before,
         goal_mode: 'bulk',
         activity_level: 'active',
+        effective_date: todayInZone('UTC'),
+      },
+    ]);
+  });
+
+  it.each([true, false])(
+    'reapplies the macro migration with existing history %s without changing past opt-ins',
+    async (hasHistory) => {
+      await preferenceRepository.updateUserPreferences(userId, {
+        adjust_macros_with_exercise: true,
+      });
+      // A preview had the preference before history gained the matching column.
+      await db.query(
+        hasHistory
+          ? 'UPDATE public.user_calorie_rule_history SET adjust_macros_with_exercise = false WHERE user_id = $1'
+          : 'DELETE FROM public.user_calorie_rule_history WHERE user_id = $1',
+        [userId]
+      );
+      const migration = await readFile(
+        new URL(
+          '../db/migrations/20261024170000_add_exercise_macro_adjustment.sql',
+          import.meta.url
+        ),
+        'utf8'
+      );
+      const enabledHistory = [
+        { ...before, effective_date: '-infinity' },
+        {
+          ...before,
+          adjust_macros_with_exercise: true,
+          effective_date: todayInZone('UTC'),
+        },
+      ];
+
+      await db.query(migration);
+      expect(await history()).toEqual(enabledHistory);
+      await db.query(migration);
+      expect(await history()).toEqual(enabledHistory);
+
+      await preferenceRepository.updateUserPreferences(userId, {
+        adjust_macros_with_exercise: false,
+      });
+      await db.query(migration);
+      expect(await history()).toEqual([
+        { ...before, effective_date: '-infinity' },
+        { ...before, effective_date: todayInZone('UTC') },
+      ]);
+    }
+  );
+
+  it('an initially enabled macro preference starts today and leaves earlier days disabled', async () => {
+    await db.query('DELETE FROM public.user_preferences WHERE user_id = $1', [
+      userId,
+    ]);
+    await db.query(
+      'DELETE FROM public.user_calorie_rule_history WHERE user_id = $1',
+      [userId]
+    );
+    await preferenceRepository.upsertUserPreferences({
+      user_id: userId,
+      ...before,
+      adjust_macros_with_exercise: true,
+      timezone: 'UTC',
+    });
+    expect(await history()).toEqual([
+      { ...before, effective_date: '-infinity' },
+      {
+        ...before,
+        adjust_macros_with_exercise: true,
         effective_date: todayInZone('UTC'),
       },
     ]);
