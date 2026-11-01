@@ -9658,6 +9658,7 @@
     "empty": "No lab results yet. Add a result like HbA1c, LDL or vitamin D and track it over time.",
     "latest": "Latest",
     "loadFailed": "Could not load your lab results.",
+    "markerDataFailed": "Could not load your saved results, so the unit and range cannot be filled in.",
     "noMatches": "No matching markers",
     "noResults": "No results",
     "notesPlaceholder": "Add a note (optional)",

@@ -71,7 +71,12 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const calendarRef = useRef<CalendarSheetRef>(null);
 
-  const { markers, isLoading: markersLoading } = useLabMarkers();
+  const {
+    markers,
+    isLoading: markersLoading,
+    isError: markersError,
+    refetch: refetchMarkers,
+  } = useLabMarkers();
   const labels = useLabMarkerLabels();
   const save = useSaveLabResult();
   const { profile, isLoading: profileLoading } = useProfile();
@@ -146,7 +151,9 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   // sex, neither of which is known until the markers and the profile have
   // loaded. A marker chosen before then is remembered and filled in on arrival
   // rather than from the bare preset.
-  const dataLoading = markersLoading || profileLoading;
+  // A failed load is no different from a slow one for this purpose: the
+  // saved results are missing, so the form must not fall back to the preset.
+  const dataLoading = markersLoading || profileLoading || markersError;
   const pendingFill = useRef<Extract<
     Selection,
     { kind: 'builtin' | 'custom' }
@@ -293,8 +300,9 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
       : selection?.kind === 'custom'
         ? customMarker !== undefined
         : selection !== null;
-  // A marker picked before the data loaded has no unit or range yet: saving
-  // then would store the result with a blank unit.
+  // A marker picked before the data loaded (or when it failed to load) has no
+  // unit or range yet: saving then would store the result under the wrong or
+  // a blank unit.
   const fillPending =
     dataLoading &&
     (selection?.kind === 'builtin' || selection?.kind === 'custom');
@@ -462,6 +470,25 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 </TouchableOpacity>
               )}
             </View>
+
+            {markersError && (
+              <View className="flex-row items-center justify-between bg-surface rounded-xl px-4 py-3">
+                <Text className="text-text-secondary text-sm flex-1 mr-3">
+                  {t('labs.markerDataFailed', {
+                    defaultValue:
+                      'Could not load your saved results, so the unit and range cannot be filled in.',
+                  })}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => void refetchMarkers()}
+                  accessibilityRole="button"
+                >
+                  <Text className="text-sm font-semibold text-accent-primary">
+                    {t('common.retry', { defaultValue: 'Retry' })}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View className="gap-1.5">
               <Text className="text-text-secondary text-sm font-medium">

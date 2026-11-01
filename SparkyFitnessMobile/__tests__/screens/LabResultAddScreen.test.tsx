@@ -65,12 +65,17 @@ const hba1c = {
   },
 };
 
-const markersState = (markers: unknown[], isLoading: boolean) =>
+const refetchMarkers = jest.fn();
+const markersState = (
+  markers: unknown[],
+  isLoading: boolean,
+  isError = false
+) =>
   jest.mocked(useLabMarkers).mockReturnValue({
     markers,
     isLoading,
-    isError: false,
-    refetch: jest.fn(),
+    isError,
+    refetch: refetchMarkers,
   } as never);
 
 describe('LabResultAddScreen prefill', () => {
@@ -239,5 +244,36 @@ describe('LabResultAddScreen prefill', () => {
 
     expect(getByLabelText('Unit').props.value).toBe('');
     expect(getByLabelText('Low').props.value).toBe('');
+  });
+
+  it('does not fill from the preset, and blocks Save, when the saved results fail to load', () => {
+    markersState([], false, true);
+    const { getByLabelText, getByText } = render(
+      <LabResultAddScreen navigation={navigation} route={route} />
+    );
+
+    expect(getByLabelText('Unit').props.value).toBe('');
+    expect(getByText(/Could not load your saved results/)).toBeTruthy();
+    fireEvent.changeText(getByLabelText('Result'), '5.1');
+    expect(getByLabelText('save-bar').props.accessibilityState.disabled).toBe(
+      true
+    );
+  });
+
+  it('fills the form from the saved result once a retry succeeds', () => {
+    markersState([], false, true);
+    const { getByLabelText, getByText, queryByText, rerender } = render(
+      <LabResultAddScreen navigation={navigation} route={route} />
+    );
+
+    fireEvent.press(getByText('Retry'));
+    expect(refetchMarkers).toHaveBeenCalled();
+
+    markersState([hba1c], false, false);
+    rerender(<LabResultAddScreen navigation={navigation} route={route} />);
+
+    expect(getByLabelText('Unit').props.value).toBe('mmol/mol');
+    expect(getByLabelText('Low').props.value).toBe('20');
+    expect(queryByText(/Could not load your saved results/)).toBeNull();
   });
 });
