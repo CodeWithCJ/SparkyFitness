@@ -73,6 +73,10 @@ describe('hevyService.syncHevyData', () => {
       async () => ({ data: { data: { id: 'hevy-user' } } }),
       [async () => workoutPage('w-1', 2), async () => workoutPage('w-2', 2)]
     );
+    vi.mocked(hevyDataProcessor.processHevyWorkouts).mockResolvedValueOnce({
+      processed: 2,
+      failed: 0,
+    });
 
     const result = await hevyService.syncHevyData(
       'user-1',
@@ -153,7 +157,7 @@ describe('hevyService.syncHevyData', () => {
 
     expect(result).toEqual({
       success: true,
-      processedCount: 1,
+      processedCount: 0,
       source: 'live_api',
     });
     expect(lastSyncUpdates()).toHaveLength(0);
@@ -192,5 +196,59 @@ describe('hevyService.syncHevyData', () => {
       'local'
     );
     expect(lastSyncUpdates()).toHaveLength(1);
+  });
+
+  describe('replaying a raw bundle', () => {
+    const replay = (providerId?: string) =>
+      hevyService.syncHevyData(
+        'user-1',
+        'user-1',
+        false,
+        providerId,
+        null,
+        null,
+        'local'
+      );
+
+    beforeEach(() => {
+      vi.mocked(loadRawBundle).mockReturnValue({
+        last_updated: '2026-11-01',
+        responses: {
+          raw_workouts_page_1: { data: { workouts: [{ id: 'w-1' }] } },
+        },
+      });
+    });
+
+    it('updates only the chosen provider', async () => {
+      await replay('provider-123');
+
+      const [[sql, params]] = lastSyncUpdates();
+      expect(sql).toContain('WHERE id = $1 AND user_id = $2');
+      expect(sql).not.toContain('provider_type');
+      expect(params).toEqual(['provider-123', 'user-1']);
+    });
+
+    it('falls back to the provider the lookup picks', async () => {
+      mockClient.query.mockResolvedValueOnce({
+        rows: [{ id: 'provider-456' }],
+      });
+
+      await replay();
+
+      expect(lastSyncUpdates()).toEqual([
+        [expect.any(String), ['provider-456', 'user-1']],
+      ]);
+    });
+
+    it('reports processed workouts, not fetched ones', async () => {
+      vi.mocked(hevyDataProcessor.processHevyWorkouts).mockResolvedValueOnce({
+        processed: 0,
+        failed: 1,
+      });
+
+      const result = await replay('provider-123');
+
+      expect(result.processedCount).toBe(0);
+    });
   });
 });

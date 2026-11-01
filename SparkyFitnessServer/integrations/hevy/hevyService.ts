@@ -225,25 +225,30 @@ async function syncHevyData(
           }
         }
       });
+      let processedWorkouts = 0;
       let failedWorkouts = 0;
       if (allWorkouts.length > 0) {
-        const { failed } = await hevyDataProcessor.processHevyWorkouts(
-          userId,
-          createdByUserId,
-          allWorkouts,
-          tz
-        );
+        const { processed, failed } =
+          await hevyDataProcessor.processHevyWorkouts(
+            userId,
+            createdByUserId,
+            allWorkouts,
+            tz
+          );
+        processedWorkouts = processed;
         failedWorkouts = failed;
       }
       // 3. Update last sync time, unless a workout failed
       if (failedWorkouts === 0) {
+        const targetProviderId =
+          providerId || (await getHevyProviderId(userId));
         const client = await getSystemClient();
         try {
           await client.query(
             `UPDATE external_data_providers
                        SET last_sync_at = NOW(), updated_at = NOW()
-                       WHERE user_id = $1 AND provider_type = 'hevy'`,
-            [userId]
+                       WHERE id = $1 AND user_id = $2`,
+            [targetProviderId, userId]
           );
         } finally {
           client.release();
@@ -260,7 +265,7 @@ async function syncHevyData(
       );
       return {
         success: true,
-        processedCount: allWorkouts.length,
+        processedCount: processedWorkouts,
         source: 'local_raw_replay',
         bundle_updated: bundle.last_updated,
       };
@@ -348,17 +353,18 @@ async function syncHevyData(
         tz
       );
     }
+    let totalProcessed = 0;
     let failedWorkouts = 0;
     if (allWorkouts.length > 0) {
-      const { failed } = await hevyDataProcessor.processHevyWorkouts(
+      const { processed, failed } = await hevyDataProcessor.processHevyWorkouts(
         userId,
         createdByUserId,
         allWorkouts,
         tz
       );
+      totalProcessed = processed;
       failedWorkouts = failed;
     }
-    const totalProcessed = allWorkouts.length;
     // 3. Update last sync time, unless a workout page or a workout failed: the
     // scheduler reads last_sync_at to decide when a daily sync is due, so a
     // partial sync must leave it alone to be retried on the next tick. A failed
