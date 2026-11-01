@@ -182,6 +182,27 @@ describe('planLabImport', () => {
     expect(row?.warning).toBeNull();
   });
 
+  it('does not flag sodium printed in mEq/L after results in mmol/L', () => {
+    const markers = buildLabMarkers(
+      [],
+      [latest({ marker_key: 'sodium', unit: 'mmol/L' })]
+    );
+    const [row] = planLabImport(
+      [
+        scanned({
+          name: 'Sodium',
+          marker_key: 'sodium',
+          unit: 'mEq/L',
+          value: 140,
+        }),
+      ],
+      markers,
+      {},
+      null
+    );
+    expect(row?.warning).toBeNull();
+  });
+
   it('does not flag a marker with no earlier results', () => {
     const [row] = planLabImport(
       [scanned({ unit: 'mmol/L' })],

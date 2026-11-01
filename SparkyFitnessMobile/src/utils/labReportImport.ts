@@ -120,7 +120,7 @@ export function planLabImport(
     const fallbackRange =
       unit !== '' &&
       defaultRangeUnit !== '' &&
-      !sameLabUnit(unit, defaultRangeUnit)
+      !sameLabUnit(unit, defaultRangeUnit, preset?.key)
         ? { low: null, high: null }
         : defaultRange;
 
@@ -135,7 +135,9 @@ export function planLabImport(
       reportRange,
       blocked: duplicate ? 'duplicate' : null,
       warning:
-        earlierUnit !== null && unit !== '' && !sameLabUnit(unit, earlierUnit)
+        earlierUnit !== null &&
+        unit !== '' &&
+        !sameLabUnit(unit, earlierUnit, preset?.key)
           ? 'unit_differs'
           : null,
     };
