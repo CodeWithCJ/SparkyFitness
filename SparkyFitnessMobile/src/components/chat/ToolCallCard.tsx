@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import { linearLayoutTransition } from '../../utils/layoutTransition';
 import { useCSSVariable } from 'uniwind';
 import type { ToolCallMessagePart } from '@assistant-ui/react-native';
 import Icon from '../Icon';
@@ -106,7 +107,7 @@ export default function ToolCallCard({ part }: { part: ToolCallMessagePart }) {
 
   return (
     <Animated.View
-      layout={LinearTransition}
+      layout={linearLayoutTransition()}
       className="bg-surface border border-border-subtle rounded-xl my-1 overflow-hidden"
     >
       {isLookupTool(part.toolName) ? (

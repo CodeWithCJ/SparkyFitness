@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { View } from 'react-native';
-import Animated, { LinearTransition } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
+import { linearLayoutTransition } from '../utils/layoutTransition';
 import type { PresetSessionResponse } from '@workspace/shared';
 import ActiveWorkoutExerciseCard from './ActiveWorkoutExerciseCard';
 import type { SetRowAccessoryHandle } from './ActiveWorkoutSetRow';
@@ -161,7 +162,7 @@ function ActiveWorkoutExerciseList({
         return (
           <Animated.View
             key={exercise.id}
-            layout={LinearTransition.duration(300)}
+            layout={linearLayoutTransition(300)}
             onLayout={(e) => {
               cardOffsetsRef.current[exercise.id] = e.nativeEvent.layout.y;
             }}
