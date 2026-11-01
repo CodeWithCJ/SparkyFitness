@@ -101,6 +101,23 @@ const mockAccessoryHandles: Record<
   { log: jest.Mock; focusField: jest.Mock; advance: jest.Mock }
 > = {};
 
+// The focus view's own behaviour is covered in its component test; here it
+// only has to show up in place of the list, with the screen's handlers.
+jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ activeExerciseId, children }: any) => (
+      <View
+        testID="focus-view"
+        accessibilityLabel={`active:${String(activeExerciseId)}`}
+      >
+        {children}
+      </View>
+    ),
+  };
+});
+
 // Trigger pressables standing in for each card, driving the screen's wiring.
 jest.mock('../../src/components/ActiveWorkoutExerciseCard', () => {
   const React = require('react');
@@ -1573,5 +1590,47 @@ describe('ActiveWorkoutScreen session cleared from outside the screen', () => {
     );
 
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ActiveWorkoutScreen focus view', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    __resetActiveWorkoutStoreForTests();
+    __resetAppPreferencesStoreForTests();
+    useActiveWorkoutStore.getState().startWorkout(makeSession());
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('keeps the list in list mode', () => {
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    expect(getByTestId('card-ex-a')).toBeTruthy();
+    expect(queryByTestId('focus-view')).toBeNull();
+  });
+
+  it('shows the focus view instead of the list in focus mode, keeping Add and End', () => {
+    useAppPreferencesStore.getState().setActiveWorkoutView('focus');
+    const { getByTestId, getByText, queryByTestId } = renderScreen();
+
+    expect(getByTestId('focus-view').props.accessibilityLabel).toBe(
+      'active:ex-a'
+    );
+    expect(queryByTestId('card-ex-a')).toBeNull();
+    expect(getByText('Add an Exercise')).toBeTruthy();
+    expect(getByText('End Workout')).toBeTruthy();
+  });
+
+  it('ignores focus mode for the interval formats', () => {
+    useAppPreferencesStore.getState().setActiveWorkoutView('focus');
+    useActiveWorkoutStore.setState({ workoutFormat: 'tabata' });
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    expect(getByTestId('card-ex-a')).toBeTruthy();
+    expect(queryByTestId('focus-view')).toBeNull();
   });
 });

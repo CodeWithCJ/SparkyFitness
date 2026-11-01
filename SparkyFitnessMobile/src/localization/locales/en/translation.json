@@ -558,7 +558,20 @@
         "decreaseWeight": "Decrease weight for set {{setNumber}}",
         "increaseReps": "Increase reps for set {{setNumber}}",
         "decreaseReps": "Decrease reps for set {{setNumber}}"
-      }
+      },
+      "chips": {
+        "label": "Exercise {{number}} of {{total}}, {{name}}, {{status}}",
+        "done": "done",
+        "inProgress": "in progress",
+        "todo": "not started"
+      },
+      "plan": "Plan: {{sets}} × {{reps}}",
+      "lastTime": "Last time: {{sets}}",
+      "previous": "Previous",
+      "next": "Next",
+      "previousLabel": "Previous exercise, {{name}}",
+      "nextLabel": "Next exercise, {{name}}",
+      "backToCurrent": "Back to current"
     }
   },
   "addSheet": {
