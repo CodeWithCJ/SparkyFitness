@@ -91,9 +91,9 @@ export const labResultStatus = (
   );
 };
 
-/** A lab number in the app locale, keeping up to six decimals. */
+/** A lab number in the app locale, at the precision it was entered (no rounding). */
 const labNumber = (value: number): string =>
-  formatLocalizedNumber(value, { maximumFractionDigits: 6 });
+  formatLocalizedNumber(value, { maximumFractionDigits: 20 });
 
 /** "4 - 5.6 %", "< 200 mg/dL", "> 40 mg/dL", or null with no range. */
 export const formatLabRange = (
