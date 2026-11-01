@@ -268,7 +268,11 @@ router.get('/ready', async (req, res) => {
     pendingReadiness = undefined;
   });
   const { code, body } = await pendingReadiness;
-  // An evaluation that started before a restore must not report it ready.
+  // An evaluation that started before shutdown or a restore must not report
+  // the instance ready.
+  if (isShuttingDown()) {
+    return res.status(503).json({ status: 'DRAINING' });
+  }
   if (isRestoreRunning()) {
     return res.status(503).json({ status: 'RESTORING' });
   }

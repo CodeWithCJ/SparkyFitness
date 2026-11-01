@@ -257,6 +257,18 @@ describe('GET /api/health/ready', () => {
     expect(authConnect).toHaveBeenCalledOnce();
   });
 
+  it('answers draining when shutdown starts during the check', async () => {
+    appConnect.mockImplementation(async () => {
+      draining.value = true;
+      return { query: appQuery, release: appRelease };
+    });
+
+    const response = await request(app).get('/api/health/ready');
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({ status: 'DRAINING' });
+  });
+
   it('is not ready while draining, without touching the database', async () => {
     draining.value = true;
 
