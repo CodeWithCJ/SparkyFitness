@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import Animated, {
   FadeInDown,
-  FadeOutUp,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -995,7 +994,6 @@ function ActiveWorkoutExerciseCard({
 
       <Animated.View
         entering={hasRenderedCollapsed ? FadeInDown.duration(200) : undefined}
-        exiting={FadeOutUp.duration(150)}
       >
         {/* Apple-Style Modern Progression Configuration (Preset Edit Mode) */}
         {isEdit && onUpdateProgression != null && (

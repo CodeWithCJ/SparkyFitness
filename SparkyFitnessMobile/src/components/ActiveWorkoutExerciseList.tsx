@@ -1,6 +1,5 @@
 import { memo } from 'react';
 import { View } from 'react-native';
-import Animated, { LinearTransition } from 'react-native-reanimated';
 import type { PresetSessionResponse } from '@workspace/shared';
 import ActiveWorkoutExerciseCard from './ActiveWorkoutExerciseCard';
 import type { SetRowAccessoryHandle } from './ActiveWorkoutSetRow';
@@ -159,9 +158,10 @@ function ActiveWorkoutExerciseList({
         );
 
         return (
-          <Animated.View
+          // No Reanimated layout transition: an interrupted one left the cards
+          // below an expanded card at their old offsets, drawn over its sets.
+          <View
             key={exercise.id}
-            layout={LinearTransition.duration(300)}
             onLayout={(e) => {
               cardOffsetsRef.current[exercise.id] = e.nativeEvent.layout.y;
             }}
@@ -185,7 +185,7 @@ function ActiveWorkoutExerciseList({
             ) : (
               card
             )}
-          </Animated.View>
+          </View>
         );
       })}
     </>
