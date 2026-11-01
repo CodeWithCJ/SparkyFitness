@@ -104,14 +104,24 @@ export async function attachHeartRateToLoggedWorkouts(
   for (const span of mergeWindows(workouts)) {
     // Same spacing as the rest of the sync: Google Health has per-minute quotas.
     if (pauseMs > 0) await new Promise((r) => setTimeout(r, pauseMs));
-    const samples = parseHeartRateSamples(
-      await fetchHeartRateSamples(
-        userId,
-        new Date(span.startMs).toISOString(),
-        new Date(span.endMs + SETTLE_MS).toISOString(),
-        accessToken
-      )
-    );
+    // One failed request skips only this span's workouts; the rest still run.
+    let samples: HeartRateSampleRequest[];
+    try {
+      samples = parseHeartRateSamples(
+        await fetchHeartRateSamples(
+          userId,
+          new Date(span.startMs).toISOString(),
+          new Date(span.endMs + SETTLE_MS).toISOString(),
+          accessToken
+        )
+      );
+    } catch (error) {
+      log(
+        'warn',
+        `[googleHealthWorkoutHeartRate] Could not fetch heart rate for ${new Date(span.startMs).toISOString()} to ${new Date(span.endMs).toISOString()} for user ${userId}: ${(error as Error).message}`
+      );
+      continue;
+    }
     const last = samples[samples.length - 1];
     const syncedThroughMs = last ? Date.parse(last.t) : -Infinity;
 

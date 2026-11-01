@@ -285,4 +285,34 @@ describe('attachHeartRateToLoggedWorkouts', () => {
       )
     ).resolves.toBe(1);
   });
+
+  it('keeps going when the readings for one span cannot be fetched', async () => {
+    // More than an hour apart, so each workout gets its own request.
+    vi.mocked(getWorkoutEntriesWithoutHeartRate).mockResolvedValue([
+      entry('morning', '10:00:00', 20),
+      entry('afternoon', '13:00:00', 20),
+    ]);
+    vi.mocked(fetchHeartRateSamples)
+      .mockRejectedValueOnce(new Error('quota exceeded'))
+      .mockResolvedValueOnce(
+        readings('2026-11-02T17:55:00Z', '2026-11-02T18:30:00Z')
+      );
+
+    await expect(
+      attachHeartRateToLoggedWorkouts(
+        userId,
+        '2026-11-01',
+        '2026-11-02',
+        'America/New_York',
+        'token',
+        0,
+        NOW
+      )
+    ).resolves.toBe(1);
+    expect(fetchHeartRateSamples).toHaveBeenCalledTimes(2);
+    const calls = vi.mocked(
+      exerciseEntryService.attachWatchTelemetryToExerciseEntry
+    ).mock.calls;
+    expect(calls.map((call) => call[2])).toEqual(['afternoon']);
+  });
 });
