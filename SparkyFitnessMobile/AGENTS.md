@@ -426,6 +426,8 @@ When reviewing an API issue, trace screen/hook -> API client -> server route -> 
 const androidService = require('../../src/services/healthConnectService.ts');
 ```
 
+- `pnpm run test:android` runs the whole suite with `Platform.OS === 'android'` (`jest.android.config.js`). It is a diagnostic, not part of CI: tests of iOS-only behavior and tests that query `role: 'switch'` fail there by design (the testing library only recognizes the iOS switch). Compare its failure list before and after a change to spot new Android-only regressions.
+
 - Health sync changes: rerun `useSyncHealthData`, `backgroundSyncService`, `healthDataApi`, `healthConnectService`, `healthConnectService.ios`, and relevant `services/healthconnect` / `services/healthkit` tests.
 - Health writeback changes: rerun `healthconnect/writeback`, `healthkit/writeback`, writeback mapper tests, `HealthDataWriteback`, `backgroundSyncService`, notifications where relevant, and sync tests.
 - Food library/form/unit/barcode changes: rerun `FoodForm`, `FoodUnitSelectorSheet`, `LibraryScreen`, `FoodDetailScreen`, `FoodFormScreen`, `EditBarcodeScreen`, `useFoodsLibrary`, `useFoodVariants`, `useDeleteFood`, `foodsApi`, `foodDetails`, and unit conversion tests.

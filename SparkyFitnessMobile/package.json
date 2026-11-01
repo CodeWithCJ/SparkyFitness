@@ -33,6 +33,7 @@
     "test:watch": "jest --watchAll",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "test:android": "jest --config jest.android.config.js",
     "typecheck": "tsc --noEmit",
     "format": "prettier . --write --log-level warn",
     "format:check": "prettier . --check",
