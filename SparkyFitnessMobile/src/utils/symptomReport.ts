@@ -1,6 +1,8 @@
-import type {
-  SymptomEntryResponse,
-  SymptomFreeDayResponse,
+import {
+  symptomEntryDays,
+  type SymptomDayWindow,
+  type SymptomEntryResponse,
+  type SymptomFreeDayResponse,
 } from '@workspace/shared';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -42,21 +44,29 @@ const CALENDAR_SCALE_MAX = 10;
 
 export interface DaySummary {
   tone: DayTone;
-  /** Entries logged that day. */
+  /** Entries that cover that day. */
   count: number;
 }
 
 /**
- * Per-day tone for the calendar. A day with an entry takes the worst entry's
- * tone, a day marked symptom-free (and with no entry) is green, and any other
- * day is absent: unknown, not symptom-free.
+ * Per-day tone for the calendar, for the days in `window`. A day an entry
+ * covers takes the worst entry's tone (an episode covers every day from its
+ * start to its end, or to today while it is still going), a day marked
+ * symptom-free (and with no entry) is green, and any other day is absent:
+ * unknown, not symptom-free.
  */
 export function summarizeDays(
   entries: readonly Pick<
     SymptomEntryResponse,
-    'entry_date' | 'severity' | 'peak_severity' | 'source'
+    | 'entry_date'
+    | 'started_at'
+    | 'ended_at'
+    | 'severity'
+    | 'peak_severity'
+    | 'source'
   >[],
-  freeDays: readonly Pick<SymptomFreeDayResponse, 'entry_date'>[]
+  freeDays: readonly Pick<SymptomFreeDayResponse, 'entry_date'>[],
+  window: SymptomDayWindow
 ): Map<string, DaySummary> {
   const worst = new Map<string, { ratio: number; count: number }>();
   for (const e of entries) {
@@ -65,11 +75,13 @@ export function summarizeDays(
       e.severity != null
         ? (e.peak_severity ?? e.severity) / CALENDAR_SCALE_MAX
         : 0.1;
-    const prev = worst.get(e.entry_date);
-    worst.set(e.entry_date, {
-      ratio: Math.max(prev?.ratio ?? 0, ratio),
-      count: (prev?.count ?? 0) + 1,
-    });
+    for (const day of symptomEntryDays(e, window)) {
+      const prev = worst.get(day);
+      worst.set(day, {
+        ratio: Math.max(prev?.ratio ?? 0, ratio),
+        count: (prev?.count ?? 0) + 1,
+      });
+    }
   }
   const days = new Map<string, DaySummary>();
   for (const [day, { ratio, count }] of worst) {

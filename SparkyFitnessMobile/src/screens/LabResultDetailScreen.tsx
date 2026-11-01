@@ -25,6 +25,7 @@ import {
 } from '../hooks/useLabResults';
 import { formatDateLabel } from '../utils/dateUtils';
 import {
+  effectiveLabRange,
   formatLabRange,
   formatLabValue,
   labHistoryPoints,
@@ -75,13 +76,7 @@ const LabResultDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // The latest result's own range wins, then the marker's.
   const unit = latest?.unit || marker?.unit || '';
-  const ownRange =
-    latest !== null &&
-    (latest.ref_range_low !== null || latest.ref_range_high !== null);
-  const low =
-    (ownRange ? latest.ref_range_low : fallback.ref_range_low) ?? null;
-  const high =
-    (ownRange ? latest.ref_range_high : fallback.ref_range_high) ?? null;
+  const { low, high } = effectiveLabRange(latest, fallback);
   const range = formatLabRange(low, high, unit);
 
   const confirmDelete = (resultId: string) => {

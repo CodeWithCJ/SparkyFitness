@@ -84,6 +84,25 @@ describe('LabResultsCard', () => {
     expect(getByText(/^1 outside the reference range/)).toBeTruthy();
   });
 
+  it('counts out-of-range results among markers the card does not list', () => {
+    const day = '2026-09-';
+    jest.mocked(useLabMarkers).mockReturnValue({
+      markers: [
+        marker('a', 'A', 100, { value: 50, date: `${day}25` }),
+        marker('b', 'B', 100, { value: 50, date: `${day}24` }),
+        marker('c', 'C', 100, { value: 50, date: `${day}23` }),
+        marker('d', 'D', 100, { value: 50, date: `${day}22` }),
+        marker('e', 'E', 100, { value: 130, date: `${day}02` }),
+        marker('f', 'F', 100, { value: 140, date: `${day}01` }),
+      ],
+    } as never);
+    const { getByText, queryByText } = render(
+      <LabResultsCard navigation={navigation} />
+    );
+    expect(queryByText('E')).toBeNull();
+    expect(getByText(/^2 outside the reference range/)).toBeTruthy();
+  });
+
   it('shows no outside-range count when no result has a range to miss', () => {
     jest.mocked(useLabMarkers).mockReturnValue({
       markers: [marker('b', 'HDL', null, { value: 55, date: '2026-09-01' })],

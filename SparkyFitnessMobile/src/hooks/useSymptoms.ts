@@ -167,15 +167,19 @@ export function useOngoingEpisodes(enabled = true) {
 export function useSymptomEntriesDetailed({
   fromDate,
   toDate,
+  overlapping = false,
   enabled = true,
 }: {
   fromDate: string;
   toDate: string;
+  /** Also the episodes that overlap the range without being logged in it. */
+  overlapping?: boolean;
   enabled?: boolean;
 }) {
   const query = useQuery<SymptomEntryResponse[]>({
-    queryKey: symptomEntriesDetailedQueryKey(fromDate, toDate),
-    queryFn: () => fetchSymptomEntriesDetailed(fromDate, toDate),
+    queryKey: symptomEntriesDetailedQueryKey(fromDate, toDate, overlapping),
+    queryFn: () =>
+      fetchSymptomEntriesDetailed(fromDate, toDate, { overlapping }),
     enabled,
   });
   useRefetchOnFocus(query.refetch, enabled);

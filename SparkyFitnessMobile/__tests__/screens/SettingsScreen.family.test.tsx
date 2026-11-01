@@ -31,6 +31,14 @@ jest.mock('../../src/hooks', () => ({
   queryClient: { getQueryCache: () => ({ getAll: () => [] }) },
 }));
 
+jest.mock('../../src/hooks/useNfcSupport', () => ({
+  useNfcSupport: () => ({
+    supported: false,
+    enabled: false,
+    isLoading: false,
+    refetch: jest.fn(),
+  }),
+}));
 jest.mock('../../src/hooks/useDiscreetMode', () => ({
   useDiscreetMode: () => ({ discreetMode: false }),
 }));

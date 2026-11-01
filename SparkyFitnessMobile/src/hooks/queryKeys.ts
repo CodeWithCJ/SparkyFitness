@@ -36,6 +36,9 @@ export const profileQueryKey = ['userProfile'] as const;
 
 export const waterContainersQueryKey = ['waterContainers'] as const;
 
+/** The person's NFC tags and the action each one runs. */
+export const actionTagsQueryKey = ['actionTags'] as const;
+
 /** A day's individual logged drinks — the rows behind the day's water total. */
 export const waterIntakeLogQueryKey = (date: string) =>
   ['waterIntakeLog', date] as const;
@@ -432,10 +435,16 @@ export const customMoodsQueryKey = ['customMoods'] as const;
 export const symptomEntriesQueryKey = (fromDate: string, toDate: string) =>
   ['symptomEntries', fromDate, toDate] as const;
 export const symptomEntriesRootQueryKey = ['symptomEntries'] as const;
+// Overlapping lists get their own key: the same range without the flag holds
+// fewer entries (the history screen's 30 days can match a calendar month).
 export const symptomEntriesDetailedQueryKey = (
   fromDate: string,
-  toDate: string
-) => ['symptomEntries', 'detailed', fromDate, toDate] as const;
+  toDate: string,
+  overlapping = false
+) =>
+  overlapping
+    ? (['symptomEntries', 'detailed', fromDate, toDate, 'overlapping'] as const)
+    : (['symptomEntries', 'detailed', fromDate, toDate] as const);
 export const symptomOngoingQueryKey = ['symptomOngoing'] as const;
 export const symptomDefinitionsQueryKey = ['symptomDefinitions'] as const;
 export const symptomOptionsQueryKey = ['symptomOptions'] as const;
