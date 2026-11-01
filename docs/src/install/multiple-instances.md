@@ -22,7 +22,18 @@ The Helm chart handles this when Helm can read the cluster: it generates the pas
 
 Uploaded images and backups are stored on the server's disk. Every instance must mount the same uploads and backup folders, or a file uploaded through one instance will be missing on the others.
 
-With Helm, the chart's default volumes are `ReadWriteOnce`, which usually cannot be attached to pods on different nodes. Set `server.persistence.uploads.accessMode` and `server.persistence.backup.accessMode` to `ReadWriteMany` with a StorageClass that supports it, and switch `server.strategy.type` to `RollingUpdate`. The access mode is fixed when a volume is created, so an existing install needs new volumes with its data copied over.
+With Helm, the chart's default volumes are `ReadWriteOnce`, which usually cannot be attached to pods on different nodes, so the chart refuses to render `server.replicas` above 1 until both volumes are `ReadWriteMany`. Set `server.persistence.uploads.accessMode` and `server.persistence.backup.accessMode` to `ReadWriteMany` with a StorageClass that supports it. The access mode is fixed when a volume is created, so an existing install needs new volumes with its data copied over: create them yourself, copy the data, and set `server.persistence.uploads.existingClaim` and `server.persistence.backup.existingClaim` to their names, keeping `accessMode: ReadWriteMany` so the chart knows they can be shared. On a single-node cluster every pod can attach a `ReadWriteOnce` volume, so `server.persistence.allowSingleNodeVolumes: true` keeps the existing volumes; pods scheduled on another node later would never start.
+
+## What the Helm chart sets up for you
+
+With `server.replicas` above 1, the chart also:
+
+- replaces pods one at a time (`RollingUpdate` with `maxUnavailable: 0`) instead of stopping them all first;
+- adds a PodDisruptionBudget so a node drain takes down one server pod at a time (not with `server.persistence.allowSingleNodeVolumes: true`, since on a single node the drained pod cannot start again until the drain ends);
+- asks the scheduler to spread the server pods across nodes (a preference, so a single-node cluster still runs them all);
+- waits 5 seconds in a `preStop` hook so the pod leaves the Service before it stops accepting requests, and waits `minReadySeconds: 5` before counting a new pod as available.
+
+Each of these has a value to change or turn off (`server.strategy`, `server.podDisruptionBudget`, `server.topologySpreadConstraints` or `server.defaultTopologySpread`, `server.preStopDelaySeconds` or `server.lifecycle`, `server.minReadySeconds`). Setting `frontend.replicas: 2` gives the web frontend the same budget, spread, `preStop` delay and `minReadySeconds`, so the UI also survives losing a node. On a single-node cluster, also set `frontend.podDisruptionBudget.enabled: false`, or a node drain waits forever for a frontend pod that cannot start anywhere else.
 
 ## Run scheduled jobs on one instance
 
