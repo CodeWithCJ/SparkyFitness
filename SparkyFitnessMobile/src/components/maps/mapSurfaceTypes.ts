@@ -33,6 +33,11 @@ export interface MapMarkerSpec {
   color: string;
   /** Diameter in points for `dot` and `ring`. */
   size?: number;
+  /**
+   * Opacity for `dot` and `ring`. On MapLibre Native, `pin` markers remain
+   * fully opaque so the underlying route line does not bleed through;
+   * Apple Maps and Google Maps honor fractional opacity on all shapes.
+   */
   opacity?: number;
   draggable?: boolean;
   onPress?: () => void;

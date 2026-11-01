@@ -1,8 +1,9 @@
 /**
  * MapLibre styles on OpenFreeMap's public instance. No API key, no account,
  * and no Google Play Services: MapLibre Native renders these vector tiles
- * itself. OpenFreeMap and OpenStreetMap need attribution, which the map shows
- * through its attribution button, so it stays on in both themes.
+ * itself. OpenFreeMap and OpenStreetMap need attribution, which interactive maps
+ * show through the native attribution button, while static route previews
+ * render a dedicated attribution badge.
  *
  * They are community-hosted and can be slow or unavailable; a map with no
  * tiles is the failure mode, the same as any map with no network.
