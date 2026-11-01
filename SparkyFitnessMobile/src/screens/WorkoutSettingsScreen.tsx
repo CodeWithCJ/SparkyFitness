@@ -13,6 +13,7 @@ import { formatRestLabel } from '../components/RestPeriodChip';
 import SettingsRow from '../components/SettingsRow';
 import GuidedWorkoutSettingsSection from '../components/GuidedWorkoutSettingsSection';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import SegmentedControl from '../components/SegmentedControl';
 import Switch from '../components/ui/Switch';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -84,6 +85,10 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
   const setNowCardEnabled = useAppPreferencesStore(
     (s) => s.setActiveWorkoutNowCard
   );
+  const workoutView = useAppPreferencesStore((s) => s.activeWorkoutView);
+  const setWorkoutView = useAppPreferencesStore((s) => s.setActiveWorkoutView);
+  const focusMedia = useAppPreferencesStore((s) => s.focusMediaDefault);
+  const setFocusMedia = useAppPreferencesStore((s) => s.setFocusMediaDefault);
   const restSheetRef = useRef<RestPeriodSheetRef>(null);
   const header = useScreenHeader({
     title: t('workoutSettings.title', { defaultValue: 'Workout Settings' }),
@@ -224,6 +229,76 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
             />
           }
         />
+
+        <SettingsRow
+          title={t('workoutSettings.workoutView', {
+            defaultValue: 'Workout view',
+          })}
+          subtitle={t('workoutSettings.workoutViewSubtitle', {
+            defaultValue:
+              'List shows every exercise in one scrolling list; Focus shows one exercise at a time with a large photo card.',
+          })}
+          subtitleNumberOfLines={0}
+          testID="workout-view-picker"
+          rightAccessory={
+            <View style={{ width: 150 }}>
+              <SegmentedControl
+                segments={[
+                  {
+                    key: 'list',
+                    label: t('workoutSettings.workoutViewList', {
+                      defaultValue: 'List',
+                    }),
+                  },
+                  {
+                    key: 'focus',
+                    label: t('workoutSettings.workoutViewFocus', {
+                      defaultValue: 'Focus',
+                    }),
+                  },
+                ]}
+                activeKey={workoutView}
+                onSelect={setWorkoutView}
+              />
+            </View>
+          }
+        />
+
+        {workoutView === 'focus' && (
+          <SettingsRow
+            title={t('workoutSettings.focusMedia', {
+              defaultValue: 'Exercise photo',
+            })}
+            subtitle={t('workoutSettings.focusMediaSubtitle', {
+              defaultValue:
+                'Open the focus view with the large photo card or a small thumbnail. You can change it during the workout.',
+            })}
+            subtitleNumberOfLines={0}
+            testID="focus-media-picker"
+            rightAccessory={
+              <View style={{ width: 150 }}>
+                <SegmentedControl
+                  segments={[
+                    {
+                      key: 'expanded',
+                      label: t('workoutSettings.focusMediaLarge', {
+                        defaultValue: 'Large',
+                      }),
+                    },
+                    {
+                      key: 'minimized',
+                      label: t('workoutSettings.focusMediaSmall', {
+                        defaultValue: 'Small',
+                      }),
+                    },
+                  ]}
+                  activeKey={focusMedia}
+                  onSelect={setFocusMedia}
+                />
+              </View>
+            }
+          />
+        )}
 
         <SettingsRow
           title={t('workoutSettings.nowCard', {

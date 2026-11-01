@@ -181,6 +181,31 @@ describe('WorkoutSettingsScreen', () => {
     );
   });
 
+  it('shows the focus photo row only in the focus view and switches values', () => {
+    const { getByText, queryByText, queryByTestId, getByTestId } =
+      renderScreen();
+    expect(getByTestId('workout-view-picker')).toBeTruthy();
+    expect(queryByTestId('focus-media-picker')).toBeNull();
+    expect(queryByText('Exercise photo')).toBeNull();
+
+    fireEvent.press(getByText('Focus'));
+    expect(useAppPreferencesStore.getState().activeWorkoutView).toBe('focus');
+    expect(getByTestId('focus-media-picker')).toBeTruthy();
+
+    fireEvent.press(getByText('Small'));
+    expect(useAppPreferencesStore.getState().focusMediaDefault).toBe(
+      'minimized'
+    );
+    fireEvent.press(getByText('Large'));
+    expect(useAppPreferencesStore.getState().focusMediaDefault).toBe(
+      'expanded'
+    );
+
+    fireEvent.press(getByText('List'));
+    expect(useAppPreferencesStore.getState().activeWorkoutView).toBe('list');
+    expect(queryByTestId('focus-media-picker')).toBeNull();
+  });
+
   it('localizes the Polish labels and rest accessibility fallback', async () => {
     const {
       default: i18n,
