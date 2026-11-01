@@ -17,6 +17,7 @@ import {
 } from '@/api/Exercises/exerciseEntryService';
 import { exerciseEntryKeys } from '@/api/keys/exercises';
 import { dailyProgressKeys } from '@/api/keys/diary';
+import { goalKeys } from '@/api/keys/goals';
 import { shoeKeys } from '@/api/keys/shoes';
 import {
   SetCalorieLinkRequest,
@@ -149,6 +150,7 @@ export const useLogWorkoutPresetMutation = () => {
       queryClient.invalidateQueries({
         queryKey: dailyProgressKeys.all,
       });
+      queryClient.invalidateQueries({ queryKey: goalKeys.all });
       queryClient.invalidateQueries({
         queryKey: ['workoutPlanTemplates'],
       });
@@ -175,6 +177,7 @@ export const useCreatePresetSessionMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
       queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+      queryClient.invalidateQueries({ queryKey: goalKeys.all });
       queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });
     },
     meta: {
@@ -201,6 +204,7 @@ export const useDeleteExercisePresetEntryMutation = () => {
       queryClient.invalidateQueries({
         queryKey: dailyProgressKeys.all,
       });
+      queryClient.invalidateQueries({ queryKey: goalKeys.all });
       queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });
     },
     meta: {
