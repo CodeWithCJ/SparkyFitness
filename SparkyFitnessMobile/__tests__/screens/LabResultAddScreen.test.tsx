@@ -15,9 +15,18 @@ jest.mock('../../src/services/nativeTabBarPreference', () => ({
   useNativeIOSHeadersActive: () => false,
 }));
 jest.mock('../../src/components/CalendarSheet', () => 'CalendarSheet');
-jest.mock('../../src/components/FormScreenChrome', () => ({
-  FooterSaveBar: () => null,
-}));
+jest.mock('../../src/components/FormScreenChrome', () => {
+  const { Pressable } = jest.requireActual('react-native');
+  return {
+    FooterSaveBar: ({ disabled }: { disabled?: boolean }) => (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="save-bar"
+        accessibilityState={{ disabled: !!disabled }}
+      />
+    ),
+  };
+});
 jest.mock('../../src/hooks/useLabResults', () => ({
   useLabMarkers: jest.fn(),
   useSaveLabResult: jest.fn(),
@@ -181,5 +190,54 @@ describe('LabResultAddScreen prefill', () => {
     fireEvent.press(getByText('HbA1c'));
 
     expect(getByLabelText('Unit').props.value).toBe('mmol/mol');
+  });
+
+  it('keeps Save off until a marker picked during loading has been filled in', () => {
+    const noMarkerRoute = { params: undefined } as never;
+    markersState([], true);
+    const { getByLabelText, getByText, rerender } = render(
+      <LabResultAddScreen navigation={navigation} route={noMarkerRoute} />
+    );
+    fireEvent.changeText(
+      getByLabelText('Search markers (HbA1c, LDL, ...)'),
+      'HbA1c'
+    );
+    fireEvent.press(getByText('HbA1c'));
+    fireEvent.changeText(getByLabelText('Result'), '5.1');
+
+    expect(getByLabelText('save-bar').props.accessibilityState.disabled).toBe(
+      true
+    );
+
+    markersState([hba1c], false);
+    rerender(
+      <LabResultAddScreen navigation={navigation} route={noMarkerRoute} />
+    );
+    expect(getByLabelText('save-bar').props.accessibilityState.disabled).toBe(
+      false
+    );
+  });
+
+  it('does not fill a new marker with a pick that was changed before loading ended', () => {
+    const noMarkerRoute = { params: undefined } as never;
+    markersState([], true);
+    const { getByLabelText, getByText, rerender } = render(
+      <LabResultAddScreen navigation={navigation} route={noMarkerRoute} />
+    );
+    const search = () => getByLabelText('Search markers (HbA1c, LDL, ...)');
+
+    fireEvent.changeText(search(), 'HbA1c');
+    fireEvent.press(getByText('HbA1c'));
+    fireEvent.press(getByText('Change'));
+    fireEvent.changeText(search(), 'My own marker');
+    fireEvent.press(getByText('Add "My own marker" as a new marker'));
+
+    markersState([hba1c], false);
+    rerender(
+      <LabResultAddScreen navigation={navigation} route={noMarkerRoute} />
+    );
+
+    expect(getByLabelText('Unit').props.value).toBe('');
+    expect(getByLabelText('Low').props.value).toBe('');
   });
 });

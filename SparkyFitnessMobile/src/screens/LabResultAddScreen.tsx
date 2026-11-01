@@ -147,7 +147,10 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   // loaded. A marker chosen before then is remembered and filled in on arrival
   // rather than from the bare preset.
   const dataLoading = markersLoading || profileLoading;
-  const pendingFill = useRef<Selection | null>(null);
+  const pendingFill = useRef<Extract<
+    Selection,
+    { kind: 'builtin' | 'custom' }
+  > | null>(null);
 
   const fillBuiltin = (chosen: LabMarkerPreset) => {
     const earlier = markers.find((m) => m.markerKey === chosen.key);
@@ -174,7 +177,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const chooseBuiltin = (chosen: LabMarkerPreset) => {
-    const next: Selection = { kind: 'builtin', key: chosen.key };
+    const next = { kind: 'builtin', key: chosen.key } as const;
     setSelection(next);
     if (dataLoading) {
       pendingFill.current = next;
@@ -186,7 +189,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const chooseCustom = (chosen: LabMarker) => {
     if (chosen.markerId === null) return;
-    const next: Selection = { kind: 'custom', id: chosen.markerId };
+    const next = { kind: 'custom', id: chosen.markerId } as const;
     setSelection(next);
     if (dataLoading) {
       pendingFill.current = next;
@@ -205,7 +208,15 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const pending = pendingFill.current;
     if (pending) {
       pendingFill.current = null;
-      if (pending.kind === 'builtin') {
+      // Only if the person is still on that marker: Change or a new marker
+      // made meanwhile must not get its unit and range.
+      const stillSelected =
+        pending.kind === 'builtin'
+          ? selection?.kind === 'builtin' && selection.key === pending.key
+          : selection?.kind === 'custom' && selection.id === pending.id;
+      if (!stillSelected) {
+        // nothing to fill in
+      } else if (pending.kind === 'builtin') {
         const found = LAB_MARKER_PRESETS.find((p) => p.key === pending.key);
         if (found) fillBuiltin(found);
       } else if (pending.kind === 'custom') {
@@ -282,8 +293,14 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
       : selection?.kind === 'custom'
         ? customMarker !== undefined
         : selection !== null;
+  // A marker picked before the data loaded has no unit or range yet: saving
+  // then would store the result with a blank unit.
+  const fillPending =
+    dataLoading &&
+    (selection?.kind === 'builtin' || selection?.kind === 'custom');
   const canSave =
     markerKnown &&
+    !fillPending &&
     value !== null &&
     dateValid &&
     rangeValid &&
@@ -368,6 +385,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
               {canCreateCustom && (
                 <TouchableOpacity
                   onPress={() => {
+                    pendingFill.current = null;
                     setSelection({ kind: 'new', name: customName });
                     applyDefaults({ unit: '', low: null, high: null });
                   }}
@@ -432,7 +450,10 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
               </Text>
               {!presetMarkerId && (
                 <TouchableOpacity
-                  onPress={() => setSelection(null)}
+                  onPress={() => {
+                    pendingFill.current = null;
+                    setSelection(null);
+                  }}
                   accessibilityRole="button"
                 >
                   <Text className="text-sm font-semibold text-accent-primary">
