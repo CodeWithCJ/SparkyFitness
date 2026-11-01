@@ -237,4 +237,53 @@ describe('layoutSeverityChart', () => {
     ).toBeNull();
     expect(layoutSeverityChart(base, 0, box)).toBeNull();
   });
+
+  it('draws one band section per recorded effect, in time order', () => {
+    const layout = layoutSeverityChart(
+      {
+        ...base,
+        impact: 'mild',
+        // An effect changed through an edit is appended with the time of the
+        // edit, so the stored order is not always the time order.
+        impact_timeline: [
+          { at: '2026-10-01T11:00:00.000Z', impact: 'mild' },
+          { at: '2026-10-01T10:00:00.000Z', impact: 'severe' },
+        ],
+      },
+      10,
+      box
+    )!;
+    expect(layout.band.map((s) => s.impact)).toEqual(['severe', 'mild']);
+    expect(layout.band[0].x).toBe(26);
+    expect(layout.band[0].width).toBeCloseTo(132);
+    expect(layout.band[1].x).toBeCloseTo(158);
+    expect(layout.band[1].x + layout.band[1].width).toBeCloseTo(290);
+  });
+
+  it('shows the current effect from the start without a timeline', () => {
+    const layout = layoutSeverityChart(
+      { ...base, impact: 'moderate' },
+      10,
+      box
+    )!;
+    expect(layout.band).toEqual([
+      {
+        x: 26,
+        width: 264,
+        at: '2026-10-01T10:00:00.000Z',
+        impact: 'moderate',
+      },
+    ]);
+  });
+
+  it('draws no band when no effect is recorded', () => {
+    expect(layoutSeverityChart(base, 10, box)!.band).toEqual([]);
+    expect(
+      layoutSeverityChart(
+        { ...base, impact: null, impact_timeline: [] },
+        10,
+        box
+      )!.band
+    ).toEqual([]);
+  });
 });
