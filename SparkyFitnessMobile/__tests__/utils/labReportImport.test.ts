@@ -1,9 +1,5 @@
 import type { LabReportScanResult } from '@workspace/shared';
-import {
-  labImportBody,
-  planLabImport,
-  sameLabUnit,
-} from '../../src/utils/labReportImport';
+import { labImportBody, planLabImport } from '../../src/utils/labReportImport';
 import { buildLabMarkers } from '../../src/utils/labResults';
 
 const scanned = (
@@ -46,23 +42,6 @@ const custom = (name: string, id = 'm1') => ({
   ref_range_high: 90,
   created_at: '2026-03-01T10:00:00.000Z',
   updated_at: '2026-03-01T10:00:00.000Z',
-});
-
-describe('sameLabUnit', () => {
-  it('ignores case, spaces and the micro sign', () => {
-    expect(sameLabUnit('MG/DL ', 'mg/dL')).toBe(true);
-    expect(sameLabUnit('µg/dL', 'ug/dL')).toBe(true);
-  });
-
-  it('treats spellings of the same unit as equal', () => {
-    expect(sameLabUnit('uIU/mL', 'mIU/L')).toBe(true);
-    expect(sameLabUnit('K/uL', 'x10E3/uL')).toBe(true);
-    expect(sameLabUnit('mEq/L', 'mmol/L')).toBe(true);
-  });
-
-  it('keeps different units apart', () => {
-    expect(sameLabUnit('mmol/L', 'mg/dL')).toBe(false);
-  });
 });
 
 describe('planLabImport', () => {
@@ -114,6 +93,17 @@ describe('planLabImport', () => {
     );
     expect(male?.reportRange).toBeNull();
     expect(male?.range.low).toBe(13.5);
+  });
+
+  it('gives no default range to a result printed in another unit', () => {
+    const [row] = planLabImport(
+      [scanned({ unit: 'mmol/L', ref_low: null, ref_high: null, value: 3.4 })],
+      noMarkers,
+      {},
+      null
+    );
+    expect(row?.reportRange).toBeNull();
+    expect(row?.range).toEqual({ low: null, high: null });
   });
 
   it('uses the marker unit when the report prints none', () => {

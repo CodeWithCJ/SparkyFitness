@@ -15,6 +15,7 @@ import {
   labSexFromGender,
   parseLabValue,
   parseRangeBound,
+  sameLabUnit,
 } from '../../src/utils/labResults';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 
@@ -181,6 +182,23 @@ describe('formatting', () => {
     expect(
       labResultText(result({ value_numeric: null, value_text: 'Negative' }))
     ).toBe('Negative');
+  });
+});
+
+describe('sameLabUnit', () => {
+  it('ignores case, spaces and the micro sign', () => {
+    expect(sameLabUnit('MG/DL ', 'mg/dL')).toBe(true);
+    expect(sameLabUnit('µg/dL', 'ug/dL')).toBe(true);
+  });
+
+  it('treats spellings of the same unit as equal', () => {
+    expect(sameLabUnit('uIU/mL', 'mIU/L')).toBe(true);
+    expect(sameLabUnit('K/uL', 'x10E3/uL')).toBe(true);
+    expect(sameLabUnit('mEq/L', 'mmol/L')).toBe(true);
+  });
+
+  it('keeps different units apart', () => {
+    expect(sameLabUnit('mmol/L', 'mg/dL')).toBe(false);
   });
 });
 
