@@ -18,7 +18,7 @@ Use this skill whenever opening a pull request for the SparkyFitness repository.
    - Write strictly from the perspective of the repository author/maintainer.
 2. **Branch Management (Use Current Branch Unless on Main or Detached HEAD)**:
    - Always check the current active branch: `git branch --show-current`.
-   - **If on `main`, `master`, or detached HEAD (empty string)**: Create a new topic branch (`git checkout -b fix/<topic>` or `feat/<topic>`) because GitHub does not allow creating a PR from `main` into `main`, and pushing from detached HEAD fails.
+   - **If on `main`, `master`, `tdmain`, or detached HEAD (empty string)**: Create a new topic branch from `main` (`git checkout -b fix/<topic>` or `feat/<topic>`) because GitHub does not allow creating a PR from `main` into `main`, and pushing from detached HEAD fails.
    - **If already on an active work/dev branch (e.g. `dev`, `fix/...`, `feat/...`)**: **Do not create a new branch.** Stay on the current branch, commit changes, and push directly to origin.
 3. **Preserve Complete PR Template**:
    - Always load `.github/pull_request_template.md`.
@@ -61,7 +61,7 @@ Inspect `git status` and `git diff` to ensure no scratch files, debug logs, or u
    BRANCH=$(git branch --show-current)
    ```
 2. Handle branch state:
-   - **If `BRANCH` is empty (detached HEAD), `main`, or `master`**: Create a new topic branch:
+   - **If `BRANCH` is empty (detached HEAD), `main`, `master`, or `tdmain`**: Create a new topic branch from `main`:
      ```bash
      git checkout -b fix/<topic> # or feat/<topic>
      ```
@@ -101,9 +101,9 @@ Read `.github/pull_request_template.md` and populate the body file:
    git push -u origin "$BRANCH"
    ```
 
-2. Create the PR targeting `main` via GitHub CLI:
+2. Create the PR targeting `tdmain` (this fork's production branch; never `main`, which mirrors upstream) via GitHub CLI:
    ```bash
-   gh pr create --base main --title "fix(<domain>): <summary>" --body-file "<path-to-body-file>"
+   gh pr create --base tdmain --title "fix(<domain>): <summary>" --body-file "<path-to-body-file>"
    ```
 
 ### Step 6: Final Verification

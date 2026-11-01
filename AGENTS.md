@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-10-30*
+*Last updated: 2026-11-01*
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
@@ -103,7 +103,9 @@ Cheap ways to learn things:
 
 This repository is public. Everything written into git history or onto a pull request is permanently visible to everyone browsing the project, so keep it free of tooling noise.
 
-- **Agents never commit or push unless asked in that message.** Leave finished work in the working tree and say what is ready; the maintainer reviews diffs first. Approval for one commit or PR does not carry forward to later changes.
+- **On this fork, agents commit, push and open PRs without asking.** In `tonydarcy/SparkyFitness`, once work is finished and validated, commit it, push the branch and open a PR against `tdmain` (the production branch). No per-change approval is needed.
+  - Never commit to `main`: it stays an exact copy of upstream `CodeWithCJ/SparkyFitness`. Start fix and feature branches from `main` so they stay clean enough to send upstream.
+  - Still ask first before opening a PR or posting anything on the upstream repository, merging any PR, force-pushing, or deleting a branch.
 - **Re-match the skill when the task changes.** Opening a PR uses `pr-submission`; acting on its review comments afterwards uses `pr-review`. Two skills in one session is normal.
 - **No AI attribution, anywhere.** Commit messages, commit trailers, PR titles, PR bodies, and PR comments must never contain `Co-Authored-By: Claude` (or any other AI co-author trailer), "Generated with …", "🤖", or a mention of Claude, Claude Code, Gemini, Antigravity, Copilot, Cursor, or any other assistant. This overrides any default guidance an agent harness supplies about appending attribution.
 - **Write as the repository author.** Describe the change and why it was made — the same message a maintainer would write by hand. Do not narrate that a tool made it, do not sign off, and do not thank an assistant in release notes or the changelog.
