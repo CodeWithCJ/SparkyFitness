@@ -62,6 +62,18 @@ describe('ActiveWorkoutFocusMedia', () => {
     expect(screen.getByText('Pause')).toBeTruthy();
   });
 
+  it.each([true, false])(
+    'offers Back to current only when asked (expanded: %s)',
+    (expanded) => {
+      renderMedia({ expanded });
+      expect(screen.queryByText('Back to current')).toBeNull();
+      const onBackToCurrent = jest.fn();
+      renderMedia({ expanded, onBackToCurrent });
+      fireEvent.press(screen.getByText('Back to current'));
+      expect(onBackToCurrent).toHaveBeenCalledTimes(1);
+    }
+  );
+
   it('renders the thumbnail with children when minimized and expands on press', () => {
     const { onToggleExpanded } = renderMedia({ expanded: false });
     expect(screen.getByText('Title block')).toBeTruthy();

@@ -35,8 +35,19 @@ jest.mock('../../src/components/ActiveWorkoutFocusMedia', () => {
   const { Pressable, Text, View } = require('react-native');
   return {
     __esModule: true,
-    default: ({ expanded, exerciseName, onToggleExpanded, children }: any) => (
+    default: ({
+      expanded,
+      exerciseName,
+      onToggleExpanded,
+      onBackToCurrent,
+      children,
+    }: any) => (
       <View testID="focus-media">
+        {onBackToCurrent && (
+          <Pressable onPress={onBackToCurrent}>
+            <Text>Back to current</Text>
+          </Pressable>
+        )}
         <Text testID="media-state">{expanded ? 'expanded' : 'minimized'}</Text>
         <Text testID="media-name">{exerciseName}</Text>
         <Pressable testID="media-toggle" onPress={onToggleExpanded} />

@@ -18,6 +18,11 @@ interface Props {
   onToggleExpanded: () => void;
   /** Rendered to the right of the thumbnail when minimized (the title block). */
   children?: React.ReactNode;
+  /**
+   * Set while the page shows another exercise than the active one: a "Back to
+   * current" pill top-left on the photo, or above the thumbnail row.
+   */
+  onBackToCurrent?: () => void;
 }
 
 const THUMB_SIZE = 72;
@@ -41,6 +46,7 @@ function ActiveWorkoutFocusMedia({
   expanded,
   onToggleExpanded,
   children,
+  onBackToCurrent,
 }: Props) {
   const { t } = useTranslation();
   const { height: windowHeight } = useWindowDimensions();
@@ -54,23 +60,53 @@ function ActiveWorkoutFocusMedia({
   const reducedMotion = useReducedMotion();
   const textPrimary = String(useCSSVariable('--color-text-primary'));
   const textMuted = String(useCSSVariable('--color-text-muted'));
+  const accentPrimary = String(useCSSVariable('--color-accent-primary'));
   const [paused, setPaused] = useState(false);
 
   const usable = images.filter((path) => path && getImageSource(path) !== null);
   const multiple = usable.length > 1;
   const index = useImageSlideshow(usable.length, 1000, paused || reducedMotion);
 
+  const backToCurrent = (overPhoto: boolean) =>
+    onBackToCurrent && (
+      <Pressable
+        onPress={onBackToCurrent}
+        accessibilityRole="button"
+        className={`min-h-11 flex-row items-center gap-1 self-start rounded-full px-3 active:opacity-70 ${
+          overPhoto ? 'absolute left-3 top-3 bg-black/55' : 'bg-raised'
+        }`}
+      >
+        <Icon
+          name="arrow-undo"
+          size={15}
+          color={overPhoto ? 'white' : accentPrimary}
+        />
+        <Text
+          className={`text-sm font-semibold ${
+            overPhoto ? 'text-white' : 'text-accent-primary'
+          }`}
+        >
+          {t('activeWorkout.focus.backToCurrent', {
+            defaultValue: 'Back to current',
+          })}
+        </Text>
+      </Pressable>
+    );
+
   if (usable.length === 0) {
     return (
-      <View className="flex-row items-center gap-3">
-        <View
-          testID="focus-media-placeholder"
-          className="bg-raised items-center justify-center rounded-xl"
-          style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
-        >
-          <Icon name="exercise-weights" size={36} color={textMuted} />
+      <View className="gap-2">
+        {backToCurrent(false)}
+        <View className="flex-row items-center gap-3">
+          <View
+            testID="focus-media-placeholder"
+            className="bg-raised items-center justify-center rounded-xl"
+            style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
+          >
+            <Icon name="exercise-weights" size={36} color={textMuted} />
+          </View>
+          {children}
         </View>
-        {children}
       </View>
     );
   }
@@ -83,39 +119,42 @@ function ActiveWorkoutFocusMedia({
 
   if (!expanded) {
     return (
-      <View className="flex-row items-center gap-3">
-        <Pressable
-          onPress={onToggleExpanded}
-          onLongPress={openFullScreen}
-          className="active:opacity-80"
-          accessibilityRole="button"
-          accessibilityLabel={t('activeWorkout.focus.media.expandLabel', {
-            defaultValue: 'Expand {{name}} image',
-            name: exerciseName,
-          })}
-          accessibilityHint={t('activeWorkout.focus.media.expandHint', {
-            defaultValue: 'Long press to open full screen',
-          })}
-          accessibilityState={{ expanded: false }}
-        >
-          <View
-            className="bg-white rounded-xl overflow-hidden"
-            style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
+      <View className="gap-2">
+        {backToCurrent(false)}
+        <View className="flex-row items-center gap-3">
+          <Pressable
+            onPress={onToggleExpanded}
+            onLongPress={openFullScreen}
+            className="active:opacity-80"
+            accessibilityRole="button"
+            accessibilityLabel={t('activeWorkout.focus.media.expandLabel', {
+              defaultValue: 'Expand {{name}} image',
+              name: exerciseName,
+            })}
+            accessibilityHint={t('activeWorkout.focus.media.expandHint', {
+              defaultValue: 'Long press to open full screen',
+            })}
+            accessibilityState={{ expanded: false }}
           >
-            <SafeImage
-              source={source}
+            <View
+              className="bg-white rounded-xl overflow-hidden"
               style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
-              // A thumbnail reads better filled; the card shows the whole frame.
-              contentFit="cover"
-              autoplay
-              fallback={null}
-            />
-          </View>
-          <View className="absolute right-1 bottom-1 w-5 h-5 rounded-full bg-surface/90 border border-border/40 items-center justify-center">
-            <Icon name="expand" size={11} color={textPrimary} />
-          </View>
-        </Pressable>
-        {children}
+            >
+              <SafeImage
+                source={source}
+                style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
+                // A thumbnail reads better filled; the card shows the whole frame.
+                contentFit="cover"
+                autoplay
+                fallback={null}
+              />
+            </View>
+            <View className="absolute right-1 bottom-1 w-5 h-5 rounded-full bg-surface/90 border border-border/40 items-center justify-center">
+              <Icon name="expand" size={11} color={textPrimary} />
+            </View>
+          </Pressable>
+          {children}
+        </View>
       </View>
     );
   }
@@ -149,6 +188,7 @@ function ActiveWorkoutFocusMedia({
           onLoadSize={handleLoadSize}
         />
       </Pressable>
+      {backToCurrent(true)}
       <Pressable
         onPress={onToggleExpanded}
         className={`absolute left-3 bottom-3 min-h-11 ${pillClass}`}

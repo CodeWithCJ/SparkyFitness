@@ -140,6 +140,8 @@ interface PageProps extends SetEditorProps {
   onPressOverflow: (entryId: string) => void;
   onSwap: (entryId: string) => void;
   onSeeAlternatives?: (entryId: string) => void;
+  /** Set while another exercise than the active one is shown. */
+  onBackToCurrent?: () => void;
 }
 
 /** One exercise: media + title, plan / last-time context, coaching, sets. */
@@ -152,6 +154,7 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   onPressOverflow,
   onSwap,
   onSeeAlternatives,
+  onBackToCurrent,
   sessionId,
   verifiedSourcePresetId,
   weightUnit,
@@ -306,6 +309,7 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
         getImageSource={getImageSource}
         expanded={mediaExpanded}
         onToggleExpanded={onToggleMedia}
+        onBackToCurrent={onBackToCurrent}
       >
         {titleBlock}
       </ActiveWorkoutFocusMedia>
@@ -610,22 +614,6 @@ function ActiveWorkoutFocusView({
             historyScopeSettled={historyScopeSettled}
           />
         ))}
-        {awayFromCurrent && (
-          <Pressable
-            onPress={handleBackToCurrent}
-            accessibilityRole="button"
-            className="mb-1 min-h-11 flex-row items-center self-center rounded-full bg-raised px-4 active:opacity-70"
-          >
-            <Text
-              className="text-sm font-semibold"
-              style={{ color: accentPrimary }}
-            >
-              {t('activeWorkout.focus.backToCurrent', {
-                defaultValue: 'Back to current',
-              })}
-            </Text>
-          </Pressable>
-        )}
         <GestureDetector gesture={swipe}>
           <Animated.View style={pageStyle}>
             <FocusExercisePage
@@ -637,6 +625,9 @@ function ActiveWorkoutFocusView({
               onToggleMedia={toggleMedia}
               onPressOverflow={onPressOverflow}
               onSwap={onSwap}
+              onBackToCurrent={
+                awayFromCurrent ? handleBackToCurrent : undefined
+              }
               onSeeAlternatives={onSeeAlternatives}
               sessionId={sessionId}
               verifiedSourcePresetId={verifiedSourcePresetId}
