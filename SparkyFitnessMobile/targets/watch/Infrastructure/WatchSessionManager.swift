@@ -898,6 +898,20 @@ final class WatchSessionManager: NSObject, ObservableObject {
                 endsAt: endsAt
             ))
         }
+        // A weight, reps or distance typed here reaches the phone before the
+        // set is logged, so both show the same number.
+        workoutStore.onSetValueEditedHere = { [weak self] setId, weightKg, reps, distanceKm in
+            guard let self, let sessionId = self.workoutStore.plan?.sessionId else { return }
+            self.transfer(OutboundPayloads.workoutEditSetValues(
+                sessionId: sessionId,
+                clientId: UUID().uuidString,
+                setId: setId,
+                weightKg: weightKg,
+                reps: reps,
+                distanceKm: distanceKm,
+                at: Date()
+            ))
+        }
         // A hold countdown or stopwatch started here starts the phone's too.
         workoutStore.onSetTimerStartedHere = { [weak self] setId, startedAt in
             guard let self, let sessionId = self.workoutStore.plan?.sessionId else { return }

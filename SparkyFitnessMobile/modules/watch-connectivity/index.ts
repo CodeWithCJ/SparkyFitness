@@ -736,7 +736,8 @@ export interface WatchWorkoutEditPayload {
     | 'setSetType'
     | 'addExercise'
     | 'deleteExercise'
-    | 'doExerciseNow';
+    | 'doExerciseNow'
+    | 'setValues';
   /** For `addSet`, `deleteExercise` and `doExerciseNow`. */
   exerciseEntryId?: string;
   /**
@@ -750,6 +751,16 @@ export interface WatchWorkoutEditPayload {
   exerciseId?: string;
   /** For `setSetType`: `normal`, `warmup`, `drop` or `failure`. */
   setType?: string;
+  /**
+   * For `setValues`: what the wearer just typed on the watch for `setId`,
+   * before logging it. Only the fields that were edited are present. Weight
+   * and a carry's distance are in kg and km, as in a logged set.
+   */
+  weightKg?: number;
+  reps?: number;
+  distanceKm?: number;
+  /** For `setValues`: epoch ms of the edit, so a late copy of an older one is dropped. */
+  at?: number;
 }
 
 /** The wearer's answer to the watch's "update this workout?" question, asked

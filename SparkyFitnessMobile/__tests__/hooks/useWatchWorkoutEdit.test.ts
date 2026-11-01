@@ -34,7 +34,11 @@ const edit = (
 describe('applyWatchWorkoutEdit', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useActiveWorkoutStore.setState({ sessionId: 'sess-1', ...actions });
+    useActiveWorkoutStore.setState({
+      sessionId: 'sess-1',
+      completedSetIds: {},
+      ...actions,
+    });
   });
 
   it('adds a set to the named exercise', async () => {
@@ -63,6 +67,41 @@ describe('applyWatchWorkoutEdit', () => {
     expect(actions.updateSetField).toHaveBeenCalledWith('12', {
       set_type: 'warmup',
     });
+  });
+
+  it('puts a weight and reps typed on the watch on the phone before the set is logged', async () => {
+    await edit({ action: 'setValues', setId: '12', weightKg: 50, reps: 8 });
+    expect(actions.updateSetField).toHaveBeenCalledWith('12', {
+      weight: 50,
+      reps: 8,
+    });
+  });
+
+  it('carries only the fields the wearer edited', async () => {
+    await edit({ action: 'setValues', setId: '13', reps: 10 });
+    expect(actions.updateSetField).toHaveBeenCalledWith('13', { reps: 10 });
+  });
+
+  it('keeps what a set was logged with', async () => {
+    useActiveWorkoutStore.setState({ completedSetIds: { '14': 1 } });
+    await edit({ action: 'setValues', setId: '14', weightKg: 60 });
+    expect(actions.updateSetField).not.toHaveBeenCalled();
+  });
+
+  it('drops a late copy of an older edit but keeps a newer one', async () => {
+    await edit({ action: 'setValues', setId: '15', weightKg: 60, at: 2000 });
+    await edit({ action: 'setValues', setId: '15', weightKg: 55, at: 1000 });
+    await edit({ action: 'setValues', setId: '15', weightKg: 65, at: 3000 });
+    expect(actions.updateSetField).toHaveBeenCalledTimes(2);
+    expect(actions.updateSetField).toHaveBeenLastCalledWith('15', {
+      weight: 65,
+    });
+  });
+
+  it('judges each field on its own time, so an older reps edit still lands', async () => {
+    await edit({ action: 'setValues', setId: '16', weightKg: 60, at: 2000 });
+    await edit({ action: 'setValues', setId: '16', reps: 5, at: 1000 });
+    expect(actions.updateSetField).toHaveBeenLastCalledWith('16', { reps: 5 });
   });
 
   it('loads and adds an exercise', async () => {
