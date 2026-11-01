@@ -1,7 +1,15 @@
 import { ConfigPlugin, withEntitlementsPlist } from 'expo/config-plugins';
 
 /**
- * Strips the `aps-environment` entitlement that `expo-notifications` adds on iOS.
+ * Strips entitlements that need a paid Apple developer account, so a dev build
+ * can still be signed with a free "Personal Team":
+ *
+ *  - `aps-environment`, which `expo-notifications` adds on iOS (details below);
+ *  - `com.apple.developer.nfc.readersession.formats`, which
+ *    `react-native-nfc-manager` adds. Tag reading and writing then fails at run
+ *    time on such a build, unless the maintainer sets ENABLE_NFC_LINKS=1 for a
+ *    dev build signed with a paid team; Android dev builds are unaffected, and
+ *    production builds keep the entitlement.
  *
  * Free Apple "Personal Team" accounts cannot create a provisioning profile that
  * includes the Push Notifications capability, so a local device build fails
@@ -25,10 +33,16 @@ import { ConfigPlugin, withEntitlementsPlist } from 'expo/config-plugins';
  * delete the last thing that runs, after expo-notifications and
  * expo-widgets have both already added the entitlement back.
  */
-const withoutPushNotificationEntitlement: ConfigPlugin = (config) =>
+const withoutPaidTeamEntitlements: ConfigPlugin = (config) =>
   withEntitlementsPlist(config, (innerConfig) => {
     delete innerConfig.modResults['aps-environment'];
+    // A paid team can opt a dev build into NFC tags with ENABLE_NFC_LINKS=1.
+    if (process.env.ENABLE_NFC_LINKS !== '1') {
+      delete innerConfig.modResults[
+        'com.apple.developer.nfc.readersession.formats'
+      ];
+    }
     return innerConfig;
   });
 
-export default withoutPushNotificationEntitlement;
+export default withoutPaidTeamEntitlements;

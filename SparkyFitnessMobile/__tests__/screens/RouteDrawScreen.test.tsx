@@ -45,7 +45,10 @@ jest.mock('../../src/hooks/usePreferences', () => ({
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
-jest.mock('uniwind', () => ({ useCSSVariable: () => '#2563eb' }));
+jest.mock('uniwind', () => ({
+  useCSSVariable: () => '#2563eb',
+  useUniwind: () => ({ theme: 'light' }),
+}));
 jest.mock('react-native-toast-message', () => ({
   __esModule: true,
   default: { show: jest.fn() },

@@ -9,6 +9,7 @@ SparkyFitness tracks the parts of your life that move your body and your health:
 
 - [Daily Diary](/features/diary/meals): meals and food entries, with meal plans and meal presets
 - [Water Intake](/features/diary/water-intake): hydration card with containers and quick-add drinks
+- [NFC Tags](/features/nfc-tags): tap a tag on a bottle to log a drink
 - [Nutrition Summary](/features/diary/nutrition-summary): your daily totals against your goals, plus 14-day trends
 - [Daily Calorie Goal](/features/diary/daily-calorie-goal): the energy goal card: eaten, burned, and how you're tracking
 - [Exercise Diary](/features/diary/exercise): log workouts, cardio, and strength sets

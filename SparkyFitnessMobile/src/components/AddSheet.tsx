@@ -52,9 +52,8 @@ interface AddSheetProps {
   onAddMeasurements: () => void;
   onAddProgressPhotos: () => void;
   onAskSparky: () => void;
-  /** Starts the guided check-in; the row shows only with `showCheckIn`. */
+  /** Starts the guided check-in. */
   onStartCheckIn?: () => void;
-  showCheckIn?: boolean;
   onAddSymptoms?: () => void;
   onAddMood?: () => void;
   onAddMindfulness?: () => void;
@@ -89,7 +88,6 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       onAddProgressPhotos,
       onAskSparky,
       onStartCheckIn,
-      showCheckIn,
       onAddSymptoms,
       onAddMood,
       onAddMindfulness,
@@ -504,15 +502,14 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         icon: ADD_MENU_ITEM_ICONS.scanFood,
         onPress: onBarcodeScan,
       },
-      checkIn:
-        showCheckIn && onStartCheckIn
-          ? {
-              label: labelOf('checkIn'),
-              hint: t('addSheet.checkInHint', { defaultValue: 'Habits' }),
-              icon: ADD_MENU_ITEM_ICONS.checkIn,
-              onPress: onStartCheckIn,
-            }
-          : undefined,
+      checkIn: onStartCheckIn
+        ? {
+            label: labelOf('checkIn'),
+            hint: t('addSheet.checkInHint', { defaultValue: 'Habits' }),
+            icon: ADD_MENU_ITEM_ICONS.checkIn,
+            onPress: onStartCheckIn,
+          }
+        : undefined,
       progressPhotos: {
         label: labelOf('progressPhotos'),
         hint: t('addSheet.photosHint', { defaultValue: 'Visual' }),

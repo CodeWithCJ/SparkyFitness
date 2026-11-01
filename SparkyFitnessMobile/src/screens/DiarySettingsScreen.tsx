@@ -48,12 +48,6 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
   const setDiarySummaryVisible = useAppPreferencesStore(
     (s) => s.setDiarySummaryVisible
   );
-  const guidedCheckInEnabled = useAppPreferencesStore(
-    (s) => s.guidedCheckInEnabled
-  );
-  const setGuidedCheckInEnabled = useAppPreferencesStore(
-    (s) => s.setGuidedCheckInEnabled
-  );
 
   const queryClient = useQueryClient();
   const { isConnected } = useServerConnection();
@@ -230,28 +224,6 @@ const DiarySettingsScreen: React.FC<DiarySettingsScreenProps> = () => {
                 })}
                 value={diarySummaryVisible}
                 onValueChange={setDiarySummaryVisible}
-              />
-            }
-          />
-        </SettingsRowGroup>
-
-        <SettingsRowGroup>
-          <SettingsRow
-            title={t('diarySettings.guidedCheckIn', {
-              defaultValue: 'Guided check-in',
-            })}
-            subtitle={t('diarySettings.guidedCheckInSubtitle', {
-              defaultValue:
-                'Adds Check-In to the Add menu: log your mood, measurements and progress photos for the day, one step at a time.',
-            })}
-            subtitleNumberOfLines={0}
-            rightAccessory={
-              <Switch
-                accessibilityLabel={t('diarySettings.guidedCheckIn', {
-                  defaultValue: 'Guided check-in',
-                })}
-                value={guidedCheckInEnabled}
-                onValueChange={setGuidedCheckInEnabled}
               />
             }
           />
