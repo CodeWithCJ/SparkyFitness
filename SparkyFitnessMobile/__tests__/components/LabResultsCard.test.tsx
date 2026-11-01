@@ -73,6 +73,25 @@ describe('LabResultsCard', () => {
     ).toHaveBeenCalledWith('LabResults');
   });
 
+  it('counts only low and high results as outside the range', () => {
+    jest.mocked(useLabMarkers).mockReturnValue({
+      markers: [
+        marker('a', 'LDL', 100, { value: 130, date: '2026-09-20' }),
+        marker('b', 'HDL', null, { value: 55, date: '2026-09-01' }),
+      ],
+    } as never);
+    const { getByText } = render(<LabResultsCard navigation={navigation} />);
+    expect(getByText(/^1 outside the reference range/)).toBeTruthy();
+  });
+
+  it('shows no outside-range count when no result has a range to miss', () => {
+    jest.mocked(useLabMarkers).mockReturnValue({
+      markers: [marker('b', 'HDL', null, { value: 55, date: '2026-09-01' })],
+    } as never);
+    const { queryByText } = render(<LabResultsCard navigation={navigation} />);
+    expect(queryByText(/outside the reference range/)).toBeNull();
+  });
+
   it('prompts to add a result when markers exist but none has a value', () => {
     jest.mocked(useLabMarkers).mockReturnValue({
       markers: [marker('a', 'LDL', 100, null)],

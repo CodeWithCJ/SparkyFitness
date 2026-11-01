@@ -14,6 +14,7 @@ import {
   parseLabValue,
   parseRangeBound,
 } from '../../src/utils/labResults';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 
 const result = (overrides: Partial<LabResultResponse>): LabResultResponse => ({
   id: 'r1',
@@ -121,6 +122,18 @@ describe('formatting', () => {
     expect(formatLabRange(null, null, '%')).toBeNull();
     expect(formatLabValue(5.4, '%')).toBe('5.4 %');
     expect(formatLabValue(7, '')).toBe('7');
+  });
+
+  it('uses the app locale decimal separator', async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('pl');
+    try {
+      expect(formatLabRange(4, 5.6, '%')).toBe('4 - 5,6 %');
+      expect(formatLabRange(null, 0.45, 'mg/dL')).toBe('< 0,45 mg/dL');
+      expect(formatLabValue(5.4, '%')).toBe('5,4 %');
+    } finally {
+      await i18n.changeLanguage('en');
+    }
   });
 
   it('shows a number with its unit, else the text', () => {
