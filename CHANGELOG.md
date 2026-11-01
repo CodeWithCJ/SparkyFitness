@@ -1,5 +1,84 @@
 # Changelog
 
+## [1.12.0](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.11.0...v1.12.0) (2026-11-01)
+
+
+### Features
+
+* add tag.sparkyfitness.com site for NFC tag links ([dd1e71e](https://github.com/CodeWithCJ/SparkyFitness/commit/dd1e71ee2024b03bcffa1b0984d05c8834161c10))
+* add tag.sparkyfitness.com site for NFC tag links ([814374f](https://github.com/CodeWithCJ/SparkyFitness/commit/814374f4f26369ae1a5b86efeb640749ae0366cf))
+* **goals:** optionally adjust percentage macros with exercise calories ([6ea5e55](https://github.com/CodeWithCJ/SparkyFitness/commit/6ea5e55ad255cb930d6f03984cef362dc921beda))
+* **google-health:** attach tracker heart rate to workouts logged in SparkyFitness ([6d17c1e](https://github.com/CodeWithCJ/SparkyFitness/commit/6d17c1e94ec3be305b666dbcdba9d78bbafe0d66))
+* **google-health:** attach tracker heart rate to workouts logged in SparkyFitness ([5948001](https://github.com/CodeWithCJ/SparkyFitness/commit/5948001c2f46dbf353ae9cac1773c61c112656d4)), closes [#3285](https://github.com/CodeWithCJ/SparkyFitness/issues/3285)
+* **helm:** safe defaults above one server replica ([b8567ea](https://github.com/CodeWithCJ/SparkyFitness/commit/b8567ea7e7c0e39aa13f81b3b83ffe1210d652cc))
+* **helm:** safe defaults above one server replica (RWO volumes and Recreate broke multi-replica installs on updates and node drains) ([4c88990](https://github.com/CodeWithCJ/SparkyFitness/commit/4c889902c837d0515f83b817c43149b189b897dd))
+* list the dev app in the tag site's iPhone link file ([126c0d7](https://github.com/CodeWithCJ/SparkyFitness/commit/126c0d78ffb15fe906b8c653459a1f2c8d66eb28))
+* list the dev app in the tag site's iPhone link file ([853dec5](https://github.com/CodeWithCJ/SparkyFitness/commit/853dec5a95fbe92c7206281d27427077709eb747))
+* log water by tapping an NFC tag ([d24d3ce](https://github.com/CodeWithCJ/SparkyFitness/commit/d24d3cef73303de5c185f84e167a1b233a1a34f5))
+* log water by tapping an NFC tag ([49b4408](https://github.com/CodeWithCJ/SparkyFitness/commit/49b4408d7dd79f42e4bbbb17c524c1a966f5d24d))
+* **mobile:** add keyless MapLibre OpenStreetMap map rendering on Android ([7601a7a](https://github.com/CodeWithCJ/SparkyFitness/commit/7601a7a4e28ede1bb7b7802f797ff4fc3ec484cf))
+* **mobile:** add keyless MapLibre OpenStreetMap map rendering on Android ([4f9375b](https://github.com/CodeWithCJ/SparkyFitness/commit/4f9375b6595f8027ca51237bc04243322fe8a01f))
+* **mobile:** build the Wear OS app in the EAS production workflow ([e803d99](https://github.com/CodeWithCJ/SparkyFitness/commit/e803d990c9167243cd42d9c8091ad2f901649414))
+* **mobile:** build the Wear OS app in the EAS production workflow ([d608fe3](https://github.com/CodeWithCJ/SparkyFitness/commit/d608fe303a919af63d10725c291ea3d0179ad4a2))
+* **server:** add a readiness endpoint and use it for the Docker health check ([97b656d](https://github.com/CodeWithCJ/SparkyFitness/commit/97b656d96bc6fe421e131aa2cb8b60c685ce00a2))
+
+
+### Bug Fixes
+
+* add App Store and TestFlight links to the tag landing page ([2ab813a](https://github.com/CodeWithCJ/SparkyFitness/commit/2ab813aed33e52588ce223c41dd7bce16fa5855c))
+* add App Store and TestFlight links to the tag landing page ([74aa32d](https://github.com/CodeWithCJ/SparkyFitness/commit/74aa32d5be9e5b830cab85e21b399b81fc1b6f13))
+* **exercise:** lock the workout row before a distance correction reads it (two corrections at once scaled the laps from a distance the other had already replaced) ([57faca3](https://github.com/CodeWithCJ/SparkyFitness/commit/57faca38e0abc720291876396a68aaf7ff48de8a))
+* **exercise:** lock the workout row when an edit rereads it ([772e036](https://github.com/CodeWithCJ/SparkyFitness/commit/772e03633cf815ca7d0c8f18ad568c9987a2948a))
+* **exercise:** lock the workout row when an edit rereads it (a distance correction that committed mid-edit was written back over) ([7ed7f2d](https://github.com/CodeWithCJ/SparkyFitness/commit/7ed7f2da3eef9a3ba41e199497ecd4dfcdde980b))
+* **frontend:** keep whole stones and feet when converting back from kg and cm ([f83e1a4](https://github.com/CodeWithCJ/SparkyFitness/commit/f83e1a414d45fa0fb71737940913e9eaa1c95313))
+* **goals:** preserve historical exercise macro settings ([2dbbd8a](https://github.com/CodeWithCJ/SparkyFitness/commit/2dbbd8a10253b47680da24c5c057cd432938ba17))
+* **goals:** refresh exercise-adjusted macro caches ([a07a8ec](https://github.com/CodeWithCJ/SparkyFitness/commit/a07a8ec2a93d59d938cb1f1c760c7c323cf23bb2))
+* **google-health:** keep attaching heart rate when one span's request fails ([5dd3828](https://github.com/CodeWithCJ/SparkyFitness/commit/5dd38284fbdeb1e684604eeacdd51f01234dedca))
+* **helm:** leave the server's default PodDisruptionBudget off on a single node (with every pod on one node, a drain evicts one pod that cannot reschedule and the budget blocks the rest forever) ([d8b1ddf](https://github.com/CodeWithCJ/SparkyFitness/commit/d8b1ddf4e1436425c6d7bc63db60bee82b62fd2c))
+* keep whole stones and feet when converting back from kg and cm ([f8cc471](https://github.com/CodeWithCJ/SparkyFitness/commit/f8cc471f1e191eee90c5ef06cae588769e732c1f))
+* **mobile:** cancel a waiting NFC request on blur and during startup ([601696c](https://github.com/CodeWithCJ/SparkyFitness/commit/601696cd06df860ca35896bec2d3d1c7c513eddf))
+* **mobile:** cancel a waiting NFC request when the screen goes away ([2194b90](https://github.com/CodeWithCJ/SparkyFitness/commit/2194b90edb7ca74bef6df4eae0eeb972be9fd52c))
+* **mobile:** exclude MapLibre from iOS autolinking and improve route map bounds ([c6138ab](https://github.com/CodeWithCJ/SparkyFitness/commit/c6138aba9a52b6f1430c863515923c49581996b2))
+* **mobile:** keep Active Energy for a day whose Move ring is 0 and document the setting ([5f84867](https://github.com/CodeWithCJ/SparkyFitness/commit/5f84867505d72d122fc289e4ffb53cfe39b352b9))
+* **mobile:** keep the NFC request owner until its final cleanup ([440dbab](https://github.com/CodeWithCJ/SparkyFitness/commit/440dbab637bd9962e3da82ea0177f9a69027a949))
+* **mobile:** make NFC setup and scan work on Android ([5d98cb7](https://github.com/CodeWithCJ/SparkyFitness/commit/5d98cb79a0df731b74952077bbf9f65d14559908))
+* **mobile:** pair saved exercises with the server reply by id ([753d04a](https://github.com/CodeWithCJ/SparkyFitness/commit/753d04a791145e193a957f552afff37f79decccb))
+* **mobile:** resolve route map marker anchors, colors, live bounds, and offline fallback ([00c2f9b](https://github.com/CodeWithCJ/SparkyFitness/commit/00c2f9b79fc5c8dd81c811fcc18b8ac4b2605b53))
+* **mobile:** route map layer order, preview padding, and screen header safe insets ([062f931](https://github.com/CodeWithCJ/SparkyFitness/commit/062f9312a9ef5e5b60b94b3722b77c9396f24c88))
+* **mobile:** say that other apps' workouts can add to the Move ring and that days without a ring use Active Energy ([a58a3e0](https://github.com/CodeWithCJ/SparkyFitness/commit/a58a3e084a321feaffdcc7e4f681ba44f92a3a53))
+* **mobile:** unwrap antimeridian bounds and remove MapLibre plugin from app config ([085bd26](https://github.com/CodeWithCJ/SparkyFitness/commit/085bd26e33ecb2a4f1b011d9e5b79cca6c8eee2f))
+* **mobile:** use data-driven paint properties to preserve per-line color and width ([d47a362](https://github.com/CodeWithCJ/SparkyFitness/commit/d47a362c7cdea52d85e270f51de8745d95f301ef))
+* **server:** address review on NFC action tags ([6f09ecf](https://github.com/CodeWithCJ/SparkyFitness/commit/6f09ecf904bcd97b3b248b75e56246fe2bdf988a))
+* **server:** answer readiness probes 200 RESTORING during a restore (a 503 made Docker mark the container unhealthy, and Swarm or autoheal could replace it mid-restore) ([b56c89e](https://github.com/CodeWithCJ/SparkyFitness/commit/b56c89e794b7f1e983f3b16c9a570f23ac5891b0))
+* **server:** answer readiness probes from fresh checks and keep in-flight probes out of a restore (repeating a queued check's last result hid an outage behind "busy", and a probe connecting just before a restore could still answer ready) ([1192d2f](https://github.com/CodeWithCJ/SparkyFitness/commit/1192d2f06450819662e8bffd2fb932de14edf1bf))
+* **server:** block COROS last_sync_at on failed or deferred FIT downloads ([18ac258](https://github.com/CodeWithCJ/SparkyFitness/commit/18ac2580221222e312776c395f1b31a184f27d02))
+* **server:** honor daily sync frequency and keep last_sync_at after failed syncs ([5397e8f](https://github.com/CodeWithCJ/SparkyFitness/commit/5397e8f1930e89c71fefd5f56de50bcdc982be25))
+* **server:** keep last_sync_at when COROS queries or activity writes fail ([6680b53](https://github.com/CodeWithCJ/SparkyFitness/commit/6680b53b288e40954029b075a2bd279df067921b))
+* **server:** keep last_sync_at when required fetches or item writes fail ([008eeec](https://github.com/CodeWithCJ/SparkyFitness/commit/008eeec480a68f573b701de446894407ec48ed69))
+* **server:** keep readiness probes off the database while a restore runs (a probe reconnecting after the restore terminated every session made dropdb refuse) ([23702d3](https://github.com/CodeWithCJ/SparkyFitness/commit/23702d3aa555a3be9f5b9d515c0abd1733072a96))
+* **server:** recheck shutdown before answering a readiness probe (a check that started before the drain could still answer ready) ([5242f63](https://github.com/CodeWithCJ/SparkyFitness/commit/5242f63912a7fbf520e8173f0bf579d3db5f9b8b))
+* **server:** scope Hevy replay timestamp to its provider and report processed count ([c21bfca](https://github.com/CodeWithCJ/SparkyFitness/commit/c21bfca254e253613d5316677632c209b8f40ff5))
+* **server:** share one readiness check between concurrent probes (the endpoint is public and unthrottled, so a flood of probes queued on the pools next to real requests) ([d30677e](https://github.com/CodeWithCJ/SparkyFitness/commit/d30677e7e814554b6653a246580d272e208de263))
+* **server:** stop counting a stalled pool as busy after 10 s (queued requests already fail by then, so 30 s kept a stuck replica in rotation) ([cce2034](https://github.com/CodeWithCJ/SparkyFitness/commit/cce2034dc9ce331528054cabb9eb28801d405e3a))
+* **server:** widen Strava/Fitbit scheduled window and keep last_sync_at on failed Hevy/Intervals items ([6f9002e](https://github.com/CodeWithCJ/SparkyFitness/commit/6f9002ee22fe4a94d02acf9f23dd9f48017d8514))
+* **symptoms:** keep calendar days right after midnight and at date limits ([7e7f63d](https://github.com/CodeWithCJ/SparkyFitness/commit/7e7f63d2a050c818842e77aa30a75638eff89668))
+* **symptoms:** show an episode on every day it covers in the calendar ([e99a40c](https://github.com/CodeWithCJ/SparkyFitness/commit/e99a40c458d590bb7aa0454e2ea9d1c38720a072))
+
+
+### Documentation
+
+* add cloud hosting install page ([6fe32c0](https://github.com/CodeWithCJ/SparkyFitness/commit/6fe32c03915408f975d76344b3df6d691f85ef52))
+* add cloud hosting install page ([75b46aa](https://github.com/CodeWithCJ/SparkyFitness/commit/75b46aa4f809cefb04289e7eed328a03f6feb17f))
+* **agents:** move long feature notes out of the package guides ([2014ef4](https://github.com/CodeWithCJ/SparkyFitness/commit/2014ef40c795d745c73fa903a77258603b82e60d))
+* **agents:** move long feature notes out of the package guides (the mobile guide had grown to 270 KB, mostly detail few tasks need) ([27bf534](https://github.com/CodeWithCJ/SparkyFitness/commit/27bf53447f2411e2bb2af2839766a1f25c0e4e83))
+* **mobile:** clarify keyless MapLibre platform scope in AGENTS.md ([d9c817d](https://github.com/CodeWithCJ/SparkyFitness/commit/d9c817d02a3335b91ba39e69da1ef8fc1c191760))
+* **mobile:** clarify liteMode platform behavior in map surface and route preview ([49b380e](https://github.com/CodeWithCJ/SparkyFitness/commit/49b380ecb1484190217f3a3c932fd2eddb879646))
+* **mobile:** correct MapLibre test mock location in AGENTS.md ([c79f122](https://github.com/CodeWithCJ/SparkyFitness/commit/c79f1229d1fae76a2e8e4f76eaa6d50298f8d3dc))
+* **mobile:** document MapSurface architecture in AGENTS.md and clean lockfile ([aa8eb69](https://github.com/CodeWithCJ/SparkyFitness/commit/aa8eb69cf4af784a29d0da2fe5176d9080445ee0))
+* **mobile:** document MapSurfaceProps.attribution platform scope ([b53755a](https://github.com/CodeWithCJ/SparkyFitness/commit/b53755a8d9fdb8041e8405dbcd8a38c49eadd85e))
+* **mobile:** say the Wear OS closed testing track must be named alpha ([934abc0](https://github.com/CodeWithCJ/SparkyFitness/commit/934abc01419b0b1d177494eb8034f17b0c11f36b))
+* say a source build needs a supervisor and point load balancers at the readiness check (pnpm start stays down after the server exits, and /api/health stays green when an instance cannot serve) ([95586e6](https://github.com/CodeWithCJ/SparkyFitness/commit/95586e6a6618d3185672ec5ad7600bc220d898d4))
+
 ## [1.11.0](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.10.0...v1.11.0) (2026-10-30)
 
 
