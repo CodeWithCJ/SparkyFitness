@@ -31,7 +31,9 @@ import {
 import { useLabMarkerLabels } from '../utils/labMarkerLabels';
 import {
   buildLabPickerOptions,
+  dropStalePrefilledRange,
   effectiveLabRange,
+  type LabFormPrefill,
   labMarkerQueryFromId,
   labPresetDefaults,
   labPresetName,
@@ -103,14 +105,35 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
       ? markers.find((m) => m.markerId === selection.id)
       : undefined;
 
+  // What the form filled in last, so a range left over from another unit can
+  // be told apart from one the person typed.
+  const prefill = useRef<LabFormPrefill | null>(null);
+
   const applyDefaults = (next: {
     unit: string;
     low: number | null;
     high: number | null;
   }) => {
-    setUnit(next.unit);
-    setLowText(rangeText(next.low));
-    setHighText(rangeText(next.high));
+    const filled = {
+      unit: next.unit,
+      low: rangeText(next.low),
+      high: rangeText(next.high),
+    };
+    prefill.current = filled;
+    setUnit(filled.unit);
+    setLowText(filled.low);
+    setHighText(filled.high);
+  };
+
+  // Changing the unit of a range the form filled in invalidates that range.
+  const settledRange = dropStalePrefilledRange(
+    { unit, low: lowText, high: highText },
+    prefill.current
+  );
+  const handleUnitCommitted = () => {
+    setLowText(settledRange.low);
+    setHighText(settledRange.high);
+    prefill.current = { unit, ...settledRange };
   };
 
   const chooseBuiltin = (chosen: LabMarkerPreset) => {
@@ -192,9 +215,14 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
           ? selection.name
           : '';
 
+  // A custom marker can read below zero (a T-score, base excess), and the
+  // decimal pad has no minus key on iOS.
+  const numberKeyboard =
+    selection?.kind === 'builtin' ? 'decimal-pad' : 'numbers-and-punctuation';
+
   const value = parseLabValue(valueText);
-  const low = parseRangeBound(lowText);
-  const high = parseRangeBound(highText);
+  const low = parseRangeBound(settledRange.low);
+  const high = parseRangeBound(settledRange.high);
   const rangeValid =
     low.ok &&
     high.ok &&
@@ -374,7 +402,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 <TextInput
                   value={valueText}
                   onChangeText={setValueText}
-                  keyboardType="decimal-pad"
+                  keyboardType={numberKeyboard}
                   placeholder="0"
                   placeholderTextColor={textMuted}
                   className={`${INPUT_CLASS} flex-1`}
@@ -385,6 +413,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 <TextInput
                   value={unit}
                   onChangeText={setUnit}
+                  onEndEditing={handleUnitCommitted}
                   placeholder={t('labs.unit', { defaultValue: 'Unit' })}
                   placeholderTextColor={textMuted}
                   autoCapitalize="none"
@@ -406,7 +435,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 <TextInput
                   value={lowText}
                   onChangeText={setLowText}
-                  keyboardType="decimal-pad"
+                  keyboardType={numberKeyboard}
                   placeholder={t('labs.rangeLow', { defaultValue: 'Low' })}
                   placeholderTextColor={textMuted}
                   className={`${INPUT_CLASS} flex-1`}
@@ -417,7 +446,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 <TextInput
                   value={highText}
                   onChangeText={setHighText}
-                  keyboardType="decimal-pad"
+                  keyboardType={numberKeyboard}
                   placeholder={t('labs.rangeHigh', { defaultValue: 'High' })}
                   placeholderTextColor={textMuted}
                   className={`${INPUT_CLASS} flex-1`}

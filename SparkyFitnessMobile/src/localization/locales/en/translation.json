@@ -9647,6 +9647,8 @@
     "add": "Add lab result",
     "changeMarker": "Change",
     "chartEmpty": "No results yet",
+    "chartOtherUnits_one": "{{count}} result in another unit is not plotted.",
+    "chartOtherUnits_other": "{{count}} results in other units are not plotted.",
     "createCustom": "Add \"{{name}}\" as a new marker",
     "date": "Date of test",
     "dateFuture": "The test date cannot be in the future.",

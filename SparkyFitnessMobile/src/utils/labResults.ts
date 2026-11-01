@@ -27,6 +27,8 @@ export interface LabMarker {
   /** The range to judge a result by when it was saved without its own. */
   ref_range_low: number | null;
   ref_range_high: number | null;
+  /** The unit that range is in, which a result's own unit may not match. */
+  ref_range_unit: string;
   latest: LabResultResponse | null;
 }
 
@@ -51,12 +53,15 @@ export const labPresetName = (
   labels: LabMarkerLabels = {}
 ): string => labels[preset.key] ?? preset.displayName;
 
-/** Parses a typed lab value; accepts a decimal comma. Null when not a number. */
+/**
+ * Parses a typed lab value; accepts a decimal comma and a minus sign (base
+ * excess and bone-density T-scores are negative). Null when not a number.
+ */
 export const parseLabValue = (text: string): number | null => {
-  const trimmed = text.trim().replace(',', '.');
+  const trimmed = text.trim().replace(',', '.').replace('\u2212', '-');
   if (trimmed === '') return null;
   const value = Number(trimmed);
-  return Number.isFinite(value) && value >= 0 ? value : null;
+  return Number.isFinite(value) ? value : null;
 };
 
 /** Parses an optional range bound: empty is "no bound", junk is invalid. */
@@ -68,6 +73,83 @@ export const parseRangeBound = (
   return value === null ? { ok: false } : { ok: true, value };
 };
 
+/**
+ * Spellings of the same unit, as printed by different labs, after the basic
+ * normalisation below. Only exact equivalences belong here: a value in one
+ * spelling is numerically identical in the other, so no conversion is needed.
+ */
+const UNIT_EQUIVALENTS: Readonly<Record<string, string>> = {
+  // 1 uIU/mL = 1 mIU/L
+  'uiu/ml': 'miu/l',
+  // Enzyme activity: IU/L and U/L are the same.
+  'iu/l': 'u/l',
+  // 1 ng/mL = 1 ug/L
+  'ug/l': 'ng/ml',
+  'mcg/dl': 'ug/dl',
+  // For the monovalent ions (sodium, potassium, chloride, bicarbonate).
+  'meq/l': 'mmol/l',
+  // Blood counts: x10E3/uL, K/uL, thousand/uL are 10^3 per uL.
+  'x10e3/ul': '103/ul',
+  '10e3/ul': '103/ul',
+  'x10^3/ul': '103/ul',
+  '10^3/ul': '103/ul',
+  'k/ul': '103/ul',
+  'thousand/ul': '103/ul',
+  'x10e6/ul': '106/ul',
+  '10e6/ul': '106/ul',
+  'x10^6/ul': '106/ul',
+  '10^6/ul': '106/ul',
+  'm/ul': '106/ul',
+  'million/ul': '106/ul',
+  // eGFR is per 1.73 m2 of body surface whether or not the report prints it.
+  'ml/min/1.73': 'ml/min/1.73m2',
+  'ml/min/1.73m^2': 'ml/min/1.73m2',
+};
+
+/** "mg/dL" and "MG/DL " are the same unit; "µ" and "u" are interchangeable. */
+const normalizeUnit = (unit: string | null | undefined): string => {
+  const base = (unit ?? '')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[µμ]/g, 'u')
+    .replace(/²/g, '2')
+    .replace(/³/g, '3')
+    .replace(/⁶/g, '6');
+  return UNIT_EQUIVALENTS[base] ?? base;
+};
+
+export const sameLabUnit = (
+  a: string | null | undefined,
+  b: string | null | undefined
+): boolean => normalizeUnit(a) === normalizeUnit(b);
+
+/** What the add form filled in for a marker: its unit and the range typed alongside. */
+export interface LabFormPrefill {
+  unit: string;
+  low: string;
+  high: string;
+}
+
+/**
+ * The range texts to use once the unit may have been changed. A range the
+ * form filled in belongs to the unit it was filled in for, so when that unit
+ * is changed and the range was not edited, it is dropped rather than saved
+ * under the new unit. A range the person typed or edited is theirs and stays.
+ */
+export const dropStalePrefilledRange = (
+  current: LabFormPrefill,
+  prefill: LabFormPrefill | null
+): { low: string; high: string } => {
+  const stale =
+    prefill !== null &&
+    !sameLabUnit(current.unit, prefill.unit) &&
+    current.low === prefill.low &&
+    current.high === prefill.high;
+  return stale
+    ? { low: '', high: '' }
+    : { low: current.low, high: current.high };
+};
+
 type Range = {
   ref_range_low: number | null;
   ref_range_high: number | null;
@@ -75,29 +157,41 @@ type Range = {
 
 type LabRangeBounds = { low: number | null; high: number | null };
 
+/** A marker's fallback range, with the unit that range is in. */
+type FallbackRange = Range & { ref_range_unit?: string };
+
 /**
  * The range a result is read against: the one saved with it, else the
  * marker's. A result with neither bound falls back as a whole, so a bound is
- * never taken from one range and its partner from the other.
+ * never taken from one range and its partner from the other. The marker's
+ * range is only applied to a result in the same unit: a result saved in
+ * another unit has no range to judge it by, rather than a wrong one.
  */
 export const effectiveLabRange = (
-  result: Range | null | undefined,
-  fallback: Range
+  result: (Range & { unit?: string }) | null | undefined,
+  fallback: FallbackRange
 ): LabRangeBounds => {
   const own =
     result != null &&
     (result.ref_range_low !== null || result.ref_range_high !== null);
-  const source = own ? result : fallback;
+  if (own) {
+    return { low: result.ref_range_low, high: result.ref_range_high };
+  }
+  const otherUnit =
+    result?.unit &&
+    fallback.ref_range_unit &&
+    !sameLabUnit(result.unit, fallback.ref_range_unit);
+  if (otherUnit) return { low: null, high: null };
   return {
-    low: source.ref_range_low ?? null,
-    high: source.ref_range_high ?? null,
+    low: fallback.ref_range_low ?? null,
+    high: fallback.ref_range_high ?? null,
   };
 };
 
 /** A result is judged by its own range, else the marker's. */
 export const labResultStatus = (
-  result: Pick<LabResultResponse, 'value_numeric'> & Range,
-  fallback: Range
+  result: Pick<LabResultResponse, 'value_numeric' | 'unit'> & Range,
+  fallback: FallbackRange
 ): LabRangeStatus => {
   if (result.value_numeric === null) return 'unknown';
   const { low, high } = effectiveLabRange(result, fallback);
@@ -152,14 +246,28 @@ export type LabHistoryPoint = {
   value: number;
 };
 
-/** Numeric results as chart points, oldest first; text-only results are dropped. */
+/**
+ * Numeric results as chart points, oldest first; text-only results are
+ * dropped. Given a unit, results in another unit are left out too, since
+ * values in different units do not share a scale. Results on the same day
+ * keep the order they were entered in.
+ */
 export const labHistoryPoints = (
-  results: LabResultResponse[]
+  results: LabResultResponse[],
+  unit?: string
 ): LabHistoryPoint[] =>
   results
-    .filter((r) => r.value_numeric !== null)
-    .map((r) => ({ day: r.entry_date, value: r.value_numeric as number }))
-    .sort((a, b) => a.day.localeCompare(b.day));
+    .filter(
+      (r) =>
+        r.value_numeric !== null &&
+        (unit === undefined || sameLabUnit(r.unit, unit))
+    )
+    .sort(
+      (a, b) =>
+        a.entry_date.localeCompare(b.entry_date) ||
+        (a.created_at ?? '').localeCompare(b.created_at ?? '')
+    )
+    .map((r) => ({ day: r.entry_date, value: r.value_numeric as number }));
 
 /** Profile gender as a lab sex; anything else (unset, other) is unknown. */
 export const labSexFromGender = (
@@ -191,6 +299,7 @@ export const buildLabMarkers = (
       unit: result.unit || preset.unit,
       ref_range_low: range.low,
       ref_range_high: range.high,
+      ref_range_unit: preset.unit,
       latest: result,
     });
   }
@@ -206,6 +315,7 @@ export const buildLabMarkers = (
       unit: latest?.unit || custom.unit,
       ref_range_low: custom.ref_range_low,
       ref_range_high: custom.ref_range_high,
+      ref_range_unit: custom.unit,
       latest,
     });
   }

@@ -2,6 +2,7 @@ import type { LabMarkerResponse, LabResultResponse } from '@workspace/shared';
 import {
   buildLabMarkers,
   buildLabPickerOptions,
+  dropStalePrefilledRange,
   effectiveLabRange,
   formatLabRange,
   formatLabValue,
@@ -54,10 +55,18 @@ describe('parseLabValue', () => {
     expect(parseLabValue(' 5,4 ')).toBe(5.4);
     expect(parseLabValue('0')).toBe(0);
   });
-  it('rejects empty, negative and non-numeric input', () => {
+  it('accepts a negative value, with a hyphen or a minus sign', () => {
+    expect(parseLabValue('-1.5')).toBe(-1.5);
+    expect(parseLabValue('-2,5')).toBe(-2.5);
+    expect(parseLabValue('\u22122')).toBe(-2);
+  });
+  it('rejects empty and non-numeric input', () => {
     expect(parseLabValue('')).toBeNull();
-    expect(parseLabValue('-1')).toBeNull();
     expect(parseLabValue('abc')).toBeNull();
+    expect(parseLabValue('-')).toBeNull();
+  });
+  it('lets a range bound be negative too', () => {
+    expect(parseRangeBound('-2')).toEqual({ ok: true, value: -2 });
   });
 });
 
@@ -191,6 +200,124 @@ describe('labHistoryPoints', () => {
       { day: '2026-03-01', value: 5.1 },
       { day: '2026-09-12', value: 6.1 },
     ]);
+  });
+
+  it('keeps same-day results in the order they were entered', () => {
+    // The API returns the newest first.
+    const points = labHistoryPoints([
+      result({
+        id: 'later',
+        entry_date: '2026-09-12',
+        value_numeric: 7,
+        created_at: '2026-09-12T15:00:00.000Z',
+      }),
+      result({
+        id: 'earlier',
+        entry_date: '2026-09-12',
+        value_numeric: 5,
+        created_at: '2026-09-12T09:00:00.000Z',
+      }),
+    ]);
+    expect(points.map((p) => p.value)).toEqual([5, 7]);
+  });
+
+  it('plots only results in the given unit', () => {
+    const points = labHistoryPoints(
+      [
+        result({
+          id: 'a',
+          entry_date: '2026-09-12',
+          value_numeric: 100,
+          unit: 'mg/dL',
+        }),
+        result({
+          id: 'b',
+          entry_date: '2026-06-01',
+          value_numeric: 2.6,
+          unit: 'mmol/L',
+        }),
+        result({
+          id: 'c',
+          entry_date: '2026-03-01',
+          value_numeric: 110,
+          unit: 'MG/DL',
+        }),
+      ],
+      'mg/dL'
+    );
+    expect(points.map((p) => p.value)).toEqual([110, 100]);
+  });
+});
+
+describe('effectiveLabRange with units', () => {
+  const marker = {
+    ref_range_low: 0,
+    ref_range_high: 100,
+    ref_range_unit: 'mg/dL',
+  };
+  const noRange = { ref_range_low: null, ref_range_high: null };
+
+  it('applies the marker range to a result in the same unit', () => {
+    expect(effectiveLabRange({ ...noRange, unit: 'MG/DL' }, marker)).toEqual({
+      low: 0,
+      high: 100,
+    });
+  });
+
+  it('gives no range to a result in another unit', () => {
+    expect(effectiveLabRange({ ...noRange, unit: 'mmol/L' }, marker)).toEqual({
+      low: null,
+      high: null,
+    });
+    expect(
+      labResultStatus(
+        { value_numeric: 150, unit: 'mmol/L', ...noRange },
+        marker
+      )
+    ).toBe('unknown');
+  });
+
+  it("still uses a result's own range whatever its unit", () => {
+    expect(
+      effectiveLabRange(
+        { ref_range_low: 1, ref_range_high: 3, unit: 'mmol/L' },
+        marker
+      )
+    ).toEqual({ low: 1, high: 3 });
+  });
+});
+
+describe('dropStalePrefilledRange', () => {
+  const prefill = { unit: 'mg/dL', low: '0', high: '100' };
+
+  it('drops a filled-in range when the unit changes', () => {
+    expect(
+      dropStalePrefilledRange(
+        { unit: 'mmol/L', low: '0', high: '100' },
+        prefill
+      )
+    ).toEqual({ low: '', high: '' });
+  });
+
+  it('keeps it when the unit is only spelled differently', () => {
+    expect(
+      dropStalePrefilledRange({ unit: 'MG/DL', low: '0', high: '100' }, prefill)
+    ).toEqual({ low: '0', high: '100' });
+  });
+
+  it('keeps a range the person edited', () => {
+    expect(
+      dropStalePrefilledRange(
+        { unit: 'mmol/L', low: '2', high: '100' },
+        prefill
+      )
+    ).toEqual({ low: '2', high: '100' });
+  });
+
+  it('keeps everything when nothing was filled in', () => {
+    expect(
+      dropStalePrefilledRange({ unit: 'x', low: '1', high: '2' }, null)
+    ).toEqual({ low: '1', high: '2' });
   });
 });
 

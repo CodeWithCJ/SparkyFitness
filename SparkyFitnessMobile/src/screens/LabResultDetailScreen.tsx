@@ -70,12 +70,15 @@ const LabResultDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   const results = useMemo(() => history.data ?? [], [history.data]);
-  const points = useMemo(() => labHistoryPoints(results), [results]);
   const latest = results[0] ?? null;
   const fallback = marker ?? NO_RANGE;
 
   // The latest result's own range wins, then the marker's.
   const unit = latest?.unit || marker?.unit || '';
+  // The chart shares one scale, so it plots only results in the latest unit.
+  const points = labHistoryPoints(results, unit);
+  const otherUnitCount =
+    results.filter((r) => r.value_numeric !== null).length - points.length;
   const { low, high } = effectiveLabRange(latest, fallback);
   const range = formatLabRange(low, high, unit);
 
@@ -170,6 +173,19 @@ const LabResultDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   refRangeLow={low}
                   refRangeHigh={high}
                 />
+              )}
+              {otherUnitCount > 0 && (
+                <Text className="text-text-muted text-xs">
+                  {t('labs.chartOtherUnits', {
+                    defaultValue_one:
+                      '{{count}} result in another unit is not plotted.',
+                    defaultValue_other:
+                      '{{count}} results in other units are not plotted.',
+                    defaultValue:
+                      '{{count}} results in other units are not plotted.',
+                    count: otherUnitCount,
+                  })}
+                </Text>
               )}
             </View>
 
