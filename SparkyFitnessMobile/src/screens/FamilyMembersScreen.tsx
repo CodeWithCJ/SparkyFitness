@@ -6,24 +6,57 @@ import SettingsRow from '../components/SettingsRow';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useFamilyUsers } from '../hooks';
+import { useFamilyCopySource } from '../hooks/useFamilyDiary';
+import { useMealTypes } from '../hooks/useMealTypes';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
-import { familyDiaryUserName } from '../utils/familyDiary';
+import { canCopyFamilyDiary, familyDiaryUserName } from '../utils/familyDiary';
+import { filterFoodEntriesByMealTypeId } from '../utils/mealNutrition';
 
 type FamilyMembersScreenProps = RootStackScreenProps<'FamilyMembers'>;
 
 const FamilyMembersScreen: React.FC<FamilyMembersScreenProps> = ({
   navigation,
+  route,
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const { data: users = [], isLoading, isError, refetch } = useFamilyUsers();
+  const copySource = route.params?.copySource;
+  const {
+    data: users = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useFamilyUsers({ refetchOnFocus: Boolean(copySource) });
+  const source = useFamilyCopySource({
+    date: copySource?.sourceDate ?? '',
+    enabled: Boolean(copySource),
+  });
+  const ownMealTypes = useMealTypes({ enabled: Boolean(copySource) });
+  const recipients = copySource
+    ? users.filter((user) => canCopyFamilyDiary(user))
+    : users;
+  const sourceEntries = copySource
+    ? filterFoodEntriesByMealTypeId(
+        source.data?.foodEntries ?? [],
+        copySource.mealTypeId,
+        copySource.mealTypeName,
+        ownMealTypes.mealTypes
+      )
+    : [];
+  const loadingSource =
+    Boolean(copySource) && (source.isLoading || ownMealTypes.isLoading);
+  const sourceFailed =
+    Boolean(copySource) && (source.isError || ownMealTypes.isError);
+  const title = copySource
+    ? t('familyDiary.chooseCopyRecipient', { defaultValue: 'Choose recipient' })
+    : t('familyDiary.title', { defaultValue: 'Family Diaries' });
   const header = useScreenHeader({
-    title: t('familyDiary.title', { defaultValue: 'Family Diaries' }),
-    nativeTitle: t('familyDiary.title', { defaultValue: 'Family Diaries' }),
+    title,
+    nativeTitle: title,
     left: { kind: 'back' },
   });
 
@@ -33,38 +66,63 @@ const FamilyMembersScreen: React.FC<FamilyMembersScreenProps> = ({
       style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
-      {isLoading ? (
+      {isLoading || loadingSource ? (
         <StatusView
           loading
           title={t('familyDiary.loadingMembers', {
             defaultValue: 'Loading family members…',
           })}
         />
-      ) : isError ? (
+      ) : isError || sourceFailed ? (
         <StatusView
           icon="alert-circle"
-          title={t('familyDiary.loadMembersFailed', {
-            defaultValue: "Couldn't load family members",
-          })}
+          title={
+            sourceFailed
+              ? t('familyDiary.copySourceFailed', {
+                  defaultValue: "Couldn't load the source meal",
+                })
+              : t('familyDiary.loadMembersFailed', {
+                  defaultValue: "Couldn't load family members",
+                })
+          }
           action={{
             label: t('common.retry', { defaultValue: 'Retry' }),
-            onPress: () => void refetch(),
+            onPress: () => {
+              void refetch();
+              if (copySource) {
+                void source.refetch();
+                void ownMealTypes.refetch();
+              }
+            },
             variant: 'primary',
           }}
         />
-      ) : users.length === 0 ? (
+      ) : copySource && sourceEntries.length === 0 ? (
+        <StatusView
+          icon="food"
+          title={t('familyDiary.copySourceEmpty', {
+            defaultValue: 'No food entries in this meal',
+          })}
+        />
+      ) : recipients.length === 0 ? (
         <StatusView
           icon="people"
-          title={t('familyDiary.noMembers', {
-            defaultValue: 'No family members',
-          })}
+          title={
+            copySource
+              ? t('familyDiary.noCopyRecipients', {
+                  defaultValue: 'No family members with copy access',
+                })
+              : t('familyDiary.noMembers', {
+                  defaultValue: 'No family members',
+                })
+          }
           subtitle={t('familyDiary.manageOnWeb', {
             defaultValue: 'Family diary access is managed in the web app.',
           })}
         />
       ) : (
         <FlatList
-          data={users}
+          data={recipients}
           keyExtractor={(user) => user.userId}
           testID="family-members-list"
           contentContainerStyle={{
@@ -78,7 +136,7 @@ const FamilyMembersScreen: React.FC<FamilyMembersScreenProps> = ({
                 defaultValue: 'Family member',
               })
             );
-            const capabilityLabel = item.canCopy
+            const capabilityLabel = canCopyFamilyDiary(item)
               ? t('familyDiary.canCopy', { defaultValue: 'Can copy' })
               : t('familyDiary.viewOnly', { defaultValue: 'View only' });
 
@@ -88,9 +146,20 @@ const FamilyMembersScreen: React.FC<FamilyMembersScreenProps> = ({
                 title={displayName}
                 subtitle={capabilityLabel}
                 accessibilityLabel={`${displayName}. ${capabilityLabel}`}
-                onPress={() =>
-                  navigation.navigate('FamilyDiary', { familyUser: item })
-                }
+                onPress={() => {
+                  if (copySource) {
+                    if (!canCopyFamilyDiary(item)) return;
+                    navigation.navigate('FamilyCopyReview', {
+                      ...copySource,
+                      familyUser: item,
+                      direction: 'to-family',
+                      sourceEntries,
+                      selectedEntryIds: sourceEntries.map((entry) => entry.id),
+                    });
+                  } else {
+                    navigation.navigate('FamilyDiary', { familyUser: item });
+                  }
+                }}
               />
             );
           }}

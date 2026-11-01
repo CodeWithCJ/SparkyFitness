@@ -6,7 +6,9 @@ import WatchConnectivity, {
   type WatchCheckInPayload,
   type WatchContextPayload,
   type WatchContainerPayload,
+  type WatchExerciseSummaryPayload,
   type WatchHistoryPoint,
+  type WatchSleepSnapshotPayload,
   type WatchWaterIntakePayload,
   type WatchWaterDeletePayload,
   type WatchWaterLogPayload,
@@ -59,6 +61,9 @@ import { WATCH_PAGE_KEYS } from '../constants/watchPages';
 import { resolveKeyOrder } from '../utils/reorderUtils';
 import { buildWatchGoalNutrients, shownInOrder } from '../utils/watchNutrients';
 import { useCustomNutrients } from './useCustomNutrients';
+import { useSleepDay } from './useSleepDay';
+import { formatClockTime, resolveSleepZone } from '../utils/sleepDay';
+import { getSessionCalories, getWorkoutSummary } from '../utils/workoutSession';
 import { useTranslation } from 'react-i18next';
 import type { CheckInMeasurement } from '../types/measurements';
 import type { WorkoutPreset } from '../types/workoutPresets';
@@ -87,6 +92,7 @@ import {
 } from '../services/watchIndoorScale';
 import { presetName } from '../components/recording/IntervalSetup';
 import { programWorkoutLabel } from '../components/recording/RunProgramCard';
+import { getAppLocale } from '../localization';
 
 /** Saved workouts the watch may start. Presets with no exercises are omitted:
  * the server rejects a session that has none. */
@@ -175,6 +181,8 @@ const NO_FIGURES_FOR_TODAY = {
   waterLog: [] as WatchWaterLogPayload[],
   medications: null,
   goalNutrients: null,
+  sleep: null,
+  exerciseSummary: null,
 } as const;
 
 /**
@@ -633,6 +641,107 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     t,
   ]);
 
+  const { wakeUp: mainSleep, naps: sleepNaps } = useSleepDay(summaryDate, {
+    enabled,
+  });
+  const profileTimezone = preferences?.timezone ?? null;
+  const watchSleep: WatchSleepSnapshotPayload | null = useMemo(() => {
+    if (!mainSleep && sleepNaps.length === 0) return null;
+    const napSeconds = sleepNaps.reduce(
+      (sum, nap) => sum + Math.max(0, nap.time_asleep_in_seconds ?? 0),
+      0
+    );
+    const mainAsleepSeconds = mainSleep
+      ? Math.max(0, mainSleep.time_asleep_in_seconds ?? 0)
+      : 0;
+    const mainInBedSeconds = mainSleep
+      ? Math.max(
+          0,
+          mainSleep.duration_in_seconds ?? mainSleep.time_asleep_in_seconds ?? 0
+        )
+      : 0;
+    const zone = mainSleep
+      ? resolveSleepZone(mainSleep, profileTimezone)
+      : null;
+    const bedtime = mainSleep
+      ? formatClockTime(mainSleep.bedtime, timeFormat, zone)
+      : '';
+    const wakeTime = mainSleep
+      ? formatClockTime(mainSleep.wake_time, timeFormat, zone)
+      : '';
+    return {
+      day: summaryDate,
+      totalSeconds: Math.round(mainAsleepSeconds + napSeconds),
+      timeInBedSeconds: Math.round(mainInBedSeconds),
+      sleepScore:
+        mainSleep?.sleep_score != null
+          ? Math.round(mainSleep.sleep_score)
+          : null,
+      bedtime: bedtime === '—' ? '' : bedtime,
+      wakeTime: wakeTime === '—' ? '' : wakeTime,
+      deepSeconds:
+        mainSleep?.deep_sleep_seconds != null
+          ? Math.round(mainSleep.deep_sleep_seconds)
+          : null,
+      remSeconds:
+        mainSleep?.rem_sleep_seconds != null
+          ? Math.round(mainSleep.rem_sleep_seconds)
+          : null,
+      lightSeconds:
+        mainSleep?.light_sleep_seconds != null
+          ? Math.round(mainSleep.light_sleep_seconds)
+          : null,
+      awakeSeconds:
+        mainSleep?.awake_sleep_seconds != null
+          ? Math.round(mainSleep.awake_sleep_seconds)
+          : null,
+      restingHeartRate:
+        mainSleep?.resting_heart_rate != null
+          ? Math.round(mainSleep.resting_heart_rate)
+          : null,
+      hrvMs:
+        mainSleep?.avg_overnight_hrv != null
+          ? Math.round(mainSleep.avg_overnight_hrv)
+          : null,
+      spo2:
+        mainSleep?.average_spo2_value != null
+          ? Math.round(mainSleep.average_spo2_value)
+          : null,
+      napCount: sleepNaps.length,
+      napSeconds: Math.round(napSeconds),
+    };
+  }, [mainSleep, sleepNaps, profileTimezone, timeFormat, summaryDate]);
+
+  const watchExerciseSummary: WatchExerciseSummaryPayload | null =
+    useMemo(() => {
+      if (!dailySummary) return null;
+      const loggedSessions = dailySummary.exerciseEntries.flatMap((entry) => {
+        if (
+          entry.type !== 'preset' &&
+          (entry.name ?? entry.exercise_snapshot?.name) === 'Active Calories'
+        ) {
+          return [];
+        }
+        const summary = getWorkoutSummary(entry, t);
+        return [
+          {
+            name: summary.name,
+            durationMinutes: Math.round(Number(summary.duration) || 0),
+            calories: Math.round(Number(getSessionCalories(entry)) || 0),
+          },
+        ];
+      });
+      return {
+        day: summaryDate,
+        minutes: Math.round(dailySummary.exerciseMinutes || 0),
+        minutesGoal: Math.round(dailySummary.exerciseMinutesGoal || 0),
+        calories: Math.round(dailySummary.otherExerciseCalories || 0),
+        caloriesGoal: Math.round(dailySummary.exerciseCaloriesGoal || 0),
+        sessionCount: loggedSessions.length,
+        sessions: loggedSessions.slice(0, 3),
+      };
+    }, [dailySummary, summaryDate, t]);
+
   const figuresForSummaryDate = useMemo(
     () => ({
       calorieGoalProgress,
@@ -653,6 +762,8 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       waterLog: watchWaterLog,
       medications: watchMedications,
       goalNutrients,
+      sleep: watchSleep,
+      exerciseSummary: watchExerciseSummary,
     }),
     [
       calorieGoalProgress,
@@ -673,6 +784,8 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       watchWaterLog,
       watchMedications,
       goalNutrients,
+      watchSleep,
+      watchExerciseSummary,
     ]
   );
 
@@ -786,6 +899,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         // ... and "do this exercise now" from the workout pages.
         exerciseDoNow: true,
         runVoiceCues: recording.audioCues,
+        appLanguage: getAppLocale(),
         runAutoPause: recording.autoPause,
         runCheckInMinutes: recording.checkInMinutes,
         ...(recording.heartRateBand

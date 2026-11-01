@@ -4,6 +4,8 @@ import {
   caffeineActiveRootQueryKey,
   dailySummaryQueryKey,
   dailySummaryRootQueryKey,
+  familyCopySourceQueryKey,
+  familyCopySourceRootQueryKey,
   fastingRootQueryKey,
   foodEntriesRangeRootQueryKey,
   foodsQueryKey,
@@ -15,6 +17,10 @@ export function invalidateFoodCache(
   entryDate?: string
 ) {
   if (entryDate) {
+    void queryClient.invalidateQueries({
+      queryKey: familyCopySourceQueryKey(entryDate),
+      refetchType: 'all',
+    });
     void queryClient.invalidateQueries({
       queryKey: dailySummaryQueryKey(entryDate),
       refetchType: 'all',
@@ -28,6 +34,10 @@ export function invalidateFoodCache(
       refetchType: 'all',
     });
   } else {
+    void queryClient.invalidateQueries({
+      queryKey: familyCopySourceRootQueryKey,
+      refetchType: 'all',
+    });
     void queryClient.invalidateQueries({
       queryKey: dailySummaryRootQueryKey,
       refetchType: 'all',

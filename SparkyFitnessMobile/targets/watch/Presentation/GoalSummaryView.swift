@@ -107,11 +107,11 @@ struct GoalSummaryView: View {
     /// calories over goal" is worse spoken than written, and the words
     /// already say which side of the goal the wearer is on.
     private var calorieAccessibilityLabel: String {
-        guard let nutrition else { return "Calories not synced yet" }
+        guard let nutrition else { return String(localized: "watch.goals.caloriesNotSynced", defaultValue: "Calories not synced yet") }
         let amount = whole(abs(nutrition.caloriesRemaining))
         return nutrition.caloriesRemaining < 0
-            ? "\(amount) calories over goal"
-            : "\(amount) calories left"
+            ? String(localized: "watch.goals.caloriesOverGoal", defaultValue: "\(amount) calories over goal")
+            : String(localized: "watch.goals.caloriesLeft", defaultValue: "\(amount) calories left")
     }
 
     // MARK: - Nutrients
@@ -124,21 +124,31 @@ struct GoalSummaryView: View {
     private var rows: [NutrientRow?] {
         if let rows = nutrition?.rows { return rows }
         return [
-            macroRow("protein", "Protein", nutrition?.protein),
-            macroRow("carbs", "Carbs", nutrition?.carbs),
-            macroRow("fat", "Fat", nutrition?.fat),
+            macroRow("protein", Self.macroTitle("protein"), nutrition?.protein),
+            macroRow("carbs", Self.macroTitle("carbs"), nutrition?.carbs),
+            macroRow("fat", Self.macroTitle("fat"), nutrition?.fat),
         ]
     }
 
     private var macroRows: some View {
         VStack(spacing: 7) {
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                nutrientRow(row, placeholderTitle: Self.placeholderTitles[safe: index], index: index)
+                nutrientRow(row, placeholderKey: Self.placeholderKeys[safe: index], index: index)
             }
         }
     }
 
-    private static let placeholderTitles = ["Protein", "Carbs", "Fat"]
+    private static let placeholderKeys = ["protein", "carbs", "fat"]
+
+    /// The fixed macros' names; `key` is also what picks the row's colour, so
+    /// it is never the translated text.
+    private static func macroTitle(_ key: String) -> String {
+        switch key {
+        case "protein": return String(localized: "watch.goals.protein", defaultValue: "Protein")
+        case "carbs": return String(localized: "watch.goals.carbs", defaultValue: "Carbs")
+        default: return String(localized: "watch.goals.fat", defaultValue: "Fat")
+        }
+    }
 
     /// The fixed macros as rows. Nil before the phone has synced today, which
     /// the row draws as dashes.
@@ -147,16 +157,16 @@ struct GoalSummaryView: View {
         return NutrientRow(
             key: key,
             label: title,
-            unit: "g",
+            unit: String(localized: "watch.unit.grams", defaultValue: "g"),
             consumed: macro.consumed,
             goal: macro.hasGoal ? macro.goal : nil,
             progress: macro.progress
         )
     }
 
-    private func nutrientRow(_ row: NutrientRow?, placeholderTitle: String?, index: Int) -> some View {
-        let color = GoalPalette.color(forNutrient: row?.key ?? placeholderTitle?.lowercased() ?? "", index: index)
-        let title = row?.label ?? placeholderTitle ?? ""
+    private func nutrientRow(_ row: NutrientRow?, placeholderKey: String?, index: Int) -> some View {
+        let color = GoalPalette.color(forNutrient: row?.key ?? placeholderKey ?? "", index: index)
+        let title = row?.label ?? placeholderKey.map(Self.macroTitle) ?? ""
         return VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(title)

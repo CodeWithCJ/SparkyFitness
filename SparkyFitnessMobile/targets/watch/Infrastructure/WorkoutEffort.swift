@@ -4,27 +4,6 @@ import HealthKit
 /// Apple's 1-10 workout effort rating (watchOS 11+), shared by the strength
 /// and cardio endings so both save it the same way.
 enum WorkoutEffort {
-    /// The type to ask write access for, nil before watchOS 11.
-    static var shareType: HKSampleType? {
-        if #available(watchOS 11.0, *) { return HKQuantityType(.workoutEffortScore) }
-        return nil
-    }
-
-    private static let askedKey = "workoutEffortShareAsked"
-
-    /// The effort type to add to a write request, or nil once it has been asked
-    /// for. Health keeps reporting it as never requested, so adding it to every
-    /// workout start would show the permission sheet each time.
-    static func shareTypeToRequest() -> HKSampleType? {
-        guard !UserDefaults.standard.bool(forKey: askedKey) else { return nil }
-        return shareType
-    }
-
-    /// Records that the request carrying the effort type has been shown.
-    static func markShareAsked() {
-        UserDefaults.standard.set(true, forKey: askedKey)
-    }
-
     /// True when this watchOS can attach a rating to a saved workout.
     static var isSupported: Bool {
         if #available(watchOS 11.0, *) { return true }
@@ -49,8 +28,19 @@ enum WorkoutEffort {
             start: workout.startDate,
             end: workout.endDate
         )
-        healthStore.relateWorkoutEffortSample(sample, with: workout, activity: nil) { success, _ in
-            DispatchQueue.main.async { completion(success) }
+        // Same as the other metrics: write only with a granted permission, and
+        // ask right before the write when Health does not report one. Asking
+        // when the workout starts did not hold, so the rating was refused.
+        let effortType = HKQuantityType(.workoutEffortScore)
+        let write = {
+            healthStore.relateWorkoutEffortSample(sample, with: workout, activity: nil) { success, _ in
+                DispatchQueue.main.async { completion(success) }
+            }
+        }
+        if healthStore.authorizationStatus(for: effortType) == .sharingAuthorized {
+            write()
+        } else {
+            healthStore.requestAuthorization(toShare: [effortType], read: []) { _, _ in write() }
         }
     }
 }

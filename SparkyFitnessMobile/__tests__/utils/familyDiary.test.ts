@@ -3,6 +3,7 @@ import {
   calculateFamilyCopyTotals,
   groupFamilyFoodEntries,
   isUnchangedWholeMeal,
+  canCopyFamilyDiary,
 } from '../../src/utils/familyDiary';
 
 const entry = (overrides: Partial<FoodEntry> = {}): FoodEntry =>
@@ -22,6 +23,23 @@ const entry = (overrides: Partial<FoodEntry> = {}): FoodEntry =>
   }) as FoodEntry;
 
 describe('family diary helpers', () => {
+  it.each([
+    [true, null, true],
+    [false, null, false],
+    [true, '2026-08-24T10:00:01Z', true],
+    [true, '2026-08-24T10:00:00Z', false],
+    [true, 'invalid', false],
+  ])(
+    'allows copying only with current access (%s, %s)',
+    (canCopy, accessEndDate, expected) => {
+      expect(
+        canCopyFamilyDiary(
+          { canCopy, accessEndDate },
+          new Date('2026-08-24T10:00:00Z').getTime()
+        )
+      ).toBe(expected);
+    }
+  );
   it('groups raw components by canonical meal identity and preserves every row', () => {
     const groups = groupFamilyFoodEntries([
       entry({ id: 'a', meal_type_id: 'dinner-id', meal_type: 'Dinner' }),

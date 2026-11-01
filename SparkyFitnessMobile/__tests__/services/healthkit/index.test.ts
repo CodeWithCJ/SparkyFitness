@@ -3,6 +3,8 @@ import {
   initHealthConnect,
   getAggregatedStepsByDate,
   getAggregatedStepsByDateDetailed,
+  getAggregatedActiveCaloriesByDate,
+  getAggregatedActiveCaloriesByDateDetailed,
   getAggregatedTotalCaloriesByDate,
   getAggregatedTotalCaloriesByDateDetailed,
   getAggregatedBasalEnergyByDate,
@@ -28,6 +30,7 @@ import {
   queryWorkoutSamples,
   queryCategorySamples,
   queryCorrelationSamples,
+  queryActivitySummary,
 } from '@kingstinct/react-native-healthkit';
 
 import {
@@ -50,6 +53,7 @@ const mockQueryQuantitySamples = queryQuantitySamples as jest.Mock;
 const mockQueryWorkoutSamples = queryWorkoutSamples as jest.Mock;
 const mockQueryCategorySamples = queryCategorySamples as jest.Mock;
 const mockQueryCorrelationSamples = queryCorrelationSamples as jest.Mock;
+const mockQueryActivitySummary = queryActivitySummary as jest.Mock;
 
 // Local-time date constructor (month is 1-based) — the engine buckets by LOCAL day.
 const localDate = (y: number, m: number, d: number, h = 0, min = 0) =>
@@ -401,6 +405,166 @@ describe('getAggregatedStepsByDate (statistics collection)', () => {
   });
 });
 
+// An activity summary (the Move ring) for a local day, as the library serializes it.
+const ringDay = (y: number, m: number, d: number, kcal: number) => ({
+  dateComponents: { era: 1, year: y, month: m, day: d },
+  activityMoveMode: 1,
+  activeEnergyBurned: { unit: 'kcal', quantity: kcal },
+});
+
+describe('getAggregatedActiveCaloriesByDate (Move ring)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsHealthDataAvailable.mockResolvedValue(true);
+    mockQueryStatisticsCollection.mockReset().mockResolvedValue([]);
+    mockQueryActivitySummary.mockReset().mockResolvedValue([]);
+    resetDatabaseInaccessibleCount();
+  });
+
+  // The Health app shows the statistics sum; only an account that chose the ring
+  // gets it.
+  test('keeps the statistics sum and skips the ring query when the setting is off', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 1713, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockResolvedValue([ringDay(2024, 1, 15, 1835.8)]);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59)
+    );
+
+    expect(result.map((r) => r.value)).toEqual([1713]);
+    expect(mockQueryActivitySummary).not.toHaveBeenCalled();
+  });
+
+  // Fitness shows the ring, which can differ from the Health app's per-day sum.
+  test('uses the Move ring for a day that has one when the setting is on', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 1713, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockResolvedValue([ringDay(2024, 1, 15, 1835.8)]);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+      true
+    );
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        date: '2024-01-15',
+        value: 1836,
+        type: 'active_calories',
+      }),
+    ]);
+  });
+
+  // A denied or unanswered permission reads as no rings at all, and older days
+  // predate the ring; those days keep the statistics sum.
+  test('keeps the statistics sum for days without a ring', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 500, 'kcal'),
+      sumBucket(localDate(2024, 1, 16), localDate(2024, 1, 17), 700, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockResolvedValue([ringDay(2024, 1, 16, 650)]);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 16, 23, 59),
+      true
+    );
+
+    expect(result.map((r) => [r.date, r.value])).toEqual([
+      ['2024-01-15', 500],
+      ['2024-01-16', 650],
+    ]);
+  });
+
+  test('keeps the statistics sum for a day whose ring is 0', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 500, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockResolvedValue([ringDay(2024, 1, 15, 0)]);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+      true
+    );
+
+    expect(result.map((r) => [r.date, r.value])).toEqual([['2024-01-15', 500]]);
+  });
+
+  test('asks for the rings of the same window, never past now', async () => {
+    await initHealthConnect();
+
+    const startDate = localDate(2024, 1, 15);
+    const endDate = localDate(2024, 1, 16, 23, 59);
+    await getAggregatedActiveCaloriesByDate(startDate, endDate, true);
+
+    expect(mockQueryActivitySummary).toHaveBeenCalledWith({
+      date: { startDate, endDate },
+    });
+
+    const before = Date.now();
+    await getAggregatedActiveCaloriesByDate(
+      startOfToday(),
+      daysFromToday(2),
+      true
+    );
+    const filterEnd = mockQueryActivitySummary.mock.calls[1][0].date
+      .endDate as Date;
+    expect(filterEnd.getTime()).toBeGreaterThanOrEqual(before);
+    expect(filterEnd.getTime()).toBeLessThanOrEqual(Date.now());
+  });
+
+  // Date components come in the device calendar; a Japanese-calendar year (8)
+  // must not be read as a Gregorian day.
+  test('ignores a ring whose day falls outside the window', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2026, 1, 15), localDate(2026, 1, 16), 500, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockResolvedValue([ringDay(8, 1, 15, 900)]);
+
+    const result = await getAggregatedActiveCaloriesByDate(
+      localDate(2026, 1, 15),
+      localDate(2026, 1, 15, 23, 59),
+      true
+    );
+
+    expect(result.map((r) => r.value)).toEqual([500]);
+  });
+
+  test('a failed ring query errors the whole metric so the cursor holds', async () => {
+    await initHealthConnect();
+
+    mockQueryStatisticsCollection.mockResolvedValue([
+      sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 500, 'kcal'),
+    ]);
+    mockQueryActivitySummary.mockRejectedValue(new Error('Ring query failed'));
+
+    const detailed = await getAggregatedActiveCaloriesByDateDetailed(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+      true
+    );
+
+    expect(detailed.records).toEqual([]);
+    expect(detailed.error).toBe('Ring query failed');
+  });
+});
+
 describe('getAggregatedTotalCaloriesByDate (statistics collection)', () => {
   const mockByIdentifier = (map: Record<string, unknown[]>) =>
     mockQueryStatisticsCollection.mockImplementation((identifier: string) =>
@@ -411,6 +575,7 @@ describe('getAggregatedTotalCaloriesByDate (statistics collection)', () => {
     jest.clearAllMocks();
     mockIsHealthDataAvailable.mockResolvedValue(true);
     mockQueryStatisticsCollection.mockReset().mockResolvedValue([]);
+    mockQueryActivitySummary.mockReset().mockResolvedValue([]);
     resetDatabaseInaccessibleCount();
   });
 
@@ -466,6 +631,28 @@ describe('getAggregatedTotalCaloriesByDate (statistics collection)', () => {
       value: 2000, // 1500 + 500
       type: 'total_calories',
     });
+  });
+
+  test('adds the Move ring, not the active sum, to basal when the setting is on', async () => {
+    await initHealthConnect();
+
+    mockByIdentifier({
+      HKQuantityTypeIdentifierBasalEnergyBurned: [
+        sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 1500, 'kcal'),
+      ],
+      HKQuantityTypeIdentifierActiveEnergyBurned: [
+        sumBucket(localDate(2024, 1, 15), localDate(2024, 1, 16), 500, 'kcal'),
+      ],
+    });
+    mockQueryActivitySummary.mockResolvedValueOnce([ringDay(2024, 1, 15, 620)]);
+
+    const result = await getAggregatedTotalCaloriesByDate(
+      localDate(2024, 1, 15),
+      localDate(2024, 1, 15, 23, 59),
+      true
+    );
+
+    expect(result.map((r) => r.value)).toEqual([2120]);
   });
 
   test('emits a day when only one side has data', async () => {

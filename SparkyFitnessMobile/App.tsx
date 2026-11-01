@@ -21,6 +21,7 @@ import { LightboxProvider } from './src/components/LightboxProvider';
 import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useCycleMode, useServerConnection, drainQuickActionNavigation, useControlRouteHandoff, useQuickActions, useWatchCheckInBridge, useWatchFastingBridge, useWatchPlanSync, useWatchRecordingBridge, useWatchSetTargetsSync, useWatchWorkoutBridge, useWatchWorkoutEdit, useWatchRunBridge, useWatchRouteBridge, usePreferences } from './src/hooks';
+import { useCycleSheetLabel } from './src/hooks/useAddMenuItemLabel';
 import { configureRunLiveActivity } from './src/services/runLiveActivity';
 import { useWatchWorkoutStart } from './src/hooks/useWatchWorkoutStart';
 import { useLiveWorkoutInputsCapture } from './src/hooks/useLiveWorkoutInputsCapture';
@@ -60,6 +61,9 @@ import {
   SafeWorkoutPlanForm,
   SafeWaterContainers,
   SafeWaterContainerEdit,
+  SafeActionTags,
+  SafeActionTagForm,
+  SafeActionTagScan,
   SafeExercisesLibrary,
   SafeWorkoutPresetsLibrary,
   SafeFoodDetail,
@@ -118,6 +122,7 @@ import {
   SafeDashboardSettings,
   SafeHealthTrendsSettings,
   SafeWatchSettings,
+  SafeAddMenuSettings,
   SafeDiarySettings,
   SafeCustomCategories,
   SafeCustomCategoryEdit,
@@ -195,7 +200,6 @@ import ActiveWorkoutBar, {
 import { ActiveWorkoutTransitionScreenLayout } from './src/components/ActiveWorkoutTransitionProbe';
 import PendingPresetUpdatePrompt from './src/components/PendingPresetUpdatePrompt';
 import { usePendingPresetUpdateStore } from './src/stores/pendingPresetUpdateStore';
-import { useAppPreferencesStore } from './src/stores/appPreferencesStore';
 import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import MoodCheckinReminderReconciler from './src/components/MoodCheckinReminderReconciler';
@@ -379,14 +383,9 @@ function AppContent() {
     handleSyncHealthData,
     handleAddSheetDismissWithoutAction,
   } = useAddSheetActions({ syncMutation });
-  const guidedCheckInEnabled = useAppPreferencesStore((s) => s.guidedCheckInEnabled);
 
-  const { enabled: cycleEnabled, mode: cycleMode, discreetMode: cycleDiscreet } = useCycleMode();
-  const cycleSheetLabel = cycleDiscreet
-    ? t('addSheet.wellness', { defaultValue: 'Wellness' })
-    : cycleMode === 'pregnant' || cycleMode === 'postpartum'
-      ? t('addSheet.logPregnancyEntry', { defaultValue: 'Log Pregnancy Entry' })
-      : t('addSheet.logCycle', { defaultValue: 'Log Cycle' });
+  const { enabled: cycleEnabled } = useCycleMode();
+  const cycleSheetLabel = useCycleSheetLabel();
 
   const [primary, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
@@ -462,19 +461,22 @@ function AppContent() {
   }, [isDarkMode, primary, bgPrimary, textPrimary, chromeBorder]);
 
   const linking = useMemo<LinkingOptions<RootStackParamList>>(() => ({
-    prefixes: ['sparkyfitnessmobile://'],
+    prefixes: ['sparkyfitnessmobile://', 'https://tag.sparkyfitness.com'],
     config: {
       initialRouteName: 'Tabs',
       screens: {
         Tabs: {
           screens: {
             Dashboard: '',
-            // The Android Calories left Quick Settings tile opens the diary.
+            // The Android Calories left Quick Settings tile and the wider
+            // widgets' Diary shortcut open the diary.
             Diary: 'diary',
           },
         },
         FoodScan: 'scan',
         FoodSearch: 'search',
+        // The Android calorie and macro widgets' fasting shortcut.
+        FastingDetail: 'fasting',
         ChatSettings: 'settings/voice',
         HeartRateZonesSettings: 'settings/heart-rate-zones',
         // Tapping the workout Live Activity opens its associated URL.
@@ -483,6 +485,8 @@ function AppContent() {
         RecordActivity: 'record-activity',
         // Route generation; without a routing provider the screen explains that.
         RouteGenerate: 'routes/generate',
+        // An NFC tag tap: https://tag.sparkyfitness.com/t/<code> (#941).
+        ActionTagScan: 't/:code',
       },
     },
   }), []);
@@ -696,6 +700,21 @@ function AppContent() {
             name="WaterContainerEdit"
             component={SafeWaterContainerEdit}
             options={createStackScreenOptions(t('waterContainerEdit.editTitle', { defaultValue: 'Edit container' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
+            name="ActionTags"
+            component={SafeActionTags}
+            options={createStackScreenOptions(t('actionTags.title', { defaultValue: 'NFC tags' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="ActionTagForm"
+            component={SafeActionTagForm}
+            options={createStackScreenOptions(t('actionTags.form.createTitle', { defaultValue: 'Set up NFC tag' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
+            name="ActionTagScan"
+            component={SafeActionTagScan}
+            options={createStackScreenOptions(t('actionTags.scan.title', { defaultValue: 'NFC tag' }))}
           />
           <Stack.Screen
             name="ExercisesLibrary"
@@ -1185,6 +1204,11 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.watchSettings', { defaultValue: 'Apple Watch' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
+            name="AddMenuSettings"
+            component={SafeAddMenuSettings}
+            options={createStackScreenOptions(t('screens.addMenuSettings', { defaultValue: 'Quick Actions' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
             name="WorkoutSettings"
             component={SafeWorkoutSettings}
             options={createStackScreenOptions(t('screens.workoutSettings', { defaultValue: 'Workout Settings' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
@@ -1410,7 +1434,6 @@ function AppContent() {
           onRecordActivity={handleRecordActivity}
           onAskSparky={handleAskSparky}
           onStartCheckIn={handleStartCheckIn}
-          showCheckIn={guidedCheckInEnabled}
           onOpenCycle={handleOpenCycle}
           showCycleCard={cycleEnabled}
           cycleLabel={cycleSheetLabel}

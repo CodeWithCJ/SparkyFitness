@@ -1,13 +1,12 @@
 /**
  * One night recorded by two sources.
  *
- * `sleep_entries` holds one row per day and source, so a day with several
- * rows always has several sources: the same night recorded twice (a watch
- * and a ring, or Google Health and Health Connect both carrying a Fitbit
- * night), or a nap from a different source than the night. Records of the
- * same day that overlap for most of the shorter one are one sleep: only the
- * most detailed of them should count, while a nap that does not overlap, or
- * only clips the night, still counts.
+ * `sleep_entries` can hold several rows per day, also from one source: the
+ * same night recorded twice (a watch and a ring, or Google Health and Health
+ * Connect both carrying a Fitbit night), or a night and a nap, from the same
+ * source or another. Records of the same day that overlap for most of the
+ * shorter one are one sleep: only the most detailed of them should count,
+ * while a nap that does not overlap, or only clips the night, still counts.
  */
 
 /** Records are one sleep when they overlap for at least this share of the shorter one. */
@@ -158,7 +157,7 @@ export function sleepEntryDetail(entry: SameNightSleepEntry): SleepDetail {
   };
 }
 
-/** The stored sleep records to count: one per night, the most detailed, plus naps from other sources. */
+/** The stored sleep records to count: one per night, the most detailed, plus the day's naps. */
 export function keepMostDetailedSleepEntries<
   A extends readonly SameNightSleepEntry[],
 >(entries: A): A[number][] {
@@ -168,4 +167,38 @@ export function keepMostDetailedSleepEntries<
     end: new Date(entry.wake_time).getTime(),
     detail: sleepEntryDetail(entry),
   }));
+}
+
+/** The fields `mainSleepEntry` ranks a day's sleep records by. */
+export interface MainSleepCandidate {
+  duration_in_seconds?: number | string | null;
+  bedtime?: string | Date | null;
+}
+
+function bedtimeMs(entry: MainSleepCandidate): number {
+  const ms = entry.bedtime ? new Date(entry.bedtime).getTime() : NaN;
+  return Number.isNaN(ms) ? Infinity : ms;
+}
+
+/** Negative when `a` is the main sleep rather than `b`. */
+function compareMainSleep(a: MainSleepCandidate, b: MainSleepCandidate) {
+  return (
+    Number(b.duration_in_seconds ?? 0) - Number(a.duration_in_seconds ?? 0) ||
+    bedtimeMs(a) - bedtimeMs(b)
+  );
+}
+
+/**
+ * A day's main sleep among its records (a night and its naps): the longest,
+ * the earlier bedtime on a tie, then the first. The same rule as the
+ * server's `MAIN_SLEEP_ORDER_SQL`, so a nap never stands in for the night.
+ */
+export function mainSleepEntry<T extends MainSleepCandidate>(
+  entries: readonly T[]
+): T | undefined {
+  return entries.reduce<T | undefined>(
+    (main, entry) =>
+      main === undefined || compareMainSleep(entry, main) < 0 ? entry : main,
+    undefined
+  );
 }

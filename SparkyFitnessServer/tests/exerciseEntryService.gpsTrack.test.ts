@@ -3,9 +3,15 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import * as workoutTelemetryRepo from '../models/workoutTelemetryRepository.js';
 import { getClient } from '../db/poolManager.js';
 import { attachGpsTrackToExerciseEntry } from '../services/exerciseEntryService.js';
+import { attachWeatherToExerciseEntry } from '../services/weatherService.js';
 
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
 vi.mock('../db/poolManager', () => ({ getClient: vi.fn() }));
+// The weather lookup runs after the commit and would otherwise borrow this
+// test's database client.
+vi.mock('../services/weatherService', () => ({
+  attachWeatherToExerciseEntry: vi.fn(),
+}));
 vi.mock('../models/exercise', () => ({ default: {} }));
 vi.mock('../models/exerciseEntry', () => ({
   default: {
@@ -63,6 +69,11 @@ describe('attachGpsTrackToExerciseEntry', () => {
       [entryId]
     );
     expect(client.query).toHaveBeenLastCalledWith('COMMIT');
+    expect(attachWeatherToExerciseEntry).toHaveBeenCalledWith(userId, entryId, {
+      lat: points[0].lat,
+      lon: points[0].lon,
+      t: points[0].t,
+    });
     const gpsCall = vi.mocked(
       workoutTelemetryRepo._bulkInsertExerciseEntryGpsPointsWithClient
     ).mock.calls[0];

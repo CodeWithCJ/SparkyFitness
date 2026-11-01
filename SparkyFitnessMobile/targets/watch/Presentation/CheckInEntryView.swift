@@ -84,8 +84,8 @@ struct CheckInEntryView: View {
     /// change out loud, so an implausible value can still be saved — just never
     /// unknowingly.
     private var saveLabel: String {
-        guard looksWrong, let delta = weightDelta, weightLooksWrong else { return "Save" }
-        return "Save \(String(format: "%+.1f", delta)) \(unit.suffix)"
+        guard looksWrong, let delta = weightDelta, weightLooksWrong else { return String(localized: "watch.common.save", defaultValue: "Save") }
+        return String(localized: "watch.checkin.saveDelta", defaultValue: "Save \(String(format: "%+.1f", delta)) \(unit.suffix)")
     }
 
     var body: some View {
@@ -111,7 +111,7 @@ struct CheckInEntryView: View {
             by: step,
             sensitivity: .medium,
             isContinuous: false,
-            isHapticFeedbackEnabled: true
+            isHapticFeedbackEnabled: store.context.effectiveHapticsEnabled
         )
         .id(active)
         .onAppear(perform: seedIfNeeded)
@@ -122,7 +122,9 @@ struct CheckInEntryView: View {
         .onChange(of: unit) { seedIfNeeded() }
         .sheet(isPresented: $showTypeEntry) {
             TypedValueEntryView(
-                title: active == .weight ? "Weight (\(unit.suffix))" : "Body fat (%)",
+                title: active == .weight
+                    ? String(localized: "watch.checkin.weightTitle", defaultValue: "Weight (\(unit.suffix))")
+                    : String(localized: "watch.checkin.bodyFatTitle", defaultValue: "Body fat (%)"),
                 initial: active == .weight ? weight : bodyFat,
                 range: typedEntryRange
             ) { typed in
@@ -202,7 +204,7 @@ struct CheckInEntryView: View {
 
     private var actionButton: some View {
         VStack(spacing: 2) {
-            Button(active == .weight ? "Next" : saveLabel) {
+            Button(active == .weight ? String(localized: "watch.common.next", defaultValue: "Next") : saveLabel) {
                 if active == .weight {
                     Haptics.tap()
                     withAnimation(.snappy) { active = .bodyFat }
@@ -311,7 +313,7 @@ struct CheckInEntryView: View {
         )
         let state = session.send(checkIn)
         store.markState(state, for: checkIn)
-        WKInterfaceDevice.current().play(.success)
+        Haptics.saved()
         onSaved()
     }
 }

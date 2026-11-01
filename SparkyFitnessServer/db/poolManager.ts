@@ -3,6 +3,7 @@ import { log } from '../config/logging.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { noteWorkActivity, throwIfWorkAborted } from '../utils/abortScope.js';
 import { requestConnectRetry, retryOnConnectionError } from './connectRetry.js';
+import { applicationName } from './applicationName.js';
 const { Pool, types } = pg;
 
 export const dbContextStorage = new AsyncLocalStorage<{
@@ -60,6 +61,7 @@ function createOwnerPoolInstance() {
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
+    application_name: applicationName('owner'),
   });
   newPool.on('error', (err) => {
     log('error', 'Unexpected error on idle owner client', err);
@@ -79,6 +81,7 @@ function createAppPoolInstance() {
     max: 10,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
+    application_name: applicationName('app'),
   });
   newPool.on('error', (err) => {
     log('error', 'Unexpected error on idle app client', err);

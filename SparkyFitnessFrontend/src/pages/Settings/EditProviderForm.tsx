@@ -12,6 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Clipboard } from 'lucide-react';
 import { RoutingProviderFields } from './RoutingProviderFields';
 import { ProviderSyncFrequencyFields } from './ProviderSyncFrequencyFields';
+import { WeatherProviderFields } from './WeatherProviderFields';
 import { Trans, useTranslation } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { toast } from '@/hooks/use-toast';
@@ -226,6 +227,19 @@ export const EditProviderForm = ({
       )}
       {editData.provider_type === 'valhalla' && (
         <RoutingProviderFields
+          idPrefix="edit"
+          baseUrl={editData.base_url}
+          appKey={editData.app_key}
+          onBaseUrlChange={(value) =>
+            setEditData((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setEditData((prev) => ({ ...prev, app_key: value }))
+          }
+        />
+      )}
+      {editData.provider_type === 'open_meteo' && (
+        <WeatherProviderFields
           idPrefix="edit"
           baseUrl={editData.base_url}
           appKey={editData.app_key}

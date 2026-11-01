@@ -58,16 +58,22 @@ export interface SleepAnalyticsData {
   totalSleepDuration: number;
   timeAsleep: number;
   sleepScore: number;
-  earliestBedtime: string | null;
-  latestWakeTime: string | null;
+  /** Bedtime of the day's main sleep, not of a nap. */
+  mainBedtime: string | null;
+  /** Wake time of the day's main sleep, not of a nap. */
+  mainWakeTime: string | null;
   sleepEfficiency: number;
   sleepDebt: number;
   weight?: number;
   stagePercentages: SleepStageSummary;
   awakePeriods: number;
   totalAwakeDuration: number;
+  /** The day zone (earliest-bedtime session), for the day's stage labels. */
   record_timezone?: string | null;
   record_utc_offset_minutes?: number | null;
+  /** The main sleep's recording zone, for mainBedtime and mainWakeTime. */
+  main_record_timezone?: string | null;
+  main_record_utc_offset_minutes?: number | null;
 }
 
 export interface CombinedSleepData {

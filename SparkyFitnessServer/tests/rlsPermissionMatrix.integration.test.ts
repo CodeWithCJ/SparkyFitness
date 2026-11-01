@@ -195,6 +195,7 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     food_assistant_tasks: 'owner',
     food_assistant_operations: 'owner',
     plate_inventories: 'owner',
+    action_tags: 'owner',
     // diary
     exercise_entries: 'diary',
     exercise_preset_entries: 'diary',
@@ -223,6 +224,8 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     day_classification_cache: 'checkin',
     fasting_logs: 'checkin',
     health_metric_samples: 'checkin',
+    lab_markers: 'checkin',
+    lab_results: 'checkin',
     mindfulness_sessions: 'checkin',
     mood_entries: 'checkin',
     user_custom_moods: 'checkin',
@@ -283,7 +286,16 @@ describe.runIf(RUN)('RLS permission matrix', () => {
     workout_preset_exercise_sets: 'custom',
     workout_preset_exercises: 'custom',
     // system/internal: RLS-enabled with an explicit deny-all policy; only
-    // getSystemClient (which bypasses RLS) touches it.
+    // owner-pool/getSystemClient paths (which bypass RLS) touch them.
+    jwks: 'custom',
+    oauth_access_token: 'custom',
+    oauth_authorization_revocation: 'custom',
+    oauth_client: 'custom',
+    oauth_client_assertion: 'custom',
+    oauth_client_resource: 'custom',
+    oauth_consent: 'custom',
+    oauth_refresh_token: 'custom',
+    oauth_resource: 'custom',
     openfoodfacts_product_read_rate_limit: 'custom',
     passkey_registration_tickets: 'custom',
     rate_limit: 'custom',

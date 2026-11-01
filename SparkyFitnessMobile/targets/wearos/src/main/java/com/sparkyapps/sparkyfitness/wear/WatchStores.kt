@@ -159,6 +159,12 @@ class CheckInStore(private val context: Context) {
   private val _stepGoal = MutableStateFlow(10000)
   val stepGoal: StateFlow<Int> = _stepGoal.asStateFlow()
 
+  private val _sleep = MutableStateFlow<SleepSnapshot?>(null)
+  val sleep: StateFlow<SleepSnapshot?> = _sleep.asStateFlow()
+
+  private val _exerciseSummary = MutableStateFlow<ExerciseSummarySnapshot?>(null)
+  val exerciseSummary: StateFlow<ExerciseSummarySnapshot?> = _exerciseSummary.asStateFlow()
+
   private val _enabledPages = MutableStateFlow(WatchPage.defaultOrder)
   val enabledPages: StateFlow<List<WatchPage>> = _enabledPages.asStateFlow()
 
@@ -285,6 +291,9 @@ class CheckInStore(private val context: Context) {
     Haptics.success()
   }
 
+  /**
+   * Clears any day-scoped snapshots and pending water mutations that belong to a previous calendar day.
+   */
   fun pruneStaleDayData() {
     val today = CheckInDate.today()
     val curWater = _water.value
@@ -302,6 +311,17 @@ class CheckInStore(private val context: Context) {
     val curSteps = _steps.value
     if (curSteps != null && curSteps.day != today) {
       _steps.value = null
+    }
+    val curSleep = _sleep.value
+    if (curSleep != null && curSleep.day != today) {
+      _sleep.value = null
+    }
+    val curExercise = _exerciseSummary.value
+    if (curExercise != null && curExercise.day != today) {
+      _exerciseSummary.value = null
+    }
+    if (!_watchContext.value.today.isNullOrEmpty() && _watchContext.value.today != today) {
+      _scheduledWorkouts.value = emptyList()
     }
     val filteredTaps = _pendingWaterTaps.value.filter { it.day == today }
     val filteredDeletes = _pendingWaterDeletes.value.filter { it.day == today }
@@ -550,6 +570,9 @@ class CheckInStore(private val context: Context) {
     }
   }
 
+  /**
+   * Toggles a scheduled medication dose between taken and pending and queues the mutation to the phone.
+   */
   fun toggleMedication(dose: MedicationDose) {
     val ownerId = activeOwnerId() ?: return
     val cur = _medications.value ?: return
@@ -560,6 +583,7 @@ class CheckInStore(private val context: Context) {
     val nextStatus = if (nextTaken) MedicationDoseStatus.TAKEN else MedicationDoseStatus.PENDING
     list[idx] = list[idx].copy(status = nextStatus)
     _medications.value = cur.copy(doses = list)
+    TileUpdater.requestAll(context)
 
     val payload = OutboundPayloads.medicationTaken(
       clientId = UUID.randomUUID().toString(),
@@ -618,6 +642,9 @@ class CheckInStore(private val context: Context) {
     }
   }
 
+  /**
+   * Resets all cached account state, snapshots, and persisted preferences on sign-out or account switch.
+   */
   fun clearAccountState(newOwnerId: String? = null) {
     confirmedOwnerId = newOwnerId?.takeIf { it.isNotEmpty() }
     _watchContext.value = WatchContext.empty
@@ -636,6 +663,8 @@ class CheckInStore(private val context: Context) {
     _scheduledWorkouts.value = emptyList()
     _fast.value = null
     _steps.value = null
+    _sleep.value = null
+    _exerciseSummary.value = null
     _hasBodyFatSeed.value = false
     userEditedWeight = false
     userEditedBodyFat = false
@@ -653,8 +682,12 @@ class CheckInStore(private val context: Context) {
     }
     editor.apply()
     ComplicationUpdater.requestAll(context)
+    TileUpdater.requestAll(context)
   }
 
+  /**
+   * Applies a remote context JSON payload from the phone, validating account ownership and refreshing complications and tiles.
+   */
   fun applyRemoteContextJson(obj: JSONObject, rawJson: String? = null) {
     val incomingOwner = obj.optStringOrNull("workoutServerId")?.takeIf { it.isNotEmpty() }
     val storedOwner = prefs.getString("context_owner_id", null)?.takeIf { it.isNotEmpty() }
@@ -689,10 +722,16 @@ class CheckInStore(private val context: Context) {
     _nutrition.value = nextCtx.nutrition?.takeIf { it.isToday }
     _medications.value = nextCtx.medications?.takeIf { it.isToday }
     _startableWorkouts.value = nextCtx.startableWorkouts ?: emptyList()
-    _scheduledWorkouts.value = nextCtx.scheduledWorkouts ?: emptyList()
+    _scheduledWorkouts.value = if (nextCtx.today.isNullOrEmpty() || nextCtx.today == CheckInDate.today()) {
+      nextCtx.scheduledWorkouts ?: emptyList()
+    } else {
+      emptyList()
+    }
     _fast.value = nextCtx.fast
     _steps.value = nextCtx.steps?.takeIf { it.isToday } ?: _steps.value?.takeIf { it.isToday }
     nextCtx.stepGoal?.let { _stepGoal.value = it }
+    _sleep.value = nextCtx.sleep?.takeIf { it.isToday }
+    _exerciseSummary.value = nextCtx.exerciseSummary?.takeIf { it.isToday }
     _enabledPages.value = nextCtx.visiblePages(workoutActive = workoutPageActive)
 
     if (!userEditedWeight) {
@@ -731,6 +770,7 @@ class CheckInStore(private val context: Context) {
       }
     }
     ComplicationUpdater.requestAll(context)
+    TileUpdater.requestAll(context)
   }
 
   fun handleAck(status: String) {

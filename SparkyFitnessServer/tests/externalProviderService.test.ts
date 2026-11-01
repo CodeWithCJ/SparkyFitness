@@ -1315,6 +1315,67 @@ describe('createExternalDataProvider - Valhalla routing provider', () => {
   });
 });
 
+describe('createExternalDataProvider - Open-Meteo weather provider', () => {
+  const create = vi.mocked(
+    externalProviderRepository.createExternalDataProvider
+  );
+  const weather = (base_url: string) => ({
+    provider_name: 'Weather',
+    provider_type: 'open_meteo',
+    base_url,
+    app_key: 'commercial-key',
+    is_active: true,
+  });
+
+  beforeEach(() => {
+    create.mockResolvedValue({ id: 'new-1' });
+    vi.mocked(resolveIsAdminByUserId).mockResolvedValue(false);
+  });
+
+  it('stores the base URL and API key for a public server', async () => {
+    await externalProviderService.createExternalDataProvider(
+      OWNER,
+      weather('https://8.8.8.8:8080')
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        user_id: OWNER,
+        provider_type: 'open_meteo',
+        base_url: 'https://8.8.8.8:8080',
+        app_key: 'commercial-key',
+        is_public: false,
+      })
+    );
+  });
+
+  it('accepts an upper-case scheme without prepending another one', async () => {
+    await externalProviderService.createExternalDataProvider(
+      OWNER,
+      weather('HTTP://8.8.8.8:8080')
+    );
+    expect(create).toHaveBeenCalled();
+  });
+
+  it('refuses an internal address from a non-admin', async () => {
+    await expect(
+      externalProviderService.createExternalDataProvider(
+        OWNER,
+        weather('http://10.0.0.5:8080')
+      )
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('lets an admin point at a LAN Open-Meteo', async () => {
+    vi.mocked(resolveIsAdminByUserId).mockResolvedValue(true);
+    await externalProviderService.createExternalDataProvider(
+      OWNER,
+      weather('http://10.0.0.5:8080')
+    );
+    expect(create).toHaveBeenCalled();
+  });
+});
+
 describe('createExternalDataProvider / updateExternalDataProvider - Open Food Facts provider', () => {
   const create = vi.mocked(
     externalProviderRepository.createExternalDataProvider

@@ -1,7 +1,10 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
 import { useMealTypes } from '../../src/hooks/useMealTypes';
 import { mealTypesQueryKey } from '../../src/hooks/queryKeys';
-import { fetchMealTypes } from '../../src/services/api/mealTypesApi';
+import {
+  fetchMealTypes,
+  fetchFamilyMealTypes,
+} from '../../src/services/api/mealTypesApi';
 import {
   createTestQueryClient,
   createQueryWrapper,
@@ -10,6 +13,7 @@ import {
 
 jest.mock('../../src/services/api/mealTypesApi', () => ({
   fetchMealTypes: jest.fn(),
+  fetchFamilyMealTypes: jest.fn(),
 }));
 
 const mockFetchMealTypes = fetchMealTypes as jest.MockedFunction<
@@ -35,6 +39,31 @@ describe('useMealTypes', () => {
 
   afterEach(() => {
     queryClient.clear();
+  });
+
+  test('loads visible recipient meal types in a recipient-specific cache', async () => {
+    queryClient.setQueryData(['mealTypes'], allMealTypes);
+    const custom = {
+      id: 'recipient-custom',
+      name: 'After work',
+      is_visible: true,
+      sort_order: 2,
+    };
+    (fetchFamilyMealTypes as jest.Mock).mockResolvedValue([
+      custom,
+      { ...custom, id: 'hidden', is_visible: false },
+    ]);
+    const { result } = renderHook(
+      () => useMealTypes({ familyUserId: 'recipient' }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+    await waitFor(() => expect(result.current.mealTypes).toEqual([custom]));
+    expect(fetchFamilyMealTypes).toHaveBeenCalledWith('recipient');
+    expect(fetchMealTypes).not.toHaveBeenCalled();
+    expect(
+      queryClient.getQueryData(['familyMealTypes', 'recipient'])
+    ).toHaveLength(2);
+    expect(queryClient.getQueryData(['mealTypes'])).toEqual(allMealTypes);
   });
 
   test('fetches meal types on mount', async () => {

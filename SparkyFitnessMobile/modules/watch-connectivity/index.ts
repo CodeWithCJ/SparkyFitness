@@ -123,6 +123,47 @@ export interface WatchContainerPayload {
   unit: string;
 }
 
+/** Today's sleep snapshot relayed to the watch for its Sleep Health tile. */
+export interface WatchSleepSnapshotPayload {
+  day: string;
+  /** Total time asleep in seconds (main sleep + naps). */
+  totalSeconds: number;
+  /** Main sleep bedtime-to-waketime span in seconds. */
+  timeInBedSeconds: number;
+  sleepScore: number | null;
+  /** Pre-formatted bedtime in the user's time format, or empty. */
+  bedtime: string;
+  /** Pre-formatted wake time in the user's time format, or empty. */
+  wakeTime: string;
+  deepSeconds: number | null;
+  remSeconds: number | null;
+  lightSeconds: number | null;
+  awakeSeconds: number | null;
+  restingHeartRate: number | null;
+  hrvMs: number | null;
+  spo2: number | null;
+  napCount: number;
+  napSeconds: number;
+}
+
+/** One logged exercise session relayed in `WatchExerciseSummaryPayload`. */
+export interface WatchExerciseSessionPayload {
+  name: string;
+  durationMinutes: number;
+  calories: number;
+}
+
+/** Today's exercise summary relayed to the watch for its Exercise tile. */
+export interface WatchExerciseSummaryPayload {
+  day: string;
+  minutes: number;
+  minutesGoal: number;
+  calories: number;
+  caloriesGoal: number;
+  sessionCount: number;
+  sessions: WatchExerciseSessionPayload[];
+}
+
 /** Seed values, history and acknowledgements pushed to the watch. */
 export interface WatchContextPayload {
   /**
@@ -186,6 +227,12 @@ export interface WatchContextPayload {
    * speaks each completed km or mile while this is on. Missing reads as off.
    */
   runVoiceCues?: boolean | null;
+  /**
+   * The app's language as a BCP 47 tag. The watch speaks cue text the phone
+   * wrote (plan step names, route wording) with a voice for it when the phone
+   * cannot relay the cue. Missing reads as unknown.
+   */
+  appLanguage?: string | null;
   /** The phone's Auto-pause switch: the default for a run begun on the wrist. */
   runAutoPause?: boolean | null;
   /** Minutes between spoken check-ins: the default for a run begun on the wrist; 0 is off. */
@@ -389,6 +436,10 @@ export interface WatchContextPayload {
   steps?: { day: string; count: number } | null;
   /** Daily step goal the Steps page and complication measure against. */
   stepGoal?: number | null;
+  /** Today's sleep health snapshot for the watch's Sleep Health tile. */
+  sleep?: WatchSleepSnapshotPayload | null;
+  /** Today's exercise summary for the watch's Exercise tile. */
+  exerciseSummary?: WatchExerciseSummaryPayload | null;
 }
 
 /** One target set the watch shows for a planned exercise. */
@@ -854,6 +905,12 @@ export interface WatchRunCuePayload {
   text: string;
   /** Say it now rather than after the cue being spoken. */
   interrupt: boolean;
+  /**
+   * BCP 47 tag of the language the text is written in (the watch's). Empty
+   * when the sender does not say, as Wear OS does not; the app language then
+   * applies.
+   */
+  language?: string;
 }
 
 /** How hard the wearer rated a finished watch run, 1 to 10. Matches a run by `clientId`. */

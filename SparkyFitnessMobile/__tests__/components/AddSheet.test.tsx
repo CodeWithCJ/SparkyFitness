@@ -2,6 +2,10 @@ import React from 'react';
 import { BackHandler, Platform } from 'react-native';
 import { render, fireEvent, act } from '@testing-library/react-native';
 import AddSheet, { type AddSheetRef } from '../../src/components/AddSheet';
+import {
+  __resetAppPreferencesStoreForTests,
+  useAppPreferencesStore,
+} from '../../src/stores/appPreferencesStore';
 
 const mockBottomSheetControls = {
   openCount: 0,
@@ -135,11 +139,69 @@ describe('AddSheet', () => {
     expect(onDismissWithoutAction).toHaveBeenCalledTimes(1);
   });
 
-  it('renders the Measurements tile in the main grid', () => {
+  it('shows the rows in the saved order and leaves out hidden ones', () => {
+    __resetAppPreferencesStoreForTests();
+    useAppPreferencesStore.setState({
+      addMenuOrder: ['syncHealth', 'askSparky'],
+      hiddenAddMenuItems: ['progressPhotos'],
+    });
+    const { queryByText, toJSON } = renderAddSheet();
+
+    expect(queryByText('Progress Photos')).toBeNull();
+    const text = JSON.stringify(toJSON());
+    // Saved rows first, then the rest in their usual order.
+    expect(text.indexOf('Sync Health')).toBeLessThan(
+      text.indexOf('Ask Sparky')
+    );
+    __resetAppPreferencesStoreForTests();
+  });
+
+  it('puts a chosen item on a big card and the old card in the rows', () => {
+    __resetAppPreferencesStoreForTests();
+    useAppPreferencesStore.setState({
+      addMenuCards: ['askSparky', 'exercise', 'measurements', 'scanFood'],
+    });
+    const onAskSparky = jest.fn();
+    const { getByText } = renderAddSheet({ onAskSparky });
+
+    // Ask Sparky is a card now, Food is a row, and both still work.
+    fireEvent.press(getByText('Ask Sparky'));
+    expect(onAskSparky).toHaveBeenCalled();
+    expect(getByText('Food')).toBeTruthy();
+    __resetAppPreferencesStoreForTests();
+  });
+
+  it('shows an item as the style the person chose', () => {
+    __resetAppPreferencesStoreForTests();
+    useAppPreferencesStore.getState().setAddMenuRowStyle('symptoms', 'action');
+    const onAddSymptoms = jest.fn();
+    const { getByText } = renderAddSheet({ onAddSymptoms });
+
+    // A button now, and it still works.
+    fireEvent.press(getByText('Symptoms & Health'));
+    expect(onAddSymptoms).toHaveBeenCalledTimes(1);
+    __resetAppPreferencesStoreForTests();
+  });
+
+  it('opens the exercise sub-menu from a row', () => {
+    __resetAppPreferencesStoreForTests();
+    useAppPreferencesStore.setState({
+      addMenuCards: ['food', 'mood', 'measurements', 'scanFood'],
+    });
+    const { getByText } = renderAddSheet({ onAddMood: jest.fn() });
+
+    fireEvent.press(getByText('Exercise'));
+    expect(getByText('Workout')).toBeTruthy();
+    __resetAppPreferencesStoreForTests();
+  });
+
+  it('renders the quick action tiles with their short names', () => {
     const { ref, getByText } = renderAddSheet();
 
     act(() => ref.current?.present());
-    expect(getByText('Measurements')).toBeTruthy();
+    expect(getByText('Quick Actions')).toBeTruthy();
+    expect(getByText('Measure')).toBeTruthy();
+    expect(getByText('Scan')).toBeTruthy();
   });
 
   it('invokes onAddProgressPhotos when the Progress Photos row is pressed', () => {
@@ -158,7 +220,7 @@ describe('AddSheet', () => {
     expect(onDismissWithoutAction).not.toHaveBeenCalled();
   });
 
-  it('invokes onSyncHealthData when the secondary Sync Health Data row is pressed', () => {
+  it('invokes onSyncHealthData when the Sync Health button is pressed', () => {
     const onSyncHealthData = jest.fn();
     const onDismissWithoutAction = jest.fn();
     const { ref, getByText } = renderAddSheet({
@@ -167,14 +229,14 @@ describe('AddSheet', () => {
     });
 
     act(() => ref.current?.present());
-    fireEvent.press(getByText('Sync Health Data'));
+    fireEvent.press(getByText('Sync Health'));
     act(() => mockBottomSheetControls.onDismiss?.());
 
     expect(onSyncHealthData).toHaveBeenCalledTimes(1);
     expect(onDismissWithoutAction).not.toHaveBeenCalled();
   });
 
-  it('invokes onAddSymptoms when the secondary Symptoms row is pressed', () => {
+  it('invokes onAddSymptoms when the Symptoms & Health row is pressed', () => {
     const onAddSymptoms = jest.fn();
     const onDismissWithoutAction = jest.fn();
     const { ref, getByText } = renderAddSheet({
@@ -183,7 +245,7 @@ describe('AddSheet', () => {
     });
 
     act(() => ref.current?.present());
-    fireEvent.press(getByText('Symptoms'));
+    fireEvent.press(getByText('Symptoms & Health'));
     act(() => mockBottomSheetControls.onDismiss?.());
 
     expect(onAddSymptoms).toHaveBeenCalledTimes(1);
@@ -201,45 +263,55 @@ describe('AddSheet', () => {
     expect(onAddMood).toHaveBeenCalledTimes(1);
   });
 
+  it('dismisses from Done without counting as an action', () => {
+    const onDismissWithoutAction = jest.fn();
+    const { ref, getByText } = renderAddSheet({ onDismissWithoutAction });
+
+    act(() => ref.current?.present());
+    fireEvent.press(getByText('Done'));
+    expect(mockBottomSheetControls.dismiss).toHaveBeenCalled();
+    act(() => mockBottomSheetControls.onDismiss?.());
+
+    expect(onDismissWithoutAction).toHaveBeenCalledTimes(1);
+  });
+
   describe('guided check-in row', () => {
-    it('is hidden by default', () => {
-      const { ref, getByText, queryByText } = renderAddSheet();
+    it('shows with no setting to turn on, as soon as there is a handler', () => {
+      const onStartCheckIn = jest.fn();
+      const { ref, getByText } = renderAddSheet({ onStartCheckIn });
 
       act(() => ref.current?.present());
 
-      expect(getByText('Progress Photos')).toBeTruthy();
-      expect(queryByText('Check-In')).toBeNull();
+      expect(getByText('Daily Check-In')).toBeTruthy();
+      expect(onStartCheckIn).not.toHaveBeenCalled();
     });
 
-    it('stays hidden while showCheckIn is off, even with a handler, and appears once it is on', () => {
-      const onStartCheckIn = jest.fn();
-      const { ref, props, queryByText, getByText, rerender } = renderAddSheet({
-        onStartCheckIn,
-        showCheckIn: false,
+    it('is left out when hidden in Quick Actions, like any other item', () => {
+      __resetAppPreferencesStoreForTests();
+      useAppPreferencesStore.setState({ hiddenAddMenuItems: ['checkIn'] });
+      const { ref, getByText, queryByText } = renderAddSheet({
+        onStartCheckIn: jest.fn(),
       });
 
       act(() => ref.current?.present());
-      expect(queryByText('Check-In')).toBeNull();
 
-      rerender(<AddSheet ref={ref} {...props} showCheckIn />);
-
-      expect(getByText('Check-In')).toBeTruthy();
-      expect(onStartCheckIn).not.toHaveBeenCalled();
+      expect(queryByText('Daily Check-In')).toBeNull();
+      expect(getByText('Progress Photos')).toBeTruthy();
+      __resetAppPreferencesStoreForTests();
     });
 
     it('shows the Check-In row before Progress Photos, first among the secondary rows', () => {
       const { ref, getAllByText } = renderAddSheet({
         onStartCheckIn: jest.fn(),
-        showCheckIn: true,
         onAddMood: jest.fn(),
       });
 
       act(() => ref.current?.present());
 
-      const rowLabels = getAllByText(/^(Check-In|Progress Photos|Mood)$/).map(
-        (node) => node.props.children
-      );
-      expect(rowLabels).toEqual(['Check-In', 'Progress Photos', 'Mood']);
+      const rowLabels = getAllByText(
+        /^(Daily Check-In|Progress Photos|Mood)$/
+      ).map((node) => node.props.children);
+      expect(rowLabels).toEqual(['Daily Check-In', 'Progress Photos', 'Mood']);
     });
 
     it('invokes onStartCheckIn when the Check-In row is pressed', () => {
@@ -248,13 +320,12 @@ describe('AddSheet', () => {
       const onDismissWithoutAction = jest.fn();
       const { ref, getByText } = renderAddSheet({
         onStartCheckIn,
-        showCheckIn: true,
         onAddMood,
         onDismissWithoutAction,
       });
 
       act(() => ref.current?.present());
-      fireEvent.press(getByText('Check-In'));
+      fireEvent.press(getByText('Daily Check-In'));
       act(() => mockBottomSheetControls.onDismiss?.());
 
       expect(onStartCheckIn).toHaveBeenCalledTimes(1);

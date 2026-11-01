@@ -1,5 +1,28 @@
 import { getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import {
+  DEFAULT_MCP_OAUTH_ALLOWED_REDIRECT_URIS,
+  getMcpOAuthAvailability,
+} from '../utils/mcpOAuth.js';
+
+interface GlobalSettingsUpdate {
+  enable_email_password_login?: boolean;
+  is_oidc_active?: boolean;
+  is_mfa_mandatory?: boolean | null;
+  allow_user_ai_config?: boolean;
+  default_vision_ai_service_id?: string | null;
+  allow_openfoodfacts_contributions?: boolean;
+  allow_private_network_ai?: boolean;
+  allow_private_network_food_providers?: boolean;
+  public_api_docs?: boolean;
+  dev_tools_enabled?: boolean;
+  mock_data_enabled?: boolean;
+  enable_passkey_login?: boolean;
+  mcp_oauth_enabled?: boolean;
+  mcp_oauth_allowed_redirect_uris?: string[];
+  enable_version_check?: boolean;
+}
+
 async function getGlobalSettings() {
   const client = await getSystemClient(); // System-level operation
   try {
@@ -75,6 +98,15 @@ async function getGlobalSettings() {
     settings.public_api_docs = !!settings.public_api_docs;
     settings.dev_tools_enabled = !!settings.dev_tools_enabled;
     settings.mock_data_enabled = !!settings.mock_data_enabled;
+    settings.mcp_oauth_enabled = !!settings.mcp_oauth_enabled;
+    settings.mcp_oauth_allowed_redirect_uris = Array.isArray(
+      settings.mcp_oauth_allowed_redirect_uris
+    )
+      ? settings.mcp_oauth_allowed_redirect_uris
+      : [...DEFAULT_MCP_OAUTH_ALLOWED_REDIRECT_URIS];
+    const mcpOAuthAvailability = getMcpOAuthAvailability();
+    settings.mcp_oauth_available = mcpOAuthAvailability.available;
+    settings.mcp_oauth_unavailable_reason = mcpOAuthAvailability.reason;
     // The column is NOT NULL DEFAULT TRUE; a missing row reads as off, matching
     // isVersionCheckEnabled.
     settings.enable_version_check = !!settings.enable_version_check;
@@ -88,8 +120,7 @@ async function getGlobalSettings() {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function saveGlobalSettings(settings: any) {
+async function saveGlobalSettings(settings: GlobalSettingsUpdate) {
   const client = await getSystemClient(); // System-level operation
   try {
     const allowUserAiConfig =
@@ -120,7 +151,9 @@ async function saveGlobalSettings(settings: any) {
                  dev_tools_enabled = COALESCE($11, dev_tools_enabled, false),
                  mock_data_enabled = COALESCE($12, mock_data_enabled, false),
                  enable_passkey_login = COALESCE($13, enable_passkey_login, true),
-                 enable_version_check = COALESCE($14, enable_version_check, true)
+                 mcp_oauth_enabled = COALESCE($14, mcp_oauth_enabled, false),
+                 enable_version_check = COALESCE($15, enable_version_check, true),
+                 mcp_oauth_allowed_redirect_uris = COALESCE($16, mcp_oauth_allowed_redirect_uris)
              WHERE id = 1
              RETURNING *`,
       [
@@ -139,7 +172,9 @@ async function saveGlobalSettings(settings: any) {
         settings.dev_tools_enabled ?? null,
         settings.mock_data_enabled ?? null,
         passkeyEnvForced ? null : (settings.enable_passkey_login ?? null),
+        settings.mcp_oauth_enabled ?? null,
         settings.enable_version_check ?? null,
+        settings.mcp_oauth_allowed_redirect_uris ?? null,
       ]
     );
     // Return the full truth (DB + ENV overrides)
@@ -172,6 +207,7 @@ type BooleanSettingColumn =
   | 'public_api_docs'
   | 'dev_tools_enabled'
   | 'mock_data_enabled'
+  | 'mcp_oauth_enabled'
   | 'enable_version_check';
 
 /**
@@ -214,6 +250,33 @@ async function isPublicApiDocsAllowed(): Promise<boolean> {
 }
 async function isDevToolsEnabled(): Promise<boolean> {
   return readBooleanSetting('dev_tools_enabled');
+}
+async function isMcpOAuthEnabled(): Promise<boolean> {
+  return readBooleanSetting('mcp_oauth_enabled');
+}
+
+/** Reads the administrator-controlled OAuth redirect allowlist, failing closed. */
+async function getMcpOAuthAllowedRedirectUris(): Promise<string[]> {
+  let client;
+  try {
+    client = await getSystemClient();
+    const result = await client.query(
+      'SELECT mcp_oauth_allowed_redirect_uris FROM global_settings WHERE id = 1'
+    );
+    const value = result.rows[0]?.mcp_oauth_allowed_redirect_uris;
+    return Array.isArray(value) &&
+      value.every((item) => typeof item === 'string')
+      ? value
+      : [];
+  } catch (error) {
+    log(
+      'warn',
+      `[GLOBAL SETTINGS REPO] Could not read MCP OAuth redirect allowlist; denying redirects: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return [];
+  } finally {
+    client?.release();
+  }
 }
 /**
  * Admin master switch for the runtime mock-data options. While false, the
@@ -262,8 +325,7 @@ async function getMfaMandatorySetting() {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function setMfaMandatorySetting(isMandatory: any) {
+async function setMfaMandatorySetting(isMandatory: boolean) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
@@ -286,6 +348,8 @@ export {
   isPrivateNetworkFoodProvidersAllowed,
   isPublicApiDocsAllowed,
   isDevToolsEnabled,
+  isMcpOAuthEnabled,
+  getMcpOAuthAllowedRedirectUris,
   isMockDataEnabled,
   isVersionCheckEnabled,
 };
@@ -300,6 +364,8 @@ export default {
   isPrivateNetworkFoodProvidersAllowed,
   isPublicApiDocsAllowed,
   isDevToolsEnabled,
+  isMcpOAuthEnabled,
+  getMcpOAuthAllowedRedirectUris,
   isMockDataEnabled,
   isVersionCheckEnabled,
 };

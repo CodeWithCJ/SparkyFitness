@@ -111,7 +111,8 @@
       "severe": "Hårde (7-10)",
       "primaryLocation": "Primær placering",
       "customLocationPlaceholder": "f.eks. Venstre skulder, Kæbe..",
-      "context": "Kontekst / noter"
+      "context": "Kontekst / noter",
+      "clear2": "<span></span> Ryd"
     },
     "checkin": {
       "metric": {
@@ -140,7 +141,8 @@
       "doses": "Dose",
       "dosesToday": "Doser i dag",
       "undo": "Fortryd",
-      "snoozed": "Snooze"
+      "snoozed": "Snooze",
+      "note2": "Bemærkning: {{notes}}"
     },
     "insights": {
       "disclaimer": "Insights beregnes over en rullende 30-dages vindue. Disse er uddannelsesmæssige skøn, ikke klinisk rådgivning."
@@ -182,7 +184,10 @@
     "reports": {
       "dosesLogged": "{{count}} dossier logget",
       "dosesTaken": "Dossier taget",
-      "symptomsColumn": "Symptomer"
+      "symptomsColumn": "Symptomer",
+      "dosesLogged2": "{{display_name}} — {{count}} doser registreret",
+      "inj": "({{injections}} injektioner)",
+      "reportingPeriodTo": "Rapporteringsperiode: {{startDate}} til {{endDate}}"
     },
     "gi": {
       "nausea": "Kvalme / uge",
@@ -194,6 +199,30 @@
     },
     "sites": {
       "customize": "Tilpas websteder"
+    },
+    "glp1": {
+      "now": "Ca. {{currentLevelFraction}}% lige nu"
+    },
+    "addMedicationDialog": {
+      "weekly": "Ugentlig",
+      "daily": "Daglig",
+      "rateStars_one": "Bedøm med {{count}} stjerne",
+      "rateStars_other": "Bedøm med {{count}} stjerner"
+    },
+    "glp1InventoryManager": {
+      "mgML": "· {{concentration_mg_ml}} mg/mL",
+      "inUse": "I brug",
+      "reorder": "Omarranger",
+      "doses": "Doser",
+      "exp": "Udløber {{expiry_date}}",
+      "expired": "Udløbet",
+      "nearExp": "Udløber snart",
+      "bud": "Sidste anvendelsesdato: {{bud_date}}",
+      "expiredBUD": "Sidste anvendelsesdato overskredet (BUD)",
+      "notes": "Bemærkninger: {{notes}}",
+      "labelName": "Etiket / navn",
+      "doseStrengthMg": "Dosisstyrke (mg)",
+      "totalDoses": "Samlet antal doser"
     }
   },
   "exerciseSearch": {
@@ -246,7 +275,33 @@
     "errorClearingHistory": "Kunne ikke rydde chat-historikken.",
     "errorLoadingHistory": "Kunne ikke hente chat-historikken.",
     "errorLoadingPreferences": "Kunne ikke indlæse chatpræferencer.",
-    "successClearingHistory": "Chat-historikken er ryddet"
+    "successClearingHistory": "Chat-historikken er ryddet",
+    "voice": {
+      "start": "Diktér besked",
+      "stop": "Stop diktering",
+      "cancel": "Annuller diktering",
+      "listening": "Lytter…",
+      "starting": "Starter…",
+      "processing": "Transskriberer…",
+      "unsupported": "Denne stemmetilstand understøttes ikke i denne browser. Vælg AI-transskription under Stemmeindstillinger, eller prøv en anden browser.",
+      "permission": "Giv adgang til mikrofonen i dine browserindstillinger for at diktere en besked.",
+      "tooLarge": "Optagelsen oversteg 10 MB. Prøv med en kortere besked.",
+      "noSpeech": "Ingen tale blev genkendt. Din kladde er uændret.",
+      "failed": "Stemmeinput mislykkedes. Din kladde er uændret. Kontrollér din forbindelse og dine stemmeindstillinger, og prøv igen."
+    },
+    "sparkyChat": {
+      "sparkyAICoach": "Sparky AI Coach",
+      "yourPersonalAINutritionAnd": "Din personlige AI-coach til kost og træning.",
+      "selectProvider": "Vælg udbyder",
+      "clearChatHistory": "Ryd chathistorik",
+      "expandChat": "Udvid chatten",
+      "minimizeChat": "Minimer chatten",
+      "closeChat": "Luk chatten"
+    },
+    "sparkyChatInterface": {
+      "chatError": "Chatfejl",
+      "failedToProcessMessagePlease": "Beskeden kunne ikke behandles. Kontrollér dine AI-tjenesteindstillinger."
+    }
   },
   "foodCsvImport": {
     "title": "Import af fødevaredata",
@@ -275,7 +330,12 @@
     "noDataTitle": "Ingen data fundet",
     "noDataText": "CSV-filen indeholder overskrifter, men ingen data rækker.",
     "validationErrorTitle": "Valideringsfejl",
-    "nameRequired": "Feltet 'navn' må ikke være tomt."
+    "nameRequired": "Feltet 'navn' må ikke være tomt.",
+    "missingDefaultValidationError": "Mindst én variant pr. fødevare skal være angivet som standardenhed.",
+    "filterMissingDefault": "Vis manglende standardenhed ({{count}})",
+    "showAllRows": "Vis alle rækker ({{count}})",
+    "overrideLabel": "Overskriv eksisterende fødevareoplysninger",
+    "overrideDescription": "Hvis der allerede findes en fødevare med samme navn og mærke, bliver næringsindholdet opdateret i stedet for, at importen mislykkes. Hvis du ikke markerer feltet, bliver dubletter sprunget over, og der vises en fejlmeddelelse."
   },
   "nutrition": {
     "calories": "Kalorier",
@@ -322,6 +382,72 @@
     "translate": "Oversæt"
   },
   "workoutLaps": {
-    "title": "Træningsopdeling Intervaller & Omgange"
+    "title": "Træningsopdeling Intervaller & Omgange",
+    "lapsCount": "{{count}} Omgange",
+    "lap": "Omgang",
+    "distance": "Afstand",
+    "time": "Tid",
+    "pace": "Tempo (/{{unit}})",
+    "avgMaxHr": "Gns. / maks. puls",
+    "resp": "Vejrtrækning (åndedrag/min.)",
+    "cadence": "Kadence",
+    "power": "Effekt"
+  },
+  "dailyHealthMetrics": {
+    "title": "Daglig sundhedsoversigt fra aktivitetsure",
+    "bodyBattery": "Kropsbatteri",
+    "peak": "Højeste værdi",
+    "low": "Laveste værdi: {{val}}",
+    "avgStress": "Gennemsnitligt stressniveau",
+    "max": "Maks.: {{val}}",
+    "restingHr": "Hvilepuls",
+    "recovery": "Restitution: {{val}}",
+    "vo2Max": "VO₂-maks.",
+    "fitnessAge": "Konditionsalder: {{val}}",
+    "readiness": "Træningsparathed",
+    "recHours": "Anbefalet: {{val}}",
+    "trainingLoad": "Træningsbelastning",
+    "empty": "Ingen data fra aktivitetsur synkroniseret for denne dag.",
+    "skinTemp": "Hudtemperatur"
+  },
+  "foods": {
+    "providerVerified": "Verificeret fødevare",
+    "removeNutrient": "Fjern {{nutrient}}",
+    "aliasChipInput": {
+      "remove": "Fjern {{alias}}"
+    },
+    "customNutrientDialog": {
+      "nutrientNameAndUnitAre": "Næringsstoffets navn og enhed skal angives.",
+      "customNutrientCreated": "Brugerdefineret næringsstof oprettet",
+      "failedToCreateCustomNutrient": "Det brugerdefinerede næringsstof kunne ikke oprettes. Prøv igen.",
+      "addCustomNutrient": "Tilføj brugerdefineret næringsstof",
+      "setTheDisplayUnitAnd": "Angiv visningsenheden og de navne (aliaser), som udbyderne bruger, og som skal knyttes til dette næringsstof ved import.",
+      "nutrientName": "Næringsstoffets navn",
+      "eGMagnesium": "f.eks. magnesium",
+      "unit": "Enhed",
+      "eGMgGIU": "f.eks. mg, µg, IE",
+      "providerAliases": "Udbyderaliaser",
+      "typeANamePressEnter": "Indtast et navn, og tryk på Enter",
+      "adding": "Tilføjer…",
+      "nutrientAdded": "\"{{name}}\" blev tilføjet."
+    },
+    "deleteFoodDialog": {
+      "view": "Vis",
+      "otherUser": "Anden bruger"
+    },
+    "mealUnitSelector": {
+      "selectTheQuantityForThis": "Vælg mængden af dette måltid i din madplan.",
+      "quantity": "Mængde",
+      "unit": "Enhed",
+      "nutritionFor": "Næringsindhold for {{quantity}} {{displayUnit}}:",
+      "updateMeal": "Opdater måltid",
+      "addToMealPlan": "Tilføj til madplan",
+      "gProtein2": "{{protein}}g protein",
+      "gCarbs2": "{{carbs}}g kulhydrater",
+      "gFat2": "{{fat}}g fedt",
+      "editMeal": "Rediger {{name}}",
+      "addMealToPlan": "Tilføj {{name}} til madplan",
+      "editQuantityFor": "Rediger mængden af {{name}}."
+    }
   }
 }

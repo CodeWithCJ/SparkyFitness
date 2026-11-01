@@ -1,15 +1,17 @@
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import {
+  SLEEP_STAGE_CLUSTER_GAP_MS,
   sleepStageMergeWindow,
   scoredStageRemaindersOutsideWindow,
 } from '../utils/sleepStageAggregates.js';
 
 /**
  * Orders sleep rows so `DISTINCT ON (entry_date)` keeps each day's main sleep:
- * the longest record, the earlier bedtime on a tie. A day holds one row per
- * source, so a per-day sleep value read this way never counts a night two
- * sources recorded twice.
+ * the longest record, the earlier bedtime on a tie. A day can hold several
+ * rows (one per source, and a nap beside the night), so a per-day sleep value
+ * read this way never counts a night two sources recorded twice, nor a nap as
+ * the night.
  *
  * This is deliberately not the reports' `keepMostDetailedSleepEntries` rule.
  * One value per day has to pick the night over a nap from another source,
@@ -73,12 +75,65 @@ export interface SleepEntryUpsertOptions {
   keepExistingBiometrics?: boolean;
 }
 
+/**
+ * Finds the stored entry a write for this session belongs to: same night and
+ * source, and no more than the stage cluster gap (4 hours) apart, so a re-sync
+ * or a partial fragment of a night updates it while a nap gets its own entry
+ * (#3240). The closest one wins when several qualify. Without times on either
+ * side the night and source alone decide, as before.
+ *
+ * Takes a transaction-scoped lock on the night and source first, so two
+ * overlapping writes of one session cannot both insert. Call inside a
+ * transaction.
+ */
+async function findSameSessionEntryId(
+  client: Awaited<ReturnType<typeof getClient>>,
+  userId: string,
+  entryDate: string,
+  source: string,
+  bedtime: Date | string | null | undefined,
+  wakeTime: Date | string | null | undefined
+): Promise<string | undefined> {
+  await client.query(
+    "SELECT pg_advisory_xact_lock(hashtext('sleep-entry:' || $1 || ':' || $2::date::text || ':' || $3))",
+    [userId, entryDate, source]
+  );
+  const result = await client.query(
+    `SELECT id
+     FROM sleep_entries
+     WHERE user_id = $1
+       AND entry_date = $2
+       AND source = $3
+       AND (
+         $4::timestamptz IS NULL OR $5::timestamptz IS NULL
+         OR bedtime IS NULL OR wake_time IS NULL
+         OR (bedtime <= $5::timestamptz + make_interval(secs => $6)
+             AND wake_time >= $4::timestamptz - make_interval(secs => $6))
+       )
+     ORDER BY
+       COALESCE(EXTRACT(EPOCH FROM LEAST(wake_time, $5::timestamptz) - GREATEST(bedtime, $4::timestamptz)), 0) DESC,
+       updated_at DESC NULLS LAST,
+       id
+     LIMIT 1
+     FOR UPDATE`,
+    [
+      userId,
+      entryDate,
+      source,
+      bedtime ?? null,
+      wakeTime ?? null,
+      SLEEP_STAGE_CLUSTER_GAP_MS / 1000,
+    ]
+  );
+  return result.rows[0]?.id;
+}
+
 async function upsertSleepEntry(
   userId: string,
   _actingUserId: string,
   sleepEntryData: SleepEntryUpsertInput,
   options: SleepEntryUpsertOptions = {}
-): Promise<{ id: string } & Record<string, unknown>> {
+): Promise<{ id: string; created: boolean } & Record<string, unknown>> {
   const keepBiometrics = options.keepExistingBiometrics === true;
   const client = await getClient(userId);
   try {
@@ -111,7 +166,17 @@ async function upsertSleepEntry(
       record_timezone,
       record_utc_offset_minutes,
     } = sleepEntryData;
-    let sleepEntryId = id;
+    let sleepEntryId =
+      id ??
+      (await findSameSessionEntryId(
+        client,
+        userId,
+        entry_date,
+        source,
+        bedtime,
+        wake_time
+      ));
+    const created = !sleepEntryId;
     if (sleepEntryId) {
       // Attempt to update existing entry. The recording-zone columns use
       // COALESCE so a payload without zone metadata (older mobile client,
@@ -183,42 +248,17 @@ async function upsertSleepEntry(
         sleepEntryId = updateResult.rows[0].id;
         log('info', `Updated sleep entry ${sleepEntryId} for user ${userId}.`);
       } else {
-        // If it was supposed to update but the ID (from param) didn't exist for this user,
-        // we fall back to insert if id was explicitly provided but not found.
-        // But in our case of sync, if we found it via existingCheck, it WILL update.
+        // An explicit id that doesn't belong to this user, or a matched
+        // session that vanished under the lock: nothing to update.
         throw new Error(`Failed to update sleep entry ${sleepEntryId}.`);
       }
     } else {
-      // One entry per user, night and source. Inserting through the unique key
-      // makes a concurrent write for the same night update it, not add another.
+      // A new session for this night and source: a nap, or a second manual
+      // session. findSameSessionEntryId holds the lock, so a concurrent write
+      // of the same session waits and then updates this row instead.
       const insertQuery = `
                 INSERT INTO sleep_entries (user_id, entry_date, bedtime, wake_time, duration_in_seconds, time_asleep_in_seconds, sleep_score, source, deep_sleep_seconds, light_sleep_seconds, rem_sleep_seconds, awake_sleep_seconds, average_spo2_value, lowest_spo2_value, highest_spo2_value, average_respiration_value, lowest_respiration_value, highest_respiration_value, awake_count, avg_sleep_stress, restless_moments_count, avg_overnight_hrv, body_battery_change, resting_heart_rate, record_timezone, record_utc_offset_minutes)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
-                ON CONFLICT (user_id, entry_date, source) DO UPDATE SET
-                    bedtime = EXCLUDED.bedtime,
-                    wake_time = EXCLUDED.wake_time,
-                    duration_in_seconds = EXCLUDED.duration_in_seconds,
-                    time_asleep_in_seconds = EXCLUDED.time_asleep_in_seconds,
-                    sleep_score = EXCLUDED.sleep_score,
-                    deep_sleep_seconds = EXCLUDED.deep_sleep_seconds,
-                    light_sleep_seconds = EXCLUDED.light_sleep_seconds,
-                    rem_sleep_seconds = EXCLUDED.rem_sleep_seconds,
-                    awake_sleep_seconds = EXCLUDED.awake_sleep_seconds,
-                    average_spo2_value = EXCLUDED.average_spo2_value,
-                    lowest_spo2_value = EXCLUDED.lowest_spo2_value,
-                    highest_spo2_value = EXCLUDED.highest_spo2_value,
-                    average_respiration_value = EXCLUDED.average_respiration_value,
-                    lowest_respiration_value = EXCLUDED.lowest_respiration_value,
-                    highest_respiration_value = EXCLUDED.highest_respiration_value,
-                    awake_count = EXCLUDED.awake_count,
-                    avg_sleep_stress = EXCLUDED.avg_sleep_stress,
-                    restless_moments_count = EXCLUDED.restless_moments_count,
-                    avg_overnight_hrv = ${keepBiometrics ? 'COALESCE(EXCLUDED.avg_overnight_hrv, sleep_entries.avg_overnight_hrv)' : 'EXCLUDED.avg_overnight_hrv'},
-                    body_battery_change = EXCLUDED.body_battery_change,
-                    resting_heart_rate = ${keepBiometrics ? 'COALESCE(EXCLUDED.resting_heart_rate, sleep_entries.resting_heart_rate)' : 'EXCLUDED.resting_heart_rate'},
-                    record_timezone = COALESCE(EXCLUDED.record_timezone, sleep_entries.record_timezone),
-                    record_utc_offset_minutes = COALESCE(EXCLUDED.record_utc_offset_minutes, sleep_entries.record_utc_offset_minutes),
-                    updated_at = CURRENT_TIMESTAMP
                 RETURNING id;
             `;
       const insertResult = await client.query(insertQuery, [
@@ -253,7 +293,7 @@ async function upsertSleepEntry(
       log('info', `Saved sleep entry ${sleepEntryId} for user ${userId}.`);
     }
     await client.query('COMMIT');
-    return { id: sleepEntryId as string, ...sleepEntryData };
+    return { ...sleepEntryData, id: sleepEntryId as string, created };
   } catch (error) {
     await client.query('ROLLBACK');
     log('error', `Error upserting sleep entry for user ${userId}: `, error);
@@ -571,6 +611,53 @@ async function mergeSleepStageEvents(
     log(
       'error',
       `Error merging sleep stage events for entry ${entryId}: `,
+      error
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Deletes the stages a new session's entry now holds from the other entries of
+ * that night and source. Before #3240 a nap was merged into the night's entry,
+ * so its stages sit there too; the next sync of that night gives the nap its own
+ * entry and this takes them out of the night. Returns the entries that lost
+ * stages so their aggregates can be recomputed.
+ */
+async function removeSessionStagesFromSiblingEntries(
+  userId: string,
+  entryId: string,
+  entryDate: string,
+  source: string,
+  windowStart: Date | string,
+  windowEnd: Date | string
+): Promise<string[]> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `DELETE FROM sleep_entry_stages stage
+       USING sleep_entries sibling
+       WHERE stage.entry_id = sibling.id
+         AND sibling.user_id = $1
+         AND sibling.entry_date = $2
+         AND sibling.source = $3
+         AND sibling.id <> $4
+         AND stage.start_time >= $5::timestamptz
+         AND stage.end_time <= $6::timestamptz
+       RETURNING stage.entry_id`,
+      [userId, entryDate, source, entryId, windowStart, windowEnd]
+    );
+    return [
+      ...new Set<string>(
+        result.rows.map((row: { entry_id: string }) => row.entry_id)
+      ),
+    ];
+  } catch (error) {
+    log(
+      'error',
+      `Error removing session stages from sibling sleep entries of ${entryId} for user ${userId}: `,
       error
     );
     throw error;
@@ -1138,6 +1225,61 @@ async function deleteSleepEntry(userId: any, entryId: any) {
     client.release();
   }
 }
+/**
+ * Deletes a sleep entry only if it still holds no stages, atomically. Used by
+ * the nap heal path: an entry whose every stage moved to a new session would
+ * otherwise be left without a bedtime, which the session lookup treats as
+ * matching any later write of that night.
+ *
+ * Locks the entry row with FOR UPDATE before checking. A stage insert takes
+ * FOR KEY SHARE on the parent through the ON DELETE CASCADE foreign key, which
+ * conflicts with FOR UPDATE, so a concurrent stage write for this entry waits
+ * behind this check instead of landing after it and being lost to the cascade.
+ * Returns true when the entry was deleted.
+ */
+async function deleteSleepEntryIfEmpty(
+  userId: string,
+  entryId: string
+): Promise<boolean> {
+  const client = await getClient(userId);
+  try {
+    await client.query('BEGIN');
+    const locked = await client.query(
+      'SELECT id FROM sleep_entries WHERE id = $1 AND user_id = $2 FOR UPDATE',
+      [entryId, userId]
+    );
+    if (locked.rows.length === 0) {
+      await client.query('COMMIT');
+      return false;
+    }
+    const stages = await client.query(
+      'SELECT 1 FROM sleep_entry_stages WHERE entry_id = $1 AND user_id = $2 LIMIT 1',
+      [entryId, userId]
+    );
+    if (stages.rows.length > 0) {
+      await client.query('COMMIT');
+      return false;
+    }
+    await client.query(
+      'DELETE FROM sleep_entries WHERE id = $1 AND user_id = $2',
+      [entryId, userId]
+    );
+    await client.query('COMMIT');
+    log('info', `Deleted emptied sleep entry ${entryId} for user ${userId}.`);
+    return true;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    log(
+      'error',
+      `Error deleting emptied sleep entry ${entryId} for user ${userId}: `,
+      error
+    );
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export { upsertSleepEntry };
 export { upsertSleepStageEvent };
 export { mergeSleepStageEvents };
@@ -1147,18 +1289,21 @@ export { getSleepEntriesByUserIdAndDateRange };
 export { updateSleepEntry };
 export { deleteSleepStageEventsByEntryId };
 export { deleteSleepEntry };
+export { deleteSleepEntryIfEmpty };
 export { getSleepEntriesWithAllDetailsByUserIdAndDateRange };
 export { deleteSleepEntriesByEntrySourceAndDate };
 export default {
   upsertSleepEntry,
   upsertSleepStageEvent,
   mergeSleepStageEvents,
+  removeSessionStagesFromSiblingEntries,
   getSleepStageEventsByEntryId,
   updateSleepEntryAggregates,
   getSleepEntriesByUserIdAndDateRange,
   updateSleepEntry,
   deleteSleepStageEventsByEntryId,
   deleteSleepEntry,
+  deleteSleepEntryIfEmpty,
   getSleepEntriesWithAllDetailsByUserIdAndDateRange,
   deleteSleepEntriesByEntrySourceAndDate,
 };

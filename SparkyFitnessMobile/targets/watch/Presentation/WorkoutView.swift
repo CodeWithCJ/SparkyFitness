@@ -751,7 +751,7 @@ private struct ExerciseListView: View {
                     .listRowBackground(WatchStyle.shape.fill(WatchStyle.fill))
                 }
             }
-            .navigationTitle(store.plan?.workoutName ?? "Workout")
+            .navigationTitle(store.plan?.workoutName ?? String(localized: "watch.workout.title", defaultValue: "Workout"))
             .navigationBarTitleDisplayMode(.inline)
         }
         .sheet(isPresented: $addingExercise) { AddExerciseSheet() }
@@ -1645,7 +1645,7 @@ private struct HoldStopwatch: View {
                     // While the stopwatch runs the double-tap stops it; the
                     // set's tick takes the gesture back once it has stopped.
                     HoldPill(
-                        title: "Stop",
+                        title: String(localized: "watch.workout.holdStop", defaultValue: "Stop"),
                         tint: .red,
                         doubleTap: workoutPageActive
                             && checkIn.context.effectiveDoubleTapEnabled

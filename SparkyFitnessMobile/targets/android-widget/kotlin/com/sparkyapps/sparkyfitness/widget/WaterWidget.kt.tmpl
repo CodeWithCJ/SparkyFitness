@@ -6,7 +6,7 @@ import android.net.Uri
 import android.os.Build
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -17,6 +17,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
@@ -51,9 +52,13 @@ import java.text.NumberFormat
 /**
  * Today's water with − and + buttons that remove or add one drink of the
  * dashboard's container without opening the app, the Android side of the iOS
- * water widget (targets/widget/waterWidget.swift). Drawn in a fixed 2x2 like
- * the macro widget, with a bar like the other Android widgets. A tap anywhere
- * else opens the app.
+ * water widget (targets/widget/waterWidget.swift). A 2x2 by default, with a
+ * bar like the other Android widgets. A tap anywhere else opens the app.
+ *
+ * It can be resized, and the steps in [WidgetSizes.waterSizes] keep the
+ * classic composition at the default size: one row tall, the amount sits over
+ * the bar and buttons; wide, the amount and bar sit on the left and the
+ * buttons on the right, like the iOS medium widget.
  *
  * The buttons only show once the Dashboard has sent its container (`canLog`,
  * false until then, as on iOS) and that container logs plain water (one
@@ -64,10 +69,7 @@ class WaterWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
 
-    // One size matching the fixed 2x2 launcher footprint, like the macro widget.
-    override val sizeMode: SizeMode = SizeMode.Responsive(
-        setOf(DpSize(200.dp, 200.dp)),
-    )
+    override val sizeMode: SizeMode = SizeMode.Responsive(WidgetSizes.waterSizes)
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
@@ -95,109 +97,259 @@ class WaterWidget : GlanceAppWidget() {
         val openAppIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://"))
             .setPackage(context.packageName)
 
+        val size = LocalSize.current
+        val wide = WidgetSizes.isWideWater(size)
+        val short = WidgetSizes.isShortWater(size)
+        val padding = when {
+            short && !wide -> GlanceModifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            short -> GlanceModifier.padding(horizontal = 14.dp, vertical = 8.dp)
+            else -> GlanceModifier.padding(14.dp)
+        }
+
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
                 .appWidgetBackgroundCornerRadius()
-                .padding(14.dp)
+                .then(padding)
                 .clickable(actionStartActivity(openAppIntent)),
             contentAlignment = Alignment.Center,
         ) {
-            Column(modifier = GlanceModifier.fillMaxWidth()) {
-                Row(
-                    modifier = GlanceModifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Image(
-                        provider = ImageProvider(R.drawable.ic_tile_log_water),
-                        contentDescription = null,
-                        colorFilter = ColorFilter.tint(WaterPalette.water),
-                        modifier = GlanceModifier.size(18.dp),
-                    )
-                    Spacer(modifier = GlanceModifier.width(6.dp))
-                    Text(
-                        text = widgetContext.getString(R.string.widget_water_title),
-                        style = TextStyle(
-                            color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = 14.sp,
-                        ),
-                        maxLines = 1,
-                    )
-                }
-                Spacer(modifier = GlanceModifier.height(8.dp))
-                Text(
-                    text = amountText(widgetContext, snapshot),
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurface,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    maxLines = 1,
-                    modifier = GlanceModifier.fillMaxWidth(),
+            when {
+                wide -> SideBySide(widgetContext = widgetContext, snapshot = snapshot, short = short)
+                short -> Compact(
+                    widgetContext = widgetContext,
+                    snapshot = snapshot,
+                    roomForStatus = WidgetSizes.fitsWaterStatusUnderAmount(size),
                 )
-                Spacer(modifier = GlanceModifier.height(6.dp))
-                LinearProgressIndicator(
-                    progress = progressOf(snapshot),
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = WaterPalette.water,
-                    backgroundColor = GlanceTheme.colors.surfaceVariant,
-                )
-                StatusLine(context = widgetContext, snapshot = snapshot)
-                if (snapshot?.showsButtons == true) {
-                    Spacer(modifier = GlanceModifier.height(12.dp))
-                    Row(
-                        modifier = GlanceModifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        ChangeButton(
-                            change = -1,
-                            enabled = snapshot.canRemove,
-                            icon = R.drawable.ic_widget_water_remove,
-                            contentDescription = widgetContext.getString(
-                                if (snapshot.canRemove) {
-                                    R.string.widget_water_remove
-                                } else {
-                                    R.string.widget_water_status_nothing_to_remove
-                                },
-                            ),
-                            modifier = GlanceModifier.defaultWeight(),
-                        )
-                        Spacer(modifier = GlanceModifier.width(10.dp))
-                        ChangeButton(
-                            change = 1,
-                            enabled = true,
-                            icon = R.drawable.ic_widget_water_add,
-                            contentDescription = widgetContext.getString(R.string.widget_water_add),
-                            modifier = GlanceModifier.defaultWeight(),
-                        )
+                else -> Column(modifier = GlanceModifier.fillMaxWidth()) {
+                    WaterTitle(context = widgetContext)
+                    Spacer(modifier = GlanceModifier.height(8.dp))
+                    AmountText(context = widgetContext, snapshot = snapshot, fontSize = 20)
+                    Spacer(modifier = GlanceModifier.height(6.dp))
+                    WaterBar(snapshot = snapshot, modifier = GlanceModifier.fillMaxWidth())
+                    StatusLine(context = widgetContext, snapshot = snapshot)
+                    if (snapshot?.showsButtons == true) {
+                        Spacer(modifier = GlanceModifier.height(12.dp))
+                        Row(
+                            modifier = GlanceModifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            WaterButtons(
+                                widgetContext = widgetContext,
+                                snapshot = snapshot,
+                                modifier = GlanceModifier.defaultWeight(),
+                                gap = 10.dp,
+                            )
+                        }
                     }
                 }
             }
         }
     }
 
+    /** Wide: the amount and bar on the left, the buttons on the right. */
+    @Composable
+    private fun SideBySide(widgetContext: Context, snapshot: WaterSnapshot?, short: Boolean) {
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = GlanceModifier.defaultWeight()) {
+                if (short) {
+                    // One row tall: no title, and a status takes the bar's place.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        WaterDrop()
+                        Spacer(modifier = GlanceModifier.width(6.dp))
+                        AmountText(
+                            context = widgetContext,
+                            snapshot = snapshot,
+                            fontSize = 20,
+                            modifier = GlanceModifier.defaultWeight(),
+                        )
+                    }
+                    Spacer(modifier = GlanceModifier.height(6.dp))
+                    val status = statusRes(snapshot)
+                    if (status != null) {
+                        StatusText(context = widgetContext, res = status, maxLines = 1)
+                    } else {
+                        WaterBar(snapshot = snapshot, modifier = GlanceModifier.fillMaxWidth())
+                    }
+                } else {
+                    WaterTitle(context = widgetContext)
+                    Spacer(modifier = GlanceModifier.height(8.dp))
+                    AmountText(context = widgetContext, snapshot = snapshot, fontSize = 20)
+                    Spacer(modifier = GlanceModifier.height(6.dp))
+                    WaterBar(snapshot = snapshot, modifier = GlanceModifier.fillMaxWidth())
+                    StatusLine(context = widgetContext, snapshot = snapshot)
+                }
+            }
+            if (snapshot?.showsButtons == true) {
+                Spacer(modifier = GlanceModifier.width(12.dp))
+                WaterButtons(
+                    widgetContext = widgetContext,
+                    snapshot = snapshot,
+                    modifier = GlanceModifier.width(56.dp),
+                    gap = 8.dp,
+                )
+            }
+        }
+    }
+
+    /**
+     * Short and narrow: the amount on top and the bar with smaller buttons
+     * beside it, so neither is cut off. A status goes under the amount when
+     * [roomForStatus], and takes its place on a shorter row (a HyperOS 2x1).
+     */
+    @Composable
+    private fun Compact(widgetContext: Context, snapshot: WaterSnapshot?, roomForStatus: Boolean) {
+        Column(modifier = GlanceModifier.fillMaxWidth()) {
+            val status = statusRes(snapshot)
+            if (status == null || roomForStatus) {
+                AmountText(context = widgetContext, snapshot = snapshot, fontSize = 16)
+            }
+            if (status != null) {
+                if (roomForStatus) Spacer(modifier = GlanceModifier.height(2.dp))
+                StatusText(context = widgetContext, res = status, maxLines = 1)
+            }
+            Spacer(modifier = GlanceModifier.height(4.dp))
+            Row(
+                modifier = GlanceModifier.fillMaxWidth().height(28.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                WaterBar(snapshot = snapshot, modifier = GlanceModifier.defaultWeight())
+                if (snapshot?.showsButtons == true) {
+                    Spacer(modifier = GlanceModifier.width(6.dp))
+                    WaterButtons(
+                        widgetContext = widgetContext,
+                        snapshot = snapshot,
+                        modifier = GlanceModifier.width(36.dp),
+                        gap = 4.dp,
+                        height = 28.dp,
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun WaterTitle(context: Context) {
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            WaterDrop()
+            Spacer(modifier = GlanceModifier.width(6.dp))
+            Text(
+                text = context.getString(R.string.widget_water_title),
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = 14.sp,
+                ),
+                maxLines = 1,
+            )
+        }
+    }
+
+    @Composable
+    private fun WaterDrop() {
+        Image(
+            provider = ImageProvider(R.drawable.ic_tile_log_water),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(WaterPalette.water),
+            modifier = GlanceModifier.size(18.dp),
+        )
+    }
+
+    @Composable
+    private fun AmountText(
+        context: Context,
+        snapshot: WaterSnapshot?,
+        fontSize: Int,
+        modifier: GlanceModifier = GlanceModifier.fillMaxWidth(),
+    ) {
+        Text(
+            text = amountText(context, snapshot),
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurface,
+                fontSize = fontSize.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            maxLines = 1,
+            modifier = modifier,
+        )
+    }
+
+    @Composable
+    private fun WaterBar(snapshot: WaterSnapshot?, modifier: GlanceModifier) {
+        LinearProgressIndicator(
+            progress = progressOf(snapshot),
+            modifier = modifier.height(8.dp),
+            color = WaterPalette.water,
+            backgroundColor = GlanceTheme.colors.surfaceVariant,
+        )
+    }
+
+    /** The − and + buttons, for a Row; [modifier] sizes each one. */
+    @Composable
+    private fun WaterButtons(
+        widgetContext: Context,
+        snapshot: WaterSnapshot,
+        modifier: GlanceModifier,
+        gap: Dp,
+        height: Dp = 40.dp,
+    ) {
+        ChangeButton(
+            change = -1,
+            enabled = snapshot.canRemove,
+            icon = R.drawable.ic_widget_water_remove,
+            contentDescription = widgetContext.getString(
+                if (snapshot.canRemove) {
+                    R.string.widget_water_remove
+                } else {
+                    R.string.widget_water_status_nothing_to_remove
+                },
+            ),
+            modifier = modifier,
+            height = height,
+        )
+        Spacer(modifier = GlanceModifier.width(gap))
+        ChangeButton(
+            change = 1,
+            enabled = true,
+            icon = R.drawable.ic_widget_water_add,
+            contentDescription = widgetContext.getString(R.string.widget_water_add),
+            modifier = modifier,
+            height = height,
+        )
+    }
+
+    private fun statusRes(snapshot: WaterSnapshot?): Int? = when (snapshot?.status) {
+        WaterWidgetStore.STATUS_SIGN_IN -> R.string.widget_water_status_sign_in
+        WaterWidgetStore.STATUS_PICK_CONTAINER -> R.string.widget_water_status_pick_container
+        WaterWidgetStore.STATUS_EXPIRED -> R.string.widget_water_status_expired
+        WaterWidgetStore.STATUS_UNREACHABLE -> R.string.widget_water_status_unreachable
+        WaterWidgetStore.STATUS_FAILED -> R.string.widget_water_status_failed
+        WaterWidgetStore.STATUS_NOTHING_TO_REMOVE -> R.string.widget_water_status_nothing_to_remove
+        else -> null
+    }
+
     @Composable
     private fun StatusLine(context: Context, snapshot: WaterSnapshot?) {
-        val res = when (snapshot?.status) {
-            WaterWidgetStore.STATUS_SIGN_IN -> R.string.widget_water_status_sign_in
-            WaterWidgetStore.STATUS_PICK_CONTAINER -> R.string.widget_water_status_pick_container
-            WaterWidgetStore.STATUS_EXPIRED -> R.string.widget_water_status_expired
-            WaterWidgetStore.STATUS_UNREACHABLE -> R.string.widget_water_status_unreachable
-            WaterWidgetStore.STATUS_FAILED -> R.string.widget_water_status_failed
-            WaterWidgetStore.STATUS_NOTHING_TO_REMOVE -> R.string.widget_water_status_nothing_to_remove
-            else -> return
-        }
+        val res = statusRes(snapshot) ?: return
         Spacer(modifier = GlanceModifier.height(6.dp))
+        StatusText(context = context, res = res, maxLines = 2)
+    }
+
+    @Composable
+    private fun StatusText(context: Context, res: Int, maxLines: Int) {
         Text(
             text = context.getString(res),
             style = TextStyle(
                 color = GlanceTheme.colors.onSurfaceVariant,
                 fontSize = 12.sp,
             ),
-            maxLines = 2,
+            maxLines = maxLines,
             modifier = GlanceModifier.fillMaxWidth(),
         )
     }
@@ -209,14 +361,15 @@ class WaterWidget : GlanceAppWidget() {
         icon: Int,
         contentDescription: String,
         modifier: GlanceModifier,
+        height: Dp,
     ) {
-        val sized = modifier.height(40.dp)
+        val sized = modifier.height(height)
         // cornerRadius only takes effect from Android 12; before that the
         // rounded shape, and a press ripple that keeps to it, come from
         // drawables in the same colour.
         val roundsCorners = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
         val shaped = if (roundsCorners) {
-            sized.cornerRadius(20.dp).background(GlanceTheme.colors.surfaceVariant)
+            sized.cornerRadius(height / 2).background(GlanceTheme.colors.surfaceVariant)
         } else {
             sized.background(ImageProvider(R.drawable.bg_widget_water_button))
         }

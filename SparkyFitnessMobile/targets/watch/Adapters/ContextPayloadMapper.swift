@@ -91,6 +91,7 @@ enum ContextPayloadMapper {
             steps: steps(from: payload["steps"]),
             stepGoal: (payload["stepGoal"] as? NSNumber)?.intValue ?? previous.stepGoal,
             runVoiceCues: payload["runVoiceCues"] as? Bool ?? previous.runVoiceCues,
+            appLanguage: payload["appLanguage"] as? String ?? previous.appLanguage,
             runAutoPause: payload["runAutoPause"] as? Bool ?? previous.runAutoPause,
             runCheckInMinutes: (payload["runCheckInMinutes"] as? NSNumber)?.intValue ?? previous.runCheckInMinutes,
             runPaceBand: WatchPaceBand.normalized(

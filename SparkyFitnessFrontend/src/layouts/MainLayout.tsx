@@ -49,7 +49,7 @@ import { useCycleSettings } from '@/hooks/useCycle';
 import { cn } from '@/lib/utils';
 import { getGridClassNormal } from '@/utils/layout';
 
-const SHOW_SPONSOR_BUTTON = false;
+const SHOW_SPONSOR_BUTTON = true;
 
 interface AddCompItem {
   value: string;

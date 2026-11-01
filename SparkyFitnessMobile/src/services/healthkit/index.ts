@@ -8,6 +8,8 @@ import {
   queryCategorySamples,
   queryWorkoutSamples,
   queryCorrelationSamples,
+  queryActivitySummary,
+  ActivitySummaryTypeIdentifier,
   type QueryStatisticsResponse,
   type StatisticsOptions,
 } from '@kingstinct/react-native-healthkit';
@@ -376,14 +378,27 @@ const healthKitAuthorizationTypes = (
         } else if (p.accessType === 'write') {
           writePermissionsSet.add('HKWorkoutTypeIdentifier');
         }
+      } else if (p.recordType === 'ActiveCaloriesBurned') {
+        // The daily active figure can come from the Move ring (an account
+        // setting, see activeEnergyByDay). The activity summary type is asked
+        // for whether the setting is on or not, so the setting needs no
+        // permission step of its own and a new phone already has it.
+        if (p.accessType === 'read') {
+          readPermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
+          readPermissionsSet.add(ActivitySummaryTypeIdentifier);
+        } else if (p.accessType === 'write') {
+          writePermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
+        }
       } else if (p.recordType === 'TotalCaloriesBurned') {
         // Total calories is derived from basal + active energy: the day-statistics
         // reader and the earliest-sample probe query both underlying types, so
         // authorization must cover both even when Active Calories is not itself an
-        // enabled metric.
+        // enabled metric. Its active part can come from the Move ring like
+        // Active Calories.
         if (p.accessType === 'read') {
           readPermissionsSet.add('HKQuantityTypeIdentifierBasalEnergyBurned');
           readPermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
+          readPermissionsSet.add(ActivitySummaryTypeIdentifier);
         } else if (p.accessType === 'write') {
           writePermissionsSet.add('HKQuantityTypeIdentifierBasalEnergyBurned');
           writePermissionsSet.add('HKQuantityTypeIdentifierActiveEnergyBurned');
@@ -436,11 +451,14 @@ export const hasUnrequestedHealthPermissions = async (
   }
   const { toRead: allToRead, toShare } =
     healthKitAuthorizationTypes(permissions);
-  // HealthKit keeps reporting the workout effort rating as never requested, so
-  // counting it would show the sheet on every visit. It is still asked for with
-  // the rest whenever something else is genuinely new.
+  // HealthKit keeps reporting the workout effort rating and the workout route
+  // as never requested, so counting them would show the sheet on every visit.
+  // They are still asked for with the rest whenever something else is
+  // genuinely new.
   const toRead = allToRead.filter(
-    (identifier) => identifier !== WORKOUT_EFFORT_IDENTIFIER
+    (identifier) =>
+      identifier !== WORKOUT_EFFORT_IDENTIFIER &&
+      identifier !== 'HKWorkoutRouteTypeIdentifier'
   );
   if (toRead.length === 0 && toShare.length === 0) {
     return false;
@@ -563,12 +581,6 @@ const AGGREGATION_CONFIGS: Record<string, AggregationConfig> = {
     unit: 'count',
     type: 'step',
     logLabel: 'steps',
-  },
-  activeCalories: {
-    identifier: 'HKQuantityTypeIdentifierActiveEnergyBurned',
-    unit: 'kcal',
-    type: 'active_calories',
-    logLabel: 'calories',
   },
   distance: {
     identifier: 'HKQuantityTypeIdentifierDistanceWalkingRunning',
@@ -707,23 +719,124 @@ export const getAggregatedStepsByDate = (startDate: Date, endDate: Date) =>
     (result) => result.records
   );
 
-export const getAggregatedActiveCaloriesByDateDetailed = (
-  startDate: Date,
+/**
+ * Move ring active energy per local day, the figure the Fitness app shows. A day
+ * without a ring is left out: HealthKit answers a denied or not-yet-requested read
+ * with no summaries rather than an error, and days before the person had a ring have
+ * none, so those days keep the statistics sum.
+ */
+const queryMoveRingActiveByDay = async (
+  filterStart: Date,
   endDate: Date
-) =>
-  getAggregatedDataByDateDetailed(
-    startDate,
-    endDate,
-    AGGREGATION_CONFIGS.activeCalories
-  );
+): Promise<Map<string, number>> => {
+  const now = new Date();
+  const filterEnd = endDate.getTime() < now.getTime() ? endDate : now;
+  const summaries = await queryActivitySummary({
+    date: { startDate: filterStart, endDate: filterEnd },
+  });
+  const firstDay = toLocalDateString(filterStart);
+  const lastDay = toLocalDateString(filterEnd);
+  const byDay = new Map<string, number>();
+  for (const summary of summaries) {
+    const { year, month, day } = summary.dateComponents;
+    if (year == null || month == null || day == null) {
+      continue;
+    }
+    // The components are in the device calendar, so a non-Gregorian year lands
+    // outside the window and that day keeps the statistics sum.
+    const date = toLocalDateString(new Date(year, month - 1, day));
+    if (date < firstDay || date > lastDay) {
+      continue;
+    }
+    byDay.set(date, summary.activeEnergyBurned.quantity);
+  }
+  return byDay;
+};
+
+// Active energy per local day: the statistics sum, as the Health app shows it, or,
+// with useMoveRing (the account's use_move_ring_active_calories setting), the Move
+// ring where the day has one. The two differ because Fitness credits only Apple
+// devices while Health counts every source by its priority. Throws if either query
+// fails.
+const activeEnergyByDay = async (
+  startDate: Date,
+  endDate: Date,
+  useMoveRing: boolean
+): Promise<Map<string, number>> => {
+  const [buckets, ring] = await Promise.all([
+    queryDayStatistics(
+      'HKQuantityTypeIdentifierActiveEnergyBurned',
+      ['cumulativeSum'],
+      startDate,
+      endDate,
+      'kcal'
+    ),
+    useMoveRing
+      ? queryMoveRingActiveByDay(startDate, endDate)
+      : new Map<string, number>(),
+  ]);
+  const byDay = new Map<string, number>();
+  for (const bucket of buckets) {
+    byDay.set(
+      toLocalDateString(new Date(bucket.startDate as Date)),
+      bucket.sumQuantity?.quantity ?? 0
+    );
+  }
+  for (const [date, kcal] of ring) {
+    // iPhone keeps a summary for every day, so a day spent with only another
+    // brand's tracker has a 0 ring while Health has its calories.
+    if (kcal > 0) {
+      byDay.set(date, kcal);
+    }
+  }
+  return byDay;
+};
+
+export const getAggregatedActiveCaloriesByDateDetailed = async (
+  startDate: Date,
+  endDate: Date,
+  useMoveRing = false
+): Promise<HealthKitReadResult<AggregatedHealthRecord>> => {
+  if (!isHealthKitAvailable) {
+    addLog(
+      '[HealthKitService] HealthKit not available for calories aggregation',
+      'DEBUG'
+    );
+    return { records: [] };
+  }
+
+  try {
+    const byDay = await activeEnergyByDay(startDate, endDate, useMoveRing);
+    const deviceTz = getDeviceTimezone();
+    // YYYY-MM-DD keys sort lexicographically = chronologically.
+    const records = Array.from(byDay.entries())
+      .filter(([, kcal]) => kcal > 0)
+      .sort(([dayA], [dayB]) => dayA.localeCompare(dayB))
+      .map(([date, kcal]) => ({
+        date,
+        value: Math.round(kcal),
+        type: 'active_calories',
+        record_timezone: deviceTz,
+      }));
+    return { records };
+  } catch (error) {
+    return {
+      records: [],
+      error: recordReadError(error, 'Aggregated calories query'),
+    };
+  }
+};
 
 export const getAggregatedActiveCaloriesByDate = (
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  useMoveRing = false
 ) =>
-  getAggregatedActiveCaloriesByDateDetailed(startDate, endDate).then(
-    (result) => result.records
-  );
+  getAggregatedActiveCaloriesByDateDetailed(
+    startDate,
+    endDate,
+    useMoveRing
+  ).then((result) => result.records);
 
 export const getAggregatedDistanceByDateDetailed = (
   startDate: Date,
@@ -758,12 +871,14 @@ export const getAggregatedFloorsClimbedByDate = (
     (result) => result.records
   );
 
-// Total calories = Basal + Active energy summed per local day, via two collection
-// queries merged by day string. All-or-nothing: either query failing errors the whole
-// metric (so the sync cursor holds) rather than silently under-reporting days.
+// Total calories = Basal + Active energy summed per local day (active as in
+// activeEnergyByDay), merged by day string. All-or-nothing: either query failing
+// errors the whole metric (so the sync cursor holds) rather than silently
+// under-reporting days.
 export const getAggregatedTotalCaloriesByDateDetailed = async (
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  useMoveRing = false
 ): Promise<HealthKitReadResult<AggregatedHealthRecord>> => {
   if (!isHealthKitAvailable) {
     addLog(
@@ -774,7 +889,7 @@ export const getAggregatedTotalCaloriesByDateDetailed = async (
   }
 
   try {
-    const [basalBuckets, activeBuckets] = await Promise.all([
+    const [basalBuckets, activeByDay] = await Promise.all([
       queryDayStatistics(
         'HKQuantityTypeIdentifierBasalEnergyBurned',
         ['cumulativeSum'],
@@ -782,24 +897,23 @@ export const getAggregatedTotalCaloriesByDateDetailed = async (
         endDate,
         'kcal'
       ),
-      queryDayStatistics(
-        'HKQuantityTypeIdentifierActiveEnergyBurned',
-        ['cumulativeSum'],
-        startDate,
-        endDate,
-        'kcal'
-      ),
+      activeEnergyByDay(startDate, endDate, useMoveRing),
     ]);
 
     const totalsByDay = new Map<string, number>();
-    for (const buckets of [basalBuckets, activeBuckets]) {
-      for (const bucket of buckets) {
-        const sum = bucket.sumQuantity?.quantity ?? 0;
-        if (sum > 0) {
-          const day = toLocalDateString(new Date(bucket.startDate as Date));
-          totalsByDay.set(day, (totalsByDay.get(day) ?? 0) + sum);
-        }
+    const add = (day: string, kcal: number) => {
+      if (kcal > 0) {
+        totalsByDay.set(day, (totalsByDay.get(day) ?? 0) + kcal);
       }
+    };
+    for (const bucket of basalBuckets) {
+      add(
+        toLocalDateString(new Date(bucket.startDate as Date)),
+        bucket.sumQuantity?.quantity ?? 0
+      );
+    }
+    for (const [day, kcal] of activeByDay) {
+      add(day, kcal);
     }
 
     const deviceTz = getDeviceTimezone();
@@ -823,11 +937,14 @@ export const getAggregatedTotalCaloriesByDateDetailed = async (
 
 export const getAggregatedTotalCaloriesByDate = (
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  useMoveRing = false
 ) =>
-  getAggregatedTotalCaloriesByDateDetailed(startDate, endDate).then(
-    (result) => result.records
-  );
+  getAggregatedTotalCaloriesByDateDetailed(
+    startDate,
+    endDate,
+    useMoveRing
+  ).then((result) => result.records);
 
 /**
  * Aggregates Apple Health Resting/Basal Energy for the BMR override.

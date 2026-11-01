@@ -39,6 +39,7 @@ export const MCP_TOOL_READ_ACCESS: Readonly<Record<string, ToolReadAccess>> = {
     'list_workout_plans',
     'get_workout_plan',
     'get_active_workout_plan',
+    'propose_plan_changes',
   ],
   sparky_manage_run_program: ['get_run_program', 'get_fitness_tests'],
   // food
@@ -106,6 +107,7 @@ export const MCP_TOOL_READ_ACCESS: Readonly<Record<string, ToolReadAccess>> = {
   sparky_get_30_day_trends: 'read',
   sparky_detect_patterns: 'read',
   sparky_generate_coaching_plan: 'read',
+  sparky_review_calorie_target: 'read',
   sparky_check_engagement: 'read',
   sparky_get_logging_streak: 'read',
   sparky_get_contextual_nudge: 'read',

@@ -29,11 +29,15 @@ describe('upsertSleepEntry keepExistingBiometrics', () => {
 
   const run = async (
     data: Parameters<typeof sleepRepository.upsertSleepEntry>[2],
-    options?: { keepExistingBiometrics?: boolean }
+    options?: { keepExistingBiometrics?: boolean },
+    storedSessionId?: string
   ) => {
     // Forget earlier runs so the lookup below only sees this invocation.
     mockClient.query.mockClear();
     mockClient.query.mockImplementation(async (text: string) => {
+      if (storedSessionId && text.includes('FOR UPDATE')) {
+        return { rows: [{ id: storedSessionId }] };
+      }
       if (
         text.includes('INSERT INTO sleep_entries') ||
         text.includes('UPDATE sleep_entries')
@@ -61,11 +65,10 @@ describe('upsertSleepEntry keepExistingBiometrics', () => {
     vi.clearAllMocks();
   });
 
-  it('default ON CONFLICT assigns the incoming biometrics directly', async () => {
-    const { text } = await run(ENTRY);
-    expect(text).toContain('avg_overnight_hrv = EXCLUDED.avg_overnight_hrv');
-    expect(text).toContain('resting_heart_rate = EXCLUDED.resting_heart_rate');
-    expect(text).not.toMatch(/COALESCE\(EXCLUDED\.avg_overnight_hrv/);
+  it('a new session inserts the incoming biometrics as they are', async () => {
+    const { text } = await run(ENTRY, { keepExistingBiometrics: true });
+    expect(text).toContain('INSERT INTO sleep_entries');
+    expect(text).not.toContain('ON CONFLICT');
   });
 
   it('default id-UPDATE assigns the incoming biometrics directly', async () => {
@@ -74,13 +77,19 @@ describe('upsertSleepEntry keepExistingBiometrics', () => {
     expect(text).toMatch(/resting_heart_rate = \$25,/);
   });
 
-  it('keep flag: ON CONFLICT coalesces with the stored values', async () => {
-    const { text } = await run(ENTRY, { keepExistingBiometrics: true });
+  it('keep flag: a re-sync of a stored session coalesces with the stored values', async () => {
+    const { text, values } = await run(
+      ENTRY,
+      { keepExistingBiometrics: true },
+      'sleep-1'
+    );
+    expect(text).toContain('UPDATE sleep_entries');
+    expect(values[0]).toBe('sleep-1');
     expect(text).toMatch(
-      /avg_overnight_hrv = COALESCE\(EXCLUDED\.avg_overnight_hrv, sleep_entries\.avg_overnight_hrv\)/
+      /avg_overnight_hrv = COALESCE\(\$23, sleep_entries\.avg_overnight_hrv\)/
     );
     expect(text).toMatch(
-      /resting_heart_rate = COALESCE\(EXCLUDED\.resting_heart_rate, sleep_entries\.resting_heart_rate\)/
+      /resting_heart_rate = COALESCE\(\$25, sleep_entries\.resting_heart_rate\)/
     );
   });
 

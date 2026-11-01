@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -15,8 +16,10 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.LinearProgressIndicator
 import androidx.glance.appwidget.cornerRadius
@@ -27,6 +30,7 @@ import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
+import androidx.glance.layout.RowScope
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
@@ -36,21 +40,30 @@ import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
+import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.state.PreferencesGlanceStateDefinition
 import {{APPLICATION_ID}}.R
 import org.json.JSONObject
 
 /**
- * Classic base composition, unchanged from the pre-localization calorie widget
- * (22415819): one-line localized kcal heading, 8dp progress bar, and the
- * 32dp search/scan action row, with a flexible spacer between progress and
- * actions. Only strings, accessibility labels and number formatting follow the
- * app/system language; geometry, footprint and behavior are untouched.
+ * Today's calories left with a progress bar and search / scan shortcuts.
+ *
+ * The classic composition (one-line kcal heading, 8dp progress bar, flexible
+ * space and the 32dp search/scan row) is drawn wherever it fits, which is the
+ * default 2x1 on most launchers. The widget can be resized, and each step in
+ * [WidgetSizes.calorieSizes] keeps that content:
+ * - shorter than the classic layout (a HyperOS 2x1 row is about 75dp), the
+ *   shortcuts move beside the bar, smaller, so they are not cut off;
+ * - wide, Diary and fasting shortcuts join search and scan;
+ * - wide and tall, Goal / Food / Burned fill the flexible space.
+ * Strings, accessibility labels and numbers follow the app/system language.
  */
 class CalorieWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
+
+    override val sizeMode: SizeMode = SizeMode.Responsive(WidgetSizes.calorieSizes)
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
@@ -74,6 +87,13 @@ class CalorieWidget : GlanceAppWidget() {
         // stay local to widget rendering (see WidgetLocale).
         val widgetContext = WidgetLocale.localizedContext(context)
 
+        val size = LocalSize.current
+        val wide = WidgetSizes.isWide(size)
+        val compact = WidgetSizes.isCompactCalorie(size)
+        val figures = snapshot?.figures?.takeIf {
+            wide && size.height >= WidgetSizes.CALORIE_FIGURES_HEIGHT
+        }
+
         val remainingText: String
         val progress: Float
         if (snapshot == null) {
@@ -93,15 +113,34 @@ class CalorieWidget : GlanceAppWidget() {
             .setPackage(context.packageName)
         val scanIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://scan"))
             .setPackage(context.packageName)
+        val diaryIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://diary"))
+            .setPackage(context.packageName)
+        val fastingIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://fasting"))
+            .setPackage(context.packageName)
         val searchFoodLabel = widgetContext.getString(R.string.widget_search_food)
         val scanBarcodeLabel = widgetContext.getString(R.string.widget_scan_barcode)
+        val openDiaryLabel = widgetContext.getString(R.string.widget_open_diary)
+        val openFastingLabel = widgetContext.getString(R.string.widget_open_fasting)
+        val shortcuts = buildList {
+            add(Shortcut(searchIntent, R.drawable.ic_widget_search, contentDescription = searchFoodLabel))
+            add(Shortcut(scanIntent, R.drawable.ic_widget_scan, contentDescription = scanBarcodeLabel))
+            if (wide) {
+                add(Shortcut(diaryIntent, R.drawable.ic_widget_diary, contentDescription = openDiaryLabel))
+                add(Shortcut(fastingIntent, R.drawable.ic_widget_fasting, contentDescription = openFastingLabel))
+            }
+        }
 
+        val padding = if (compact) {
+            GlanceModifier.padding(horizontal = 12.dp, vertical = 8.dp)
+        } else {
+            GlanceModifier.padding(12.dp)
+        }
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
                 .appWidgetBackgroundCornerRadius()
-                .padding(12.dp)
+                .then(padding)
                 .clickable(actionStartActivity(openAppIntent)),
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
@@ -115,58 +154,165 @@ class CalorieWidget : GlanceAppWidget() {
                     maxLines = 1,
                     modifier = GlanceModifier.fillMaxWidth(),
                 )
-                Spacer(modifier = GlanceModifier.height(8.dp))
-                LinearProgressIndicator(
-                    progress = progress,
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .height(8.dp),
-                    color = GlanceTheme.colors.primary,
-                    backgroundColor = GlanceTheme.colors.surfaceVariant,
-                )
-                Spacer(modifier = GlanceModifier.defaultWeight())
-                Row(
-                    modifier = GlanceModifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        modifier = GlanceModifier
-                            .defaultWeight()
-                            .height(32.dp)
-                            .clickable(actionStartActivity(searchIntent)),
-                        contentAlignment = Alignment.Center,
+                if (compact) {
+                    Spacer(modifier = GlanceModifier.height(4.dp))
+                    // Too short for the classic stack: the shortcuts sit beside
+                    // the bar, so none of them is cut off.
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth().height(28.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Image(
-                            provider = ImageProvider(R.drawable.ic_widget_search),
-                            contentDescription = searchFoodLabel,
-                            colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
-                            modifier = GlanceModifier.size(24.dp),
+                        ProgressBar(
+                            progress = progress,
+                            modifier = GlanceModifier.defaultWeight(),
                         )
+                        Spacer(modifier = GlanceModifier.width(4.dp))
+                        shortcuts.forEach { shortcut ->
+                            ShortcutButton(
+                                shortcut = shortcut,
+                                iconSize = 22.dp,
+                                modifier = GlanceModifier.width(36.dp).height(28.dp),
+                            )
+                        }
                     }
+                } else {
+                    Spacer(modifier = GlanceModifier.height(8.dp))
+                    ProgressBar(
+                        progress = progress,
+                        modifier = GlanceModifier.fillMaxWidth(),
+                    )
+                    if (figures != null) {
+                        // The figures take the flexible space, so when it runs
+                        // short they are the part that is cut, never the
+                        // shortcuts below.
+                        Box(
+                            modifier = GlanceModifier.defaultWeight().fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            FiguresRow(context = widgetContext, figures = figures)
+                        }
+                    } else {
+                        Spacer(modifier = GlanceModifier.defaultWeight())
+                    }
+                    ShortcutRow(shortcuts = shortcuts)
+                }
+            }
+        }
+    }
+
+    @Composable
+    private fun ProgressBar(progress: Float, modifier: GlanceModifier) {
+        LinearProgressIndicator(
+            progress = progress,
+            modifier = modifier.height(8.dp),
+            color = GlanceTheme.colors.primary,
+            backgroundColor = GlanceTheme.colors.surfaceVariant,
+        )
+    }
+
+    /**
+     * The classic 32dp row: search | scan, plus Diary and fasting when wide,
+     * with dividers between.
+     */
+    @Composable
+    private fun ShortcutRow(shortcuts: List<Shortcut>) {
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            shortcuts.forEachIndexed { index, shortcut ->
+                if (index > 0) {
                     Box(
                         modifier = GlanceModifier
                             .width(1.dp)
                             .height(24.dp)
                             .background(GlanceTheme.colors.surfaceVariant),
                     ) {}
-                    Box(
-                        modifier = GlanceModifier
-                            .defaultWeight()
-                            .height(32.dp)
-                            .clickable(actionStartActivity(scanIntent)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Image(
-                            provider = ImageProvider(R.drawable.ic_widget_scan),
-                            contentDescription = scanBarcodeLabel,
-                            colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
-                            modifier = GlanceModifier.size(24.dp),
-                        )
-                    }
                 }
+                ShortcutButton(
+                    shortcut = shortcut,
+                    iconSize = 24.dp,
+                    modifier = GlanceModifier.defaultWeight().height(32.dp),
+                )
             }
         }
     }
+
+    @Composable
+    private fun ShortcutButton(shortcut: Shortcut, iconSize: Dp, modifier: GlanceModifier) {
+        Box(
+            modifier = modifier.clickable(actionStartActivity(shortcut.intent)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                provider = ImageProvider(shortcut.icon),
+                contentDescription = shortcut.contentDescription,
+                colorFilter = ColorFilter.tint(GlanceTheme.colors.primary),
+                modifier = GlanceModifier.size(iconSize),
+            )
+        }
+    }
+
+    /**
+     * Goal / Food / Burned as three columns, numbers only, laid out like the
+     * iOS medium widget. That widget shows the snapshot's `goal`, which can
+     * be lower than the Goal here (see [CalorieFigures]).
+     */
+    @Composable
+    private fun FiguresRow(context: Context, figures: CalorieFigures) {
+        Row(
+            modifier = GlanceModifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Figure(context.getString(R.string.widget_goal), formatInt(context, figures.goal))
+            Figure(context.getString(R.string.widget_food), formatInt(context, figures.food))
+            Figure(context.getString(R.string.widget_burned), formatInt(context, figures.burned))
+        }
+    }
+
+    @Composable
+    private fun RowScope.Figure(label: String, value: String) {
+        Column(
+            modifier = GlanceModifier.defaultWeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = label,
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurfaceVariant,
+                    fontSize = 11.sp,
+                    textAlign = TextAlign.Center,
+                ),
+                maxLines = 1,
+                modifier = GlanceModifier.fillMaxWidth(),
+            )
+            Text(
+                text = value,
+                style = TextStyle(
+                    color = GlanceTheme.colors.onSurface,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                ),
+                maxLines = 1,
+                modifier = GlanceModifier.fillMaxWidth(),
+            )
+        }
+    }
+
+    private class Shortcut(val intent: Intent, val icon: Int, val contentDescription: String)
+
+    /**
+     * Goal is the day's food budget, food eaten plus calories remaining: the
+     * goal the Dashboard shows, and the figure the bar above is measured
+     * against. The snapshot's `goal` leaves out the exercise calories that the
+     * dynamic and percentage modes add back.
+     */
+    internal data class CalorieFigures(
+        val goal: Double,
+        val food: Double,
+        val burned: Double,
+    )
 
     internal data class CalorieSnapshot(
         val date: String,
@@ -174,6 +320,8 @@ class CalorieWidget : GlanceAppWidget() {
         val goal: Double,
         val progress: Double,
         val lastUpdated: Long,
+        /** Null when there is no goal or the snapshot predates these figures. */
+        val figures: CalorieFigures?,
     )
 
     companion object {
@@ -201,12 +349,22 @@ class CalorieWidget : GlanceAppWidget() {
                 val obj = JSONObject(json)
                 val date = obj.optString("date", "")
                 if (!isSnapshotToday(date)) return null
+                val goal = obj.optDouble("goal", 0.0)
+                val remaining = obj.optDouble("remaining", 0.0)
+                // Optional: a snapshot stored by an older app has neither.
+                val food = obj.optionalDouble("food")
+                val burned = obj.optionalDouble("burned")
                 CalorieSnapshot(
                     date = date,
-                    remaining = obj.optDouble("remaining", 0.0),
-                    goal = obj.optDouble("goal", 0.0),
+                    remaining = remaining,
+                    goal = goal,
                     progress = obj.optDouble("progress", 0.0),
                     lastUpdated = obj.optLong("lastUpdated", 0L),
+                    figures = if (goal > 0.0 && food != null && burned != null) {
+                        CalorieFigures(goal = food + remaining, food = food, burned = burned)
+                    } else {
+                        null
+                    },
                 )
             } catch (e: Exception) {
                 null

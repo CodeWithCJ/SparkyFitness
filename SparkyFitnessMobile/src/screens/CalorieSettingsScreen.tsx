@@ -46,6 +46,7 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
     exerciseCaloriePercentage: prefs?.exercise_calorie_percentage ?? 100,
     includeBmrInNetCalories: prefs?.include_bmr_in_net_calories ?? false,
     useExternalBmr: prefs?.use_external_bmr ?? false,
+    useMoveRingActiveCalories: prefs?.use_move_ring_active_calories ?? false,
     tdeeAllowNegativeAdjustment: prefs?.tdee_allow_negative_adjustment ?? false,
     goalMode: prefs?.goal_mode ?? 'maintain',
     goalModeCalculationMethod: prefs?.goal_mode_calculation_method ?? 'manual',
@@ -361,6 +362,13 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const handleExternalBmrToggle = useCallback(
     (value: boolean) => {
       mutation.mutate({ use_external_bmr: value });
+    },
+    [mutation]
+  );
+
+  const handleMoveRingToggle = useCallback(
+    (value: boolean) => {
+      mutation.mutate({ use_move_ring_active_calories: value });
     },
     [mutation]
   );
@@ -1042,6 +1050,34 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             </Text>
           )}
         </View>
+
+        {/* An account setting so it follows the person to a new phone; only the
+            iPhone sync reads it. */}
+        {Platform.OS === 'ios' && (
+          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-base font-semibold text-text-primary flex-1 mr-3">
+                {t('calorieSettings.useMoveRingActiveCalories', {
+                  defaultValue: 'Use Move ring for active calories',
+                })}
+              </Text>
+              <Switch
+                onValueChange={handleMoveRingToggle}
+                value={normalized.useMoveRingActiveCalories}
+                accessibilityLabel={t(
+                  'calorieSettings.useMoveRingActiveCalories',
+                  { defaultValue: 'Use Move ring for active calories' }
+                )}
+              />
+            </View>
+            <Text className="text-text-secondary text-sm mt-3">
+              {t('calorieSettings.useMoveRingActiveCaloriesHint', {
+                defaultValue:
+                  'Off by default, active calories come from the Apple Health Active Energy total. When on, they come from your Move ring, so they match the Fitness app. The ring counts what your Apple Watch and iPhone measure, and workouts other apps save to Apple Health can add to it too. A day with no ring, such as when Activity access is off, uses the Active Energy total. Applies to days synced after the change.',
+              })}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

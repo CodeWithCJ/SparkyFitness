@@ -300,6 +300,9 @@ server:
       password: password
   persistence:
     backup:
+      # -- Mount this existing PersistentVolumeClaim instead of creating one
+      # (size, accessMode and storageClass are then ignored)
+      existingClaim: ""
       size: 5Gi
       accessMode: ReadWriteOnce
       # -- StorageClass override for backups (falls back to global.storageClass)
@@ -307,6 +310,9 @@ server:
       # -- Mount path inside the container for backups
       mountPath: /app/SparkyFitnessServer/backup
     uploads:
+      # -- Mount this existing PersistentVolumeClaim instead of creating one
+      # (size, accessMode and storageClass are then ignored)
+      existingClaim: ""
       size: 10Gi
       accessMode: ReadWriteOnce
       # -- StorageClass override for uploads (falls back to global.storageClass)

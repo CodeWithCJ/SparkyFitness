@@ -50,23 +50,35 @@ export function stopRecordingCues(): void {
 
 /**
  * Says `text`, replacing anything still being read: a split announced behind a
- * stale "Paused" would be wrong by the time it was heard.
+ * stale "Paused" would be wrong by the time it was heard. `language` is the
+ * language `text` is written in when that is not the app's (a cue from the
+ * watch), so the voice matches the words.
  */
-export function speakRecordingCue(text: string, onFinished?: () => void): void {
+export function speakRecordingCue(
+  text: string,
+  onFinished?: () => void,
+  language?: string
+): void {
   if (!text) return;
   // The first cue waits for the voices (the load beginRecordingCues started),
   // so it never falls back to the system voice while the pick is loading.
   if (speechVoicesReady()) {
-    sayRecordingCue(text, onFinished);
+    sayRecordingCue(text, onFinished, language);
     return;
   }
   const requested = sessionGeneration;
   void loadSpeechVoices().then(() => {
-    if (requested === sessionGeneration) sayRecordingCue(text, onFinished);
+    if (requested === sessionGeneration) {
+      sayRecordingCue(text, onFinished, language);
+    }
   });
 }
 
-function sayRecordingCue(text: string, onFinished?: () => void): void {
+function sayRecordingCue(
+  text: string,
+  onFinished?: () => void,
+  language?: string
+): void {
   try {
     void Speech.stop();
     let ducked = false;
@@ -77,7 +89,7 @@ function sayRecordingCue(text: string, onFinished?: () => void): void {
         endCueDucking();
       }
     };
-    const locale = getAppLocale();
+    const locale = language || getAppLocale();
     Speech.speak(text, {
       language: locale,
       voice: resolveSpeechVoice(locale),

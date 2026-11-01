@@ -4,6 +4,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type {
   ExerciseActivityQueryItem,
+  TagAction,
   FitnessTestType,
   ExerciseRecentSessionSet,
   FoodPhotoEstimateResponse,
@@ -27,7 +28,11 @@ import type {
 } from '../utils/workoutSession';
 import type { PhotoType } from './checkInPhotos';
 import type { Exercise } from './exercise';
-import type { FamilyDiaryUser } from './familyDiary';
+import type {
+  FamilyCopyDirection,
+  FamilyCopySource,
+  FamilyDiaryUser,
+} from './familyDiary';
 import type { FoodEntry } from './foodEntries';
 import type { FoodEntryMeal } from './foodEntryMeals';
 import type { FoodInfoItem } from './foodInfo';
@@ -86,8 +91,8 @@ export type TabParamList = {
 export type RootStackParamList = {
   Onboarding: undefined;
   Tabs: NavigatorScreenParams<TabParamList>;
-  FamilyMembers: undefined;
-  FamilyDiary: { familyUser: FamilyDiaryUser };
+  FamilyMembers: { copySource: FamilyCopySource } | undefined;
+  FamilyDiary: { familyUser: FamilyDiaryUser; date?: string };
   FamilyMealDetail: {
     familyUser: FamilyDiaryUser;
     sourceDate: string;
@@ -96,6 +101,7 @@ export type RootStackParamList = {
     entries: FoodEntry[];
   };
   FamilyCopyReview: {
+    direction?: FamilyCopyDirection;
     familyUser: FamilyDiaryUser;
     sourceDate: string;
     mealTypeId: string | null;
@@ -131,6 +137,12 @@ export type RootStackParamList = {
   // #2115, Phase 12: mobile-only water-container CRUD.
   WaterContainers: undefined;
   WaterContainerEdit: { containerId?: number } | undefined;
+  // NFC tags (#941): the list, the setup form and the screen a tag link opens.
+  ActionTags: undefined;
+  /** `tagId` edits a saved tag; `tagCode` saves a tapped tag the account does not know; `presetAction` pre-fills a new one. */
+  ActionTagForm:
+    { tagId?: string; tagCode?: string; presetAction?: TagAction } | undefined;
+  ActionTagScan: { code: string };
   ExercisesLibrary: undefined;
   WorkoutPresetsLibrary: undefined;
   WorkoutPresetDetail: { preset: WorkoutPreset; updatedPreset?: WorkoutPreset };
@@ -453,6 +465,7 @@ export type RootStackParamList = {
   DashboardSettings: undefined;
   HealthTrendsSettings: undefined;
   WatchSettings: undefined;
+  AddMenuSettings: undefined;
   DiarySettings: undefined;
   CustomCategories: undefined;
   CustomCategoryEdit: { categoryId?: string } | undefined;

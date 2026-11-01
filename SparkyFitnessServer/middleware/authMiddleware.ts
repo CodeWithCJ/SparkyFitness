@@ -1,4 +1,8 @@
+import type { NextFunction, Request, Response } from 'express';
+import type { JWTPayload } from 'jose';
+import { fromNodeHeaders } from 'better-auth/node';
 import { APIError } from 'better-auth/api';
+import { requireMcpAuth } from '@better-auth/mcp';
 import { log } from '../config/logging.js';
 import userRepository from '../models/userRepository.js';
 import { auth } from '../auth.js';
@@ -15,9 +19,116 @@ import {
   isApiKeyReadOnly,
   isRequestAllowedForReadOnlyKey,
 } from '../utils/apiKeyScope.js';
+import {
+  getMcpLoopbackJwksUrl,
+  getMcpOAuthAvailability,
+  getMcpResourceMetadataUrl,
+  getMcpResourceUrl,
+  getPublicOrigin,
+  MCP_OAUTH_SCOPE,
+} from '../utils/mcpOAuth.js';
+import { isMcpOAuthEnabled } from '../models/globalSettingsRepository.js';
+import { isOAuthAuthorizationActive } from '../models/oauthClientRepository.js';
+
+type ParamsDictionary = Record<string, string | string[]>;
+type AuthRequest<P extends ParamsDictionary = ParamsDictionary> = Request<P>;
+
+type AuthenticatedUser = Record<string, unknown> & {
+  id: string;
+  name?: string | null;
+};
+
+async function finishAuthentication<P extends ParamsDictionary>(
+  req: AuthRequest<P>,
+  res: Response,
+  next: NextFunction,
+  user: AuthenticatedUser,
+  apiKeyReadOnly: boolean
+) {
+  if (
+    apiKeyReadOnly &&
+    !isRequestAllowedForReadOnlyKey(req.method, req.originalUrl ?? req.path)
+  ) {
+    log(
+      'warn',
+      `Authentication: Read-only API key refused for ${req.method} ${req.path}`
+    );
+    return res.status(403).json({ error: 'This API key is read-only.' });
+  }
+
+  req.apiKeyReadOnly = apiKeyReadOnly;
+  req.authenticatedUserId = user.id;
+  req.originalUserId = user.id;
+  req.user = user;
+
+  const lastLogin = user.lastLoginAt ?? user.last_login_at;
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  const lastLoginAt =
+    typeof lastLogin === 'string' || lastLogin instanceof Date
+      ? new Date(lastLogin).getTime()
+      : Number.NaN;
+  if (!Number.isFinite(lastLoginAt) || lastLoginAt < oneHourAgo) {
+    const nowStr = new Date().toISOString();
+    user.lastLoginAt = nowStr;
+    user.last_login_at = nowStr;
+    userRepository.updateUserLastLogin(user.id).catch((err: unknown) => {
+      log('error', 'Failed to update user last login in middleware:', err);
+    });
+  }
+
+  const activeUserId =
+    typeof req.cookies?.sparky_active_user_id === 'string'
+      ? req.cookies.sparky_active_user_id
+      : undefined;
+  if (activeUserId && activeUserId !== user.id) {
+    const [hasReports, hasDiary, hasCheckin, hasMedications] =
+      await Promise.all([
+        canAccessUserData(activeUserId, 'reports', user.id),
+        canAccessUserData(activeUserId, 'diary', user.id),
+        canAccessUserData(activeUserId, 'checkin', user.id),
+        canAccessUserData(activeUserId, 'medications', user.id),
+      ]);
+    if (hasReports || hasDiary || hasCheckin || hasMedications) {
+      req.activeUserId = activeUserId;
+      log(
+        'info',
+        `Authentication: Context switched. User ${user.id} acting as ${activeUserId}`
+      );
+    } else {
+      log(
+        'warn',
+        `Authentication: Context access denied for User ${user.id} -> ${activeUserId}`
+      );
+      req.activeUserId = user.id;
+    }
+  } else {
+    req.activeUserId = user.id;
+  }
+  req.userId = req.activeUserId;
+
+  try {
+    await userRepository.ensureUserInitialization(
+      user.id,
+      typeof user.name === 'string'
+        ? user.name
+        : typeof user.email === 'string'
+          ? user.email.split('@')[0] || 'User'
+          : 'User'
+    );
+  } catch (err) {
+    log('error', `Lazy Initialization failed for user ${user.id}:`, err);
+  }
+
+  return dbContextStorage.run({ authenticatedUserId: user.id }, next);
+}
+
 const authUnavailableRetryAfterSeconds = 5;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const authenticate = async (req: any, res: any, next: any) => {
+
+const authenticate = async <P extends ParamsDictionary>(
+  req: AuthRequest<P>,
+  res: Response,
+  next: NextFunction
+) => {
   //log("debug", `authenticate middleware: req.path = ${req.path}, req.headers.cookie = ${req.headers.cookie}`);
   // 1. Better Auth Session & API Key Check (Unified Identity)
   // Tracks the raw API key when this request is API-key-authed, so we can
@@ -58,7 +169,7 @@ const authenticate = async (req: any, res: any, next: any) => {
     }
     if (!session) {
       session = await auth.api.getSession({
-        headers: req.headers,
+        headers: fromNodeHeaders(req.headers),
       });
       if (session && session.user && apiKeyToken) {
         apiKeyReadOnly = await isApiKeyReadOnly(
@@ -69,86 +180,12 @@ const authenticate = async (req: any, res: any, next: any) => {
       }
     }
     if (session && session.user) {
-      // Read-only API keys (issue #2678) may only read. The check sits here so
-      // it covers every route behind `authenticate`, including /mcp.
-      if (
-        apiKeyReadOnly &&
-        !isRequestAllowedForReadOnlyKey(req.method, req.originalUrl ?? req.path)
-      ) {
-        log(
-          'warn',
-          `Authentication: Read-only API key refused for ${req.method} ${req.path}`
-        );
-        return res.status(403).json({ error: 'This API key is read-only.' });
-      }
-      req.apiKeyReadOnly = apiKeyReadOnly;
-      req.authenticatedUserId = session.user.id;
-      req.originalUserId = req.authenticatedUserId;
-      req.user = session.user; // Full user object (includes role)
-
-      // Asynchronously update last login if it hasn't been updated in the last hour
-      const lastLogin =
-        (session.user as any).lastLoginAt ||
-        (session.user as any).last_login_at;
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      if (!lastLogin || new Date(lastLogin) < oneHourAgo) {
-        const nowStr = new Date().toISOString();
-        (session.user as any).lastLoginAt = nowStr;
-        (session.user as any).last_login_at = nowStr;
-        userRepository.updateUserLastLogin(session.user.id).catch((err) => {
-          log('error', 'Failed to update user last login in middleware:', err);
-        });
-      }
-      // Handle 'sparky_active_user_id' cookie for context switching
-      const activeUserId = req.cookies.sparky_active_user_id;
-      if (activeUserId && activeUserId !== req.authenticatedUserId) {
-        // Must stay in sync with authService.switchUserContext: any permission
-        // that lets a delegate switch context must also be honored here, or the
-        // cookie is set on switch but silently reverted on every later request.
-        const [hasReports, hasDiary, hasCheckin, hasMedications] =
-          await Promise.all([
-            canAccessUserData(activeUserId, 'reports', req.authenticatedUserId),
-            canAccessUserData(activeUserId, 'diary', req.authenticatedUserId),
-            canAccessUserData(activeUserId, 'checkin', req.authenticatedUserId),
-            canAccessUserData(
-              activeUserId,
-              'medications',
-              req.authenticatedUserId
-            ),
-          ]);
-        if (hasReports || hasDiary || hasCheckin || hasMedications) {
-          req.activeUserId = activeUserId;
-          log(
-            'info',
-            `Authentication: Context switched. User ${req.authenticatedUserId} acting as ${req.activeUserId}`
-          );
-        } else {
-          log(
-            'warn',
-            `Authentication: Context access denied for User ${req.authenticatedUserId} -> ${activeUserId}`
-          );
-          req.activeUserId = req.authenticatedUserId;
-        }
-      } else {
-        req.activeUserId = req.authenticatedUserId;
-      }
-      req.userId = req.activeUserId; // RLS context
-      // Ensure user initialization
-      try {
-        await userRepository.ensureUserInitialization(
-          session.user.id,
-          session.user.name
-        );
-      } catch (err) {
-        log(
-          'error',
-          `Lazy Initialization failed for user ${session.user.id}:`,
-          err
-        );
-      }
-      return dbContextStorage.run(
-        { authenticatedUserId: req.originalUserId || req.authenticatedUserId },
-        next
+      return finishAuthentication(
+        req,
+        res,
+        next,
+        session.user as AuthenticatedUser,
+        apiKeyReadOnly
       );
     }
   } catch (error) {
@@ -196,10 +233,103 @@ const authenticate = async (req: any, res: any, next: any) => {
   }
   // No valid authentication found
   log('warn', `Authentication: No valid identity provided for ${req.path}`);
+  if (req.mcpOAuthChallenge) {
+    res.set('WWW-Authenticate', req.mcpOAuthChallenge);
+  }
   return res.status(401).json({ error: 'Authentication required.' });
 };
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const isAdmin = async (req: any, res: any, next: any) => {
+
+/**
+ * Accepts an OAuth access token for /mcp before the legacy Bearer bridge runs.
+ * Failed OAuth verification falls back to the unchanged API-key/session path,
+ * and its challenge is attached only if that fallback also returns 401.
+ */
+const authenticateMcp = async <P extends ParamsDictionary>(
+  req: AuthRequest<P>,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!(await isMcpOAuthEnabled()) || !getMcpOAuthAvailability().available) {
+    return authenticate(req, res, next);
+  }
+
+  req.mcpOAuthChallenge = `Bearer resource_metadata="${getMcpResourceMetadataUrl()}"`;
+  const authorization = req.headers.authorization;
+  const bearerToken =
+    typeof authorization === 'string' && authorization.startsWith('Bearer ')
+      ? authorization.slice('Bearer '.length).trim()
+      : null;
+  const looksLikeApiKey =
+    !!bearerToken && bearerToken.length >= 64 && !bearerToken.includes('.');
+
+  if (bearerToken && !looksLikeApiKey) {
+    try {
+      const verified: JWTPayload[] = [];
+      const verifier = requireMcpAuth(
+        auth,
+        (_request, verifiedClaims) => {
+          verified.push(verifiedClaims);
+          return new globalThis.Response(null, { status: 204 });
+        },
+        {
+          resource: getMcpResourceUrl(),
+          jwksUrl: getMcpLoopbackJwksUrl(),
+          requiredScopes: [MCP_OAUTH_SCOPE],
+          challengeScopes: [MCP_OAUTH_SCOPE],
+        }
+      );
+      const requestUrl = new URL(req.originalUrl, getPublicOrigin()).toString();
+      const verificationResponse = await verifier(
+        new globalThis.Request(requestUrl, {
+          method: req.method,
+          headers: fromNodeHeaders(req.headers),
+        })
+      );
+      const challenge = verificationResponse.headers.get('www-authenticate');
+      if (challenge) req.mcpOAuthChallenge = challenge;
+
+      const claims = verified[0];
+      const subject = claims?.sub;
+      const clientId = claims?.client_id;
+      const issuedAt = claims?.iat;
+      if (
+        verificationResponse.ok &&
+        typeof subject === 'string' &&
+        typeof clientId === 'string' &&
+        typeof issuedAt === 'number' &&
+        (await isOAuthAuthorizationActive(subject, clientId, issuedAt))
+      ) {
+        const user = await userRepository.findAuthIdentityById(subject);
+        if (user) {
+          return finishAuthentication(
+            req,
+            res,
+            next,
+            user as AuthenticatedUser,
+            false
+          );
+        }
+        log(
+          'warn',
+          `[MCP OAuth] Token subject does not match a user: ${subject}`
+        );
+      }
+    } catch (error) {
+      // OAuth infrastructure failures must not become a 500 or bypass the
+      // existing API-key/session fallback. The normal authentication path
+      // below will return the OAuth challenge only if all methods fail.
+      log('warn', `[MCP OAuth] Token validation failed: ${String(error)}`);
+    }
+  }
+
+  return authenticate(req, res, next);
+};
+
+const isAdmin = async <P extends ParamsDictionary>(
+  req: AuthRequest<P>,
+  res: Response,
+  next: NextFunction
+) => {
   if (!req.userId) {
     return res.status(401).json({ error: 'Authentication required.' });
   }
@@ -212,8 +342,10 @@ const isAdmin = async (req: any, res: any, next: any) => {
   return res.status(403).json({ error: 'Admin access required.' });
 };
 export { authenticate };
+export { authenticateMcp };
 export { isAdmin };
 export default {
   authenticate,
+  authenticateMcp,
   isAdmin,
 };

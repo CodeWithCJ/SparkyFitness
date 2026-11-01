@@ -223,10 +223,10 @@ spec:
       volumes:
         - name: backup
           persistentVolumeClaim:
-            claimName: {{ include "sparkyfitness.fullname" . }}-server-backup
+            claimName: {{ .Values.server.persistence.backup.existingClaim | default (printf "%s-server-backup" (include "sparkyfitness.fullname" .)) | quote }}
         - name: uploads
           persistentVolumeClaim:
-            claimName: {{ include "sparkyfitness.fullname" . }}-server-uploads
+            claimName: {{ .Values.server.persistence.uploads.existingClaim | default (printf "%s-server-uploads" (include "sparkyfitness.fullname" .)) | quote }}
         - name: temp-uploads
           emptyDir: {}
         - name: tmp

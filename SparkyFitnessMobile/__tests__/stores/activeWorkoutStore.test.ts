@@ -18,6 +18,7 @@ import {
   fireSuccessHaptic,
 } from '../../src/services/haptics';
 import { newUuid } from '../../src/utils/ids';
+import { buildSessionExercisesPayload } from '../../src/utils/workoutSession';
 import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
@@ -2839,6 +2840,121 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('autosave against a server that reorders its reply (#3295)', () => {
+    type PayloadExercise = ReturnType<
+      typeof buildSessionExercisesPayload
+    >[number];
+
+    /**
+     * Stand-in for the server before it ordered a session by sort_order only:
+     * the reply lists exercises by entry_time first, and a set id that is not
+     * one of the entry's own sets is rejected, as in
+     * `_reconcileExerciseEntrySetsWithClient`.
+     */
+    function makeFakeServer(initial: PresetSessionResponse) {
+      const entries = new Map<
+        string,
+        { setIds: number[]; entryTime: string | null }
+      >(
+        initial.exercises.map((e) => [
+          e.id,
+          { setIds: e.sets.map((s) => s.id), entryTime: null },
+        ])
+      );
+      let nextSetId = 900;
+      return {
+        update(payload: PayloadExercise[]): PresetSessionResponse {
+          const rows = payload.map((ex) => {
+            const existing = entries.get(ex.id as string);
+            const setIds = ex.sets.map((set) => {
+              if (set.id === undefined) return nextSetId++;
+              if (!existing?.setIds.includes(set.id)) {
+                throw new Error(
+                  `Set does not belong to this exercise entry (set ${set.id} on ${ex.id})`
+                );
+              }
+              return set.id;
+            });
+            const entryTime = ex.entry_time ?? existing?.entryTime ?? null;
+            entries.set(ex.id as string, { setIds, entryTime });
+            return { ex, setIds, entryTime };
+          });
+          rows.sort(
+            (a, b) =>
+              (a.entryTime ?? '99:99').localeCompare(b.entryTime ?? '99:99') ||
+              (a.ex.sort_order ?? 0) - (b.ex.sort_order ?? 0)
+          );
+          const base = makeSession();
+          return {
+            ...base,
+            exercises: rows.map(({ ex, setIds }) => ({
+              ...base.exercises.find((e) => e.id === ex.id)!,
+              id: ex.id as string,
+              sets: ex.sets.map((set, i) => ({
+                ...(set as any),
+                id: setIds[i],
+              })),
+            })),
+          };
+        },
+      };
+    }
+
+    it('keeps saving after an exercise is logged out of turn and a set is added mid-save', () => {
+      useActiveWorkoutStore.getState().startWorkout(makeSession());
+      const server = makeFakeServer(makeSession());
+      const store = useActiveWorkoutStore;
+
+      // The squat (second exercise) is logged first, so only it gets an
+      // entry_time and the server lists it first from now on.
+      store.setState({
+        completedSetIds: { '201': FIXED_NOW + 60_000 },
+        hasUnsavedChanges: true,
+      });
+
+      const send = () => {
+        const state = store.getState();
+        return {
+          sentRevision: state.sessionRevision,
+          sentEntryIds: state.session!.exercises.map((e) => e.id),
+          sentSetIds: state.session!.exercises.map((e) =>
+            e.sets.map((s) => String(s.id))
+          ),
+          reply: server.update(
+            buildSessionExercisesPayload(
+              state.session!,
+              state.completedSetIds,
+              state.prSetIds,
+              state.startedAt
+            )
+          ),
+        };
+      };
+
+      const first = send();
+      expect(first.reply.exercises.map((e) => e.id)).toEqual([
+        'ex-uuid-2',
+        'ex-uuid-1',
+      ]);
+
+      // An edit lands while the save is in flight, so the reply is grafted
+      // onto the local session instead of adopted whole.
+      store.getState().updateSetField('101', { weight: 65 });
+      store
+        .getState()
+        .applyServerSession(
+          first.reply,
+          first.sentRevision,
+          first.sentEntryIds,
+          first.sentSetIds
+        );
+
+      // The next autosave must be accepted: no set id may sit under an
+      // exercise that does not own it.
+      expect(() => send()).not.toThrow();
+    });
+  });
+
   describe('applyServerSession', () => {
     /** Entry-id order of makeSession() at autosave send time. */
     const SENT_ENTRY_IDS = ['ex-uuid-1', 'ex-uuid-2'];
@@ -2891,6 +3007,94 @@ describe('activeWorkoutStore', () => {
       const state = useActiveWorkoutStore.getState();
       expect(state.completedSetIds).toEqual({ '501': FIXED_NOW });
       expect(state.activeSetId).toBe('502');
+    });
+
+    it('pairs exercises by entry id when the reply comes back in another order (#3295)', async () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101 done
+      await flushPromises();
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+
+      // Same exercises and ids as sent, but the server lists them swapped.
+      const response = makeSession();
+      response.exercises.reverse();
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(response, sentRevision, SENT_ENTRY_IDS);
+
+      const state = useActiveWorkoutStore.getState();
+      // Exercise 1's sets keep their own ids rather than taking exercise 2's.
+      expect(state.completedSetIds).toEqual({ '101': FIXED_NOW });
+      expect(
+        state.session?.exercises
+          .find((e) => e.id === 'ex-uuid-1')
+          ?.sets.map((s) => s.id)
+      ).toEqual([101, 102]);
+      expect(
+        state.session?.exercises
+          .find((e) => e.id === 'ex-uuid-2')
+          ?.sets.map((s) => s.id)
+      ).toEqual([201]);
+      expect(state.steps.map((s) => s.setId).sort()).toEqual([
+        '101',
+        '102',
+        '201',
+      ]);
+    });
+
+    it('does not carry completion onto another exercise when the reply is reordered (#3295)', async () => {
+      useActiveWorkoutStore.getState().completeActiveSet(); // 101 done
+      await flushPromises();
+      useActiveWorkoutStore.getState().updateSetField('102', { weight: 72.5 });
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+      // Edit lands mid-flight, so the graft branch runs.
+      useActiveWorkoutStore.getState().updateSetField('201', { weight: 40 });
+
+      const response = makeSession();
+      response.exercises.reverse();
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(response, sentRevision, SENT_ENTRY_IDS);
+
+      const state = useActiveWorkoutStore.getState();
+      expect(Object.keys(state.completedSetIds)).toEqual(['101']);
+      expect(state.session?.exercises.map((e) => e.id)).toEqual([
+        'ex-uuid-1',
+        'ex-uuid-2',
+      ]);
+    });
+
+    it('logs a warning when the reply does not hold the sent exercises in the sent order', () => {
+      const { addLog } = jest.requireMock('../../src/services/LogService');
+      addLog.mockClear();
+      useActiveWorkoutStore.getState().updateSetField('101', { weight: 65 });
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+
+      const response = makeSession();
+      response.exercises.reverse();
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(response, sentRevision, SENT_ENTRY_IDS);
+
+      expect(addLog).toHaveBeenCalledWith(
+        expect.stringContaining('does not match what was sent'),
+        'WARNING'
+      );
+    });
+
+    it('does not log when the reply matches what was sent', () => {
+      const { addLog } = jest.requireMock('../../src/services/LogService');
+      addLog.mockClear();
+      useActiveWorkoutStore.getState().updateSetField('101', { weight: 65 });
+      const sentRevision = useActiveWorkoutStore.getState().sessionRevision;
+
+      useActiveWorkoutStore
+        .getState()
+        .applyServerSession(makeSession(), sentRevision, SENT_ENTRY_IDS);
+
+      expect(addLog).not.toHaveBeenCalledWith(
+        expect.stringContaining('does not match what was sent'),
+        'WARNING'
+      );
     });
 
     it('preserves a running rest when the cursor id changes but the logical set survives', async () => {

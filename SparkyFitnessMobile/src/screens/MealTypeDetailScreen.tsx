@@ -274,18 +274,41 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
       ...(canCopy
         ? [
             {
-              kind: 'icon' as const,
+              kind: 'menu' as const,
               sfSymbol: 'doc.on.doc',
               ionicon: 'copy-outline',
-              role: 'secondary' as const,
-              onPress: () =>
-                copySheetRef.current?.present(
-                  date,
-                  mealTypeId ?? null,
-                  mealTypeName
-                ),
-              accessibilityLabel: t('mealTypeDetail.accessibility.copyMeal', {
-                defaultValue: 'Copy meal to another day',
+              items: [
+                {
+                  label: t('mealTypeDetail.accessibility.copyMeal', {
+                    defaultValue: 'Copy meal to another day',
+                  }),
+                  icon: 'calendar' as const,
+                  sfSymbol: 'calendar',
+                  onPress: () =>
+                    copySheetRef.current?.present(
+                      date,
+                      mealTypeId ?? null,
+                      mealTypeName
+                    ),
+                },
+                {
+                  label: t('familyDiary.copyToFamily', {
+                    defaultValue: 'Copy to family',
+                  }),
+                  icon: 'people' as const,
+                  sfSymbol: 'person.2',
+                  onPress: () =>
+                    navigation.navigate('FamilyMembers', {
+                      copySource: {
+                        sourceDate: date,
+                        mealTypeId: mealTypeId ?? null,
+                        mealTypeName,
+                      },
+                    }),
+                },
+              ],
+              accessibilityLabel: t('familyDiary.copyMealOptions', {
+                defaultValue: 'Copy meal',
               }),
               identifier: 'meal-type-detail-copy',
             },

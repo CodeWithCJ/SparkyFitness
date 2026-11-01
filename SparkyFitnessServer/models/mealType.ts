@@ -33,10 +33,9 @@ async function createMealType(data: any, userId: any) {
  * This includes System Defaults (user_id is NULL) AND User Custom types.
  * Ordered by sort_order.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getAllMealTypes(userId: any) {
+async function getAllMealTypes(userId: string, authenticatedUserId?: string) {
   log('debug', `getAllMealTypes in mealType.js for userId: ${userId}`);
-  const client = await getClient(userId);
+  const client = await getClient(userId, authenticatedUserId);
   try {
     const result = await client.query(
       `SELECT 

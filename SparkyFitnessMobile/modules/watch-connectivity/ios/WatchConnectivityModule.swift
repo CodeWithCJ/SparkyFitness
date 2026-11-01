@@ -571,6 +571,7 @@ public class WatchConnectivityModule: Module {
                     "id": payload["id"] as? String ?? "",
                     "text": payload["text"] as? String ?? "",
                     "interrupt": payload["interrupt"] as? Bool ?? false,
+                    "language": payload["language"] as? String ?? "",
                 ])
             }
             self.delegateHandler.onRunFinished = { [weak self] payload in

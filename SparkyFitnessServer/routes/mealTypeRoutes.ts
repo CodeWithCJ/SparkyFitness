@@ -17,7 +17,12 @@ import {
 import { log } from '../config/logging.js';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
-import { isEntryTimeString } from '@workspace/shared';
+import {
+  FamilyMealTypesParamSchema,
+  FamilyMealTypesResponseSchema,
+  isEntryTimeString,
+} from '@workspace/shared';
+import familyAccessRepository from '../models/familyAccessRepository.js';
 const router = express.Router();
 router.use(authenticate);
 /**
@@ -57,6 +62,74 @@ router.get('/', async (req, res) => {
   } catch (error) {
     log('error', 'Route GET /meal-types error:', error);
     res.status(500).json({ error: 'Failed to fetch meal types' });
+  }
+});
+/**
+ * @swagger
+ * /meal-types/family/{familyUserId}:
+ *   get:
+ *     summary: Retrieve a copy recipient's available meal types
+ *     tags: [Nutrition & Meals]
+ *     description: Requires the signed-in actor's active diary-management and food-library copy permissions. Does not change the active profile.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: familyUserId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Recipient system defaults and custom meal types with visibility preferences.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/MealType'
+ *       400:
+ *         description: Invalid family user ID.
+ *       401:
+ *         description: Authentication required.
+ *       403:
+ *         description: Missing or expired copy permission.
+ */
+router.get('/family/:familyUserId', async (req, res, next) => {
+  const parsed = FamilyMealTypesParamSchema.safeParse(req.params);
+  if (!parsed.success) {
+    res.status(400).json({ error: 'familyUserId must be a valid UUID' });
+    return;
+  }
+  try {
+    const actorUserId =
+      req.originalUserId || req.authenticatedUserId || req.userId;
+    const { familyUserId } = parsed.data;
+    if (
+      !(await familyAccessRepository.checkCopyPermissions(
+        actorUserId,
+        familyUserId
+      ))
+    ) {
+      res.status(403).json({
+        error:
+          'Forbidden: You do not have permissions to copy to this family member.',
+      });
+      return;
+    }
+    const mealTypes = await getAllMealTypes(familyUserId, actorUserId);
+    const response = FamilyMealTypesResponseSchema.parse(
+      mealTypes.map((mealType: Record<string, unknown>) => ({
+        ...mealType,
+        ...(mealType.created_at instanceof Date
+          ? { created_at: mealType.created_at.toISOString() }
+          : {}),
+      }))
+    );
+    res.status(200).json(response);
+  } catch (error) {
+    next(error);
   }
 });
 /**

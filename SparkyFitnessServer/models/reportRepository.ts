@@ -557,6 +557,7 @@ async function getExerciseEntries(
     let query = `SELECT
          ee.id,
          TO_CHAR(ee.entry_date, 'YYYY-MM-DD') AS entry_date,
+         ee.created_at,
          ee.entry_time,
          ee.duration_minutes,
          ee.calories_burned,
@@ -592,7 +593,7 @@ async function getExerciseEntries(
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.distance
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.distance, ees.rpe, ees.rir
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data

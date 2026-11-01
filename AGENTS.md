@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-10-25*
+*Last updated: 2026-10-30*
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
@@ -38,6 +38,7 @@ For `docs/` and `SparkyFitnessGarmin/`, there is no package-level `AGENTS.md`. `
 - `docs/` - VitePress documentation site.
 - `docs/readme/` - translated copies of the root `README.md` (`README_<lang>.md`), outside the VitePress `srcDir`. The language bar at the top of `README.md` links to them; when the root README changes substantially, the translations go stale.
 - `SparkyFitnessGarmin/` - standalone Python integration service outside the current `pnpm` workspace.
+- `SparkyFitnessTag/` - static site behind `https://tag.sparkyfitness.com` (Cloudflare Workers static assets, deployed from this folder with `wrangler.jsonc`). It serves only Apple's `apple-app-site-association`, Android's `assetlinks.json` and a "get the app" page, so an NFC tag link (`/t/<code>`) opens the mobile app. Holds no secrets and stores no data; a new app ID, Apple team or signing key means editing the two `.well-known` files. Not a `pnpm` workspace package. Do not add a `_redirects` rule for `/t/*`: Cloudflare rejects it as a loop, and `not_found_handling: single-page-application` already serves the page.
 - `docker/`, `helm/`, `.github/` - infra and deployment assets.
 - `umbrel/sparkyfitness/` - Umbrel App Store package (manifest, compose, derived secrets), submitted to `getumbrel/umbrel-apps`. See `umbrel/README.md`.
 - `db_schema_backup.sql` - repo-root schema snapshot kept in sync by CI (`.github/workflows/schema-backup.yml`); never hand-edit or regenerate locally.
@@ -74,7 +75,7 @@ Cheap ways to learn things:
 
 - If you add or change a server migration (such as creating a new table), follow `agent-docs/new-migration-checklist.md`. In short, you MUST:
   1. Create the migration file in `SparkyFitnessServer/db/migrations/YYYYMMDDHHMMSS_description.sql`.
-  2. Update the Row-Level Security (RLS) policies in `SparkyFitnessServer/db/rls_policies.sql`.
+  2. Update the Row-Level Security (RLS) policies in `SparkyFitnessServer/db/rls_policies.sql`, and classify the new table in the `DOMAIN` map of `SparkyFitnessServer/tests/rlsPermissionMatrix.integration.test.ts` (CI fails when an RLS table is missing).
   3. **Restart the server** (`pnpm start` from `SparkyFitnessServer/`) to apply the migration. Agents ask the user to do this rather than starting it themselves. Keep one re-runnable migration file per PR, edited in place.
   4. Leave `db_schema_backup.sql` alone — after merge, CI regenerates it from the migrations and opens an automated sync PR (`.github/workflows/schema-backup.yml`). Never manually edit the backup file or commit a locally generated copy.
   5. Add or update the matching Zod schema in `shared/src/schemas/database/`.

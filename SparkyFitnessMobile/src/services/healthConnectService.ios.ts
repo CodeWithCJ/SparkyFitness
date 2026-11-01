@@ -6,6 +6,7 @@ import * as HealthKitPreferences from './healthkit/preferences';
 import { HEALTH_METRICS } from '../HealthMetrics';
 import { healthReadProvider, readCumulativeByDay } from './healthkit/provider';
 import { runForegroundSync } from './shared/healthSyncEngine';
+import { fetchMoveRingActiveCaloriesSetting } from './api/preferencesApi';
 import {
   SyncResult,
   HealthMetricStates,
@@ -63,12 +64,27 @@ export { alignToLocalDayStart } from '../utils/syncUtils';
 export const getAggregatedStepsByDate = HealthKit.getAggregatedStepsByDate;
 export const getAggregatedStepsByDateDetailed =
   HealthKit.getAggregatedStepsByDateDetailed;
-export const getAggregatedActiveCaloriesByDate =
-  HealthKit.getAggregatedActiveCaloriesByDate;
+// The Sync screen's preview shows the same active figure the sync sends.
+export const getAggregatedActiveCaloriesByDate = async (
+  startDate: Date,
+  endDate: Date
+) =>
+  HealthKit.getAggregatedActiveCaloriesByDate(
+    startDate,
+    endDate,
+    await fetchMoveRingActiveCaloriesSetting()
+  );
 export const getAggregatedActiveCaloriesByDateDetailed =
   HealthKit.getAggregatedActiveCaloriesByDateDetailed;
-export const getAggregatedTotalCaloriesByDate =
-  HealthKit.getAggregatedTotalCaloriesByDate;
+export const getAggregatedTotalCaloriesByDate = async (
+  startDate: Date,
+  endDate: Date
+) =>
+  HealthKit.getAggregatedTotalCaloriesByDate(
+    startDate,
+    endDate,
+    await fetchMoveRingActiveCaloriesSetting()
+  );
 export const getAggregatedTotalCaloriesByDateDetailed =
   HealthKit.getAggregatedTotalCaloriesByDateDetailed;
 export const getAggregatedDistanceByDate =

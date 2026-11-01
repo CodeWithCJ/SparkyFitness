@@ -44,7 +44,16 @@ vi.mock('undici', () => {
     return { destroy: vi.fn() };
   });
   const buildConnector = vi.fn(() => vi.fn());
-  return { default: { Agent, buildConnector }, Agent, buildConnector };
+  // Pass-through, so assertions on the dispatcher still see the Agent.
+  const Dispatcher1Wrapper = vi.fn(function (inner: unknown) {
+    return inner;
+  });
+  return {
+    default: { Agent, buildConnector, Dispatcher1Wrapper },
+    Agent,
+    buildConnector,
+    Dispatcher1Wrapper,
+  };
 });
 
 // Mock heic-convert so tests don't need real HEIC bytes. Default: succeed,
@@ -204,6 +213,12 @@ describe('dispatchAiRequest — preconditions', () => {
     );
     expect(result.ok).toBe(true);
     expect(m).toHaveBeenCalled();
+    // The Agent reaches Node's fetch through the handler-API bridge, not raw.
+    const init = m.mock.calls[0][1] as { dispatcher?: unknown };
+    const { default: undici } = await import('undici');
+    expect(vi.mocked(undici.Dispatcher1Wrapper)).toHaveBeenCalledWith(
+      init.dispatcher
+    );
   });
 
   it('blocks localhost custom URLs by default', async () => {

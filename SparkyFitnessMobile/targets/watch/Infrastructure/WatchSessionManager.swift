@@ -300,13 +300,15 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// Asks the phone to say a cue (its headphones are the ones in the wearer's
     /// ears). Returns false when the phone cannot be reached right now, so the
     /// caller speaks it on the watch; otherwise `fallback` runs if the phone
-    /// does not confirm in time or the send fails.
-    func relayRunCue(_ text: String, interrupt: Bool, fallback: @escaping () -> Void) -> Bool {
+    /// does not confirm in time or the send fails. `language` is the BCP 47 tag
+    /// of the language the text is written in, or empty when it includes words
+    /// the phone wrote, so the phone falls back to the app language.
+    func relayRunCue(_ text: String, interrupt: Bool, language: String, fallback: @escaping () -> Void) -> Bool {
         guard WCSession.isSupported(), isActivated, WCSession.default.isReachable else { return false }
         let id = UUID().uuidString
         pendingCues[id] = fallback
         WCSession.default.sendMessage(
-            OutboundPayloads.runCue(id: id, text: text, interrupt: interrupt),
+            OutboundPayloads.runCue(id: id, text: text, interrupt: interrupt, language: language),
             replyHandler: nil
         ) { [weak self] _ in
             Task { @MainActor in self?.failCue(id) }

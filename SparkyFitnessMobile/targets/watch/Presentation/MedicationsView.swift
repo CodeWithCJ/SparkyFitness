@@ -277,7 +277,7 @@ struct MedicationDoseView: View {
     private func act(_ action: MedicationTapAction) {
         // `.click`, not `.success`: all that is certain yet is that the tap
         // registered, the same reasoning as a water tap.
-        WKInterfaceDevice.current().play(.click)
+        Haptics.tap()
         let clientId = store.recordMedicationTap(dose, action: action)
         session.sendMedicationTap(dose, clientId: clientId, action: action)
         dismiss()

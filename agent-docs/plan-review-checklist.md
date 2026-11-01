@@ -9,6 +9,7 @@ Before presenting an implementation plan for this repo, self-review it against t
 - **Contracts**: If it changes an API request/response, does the plan cover the shared schema, the server route/schema, and both web and mobile consumers?
 - **Typing**: Does the plan ensure strict TypeScript typing (no `any`) and proactively update legacy `any` declarations in touched files to their proper data types/schemas?
 - **Dates/timezones**: Are `YYYY-MM-DD` values kept as calendar-day strings with shared timezone helpers (no `toISOString().split('T')[0]`)?
+- **Server state**: Does anything that must hold across requests (a limit, quota or job status, or a lock that must coordinate server instances) live in the database rather than in process memory, so a restart or a second server instance cannot break it?
 - **Auth**: If auth behavior changes, are both cookie sessions and API-key flows considered?
 - **Validation**: Does the plan end with concrete validation — the specific tests to run plus `pnpm run validate` in each touched package?
 - **Rewrite guard**: Does the plan modify the working implementation minimally rather than rewriting it, unless a rewrite was explicitly requested?

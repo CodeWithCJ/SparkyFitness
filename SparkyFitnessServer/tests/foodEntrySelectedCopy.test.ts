@@ -111,7 +111,7 @@ describe('copySelectedFoodEntriesFromUser', () => {
     }
   );
 
-  it('copies selected rows as standalone entries while retaining serving-basis nutrients', async () => {
+  it('delegates selected rows and their adjusted quantities to the atomic copy', async () => {
     vi.mocked(familyAccessRepository.checkCopyPermissions).mockResolvedValue(
       true
     );
@@ -121,10 +121,7 @@ describe('copySelectedFoodEntriesFromUser', () => {
     vi.mocked(foodRepository.getFoodEntryById).mockResolvedValue(
       validSourceEntry
     );
-    vi.mocked(foodRepository.getFoodEntryByDetails).mockResolvedValue(
-      undefined
-    );
-    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([
+    vi.mocked(foodRepository.copySelectedFoodEntries).mockResolvedValue([
       { id: 'copy-1' },
     ]);
 
@@ -138,27 +135,19 @@ describe('copySelectedFoodEntriesFromUser', () => {
       [selection()]
     );
 
-    expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          user_id: ACTOR,
-          created_by_user_id: ACTOR,
-          meal_type_id: TARGET_MEAL,
-          entry_date: TARGET_DATE,
-          food_entry_meal_id: null,
-          quantity: 150,
-          serving_size: 100,
-          calories: 180,
-          protein: 6,
-          custom_nutrients: { magnesium: 12 },
-        }),
-      ],
-      ACTOR
-    );
+    expect(foodRepository.copySelectedFoodEntries).toHaveBeenCalledWith({
+      targetUserId: ACTOR,
+      actingUserId: ACTOR,
+      sourceUserId: SOURCE,
+      sourceDate: SOURCE_DATE,
+      targetDate: TARGET_DATE,
+      targetMealTypeId: TARGET_MEAL,
+      selections: [selection()],
+    });
     expect(result).toEqual([{ id: 'copy-1' }]);
   });
 
-  it('re-fetches every selection and sends all validated rows in one bulk insert', async () => {
+  it('re-fetches every selection and sends all validated rows to one transaction', async () => {
     vi.mocked(familyAccessRepository.checkCopyPermissions).mockResolvedValue(
       true
     );
@@ -172,10 +161,7 @@ describe('copySelectedFoodEntriesFromUser', () => {
         id: SECOND_ENTRY_ID,
         food_id: 'food-2',
       });
-    vi.mocked(foodRepository.getFoodEntryByDetails).mockResolvedValue(
-      undefined
-    );
-    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([
+    vi.mocked(foodRepository.copySelectedFoodEntries).mockResolvedValue([
       { id: 'copy-1' },
       { id: 'copy-2' },
     ]);
@@ -200,14 +186,17 @@ describe('copySelectedFoodEntriesFromUser', () => {
       SECOND_ENTRY_ID,
       SOURCE
     );
-    expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledTimes(1);
-    expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({ food_id: 'food-1', quantity: 150 }),
-        expect.objectContaining({ food_id: 'food-2', quantity: 75 }),
-      ],
-      ACTOR
-    );
+    expect(
+      foodRepository.copySelectedFoodEntries
+    ).toHaveBeenCalledExactlyOnceWith({
+      targetUserId: ACTOR,
+      actingUserId: ACTOR,
+      sourceUserId: SOURCE,
+      sourceDate: SOURCE_DATE,
+      targetDate: TARGET_DATE,
+      targetMealTypeId: TARGET_MEAL,
+      selections: [selection(), selection(SECOND_ENTRY_ID, 75)],
+    });
   });
 
   it('rejects a row whose reviewed food or nutrition snapshot changed', async () => {
@@ -237,7 +226,7 @@ describe('copySelectedFoodEntriesFromUser', () => {
     expect(foodRepository.bulkCreateFoodEntries).not.toHaveBeenCalled();
   });
 
-  it('does not conflate null food ids during the duplicate lookup', async () => {
+  it('accepts a self-contained snapshot after its catalog food was deleted', async () => {
     const customEntry = {
       ...validSourceEntry,
       food_id: null,
@@ -250,10 +239,7 @@ describe('copySelectedFoodEntriesFromUser', () => {
       { id: TARGET_MEAL, name: 'Lunch', user_id: null },
     ]);
     vi.mocked(foodRepository.getFoodEntryById).mockResolvedValue(customEntry);
-    vi.mocked(foodRepository.getFoodEntryByDetails).mockResolvedValue({
-      id: 'unrelated-target-row',
-    });
-    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([
+    vi.mocked(foodRepository.copySelectedFoodEntries).mockResolvedValue([
       { id: 'copied-custom-row' },
     ]);
 
@@ -276,9 +262,16 @@ describe('copySelectedFoodEntriesFromUser', () => {
     ).resolves.toEqual([{ id: 'copied-custom-row' }]);
 
     expect(foodRepository.getFoodEntryByDetails).not.toHaveBeenCalled();
-    expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
-      [expect.objectContaining({ food_id: null })],
-      ACTOR
+    expect(foodRepository.copySelectedFoodEntries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        selections: [
+          {
+            entryId: ENTRY_ID,
+            quantity: 150,
+            sourceFingerprint: foodEntryCopyFingerprint(customEntry),
+          },
+        ],
+      })
     );
   });
 });

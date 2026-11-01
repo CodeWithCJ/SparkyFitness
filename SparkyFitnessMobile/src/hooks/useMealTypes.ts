@@ -1,14 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchMealTypes } from '../services/api/mealTypesApi';
+import {
+  fetchFamilyMealTypes,
+  fetchMealTypes,
+} from '../services/api/mealTypesApi';
 import { getDefaultMealTypeId } from '../constants/meals';
-import { mealTypesQueryKey } from './queryKeys';
+import { familyMealTypesQueryKey, mealTypesQueryKey } from './queryKeys';
 
-export function useMealTypes(options?: { enabled?: boolean }) {
-  const { enabled = true } = options ?? {};
+export function useMealTypes(options?: {
+  enabled?: boolean;
+  familyUserId?: string;
+}) {
+  const { enabled = true, familyUserId } = options ?? {};
 
   const query = useQuery({
-    queryKey: mealTypesQueryKey,
-    queryFn: fetchMealTypes,
+    queryKey: familyUserId
+      ? familyMealTypesQueryKey(familyUserId)
+      : mealTypesQueryKey,
+    queryFn: familyUserId
+      ? () => fetchFamilyMealTypes(familyUserId)
+      : fetchMealTypes,
     staleTime: 1000 * 60 * 5, // 5 minutes
     enabled,
     select: (data) => {
@@ -27,6 +37,7 @@ export function useMealTypes(options?: { enabled?: boolean }) {
     defaultMealTypeId: query.data?.defaultMealTypeId ?? null,
     isLoading: query.isLoading,
     isError: query.isError,
+    error: query.error,
     refetch: query.refetch,
   };
 }

@@ -105,7 +105,9 @@ struct WaterLogView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(String(localized: "watch.water.entryAccessibility", defaultValue: "\(entry.name), \(amountText(entry)), at \(entry.time)"))
         .accessibilityHint(
-            isDeleting ? "Deleting, waiting for your phone" : "Opens a prompt to delete this entry"
+            isDeleting
+                ? String(localized: "watch.water.deletingHint", defaultValue: "Deleting, waiting for your phone")
+                : String(localized: "watch.water.deleteHint", defaultValue: "Opens a prompt to delete this entry")
         )
     }
 

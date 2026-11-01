@@ -231,6 +231,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'start_date',
         'end_date',
         'date',
+        'assignment_ids',
         'sessions',
         'assignments',
       ],
@@ -241,6 +242,8 @@ describe('published (flat) chatbot tool schemas', () => {
         'create_workout_plan',
         'update_workout_plan',
         'delete_workout_plan',
+        'propose_plan_changes',
+        'apply_plan_changes',
       ],
     },
     {

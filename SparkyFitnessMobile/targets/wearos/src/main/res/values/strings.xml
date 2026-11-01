@@ -7,5 +7,13 @@
     <string name="complication_water_label">Sparky Water</string>
     <string name="complication_fasting_label">Sparky Fasting</string>
     <string name="complication_steps_label">Sparky Steps</string>
+    <string name="tile_nutrition_label">Sparky Nutrition</string>
+    <string name="tile_nutrition_description">Consumed vs goal calories and macro targets</string>
+    <string name="tile_sleep_label">Sparky Sleep Health</string>
+    <string name="tile_sleep_description">Sleep duration, score, stages, and recovery metrics</string>
+    <string name="tile_medications_label">Sparky Medications</string>
+    <string name="tile_medications_description">Today\'s medication schedule and dose status</string>
+    <string name="tile_exercise_label">Sparky Exercise</string>
+    <string name="tile_exercise_description">Daily exercise minutes, calories, and workouts</string>
     <color name="iconBackground">#FFFFFF</color>
 </resources>

@@ -86,7 +86,44 @@ Because the AI has access to all these tools, it can do things a standard app ca
 
 ## 🚀 Getting Started
 
-The MCP server is served **in-process** by the main SparkyFitness server at `POST /mcp`. There is no separate MCP service to run.
+The MCP server is served **in-process** by the main SparkyFitness server at `POST /mcp`. There is no separate MCP service to run. You can authenticate with an API key, or an administrator can enable OAuth 2.1 for hosted remote clients.
+
+## Connect a Remote Client with OAuth 2.1
+
+Remote MCP OAuth is off by default. It is intended for clients such as Claude.ai that discover the authorization server, open the normal SparkyFitness login and consent screens, and receive a user-scoped access token without asking you to paste an API key.
+
+::: danger Full MCP access
+Approving an OAuth application gives it the full MCP tool set for your account, including tools that can create, update, or delete data. Check the application name and redirect destination on the consent screen, and approve only applications you trust. You can revoke an application later under **Settings → Connected MCP Applications**.
+:::
+
+### Requirements
+
+- Your SparkyFitness instance must be reachable by the remote client over **public HTTPS** with a valid certificate. Plain HTTP is supported only for loopback development addresses such as `localhost` and `127.0.0.1`.
+- `BETTER_AUTH_URL` should be the same public origin users and MCP clients open, for example `https://fitness.example.com`. If it is unset, SparkyFitness uses `SPARKY_FITNESS_FRONTEND_URL`.
+- The client's OAuth callback must be in the administrator's redirect allowlist. SparkyFitness ships with Anthropic's documented callbacks (`https://claude.ai/api/mcp/auth_callback` and `https://claude.com/api/mcp/auth_callback`) plus explicit loopback-any-port patterns for desktop clients.
+
+If the configured public URL is missing, invalid, or plain HTTP on a non-loopback host, SparkyFitness keeps API-key MCP access working but does not install or advertise the OAuth endpoints. The Admin page shows the reason next to the switch.
+
+### Enable Remote MCP OAuth
+
+1. Sign in as an administrator.
+2. Open **Admin → Authentication Settings → Login Management**.
+3. Review **Allowed OAuth redirect URIs**. Keep only callbacks used by clients you trust. Enter one exact URI or supported loopback pattern per line.
+4. Enable **Remote MCP OAuth**.
+
+### Connect Claude.ai or Claude Desktop
+
+1. In Claude, open **Customize → Connectors** and add a custom connector.
+2. Enter your public MCP URL: `https://<your-host>/mcp`.
+3. Choose OAuth sign-in or automatic OAuth client registration when prompted.
+4. Complete the SparkyFitness login and review the consent screen carefully.
+5. Select **Allow** only if the displayed application and redirect destination are expected.
+
+Claude's hosted connector reaches the server from Anthropic's infrastructure, including when you use Claude Desktop. A private LAN-only SparkyFitness address therefore cannot be used for this hosted connector. API-key access remains available for local clients.
+
+OAuth discovery is exposed through the standard authorization-server and protected-resource metadata routes only while the feature is available and enabled. Access tokens are checked for issuer, MCP resource audience, scope, active consent, client status, and revocation before a request reaches an MCP tool.
+
+## Connect with an API Key
 
 ### 1. Generate an API Key
 

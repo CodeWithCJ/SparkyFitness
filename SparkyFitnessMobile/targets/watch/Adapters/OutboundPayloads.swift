@@ -292,13 +292,16 @@ enum OutboundPayloads {
 
     /// A spoken cue for the phone to say instead of the watch, so it comes out
     /// of the headphones paired to the phone. `id` comes back in the phone's
-    /// `runCueAck`; without it the watch says the cue itself.
-    static func runCue(id: String, text: String, interrupt: Bool) -> [String: Any] {
+    /// `runCueAck`; without it the watch says the cue itself. `language` is the
+    /// BCP 47 tag the text is written in, so the phone speaks it with a voice
+    /// for that language.
+    static func runCue(id: String, text: String, interrupt: Bool, language: String) -> [String: Any] {
         [
             "type": Kind.runCue,
             "id": id,
             "text": text,
             "interrupt": interrupt,
+            "language": language,
         ]
     }
 

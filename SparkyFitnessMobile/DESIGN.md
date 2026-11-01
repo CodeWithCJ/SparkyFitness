@@ -287,7 +287,7 @@ Radius classes in sections 1–5 use the app's remapped scale, not web Tailwind'
 - Sheet titles: picker and menu sheets (`BottomSheetPicker`, `ActionSheet`, `WeekdaySheet`, `FoodUnitSelectorSheet`) have a `px-4 py-4 border-b border-border-subtle` title row with a centered `text-lg font-semibold` title; `ActionSheet` adds an optional 20px Sparky Blue back chevron. Form sheets put a borderless centered `text-lg font-semibold text-text-primary` title (`mb-1` to `mb-4`) at the top of their content. `CalendarSheet`, `TimeSheet` and AddSheet have no title; `DateRangeSheet` has a borderless centered `text-base font-semibold text-text-primary` title (`mt-2 mb-1`) above the calendar, defaulting to "Select a date range to remove" (override it with `title`).
 - Picker sheet (`BottomSheetPicker`): option rows `px-4 py-3.5` with hairline dividers. The selected option is semibold with a 20px Sparky Blue checkmark. Section headers are `px-4 py-2 bg-surface` with uppercase muted `text-xs font-semibold`. Up to 8 options size to fit; longer lists scroll in a 500pt sheet.
 - Action sheet (`ActionSheet`, overflow and context menus): rows `px-4 py-3.5 border-b border-border-subtle` with a `text-base font-medium` label and an optional muted description. Destructive items use Danger Ink. Groups are separated by a 12px band of canvas color (`h-3 bg-background`). Maximum height is 80% of the screen.
-- AddSheet (center Add): a 2x2 grid of large tiles (Food, Exercise, Measurements, Scan Food), each a Bright Control Fill block with 16px corners, `py-5`, a 32px Sparky Blue glyph and a 14px medium Ink Navy label. Below it is a stack of full-width Bright Control Fill buttons, each with 16px corners, 12px apart and `py-3`, holding a centered 20px Sparky Blue glyph and a 14px medium Ink Navy label: Check-In (only while Settings › Diary › Guided check-in is on), Progress Photos, Wellness (only while cycle tracking is on), Symptoms, Mood, Mindfulness, Ask Sparky and Sync Health Data. The Exercise submenu has a Sparky Blue "Back" link, a row of 3 tiles with `text-xs` subtitles and, when GPS recording is available, a full-width Record Activity tile below them.
+- AddSheet (center Add): a 2x2 grid of large tiles (Food, Exercise, Measurements, Scan Food), each a Bright Control Fill block with 16px corners, `py-5`, a 32px Sparky Blue glyph and a 14px medium Ink Navy label. Below it is a stack of full-width Bright Control Fill buttons, each with 16px corners, 12px apart and `py-3`, holding a centered 20px Sparky Blue glyph and a 14px medium Ink Navy label: Check-In, Progress Photos, Wellness (only while cycle tracking is on), Symptoms, Mood, Mindfulness, Ask Sparky and Sync Health Data. The Exercise submenu has a Sparky Blue "Back" link, a row of 3 tiles with `text-xs` subtitles and, when GPS recording is available, a full-width Record Activity tile below them.
 - Anchored menu (dropdown under a header button on the custom path): popover `bg-surface rounded-xl border border-border-subtle shadow-lg py-1`, at least 200pt wide, 6pt below its trigger and at least 8pt from the screen edge. It fades in over 120ms and zooms from 95% over 160ms, and closes instantly. Rows are `flex-row items-center gap-3 px-4 py-3`, separated by `border-t border-border-subtle`, with a 20px Sparky Blue icon, a `text-base font-medium` Ink Navy label and an 18px Sparky Blue check when selected. Group labels are `px-4 pt-2.5 pb-1` uppercase Muted Slate `text-xs font-bold tracking-wider` (with a top divider after the first).
 - Plain RN modal overlays use a 50% black scrim (outliers: 55% in `MedicationFormScreen`, 65% in `AnnouncementModal`). Full-screen modals pad their content with the status-bar inset plus 16 on top and the bottom inset (at least 16) below.
 
@@ -776,11 +776,11 @@ The watches are native, not React Native, so sections 2–9 (Uniwind tokens, `gl
 
 ### 10.1 Targets
 
-| Surface                       | Code                                                                                                                     | UI toolkit                            |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------- |
-| Apple Watch app               | `targets/watch` (`Presentation/`, `Domain/`, `Application/`, `Infrastructure/`, `Adapters/`)                             | SwiftUI                               |
-| Apple Watch complications     | `targets/watch-widget` (`index.swift` lists them: Energy, Water, Protein, Carbs, Fat, Fasting, Steps)                    | WidgetKit                             |
-| Wear OS app and complications | `targets/wearos/src/main/java/com/sparkyapps/sparkyfitness/wear` (`Screens.kt`, `WorkoutScreens.kt`, `Complications.kt`) | Compose for Wear OS (`MaterialTheme`) |
+| Surface                              | Code                                                                                                                                 | UI toolkit                                         |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| Apple Watch app                      | `targets/watch` (`Presentation/`, `Domain/`, `Application/`, `Infrastructure/`, `Adapters/`)                                         | SwiftUI                                            |
+| Apple Watch complications            | `targets/watch-widget` (`index.swift` lists them: Energy, Water, Protein, Carbs, Fat, Fasting, Steps)                                | WidgetKit                                          |
+| Wear OS app, complications and tiles | `targets/wearos/src/main/java/com/sparkyapps/sparkyfitness/wear` (`Screens.kt`, `WorkoutScreens.kt`, `Complications.kt`, `Tiles.kt`) | Compose for Wear OS (`MaterialTheme`), ProtoLayout |
 
 Android home-screen widgets (`targets/android-widget`) and the iOS phone widget (`targets/widget`) are separate from these.
 
@@ -789,9 +789,9 @@ Android home-screen widgets (`targets/android-widget`) and the iOS phone widget 
 - Glanceable: one job per screen, a big number, one control. The Workout screens show one set at a time, because the wearer is mid-lift looking at a small screen.
 - Pure black canvas with flat dark cards. Color carries meaning only (a metric, a state), never decoration.
 - Swipe is the navigation on Apple Watch; there is no button to change page. Wear OS scrolls with rotary input (`wearRotaryScroll`).
-- Every tap that logs something gives a haptic. New Apple Watch haptics go through `Haptics` (`Presentation/Haptics.swift`), which follows the phone's Settings → Haptics switch (`WatchContext.effectiveHapticsEnabled`); do not call `WKInterfaceDevice.current().play` directly. Existing code still does in places (see 10.6), so the switch does not silence every watch haptic.
+- Every tap that logs something gives a haptic. Apple Watch haptics go through `Haptics` (`Presentation/Haptics.swift`), which follows the phone's Settings → Haptics switch (`WatchContext.effectiveHapticsEnabled`); do not call `WKInterfaceDevice.current().play` directly. The one exception is the rest-finished buzz in `WatchAppDelegate`, which uses `effectiveRestBuzzEnabled` (the haptics switch plus the phone's rest-alerts setting).
 - Works with the phone away: pages draw from the last persisted context, and writes (water taps, medication taps, check-ins) queue and resend.
-- Copy: new Apple Watch copy uses `String(localized:defaultValue:)` keys (`watch.<page>.<name>`), with the strings in `targets/watch/en.lproj`. Existing screens are not fully localized and the Wear OS screens use literal strings (see 10.6).
+- Copy: Apple Watch copy uses `String(localized:defaultValue:)` keys (`watch.<page>.<name>`), with the strings in `targets/watch/en.lproj`; `pnpm run i18n:audit:watch` checks it. Never build a key or a color from translated text (the Goals rows pick their color from the nutrient key, not the title). The Wear OS screens use literal strings (see 10.6).
 
 ### 10.3 Apple Watch app
 
@@ -833,7 +833,7 @@ Take macro and nutrient colors from `GoalPalette` (`GoalPalette.color(forNutrien
 - Data comes from the app group (`APP_GROUP_IDENTIFIER` in the target's Info.plist), written by `ComplicationPublisher`. The daily metric snapshots (steps, water, energy, macros) carry a date, and one for another day is ignored. The fasting snapshot has no date, because a fast can span midnight. The placeholder shows a plausible mid-day value.
 - Refresh differs by complication. Steps, Water, Energy and the macros reload after 15 minutes or at midnight, whichever is first. Fasting reloads hourly when no fast is active; during an active fast it provides a run of 15-minute entries and reloads `.atEnd`.
 - Each Apple Watch complication opens the app on its page through the `sparkyfitness-watch` URL scheme (`ComplicationLinks.swift`). The scheme is declared in three copies that must stay in step: `targets/watch/expo-target.config.js`, `WatchDeepLink.scheme` and `ComplicationLink.scheme`. Wear OS complications instead tap through a `PendingIntent` carrying a `target_page` extra (`ComplicationUpdater.tapPendingIntent`); Wear OS also accepts a separate `sparkyfitness://watch` deep link in `MainActivity`.
-- Tints today: Water cyan, Steps mint, Fasting orange. The Energy complication's rings use the `GoalPalette` calorie and macro colors from the table above. The standalone macro complications (`MacroComplications.swift`) currently use system red (protein), yellow (carbs) and blue (fat), which differ from `GoalPalette` (see 10.6). `GoalPalette` is the intended palette.
+- Tints: Water cyan (`GoalPalette.water`), Steps mint, Fasting orange. The Energy and macro complications use the `GoalPalette` calorie and macro colors through the `ComplicationPalette` mirror in `EnergyGoalComplication.swift`; if `GoalPalette` changes, change the mirror too.
 
 ### 10.5 Wear OS app
 
@@ -852,15 +852,14 @@ Take macro and nutrient colors from `GoalPalette` (`GoalPalette.color(forNutrien
 
 - Cards are `RoundedCornerShape(10.dp)` on `CardBg` with 10dp by 6dp padding; macro rows are a label (11sp medium, white), a value and a progress bar in the nutrient color.
 - Complications are `SuspendingComplicationDataSourceService` classes in `Complications.kt` (Energy, Protein, Carbs, Fat, Water, Fasting, Steps), registered in `AndroidManifest.xml`, with monochrome icons in `res/drawable/ic_complication_*.xml`.
+- Tiles are ProtoLayout `TileService` subclasses in `Tiles.kt` (`NutritionTileService`, `SleepTileService`, `MedicationsTileService`, `ExerciseTileService`), wrapped in `buildTileShell` (pure black background, a 300° progress arc on a `CardBg` track anchored at `-150°`, and up to three compact pill rows), registered in `AndroidManifest.xml` with preview images in `res/drawable-nodpi/tile_preview_*.png` and icons in `res/drawable/ic_tile_*.xml`. Nutrition tile macro rows use `nutrientColor` (`SparkyColors`) from `Screens.kt`. Tapping a tile launches `MainActivity` with a `target_page` extra (`goals`, `sleep`, `meds`, `workout`).
 - The phone finds the watch by the `sparky_wear_companion` capability in `res/values/wear.xml`.
 - `WearOsParityTest` covers Wear OS payload parsing and builders against hard-coded JSON. It does not compare them with the Apple Watch definitions, so it cannot catch a one-sided schema change; keep both watches in step by hand.
 
 ### 10.6 Known gaps
 
 - The Wear OS palette is a Tailwind-style set unrelated to the Apple Watch `GoalPalette`, so the same macro is a different color on each watch: protein is amber on Apple Watch and cyan on Wear OS, and carbs is green on Apple Watch and amber on Wear OS.
-- The Apple Watch complications' macro tints (`MacroComplications.swift`: protein red, carbs yellow, fat blue) have a comment saying they match `GoalPalette`, but they do not; fixing them means changing the Swift (protein amber, carbs green, fat light blue). Fasting uses `.orange` and Steps `.mint` as system colors.
-- Localization is incomplete. `GoalSummaryView.swift` still has static literals ("Calories not synced yet", "Protein", "g"), as do some other Apple Watch views (for example `TrendView.swift`), and the Wear OS screens use literal English strings rather than Android string resources.
-- Some Apple Watch haptics bypass `Haptics` and the phone's haptics setting by calling `WKInterfaceDevice.current().play` directly: `WaterIntakeView`, `ClassicWaterIntakeView`, `MedicationsView`, `TrendView`, `CheckInEntryView` and the run auto-pause and resume in `WatchRunStore`. `WatchAppDelegate` also calls it directly, but checks the haptics setting first (the rest-finished buzz uses `effectiveRestBuzzEnabled`, which adds the phone's rest-alerts setting).
+- The Wear OS screens use literal English strings rather than Android string resources, unlike the localized Apple Watch app.
 - Neither watch palette is derived from `global.css`; the superset palette is the only hand-copied mirror.
 
 ### 10.7 Checklist for a watch change
@@ -871,4 +870,4 @@ Take macro and nutrient colors from `GoalPalette` (`GoalPalette.color(forNutrien
 - [ ] A new page is added to `WatchPage`, `WATCH_PAGE_KEYS` and the phone's Apple Watch settings together.
 - [ ] A new complication is added on both Apple Watch (`index.swift`) and Wear OS (service plus manifest entry), with its tap target (URL scheme on Apple Watch, `target_page` on Wear OS).
 - [ ] Payload or context changes are made on both watches and the phone by hand, and the Wear OS parity test still passes.
-- [ ] New Apple Watch strings are localized, and a localized string is not left beside new literals.
+- [ ] New Apple Watch strings are localized with `String(localized:defaultValue:)` and added to `en.lproj/Localizable.strings`.

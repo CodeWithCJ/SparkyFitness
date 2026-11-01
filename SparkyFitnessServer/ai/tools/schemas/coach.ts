@@ -47,10 +47,27 @@ export const GenerateCoachingPlanSchema = z
   })
   .strict();
 
+export const ReviewCalorieTargetSchema = z
+  .object({
+    desired_kg_per_week: z
+      .preprocess(
+        // A JSON null means "not said", not zero (which z.coerce would make).
+        (value) => (value === null ? undefined : value),
+        z.coerce.number().min(-1).max(1).optional()
+      )
+      .describe(
+        'Weekly weight change the user wants, in kg: negative to lose (-0.5), positive to gain. Ask the user if they have not said.'
+      ),
+  })
+  .strict();
+
 export type GetHealthSummaryInput = z.infer<typeof GetHealthSummarySchema>;
 export type AnalyzeTrendsInput = z.infer<typeof AnalyzeTrendsSchema>;
 export type Get30DayTrendsInput = z.infer<typeof Get30DayTrendsSchema>;
 export type DetectPatternsInput = z.infer<typeof DetectPatternsSchema>;
 export type GenerateCoachingPlanInput = z.infer<
   typeof GenerateCoachingPlanSchema
+>;
+export type ReviewCalorieTargetInput = z.infer<
+  typeof ReviewCalorieTargetSchema
 >;

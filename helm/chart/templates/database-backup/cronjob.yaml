@@ -96,7 +96,7 @@ spec:
                 defaultMode: 0755
             - name: backup-storage
               persistentVolumeClaim:
-                claimName: {{ include "sparkyfitness.databaseBackupPvcName" . }}
+                claimName: {{ include "sparkyfitness.databaseBackupPvcName" . | quote }}
             - name: tmp
               emptyDir: {}
 {{- end }}

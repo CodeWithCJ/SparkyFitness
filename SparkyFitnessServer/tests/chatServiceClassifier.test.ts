@@ -45,6 +45,41 @@ describe('classifyByKeywords', () => {
     expect(classifyByKeywords('finished a yoga session')).toContain('exercise');
   });
 
+  it('routes training-review phrasing to exercise', () => {
+    expect(classifyByKeywords('how is my training going?')).toContain(
+      'exercise'
+    );
+    expect(classifyByKeywords('my bench has plateaued')).toContain('exercise');
+    expect(classifyByKeywords('has my squat stalled?')).toContain('exercise');
+  });
+
+  it('adds the training-review guidance only when exercise is active', () => {
+    const withExercise = getSystemPrompt('UTC', '', 'full', ['exercise']);
+    expect(withExercise).toContain('training_review');
+    expect(withExercise).toContain('run_review');
+    expect(getSystemPrompt('UTC', '', 'full', ['food'])).not.toContain(
+      'training_review'
+    );
+    expect(getSystemPrompt('UTC', '', 'core', ['exercise'])).not.toContain(
+      'training_review'
+    );
+  });
+
+  it('adds the calorie-target guidance with the coaching category on the full profile', () => {
+    expect(getSystemPrompt('UTC', '', 'full', ['coaching'])).toContain(
+      '## CALORIE TARGET REVIEWS'
+    );
+    expect(getSystemPrompt('UTC', '', 'full', ['food'])).not.toContain(
+      '## CALORIE TARGET REVIEWS'
+    );
+    expect(getSystemPrompt('UTC', '', 'core', ['coaching'])).not.toContain(
+      '## CALORIE TARGET REVIEWS'
+    );
+    expect(classifyByKeywords('can you recalibrate my targets?')).toContain(
+      'coaching'
+    );
+  });
+
   it('matches the new coaching keyword rule', () => {
     expect(classifyByKeywords('any tips for staying motivated')).toContain(
       'coaching'

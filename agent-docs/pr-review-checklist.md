@@ -77,6 +77,7 @@ Any hit in section A is blocking until explained. Say what you found and where; 
 - **Environment Variables**: When new env vars are added or existing ones modified, verify that all downstream locations are updated in tandem: `docker/.env.example` (and `docker/.env.simple.example` if mandatory), `docker/docker-compose.*.yml`, `docs/src/install/environment-variables.md`, `docs/components/EnvGenerator.vue`, and `helm/chart/` (templates and `values.yaml` if applicable).
 - **Typing**: No new `any`, no new `// eslint-disable-next-line @typescript-eslint/no-explicit-any`, and no copying a legacy `any` signature forward. When modifying existing files, proactively eliminate old `any` declarations in the touched functions/scopes and update them to reflect their proper data types, explicit interfaces, or schemas from `@workspace/shared`.
 - **Dates**: No `toISOString().split('T')[0]` on user-facing or business-logic dates. `YYYY-MM-DD` stays a calendar-day string until a DB/external-API boundary; use the shared timezone helpers.
+- **Server state**: A limit, quota or job status kept in a module-level variable (`new Map`, a counter) resets on restart and is not shared between server instances; it belongs in the database, checked and changed in one statement. A lock that must coordinate server instances belongs there too (an advisory lock or a row). Caches and in-process locks are fine. See [anti-patterns.md](anti-patterns.md).
 - **Guide upkeep**: A new domain, route family, or table should update the affected `AGENTS.md` in the same PR.
 
 ## C. Logic, Validity & Cross-Platform Blast Radius
@@ -183,7 +184,7 @@ gh pr view <n> --json author,isCrossRepository
 
 **Your own PR** (you are the author) — the terminal report is the whole output. Skip the draft comment; you don't need to write to yourself. Just list what needs action and stop.
 
-**Someone else's PR** — after the terminal report, add a copy-paste-ready comment for the contributor in a fenced block, so it can be pasted into GitHub untouched.
+**Someone else's PR** — after the terminal report, add a copy-paste-ready comment for the contributor in a fenced block, so it can be pasted into GitHub untouched, but only when **Blocking** or **Should change** lists something the contributor must change. An optional or convention-only point left for the maintainer to decide stays in the terminal report and out of the comment. When nothing must change, write "Nothing to post; ready to merge." and draft no comment.
 
 ### Drafting the contributor comment
 
@@ -226,7 +227,7 @@ Not blocking, but please change: `utils/day.ts:12` derives the day with
 Use the shared `todayInZone` helper.
 ```
 
-When nothing needs changing, say so in one or two lines and don't invent filler.
+Never phrase an optional point as "before merge" or "one thing before this can go in"; that wording tells the contributor it blocks.
 
 ## Depth
 

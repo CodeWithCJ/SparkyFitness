@@ -213,7 +213,7 @@ struct WaterIntakeView: View {
         // is watchOS's "that completed" pattern — promising it here would be
         // a lie on any tap that later fails and settles back out of the
         // bottle.
-        WKInterfaceDevice.current().play(.click)
+        Haptics.tap()
 
         // No timeout to un-do this: the tap stands until the phone sends a
         // total for today that accounts for it. A ten-second expiry looked

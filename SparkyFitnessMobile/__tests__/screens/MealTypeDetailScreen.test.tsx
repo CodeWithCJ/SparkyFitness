@@ -48,8 +48,16 @@ jest.mock('../../src/hooks/useScreenHeader', () => {
   return {
     useScreenHeader: (config: {
       right?:
-        | { accessibilityLabel?: string; onPress?: () => void }
-        | { accessibilityLabel?: string; onPress?: () => void }[];
+        | {
+            accessibilityLabel?: string;
+            onPress?: () => void;
+            items?: { label: string; onPress: () => void }[];
+          }
+        | {
+            accessibilityLabel?: string;
+            onPress?: () => void;
+            items?: { label: string; onPress: () => void }[];
+          }[];
     }) => {
       const items = Array.isArray(config.right)
         ? config.right
@@ -59,13 +67,21 @@ jest.mock('../../src/hooks/useScreenHeader', () => {
       return ReactModule.createElement(
         ReactModule.Fragment,
         null,
-        items.map((item, i) =>
-          ReactModule.createElement(Pressable, {
-            key: i,
-            accessibilityLabel: item.accessibilityLabel,
-            onPress: item.onPress,
-          })
-        )
+        items
+          .flatMap(
+            (item) =>
+              item.items?.map((action) => ({
+                accessibilityLabel: action.label,
+                onPress: action.onPress,
+              })) ?? [item]
+          )
+          .map((item, i) =>
+            ReactModule.createElement(Pressable, {
+              key: i,
+              accessibilityLabel: item.accessibilityLabel,
+              onPress: item.onPress,
+            })
+          )
       );
     },
   };
@@ -240,6 +256,33 @@ describe('MealTypeDetailScreen', () => {
       entry('1', 'custom-pw', 'Pre-Workout'),
       entry('2', 'sys-b', 'breakfast'),
     ]);
+  });
+
+  it('opens recipient selection for the own canonical meal and preserves the other-day action', () => {
+    const view = renderScreen({
+      date: '2026-01-01',
+      mealTypeId: 'custom-pw',
+      mealType: 'Pre-Workout',
+    });
+    expect(view.getByLabelText('Copy meal to another day')).toBeTruthy();
+    fireEvent.press(view.getByLabelText('Copy to family'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('FamilyMembers', {
+      copySource: {
+        sourceDate: '2026-01-01',
+        mealTypeId: 'custom-pw',
+        mealTypeName: 'Pre-Workout',
+      },
+    });
+  });
+
+  it('does not offer family copying for an empty meal', () => {
+    setSummary([]);
+    const view = renderScreen({
+      date: '2026-01-01',
+      mealTypeId: 'custom-pw',
+      mealType: 'Pre-Workout',
+    });
+    expect(view.queryByLabelText('Copy to family')).toBeNull();
   });
 
   it('filters entries by canonical meal type id and renders the literal custom label', () => {

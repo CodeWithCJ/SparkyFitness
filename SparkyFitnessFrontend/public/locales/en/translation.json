@@ -2464,6 +2464,21 @@
       "expires2": "Expires: {{value}}",
       "lastUsed2": "Last Used: {{value}}"
     },
+    "oauthClients": {
+      "authorizedAt": "Authorized:",
+      "description": "Review and revoke applications connected through Remote MCP OAuth",
+      "empty": "No applications currently have OAuth access to your account.",
+      "loadError": "Failed to load connected applications.",
+      "loading": "Loading connected applications…",
+      "permissions": "Permissions:",
+      "revoke": "Revoke",
+      "revokeDescription": "{{clientName}} will immediately lose access and must be authorized again to reconnect.",
+      "revokeError": "Failed to revoke access",
+      "revokeSuccess": "Application access revoked",
+      "revokeTitle": "Revoke application access?",
+      "title": "Connected MCP Applications",
+      "unverified": "Unverified application"
+    },
     "accountSecurity": {
       "title": "Account Security",
       "description": "Change your email or password",
@@ -3066,6 +3081,14 @@
       "publicServerNote": "There is no default server. The public Valhalla server run by FOSSGIS is a demo for light personal testing, and its maintainers say it is not meant for production use by third parties, so do not point a shared server at it. Run your own Valhalla, use a hosted service (Stadia Maps, for one, offers a free plan for non-commercial use only) or a server whose operator has agreed. A sent API key is used only for this provider.",
       "unlockNote": "Once this provider is active, route generation and Follow roads become available in the mobile app."
     },
+    "weatherProvider": {
+      "baseUrlLabel": "Open-Meteo server URL",
+      "apiKeyLabel": "API key (optional)",
+      "apiKeyPlaceholder": "Only for Open-Meteo's commercial service",
+      "privacyNote": "The time a GPS-recorded activity started and its start place, rounded to two decimals (about 1 km), are sent to this server, which can see them. Use a server you trust, or run your own. With no weather provider, nothing is looked up or sent.",
+      "freeTierNote": "There is no default server. Open-Meteo's free service ({{url}}; its archive for older activities is served from archive-api.open-meteo.com) is for non-commercial use only. For commercial use, use its paid service (customer-api.open-meteo.com) with an API key, or run your own Open-Meteo server. A sent API key is used only for this provider.",
+      "resultNote": "Once this provider is active, new GPS-recorded activities get the temperature and conditions at their start. Activities that already have weather (such as from Garmin) keep it."
+    },
     "providerSpecificFields": {
       "appURL": "App URL",
       "eGHttpYourInstance": "e.g., http://your-{{provider_type}}-instance.com",
@@ -3172,6 +3195,15 @@
       "description": "Manage authentication methods and OIDC providers.",
       "publicApiDocs": "Public API Documentation",
       "publicApiDocsDescription": "Allow Swagger API docs (/api/api-docs) to be accessed without requiring user authentication.",
+      "mcpOAuth": "Remote MCP OAuth",
+      "mcpOAuthDescription": "Allow remote MCP clients such as Claude to connect through OAuth 2.1. Existing API keys continue to work.",
+      "mcpOAuthAccessWarning": "Approving an application gives it full MCP access, including tools that can write or delete data. Only approve applications you trust.",
+      "mcpOAuthHttpsRequired": "Remote MCP OAuth requires public HTTPS. Plain HTTP is supported only for loopback development.",
+      "mcpOAuthRedirectAllowlist": "Allowed OAuth redirect URIs",
+      "mcpOAuthRedirectAllowlistDescription": "Enter one exact URI or loopback pattern per line. Use http://localhost:*, http://127.0.0.1:*, or http://[::1]:* to allow desktop clients on any local callback port.",
+      "saveMcpOAuthRedirects": "Save OAuth redirect allowlist",
+      "mcpOAuthRedirectsUpdated": "OAuth redirect allowlist updated successfully.",
+      "mcpOAuthRedirectsFailed": "Failed to save the OAuth redirect allowlist.",
       "devTools": "Developer Diagnostic Tools",
       "devToolsDescription": "Enable MCP and diagnostic database inspection tools for admins.",
       "versionCheck": "Check for New Releases",
@@ -6811,6 +6843,25 @@
     "failed": "Failed: {{errorsCount}}"
   },
   "auth": {
+    "oauth": {
+      "allow": "Allow",
+      "allowAccessDescription": "{{clientName}} wants to connect to your SparkyFitness account.",
+      "allowAccessTitle": "Allow access to SparkyFitness?",
+      "clientWillBeAbleTo": "This client will be able to:",
+      "deny": "Deny",
+      "loadingRequest": "Loading authorization request…",
+      "missingRedirectUrl": "The OAuth provider did not return a redirect URL.",
+      "declaredWebsite": "Declared website",
+      "mcpAccessDescription": "Read and update your SparkyFitness data through MCP tools.",
+      "offlineAccessDescription": "Stay connected and access your account when you are not actively using SparkyFitness.",
+      "redirectDestination": "Redirect destination",
+      "requestFailed": "Authorization failed",
+      "securityHint": "Only allow access if you recognize and trust this application.",
+      "unknownClient": "This application",
+      "unknownScopeDescription": "Request the “{{scope}}” permission.",
+      "unverifiedClient": "Unverified application",
+      "unverifiedClientDescription": "SparkyFitness has not verified this application's identity. Its name and website were supplied by the application."
+    },
     "agreeAndEnter": "I Agree & Enter Demo",
     "demoAgreeCheckbox": "I accept the License terms and agree not to misuse this evaluation sandbox.",
     "demoLicenseDesc": "By using this demo, you agree to the project license.",

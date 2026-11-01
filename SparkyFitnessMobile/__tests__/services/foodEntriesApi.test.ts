@@ -5,6 +5,8 @@ import {
   copyFoodEntries,
   copyReviewedFoodEntriesFromUser,
   copySelectedFoodEntriesFromUser,
+  copyReviewedFoodEntriesToUser,
+  copySelectedFoodEntriesToUser,
   calculateCaloriesConsumed,
   calculateProtein,
   calculateCarbs,
@@ -625,6 +627,33 @@ describe('foodEntriesApi', () => {
         { entryId: 'entry-1', quantity: 150, sourceFingerprint: 'snapshot' },
       ],
     };
+
+    test.each([
+      [
+        'copy-reviewed-to-user',
+        copyReviewedFoodEntriesToUser,
+        wholeMealPayload,
+      ],
+      ['copy-selected-to-user', copySelectedFoodEntriesToUser, selectedPayload],
+    ] as const)(
+      'posts %s with the recipient and reviewed entries without a source-user override',
+      async (endpoint, copy, payload) => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 204,
+          headers: { get: () => null },
+        });
+        await copy(payload);
+        expect(mockFetch).toHaveBeenCalledWith(
+          `https://example.com/api/food-entries/${endpoint}`,
+          expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify(payload),
+          })
+        );
+      }
+    );
 
     test('posts a reviewed whole family meal with its exact snapshot', async () => {
       mockGetActiveServerConfig.mockResolvedValue(testConfig);

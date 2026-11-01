@@ -182,5 +182,74 @@
                 android:value="900" />
         </service>
 
+        <receiver
+            android:name="com.sparkyapps.sparkyfitness.wear.PackageReplacedTileReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Tiles -->
+        <service
+            android:name="com.sparkyapps.sparkyfitness.wear.NutritionTileService"
+            android:description="@string/tile_nutrition_description"
+            android:exported="true"
+            android:icon="@drawable/ic_complication_calories"
+            android:label="@string/tile_nutrition_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/tile_preview_nutrition" />
+        </service>
+
+        <service
+            android:name="com.sparkyapps.sparkyfitness.wear.SleepTileService"
+            android:description="@string/tile_sleep_description"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_sleep"
+            android:label="@string/tile_sleep_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/tile_preview_sleep" />
+        </service>
+
+        <service
+            android:name="com.sparkyapps.sparkyfitness.wear.MedicationsTileService"
+            android:description="@string/tile_medications_description"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_medications"
+            android:label="@string/tile_medications_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/tile_preview_medications" />
+        </service>
+
+        <service
+            android:name="com.sparkyapps.sparkyfitness.wear.ExerciseTileService"
+            android:description="@string/tile_exercise_description"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_exercise"
+            android:label="@string/tile_exercise_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/tile_preview_exercise" />
+        </service>
+
     </application>
 </manifest>

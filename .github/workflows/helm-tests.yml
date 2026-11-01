@@ -98,6 +98,26 @@ jobs:
             fi
           done
 
+      - name: Render — server volumes on existing claims
+        run: |
+          out=$(helm template t helm/chart \
+            --set server.persistence.uploads.existingClaim=my-uploads \
+            --set server.persistence.backup.existingClaim=my-backup)
+          grep -q 'claimName: "my-uploads"' <<< "$out"
+          grep -q 'claimName: "my-backup"' <<< "$out"
+          if grep -q 'name: sparkyfitness-server-\(uploads\|backup\)$' <<< "$out"; then
+            echo "an existing claim should replace the chart's PVC"; exit 1
+          fi
+          # A numeric claim name must still render as a string.
+          out=$(helm template t helm/chart \
+            --set server.persistence.uploads.existingClaim=123 \
+            --set server.persistence.backup.existingClaim=456 \
+            --set databaseBackup.enabled=true \
+            --set databaseBackup.persistence.existingClaim=789)
+          grep -q 'claimName: "123"' <<< "$out"
+          grep -q 'claimName: "456"' <<< "$out"
+          grep -q 'claimName: "789"' <<< "$out"
+
       - name: Render — external DB with NetworkPolicy
         run: |
           helm template t helm/chart \

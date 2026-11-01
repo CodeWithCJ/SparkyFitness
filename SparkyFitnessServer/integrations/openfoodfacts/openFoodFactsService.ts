@@ -934,6 +934,30 @@ function hasUsableOffCoreNutrition(product: OffProduct): boolean {
   );
 }
 
+/**
+ * Returns true when OFF declares energy, protein, carbohydrates and fat. The
+ * mapper turns a missing value into 0, so a product that passes only
+ * hasUsableOffCoreNutrition can still map to a food with false zeros.
+ */
+function hasCompleteOffCoreNutrition(product: OffProduct): boolean {
+  const nutriments = product.nutriments;
+  if (!isRecord(nutriments)) return false;
+  const servingQuantity = parseOffNumber(product.serving_quantity);
+  const hasServing = servingQuantity !== null && servingQuantity > 0;
+  const declares = (baseKeys: string[]) =>
+    baseKeys.some(
+      (base) =>
+        parseOffNumber(nutriments[`${base}_100g`]) !== null ||
+        (hasServing && parseOffNumber(nutriments[`${base}_serving`]) !== null)
+    );
+  return (
+    declares(['energy-kcal', 'energy-kj', 'energy']) &&
+    declares(['proteins']) &&
+    declares(['carbohydrates']) &&
+    declares(['fat'])
+  );
+}
+
 function getOffNutrient100g(
   nutriments: Record<string, unknown>,
   baseKey: string,
@@ -1267,7 +1291,7 @@ function mapOpenFoodFactsProduct(
 export { searchOpenFoodFacts };
 export { searchOpenFoodFactsByBarcodeFields };
 export { mapOpenFoodFactsProduct };
-export { hasUsableOffCoreNutrition };
+export { hasUsableOffCoreNutrition, hasCompleteOffCoreNutrition };
 export default {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,

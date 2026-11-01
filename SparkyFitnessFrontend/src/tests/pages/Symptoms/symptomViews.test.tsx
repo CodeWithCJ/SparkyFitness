@@ -9,6 +9,7 @@ import SymptomsHub from '@/pages/Symptoms/SymptomsHub';
 import {
   ID,
   ID2,
+  entryQueries,
   hookState,
   makeDefinition,
   makeEntry,
@@ -458,6 +459,115 @@ describe('SymptomCalendar', () => {
     const cls = screen.getByRole('button', { name: '2026-09-08' }).className;
     expect(cls).toMatch(/bg-red-500/);
     expect(cls).not.toMatch(/bg-green-500\/15/);
+  });
+
+  it('asks for the episodes that overlap the month, not only those logged in it', () => {
+    render(
+      <SymptomCalendar selectedDate={SELECTED} onDateChange={jest.fn()} />
+    );
+    expect(entryQueries).toContainEqual({
+      fromDate: '2026-09-01',
+      toDate: '2026-09-30',
+      overlapping: true,
+    });
+  });
+
+  it('tints every day an episode covers, from its start to its end', () => {
+    hookState.entries = [
+      makeEntry({
+        entry_date: '2026-09-14',
+        started_at: '2026-09-14T21:00:00.000Z',
+        ended_at: '2026-09-16T08:00:00.000Z',
+        severity: 8,
+        peak_severity: 8,
+      }),
+    ];
+    render(
+      <SymptomCalendar selectedDate={SELECTED} onDateChange={jest.fn()} />
+    );
+    for (const day of ['2026-09-14', '2026-09-15', '2026-09-16']) {
+      expect(screen.getByRole('button', { name: day }).className).toMatch(
+        /bg-red-500/
+      );
+    }
+    for (const day of ['2026-09-13', '2026-09-17']) {
+      expect(screen.getByRole('button', { name: day }).className).not.toMatch(
+        /bg-(red|amber)-500/
+      );
+    }
+  });
+
+  it('tints an episode still going up to today and no further', () => {
+    hookState.entries = [
+      makeEntry({
+        entry_date: '2026-09-27',
+        started_at: '2026-09-27T10:00:00.000Z',
+        ended_at: null,
+        severity: 4,
+        peak_severity: 4,
+      }),
+    ];
+    render(
+      <SymptomCalendar selectedDate={SELECTED} onDateChange={jest.fn()} />
+    );
+    for (const day of ['2026-09-27', '2026-09-28', '2026-09-29']) {
+      expect(screen.getByRole('button', { name: day }).className).toMatch(
+        /bg-amber-500/
+      );
+    }
+    expect(
+      screen.getByRole('button', { name: '2026-09-30' }).className
+    ).not.toMatch(/bg-(red|amber)-500/);
+  });
+
+  it('ignores an episode start with a year the calendar cannot place', () => {
+    // One keystroke in the year of a date field can save year 2 or 300.
+    hookState.entries = [
+      makeEntry({
+        entry_date: '0002-09-14',
+        started_at: '0002-09-14T10:00:00.000Z',
+        ended_at: null,
+      }),
+      makeEntry({
+        id: 'c',
+        entry_date: '0300-09-14',
+        started_at: '0300-09-14T10:00:00.000Z',
+        ended_at: null,
+      }),
+      makeEntry({ id: 'b', entry_date: '2026-09-08' }),
+    ];
+    render(
+      <SymptomCalendar selectedDate={SELECTED} onDateChange={jest.fn()} />
+    );
+    expect(
+      screen.getByRole('button', { name: '2026-09-08' }).className
+    ).toMatch(/bg-red-500/);
+    expect(
+      screen.getByRole('button', { name: '2026-09-15' }).className
+    ).not.toMatch(/bg-(red|amber)-500/);
+  });
+
+  it('tints the days of an episode that started the month before', () => {
+    hookState.entries = [
+      makeEntry({
+        entry_date: '2026-08-30',
+        started_at: '2026-08-30T20:00:00.000Z',
+        ended_at: '2026-09-02T07:00:00.000Z',
+        severity: 4,
+        peak_severity: 4,
+      }),
+    ];
+    render(
+      <SymptomCalendar selectedDate={SELECTED} onDateChange={jest.fn()} />
+    );
+    for (const day of ['2026-09-01', '2026-09-02']) {
+      expect(screen.getByRole('button', { name: day }).className).toMatch(
+        /bg-amber-500/
+      );
+    }
+    expect(
+      screen.getByRole('button', { name: '2026-09-03' }).className
+    ).not.toMatch(/bg-(red|amber)-500/);
   });
 
   it('selects a day and marks the current one', () => {

@@ -21,6 +21,10 @@ jest.mock('../../src/services/api/healthDataApi', () => ({
   syncHealthData: jest.fn(),
 }));
 
+jest.mock('../../src/services/api/preferencesApi', () => ({
+  fetchMoveRingActiveCaloriesSetting: jest.fn().mockResolvedValue(false),
+}));
+
 jest.mock('../../src/HealthMetrics', () => ({
   // Real derivation logic — the facade's readKind triage depends on it.
   metricReadKind: jest.requireActual('../../src/HealthMetrics').metricReadKind,

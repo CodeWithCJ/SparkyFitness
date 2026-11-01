@@ -42,6 +42,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.util.concurrent.atomic.AtomicLong
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
 import java.util.UUID
@@ -60,8 +61,12 @@ class WearSessionManager private constructor(private val appContext: Context) :
   private val _requestedPage = MutableStateFlow<WatchPage?>(null)
   val requestedPage: StateFlow<WatchPage?> = _requestedPage.asStateFlow()
 
+  private val _showSleepDetail = MutableStateFlow(false)
+  val showSleepDetail: StateFlow<Boolean> = _showSleepDetail.asStateFlow()
+
   private var telemetryOwner: String = "watch"
   private val seenCommandKeys = LinkedHashSet<String>()
+  private val lastContextRequestMs = AtomicLong(0L)
 
   private fun firstTime(key: String?): Boolean {
     if (key.isNullOrEmpty()) return true
@@ -91,15 +96,53 @@ class WearSessionManager private constructor(private val appContext: Context) :
     pullInitialDataItems()
   }
 
+  /**
+   * Transitions to the target [WatchPage] and dismisses any active sleep detail overlay.
+   */
   fun requestNavigateTo(page: WatchPage) {
+    _showSleepDetail.value = false
     _requestedPage.value = page
   }
 
+  /**
+   * Clears the pending page navigation request once the pager has scrolled to it.
+   */
   fun consumeRequestedPage() {
     _requestedPage.value = null
   }
 
+  /**
+   * Opens the sleep health detail overlay and clears any pending page navigation.
+   */
+  fun requestSleepDetail() {
+    _requestedPage.value = null
+    _showSleepDetail.value = true
+  }
+
+  /**
+   * Closes the sleep health detail overlay.
+   */
+  fun dismissSleepDetail() {
+    _showSleepDetail.value = false
+  }
+
+  /**
+   * Requests a fresh context push from the phone, throttled to at most once every 15 seconds.
+   */
+  fun requestContextFromPhoneThrottled() {
+    val now = System.currentTimeMillis()
+    val prev = lastContextRequestMs.get()
+    if (now - prev < 15_000L) return
+    if (!lastContextRequestMs.compareAndSet(prev, now)) return
+    pullInitialDataItems()
+  }
+
+  /**
+   * Reads persisted DataClient context and queued transfers and requests a live context refresh from the phone.
+   */
   fun pullInitialDataItems() {
+    val requestStartedAt = System.currentTimeMillis()
+    lastContextRequestMs.set(requestStartedAt)
     scope.launch {
       checkInStore.pruneStaleDayData()
     }
@@ -121,6 +164,13 @@ class WearSessionManager private constructor(private val appContext: Context) :
         }
         dataItems.release()
       } catch (_: Throwable) {}
+      try {
+        if (!sendLiveMessage(OutboundPayloads.contextRequest())) {
+          lastContextRequestMs.compareAndSet(requestStartedAt, 0L)
+        }
+      } catch (_: Throwable) {
+        lastContextRequestMs.compareAndSet(requestStartedAt, 0L)
+      }
     }
   }
 
@@ -197,7 +247,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
           !firstTime("$type:${identity.joinToString("|")}")) return
         val plan = ContextPayloadMapper.parseWorkoutPlan(json, allowEmpty = true) ?: return
         workoutStore.startOrUpdatePlan(plan)
-        _requestedPage.value = WatchPage.WORKOUT
+        requestNavigateTo(WatchPage.WORKOUT)
         bringAppToForeground()
       }
       type == "workoutStop" -> {
@@ -222,7 +272,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
         val state = ContextPayloadMapper.parseRecordingState(json) ?: return
         recordingStore.applyRemoteState(state)
         if (recordingStore.isActive) {
-          _requestedPage.value = WatchPage.WORKOUT
+          requestNavigateTo(WatchPage.WORKOUT)
         }
       }
       type == "watchRunStart" || type == "runStart" -> {
@@ -230,7 +280,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
         if (requestId.isNotEmpty() && !firstTime("runStart:$requestId")) return
         val req = ContextPayloadMapper.parseRunStartRequest(json) ?: return
         runStore.startRun(req)
-        _requestedPage.value = WatchPage.WORKOUT
+        requestNavigateTo(WatchPage.WORKOUT)
         bringAppToForeground()
       }
       type == "watchRunControl" || type == "runControl" -> {

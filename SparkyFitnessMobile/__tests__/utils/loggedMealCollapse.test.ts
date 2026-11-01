@@ -129,6 +129,14 @@ describe('loggedMealToFoodEntry', () => {
   test('has no source, so writeback source filters keep it', () => {
     expect(loggedMealToFoodEntry(makeMeal()).source).toBeUndefined();
   });
+
+  test('keeps the logged meal and meal template photos', () => {
+    const entry = loggedMealToFoodEntry(
+      makeMeal({ images: ['entry.jpg'], meal_images: ['meal.jpg'] })
+    );
+    expect(entry.images).toEqual(['entry.jpg']);
+    expect(entry.food_images).toEqual(['meal.jpg']);
+  });
 });
 
 describe('collapseLoggedMealComponents', () => {

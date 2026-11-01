@@ -26,6 +26,7 @@ import {
 const statusMock = getRequestStatusForAuthorization as jest.Mock;
 const requestMock = requestAuthorization as jest.Mock;
 const effort = 'HKQuantityTypeIdentifierWorkoutEffortScore';
+const route = 'HKWorkoutRouteTypeIdentifier';
 
 beforeAll(async () => {
   await initHealthConnect();
@@ -49,6 +50,8 @@ describe('refreshEnabledMetricPermissions (iOS) and the workout effort rating', 
 
     expect(statusMock.mock.calls[0][0].toRead).not.toContain(effort);
     expect(requestMock.mock.calls[0][0].toRead).toContain(effort);
+    expect(statusMock.mock.calls[0][0].toRead).not.toContain(route);
+    expect(requestMock.mock.calls[0][0].toRead).toContain(route);
   });
 
   it('does not request anything when only workouts are enabled and answered', async () => {

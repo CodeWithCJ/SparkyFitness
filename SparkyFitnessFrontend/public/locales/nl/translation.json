@@ -1627,8 +1627,8 @@
         "recommendedModel": "Aanbevolen: {{- model}} — een goede balans tussen prijs en prestaties.",
         "systemPrompt": "Systeemmelding (aanvullende instructies)",
         "systemPromptPlaceholder": "Aanvullende instructies voor de AI-assistent...",
-        "setAsActive": "Als actieve service instellen",
-        "activeService": "Actieve service",
+        "setAsActive": "Configuratie inschakelen",
+        "activeService": "Configuratie ingeschakeld",
         "global": "Systeembreed",
         "error": "Fout",
         "success": "Succes",
@@ -1684,7 +1684,7 @@
         "delete": "Verwijderen",
         "configuredServices": "Geconfigureerde services",
         "availableServices": "Beschikbare AI-services",
-        "activeProvider": "Actieve AI-aanbieder",
+        "activeProvider": "Chatconfiguratie",
         "noServices": "Er zijn nog geen AI-services geconfigureerd.",
         "noServicesDescription": "Voeg uw eerste AI-service toe om aan de slag te gaan met Sparky.",
         "noServicesDescriptionDisabled": "Neem contact op met uw beheerder om een AI-service te configureren.",
@@ -1719,8 +1719,8 @@
         "systemPrompt": "Systeemmelding (aanvullende instructies)",
         "systemPromptPlaceholder": "Aanvullende instructies voor de AI-assistent...",
         "systemPromptDescription": "Deze instructies worden naast de projectdocumentatie ook aan de AI-context toegevoegd",
-        "setAsActive": "Als actieve service instellen",
-        "activeService": "Actieve service",
+        "setAsActive": "Configuratie inschakelen",
+        "activeService": "Configuratie ingeschakeld",
         "active": "Actief",
         "global": "Systeembreed",
         "yourSetting": "Jouw instelling",
@@ -1753,8 +1753,8 @@
         "fillRequiredFields": "Vul alstublieft alle verplichte velden in",
         "testConnection": "Verbinding testen",
         "testing": "Testen…",
-        "activeVisionProvider": "Actieve AI-service voor beeldverwerking",
-        "sameAsDefault": "Hetzelfde als de standaardinstelling"
+        "activeVisionProvider": "Beeldherkenningconfiguratie",
+        "sameAsDefault": "Hetzelfde als de chatconfiguratie"
       },
       "test": {
         "successTitle": "Succes",
@@ -2172,8 +2172,8 @@
       "goalMaintain": "Behouden (0% verandering)",
       "surplus": "Overschot",
       "deficit": "Tekort",
-      "adaptiveFormula": "Formule: Gemiddelde Dagelijkse Calorieën − (Dagelijkse Gewichtsverandering in kg × {{kcalPerKg}} kcal/kg)",
-      "adaptiveFormulaExplainer": "{{kcalPerKg}} kcal/kg is hoeveel energie een kilogram lichaamsgewicht vertegenwoordigt, zodat uw gewichtstrend kan worden omgerekend naar calorieën. Verloren of gewonnen lichaamsgewicht is een mix van vet (~9.441 kcal/kg) en spiermassa en water (~1.816 kcal/kg), en {{kcalPerKg}} weerspiegelt een typische mix.",
+      "adaptiveFormula": "Formule: Gemiddelde Dagelijkse Calorieën − (Dagelijkse Gewichtsverandering in {{massUnot}} × {{kcalPerKg}} kcal/{{massUnit}})",
+      "adaptiveFormulaExplainer": "{{kcalPerKg}} kcal/{{massUnit}} is hoeveel energie een {{unitName}} lichaamsgewicht vertegenwoordigt, zodat uw gewichtstrend kan worden omgerekend naar calorieën. Verloren of gewonnen lichaamsgewicht is een mix van vet (~{{fatPerUnit}} kcal/{{massUnit}}) en spiermassa en water (~{{leanPerUnit}} kcal/{{massUnit}}), en {{kcalPerUnit}} weerspiegelt een typische mix.",
       "adjustment": "Aanpassing",
       "goalAdjustmentLabel": "Doelaanpassing:"
     },
@@ -4029,7 +4029,8 @@
       "taken": "Ingenomen",
       "prnTaken": "Indien nodig ingenomen",
       "editEntryTime": "Registratietijd bewerken",
-      "removeEntry": "Registratie verwijderen"
+      "removeEntry": "Registratie verwijderen",
+      "note2": "Notities: {{notes}}"
     },
     "insights": {
       "title": "Inzichten en tips over bijwerkingen",
@@ -4099,7 +4100,7 @@
     },
     "calendar": {
       "loggedCount_one": "{{count}} geregistreerd symptoom",
-      "loggedCount_other": "",
+      "loggedCount_other": "{{count}} geregistreerd symptomen",
       "maxSeverity": "Maximale ernst: {{n}}",
       "title": "Kalender voor medicatieoverzicht",
       "noMeds": "Voeg hier een medicijn toe om de bijbehorende kalender te bekijken.",
@@ -4264,7 +4265,10 @@
       "clear": "Wissen",
       "trendingUp": "Stijgende trend t.o.v. eerder in deze periode",
       "trendingDown": "Dalende trend t.o.v. eerder in deze periode",
-      "dayTooltip": "{{date}}: {{count}} geregistreerd, hoogste ernst {{severity}}"
+      "dayTooltip": "{{date}}: {{count}} geregistreerd, hoogste ernst {{severity}}",
+      "mild13": "<span></span> Mild (1-3)",
+      "moderate46": "<span></span> Gematigd (4-6)",
+      "severe710": "<span></span> Ernstig (7-10)"
     },
     "fasting": {
       "title": "Orale GLP-1-nuchterheids timer",
@@ -4450,7 +4454,8 @@
       "effectivenessDetail": "Effectiviteit",
       "adherenceDescriptionBefore": "Schema's en dagelijkse checklists voor niet-GLP-1-medicatie zijn volledig actief. Beheer de schemaregels hieronder, en registreer dagelijkse inname vanuit het tabblad",
       "todayTab": "Vandaag",
-      "adherenceDescriptionAfter": "."
+      "adherenceDescriptionAfter": ".",
+      "drPrescriber": "Dr. {{prescriber}}"
     },
     "subtype": {
       "all": "Alles",
@@ -4532,6 +4537,30 @@
     "noSelection": {
       "title": "Geen medicijn geselecteerd",
       "description": "Selecteer een medicijn in de lijst om schema's, notities en GLP-1-coachingtools te bekijken."
+    },
+    "addMedicationDialog": {
+      "weekly": "Wekelijks",
+      "daily": "Dagelijks"
+    },
+    "glp1InventoryManager": {
+      "mgML": "· {{concentration_mg_ml}} mg/mL",
+      "inUse": "in gebruik",
+      "reorder": "Herorder",
+      "doses": "dosissen",
+      "notes": "Notities: {{notes}}",
+      "concentrationMgML": "Concentratie (mg/mL)",
+      "volumeML": "Volume (mL)",
+      "dateOpened": "Datum geopend",
+      "notes2": "Notities"
+    },
+    "glp1RecentInjections": {
+      "mg": "{{dose_mg}} mg · ",
+      "note": "Notities: {{notes}}"
+    },
+    "glp1TitrationManager": {
+      "dose": "Dosis",
+      "startDate": "Startdatum",
+      "status": "Status"
     }
   },
   "chat": {
@@ -4556,7 +4585,32 @@
     "errorClearingHistory": "Het wissen van de chatgeschiedenis is mislukt.",
     "errorLoadingHistory": "Het laden van de chatgeschiedenis is mislukt.",
     "errorLoadingPreferences": "De chatinstellingen konden niet worden geladen.",
-    "successClearingHistory": "De chatgeschiedenis is succesvol gewist."
+    "successClearingHistory": "De chatgeschiedenis is succesvol gewist.",
+    "voice": {
+      "start": "Dicteer bericht",
+      "stop": "Stop dicteren",
+      "cancel": "Annuleer dicteren",
+      "listening": "Aan het luisteren…",
+      "starting": "Aan het starten…",
+      "unsupported": "Deze stemmodus is niet ondersteund in deze browser. Kies AI transcritie in Steminstellingen of probeer een andere browser. AI is nooit automatisch ingeschakeld.",
+      "permission": "Sta toegang tot de microfoon toe in uw browserinstellingen om een beticht te dicteren.",
+      "tooLarge": "De opname is groter dan 10 MB. Probeer een korter bericht.",
+      "noSpeech": "Spraak niet herkend. Uw concept is niet gewijzigd.",
+      "failed": "Spraakinvoer mislukt. Uw concept is niet gewijzigd. Controleer uw verbinding en Steminstellingen, en probeer het opnieuw."
+    },
+    "sparkyChat": {
+      "sparkyAICoach": "Sparky AI Coach",
+      "yourPersonalAINutritionAnd": "Uw persoonlijke AI voeding- en fitnesscoach.",
+      "selectProvider": "Selecteer provider",
+      "clearChatHistory": "Wis chathistorie",
+      "expandChat": "Chat uitvouwen",
+      "minimizeChat": "Minimaliseer chat",
+      "closeChat": "Chat sluiten"
+    },
+    "sparkyChatInterface": {
+      "chatError": "Chatfout",
+      "failedToProcessMessagePlease": "Verwerken van bericht mislukt. Controleer alstublieft uw instellingen voor AI-diensten."
+    }
   },
   "calculationSettings": {
     "showNetCarbs": "Toon netto koolhydraten (koolhydraten zonder vezels)",
@@ -4637,7 +4691,39 @@
   },
   "foods": {
     "providerVerified": "Gecertificeerde voedingsmiddelen",
-    "removeNutrient": "Verwijder: {{nutrient}}"
+    "removeNutrient": "Verwijder: {{nutrient}}",
+    "aliasChipInput": {
+      "remove": "Verwijder {{alias}}"
+    },
+    "customNutrientDialog": {
+      "nutrientNameAndUnitAre": "Naam en eenheid voedingswaarde zijn verplicht.",
+      "customNutrientCreated": "Aangepaste voedingswaarde aangemaakt",
+      "nutrientName": "Naam voedingswaarde",
+      "eGMagnesium": "bijv., magnesium",
+      "unit": "Eenheid",
+      "eGMgGIU": "bijv., mg, µg, IU",
+      "providerAliases": "Provider aliassen",
+      "adding": "Toevoegen…",
+      "nutrientAdded": "\"­{{name}}\" was toegevoegd."
+    },
+    "deleteFoodDialog": {
+      "view": "Bekijk",
+      "otherUser": "andere gebruiker"
+    },
+    "openMenu": "Open menu",
+    "mealManagement": {
+      "openMenu": "Open menu"
+    },
+    "mealUnitSelector": {
+      "quantity": "Hoeveelheid",
+      "unit": "Eenheid",
+      "updateMeal": "Maaltijd bijwerken",
+      "addToMealPlan": "Voeg toe aan maaltijdplan",
+      "gProtein2": "{{protein}}g eiwitten",
+      "gCarbs2": "{{carbs}}g koolhydraten",
+      "gFat2": "{{fat}}g vetten",
+      "editMeal": "{{name}} wijzigen"
+    }
   },
   "sync": {
     "syncAll": "Synchroniseer alle actieve databases",
@@ -5275,7 +5361,8 @@
     "chronic": "Chronisch: {{val}}",
     "empty": "Voor deze dag zijn geen wearable-gegevens gesynchroniseerd.",
     "skinTemp": "Huidtemperatuur",
-    "weekly": "wekelijks"
+    "weekly": "wekelijks",
+    "low2": "(laag:{{val}})"
   },
   "food": {
     "imagesLabel": "Afbeeldingen",
@@ -6271,8 +6358,8 @@
     "stats": {
       "totalMinutes": "Mindfulnessminuten Vandaag",
       "sessionCount": "Sessies",
-      "recorded_one": "sessies geregistreerd",
-      "recorded_other": ""
+      "recorded_one": "sessie geregistreerd",
+      "recorded_other": "sessies geregistreerd"
     },
     "pacer": {
       "title": "Gestuurde Ademhaling",
