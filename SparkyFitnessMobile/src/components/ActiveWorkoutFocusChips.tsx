@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ExerciseEntryResponse } from '@workspace/shared';
-import CompletionCheck from './CompletionCheck';
 import type { SupersetBorder } from './ActiveWorkoutRail';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import { withAlpha } from '../utils/colors';
@@ -29,7 +28,7 @@ interface Props {
 
 /**
  * The focus view's exercise pager: one numbered circle per exercise (done =
- * check, in progress = tinted, selected = accent ring), superset members tied
+ * filled green, still numbered so it can be told apart; in progress = tinted, selected = accent ring), superset members tied
  * together by a bar in the group colour. Keeps the selected chip centred.
  */
 function ActiveWorkoutFocusChips({
@@ -40,10 +39,11 @@ function ActiveWorkoutFocusChips({
   onSelect,
 }: Props) {
   const { t } = useTranslation();
-  const [accentPrimary, textSecondary] = useCSSVariable([
+  const [accentPrimary, textSecondary, success] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-secondary',
-  ]) as [string, string];
+    '--color-icon-success',
+  ]) as [string, string, string];
   const scrollRef = useRef<ScrollView>(null);
   const viewportWidthRef = useRef(0);
 
@@ -131,25 +131,22 @@ function ActiveWorkoutFocusChips({
                   status === 'inProgress'
                     ? withAlpha(accentPrimary, 0.18)
                     : isDone
-                      ? 'transparent'
+                      ? success
                       : withAlpha(textSecondary, 0.14),
               }}
             >
-              {isDone ? (
-                <CompletionCheck size={CIRCLE_SIZE - 8} iconSize={14} />
-              ) : (
-                <Text
-                  className="text-sm font-semibold"
-                  style={{
-                    color:
-                      isSelected || status === 'inProgress'
-                        ? accentPrimary
-                        : textSecondary,
-                  }}
-                >
-                  {index + 1}
-                </Text>
-              )}
+              <Text
+                className="text-sm font-semibold"
+                style={{
+                  color: isDone
+                    ? 'white'
+                    : isSelected || status === 'inProgress'
+                      ? accentPrimary
+                      : textSecondary,
+                }}
+              >
+                {index + 1}
+              </Text>
             </View>
             {supersetBorder && (
               <View
