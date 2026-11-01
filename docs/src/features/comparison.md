@@ -204,7 +204,7 @@ Each of these is best-in-class for one domain. SparkyFitness covers all of those
 | Personal records & 1RM progression | ✅ | ⭐ | 💰 | ❌ | ❌ |
 | Muscle-group recovery & variety scoring | ✅ | 🟡 | 🟡 muscle heat map | ❌ | ❌ |
 | Workout presets & plan templates | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Smartwatch app with offline logging | ❌ | ⭐ | ⭐ | 🟡 | ❌ |
+| Smartwatch app with offline logging | ✅ Apple Watch & Wear OS | ⭐ | ⭐ | 🟡 | ❌ |
 | Workout social feed & following | ❌ | ⭐ | ❌ | 🟡 | 🟡 |
 | **Fasting** | | | | | |
 | Fasting timer & protocols | ✅ | ❌ | ❌ | ⭐ | ❌ |
