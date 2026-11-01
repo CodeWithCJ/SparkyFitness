@@ -548,6 +548,16 @@
         "playLabel": "Play {{name}} animation",
         "openFullScreen": "View {{name}} image full screen",
         "openFullScreenHint": "Opens the image so you can zoom in"
+      },
+      "sets": {
+        "weightHeader": "Weight ({{unit}})",
+        "weightInput": "Weight for set {{setNumber}}",
+        "repsInput": "Reps for set {{setNumber}}",
+        "effortInput": "{{metric}} for set {{setNumber}}",
+        "increaseWeight": "Increase weight for set {{setNumber}}",
+        "decreaseWeight": "Decrease weight for set {{setNumber}}",
+        "increaseReps": "Increase reps for set {{setNumber}}",
+        "decreaseReps": "Decrease reps for set {{setNumber}}"
       }
     }
   },

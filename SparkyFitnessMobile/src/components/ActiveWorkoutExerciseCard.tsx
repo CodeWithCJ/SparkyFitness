@@ -51,6 +51,7 @@ import {
   evaluateExerciseProgression,
   liveAdaptiveAdjustment,
   alignPreviousSets,
+  buildWorkingSetNumbers,
   isDurationModality,
   isWeightDistanceModality,
   isWeightDurationModality,
@@ -58,10 +59,8 @@ import {
   rendersCardioEffortForm,
   resolveLiveAssumedSetValues,
   resolveSnapshotModality,
-  setTypeLetter,
   type LiveExerciseConfig,
   type WorkoutCardExercise,
-  type WorkoutCardSet,
 } from '../utils/workoutSession';
 import {
   NO_ADAPTIVE_ADJUSTMENT,
@@ -80,15 +79,6 @@ import type {
   PrSetMap,
 } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
-
-/** Working-set numbers per set index; warmup/drop/failure rows repeat the previous number (they render a letter instead). */
-function buildWorkingSetNumbers(sets: WorkoutCardSet[]): number[] {
-  let workingNumber = 0;
-  return sets.map((set) => {
-    if (setTypeLetter(set.set_type) == null) workingNumber += 1;
-    return workingNumber;
-  });
-}
 
 interface ActiveWorkoutExerciseCardProps {
   exercise: WorkoutCardExercise;

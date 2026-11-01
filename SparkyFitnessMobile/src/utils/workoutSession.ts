@@ -1880,6 +1880,17 @@ export function setTypeLetter(
   }
 }
 
+/** Working-set numbers per set index; warmup/drop/failure rows repeat the previous number (they render a letter instead). */
+export function buildWorkingSetNumbers(
+  sets: Pick<WorkoutCardSet, 'set_type'>[]
+): number[] {
+  let workingNumber = 0;
+  return sets.map((set) => {
+    if (setTypeLetter(set.set_type) == null) workingNumber += 1;
+    return workingNumber;
+  });
+}
+
 export function isWarmupSetType(setType: string | null | undefined): boolean {
   if (setType == null) return false;
   return setType

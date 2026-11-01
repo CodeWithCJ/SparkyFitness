@@ -71,7 +71,7 @@ export const RPE_TONE_VARS: Record<RpeTone, string> = {
   max: '--color-icon-danger',
 };
 
-function formatDisplayWeight(
+export function formatDisplayWeight(
   weightKg: number | null,
   unit: 'kg' | 'lbs'
 ): string {
@@ -86,7 +86,7 @@ function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
   return formatLocalizedNumber(Math.round(weightFromKg(valueKg, unit)));
 }
 
-function formatRpe(rpe: number | null): string {
+export function formatRpe(rpe: number | null): string {
   if (rpe == null) return '–';
   return Number.isInteger(rpe)
     ? String(rpe)
