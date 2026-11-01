@@ -294,6 +294,13 @@ async function syncLiftosaurData(
       );
       measurementsFailed = true;
     }
+    if (measurements.failedRecords > 0) {
+      log(
+        'warn',
+        `[liftosaurService] ${measurements.failedRecords} Liftosaur measurement records could not be saved for user ${userId}.`
+      );
+      measurementsFailed = true;
+    }
   } catch (mErr) {
     log(
       'error',
@@ -310,8 +317,8 @@ async function syncLiftosaurData(
       await client.query(
         `UPDATE external_data_providers
          SET last_sync_at = NOW(), updated_at = NOW()
-         WHERE id = $1`,
-        [resolvedProviderId]
+         WHERE id = $1 AND user_id = $2`,
+        [resolvedProviderId, userId]
       );
     } finally {
       client.release();
@@ -319,7 +326,7 @@ async function syncLiftosaurData(
   } else {
     log(
       'warn',
-      `[liftosaurService] Liftosaur sync for user ${userId} imported workouts but not measurements; last_sync_at not updated.`
+      `[liftosaurService] Liftosaur sync for user ${userId} did not import all measurements; last_sync_at not updated.`
     );
   }
 

@@ -2,6 +2,7 @@ import { setMockDataContext } from '../utils/mockDataContext.js';
 import { log } from '../config/logging.js';
 import googleHealthIntegrationService from '../integrations/googlehealth/googleHealthService.js';
 import googleHealthDataProcessor from '../integrations/googlehealth/googleHealthDataProcessor.js';
+import { isPermissionRejection } from './providerFetchResult.js';
 import { getSystemClient } from '../db/poolManager.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone, addDays } from '@workspace/shared';
@@ -247,15 +248,8 @@ async function syncGoogleHealthData(
           },
           tz
         );
-      const client = await getSystemClient();
-      try {
-        await client.query(
-          "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'googlehealth'",
-          [userId]
-        );
-      } finally {
-        client.release();
-      }
+      // A replay fetches nothing new, so it leaves last_sync_at alone: moving it
+      // would make the scheduler skip the next live daily sync.
       log(
         'info',
         `[googleHealthService] Google Health sync from raw bundle completed for user ${userId}.`
@@ -264,6 +258,7 @@ async function syncGoogleHealthData(
         success: true,
         source: 'local_raw_replay',
         bundle_updated: bundle.last_updated,
+        failedRequiredFetches: [],
       };
     } catch (error) {
       log(
@@ -280,15 +275,20 @@ async function syncGoogleHealthData(
         userId
       )) as string;
 
+    const failedRequiredFetches: string[] = [];
     const safeFetch = async <T>(
       fetchFn: () => Promise<T>,
-      name: string
+      name: string,
+      required = false
     ): Promise<T | null> => {
       try {
         // 1.5s between fetches — Google Health has per-minute quotas
         await new Promise((resolve) => setTimeout(resolve, 1500));
         return await fetchFn();
       } catch (error) {
+        if (required && !isPermissionRejection(error)) {
+          failedRequiredFetches.push(name);
+        }
         log(
           'warn',
           `[googleHealthService] Failed to fetch ${name} for user ${userId}: ${(error as Error).message}`
@@ -321,8 +321,13 @@ async function syncGoogleHealthData(
           endDate,
           accessToken
         ),
-      'steps'
+      'steps',
+      true
     );
+    // Steps are fetched day by day and a failed day does not throw.
+    if (stepsData?.failedDays.length) {
+      failedRequiredFetches.push('steps');
+    }
 
     log('debug', `[googleHealthService] Fetching weight for ${userId}...`);
     const weightData = await safeFetch(
@@ -417,7 +422,8 @@ async function syncGoogleHealthData(
           endDate,
           accessToken
         ),
-      'sleep'
+      'sleep',
+      true
     );
 
     log('debug', `[googleHealthService] Fetching activities for ${userId}...`);
@@ -429,7 +435,8 @@ async function syncGoogleHealthData(
           endDate,
           accessToken
         ),
-      'activities'
+      'activities',
+      true
     );
 
     log('debug', `[googleHealthService] Fetching body fat for ${userId}...`);
@@ -687,21 +694,28 @@ async function syncGoogleHealthData(
         tz
       );
 
-    const client = await getSystemClient();
-    try {
-      await client.query(
-        "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'googlehealth'",
-        [userId]
+    if (failedRequiredFetches.length === 0) {
+      const client = await getSystemClient();
+      try {
+        await client.query(
+          "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'googlehealth'",
+          [userId]
+        );
+      } finally {
+        client.release();
+      }
+    } else {
+      log(
+        'warn',
+        `[googleHealthService] Google Health sync for user ${userId} failed required fetches; last_sync_at not updated: ${failedRequiredFetches.join(', ')}`
       );
-    } finally {
-      client.release();
     }
 
     log(
       'info',
       `[googleHealthService] Full Google Health sync completed for user ${userId}.`
     );
-    return { success: true };
+    return { success: true, failedRequiredFetches };
   } catch (error) {
     log(
       'error',

@@ -233,20 +233,22 @@ async function syncIntervalsData(
   );
 
   // The scheduler reads last_sync_at to decide when a daily sync is due, so a
-  // sync with failed activities leaves it alone to be retried next tick.
-  if (failed === 0) {
+  // sync with failed activities leaves it alone to be retried next tick. A
+  // replay fetches nothing new and leaves it alone too: moving it would make the
+  // scheduler skip the next live daily sync.
+  if (failed === 0 && !replay) {
     const client = await getSystemClient();
     try {
       await client.query(
         `UPDATE external_data_providers
          SET last_sync_at = NOW(), updated_at = NOW()
-         WHERE id = $1`,
-        [creds.providerId]
+         WHERE id = $1 AND user_id = $2`,
+        [creds.providerId, userId]
       );
     } finally {
       client.release();
     }
-  } else {
+  } else if (failed > 0) {
     log(
       'warn',
       `[intervalsService] Intervals.icu sync for user ${userId} failed on ${failed} activities; last_sync_at not updated.`

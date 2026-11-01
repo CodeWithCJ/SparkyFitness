@@ -25,6 +25,15 @@ function axiosOk<T>(data: T): AxiosResponse<T> {
 describe('liftosaurMeasurementsService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(measurementService.processHealthData).mockImplementation(
+      async (records) =>
+        ({
+          message: 'ok',
+          processed: records,
+          errors: [],
+          skipped: [],
+        }) as never
+    );
   });
 
   describe('parseLiftosaurValue', () => {
@@ -99,7 +108,7 @@ describe('liftosaurMeasurementsService', () => {
         nowMs - 100000
       );
 
-      expect(result).toEqual({ imported: 2, failedKeys: [] });
+      expect(result).toEqual({ imported: 2, failedKeys: [], failedRecords: 0 });
       expect(measurementService.processHealthData).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({
@@ -157,7 +166,11 @@ describe('liftosaurMeasurementsService', () => {
         nowMs - 100000
       );
 
-      expect(result).toEqual({ imported: 1, failedKeys: ['waist'] });
+      expect(result).toEqual({
+        imported: 1,
+        failedKeys: ['waist'],
+        failedRecords: 0,
+      });
       expect(measurementService.processHealthData).toHaveBeenCalledWith(
         [expect.objectContaining({ type: 'weight', value: 80 })],
         'user-1',
@@ -176,7 +189,27 @@ describe('liftosaurMeasurementsService', () => {
         nowMs - 100000
       );
 
-      expect(result).toEqual({ imported: 1, failedKeys: [] });
+      expect(result).toEqual({ imported: 1, failedKeys: [], failedRecords: 0 });
+    });
+
+    it('counts only saved records and reports the ones processHealthData rejected', async () => {
+      const nowMs = mockKeyFailure('waist', 404);
+      vi.mocked(measurementService.processHealthData).mockResolvedValueOnce({
+        message: 'Some health data entries could not be processed.',
+        processed: [],
+        errors: [{ error: 'insert failed', entry: {} }],
+        skipped: [],
+      } as never);
+
+      const result = await importMeasurementsFromLiftosaur(
+        'user-1',
+        'user-1',
+        'test-key',
+        'UTC',
+        nowMs - 100000
+      );
+
+      expect(result).toEqual({ imported: 0, failedKeys: [], failedRecords: 1 });
     });
   });
 });

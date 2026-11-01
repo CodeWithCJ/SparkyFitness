@@ -22,7 +22,7 @@ vi.mock('../integrations/liftosaur/liftosaurDataProcessor.js', () => ({
 vi.mock('../integrations/liftosaur/liftosaurMeasurementsService.js', () => ({
   importMeasurementsFromLiftosaur: vi
     .fn()
-    .mockResolvedValue({ imported: 3, failedKeys: [] }),
+    .mockResolvedValue({ imported: 3, failedKeys: [], failedRecords: 0 }),
   parseLiftosaurValue: vi.fn(),
 }));
 
@@ -85,8 +85,8 @@ describe('liftosaurSync', () => {
 
     // Verify last_sync_at update
     expect(mockClient.query).toHaveBeenCalledWith(
-      expect.stringContaining('UPDATE external_data_providers'),
-      ['provider-123']
+      expect.stringContaining('WHERE id = $1 AND user_id = $2'),
+      ['provider-123', 'user-1']
     );
   });
 
@@ -164,7 +164,11 @@ describe('liftosaurSync', () => {
     });
     vi.mocked(
       measurementsService.importMeasurementsFromLiftosaur
-    ).mockResolvedValueOnce({ imported: 2, failedKeys: ['waist'] });
+    ).mockResolvedValueOnce({
+      imported: 2,
+      failedKeys: ['waist'],
+      failedRecords: 0,
+    });
 
     const result = await liftosaurService.syncLiftosaurData(
       'user-1',
@@ -175,6 +179,29 @@ describe('liftosaurSync', () => {
 
     expect(result.success).toBe(true);
     expect(result.measurementsImported).toBe(2);
+    expect(mockClient.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('last_sync_at'),
+      expect.anything()
+    );
+  });
+
+  it('counts only saved measurements and leaves last_sync_at alone when a record is rejected', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: { data: { records: [], hasMore: false } },
+    });
+    vi.mocked(
+      measurementsService.importMeasurementsFromLiftosaur
+    ).mockResolvedValueOnce({ imported: 1, failedKeys: [], failedRecords: 1 });
+
+    const result = await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123'
+    );
+
+    expect(result.measurementsImported).toBe(1);
+    expect(result.processedCount).toBe(1);
     expect(mockClient.query).not.toHaveBeenCalledWith(
       expect.stringContaining('last_sync_at'),
       expect.anything()

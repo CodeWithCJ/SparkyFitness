@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import axios from 'axios';
 import hevyService from '../integrations/hevy/hevyService.js';
 import hevyDataProcessor from '../integrations/hevy/hevyDataProcessor.js';
@@ -92,10 +92,104 @@ describe('hevyService.syncHevyData', () => {
     });
     expect(lastSyncUpdates()).toEqual([
       [
-        expect.stringContaining('UPDATE external_data_providers'),
-        ['provider-123'],
+        expect.stringContaining('WHERE id = $1 AND user_id = $2'),
+        ['provider-123', 'user-1'],
       ],
     ]);
+  });
+
+  it('falls back to the provider the lookup picks when updating last_sync_at', async () => {
+    mockHevyApi(
+      async () => ({ data: { data: { id: 'hevy-user' } } }),
+      [async () => workoutPage('w-1', 1)]
+    );
+    mockClient.query.mockResolvedValue({
+      rows: [
+        {
+          id: 'provider-456',
+          encrypted_app_key: 'enc_key',
+          app_key_iv: 'iv',
+          app_key_tag: 'tag',
+        },
+      ],
+    });
+
+    await hevyService.syncHevyData('user-1', 'user-1', true, undefined);
+
+    expect(lastSyncUpdates()).toEqual([
+      [expect.any(String), ['provider-456', 'user-1']],
+    ]);
+  });
+
+  describe('scheduler path (fullSync = false)', () => {
+    const syncAsScheduler = () =>
+      hevyService.syncHevyData('user-1', 'user-1', false, 'provider-123');
+    const workoutPageCalls = () =>
+      vi
+        .mocked(axios.get)
+        .mock.calls.filter(([url]) => !String(url).endsWith('/v1/user/info'));
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-01T12:00:00Z'));
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    it('reads on while the newest workout is inside the window and updates last_sync_at', async () => {
+      mockHevyApi(
+        async () => ({ data: { data: { id: 'hevy-user' } } }),
+        [async () => workoutPage('w-1', 2), async () => workoutPage('w-2', 2)]
+      );
+
+      await syncAsScheduler();
+
+      expect(workoutPageCalls()).toHaveLength(2);
+      expect(lastSyncUpdates()).toEqual([
+        [expect.any(String), ['provider-123', 'user-1']],
+      ]);
+    });
+
+    it('stops at a page older than the window and still updates last_sync_at', async () => {
+      mockHevyApi(
+        async () => ({ data: { data: { id: 'hevy-user' } } }),
+        [
+          async () => ({
+            data: {
+              page_count: 2,
+              workouts: [{ id: 'w-old', start_time: '2026-10-01T10:00:00Z' }],
+            },
+          }),
+        ]
+      );
+
+      await syncAsScheduler();
+
+      expect(workoutPageCalls()).toHaveLength(1);
+      expect(lastSyncUpdates()).toHaveLength(1);
+    });
+
+    it('leaves last_sync_at alone when a later page fails', async () => {
+      mockHevyApi(
+        async () => ({ data: { data: { id: 'hevy-user' } } }),
+        [
+          async () => workoutPage('w-1', 2),
+          async () => {
+            throw new Error('Hevy unavailable');
+          },
+        ]
+      );
+
+      await syncAsScheduler();
+
+      expect(hevyDataProcessor.processHevyWorkouts).toHaveBeenCalledWith(
+        'user-1',
+        'user-1',
+        [expect.objectContaining({ id: 'w-1' })],
+        'UTC'
+      );
+      expect(lastSyncUpdates()).toHaveLength(0);
+    });
   });
 
   it('processes fetched workouts but leaves last_sync_at alone when a workout page fails', async () => {
@@ -163,41 +257,6 @@ describe('hevyService.syncHevyData', () => {
     expect(lastSyncUpdates()).toHaveLength(0);
   });
 
-  it('applies the same rule when replaying a raw bundle', async () => {
-    vi.mocked(loadRawBundle).mockReturnValue({
-      last_updated: '2026-11-01',
-      responses: {
-        raw_workouts_page_1: { data: { workouts: [{ id: 'w-1' }] } },
-      },
-    });
-
-    vi.mocked(hevyDataProcessor.processHevyWorkouts).mockResolvedValueOnce({
-      processed: 0,
-      failed: 1,
-    });
-    await hevyService.syncHevyData(
-      'user-1',
-      'user-1',
-      false,
-      'provider-123',
-      null,
-      null,
-      'local'
-    );
-    expect(lastSyncUpdates()).toHaveLength(0);
-
-    await hevyService.syncHevyData(
-      'user-1',
-      'user-1',
-      false,
-      'provider-123',
-      null,
-      null,
-      'local'
-    );
-    expect(lastSyncUpdates()).toHaveLength(1);
-  });
-
   describe('replaying a raw bundle', () => {
     const replay = (providerId?: string) =>
       hevyService.syncHevyData(
@@ -219,25 +278,11 @@ describe('hevyService.syncHevyData', () => {
       });
     });
 
-    it('updates only the chosen provider', async () => {
-      await replay('provider-123');
+    it('leaves last_sync_at alone', async () => {
+      const result = await replay('provider-123');
 
-      const [[sql, params]] = lastSyncUpdates();
-      expect(sql).toContain('WHERE id = $1 AND user_id = $2');
-      expect(sql).not.toContain('provider_type');
-      expect(params).toEqual(['provider-123', 'user-1']);
-    });
-
-    it('falls back to the provider the lookup picks', async () => {
-      mockClient.query.mockResolvedValueOnce({
-        rows: [{ id: 'provider-456' }],
-      });
-
-      await replay();
-
-      expect(lastSyncUpdates()).toEqual([
-        [expect.any(String), ['provider-456', 'user-1']],
-      ]);
+      expect(result.processedCount).toBe(1);
+      expect(lastSyncUpdates()).toHaveLength(0);
     });
 
     it('reports processed workouts, not fetched ones', async () => {

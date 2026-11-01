@@ -5,6 +5,9 @@ import withingsServiceCentral from '../services/withingsService.js';
 import garminService from '../services/garminService.js';
 import fitbitService from '../services/fitbitService.js';
 import corosService from '../services/corosService.js';
+import ouraService from '../services/ouraService.js';
+import stravaService from '../services/stravaService.js';
+import googleHealthService from '../services/googleHealthService.js';
 import hevyService from '../integrations/hevy/hevyService.js';
 import intervalsService from '../integrations/intervals/intervalsService.js';
 import {
@@ -54,6 +57,18 @@ vi.mock('../services/corosService.js', () => ({
   default: {
     syncCorosData: vi.fn(),
   },
+}));
+
+vi.mock('../services/ouraService.js', () => ({
+  default: { syncOuraData: vi.fn() },
+}));
+
+vi.mock('../services/stravaService.js', () => ({
+  default: { syncStravaData: vi.fn() },
+}));
+
+vi.mock('../services/googleHealthService.js', () => ({
+  default: { syncGoogleHealthData: vi.fn() },
 }));
 
 vi.mock('../integrations/hevy/hevyService.js', () => ({
@@ -313,6 +328,115 @@ describe('providerSyncScheduler', () => {
       externalProviderRepository.updateProviderLastSync
     ).not.toHaveBeenCalled();
   });
+
+  describe.each([
+    {
+      name: 'Oura',
+      sync: () => vi.mocked(ouraService.syncOuraData),
+    },
+    {
+      name: 'Strava',
+      sync: () => vi.mocked(stravaService.syncStravaData),
+    },
+    {
+      name: 'Google Health',
+      sync: () => vi.mocked(googleHealthService.syncGoogleHealthData),
+    },
+  ])('$name required fetches', ({ name, sync }) => {
+    const run = async () => {
+      vi.mocked(
+        externalProviderRepository.getProvidersByType
+      ).mockResolvedValue([
+        {
+          id: 'p-1',
+          user_id: 'u-1',
+          is_active: true,
+          sync_frequency: 'hourly',
+        } as never,
+      ]);
+      await runProviderSync(
+        PROVIDER_SYNC_CONFIGS.find((c) => c.name === name) as ProviderSyncConfig
+      );
+    };
+
+    it('does not update last_sync_at when a required fetch failed', async () => {
+      sync().mockResolvedValueOnce({
+        success: true,
+        failedRequiredFetches: ['steps'],
+      } as never);
+
+      await run();
+
+      expect(
+        externalProviderRepository.updateProviderLastSync
+      ).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith(
+        'warn',
+        expect.stringContaining('last_sync_at not updated: steps')
+      );
+    });
+
+    it('updates last_sync_at when no required fetch failed', async () => {
+      sync().mockResolvedValueOnce({
+        success: true,
+        failedRequiredFetches: [],
+      } as never);
+
+      await run();
+
+      expect(
+        externalProviderRepository.updateProviderLastSync
+      ).toHaveBeenCalledWith('p-1', expect.any(Date));
+    });
+  });
+
+  it.each([
+    {
+      name: 'Oura',
+      mockResult: () =>
+        vi.mocked(ouraService.syncOuraData).mockResolvedValueOnce({
+          success: true,
+          failedRequiredFetches: [],
+          workoutsFailed: 2,
+        } as never),
+    },
+    {
+      name: 'Strava',
+      mockResult: () =>
+        vi.mocked(stravaService.syncStravaData).mockResolvedValueOnce({
+          success: true,
+          failedRequiredFetches: [],
+          activitiesFailed: 2,
+        } as never),
+    },
+  ])(
+    'does not update last_sync_at when $name failed to save items',
+    async ({ name, mockResult }) => {
+      vi.mocked(
+        externalProviderRepository.getProvidersByType
+      ).mockResolvedValue([
+        {
+          id: 'p-1',
+          user_id: 'u-1',
+          is_active: true,
+          sync_frequency: 'hourly',
+        } as never,
+      ]);
+      mockResult();
+
+      await runProviderSync(
+        PROVIDER_SYNC_CONFIGS.find((c) => c.name === name) as ProviderSyncConfig
+      );
+
+      expect(
+        externalProviderRepository.updateProviderLastSync
+      ).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith(
+        'warn',
+        expect.stringContaining('last_sync_at not updated: 2 items not saved')
+      );
+    }
+  );
 
   it('runs Hevy sync with correct parameters', async () => {
     vi.mocked(externalProviderRepository.getProvidersByType).mockResolvedValue([

@@ -163,6 +163,8 @@ async function getMeasurementPage(
  * Ingest measurements from Liftosaur into SparkyFitness.
  * `failedKeys` lists keys whose fetch failed; a key Liftosaur does not have
  * (400/404) is not a failure. Values collected before a failure are still saved.
+ * `imported` counts the records that were saved; `failedRecords` those that were
+ * rejected when saving.
  */
 export async function importMeasurementsFromLiftosaur(
   userId: string,
@@ -170,7 +172,7 @@ export async function importMeasurementsFromLiftosaur(
   apiKey: string,
   tz: string,
   cutoffMs: number
-): Promise<{ imported: number; failedKeys: string[] }> {
+): Promise<{ imported: number; failedKeys: string[]; failedRecords: number }> {
   const healthDataToProcess: Array<{
     type: string;
     value: number;
@@ -250,15 +252,19 @@ export async function importMeasurementsFromLiftosaur(
     }
   }
 
+  let imported = 0;
+  let failedRecords = 0;
   if (healthDataToProcess.length > 0) {
-    await measurementService.processHealthData(
+    const { processed, errors } = await measurementService.processHealthData(
       healthDataToProcess,
       userId,
       createdByUserId
     );
+    imported = processed.length;
+    failedRecords = errors.length;
   }
 
-  return { imported: healthDataToProcess.length, failedKeys };
+  return { imported, failedKeys, failedRecords };
 }
 
 export default {

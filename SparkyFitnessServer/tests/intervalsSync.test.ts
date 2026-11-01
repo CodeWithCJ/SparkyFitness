@@ -101,8 +101,8 @@ describe('intervalsService.syncIntervalsData', () => {
       intervalsDataProcessor.processIntervalsActivities
     ).toHaveBeenCalledWith('user-1', 'user-1', [], false);
     expect(query).toHaveBeenCalledWith(
-      expect.stringContaining('SET last_sync_at = NOW()'),
-      ['provider-1']
+      expect.stringContaining('WHERE id = $1 AND user_id = $2'),
+      ['provider-1', 'user-1']
     );
   });
 
@@ -226,6 +226,10 @@ describe('intervalsService.syncIntervalsData', () => {
     ).toHaveBeenCalledWith('user-1', 'user-1', [
       { id: '2026-10-02', weight: 70 },
     ]);
+    expect(query).not.toHaveBeenCalledWith(
+      expect.stringContaining('SET last_sync_at = NOW()'),
+      expect.anything()
+    );
   });
 
   it('refuses to replay when no bundle was captured', async () => {

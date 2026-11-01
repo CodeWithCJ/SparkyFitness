@@ -31,6 +31,24 @@ export interface ProviderSyncConfig {
   sync: (provider: ProviderSyncTarget) => Promise<void>;
 }
 
+const updateLastSyncIfComplete = async (
+  name: string,
+  p: ProviderSyncTarget,
+  failedRequiredFetches: string[],
+  failedItems = 0
+): Promise<void> => {
+  const failures = [...failedRequiredFetches];
+  if (failedItems > 0) failures.push(`${failedItems} items not saved`);
+  if (failures.length === 0) {
+    await externalProviderRepository.updateProviderLastSync(p.id, new Date());
+  } else {
+    log(
+      'warn',
+      `[CRON] ${name} sync is incomplete for user ${p.user_id}; last_sync_at not updated: ${failures.join(', ')}`
+    );
+  }
+};
+
 export const PROVIDER_SYNC_CONFIGS: readonly ProviderSyncConfig[] = [
   {
     name: 'Withings',
@@ -71,16 +89,26 @@ export const PROVIDER_SYNC_CONFIGS: readonly ProviderSyncConfig[] = [
     name: 'Oura',
     types: ['oura'],
     sync: async (p) => {
-      await ouraService.syncOuraData(p.user_id, 'scheduled');
-      await externalProviderRepository.updateProviderLastSync(p.id, new Date());
+      const result = await ouraService.syncOuraData(p.user_id, 'scheduled');
+      await updateLastSyncIfComplete(
+        'Oura',
+        p,
+        result.failedRequiredFetches,
+        result.workoutsFailed
+      );
     },
   },
   {
     name: 'Strava',
     types: ['strava'],
     sync: async (p) => {
-      await stravaService.syncStravaData(p.user_id, 'scheduled');
-      await externalProviderRepository.updateProviderLastSync(p.id, new Date());
+      const result = await stravaService.syncStravaData(p.user_id, 'scheduled');
+      await updateLastSyncIfComplete(
+        'Strava',
+        p,
+        result.failedRequiredFetches,
+        result.activitiesFailed
+      );
     },
   },
   {
@@ -103,8 +131,15 @@ export const PROVIDER_SYNC_CONFIGS: readonly ProviderSyncConfig[] = [
     name: 'Google Health',
     types: ['googlehealth'],
     sync: async (p) => {
-      await googleHealthService.syncGoogleHealthData(p.user_id, 'scheduled');
-      await externalProviderRepository.updateProviderLastSync(p.id, new Date());
+      const result = await googleHealthService.syncGoogleHealthData(
+        p.user_id,
+        'scheduled'
+      );
+      await updateLastSyncIfComplete(
+        'Google Health',
+        p,
+        result.failedRequiredFetches
+      );
     },
   },
   {
@@ -127,7 +162,8 @@ export const PROVIDER_SYNC_CONFIGS: readonly ProviderSyncConfig[] = [
     },
   },
   {
-    // Hourly; each run covers yesterday and today in the user's timezone.
+    // The cron is hourly, but sync_frequency decides whether a provider is due.
+    // Each run covers yesterday and today in the user's timezone.
     name: 'Intervals.icu',
     types: ['intervals'],
     sync: async (p) => {

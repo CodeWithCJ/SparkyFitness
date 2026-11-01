@@ -46,6 +46,10 @@ describe('scheduled sync window', () => {
     vi.mocked(
       stravaIntegrationService.fetchAllActivitiesInRange
     ).mockResolvedValue([{ id: 1 }] as never);
+    vi.mocked(stravaDataProcessor.processStravaActivities).mockResolvedValue({
+      processed: 1,
+      failed: 0,
+    });
 
     await finish(stravaService.syncStravaData('user-1', 'scheduled'));
 

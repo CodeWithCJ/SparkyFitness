@@ -2,6 +2,7 @@ import { setMockDataContext } from '../utils/mockDataContext.js';
 import { log } from '../config/logging.js';
 import stravaIntegrationService from '../integrations/strava/stravaService.js';
 import stravaDataProcessor from '../integrations/strava/stravaDataProcessor.js';
+import { isPermissionRejection } from './providerFetchResult.js';
 import { getSystemClient } from '../db/poolManager.js';
 import { loadRawBundle } from '../utils/diagnosticLogger.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
@@ -97,16 +98,8 @@ async function syncStravaData(
           tz
         );
       }
-      // Update last_sync_at
-      const client = await getSystemClient();
-      try {
-        await client.query(
-          "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'strava'",
-          [userId]
-        );
-      } finally {
-        client.release();
-      }
+      // A replay fetches nothing new, so it leaves last_sync_at alone: moving it
+      // would make the scheduler skip the next live daily sync.
       log(
         'info',
         `[stravaService] Strava sync from raw bundle completed for user ${userId}.`
@@ -115,6 +108,7 @@ async function syncStravaData(
         success: true,
         source: 'local_raw_replay',
         bundle_updated: bundle.last_updated,
+        failedRequiredFetches: [],
       };
     } catch (error) {
       log(
@@ -135,12 +129,19 @@ async function syncStravaData(
         'No valid Strava access token. Please re-authorize Strava.'
       );
     }
+    const failedRequiredFetches: string[] = [];
     // Helper to safely fetch raw data (logging is handled inside the integration methods)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async function safeFetch(dataType: any, fetchFn: any) {
+    async function safeFetch<T>(
+      dataType: string,
+      fetchFn: () => Promise<T>,
+      required = false
+    ): Promise<T | null> {
       try {
         return await fetchFn();
       } catch (error) {
+        if (required && !isPermissionRejection(error)) {
+          failedRequiredFetches.push(dataType);
+        }
         log(
           'warn',
           // @ts-expect-error TS(2571): Object is of type 'unknown'.
@@ -155,12 +156,15 @@ async function syncStravaData(
       stravaIntegrationService.fetchAthlete(accessToken)
     );
     const activities =
-      (await safeFetch('raw_activities_list', () =>
-        stravaIntegrationService.fetchAllActivitiesInRange(
-          accessToken,
-          afterEpoch,
-          beforeEpoch
-        )
+      (await safeFetch(
+        'raw_activities_list',
+        () =>
+          stravaIntegrationService.fetchAllActivitiesInRange(
+            accessToken,
+            afterEpoch,
+            beforeEpoch
+          ),
+        true
       )) || [];
     const detailedActivities = {};
     if (activities.length > 0) {
@@ -184,15 +188,20 @@ async function syncStravaData(
     }
     // 2. Process EVERYTHING second (The Action Phase)
     log('debug', '[stravaService] Phase 2: Processing captured data...');
+    let activitiesProcessed = 0;
+    let activitiesFailed = 0;
     if (activities.length > 0) {
-      await stravaDataProcessor.processStravaActivities(
-        userId,
-        userId,
-        activities,
-        detailedActivities,
-        startDate,
-        tz
-      );
+      const { processed, failed } =
+        await stravaDataProcessor.processStravaActivities(
+          userId,
+          userId,
+          activities,
+          detailedActivities,
+          startDate,
+          tz
+        );
+      activitiesProcessed = processed;
+      activitiesFailed = failed;
     }
     if (athleteData) {
       await stravaDataProcessor.processStravaAthleteWeight(
@@ -202,24 +211,33 @@ async function syncStravaData(
         tz
       );
     }
-    // 6. Update last_sync_at
-    const client = await getSystemClient();
-    try {
-      await client.query(
-        "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'strava'",
-        [userId]
+    // 6. Update last_sync_at, unless a required fetch or an activity failed
+    if (failedRequiredFetches.length === 0 && activitiesFailed === 0) {
+      const client = await getSystemClient();
+      try {
+        await client.query(
+          "UPDATE external_data_providers SET last_sync_at = NOW() WHERE user_id = $1 AND provider_type = 'strava'",
+          [userId]
+        );
+      } finally {
+        client.release();
+      }
+    } else {
+      log(
+        'warn',
+        `[stravaService] Strava sync for user ${userId} is incomplete (failed required fetches: ${failedRequiredFetches.join(', ') || 'none'}; failed activities: ${activitiesFailed}); last_sync_at not updated.`
       );
-    } finally {
-      client.release();
     }
     log(
       'info',
-      `[stravaService] Full Strava sync completed for user ${userId}. ${activities.length} activities processed.`
+      `[stravaService] Full Strava sync completed for user ${userId}. ${activitiesProcessed} activities processed.`
     );
     return {
       success: true,
       source: 'live_api',
-      activitiesProcessed: activities.length,
+      activitiesProcessed,
+      activitiesFailed,
+      failedRequiredFetches,
     };
   } catch (error) {
     log(
