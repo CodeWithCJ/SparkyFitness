@@ -1,4 +1,4 @@
-{{- if include "sparkyfitness.pdbEnabled" (dict "pdb" .Values.server.podDisruptionBudget "replicas" .Values.server.replicas) }}
+{{- if include "sparkyfitness.pdbEnabled" (dict "pdb" .Values.server.podDisruptionBudget "replicas" .Values.server.replicas "singleNode" .Values.server.persistence.allowSingleNodeVolumes) }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:

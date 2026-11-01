@@ -29,11 +29,11 @@ With Helm, the chart's default volumes are `ReadWriteOnce`, which usually cannot
 With `server.replicas` above 1, the chart also:
 
 - replaces pods one at a time (`RollingUpdate` with `maxUnavailable: 0`) instead of stopping them all first;
-- adds a PodDisruptionBudget so a node drain takes down one server pod at a time;
+- adds a PodDisruptionBudget so a node drain takes down one server pod at a time (not with `server.persistence.allowSingleNodeVolumes: true`, since on a single node the drained pod cannot start again until the drain ends);
 - asks the scheduler to spread the server pods across nodes (a preference, so a single-node cluster still runs them all);
 - waits 5 seconds in a `preStop` hook so the pod leaves the Service before it stops accepting requests, and waits `minReadySeconds: 5` before counting a new pod as available.
 
-Each of these has a value to change or turn off (`server.strategy`, `server.podDisruptionBudget`, `server.topologySpreadConstraints` or `server.defaultTopologySpread`, `server.preStopDelaySeconds` or `server.lifecycle`, `server.minReadySeconds`). Setting `frontend.replicas: 2` gives the web frontend the same budget, spread, `preStop` delay and `minReadySeconds`, so the UI also survives losing a node.
+Each of these has a value to change or turn off (`server.strategy`, `server.podDisruptionBudget`, `server.topologySpreadConstraints` or `server.defaultTopologySpread`, `server.preStopDelaySeconds` or `server.lifecycle`, `server.minReadySeconds`). Setting `frontend.replicas: 2` gives the web frontend the same budget, spread, `preStop` delay and `minReadySeconds`, so the UI also survives losing a node. On a single-node cluster, also set `frontend.podDisruptionBudget.enabled: false`, or a node drain waits forever for a frontend pod that cannot start anywhere else.
 
 ## Run scheduled jobs on one instance
 

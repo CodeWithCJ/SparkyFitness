@@ -320,7 +320,8 @@ server:
     # -- Accept ReadWriteOnce backup and uploads volumes with server.replicas
     # above 1. Only safe on a single-node cluster, where every pod can attach
     # them; on several nodes, pods scheduled away from the volume never start.
-    # ReadWriteOncePod is always refused.
+    # ReadWriteOncePod is always refused. Also leaves the server's default
+    # PodDisruptionBudget off, since a drain on one node could never finish.
     allowSingleNodeVolumes: false
     backup:
       # -- Mount this existing PersistentVolumeClaim instead of creating one
@@ -360,8 +361,9 @@ server:
     automountServiceAccountToken: false
     annotations: {}
   # -- PodDisruptionBudget. `enabled` unset (default) renders one only when
-  # replicas > 1; true or false forces it. Set at most one of minAvailable /
-  # maxUnavailable (0 counts as set); with neither, maxUnavailable is 1.
+  # replicas > 1 and server.persistence.allowSingleNodeVolumes is off; true or
+  # false forces it. Set at most one of minAvailable / maxUnavailable (0
+  # counts as set); with neither, maxUnavailable is 1.
   podDisruptionBudget:
     enabled: ~
     minAvailable: ""
@@ -477,8 +479,10 @@ frontend:
     automountServiceAccountToken: false
     annotations: {}
   # -- PodDisruptionBudget. `enabled` unset (default) renders one only when
-  # replicas > 1; true or false forces it. Set at most one of minAvailable /
-  # maxUnavailable (0 counts as set); with neither, maxUnavailable is 1.
+  # replicas > 1; true or false forces it. On a single-node cluster set
+  # enabled: false, or a drain blocks once the evicted pod cannot reschedule.
+  # Set at most one of minAvailable / maxUnavailable (0 counts as set); with
+  # neither, maxUnavailable is 1.
   podDisruptionBudget:
     enabled: ~
     minAvailable: ""

@@ -175,6 +175,14 @@ jobs:
           fi
           # One replica on ReadWriteMany can surge.
           helm template t helm/chart $rwx --show-only templates/server/deployment.yaml | grep -q 'type: RollingUpdate'
+          # On a single node a drain could never finish behind a PDB, so none
+          # by default; an explicit enabled=true still renders one.
+          single="--set server.replicas=2 --set server.persistence.allowSingleNodeVolumes=true"
+          if helm template t helm/chart $single --show-only templates/server/pdb.yaml > /dev/null 2>&1; then
+            echo "allowSingleNodeVolumes should leave the default PodDisruptionBudget off"; exit 1
+          fi
+          helm template t helm/chart $single --set server.podDisruptionBudget.enabled=true \
+            --show-only templates/server/pdb.yaml | grep -q 'kind: PodDisruptionBudget'
 
       - name: Render — overrides of the multi-replica defaults
         run: |

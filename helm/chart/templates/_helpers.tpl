@@ -340,13 +340,15 @@ true
 
 {{/*
 Whether a PodDisruptionBudget is rendered. enabled unset (the default)
-means "only when replicas > 1": a PDB on a single replica blocks node
-drains without protecting anything.
-Usage: {{ include "sparkyfitness.pdbEnabled" (dict "pdb" .Values.server.podDisruptionBudget "replicas" .Values.server.replicas) }}
+means "only when replicas > 1 and not on a single node": a PDB on a single
+replica blocks node drains without protecting anything, and on a single
+node the evicted pod cannot reschedule while the node is cordoned, so the
+budget blocks the next eviction for good.
+Usage: {{ include "sparkyfitness.pdbEnabled" (dict "pdb" .Values.server.podDisruptionBudget "replicas" .Values.server.replicas "singleNode" .Values.server.persistence.allowSingleNodeVolumes) }}
 */}}
 {{- define "sparkyfitness.pdbEnabled" -}}
 {{- if kindIs "invalid" .pdb.enabled -}}
-{{- if gt (int .replicas) 1 }}true{{ end -}}
+{{- if and (gt (int .replicas) 1) (not .singleNode) }}true{{ end -}}
 {{- else if .pdb.enabled -}}
 true
 {{- end -}}
