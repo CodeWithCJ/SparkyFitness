@@ -657,12 +657,13 @@ CREATE POLICY modify_policy ON public.profiles FOR ALL TO PUBLIC USING (authenti
 -- Weekly weight goals are ordinary calculation preferences on this row: the
 -- existing profile-read and owner-write policies cover them without new grants.
 -- adaptive_activity_separate inherits the existing preference read/write rules.
+-- adjust_macros_with_exercise uses the same owner-write, delegate-read rules.
 -- use_move_ring_active_calories inherits the existing preference read/write rules.
 CREATE POLICY select_policy ON public.user_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_preferences FOR ALL TO PUBLIC
 USING (authenticated_user_id() = user_id)
 WITH CHECK (authenticated_user_id() = user_id);
--- The calorie settings each past day used (#1795), written by a trigger when
+-- The calorie and percentage-macro settings each past day used (#1795), written by a trigger when
 -- user_preferences changes, so they follow the same owner-write/delegate-read rules.
 CREATE POLICY select_policy ON public.user_calorie_rule_history FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_calorie_rule_history FOR ALL TO PUBLIC

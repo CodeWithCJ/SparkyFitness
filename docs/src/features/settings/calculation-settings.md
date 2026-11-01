@@ -99,6 +99,32 @@ This setting determines **how physical activity changes your calorie budget** th
 
 ---
 
+### Percentage macro goals and exercise
+
+**Adjust percentage macro goals with exercise calories** is available in web
+Calculation Settings and mobile Calorie Settings. It is off by default.
+
+When enabled, protein, carbohydrate and fat gram targets use your saved percentage
+split and the positive exercise calories credited by your calorie adjustment mode.
+For example, a 2,000 kcal goal plus 500 credited exercise calories uses 2,500 kcal
+for the macro calculation. With 50% exercise earn-back, it uses 2,250 kcal instead.
+The existing fiber calorie allocation is preserved; fiber and micronutrient targets
+do not increase.
+
+Fixed goals and goals entered directly in grams stay unchanged. Adaptive targets
+that already include activity do not earn it back again; **Count activity calories
+separately** can credit that day's resolved activity once. Device Projection uses
+the positive exercise-attributable increase above its no-activity budget and the
+base goal, without adding the workout again. Resting-only projection changes are
+not added as exercise.
+
+Targets follow the selected diary date and update when activity is edited, removed
+or synced. The saved base goals and percentage split remain unchanged. Changes to
+this option apply from today in your timezone, alongside the other recorded
+calorie settings. Earlier days keep their own on/off choice: enabling it does not
+raise past macro targets, and disabling it does not remove past exercise credit.
+Turning it off restores the existing macro calculation from today onward.
+
 ## 4. Goal Mode & Caloric Deficits
 
 **Goal Mode** adjusts your baseline calorie target. Select **Weekly weight change** to enter a desired weekly change directly, or keep one of the existing percentage-based modes.

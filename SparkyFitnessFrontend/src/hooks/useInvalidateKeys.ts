@@ -118,6 +118,7 @@ export const useExerciseInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });
     queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
     queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
+    queryClient.invalidateQueries({ queryKey: goalKeys.all });
     queryClient.invalidateQueries({ queryKey: diaryReportKeys.all });
     queryClient.invalidateQueries({ queryKey: reportKeys.all });
     queryClient.invalidateQueries({ queryKey: runProgramKeys.all });

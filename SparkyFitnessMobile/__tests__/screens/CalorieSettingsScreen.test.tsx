@@ -84,6 +84,24 @@ const navigation = { goBack: jest.fn(), setOptions: jest.fn() } as never;
 const route = { params: {} } as never;
 
 describe('CalorieSettingsScreen', () => {
+  it.each([false, true])(
+    'shows and updates the exercise macro preference from %s',
+    (enabled) => {
+      mockPreferences.adjust_macros_with_exercise = enabled;
+      const screen = render(
+        <CalorieSettingsScreen navigation={navigation} route={route} />
+      );
+      const toggle = screen.getByLabelText(
+        'Adjust percentage macro goals with exercise calories'
+      );
+      expect(toggle.props.value).toBe(enabled);
+      fireEvent(toggle, 'valueChange', !enabled);
+      expect(mockMutate).toHaveBeenCalledWith({
+        adjust_macros_with_exercise: !enabled,
+      });
+    }
+  );
+
   beforeEach(async () => {
     await act(async () => {
       await initializeI18n('en');
