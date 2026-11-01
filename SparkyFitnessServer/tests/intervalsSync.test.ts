@@ -106,6 +106,29 @@ describe('intervalsService.syncIntervalsData', () => {
     );
   });
 
+  it('leaves last_sync_at alone when an activity fails, but still reports the result', async () => {
+    vi.mocked(
+      intervalsDataProcessor.processIntervalsActivities
+    ).mockResolvedValueOnce({ imported: 1, skipped: 0, failed: 1, removed: 0 });
+
+    const result = await intervalsService.syncIntervalsData(
+      'user-1',
+      'user-1',
+      'provider-1'
+    );
+
+    expect(result).toMatchObject({
+      success: true,
+      activitiesImported: 1,
+      activitiesFailed: 1,
+    });
+    expect(intervalsDataProcessor.processIntervalsWellness).toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalledWith(
+      expect.stringContaining('SET last_sync_at = NOW()'),
+      expect.anything()
+    );
+  });
+
   it('defaults to yesterday and today in the user timezone', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-14T12:00:00Z'));

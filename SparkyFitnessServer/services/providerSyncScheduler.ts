@@ -138,7 +138,8 @@ export const PROVIDER_SYNC_CONFIGS: readonly ProviderSyncConfig[] = [
 
 // The cron fires on the hour and a sync finishes a few minutes later, so
 // last_sync_at lands just past the hour. A 24 h threshold would then miss the
-// next day's tick and slip a daily sync to every other day; 23 h does not.
+// same tick the next day and push the daily sync back an hour every day; 23 h
+// does not.
 const DAILY_SYNC_INTERVAL_MS = 23 * 60 * 60 * 1000;
 
 export const isProviderSyncDue = (

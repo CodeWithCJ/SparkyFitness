@@ -225,25 +225,34 @@ async function syncHevyData(
           }
         }
       });
+      let failedWorkouts = 0;
       if (allWorkouts.length > 0) {
-        await hevyDataProcessor.processHevyWorkouts(
+        const { failed } = await hevyDataProcessor.processHevyWorkouts(
           userId,
           createdByUserId,
           allWorkouts,
           tz
         );
+        failedWorkouts = failed;
       }
-      // 3. Update last sync time
-      const client = await getSystemClient();
-      try {
-        await client.query(
-          `UPDATE external_data_providers
-                     SET last_sync_at = NOW(), updated_at = NOW()
-                     WHERE user_id = $1 AND provider_type = 'hevy'`,
-          [userId]
+      // 3. Update last sync time, unless a workout failed
+      if (failedWorkouts === 0) {
+        const client = await getSystemClient();
+        try {
+          await client.query(
+            `UPDATE external_data_providers
+                       SET last_sync_at = NOW(), updated_at = NOW()
+                       WHERE user_id = $1 AND provider_type = 'hevy'`,
+            [userId]
+          );
+        } finally {
+          client.release();
+        }
+      } else {
+        log(
+          'warn',
+          `[hevyService] Hevy replay for user ${userId} failed on ${failedWorkouts} workouts; last_sync_at not updated.`
         );
-      } finally {
-        client.release();
       }
       log(
         'info',
@@ -339,23 +348,25 @@ async function syncHevyData(
         tz
       );
     }
+    let failedWorkouts = 0;
     if (allWorkouts.length > 0) {
-      await hevyDataProcessor.processHevyWorkouts(
+      const { failed } = await hevyDataProcessor.processHevyWorkouts(
         userId,
         createdByUserId,
         allWorkouts,
         tz
       );
+      failedWorkouts = failed;
     }
     const totalProcessed = allWorkouts.length;
-    // 3. Update last sync time, unless a workout page failed: the scheduler
-    // reads last_sync_at to decide when a daily sync is due, so a partial sync
-    // must leave it alone to be retried on the next tick. A failed user-info
-    // fetch does not block it.
+    // 3. Update last sync time, unless a workout page or a workout failed: the
+    // scheduler reads last_sync_at to decide when a daily sync is due, so a
+    // partial sync must leave it alone to be retried on the next tick. A failed
+    // user-info fetch does not block it.
     const failedWorkoutPages = failedFetches.filter((key) =>
       key.startsWith('raw_workouts_page')
     );
-    if (failedWorkoutPages.length === 0) {
+    if (failedWorkoutPages.length === 0 && failedWorkouts === 0) {
       const client = await getSystemClient();
       try {
         await client.query(
@@ -370,7 +381,7 @@ async function syncHevyData(
     } else {
       log(
         'warn',
-        `[hevyService] Hevy sync for user ${userId} could not fetch ${failedWorkoutPages.join(', ')}; last_sync_at not updated.`
+        `[hevyService] Hevy sync for user ${userId} is incomplete (failed pages: ${failedWorkoutPages.join(', ') || 'none'}; failed workouts: ${failedWorkouts}); last_sync_at not updated.`
       );
     }
     log(

@@ -35,8 +35,11 @@ async function syncStravaData(
     endDate = today;
     startDate = addDays(today, -7);
   } else if (syncType === 'scheduled') {
+    // Include yesterday b/c a daily sync would otherwise miss anything recorded
+    // after that day's sync ran. Re-fetching a day is safe: entries are matched
+    // by source_id and daily values are upserted.
     endDate = today;
-    startDate = today;
+    startDate = addDays(today, -1);
   } else {
     throw new Error("Invalid syncType. Must be 'manual' or 'scheduled'.");
   }

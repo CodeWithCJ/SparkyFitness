@@ -232,16 +232,25 @@ async function syncIntervalsData(
     wellness ?? []
   );
 
-  const client = await getSystemClient();
-  try {
-    await client.query(
-      `UPDATE external_data_providers
-       SET last_sync_at = NOW(), updated_at = NOW()
-       WHERE id = $1`,
-      [creds.providerId]
+  // The scheduler reads last_sync_at to decide when a daily sync is due, so a
+  // sync with failed activities leaves it alone to be retried next tick.
+  if (failed === 0) {
+    const client = await getSystemClient();
+    try {
+      await client.query(
+        `UPDATE external_data_providers
+         SET last_sync_at = NOW(), updated_at = NOW()
+         WHERE id = $1`,
+        [creds.providerId]
+      );
+    } finally {
+      client.release();
+    }
+  } else {
+    log(
+      'warn',
+      `[intervalsService] Intervals.icu sync for user ${userId} failed on ${failed} activities; last_sync_at not updated.`
     );
-  } finally {
-    client.release();
   }
 
   log(

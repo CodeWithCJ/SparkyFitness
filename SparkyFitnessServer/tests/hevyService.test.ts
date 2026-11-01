@@ -3,6 +3,7 @@ import axios from 'axios';
 import hevyService from '../integrations/hevy/hevyService.js';
 import hevyDataProcessor from '../integrations/hevy/hevyDataProcessor.js';
 import { getSystemClient } from '../db/poolManager.js';
+import { loadRawBundle } from '../utils/diagnosticLogger.js';
 
 vi.mock('axios');
 vi.mock('../db/poolManager.js');
@@ -20,7 +21,7 @@ vi.mock('../utils/diagnosticLogger.js', () => ({
 vi.mock('../integrations/hevy/hevyDataProcessor.js', () => ({
   default: {
     processHevyUserInfo: vi.fn().mockResolvedValue(undefined),
-    processHevyWorkouts: vi.fn().mockResolvedValue(undefined),
+    processHevyWorkouts: vi.fn().mockResolvedValue({ processed: 1, failed: 0 }),
   },
 }));
 
@@ -130,6 +131,66 @@ describe('hevyService.syncHevyData', () => {
     await hevyService.syncHevyData('user-1', 'user-1', true, 'provider-123');
 
     expect(hevyDataProcessor.processHevyUserInfo).not.toHaveBeenCalled();
+    expect(lastSyncUpdates()).toHaveLength(1);
+  });
+
+  it('leaves last_sync_at alone when a workout fails to process', async () => {
+    mockHevyApi(
+      async () => ({ data: { data: { id: 'hevy-user' } } }),
+      [async () => workoutPage('w-1', 1)]
+    );
+    vi.mocked(hevyDataProcessor.processHevyWorkouts).mockResolvedValueOnce({
+      processed: 0,
+      failed: 1,
+    });
+
+    const result = await hevyService.syncHevyData(
+      'user-1',
+      'user-1',
+      true,
+      'provider-123'
+    );
+
+    expect(result).toEqual({
+      success: true,
+      processedCount: 1,
+      source: 'live_api',
+    });
+    expect(lastSyncUpdates()).toHaveLength(0);
+  });
+
+  it('applies the same rule when replaying a raw bundle', async () => {
+    vi.mocked(loadRawBundle).mockReturnValue({
+      last_updated: '2026-11-01',
+      responses: {
+        raw_workouts_page_1: { data: { workouts: [{ id: 'w-1' }] } },
+      },
+    });
+
+    vi.mocked(hevyDataProcessor.processHevyWorkouts).mockResolvedValueOnce({
+      processed: 0,
+      failed: 1,
+    });
+    await hevyService.syncHevyData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123',
+      null,
+      null,
+      'local'
+    );
+    expect(lastSyncUpdates()).toHaveLength(0);
+
+    await hevyService.syncHevyData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123',
+      null,
+      null,
+      'local'
+    );
     expect(lastSyncUpdates()).toHaveLength(1);
   });
 });
