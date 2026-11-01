@@ -535,6 +535,20 @@
       "setOf": "Set {{number}} of {{total}}",
       "warmupOf": "Warm-up {{number}} of {{total}}",
       "then": "Then {{name}}"
+    },
+    "focus": {
+      "media": {
+        "minimize": "Minimize",
+        "minimizeLabel": "Minimize {{name}} image",
+        "expandLabel": "Expand {{name}} image",
+        "expandHint": "Long press to open full screen",
+        "pause": "Pause",
+        "play": "Play",
+        "pauseLabel": "Pause {{name}} animation",
+        "playLabel": "Play {{name}} animation",
+        "openFullScreen": "View {{name}} image full screen",
+        "openFullScreenHint": "Opens the image so you can zoom in"
+      }
     }
   },
   "addSheet": {

@@ -19,4 +19,16 @@ describe('useImageSlideshow', () => {
     act(() => jest.advanceTimersByTime(5000));
     expect(result.current).toBe(0);
   });
+
+  it('holds the current frame while paused', () => {
+    const { result, rerender } = renderHook(
+      ({ paused }) => useImageSlideshow(2, 1000, paused),
+      { initialProps: { paused: false } }
+    );
+    act(() => jest.advanceTimersByTime(1000));
+    expect(result.current).toBe(1);
+    rerender({ paused: true });
+    act(() => jest.advanceTimersByTime(3000));
+    expect(result.current).toBe(1);
+  });
 });
