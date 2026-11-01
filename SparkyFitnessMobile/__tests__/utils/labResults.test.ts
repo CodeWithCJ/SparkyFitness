@@ -124,6 +124,11 @@ describe('formatting', () => {
     expect(formatLabValue(7, '')).toBe('7');
   });
 
+  it('does not round small values to zero', () => {
+    expect(formatLabValue(0.0000004, 'mg/L')).toBe('0.0000004 mg/L');
+    expect(formatLabRange(null, 0.0000004, 'mg/L')).toBe('< 0.0000004 mg/L');
+  });
+
   it('uses the app locale decimal separator', async () => {
     await initializeI18n('en');
     await i18n.changeLanguage('pl');
