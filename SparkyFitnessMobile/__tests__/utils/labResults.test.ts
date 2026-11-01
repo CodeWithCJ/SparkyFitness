@@ -330,6 +330,71 @@ describe('labHistoryPoints with blank units', () => {
   });
 });
 
+describe('labHistoryPoints with blank units and a known chart unit', () => {
+  const dated = (id: string, day: string, over: Partial<LabResultResponse>) =>
+    result({ id, entry_date: day, value_numeric: 1, ...over });
+
+  it('drops a blank-unit result that carries a range of its own', () => {
+    // Its bounds are in a unit nobody recorded.
+    const points = labHistoryPoints(
+      [
+        dated('a', '2026-09-12', { unit: 'mg/dL', value_numeric: 100 }),
+        dated('b', '2026-06-01', {
+          unit: '',
+          value_numeric: 2.6,
+          ref_range_low: 1,
+          ref_range_high: 3,
+        }),
+      ],
+      'mg/dL',
+      'mg/dL'
+    );
+    expect(points.map((p) => p.value)).toEqual([100]);
+  });
+
+  it("drops a blank-unit result when the marker's range is in another unit", () => {
+    const points = labHistoryPoints(
+      [
+        dated('a', '2026-09-12', { unit: 'mg/dL', value_numeric: 100 }),
+        dated('b', '2026-06-01', { unit: '', value_numeric: 2.6 }),
+      ],
+      'mg/dL',
+      'mmol/L'
+    );
+    expect(points.map((p) => p.value)).toEqual([100]);
+  });
+
+  it("keeps a blank-unit result with no range when the marker's range unit matches", () => {
+    const points = labHistoryPoints(
+      [
+        dated('a', '2026-09-12', { unit: 'mg/dL', value_numeric: 100 }),
+        dated('b', '2026-06-01', { unit: '', value_numeric: 95 }),
+      ],
+      'mg/dL',
+      'MG/DL'
+    );
+    expect(points.map((p) => p.value)).toEqual([95, 100]);
+  });
+
+  it('keeps every blank-unit result, bounds or not, when the chart unit is blank', () => {
+    const points = labHistoryPoints(
+      [
+        dated('a', '2026-09-12', { unit: '', value_numeric: 7 }),
+        dated('b', '2026-06-01', {
+          unit: '',
+          value_numeric: 6,
+          ref_range_low: 1,
+          ref_range_high: 9,
+        }),
+        dated('c', '2026-03-01', { unit: 'mg/dL', value_numeric: 95 }),
+      ],
+      '',
+      'mg/dL'
+    );
+    expect(points.map((p) => p.value)).toEqual([6, 7]);
+  });
+});
+
 describe('effectiveLabRange with units', () => {
   const marker = {
     ref_range_low: 0,

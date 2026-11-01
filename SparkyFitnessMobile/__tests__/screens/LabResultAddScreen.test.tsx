@@ -141,4 +141,45 @@ describe('LabResultAddScreen prefill', () => {
     expect(getByLabelText('Low').props.value).toBe('');
     expect(getByLabelText('High').props.value).toBe('');
   });
+
+  it('fills in a marker picked while data loads once the data arrives', () => {
+    const noMarkerRoute = { params: undefined } as never;
+    markersState([], true);
+    const { getByLabelText, getByText, rerender } = render(
+      <LabResultAddScreen navigation={navigation} route={noMarkerRoute} />
+    );
+
+    fireEvent.changeText(
+      getByLabelText('Search markers (HbA1c, LDL, ...)'),
+      'HbA1c'
+    );
+    fireEvent.press(getByText('HbA1c'));
+    // Not filled in from the bare preset while the markers load.
+    expect(getByLabelText('Unit').props.value).toBe('');
+
+    markersState([hba1c], false);
+    rerender(
+      <LabResultAddScreen navigation={navigation} route={noMarkerRoute} />
+    );
+
+    expect(getByLabelText('Unit').props.value).toBe('mmol/mol');
+    expect(getByLabelText('Low').props.value).toBe('20');
+    expect(getByLabelText('High').props.value).toBe('38');
+  });
+
+  it('fills in a marker picked after the data has loaded straight away', () => {
+    const noMarkerRoute = { params: undefined } as never;
+    markersState([hba1c], false);
+    const { getByLabelText, getByText } = render(
+      <LabResultAddScreen navigation={navigation} route={noMarkerRoute} />
+    );
+
+    fireEvent.changeText(
+      getByLabelText('Search markers (HbA1c, LDL, ...)'),
+      'HbA1c'
+    );
+    fireEvent.press(getByText('HbA1c'));
+
+    expect(getByLabelText('Unit').props.value).toBe('mmol/mol');
+  });
 });

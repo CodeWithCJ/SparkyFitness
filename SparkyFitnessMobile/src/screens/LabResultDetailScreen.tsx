@@ -76,7 +76,7 @@ const LabResultDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // The latest result's own range wins, then the marker's.
   const unit = latest?.unit || marker?.unit || '';
   // The chart shares one scale, so it plots only results in the latest unit.
-  const points = labHistoryPoints(results, unit);
+  const points = labHistoryPoints(results, unit, marker?.ref_range_unit);
   const otherUnitCount =
     results.filter((r) => r.value_numeric !== null).length - points.length;
   const { low, high } = effectiveLabRange(latest, fallback);

@@ -275,24 +275,36 @@ export type LabHistoryPoint = {
 /**
  * Numeric results as chart points, oldest first; text-only results are
  * dropped. Given a unit, results in another unit are left out too, since
- * values in different units do not share a scale (a result with no unit is
- * kept: it is read in the marker's unit). Results on the same day
+ * values in different units do not share a scale. Results on the same day
  * keep the order they were entered in.
+ *
+ * A result saved without a unit is read in the marker's unit, as its range
+ * is. So with a known chart unit it is plotted only when it carries no range
+ * of its own (a range would be in an unknown unit) and the marker's range is
+ * in the chart unit. With a blank chart unit, blank-unit results all belong.
+ * `markerRangeUnit` is that unit; leave it out while the marker is unknown.
  */
 export const labHistoryPoints = (
   results: LabResultResponse[],
-  unit?: string
+  unit?: string,
+  markerRangeUnit?: string
 ): LabHistoryPoint[] =>
   results
-    .filter(
-      (r) =>
-        r.value_numeric !== null &&
-        (unit === undefined ||
-          // A result saved without a unit is read in the marker's unit, as
-          // its range is, so it belongs on the chart.
-          r.unit.trim() === '' ||
-          sameLabUnit(r.unit, unit, r.marker_key))
-    )
+    .filter((r) => {
+      if (r.value_numeric === null) return false;
+      if (unit === undefined) return true;
+      if (r.unit.trim() === '') {
+        if (unit.trim() === '') return true;
+        const hasOwnRange =
+          r.ref_range_low !== null || r.ref_range_high !== null;
+        return (
+          !hasOwnRange &&
+          (markerRangeUnit === undefined ||
+            sameLabUnit(markerRangeUnit, unit, r.marker_key))
+        );
+      }
+      return sameLabUnit(r.unit, unit, r.marker_key);
+    })
     .sort(
       (a, b) =>
         a.entry_date.localeCompare(b.entry_date) ||
