@@ -93,6 +93,34 @@ describe('LabResultDetailScreen', () => {
     expect(getByText(/fasting/)).toBeTruthy();
   });
 
+  it('says how many results are left off the chart for being in another unit', () => {
+    jest.mocked(useLabHistory).mockReturnValue({
+      data: [
+        result({ id: 'n1', entry_date: '2026-09-12', value_numeric: 6.1 }),
+        result({
+          id: 'n2',
+          entry_date: '2026-06-01',
+          value_numeric: 43,
+          unit: 'mmol/mol',
+        }),
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as never);
+    const { getByText } = render(
+      <LabResultDetailScreen navigation={navigation} route={route} />
+    );
+    expect(getByText('1 result in another unit is not plotted.')).toBeTruthy();
+  });
+
+  it('says nothing when every result shares the unit', () => {
+    const { queryByText } = render(
+      <LabResultDetailScreen navigation={navigation} route={route} />
+    );
+    expect(queryByText(/not plotted/)).toBeNull();
+  });
+
   it('confirms before deleting a result by its id', () => {
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const { getAllByLabelText } = render(
