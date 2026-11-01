@@ -1047,6 +1047,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           getImageSource={getImageSource}
           scrollContentStyle={scrollContentStyle}
           keyboardBottomOffset={keyboardBottomOffset}
+          onSwap={handleSwapExercise}
           onPressOverflow={handlePressOverflow}
           onSeeAlternatives={handleReplaceExercise}
           onCompleteSet={handleCompleteSet}

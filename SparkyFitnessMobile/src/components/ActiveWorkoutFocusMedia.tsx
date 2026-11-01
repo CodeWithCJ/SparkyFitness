@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useReducedMotion } from 'react-native-reanimated';
@@ -22,9 +22,15 @@ interface Props {
 
 const THUMB_SIZE = 72;
 const MAX_HEIGHT_RATIO = 0.45;
+// Library photos are mostly 4:3 landscape; the card takes each image's own
+// shape once it loads, within portrait 3:4 and wide 16:9, so a photo fills it
+// instead of sitting between white bands.
+const DEFAULT_ASPECT = 4 / 3;
+const MIN_ASPECT = 3 / 4;
+const MAX_ASPECT = 16 / 9;
 
 /**
- * The focus view's exercise media: a large square card that can be minimized
+ * The focus view's exercise media: a large card that can be minimized
  * to a thumbnail beside the title. The photo pair cycles unless paused or
  * Reduce Motion is on; tapping the card opens the zoomable lightbox.
  */
@@ -38,6 +44,12 @@ function ActiveWorkoutFocusMedia({
 }: Props) {
   const { t } = useTranslation();
   const { height: windowHeight } = useWindowDimensions();
+  const [aspect, setAspect] = useState(DEFAULT_ASPECT);
+  const handleLoadSize = useCallback((width: number, height: number) => {
+    if (width > 0 && height > 0) {
+      setAspect(Math.min(MAX_ASPECT, Math.max(MIN_ASPECT, width / height)));
+    }
+  }, []);
   const openLightbox = useOpenLightbox();
   const reducedMotion = useReducedMotion();
   const textPrimary = String(useCSSVariable('--color-text-primary'));
@@ -65,8 +77,9 @@ function ActiveWorkoutFocusMedia({
 
   const source = getImageSource(usable[index]);
   const openFullScreen = () => openLightbox(usable, index, exerciseName);
+  // A dark scrim reads over any photo, whatever the app theme.
   const pillClass =
-    'flex-row items-center gap-1.5 bg-surface/90 border border-border/40 rounded-full px-3 active:opacity-70';
+    'flex-row items-center gap-1.5 bg-black/55 rounded-full px-3 active:opacity-70';
 
   if (!expanded) {
     return (
@@ -92,7 +105,8 @@ function ActiveWorkoutFocusMedia({
             <SafeImage
               source={source}
               style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
-              contentFit="contain"
+              // A thumbnail reads better filled; the card shows the whole frame.
+              contentFit="cover"
               autoplay
               fallback={null}
             />
@@ -109,7 +123,10 @@ function ActiveWorkoutFocusMedia({
   return (
     <View
       className="w-full bg-white rounded-2xl overflow-hidden"
-      style={{ aspectRatio: 1, maxHeight: windowHeight * MAX_HEIGHT_RATIO }}
+      style={{
+        aspectRatio: aspect,
+        maxHeight: windowHeight * MAX_HEIGHT_RATIO,
+      }}
     >
       <Pressable
         onPress={openFullScreen}
@@ -126,9 +143,10 @@ function ActiveWorkoutFocusMedia({
         <SafeImage
           source={source}
           style={{ width: '100%', height: '100%' }}
-          contentFit="contain"
+          contentFit="cover"
           autoplay
           fallback={null}
+          onLoadSize={handleLoadSize}
         />
       </Pressable>
       <Pressable
@@ -141,8 +159,8 @@ function ActiveWorkoutFocusMedia({
         })}
         accessibilityState={{ expanded: true }}
       >
-        <Icon name="chevron-down" size={16} color={textPrimary} />
-        <Text className="text-sm font-semibold text-text-primary">
+        <Icon name="chevron-down" size={16} color="white" />
+        <Text className="text-sm font-semibold text-white">
           {t('activeWorkout.focus.media.minimize', {
             defaultValue: 'Minimize',
           })}
@@ -165,12 +183,8 @@ function ActiveWorkoutFocusMedia({
                 })
           }
         >
-          <Icon
-            name={paused ? 'play' : 'pause'}
-            size={16}
-            color={textPrimary}
-          />
-          <Text className="text-sm font-semibold text-text-primary">
+          <Icon name={paused ? 'play' : 'pause'} size={16} color="white" />
+          <Text className="text-sm font-semibold text-white">
             {paused
               ? t('activeWorkout.focus.media.play', { defaultValue: 'Play' })
               : t('activeWorkout.focus.media.pause', { defaultValue: 'Pause' })}

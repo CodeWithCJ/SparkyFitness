@@ -86,6 +86,7 @@ const session = {
 
 const handlers = {
   onPressOverflow: jest.fn(),
+  onSwap: jest.fn(),
   onCompleteSet: jest.fn(),
   onUncomplete: jest.fn(),
   onCommitField: jest.fn(),
@@ -227,6 +228,12 @@ describe('ActiveWorkoutFocusView', () => {
     render(viewElement('b'));
     fireEvent.press(screen.getByLabelText('More options for Squat'));
     expect(handlers.onPressOverflow).toHaveBeenCalledWith('b');
+  });
+
+  it('offers Swap for the shown exercise', () => {
+    render(viewElement('b'));
+    fireEvent.press(screen.getByLabelText('Swap Squat'));
+    expect(handlers.onSwap).toHaveBeenCalledWith('b');
   });
 
   it('shows the muscle and equipment chips and the best set', () => {

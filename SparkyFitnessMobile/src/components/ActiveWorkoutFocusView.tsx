@@ -13,7 +13,10 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
+import {
+  KeyboardAwareScrollView,
+  type KeyboardAwareScrollViewRef,
+} from 'react-native-keyboard-controller';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -94,6 +97,8 @@ interface Props extends SetEditorProps, HistoryProps {
   supersetBorders: Map<string, SupersetBorder>;
   getImageSource: GetImageSource;
   onPressOverflow: (entryId: string) => void;
+  /** The quick change for a busy machine, as on the Now card. */
+  onSwap: (entryId: string) => void;
   /** Opens ranked alternatives from the adaptive banner (#1560). */
   onSeeAlternatives?: (entryId: string) => void;
   /** The screen's bottom padding, which clears its rest bar. */
@@ -133,6 +138,7 @@ interface PageProps extends SetEditorProps {
   getImageSource: GetImageSource;
   onToggleMedia: () => void;
   onPressOverflow: (entryId: string) => void;
+  onSwap: (entryId: string) => void;
   onSeeAlternatives?: (entryId: string) => void;
 }
 
@@ -144,6 +150,7 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   getImageSource,
   onToggleMedia,
   onPressOverflow,
+  onSwap,
   onSeeAlternatives,
   sessionId,
   verifiedSourcePresetId,
@@ -151,11 +158,12 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   ...setEditorProps
 }: PageProps) {
   const { t } = useTranslation();
-  const [textMuted, textSecondary, prColor] = useCSSVariable([
+  const [textMuted, textSecondary, prColor, accent] = useCSSVariable([
     '--color-text-muted',
     '--color-text-secondary',
     '--color-pr',
-  ]) as [string, string, string];
+    '--color-accent-primary',
+  ]) as [string, string, string, string];
   const plannedSetValues = useActiveWorkoutStore((s) => s.plannedSetValues);
 
   const snapshot = exercise.exercise_snapshot;
@@ -223,6 +231,20 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
         >
           {name}
         </Text>
+        <Pressable
+          onPress={() => onSwap(exercise.id)}
+          accessibilityRole="button"
+          accessibilityLabel={t('activeWorkout.now.swapLabel', {
+            defaultValue: 'Swap {{name}}',
+            name,
+          })}
+          className="min-h-11 flex-row items-center gap-1.5 bg-raised rounded-full px-3 active:opacity-70"
+        >
+          <Icon name="swap-horizontal" size={15} color={accent} />
+          <Text className="text-sm font-semibold text-accent-primary">
+            {t('activeWorkout.now.swap', { defaultValue: 'Swap' })}
+          </Text>
+        </Pressable>
         <Pressable
           onPress={() => onPressOverflow(exercise.id)}
           accessibilityRole="button"
@@ -370,6 +392,7 @@ function ActiveWorkoutFocusView({
   supersetBorders,
   getImageSource,
   onPressOverflow,
+  onSwap,
   onSeeAlternatives,
   sessionId,
   verifiedSourcePresetId,
@@ -416,9 +439,12 @@ function ActiveWorkoutFocusView({
     transform: [{ translateX: slide.value }],
   }));
 
+  const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
   const showExercise = useCallback(
     (id: string, direction: -1 | 1) => {
       setSelectedId(id);
+      // Each exercise opens at its photo, not where the last one was scrolled.
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
       if (reducedMotion) return;
       slide.value = direction * SLIDE_OFFSET;
       fade.value = 0;
@@ -567,6 +593,7 @@ function ActiveWorkoutFocusView({
         onSelect={handleSelectChip}
       />
       <KeyboardAwareScrollView
+        ref={scrollRef}
         className="flex-1"
         contentContainerClassName="px-3 pt-2"
         contentContainerStyle={scrollContentStyle}
@@ -609,6 +636,7 @@ function ActiveWorkoutFocusView({
               getImageSource={getImageSource}
               onToggleMedia={toggleMedia}
               onPressOverflow={onPressOverflow}
+              onSwap={onSwap}
               onSeeAlternatives={onSeeAlternatives}
               sessionId={sessionId}
               verifiedSourcePresetId={verifiedSourcePresetId}
