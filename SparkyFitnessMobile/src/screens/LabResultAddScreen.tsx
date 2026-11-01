@@ -128,12 +128,18 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   // Changing the unit of a range the form filled in invalidates that range.
   const settledRange = dropStalePrefilledRange(
     { unit, low: lowText, high: highText },
-    prefill.current
+    prefill.current,
+    selection?.kind === 'builtin' ? selection.key : null
   );
   const handleUnitCommitted = () => {
+    const base = prefill.current;
+    const edited =
+      base !== null && (lowText !== base.low || highText !== base.high);
     setLowText(settledRange.low);
     setHighText(settledRange.high);
-    prefill.current = { unit, ...settledRange };
+    // A range the person edited is theirs from here on, so it must never be
+    // taken for the form's own fill-in on a later unit change.
+    prefill.current = edited ? null : { unit, ...settledRange };
   };
 
   const chooseBuiltin = (chosen: LabMarkerPreset) => {

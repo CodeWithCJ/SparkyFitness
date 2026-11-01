@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import LabResultAddScreen from '../../src/screens/LabResultAddScreen';
 import { useLabMarkers, useSaveLabResult } from '../../src/hooks/useLabResults';
 import { useProfile } from '../../src/hooks/useProfile';
@@ -109,5 +109,36 @@ describe('LabResultAddScreen prefill', () => {
     } as never);
     rerender(<LabResultAddScreen navigation={navigation} route={route} />);
     expect(getByLabelText('Unit').props.value).toBe('%');
+  });
+
+  it('keeps a range the person edited through later unit changes', () => {
+    markersState([hba1c], false);
+    const { getByLabelText } = render(
+      <LabResultAddScreen navigation={navigation} route={route} />
+    );
+    const unit = getByLabelText('Unit');
+
+    fireEvent.changeText(getByLabelText('Low'), '25');
+    fireEvent.changeText(unit, 'mmol');
+    fireEvent(unit, 'endEditing');
+    fireEvent.changeText(unit, 'mmol/L');
+    fireEvent(unit, 'endEditing');
+
+    expect(getByLabelText('Low').props.value).toBe('25');
+    expect(getByLabelText('High').props.value).toBe('38');
+  });
+
+  it('drops the range it filled in when the unit is changed', () => {
+    markersState([hba1c], false);
+    const { getByLabelText } = render(
+      <LabResultAddScreen navigation={navigation} route={route} />
+    );
+    const unit = getByLabelText('Unit');
+
+    fireEvent.changeText(unit, 'mg/dL');
+    fireEvent(unit, 'endEditing');
+
+    expect(getByLabelText('Low').props.value).toBe('');
+    expect(getByLabelText('High').props.value).toBe('');
   });
 });

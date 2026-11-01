@@ -15,6 +15,7 @@ import {
   labSexFromGender,
   parseLabValue,
   parseRangeBound,
+  sameLabUnit,
 } from '../../src/utils/labResults';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 
@@ -184,6 +185,36 @@ describe('formatting', () => {
   });
 });
 
+describe('sameLabUnit and mEq/L', () => {
+  it('treats mEq/L as mmol/L for a monovalent ion only', () => {
+    expect(sameLabUnit('mEq/L', 'mmol/L', 'sodium')).toBe(true);
+    expect(sameLabUnit('MEQ/L', 'mmol/L', 'bicarbonate')).toBe(true);
+  });
+
+  it('keeps mEq/L and mmol/L apart for anything else', () => {
+    // 1 mmol of calcium or magnesium is 2 mEq.
+    expect(sameLabUnit('mEq/L', 'mmol/L', 'calcium')).toBe(false);
+    expect(sameLabUnit('mEq/L', 'mmol/L', null)).toBe(false);
+    expect(sameLabUnit('mEq/L', 'mmol/L')).toBe(false);
+  });
+
+  it('applies a marker range to an mEq/L result only for a monovalent ion', () => {
+    const noRange = { ref_range_low: null, ref_range_high: null };
+    const range = (markerKey: string) => ({
+      ref_range_low: 1,
+      ref_range_high: 5,
+      ref_range_unit: 'mmol/L',
+      markerKey,
+    });
+    expect(
+      effectiveLabRange({ ...noRange, unit: 'mEq/L' }, range('sodium'))
+    ).toEqual({ low: 1, high: 5 });
+    expect(
+      effectiveLabRange({ ...noRange, unit: 'mEq/L' }, range('calcium'))
+    ).toEqual({ low: null, high: null });
+  });
+});
+
 describe('labHistoryPoints', () => {
   it('sorts oldest first and drops text-only results', () => {
     const points = labHistoryPoints([
@@ -246,6 +277,56 @@ describe('labHistoryPoints', () => {
       'mg/dL'
     );
     expect(points.map((p) => p.value)).toEqual([110, 100]);
+  });
+});
+
+describe('labHistoryPoints with blank units', () => {
+  it('keeps a result saved without a unit, as its range is applied', () => {
+    const points = labHistoryPoints(
+      [
+        result({
+          id: 'a',
+          entry_date: '2026-09-12',
+          value_numeric: 100,
+          unit: 'mg/dL',
+        }),
+        result({
+          id: 'b',
+          entry_date: '2026-06-01',
+          value_numeric: 95,
+          unit: '',
+        }),
+        result({
+          id: 'c',
+          entry_date: '2026-03-01',
+          value_numeric: 2.6,
+          unit: 'mmol/L',
+        }),
+      ],
+      'mg/dL'
+    );
+    expect(points.map((p) => p.value)).toEqual([95, 100]);
+  });
+
+  it('still leaves out results that have a unit when the chart unit is blank', () => {
+    const points = labHistoryPoints(
+      [
+        result({
+          id: 'a',
+          entry_date: '2026-09-12',
+          value_numeric: 7,
+          unit: '',
+        }),
+        result({
+          id: 'b',
+          entry_date: '2026-06-01',
+          value_numeric: 95,
+          unit: 'mg/dL',
+        }),
+      ],
+      ''
+    );
+    expect(points.map((p) => p.value)).toEqual([7]);
   });
 });
 

@@ -86,8 +86,6 @@ const UNIT_EQUIVALENTS: Readonly<Record<string, string>> = {
   // 1 ng/mL = 1 ug/L
   'ug/l': 'ng/ml',
   'mcg/dl': 'ug/dl',
-  // For the monovalent ions (sodium, potassium, chloride, bicarbonate).
-  'meq/l': 'mmol/l',
   // Blood counts: x10E3/uL, K/uL, thousand/uL are 10^3 per uL.
   'x10e3/ul': '103/ul',
   '10e3/ul': '103/ul',
@@ -106,22 +104,46 @@ const UNIT_EQUIVALENTS: Readonly<Record<string, string>> = {
   'ml/min/1.73m^2': 'ml/min/1.73m2',
 };
 
+/**
+ * Markers whose ions carry one charge, where 1 mEq/L is exactly 1 mmol/L. It
+ * is not true of divalent ions such as calcium and magnesium (1 mmol is 2
+ * mEq), so the two spellings are the same unit only for these.
+ */
+const MONOVALENT_MARKER_KEYS: ReadonlySet<string> = new Set([
+  'sodium',
+  'potassium',
+  'chloride',
+  'bicarbonate',
+]);
+
 /** "mg/dL" and "MG/DL " are the same unit; "µ" and "u" are interchangeable. */
-const normalizeUnit = (unit: string | null | undefined): string => {
-  const base = (unit ?? '')
+const normalizeUnit = (
+  unit: string | null | undefined,
+  markerKey: string | null | undefined
+): string => {
+  let base = (unit ?? '')
     .toLowerCase()
     .replace(/\s+/g, '')
     .replace(/[µμ]/g, 'u')
     .replace(/²/g, '2')
     .replace(/³/g, '3')
     .replace(/⁶/g, '6');
+  if (base === 'meq/l' && markerKey && MONOVALENT_MARKER_KEYS.has(markerKey)) {
+    base = 'mmol/l';
+  }
   return UNIT_EQUIVALENTS[base] ?? base;
 };
 
+/**
+ * Whether two unit spellings are the same unit, so no conversion is needed.
+ * Pass the marker's key where there is one: some equivalences hold only for
+ * certain markers.
+ */
 export const sameLabUnit = (
   a: string | null | undefined,
-  b: string | null | undefined
-): boolean => normalizeUnit(a) === normalizeUnit(b);
+  b: string | null | undefined,
+  markerKey?: string | null
+): boolean => normalizeUnit(a, markerKey) === normalizeUnit(b, markerKey);
 
 /** What the add form filled in for a marker: its unit and the range typed alongside. */
 export interface LabFormPrefill {
@@ -138,11 +160,12 @@ export interface LabFormPrefill {
  */
 export const dropStalePrefilledRange = (
   current: LabFormPrefill,
-  prefill: LabFormPrefill | null
+  prefill: LabFormPrefill | null,
+  markerKey?: string | null
 ): { low: string; high: string } => {
   const stale =
     prefill !== null &&
-    !sameLabUnit(current.unit, prefill.unit) &&
+    !sameLabUnit(current.unit, prefill.unit, markerKey) &&
     current.low === prefill.low &&
     current.high === prefill.high;
   return stale
@@ -158,7 +181,10 @@ type Range = {
 type LabRangeBounds = { low: number | null; high: number | null };
 
 /** A marker's fallback range, with the unit that range is in. */
-type FallbackRange = Range & { ref_range_unit?: string };
+type FallbackRange = Range & {
+  ref_range_unit?: string;
+  markerKey?: string | null;
+};
 
 /**
  * The range a result is read against: the one saved with it, else the
@@ -180,7 +206,7 @@ export const effectiveLabRange = (
   const otherUnit =
     result?.unit &&
     fallback.ref_range_unit &&
-    !sameLabUnit(result.unit, fallback.ref_range_unit);
+    !sameLabUnit(result.unit, fallback.ref_range_unit, fallback.markerKey);
   if (otherUnit) return { low: null, high: null };
   return {
     low: fallback.ref_range_low ?? null,
@@ -249,7 +275,8 @@ export type LabHistoryPoint = {
 /**
  * Numeric results as chart points, oldest first; text-only results are
  * dropped. Given a unit, results in another unit are left out too, since
- * values in different units do not share a scale. Results on the same day
+ * values in different units do not share a scale (a result with no unit is
+ * kept: it is read in the marker's unit). Results on the same day
  * keep the order they were entered in.
  */
 export const labHistoryPoints = (
@@ -260,7 +287,11 @@ export const labHistoryPoints = (
     .filter(
       (r) =>
         r.value_numeric !== null &&
-        (unit === undefined || sameLabUnit(r.unit, unit))
+        (unit === undefined ||
+          // A result saved without a unit is read in the marker's unit, as
+          // its range is, so it belongs on the chart.
+          r.unit.trim() === '' ||
+          sameLabUnit(r.unit, unit, r.marker_key))
     )
     .sort(
       (a, b) =>
