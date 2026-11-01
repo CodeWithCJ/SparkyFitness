@@ -71,10 +71,10 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const calendarRef = useRef<CalendarSheetRef>(null);
 
-  const { markers } = useLabMarkers();
+  const { markers, isLoading: markersLoading } = useLabMarkers();
   const labels = useLabMarkerLabels();
   const save = useSaveLabResult();
-  const { profile } = useProfile();
+  const { profile, isLoading: profileLoading } = useProfile();
   const sex = labSexFromGender(profile?.gender);
 
   const presetMarkerId = route.params?.marker;
@@ -164,9 +164,13 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   // Opened for a marker (from its detail screen): fill the form once it is known.
+  // Wait for the markers and the profile: the latest result and the sex that
+  // picks the range are not known until they arrive, and a form filled in
+  // without them would keep a range that is wrong for this person.
   const prefilled = useRef(false);
   useEffect(() => {
     if (prefilled.current || !presetQuery) return;
+    if (markersLoading || profileLoading) return;
     if ('markerKey' in presetQuery) {
       const found = LAB_MARKER_PRESETS.find(
         (p) => p.key === presetQuery.markerKey
@@ -184,7 +188,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     // chooseBuiltin / chooseCustom only set state from `markers` and `sex`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markers, sex]);
+  }, [markers, sex, markersLoading, profileLoading]);
 
   const options = useMemo(
     () => buildLabPickerOptions(markers, search, labels),
