@@ -770,6 +770,31 @@ async function fetchHeartRate(
   }
 }
 
+// Individual heart rate readings between two instants (RFC 3339). Unlike
+// fetchDataPointsRange there is no unfiltered fallback: without the filter the
+// API would return every reading the account has ever recorded.
+async function fetchHeartRateSamples(
+  userId: string,
+  startIso: string,
+  endIso: string,
+  providedToken: string | null = null
+) {
+  const accessToken =
+    providedToken || ((await getValidAccessToken(userId)) as string);
+  try {
+    return await fetchDataPointsList(accessToken, 'heart-rate', {
+      pageSize: 1000,
+      filter: `heart_rate.sample_time.physical_time >= "${startIso}" AND heart_rate.sample_time.physical_time < "${endIso}"`,
+    });
+  } catch (error) {
+    log(
+      'error',
+      `[googleHealthService] Error fetching heart rate samples for user ${userId}: ${(error as Error).message}`
+    );
+    throw error;
+  }
+}
+
 async function fetchSteps(
   userId: string,
   startDate: string,
@@ -1222,6 +1247,7 @@ export { getValidAccessToken };
 export { getStatus };
 export { disconnectGoogleHealth };
 export { fetchHeartRate };
+export { fetchHeartRateSamples };
 export { fetchSteps };
 export { fetchWeight };
 export { fetchSpO2 };
@@ -1250,6 +1276,7 @@ export default {
   getStatus,
   disconnectGoogleHealth,
   fetchHeartRate,
+  fetchHeartRateSamples,
   fetchSteps,
   fetchWeight,
   fetchSpO2,

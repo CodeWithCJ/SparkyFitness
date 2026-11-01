@@ -179,6 +179,20 @@ under the Adaptive Method.
 
 Device Projection always uses the projected device TDEE as the live baseline for the selected Goal Mode; the calculation-method selector controls the saved non-device baseline and previews used by the other modes.
 
+### Use Move ring for active calories
+
+On iPhone, SparkyFitness can read your active calories from the Move ring instead
+of the Apple Health Active Energy total, so they match the Fitness app. This is
+**off by default**. Turn on **Use Move ring for active calories** in Calories &
+BMR on the iPhone app; the setting is saved to your account.
+
+- **The ring is built from your Apple Watch and iPhone.** Workouts other apps save
+  to Apple Health can add to it too.
+- **Days without a ring keep the Active Energy total**, for example when Activity
+  access is off in Apple Health.
+- **It applies to days synced after the change.** Earlier days keep what they had
+  until they sync again.
+
 ---
 
 ## 5. Metabolic Safety Floors

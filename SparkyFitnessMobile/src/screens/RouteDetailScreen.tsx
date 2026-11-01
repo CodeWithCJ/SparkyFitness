@@ -15,6 +15,7 @@ import RouteCueList from '../components/RouteCueList';
 import Button from '../components/ui/Button';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useWatchConnectivity } from '../hooks/useWatchConnectivity';
 import { useWatchRouteStatus } from '../hooks/useWatchRouteStatus';
 import { getRecordingPreferences } from '../services/gpsRecordingService';
@@ -44,6 +45,7 @@ const RouteDetailScreen: React.FC<Props> = ({ navigation, route: nav }) => {
   const { id } = nav.params;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const { route, isLoading, isError, refetch } = useRoute(id);
   const { preferences } = usePreferences();
   const unit = preferences?.default_distance_unit ?? 'km';
@@ -222,7 +224,10 @@ const RouteDetailScreen: React.FC<Props> = ({ navigation, route: nav }) => {
     );
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1 bg-background"
@@ -385,7 +390,7 @@ const RouteDetailScreen: React.FC<Props> = ({ navigation, route: nav }) => {
           </>
         )}
       </ScrollView>
-    </>
+    </View>
   );
 };
 

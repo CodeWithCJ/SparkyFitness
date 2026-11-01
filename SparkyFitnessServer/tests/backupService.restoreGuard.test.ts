@@ -31,6 +31,8 @@ const env = vi.hoisted(() => {
 const mocks = vi.hoisted(() => ({
   commands: [] as string[],
   assertRestoreAllowed: vi.fn(),
+  markRestoreRunning: vi.fn(),
+  endRestoreMark: vi.fn(),
   endPool: vi.fn(),
 }));
 
@@ -76,6 +78,7 @@ vi.mock('../services/onlineRestoreGuard.js', async () => {
   class RestoreRefusedError extends Error {}
   return {
     assertRestoreAllowed: mocks.assertRestoreAllowed,
+    markRestoreRunning: mocks.markRestoreRunning,
     RestoreRefusedError,
   };
 });
@@ -119,6 +122,7 @@ describe('performRestore guard', () => {
     );
     expect(mocks.commands).toEqual([]);
     expect(mocks.endPool).not.toHaveBeenCalled();
+    expect(mocks.markRestoreRunning).not.toHaveBeenCalled();
     expect(backupDirEntries()).toEqual([]);
   });
 
@@ -145,5 +149,20 @@ describe('performRestore guard', () => {
     });
     expect(mocks.assertRestoreAllowed).toHaveBeenCalledTimes(2);
     expect(mocks.endPool).toHaveBeenCalledOnce();
+  });
+
+  it('marks the restore running from before the pools close until it ends', async () => {
+    mocks.assertRestoreAllowed.mockResolvedValue(undefined);
+    mocks.markRestoreRunning.mockReturnValue(mocks.endRestoreMark);
+    mocks.endPool.mockImplementation(async () => {
+      expect(mocks.markRestoreRunning).toHaveBeenCalledOnce();
+      expect(mocks.endRestoreMark).not.toHaveBeenCalled();
+      throw new Error(STOP);
+    });
+
+    await performRestore(archivePath);
+
+    expect(mocks.endPool).toHaveBeenCalledOnce();
+    expect(mocks.endRestoreMark).toHaveBeenCalledOnce();
   });
 });

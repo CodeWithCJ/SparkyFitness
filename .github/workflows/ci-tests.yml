@@ -78,6 +78,8 @@ jobs:
               - 'SparkyFitnessServer/tests/dbConnectRetry.integration.test.ts'
               - 'SparkyFitnessServer/db/connectRetry.ts'
               - 'SparkyFitnessServer/db/poolManager.ts'
+              - 'SparkyFitnessServer/db/poolBusy.ts'
+              - 'SparkyFitnessServer/routes/healthRoutes.ts'
               - 'SparkyFitnessServer/services/exerciseEntryHistoryService.ts'
               - 'SparkyFitnessServer/tests/calorieRuleHistory.integration.test.ts'
               - 'SparkyFitnessServer/models/preferenceRepository.ts'
@@ -96,6 +98,8 @@ jobs:
               - 'SparkyFitnessServer/utils/gracefulShutdown.ts'
               - 'SparkyFitnessServer/models/measurementRepository.ts'
               - 'SparkyFitnessServer/models/habitRepository.ts'
+              - 'SparkyFitnessServer/tests/demoSeedConcurrency.integration.test.ts'
+              - 'SparkyFitnessServer/services/demoSeedService.ts'
               - 'SparkyFitnessServer/tests/corosFitBudget.integration.test.ts'
               - 'SparkyFitnessServer/models/corosFitBudgetRepository.ts'
               - 'SparkyFitnessServer/models/oidcProviderRepository.ts'
@@ -345,10 +349,10 @@ jobs:
       # The schema + RLS policies are now applied and the non-superuser app role
       # exists, so the permission matrix can verify every table's real RLS
       # behaviour as the app role (superuser DB user seeds, app role is enforced).
-      - name: Verify RLS, Strava cleanup, OIDC providers, Better Auth schema, sign-in rate limits, provider sync claims, sleep entry and custom category uniqueness, concurrent check-ins, grouped workout locking, calorie rule history, one Active Calories entry per day, one custom measurement reading per slot, every symptom reading kept, overlapping workout edits, riding out a database restart, weekly goal plans, releasing sync claims on shutdown, refusing a restore while other instances run, migration transactions, startup RLS apply, per-address limits shared across instances, a shared COROS download budget and startup locking
+      - name: Verify RLS, Strava cleanup, OIDC providers, Better Auth schema, sign-in rate limits, provider sync claims, sleep entry and custom category uniqueness, concurrent check-ins, grouped workout locking, calorie rule history, one Active Calories entry per day, one custom measurement reading per slot, every symptom reading kept, overlapping workout edits, riding out a database restart, weekly goal plans, releasing sync claims on shutdown, refusing a restore while other instances run, migration transactions, startup RLS apply, per-address limits shared across instances, a shared COROS download budget, demo account seeding across instances and startup locking
         run: |
           # One file at a time: the cleanup migration tests and other files' fixture deletes lock the same tables and can deadlock.
-          pnpm exec vitest run --no-file-parallelism tests/rlsPermissionMatrix.integration.test.ts tests/stravaActivityDetailCleanup.integration.test.ts tests/betterAuthSchemaCheck.integration.test.ts tests/oidcProviderRepository.integration.test.ts tests/authRateLimitDatabase.integration.test.ts tests/providerSyncClaim.integration.test.ts tests/uniqueWrites.integration.test.ts tests/checkInConcurrentWrites.integration.test.ts tests/groupedWorkoutLockOrder.integration.test.ts tests/calorieRuleHistory.integration.test.ts tests/activeCaloriesConcurrentWrites.integration.test.ts tests/customMeasurementConcurrentWrites.integration.test.ts tests/symptomSeverityRace.integration.test.ts tests/workoutUpdateConcurrentWrites.integration.test.ts tests/dbConnectRetry.integration.test.ts tests/weeklyGoalPlans.integration.test.ts tests/migrationTransactions.integration.test.ts tests/shutdownDrain.integration.test.ts tests/rlsPolicyApply.integration.test.ts tests/ipRateLimit.integration.test.ts tests/onlineRestoreGuard.integration.test.ts tests/corosFitBudget.integration.test.ts
+          pnpm exec vitest run --no-file-parallelism tests/rlsPermissionMatrix.integration.test.ts tests/stravaActivityDetailCleanup.integration.test.ts tests/betterAuthSchemaCheck.integration.test.ts tests/oidcProviderRepository.integration.test.ts tests/authRateLimitDatabase.integration.test.ts tests/providerSyncClaim.integration.test.ts tests/uniqueWrites.integration.test.ts tests/checkInConcurrentWrites.integration.test.ts tests/groupedWorkoutLockOrder.integration.test.ts tests/calorieRuleHistory.integration.test.ts tests/activeCaloriesConcurrentWrites.integration.test.ts tests/customMeasurementConcurrentWrites.integration.test.ts tests/symptomSeverityRace.integration.test.ts tests/workoutUpdateConcurrentWrites.integration.test.ts tests/dbConnectRetry.integration.test.ts tests/weeklyGoalPlans.integration.test.ts tests/migrationTransactions.integration.test.ts tests/shutdownDrain.integration.test.ts tests/rlsPolicyApply.integration.test.ts tests/ipRateLimit.integration.test.ts tests/onlineRestoreGuard.integration.test.ts tests/corosFitBudget.integration.test.ts tests/demoSeedConcurrency.integration.test.ts
           # Initialization reapplies policies, so run it after the other database tests.
           RUN_DATABASE_INITIALIZATION_TEST=1 pnpm exec vitest run tests/initializeDatabase.integration.test.ts
         env:

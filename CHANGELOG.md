@@ -1,5 +1,67 @@
 # Changelog
 
+## [1.11.0](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.10.0...v1.11.0) (2026-10-30)
+
+
+### Features
+
+* **ai:** add a training review to the AI assistant's exercise stats tool ([7241753](https://github.com/CodeWithCJ/SparkyFitness/commit/7241753c5f4f55df5d1e4db105148df47a9b0909))
+* lab-result markers table ([9bccd27](https://github.com/CodeWithCJ/SparkyFitness/commit/9bccd276eac622ef7bf10c5861e8bb71b81e4676))
+* look up the weather for GPS-recorded activities ([1c004d8](https://github.com/CodeWithCJ/SparkyFitness/commit/1c004d86b1399be60e7ee6d4741bc5e0b6279bac))
+* **mcp:** add OAuth 2.1 authorization ([64dc452](https://github.com/CodeWithCJ/SparkyFitness/commit/64dc452dc51e880fbac74bef28dbfa6f2f3edb9d))
+* **mcp:** add OAuth 2.1 authorization ([f0551b9](https://github.com/CodeWithCJ/SparkyFitness/commit/f0551b9172a30db81317ad06c2d9864ee1748d52))
+* **mobile:** enter sodium as grams of salt in the food form ([4591695](https://github.com/CodeWithCJ/SparkyFitness/commit/459169596b29359ab1c900c8050e753357508200))
+* **mobile:** enter sodium as grams of salt in the food form ([c9ec111](https://github.com/CodeWithCJ/SparkyFitness/commit/c9ec11118deccbf9a808280f352bfbff52438cea)), closes [#2729](https://github.com/CodeWithCJ/SparkyFitness/issues/2729)
+* **mobile:** ship the Wear OS app through GitHub releases and EAS ([fb745cf](https://github.com/CodeWithCJ/SparkyFitness/commit/fb745cf4ad89244ded51e5db59a498465b9bbd4e))
+* **mobile:** ship the Wear OS app through GitHub releases and EAS ([984fe78](https://github.com/CodeWithCJ/SparkyFitness/commit/984fe78363d73421960ee29800e9a6e9bc133d7a))
+
+
+### Bug Fixes
+
+* address lab table review findings ([4f85ed7](https://github.com/CodeWithCJ/SparkyFitness/commit/4f85ed7baf4063daa2825b0023c72d40c0c1fa8c))
+* **auth:** address OAuth review feedback ([1c32c57](https://github.com/CodeWithCJ/SparkyFitness/commit/1c32c5744bd8eac0bfe8c5714c4c9357d5ec112a))
+* **backup:** refuse an in-app restore while other instances are connected ([8610e0b](https://github.com/CodeWithCJ/SparkyFitness/commit/8610e0ba9d89fac3485731c52092d13a20d3558b))
+* **backup:** refuse an in-app restore while other instances are connected (a restore drops the database under live instances) ([6ef92d7](https://github.com/CodeWithCJ/SparkyFitness/commit/6ef92d7e4d4515d16b857d647348cbcfff8ee514))
+* **backup:** tell Compose users to drop the scheduled-jobs switch before a restore, and use a scanner-safe test password ([19dcfad](https://github.com/CodeWithCJ/SparkyFitness/commit/19dcfad09f6edf2e1e659a32d28ef3ded2a84b4b))
+* **demo:** take turns on the demo account across server instances ([29d6bf6](https://github.com/CodeWithCJ/SparkyFitness/commit/29d6bf6ac49d220e742fa6f7a41d6030f0a35694))
+* **demo:** take turns on the demo account across server instances (two instances seeding at once both created it, and one failed) ([081d6d4](https://github.com/CodeWithCJ/SparkyFitness/commit/081d6d495fcac35b4f16a65c18751a1af60c5cbf))
+* **export:** count device Active Calories once in the CSV burned calories row ([586357c](https://github.com/CodeWithCJ/SparkyFitness/commit/586357cf54ef4e35ef9f2dd835ac7e4251f7545b))
+* **export:** count device Active Calories once in the CSV burned row (it already includes logged workouts) ([8a5a03f](https://github.com/CodeWithCJ/SparkyFitness/commit/8a5a03f00e1d9cf53887ad424a531ed2bd616be6))
+* **mobile:** keep a missing diary-entry weather temperature null instead of 0 ([440e0a7](https://github.com/CodeWithCJ/SparkyFitness/commit/440e0a7ac00c1cbf9186cfb8361b8bf89346cec4))
+* **mobile:** keep the sodium field readable on narrow screens ([89616b8](https://github.com/CodeWithCJ/SparkyFitness/commit/89616b89026c6139b63f3931cc538e35244bb9ef))
+* **mobile:** read the weather temperature as unknown so the text case typechecks ([11e01d5](https://github.com/CodeWithCJ/SparkyFitness/commit/11e01d55c42dfb9031013b2c547c5117b031ed2d))
+* **mobile:** resolve the watch keystore path like the phone's ([ba83825](https://github.com/CodeWithCJ/SparkyFitness/commit/ba83825a1a96dcd1c6f214a355a5f1fafdd6cfb7))
+* **mobile:** show logged meal photos in the diary ([d6c5136](https://github.com/CodeWithCJ/SparkyFitness/commit/d6c51365ef62c23e4f88c2f2c0ad07b6c127e414))
+* **mobile:** show logged meal photos in the diary ([4e88d4b](https://github.com/CodeWithCJ/SparkyFitness/commit/4e88d4b37781bdd2625948481cc99d3ca1a766c7))
+* **mobile:** sign the watch build from EAS's working directory ([11a441b](https://github.com/CodeWithCJ/SparkyFitness/commit/11a441be21dac9c8c9eaaa6ec4302e4e4ae09e78))
+* **mobile:** wire release keystore into :app so phone and watch APKs share signing key ([96345ed](https://github.com/CodeWithCJ/SparkyFitness/commit/96345ed77a6fe232e9b2ecc6fc58026f429bded4))
+* **server:** bridge the undici Agent to Node's built-in fetch ([e87e5b7](https://github.com/CodeWithCJ/SparkyFitness/commit/e87e5b71a2639419be94baf49922e987f15e9f9b))
+* **server:** bridge the undici Agent to Node's built-in fetch ([909a732](https://github.com/CodeWithCJ/SparkyFitness/commit/909a7329d26f8ebfae966063ae7b1c6c923935f8))
+* **server:** check the provider URL scheme case-insensitively before defaulting to https ([21805c8](https://github.com/CodeWithCJ/SparkyFitness/commit/21805c870a24c4be10126f7784b54b293f01cfbb))
+* **server:** create the RLS policy state table in a migration ([940fc4a](https://github.com/CodeWithCJ/SparkyFitness/commit/940fc4a53b1aa73da2c5e39202d4adf4ca1f48fb))
+* **server:** create the RLS policy state table in a migration (every other system table comes from a migration) ([0cdab2d](https://github.com/CodeWithCJ/SparkyFitness/commit/0cdab2dada765167bb8f0a3254df7b03ecb5e010))
+* **server:** keep the COROS daily FIT download budget in the database ([047124b](https://github.com/CodeWithCJ/SparkyFitness/commit/047124b28602d8d1256c6fd0c29876aa7c985956))
+* **server:** keep the COROS daily FIT download budget in the database (the in-memory count reset on every restart and was not shared between server instances) ([b4c6cd5](https://github.com/CodeWithCJ/SparkyFitness/commit/b4c6cd55e3e7fb384e32c7f3ace0a77f17502b82))
+* **server:** word the private-network rejection for every base-URL provider, not only recipe ones ([4722c25](https://github.com/CodeWithCJ/SparkyFitness/commit/4722c25ea8ee3ca4701c5e3f842c8b7ee9f8f89d))
+* **sleep:** count a day's naps with its night in sleep debt ([a66f59f](https://github.com/CodeWithCJ/SparkyFitness/commit/a66f59f7fd317d33ce39dffa30e9ff58c6386fae))
+* **sleep:** count a day's naps with its night in sleep debt ([0028ddc](https://github.com/CodeWithCJ/SparkyFitness/commit/0028ddc30735b50620f6a0224839c82fe982f39f)), closes [#3259](https://github.com/CodeWithCJ/SparkyFitness/issues/3259)
+* **sleep:** show the main sleep's bed and wake times in its own zone ([1691291](https://github.com/CodeWithCJ/SparkyFitness/commit/169129106bee06f2938df32488255f6e9ec687a8))
+* stop the run goals API schema shadowing its database schema ([9246afb](https://github.com/CodeWithCJ/SparkyFitness/commit/9246afbaacec060a42d79523535f083c2a70670d))
+* stop the run goals API schema shadowing its database schema ([840029c](https://github.com/CodeWithCJ/SparkyFitness/commit/840029cd64a8cb30a57a2ad15e6af9e75ce96196))
+
+
+### Documentation
+
+* add the RLS permission matrix to the new-migration checklist ([0f428c2](https://github.com/CodeWithCJ/SparkyFitness/commit/0f428c22a5b8c991fab1b42151e241643fd1fe36))
+* add the RLS permission matrix to the new-migration checklist ([c3c9a4c](https://github.com/CodeWithCJ/SparkyFitness/commit/c3c9a4c4c860ded064d1707710c9d43c8c4ea7b6))
+* apply the lab value_text limits to the property, not one branch ([e1ae887](https://github.com/CodeWithCJ/SparkyFitness/commit/e1ae887505f97f0f11e41148d9f39fe9c21cc6f1))
+* **db:** document the RLS policy state table and add its shared schema (CodeRabbit asked for the migration companions) ([80034ed](https://github.com/CodeWithCJ/SparkyFitness/commit/80034ed8be8391cacbd80d30f40167e6cd599863))
+* **db:** say the app role has no grant on these system tables, not on every system table ([76865c7](https://github.com/CodeWithCJ/SparkyFitness/commit/76865c7839feec9b62517d1fc559b5eee6e76eab))
+* document the trimmed length rule for lab value_text ([4e6af88](https://github.com/CodeWithCJ/SparkyFitness/commit/4e6af883bfaeb3657b1b7530a3489b573682e1ab))
+* match LabResultInput null handling to the runtime schema ([4fc55d7](https://github.com/CodeWithCJ/SparkyFitness/commit/4fc55d72540ff9d47bf0040e421b6897cfdf49a8))
+* **mobile:** explain the one-time reinstall for GitHub APKs ([b8ef591](https://github.com/CodeWithCJ/SparkyFitness/commit/b8ef5915ca160cd46ecf7035213c6ef9b388334e))
+* tighten the lab results OpenAPI schemas ([c0e6182](https://github.com/CodeWithCJ/SparkyFitness/commit/c0e6182911df1b16494d6bac29320990d1b3684f))
+
 ## [1.10.0](https://github.com/CodeWithCJ/SparkyFitness/compare/v1.9.0...v1.10.0) (2026-10-29)
 
 

@@ -12,6 +12,7 @@ import cookieParser from 'cookie-parser';
 import { bridgeBearerAuthHeader } from './utils/bearerAuthBridge.js';
 import { endPool } from './db/poolManager.js';
 import { installShutdownHandlers } from './utils/gracefulShutdown.js';
+import { watchAuthSchema } from './utils/authSchemaWatch.js';
 import { log } from './config/logging.js';
 import { authenticate, authenticateMcp } from './middleware/authMiddleware.js';
 import { isReadOnlyApiKeyAuthMutation } from './middleware/readOnlyApiKeyGuard.js';
@@ -111,6 +112,7 @@ import fitnessTestRoutesV2 from './routes/v2/fitnessTestRoutes.js';
 import runGoalRoutesV2 from './routes/v2/runGoalRoutes.js';
 import shoeRoutesV2 from './routes/v2/shoeRoutes.js';
 import plateInventoryRoutesV2 from './routes/v2/plateInventoryRoutes.js';
+import actionTagRoutesV2 from './routes/v2/actionTagRoutes.js';
 import routeRoutesV2 from './routes/v2/routeRoutes.js';
 import backupRoutes from './routes/backupRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
@@ -857,6 +859,7 @@ app.use('/api/v2/fitness-tests', fitnessTestRoutesV2);
 app.use('/api/v2/run-goals', runGoalRoutesV2);
 app.use('/api/v2/shoes', shoeRoutesV2);
 app.use('/api/v2/plate-inventory', plateInventoryRoutesV2);
+app.use('/api/v2/action-tags', actionTagRoutesV2);
 app.use('/api/v2/routes', routeRoutesV2);
 app.use('/api/workout-presets', workoutPresetRoutes);
 app.use('/api/workout-plan-templates', workoutPlanTemplateRoutes);
@@ -948,7 +951,11 @@ app.get('/api/api-docs', (_req, res) => res.redirect('/api/api-docs/swagger'));
   // Fix for reverse proxies using HTTP keepalive (e.g. Traefik, Caddy)
   server.keepAliveTimeout = 181000; // Must be > proxy's idle timeout (nginx=75s, traefik=default 180s)
   server.headersTimeout = 182000; // Must be slightly > keepAliveTimeout
-  installShutdownHandlers(server);
+  const shutdown = installShutdownHandlers(server);
+  watchAuthSchema(
+    () => authModule.checkAuthSchema(),
+    () => shutdown('Database schema mismatch')
+  );
 })().catch(async (error) => {
   console.error('Failed to start server:', error);
   // A failed boot must stop the process. Setting process.exitCode alone leaves

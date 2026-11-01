@@ -5,6 +5,11 @@ jobs:
     type: build # This job type creates a production build for Android
     params:
       platform: android
+  build_wearos:
+    type: build # The watch app is a separate bundle with its own Play track
+    params:
+      platform: android
+      profile: wearos
   build_ios:
     type: build # This job type creates a production build for iOS
     params:

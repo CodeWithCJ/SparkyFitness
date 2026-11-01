@@ -178,10 +178,11 @@ describe('drainServer', () => {
 describe('installShutdownHandlers', () => {
   let added: Array<(...args: unknown[]) => void>;
   let exit: ReturnType<typeof vi.spyOn>;
+  let stopServer: (reason: string) => void;
 
   beforeEach(() => {
     const before = new Set(process.listeners('SIGTERM'));
-    installShutdownHandlers(server, 15_000);
+    stopServer = installShutdownHandlers(server, 15_000);
     added = process
       .listeners('SIGTERM')
       .filter((listener) => !before.has(listener)) as typeof added;
@@ -208,6 +209,19 @@ describe('installShutdownHandlers', () => {
 
     expect(server.close).toHaveBeenCalledOnce();
     expect(exit).toHaveBeenCalledExactlyOnceWith(0);
+  });
+
+  it('drains and exits 1 when the server stops itself', async () => {
+    cronJob.resolve();
+    sync.resolve();
+    stopServer('Database schema mismatch');
+    added[0]!();
+    closeHttp();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(isShuttingDown()).toBe(true);
+    expect(server.close).toHaveBeenCalledOnce();
+    expect(exit).toHaveBeenCalledExactlyOnceWith(1);
   });
 
   it('forces exit at the timeout when cleanup itself hangs', async () => {

@@ -5,6 +5,7 @@ import type {
   SymptomFreeDayResponse,
   SymptomOptionResponse,
 } from '@workspace/shared';
+import type { SymptomEntryFilters } from '@/api/Symptoms/symptomService';
 
 /** Data the mocked symptom hooks return. Tests set fields, then render. */
 export const hookState = {
@@ -15,6 +16,9 @@ export const hookState = {
   freeDays: [] as SymptomFreeDayResponse[],
   contexts: {} as Record<string, SymptomEpisodeContext>,
 };
+
+/** The filters each `useSymptomEntries` call asked for, in call order. */
+export const entryQueries: Array<SymptomEntryFilters | undefined> = [];
 
 const mutation = () => ({
   mutate: jest.fn(),
@@ -47,6 +51,7 @@ export function resetSymptomHooks() {
   hookState.ongoing = [];
   hookState.freeDays = [];
   hookState.contexts = {};
+  entryQueries.length = 0;
   for (const m of Object.values(mutations)) {
     m.mutate.mockReset();
     m.mutateAsync.mockReset();
@@ -64,10 +69,10 @@ export function buildHooksMock() {
         ? hookState.options.filter((o) => o.kind === kind)
         : hookState.options,
     }),
-    useSymptomEntries: () => ({
-      data: hookState.entries,
-      isLoading: false,
-    }),
+    useSymptomEntries: (filters?: SymptomEntryFilters) => {
+      entryQueries.push(filters);
+      return { data: hookState.entries, isLoading: false };
+    },
     useOngoingEpisodes: () => ({ data: hookState.ongoing }),
     useSymptomFreeDays: () => ({ data: hookState.freeDays }),
     useSymptomContext: () => ({

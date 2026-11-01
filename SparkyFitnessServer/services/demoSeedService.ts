@@ -57,6 +57,18 @@ async function stampDemoMarker(userId: string): Promise<void> {
   }
 }
 
+/**
+ * Seed, reset and purge each rewrite the demo account, so server instances
+ * (and a demo login racing the daily reset) take turns. Transaction-scoped,
+ * so it is released by COMMIT, ROLLBACK or a lost connection. Whoever waits
+ * re-reads the account after the holder committed.
+ */
+async function lockDemoAccount(client: PoolClient): Promise<void> {
+  await client.query(
+    "SELECT pg_advisory_xact_lock(hashtext('sparkyfitness:demo'))"
+  );
+}
+
 // Generated once per process when no server secret is configured, so the
 // credential stays stable for the lifetime of the server without ever being
 // derivable from the source.
@@ -393,6 +405,9 @@ export async function seedDemoUser(): Promise<string> {
 
     try {
       await client.query('BEGIN');
+      // Before the lookup, so a seed waiting here finds the account the one
+      // ahead of it created instead of creating a second.
+      await lockDemoAccount(client);
 
       const user = await userRepository.findUserByEmail(email);
       let userId: string;
@@ -1544,7 +1559,11 @@ export async function resetDemoUserData(): Promise<void> {
   const client = await getSystemClient();
   try {
     const userId = user.id;
+    await client.query('BEGIN');
+    await lockDemoAccount(client);
+    // Also false when a purge removed the account while this waited.
     if (!(await hasDemoMarker(client, userId))) {
+      await client.query('ROLLBACK');
       log(
         'warn',
         `[DEMO RESET] Skipping reset: Account ${email} does not carry the demo identity marker.`
@@ -1556,8 +1575,6 @@ export async function resetDemoUserData(): Promise<void> {
       'info',
       `[DEMO RESET] Performing daily scoped reset for demo user ${userId}...`
     );
-
-    await client.query('BEGIN');
 
     // Strict scoped deletion for demo user only
     await cleanDemoUserData(client, userId);
@@ -1571,7 +1588,7 @@ export async function resetDemoUserData(): Promise<void> {
       `[DEMO RESET] Daily scoped reset completed successfully for demo user ${userId}`
     );
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => {});
     log('error', '[DEMO RESET] Failed to reset demo user data:', error);
     throw error;
   } finally {
@@ -1589,7 +1606,10 @@ export async function purgeDemoUserIfExists(): Promise<void> {
     if (user) {
       const client = await getSystemClient();
       try {
+        await client.query('BEGIN');
+        await lockDemoAccount(client);
         if (!(await hasDemoMarker(client, user.id))) {
+          await client.query('ROLLBACK');
           log(
             'warn',
             `[DEMO] Skipping purge: Account ${email} does not carry the demo identity marker. Leaving it untouched.`
@@ -1602,10 +1622,16 @@ export async function purgeDemoUserIfExists(): Promise<void> {
           `[DEMO] Demo mode disabled — purging demo user ${email} (${user.id})...`
         );
         await cleanDemoUserData(client, user.id);
+        // On this connection: a delete on another one would wait for the rows
+        // this transaction has just deleted, and this transaction for it.
+        await client.query('DELETE FROM "user" WHERE id = $1', [user.id]);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw error;
       } finally {
         client.release();
       }
-      await userRepository.deleteUser(user.id);
       log('info', `[DEMO] Successfully purged demo user ${email}`);
     }
   } catch (error) {

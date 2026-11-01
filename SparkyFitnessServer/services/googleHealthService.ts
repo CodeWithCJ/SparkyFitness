@@ -3,6 +3,7 @@ import { log } from '../config/logging.js';
 import googleHealthIntegrationService from '../integrations/googlehealth/googleHealthService.js';
 import googleHealthDataProcessor from '../integrations/googlehealth/googleHealthDataProcessor.js';
 import { isPermissionRejection } from './providerFetchResult.js';
+import { attachHeartRateToLoggedWorkouts } from '../integrations/googlehealth/googleHealthWorkoutHeartRate.js';
 import { getSystemClient } from '../db/poolManager.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { todayInZone, addDays } from '@workspace/shared';
@@ -693,6 +694,23 @@ async function syncGoogleHealthData(
         caloriesData,
         tz
       );
+
+    // Heart rate for workouts logged in SparkyFitness during this range. Like
+    // the fetches above, a failure is logged and the rest of the sync stands.
+    try {
+      await attachHeartRateToLoggedWorkouts(
+        userId,
+        startDate,
+        endDate,
+        tz,
+        accessToken
+      );
+    } catch (error) {
+      log(
+        'warn',
+        `[googleHealthService] Failed to attach heart rate to logged workouts for user ${userId}: ${(error as Error).message}`
+      );
+    }
 
     if (failedRequiredFetches.length === 0) {
       const client = await getSystemClient();

@@ -10,6 +10,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from './BottomSheetPicker';
@@ -67,7 +68,9 @@ import {
 import {
   CONFIDENCE_TONES,
   getConversionFactor,
+  saltGramsToSodiumMg,
   shouldOfferAiConversion,
+  sodiumMgToSaltGrams,
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
@@ -129,6 +132,16 @@ export interface FoodFormProps {
   /** Called whenever the user changes a custom nutrient value. */
   onCustomNutrientsChange?: (values: Record<string, number>) => void;
 }
+
+/** How the sodium field is typed: as the stored sodium (mg) or as the salt (g) printed on a label. */
+type SodiumEntryUnit = 'sodium_mg' | 'salt_g';
+
+// The sodium field shares a row with cholesterol, so its column is about
+// (window - 44) / 2 dp wide (px-4 form padding, gap-3 between the columns).
+// The unit picker beside the input takes ~95 dp, which leaves a 320 dp screen
+// almost no room to read the number. Below this window width (scaled with the
+// font size) the picker moves under the input, giving it the full column.
+const SODIUM_PICKER_INLINE_MIN_WINDOW_WIDTH = 390;
 
 const androidSparkleStyle =
   Platform.OS === 'android'
@@ -296,6 +309,21 @@ const FoodForm: React.FC<FoodFormProps> = ({
   // `unitSelector.variants` whenever the variant list changes.
   const trustedAnchorRef = useRef<FoodUnitVariant | null>(null);
   const [isEstimatingAi, setIsEstimatingAi] = useState(false);
+  // European labels print salt in grams where the food stores sodium in mg.
+  // The unit only changes how the sodium field is typed; form.sodium stays
+  // sodium (mg), so saving, auto-scaling and every consumer are unchanged.
+  const [sodiumEntryUnit, setSodiumEntryUnit] =
+    useState<SodiumEntryUnit>('sodium_mg');
+  // The salt text as typed, kept with the sodium it produced so "0." or "0.50"
+  // survive a keystroke. Once anything else rewrites sodium (auto-scale, a
+  // unit swap, a label scan), the field shows that sodium as salt instead.
+  const [saltDraft, setSaltDraft] = useState<{
+    text: string;
+    sodium: string;
+  } | null>(null);
+  const { width: windowWidth, fontScale } = useWindowDimensions();
+  const sodiumPickerInline =
+    windowWidth >= SODIUM_PICKER_INLINE_MIN_WINDOW_WIDTH * fontScale;
 
   // Confidence-tone text colors for the AI badge that appears below the unit
   // row after AI auto-applies. Sparkle icon lives inside the picker dropdown
@@ -889,6 +917,115 @@ const FoodForm: React.FC<FoodFormProps> = ({
     </View>
   );
 
+  const renderSodiumField = () => {
+    const asSalt = sodiumEntryUnit === 'salt_g';
+    const label = asSalt
+      ? t('foodForm.saltG', { defaultValue: 'Salt (g)' })
+      : `${t('nutrients.sodium', { defaultValue: 'Sodium' })} (mg)`;
+    let value = form.sodium;
+    if (asSalt) {
+      if (saltDraft && saltDraft.sodium === form.sodium) {
+        value = saltDraft.text;
+      } else {
+        const sodiumMg = parseDecimalInput(form.sodium);
+        value = Number.isFinite(sodiumMg)
+          ? String(sodiumMgToSaltGrams(sodiumMg))
+          : '';
+      }
+    }
+    return (
+      <View className="gap-1.5 flex-1">
+        <Text className="text-text-secondary text-sm font-medium">{label}</Text>
+        <View
+          testID="sodium-field-controls"
+          className={sodiumPickerInline ? 'flex-row gap-1.5' : 'gap-1.5'}
+        >
+          <FormInput
+            ref={fieldRefs.sodium}
+            className={sodiumPickerInline ? 'flex-1' : ''}
+            style={{ minWidth: 0 }}
+            accessibilityLabel={label}
+            placeholder="0"
+            value={value}
+            onChangeText={(v) => {
+              if (!DECIMAL_INPUT_REGEX.test(v)) return;
+              if (!asSalt) {
+                update('sodium', v);
+                return;
+              }
+              const saltGrams = parseDecimalInput(v);
+              // Refuse a keystroke that leaves the salt unreadable ("1..5"),
+              // so the field never shows text that would save no sodium. A
+              // lone separator is let through: it is how ".5" starts.
+              const trimmed = v.trim();
+              if (
+                !Number.isFinite(saltGrams) &&
+                trimmed !== '' &&
+                trimmed !== '.' &&
+                trimmed !== ','
+              ) {
+                return;
+              }
+              const sodium = Number.isFinite(saltGrams)
+                ? String(saltGramsToSodiumMg(saltGrams))
+                : '';
+              setSaltDraft({ text: v, sodium });
+              update('sodium', sodium);
+            }}
+            keyboardType="decimal-pad"
+          />
+          <BottomSheetPicker
+            value={sodiumEntryUnit}
+            options={[
+              {
+                value: 'sodium_mg',
+                label: t('foodForm.sodiumOption', {
+                  defaultValue: 'Sodium (mg)',
+                }),
+              },
+              {
+                value: 'salt_g',
+                label: t('foodForm.saltOption', { defaultValue: 'Salt (g)' }),
+              },
+            ]}
+            onSelect={(unit) => {
+              setSodiumEntryUnit(unit);
+              setSaltDraft(null);
+            }}
+            title={t('foodForm.sodiumEntryUnit', {
+              defaultValue: 'Enter sodium as',
+            })}
+            renderTrigger={({ onPress }) => (
+              <TouchableOpacity
+                onPress={onPress}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={t('foodForm.sodiumEntryUnit', {
+                  defaultValue: 'Enter sodium as',
+                })}
+                className={`bg-raised rounded-lg border border-border-subtle px-2.5 flex-row items-center gap-1${sodiumPickerInline ? '' : ' justify-between'}`}
+                style={{ height: 44 }}
+              >
+                {/* Short word on the trigger; the field label above carries the unit. */}
+                <Text className="text-text-primary" style={{ fontSize: 16 }}>
+                  {asSalt
+                    ? t('foodForm.saltShort', { defaultValue: 'salt' })
+                    : t('foodForm.sodiumShort', { defaultValue: 'sodium' })}
+                </Text>
+                <Icon
+                  name="chevron-down"
+                  size={12}
+                  color={textMuted}
+                  weight="medium"
+                />
+              </TouchableOpacity>
+            )}
+          />
+        </View>
+      </View>
+    );
+  };
+
   const submitForm = () =>
     onSubmit({
       ...form,
@@ -1310,13 +1447,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                   false,
                   'sodium'
                 )}
-                {renderNumericField(
-                  t('nutrients.sodium', { defaultValue: 'Sodium' }),
-                  'sodium',
-                  'mg',
-                  false,
-                  'sugars'
-                )}
+                {renderSodiumField()}
               </View>
               <View className="flex-row gap-3">
                 {renderNumericField(

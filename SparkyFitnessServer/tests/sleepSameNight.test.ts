@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   keepMostDetailedSleep,
   keepMostDetailedSleepEntries,
+  mainSleepEntry,
   type SameNightSleepEntry,
 } from '@workspace/shared';
 
@@ -378,5 +379,33 @@ describe('keepMostDetailedSleep', () => {
       },
     }));
     expect(kept.map((s) => s.id)).toEqual(['fitbit']);
+  });
+});
+
+describe('mainSleepEntry', () => {
+  it('picks the night over a nap, whatever the order', () => {
+    const night = entry(
+      'night',
+      '2026-10-23T23:00:00Z',
+      '2026-10-24T07:00:00Z'
+    );
+    const nap = entry('nap', '2026-10-24T13:30:00Z', '2026-10-24T14:15:00Z');
+    expect(mainSleepEntry([nap, night])?.id).toBe('night');
+    expect(mainSleepEntry([night, nap])?.id).toBe('night');
+  });
+
+  it('takes the earlier bedtime when two sleeps are as long', () => {
+    const early = entry(
+      'early',
+      '2026-10-24T01:00:00Z',
+      '2026-10-24T03:00:00Z'
+    );
+    const late = entry('late', '2026-10-24T13:00:00Z', '2026-10-24T15:00:00Z');
+    expect(mainSleepEntry([late, early])?.id).toBe('early');
+    expect(mainSleepEntry([early, late])?.id).toBe('early');
+  });
+
+  it('returns nothing for a day without sleep', () => {
+    expect(mainSleepEntry([])).toBeUndefined();
   });
 });

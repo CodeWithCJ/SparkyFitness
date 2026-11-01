@@ -1,7 +1,8 @@
 // Nutrition labels (EU, UK and others) print salt in grams, while the food
 // record stores sodium in milligrams. Labelling rules treat salt as
 // sodium x 2.5, so 1 g of salt is 400 mg of sodium. These helpers are only an
-// entry convenience in the food editor; the stored value stays sodium (mg).
+// entry convenience in the web and mobile food editors; the stored value stays
+// sodium (mg).
 const SODIUM_MG_PER_GRAM_OF_SALT = 400;
 
 /** 0.1 g of salt -> 40 mg of sodium. Rounded to 0.1 mg, the sodium field's precision. */

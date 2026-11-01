@@ -58,7 +58,7 @@ In the mobile app, **Routes → Draw** and **Edit route on map** (on a saved rou
 
 With a routing engine configured, **Follow roads** snaps each stretch between points to roads or trails. Select a point and choose **Straight before** or **Straight after** to draw that stretch as a plain line (for a shortcut across a field, say). Moving a point re-routes only the stretches next to it, and stretches of a saved route you have not touched keep the line they had. Without a routing engine every stretch is a straight line.
 
-A route takes up to 100 points. A saved route opens thinned to at most 60 draggable points so it stays easy to handle; the stretches in between keep their saved line and turn cues until you edit them. **Edit route on map** and **Draw on a map** are only offered where the app can show a real map (on Android that needs a build with a Google Maps key).
+A route takes up to 100 points. A saved route opens thinned to at most 60 draggable points so it stays easy to handle; the stretches in between keep their saved line and turn cues until you edit them. **Edit route on map** and **Draw on a map** are only offered where the app can show a real map (iOS, and Android using keyless OpenStreetMap tiles or a Google Maps key).
 
 ### Request limits
 
