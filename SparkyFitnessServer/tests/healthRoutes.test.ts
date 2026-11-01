@@ -282,12 +282,12 @@ describe('GET /api/health/ready', () => {
 });
 
 describe('GET /api/health/ready during a restore', () => {
-  it('is not ready and leaves the database alone', async () => {
+  it('answers 200 RESTORING and leaves the database alone', async () => {
     restoring.value = true;
 
     const response = await request(app).get('/api/health/ready');
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: 'RESTORING' });
     expect(appConnect).not.toHaveBeenCalled();
     expect(authConnect).not.toHaveBeenCalled();
@@ -301,7 +301,7 @@ describe('GET /api/health/ready during a restore', () => {
 
     const response = await request(app).get('/api/health/ready');
 
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: 'RESTORING' });
     expect(appRelease).toHaveBeenCalledExactlyOnceWith(true);
     expect(appQuery).not.toHaveBeenCalled();

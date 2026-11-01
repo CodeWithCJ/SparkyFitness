@@ -26,7 +26,7 @@ With Helm, the chart's default volumes are `ReadWriteOnce`, which usually cannot
 
 ## Point the load balancer at the readiness check
 
-Have your load balancer check `/api/health/ready` on each instance and send traffic only to instances that answer 200. It answers 503 once that instance has been unable to reach the database for more than about 10 seconds, and while it shuts down or restores a backup, so traffic moves to the others. `/api/health` only says the process is running.
+Have your load balancer check `/api/health/ready` on each instance and send traffic only to instances that answer 200. It answers 503 once that instance has been unable to reach the database for more than about 10 seconds, and while it shuts down, so traffic moves to the others. While a backup is being restored it answers 200 with status `RESTORING`, so a container health check does not restart the server partway through the restore. `/api/health` only says the process is running.
 
 ## Run scheduled jobs on one instance
 

@@ -235,11 +235,11 @@ async function evaluateReadiness(): Promise<Readiness> {
  * /health/ready:
  *   get:
  *     summary: Readiness check
- *     description: Whether this instance can serve requests now. Runs a query on the database and on the authentication tables, each limited to 2 seconds, and fails while the server shuts down or restores a backup. A check still waiting for a connection from a busy pool after 2 seconds reports busy and counts as ready. A check that cannot connect to the database reports retrying and counts as ready (status DEGRADED) until the failure has lasted longer than the 10-second window in which requests retry their connection.
+ *     description: Whether this instance can serve requests now. Runs a query on the database and on the authentication tables, each limited to 2 seconds, and fails while the server shuts down. While a backup is being restored it answers 200 with status RESTORING without touching the database, so a container health check never restarts the server partway through a restore. A check still waiting for a connection from a busy pool after 2 seconds reports busy and counts as ready. A check that cannot connect to the database reports retrying and counts as ready (status DEGRADED) until the failure has lasted longer than the 10-second window in which requests retry their connection.
  *     tags: [System & Admin]
  *     responses:
  *       200:
- *         description: Ready to serve requests.
+ *         description: Ready to serve requests, or restoring a backup (status RESTORING, with no checks).
  *         content:
  *           application/json:
  *             schema:
@@ -247,14 +247,14 @@ async function evaluateReadiness(): Promise<Readiness> {
  *               properties:
  *                 status:
  *                   type: string
- *                   enum: [READY, DEGRADED]
+ *                   enum: [READY, DEGRADED, RESTORING]
  *                 checks:
  *                   type: object
  *                   additionalProperties:
  *                     type: string
  *                     enum: [ok, busy, retrying, failed, timeout]
  *       503:
- *         description: Not ready (status NOT_READY with the failing checks), shutting down (status DRAINING), or restoring a backup (status RESTORING).
+ *         description: Not ready (status NOT_READY with the failing checks) or shutting down (status DRAINING).
  */
 router.get('/ready', async (req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -262,7 +262,7 @@ router.get('/ready', async (req, res) => {
     return res.status(503).json({ status: 'DRAINING' });
   }
   if (isRestoreRunning()) {
-    return res.status(503).json({ status: 'RESTORING' });
+    return res.status(200).json({ status: 'RESTORING' });
   }
   pendingReadiness ??= evaluateReadiness().finally(() => {
     pendingReadiness = undefined;
@@ -274,7 +274,7 @@ router.get('/ready', async (req, res) => {
     return res.status(503).json({ status: 'DRAINING' });
   }
   if (isRestoreRunning()) {
-    return res.status(503).json({ status: 'RESTORING' });
+    return res.status(200).json({ status: 'RESTORING' });
   }
   return res.status(code).json(body);
 });
