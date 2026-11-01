@@ -142,8 +142,14 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
     prefill.current = edited ? null : { unit, ...settledRange };
   };
 
-  const chooseBuiltin = (chosen: LabMarkerPreset) => {
-    setSelection({ kind: 'builtin', key: chosen.key });
+  // The form is filled in from the marker's latest result and the profile's
+  // sex, neither of which is known until the markers and the profile have
+  // loaded. A marker chosen before then is remembered and filled in on arrival
+  // rather than from the bare preset.
+  const dataLoading = markersLoading || profileLoading;
+  const pendingFill = useRef<Selection | null>(null);
+
+  const fillBuiltin = (chosen: LabMarkerPreset) => {
     const earlier = markers.find((m) => m.markerKey === chosen.key);
     if (earlier?.latest) {
       const range = startingRange(earlier);
@@ -162,21 +168,53 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
     });
   };
 
-  const chooseCustom = (chosen: LabMarker) => {
-    if (chosen.markerId === null) return;
-    setSelection({ kind: 'custom', id: chosen.markerId });
+  const fillCustom = (chosen: LabMarker) => {
     const range = startingRange(chosen);
     applyDefaults({ unit: chosen.unit, low: range.low, high: range.high });
   };
 
-  // Opened for a marker (from its detail screen): fill the form once it is known.
-  // Wait for the markers and the profile: the latest result and the sex that
-  // picks the range are not known until they arrive, and a form filled in
-  // without them would keep a range that is wrong for this person.
+  const chooseBuiltin = (chosen: LabMarkerPreset) => {
+    const next: Selection = { kind: 'builtin', key: chosen.key };
+    setSelection(next);
+    if (dataLoading) {
+      pendingFill.current = next;
+      return;
+    }
+    pendingFill.current = null;
+    fillBuiltin(chosen);
+  };
+
+  const chooseCustom = (chosen: LabMarker) => {
+    if (chosen.markerId === null) return;
+    const next: Selection = { kind: 'custom', id: chosen.markerId };
+    setSelection(next);
+    if (dataLoading) {
+      pendingFill.current = next;
+      return;
+    }
+    pendingFill.current = null;
+    fillCustom(chosen);
+  };
+
+  // Opened for a marker (from its detail screen): choose it once it is known.
   const prefilled = useRef(false);
   useEffect(() => {
+    if (dataLoading) return;
+
+    // A marker picked while loading: fill it in now the data is here.
+    const pending = pendingFill.current;
+    if (pending) {
+      pendingFill.current = null;
+      if (pending.kind === 'builtin') {
+        const found = LAB_MARKER_PRESETS.find((p) => p.key === pending.key);
+        if (found) fillBuiltin(found);
+      } else if (pending.kind === 'custom') {
+        const found = markers.find((m) => m.markerId === pending.id);
+        if (found) fillCustom(found);
+      }
+    }
+
     if (prefilled.current || !presetQuery) return;
-    if (markersLoading || profileLoading) return;
     if ('markerKey' in presetQuery) {
       const found = LAB_MARKER_PRESETS.find(
         (p) => p.key === presetQuery.markerKey
@@ -192,9 +230,9 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
         chooseCustom(found);
       }
     }
-    // chooseBuiltin / chooseCustom only set state from `markers` and `sex`.
+    // The fill helpers only set state from `markers` and `sex`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markers, sex, markersLoading, profileLoading]);
+  }, [markers, sex, dataLoading]);
 
   const options = useMemo(
     () => buildLabPickerOptions(markers, search, labels),
