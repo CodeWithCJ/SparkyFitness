@@ -1,0 +1,232 @@
+diff --git a/android/src/main/java/expo/modules/location/FrameworkLocation.kt b/android/src/main/java/expo/modules/location/FrameworkLocation.kt
+new file mode 100644
+index 0000000000000000000000000000000000000000..e73ef7a0915cbcd970ad337ac4c0c3222111fbc5
+--- /dev/null
++++ b/android/src/main/java/expo/modules/location/FrameworkLocation.kt
+@@ -0,0 +1,57 @@
++package expo.modules.location
++
++import android.content.Context
++import android.location.Location
++import android.location.LocationManager
++import android.os.Build
++import com.google.android.gms.common.ConnectionResult
++import com.google.android.gms.common.GoogleApiAvailability
++
++/**
++ * Location through Android's own LocationManager, for devices without Google
++ * Play Services (GrapheneOS without sandboxed Google Play, LineageOS without
++ * microG). The fused provider client fails silently there: its tasks never
++ * deliver a location, so a recording would run without a single GPS point.
++ */
++object FrameworkLocation {
++  fun shouldUse(context: Context): Boolean {
++    return try {
++      GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) != ConnectionResult.SUCCESS
++    } catch (_: Throwable) {
++      true
++    }
++  }
++
++  fun manager(context: Context): LocationManager? {
++    return context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
++  }
++
++  /** Satellite GPS first, then the platform's own fused provider, then network location. */
++  fun bestProvider(manager: LocationManager): String? {
++    val candidates = buildList {
++      add(LocationManager.GPS_PROVIDER)
++      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(LocationManager.FUSED_PROVIDER)
++      add(LocationManager.NETWORK_PROVIDER)
++    }
++    return candidates.firstOrNull { provider ->
++      try {
++        manager.allProviders.contains(provider) && manager.isProviderEnabled(provider)
++      } catch (_: Throwable) {
++        false
++      }
++    }
++  }
++
++  /** The newest fix any provider still holds, or null. */
++  fun lastKnown(manager: LocationManager): Location? {
++    return manager.allProviders.mapNotNull { provider ->
++      try {
++        manager.getLastKnownLocation(provider)
++      } catch (_: SecurityException) {
++        null
++      } catch (_: IllegalArgumentException) {
++        null
++      }
++    }.maxByOrNull { it.time }
++  }
++}
+diff --git a/android/src/main/java/expo/modules/location/LocationModule.kt b/android/src/main/java/expo/modules/location/LocationModule.kt
+index b286ea277f3658b62ab9fd9ed1df67359cea46fc..99ee053e4e05c1a07b79ee2dbc2df2e0b16901ec 100644
+--- a/android/src/main/java/expo/modules/location/LocationModule.kt
++++ b/android/src/main/java/expo/modules/location/LocationModule.kt
+@@ -21,6 +21,7 @@ import android.os.Bundle
+ import android.os.Looper
+ import android.util.Log
+ import androidx.core.app.ActivityCompat
++import androidx.core.content.ContextCompat
+ import androidx.core.location.LocationManagerCompat
+ import androidx.core.os.bundleOf
+ import com.google.android.gms.common.api.ApiException
+@@ -486,6 +487,10 @@ class LocationModule : Module(), SensorEventListener, ActivityEventListener {
+       promise.reject(LocationUnauthorizedException())
+       return
+     }
++    if (FrameworkLocation.shouldUse(mContext)) {
++      requestSingleFrameworkLocation(promise)
++      return
++    }
+     if (LocationHelpers.hasNetworkProviderEnabled(mContext) || !showUserSettingsDialog) {
+       LocationHelpers.requestSingleLocation(mLocationProvider, currentLocationRequest, promise)
+     } else {
+@@ -504,6 +509,32 @@ class LocationModule : Module(), SensorEventListener, ActivityEventListener {
+     }
+   }
+ 
++  // Without Google Play Services: one fix from Android's own LocationManager.
++  private fun requestSingleFrameworkLocation(promise: Promise) {
++    val manager = FrameworkLocation.manager(mContext)
++    val provider = manager?.let { FrameworkLocation.bestProvider(it) }
++    if (manager == null || provider == null) {
++      promise.reject(CurrentLocationIsUnavailableException())
++      return
++    }
++    try {
++      LocationManagerCompat.getCurrentLocation(
++        manager,
++        provider,
++        null as android.os.CancellationSignal?,
++        ContextCompat.getMainExecutor(mContext)
++      ) { location: Location? ->
++        if (location == null) {
++          promise.reject(CurrentLocationIsUnavailableException())
++        } else {
++          promise.resolve(LocationResponse(location))
++        }
++      }
++    } catch (e: SecurityException) {
++      promise.reject(LocationRequestRejectedException(e))
++    }
++  }
++
+   fun requestLocationUpdates(locationRequest: LocationRequest, requestId: Int?, callbacks: LocationRequestCallbacks) {
+     val locationProvider: FusedLocationProviderClient = mLocationProvider
+ 
+@@ -754,6 +785,9 @@ class LocationModule : Module(), SensorEventListener, ActivityEventListener {
+    * Gets the best most recent location found by the provider.
+    */
+   private suspend fun getLastKnownLocation(): Location? {
++    if (FrameworkLocation.shouldUse(mContext)) {
++      return FrameworkLocation.manager(mContext)?.let { FrameworkLocation.lastKnown(it) }
++    }
+     return suspendCoroutine { continuation ->
+       try {
+         mLocationProvider.lastLocation
+diff --git a/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt b/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
+index 915b6bffea55b1fb094a8faf13c1290a8ae576c9..bd318e9bae3be7f308ba287c2b398d691c6a5663 100644
+--- a/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
++++ b/android/src/main/java/expo/modules/location/taskConsumers/LocationTaskConsumer.kt
+@@ -8,6 +8,7 @@ import android.content.Context
+ import android.content.Intent
+ import android.content.ServiceConnection
+ import android.location.Location
++import android.location.LocationManager
+ import android.os.Build
+ import android.os.Bundle
+ import android.os.IBinder
+@@ -26,6 +27,7 @@ import expo.modules.interfaces.taskManager.TaskExecutionCallback
+ import expo.modules.interfaces.taskManager.TaskInterface
+ import expo.modules.interfaces.taskManager.TaskManagerUtilsInterface
+ import expo.modules.location.AppForegroundedSingleton
++import expo.modules.location.FrameworkLocation
+ import expo.modules.location.LocationHelpers
+ import expo.modules.location.records.LocationOptions
+ import expo.modules.location.records.LocationResponse
+@@ -48,6 +50,10 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+     LocationServices.getFusedLocationProviderClient(context)
+   }
+ 
++  // Without Google Play Services the fused client never delivers a fix, so
++  // updates come from Android's own LocationManager instead.
++  private val mUseFramework: Boolean by lazy { FrameworkLocation.shouldUse(context) }
++
+   //region TaskConsumerInterface
+   override fun taskType(): String {
+     return "location"
+@@ -83,6 +89,20 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+     val result = LocationResult.extractResult(intent)
+     if (result != null) {
+       handleLocationUpdate(result.locations)
++    } else if (mUseFramework) {
++      // LocationManager puts a batch in KEY_LOCATIONS (Android 12+) and the
++      // newest fix in KEY_LOCATION_CHANGED. Other broadcasts, such as a
++      // provider being switched off, carry neither and are ignored.
++      val batch = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
++        @Suppress("DEPRECATION")
++        intent.getParcelableArrayExtra(LocationManager.KEY_LOCATIONS)?.filterIsInstance<Location>()
++      } else {
++        null
++      }
++      @Suppress("DEPRECATION")
++      val single = intent.getParcelableExtra<Location>(LocationManager.KEY_LOCATION_CHANGED)
++      val locations = batch?.takeIf { it.isNotEmpty() } ?: listOfNotNull(single)
++      if (locations.isNotEmpty()) handleLocationUpdate(locations)
+     } else {
+       try {
+         mLocationClient.lastLocation
+@@ -163,6 +183,11 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+       return
+     }
+ 
++    if (mUseFramework) {
++      startFrameworkLocationUpdates(context, locationRequest, intent)
++      return
++    }
++
+     try {
+       mLocationClient.requestLocationUpdates(locationRequest, intent)
+     } catch (e: SecurityException) {
+@@ -170,9 +195,37 @@ class LocationTaskConsumer(context: Context, taskManagerUtils: TaskManagerUtilsI
+     }
+   }
+ 
++  private fun startFrameworkLocationUpdates(context: Context, locationRequest: LocationRequest, intent: PendingIntent) {
++    val manager = FrameworkLocation.manager(context) ?: run {
++      Log.w(TAG, "LocationManager is not available")
++      return
++    }
++    val provider = FrameworkLocation.bestProvider(manager) ?: run {
++      Log.w(TAG, "There is no enabled location provider")
++      return
++    }
++    try {
++      manager.requestLocationUpdates(
++        provider,
++        locationRequest.intervalMillis,
++        locationRequest.minUpdateDistanceMeters,
++        intent
++      )
++      Log.i(TAG, "Location updates use the $provider provider (no Google Play Services)")
++    } catch (e: SecurityException) {
++      Log.w(TAG, "Location request has been rejected.", e)
++    } catch (e: IllegalArgumentException) {
++      Log.w(TAG, "Location request failed for the $provider provider.", e)
++    }
++  }
++
+   private fun stopLocationUpdates() {
+     mPendingIntent?.let {
+-      mLocationClient.removeLocationUpdates(it)
++      if (mUseFramework) {
++        FrameworkLocation.manager(context)?.removeUpdates(it)
++      } else {
++        mLocationClient.removeLocationUpdates(it)
++      }
+       it.cancel()
+     }
+   }
