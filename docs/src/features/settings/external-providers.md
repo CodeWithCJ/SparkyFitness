@@ -37,7 +37,7 @@ SparkyFitness supports integration with the following health and fitness data pr
 
 When adding or editing a Hevy provider, choose **Manual**, **Hourly**, or **Daily at 21:00** under **Sync Frequency**. New connections default to **Manual**, and existing manual connections stay manual until you change the setting. Keep the provider active to enable automatic sync.
 
-**Daily at 21:00** uses the timezone saved in your SparkyFitness preferences. The server checks hourly and runs the sync at or after 21:00, once per local calendar day. If an evening attempt fails, a later hourly check can retry before midnight. A successful sync earlier that day, including a manual sync, also counts for that day's schedule. The server must be running during the evening; missed days are not automatically caught up after midnight.
+**Daily at 21:00** uses the timezone saved in your SparkyFitness preferences. The server checks hourly and runs the sync at or after 21:00, once per local evening. If an evening attempt fails, a later hourly check can retry before midnight. Only a successful sync at or after 21:00, including a manual sync, counts for that evening. A sync earlier in the day does not replace the evening run, so workouts added later that day can still be imported. The server must be running during the evening; missed days are not automatically caught up after midnight.
 
 **Hourly** keeps the existing hourly schedule. You can still use **Sync** manually with any frequency.
 

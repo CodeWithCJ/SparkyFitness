@@ -111,14 +111,7 @@ beforeEach(() => {
 });
 
 describe('Hevy muscle metadata import', () => {
-  it('reuses an owned legacy Hevy row when public or custom exercises have the same name', async () => {
-    vi.mocked(
-      exerciseRepository.findExerciseByNameAndUserId
-    ).mockResolvedValueOnce({
-      id: 'public-first',
-      user_id: 'other',
-      source: 'public',
-    });
+  it('reuses an owned legacy row returned by the guarded Hevy lookup', async () => {
     vi.mocked(hevyExerciseRepository.findLegacyByName).mockResolvedValueOnce({
       id: 'legacy-own',
       user_id: 'u-1',
@@ -126,6 +119,13 @@ describe('Hevy muscle metadata import', () => {
       source_id: null,
     });
     await processHevyWorkouts('u-1', 'u-1', [workout], 'UTC', templates);
+    expect(hevyExerciseRepository.findLegacyByName).toHaveBeenCalledWith(
+      'u-1',
+      'Renamed row'
+    );
+    expect(
+      exerciseRepository.findExerciseByNameAndUserId
+    ).not.toHaveBeenCalled();
     expect(exerciseRepository.createExercise).not.toHaveBeenCalled();
     expect(hevyExerciseRepository.fillMissingMuscles).toHaveBeenCalledWith(
       'u-1',
@@ -204,31 +204,23 @@ describe('Hevy muscle metadata import', () => {
     );
   });
 
-  it.each([
-    { id: 'public', user_id: 'another-user', source: 'Hevy' },
-    { id: 'own-custom', user_id: 'u-1', source: 'custom' },
-    {
-      id: 'other-template',
-      user_id: 'u-1',
-      source: 'Hevy',
-      source_id: 'different-template',
-    },
-  ])(
-    'does not update unrelated same-name library exercises: $id',
-    async (otherExercise) => {
-      vi.mocked(
-        exerciseRepository.findExerciseByNameAndUserId
-      ).mockResolvedValueOnce(otherExercise);
-      await processHevyWorkouts('u-1', 'u-1', [workout], 'UTC', templates);
-      expect(hevyExerciseRepository.fillMissingMuscles).not.toHaveBeenCalled();
-      expect(exerciseRepository.createExercise).toHaveBeenCalledWith(
-        expect.objectContaining({
-          source_id: 'row-1',
-          primary_muscles: ['middle back'],
-        })
-      );
-    }
-  );
+  it('creates a new exercise when the guarded legacy lookup finds no eligible row', async () => {
+    await processHevyWorkouts('u-1', 'u-1', [workout], 'UTC', templates);
+    expect(hevyExerciseRepository.findLegacyByName).toHaveBeenCalledWith(
+      'u-1',
+      'Renamed row'
+    );
+    expect(
+      exerciseRepository.findExerciseByNameAndUserId
+    ).not.toHaveBeenCalled();
+    expect(hevyExerciseRepository.fillMissingMuscles).not.toHaveBeenCalled();
+    expect(exerciseRepository.createExercise).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source_id: 'row-1',
+        primary_muscles: ['middle back'],
+      })
+    );
+  });
 
   it.each(['cardio', 'full_body', 'other', 'unrecognized'])(
     'does not invent muscle groups for %s',

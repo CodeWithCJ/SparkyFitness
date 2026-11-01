@@ -108,6 +108,8 @@ export async function syncCorosData(
   let skippedExisting = 0;
   let deferred = 0;
   let summaryOnly = 0;
+  let activitiesFailed = 0;
+  const failedRequiredFetches: string[] = [];
   const recordsMap = new Map<string, CorosSportRecord>();
 
   // --- REPLAY BRANCH ---
@@ -193,6 +195,8 @@ export async function syncCorosData(
       skippedExisting,
       deferred,
       summaryOnly,
+      activitiesFailed,
+      failedRequiredFetches,
       warnings,
     };
   }
@@ -235,6 +239,8 @@ export async function syncCorosData(
           skippedExisting: 0,
           deferred: 0,
           summaryOnly: 0,
+          activitiesFailed: 0,
+          failedRequiredFetches: [],
           warnings: [],
         };
       }
@@ -259,6 +265,8 @@ export async function syncCorosData(
           skippedExisting: 0,
           deferred: 0,
           summaryOnly: 0,
+          activitiesFailed: 0,
+          failedRequiredFetches: [],
           warnings: [],
         };
       }
@@ -283,6 +291,7 @@ export async function syncCorosData(
         const startYmd = formatDateYmd(winStart);
         const endYmd = formatDateYmd(winEnd);
         const captureKey = `raw_sport_records_${startYmd}_${endYmd}`;
+        const fetchName = `querySportRecords ${winStart}..${winEnd}`;
 
         const result = await call(
           'querySportRecords',
@@ -311,6 +320,9 @@ export async function syncCorosData(
               warnings.push(
                 `Warning from COROS query (${winStart} - ${winEnd}): ${err}`
               );
+              if (!failedRequiredFetches.includes(fetchName)) {
+                failedRequiredFetches.push(fetchName);
+              }
               continue;
             }
             const { records, returnedCount } = parseSportRecords(payload.text);
@@ -342,6 +354,13 @@ export async function syncCorosData(
               }
             }
           }
+        }
+        // isError can arrive without a text report, which the loop never checks.
+        if (result.isError && !failedRequiredFetches.includes(fetchName)) {
+          warnings.push(
+            `Warning from COROS query (${winStart} - ${winEnd}): COROS tool returned isError=true`
+          );
+          failedRequiredFetches.push(fetchName);
         }
         return windowRecords;
       };
@@ -526,6 +545,19 @@ export async function syncCorosData(
           ) {
             throw err;
           }
+          // After a finished download only reading the file and saving the entry
+          // can throw, and saving is the last step, so no entry was stored.
+          if (downloaded) {
+            log(
+              'error',
+              `Failed to save COROS activity ${record.labelId} (${record.name}): ${err}`
+            );
+            activitiesFailed++;
+            warnings.push(
+              `Failed to save ${record.name} (${record.date}); it will be retried on the next sync.`
+            );
+            continue;
+          }
           log(
             'warn',
             `Transient error downloading FIT for ${record.labelId} (${record.name}): ${err}. Deferring to next sync.`
@@ -625,17 +657,32 @@ export async function syncCorosData(
     }
   );
 
-  // Update last_sync_at timestamp
-  const updateClient = await getSystemClient();
-  try {
-    await updateClient.query(
-      `UPDATE external_data_providers
-       SET last_sync_at = NOW(), updated_at = NOW()
-       WHERE id = $1`,
-      [finalProviderId]
+  // Update last_sync_at, unless a records query or an activity's entry failed or
+  // a download was deferred: the scheduler reads it to decide when a daily sync
+  // is due, and a deferred activity has no entry yet and would otherwise leave
+  // the sync window before the next daily run. It cannot block for good, because
+  // a scheduled sync only looks at yesterday and today.
+  if (
+    failedRequiredFetches.length === 0 &&
+    activitiesFailed === 0 &&
+    deferred === 0
+  ) {
+    const updateClient = await getSystemClient();
+    try {
+      await updateClient.query(
+        `UPDATE external_data_providers
+         SET last_sync_at = NOW(), updated_at = NOW()
+         WHERE id = $1`,
+        [finalProviderId]
+      );
+    } finally {
+      updateClient.release();
+    }
+  } else {
+    log(
+      'warn',
+      `[corosService] COROS sync for user ${userId} is incomplete (failed required fetches: ${failedRequiredFetches.join(', ') || 'none'}; failed activities: ${activitiesFailed}; deferred downloads: ${deferred}); last_sync_at not updated.`
     );
-  } finally {
-    updateClient.release();
   }
 
   return {
@@ -648,6 +695,8 @@ export async function syncCorosData(
     skippedExisting,
     deferred,
     summaryOnly,
+    activitiesFailed,
+    failedRequiredFetches,
     warnings,
   };
 }

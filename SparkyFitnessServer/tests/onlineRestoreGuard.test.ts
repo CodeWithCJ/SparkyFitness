@@ -10,6 +10,8 @@ vi.mock('../db/poolManager.js', () => ({
 import { applicationName } from '../db/applicationName.js';
 import {
   assertRestoreAllowed,
+  isRestoreRunning,
+  markRestoreRunning,
   RestoreRefusedError,
 } from '../services/onlineRestoreGuard.js';
 
@@ -68,5 +70,20 @@ describe('assertRestoreAllowed', () => {
 
     expect(error).not.toBeInstanceOf(RestoreRefusedError);
     expect(error.message).toBe('connection refused');
+  });
+});
+
+describe('markRestoreRunning', () => {
+  it('stays running until every overlapping restore has ended', () => {
+    expect(isRestoreRunning()).toBe(false);
+    const endFirst = markRestoreRunning();
+    const endSecond = markRestoreRunning();
+
+    endFirst();
+    endFirst();
+    expect(isRestoreRunning()).toBe(true);
+
+    endSecond();
+    expect(isRestoreRunning()).toBe(false);
   });
 });

@@ -33,6 +33,26 @@ describe('Hevy exercise persistence', () => {
     expect(db.release).toHaveBeenCalledOnce();
   });
 
+  it('only looks up legacy names for the owning user, Hevy source and an unclaimed template', async () => {
+    const row = {
+      id: 'legacy-1',
+      user_id: 'u-1',
+      source: 'Hevy',
+      source_id: null,
+    };
+    db.query.mockResolvedValueOnce({ rows: [row], rowCount: 1 });
+    expect(await hevyExerciseRepository.findLegacyByName('u-1', 'Row')).toEqual(
+      row
+    );
+    expect(db.getClient).toHaveBeenCalledWith('u-1');
+    const [sql, params] = db.query.mock.calls[0]! as [string, unknown[]];
+    expect(sql).toMatch(/WHERE\s+user_id = \$1\s+AND\s+name = \$2/);
+    expect(sql).toContain("AND source = 'Hevy'");
+    expect(sql).toMatch(/AND\s+\(source_id IS NULL OR source_id = ''\)/);
+    expect(params).toEqual(['u-1', 'Row']);
+    expect(db.release).toHaveBeenCalledOnce();
+  });
+
   it('fills muscle columns atomically with explicit owner, source and template guards', async () => {
     await hevyExerciseRepository.fillMissingMuscles(
       'u-1',

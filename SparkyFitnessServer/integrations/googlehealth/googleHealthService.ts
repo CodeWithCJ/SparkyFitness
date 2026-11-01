@@ -4,6 +4,7 @@ import { encrypt, decrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
 import { log } from '../../config/logging.js';
 import { logRawResponse } from '../../utils/diagnosticLogger.js';
 import { withProviderTokenLock } from '../../models/externalProviderRepository.js';
+import { isPermissionRejection } from '../../services/providerFetchResult.js';
 
 function anonymizeGoogleHealthData(data: unknown): unknown {
   if (Array.isArray(data)) return data.map(anonymizeGoogleHealthData);
@@ -710,6 +711,7 @@ async function fetchDailyRollupRange(
   const start = new Date(startDate);
   const end = new Date(endDate);
   const allPoints: Record<string, unknown>[] = [];
+  const failedDays: string[] = [];
   const current = new Date(start);
   while (current <= end) {
     const dateStr = current.toISOString().split('T')[0];
@@ -718,8 +720,17 @@ async function fetchDailyRollupRange(
       if (response?.rollupDataPoints?.length) {
         allPoints.push(...response.rollupDataPoints);
       }
-    } catch {
-      // individual day failure is non-fatal
+    } catch (error) {
+      // A failed day does not stop the range; callers see it in failedDays. A
+      // permission rejection repeats on every run, so it is left out of both
+      // failedDays and the log.
+      if (!isPermissionRejection(error)) {
+        failedDays.push(dateStr);
+        log(
+          'warn',
+          `[googleHealthService] Failed to fetch ${dataType} rollup for ${dateStr}: ${(error as Error).message}`
+        );
+      }
     }
     current.setUTCDate(current.getUTCDate() + 1);
   }
@@ -728,7 +739,7 @@ async function fetchDailyRollupRange(
     `raw_rollup_${dataType.replace(/-/g, '_')}`,
     anonymizeGoogleHealthData({ rollupDataPoints: allPoints })
   );
-  return { rollupDataPoints: allPoints };
+  return { rollupDataPoints: allPoints, failedDays };
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -754,6 +765,31 @@ async function fetchHeartRate(
     log(
       'error',
       `[googleHealthService] Error fetching resting heart rate for user ${userId}: ${(error as Error).message}`
+    );
+    throw error;
+  }
+}
+
+// Individual heart rate readings between two instants (RFC 3339). Unlike
+// fetchDataPointsRange there is no unfiltered fallback: without the filter the
+// API would return every reading the account has ever recorded.
+async function fetchHeartRateSamples(
+  userId: string,
+  startIso: string,
+  endIso: string,
+  providedToken: string | null = null
+) {
+  const accessToken =
+    providedToken || ((await getValidAccessToken(userId)) as string);
+  try {
+    return await fetchDataPointsList(accessToken, 'heart-rate', {
+      pageSize: 1000,
+      filter: `heart_rate.sample_time.physical_time >= "${startIso}" AND heart_rate.sample_time.physical_time < "${endIso}"`,
+    });
+  } catch (error) {
+    log(
+      'error',
+      `[googleHealthService] Error fetching heart rate samples for user ${userId}: ${(error as Error).message}`
     );
     throw error;
   }
@@ -1211,6 +1247,7 @@ export { getValidAccessToken };
 export { getStatus };
 export { disconnectGoogleHealth };
 export { fetchHeartRate };
+export { fetchHeartRateSamples };
 export { fetchSteps };
 export { fetchWeight };
 export { fetchSpO2 };
@@ -1239,6 +1276,7 @@ export default {
   getStatus,
   disconnectGoogleHealth,
   fetchHeartRate,
+  fetchHeartRateSamples,
   fetchSteps,
   fetchWeight,
   fetchSpO2,

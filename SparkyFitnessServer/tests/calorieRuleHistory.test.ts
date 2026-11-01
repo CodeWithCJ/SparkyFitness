@@ -44,6 +44,7 @@ const rules: CalorieRules = {
   activity_level: 'not_much',
   use_external_bmr: false,
   include_bmr_in_net_calories: false,
+  adjust_macros_with_exercise: false,
 };
 
 const row = (

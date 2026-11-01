@@ -101,8 +101,31 @@ describe('intervalsService.syncIntervalsData', () => {
       intervalsDataProcessor.processIntervalsActivities
     ).toHaveBeenCalledWith('user-1', 'user-1', [], false);
     expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('WHERE id = $1 AND user_id = $2'),
+      ['provider-1', 'user-1']
+    );
+  });
+
+  it('leaves last_sync_at alone when an activity fails, but still reports the result', async () => {
+    vi.mocked(
+      intervalsDataProcessor.processIntervalsActivities
+    ).mockResolvedValueOnce({ imported: 1, skipped: 0, failed: 1, removed: 0 });
+
+    const result = await intervalsService.syncIntervalsData(
+      'user-1',
+      'user-1',
+      'provider-1'
+    );
+
+    expect(result).toMatchObject({
+      success: true,
+      activitiesImported: 1,
+      activitiesFailed: 1,
+    });
+    expect(intervalsDataProcessor.processIntervalsWellness).toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalledWith(
       expect.stringContaining('SET last_sync_at = NOW()'),
-      ['provider-1']
+      expect.anything()
     );
   });
 
@@ -203,6 +226,10 @@ describe('intervalsService.syncIntervalsData', () => {
     ).toHaveBeenCalledWith('user-1', 'user-1', [
       { id: '2026-10-02', weight: 70 },
     ]);
+    expect(query).not.toHaveBeenCalledWith(
+      expect.stringContaining('SET last_sync_at = NOW()'),
+      expect.anything()
+    );
   });
 
   it('refuses to replay when no bundle was captured', async () => {

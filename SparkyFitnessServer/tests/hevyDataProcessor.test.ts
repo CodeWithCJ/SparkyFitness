@@ -404,6 +404,23 @@ describe('processHevyWorkouts — duplicate workout guard', () => {
   });
 });
 
+describe('processHevyWorkouts — required processing failures', () => {
+  it('rejects the batch when a workout cannot be saved', async () => {
+    const second = sampleWorkout();
+    second.id = 'workout-2';
+    vi.mocked(
+      exercisePresetEntryRepository.createExercisePresetEntry
+    ).mockRejectedValueOnce(new Error('insert failed'));
+
+    await expect(
+      processHevyWorkouts(UID, CID, [sampleWorkout(), second], 'UTC')
+    ).rejects.toThrow('Failed to import 1 Hevy workout(s).');
+    expect(
+      exercisePresetEntryRepository.createExercisePresetEntry
+    ).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('processHevyWorkouts — re-sync cleanup', () => {
   it('clears existing Hevy entries and preset entries over the batch date range', async () => {
     const older = sampleWorkout();

@@ -273,35 +273,61 @@ async function syncLiftosaurData(
 
   // 2. Ingest measurements from Liftosaur into SparkyFitness
   let measurementsImported = 0;
+  let measurementsFailed = false;
   try {
-    measurementsImported = await importMeasurementsFromLiftosaur(
+    const measurements = await importMeasurementsFromLiftosaur(
       userId,
       createdByUserId,
       apiKey,
       tz,
       cutoffMs
     );
+    measurementsImported = measurements.imported;
     log(
       'info',
       `[liftosaurService] Imported ${measurementsImported} measurement records for user ${userId}.`
     );
+    if (measurements.failedKeys.length > 0) {
+      log(
+        'warn',
+        `[liftosaurService] Liftosaur measurement keys failed for user ${userId}: ${measurements.failedKeys.join(', ')}`
+      );
+      measurementsFailed = true;
+    }
+    if (measurements.failedRecords > 0) {
+      log(
+        'warn',
+        `[liftosaurService] ${measurements.failedRecords} Liftosaur measurement records could not be saved for user ${userId}.`
+      );
+      measurementsFailed = true;
+    }
   } catch (mErr) {
     log(
       'error',
       `[liftosaurService] Error importing measurements for user ${userId}: ${errorMessage(mErr)}`
     );
+    measurementsFailed = true;
   }
 
-  const client = await getSystemClient();
-  try {
-    await client.query(
-      `UPDATE external_data_providers
-       SET last_sync_at = NOW(), updated_at = NOW()
-       WHERE id = $1`,
-      [resolvedProviderId]
+  // The scheduler reads last_sync_at to decide when a daily sync is due, so a
+  // sync whose measurements failed leaves it alone to be retried next tick.
+  if (!measurementsFailed) {
+    const client = await getSystemClient();
+    try {
+      await client.query(
+        `UPDATE external_data_providers
+         SET last_sync_at = NOW(), updated_at = NOW()
+         WHERE id = $1 AND user_id = $2`,
+        [resolvedProviderId, userId]
+      );
+    } finally {
+      client.release();
+    }
+  } else {
+    log(
+      'warn',
+      `[liftosaurService] Liftosaur sync for user ${userId} did not import all measurements; last_sync_at not updated.`
     );
-  } finally {
-    client.release();
   }
 
   const totalProcessed = workoutsImported + measurementsImported;

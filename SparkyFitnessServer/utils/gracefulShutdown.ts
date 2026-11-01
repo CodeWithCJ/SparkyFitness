@@ -241,15 +241,17 @@ export async function drainServer(
 
 /**
  * On SIGTERM or SIGINT, drains the server and exits with drainServer's code;
- * exits 1 if that takes longer than the shutdown timeout.
+ * exits 1 if that takes longer than the shutdown timeout. Returns the same
+ * shutdown for the server's own reasons to stop; those always exit 1, so a
+ * restart policy starts it again.
  */
 export function installShutdownHandlers(
   server: Server,
   timeoutMs = shutdownTimeoutMs()
-) {
+): (reason: string) => void {
   trackConnections(server);
   let shuttingDown = false;
-  const shutdown = (signal: string) => {
+  const shutdown = (signal: string, exitCode?: number) => {
     if (shuttingDown) return;
     shuttingDown = true;
     log(
@@ -271,9 +273,10 @@ export function installShutdownHandlers(
       })
       .then((code) => {
         // eslint-disable-next-line n/no-process-exit
-        process.exit(code);
+        process.exit(exitCode ?? code);
       });
   };
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
+  return (reason) => shutdown(reason, 1);
 }

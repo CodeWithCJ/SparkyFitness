@@ -414,3 +414,47 @@ export async function getHrZonesForExerciseEntry(
     if (client && typeof client.release === 'function') client.release();
   }
 }
+
+/** A workout logged in SparkyFitness that has no heart rate yet. */
+export interface WorkoutEntryWithoutHeartRate {
+  id: string;
+  entry_date: string;
+  entry_time: string;
+  record_timezone: string | null;
+  duration_minutes: number;
+}
+
+/**
+ * Workouts logged in SparkyFitness itself (the live tracker, the web player or
+ * by hand) between two calendar days that carry a start time and a duration
+ * but no heart rate, so a provider sync can fill it in from a tracker worn
+ * during them. Synced entries are left out: their provider already sent its own.
+ */
+export async function getWorkoutEntriesWithoutHeartRate(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<WorkoutEntryWithoutHeartRate[]> {
+  const client = await getClient(userId);
+  try {
+    const res = (await client.query(
+      `SELECT id,
+              to_char(entry_date, 'YYYY-MM-DD') AS entry_date,
+              entry_time::text AS entry_time,
+              record_timezone,
+              duration_minutes::float8 AS duration_minutes
+       FROM exercise_entries
+       WHERE user_id = $1
+         AND entry_date BETWEEN $2::date AND $3::date
+         AND entry_time IS NOT NULL
+         AND duration_minutes > 0
+         AND avg_heart_rate IS NULL
+         AND lower(coalesce(source, '')) IN ('', 'manual', 'sparky')
+       ORDER BY entry_date, entry_time`,
+      [userId, startDate, endDate]
+    )) as { rows: WorkoutEntryWithoutHeartRate[] };
+    return res.rows;
+  } finally {
+    client.release();
+  }
+}

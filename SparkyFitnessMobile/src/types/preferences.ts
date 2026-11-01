@@ -41,6 +41,7 @@ export interface UserPreferences {
   goal_mode?: GoalMode;
   goal_mode_calculation_method?: GoalModeCalculationMethod;
   adaptive_activity_separate?: boolean;
+  adjust_macros_with_exercise?: boolean;
   goal_mode_custom_percentage?: number;
   /** Signed kilograms per week: negative for loss, positive for gain. */
   goal_mode_weekly_change_kg?: number;

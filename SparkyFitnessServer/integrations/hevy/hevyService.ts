@@ -303,7 +303,8 @@ async function syncHevyData(
         templates
       );
     }
-    await markProviderSynced(userId, provider.id);
+    // Replaying saved responses must not postpone the next live sync.
+    if (!replay) await markProviderSynced(userId, provider.id);
     log(
       'info',
       `Hevy synchronization completed for user ${userId}. Total processed: ${workouts.length}`

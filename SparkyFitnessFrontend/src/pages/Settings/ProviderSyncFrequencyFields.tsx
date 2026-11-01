@@ -87,7 +87,7 @@ export function ProviderSyncFrequencyFields({
         <p id={helpId} className="text-sm text-muted-foreground">
           {t(
             'settings.editProviderForm.hevyDailyHelp',
-            'Daily Hevy sync runs once per day at or after 21:00 in your SparkyFitness timezone. A successful sync earlier that day also counts. Automatic sync requires an active provider.'
+            'Daily Hevy sync runs at or after 21:00 in your SparkyFitness timezone. Only a successful sync at or after 21:00 counts for that evening. Automatic sync requires an active provider.'
           )}
         </p>
       )}

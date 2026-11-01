@@ -485,3 +485,38 @@ export function computeCalorieBalance({
     tdeeProjection,
   };
 }
+
+/** Positive budget earned from activity, excluding resting-only projection changes. */
+export function computeExerciseMacroCredit(
+  inputs: CalorieBalanceInputs
+): number {
+  const activity = resolveExerciseCalories(
+    inputs.exercise.otherCalories,
+    inputs.exercise.activeCalories,
+    inputs.backgroundStepCalories
+  ).calories;
+  if (activity <= 0) return 0;
+  const macroInputs: CalorieBalanceInputs = {
+    ...inputs,
+    eatenCalories: 0,
+    userPreferences: {
+      ...inputs.userPreferences,
+      include_bmr_in_net_calories: false,
+    },
+  };
+  const actual = computeCalorieBalance(macroInputs);
+  const withoutActivity = computeCalorieBalance({
+    ...macroInputs,
+    exercise: { activeCalories: 0, otherCalories: 0, activitySteps: 0 },
+    backgroundStepCalories: 0,
+    deviceTotalCalories:
+      typeof inputs.deviceTotalCalories === 'number'
+        ? Math.max(0, inputs.deviceTotalCalories - activity)
+        : inputs.deviceTotalCalories,
+  });
+  return Math.max(
+    0,
+    actual.remaining -
+      Math.max(inputs.adjustedGoalCalories, withoutActivity.remaining)
+  );
+}

@@ -272,6 +272,10 @@ async function importExerciseEntriesFromCsv(
  * `activeEnergyKcal` overwrites `calories_burned`, which the server otherwise
  * derives from duration and sets. A watch on the wearer's wrist measured it;
  * the derivation is a formula, so the measurement wins.
+ *
+ * `seriesSource` names the provider the stored heart rate series is kept
+ * under; the Google Health sync passes its own name when it attaches a
+ * tracker's readings to a workout logged in SparkyFitness.
  */
 async function attachWatchTelemetryToExerciseEntry(
   userId: string,
@@ -281,7 +285,8 @@ async function attachWatchTelemetryToExerciseEntry(
   activeEnergyKcal?: number,
   durationMinutes?: number,
   appleZones?: unknown,
-  strideLengthCm?: number | null
+  strideLengthCm?: number | null,
+  seriesSource = 'SparkyFitness Watch'
 ): Promise<void> {
   // Fail closed: family/delegate diary *read* can SELECT another user's
   // entry via RLS, but this route must not 204 after an UPDATE that
@@ -375,7 +380,13 @@ async function attachWatchTelemetryToExerciseEntry(
       fields,
       zones,
       () =>
-        storeHeartRateSeries(userId, actingUserId, exerciseEntryId, accepted),
+        storeHeartRateSeries(
+          userId,
+          actingUserId,
+          exerciseEntryId,
+          accepted,
+          seriesSource
+        ),
       sessionZones
     );
   } else {
@@ -403,7 +414,8 @@ async function storeHeartRateSeries(
   userId: string,
   actingUserId: string,
   exerciseEntryId: string,
-  hrSamples: HeartRateSampleRequest[]
+  hrSamples: HeartRateSampleRequest[],
+  source: string
 ): Promise<void> {
   try {
     const tz = await loadUserTimezone(userId);
@@ -414,7 +426,7 @@ async function storeHeartRateSeries(
       userId,
       actingUserId,
       'heart_rate',
-      'SparkyFitness Watch',
+      source,
       valid.map((s) => ({
         entry_date: instantToDay(s.t, tz),
         timestamp: new Date(s.t),
@@ -766,6 +778,19 @@ async function setExerciseEntryDistance(
   const client = await getClient(userId, actingUserId);
   try {
     await client.query('BEGIN');
+    // The laps and pace chart are scaled from the distance being replaced,
+    // so read it under the row lock: another correction or edit that commits
+    // in between would otherwise be scaled from a value it already changed.
+    const locked = (await client.query(
+      'SELECT distance FROM exercise_entries WHERE id = $1 FOR NO KEY UPDATE',
+      [exerciseEntryId]
+    )) as { rows: { distance: string | null }[] };
+    if (locked.rows.length === 0) {
+      const error = new Error('Exercise entry not found.');
+      // @ts-expect-error TS(2339): Property 'status' does not exist on type 'Error'.
+      error.status = 404;
+      throw error;
+    }
     // A route gives the distance; overriding it would leave the track, the
     // splits and the entry disagreeing.
     const track = (await client.query(
@@ -780,7 +805,7 @@ async function setExerciseEntryDistance(
       error.status = 409;
       throw error;
     }
-    const previousKm = Number(entry.distance) || 0;
+    const previousKm = Number(locked.rows[0]!.distance) || 0;
     await client.query(
       'UPDATE exercise_entries SET distance = $2, updated_at = NOW() WHERE id = $1',
       [exerciseEntryId, body.distance_km]

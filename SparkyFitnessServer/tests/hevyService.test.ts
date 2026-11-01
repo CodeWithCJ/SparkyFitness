@@ -313,7 +313,7 @@ describe('syncHevyData required API reads', () => {
 });
 
 describe('syncHevyData local replay', () => {
-  it('replays saved template pages and scopes its success timestamp to the chosen provider', async () => {
+  it('replays saved template pages without advancing the live sync timestamp', async () => {
     mocks.loadRawBundle.mockReturnValue({
       last_updated: '2026-10-24T10:00:00Z',
       responses: {
@@ -345,7 +345,7 @@ describe('syncHevyData local replay', () => {
       'Europe/Berlin',
       [template, secondTemplate]
     );
-    expect(syncUpdates()[0]![1]).toEqual([PROVIDER_ID, USER_ID]);
+    expect(syncUpdates()).toHaveLength(0);
     expect(result).toMatchObject({
       success: true,
       processedCount: 1,
