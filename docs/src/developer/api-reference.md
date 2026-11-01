@@ -262,6 +262,36 @@ Example Error Response:
         }
         ```
 
+#### 1a. `/api/generic-health/samples`
+
+*   **Path**: `/api/generic-health/samples`
+*   **Method**: `POST`
+*   **Description**: Stores passive readings (all-day heart rate, stress, SpO2, HRV, respiration, body battery, skin temperature) from a source that has no server-side integration, in the same table `GET /api/generic-health/samples` reads. Each sample lands on the user's calendar day of its timestamp. A write only touches rows of the posted `source`, so readings from Garmin, Polar or a watch on the same day stay as they are.
+*   **Authentication**: Session or API key with write access; requires the `checkin` permission when acting for another user.
+*   **Request Body**:
+    *   `metric` (required): one of `heart_rate`, `hrv`, `respiration`, `spo2`, `stress`, `body_battery`, `skin_temperature`.
+    *   `source` (required, string, 1–64 characters): stored as the provider name. The names the server writes samples under (`manual`, `garmin`, `polar`, `intervals`, `intervals.icu`, `SparkyFitness Watch`, `HealthKit`, `apple_health`, `Health Connect`) are refused, compared without case, spaces, dots, dashes and underscores. A passive write replaces the stored samples of its `source` (inside `window` for `merge`, the whole day for `replace`), except samples linked to a workout or sleep session (`ex`, `sl`), such as the heart rate a workout sent to `/health-data` stored under the same source. Those are kept in both modes.
+    *   `device_name` (optional, string).
+    *   `mode` (optional): `merge` (default) replaces only this source's stored samples inside `window`, on every day the window touches, and keeps the rest of those days, so sending the same window again replaces instead of duplicating; `replace` overwrites every day the samples touch.
+    *   `window` (required for `merge`): `{ "start": ISO 8601, "end": ISO 8601 }`, at most 31 days. Every sample must lie inside it.
+    *   `samples` (required, 1–50000): `{ "t": ISO 8601 with offset, ... }` with the field of the metric: `bpm` (heart_rate), `percentage` (spo2), `level` (stress, body_battery), `brpm` (respiration), `rmssd_ms`/`sdnn_ms` (hrv), `celsius` (skin_temperature). Links to workouts or sleep (`ex`, `sl`) are not accepted.
+*   **Example Request Body**:
+    ```json
+    {
+      "metric": "heart_rate",
+      "source": "xiaomi",
+      "window": { "start": "2026-10-28T00:00:00+01:00", "end": "2026-10-29T00:00:00+01:00" },
+      "samples": [
+        { "t": "2026-10-28T06:00:00+01:00", "bpm": 58 },
+        { "t": "2026-10-28T06:01:00+01:00", "bpm": 61 }
+      ]
+    }
+    ```
+*   **Responses**:
+    *   `200 OK`: `{ "metric": "heart_rate", "source": "xiaomi", "mode": "merge", "days_written": 1, "samples_written": 2 }`
+    *   `400 Bad Request`: the body failed validation; `issues` names the field.
+    *   `403 Forbidden`: no `checkin` permission for the active user, or a read-only API key.
+
 #### 2. `/api/measurements/check-in`
 
 *   **Path**: `/api/measurements/check-in`
