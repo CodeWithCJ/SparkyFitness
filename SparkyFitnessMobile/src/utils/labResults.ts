@@ -73,27 +73,56 @@ type Range = {
   ref_range_high: number | null;
 };
 
+type LabRangeBounds = { low: number | null; high: number | null };
+
 /**
- * A result is judged by the range printed with it. A result saved without
- * either bound falls back to the marker's range, so it still gets a status.
+ * The range a result is read against: the one saved with it, else the
+ * marker's. A result with neither bound falls back as a whole, so a bound is
+ * never taken from one range and its partner from the other.
  */
+export const effectiveLabRange = (
+  result: Range | null | undefined,
+  fallback: Range
+): LabRangeBounds => {
+  const own =
+    result != null &&
+    (result.ref_range_low !== null || result.ref_range_high !== null);
+  const source = own ? result : fallback;
+  return {
+    low: source.ref_range_low ?? null,
+    high: source.ref_range_high ?? null,
+  };
+};
+
+/** A result is judged by its own range, else the marker's. */
 export const labResultStatus = (
   result: Pick<LabResultResponse, 'value_numeric'> & Range,
   fallback: Range
 ): LabRangeStatus => {
   if (result.value_numeric === null) return 'unknown';
-  const own = result.ref_range_low !== null || result.ref_range_high !== null;
-  const range = own ? result : fallback;
-  return labRangeStatus(
-    result.value_numeric,
-    range.ref_range_low,
-    range.ref_range_high
-  );
+  const { low, high } = effectiveLabRange(result, fallback);
+  return labRangeStatus(result.value_numeric, low, high);
 };
 
-/** A lab number in the app locale, at the precision it was entered (no rounding). */
-const labNumber = (value: number): string =>
-  formatLocalizedNumber(value, { maximumFractionDigits: 20 });
+/** Decimal places in a number's shortest round-trip form ("5.6" is 1, "4e-7" is 7). */
+const decimalPlaces = (value: number): number => {
+  const [mantissa = '', exponent = '0'] = String(value).split('e');
+  const fraction = mantissa.split('.')[1]?.length ?? 0;
+  return Math.min(Math.max(0, fraction - Number(exponent)), 100);
+};
+
+/**
+ * A lab number in the app locale with exactly the decimals it was entered
+ * with: no rounding of small values and no float tail ("5.6" stays "5.6"),
+ * whatever the platform's Intl does with a long maximumFractionDigits.
+ */
+const labNumber = (value: number): string => {
+  const digits = decimalPlaces(value);
+  return formatLocalizedNumber(value, {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+};
 
 /** "4 - 5.6 %", "< 200 mg/dL", "> 40 mg/dL", or null with no range. */
 export const formatLabRange = (

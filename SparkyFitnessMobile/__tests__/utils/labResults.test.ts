@@ -2,6 +2,7 @@ import type { LabMarkerResponse, LabResultResponse } from '@workspace/shared';
 import {
   buildLabMarkers,
   buildLabPickerOptions,
+  effectiveLabRange,
   formatLabRange,
   formatLabValue,
   labHistoryPoints,
@@ -114,6 +115,22 @@ describe('labResultStatus', () => {
   });
 });
 
+describe('effectiveLabRange', () => {
+  const marker = { ref_range_low: 4, ref_range_high: 5.6 };
+
+  it("uses the result's own range when it has a bound", () => {
+    expect(
+      effectiveLabRange({ ref_range_low: null, ref_range_high: 6 }, marker)
+    ).toEqual({ low: null, high: 6 });
+  });
+
+  it("falls back to the marker's range when the result has none", () => {
+    const none = { ref_range_low: null, ref_range_high: null };
+    expect(effectiveLabRange(none, marker)).toEqual({ low: 4, high: 5.6 });
+    expect(effectiveLabRange(null, marker)).toEqual({ low: 4, high: 5.6 });
+  });
+});
+
 describe('formatting', () => {
   it('formats ranges and values', () => {
     expect(formatLabRange(4, 5.6, '%')).toBe('4 - 5.6 %');
@@ -122,6 +139,13 @@ describe('formatting', () => {
     expect(formatLabRange(null, null, '%')).toBeNull();
     expect(formatLabValue(5.4, '%')).toBe('5.4 %');
     expect(formatLabValue(7, '')).toBe('7');
+  });
+
+  it('keeps a value like 5.6 free of a decimal tail', () => {
+    expect(formatLabValue(5.6, '%')).toBe('5.6 %');
+    expect(formatLabValue(0.1 + 0.2, '')).toBe('0.30000000000000004');
+    expect(formatLabValue(1234.5, 'mg/dL')).toBe('1,234.5 mg/dL');
+    expect(formatLabValue(1e21, '')).toBe('1,000,000,000,000,000,000,000');
   });
 
   it('does not round small values to zero', () => {

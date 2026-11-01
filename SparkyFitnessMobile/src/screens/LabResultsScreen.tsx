@@ -16,6 +16,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useLabMarkers } from '../hooks/useLabResults';
 import { formatDateLabel } from '../utils/dateUtils';
 import {
+  effectiveLabRange,
   formatLabRange,
   labResultStatus,
   labResultText,
@@ -89,15 +90,8 @@ const LabResultsScreen: React.FC<Props> = ({ navigation }) => {
               const row = marker.latest;
               const unit = row?.unit || marker.unit;
               const status = row ? labResultStatus(row, marker) : 'unknown';
-              // The result's own range, else the marker's.
-              const ownRange =
-                row !== null &&
-                (row.ref_range_low !== null || row.ref_range_high !== null);
-              const range = formatLabRange(
-                ownRange ? row.ref_range_low : marker.ref_range_low,
-                ownRange ? row.ref_range_high : marker.ref_range_high,
-                unit
-              );
+              const { low, high } = effectiveLabRange(row, marker);
+              const range = formatLabRange(low, high, unit);
               return (
                 <Pressable
                   key={marker.id}

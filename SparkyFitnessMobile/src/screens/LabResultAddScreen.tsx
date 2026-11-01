@@ -31,6 +31,7 @@ import {
 import { useLabMarkerLabels } from '../utils/labMarkerLabels';
 import {
   buildLabPickerOptions,
+  effectiveLabRange,
   labMarkerQueryFromId,
   labPresetDefaults,
   labPresetName,
@@ -57,15 +58,8 @@ const rangeText = (bound: number | null) =>
   bound !== null ? String(bound) : '';
 
 /** The range a result for this marker starts from: its latest result's, else the marker's. */
-const startingRange = (marker: LabMarker) => {
-  const latest = marker.latest;
-  const own =
-    latest !== null &&
-    (latest.ref_range_low !== null || latest.ref_range_high !== null);
-  return own
-    ? { low: latest.ref_range_low, high: latest.ref_range_high }
-    : { low: marker.ref_range_low, high: marker.ref_range_high };
-};
+const startingRange = (marker: LabMarker) =>
+  effectiveLabRange(marker.latest, marker);
 
 const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t, i18n } = useTranslation();
