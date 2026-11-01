@@ -181,16 +181,18 @@ describe('WorkoutSettingsScreen', () => {
     );
   });
 
-  it('shows the focus photo row only in the focus view and switches values', () => {
+  it('shows the focus photo row only in the focus view and the Now card only in the list view', () => {
     const { getByText, queryByText, queryByTestId, getByTestId } =
       renderScreen();
     expect(getByTestId('workout-view-picker')).toBeTruthy();
     expect(queryByTestId('focus-media-picker')).toBeNull();
     expect(queryByText('Exercise photo')).toBeNull();
+    expect(getByTestId('workout-now-card-switch')).toBeTruthy();
 
     fireEvent.press(getByText('Focus'));
     expect(useAppPreferencesStore.getState().activeWorkoutView).toBe('focus');
     expect(getByTestId('focus-media-picker')).toBeTruthy();
+    expect(queryByTestId('workout-now-card-switch')).toBeNull();
 
     fireEvent.press(getByText('Small'));
     expect(useAppPreferencesStore.getState().focusMediaDefault).toBe(

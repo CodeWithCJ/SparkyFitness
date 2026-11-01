@@ -264,7 +264,9 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
           }
         />
 
-        {workoutView === 'focus' && (
+        {/* Each view's own option: the photo card for Focus, the pinned Now
+            card for List (the focus view already shows the set to do now). */}
+        {workoutView === 'focus' ? (
           <SettingsRow
             title={t('workoutSettings.focusMedia', {
               defaultValue: 'Exercise photo',
@@ -298,28 +300,28 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
               </View>
             }
           />
+        ) : (
+          <SettingsRow
+            title={t('workoutSettings.nowCard', {
+              defaultValue: 'Now card',
+            })}
+            subtitle={t('workoutSettings.nowCardSubtitle', {
+              defaultValue:
+                'Pin the set to do now above the exercise list: its target in large type, the exercise photo, what comes next, and Swap to do another exercise first.',
+            })}
+            subtitleNumberOfLines={0}
+            rightAccessory={
+              <Switch
+                testID="workout-now-card-switch"
+                value={nowCardEnabled}
+                onValueChange={setNowCardEnabled}
+                accessibilityLabel={t('workoutSettings.nowCard', {
+                  defaultValue: 'Now card',
+                })}
+              />
+            }
+          />
         )}
-
-        <SettingsRow
-          title={t('workoutSettings.nowCard', {
-            defaultValue: 'Now card',
-          })}
-          subtitle={t('workoutSettings.nowCardSubtitle', {
-            defaultValue:
-              'Pin the set to do now above the exercise list: its target in large type, the exercise photo, what comes next, and Swap to do another exercise first.',
-          })}
-          subtitleNumberOfLines={0}
-          rightAccessory={
-            <Switch
-              testID="workout-now-card-switch"
-              value={nowCardEnabled}
-              onValueChange={setNowCardEnabled}
-              accessibilityLabel={t('workoutSettings.nowCard', {
-                defaultValue: 'Now card',
-              })}
-            />
-          }
-        />
 
         <SettingsRow
           title={t('workoutSettings.warmupCalculator', {
