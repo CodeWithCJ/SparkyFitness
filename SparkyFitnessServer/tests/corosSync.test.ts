@@ -541,7 +541,7 @@ describe('corosService syncCorosData', () => {
       expect(lastSyncUpdates()).toHaveLength(1);
     });
 
-    it('keeps a failed download deferred without blocking it', async () => {
+    it('leaves it alone and names the deferred download when a download fails', async () => {
       mcpReturning(MOCK_SPORT_PAYLOAD, async () => {
         throw new Error('socket hang up');
       });
@@ -550,6 +550,75 @@ describe('corosService syncCorosData', () => {
 
       expect(result.deferred).toBe(1);
       expect(result.activitiesFailed).toBe(0);
+      expect(lastSyncUpdates()).toHaveLength(0);
+      expect(log).toHaveBeenCalledWith(
+        'warn',
+        expect.stringContaining('deferred downloads: 1')
+      );
+    });
+
+    it('leaves it alone when COROS answers a download with a tool error', async () => {
+      mcpReturning(MOCK_SPORT_PAYLOAD, async () => ({
+        content: [{ type: 'text', text: 'Tool call anomalies detected' }],
+        isError: true,
+      }));
+
+      const result = await sync();
+
+      expect(result.deferred).toBe(1);
+      expect(lastSyncUpdates()).toHaveLength(0);
+    });
+
+    it('leaves it alone when COROS answers a download with a limit error', async () => {
+      mcpReturning(MOCK_SPORT_PAYLOAD, async () => ({
+        content: [{ type: 'text', text: 'Daily download limit exceeded' }],
+        isError: true,
+      }));
+
+      const result = await sync();
+
+      expect(result.deferred).toBe(1);
+      expect(lastSyncUpdates()).toHaveLength(0);
+    });
+
+    it('leaves it alone when the daily budget is already spent', async () => {
+      mockFitBudget.reserveFitDownload.mockResolvedValue(null);
+      const call = mcpReturning(
+        MOCK_SPORT_PAYLOAD,
+        async () => MOCK_FIT_PAYLOAD
+      );
+
+      const result = await sync();
+
+      expect(countDownloads(call)).toBe(0);
+      expect(result.deferred).toBe(1);
+      expect(lastSyncUpdates()).toHaveLength(0);
+    });
+
+    it('leaves it alone when the last of the budget runs out mid-sync, and keeps the import', async () => {
+      mockFitBudget.reserveFitDownload.mockResolvedValue({
+        day: '2026-10-16',
+        used: 45,
+      });
+      mcpReturning(TWO_RECORDS_PAYLOAD, async () => MOCK_FIT_PAYLOAD);
+
+      const result = await sync();
+
+      expect(result.imported).toBe(1);
+      expect(result.deferred).toBe(1);
+      expect(lastSyncUpdates()).toHaveLength(0);
+    });
+
+    it('updates it when an activity already imported is the only one left', async () => {
+      mockExerciseEntry.getExistingSourceIds.mockResolvedValue(
+        new Set(['480644884506640590'])
+      );
+      mcpReturning(MOCK_SPORT_PAYLOAD, noFit);
+
+      const result = await sync();
+
+      expect(result.skippedExisting).toBe(1);
+      expect(result.deferred).toBe(0);
       expect(lastSyncUpdates()).toHaveLength(1);
     });
 

@@ -455,6 +455,54 @@ describe('providerSyncScheduler', () => {
     }
   );
 
+  describe('COROS deferred downloads', () => {
+    const runCoros = async (deferred: number) => {
+      vi.mocked(
+        externalProviderRepository.getProvidersByType
+      ).mockResolvedValue([
+        {
+          id: 'p-1',
+          user_id: 'u-1',
+          is_active: true,
+          sync_frequency: 'hourly',
+        } as never,
+      ]);
+      vi.mocked(corosService.syncCorosData).mockResolvedValueOnce({
+        success: true,
+        failedRequiredFetches: [],
+        activitiesFailed: 0,
+        deferred,
+      } as never);
+      await runProviderSync(
+        PROVIDER_SYNC_CONFIGS.find(
+          (c) => c.name === 'COROS'
+        ) as ProviderSyncConfig
+      );
+    };
+
+    it('does not update last_sync_at and names them when a download was deferred', async () => {
+      await runCoros(3);
+
+      expect(
+        externalProviderRepository.updateProviderLastSync
+      ).not.toHaveBeenCalled();
+      expect(log).toHaveBeenCalledWith(
+        'warn',
+        expect.stringContaining(
+          'last_sync_at not updated: 3 deferred downloads'
+        )
+      );
+    });
+
+    it('updates last_sync_at when everything was imported', async () => {
+      await runCoros(0);
+
+      expect(
+        externalProviderRepository.updateProviderLastSync
+      ).toHaveBeenCalledWith('p-1', expect.any(Date));
+    });
+  });
+
   it('runs Hevy sync with correct parameters', async () => {
     vi.mocked(externalProviderRepository.getProvidersByType).mockResolvedValue([
       {

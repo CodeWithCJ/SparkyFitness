@@ -131,7 +131,12 @@ export const PROVIDER_SYNC_CONFIGS: readonly ProviderSyncConfig[] = [
       await updateLastSyncIfComplete(
         'COROS',
         p,
-        result.failedRequiredFetches,
+        result.deferred > 0
+          ? [
+              ...result.failedRequiredFetches,
+              `${result.deferred} deferred downloads`,
+            ]
+          : result.failedRequiredFetches,
         result.activitiesFailed
       );
     },

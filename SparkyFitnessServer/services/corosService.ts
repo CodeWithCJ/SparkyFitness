@@ -657,9 +657,16 @@ export async function syncCorosData(
     }
   );
 
-  // Update last_sync_at, unless a records query or an activity's entry failed:
-  // the scheduler reads it to decide when a daily sync is due.
-  if (failedRequiredFetches.length === 0 && activitiesFailed === 0) {
+  // Update last_sync_at, unless a records query or an activity's entry failed or
+  // a download was deferred: the scheduler reads it to decide when a daily sync
+  // is due, and a deferred activity has no entry yet and would otherwise leave
+  // the sync window before the next daily run. It cannot block for good, because
+  // a scheduled sync only looks at yesterday and today.
+  if (
+    failedRequiredFetches.length === 0 &&
+    activitiesFailed === 0 &&
+    deferred === 0
+  ) {
     const updateClient = await getSystemClient();
     try {
       await updateClient.query(
@@ -674,7 +681,7 @@ export async function syncCorosData(
   } else {
     log(
       'warn',
-      `[corosService] COROS sync for user ${userId} is incomplete (failed required fetches: ${failedRequiredFetches.join(', ') || 'none'}; failed activities: ${activitiesFailed}); last_sync_at not updated.`
+      `[corosService] COROS sync for user ${userId} is incomplete (failed required fetches: ${failedRequiredFetches.join(', ') || 'none'}; failed activities: ${activitiesFailed}; deferred downloads: ${deferred}); last_sync_at not updated.`
     );
   }
 
