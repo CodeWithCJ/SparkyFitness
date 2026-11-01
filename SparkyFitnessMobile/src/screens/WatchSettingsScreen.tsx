@@ -229,7 +229,7 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
               })}
               subtitle={t('watchSettings.setScreenMetricsSubtitle', {
                 defaultValue:
-                  'Elapsed time, heart rate and calories. Off moves them to their own page after the set screen (after Up Next, when that page is on).',
+                  'Elapsed time, heart rate and calories. Off moves them to their own page above the set screen: swipe down to see them.',
               })}
               subtitleNumberOfLines={0}
               rightAccessory={
