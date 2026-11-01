@@ -84,6 +84,8 @@ pnpm start
 
 The API server starts on port `3010` by default. On first run it applies all migrations and creates the app database user. API docs are available at `http://localhost:3010/api/api-docs/swagger`.
 
+`pnpm start` runs the server under nodemon, which restarts it when a file changes but not when it exits. The server exits on purpose in some cases, for example when the database schema stops matching what it expects, and then stays down. Outside local development, run it under something that restarts it when it exits, such as systemd, pm2 or a container restart policy.
+
 ## 6. Start the frontend
 
 Open a second terminal from the repo root:

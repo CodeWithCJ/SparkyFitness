@@ -35,6 +35,10 @@ With `server.replicas` above 1, the chart also:
 
 Each of these has a value to change or turn off (`server.strategy`, `server.podDisruptionBudget`, `server.topologySpreadConstraints` or `server.defaultTopologySpread`, `server.preStopDelaySeconds` or `server.lifecycle`, `server.minReadySeconds`). Setting `frontend.replicas: 2` gives the web frontend the same budget, spread, `preStop` delay and `minReadySeconds`, so the UI also survives losing a node. On a single-node cluster, also set `frontend.podDisruptionBudget.enabled: false`, or a node drain waits forever for a frontend pod that cannot start anywhere else.
 
+## Point the load balancer at the readiness check
+
+Have your load balancer check `/api/health/ready` on each instance and send traffic only to instances that answer 200. It answers 503 once that instance has been unable to reach the database for more than about 10 seconds, and while it shuts down, so traffic moves to the others. While a backup is being restored it answers 200 with status `RESTORING`, so a container health check does not restart the server partway through the restore. `/api/health` only says the process is running.
+
 ## Run scheduled jobs on one instance
 
 Scheduled jobs (nightly cleanup, hourly integration syncs, automatic backups, Open Food Facts syncing and the demo reset) run on every instance by default. Set `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` on every instance except one, so exactly one instance runs them. With `SPARKY_FITNESS_LOG_LEVEL` set to `INFO` or `DEBUG`, each instance with jobs disabled says so in its startup log.

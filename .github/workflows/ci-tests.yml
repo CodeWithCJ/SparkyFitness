@@ -78,6 +78,8 @@ jobs:
               - 'SparkyFitnessServer/tests/dbConnectRetry.integration.test.ts'
               - 'SparkyFitnessServer/db/connectRetry.ts'
               - 'SparkyFitnessServer/db/poolManager.ts'
+              - 'SparkyFitnessServer/db/poolBusy.ts'
+              - 'SparkyFitnessServer/routes/healthRoutes.ts'
               - 'SparkyFitnessServer/services/exerciseEntryHistoryService.ts'
               - 'SparkyFitnessServer/tests/calorieRuleHistory.integration.test.ts'
               - 'SparkyFitnessServer/models/preferenceRepository.ts'
