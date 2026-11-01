@@ -108,6 +108,7 @@ describe('POST /api/generic-health/samples', () => {
           endMs: Date.parse('2026-10-28T23:00:00Z'),
         },
         days: ['2026-10-28', '2026-10-29'],
+        keepLinked: true,
       }
     );
   });
@@ -191,7 +192,10 @@ describe('POST /api/generic-health/samples', () => {
       .send({ ...body, mode: 'replace' });
 
     expect(res.statusCode).toBe(200);
-    expect(upsertMock.mock.calls[0]?.[5]).toEqual({ mode: 'replace' });
+    expect(upsertMock.mock.calls[0]?.[5]).toEqual({
+      mode: 'replace',
+      keepLinked: true,
+    });
   });
 
   it('passes the device name with every sample', async () => {

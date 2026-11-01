@@ -145,10 +145,12 @@ const getHealthMetricSamplesHandler: RequestHandler = async (
  *       sample metrics) from a source without a server-side integration, in
  *       the table GET /generic-health/samples reads. `merge` (default)
  *       requires `window` and replaces only this source's stored samples
- *       inside it; `replace` overwrites every day the samples touch. See
- *       docs/src/developer/api-reference.md for the field of each metric.
+ *       inside it; `replace` overwrites every day the samples touch. Stored
+ *       samples linked to a workout or sleep session are kept in both modes.
+ *       See docs/src/developer/api-reference.md for the field of each metric.
  *     security:
  *       - cookieAuth: []
+ *       - apiKeyAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -196,7 +198,8 @@ const getHealthMetricSamplesHandler: RequestHandler = async (
  * source without a server-side integration, in the table GET /samples reads.
  * Each sample lands on the user's calendar day of its timestamp. `merge`
  * replaces only this source's stored samples inside `window`, so sending the
- * same window again replaces instead of duplicating.
+ * same window again replaces instead of duplicating. Samples a workout or
+ * sleep session stored under the same source (`ex`/`sl`) are kept.
  */
 const postHealthMetricSamplesHandler: RequestHandler = async (
   req,
@@ -225,7 +228,7 @@ const postHealthMetricSamplesHandler: RequestHandler = async (
         ...fields,
       })
     );
-    let options: SampleWriteOptions = { mode: 'replace' };
+    let options: SampleWriteOptions = { mode: 'replace', keepLinked: true };
     if (body.mode === 'merge' && body.window) {
       // Every day the window touches, so a day whose readings are gone from
       // a resend is cleared too, not only the days that still have samples.
@@ -245,6 +248,7 @@ const postHealthMetricSamplesHandler: RequestHandler = async (
           endMs: Date.parse(body.window.end),
         },
         days,
+        keepLinked: true,
       };
     }
 

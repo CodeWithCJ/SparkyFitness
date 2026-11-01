@@ -18,6 +18,7 @@ interface StoredSample {
   t: string;
   bpm: number;
   ex?: string;
+  sl?: string;
 }
 
 const incoming = (time: string, bpm: number): FlatHealthSample => ({
@@ -176,6 +177,67 @@ describe('upsertSamplesByDay', () => {
     expect(writtenSamples()).toEqual([{ t: at('09:00:00'), bpm: 105 }]);
   });
 
+  describe('keepLinked', () => {
+    it('keeps workout and sleep samples inside the window in merge mode', async () => {
+      stored = [
+        { t: at('08:00:00'), bpm: 60 },
+        { t: at('09:00:20'), bpm: 150, ex: 'workout-1' },
+        { t: at('09:00:30'), bpm: 90 },
+        { t: at('09:00:40'), bpm: 55, sl: 'night-1' },
+        { t: at('12:00:00'), bpm: 70 },
+      ];
+
+      await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'xiaomi',
+        [incoming('09:00:00', 58), incoming('09:01:00', 59)],
+        {
+          mode: 'merge',
+          window: {
+            startMs: Date.parse(at('09:00:00')),
+            endMs: Date.parse(at('09:01:00')),
+          },
+          keepLinked: true,
+        }
+      );
+
+      expect(writtenSamples()).toEqual([
+        { t: at('08:00:00'), bpm: 60 },
+        { t: at('09:00:00'), bpm: 58 },
+        { t: at('09:00:20'), bpm: 150, ex: 'workout-1' },
+        { t: at('09:00:40'), bpm: 55, sl: 'night-1' },
+        { t: at('09:01:00'), bpm: 59 },
+        { t: at('12:00:00'), bpm: 70 },
+      ]);
+    });
+
+    it('keeps workout and sleep samples of the day in replace mode', async () => {
+      stored = [
+        { t: at('08:00:00'), bpm: 60 },
+        { t: at('09:00:20'), bpm: 150, ex: 'workout-1' },
+        { t: at('23:30:00'), bpm: 52, sl: 'night-1' },
+      ];
+
+      await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'xiaomi',
+        [incoming('10:00:00', 72)],
+        { mode: 'replace', keepLinked: true }
+      );
+
+      expect(wasReadForUpdate()).toBe(true);
+      expect(writtenSamples()).toEqual([
+        { t: at('09:00:20'), bpm: 150, ex: 'workout-1' },
+        { t: at('10:00:00'), bpm: 72 },
+        { t: at('23:30:00'), bpm: 52, sl: 'night-1' },
+      ]);
+    });
+  });
+
   it('acquires multi-day merge locks in chronological order regardless of input order', async () => {
     // A multi-day workout (or a batch straddling midnight) can hand
     // upsertSamplesByDay its later day's samples before its earlier day's.
@@ -315,6 +377,32 @@ describe('upsertSamplesByDay', () => {
 
       expect(written).toBe(1);
       expect(Object.keys(writtenByDay())).toEqual([day1]);
+    });
+
+    it('keeps only linked samples on a listed day the resend no longer covers', async () => {
+      storedByDay[day2] = [
+        { t: `${day2}T09:00:00.000Z`, bpm: 61 },
+        { t: `${day2}T18:00:00.000Z`, bpm: 140, ex: 'workout-1' },
+      ];
+
+      await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'xiaomi',
+        [
+          {
+            entry_date: day1,
+            timestamp: new Date(`${day1}T10:00:00.000Z`),
+            bpm: 70,
+          },
+        ],
+        { mode: 'merge', window, days: [day1, day2], keepLinked: true }
+      );
+
+      expect(writtenByDay()[day2]).toEqual([
+        { t: `${day2}T18:00:00.000Z`, bpm: 140, ex: 'workout-1' },
+      ]);
     });
 
     it('ignores listed days in replace mode', async () => {

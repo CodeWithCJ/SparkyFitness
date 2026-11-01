@@ -59,7 +59,17 @@ export interface SampleWriteOptions {
    * readings. A listed day without a stored row is skipped, not created.
    */
   days?: string[];
+  /**
+   * Keeps stored samples linked to a workout or sleep session (`ex`/`sl`) in
+   * both modes. For writers whose samples belong to no session, so a write
+   * under a source a workout also used cannot erase that workout's samples.
+   */
+  keepLinked?: boolean;
 }
+
+const isLinked = (sample: Record<string, unknown>): boolean =>
+  (typeof sample.ex === 'string' && sample.ex.length > 0) ||
+  (typeof sample.sl === 'string' && sample.sl.length > 0);
 
 /**
  * Groups flat {entry_date, timestamp, ex, sl, ...fields} samples into one bucket
@@ -69,9 +79,10 @@ export interface SampleWriteOptions {
  * the timestamp here) is what keeps a workout or sleep session that crosses
  * midnight landing on the correct calendar days.
  *
- * The whole batch runs in one transaction. In `merge` mode each bucket's
- * existing row is read with `SELECT ... FOR UPDATE` before being merged and
- * written back, so a concurrent writer targeting the same (user, metric, day,
+ * The whole batch runs in one transaction. In `merge` mode (and in `replace`
+ * with `keepLinked`) each bucket's existing row is read with
+ * `SELECT ... FOR UPDATE` before being merged and written back, so a
+ * concurrent writer targeting the same (user, metric, day,
  * provider) row blocks until this transaction commits instead of reading a
  * stale snapshot and silently dropping this write's samples (or vice versa).
  *
@@ -131,7 +142,8 @@ export async function upsertSamplesByDay(
     );
 
     for (const bucket of buckets) {
-      if (mode === 'merge') {
+      // Replace only reads the stored row when linked samples must survive it.
+      if (mode === 'merge' || options.keepLinked) {
         // Advisory lock first: FOR UPDATE alone can't serialize a first write
         // (no row exists yet to lock), so a second concurrent "first write" for
         // the same key must block here, not just at the row-lock below.
@@ -164,6 +176,8 @@ export async function upsertSamplesByDay(
         // every prior sample and treat the write as purely additive.
         const window = options.window;
         const retained = existing.filter((sample) => {
+          if (options.keepLinked && isLinked(sample)) return true;
+          if (mode === 'replace') return false;
           if (!window) return true;
           const ms = Date.parse(String(sample.t));
           if (!Number.isFinite(ms)) return true;
