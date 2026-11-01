@@ -183,6 +183,44 @@ describe.runIf(RUN)('overlapping writes to one workout', () => {
     expect(await workout(id)).toMatchObject({ notes: 'edited', distance: 7 });
   });
 
+  it('scales laps from the distance the last correction replaced', async () => {
+    const id = await insertWorkout();
+    await db.query(
+      'UPDATE public.exercise_entries SET distance = 10 WHERE id = $1',
+      [id]
+    );
+    await db.query(
+      `INSERT INTO public.exercise_entry_laps
+         (user_id, exercise_entry_id, entry_date, lap_index, start_time,
+          end_time, duration_seconds, distance_meters)
+       VALUES ($1, $2, '2026-09-20', 0, '2026-09-20T06:00:00Z',
+               '2026-09-20T06:30:00Z', 1800, 10000)`,
+      [userId, id]
+    );
+
+    await raceWrites(gate, db, 'exercise_entries', [
+      () =>
+        exerciseEntryService.setExerciseEntryDistance(userId, userId, id, {
+          distance_km: 5,
+        }),
+      () =>
+        exerciseEntryService.setExerciseEntryDistance(userId, userId, id, {
+          distance_km: 8,
+        }),
+    ]);
+
+    const { distance } = await workout(id);
+    const lap = (
+      await db.query(
+        `SELECT distance_meters::float AS distance_meters
+         FROM public.exercise_entry_laps WHERE exercise_entry_id = $1`,
+        [id]
+      )
+    ).rows[0];
+    expect([5, 8]).toContain(distance);
+    expect(lap.distance_meters).toBe(distance * 1000);
+  });
+
   it('keeps every field of overlapping edits through the service', async () => {
     const id = await insertWorkout();
     // Each edit sends one field, as the diary and the chatbot do; the service
