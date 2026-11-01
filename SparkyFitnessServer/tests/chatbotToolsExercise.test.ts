@@ -1055,6 +1055,37 @@ describe('workout presets', () => {
     );
   });
 
+  it('create_workout_preset drops cross-action keys (confirmed/start_date/end_date) and succeeds', async () => {
+    // Models echo shared flat-schema parameters (confirmed, start_date,
+    // end_date) onto create_workout_preset even though they belong to
+    // update/delete_workout_preset and get_exercise_progress.
+    vi.mocked(workoutPresetService.createWorkoutPreset).mockResolvedValue({
+      id: 9,
+      name: 'Leg Day',
+      exercises: [{}],
+    });
+
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'create_workout_preset',
+        name: 'Leg Day',
+        exercises: [{ exercise_id: EXERCISE_ID }],
+        confirmed: true,
+        start_date: '2026-11-01',
+        end_date: '2026-11-30',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Workout preset "Leg Day" created with 1 exercises.'
+    );
+    expect(workoutPresetService.createWorkoutPreset).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ name: 'Leg Day' })
+    );
+  });
+
   it('create_workout_preset builds sets and superset groups', async () => {
     vi.mocked(workoutPresetService.createWorkoutPreset).mockResolvedValue({
       id: 9,

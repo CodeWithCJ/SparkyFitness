@@ -846,7 +846,26 @@ Workout formats (workout_format, default standard) drive the in-app timer:
           normalized.entry_date = todayInZone(tz);
         }
 
-        const parsed = manageExerciseSchema.safeParse(normalized);
+        let parsed = manageExerciseSchema.safeParse(normalized);
+        if (!parsed.success) {
+          // Small-model salvage: models bleed fields across actions (e.g.
+          // confirmed / start_date / end_date, which the flat input schema
+          // publishes for update/delete_workout_preset and
+          // get_exercise_progress, echoed onto create_workout_preset).
+          // Drop keys the action doesn't accept and re-parse once,
+          // mirroring the foodTools behavior.
+          const badKeys = parsed.error.issues.flatMap((i) =>
+            i.code === 'unrecognized_keys' ? i.keys : []
+          );
+          if (badKeys.length > 0) {
+            for (const key of badKeys) delete normalized[key];
+            log(
+              'info',
+              `[exerciseTools] Dropped unrecognized keys for ${normalized.action}: ${badKeys.join(', ')}`
+            );
+            parsed = manageExerciseSchema.safeParse(normalized);
+          }
+        }
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }

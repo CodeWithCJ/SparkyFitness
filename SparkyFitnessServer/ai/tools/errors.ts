@@ -124,8 +124,16 @@ export function formatZodError(
   error: ZodError,
   fieldNames: Readonly<Record<string, string>> = {}
 ): string {
+  // Unrecognized-keys issues first: they name the real offender (a key the
+  // action doesn't accept), while field-type issues elsewhere (e.g.
+  // "exercises: Invalid input") otherwise mask them and send the model
+  // off to "fix" the wrong parameter.
+  const sorted = [
+    ...error.issues.filter((i) => i.code === 'unrecognized_keys'),
+    ...error.issues.filter((i) => i.code !== 'unrecognized_keys'),
+  ];
   return ERRORS.VALIDATION(
-    error.issues
+    sorted
       .map((i) => {
         const path = i.path.map((key) =>
           typeof key === 'string' ? (fieldNames[key] ?? key) : key
