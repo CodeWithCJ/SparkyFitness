@@ -17,6 +17,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 import { calculateBaseline, getHRVStatus } from '@/utils/reportUtil';
 import { useHealthMetricSamples } from '@/hooks/useGenericHealth';
+import { samplesForDay } from '@/utils/healthMetricSamples';
 
 interface HRVDataPoint {
   date: string;
@@ -86,17 +87,10 @@ const HRVCard = ({ data }: HRVCardProps) => {
   );
 
   const intradayPoints = useMemo(() => {
-    const bucket = hrvSampleBuckets.find((b) => b.entry_date === latestDate);
-    if (
-      !bucket ||
-      !Array.isArray(bucket.samples) ||
-      bucket.samples.length === 0
-    ) {
-      return [];
-    }
+    if (!latestDate) return [];
     const points: Array<{ time: string; displayTime: string; rmssd: number }> =
       [];
-    for (const sample of bucket.samples) {
+    for (const sample of samplesForDay(hrvSampleBuckets, latestDate)) {
       if (!sample || typeof sample !== 'object') continue;
       const s = sample as Record<string, unknown>;
       const rmssd =
