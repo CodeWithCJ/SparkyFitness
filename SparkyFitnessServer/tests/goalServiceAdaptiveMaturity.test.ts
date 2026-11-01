@@ -71,8 +71,8 @@ describe('goalService adaptive TDEE maturity', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(
-      weeklyGoalPlanRepository.getActiveWeeklyGoalPlan
-    ).mockResolvedValue(null);
+      weeklyGoalPlanRepository.getActiveWeeklyGoalPlansInRange
+    ).mockResolvedValue([]);
     vi.mocked(goalRepository.getGoalsInRange).mockResolvedValue([]);
     vi.mocked(goalRepository.getMostRecentGoalBeforeDate).mockResolvedValue({
       calories: STORED_GOAL,

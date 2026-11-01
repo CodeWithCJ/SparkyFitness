@@ -41,41 +41,70 @@ const renderInProvider = (ui: ReactElement, showTokenStats: boolean) => {
 };
 
 describe('TokenUsageLine', () => {
-  it('renders the per-message breakdown and omits cached at 0', () => {
+  const line = (container: HTMLElement) =>
+    container.querySelector(LINE) as HTMLElement | null;
+
+  it('splits input into cached and uncached so the parts add up to the total', () => {
     const { container } = render(
       <TokenUsageLine
-        inputTokens={1240}
-        outputTokens={380}
-        totalTokens={1620}
-        cachedInputTokens={0}
+        inputTokens={65890}
+        outputTokens={1051}
+        totalTokens={66941}
+        cachedInputTokens={63990}
       />
     );
-    expect(container.querySelector(LINE)?.textContent).toBe(
-      `${(1240).toLocaleString()} in · ${(380).toLocaleString()} out · ${(1620).toLocaleString()} total`
+    expect(line(container)?.textContent).toBe(
+      '66.9K total · 64K cached · 1.9K uncached · 1.1K out'
+    );
+    // Exact counts stay available on hover.
+    expect(line(container)?.title).toBe(
+      '66,941 total · 63,990 cached · 1,900 uncached · 1,051 out'
     );
   });
 
-  it('includes the cached segment when cached input is present', () => {
+  it('keeps a single input segment when the provider reports no cache reads', () => {
+    for (const cachedInputTokens of [0, undefined]) {
+      const { container, unmount } = render(
+        <TokenUsageLine
+          inputTokens={1240}
+          outputTokens={380}
+          totalTokens={1620}
+          cachedInputTokens={cachedInputTokens}
+        />
+      );
+      expect(line(container)?.textContent).toBe(
+        '1.6K total · 1.2K in · 380 out'
+      );
+      unmount();
+    }
+  });
+
+  it('derives the total from input and output when it is missing', () => {
+    const { container } = render(
+      <TokenUsageLine inputTokens={900} outputTokens={35} />
+    );
+    expect(line(container)?.textContent).toBe('935 total · 900 in · 35 out');
+  });
+
+  it('never shows negative uncached input', () => {
     const { container } = render(
       <TokenUsageLine
-        inputTokens={1240}
-        outputTokens={380}
-        totalTokens={1620}
-        cachedInputTokens={980}
+        inputTokens={100}
+        outputTokens={10}
+        totalTokens={110}
+        cachedInputTokens={150}
       />
     );
-    expect(container.querySelector(LINE)?.textContent).toBe(
-      `${(1240).toLocaleString()} in · ${(380).toLocaleString()} out · ${(1620).toLocaleString()} total · ${(980).toLocaleString()} cached`
+    expect(line(container)?.textContent).toBe(
+      '110 total · 150 cached · 0 uncached · 10 out'
     );
   });
 
-  it('renders the session label format when given a label', () => {
+  it('prefixes the label for the session total', () => {
     const { container } = render(
       <TokenUsageLine label="this session" totalTokens={8420} />
     );
-    expect(container.querySelector(LINE)?.textContent).toBe(
-      `this session: ${(8420).toLocaleString()} tokens`
-    );
+    expect(line(container)?.textContent).toBe('this session: 8.4K total');
   });
 });
 
@@ -101,7 +130,7 @@ describe('MessageTokenUsage', () => {
     });
     const { container } = renderInProvider(<MessageTokenUsage />, true);
     expect(container.querySelector(LINE)?.textContent).toBe(
-      `${(1240).toLocaleString()} in · ${(380).toLocaleString()} out · ${(1620).toLocaleString()} total · ${(980).toLocaleString()} cached`
+      '1.6K total · 980 cached · 260 uncached · 380 out'
     );
   });
 
@@ -117,25 +146,113 @@ describe('SessionTokenUsage', () => {
     localStorage.clear();
     mockedUsage.mockReset();
     // The adapter helper returns undefined for messages without usage (e.g.
-    // restored history); the wrapper's `?? 0` must tolerate that in the sum.
-    mockedUsage.mockImplementation(
-      (m) => (m as { usage?: { totalTokens?: number } })?.usage
+    // restored history); the wrapper must skip those in the sum.
+    mockedUsage.mockImplementation((m) => (m as { usage?: object })?.usage);
+  });
+
+  it('sums every usage field across messages, skipping ones without usage', () => {
+    mockAuiState.current = {
+      thread: {
+        messages: [
+          {
+            usage: {
+              inputTokens: 65890,
+              outputTokens: 1051,
+              totalTokens: 66941,
+              cachedInputTokens: 63990,
+            },
+          },
+          {},
+          {
+            usage: {
+              inputTokens: 67400,
+              outputTokens: 640,
+              totalTokens: 68040,
+              cachedInputTokens: 66100,
+            },
+          },
+        ],
+      },
+    };
+    const { container } = renderInProvider(<SessionTokenUsage />, true);
+    expect(container.querySelector(LINE)?.textContent).toBe(
+      'this session: 135K total · 130.1K cached · 3.2K uncached · 1.7K out'
     );
   });
 
-  it('sums totals across messages, skipping ones without usage', () => {
+  it('omits segments no message reported', () => {
     mockAuiState.current = {
       thread: {
         messages: [
           { usage: { totalTokens: 1240 } },
-          {},
           { usage: { totalTokens: 380 } },
         ],
       },
     };
     const { container } = renderInProvider(<SessionTokenUsage />, true);
     expect(container.querySelector(LINE)?.textContent).toBe(
-      `this session: ${(1620).toLocaleString()} tokens`
+      'this session: 1.6K total'
+    );
+  });
+
+  it('derives a missing total from input and output', () => {
+    mockAuiState.current = {
+      thread: {
+        messages: [
+          { usage: { inputTokens: 900, outputTokens: 100 } },
+          { usage: { inputTokens: 400, outputTokens: 100, totalTokens: 500 } },
+        ],
+      },
+    };
+    const { container } = renderInProvider(<SessionTokenUsage />, true);
+    expect(container.querySelector(LINE)?.textContent).toBe(
+      'this session: 1.5K total · 1.3K in · 200 out'
+    );
+  });
+
+  it('drops a breakdown that does not cover every counted message', () => {
+    mockAuiState.current = {
+      thread: {
+        messages: [
+          { usage: { totalTokens: 1000 } },
+          {
+            usage: {
+              inputTokens: 400,
+              outputTokens: 100,
+              totalTokens: 500,
+              cachedInputTokens: 300,
+            },
+          },
+        ],
+      },
+    };
+    const { container } = renderInProvider(<SessionTokenUsage />, true);
+    expect(container.querySelector(LINE)?.textContent).toBe(
+      'this session: 1.5K total'
+    );
+  });
+
+  it('counts a message without cache reads as fully uncached', () => {
+    mockAuiState.current = {
+      thread: {
+        messages: [
+          {
+            usage: { inputTokens: 1000, outputTokens: 100, totalTokens: 1100 },
+          },
+          {
+            usage: {
+              inputTokens: 1000,
+              outputTokens: 100,
+              totalTokens: 1100,
+              cachedInputTokens: 900,
+            },
+          },
+        ],
+      },
+    };
+    const { container } = renderInProvider(<SessionTokenUsage />, true);
+    expect(container.querySelector(LINE)?.textContent).toBe(
+      'this session: 2.2K total · 900 cached · 1.1K uncached · 200 out'
     );
   });
 

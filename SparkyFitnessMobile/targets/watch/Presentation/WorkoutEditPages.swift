@@ -17,7 +17,7 @@ struct SetOptionsPage: View {
     @State private var confirmingDelete = false
 
     var body: some View {
-        EditPage(title: "Set options") {
+        EditPage(title: String(localized: "watch.workout.setOptions", defaultValue: "Set options")) {
             Button(String(localized: "watch.workout.addSet", defaultValue: "Add Set")) {
                 Haptics.tap()
                 session.sendWorkoutEdit(.addSet(exerciseEntryId: step.exerciseEntryId))
@@ -30,8 +30,7 @@ struct SetOptionsPage: View {
                 Haptics.tap()
                 confirmingDelete = true
             }
-            .tint(.red)
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(EditPageButtonStyle(fill: .red))
         }
         .sheet(isPresented: $choosingType) {
             SetTypeSheet(current: step.plannedSet.setType) { type in
@@ -61,10 +60,10 @@ private struct SetTypeSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private let types: [(id: String, name: String)] = [
-        ("normal", "Normal"),
-        ("warmup", "Warm-up"),
-        ("drop", "Drop set"),
-        ("failure", "Failure"),
+        ("normal", String(localized: "watch.workout.setType.normal", defaultValue: "Normal")),
+        ("warmup", String(localized: "watch.workout.setType.warmup", defaultValue: "Warm-up")),
+        ("drop", String(localized: "watch.workout.setType.drop", defaultValue: "Drop set")),
+        ("failure", String(localized: "watch.workout.setType.failure", defaultValue: "Failure")),
     ]
 
     var body: some View {
@@ -96,11 +95,20 @@ struct ExerciseOptionsPage: View {
     let step: WorkoutStep
 
     @EnvironmentObject private var session: WatchSessionManager
+    @EnvironmentObject private var store: WorkoutSessionStore
+    @EnvironmentObject private var checkIn: CheckInStore
     @State private var addingExercise = false
     @State private var confirmingDelete = false
+    @State private var swapping = false
 
     var body: some View {
-        EditPage(title: "Exercise options") {
+        EditPage(title: String(localized: "watch.workout.exerciseOptions", defaultValue: "Exercise options")) {
+            if checkIn.context.exerciseDoNow == true, !store.upcomingExercises.isEmpty {
+                Button(String(localized: "watch.workout.swapExercise", defaultValue: "Swap Exercise")) {
+                    Haptics.tap()
+                    swapping = true
+                }
+            }
             Button(String(localized: "watch.workout.addExercise", defaultValue: "Add Exercise")) {
                 Haptics.tap()
                 addingExercise = true
@@ -109,10 +117,10 @@ struct ExerciseOptionsPage: View {
                 Haptics.tap()
                 confirmingDelete = true
             }
-            .tint(.red)
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(EditPageButtonStyle(fill: .red))
         }
         .sheet(isPresented: $addingExercise) { AddExerciseSheet() }
+        .sheet(isPresented: $swapping) { SwapExerciseSheet() }
         .confirmationDialog(
             String(localized: "watch.workout.deleteExerciseConfirm", defaultValue: "Delete \(step.exerciseName)?"),
             isPresented: $confirmingDelete,
@@ -140,7 +148,7 @@ struct WorkoutActionsPage: View {
     @State private var confirmingDiscard = false
 
     var body: some View {
-        EditPage(title: "Workout") {
+        EditPage(title: String(localized: "watch.workout.title", defaultValue: "Workout")) {
             Button(String(localized: "watch.workout.addExercise", defaultValue: "Add Exercise")) {
                 Haptics.tap()
                 addingExercise = true
@@ -149,14 +157,12 @@ struct WorkoutActionsPage: View {
                 Haptics.tap()
                 confirmingFinish = true
             }
-            .tint(.blue)
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(EditPageButtonStyle(fill: .blue))
             Button(String(localized: "watch.workout.discardWorkout", defaultValue: "Discard Workout")) {
                 Haptics.tap()
                 confirmingDiscard = true
             }
-            .tint(.red)
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(EditPageButtonStyle(fill: .red))
         }
         .sheet(isPresented: $addingExercise) { AddExerciseSheet() }
         .endWorkoutDialogs(
@@ -174,16 +180,45 @@ private struct EditPage<Content: View>: View {
     @ViewBuilder let content: Content
 
     var body: some View {
+        // Has to fit one screen without scrolling: the page itself is one
+        // stop of the workout's vertical paging, and a scroll inside it
+        // fought that. Hence the compact `EditPageButtonStyle`.
         VStack(spacing: 6) {
             Text(title)
-                .font(.caption2)
+                .watchFont(.footnote, classic: .caption2)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
                 .frame(maxWidth: .infinity, alignment: .leading)
             content
-                .font(.system(size: 15, weight: .semibold))
+                .buttonStyle(EditPageButtonStyle())
         }
+        // The button height is fixed; this keeps the text inside it legible
+        // rather than shrunk to nothing at the largest sizes.
+        .dynamicTypeSize(...DynamicTypeSize.xxLarge)
         .frame(maxHeight: .infinity, alignment: .center)
         .padding(.horizontal, 2)
+    }
+}
+
+/// The edit pages' buttons: a fixed, compact height (the system bordered
+/// button is taller, and three of them overflowed a 40 mm screen at larger
+/// text sizes), one line of text that shrinks rather than wraps.
+private struct EditPageButtonStyle: ButtonStyle {
+    var fill: Color = WatchStyle.fill
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .watchFont(.body.weight(.semibold), classic: .system(size: 15, weight: .semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity)
+            .frame(height: WatchStyle.s(40))
+            .background(fill, in: Capsule())
+            .opacity(configuration.isPressed ? 0.7 : 1)
+            .contentShape(Capsule())
     }
 }
 

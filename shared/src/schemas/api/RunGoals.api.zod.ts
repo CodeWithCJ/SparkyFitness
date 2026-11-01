@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { runDayStringSchema } from './RunProgram.api.zod.ts';
 
-export const runGoalsSchema = z.object({
+export const runGoalsResponseSchema = z.object({
   /** Kilometres to run in a week, or null for no target. */
   weekly_distance_km: z.number().positive().max(1000).nullable(),
   race_name: z.string().max(100).nullable(),
@@ -11,7 +11,7 @@ export const runGoalsSchema = z.object({
   race_distance_km: z.number().positive().max(1000).nullable(),
   updated_at: z.string(),
 });
-export type RunGoals = z.infer<typeof runGoalsSchema>;
+export type RunGoals = z.infer<typeof runGoalsResponseSchema>;
 
 /** Where the person stands against their goals today. */
 export const runGoalProgressSchema = z.object({
@@ -36,7 +36,7 @@ export type RunGoalProgress = z.infer<typeof runGoalProgressSchema>;
 
 /** `goals` is null until the person has set one. */
 export const getRunGoalsResponseSchema = z.object({
-  goals: runGoalsSchema.nullable(),
+  goals: runGoalsResponseSchema.nullable(),
   progress: runGoalProgressSchema,
 });
 export type GetRunGoalsResponse = z.infer<typeof getRunGoalsResponseSchema>;

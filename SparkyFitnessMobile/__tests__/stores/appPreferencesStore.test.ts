@@ -76,6 +76,28 @@ describe('appPreferencesStore', () => {
     });
   });
 
+  describe('add menu row styles', () => {
+    it('keeps a choice that differs from the default and drops one that matches it', () => {
+      const { setAddMenuRowStyle } = useAppPreferencesStore.getState();
+
+      setAddMenuRowStyle('mood', 'action');
+      expect(useAppPreferencesStore.getState().addMenuRowStyles).toEqual({
+        mood: 'action',
+      });
+
+      // Mood's own style is a pair.
+      setAddMenuRowStyle('mood', 'compact');
+      expect(useAppPreferencesStore.getState().addMenuRowStyles).toEqual({});
+    });
+
+    it('is cleared by resetting the menu', () => {
+      useAppPreferencesStore.getState().setAddMenuRowStyle('mood', 'list');
+      useAppPreferencesStore.getState().resetAddMenu();
+
+      expect(useAppPreferencesStore.getState().addMenuRowStyles).toEqual({});
+    });
+  });
+
   describe('health trend preferences', () => {
     it('defaults to the full registry order with nothing hidden', () => {
       const state = useAppPreferencesStore.getState();
@@ -296,6 +318,33 @@ describe('appPreferencesStore', () => {
       const state = useAppPreferencesStore.getState();
       expect(state.soundsEnabled).toBe(false); // persisted values honoured
       expect(state.activeWorkoutMetricColumn).toBe('rpe'); // shallow-merge backfill
+    });
+  });
+
+  describe('the retired guided check-in setting', () => {
+    // Quick Actions shows or hides Check-In like any other item now.
+    it('keeps the rest of an older blob and drops the setting on the next write', async () => {
+      await AsyncStorage.setItem(
+        '@SparkyFitness/app-preferences',
+        JSON.stringify({
+          state: {
+            ...PREFERENCE_DEFAULTS,
+            soundsEnabled: false,
+            guidedCheckInEnabled: true,
+          },
+          version: 1,
+        })
+      );
+      await useAppPreferencesStore.persist.rehydrate();
+      expect(useAppPreferencesStore.getState().soundsEnabled).toBe(false);
+
+      useAppPreferencesStore.getState().setDiarySummaryVisible(true);
+
+      const raw = await AsyncStorage.getItem('@SparkyFitness/app-preferences');
+      const parsed = JSON.parse(raw!);
+      expect(parsed.state).not.toHaveProperty('guidedCheckInEnabled');
+      expect(parsed.state.diarySummaryVisible).toBe(true);
+      expect(parsed.state.soundsEnabled).toBe(false);
     });
   });
 

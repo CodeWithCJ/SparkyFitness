@@ -102,6 +102,44 @@ describe('GET /v2/foods/barcode/:barcode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+  it('requests resolved source metadata and exposes it without raw provider data', async () => {
+    const barcode = '3017620422003';
+    const providerId = '11111111-1111-4111-8111-111111111111';
+    vi.mocked(foodCoreService.lookupBarcode).mockResolvedValue({
+      source: 'openfoodfacts',
+      providerId,
+      providerName: 'Backup database',
+      barcode_raw: { internal: 'provider response' },
+      food: {
+        name: 'Spread',
+        brand: null,
+        is_custom: false,
+        default_variant: {
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 539,
+          protein: 6.3,
+          carbs: 57.5,
+          fat: 30.9,
+          is_default: true,
+        },
+      },
+    });
+    const response = await request(app).get(`/v2/foods/barcode/${barcode}`);
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      providerId,
+      providerName: 'Backup database',
+    });
+    expect(response.body).not.toHaveProperty('barcode_raw');
+    expect(foodCoreService.lookupBarcode).toHaveBeenCalledWith(
+      barcode,
+      'user-123',
+      undefined,
+      'user-123',
+      { includeProviderMetadata: true }
+    );
+  });
   it('returns a local barcode hit when optional fields are null', async () => {
     const barcode = '012345678901';
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message

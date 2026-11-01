@@ -87,6 +87,7 @@ export const userPreferencesSchema = z.object({
   measurement_decimal_places: z.number().int().min(0),
   // Manually added (file is ts-to-zod generated; precedent: MealFoods.zod.ts). Keep on regen.
   use_external_bmr: z.boolean(),
+  use_move_ring_active_calories: z.boolean(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
   active_vision_ai_service_id: z.string().uuid().nullable().optional(),
   auto_scale_online_imports: z.boolean().nullable().optional(),
@@ -179,6 +180,7 @@ export const userPreferencesInitializerSchema = z.object({
   adaptive_workout_suggestions: z.boolean().optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
+  use_move_ring_active_calories: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
   active_vision_ai_service_id: z.string().uuid().nullable().optional(),
   auto_scale_online_imports: z.boolean().optional().nullable(),
@@ -275,6 +277,7 @@ export const userPreferencesMutatorSchema = z.object({
   adaptive_workout_suggestions: z.boolean().optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
+  use_move_ring_active_calories: z.boolean().optional(),
   active_ai_service_id: z.string().uuid().nullable().optional(),
   active_vision_ai_service_id: z.string().uuid().nullable().optional(),
   auto_scale_online_imports: z.boolean().optional().nullable(),

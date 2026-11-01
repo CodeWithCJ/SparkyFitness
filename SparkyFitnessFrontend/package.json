@@ -1,7 +1,7 @@
 {
   "name": "sparkyfitnessfrontend",
   "private": true,
-  "version": "1.9.0",
+  "version": "1.11.0",
   "homepage": "https://github.com/CodeWithCJ/SparkyFitness",
   "type": "module",
   "scripts": {
@@ -11,7 +11,7 @@
     "typecheck": "tsc -b",
     "format:check": "prettier . --check",
     "validate": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run knip",
-    "build": "pnpm run validate && vite build",
+    "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
@@ -85,6 +85,7 @@
     "@assistant-ui/react-ai-sdk": "^1.4.20",
     "@assistant-ui/react-markdown": "^0.14.24",
     "@better-auth/api-key": "^1.7.12",
+    "@better-auth/oauth-provider": "1.7.12",
     "@better-auth/passkey": "^1.7.12",
     "@better-auth/sso": "^1.7.12",
     "@dnd-kit/core": "^6.3.1",

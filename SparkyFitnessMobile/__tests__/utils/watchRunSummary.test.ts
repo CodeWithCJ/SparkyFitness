@@ -121,3 +121,23 @@ test('carries the form measured when the run was filed', () => {
   expect(summary.form).toEqual(form);
   expect(watchRunSummary(outdoor, 'km', null, 'e1')).not.toHaveProperty('form');
 });
+
+test('a jump rope summary drops every distance-shaped part and keeps calories', () => {
+  const jumpRope = {
+    ...outdoor,
+    kind: 'jumpRope' as const,
+    place: 'indoor' as const,
+    route: [],
+    distanceMeters: 0,
+    distanceSeries: [],
+    laps: [T0 + 120_000],
+    lapDistances: [0],
+  };
+  const summary = watchRunSummary(jumpRope, 'km', null, 'entry-1');
+  expect(summary.editableDistance).toBe(false);
+  expect(summary).not.toHaveProperty('watchIndoor');
+  expect(summary).not.toHaveProperty('distanceSeries');
+  expect(summary.laps).toEqual([]);
+  expect(summary.activeEnergyKcal).toBe(180);
+  expect(summary.activeSeconds).toBe(650);
+});

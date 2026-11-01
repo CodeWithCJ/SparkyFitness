@@ -843,7 +843,9 @@ export const manageFoodInput = z.object({
     .number()
     .min(0)
     .optional()
-    .describe("Amount consumed (units defined by 'unit')"),
+    .describe(
+      "Amount consumed (units defined by 'unit'). For create_food, also the serving the nutrients are for."
+    ),
   unit: z
     .string()
     .min(1)

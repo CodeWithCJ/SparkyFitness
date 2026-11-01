@@ -4,6 +4,7 @@ import {
   PR_SPORT_GROUPS,
   SPORT_CONFIDENCES,
 } from '../../utils/activitySport.ts';
+import { exerciseModalitySchema } from './Exercises.api.zod.ts';
 
 /** Canonical sport, named after the ANT+/FIT SDK `sport` enum. */
 export const activitySportSchema = z.enum(ACTIVITY_SPORTS);
@@ -167,6 +168,10 @@ export const exerciseActivityQueryItemSchema = z.object({
   floorsClimbed: z.number().nullable().optional(),
   /** Total ascent in metres, whatever the unit system of the request. */
   elevationGainMeters: z.number().nullable().optional(),
+  /** Air temperature at the start, in °C whatever the unit system of the request. */
+  weatherTempCelsius: z.number().nullable().optional(),
+  /** Short description such as "Light rain". */
+  weatherCondition: z.string().nullable().optional(),
   /** The person's own 1 (easy) to 10 (maximal) rating of the workout. */
   workoutEffort: z.number().int().min(1).max(10).nullable().optional(),
   /** Average running cadence in steps per minute. */
@@ -176,6 +181,8 @@ export const exerciseActivityQueryItemSchema = z.object({
   source: z.string().nullable(),
   notes: z.string().nullable(),
   hasGpsTrack: z.boolean(),
+  /** Optional: a server older than this field simply omits it. */
+  modality: exerciseModalitySchema.nullable().optional(),
 });
 
 export type ExerciseActivityQueryItem = z.infer<

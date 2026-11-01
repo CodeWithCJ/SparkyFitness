@@ -234,4 +234,31 @@ describe('CompareSentence', () => {
     expect(next.a).toBeUndefined();
     expect(next.b).toBe('mood');
   });
+
+  it('clears weight trend when "Before vs. since" is chosen', () => {
+    const onChange = jest.fn();
+    const { getByTestId } = render(
+      <CompareSentence
+        question={{ a: 'meditated', b: 'weightTrend', choice: 'sameDay' }}
+        onChange={onChange}
+      />
+    );
+    fireEvent.press(getByTestId('When-sinceHabit'));
+    const next = onChange.mock.calls[0][0];
+    expect(next.choice).toBe('sinceHabit');
+    expect(next.a).toBe('meditated');
+    expect(next.b).toBeUndefined();
+  });
+
+  it('the since pickers do not offer weight trend', () => {
+    const { queryByText, queryByTestId } = render(
+      <CompareSentence
+        question={{ a: 'meditated', choice: 'sinceHabit' }}
+        onChange={jest.fn()}
+      />
+    );
+    expect(queryByText('Weight trend')).toBeNull();
+    expect(queryByTestId('Second thing-weightTrend')).toBeNull();
+    expect(queryByTestId('Second thing-mood')).toBeTruthy();
+  });
 });

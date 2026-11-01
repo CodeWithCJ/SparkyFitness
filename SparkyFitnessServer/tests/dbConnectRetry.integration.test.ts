@@ -13,6 +13,7 @@ import express from 'express';
 // @ts-expect-error TS(7016): supertest does not publish declarations in this workspace
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { ownApplicationNames } from '../db/applicationName.js';
 
 const target = {
   host: process.env.SPARKY_FITNESS_DB_HOST,
@@ -91,12 +92,11 @@ describe.runIf(reachable)('database connection loss (real PostgreSQL)', () => {
   const savedEnv = {
     host: process.env.SPARKY_FITNESS_DB_HOST,
     port: process.env.SPARKY_FITNESS_DB_PORT,
-    appName: process.env.PGAPPNAME,
   };
-  // pg reads PGAPPNAME for every new connection, which tags this file's
-  // backends. Client ports can't identify them: CI reaches PostgreSQL through
-  // Docker's port forwarding, which changes the port the server sees.
-  const appName = `connect-retry-${crypto.randomUUID()}`;
+  // The pools name their sessions after this process (db/applicationName.ts).
+  // Client ports can't identify them: CI reaches PostgreSQL through Docker's
+  // port forwarding, which changes the port the server sees.
+  const appNames = ownApplicationNames();
   let admin: pg.Client;
   let poolManager: typeof import('../db/poolManager.js');
   let authModule: typeof import('../auth.js');
@@ -106,7 +106,6 @@ describe.runIf(reachable)('database connection loss (real PostgreSQL)', () => {
     // Pools read these at module load.
     process.env.SPARKY_FITNESS_DB_HOST = '127.0.0.1';
     process.env.SPARKY_FITNESS_DB_PORT = String(proxy.port);
-    process.env.PGAPPNAME = appName;
     poolManager = await import('../db/poolManager.js');
     (await import('../db/connectRetry.js')).enableRequestConnectRetry();
     authModule = await import('../auth.js');
@@ -120,8 +119,6 @@ describe.runIf(reachable)('database connection loss (real PostgreSQL)', () => {
     await poolManager?.endPool();
     process.env.SPARKY_FITNESS_DB_HOST = savedEnv.host;
     process.env.SPARKY_FITNESS_DB_PORT = savedEnv.port;
-    if (savedEnv.appName === undefined) delete process.env.PGAPPNAME;
-    else process.env.PGAPPNAME = savedEnv.appName;
     await proxy.stop();
   });
 
@@ -130,8 +127,8 @@ describe.runIf(reachable)('database connection loss (real PostgreSQL)', () => {
     const { rows } = await admin.query<{ terminated: number }>(
       `SELECT count(*) FILTER (WHERE pg_terminate_backend(pid))::int AS terminated
        FROM pg_stat_activity
-       WHERE application_name = $1 AND pid <> pg_backend_pid()`,
-      [appName]
+       WHERE application_name = ANY($1::text[]) AND pid <> pg_backend_pid()`,
+      [appNames]
     );
     return rows[0]!.terminated;
   }

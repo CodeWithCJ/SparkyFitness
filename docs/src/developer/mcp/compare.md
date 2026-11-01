@@ -24,14 +24,14 @@ The result is short Markdown text. It contains the question, the range, a one-li
     - `end_date` (string, YYYY-MM-DD, optional): Last day of the range. Defaults to today.
 
 ### `since`
-- **Description:** Has outcome B changed since habit A started? It compares B's days before the start with its days since, on B's own scale. With no start date it suggests one: the first of 3 weeks in a row with the habit on at least 4 days each. It also reports how many weeks the habit was kept up, and warns when B was already moving that way before the start.
+- **Description:** Has outcome B changed since habit A started? It compares B's days before the start with its days since, on B's own scale. With no start date it suggests one: the first of 3 weeks in a row with the habit on at least 4 days each. It also reports how many weeks the habit was kept up, and warns when B was already moving that way before the start. Weight trend isn't offered in since questions, because it drifts too slowly to tell a change from its own wandering, and the tool refuses it with a validation error.
 - **Parameters:**
     - `a` (metric key): The habit.
     - `b` (metric key): The outcome.
     - `habit_start_date` (string, YYYY-MM-DD, optional): The day the habit started; before today and at most 730 days ago.
 
 ### `list_metrics`
-- **Description:** Lists the metric keys with their group and unit, and notes the ones read over a rolling 7 days or offered by day only.
+- **Description:** Lists the metric keys with their group and unit, and notes the ones read over a rolling 7 days, offered by day only, or not for since questions.
 
 ## Metric keys
 

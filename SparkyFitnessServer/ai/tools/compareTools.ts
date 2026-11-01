@@ -13,6 +13,7 @@ import {
   compareQuerySchema,
   compareSinceQuerySchema,
   isSleepMetric,
+  offeredInMode,
   SINCE_STRETCH_MIN_DAYS,
   SINCE_STRETCH_MIN_VALUES,
   todayInZone,
@@ -608,7 +609,8 @@ function renderMetricList(): string {
     const def = COMPARE_METRICS[key];
     const notes = [def.group, UNIT_DESCRIPTIONS[def.unit] ?? def.unit];
     if (def.rolling) notes.push('read over the 7 days ending each day');
-    if (def.weekly === null) notes.push('day only');
+    if (!offeredInMode(key, 'week')) notes.push('day only');
+    if (!offeredInMode(key, 'since')) notes.push('not for since questions');
     return `- ${key}: ${name(key)} (${notes.join(', ')})`;
   });
   return [
@@ -712,7 +714,7 @@ export function buildCompareTools(userId: string, tz: string) {
         "Does one tracked thing go with another? The same statistics as the app's Compare report: each day (or week) is measured against the person's own normal, with an honest p-value and 95% range, plus checks for which comes first and for weekends. " +
         "compare: does A go with B by day or week, optionally with B a day after A. Sleep metrics are dated by the day the person woke up, so same_day pairs a day with the night before it; caffeine or alcohol with that night's sleep is a_then_b. " +
         'since: has outcome B changed since habit A started; a start is suggested only for habits done on some days (workouts, meditation), otherwise pass habit_start_date. ' +
-        'list_metrics: the metric keys. Today is never counted. Describe a link as a link, never as proof of cause.',
+        'list_metrics: the metric keys. Weight trend cannot be a since question. Today is never counted. Describe a link as a link, never as proof of cause.',
       inputSchema: compareToolInput,
       execute: async (rawArgs) => {
         const parsed = compareToolSchema.safeParse(

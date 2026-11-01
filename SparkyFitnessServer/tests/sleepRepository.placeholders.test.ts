@@ -187,29 +187,70 @@ describe('sleepRepository placeholder integrity', () => {
     ).toBeUndefined();
   });
 
-  it('upsertSleepEntry re-sync of a night updates it and keeps stored zone metadata', async () => {
+  it('upsertSleepEntry re-sync of a stored session updates it and keeps stored zone metadata', async () => {
     mockClient.query.mockImplementation(async (text: string) => {
-      if (text.includes('INSERT INTO sleep_entries')) {
+      if (text.includes('FOR UPDATE')) {
+        return { rows: [{ id: 'sleep-1' }] };
+      }
+      if (text.includes('UPDATE sleep_entries')) {
         return { rows: [{ id: 'sleep-1' }] };
       }
       return { rows: [] };
     });
 
-    await sleepRepository.upsertSleepEntry('user-1', 'user-1', FULL_ENTRY);
+    const result = await sleepRepository.upsertSleepEntry(
+      'user-1',
+      'user-1',
+      FULL_ENTRY
+    );
 
-    const insert = findCall('INSERT INTO sleep_entries');
-    expect(insert.text).toContain(
-      'ON CONFLICT (user_id, entry_date, source) DO UPDATE SET'
+    expect(result).toMatchObject({ id: 'sleep-1', created: false });
+    expect(
+      queryCalls().some((c) => c.text.includes('INSERT INTO sleep_entries'))
+    ).toBe(false);
+    const update = findCall('UPDATE sleep_entries');
+    expect(update.values![0]).toBe('sleep-1');
+    expect(update.text).toContain(
+      'record_timezone = COALESCE($26, record_timezone)'
     );
-    expect(insert.text).toContain(
-      'record_timezone = COALESCE(EXCLUDED.record_timezone, sleep_entries.record_timezone)'
+  });
+
+  it('upsertSleepEntry looks the session up under a per-night lock', async () => {
+    mockClient.query.mockImplementation(async (text: string) => {
+      if (text.includes('INSERT INTO sleep_entries')) {
+        return { rows: [{ id: 'sleep-2' }] };
+      }
+      return { rows: [] };
+    });
+
+    const result = await sleepRepository.upsertSleepEntry(
+      'user-1',
+      'user-1',
+      FULL_ENTRY
     );
-    expect(insert.text).toContain(
-      'record_utc_offset_minutes = COALESCE(EXCLUDED.record_utc_offset_minutes, sleep_entries.record_utc_offset_minutes)'
+
+    const lock = findCall('pg_advisory_xact_lock');
+    expect(lock.values).toEqual(['user-1', '2026-08-01', 'Health Connect']);
+    const lookup = findCall('FOR UPDATE');
+    expect(lookup.values).toEqual([
+      'user-1',
+      '2026-08-01',
+      'Health Connect',
+      FULL_ENTRY.bedtime,
+      FULL_ENTRY.wake_time,
+      4 * 60 * 60,
+    ]);
+    const texts = queryCalls().map((c) => c.text);
+    const lockAt = texts.findIndex((t) => t.includes('pg_advisory_xact_lock'));
+    const lookupAt = texts.findIndex((t) => t.includes('FOR UPDATE'));
+    const insertAt = texts.findIndex((t) =>
+      t.includes('INSERT INTO sleep_entries')
     );
-    expect(insert.text).toContain(
-      'resting_heart_rate = EXCLUDED.resting_heart_rate'
-    );
+    expect(lockAt).toBeLessThan(lookupAt);
+    expect(lookupAt).toBeLessThan(insertAt);
+    // A separate session (a nap) gets its own entry.
+    expect(texts[insertAt]).not.toContain('ON CONFLICT');
+    expect(result).toMatchObject({ id: 'sleep-2', created: true });
   });
 
   it('updateSleepEntry dynamic builder: zone fields update when present', async () => {

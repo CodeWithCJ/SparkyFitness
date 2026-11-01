@@ -11,6 +11,7 @@ import {
   alcoholGramsForServing,
 } from '@workspace/shared';
 import package$0 from '../../package.json' with { type: 'json' };
+import { PARTIAL_SERVING_DATA } from '../../utils/foodRanking.js';
 import {
   normalizeBarcode,
   normalizeServingUnit,
@@ -50,11 +51,16 @@ async function fetchWithTimeout(
   fetchImpl: typeof fetch = fetch
 ): Promise<Response> {
   try {
+    init.signal?.throwIfAborted();
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
     return await fetchImpl(url, {
       ...init,
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: init.signal
+        ? AbortSignal.any([init.signal, timeoutSignal])
+        : timeoutSignal,
     });
   } catch (error) {
+    init.signal?.throwIfAborted();
     if (isTimeoutError(error)) {
       log(
         'warn',
@@ -112,6 +118,7 @@ const LEGACY_SEARCH_BATCH_SIZE = 100;
 const LEGACY_SEARCH_MAX_BATCHES = 10;
 
 interface OffProduct {
+  [PARTIAL_SERVING_DATA]?: true;
   product_name?: string;
   product_name_en?: string;
   brands?: string;
@@ -295,19 +302,23 @@ async function fetchOpenFoodFacts(
     sessionCookie,
     timeoutMs = OFF_FETCH_TIMEOUT_MS,
     rateLimitProductRead = false,
+    signal,
   }: {
     authenticatedUserId?: string;
     providerId?: string;
     sessionCookie?: string | null;
     timeoutMs?: number;
     rateLimitProductRead?: boolean;
+    signal?: AbortSignal;
   } = {}
 ): Promise<Response> {
+  signal?.throwIfAborted();
   // The unauthenticated retry shares this request's deadline, so a 429/5xx
   // answered near the end of the budget cannot double the wall-clock time.
   const requestDeadline = Date.now() + timeoutMs;
   const remainingBudget = Math.max(0, requestDeadline - Date.now());
   const fetchImpl = await resolveOffFetch(authenticatedUserId, remainingBudget);
+  signal?.throwIfAborted();
   const baseHeaders = { ...OFF_HEADERS };
 
   const headers = sessionCookie
@@ -318,6 +329,7 @@ async function fetchOpenFoodFacts(
     requestHeaders: Record<string, string>
   ): Promise<Response> => {
     const operation = (): Promise<Response> => {
+      signal?.throwIfAborted();
       const remainingTimeoutMs = requestDeadline - Date.now();
       if (remainingTimeoutMs <= 0) {
         log('warn', `OpenFoodFacts request deadline exhausted: ${url}`);
@@ -333,6 +345,7 @@ async function fetchOpenFoodFacts(
           method: 'GET',
           headers: requestHeaders,
           redirect: 'manual',
+          signal,
         },
         remainingTimeoutMs,
         fetchImpl
@@ -350,6 +363,7 @@ async function fetchOpenFoodFacts(
   };
 
   const response = await performGet(headers);
+  signal?.throwIfAborted();
 
   if (sessionCookie && (response.status === 429 || response.status >= 500)) {
     log(
@@ -387,6 +401,12 @@ function productFromSearchHit(hit: SearchALiciousHit): OffProduct {
   };
 }
 
+// Search-a-licious does not index serving fields, so an unhydrated hit maps to
+// a 100 g reference whatever the label says.
+function indexOnlyProduct(hit: SearchALiciousHit): OffProduct {
+  return { ...productFromSearchHit(hit), [PARTIAL_SERVING_DATA]: true };
+}
+
 /**
  * Refreshes ranked hits in one Product Opener bulk request while preserving
  * every original hit when hydration is partial or unavailable.
@@ -409,7 +429,7 @@ async function hydrateSearchHits(
         .filter((code) => code.length > 0)
     ),
   ];
-  if (codes.length === 0) return hits.map(productFromSearchHit);
+  if (codes.length === 0) return hits.map(indexOnlyProduct);
 
   // Ask for both barcode forms so the bulk lookup also finds products Product
   // Opener stores under the sibling UPC-A/EAN-13 representation.
@@ -457,7 +477,6 @@ async function hydrateSearchHits(
       .find((product) => product !== undefined);
   return hits.map((hit) => {
     const code = String(hit.code || '').trim();
-    const indexedProduct = productFromSearchHit(hit);
     const currentProduct = code ? lookupProduct(code) : undefined;
 
     // The full-text index can still hold nutrition while Product Opener is
@@ -465,7 +484,7 @@ async function hydrateSearchHits(
     // case so hydration cannot underfill an otherwise valid search page.
     return currentProduct && hasUsableOffCoreNutrition(currentProduct)
       ? currentProduct
-      : indexedProduct;
+      : indexOnlyProduct(hit);
   });
 }
 
@@ -674,7 +693,8 @@ async function searchOpenFoodFactsByBarcodeFields(
   language = 'en',
   authenticatedUserId?: string,
   providerId?: string,
-  credentialScope: OpenFoodFactsCredentialScope = 'personal'
+  credentialScope: OpenFoodFactsCredentialScope = 'personal',
+  signal?: AbortSignal
 ): Promise<{
   status: number;
   status_verbose: string;
@@ -682,6 +702,7 @@ async function searchOpenFoodFactsByBarcodeFields(
   [key: string]: unknown;
 }> {
   try {
+    signal?.throwIfAborted();
     const fieldSet = new Set(fields);
     if (language !== 'en') {
       fieldSet.add(`product_name_${language}`);
@@ -693,13 +714,16 @@ async function searchOpenFoodFactsByBarcodeFields(
       providerId,
       credentialScope
     );
+    signal?.throwIfAborted();
     const searchUrl = `${baseUrl}/api/v2/product/${barcode}.json?fields=${fieldsParam}&lc=${language}`;
     const response = await fetchOpenFoodFacts(searchUrl, {
       authenticatedUserId,
       providerId,
       sessionCookie,
       rateLimitProductRead: true,
+      signal,
     });
+    signal?.throwIfAborted();
     if (!response.ok) {
       if (response.status === 404) {
         log(
@@ -709,6 +733,7 @@ async function searchOpenFoodFactsByBarcodeFields(
         return { status: 0, status_verbose: 'product not found' };
       }
       const errorText = await response.text();
+      signal?.throwIfAborted();
       log('error', 'OpenFoodFacts Barcode Fields Search API error:', errorText);
       throw new Error(`OpenFoodFacts API error (HTTP ${response.status})`);
     }
@@ -718,6 +743,7 @@ async function searchOpenFoodFactsByBarcodeFields(
       product?: OffProduct;
       [key: string]: unknown;
     };
+    signal?.throwIfAborted();
 
     if (data.status !== 1 || !data.product) {
       const alt = altBarcode(barcode);
@@ -729,7 +755,9 @@ async function searchOpenFoodFactsByBarcodeFields(
           providerId,
           sessionCookie,
           rateLimitProductRead: true,
+          signal,
         });
+        signal?.throwIfAborted();
         if (altResponse.ok) {
           const altData = (await altResponse.json()) as {
             status: number;
@@ -737,6 +765,7 @@ async function searchOpenFoodFactsByBarcodeFields(
             product?: OffProduct;
             [key: string]: unknown;
           };
+          signal?.throwIfAborted();
           if (altData.status === 1 && altData.product) {
             data = altData;
           }
@@ -902,6 +931,30 @@ function hasUsableOffCoreNutrition(product: OffProduct): boolean {
     OFF_CORE_NUTRIENT_SERVING_KEYS.some(
       (key) => parseOffNumber(product.nutriments?.[key]) !== null
     )
+  );
+}
+
+/**
+ * Returns true when OFF declares energy, protein, carbohydrates and fat. The
+ * mapper turns a missing value into 0, so a product that passes only
+ * hasUsableOffCoreNutrition can still map to a food with false zeros.
+ */
+function hasCompleteOffCoreNutrition(product: OffProduct): boolean {
+  const nutriments = product.nutriments;
+  if (!isRecord(nutriments)) return false;
+  const servingQuantity = parseOffNumber(product.serving_quantity);
+  const hasServing = servingQuantity !== null && servingQuantity > 0;
+  const declares = (baseKeys: string[]) =>
+    baseKeys.some(
+      (base) =>
+        parseOffNumber(nutriments[`${base}_100g`]) !== null ||
+        (hasServing && parseOffNumber(nutriments[`${base}_serving`]) !== null)
+    );
+  return (
+    declares(['energy-kcal', 'energy-kj', 'energy']) &&
+    declares(['proteins']) &&
+    declares(['carbohydrates']) &&
+    declares(['fat'])
   );
 }
 
@@ -1227,6 +1280,9 @@ function mapOpenFoodFactsProduct(
     // Hotlinked in search results; localized on import (see models/food.ts).
     image_url: product.image_front_url || product.image_url || null,
     default_variant: metricVariant,
+    ...(product[PARTIAL_SERVING_DATA]
+      ? { [PARTIAL_SERVING_DATA]: true as const }
+      : {}),
     ...(householdVariant
       ? { variants: [metricVariant, householdVariant] }
       : {}),
@@ -1235,6 +1291,7 @@ function mapOpenFoodFactsProduct(
 export { searchOpenFoodFacts };
 export { searchOpenFoodFactsByBarcodeFields };
 export { mapOpenFoodFactsProduct };
+export { hasUsableOffCoreNutrition, hasCompleteOffCoreNutrition };
 export default {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,

@@ -12,6 +12,13 @@
     <string name="widget_fat">Fat</string>
     <string name="widget_search_food">Search food</string>
     <string name="widget_scan_barcode">Scan barcode</string>
+    <string name="widget_open_diary">Open diary</string>
+    <string name="widget_open_fasting">Open fasting</string>
+    <string name="widget_kcal_eaten">%1$s kcal eaten</string>
+    <string name="widget_goal">Goal</string>
+    <string name="widget_food">Food</string>
+    <string name="widget_burned">Burned</string>
+    <string name="widget_amount_of_goal">%1$s / %2$s</string>
     <string name="tile_log_water">Log water</string>
     <string name="tile_calories_left">Calories left</string>
     <string name="sparky_water_widget_name">Water</string>

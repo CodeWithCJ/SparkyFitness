@@ -22,6 +22,7 @@ import {
   notifyWatchTelemetryAccountSwitch,
 } from '../utils/watchTelemetryPersistence';
 import { useFoodSearchSelectionStore } from '../stores/foodSearchSelectionStore';
+import { useGuidedCheckInStore } from '../stores/guidedCheckInStore';
 
 export type AuthModalReason = 'session_expired' | 'no_configs' | null;
 
@@ -80,6 +81,10 @@ export function useAuth() {
       // invalidates any submission still in flight — its outcomes are
       // discarded rather than reconciled into the cleared basket.
       useFoodSearchSelectionStore.getState().cancelBatch();
+      // The guided check-in left part-way belongs to the account that started
+      // it (its saved flags and its mood check-in id), so the next account is
+      // never offered to continue it.
+      useGuidedCheckInStore.getState().clearProgress();
       // The cookie jar is the third thing carrying identity, and the only one
       // that survives dropping every cache: it belongs to the native HTTP
       // client and is keyed by host, not by configured server, so two accounts

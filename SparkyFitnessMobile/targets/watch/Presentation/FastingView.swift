@@ -39,11 +39,14 @@ struct FastingView: View {
         let elapsed = max(0, now.timeIntervalSince(fast.startedAt))
         let total = fast.targetEndAt.map { max(1, $0.timeIntervalSince(fast.startedAt)) }
         let progress = total.map { min(1, elapsed / $0) }
-        return VStack(spacing: 6) {
+        // Scrolls, like the idle page: on a 40 mm watch at a large text size
+        // End fast would otherwise fall off the bottom.
+        return ScrollView {
+          VStack(spacing: 4) {
             Text(fast.label.map {
                 String(localized: "watch.fasting.runningNamed", defaultValue: "Fasting · \($0)")
             } ?? String(localized: "watch.fasting.running", defaultValue: "Fasting"))
-                .font(.caption2)
+                .watchFont(.footnote.weight(.semibold), classic: .caption2)
                 .foregroundStyle(.secondary)
             ZStack {
                 if let progress {
@@ -56,34 +59,33 @@ struct FastingView: View {
                         .rotationEffect(.degrees(-90))
                 }
                 Text(Self.clock(elapsed))
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                    .watchFont(.system(size: WatchStyle.s(22), weight: .semibold, design: .rounded), classic: .title3.weight(.semibold))
                     .monospacedDigit()
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
+                    .padding(.horizontal, 8)
             }
-            .frame(width: 110, height: 110)
+            .frame(width: WatchStyle.s(80), height: WatchStyle.s(80))
             if let total {
                 let remaining = total - elapsed
                 Text(remaining > 0
                      ? String(localized: "watch.fasting.remaining",
                               defaultValue: "\(Self.clock(remaining)) to go")
                      : String(localized: "watch.fasting.goalReached", defaultValue: "Goal reached"))
-                    .font(.caption2)
+                    .watchFont(.footnote, classic: .caption2)
                     .foregroundStyle(remaining > 0 ? Color.secondary : Color.green)
                     .monospacedDigit()
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .overlay(alignment: .bottom) {
+            // Below the ring rather than over it, where it covered the time
+            // left on a 40 mm watch.
             Button(String(localized: "watch.fasting.end", defaultValue: "End fast")) {
                 confirmingEnd = true
             }
-            .font(.caption2)
-            .buttonStyle(.bordered)
+            .watchFont(.body, classic: .caption2)
             .tint(.red)
             .disabled(waiting)
-            .opacity(0.9)
+          }
+          .frame(maxWidth: .infinity)
         }
         .confirmationDialog(
             String(localized: "watch.fasting.endConfirm", defaultValue: "End your fast?"),
@@ -97,33 +99,37 @@ struct FastingView: View {
         }
     }
 
+    /// Not fasting: one full-width button per preset, rather than three
+    /// small ones side by side.
     private var idle: some View {
-        VStack(spacing: 6) {
-            Image(systemName: "fork.knife")
-                .font(.title2)
-                .foregroundStyle(.secondary)
-            Text(store.context.fastSynced == true
-                 ? String(localized: "watch.fasting.notFasting", defaultValue: "Not fasting")
-                 : String(localized: "watch.fasting.waiting", defaultValue: "Waiting for your iPhone"))
-                .font(.footnote)
-            if store.context.fastSynced == true {
-                if waiting {
-                    ProgressView()
-                } else {
-                    HStack(spacing: 4) {
+        ScrollView {
+            VStack(spacing: 6) {
+                Image(systemName: "fork.knife")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+                Text(store.context.fastSynced == true
+                     ? String(localized: "watch.fasting.notFasting", defaultValue: "Not fasting")
+                     : String(localized: "watch.fasting.waiting", defaultValue: "Waiting for your iPhone"))
+                    .watchFont(.body, classic: .footnote)
+                    .multilineTextAlignment(.center)
+                if store.context.fastSynced == true {
+                    if waiting {
+                        ProgressView()
+                    } else {
                         ForEach(Self.presets, id: \.id) { preset in
-                            Button(preset.label) {
+                            Button {
                                 begin { session.requestStartFast(presetId: preset.id) }
+                            } label: {
+                                Text(String(localized: "watch.fasting.startPreset", defaultValue: "Start \(preset.label)"))
+                                    .frame(maxWidth: .infinity)
                             }
-                            .font(.caption2)
-                            .buttonStyle(.bordered)
+                            .watchFont(.body, classic: .caption2)
                             .tint(.green)
                         }
                     }
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// Sends a request and holds the buttons until the phone's answer changes

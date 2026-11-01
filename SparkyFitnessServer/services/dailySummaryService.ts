@@ -48,7 +48,7 @@ export async function getDailySummary({
     calorieRuleHistory,
     measurements,
     supplementTotals,
-    healthConnectTotalRows,
+    deviceTotalRows,
   ] = await Promise.all([
     goalService.getUserGoals(targetUserId, date, undefined, false),
     goalService.getUserGoals(targetUserId, date, undefined, true, {
@@ -114,7 +114,7 @@ export async function getDailySummary({
       }),
     includeCheckin
       ? genericHealthRepository
-          .getHealthConnectTotalCaloriesByDateRange(
+          .getDeviceTotalCaloriesByDateRange(
             targetUserId,
             actorUserId,
             date,
@@ -123,7 +123,7 @@ export async function getDailySummary({
           .catch((error: unknown) => {
             log(
               'warn',
-              `Health Connect total-calorie fetch failed for user ${targetUserId} on ${date}:`,
+              `Device total-calorie fetch failed for user ${targetUserId} on ${date}:`,
               error
             );
             return [];
@@ -146,15 +146,15 @@ export async function getDailySummary({
       )
     : 0;
 
-  const healthConnectTotal = healthConnectTotalRows[0];
+  const dayDeviceTotal = deviceTotalRows[0];
   const timezone = userPreferences?.timezone || 'UTC';
   const deviceProjectionSnapshot = resolveDeviceProjectionSnapshot({
     date,
     timezone,
-    deviceTotal: healthConnectTotal
+    deviceTotal: dayDeviceTotal
       ? {
-          totalCalories: healthConnectTotal.total_calories,
-          capturedAt: healthConnectTotal.captured_at,
+          totalCalories: dayDeviceTotal.total_calories,
+          capturedAt: dayDeviceTotal.captured_at,
         }
       : null,
   });

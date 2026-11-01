@@ -167,7 +167,10 @@ export function useMoodCheckinsForDate(date: string) {
   return {
     checkins: query.data ?? null,
     isLoading: query.isLoading,
+    /** Also true while a cached list is being refreshed. */
+    isFetching: query.isFetching,
     isError: query.isError,
+    refetch: query.refetch,
   };
 }
 

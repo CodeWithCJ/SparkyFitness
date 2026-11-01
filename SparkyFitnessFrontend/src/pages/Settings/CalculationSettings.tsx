@@ -1027,7 +1027,7 @@ const CalculationSettings = () => {
               <Trans
                 i18nKey="settings.goalMode.deviceProjectionUsesHealthConnect"
                 defaults={
-                  '<span>Device Projection:</span> Uses Health Connect total calories when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.'
+                  '<span>Device Projection:</span> Uses device total calories (Health Connect, Garmin or Polar) when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.'
                 }
                 components={{ span: <span className="font-medium" /> }}
               />
@@ -1157,7 +1157,7 @@ const CalculationSettings = () => {
                   {calorieGoalAdjustmentMode === 'tdee'
                     ? t(
                         'settings.calculationExplanation.burnedTdee',
-                        'Health Connect total calories (BMR + active calories fallback)'
+                        'Device total calories (BMR + active calories fallback)'
                       )
                     : includeBmrInNetCalories
                       ? t(
@@ -1270,7 +1270,7 @@ const CalculationSettings = () => {
                     : calorieGoalAdjustmentMode === 'tdee'
                       ? t(
                           'settings.calculationExplanation.tdeeFootnote',
-                          '* Enable Total Calories in Health Connect sync. The projection converges with the device total at midnight; BMR plus active calories is used as a fallback.'
+                          '* Sync total calories from Health Connect, Garmin or Polar. The projection converges with the device total at midnight; BMR plus active calories is used as a fallback.'
                         )
                       : calorieGoalAdjustmentMode === 'adaptive'
                         ? t(

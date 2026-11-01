@@ -8,6 +8,18 @@ export interface CustomCategory {
   updated_at?: string;
 }
 
+export type CustomCategoryFrequency = 'All' | 'Daily' | 'Hourly';
+export type CustomCategoryDataType = 'numeric' | 'text';
+
+/** Body for creating or updating a category; the server owns `id` and `user_id`. */
+export interface SaveCustomCategoryPayload {
+  name: string;
+  display_name?: string | null;
+  measurement_type: string;
+  frequency: CustomCategoryFrequency;
+  data_type: CustomCategoryDataType;
+}
+
 /**
  * Shape of the nested `custom_categories` object the server embeds in every
  * custom-entry row. The repository builds it with `json_build_object` and does

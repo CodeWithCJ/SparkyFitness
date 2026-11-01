@@ -6,6 +6,7 @@ import preferenceService from '../services/preferenceService.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import foodService from '../services/foodService.js';
 import { log } from '../config/logging.js';
+import { trackBackgroundWork } from '../utils/shutdownHooks.js';
 import {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
@@ -1169,7 +1170,7 @@ router.post(
           });
         }
 
-        importPromise.catch((err) => {
+        trackBackgroundWork(importPromise).catch((err) => {
           log('error', `Background CNF import failed for user ${userId}:`, err);
         });
 
@@ -1195,7 +1196,7 @@ router.post(
         });
       }
 
-      importPromise.catch((err) => {
+      trackBackgroundWork(importPromise).catch((err) => {
         log(
           'error',
           `Background CNF import from URL failed for user ${userId}:`,

@@ -57,6 +57,11 @@ export async function applyWatchWorkoutEdit(
     case 'deleteExercise':
       if (payload.exerciseEntryId) live.removeExercise(payload.exerciseEntryId);
       return;
+    case 'doExerciseNow':
+      if (payload.exerciseEntryId) {
+        live.doExerciseNow(payload.exerciseEntryId, payload.anchorEntryId);
+      }
+      return;
     case 'addExercise': {
       if (!payload.exerciseId) return;
       if (payload.clientId !== '') inFlightClientIds.add(payload.clientId);

@@ -7,7 +7,7 @@ import { getRawOwnerPool, handleConnectionLoss } from '../db/poolManager.js';
 
 /** A checked-out client: pg-pool has removed its own 'error' listener. */
 function checkOut(pool: EventEmitter) {
-  const client = new EventEmitter();
+  const client = Object.assign(new EventEmitter(), { query: vi.fn() });
   pool.emit('connect', client);
   return client;
 }

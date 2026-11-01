@@ -97,6 +97,51 @@ describe('WatchSettingsScreen', () => {
     expect(useAppPreferencesStore.getState().watchDoubleTapEnabled).toBe(false);
   });
 
+  test('the layout switches default to the original layout and can be flipped', () => {
+    renderScreen();
+    const prefs = () => useAppPreferencesStore.getState();
+
+    expect(prefs().watchSetScreenMetrics).toBe(true);
+    expect(prefs().watchUpNextPage).toBe(false);
+    expect(prefs().watchLargerText).toBe(false);
+
+    fireEvent(
+      screen.getByTestId('watch-set-screen-metrics-switch'),
+      'valueChange',
+      false
+    );
+    fireEvent(screen.getByTestId('watch-up-next-switch'), 'valueChange', true);
+    fireEvent(
+      screen.getByTestId('watch-larger-text-switch'),
+      'valueChange',
+      true
+    );
+
+    expect(prefs().watchSetScreenMetrics).toBe(false);
+    expect(prefs().watchUpNextPage).toBe(true);
+    expect(prefs().watchLargerText).toBe(true);
+  });
+
+  test('the original workout page switch only shows while larger text is on', () => {
+    renderScreen();
+    const prefs = () => useAppPreferencesStore.getState();
+
+    expect(screen.queryByTestId('watch-classic-workout-switch')).toBeNull();
+    fireEvent(
+      screen.getByTestId('watch-larger-text-switch'),
+      'valueChange',
+      true
+    );
+    expect(prefs().watchClassicWorkout).toBe(false);
+
+    fireEvent(
+      screen.getByTestId('watch-classic-workout-switch'),
+      'valueChange',
+      true
+    );
+    expect(prefs().watchClassicWorkout).toBe(true);
+  });
+
   test('toggling a page hides and shows it', () => {
     renderScreen();
 
@@ -210,13 +255,13 @@ describe('WatchSettingsScreen', () => {
     });
   });
 
-  test('the set input control switches the watch to the Digital Crown', () => {
+  test('the set input control switches the watch between the Digital Crown and the keypad', () => {
     renderScreen();
 
-    expect(useAppPreferencesStore.getState().watchSetInputStyle).toBe('keypad');
-    fireEvent.press(screen.getByText('Digital Crown'));
     expect(useAppPreferencesStore.getState().watchSetInputStyle).toBe('crown');
     fireEvent.press(screen.getByText('Keypad'));
     expect(useAppPreferencesStore.getState().watchSetInputStyle).toBe('keypad');
+    fireEvent.press(screen.getByText('Digital Crown'));
+    expect(useAppPreferencesStore.getState().watchSetInputStyle).toBe('crown');
   });
 });

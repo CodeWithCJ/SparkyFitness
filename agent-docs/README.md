@@ -35,6 +35,10 @@ This folder contains runbooks and architectural docs designed to answer complex 
 - Supply-chain/trust pass first, then architecture alignment, logic, existing review threads, and how much to verify locally
 - Also wired up as the `pr-review` skill, so agents load it on their own (see Notes on Conventions)
 
+**Planning a bug-fix issue or a new feature?** → [`planning-ground-rules.md`](planning-ground-rules.md) (3 min) then [`impact-analysis-checklist.md`](impact-analysis-checklist.md) (2 min)
+- Existing-user, old-mobile, integration, deployment, and rollout questions every plan must answer
+- Also wired up as the `issue-plan` (bugs) and `enhancement-plan` (features) skills
+
 ## Docs at a Glance
 
 | Doc | Duration | When to Read | Key Takeaway |
@@ -60,7 +64,7 @@ This folder contains runbooks and architectural docs designed to answer complex 
 ## Notes on Conventions
 
 - **Schema location isn't uniform** — most tables map to `shared/src/schemas/database/<Table>.zod.ts`, but some don't (medications live in `shared/src/medications/`). Follow the closest domain.
-- **Skills point here; they don't duplicate here** — `agent-docs/` holds the knowledge, and the skill files are just triggers that say "go read this doc." Canonical skill bodies live in `.agents/skills/<name>/SKILL.md` (the Agent Skills standard, read natively by Antigravity/Gemini); `.claude/skills/<name>/SKILL.md` is a stub pointing at it, the same way `CLAUDE.md` points at `AGENTS.md`. Only the frontmatter `description` is duplicated, because each tool routes on its own file — keep the two copies identical. Current skills: `pr-review`, `new-migration`.
+- **Skills point here; they don't duplicate here** — `agent-docs/` holds the knowledge, and the skill files are just triggers that say "go read this doc." Canonical skill bodies live in `.agents/skills/<name>/SKILL.md` (the Agent Skills standard, read natively by Antigravity/Gemini); `.claude/skills/<name>/SKILL.md` is a stub pointing at it, the same way `CLAUDE.md` points at `AGENTS.md`. Only the frontmatter (`name` and `description`) is duplicated, because each tool routes on its own file — keep the two copies identical. Current skills: `pr-review`, `new-migration`, `pr-submission`, `issue-plan`, `enhancement-plan`.
 - **Permissions** — delegatable: `diary`, `checkin`, `medications`, `reports` (+ `*_read`); `goals`/`exercise`/`water`/`mood`/`fasting`/`sleep`/`symptoms` map onto diary/reports; cycle/pregnancy are owner-only. See [`architecture-permissions.md`](architecture-permissions.md).
 
 If you spot a discrepancy between a doc and the code, fix the doc as part of your change.

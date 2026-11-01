@@ -1,3 +1,4 @@
+import i18n from 'i18next';
 import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
 import { apiCall, HttpApiError } from '@/api/api';
 import { DataProvider } from '@/types/settings';
@@ -51,6 +52,7 @@ export const createExternalProvider = async (
         'usda',
         'norish',
         'valhalla',
+        'open_meteo',
       ].includes(payload.provider_type)
         ? null
         : payload.app_id || null,
@@ -63,6 +65,7 @@ export const createExternalProvider = async (
         'yazio',
         'norish',
         'valhalla',
+        'open_meteo',
         'openfoodfacts',
         'coros_mcp',
       ].includes(payload.provider_type)
@@ -648,6 +651,36 @@ export const handleDisconnectLiftosaur = async (providerId?: string) => {
   }
 };
 
+const fetchIntervalsStatus = async (
+  providerId: string
+): Promise<{ connected: boolean; lastSyncAt: string | null }> => {
+  return apiCall(
+    `/integrations/intervals/status?providerId=${encodeURIComponent(providerId)}`
+  );
+};
+
+export const handleDisconnectIntervals = async (providerId?: string) => {
+  if (
+    !confirm(
+      i18n.t(
+        'integrations.intervalsDisconnectConfirm',
+        'Are you sure you want to disconnect from Intervals.icu? This will deactivate the integration until you re-enable it.'
+      )
+    )
+  )
+    return;
+
+  try {
+    await apiCall(`/integrations/intervals/disconnect`, {
+      method: 'POST',
+      body: JSON.stringify({ providerId }),
+    });
+  } catch (error: unknown) {
+    console.error('Error disconnecting from Intervals.icu:', error);
+    throw error;
+  }
+};
+
 const fetchStravaStatus = async (): Promise<OAuthStatusResponse> => {
   return apiCall('/integrations/strava/status');
 };
@@ -725,6 +758,14 @@ export const getEnrichedProviders = async (): Promise<
             enriched.liftosaur_last_sync_at = status.lastSyncAt;
             break;
           }
+          case 'intervals': {
+            const status = await fetchIntervalsStatus(provider.id);
+            enriched.intervals_connect_status = status.connected
+              ? 'connected'
+              : 'disconnected';
+            enriched.intervals_last_sync_at = status.lastSyncAt;
+            break;
+          }
           case 'strava': {
             if (provider.has_token) {
               const status = await fetchStravaStatus();
@@ -759,6 +800,9 @@ export const getEnrichedProviders = async (): Promise<
         }
         if (provider.provider_type === 'liftosaur') {
           enriched.liftosaur_connect_status = 'disconnected';
+        }
+        if (provider.provider_type === 'intervals') {
+          enriched.intervals_connect_status = 'disconnected';
         }
       }
 

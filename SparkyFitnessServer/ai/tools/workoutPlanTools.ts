@@ -1,7 +1,9 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { todayInZone } from '@workspace/shared';
+import { kgInUnit, todayInZone } from '@workspace/shared';
+import type { PlanProposal } from '@workspace/shared';
 import { log } from '../../config/logging.js';
+import planProposalService from '../../services/planProposalService.js';
 import workoutPlanTemplateService from '../../services/workoutPlanTemplateService.js';
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
 import type { WorkoutPlanAssignmentInput } from '../../models/workoutPlanTemplateRepository.js';
@@ -80,6 +82,73 @@ interface WorkoutPlanTemplateRow {
     total: number;
     session_name?: string | null;
   } | null;
+}
+
+const PROPOSAL_REASONS: Record<PlanProposal['reason'], string> = {
+  hit_plan_twice:
+    'the planned weight and reps were met in each of the last two sessions',
+  too_easy_repeated: 'it was rated too easy twice in a row',
+  too_hard_repeated: 'it was rated too hard twice in a row',
+  too_hard: 'it was rated too hard last time',
+  high_effort: 'the logged effort was at or near failure',
+  low_effort: 'the logged effort was well short of failure',
+  pain_reported: 'pain was reported in this exercise',
+  pain_repeated: 'pain was reported in this exercise twice in a row',
+  session_pain: 'pain was reported for the last session',
+  stalled: 'the estimated one-rep max has stopped improving',
+};
+
+function formatPlanProposals(
+  planName: string | undefined,
+  proposals: PlanProposal[],
+  unit: 'kg' | 'lbs',
+  prefill: boolean
+): string {
+  const weight = (kg: number): string => `${kgInUnit(kg, unit)}`;
+  const lines = [`# Proposed changes to "${planName ?? 'workout plan'}"`, ''];
+  if (proposals.length === 0) {
+    lines.push(
+      'No change is warranted right now. Say so plainly rather than suggesting one.'
+    );
+    return lines.join('\n');
+  }
+  for (const p of proposals) {
+    const why = PROPOSAL_REASONS[p.reason];
+    const head = `- **${p.exerciseName}** (assignment_id ${p.assignmentId})`;
+    if (p.setChanges.length > 0) {
+      const from = [...new Set(p.setChanges.map((c) => weight(c.fromKg)))];
+      const to = [...new Set(p.setChanges.map((c) => weight(c.toKg)))];
+      lines.push(
+        `${head}: ${p.kind} working sets ${from.join('/')} → ${to.join('/')} ${unit}, because ${why}.`
+      );
+    } else {
+      lines.push(`${head}: keep the weights, because ${why}.`);
+    }
+    if (p.reason === 'stalled') {
+      lines.push(
+        '  A stall can be a planned deload; ask before suggesting a deload or a swap.'
+      );
+    }
+    if (p.suggestAlternative) {
+      lines.push(
+        '  Offer alternatives with sparky_manage_exercise suggest_alternatives.'
+      );
+    }
+  }
+  lines.push('');
+  const editable = proposals.some((p) => p.setChanges.length > 0);
+  if (prefill && editable) {
+    lines.push(
+      'This plan pre-fills diary entries, so these weights cannot be applied here. Describe the changes and, if the user agrees, use update_workout_plan.'
+    );
+  } else if (editable) {
+    lines.push(
+      'Nothing was changed. Present these to the user, and apply only the ones they agree to with apply_plan_changes (plan_id, assignment_ids, confirmed=true).'
+    );
+  } else {
+    lines.push('Nothing was changed, and none of these edits the plan.');
+  }
+  return lines.join('\n');
 }
 
 function planMutationConfirmPrompt(
@@ -288,7 +357,9 @@ Actions:
 - action: 'get_active_workout_plan' (fields: date?) — returns the user's active workout plan progression and upcoming session/assignments for today or the specified date
 - action: 'create_workout_plan' (fields: plan_name, schedule_type?, is_active?, description?, start_date?, end_date?, sessions) — creates a workout plan. "sessions" is an array of assignments (preset_name/workout_preset_id or exercise_name/exercise_id). Default schedule_type is sequential.
 - action: 'update_workout_plan' (fields: plan_id, confirmed, plan_name?, schedule_type?, is_active?, description?, start_date?, end_date?, sessions?) — updates a plan. confirmed=true required. If sessions is provided, replaces all assignments.
-- action: 'delete_workout_plan' (fields: plan_id, confirmed) — permanently deletes the plan with the given ID. confirmed=true required.`,
+- action: 'delete_workout_plan' (fields: plan_id, confirmed) — permanently deletes the plan with the given ID. confirmed=true required.
+- action: 'propose_plan_changes' (fields: plan_id?) — read-only: reviews the active (or given) plan against recent training and proposes planned-weight changes (add a step, lighten, or hold) with the reason for each. Changes nothing.
+- action: 'apply_plan_changes' (fields: plan_id, assignment_ids, confirmed) — writes the planned weights proposed by propose_plan_changes for the assignment_ids the user agreed to. confirmed=true required. Weights come from the rules, never from you.`,
       inputSchema: manageWorkoutPlansInput,
       execute: async (rawArgs) => {
         const normalized = normalizeActionArgs(
@@ -609,6 +680,53 @@ Actions:
                 args.plan_id
               );
               return formatConfirmation('Workout plan deleted.');
+            }
+
+            case 'propose_plan_changes': {
+              const result = await planProposalService.getPlanProposals(
+                userId,
+                args.plan_id
+              );
+              if (!result) {
+                return args.plan_id === undefined
+                  ? 'The user has no active workout plan. Offer to create one or to activate one; do not invent changes.'
+                  : ERRORS.NOT_FOUND('Workout plan', String(args.plan_id));
+              }
+              return formatPlanProposals(
+                result.plan.plan_name,
+                result.proposals,
+                result.unit,
+                result.plan.entry_mode === 'prefill'
+              );
+            }
+
+            case 'apply_plan_changes': {
+              if (args.confirmed !== true) {
+                return `Applying plan changes edits the planned weights of plan ${args.plan_id}. Confirm with the user first, naming each exercise and the new weight from propose_plan_changes. If they agree, call apply_plan_changes again with the same plan_id and assignment_ids and confirmed=true. Nothing was changed.`;
+              }
+              const result = await planProposalService.applyPlanProposals(
+                userId,
+                args.plan_id,
+                args.assignment_ids
+              );
+              if (result === null) {
+                return ERRORS.NOT_FOUND('Workout plan', String(args.plan_id));
+              }
+              if (result === 'prefill') {
+                return ERRORS.VALIDATION(
+                  'This plan pre-fills diary entries, so its weights cannot be edited here. Use update_workout_plan instead.'
+                );
+              }
+              if (result.applied.length === 0) {
+                return 'No planned weight was changed: none of those assignments has a current proposal with a weight change. Call propose_plan_changes again for the current list.';
+              }
+              const done = result.applied.map((p) => p.exerciseName).join(', ');
+              return formatConfirmation(
+                `Updated planned weights for ${done}.` +
+                  (result.skipped.length > 0
+                    ? ` Not changed (no current proposal): assignment ${result.skipped.join(', ')}.`
+                    : '')
+              );
             }
 
             default:

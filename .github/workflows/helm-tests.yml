@@ -52,6 +52,72 @@ jobs:
       - name: Render — defaults (bundled postgres)
         run: helm template t helm/chart > /dev/null
 
+      - name: Render — every server pod gets the startup probe
+        run: |
+          out=$(helm template t helm/chart --set server.replicas=2 --show-only templates/server/deployment.yaml)
+          test "$(grep -c 'startupProbe:' <<< "$out")" = 2
+          if helm template t helm/chart --set server.startupProbe=null --show-only templates/server/deployment.yaml | grep -q 'startupProbe:'; then
+            echo "server.startupProbe=null should drop the probe"; exit 1
+          fi
+
+      - name: Render — external DB credentials reach the server
+        run: |
+          out=$(helm template t helm/chart \
+            --set postgresql.enabled=false \
+            --set externalDatabase.host=db.example.com \
+            --set externalDatabase.database=sf \
+            --set externalDatabase.auth.username=u \
+            --set externalDatabase.auth.password=p \
+            --show-only templates/secrets/postgres.yaml)
+          grep -q 'name: sparkyfitness-postgres' <<< "$out"
+          err=$(helm template t helm/chart \
+            --set postgresql.enabled=false \
+            --set externalDatabase.host=db.example.com \
+            --set externalDatabase.database=sf \
+            --set externalDatabase.auth.username=u 2>&1 > /dev/null || true)
+          grep -q 'externalDatabase.auth.password is required' <<< "$err"
+          # Renamed keys: the Secret and the server agree.
+          out=$(helm template t helm/chart \
+            --set postgresql.enabled=false \
+            --set externalDatabase.host=db.example.com \
+            --set externalDatabase.database=sf \
+            --set externalDatabase.auth.username=u \
+            --set externalDatabase.auth.password=p \
+            --set externalDatabase.auth.existingSecretKeys.password=dbpass)
+          grep -q '^  dbpass: ' <<< "$out"
+          grep -q 'key: dbpass' <<< "$out"
+
+      - name: Render — shutdown timeout sets the grace period on every server pod
+        run: |
+          out=$(helm template t helm/chart --set server.replicas=2 --set server.shutdownTimeoutSeconds=60)
+          test "$(grep -c 'terminationGracePeriodSeconds: 65' <<< "$out")" = 2
+          test "$(grep -A1 'name: SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS' <<< "$out" | grep -c 'value: "60"')" = 2
+          for bad in 0 3601; do
+            if helm template t helm/chart --set server.shutdownTimeoutSeconds=$bad > /dev/null 2>&1; then
+              echo "a timeout of $bad should fail to render"; exit 1
+            fi
+          done
+
+      - name: Render — server volumes on existing claims
+        run: |
+          out=$(helm template t helm/chart \
+            --set server.persistence.uploads.existingClaim=my-uploads \
+            --set server.persistence.backup.existingClaim=my-backup)
+          grep -q 'claimName: "my-uploads"' <<< "$out"
+          grep -q 'claimName: "my-backup"' <<< "$out"
+          if grep -q 'name: sparkyfitness-server-\(uploads\|backup\)$' <<< "$out"; then
+            echo "an existing claim should replace the chart's PVC"; exit 1
+          fi
+          # A numeric claim name must still render as a string.
+          out=$(helm template t helm/chart \
+            --set server.persistence.uploads.existingClaim=123 \
+            --set server.persistence.backup.existingClaim=456 \
+            --set databaseBackup.enabled=true \
+            --set databaseBackup.persistence.existingClaim=789)
+          grep -q 'claimName: "123"' <<< "$out"
+          grep -q 'claimName: "456"' <<< "$out"
+          grep -q 'claimName: "789"' <<< "$out"
+
       - name: Render — external DB with NetworkPolicy
         run: |
           helm template t helm/chart \

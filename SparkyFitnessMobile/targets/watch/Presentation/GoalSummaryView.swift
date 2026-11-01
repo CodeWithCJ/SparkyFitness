@@ -27,7 +27,7 @@ struct GoalSummaryView: View {
                 macroRows
                 if nutrition == nil {
                     Text(String(localized: "watch.goals.openPhoneToSync", defaultValue: "Open SparkyFitness on your phone to sync today's numbers."))
-                        .font(.system(size: 10))
+                        .font(.footnote)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.top, 2)
@@ -39,44 +39,48 @@ struct GoalSummaryView: View {
 
     // MARK: - Calories
 
-    /// Eaten and burned flank the ring rather than sitting under it: at this
-    /// width the ring is the only thing that reads instantly, and the two
-    /// supporting numbers stay out of its way.
+    /// The ring on its own line, large, with eaten and burned as one quiet
+    /// line under it: the ring is the only thing that reads instantly, and
+    /// numbers squeezed in beside it were too small to read.
     private var headlineRow: some View {
-        HStack(spacing: 2) {
-            statBlock(value: nutrition?.caloriesConsumed, label: "Eaten")
+        VStack(spacing: 4) {
             calorieRing
-            statBlock(value: nutrition?.caloriesBurned, label: "Burned")
+            Text(String(localized: "watch.goals.eatenBurned", defaultValue: "\(nutrition.map { whole($0.caloriesConsumed) } ?? "–") eaten · \(nutrition.map { whole($0.caloriesBurned) } ?? "–") burned"))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
         }
     }
 
     private var calorieRing: some View {
         ZStack {
             Circle()
-                .stroke(Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: 7))
+                .stroke(Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: 9))
             Circle()
                 .trim(from: 0, to: CGFloat(nutrition?.calorieProgress ?? 0))
                 .stroke(
                     GoalPalette.calories,
-                    style: StrokeStyle(lineWidth: 7, lineCap: .round)
+                    style: StrokeStyle(lineWidth: 9, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
 
             VStack(spacing: -1) {
                 Text(calorieValueText)
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .font(.system(size: WatchStyle.s(30), weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
                 Text(calorieCaption)
-                    .font(.system(size: 9))
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
-            .padding(.horizontal, 9)
+            .padding(.horizontal, 12)
         }
-        .frame(width: 76, height: 76)
+        .frame(width: WatchStyle.s(110), height: WatchStyle.s(110))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(calorieAccessibilityLabel)
     }
@@ -93,34 +97,21 @@ struct GoalSummaryView: View {
     }
 
     private var calorieCaption: String {
-        guard let nutrition, nutrition.caloriesRemaining < 0 else { return "Kcal left" }
-        return "Kcal over"
+        guard let nutrition, nutrition.caloriesRemaining < 0 else {
+            return String(localized: "watch.goals.kcalLeft", defaultValue: "kcal left")
+        }
+        return String(localized: "watch.goals.kcalOver", defaultValue: "kcal over")
     }
 
     /// Unsigned here even though the visible number is signed: "minus 254
     /// calories over goal" is worse spoken than written, and the words
     /// already say which side of the goal the wearer is on.
     private var calorieAccessibilityLabel: String {
-        guard let nutrition else { return "Calories not synced yet" }
+        guard let nutrition else { return String(localized: "watch.goals.caloriesNotSynced", defaultValue: "Calories not synced yet") }
         let amount = whole(abs(nutrition.caloriesRemaining))
         return nutrition.caloriesRemaining < 0
-            ? "\(amount) calories over goal"
-            : "\(amount) calories left"
-    }
-
-    private func statBlock(value: Double?, label: String) -> some View {
-        VStack(spacing: 1) {
-            Text(value.map(whole) ?? "–")
-                .font(.system(size: 15, weight: .medium, design: .rounded))
-                .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-            Text(label)
-                .font(.system(size: 9))
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
+            ? String(localized: "watch.goals.caloriesOverGoal", defaultValue: "\(amount) calories over goal")
+            : String(localized: "watch.goals.caloriesLeft", defaultValue: "\(amount) calories left")
     }
 
     // MARK: - Nutrients
@@ -133,21 +124,31 @@ struct GoalSummaryView: View {
     private var rows: [NutrientRow?] {
         if let rows = nutrition?.rows { return rows }
         return [
-            macroRow("protein", "Protein", nutrition?.protein),
-            macroRow("carbs", "Carbs", nutrition?.carbs),
-            macroRow("fat", "Fat", nutrition?.fat),
+            macroRow("protein", Self.macroTitle("protein"), nutrition?.protein),
+            macroRow("carbs", Self.macroTitle("carbs"), nutrition?.carbs),
+            macroRow("fat", Self.macroTitle("fat"), nutrition?.fat),
         ]
     }
 
     private var macroRows: some View {
         VStack(spacing: 7) {
             ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
-                nutrientRow(row, placeholderTitle: Self.placeholderTitles[safe: index], index: index)
+                nutrientRow(row, placeholderKey: Self.placeholderKeys[safe: index], index: index)
             }
         }
     }
 
-    private static let placeholderTitles = ["Protein", "Carbs", "Fat"]
+    private static let placeholderKeys = ["protein", "carbs", "fat"]
+
+    /// The fixed macros' names; `key` is also what picks the row's colour, so
+    /// it is never the translated text.
+    private static func macroTitle(_ key: String) -> String {
+        switch key {
+        case "protein": return String(localized: "watch.goals.protein", defaultValue: "Protein")
+        case "carbs": return String(localized: "watch.goals.carbs", defaultValue: "Carbs")
+        default: return String(localized: "watch.goals.fat", defaultValue: "Fat")
+        }
+    }
 
     /// The fixed macros as rows. Nil before the phone has synced today, which
     /// the row draws as dashes.
@@ -156,29 +157,29 @@ struct GoalSummaryView: View {
         return NutrientRow(
             key: key,
             label: title,
-            unit: "g",
+            unit: String(localized: "watch.unit.grams", defaultValue: "g"),
             consumed: macro.consumed,
             goal: macro.hasGoal ? macro.goal : nil,
             progress: macro.progress
         )
     }
 
-    private func nutrientRow(_ row: NutrientRow?, placeholderTitle: String?, index: Int) -> some View {
-        let color = GoalPalette.color(forNutrient: row?.key ?? placeholderTitle?.lowercased() ?? "", index: index)
-        let title = row?.label ?? placeholderTitle ?? ""
+    private func nutrientRow(_ row: NutrientRow?, placeholderKey: String?, index: Int) -> some View {
+        let color = GoalPalette.color(forNutrient: row?.key ?? placeholderKey ?? "", index: index)
+        let title = row?.label ?? placeholderKey.map(Self.macroTitle) ?? ""
         return VStack(alignment: .leading, spacing: 3) {
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 14))
+                    .font(.body)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Spacer(minLength: 4)
                 Text(row.map { whole($0.consumed) } ?? "–")
-                    .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    .font(.body.weight(.semibold))
                     .monospacedDigit()
                     .foregroundStyle(color)
                 Text(goalText(row))
-                    .font(.system(size: 13))
+                    .font(.footnote)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

@@ -1,4 +1,10 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -28,7 +34,9 @@ import CalendarSheet, {
 } from '../components/CalendarSheet';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
+import GuidedCheckInStepIndicator from '../components/GuidedCheckInStepIndicator';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useGuidedCheckIn } from '../hooks/useGuidedCheckIn';
 import {
   useCheckInPhotoGallery,
   useCheckInPhotoDates,
@@ -38,6 +46,7 @@ import {
 import { useCheckInPhotoSource } from '../hooks/useCheckInPhotoSource';
 import { usePreferences } from '../hooks/usePreferences';
 import { getApiErrorMessage } from '../services/api/errors';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { pickImageFromCamera, pickImagesFromLibrary } from '../utils/pickImage';
 import { formatDateLabel, getTodayDate } from '../utils/dateUtils';
 import {
@@ -114,6 +123,7 @@ interface TimelineRow {
 const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [accentPrimary, mutedColor] = useCSSVariable([
     '--color-accent-primary',
@@ -136,17 +146,32 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
   const [selectedDate, setSelectedDate] = useState(
     route.params?.date ?? getTodayDate()
   );
+  // Step 3 of the guided check-in, which keeps the day the check-in started on.
+  const guidedCheckIn = useGuidedCheckIn({
+    navigation,
+    step: 'ProgressPhotos',
+    date: route.params?.date,
+    params: route.params?.guidedCheckIn,
+  });
   /** Angle whose action sheet is open; also the target of a pick. */
   const [sheetAngle, setSheetAngle] = useState<PhotoType>('front');
   const actionSheetRef = useRef<ActionSheetRef>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
   // The picker is a native modal; without this a double tap opens two.
   const pickerLock = useRef(false);
+  // A picked photo is shrunk before its upload starts, so `isUploading` alone
+  // would let Finish leave while it is still on its way.
+  const [isPicking, setIsPicking] = useState(false);
+  const uploadedRef = useRef(false);
+  // Set when the navigator closes the step while a photo is still on its way,
+  // so the check-in is confirmed once that photo has landed.
+  const closeWhenSettledRef = useRef<(() => void) | null>(null);
 
   const { days, isLoading, isError, refetch } = useCheckInPhotoGallery();
   const { photos: dayPhotos } = useCheckInPhotosByDate(selectedDate);
-  const { dates: photoDates } = useCheckInPhotoDates();
-  const { uploadAsync, uploadingType, deleteAsync } =
+  // The check-in fixes the day, so it never opens the calendar these mark.
+  const { dates: photoDates } = useCheckInPhotoDates(!guidedCheckIn);
+  const { uploadAsync, uploadingType, isUploading, deleteAsync, isDeleting } =
     useCheckInPhotoMutations();
 
   const byType = useMemo(() => {
@@ -206,9 +231,59 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
   // these two for anything older, so they must not be off when it does.
   const canCompare = allRows.length >= 2;
 
+  const handleFinish = useCallback(() => {
+    if (pickerLock.current) return;
+    guidedCheckIn?.finish({ saved: uploadedRef.current });
+  }, [guidedCheckIn]);
+  const isPhotoPending = isPicking || isUploading || isDeleting;
+  // Photos are saved as they are added, so going back drops nothing, and
+  // the flow keeps knowing a photo was saved.
+  const handleBack = useCallback(() => {
+    if (pickerLock.current) return;
+    guidedCheckIn?.back?.(false, { saved: uploadedRef.current });
+  }, [guidedCheckIn]);
+  // Pushed, the screen pads below the status bar only when it draws its own
+  // header. In the check-in it is a sheet, which on iOS already starts below
+  // the status bar, so there only Android (full height) pads.
+  const needsTopInset =
+    !usesNativeHeader && (!guidedCheckIn || Platform.OS === 'android');
+
+  // Photos save as they are added, so on the last step closing is finishing.
+  // System Back and the iOS swipe down close the sheet without the header;
+  // they finish with the same confirmation.
+  useEffect(() => {
+    if (!guidedCheckIn) return undefined;
+    return navigation.addListener('beforeRemove', (event) => {
+      const { type } = event.data.action;
+      if (type !== 'GO_BACK' && type !== 'POP') return;
+      const close = () =>
+        guidedCheckIn.onNavigatorClose({ saved: uploadedRef.current });
+      if (pickerLock.current) closeWhenSettledRef.current = close;
+      else close();
+    });
+  }, [guidedCheckIn, navigation]);
+
   const header = useScreenHeader({
     title: t('progressPhotos.title', { defaultValue: 'Progress Photos' }),
-    left: { kind: 'back' },
+    // The steps replace one another, so in the check-in this leaves the flow
+    // rather than going back to step 2. The X is the same Finish.
+    left: guidedCheckIn
+      ? {
+          kind: 'dismiss',
+          onPress: handleFinish,
+          disabled: isPhotoPending,
+          accessibilityLabel: t('common.close', { defaultValue: 'Close' }),
+        }
+      : { kind: 'back' },
+    right: guidedCheckIn
+      ? {
+          kind: 'primary',
+          label: t('guidedCheckIn.finish', { defaultValue: 'Finish' }),
+          onPress: handleFinish,
+          disabled: isPhotoPending,
+          identifier: 'guided-check-in-finish',
+        }
+      : undefined,
   });
 
   // Measurements owns weight entry, so the prompt hands the day over rather
@@ -225,6 +300,7 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
     async (source: 'camera' | 'library', type: PhotoType) => {
       if (pickerLock.current) return;
       pickerLock.current = true;
+      setIsPicking(true);
       try {
         let uri: string | undefined;
         if (source === 'camera') {
@@ -251,6 +327,7 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
         // The server upserts on (user_id, entry_date, photo_type), so an
         // upload over an existing angle replaces it with no delete first.
         await uploadAsync({ date: selectedDate, type, uri });
+        uploadedRef.current = true;
       } catch (err) {
         Toast.show({
           type: 'error',
@@ -261,6 +338,9 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
         });
       } finally {
         pickerLock.current = false;
+        setIsPicking(false);
+        closeWhenSettledRef.current?.();
+        closeWhenSettledRef.current = null;
       }
     },
     [t, uploadAsync, selectedDate]
@@ -362,7 +442,11 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
           <PhotoDayWeight
             weight={item.day.weight}
             mode={weightMode}
-            onLogWeight={() => openWeightEntry(item.day.entry_date)}
+            onLogWeight={
+              guidedCheckIn
+                ? undefined
+                : () => openWeightEntry(item.day.entry_date)
+            }
             className="text-text-secondary text-sm mt-0.5"
           />
           {item.deltaKg != null && item.deltaKg !== 0 && (
@@ -437,37 +521,53 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <View
       className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+      style={needsTopInset ? { paddingTop: insets.top } : undefined}
     >
       {header}
+      {guidedCheckIn && (
+        <GuidedCheckInStepIndicator
+          step={guidedCheckIn.step}
+          total={guidedCheckIn.total}
+          onBack={handleBack}
+          backDisabled={isPhotoPending}
+        />
+      )}
 
       {/* The day on show, with its own management. Its own card, and angle
           agnostic: the selector further down scopes the history, not this. */}
       <View className="mx-4 mt-2 bg-surface rounded-xl p-3 shadow-sm">
         <View className="flex-row items-center justify-between mb-2">
-          <TouchableOpacity
-            onPress={() => calendarRef.current?.present()}
-            activeOpacity={0.7}
-            className="flex-row items-center"
-            accessibilityRole="button"
-            accessibilityLabel={t('progressPhotos.chooseDayA11y', {
-              defaultValue: 'Choose the day',
-            })}
-          >
+          {guidedCheckIn ? (
             <Text className="text-text-primary text-base font-semibold">
               {formatDateLabel(selectedDate, t, dateLocale)}
             </Text>
-            <Icon
-              name="chevron-down"
-              size={12}
-              color={accentPrimary}
-              style={{ marginLeft: 4 }}
-            />
-          </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => calendarRef.current?.present()}
+              activeOpacity={0.7}
+              className="flex-row items-center"
+              accessibilityRole="button"
+              accessibilityLabel={t('progressPhotos.chooseDayA11y', {
+                defaultValue: 'Choose the day',
+              })}
+            >
+              <Text className="text-text-primary text-base font-semibold">
+                {formatDateLabel(selectedDate, t, dateLocale)}
+              </Text>
+              <Icon
+                name="chevron-down"
+                size={12}
+                color={accentPrimary}
+                style={{ marginLeft: 4 }}
+              />
+            </TouchableOpacity>
+          )}
           <PhotoDayWeight
             weight={selectedDay?.weight ?? null}
             mode={weightMode}
-            onLogWeight={() => openWeightEntry(selectedDate)}
+            onLogWeight={
+              guidedCheckIn ? undefined : () => openWeightEntry(selectedDate)
+            }
             className="text-text-secondary text-sm"
           />
         </View>
@@ -492,15 +592,20 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
           {t('progressPhotos.historySection', { defaultValue: 'History' })}
         </Text>
         <Text className="text-text-muted text-xs mb-2">
-          {isCapped
-            ? t('progressPhotos.historyDescriptionCapped', {
-                defaultValue:
-                  'Your {{limit}} most recent. Compare or Time-lapse look further back.',
+          {isCapped && guidedCheckIn
+            ? t('progressPhotos.historyDescriptionCappedCheckIn', {
+                defaultValue: 'Your {{limit}} most recent, newest first.',
                 limit: HISTORY_PREVIEW_LIMIT,
               })
-            : t('progressPhotos.historyDescription', {
-                defaultValue: 'Your photos for this angle, newest first.',
-              })}
+            : isCapped
+              ? t('progressPhotos.historyDescriptionCapped', {
+                  defaultValue:
+                    'Your {{limit}} most recent. Compare or Time-lapse look further back.',
+                  limit: HISTORY_PREVIEW_LIMIT,
+                })
+              : t('progressPhotos.historyDescription', {
+                  defaultValue: 'Your photos for this angle, newest first.',
+                })}
         </Text>
         <SegmentedControl
           segments={segments}
@@ -508,55 +613,61 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
           onSelect={setAngle}
         />
 
-        <View className="flex-row gap-3 mt-3">
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate('ProgressPhotoCompare', { angle })
-            }
-            disabled={!canCompare}
-            className="flex-1 flex-row items-center justify-center bg-surface rounded-lg py-2.5 shadow-sm"
-            style={!canCompare ? { opacity: 0.4 } : undefined}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canCompare }}
-          >
-            <Icon name="copy" size={16} color={accentPrimary} />
-            <Text
-              className="text-sm font-semibold ml-1.5"
-              style={{ color: accentPrimary }}
+        {/* Looking back is not part of logging the day, so the check-in
+            leaves it to the screen opened on its own. */}
+        {!guidedCheckIn && (
+          <View className="flex-row gap-3 mt-3">
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('ProgressPhotoCompare', { angle })
+              }
+              disabled={!canCompare}
+              className="flex-1 flex-row items-center justify-center bg-surface rounded-lg py-2.5 shadow-sm"
+              style={!canCompare ? { opacity: 0.4 } : undefined}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canCompare }}
             >
-              {t('progressPhotos.compare', { defaultValue: 'Compare' })}
-            </Text>
-          </TouchableOpacity>
+              <Icon name="copy" size={16} color={accentPrimary} />
+              <Text
+                className="text-sm font-semibold ml-1.5"
+                style={{ color: accentPrimary }}
+              >
+                {t('progressPhotos.compare', { defaultValue: 'Compare' })}
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() =>
-              navigation.navigate('ProgressPhotoTimelapse', { angle })
-            }
-            disabled={!canCompare}
-            className="flex-1 flex-row items-center justify-center bg-surface rounded-lg py-2.5 shadow-sm"
-            style={!canCompare ? { opacity: 0.4 } : undefined}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canCompare }}
-          >
-            <Icon name="play" size={16} color={accentPrimary} />
-            <Text
-              className="text-sm font-semibold ml-1.5"
-              style={{ color: accentPrimary }}
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('ProgressPhotoTimelapse', { angle })
+              }
+              disabled={!canCompare}
+              className="flex-1 flex-row items-center justify-center bg-surface rounded-lg py-2.5 shadow-sm"
+              style={!canCompare ? { opacity: 0.4 } : undefined}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !canCompare }}
             >
-              {t('progressPhotos.timelapse', { defaultValue: 'Time-lapse' })}
-            </Text>
-          </TouchableOpacity>
-        </View>
+              <Icon name="play" size={16} color={accentPrimary} />
+              <Text
+                className="text-sm font-semibold ml-1.5"
+                style={{ color: accentPrimary }}
+              >
+                {t('progressPhotos.timelapse', { defaultValue: 'Time-lapse' })}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {renderBody()}
 
-      <CalendarSheet
-        ref={calendarRef}
-        markedDates={photoDates}
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-      />
+      {!guidedCheckIn && (
+        <CalendarSheet
+          ref={calendarRef}
+          markedDates={photoDates}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+        />
+      )}
 
       <ActionSheet
         ref={actionSheetRef}

@@ -64,6 +64,126 @@ describe('IntervalCard', () => {
   });
 });
 
+describe('IntervalCard on a Zone 2 step', () => {
+  const band = { minBpm: 111, maxBpm: 129 };
+  const zone2Plan = (heartRate?: typeof band) => ({
+    style: 'runWalk' as const,
+    steps: [
+      {
+        kind: 'work' as const,
+        seconds: 1800,
+        effort: 'zone2' as const,
+        ...(heartRate ? { heartRate } : {}),
+      },
+    ],
+  });
+  const at = (plan: ReturnType<typeof zone2Plan>, seconds: number) =>
+    intervalPosition(plan, seconds)!;
+
+  it('names the step and shows the target range with the in-zone cue', () => {
+    const plan = zone2Plan(band);
+    render(
+      <IntervalCard
+        plan={plan}
+        position={at(plan, 600)}
+        heartRate={120}
+        heartRateSource
+      />
+    );
+    expect(screen.getByText('Zone 2 run')).toBeTruthy();
+    expect(screen.getByText('Zone 2: 111–129 bpm')).toBeTruthy();
+    expect(screen.getByText('In Zone 2. Keep this effort.')).toBeTruthy();
+  });
+
+  it('cues above the range', () => {
+    const plan = zone2Plan(band);
+    render(
+      <IntervalCard
+        plan={plan}
+        position={at(plan, 600)}
+        heartRate={140}
+        heartRateSource
+      />
+    );
+    expect(
+      screen.getByText(
+        'Above Zone 2. Ease off, or walk until your heart rate settles.'
+      )
+    ).toBeTruthy();
+  });
+
+  it('cues below the range', () => {
+    const plan = zone2Plan(band);
+    render(
+      <IntervalCard
+        plan={plan}
+        position={at(plan, 600)}
+        heartRate={100}
+        heartRateSource
+      />
+    );
+    expect(
+      screen.getByText('Below Zone 2. You can pick it up a little.')
+    ).toBeTruthy();
+  });
+
+  it('waits for a reading when a watch is paired but has sent none', () => {
+    const plan = zone2Plan(band);
+    render(
+      <IntervalCard plan={plan} position={at(plan, 600)} heartRateSource />
+    );
+    expect(screen.getByText('Waiting for a heart rate reading…')).toBeTruthy();
+  });
+
+  it('falls back to the talk test, keeping the range, with no watch', () => {
+    const plan = zone2Plan(band);
+    render(<IntervalCard plan={plan} position={at(plan, 600)} />);
+    expect(screen.getByText('Zone 2: 111–129 bpm')).toBeTruthy();
+    expect(
+      screen.getByText(/easy enough to talk in full sentences/)
+    ).toBeTruthy();
+  });
+
+  it('uses the talk test alone when there is no range', () => {
+    const plan = zone2Plan();
+    render(
+      <IntervalCard
+        plan={plan}
+        position={at(plan, 600)}
+        heartRate={150}
+        heartRateSource
+      />
+    );
+    expect(screen.queryByText(/bpm/)).toBeNull();
+    expect(
+      screen.getByText(/easy enough to talk in full sentences/)
+    ).toBeTruthy();
+  });
+
+  it('does not add Zone 2 wording to other stretches', () => {
+    const fast = {
+      style: 'fastEasy' as const,
+      steps: [
+        {
+          kind: 'work' as const,
+          seconds: 120,
+          heartRate: { minBpm: 160, maxBpm: 175 },
+        },
+      ],
+    };
+    render(
+      <IntervalCard
+        plan={fast}
+        position={intervalPosition(fast, 10)!}
+        heartRate={150}
+        heartRateSource
+      />
+    );
+    expect(screen.getByText('160–175 bpm')).toBeTruthy();
+    expect(screen.queryByText(/Zone 2/)).toBeNull();
+  });
+});
+
 describe('IntervalSetup custom builder', () => {
   it('changes rounds with the steppers', () => {
     const onCustom = jest.fn();

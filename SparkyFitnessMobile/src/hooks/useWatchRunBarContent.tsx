@@ -78,8 +78,12 @@ export function useWatchRunBarContent({
     primaryLine:
       run.kind === 'walk'
         ? t('recordActivity.activity.walk', { defaultValue: 'Walk' })
-        : t('recordActivity.activity.run', { defaultValue: 'Run' }),
-    secondaryLine: `${distance} · ${pace} ${paceUnit}`,
+        : run.kind === 'jumpRope'
+          ? t('recordActivity.activity.jumpRope', { defaultValue: 'Jump Rope' })
+          : t('recordActivity.activity.run', { defaultValue: 'Run' }),
+    // A jump rope covers no distance, so there is no distance/pace to show.
+    secondaryLine:
+      run.kind === 'jumpRope' ? '' : `${distance} · ${pace} ${paceUnit}`,
     countdownLabel: formatClock(run.elapsedNow),
     openLabel: t('watchRunLive.open', {
       defaultValue: 'Open the workout on your watch',

@@ -60,6 +60,7 @@ import { useSuggestedRanges } from '../hooks/useSuggestedRanges';
 import { useWatchConnectivity } from '../hooks/useWatchConnectivity';
 import { startRunOnWatch } from '../services/watchRunControl';
 import { buildWatchStartPlan } from '../utils/watchRunPlans';
+import { useZone2HeartRateBand } from '../hooks/useZone2HeartRateBand';
 import { useRecordingHeartRate } from '../stores/liveHeartRateStore';
 import { notificationText } from '../utils/recordingNotification';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
@@ -447,6 +448,9 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       ? warmParts.join(' · ')
       : t('recordActivity.warmRanges.off', { defaultValue: 'Off' });
   const currentHeartRateBand = heartRateBand ?? DEFAULT_HEART_RATE_BAND;
+  // A Zone 2 step carries the person's Zone 2 range without a tap: the program
+  // defines it, so it is not one of the suggestions offered for fast and easy ones.
+  const zone2HeartRateBand = useZone2HeartRateBand();
   const intervalPlan = useMemo<IntervalPlan | undefined>(
     () =>
       basePlan
@@ -469,6 +473,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
               work: workHeartRate.enabled ? workHeartRateBand : null,
               easy: easyHeartRate.enabled ? easyHeartRateBand : null,
               warm: warmHeartRate.enabled ? warmHeartRateBand : null,
+              zone2: zone2HeartRateBand,
             }
           )
         : undefined,
@@ -488,6 +493,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       workHeartRateBand,
       easyHeartRateBand,
       warmHeartRateBand,
+      zone2HeartRateBand,
     ]
   );
   // Starting ranges for the plan's fast and easy stretches, offered with a tap.
@@ -1824,7 +1830,12 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           </Text>
         </View>
         {session.intervals && intervalPos && !finished ? (
-          <IntervalCard plan={session.intervals.plan} position={intervalPos} />
+          <IntervalCard
+            plan={session.intervals.plan}
+            position={intervalPos}
+            heartRate={heartRate}
+            heartRateSource={watchAvailable}
+          />
         ) : null}
         {session.fitnessTest ? (
           finished ? (

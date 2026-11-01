@@ -1,5 +1,6 @@
 import { getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import { trackBackgroundWork } from '../utils/shutdownHooks.js';
 import type {
   LivsmedelsverketBulkImportRequest,
   LivsmedelsverketBulkImportStatus,
@@ -73,7 +74,7 @@ export async function startLivsmedelsverketBulkImport(
   activeImports.set(userId, initialStatus);
 
   // Run in background asynchronously so request returns immediately
-  (async () => {
+  const importRun = (async () => {
     try {
       const language = options.language || 'sv';
       const sprakCode = resolveSprakCode(language);
@@ -472,6 +473,7 @@ export async function startLivsmedelsverketBulkImport(
       );
     }
   })();
+  void trackBackgroundWork(importRun);
 }
 
 export default {

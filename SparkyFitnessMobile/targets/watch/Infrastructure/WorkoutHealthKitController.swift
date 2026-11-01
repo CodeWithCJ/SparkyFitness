@@ -111,10 +111,9 @@ final class WorkoutHealthKitController: NSObject {
             DispatchQueue.main.async { completion(false) }
             return
         }
-        var shareTypes: Set<HKSampleType> = [
+        let shareTypes: Set<HKSampleType> = [
             HKObjectType.workoutType(), heartRateType, activeEnergyType,
         ]
-        if let effortType = WorkoutEffort.shareType { shareTypes.insert(effortType) }
         let readTypes: Set<HKObjectType> = [
             heartRateType, activeEnergyType, HKObjectType.workoutType(),
         ]

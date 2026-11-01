@@ -4,12 +4,18 @@ import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import Button from './ui/Button';
 import { useWeeklyGoalPlanMutations } from '../hooks/useGoals';
+import { usePreferences } from '../hooks/usePreferences';
 import {
   WEEKDAY_KEYS,
   type GoalPreset,
   type WeeklyGoalPlan,
 } from '../types/goals';
-import { formatDate, normalizeDate } from '../utils/dateUtils';
+import {
+  isValidTimeZone,
+  todayInZone,
+  weeklyGoalPlanInForce,
+} from '@workspace/shared';
+import { formatDate, getTodayDate, normalizeDate } from '../utils/dateUtils';
 
 interface WeeklyGoalPlansSectionProps {
   plans: WeeklyGoalPlan[];
@@ -27,6 +33,14 @@ const WeeklyGoalPlansSection: React.FC<WeeklyGoalPlansSectionProps> = ({
   const { t, i18n } = useTranslation();
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const { deletePlan, isPending } = useWeeklyGoalPlanMutations();
+  const { preferences } = usePreferences();
+  // Same day as web, which uses the profile timezone.
+  const timezone = preferences?.timezone;
+  const today =
+    timezone && isValidTimeZone(timezone)
+      ? todayInZone(timezone)
+      : getTodayDate();
+  const planInForce = weeklyGoalPlanInForce(plans, today);
 
   const confirmDelete = (plan: WeeklyGoalPlan) =>
     Alert.alert(
@@ -88,7 +102,7 @@ const WeeklyGoalPlansSection: React.FC<WeeklyGoalPlansSectionProps> = ({
               <Text className="flex-shrink text-base font-semibold text-text-primary">
                 {plan.plan_name}
               </Text>
-              {plan.is_active && (
+              {plan === planInForce && (
                 <Text className="text-xs font-semibold text-accent-primary">
                   {t('goals.weekly.activeBadge', { defaultValue: 'Active' })}
                 </Text>

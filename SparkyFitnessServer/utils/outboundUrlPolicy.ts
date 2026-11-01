@@ -1,13 +1,13 @@
 import dns from 'node:dns/promises';
 import net from 'node:net';
 import ipaddr from 'ipaddr.js';
-import undici from 'undici';
+import undici, { type Dispatcher } from 'undici';
 import {
   isPrivateNetworkAiAllowed,
   isPrivateNetworkFoodProvidersAllowed,
 } from '../models/globalSettingsRepository.js';
 
-const { Agent, buildConnector } = undici;
+const { Agent, buildConnector, Dispatcher1Wrapper } = undici;
 
 const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
 
@@ -360,8 +360,19 @@ function sharedGuardedDispatcher(policy: AiNetworkPolicy) {
   return dispatcher;
 }
 
+// Node's built-in fetch runs on the undici copy bundled with Node, not on the
+// `undici` package, and the two can speak different dispatcher handler APIs
+// (Node 24 bundles undici 7, the package is undici 8). Passed as `dispatcher`
+// directly, a package Agent then fails every request with "invalid
+// onRequestStart method". Dispatcher1Wrapper is the bridge undici's own
+// setGlobalDispatcher installs for Node's fetch; it passes handlers that
+// already use the current API through unchanged.
+export function forNativeFetch(dispatcher: Dispatcher): Dispatcher {
+  return new Dispatcher1Wrapper(dispatcher);
+}
+
 export function createGuardedFetch(policy: AiNetworkPolicy): typeof fetch {
-  const dispatcher = sharedGuardedDispatcher(policy);
+  const dispatcher = forNativeFetch(sharedGuardedDispatcher(policy));
   return ((input: RequestInfo | URL, init?: RequestInit) => {
     const url =
       input instanceof Request

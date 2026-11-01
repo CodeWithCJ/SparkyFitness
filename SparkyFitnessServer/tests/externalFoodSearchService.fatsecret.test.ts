@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { PARTIAL_SERVING_DATA } from '../utils/foodRanking.js';
 
 vi.mock('../services/foodIntegrationService.js', () => ({
   getFatSecretNutrients: vi.fn(),
@@ -263,6 +264,29 @@ describe('enrichFatSecretResults', () => {
 
     expect(result[0]!.default_variant.calories).toBe(300);
     expect(mockMapFatSecretFood).not.toHaveBeenCalled();
+  });
+
+  it('marks only items left as search-mapped as partial serving data', async () => {
+    const items = Array.from({ length: 7 }, (_, i) =>
+      makeSearchItem(String(i), i * 10)
+    );
+    mockGetFatSecretNutrients
+      .mockResolvedValueOnce({ food: {} })
+      .mockRejectedValueOnce(new Error('timeout'))
+      .mockResolvedValue({ food: {} });
+    mockMapFatSecretFood.mockReturnValue(
+      makeDetailResult('x', 999) as ReturnType<typeof mapFatSecretFood>
+    );
+
+    const result = await enrichFatSecretResults(items, 'app_id', 'app_key');
+
+    expect(
+      result.map(
+        (item) =>
+          (item as { [PARTIAL_SERVING_DATA]?: true })[PARTIAL_SERVING_DATA]
+      )
+    ).toEqual([undefined, true, undefined, undefined, undefined, true, true]);
+    expect(JSON.stringify(result[1])).not.toContain('partial');
   });
 
   it('preserves item order across top-5 and remainder', async () => {

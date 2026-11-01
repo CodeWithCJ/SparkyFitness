@@ -1,7 +1,14 @@
 import { useTranslation } from 'react-i18next';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import type { WeightUnit } from '@/contexts/PreferencesContext';
-import { MessageSquare, Play, Square, Timer, Trash2 } from 'lucide-react';
+import {
+  Dumbbell,
+  MessageSquare,
+  Play,
+  Square,
+  Timer,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -71,6 +78,9 @@ interface WorkoutPlaybackSetRowProps {
   onRemoveSet: (pointer: WorkoutSetPointer) => void;
   canRemove: boolean;
   weightUnit: WeightUnit;
+  /** Show the plate calculator action (barbell exercises). */
+  canCalculatePlates?: boolean;
+  onOpenPlateCalculator?: (pointer: WorkoutSetPointer) => void;
 }
 
 const WorkoutPlaybackSetRow = ({
@@ -98,6 +108,8 @@ const WorkoutPlaybackSetRow = ({
   onRemoveSet,
   canRemove,
   weightUnit,
+  canCalculatePlates = false,
+  onOpenPlateCalculator,
 }: WorkoutPlaybackSetRowProps) => {
   const { t } = useTranslation();
   const pointer: WorkoutSetPointer = useMemo(
@@ -347,6 +359,25 @@ const WorkoutPlaybackSetRow = ({
           </Button>
 
           <div className="col-span-1 flex items-center justify-end gap-1 sm:col-start-6 sm:col-span-1 sm:justify-center">
+            {canCalculatePlates && !isTimedExercise && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="cursor-pointer"
+                aria-label={t(
+                  'plates.openForSet',
+                  'Plate calculator for set {{setNumber}}',
+                  { setNumber }
+                )}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onOpenPlateCalculator?.(pointer);
+                }}
+              >
+                <Dumbbell className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"

@@ -1,8 +1,10 @@
 import type { TFunction } from 'i18next';
 import {
+  applyHeartRateTargets,
   applyPaceTargets,
   buildIntervalPlan,
   INTERVAL_PRESETS,
+  type HeartRateBand,
   type IntervalPlan,
   type ProgramStatus,
 } from '@workspace/shared';
@@ -59,7 +61,7 @@ const programCueText = (
 
 const toSteps = (t: TFunction, plan: IntervalPlan) =>
   plan.steps.map((step) => ({
-    label: intervalStepName(t, step.kind, plan.style),
+    label: intervalStepName(t, step.kind, plan.style, step.effort),
     seconds: step.seconds,
     ...(step.meters !== undefined && step.meters > 0
       ? { meters: step.meters }
@@ -81,7 +83,8 @@ const toSteps = (t: TFunction, plan: IntervalPlan) =>
  * is on), then the built-in interval plans. `programName` and `presetName`
  * are injected so this stays free of the components that own the wording.
  * `paceRanges`, when given, put the person's race-based ranges on the program
- * workout's steps, so the watch holds them to it the way the phone does.
+ * workout's steps, so the watch holds them to it the way the phone does, and
+ * `zone2Band` puts the person's Zone 2 heart-rate range on a Zone 2 workout's.
  */
 export function buildWatchRunPlans(
   t: TFunction,
@@ -90,7 +93,8 @@ export function buildWatchRunPlans(
     program: (status: ProgramStatus) => string;
     preset: (id: string) => string;
   },
-  paceRanges?: RacePaceRanges | null
+  paceRanges?: RacePaceRanges | null,
+  zone2Band?: HeartRateBand | null
 ): WatchRunPlanPayload[] {
   const plans: WatchRunPlanPayload[] = [];
   const { status } = program;
@@ -106,13 +110,16 @@ export function buildWatchRunPlans(
       ...programCueText(t, status.program.id, status.done, status.workout.plan),
       steps: toSteps(
         t,
-        paceRanges
-          ? applyPaceTargets(status.workout.plan, {
-              work: paceRanges.pair.work,
-              easy: paceRanges.pair.easy,
-              byEffort: paceRanges.byEffort,
-            })
-          : status.workout.plan
+        applyHeartRateTargets(
+          paceRanges
+            ? applyPaceTargets(status.workout.plan, {
+                work: paceRanges.pair.work,
+                easy: paceRanges.pair.easy,
+                byEffort: paceRanges.byEffort,
+              })
+            : status.workout.plan,
+          { zone2: zone2Band }
+        )
       ),
     });
   }

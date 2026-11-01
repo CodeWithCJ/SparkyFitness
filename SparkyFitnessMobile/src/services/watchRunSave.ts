@@ -41,7 +41,7 @@ export interface SavedWatchRun {
 async function measureForm(
   payload: WatchRunPayload,
   durationSeconds: number,
-  distanceKm: number
+  distanceKm: number | null
 ): Promise<WatchRunForm | null> {
   try {
     return await measureWatchRunForm(
@@ -51,7 +51,7 @@ async function measureForm(
         finishedAt: payload.endedAt,
         activeSeconds: durationSeconds,
       },
-      distanceKm * METERS_PER_KM,
+      (distanceKm ?? 0) * METERS_PER_KM,
       payload.steps
     );
   } catch (error) {
@@ -85,7 +85,11 @@ export async function saveWatchRun(
   // route's is the fallback when it recorded none.
   const distanceMeters =
     payload.distanceMeters > 0 ? payload.distanceMeters : routeMeters;
-  const distanceKm = Math.round(distanceMeters) / METERS_PER_KM;
+  // Jump rope has no distance: the entry is time and heart rate only.
+  const distanceKm =
+    payload.kind === 'jumpRope'
+      ? null
+      : Math.round(distanceMeters) / METERS_PER_KM;
   const durationSeconds = Math.max(
     1,
     Math.round(
@@ -137,9 +141,11 @@ export async function saveWatchRun(
           : computeSplits(points, unitMeters)
       ),
     });
-  } else {
+  } else if (payload.kind !== 'jumpRope') {
     // No route (indoors): the laps the wearer marked, from the watch's own
     // figures. Best effort, like the telemetry: the run is already filed.
+    // A jump rope covers no distance, so it keeps neither laps nor a pace
+    // chart: its entry is time and heart rate only.
     const windows = indoorLapWindows(payload);
     if (windows.length > 0) {
       try {

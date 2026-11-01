@@ -1,13 +1,17 @@
 import { getClient } from '../db/poolManager.js';
-import { todayInZone, addDays } from '@workspace/shared';
+import {
+  todayInZone,
+  addDays,
+  keepMostDetailedSleepEntries,
+} from '@workspace/shared';
 /**
  * Get sleep history for calculations
  * @param {string} userId
  * @param {number} days - Number of days to look back
- * @returns {Promise<Array>} Sleep entries with timestamps and durations
+ * @returns {Promise<Array>} Sleep entries with timestamps and durations; a
+ * night two sources recorded is returned once, from the more detailed record
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getSleepHistory(userId: any, days = 90, timezone = 'UTC') {
+async function getSleepHistory(userId: string, days = 90, timezone = 'UTC') {
   const client = await getClient(userId);
   try {
     const cutoffDate = addDays(todayInZone(timezone), -days);
@@ -35,7 +39,18 @@ async function getSleepHistory(userId: any, days = 90, timezone = 'UTC') {
         EXTRACT(EPOCH FROM se.wake_time) * 1000 AS "sleepEndTimestampGMT",
         se.record_timezone,
         se.record_utc_offset_minutes,
-        se.sleep_score AS "sleepScore"
+        se.sleep_score AS "sleepScore",
+        se.entry_date,
+        se.sleep_score,
+        se.avg_overnight_hrv,
+        se.resting_heart_rate,
+        se.average_spo2_value,
+        se.average_respiration_value,
+        se.avg_sleep_stress,
+        se.body_battery_change,
+        COALESCE(
+          (SELECT json_agg(json_build_object('stage_type', ss.stage_type)) FROM sleep_entry_stages ss WHERE ss.entry_id = se.id), '[]'::json
+        ) AS stage_events
       FROM sleep_entries se
       WHERE se.user_id = $1
         AND se.entry_date >= $2
@@ -43,7 +58,7 @@ async function getSleepHistory(userId: any, days = 90, timezone = 'UTC') {
       ORDER BY se.entry_date DESC`,
       [userId, cutoffDate]
     );
-    return result.rows;
+    return keepMostDetailedSleepEntries(result.rows);
   } finally {
     client.release();
   }

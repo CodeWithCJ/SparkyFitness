@@ -96,11 +96,14 @@ export const entryTypeEnum = z
   .enum(['food_entry', 'food_entry_meal'])
   .describe('Type of diary entry');
 
-// UUID validation
+// UUID validation. The published JSON schema keeps `format: uuid` but drops
+// Zod's ~170-character UUID regex, which every chat request would otherwise
+// resend once per id field; validation still uses it.
 export const uuidSchema = z
   .string()
   .uuid('Must be a valid UUID')
-  .describe('UUID identifier');
+  .describe('UUID identifier')
+  .meta({ pattern: undefined });
 
 // Optional date with today default
 export const optionalDateSchema = z

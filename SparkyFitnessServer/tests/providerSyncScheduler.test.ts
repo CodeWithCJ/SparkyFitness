@@ -6,6 +6,7 @@ import garminService from '../services/garminService.js';
 import fitbitService from '../services/fitbitService.js';
 import corosService from '../services/corosService.js';
 import hevyService from '../integrations/hevy/hevyService.js';
+import intervalsService from '../integrations/intervals/intervalsService.js';
 import {
   PROVIDER_SYNC_CONFIGS,
   runProviderSync,
@@ -15,6 +16,7 @@ import {
 } from '../services/providerSyncScheduler.js';
 import { startProviderSync } from '../services/providerSyncClaim.js';
 import { log } from '../config/logging.js';
+import { isShuttingDown } from '../utils/shutdownHooks.js';
 
 vi.mock('node-cron', () => ({
   default: {
@@ -59,12 +61,22 @@ vi.mock('../integrations/hevy/hevyService.js', () => ({
   },
 }));
 
+vi.mock('../integrations/intervals/intervalsService.js', () => ({
+  default: {
+    syncIntervalsData: vi.fn(),
+  },
+}));
+
 vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
 
 vi.mock('../services/providerSyncClaim.js', () => ({
   startProviderSync: vi.fn(),
+}));
+
+vi.mock('../utils/shutdownHooks.js', () => ({
+  isShuttingDown: vi.fn(() => false),
 }));
 
 describe('providerSyncScheduler', () => {
@@ -75,8 +87,8 @@ describe('providerSyncScheduler', () => {
     }));
   });
 
-  it('contains configurations for all 10 providers', () => {
-    expect(PROVIDER_SYNC_CONFIGS).toHaveLength(10);
+  it('contains configurations for all 11 providers', () => {
+    expect(PROVIDER_SYNC_CONFIGS).toHaveLength(11);
     const providerNames = PROVIDER_SYNC_CONFIGS.map((c) => c.name);
     expect(providerNames).toEqual([
       'Withings',
@@ -89,6 +101,7 @@ describe('providerSyncScheduler', () => {
       'Google Health',
       'Hevy',
       'Liftosaur',
+      'Intervals.icu',
     ]);
   });
 
@@ -235,6 +248,40 @@ describe('providerSyncScheduler', () => {
     );
   });
 
+  it('stops before the next account once shutdown begins', async () => {
+    vi.mocked(externalProviderRepository.getProvidersByType).mockResolvedValue([
+      {
+        id: 'p-first',
+        user_id: 'u-first',
+        is_active: true,
+        sync_frequency: 'hourly',
+      } as never,
+      {
+        id: 'p-next',
+        user_id: 'u-next',
+        is_active: true,
+        sync_frequency: 'hourly',
+      } as never,
+    ]);
+    vi.mocked(fitbitService.syncFitbitData).mockImplementationOnce(async () => {
+      vi.mocked(isShuttingDown).mockReturnValue(true);
+      return undefined as never;
+    });
+    const fitbitConfig = PROVIDER_SYNC_CONFIGS.find(
+      (c) => c.name === 'Fitbit'
+    ) as ProviderSyncConfig;
+
+    await runProviderSync(fitbitConfig);
+    vi.mocked(isShuttingDown).mockReturnValue(false);
+
+    expect(fitbitService.syncFitbitData).toHaveBeenCalledOnce();
+    expect(fitbitService.syncFitbitData).toHaveBeenCalledWith(
+      'u-first',
+      'scheduled'
+    );
+    expect(startProviderSync).toHaveBeenCalledOnce();
+  });
+
   it('does not update last_sync_at when Garmin has failed phases', async () => {
     vi.mocked(externalProviderRepository.getProvidersByType).mockResolvedValue([
       {
@@ -290,10 +337,34 @@ describe('providerSyncScheduler', () => {
     );
   });
 
+  it('runs Intervals.icu hourly with the provider id', async () => {
+    vi.mocked(externalProviderRepository.getProvidersByType).mockResolvedValue([
+      {
+        id: 'p-intervals',
+        user_id: 'u-intervals',
+        is_active: true,
+        sync_frequency: 'daily',
+      } as never,
+    ]);
+
+    const intervalsConfig = PROVIDER_SYNC_CONFIGS.find(
+      (c) => c.name === 'Intervals.icu'
+    ) as ProviderSyncConfig;
+
+    expect(intervalsConfig.cronExpression).toBeUndefined();
+    await runProviderSync(intervalsConfig);
+
+    expect(intervalsService.syncIntervalsData).toHaveBeenCalledWith(
+      'u-intervals',
+      'u-intervals',
+      'p-intervals'
+    );
+  });
+
   it('registers cron jobs on startup for each configured provider', () => {
     const tasks = startProviderSyncSchedulers();
-    expect(tasks).toHaveLength(10);
-    expect(cron.schedule).toHaveBeenCalledTimes(10);
+    expect(tasks).toHaveLength(11);
+    expect(cron.schedule).toHaveBeenCalledTimes(11);
     expect(cron.schedule).toHaveBeenCalledWith(
       '0 * * * *',
       expect.any(Function),

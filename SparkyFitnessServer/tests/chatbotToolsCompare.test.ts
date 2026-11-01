@@ -639,7 +639,30 @@ describe('sparky_compare_metrics since', () => {
   });
 });
 
+describe('sparky_compare_metrics since weight trend', () => {
+  it('refuses weight trend', async () => {
+    const result = await run({
+      action: 'since',
+      a: 'meditated',
+      b: 'weightTrend',
+    });
+
+    expect(result).toBe(
+      'Error [VALIDATION]: b: weightTrend is not offered in since mode; it drifts too slowly to tell a change from its own wandering'
+    );
+    expect(svc.getCompareSince).not.toHaveBeenCalled();
+  });
+});
+
 describe('sparky_compare_metrics list_metrics', () => {
+  it('marks weight trend as not for since questions', async () => {
+    const result = (await run({ action: 'list_metrics' })) as string;
+    const line = result.split('\n').find((l) => l.startsWith('- weightTrend:'));
+
+    expect(line).toContain('not for since questions');
+    expect(result.match(/not for since questions/g)).toHaveLength(1);
+  });
+
   it('lists every metric key with its unit', async () => {
     const result = (await run({ action: 'list_metrics' })) as string;
 

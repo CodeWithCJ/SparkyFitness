@@ -7,6 +7,10 @@ Service and NetworkPolicies select on.
 */}}
 {{- $replicas := int .Values.server.replicas }}
 {{- $splitJobs := gt $replicas 1 }}
+{{- $shutdownTimeout := ternary "" (toString .Values.server.shutdownTimeoutSeconds) (kindIs "invalid" .Values.server.shutdownTimeoutSeconds) }}
+{{- if and $shutdownTimeout (or (not (regexMatch "^[1-9][0-9]{0,3}$" $shutdownTimeout)) (gt (atoi $shutdownTimeout) 3600)) }}
+{{- fail "server.shutdownTimeoutSeconds must be a whole number of seconds from 1 to 3600" }}
+{{- end }}
 {{- $roles := list "server" }}
 {{- if $splitJobs }}{{- $roles = append $roles "jobs" }}{{- end }}
 {{- range $role := $roles }}
@@ -46,6 +50,10 @@ spec:
       serviceAccountName: {{ include "sparkyfitness.fullname" . }}-server
       {{- end }}
       {{- include "sparkyfitness.imagePullSecrets" . | nindent 6 }}
+      {{- if $shutdownTimeout }}
+      # Kubernetes kills the pod after this; the server stops itself within its timeout.
+      terminationGracePeriodSeconds: {{ add (atoi $shutdownTimeout) 5 }}
+      {{- end }}
       {{- with .Values.server.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -86,6 +94,10 @@ spec:
             - name: http
               containerPort: {{ .Values.server.port }}
               protocol: TCP
+          {{- with .Values.server.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- with .Values.server.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
@@ -172,6 +184,10 @@ spec:
             - name: SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS
               value: "true"
             {{- end }}
+            {{- if $shutdownTimeout }}
+            - name: SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS
+              value: {{ $shutdownTimeout | quote }}
+            {{- end }}
             {{- if kindIs "slice" .Values.server.extraEnv }}
             {{- toYaml .Values.server.extraEnv | nindent 12 }}
             {{- else }}
@@ -207,10 +223,10 @@ spec:
       volumes:
         - name: backup
           persistentVolumeClaim:
-            claimName: {{ include "sparkyfitness.fullname" . }}-server-backup
+            claimName: {{ .Values.server.persistence.backup.existingClaim | default (printf "%s-server-backup" (include "sparkyfitness.fullname" .)) | quote }}
         - name: uploads
           persistentVolumeClaim:
-            claimName: {{ include "sparkyfitness.fullname" . }}-server-uploads
+            claimName: {{ .Values.server.persistence.uploads.existingClaim | default (printf "%s-server-uploads" (include "sparkyfitness.fullname" .)) | quote }}
         - name: temp-uploads
           emptyDir: {}
         - name: tmp

@@ -11,7 +11,8 @@ interface PhotoDayWeightProps {
   /** Stored weight in kg, or null when the day has none. */
   weight: number | null;
   mode: WeightDisplayMode;
-  onLogWeight: () => void;
+  /** Without it a day with no weight shows nothing, as in the check-in. */
+  onLogWeight?: () => void;
   className?: string;
 }
 
@@ -35,6 +36,7 @@ const PhotoDayWeight: React.FC<PhotoDayWeightProps> = ({
       <Text className={className}>{formatWeightDisplay(weight, mode)}</Text>
     );
   }
+  if (!onLogWeight) return null;
 
   return (
     <TouchableOpacity

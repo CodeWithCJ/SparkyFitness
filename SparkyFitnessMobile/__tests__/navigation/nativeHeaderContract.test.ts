@@ -395,6 +395,20 @@ describe('native header navigation contract', () => {
     }
   });
 
+  it('presents ProgressPhotos as a sheet only inside the guided check-in', () => {
+    // Steps 1 and 2 (MoodLog, MeasurementsAdd) are modal routes, so the last
+    // step is one too; opened on its own the screen stays pushed.
+    const screenBlock = getStackScreenBlock(appSource, 'ProgressPhotos');
+
+    expect(screenBlock).toBeDefined();
+    expect(screenBlock).toContain('route.params?.guidedCheckIn');
+    expect(screenBlock).toMatch(
+      /route\.params\?\.guidedCheckIn\s*\?\s*\{\s*presentation:\s*'modal'/
+    );
+    expect(screenBlock).toContain('androidModalAnimation');
+    expect(screenBlock).toContain("headerBackButtonDisplayMode: 'minimal'");
+  });
+
   it('registers the family diary flow through safe root-stack screens', () => {
     const familyRoutes = [
       {

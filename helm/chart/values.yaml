@@ -211,6 +211,21 @@ server:
   # if the backup/uploads PVCs use a ReadWriteMany StorageClass.
   strategy:
     type: Recreate
+  # -- The server answers only once migrations and startup have finished, which
+  # can take minutes on a large upgrade. Liveness waits until this passes, so
+  # a long boot is not restarted midway. Allows up to 5 minutes (60 x 5 s).
+  startupProbe:
+    httpGet:
+      path: /api/health
+      port: http
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 60
+  # -- Most seconds the server takes to stop, letting running requests and
+  # jobs finish (`SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS`). Empty keeps the
+  # server default of 15, inside Kubernetes' default 30 s grace period. When
+  # set (1 to 3600), the server pods' `terminationGracePeriodSeconds` is this plus 5.
+  shutdownTimeoutSeconds: ""
   livenessProbe:
     httpGet:
       path: /api/health
@@ -285,6 +300,9 @@ server:
       password: password
   persistence:
     backup:
+      # -- Mount this existing PersistentVolumeClaim instead of creating one
+      # (size, accessMode and storageClass are then ignored)
+      existingClaim: ""
       size: 5Gi
       accessMode: ReadWriteOnce
       # -- StorageClass override for backups (falls back to global.storageClass)
@@ -292,6 +310,9 @@ server:
       # -- Mount path inside the container for backups
       mountPath: /app/SparkyFitnessServer/backup
     uploads:
+      # -- Mount this existing PersistentVolumeClaim instead of creating one
+      # (size, accessMode and storageClass are then ignored)
+      existingClaim: ""
       size: 10Gi
       accessMode: ReadWriteOnce
       # -- StorageClass override for uploads (falls back to global.storageClass)
@@ -641,7 +662,8 @@ externalDatabase:
     username: ""
     password: ""
     existingSecret: ""
-    # -- Override the default keys used when existingSecret is set
+    # -- Key names in the database Secret: existingSecret's, or the one the
+    # chart creates from username/password
     existingSecretKeys:
       username: username
       password: password

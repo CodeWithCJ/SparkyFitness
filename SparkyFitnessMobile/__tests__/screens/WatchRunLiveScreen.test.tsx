@@ -209,3 +209,13 @@ it('hides the alert switches for a watch build that does not report them', () =>
   expect(screen.queryByTestId('watch-pace-alert-switch')).toBeNull();
   expect(screen.queryByTestId('watch-heart-rate-alert-switch')).toBeNull();
 });
+
+it('offers no laps or pace alert for a jump rope', () => {
+  jest
+    .mocked(useWatchRunLive)
+    .mockReturnValue(run({ kind: 'jumpRope', paceAlert: false }) as never);
+  const screen = renderScreen();
+  expect(screen.queryByText('Laps')).toBeNull();
+  expect(screen.queryByText('Lap')).toBeNull();
+  expect(screen.queryByTestId('watch-pace-alert-switch')).toBeNull();
+});

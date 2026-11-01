@@ -4,6 +4,13 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// The /mfa-factors limiter counts in the database; this fake keeps its window
+// semantics in memory (see tests/ipRateLimit.integration.test.ts for the SQL).
+vi.mock('../models/rateLimitWindowRepository.js', async () => ({
+  default: (await import('./helpers/rateLimitWindowFake.js'))
+    .fakeRateLimitWindowRepository,
+}));
+
 /**
  * Integration tests for auth rate limiting.
  *
@@ -11,8 +18,9 @@ const __dirname = path.dirname(__filename);
  * 1. Better Auth's built-in rate limiter — applies to endpoints handled by
  *    betterAuthHandler (sign-in, sign-up, etc.). Tested by calling
  *    onRequestRateLimit directly with a synthetic context.
- * 2. Inline Express middleware — applies to /mfa-factors, which bypasses
- *    betterAuthHandler. Tested by calling the middleware with mock req/res.
+ * 2. Express middleware (middleware/ipRateLimit.ts) — applies to
+ *    /mfa-factors, which bypasses betterAuthHandler. Tested by calling the
+ *    middleware with mock req/res.
  *
  * IMPORTANT: Each test must use a unique IP address. The rate limiter's
  * in-memory store persists across tests and is keyed by ip|path.
@@ -200,7 +208,7 @@ describe('/mfa-factors inline rate limiter', () => {
       const next = () => {
         allowed = true;
       };
-      middleware(req, res, next);
+      await middleware(req, res, next);
       results.push(allowed ? null : res.statusCode);
     }
     return results;
@@ -224,10 +232,10 @@ describe('/mfa-factors inline rate limiter', () => {
     // Send 5 allowed, then one blocked
     for (let i = 0; i < 5; i++) {
       const next = () => {};
-      middleware(makeMockReq('10.2.0.3'), makeMockRes(), next);
+      await middleware(makeMockReq('10.2.0.3'), makeMockRes(), next);
     }
     const res = makeMockRes();
-    middleware(makeMockReq('10.2.0.3'), res, () => {});
+    await middleware(makeMockReq('10.2.0.3'), res, () => {});
     expect(res.statusCode).toBe(429);
     // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
     expect(Number(res.headers['X-Retry-After'])).toBeGreaterThan(0);
@@ -241,6 +249,24 @@ describe('/mfa-factors inline rate limiter', () => {
     vi.advanceTimersByTime(30 * 1000 + 1);
     const resultsAfterWindow = await sendMfaRequests(middleware, 1, '10.2.0.4');
     expect(resultsAfterWindow[0]).toBeNull();
+  });
+  it('starts a new window as soon as the old one ends, even right after another IP triggered a sweep', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2100-06-01T00:00:00Z'));
+    // A fresh module, so no sweep from an earlier test shifts the timing.
+    vi.resetModules();
+    router = (await import('../routes/auth/authCoreRoutes.js')).default;
+    const middleware = getRateLimitMiddleware();
+    await sendMfaRequests(middleware, 2, '10.2.2.1');
+    vi.advanceTimersByTime(1000);
+    const blocked = await sendMfaRequests(middleware, 6, '10.2.2.2');
+    expect(blocked.filter((r) => r === 429)).toHaveLength(1);
+    // Another IP's request sweeps while this window still has a second left.
+    vi.advanceTimersByTime(29 * 1000);
+    await sendMfaRequests(middleware, 1, '10.2.2.1');
+    vi.advanceTimersByTime(1500);
+    const [afterWindow] = await sendMfaRequests(middleware, 1, '10.2.2.2');
+    expect(afterWindow).toBeNull();
   });
   it('should track limits independently for different IPs', async () => {
     const middleware = getRateLimitMiddleware();

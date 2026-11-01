@@ -207,49 +207,52 @@ const CardioSessionScreen: React.FC<CardioSessionScreenProps> = ({
         </Button>
         <ShoePickerCard exerciseEntryId={session.id} />
 
-        <Card
-          title={t('exerciseStatistics.cardio.route', {
-            defaultValue: 'Route',
-          })}
-        >
-          {detail.isRouteLoading ? (
-            <ActivityIndicator />
-          ) : detail.route.length > 1 ? (
-            <>
-              <RouteMap
-                points={detail.route}
-                accessibilityLabel={t('exerciseStatistics.cardio.routeA11y', {
+        {/* A duration-only workout (a jump rope) has no distance, so no route. */}
+        {(session.modality ?? 'duration_distance') !== 'duration' ? (
+          <Card
+            title={t('exerciseStatistics.cardio.route', {
+              defaultValue: 'Route',
+            })}
+          >
+            {detail.isRouteLoading ? (
+              <ActivityIndicator />
+            ) : detail.route.length > 1 ? (
+              <>
+                <RouteMap
+                  points={detail.route}
+                  accessibilityLabel={t('exerciseStatistics.cardio.routeA11y', {
+                    defaultValue:
+                      'Route of this workout, from the green dot to the red ring',
+                  })}
+                />
+                <Button
+                  variant="link"
+                  testID="export-gpx"
+                  onPress={() => void exportGpx()}
+                >
+                  {t('exerciseStatistics.cardio.exportGpx', {
+                    defaultValue: 'Export GPX',
+                  })}
+                </Button>
+                <Button
+                  variant="link"
+                  testID="save-as-route"
+                  loading={savingRoute}
+                  onPress={saveAsRoute}
+                >
+                  {t('routes.saveAsRoute', { defaultValue: 'Save as route' })}
+                </Button>
+              </>
+            ) : (
+              <Text className="text-text-secondary text-sm">
+                {t('exerciseStatistics.cardio.noRoute', {
                   defaultValue:
-                    'Route of this workout, from the green dot to the red ring',
+                    'No GPS route stored. Indoor workouts do not have one. An outdoor walk only has a route if Apple Health shared it when the workout synced.',
                 })}
-              />
-              <Button
-                variant="link"
-                testID="export-gpx"
-                onPress={() => void exportGpx()}
-              >
-                {t('exerciseStatistics.cardio.exportGpx', {
-                  defaultValue: 'Export GPX',
-                })}
-              </Button>
-              <Button
-                variant="link"
-                testID="save-as-route"
-                loading={savingRoute}
-                onPress={saveAsRoute}
-              >
-                {t('routes.saveAsRoute', { defaultValue: 'Save as route' })}
-              </Button>
-            </>
-          ) : (
-            <Text className="text-text-secondary text-sm">
-              {t('exerciseStatistics.cardio.noRoute', {
-                defaultValue:
-                  'No GPS route stored. Indoor workouts do not have one. An outdoor walk only has a route if Apple Health shared it when the workout synced.',
-              })}
-            </Text>
-          )}
-        </Card>
+              </Text>
+            )}
+          </Card>
+        ) : null}
 
         {paceSeries.length >= 2 ? (
           <Card

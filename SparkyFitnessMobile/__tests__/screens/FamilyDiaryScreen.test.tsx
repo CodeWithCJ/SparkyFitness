@@ -164,24 +164,25 @@ const mockUseFamilyDailySummary = useFamilyDailySummary as jest.MockedFunction<
   typeof useFamilyDailySummary
 >;
 
-const renderFamilyDiary = () =>
-  render(
-    <SafeAreaProvider
-      initialMetrics={{
-        frame: { x: 0, y: 0, width: 390, height: 844 },
-        insets: { top: 0, bottom: 0, left: 0, right: 0 },
+const familyDiaryElement = (date?: string) => (
+  <SafeAreaProvider
+    initialMetrics={{
+      frame: { x: 0, y: 0, width: 390, height: 844 },
+      insets: { top: 0, bottom: 0, left: 0, right: 0 },
+    }}
+  >
+    <FamilyDiaryScreen
+      navigation={navigation as never}
+      route={{
+        key: 'family-diary',
+        name: 'FamilyDiary',
+        params: { familyUser, date },
       }}
-    >
-      <FamilyDiaryScreen
-        navigation={navigation as never}
-        route={{
-          key: 'family-diary',
-          name: 'FamilyDiary',
-          params: { familyUser },
-        }}
-      />
-    </SafeAreaProvider>
-  );
+    />
+  </SafeAreaProvider>
+);
+
+const renderFamilyDiary = (date?: string) => render(familyDiaryElement(date));
 
 describe('FamilyDiaryScreen', () => {
   beforeEach(() => {
@@ -192,6 +193,40 @@ describe('FamilyDiaryScreen', () => {
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  test('opens the copied target date from navigation without changing the own diary', () => {
+    mockUseFamilyDailySummary.mockReturnValue({
+      data: { foodEntries: [] },
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as ReturnType<typeof useFamilyDailySummary>);
+    renderFamilyDiary('2026-08-26');
+    expect(mockUseFamilyDailySummary).toHaveBeenLastCalledWith({
+      familyUserId: 'family-user-id',
+      date: '2026-08-26',
+    });
+  });
+
+  test('returns to the copied target date when navigation reuses a diary that has browsed elsewhere', () => {
+    mockUseFamilyDailySummary.mockReturnValue({
+      data: { foodEntries: [] },
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as ReturnType<typeof useFamilyDailySummary>);
+    const screen = renderFamilyDiary('2026-08-24');
+    fireEvent.press(screen.getByRole('button', { name: 'Next day' }));
+    expect(mockUseFamilyDailySummary).toHaveBeenLastCalledWith({
+      familyUserId: 'family-user-id',
+      date: '2026-08-25',
+    });
+    screen.rerender(familyDiaryElement('2026-08-24'));
+    expect(mockUseFamilyDailySummary).toHaveBeenLastCalledWith({
+      familyUserId: 'family-user-id',
+      date: '2026-08-24',
+    });
   });
 
   test('shows every raw family component and opens its meal', () => {

@@ -11,6 +11,17 @@ While the application provides scheduled backups, you can manually trigger a bac
 **Location of Backups:**
 All backup files are stored in a Docker volume mounted to the `SparkyFitnessServer` service. The default path within the container is `/app/SparkyFitnessServer/backup`. You will need to access this volume from your Docker host.
 
+A backup is built in the `.tmp` folder inside the backup directory and only moved into the backup directory once it is complete, so a backup that fails or is cut off never shows up as a backup. If the server is killed while a backup runs, its unfinished files stay in `.tmp`; the next backup clears anything there that is more than a day old, and you can delete the rest while no backup is running.
+
+**Restoring from the admin page with more than one server instance:**
+
+A restore from the admin page deletes the database and the uploads folder and rebuilds them from the archive, from inside the server that received the upload. Any other server instance using the same database and uploads keeps serving during that time and would write into a half-restored database. Before you restore, scale to a single server instance:
+
+- **Helm:** set `server.replicas: 1` and run `helm upgrade`. With one replica the chart runs no separate `-jobs` Deployment and does not set `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS`. Wait until `kubectl get pods` lists exactly one server pod and no server pod is still `Terminating`, then restore, then set the replica count back.
+- **Docker Compose or several containers:** stop every server container but one (for example `docker compose up -d --scale sparkyfitness-server=1`, and stop a separate jobs service if you added one), make sure the remaining one does not have `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true`, restore, then start the others again.
+
+The server refuses the restore (`409`, before the archive is uploaded) when it runs with `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true`, or when it sees database connections opened by another SparkyFitness server. It checks again just before it deletes anything. This check is best effort and does not replace scaling down: a server instance closes its idle database connections after about 30 seconds, so an instance that is running but has had no traffic for that long cannot be seen.
+
 ## 2. Manual Restore (Disaster Recovery)
 
 This process is for situations where the SparkyFitness application or its Docker containers are not functioning correctly, or if you need to restore to a completely new environment.

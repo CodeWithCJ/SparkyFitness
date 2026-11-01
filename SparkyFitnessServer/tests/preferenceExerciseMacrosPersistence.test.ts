@@ -26,8 +26,35 @@ describe('exercise macro preference persistence', () => {
         adjust_macros_with_exercise: value,
       });
       for (const [sql, params] of query.mock.calls) {
-        expect(sql).toContain('adjust_macros_with_exercise = COALESCE($59,');
-        expect(params[58]).toBe(value);
+        expect(sql).toContain('adjust_macros_with_exercise = COALESCE($60,');
+        expect(params[59]).toBe(value);
+      }
+    }
+  );
+
+  it.each([
+    [true, false],
+    [false, true],
+    [true, undefined],
+    [undefined, true],
+  ])(
+    'saves macro adjustment %s independently of Move ring %s',
+    async (adjustMacros, useMoveRing) => {
+      const preferences = {
+        adjust_macros_with_exercise: adjustMacros,
+        use_move_ring_active_calories: useMoveRing,
+      };
+      await preferenceRepository.updateUserPreferences('user-1', preferences);
+      await preferenceRepository.upsertUserPreferences({
+        user_id: 'user-1',
+        ...preferences,
+      });
+
+      for (const [sql, params] of query.mock.calls) {
+        expect(sql).toContain('use_move_ring_active_calories = COALESCE($59,');
+        expect(sql).toContain('adjust_macros_with_exercise = COALESCE($60,');
+        expect(params[58]).toBe(useMoveRing);
+        expect(params[59]).toBe(adjustMacros);
       }
     }
   );

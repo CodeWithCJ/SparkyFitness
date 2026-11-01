@@ -41,4 +41,14 @@ describe('recording cues', () => {
     await Promise.resolve();
     expect(mockSpeak).not.toHaveBeenCalled();
   });
+
+  it('speaks in the language the cue was written in when one is given', async () => {
+    speakRecordingCue('Pausiert.', undefined, 'de-DE');
+    await loadSpeechVoices();
+    await Promise.resolve();
+    expect(mockSpeak).toHaveBeenCalledWith(
+      'Pausiert.',
+      expect.objectContaining({ language: 'de-DE' })
+    );
+  });
 });

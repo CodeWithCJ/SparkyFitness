@@ -41,12 +41,13 @@ enum MacroKind {
         }
     }
 
-    /// Matches the macro colours in targets/watch's GoalPalette.
+    /// Matches the macro colours in targets/watch's GoalPalette, through the
+    /// `ComplicationPalette` mirror in EnergyGoalComplication.swift.
     var tint: Color {
         switch self {
-        case .protein: return .red
-        case .carbs: return .yellow
-        case .fat: return .blue
+        case .protein: return ComplicationPalette.protein
+        case .carbs: return ComplicationPalette.carbs
+        case .fat: return ComplicationPalette.fat
         }
     }
 }

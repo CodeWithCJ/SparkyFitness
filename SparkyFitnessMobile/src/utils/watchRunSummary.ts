@@ -27,6 +27,9 @@ export function watchRunSummary(
 ): RunSummaryParams {
   const avgHeartRate = mean(payload.heartRate.map(([, bpm]) => bpm));
   const points = watchRunPoints(payload);
+  // A jump rope covers no distance, so none of the distance-shaped parts of
+  // the summary apply to it.
+  const noDistance = payload.kind === 'jumpRope';
   const base = buildRunSummary({
     activity: payload.kind,
     entryDate: toLocalDateString(new Date(payload.startedAt)),
@@ -56,10 +59,11 @@ export function watchRunSummary(
         });
   return {
     ...base,
-    // A treadmill has no route, so the person can correct the distance to what
-    // the machine showed.
-    editableDistance: payload.place === 'indoor' && Boolean(entryId),
-    ...(payload.place === 'indoor'
+    // A jump rope covers no distance, so there is nothing to correct and no
+    // stride to learn from one.
+    editableDistance:
+      !noDistance && payload.place === 'indoor' && Boolean(entryId),
+    ...(payload.place === 'indoor' && !noDistance
       ? {
           watchIndoor: {
             scale: payload.distanceScale ?? 1,
@@ -68,13 +72,17 @@ export function watchRunSummary(
           },
         }
       : {}),
+    activeEnergyKcal:
+      payload.activeEnergyKcal > 0 ? payload.activeEnergyKcal : null,
     // The watch's own figures, not re-derived from a thinned route.
     distanceMeters:
       payload.distanceMeters > 0 ? payload.distanceMeters : base.distanceMeters,
     activeSeconds:
       payload.activeSeconds > 0 ? payload.activeSeconds : base.activeSeconds,
-    laps,
-    ...(payload.place === 'indoor' && payload.distanceSeries.length >= 2
+    laps: noDistance ? [] : laps,
+    ...(payload.place === 'indoor' &&
+    !noDistance &&
+    payload.distanceSeries.length >= 2
       ? { distanceSeries: payload.distanceSeries }
       : {}),
   };

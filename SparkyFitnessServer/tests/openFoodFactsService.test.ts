@@ -9,6 +9,7 @@ import {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
 } from '../integrations/openfoodfacts/openFoodFactsService.js';
+import { PARTIAL_SERVING_DATA } from '../utils/foodRanking.js';
 import { withOpenFoodFactsProductReadPermit } from '../services/openFoodFactsProductReadRateLimitService.js';
 
 vi.mock('../integrations/openfoodfacts/openFoodFactsAuth.js', () => ({
@@ -750,6 +751,15 @@ describe('openFoodFactsService', () => {
         'Current First',
         'Indexed Second',
       ]);
+      // The index has no serving fields; callers must know that hit's 100 g
+      // reference is not the label serving.
+      expect(
+        result.products.map((product) => product[PARTIAL_SERVING_DATA])
+      ).toEqual([undefined, true]);
+      const mapped = mapOpenFoodFactsProduct(result.products[1]);
+      expect(mapped[PARTIAL_SERVING_DATA]).toBe(true);
+      // Server-side only: never serialized into web/mobile responses.
+      expect(JSON.stringify(mapped)).not.toContain('partial');
     });
 
     it('throws a compact error without exposing an upstream HTML response', async () => {

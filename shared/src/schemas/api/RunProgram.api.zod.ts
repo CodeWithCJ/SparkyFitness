@@ -24,8 +24,10 @@ export const runProgramStepSchema = z.object({
   pace: runProgramPaceSchema.optional(),
   /** A heart-rate range to hold in this step; only the person's own programs set one. */
   heartRate: runProgramHeartRateSchema.optional(),
-  /** What the stretch is for (an easy run, a stride, a tempo or marathon-pace effort, a hill repeat); picks its pace range. */
-  effort: z.enum(['easy', 'stride', 'tempo', 'marathon', 'hill']).optional(),
+  /** What the stretch is for (an easy run, a stride, a tempo or marathon-pace effort, a hill repeat, a steady Zone 2 run); picks its pace range. */
+  effort: z
+    .enum(['easy', 'stride', 'tempo', 'marathon', 'hill', 'zone2'])
+    .optional(),
 });
 
 export const runProgramPlanSchema = z.object({

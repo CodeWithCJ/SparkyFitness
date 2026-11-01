@@ -278,6 +278,37 @@ export async function getFoodUsage(foodId: string, userId: string): Promise<Food
 
 ---
 
+## Server State Across Restarts and Instances
+
+### ❌ WRONG: Keeping a limit, quota or job status in a module-level variable
+
+```typescript
+const downloadsToday = new Map<string, number>();
+// starts over on every restart; each server instance counts on its own
+```
+
+**Result:** A restart resets the count, and two server instances each allow the full limit. A job status kept this way is gone after a restart and unknown to a request that reaches another instance.
+
+### ✅ RIGHT: Keep it in the database and check and change it in one statement
+
+```typescript
+const { rows } = await client.query(
+  `UPDATE usage_counters SET used = used + 1
+    WHERE id = $1 AND used < $2
+    RETURNING used`,
+  [counterId, limit]
+);
+if (rows.length === 0) {
+  // limit reached
+}
+```
+
+Never read the value in one query and write it in another; two requests can both pass the check. Use one statement or `SELECT ... FOR UPDATE` in a transaction.
+
+**Fine in memory:** caches and sharing of in-flight requests, where a miss only costs a repeat lookup (`splitCache` in `SparkyFitnessServer/services/exerciseStatsService.ts`, `SparkyFitnessServer/utils/apiKeySessionCache.ts`). Provider tokens are the exception when issuing a new one revokes the old one: then every instance must see the same token.
+
+---
+
 ## What To Do Instead
 
 - **Need to customize behavior per package?** Put the logic in the service layer, not the schema.

@@ -54,7 +54,7 @@ import {
 
 interface JsonSchemaObject {
   type?: string;
-  properties?: Record<string, { enum?: string[] }>;
+  properties?: Record<string, { enum?: string[]; description?: string }>;
   required?: string[];
 }
 
@@ -231,6 +231,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'start_date',
         'end_date',
         'date',
+        'assignment_ids',
         'sessions',
         'assignments',
       ],
@@ -241,6 +242,8 @@ describe('published (flat) chatbot tool schemas', () => {
         'create_workout_plan',
         'update_workout_plan',
         'delete_workout_plan',
+        'propose_plan_changes',
+        'apply_plan_changes',
       ],
     },
     {
@@ -477,6 +480,17 @@ describe('published (flat) chatbot tool schemas', () => {
       }
     }
   );
+
+  // create_food stores quantity × unit as the serving the nutrients describe and
+  // logs that same amount. A client reading only "Amount consumed" sends
+  // per-100 g values with the amount eaten and stores them per that amount.
+  it('manageFoodInput tells create_food clients that quantity is the serving the nutrients are for', () => {
+    const properties = toJson(manageFoodInput).properties ?? {};
+
+    expect(properties.quantity?.description).toContain(
+      'For create_food, also the serving the nutrients are for.'
+    );
+  });
 });
 
 describe('strict discriminated-union validation schemas', () => {

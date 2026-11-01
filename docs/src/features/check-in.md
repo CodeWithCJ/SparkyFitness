@@ -72,3 +72,17 @@ Upload **progress photos** to track your progress over time:
 ## Symptoms tab
 
 A quick way to log symptoms and episodes from your daily check-in. For templates, severity scales, location maps, triggers, and clinician-ready exports, see [Symptom & Episode Tracking](/features/symptom-tracking).
+
+## Guided check-in (mobile app)
+
+In the mobile app, **Daily Check-In** in the **+** menu walks you through your daily check-in for the day the Diary is on, one screen after another:
+
+1. **Mood**: how you are feeling, with the same fields as the mood screen.
+2. **Measurements**: your weight and body measurements.
+3. **Progress photos**: front, back and side.
+
+Each screen shows **Step N of 3**. **Save & continue** saves the step and opens the next one; on the measurements step it moves on without saving when you changed nothing. **Skip** moves on without saving, asking first if you changed something, and is how you leave the mood step without logging a mood. **Back**, on the measurements and photos steps, opens the step before with what you saved there, so you can change it; going back to the mood step edits the mood you logged rather than adding another. On the photos step, **Finish** closes the check-in, and so do the close button, your phone's Back button (Android) and swiping the screen down (iPhone), since photos are saved as you add them; the **Back** in the step bar only returns to the measurements step. Anything you saved stays saved, even if you close the check-in part-way. If you close it, or the phone closes the app, before the photos step is done, tapping **Daily Check-In** again for the same day asks whether to **Continue** where you stopped or **Start over** with a new check-in.
+
+The check-in keeps to logging the day, so the photos step leaves out **Compare**, **Time-lapse** and the **Log weight** shortcuts (weight has its own step). Open Progress Photos from the Add menu for those.
+
+Like any other item in the **+** menu, you can move or hide **Daily Check-In** in **Settings → Quick Actions**.

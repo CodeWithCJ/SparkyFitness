@@ -17,7 +17,6 @@ import {
   HeartPulse,
   Trophy,
   Layers,
-  StickyNote,
   Info, // <-- Added Info icon
 } from 'lucide-react';
 import {
@@ -120,7 +119,6 @@ interface SortableExerciseItemProps {
     equipment_brand?: string | null;
     ramp_increment?: number | null;
     superset_group?: number | null;
-    notes?: string | null;
   };
   exerciseIndex: number;
   onRemoveExercise: (index: number) => void;
@@ -215,7 +213,6 @@ export const SortableExerciseItem = ({
   const [supersetGroup, setSupersetGroup] = useState<number | null>(
     ex.superset_group ?? null
   );
-  const [notes, setNotes] = useState<string>(ex.notes ?? '');
 
   const sortableId = ex.id?.toString() || `ex-${exerciseIndex}`;
 
@@ -348,11 +345,6 @@ export const SortableExerciseItem = ({
     const groupNum = val === 'none' ? null : parseInt(val, 10);
     setSupersetGroup(groupNum);
     onExerciseFieldChange?.(exerciseIndex, 'superset_group', groupNum);
-  };
-
-  const handleNotesChange = (text: string) => {
-    setNotes(text);
-    onExerciseFieldChange?.(exerciseIndex, 'notes', text.trim() || null);
   };
 
   const sensors = useSensors(
@@ -758,27 +750,6 @@ export const SortableExerciseItem = ({
                 </div>
               )}
             </div>
-
-            {/* Exercise Notes Row */}
-            <div>
-              <Label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1 mb-1">
-                <StickyNote className="h-3 w-3 text-primary" />
-                {t(
-                  'exercises.sortableExerciseItem.exerciseNotesCuesOptional',
-                  'Exercise Notes / Cues (Optional)'
-                )}
-              </Label>
-              <Input
-                type="text"
-                className="h-8 text-xs bg-background"
-                placeholder={t(
-                  'exercises.sortableExerciseItem.eGSeatSetting4',
-                  'e.g. Seat setting 4, wide grip, pause at bottom...'
-                )}
-                value={notes}
-                onChange={(e) => handleNotesChange(e.target.value)}
-              />
-            </div>
           </div>
         )}
 
@@ -1100,27 +1071,6 @@ export const SortableExerciseItem = ({
                     {t(
                       'exercises.sortableExerciseItem.examplesHammerStrengthLifeFitnessCable',
                       'Examples: Hammer Strength, LifeFitness, Cable Stack, Dumbbell, Power Rack.'
-                    )}
-                  </p>
-                </div>
-
-                <div className="p-2.5 rounded-lg border border-border/50 bg-background space-y-1">
-                  <span className="font-semibold text-foreground">
-                    {t(
-                      'exercises.sortableExerciseItem.exerciseNotesCues',
-                      'Exercise Notes / Cues'
-                    )}
-                  </span>
-                  <p className="text-muted-foreground">
-                    {t(
-                      'exercises.sortableExerciseItem.equipmentSetupAndFormReminders',
-                      'Equipment setup and form reminders.'
-                    )}
-                  </p>
-                  <p className="text-primary italic">
-                    {t(
-                      'exercises.sortableExerciseItem.examplesSeatSetting4Pin',
-                      'Examples: Seat setting 4, pin 3, Wide grip, 2s pause at chest.'
                     )}
                   </p>
                 </div>

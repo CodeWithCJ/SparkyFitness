@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { COMPARE_METRIC_KEYS, COMPARE_METRICS } from '../../compare/metrics.ts';
+import { COMPARE_METRIC_KEYS, offeredInMode } from '../../compare/metrics.ts';
 import { MAX_CUSTOM_DAYS } from '../../compare/spans.ts';
 import { daysBetween, isDayString } from '../../utils/timezone.ts';
 
@@ -35,7 +35,7 @@ export const compareQuerySchema = z
         });
       }
       for (const key of ['a', 'b'] as const) {
-        if (COMPARE_METRICS[q[key]].weekly === null) {
+        if (!offeredInMode(q[key], 'week')) {
           ctx.addIssue({
             code: 'custom',
             path: [key],
@@ -143,6 +143,15 @@ export const compareSinceQuerySchema = z
         path: ['b'],
         message: 'Pick two different things to compare',
       });
+    }
+    for (const key of ['a', 'b'] as const) {
+      if (!offeredInMode(q[key], 'since')) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [key],
+          message: `${q[key]} is not offered in since mode; it drifts too slowly to tell a change from its own wandering`,
+        });
+      }
     }
   });
 export type CompareSinceQuery = z.infer<typeof compareSinceQuerySchema>;

@@ -43,7 +43,7 @@ async function getDashboardStats(
       measurements,
       checkInMeasurements,
       latestWeightHeight,
-      healthConnectTotalRows,
+      deviceTotalRows,
     ] = await Promise.all([
       // `adjust` is unconditionally true, matching `dailySummaryService` and
       // `dailySummaryRangeService`. It used to be tied to `includeCheckin`, which made
@@ -82,16 +82,11 @@ async function getDashboardStats(
         : { weightKg: null, heightCm: null },
       includeCheckin
         ? genericHealthRepository
-            .getHealthConnectTotalCaloriesByDateRange(
-              userId,
-              userId,
-              date,
-              date
-            )
+            .getDeviceTotalCaloriesByDateRange(userId, userId, date, date)
             .catch((error: unknown) => {
               log(
                 'warn',
-                `Health Connect total-calorie dashboard fetch failed for user ${userId} on ${date}:`,
+                `Device total-calorie dashboard fetch failed for user ${userId} on ${date}:`,
                 error
               );
               return [];
@@ -116,15 +111,15 @@ async function getDashboardStats(
         })
       : 0;
 
-    const healthConnectTotal = healthConnectTotalRows[0];
+    const dayDeviceTotal = deviceTotalRows[0];
     const timezone = userPreferences?.timezone || 'UTC';
     const deviceProjectionSnapshot = resolveDeviceProjectionSnapshot({
       date,
       timezone,
-      deviceTotal: healthConnectTotal
+      deviceTotal: dayDeviceTotal
         ? {
-            totalCalories: healthConnectTotal.total_calories,
-            capturedAt: healthConnectTotal.captured_at,
+            totalCalories: dayDeviceTotal.total_calories,
+            capturedAt: dayDeviceTotal.captured_at,
           }
         : null,
     });

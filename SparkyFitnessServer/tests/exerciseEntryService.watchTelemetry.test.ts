@@ -1,4 +1,5 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
+import type { PoolClient } from 'pg';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import userRepository from '../models/userRepository.js';
 import { attachWatchTelemetryToExerciseEntry } from '../services/exerciseEntryService.js';
@@ -415,7 +416,7 @@ describe('filterStaleWatchTelemetryFields', () => {
       }),
     };
     await _updateExerciseEntryWithClient(
-      client,
+      client as unknown as PoolClient,
       entryId,
       userId,
       { duration_minutes: 4.5 },

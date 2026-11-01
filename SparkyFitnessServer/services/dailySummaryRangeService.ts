@@ -111,7 +111,7 @@ export async function getDailySummaryRange({
     userProfile,
     userPreferences,
     calorieRuleHistory,
-    healthConnectTotalRows,
+    deviceTotalRows,
   ] = await Promise.all([
     // Only `calories` is needed, so the custom-nutrient catalog is deliberately not
     // passed — it would inflate the dynamic SQL for columns nothing here reads.
@@ -158,7 +158,7 @@ export async function getDailySummaryRange({
     ),
     includeCheckin
       ? genericHealthRepository
-          .getHealthConnectTotalCaloriesByDateRange(
+          .getDeviceTotalCaloriesByDateRange(
             targetUserId,
             actorUserId,
             startDate,
@@ -167,7 +167,7 @@ export async function getDailySummaryRange({
           .catch((error: unknown) => {
             log(
               'warn',
-              `Health Connect total-calorie range fetch failed for user ${targetUserId} (${startDate}..${endDate}):`,
+              `Device total-calorie range fetch failed for user ${targetUserId} (${startDate}..${endDate}):`,
               error
             );
             return [];
@@ -186,8 +186,8 @@ export async function getDailySummaryRange({
   const splitByDate = new Map(
     exerciseSplits.map((split) => [split.entry_date, split])
   );
-  const healthConnectTotalByDate = new Map(
-    healthConnectTotalRows.map((row) => [
+  const deviceTotalByDate = new Map(
+    deviceTotalRows.map((row) => [
       row.entry_date,
       {
         totalCalories: Number(row.total_calories),
@@ -273,11 +273,11 @@ export async function getDailySummaryRange({
     const dayGoals = (goalsByDate as Record<string, { calories?: unknown }>)[
       date
     ];
-    const healthConnectTotal = healthConnectTotalByDate.get(date);
+    const dayDeviceTotal = deviceTotalByDate.get(date);
     const deviceProjectionSnapshot = resolveDeviceProjectionSnapshot({
       date,
       timezone: tz,
-      deviceTotal: healthConnectTotal,
+      deviceTotal: dayDeviceTotal,
       now,
     });
 

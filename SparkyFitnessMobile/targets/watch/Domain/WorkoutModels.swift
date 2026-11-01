@@ -181,14 +181,16 @@ struct WorkoutStep: Identifiable, Equatable {
 
     /// "Warmup 1/2" / "Set 2/3" — what sits under the exercise name.
     var label: String {
-        let kind: String
         switch plannedSet.setType?.lowercased() {
-        case "warmup": kind = "Warmup"
-        case "drop": kind = "Drop"
-        case "failure": kind = "Failure"
-        default: kind = "Set"
+        case "warmup":
+            return String(localized: "watch.workout.setLabel.warmup", defaultValue: "Warmup \(setNumber)/\(setCount)")
+        case "drop":
+            return String(localized: "watch.workout.setLabel.drop", defaultValue: "Drop \(setNumber)/\(setCount)")
+        case "failure":
+            return String(localized: "watch.workout.setLabel.failure", defaultValue: "Failure \(setNumber)/\(setCount)")
+        default:
+            return String(localized: "watch.workout.setLabel.set", defaultValue: "Set \(setNumber)/\(setCount)")
         }
-        return "\(kind) \(setNumber)/\(setCount)"
     }
 }
 
@@ -214,6 +216,10 @@ enum WorkoutEditAction: Equatable {
     case setSetType(setId: String, type: String)
     case addExercise(exerciseId: String)
     case deleteExercise(exerciseEntryId: String)
+    /// Moves an upcoming exercise in front of the current one and starts it.
+    /// `anchorEntryId` is the exercise the watch is on, so the phone moves it
+    /// in front of that one even if its own cursor is elsewhere.
+    case doExerciseNow(exerciseEntryId: String, anchorEntryId: String)
 }
 
 /// What the wearer actually did for a set, once they have adjusted the

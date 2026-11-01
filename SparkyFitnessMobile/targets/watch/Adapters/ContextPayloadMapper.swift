@@ -80,11 +80,18 @@ enum ContextPayloadMapper {
             doubleTapEnabled: payload["doubleTapEnabled"] as? Bool ?? previous.doubleTapEnabled,
             rpeEnabled: payload["rpeEnabled"] as? Bool ?? previous.rpeEnabled,
             medications: medications(from: payload),
+            medicationSkip: payload["medicationSkip"] as? Bool,
+            exerciseDoNow: payload["exerciseDoNow"] as? Bool,
+            setScreenMetrics: payload["setScreenMetrics"] as? Bool ?? previous.setScreenMetrics,
+            upNextPage: payload["upNextPage"] as? Bool ?? previous.upNextPage,
+            largerText: payload["largerText"] as? Bool ?? previous.largerText,
+            classicWorkout: payload["classicWorkout"] as? Bool ?? previous.classicWorkout,
             fast: fastKnown(in: payload) ? fast(from: payload["fast"]) : previous.fast,
             fastSynced: fastKnown(in: payload) ? true : previous.fastSynced,
             steps: steps(from: payload["steps"]),
             stepGoal: (payload["stepGoal"] as? NSNumber)?.intValue ?? previous.stepGoal,
             runVoiceCues: payload["runVoiceCues"] as? Bool ?? previous.runVoiceCues,
+            appLanguage: payload["appLanguage"] as? String ?? previous.appLanguage,
             runAutoPause: payload["runAutoPause"] as? Bool ?? previous.runAutoPause,
             runCheckInMinutes: (payload["runCheckInMinutes"] as? NSNumber)?.intValue ?? previous.runCheckInMinutes,
             runPaceBand: WatchPaceBand.normalized(
@@ -463,7 +470,8 @@ enum ContextPayloadMapper {
                 name: name,
                 detail: entry["detail"] as? String ?? "",
                 time: entry["time"] as? String ?? "",
-                status: status
+                status: status,
+                supplement: entry["supplement"] as? Bool
             )
         }
         return MedicationSnapshot(day: day(from: payload), doses: doses)

@@ -719,9 +719,11 @@ function ActiveWorkoutSetRow({
   // input-to-input move, so the keyboard stays attached).
   const handleLogRef = useRef(handleLog);
   const handleAdvanceRef = useRef(handleAdvance);
+  const flushWeightRef = useRef(() => commitWeight(weightDraft));
   useEffect(() => {
     handleLogRef.current = handleLog;
     handleAdvanceRef.current = handleAdvance;
+    flushWeightRef.current = () => commitWeight(weightDraft);
   });
   useEffect(() => {
     if (readOnly || !onRegisterAccessoryHandle) return;
@@ -742,6 +744,7 @@ function ActiveWorkoutSetRow({
         ref.current?.focus();
       },
       advance: () => handleAdvanceRef.current(),
+      flushWeight: () => flushWeightRef.current(),
     });
     return () => onRegisterAccessoryHandle(key, null);
   }, [readOnly, renderKey, setId, onRegisterAccessoryHandle]);

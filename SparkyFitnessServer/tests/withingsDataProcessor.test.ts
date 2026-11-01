@@ -3,8 +3,10 @@ import exerciseRepository from '../models/exercise.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import measurementRepository from '../models/measurementRepository.js';
 import { log } from '../config/logging.js';
+import sleepRepository from '../models/sleepRepository.js';
 import {
   processWithingsMeasures,
+  processWithingsSleepData,
   processWithingsWorkouts,
 } from '../integrations/withings/withingsDataProcessor.js';
 
@@ -165,5 +167,98 @@ describe('processWithingsMeasures malformed payloads', () => {
       'warn',
       expect.stringContaining('Missing or malformed measures')
     );
+  });
+});
+
+describe('processWithingsSleepData stage grouping (#3240)', () => {
+  // Unix seconds for 2026-10-28 in UTC.
+  const at = (hour: number, minute = 0) =>
+    Date.UTC(2026, 9, 28, hour, minute) / 1000;
+  const summary = (start: number, end: number) => ({
+    date: '2026-10-28',
+    startdate: start,
+    enddate: end,
+    data: { total_timeinbed: end - start, total_sleep_time: end - start },
+  });
+  const segment = (start: number, end: number, state = 1) => ({
+    startdate: start,
+    enddate: end,
+    state,
+    date: '2026-10-28',
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    Object.assign(sleepRepository, {
+      deleteSleepEntriesByEntrySourceAndDate: vi.fn(),
+      upsertSleepEntry: vi.fn(),
+      upsertSleepStageEvent: vi.fn(),
+      updateSleepEntry: vi.fn(),
+    });
+  });
+
+  const stageEntryIds = () =>
+    vi
+      .mocked(sleepRepository.upsertSleepStageEvent)
+      .mock.calls.map((call) => call[1]);
+
+  it('keeps a nap’s stages on the nap and the night’s on the night', async () => {
+    vi.mocked(sleepRepository.upsertSleepEntry)
+      .mockResolvedValueOnce({ id: 'night', created: true })
+      .mockResolvedValueOnce({ id: 'nap', created: true });
+
+    await processWithingsSleepData(
+      UID,
+      CID,
+      [segment(at(1), at(6)), segment(at(13, 30), at(14, 15))],
+      [summary(at(0), at(7)), summary(at(13), at(15))]
+    );
+
+    expect(stageEntryIds()).toEqual(['night', 'nap']);
+    const totals = vi.mocked(sleepRepository.updateSleepEntry).mock.calls;
+    expect(
+      totals.map((call) => [call[1], call[3].light_sleep_seconds])
+    ).toEqual([
+      ['night', 5 * 3600],
+      ['nap', 45 * 60],
+    ]);
+  });
+
+  it('writes one stage total for summaries stored as one entry', async () => {
+    vi.mocked(sleepRepository.upsertSleepEntry).mockResolvedValue({
+      id: 'night',
+      created: false,
+    });
+
+    await processWithingsSleepData(
+      UID,
+      CID,
+      [segment(at(1), at(3)), segment(at(4), at(6), 2)],
+      [summary(at(0), at(3)), summary(at(4), at(7))]
+    );
+
+    const totals = vi.mocked(sleepRepository.updateSleepEntry).mock.calls;
+    expect(totals).toHaveLength(1);
+    expect(totals[0][3]).toMatchObject({
+      light_sleep_seconds: 2 * 3600,
+      deep_sleep_seconds: 2 * 3600,
+    });
+  });
+
+  it('puts stages outside every summary on that date’s summary entry', async () => {
+    vi.mocked(sleepRepository.upsertSleepEntry).mockResolvedValue({
+      id: 'night',
+      created: true,
+    });
+
+    await processWithingsSleepData(
+      UID,
+      CID,
+      [segment(at(1), at(3)), segment(at(8), at(9))],
+      [summary(at(0), at(7))]
+    );
+
+    expect(sleepRepository.upsertSleepEntry).toHaveBeenCalledTimes(1);
+    expect(stageEntryIds()).toEqual(['night', 'night']);
   });
 });

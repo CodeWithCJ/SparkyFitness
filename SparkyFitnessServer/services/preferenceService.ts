@@ -214,6 +214,7 @@ function getDefaultPreferences() {
     adaptive_activity_separate: false,
     adjust_macros_with_exercise: false,
     show_net_carbs: false,
+    use_move_ring_active_calories: false,
     timezone: null,
     time_format: 'h:mm A',
     calorie_safety_floor_mode: 'standard',

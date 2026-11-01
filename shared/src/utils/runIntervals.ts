@@ -15,11 +15,12 @@ export type IntervalStepKind = 'warmup' | 'work' | 'recovery' | 'cooldown';
 
 /**
  * What a stretch is for, where its kind alone does not say: an easy run in a
- * run/walk plan, a stride, a tempo or marathon-pace effort, or a hill repeat.
- * A step with none is just a fast stretch (work) or an easy one (recovery).
- * It decides which pace range a step gets; nothing else reads it.
+ * run/walk plan, a stride, a tempo or marathon-pace effort, a hill repeat, or a
+ * steady Zone 2 run. A step with none is just a fast stretch (work) or an easy
+ * one (recovery). It decides which pace and heart-rate range a step gets.
  */
-export type StepEffort = 'easy' | 'stride' | 'tempo' | 'marathon' | 'hill';
+export type StepEffort =
+  'easy' | 'stride' | 'tempo' | 'marathon' | 'hill' | 'zone2';
 
 export const STEP_EFFORTS: readonly StepEffort[] = [
   'easy',
@@ -27,6 +28,7 @@ export const STEP_EFFORTS: readonly StepEffort[] = [
   'tempo',
   'marathon',
   'hill',
+  'zone2',
 ];
 
 /**
@@ -502,7 +504,9 @@ export function applyPaceTargets(
 
 /**
  * The same for heart rate: `work` goes on every work step, `easy` on every
- * recovery step and `warm` on the warm-up and cool-down.
+ * recovery step and `warm` on the warm-up and cool-down. A Zone 2 step gets
+ * `zone2` and nothing else, so it is never held to the hard range; without a
+ * `zone2` range it has no target and is run by the talk test.
  */
 export function applyHeartRateTargets(
   plan: IntervalPlan,
@@ -510,18 +514,22 @@ export function applyHeartRateTargets(
     work?: HeartRateBand | null;
     easy?: HeartRateBand | null;
     warm?: HeartRateBand | null;
+    zone2?: HeartRateBand | null;
   }
 ): IntervalPlan {
   const work = normalizeHeartRateBand(targets.work);
   const easy = normalizeHeartRateBand(targets.easy);
   const warm = normalizeHeartRateBand(targets.warm);
-  if (!work && !easy && !warm) return plan;
+  const zone2 = normalizeHeartRateBand(targets.zone2);
+  if (!work && !easy && !warm && !zone2) return plan;
   return {
     ...plan,
     steps: plan.steps.map((step) => {
       let heartRate: HeartRateBand | null;
       if (step.kind !== 'work' && step.kind !== 'recovery') {
         heartRate = warm;
+      } else if (step.effort === 'zone2') {
+        heartRate = zone2;
       } else if (step.effort === 'stride' || step.effort === 'hill') {
         // Heart rate lags a short effort, so strides and hill repeats get none.
         heartRate = null;

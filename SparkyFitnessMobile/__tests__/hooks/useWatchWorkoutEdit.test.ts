@@ -15,6 +15,7 @@ const actions = {
   deleteSet: jest.fn(),
   updateSetField: jest.fn(),
   removeExercise: jest.fn(),
+  doExerciseNow: jest.fn(),
   addExercise: jest.fn(),
 };
 
@@ -46,6 +47,15 @@ describe('applyWatchWorkoutEdit', () => {
     await edit({ action: 'deleteExercise', exerciseEntryId: 'entry-2' });
     expect(actions.deleteSet).toHaveBeenCalledWith('12');
     expect(actions.removeExercise).toHaveBeenCalledWith('entry-2');
+  });
+
+  it('does an upcoming exercise now', async () => {
+    await edit({
+      action: 'doExerciseNow',
+      exerciseEntryId: 'entry-3',
+      anchorEntryId: 'entry-1',
+    });
+    expect(actions.doExerciseNow).toHaveBeenCalledWith('entry-3', 'entry-1');
   });
 
   it('changes a set type', async () => {

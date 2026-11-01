@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { View, Platform } from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -123,9 +123,9 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
   return (
     <View
       className="flex-1 bg-background"
-      // iOS keeps no top inset even without the native header: this chrome is
-      // used by modal sheets, which already start below the status bar.
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
+      // An iOS sheet reports no top inset, so there only pushed screens get
+      // room for the status bar.
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
 

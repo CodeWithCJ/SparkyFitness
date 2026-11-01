@@ -10,12 +10,8 @@ import {
 import { getServingVolume } from '../utils/unitConversions';
 import type { DailySummaryRawData } from './useDailySummary';
 import type { WaterContainer } from '../types/measurements';
-import {
-  caffeineActiveQueryKey,
-  dailySummaryQueryKey,
-  waterContainersQueryKey,
-  waterIntakeLogQueryKey,
-} from './queryKeys';
+import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
+import { invalidateWaterIntakeQueries } from './invalidateWaterIntake';
 import { navigationRef as rootNavigationRef } from '../components/ActiveWorkoutBar';
 
 /**
@@ -191,11 +187,7 @@ export function useWaterIntakeMutation({
       });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(date) });
-      // The itemized log backs hydration reminders and the watch's log view.
-      queryClient.invalidateQueries({ queryKey: waterIntakeLogQueryKey(date) });
-      // A linked container logs a drink that can move the day's caffeine curve.
-      queryClient.invalidateQueries({ queryKey: caffeineActiveQueryKey(date) });
+      invalidateWaterIntakeQueries(queryClient, date);
     },
   });
 
@@ -243,15 +235,7 @@ export function useWaterIntakeMutation({
     mutationFn: (containerId: number) =>
       changeWaterIntake({ entryDate: date, changeDrinks: 1, containerId }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({
-        queryKey: dailySummaryQueryKey(date),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: waterIntakeLogQueryKey(date),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: caffeineActiveQueryKey(date),
-      });
+      invalidateWaterIntakeQueries(queryClient, date);
     },
     onError: () => {
       Toast.show({

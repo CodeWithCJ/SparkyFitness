@@ -99,6 +99,24 @@ export const syncLiftosaurData = async (
     }
   );
 };
+export interface IntervalsSyncResult {
+  activitiesImported: number;
+  activitiesSkipped: number;
+  activitiesFailed: number;
+  wellnessDays: number;
+}
+
+export const syncIntervalsData = async (
+  providerId?: string,
+  startDate?: string,
+  endDate?: string,
+  mock?: { saveMockData?: boolean; dataSource?: string }
+): Promise<IntervalsSyncResult> => {
+  return apiCall('/integrations/intervals/sync', {
+    method: 'POST',
+    body: JSON.stringify({ providerId, startDate, endDate, ...mock }),
+  });
+};
 export interface GarminLoginPayload {
   email: string;
   password: string;

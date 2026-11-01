@@ -22,7 +22,10 @@ const env = vi.hoisted(() => {
   return { root, uploads, backups };
 });
 
-const mocks = vi.hoisted(() => ({ performRestore: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  performRestore: vi.fn(),
+  assertRestoreAllowed: vi.fn(),
+}));
 
 vi.mock('../services/backupService.js', () => ({
   performBackup: vi.fn(),
@@ -31,6 +34,16 @@ vi.mock('../services/backupService.js', () => ({
   BACKUP_FILE_PATTERN: /^sparkyfitness_full_backup_[\w.-]+\.tar\.gz$/,
   listBackups: vi.fn(),
 }));
+vi.mock('../services/onlineRestoreGuard.js', () => {
+  class RestoreRefusedError extends Error {
+    readonly code = 'restore_requires_single_instance';
+  }
+  return {
+    assertRestoreAllowed: mocks.assertRestoreAllowed,
+    RestoreRefusedError,
+    RESTORE_REFUSED_CODE: 'restore_requires_single_instance',
+  };
+});
 vi.mock('../services/backupScheduler.js', () => ({
   rescheduleBackups: vi.fn(),
 }));
@@ -44,6 +57,7 @@ vi.mock('../middleware/authMiddleware', () => ({
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 import backupRoutes from '../routes/backupRoutes.js';
+import { RestoreRefusedError } from '../services/onlineRestoreGuard.js';
 
 const app = express();
 app.use('/admin/backup', backupRoutes);
@@ -78,6 +92,7 @@ const expectBackupFolder = (names: string[]) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.assertRestoreAllowed.mockResolvedValue(undefined);
   fs.rmSync(env.backups, { recursive: true, force: true });
   fs.mkdirSync(env.backups);
 });
@@ -131,5 +146,59 @@ describe('POST /admin/backup/restore leaves no archive behind', () => {
     await postRestore().expect(200);
 
     await expectBackupFolder([path.basename(kept)]);
+  });
+});
+
+describe('POST /admin/backup/restore with other instances running', () => {
+  const uploadedFiles = () => fs.readdirSync(env.uploads);
+
+  it('refuses with 409 before accepting the upload when other instances are seen', async () => {
+    mocks.assertRestoreAllowed.mockRejectedValue(
+      new RestoreRefusedError('Restore refused: other server instances ...')
+    );
+
+    const res = await postRestore();
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toEqual({
+      code: 'restore_requires_single_instance',
+      message: 'Restore refused: other server instances ...',
+    });
+    expect(mocks.performRestore).not.toHaveBeenCalled();
+    expect(uploadedFiles()).toEqual([]);
+    expect(fs.readdirSync(env.backups)).toEqual([]);
+  });
+
+  it('answers 503 without restoring when the check cannot reach the database', async () => {
+    mocks.assertRestoreAllowed.mockRejectedValue(new Error('ECONNREFUSED'));
+
+    const res = await postRestore();
+
+    expect(res.statusCode).toBe(503);
+    expect(res.body.message).toMatch(/restore was not started/);
+    expect(mocks.performRestore).not.toHaveBeenCalled();
+    expect(uploadedFiles()).toEqual([]);
+  });
+
+  it('checks once, then restores, when this looks like the only instance', async () => {
+    mocks.performRestore.mockResolvedValue({ success: true });
+
+    const res = await postRestore();
+
+    expect(res.statusCode).toBe(200);
+    expect(mocks.assertRestoreAllowed).toHaveBeenCalledOnce();
+    expect(mocks.performRestore).toHaveBeenCalledOnce();
+  });
+
+  it('answers 409 and removes the archive when performRestore itself refuses', async () => {
+    mocks.performRestore.mockRejectedValue(
+      new RestoreRefusedError('Restore refused: late arrival')
+    );
+
+    const res = await postRestore();
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body.message).toBe('Restore refused: late arrival');
+    await expectBackupFolder([]);
   });
 });

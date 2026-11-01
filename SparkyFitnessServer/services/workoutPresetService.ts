@@ -14,14 +14,11 @@ async function createWorkoutPreset(userId: any, presetData: any) {
     if (!exercise) {
       throw new Error(`Exercise with ID ${ex.exercise_id} not found.`);
     }
-    // Ensure duration and notes are numbers/strings if they exist
+    // Ensure duration is a number if it exists
     if (ex.duration !== undefined && typeof ex.duration !== 'number') {
       throw new Error(
         `Duration for exercise ${ex.exercise_id} must be a number.`
       );
-    }
-    if (ex.notes !== undefined && typeof ex.notes !== 'string') {
-      throw new Error(`Notes for exercise ${ex.exercise_id} must be a string.`);
     }
   }
   // Ownership always comes from the authenticated request — the body's
@@ -78,15 +75,10 @@ async function updateWorkoutPreset(
       if (!exercise) {
         throw new Error(`Exercise with ID ${ex.exercise_id} not found.`);
       }
-      // Ensure duration and notes are numbers/strings if they exist
+      // Ensure duration is a number if it exists
       if (ex.duration !== undefined && typeof ex.duration !== 'number') {
         throw new Error(
           `Duration for exercise ${ex.exercise_id} must be a number.`
-        );
-      }
-      if (ex.notes !== undefined && typeof ex.notes !== 'string') {
-        throw new Error(
-          `Notes for exercise ${ex.exercise_id} must be a string.`
         );
       }
     }

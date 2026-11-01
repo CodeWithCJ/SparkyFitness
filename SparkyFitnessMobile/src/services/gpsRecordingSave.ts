@@ -37,21 +37,24 @@ import {
   toWorkoutGpsPoints,
   type RecordedPoint,
   type RecordingActivity,
+  type DiaryActivity,
 } from '../utils/gpsRecording';
 
 /** Library names the three activities are logged under. */
-const EXERCISE_NAMES: Record<RecordingActivity, string> = {
+const EXERCISE_NAMES: Record<DiaryActivity, string> = {
   walk: 'Walking',
   run: 'Running',
   ride: 'Cycling',
+  jumpRope: 'Jump Rope',
 };
 
 // Only used when the library has no exercise of that name, so the entry still
 // gets a calorie estimate. Rough figures for an average adult.
-const FALLBACK_CALORIES_PER_HOUR: Record<RecordingActivity, number> = {
+const FALLBACK_CALORIES_PER_HOUR: Record<DiaryActivity, number> = {
   walk: 250,
   run: 600,
   ride: 450,
+  jumpRope: 700,
 };
 
 /**
@@ -59,20 +62,25 @@ const FALLBACK_CALORIES_PER_HOUR: Record<RecordingActivity, number> = {
  * one when the library has none of that name.
  */
 export async function resolveRecordingExercise(
-  activity: RecordingActivity
+  activity: DiaryActivity
 ): Promise<Exercise> {
   const name = EXERCISE_NAMES[activity];
+  // Jump rope covers no distance - it is duration-only.
+  const modality = activity === 'jumpRope' ? 'duration' : 'duration_distance';
   const matches = (await searchExercises(name)).filter(
     (exercise) => exercise.name.trim().toLowerCase() === name.toLowerCase()
   );
+  // A jump rope must be duration-only. Falling back to any other "Jump Rope"
+  // would snapshot its modality onto the entry, and a duration_distance one
+  // gives a distance-less workout a route card and distance fields.
   const best =
-    matches.find((exercise) => exercise.modality === 'duration_distance') ??
-    matches[0];
+    matches.find((exercise) => exercise.modality === modality) ??
+    (activity === 'jumpRope' ? undefined : matches[0]);
   if (best) return best;
   return createExercise({
     name,
     category: 'cardio',
-    modality: 'duration_distance',
+    modality,
     calories_per_hour: FALLBACK_CALORIES_PER_HOUR[activity],
     description: null,
   });

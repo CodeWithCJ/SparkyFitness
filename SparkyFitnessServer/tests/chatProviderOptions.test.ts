@@ -1,7 +1,12 @@
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, streamText } from 'ai';
 import { vi, describe, expect, it } from 'vitest';
-import { buildChatProviderOptions } from '../services/chatService.js';
+import {
+  buildChatProviderOptions,
+  buildChatSystem,
+  createChatModelInstance,
+} from '../services/chatService.js';
 
 // Loading the real foodEntryService (pulled in transitively via the chatbot
 // tool registry) trips on a deep '@workspace/shared' subpath import; this pure
@@ -138,9 +143,14 @@ describe('buildChatProviderOptions', () => {
     });
   });
 
+  it('turns on Anthropic automatic caching', () => {
+    expect(
+      buildChatProviderOptions('anthropic', 'user-1', 'claude-sonnet-5')
+    ).toEqual({ anthropic: { cacheControl: { type: 'ephemeral' } } });
+  });
+
   it('returns undefined for unrelated non-openai service types', () => {
     for (const serviceType of [
-      'anthropic',
       'google',
       'groq',
       'mistral',
@@ -202,5 +212,146 @@ describe('OpenAI-compatible system role requests', () => {
 
     expect(requests).toHaveLength(1);
     expectSystemMessage(requests[0]);
+  });
+});
+
+describe('Anthropic prompt caching', () => {
+  it('marks the system prompt and the request for caching', async () => {
+    const requests: Array<Record<string, unknown>> = [];
+    const model = createAnthropic({
+      apiKey: 'test-key',
+      fetch: async (_input, init) => {
+        requests.push(JSON.parse(String(init?.body)));
+        return Response.json({
+          id: 'msg_test',
+          type: 'message',
+          role: 'assistant',
+          model: 'claude-sonnet-5',
+          content: [{ type: 'text', text: 'ok' }],
+          stop_reason: 'end_turn',
+          usage: { input_tokens: 1, output_tokens: 1 },
+        });
+      },
+    })('claude-sonnet-5');
+
+    await generateText({
+      model,
+      system: buildChatSystem('anthropic', 'Sparky system prompt'),
+      prompt: 'Hello',
+      providerOptions: buildChatProviderOptions(
+        'anthropic',
+        'user-1',
+        'claude-sonnet-5'
+      ),
+    });
+
+    expect(requests).toHaveLength(1);
+    expect(requests[0].system).toEqual([
+      {
+        type: 'text',
+        text: 'Sparky system prompt',
+        cache_control: { type: 'ephemeral' },
+      },
+    ]);
+    expect(requests[0].cache_control).toEqual({ type: 'ephemeral' });
+  });
+
+  it('leaves the system prompt a plain string for other providers', () => {
+    expect(buildChatSystem('openai', 'Sparky system prompt')).toBe(
+      'Sparky system prompt'
+    );
+  });
+});
+
+describe('OpenRouter prompt caching', () => {
+  const policy = { allowPrivateNetwork: true, reason: 'admin' } as const;
+
+  async function captureRequest(
+    service: { service_type: string; custom_url?: string },
+    modelName: string
+  ) {
+    const requests: Array<Record<string, unknown>> = [];
+    const recording = createRecordingFetch(requests as RecordedOpenAiRequest[]);
+    vi.stubGlobal('fetch', recording);
+    try {
+      const model = createChatModelInstance(
+        { ...service, api_key: 'test-key' },
+        modelName,
+        policy
+      );
+      await generateText({
+        model,
+        system: 'Sparky system prompt',
+        prompt: 'Hello',
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(requests).toHaveLength(1);
+    return requests[0];
+  }
+
+  const cachedSystem = [
+    {
+      type: 'text',
+      text: 'Sparky system prompt',
+      cache_control: { type: 'ephemeral' },
+    },
+  ];
+
+  it('marks Claude requests on OpenRouter for caching', async () => {
+    const body = await captureRequest(
+      { service_type: 'openrouter' },
+      'anthropic/claude-sonnet-5'
+    );
+    expect(body.cache_control).toEqual({ type: 'ephemeral' });
+    expect(body.messages).toEqual([
+      { role: 'system', content: cachedSystem },
+      { role: 'user', content: 'Hello' },
+    ]);
+  });
+
+  it('marks Claude on a custom service pointed at OpenRouter', async () => {
+    const body = await captureRequest(
+      {
+        service_type: 'openai_compatible',
+        custom_url: 'https://openrouter.ai/api/v1',
+      },
+      'anthropic/claude-sonnet-5'
+    );
+    expect(body.cache_control).toEqual({ type: 'ephemeral' });
+    expect((body.messages as unknown[])[0]).toEqual({
+      role: 'system',
+      content: cachedSystem,
+    });
+  });
+
+  it('leaves models that cache on their own untouched', async () => {
+    const body = await captureRequest(
+      { service_type: 'openrouter' },
+      'openai/gpt-5.5'
+    );
+    expect(body).not.toHaveProperty('cache_control');
+    expect((body.messages as unknown[])[0]).toEqual({
+      role: 'system',
+      content: 'Sparky system prompt',
+    });
+  });
+
+  it('never adds cache fields for other OpenAI-compatible servers', async () => {
+    for (const service of [
+      { service_type: 'ollama', custom_url: 'http://127.0.0.1:11434' },
+      {
+        service_type: 'openai_compatible',
+        custom_url: 'http://127.0.0.1:8000/v1',
+      },
+      { service_type: 'custom', custom_url: 'http://127.0.0.1:1234/v1' },
+    ]) {
+      const body = await captureRequest(service, 'claude-sonnet-5');
+      expect(body, service.service_type).not.toHaveProperty('cache_control');
+      expect(JSON.stringify(body), service.service_type).not.toContain(
+        'cache_control'
+      );
+    }
   });
 });

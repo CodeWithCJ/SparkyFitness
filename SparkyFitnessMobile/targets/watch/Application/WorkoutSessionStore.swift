@@ -393,6 +393,22 @@ final class WorkoutSessionStore: ObservableObject {
         completedSetIds.contains(step.plannedSet.setId)
     }
 
+    /// The first set still to do of each exercise after the current one, in
+    /// workout order: what Up Next shows and what Swap offers.
+    /// The current exercise's superset partners are left out: they are
+    /// already interleaved with it, and the phone moves a superset as one.
+    var upcomingExercises: [WorkoutStep] {
+        let current = currentStep?.exerciseEntryId
+        let currentRun = currentStep?.supersetRun
+        var seen: Set<String> = []
+        return steps.dropFirst(currentStepIndex).filter { step in
+            step.exerciseEntryId != current
+                && (currentRun == nil || step.supersetRun != currentRun)
+                && !isCompleted(step)
+                && seen.insert(step.exerciseEntryId).inserted
+        }
+    }
+
     /// The plan's sets in the order the phone walks them (`setOrder`,
     /// supersets interleaved), else each exercise in turn.
     private static func steps(for plan: ActiveWorkoutPlan) -> [WorkoutStep] {
@@ -990,6 +1006,15 @@ final class WorkoutSessionStore: ObservableObject {
         guard currentStepIndex + 1 < steps.count else { return }
         stopRestTimer()
         moveCursor(to: currentStepIndex + 1)
+    }
+
+    /// Moves the cursor to one set, picked from the set screen's dots.
+    func goToStep(setId: String) {
+        guard let index = steps.firstIndex(where: { $0.plannedSet.setId == setId }),
+              index != currentStepIndex
+        else { return }
+        stopRestTimer()
+        moveCursor(to: index)
     }
 
     func goToPreviousStep() {

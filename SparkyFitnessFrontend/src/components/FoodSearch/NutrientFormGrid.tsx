@@ -12,7 +12,7 @@ import { CENTRAL_NUTRIENT_CONFIG } from '@/constants/nutrients';
 import { UserCustomNutrient } from '@/types/customNutrient';
 import type { GlycemicIndex, NumericFoodVariantKeys } from '@/types/food';
 import type { FormFoodVariant } from '@/utils/foodForm';
-import { saltGramsToSodiumMg, sodiumMgToSaltGrams } from '@/utils/saltSodium';
+import { saltGramsToSodiumMg, sodiumMgToSaltGrams } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 import { NumericInput } from '../NumericInput';
 

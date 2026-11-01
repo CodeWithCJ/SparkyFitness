@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import CalorieSettingsScreen from '../../src/screens/CalorieSettingsScreen';
 
@@ -117,7 +118,7 @@ describe('CalorieSettingsScreen', () => {
     };
   });
 
-  it('explains that Device Projection applies Goal Mode to Health Connect TDEE', () => {
+  it('explains that Device Projection applies Goal Mode to the device TDEE', () => {
     mockPreferences.calorie_goal_adjustment_mode = 'tdee';
     const { getByText } = render(
       <CalorieSettingsScreen navigation={navigation} route={route} />
@@ -125,13 +126,11 @@ describe('CalorieSettingsScreen', () => {
 
     expect(
       getByText(
-        'Current-day Health Connect total calories are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.'
+        'Current-day device total calories (Health Connect, Garmin or Polar) are projected to midnight; completed days use the recorded total. Goal Mode is applied to that TDEE, with BMR + active calories as a fallback.'
       )
     ).toBeTruthy();
     expect(
-      getByText(
-        'Health Connect total calories (BMR + active calories fallback)'
-      )
+      getByText('Device total calories (BMR + active calories fallback)')
     ).toBeTruthy();
     expect(getByText('Projected TDEE × Goal Mode − Eaten')).toBeTruthy();
   });
@@ -452,6 +451,32 @@ describe('CalorieSettingsScreen', () => {
     fireEvent(toggle, 'valueChange', true);
 
     expect(mockMutate).toHaveBeenCalledWith({ use_external_bmr: true });
+  });
+
+  it('saves the Move ring opt-in as an account setting on iPhone', () => {
+    const { getByLabelText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    fireEvent(
+      getByLabelText('Use Move ring for active calories'),
+      'valueChange',
+      true
+    );
+
+    expect(mockMutate).toHaveBeenCalledWith({
+      use_move_ring_active_calories: true,
+    });
+  });
+
+  it('hides the Move ring opt-in on Android', () => {
+    const osSpy = jest.replaceProperty(Platform, 'OS', 'android');
+    const { queryByLabelText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    expect(queryByLabelText('Use Move ring for active calories')).toBeNull();
+    osSpy.restore();
   });
 
   it('saves a bounded custom Goal Mode percentage', () => {

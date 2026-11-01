@@ -8,6 +8,10 @@ import {
   DailyHealthMetrics,
   DailyHealthMetricsInitializer,
 } from '@workspace/shared';
+import {
+  pickDeviceTotalPerDay,
+  type DeviceTotalCaloriesSourceRow,
+} from '../utils/deviceTotalCalories.js';
 
 /** Minimal client surface needed to run a parameterised statement within a caller-owned transaction. */
 export interface HealthMetricSamplesDbClient {
@@ -539,38 +543,33 @@ export async function getDailyHealthMetrics(
   }
 }
 
-export interface HealthConnectTotalCaloriesRow {
-  entry_date: string;
-  total_calories: number;
-  captured_at?: Date | string | null;
-}
-
 /**
- * Returns Health Connect's cumulative total-energy summary for each requested day.
- * The Android client has already applied Health Connect's native source priority
- * before upload, so this value must not be combined with other providers here.
+ * Returns one device total-energy figure per requested day, from whichever source
+ * `pickDeviceTotalPerDay` chooses (Health Connect, Garmin, Polar).
+ * Each value is already that source's own full total, so sources are never
+ * combined.
  */
-export async function getHealthConnectTotalCaloriesByDateRange(
+export async function getDeviceTotalCaloriesByDateRange(
   userId: string,
   actingUserId: string,
   startDate: string,
   endDate: string
-): Promise<HealthConnectTotalCaloriesRow[]> {
+): Promise<DeviceTotalCaloriesSourceRow[]> {
   const client = await getClient(actingUserId);
   try {
     const res = await client.query(
       `SELECT entry_date::text,
+              source_provider,
               total_calories::float8,
               COALESCE(total_calories_captured_at, updated_at, created_at) AS captured_at
        FROM daily_health_metrics
        WHERE user_id = $1
-         AND source_provider = 'health_connect'
          AND total_calories IS NOT NULL
          AND entry_date BETWEEN $2 AND $3
        ORDER BY entry_date ASC`,
       [userId, startDate, endDate]
     );
-    return res.rows as HealthConnectTotalCaloriesRow[];
+    return pickDeviceTotalPerDay(res.rows as DeviceTotalCaloriesSourceRow[]);
   } finally {
     client.release();
   }

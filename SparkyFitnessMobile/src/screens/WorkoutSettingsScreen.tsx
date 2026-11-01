@@ -80,6 +80,10 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
   const setWorkoutKeepAwakeEnabled = useAppPreferencesStore(
     (s) => s.setWorkoutKeepAwakeEnabled
   );
+  const nowCardEnabled = useAppPreferencesStore((s) => s.activeWorkoutNowCard);
+  const setNowCardEnabled = useAppPreferencesStore(
+    (s) => s.setActiveWorkoutNowCard
+  );
   const restSheetRef = useRef<RestPeriodSheetRef>(null);
   const header = useScreenHeader({
     title: t('workoutSettings.title', { defaultValue: 'Workout Settings' }),
@@ -216,6 +220,27 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
               onValueChange={setWorkoutKeepAwakeEnabled}
               accessibilityLabel={t('workoutSettings.keepAwakeAccessibility', {
                 defaultValue: 'Keep screen awake',
+              })}
+            />
+          }
+        />
+
+        <SettingsRow
+          title={t('workoutSettings.nowCard', {
+            defaultValue: 'Now card',
+          })}
+          subtitle={t('workoutSettings.nowCardSubtitle', {
+            defaultValue:
+              'Pin the set to do now above the exercise list: its target in large type, the exercise photo, what comes next, and Swap to do another exercise first.',
+          })}
+          subtitleNumberOfLines={0}
+          rightAccessory={
+            <Switch
+              testID="workout-now-card-switch"
+              value={nowCardEnabled}
+              onValueChange={setNowCardEnabled}
+              accessibilityLabel={t('workoutSettings.nowCard', {
+                defaultValue: 'Now card',
               })}
             />
           }

@@ -95,7 +95,7 @@ export interface CalorieBalanceInputs {
   userPreferences: CalorieBalanceUserPreferences | null;
   /** Latest measurement on or before the day. Drives the BMR formula. */
   measurements: CalorieBalanceMeasurements | null;
-  /** Health Connect total (resting + active) calories accumulated for this day. */
+  /** Device total (resting + active) calories accumulated for this day, from one source (see `pickDeviceTotalPerDay`). */
   deviceTotalCalories?: number | null;
   /** Fraction of the day elapsed when the cumulative device total was captured. */
   deviceTotalDayFraction?: number | null;
@@ -424,6 +424,8 @@ export function computeCalorieBalance({
       baselineBurn: sparkyfitnessBurned,
       adjustment: tdeeAdjustment,
       targetCalories: goalCalories,
+      // 'health_connect_total' means any device total now (Garmin and Polar
+      // too); the value stays because older apps check for it.
       source: validDeviceTotal ? 'health_connect_total' : 'active_plus_bmr',
     };
   }

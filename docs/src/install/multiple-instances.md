@@ -32,6 +32,12 @@ With Kubernetes, the Helm chart does this for you when `server.replicas` is abov
 
 A backup schedule saved in the admin settings reaches the jobs instance within 5 minutes.
 
+## Restoring a backup: scale to one instance first
+
+Restoring a backup from the admin page deletes the database and the uploads folder that every instance shares, so it must run with only one instance up. Scale to one instance (with Helm, `server.replicas: 1`; with Compose, one `sparkyfitness-server` without `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS` and no separate jobs service), wait until the others have stopped, restore, then scale back up. See [Manual Backup and Restore](/administration/manual_backup_restore) for the steps.
+
+The server refuses a restore when it can tell other instances are running: when it has `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true`, or when another SparkyFitness server has database connections open. This is a safety net, not a guarantee: an instance with no traffic closes its database connections after about 30 seconds and then cannot be seen.
+
 ## What to expect during a rolling update
 
 When you change an environment variable and redeploy one instance at a time, old and new instances run side by side for a short while. During that window:

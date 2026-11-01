@@ -701,16 +701,11 @@ type ResolveExerciseEntryUpdate = (currentEntry: Record<string, unknown>) => {
 };
 
 async function _updateExerciseEntryWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updatedByUserId: any,
+  client: PoolClient,
+  id: string,
+  userId: string,
+  updateData: Record<string, unknown>,
+  updatedByUserId: string,
   entrySource: string | undefined,
   // A caller that can recover from a vanished row (the sync path, which just
   // inserts a replacement) passes returnNullIfMissing and gets null instead of
@@ -1370,14 +1365,10 @@ async function getExerciseEntryOwnerId(id: any, userId: any) {
 }
 
 async function updateExerciseEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any,
+  id: string,
+  userId: string,
+  actingUserId: string,
+  updateData: Record<string, unknown>,
   // Fields this edit changed on a synced entry, kept on the next re-sync.
   markManualFields: readonly string[] = [],
   resolveUpdate?: ResolveExerciseEntryUpdate
@@ -1396,7 +1387,7 @@ async function updateExerciseEntry(
       userId,
       updateData,
       actingUserId,
-      updateData.source,
+      typeof updateData.source === 'string' ? updateData.source : undefined,
       { markManualFields, resolveUpdate }
     );
     await client.query('COMMIT');

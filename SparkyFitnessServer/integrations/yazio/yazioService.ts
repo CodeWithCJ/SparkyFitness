@@ -830,20 +830,32 @@ function mapYazioProduct(
   };
 }
 
-async function yazioFetch<T>(path: string, credentials: YazioCredentials) {
+async function yazioFetch<T>(
+  path: string,
+  credentials: YazioCredentials,
+  signal?: AbortSignal
+) {
+  signal?.throwIfAborted();
   const baseUrl = resolveBaseUrl(credentials.baseUrl);
   const accessToken = await getYazioAccessToken(credentials);
-  return guardedFetch(`${baseUrl}${path}`, {
+  signal?.throwIfAborted();
+  const response = await guardedFetch(`${baseUrl}${path}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: 'application/json',
     },
-  }).then((response) => parseJsonResponse<T>(response, path));
+    signal,
+  });
+  signal?.throwIfAborted();
+  const data = await parseJsonResponse<T>(response, path);
+  signal?.throwIfAborted();
+  return data;
 }
 
 async function searchRawYazioProducts(
   query: string,
-  options: YazioSearchOptions
+  options: YazioSearchOptions,
+  signal?: AbortSignal
 ) {
   const resolvedLang = resolveLanguage(options.language);
   const resolvedLocales = resolvedLang ? YAZIO_LOCALES[resolvedLang] : null;
@@ -864,7 +876,8 @@ async function searchRawYazioProducts(
 
   const data = await yazioFetch<YazioProductSearchResult[]>(
     `/products/search?${params.toString()}`,
-    options
+    options,
+    signal
   );
 
   return Array.isArray(data) ? data : [];
@@ -939,11 +952,13 @@ function shouldSkipYazioDetailError(error: unknown): boolean {
 
 async function getRawYazioFoodDetails(
   productId: string,
-  credentials: YazioCredentials
+  credentials: YazioCredentials,
+  signal?: AbortSignal
 ) {
   return yazioFetch<YazioProduct | null>(
     `/products/${encodeURIComponent(productId)}`,
-    credentials
+    credentials,
+    signal
   );
 }
 
@@ -958,22 +973,30 @@ async function getYazioFoodDetails(
 
 async function searchYazioByBarcode(
   barcode: string,
-  credentials: YazioCredentials
+  credentials: YazioCredentials,
+  signal?: AbortSignal
 ) {
+  signal?.throwIfAborted();
   const normalizedBarcode = normalizeBarcode(barcode);
   if (!normalizedBarcode) {
     return null;
   }
 
   const candidates = (
-    await searchRawYazioProducts(barcode, {
-      ...credentials,
-      page: 1,
-      pageSize: 20,
-    })
+    await searchRawYazioProducts(
+      barcode,
+      {
+        ...credentials,
+        page: 1,
+        pageSize: 20,
+      },
+      signal
+    )
   ).slice(0, 20);
+  signal?.throwIfAborted();
 
   for (const candidate of candidates) {
+    signal?.throwIfAborted();
     const productId = getYazioProductId(candidate);
     if (!productId) {
       continue;
@@ -985,8 +1008,14 @@ async function searchYazioByBarcode(
 
     let detailedProduct: YazioProduct | null;
     try {
-      detailedProduct = await getRawYazioFoodDetails(productId, credentials);
+      detailedProduct = await getRawYazioFoodDetails(
+        productId,
+        credentials,
+        signal
+      );
+      signal?.throwIfAborted();
     } catch (error) {
+      signal?.throwIfAborted();
       if (!shouldSkipYazioDetailError(error)) {
         throw error;
       }

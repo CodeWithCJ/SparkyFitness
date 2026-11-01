@@ -297,6 +297,28 @@ export function cautiousEffectiveNForMean(
   return Math.max(2, Math.min(n, lag1, multiLag));
 }
 
+/**
+ * A stricter count of independent days for a slow-moving series' mean: the smaller of the cautious
+ * count, the series length, and the lag-1 count n(1 − ρ)/(1 + ρ) with ρ corrected for Kendall's
+ * small-sample bias of the lag-1 autocorrelation, E[ρ̂] ≈ ρ − (1 + 3ρ)/n, so ρ ≈ ρ̂ + (1 + 3ρ̂)/n,
+ * held to 0..0.999. The uncorrected estimate reads a persistent series as less persistent than it is.
+ * Between 2 and n (n itself below 2 values).
+ */
+export function biasCorrectedEffectiveNForMean(
+  xs: readonly number[],
+  maxLag: number
+): number {
+  const n = xs.length;
+  if (n < 2) return n;
+  const rhoHat = autocorrelation(xs, 1);
+  const rho = Math.min(Math.max(rhoHat + (1 + 3 * rhoHat) / n, 0), 0.999);
+  const biasCorrected = (n * (1 - rho)) / (1 + rho);
+  return Math.max(
+    2,
+    Math.min(n, cautiousEffectiveNForMean(xs, maxLag), biasCorrected)
+  );
+}
+
 /** Ordinary least squares of y on x: the slope and its textbook standard error, sqrt((SSR/(n−2))/Sxx). Null with fewer than 3 points or no spread in x. */
 export function olsSlope(
   xs: readonly number[],

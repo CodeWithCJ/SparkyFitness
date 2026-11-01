@@ -35,7 +35,16 @@ export interface ProviderFoodVariant {
   [key: string]: unknown;
 }
 
+/**
+ * Marks a provider search result whose servings come from a search summary
+ * rather than the provider's full record, so the serving a later save uses can
+ * differ from the one shown. A symbol key keeps it server-side: JSON responses
+ * to web and mobile drop it.
+ */
+export const PARTIAL_SERVING_DATA: unique symbol = Symbol('partialServingData');
+
 export interface ProviderFoodItem {
+  [PARTIAL_SERVING_DATA]?: true;
   id?: string;
   name: string;
   brand?: string | null;

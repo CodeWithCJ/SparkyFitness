@@ -5,9 +5,16 @@ import fs from 'fs';
 import { promises } from 'fs';
 import zlib from 'zlib';
 import { pipeline } from 'stream/promises';
+import { randomBytes } from 'crypto';
 import { log } from '../config/logging.js';
 import backupSettingsRepository from '../models/backupSettingsRepository.js';
 import { endPool, resetPool } from '../db/poolManager.js';
+import { UPLOAD_STAGING_DIR } from '../utils/uploadsPath.js';
+import { describeError } from '../utils/errors.js';
+import {
+  assertRestoreAllowed,
+  RestoreRefusedError,
+} from './onlineRestoreGuard.js';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,17 +38,28 @@ async function ensureBackupDirectory() {
     throw error;
   }
 }
+// Unfinished runs work under here; only a complete archive is renamed out.
+const BACKUP_TEMP_DIR = path.join(BACKUP_DIR, '.tmp');
+// Well past any real run, so only the leftovers of a killed process qualify.
+const STALE_WORK_DIR_AGE_MS = 24 * 60 * 60 * 1000;
+// Work directories of runs in this process that have not finished yet.
+const activeWorkDirNames = new Set<string>();
+
 const execFileAsync = promisify(execFile);
+interface ExecuteCommandOptions {
+  env?: NodeJS.ProcessEnv;
+  /** Non-zero exit codes that still count as success (logged as a warning). */
+  allowedExitCodes?: number[];
+}
 async function executeCommand(
   file: string,
   args: string[] = [],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  options: any = {}
+  options: ExecuteCommandOptions = {}
 ) {
+  const { allowedExitCodes = [], env } = options;
   try {
     const { stdout, stderr } = await execFileAsync(file, args, {
-      ...options,
-      env: { ...process.env, ...(options.env || {}) },
+      env: { ...process.env, ...(env || {}) },
     });
     if (stderr) {
       log('warn', `Command stderr: ${stderr}`);
@@ -51,6 +69,16 @@ async function executeCommand(
     return stdout;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (error: any) {
+    if (
+      typeof error.code === 'number' &&
+      allowedExitCodes.includes(error.code)
+    ) {
+      log(
+        'warn',
+        `Command finished with exit code ${error.code}: ${file} ${args.join(' ')}\n${error.stderr || ''}`
+      );
+      return error.stdout as string;
+    }
     log('error', `Command failed: ${file} ${args.join(' ')}`, error);
     // `||` not `??`: stderr can be an empty string; `??` would emit a blank detail.
     throw new Error(
@@ -59,6 +87,179 @@ async function executeCommand(
     );
   }
 }
+let gnuTar: Promise<boolean> | null = null;
+
+/** Whether `tar` is GNU tar (the server image installs it; busybox and bsdtar lack its flags). */
+function isGnuTar(): Promise<boolean> {
+  gnuTar ??= execFileAsync('tar', ['--version']).then(
+    ({ stdout }) => stdout.includes('GNU tar'),
+    () => false
+  );
+  return gnuTar;
+}
+
+/**
+ * Archives the uploads tree while the server keeps writing to it. Request
+ * staging directories are skipped (their files are moved out or deleted within
+ * the request). GNU tar exits 1 when a file changed or vanished while it was
+ * read; the archive is still complete for everything else, so that counts as
+ * success. Exit 2 (an unreadable file, no space) still fails the backup.
+ */
+async function archiveUploads(destination: string) {
+  const gnu = await isGnuTar();
+  await executeCommand(
+    'tar',
+    [
+      '-czf',
+      destination,
+      ...(gnu
+        ? [
+            '--warning=no-file-changed',
+            '--warning=no-file-removed',
+            '--anchored',
+          ]
+        : []),
+      `--exclude=./${UPLOAD_STAGING_DIR}`,
+      '-C',
+      UPLOADS_BASE_DIR,
+      '.',
+    ],
+    { allowedExitCodes: gnu ? [1] : [] }
+  );
+}
+
+function isNotFound(error: unknown) {
+  return (error as NodeJS.ErrnoException)?.code === 'ENOENT';
+}
+
+/** Flushes a finished file to disk, so the rename never publishes a short one. */
+async function syncFile(filePath: string) {
+  const handle = await fsp.open(filePath, 'r');
+  try {
+    await handle.sync();
+  } finally {
+    await handle.close();
+  }
+}
+
+/**
+ * Flushes a directory entry to disk, so a renamed archive survives a power
+ * loss. Best effort: some platforms and network filesystems cannot sync a
+ * directory.
+ */
+async function syncDirectory(dirPath: string) {
+  try {
+    const handle = await fsp.open(dirPath, 'r');
+    try {
+      await handle.sync();
+    } finally {
+      await handle.close();
+    }
+  } catch (error) {
+    log('debug', `Could not sync directory ${dirPath}:`, error);
+  }
+}
+
+async function dumpDatabase(destination: string) {
+  const pgDumpArgs = [
+    '-h',
+    process.env.SPARKY_FITNESS_DB_HOST!,
+    '-p',
+    process.env.SPARKY_FITNESS_DB_PORT!,
+    '-U',
+    process.env.SPARKY_FITNESS_DB_USER!,
+    '-d',
+    process.env.SPARKY_FITNESS_DB_NAME!,
+  ];
+  const pgDump = spawn('pg_dump', pgDumpArgs, {
+    env: {
+      PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD,
+      ...process.env,
+    },
+  });
+  // allSettled, not all: on a failure both the pipeline and pg_dump must have
+  // stopped writing before the caller removes the work directory.
+  const results = await Promise.allSettled([
+    pipeline(
+      pgDump.stdout,
+      zlib.createGzip(),
+      fs.createWriteStream(destination)
+    ),
+    new Promise<void>((resolve, reject) => {
+      pgDump.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`pg_dump process exited with code ${code}`));
+        }
+      });
+      pgDump.on('error', reject);
+    }),
+  ]);
+  const failure = results.find((result) => result.status === 'rejected');
+  if (failure) throw failure.reason;
+}
+
+// Writing to a file leaves its directory's mtime alone, so a run another
+// process still has going is recognised by its newest file instead.
+async function lastWriteMs(entry: string) {
+  const stats = await fsp.lstat(entry);
+  if (!stats.isDirectory()) return stats.mtimeMs;
+  let newest = stats.mtimeMs;
+  for (const child of await fsp.readdir(entry)) {
+    const childStats = await fsp.lstat(path.join(entry, child));
+    newest = Math.max(newest, childStats.mtimeMs);
+  }
+  return newest;
+}
+
+// A killed process (SIGKILL, OOM, container stop) never reaches its own
+// cleanup, so each run clears what earlier ones left behind. lstat keeps a
+// symlink from being followed; rm on it removes the link, not its target.
+// A run still in progress is skipped whatever its age, since a slow dump can
+// outlast the cutoff.
+async function sweepStaleWorkDirs() {
+  let names: string[];
+  try {
+    // A .tmp that is itself a symlink would point the sweep at whatever it
+    // targets, so only a real directory is swept.
+    if (!(await fsp.lstat(BACKUP_TEMP_DIR)).isDirectory()) {
+      log('warn', `${BACKUP_TEMP_DIR} is not a directory; skipping sweep.`);
+      return;
+    }
+    names = await fsp.readdir(BACKUP_TEMP_DIR);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+      log('warn', `Could not list ${BACKUP_TEMP_DIR}:`, error);
+    }
+    return;
+  }
+  const cutoff = Date.now() - STALE_WORK_DIR_AGE_MS;
+  for (const name of names) {
+    if (activeWorkDirNames.has(name)) continue;
+    const entry = path.join(BACKUP_TEMP_DIR, name);
+    try {
+      if ((await lastWriteMs(entry)) < cutoff) {
+        await fsp.rm(entry, { recursive: true, force: true });
+        log('info', `Removed stale backup work directory ${entry}`);
+      }
+    } catch (error) {
+      log(
+        'warn',
+        `Could not remove stale backup work directory ${entry}:`,
+        error
+      );
+    }
+  }
+}
+
+/**
+ * Writes one full backup archive. Every piece is written under
+ * BACKUP_DIR/.tmp/<run>/ and the finished archive is renamed into BACKUP_DIR
+ * last, so a run that dies leaves nothing the listing, download or retention
+ * would treat as a backup. A failed run removes its own work directory; one
+ * killed outright leaves it under .tmp, where nothing reads it.
+ */
 async function performBackup(isManual = false) {
   await ensureBackupDirectory();
   const settings = await backupSettingsRepository.getBackupSettings();
@@ -66,77 +267,40 @@ async function performBackup(isManual = false) {
     log('info', 'Automated backup is disabled. Skipping backup.');
     return { success: true, message: 'Automated backup is disabled.' };
   }
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  await sweepStaleWorkDirs();
+  const startedAt = new Date();
+  const timestamp = startedAt.toISOString().replace(/[:.]/g, '-');
   const dbBackupFileName = `sparkyfitness_db_backup_${timestamp}.sql.gz`;
   const uploadsBackupFileName = `sparkyfitness_uploads_backup_${timestamp}.tar.gz`;
   const fullBackupFileName = `sparkyfitness_full_backup_${timestamp}.tar.gz`;
-  const dbBackupPath = path.join(BACKUP_DIR, dbBackupFileName);
-  const uploadsBackupPath = path.join(BACKUP_DIR, uploadsBackupFileName);
+  const workDirName = `${timestamp}-${randomBytes(4).toString('hex')}`;
+  const workDir = path.join(BACKUP_TEMP_DIR, workDirName);
   const fullBackupPath = path.join(BACKUP_DIR, fullBackupFileName);
+  activeWorkDirNames.add(workDirName);
   try {
+    await fsp.mkdir(workDir, { recursive: true });
     log('info', 'Starting database backup...');
-    const pgDumpArgs = [
-      '-h',
-      process.env.SPARKY_FITNESS_DB_HOST,
-      '-p',
-      process.env.SPARKY_FITNESS_DB_PORT,
-      '-U',
-      process.env.SPARKY_FITNESS_DB_USER,
-      '-d',
-      process.env.SPARKY_FITNESS_DB_NAME,
-    ];
-    // @ts-expect-error TS(2769): No overload matches this call.
-    const pgDump = spawn('pg_dump', pgDumpArgs, {
-      env: {
-        PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD,
-        ...process.env,
-      },
-    });
-    const gzip = zlib.createGzip();
-    const output = fs.createWriteStream(dbBackupPath);
-    await Promise.all([
-      // @ts-expect-error TS(2339): Property 'stdout' does not exist on type 'never'.
-      pipeline(pgDump.stdout, gzip, output),
-      new Promise((resolve, reject) => {
-        // @ts-expect-error TS(2339): Property 'on' does not exist on type 'never'.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        pgDump.on('close', (code: any) => {
-          if (code === 0) {
-            // @ts-expect-error TS(2794): Expected 1 arguments, but got 0. Did you forget to... Remove this comment to see the full error message
-            resolve();
-          } else {
-            reject(new Error(`pg_dump process exited with code ${code}`));
-          }
-        });
-        // @ts-expect-error TS(2339): Property 'on' does not exist on type 'never'.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        pgDump.on('error', (err: any) => reject(err));
-      }),
-    ]);
+    const dbBackupPath = path.join(workDir, dbBackupFileName);
+    await dumpDatabase(dbBackupPath);
     log('info', `Database backup created: ${dbBackupPath}`);
     log('info', 'Starting uploads folder backup...');
-    await executeCommand('tar', [
-      '-czf',
-      uploadsBackupPath,
-      '-C',
-      UPLOADS_BASE_DIR,
-      '.',
-    ]);
+    const uploadsBackupPath = path.join(workDir, uploadsBackupFileName);
+    await archiveUploads(uploadsBackupPath);
     log('info', `Uploads folder backup created: ${uploadsBackupPath}`);
     log('info', 'Combining backups into a single archive...');
+    const workArchivePath = path.join(workDir, fullBackupFileName);
     await executeCommand('tar', [
       '-czf',
-      fullBackupPath,
+      workArchivePath,
       '-C',
-      BACKUP_DIR,
+      workDir,
       dbBackupFileName,
       uploadsBackupFileName,
     ]);
+    await syncFile(workArchivePath);
+    await fsp.rename(workArchivePath, fullBackupPath);
+    await syncDirectory(BACKUP_DIR);
     log('info', `Combined backup created: ${fullBackupPath}`);
-    log('info', 'Cleaning up individual backup files...');
-    await fsp.unlink(dbBackupPath);
-    await fsp.unlink(uploadsBackupPath);
-    log('info', 'Individual backup files removed.');
     await backupSettingsRepository.updateLastBackupStatus(
       'success',
       new Date()
@@ -150,8 +314,12 @@ async function performBackup(isManual = false) {
   } catch (error) {
     log('error', 'Backup failed:', error);
     await backupSettingsRepository.updateLastBackupStatus('failed', new Date());
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    return { success: false, error: error.message };
+    return { success: false, error: describeError(error) };
+  } finally {
+    await fsp.rm(workDir, { recursive: true, force: true }).catch((error) => {
+      log('warn', `Could not remove backup work directory ${workDir}:`, error);
+    });
+    activeWorkDirNames.delete(workDirName);
   }
 }
 // Restricts any filename reaching the filesystem to the backup naming shape,
@@ -193,21 +361,30 @@ async function listBackups(backupDir: string): Promise<BackupFileStats[]> {
   }
   const backupFiles = files.filter((file) => BACKUP_FILE_PATTERN.test(file));
 
-  const backupFilesWithStats = await Promise.all(
-    backupFiles.map(async (file) => {
-      const filePath = path.join(backupDir, file);
-      const stats = await fsp.stat(filePath);
-      const createdAt = parseBackupDate(file) ?? stats.mtime;
-      // The archive's mtime is the moment its last byte was written, i.e. when
-      // the backup run finished.
-      return {
-        fileName: file,
-        size: stats.size,
-        createdAt,
-        completedAt: stats.mtime,
-      };
-    })
-  );
+  const backupFilesWithStats = (
+    await Promise.all(
+      backupFiles.map(async (file) => {
+        const filePath = path.join(backupDir, file);
+        let stats;
+        try {
+          stats = await fsp.stat(filePath);
+        } catch (error) {
+          // Deleted since the readdir (a retention run alongside this one).
+          if (isNotFound(error)) return null;
+          throw error;
+        }
+        const createdAt = parseBackupDate(file) ?? stats.mtime;
+        // The archive's mtime is the moment its last byte was written, i.e. when
+        // the backup run finished.
+        return {
+          fileName: file,
+          size: stats.size,
+          createdAt,
+          completedAt: stats.mtime,
+        };
+      })
+    )
+  ).filter((backup): backup is BackupFileStats => backup !== null);
 
   backupFilesWithStats.sort(
     (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
@@ -230,19 +407,25 @@ async function applyRetentionPolicy() {
     `Applying retention policy: keeping backups for ${retentionDays} days.`
   );
   const now = new Date();
+  // Only finished archives match the pattern; runs in progress live in .tmp.
+  // A file that vanished meanwhile was removed by a retention run alongside.
   const files = await fsp.readdir(BACKUP_DIR);
   for (const file of files) {
     if (BACKUP_FILE_PATTERN.test(file)) {
       const filePath = path.join(BACKUP_DIR, file);
-      const stats = await fsp.stat(filePath);
-      const fileAgeMs = now.getTime() - stats.mtime.getTime();
-      const fileAgeDays = fileAgeMs / (1000 * 60 * 60 * 24);
-      if (fileAgeDays > retentionDays) {
-        log(
-          'info',
-          `Deleting old backup file: ${file} (age: ${fileAgeDays.toFixed(2)} days)`
-        );
-        await fsp.unlink(filePath);
+      try {
+        const stats = await fsp.stat(filePath);
+        const fileAgeMs = now.getTime() - stats.mtime.getTime();
+        const fileAgeDays = fileAgeMs / (1000 * 60 * 60 * 24);
+        if (fileAgeDays > retentionDays) {
+          log(
+            'info',
+            `Deleting old backup file: ${file} (age: ${fileAgeDays.toFixed(2)} days)`
+          );
+          await fsp.unlink(filePath);
+        }
+      } catch (error) {
+        if (!isNotFound(error)) throw error;
       }
     }
   }
@@ -250,6 +433,9 @@ async function applyRetentionPolicy() {
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function performRestore(backupFilePath: any) {
+  // Also checked by the route before the upload; repeated here so no caller
+  // starts a restore without it.
+  await assertRestoreAllowed();
   log('info', `Starting restore process from ${backupFilePath}`);
   let tempRestoreDir; // Declare tempRestoreDir outside the try block
   try {
@@ -280,6 +466,9 @@ async function performRestore(backupFilePath: any) {
     const extractedDbDumpPath = path.join(tempRestoreDir, dbDumpFile);
     const extractedUploadsTarPath = path.join(tempRestoreDir, uploadsTarFile);
     // 4. Wipe current database and uploads
+    // Extracting a large archive takes a while; another instance may have
+    // started meanwhile.
+    await assertRestoreAllowed();
     log('warn', 'Wiping current database...');
     // End all connections in the pool
     await endPool();
@@ -408,6 +597,7 @@ async function performRestore(backupFilePath: any) {
         );
       }
     }
+    if (error instanceof RestoreRefusedError) throw error;
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     return { success: false, error: error.message };
   }
@@ -420,6 +610,8 @@ export { executeCommand };
 export { BACKUP_DIR };
 export { UPLOADS_BASE_DIR };
 export { BACKUP_FILE_PATTERN };
+export { BACKUP_TEMP_DIR };
+export { STALE_WORK_DIR_AGE_MS };
 export { listBackups };
 export type { BackupFileStats };
 export default {

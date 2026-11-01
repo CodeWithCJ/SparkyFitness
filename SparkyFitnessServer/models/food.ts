@@ -534,6 +534,7 @@ async function findFoodByBarcode(barcode: string, userId: string) {
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
       WHERE f.barcode = $1 AND f.user_id = $2 AND f.is_quick_food = FALSE
+      ORDER BY f.is_custom DESC NULLS LAST, f.updated_at DESC NULLS LAST, f.id ASC
       LIMIT 1`,
       [barcode, userId]
     );

@@ -110,6 +110,7 @@ export function SetTypeMenu({
   onSelect,
   onDelete,
   onGenerateDropSets,
+  onOpenPlateCalculator,
 }: {
   anchor: AnchorRect | null;
   /** The target set's current type; null/undefined reads as 'normal'. */
@@ -118,6 +119,8 @@ export function SetTypeMenu({
   onSelect: (type: (typeof SET_TYPE_OPTIONS)[number]) => void;
   onDelete?: () => void;
   onGenerateDropSets?: () => void;
+  /** Offered for barbell-style exercises; opens the plate calculator. */
+  onOpenPlateCalculator?: () => void;
 }) {
   const { t } = useTranslation();
   const typeLabels: Record<string, string> = {
@@ -143,6 +146,14 @@ export function SetTypeMenu({
       }),
       icon: 'add-circle',
       onPress: onGenerateDropSets,
+    });
+  }
+  if (onOpenPlateCalculator) {
+    items.push({
+      key: 'plate-calculator',
+      label: t('plates.calculatorTitle', { defaultValue: 'Plate calculator' }),
+      icon: 'exercise-weights',
+      onPress: onOpenPlateCalculator,
     });
   }
   if (onDelete) {

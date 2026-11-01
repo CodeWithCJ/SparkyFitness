@@ -47,6 +47,26 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
     (s) => s.watchDoubleTapEnabled
   );
   const watchRpeEnabled = useAppPreferencesStore((s) => s.watchRpeEnabled);
+  const watchSetScreenMetrics = useAppPreferencesStore(
+    (s) => s.watchSetScreenMetrics
+  );
+  const setWatchSetScreenMetrics = useAppPreferencesStore(
+    (s) => s.setWatchSetScreenMetrics
+  );
+  const watchUpNextPage = useAppPreferencesStore((s) => s.watchUpNextPage);
+  const setWatchUpNextPage = useAppPreferencesStore(
+    (s) => s.setWatchUpNextPage
+  );
+  const watchLargerText = useAppPreferencesStore((s) => s.watchLargerText);
+  const setWatchLargerText = useAppPreferencesStore(
+    (s) => s.setWatchLargerText
+  );
+  const watchClassicWorkout = useAppPreferencesStore(
+    (s) => s.watchClassicWorkout
+  );
+  const setWatchClassicWorkout = useAppPreferencesStore(
+    (s) => s.setWatchClassicWorkout
+  );
   const setWatchRpeEnabled = useAppPreferencesStore(
     (s) => s.setWatchRpeEnabled
   );
@@ -199,6 +219,80 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
               activeKey={watchSetInputStyle}
               onSelect={setWatchSetInputStyle}
             />
+
+            <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
+              {t('watchSettings.layoutTitle', { defaultValue: 'Layout' })}
+            </Text>
+            <SettingsRow
+              title={t('watchSettings.setScreenMetricsTitle', {
+                defaultValue: 'Metrics on the set screen',
+              })}
+              subtitle={t('watchSettings.setScreenMetricsSubtitle', {
+                defaultValue:
+                  'Elapsed time, heart rate and calories. Off moves them to their own page after the set screen (after Up Next, when that page is on).',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  testID="watch-set-screen-metrics-switch"
+                  value={watchSetScreenMetrics}
+                  onValueChange={setWatchSetScreenMetrics}
+                />
+              }
+            />
+            <SettingsRow
+              title={t('watchSettings.upNextTitle', {
+                defaultValue: 'Up Next page',
+              })}
+              subtitle={t('watchSettings.upNextSubtitle', {
+                defaultValue:
+                  'A page one swipe up from the set screen with the next exercise, its target, and a Swap button to do another exercise first.',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  testID="watch-up-next-switch"
+                  value={watchUpNextPage}
+                  onValueChange={setWatchUpNextPage}
+                />
+              }
+            />
+            <SettingsRow
+              title={t('watchSettings.largerTextTitle', {
+                defaultValue: 'Larger text on the watch',
+              })}
+              subtitle={t('watchSettings.largerTextSubtitle', {
+                defaultValue:
+                  'Larger type and the newer layouts across the watch: Goals, Water, the workout, Fasting, Steps and more. Off keeps the original look.',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  testID="watch-larger-text-switch"
+                  value={watchLargerText}
+                  onValueChange={setWatchLargerText}
+                />
+              }
+            />
+            {watchLargerText && (
+              <SettingsRow
+                title={t('watchSettings.classicWorkoutTitle', {
+                  defaultValue: 'Original workout page',
+                })}
+                subtitle={t('watchSettings.classicWorkoutSubtitle', {
+                  defaultValue:
+                    'Keep the original workout screen while larger text is on everywhere else. With larger text off the workout always uses it.',
+                })}
+                subtitleNumberOfLines={0}
+                rightAccessory={
+                  <Switch
+                    testID="watch-classic-workout-switch"
+                    value={watchClassicWorkout}
+                    onValueChange={setWatchClassicWorkout}
+                  />
+                }
+              />
+            )}
           </>
         )}
 

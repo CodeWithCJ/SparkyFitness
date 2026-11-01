@@ -185,9 +185,14 @@ final class WatchRunHealthKitController: NSObject, CLLocationManagerDelegate {
         }
         var share: Set<HKSampleType> = [
             HKObjectType.workoutType(), Self.distanceType, Self.energyType, Self.heartRateType,
-            Self.stepType, HKSeriesType.workoutRoute(),
+            Self.stepType,
         ]
-        if let effortType = WorkoutEffort.shareType { share.insert(effortType) }
+        // The route is only asked for while Health does not report it granted,
+        // like the other types; the route builder needs it while the run records.
+        let routeType = HKSeriesType.workoutRoute()
+        if healthStore.authorizationStatus(for: routeType) != .sharingAuthorized {
+            share.insert(routeType)
+        }
         let read: Set<HKObjectType> = [
             HKObjectType.workoutType(), Self.distanceType, Self.energyType, Self.heartRateType,
             Self.stepType,

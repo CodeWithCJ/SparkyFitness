@@ -7,7 +7,7 @@ import {
 export interface FoodVariantWithProviderNutrients {
   provider_nutrients?: Record<string, number | unknown>;
   provider_nutrient_units?: Record<string, string>;
-  custom_nutrients?: Record<string, number>;
+  custom_nutrients?: Record<string, number | string>;
   [key: string]: unknown;
 }
 

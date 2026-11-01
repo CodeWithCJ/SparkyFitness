@@ -20,6 +20,7 @@ import {
   calculateWarmupSets,
   findDropSetBaseIndex,
   findWarmupBaseIndex,
+  usesBarbell,
 } from '@workspace/shared';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,6 +41,8 @@ import {
   type SetInputField,
 } from '../components/SetRowChrome';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
+import PlateCalculatorSheet from '../components/PlateCalculatorSheet';
+import { storedWeightInUnit } from '../utils/unitConversions';
 import {
   ActiveWorkoutCompactRestRow,
   COMPACT_REST_ROW_HEIGHT,
@@ -57,6 +60,7 @@ import WorkoutDurationSheet, {
 import WorkoutReorderList from '../components/WorkoutReorderList';
 import ActiveWorkoutIntervalHud from '../components/ActiveWorkoutIntervalHud';
 import ActiveWorkoutGuidedCard from '../components/ActiveWorkoutGuidedCard';
+import ActiveWorkoutNowCard from '../components/ActiveWorkoutNowCard';
 import ActiveWorkoutRenameModal from '../components/ActiveWorkoutRenameModal';
 import ActiveWorkoutLocationModal from '../components/ActiveWorkoutLocationModal';
 import ActiveWorkoutOverflowSheet, {
@@ -125,6 +129,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const guidedWorkoutEnabled = useAppPreferencesStore(
     (s) => s.guidedWorkoutEnabled
   );
+  const nowCardEnabled = useAppPreferencesStore((s) => s.activeWorkoutNowCard);
 
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
@@ -559,6 +564,20 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     overflowSheetRef.current?.present();
   }, []);
 
+  const handleSwapExercise = useCallback((entryId: string) => {
+    Keyboard.dismiss();
+    setOverflowMenu({ entryId, mode: 'swap' });
+    overflowSheetRef.current?.present();
+  }, []);
+
+  const handleDoExerciseNow = useCallback(
+    (entryId: string) => {
+      useActiveWorkoutStore.getState().doExerciseNow(entryId);
+      handleRailPress(entryId);
+    },
+    [handleRailPress]
+  );
+
   const handleActivateSet = useCallback(
     (setKey: string, field: Exclude<SetInputField, 'rpe'>) => {
       setFocusedField(field);
@@ -628,6 +647,39 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     focusedSetKey != null
   );
 
+  // The set the plate calculator is open for (its weight is kg, as stored).
+  const [plateCalc, setPlateCalc] = useState<{
+    weightKg: number | null;
+    equipment: readonly string[] | null;
+  } | null>(null);
+  // The plate calculator's target for a set: only a barbell exercise has one.
+  // Reads the store so a weight committed a moment ago (a row flushing its
+  // draft) is not missed by a stale render.
+  const plateTargetFor = useCallback(
+    (setId: string) => {
+      const current = useActiveWorkoutStore.getState().session;
+      const ex = current?.exercises.find((e) =>
+        e.sets.some((s) => String(s.id) === setId)
+      );
+      const equipment = ex?.exercise_snapshot?.equipment ?? null;
+      if (!ex || !usesBarbell(equipment)) return null;
+      const set = ex.sets.find((s) => String(s.id) === setId);
+      const weightKg = Number(set?.weight ?? plannedSetValues[setId]?.weight);
+      return {
+        weightKg: Number.isFinite(weightKg) && weightKg > 0 ? weightKg : null,
+        equipment,
+      };
+    },
+    [plannedSetValues]
+  );
+  const openPlateCalculator = useCallback(
+    (setId: string) => {
+      const target = plateTargetFor(setId);
+      if (target) setPlateCalc(target);
+    },
+    [plateTargetFor]
+  );
+
   const handleAccessoryDone = useCallback(() => {
     setFocusedSetKey(null);
     Keyboard.dismiss();
@@ -659,7 +711,32 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           ? ('rpe' as const)
           : null;
     const focusedSetCompleted = completedSetIds[focusedSetId] != null;
+    const focusedExercise = session.exercises.find((e) =>
+      e.sets.some((s) => String(s.id) === focusedSetId)
+    );
+    const showCalculator =
+      focusedField === 'weight' &&
+      usesBarbell(focusedExercise?.exercise_snapshot?.equipment);
     return [
+      ...(showCalculator
+        ? [
+            {
+              key: 'plate-calculator',
+              label: t('plates.calculatorShort', {
+                defaultValue: 'Calculator',
+              }),
+              onPress: () => {
+                // The row commits its weight draft when it loses focus, which
+                // happens after this handler: flush first so the calculator
+                // sees what is on screen.
+                accessoryHandlesRef.current[key]?.flushWeight?.();
+                setFocusedSetKey(null);
+                Keyboard.dismiss();
+                openPlateCalculator(focusedSetId);
+              },
+            },
+          ]
+        : []),
       ...(nextField != null
         ? [
             {
@@ -702,6 +779,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     setRenderKeys,
     completedSetIds,
     metricColumn,
+    openPlateCalculator,
+    setFocusedSetKey,
     t,
   ]);
 
@@ -932,6 +1011,24 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onPressAdd={handleAddExercise}
       />
 
+      {/* Pinned rather than in the list, so the scroll to the active exercise
+          never hides it; out of the way while a set value is being typed. */}
+      {nowCardEnabled &&
+        !guidedWorkoutEnabled &&
+        workoutFormat === 'standard' &&
+        focusedSetKey == null && (
+          <ActiveWorkoutNowCard
+            session={session}
+            activeSetId={activeSetId}
+            completedSetIds={completedSetIds}
+            weightUnit={weightUnit}
+            resting={restState === 'resting'}
+            getImageSource={getImageSource}
+            onPressExercise={handleRailPress}
+            onSwap={handleSwapExercise}
+          />
+        )}
+
       <KeyboardAwareScrollView
         ref={scrollRef}
         className="flex-1"
@@ -1072,6 +1169,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         session={session}
         supersetRuns={supersetRuns}
         completedSetIds={completedSetIds}
+        activeSetId={activeSetId}
+        onDoExerciseNow={handleDoExerciseNow}
         onPressThumb={handlePressThumb}
         onToggleExerciseNote={handleToggleExerciseNote}
         onReplaceExercise={handleReplaceExercise}
@@ -1087,6 +1186,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         }}
         onSwitchToPickMode={() => {
           setOverflowMenu((prev) => (prev ? { ...prev, mode: 'pick' } : prev));
+        }}
+        onSwitchToSwapMode={() => {
+          setOverflowMenu((prev) => (prev ? { ...prev, mode: 'swap' } : prev));
         }}
         onSwitchToMainMode={() => {
           setOverflowMenu((prev) => (prev ? { ...prev, mode: 'main' } : prev));
@@ -1106,6 +1208,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               .updateSetField(setId, { set_type: type });
           }
         }}
+        onOpenPlateCalculator={(() => {
+          const setId = setTypeMenu?.setId;
+          if (setId == null) return undefined;
+          const target = plateTargetFor(setId);
+          if (!target) return undefined;
+          return () => {
+            setPlateCalc(target);
+            setSetTypeMenu(null);
+          };
+        })()}
         onGenerateDropSets={(() => {
           const setId = setTypeMenu?.setId;
           if (setId == null) return undefined;
@@ -1131,6 +1243,20 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           };
         })()}
       />
+
+      {plateCalc != null && (
+        <PlateCalculatorSheet
+          visible
+          onClose={() => setPlateCalc(null)}
+          targetWeight={
+            plateCalc?.weightKg != null
+              ? storedWeightInUnit(plateCalc.weightKg, weightUnit)
+              : null
+          }
+          weightUnit={weightUnit}
+          equipment={plateCalc?.equipment}
+        />
+      )}
 
       <WorkoutReorderList
         visible={reorderVisible}

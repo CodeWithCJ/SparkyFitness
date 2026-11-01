@@ -49,6 +49,18 @@ describe('parseWatchRunPayload', () => {
     expect(parsed?.heartRate).toEqual([[1000, 110]]);
   });
 
+  test('accepts a jump rope session', () => {
+    expect(
+      parseWatchRunPayload({
+        ...base,
+        kind: 'jumpRope',
+        place: 'indoor',
+        route: [],
+      })?.kind
+    ).toBe('jumpRope');
+    expect(parseWatchRunPayload({ ...base, kind: 'swim' })).toBeNull();
+  });
+
   test('keeps lap marks in order and drops junk', () => {
     expect(
       parseWatchRunPayload({ ...base, laps: [3000, 'x', 1000] })?.laps

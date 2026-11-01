@@ -59,7 +59,8 @@ const withWearOs: ConfigPlugin = (config) => {
         if (base.endsWith(TEMPLATE_SUFFIX)) {
           const substituted = contents
             .toString('utf8')
-            .replace(/\{\{APPLICATION_ID\}\}/g, applicationId);
+            .replace(/\{\{APPLICATION_ID\}\}/g, applicationId)
+            .replace(/\{\{VERSION_NAME\}\}/g, versionName);
           return {
             destName: base.slice(0, -TEMPLATE_SUFFIX.length),
             contents: Buffer.from(substituted, 'utf8'),
@@ -132,6 +133,19 @@ const withWearOs: ConfigPlugin = (config) => {
     if (!modConfig.modResults.contents.includes(WEAR_EMBED_GRADLE_MARKER)) {
       const snippet = `
 ${WEAR_EMBED_GRADLE_MARKER}
+def sparkyReleaseStoreFile = findProperty('SPARKY_RELEASE_STORE_FILE') ?: findProperty('MYAPP_RELEASE_STORE_FILE') ?: System.getenv('SPARKY_RELEASE_STORE_FILE')
+if (sparkyReleaseStoreFile) {
+    android.signingConfigs {
+        release {
+            storeFile file(sparkyReleaseStoreFile)
+            storePassword(findProperty('SPARKY_RELEASE_STORE_PASSWORD') ?: findProperty('MYAPP_RELEASE_STORE_PASSWORD') ?: System.getenv('SPARKY_RELEASE_STORE_PASSWORD'))
+            keyAlias(findProperty('SPARKY_RELEASE_KEY_ALIAS') ?: findProperty('MYAPP_RELEASE_KEY_ALIAS') ?: System.getenv('SPARKY_RELEASE_KEY_ALIAS'))
+            keyPassword(findProperty('SPARKY_RELEASE_KEY_PASSWORD') ?: findProperty('MYAPP_RELEASE_KEY_PASSWORD') ?: System.getenv('SPARKY_RELEASE_KEY_PASSWORD'))
+        }
+    }
+    android.buildTypes.release.signingConfig = android.signingConfigs.release
+}
+
 def sparkyEmbedWearOsRelease = (project.findProperty("SPARKY_EMBED_WEAROS_RELEASE")?.toString() ?: System.getenv("SPARKY_EMBED_WEAROS_RELEASE"))?.toBoolean() == true
 
 tasks.register("embedWearOsReleaseApk", Copy) {

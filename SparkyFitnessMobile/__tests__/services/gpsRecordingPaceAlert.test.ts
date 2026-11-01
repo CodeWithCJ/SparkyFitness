@@ -224,6 +224,62 @@ describe('heart-rate alert', () => {
     expect(fireImpactHaptic).not.toHaveBeenCalled();
   });
 
+  test('a Zone 2 step forgives low readings while heart rate settles at the start', async () => {
+    const zone2 = { minBpm: 111, maxBpm: 129 };
+    await startRecording({
+      activity: 'run',
+      audioCues: 'km',
+      intervals: {
+        style: 'runWalk',
+        steps: [
+          { kind: 'work', seconds: 4000, effort: 'zone2', heartRate: zone2 },
+        ],
+      },
+      notification,
+    });
+    jest.mocked(fireImpactHaptic).mockClear();
+    // 105 is under the range, but heart rate is still settling in the first minutes.
+    await readings(105, 30);
+    expect(fireImpactHaptic).not.toHaveBeenCalled();
+  });
+
+  test('a Zone 2 step lets heart rate drift a few beats over late in a long run', async () => {
+    const zone2 = { minBpm: 111, maxBpm: 129 };
+    await startRecording({
+      activity: 'run',
+      audioCues: 'km',
+      intervals: {
+        style: 'runWalk',
+        steps: [
+          { kind: 'work', seconds: 4000, effort: 'zone2', heartRate: zone2 },
+        ],
+      },
+      notification,
+    });
+    jest.mocked(fireImpactHaptic).mockClear();
+    // 133 is four over the range, inside the drift allowance at 55 minutes.
+    await readings(133, 30, 3300);
+    expect(fireImpactHaptic).not.toHaveBeenCalled();
+  });
+
+  test('a Zone 2 step still alerts when heart rate stays above the range early on', async () => {
+    const zone2 = { minBpm: 111, maxBpm: 129 };
+    await startRecording({
+      activity: 'run',
+      audioCues: 'km',
+      intervals: {
+        style: 'runWalk',
+        steps: [
+          { kind: 'work', seconds: 4000, effort: 'zone2', heartRate: zone2 },
+        ],
+      },
+      notification,
+    });
+    jest.mocked(fireImpactHaptic).mockClear();
+    await readings(150, 30, 300);
+    expect(fireImpactHaptic).toHaveBeenCalled();
+  });
+
   test('a range set mid-run applies, and clearing it stops the alerts', async () => {
     await startRecording({ activity: 'run', notification });
     await readings(178, 30);

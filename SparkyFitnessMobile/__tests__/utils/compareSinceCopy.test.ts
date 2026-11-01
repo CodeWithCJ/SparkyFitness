@@ -436,10 +436,8 @@ describe('sinceDetails', () => {
 
   test('no regularity for a habit without active days', () => {
     expect(
-      sinceDetails(
-        response({ regularity: undefined }, 'mood', 'weightTrend'),
-        t
-      ).regularity
+      sinceDetails(response({ regularity: undefined }, 'mood', 'steps'), t)
+        .regularity
     ).toBeNull();
   });
 

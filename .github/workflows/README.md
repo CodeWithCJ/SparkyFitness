@@ -280,6 +280,14 @@ Umbrel package PRs (`umbrel/*`) are **not** in the allowlist. Add `'umbrel/'` to
 
 ---
 
+#### `whats-new-drift.yml`
+
+**Purpose**: Keeps one open issue ("What's New screen is out of date") listing the `feat` commits that changed the mobile app since `WHATS_NEW_CONTENT_VERSION` was last bumped. It closes itself once the version is bumped. It only reports; the `whats-new` skill writes the cards. The list is a heads-up, not a complete audit: it matches only `feat` commit subjects and shows at most 40, so other mobile commits need a manual look.
+
+**Triggers**: Pushes to `main` that touch `SparkyFitnessMobile/src/**`, and manual dispatch. Run `.github/scripts/whats-new-drift.sh` locally to see the same list.
+
+---
+
 ## Development Notes
 
 ### Testing Workflows Locally

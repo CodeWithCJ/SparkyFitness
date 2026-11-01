@@ -69,6 +69,7 @@ import {
   hasBodyweightExercise,
   isPrSet,
   setLoadKg,
+  upcomingExercises,
 } from '../../src/utils/workoutSession';
 import { wodScoreFormat } from '../../src/utils/wodScore';
 import type {
@@ -198,6 +199,29 @@ describe('workoutSession', () => {
         },
       });
       expect(getWorkoutIcon(session)).toBe('exercise-swimming');
+    });
+
+    it('gives the jump rope icon only to rope skipping, not to jump squats or battle ropes', () => {
+      const named = (name: string) =>
+        makeIndividual({
+          name,
+          exercise_snapshot: {
+            id: 'ex-1',
+            name,
+            category: 'Cardio',
+            calories_per_hour: 500,
+            source: 'system',
+          },
+        });
+      expect(getWorkoutIcon(named('Jump Rope'))).toBe('exercise-jumprope');
+      expect(getWorkoutIcon(named('Skipping rope'))).toBe('exercise-jumprope');
+      expect(getWorkoutIcon(named('Jump Squat'))).not.toBe('exercise-jumprope');
+      expect(getWorkoutIcon(named('Jumping Jacks'))).not.toBe(
+        'exercise-jumprope'
+      );
+      expect(getWorkoutIcon(named('Battle Ropes'))).not.toBe(
+        'exercise-jumprope'
+      );
     });
 
     it('uses category match for non-Cardio categories', () => {
@@ -6814,5 +6838,42 @@ describe('summarizeWorkoutEffort', () => {
         { workout_effort: 14 },
       ])
     ).toBe(9);
+  });
+});
+
+describe('upcomingExercises', () => {
+  const entry = (
+    id: string,
+    setIds: number[],
+    group: number | null = null
+  ) => ({
+    id,
+    superset_group: group,
+    sets: setIds.map((setId) => ({ id: setId })),
+  });
+  const session = {
+    exercises: [
+      entry('a', [1, 2], 1),
+      entry('b', [3, 4], 1),
+      entry('c', [5]),
+      entry('d', [6]),
+    ],
+  } as unknown as PresetSessionResponse;
+
+  it('lists the later exercises with a set to do, leaving out superset partners', () => {
+    expect(upcomingExercises(session, '1', {}).map((e) => e.id)).toEqual([
+      'c',
+      'd',
+    ]);
+  });
+
+  it('leaves out exercises that are already done', () => {
+    expect(upcomingExercises(session, '3', { 5: 1 }).map((e) => e.id)).toEqual([
+      'd',
+    ]);
+  });
+
+  it('is empty without an active set', () => {
+    expect(upcomingExercises(session, null, {})).toEqual([]);
   });
 });

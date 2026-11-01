@@ -225,7 +225,9 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
       ? t('runSummary.walkSaved', { defaultValue: 'Walk saved' })
       : summary.activity === 'ride'
         ? t('runSummary.rideSaved', { defaultValue: 'Ride saved' })
-        : t('runSummary.runSaved', { defaultValue: 'Run saved' });
+        : summary.activity === 'jumpRope'
+          ? t('runSummary.jumpRopeSaved', { defaultValue: 'Jump Rope saved' })
+          : t('runSummary.runSaved', { defaultValue: 'Run saved' });
 
   const avgPace = paceSecondsPerUnit(
     distanceMeters,
@@ -275,20 +277,33 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
 
         <View className="flex-row mb-3">
-          <Stat
-            label={t('recordActivity.distance', { defaultValue: 'Distance' })}
-            value={number(distanceMeters / unitMeters)}
-            unit={unitLabel}
-          />
+          {summary.activity !== 'jumpRope' ? (
+            <Stat
+              label={t('recordActivity.distance', { defaultValue: 'Distance' })}
+              value={number(distanceMeters / unitMeters)}
+              unit={unitLabel}
+            />
+          ) : null}
           <Stat
             label={t('recordActivity.time', { defaultValue: 'Time' })}
             value={formatClock(summary.activeSeconds)}
           />
-          <Stat
-            label={t('recordActivity.avgPace', { defaultValue: 'Avg pace' })}
-            value={formatPace(avgPace)}
-            unit={paceUnit}
-          />
+          {summary.activity !== 'jumpRope' ? (
+            <Stat
+              label={t('recordActivity.avgPace', { defaultValue: 'Avg pace' })}
+              value={formatPace(avgPace)}
+              unit={paceUnit}
+            />
+          ) : null}
+          {summary.activity === 'jumpRope' &&
+          summary.activeEnergyKcal != null &&
+          summary.activeEnergyKcal > 0 ? (
+            <Stat
+              label={t('watchRunLive.calories', { defaultValue: 'Calories' })}
+              value={String(Math.round(summary.activeEnergyKcal))}
+              unit={t('watchRunLive.kcal', { defaultValue: 'kcal' })}
+            />
+          ) : null}
         </View>
         {summary.elevationGainMeters >= 1 || summary.avgHeartRate != null ? (
           <View className="flex-row mb-3">

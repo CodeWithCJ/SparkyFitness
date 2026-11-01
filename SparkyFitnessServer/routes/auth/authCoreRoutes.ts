@@ -14,7 +14,10 @@ import {
   redeemRegistrationTicket,
 } from '../../services/passkeyTicketService.js';
 import { isDemoMode } from '../../middleware/demoGuardMiddleware.js';
-import { getClientIp } from '../../utils/clientIp.js';
+import { makeIpRateLimit } from '../../middleware/ipRateLimit.js';
+import { z } from 'zod';
+import { getOAuthClientSummary } from '../../models/oauthClientRepository.js';
+import { verifyMcpOAuthQuery } from '../../utils/mcpOAuth.js';
 import { isPasskeyLoginDisabled } from '../../utils/passkeyLogin.js';
 import {
   getDemoCredentials,
@@ -25,46 +28,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
-// Inline rate limiter for the /mfa-factors endpoint to prevent account enumeration.
+
+const oauthConsentDetailsQuerySchema = z.object({
+  query: z.string().min(1).max(8192),
+});
+
+// Rate limiter for the /mfa-factors endpoint to prevent account enumeration.
 // This endpoint reveals whether an email has an account, so it needs tighter limits
 // than the global 100/min. Better Auth's rate limiter doesn't apply here because
 // this route bypasses the betterAuthHandler.
-const mfaFactorsRateLimit = (() => {
-  const hits = new Map();
-  const MAX = 5;
-  const WINDOW_MS = 30 * 1000;
-  let lastSweepAt = 0;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function evictExpired(now: any) {
-    for (const [ip, entry] of hits) {
-      if (now - entry.start >= WINDOW_MS) hits.delete(ip);
-    }
-    lastSweepAt = now;
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (req: any, res: any, next: any) => {
-    const ip = getClientIp(req);
-    const now = Date.now();
-    // Sweep at most once per window to avoid O(n) cleanup on every request.
-    if (hits.size > 0 && now - lastSweepAt >= WINDOW_MS) {
-      evictExpired(now);
-    }
-    const entry = hits.get(ip);
-    if (!entry) {
-      hits.set(ip, { start: now, count: 1 });
-      return next();
-    }
-    if (entry.count < MAX) {
-      entry.count++;
-      return next();
-    }
-    const retryAfter = Math.ceil((entry.start + WINDOW_MS - now) / 1000);
-    res.set('X-Retry-After', String(retryAfter));
-    return res
-      .status(429)
-      .json({ message: 'Too many requests. Please try again later.' });
-  };
-})();
+const mfaFactorsRateLimit = makeIpRateLimit('mfa-factors', 5, 30 * 1000);
 /**
  * @swagger
  * /auth/settings:
@@ -152,6 +125,40 @@ router.get('/settings', async (req, res) => {
   }
 });
 
+router.get('/oauth-consent-details', async (req, res) => {
+  const parsed = oauthConsentDetailsQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    return res.status(400).json({ error: 'Invalid OAuth consent request.' });
+  }
+
+  const { auth } = authModule;
+  const { secret } = await auth.$context;
+  if (!(await verifyMcpOAuthQuery(parsed.data.query, secret))) {
+    return res.status(400).json({ error: 'Invalid OAuth consent signature.' });
+  }
+
+  const params = new URLSearchParams(parsed.data.query);
+  const clientId = params.get('client_id');
+  if (!clientId) {
+    return res.status(400).json({ error: 'OAuth client is missing.' });
+  }
+  const client = await getOAuthClientSummary(clientId);
+  if (!client) {
+    return res.status(404).json({ error: 'OAuth client was not found.' });
+  }
+
+  const redirectUri = params.get('redirect_uri');
+  if (!redirectUri) {
+    return res.status(400).json({ error: 'OAuth redirect URI is missing.' });
+  }
+
+  return res.json({
+    client,
+    scopes: (params.get('scope') ?? '').split(' ').filter(Boolean),
+    redirectUri,
+  });
+});
+
 /**
  * @swagger
  * /auth/demo-login:
@@ -173,9 +180,7 @@ router.get('/settings', async (req, res) => {
 // every 401, so cap how often the credential re-sync can fire.
 const DEMO_RESEED_COOLDOWN_MS = 5 * 60 * 1000;
 let lastDemoReseedAt = 0;
-// makeIpRateLimit is a hoisted function declaration defined further down, next
-// to the other limiters that use it.
-const demoLoginRateLimit = makeIpRateLimit(10, 60 * 1000);
+const demoLoginRateLimit = makeIpRateLimit('demo-login', 10, 60 * 1000);
 
 router.post('/demo-login', demoLoginRateLimit, async (req, res) => {
   if (!isDemoMode()) {
@@ -297,36 +302,16 @@ router.get('/web-login/register-passkey', (req, res) => {
   res.sendFile(path.join(__dirname, 'templates', 'passkey-register.html'));
 });
 
-// Per-IP rate limiter factory (sliding fixed window), mirroring mfaFactorsRateLimit.
-function makeIpRateLimit(max: number, windowMs: number) {
-  const hits = new Map<string, { start: number; count: number }>();
-  let lastSweepAt = 0;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (req: any, res: any, next: any) => {
-    const ip = getClientIp(req);
-    const now = Date.now();
-    if (hits.size > 0 && now - lastSweepAt >= windowMs) {
-      for (const [k, e] of hits) if (now - e.start >= windowMs) hits.delete(k);
-      lastSweepAt = now;
-    }
-    const entry = hits.get(ip);
-    if (!entry || now - entry.start >= windowMs) {
-      hits.set(ip, { start: now, count: 1 });
-      return next();
-    }
-    if (entry.count < max) {
-      entry.count++;
-      return next();
-    }
-    const retryAfter = Math.ceil((entry.start + windowMs - now) / 1000);
-    res.set('X-Retry-After', String(retryAfter));
-    return res
-      .status(429)
-      .json({ message: 'Too many requests. Please try again later.' });
-  };
-}
-const registerTicketRateLimit = makeIpRateLimit(10, 60 * 1000);
-const redeemTicketRateLimit = makeIpRateLimit(20, 60 * 1000);
+const registerTicketRateLimit = makeIpRateLimit(
+  'passkey-register-ticket',
+  10,
+  60 * 1000
+);
+const redeemTicketRateLimit = makeIpRateLimit(
+  'passkey-redeem-ticket',
+  20,
+  60 * 1000
+);
 
 /**
  * @swagger

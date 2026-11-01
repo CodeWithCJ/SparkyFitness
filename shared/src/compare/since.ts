@@ -12,7 +12,7 @@ import { weekStartOf } from '../utils/trainingConsistency.ts';
 import { valueAt, type DaySeries } from './analyze.ts';
 import { COMPARE_METRICS, type CompareMetricKey } from './metrics.ts';
 import {
-  cautiousEffectiveNForMean,
+  biasCorrectedEffectiveNForMean,
   isSignificant,
   mean,
   olsSlope,
@@ -203,8 +203,8 @@ export function analyzeSince(input: {
   const test = welch(
     since.values,
     before.values,
-    cautiousEffectiveNForMean(since.values, MAX_LAG),
-    cautiousEffectiveNForMean(before.values, MAX_LAG)
+    biasCorrectedEffectiveNForMean(since.values, MAX_LAG),
+    biasCorrectedEffectiveNForMean(before.values, MAX_LAG)
   );
   const result: CompareSinceResult = {
     status: 'ok',
@@ -309,7 +309,7 @@ function alreadyChanging(before: Stretch, diff: number): boolean {
   const residuals = before.values.map(
     (y, i) => y - intercept - fit.slope * (xs[i] ?? 0)
   );
-  const nEff = cautiousEffectiveNForMean(residuals, MAX_LAG);
+  const nEff = biasCorrectedEffectiveNForMean(residuals, MAX_LAG);
   const margin =
     tCritical95(Math.max(1, nEff - 2)) * fit.se * Math.sqrt(fit.n / nEff);
   const leavesOutZero = fit.slope - margin > 0 || fit.slope + margin < 0;

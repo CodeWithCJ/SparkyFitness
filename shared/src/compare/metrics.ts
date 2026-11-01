@@ -12,6 +12,8 @@ export interface CompareMetricDef {
   unit: string;
   missing: CompareMissingRule;
   weekly: CompareWeeklyRule;
+  /** False when since mode cannot give an honest answer for the metric (it drifts too slowly). */
+  since: boolean;
   /**
    * The value on a day is read over the 7 days ending on it (a trailing window), not from that
    * day alone, so a value above 0 does not mean the thing was done that day: a rolling habit has
@@ -50,7 +52,7 @@ export const COMPARE_METRIC_KEYS = [
 export type CompareMetricKey = (typeof COMPARE_METRIC_KEYS)[number];
 
 type Rules = Partial<
-  Pick<CompareMetricDef, 'kind' | 'missing' | 'weekly' | 'rolling'>
+  Pick<CompareMetricDef, 'kind' | 'missing' | 'weekly' | 'since' | 'rolling'>
 >;
 
 /** A continuous, plain, day-by-day metric averaged per week unless `rules` says otherwise. */
@@ -67,6 +69,7 @@ function metric(
     unit,
     missing: 'plain',
     weekly: 'mean',
+    since: true,
     rolling: false,
     ...rules,
   };
@@ -110,9 +113,19 @@ export const COMPARE_METRICS: Record<CompareMetricKey, CompareMetricDef> = {
   cardioMinutes: metric('cardioMinutes', 'training', 'min', EVENT),
   strengthVolume: metric('strengthVolume', 'training', 'kg', EVENT),
   trainingLoad: metric('trainingLoad', 'training', 'points', EVENT),
-  weightTrend: metric('weightTrend', 'body', 'kg'),
+  weightTrend: metric('weightTrend', 'body', 'kg', { since: false }),
   steps: metric('steps', 'body', 'steps'),
 };
+
+/** Whether a metric can be asked in a mode: week needs a weekly form, since needs the `since` flag. */
+export function offeredInMode(
+  key: CompareMetricKey,
+  mode: 'day' | 'week' | 'since'
+): boolean {
+  if (mode === 'week') return COMPARE_METRICS[key].weekly !== null;
+  if (mode === 'since') return COMPARE_METRICS[key].since;
+  return true;
+}
 
 /** Sleep metrics are dated by the day the person woke, so a sleep metric's day is the night before it. */
 export function isSleepMetric(key: CompareMetricKey): boolean {

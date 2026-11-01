@@ -10,40 +10,54 @@ import {
  * a pause) is said at once and drops what was waiting; the rest queue behind
  * the cue being spoken, so two splits close together are both heard.
  */
-const queue: string[] = [];
+interface Cue {
+  text: string;
+  language?: string;
+}
+const queue: Cue[] = [];
 let speaking = false;
 // Bumped when a cue interrupts: stopping the cue being said fires its callback
 // while the new one is already starting, and that must not run `next`.
 let generation = 0;
 
-function say(text: string): void {
+function say({ text, language }: Cue): void {
   const mine = generation;
   speaking = true;
-  speakRecordingCue(text, () => {
-    if (mine === generation) next();
-  });
+  speakRecordingCue(
+    text,
+    () => {
+      if (mine === generation) next();
+    },
+    language
+  );
 }
 
 function next(): void {
-  const text = queue.shift();
-  if (text === undefined) {
+  const cue = queue.shift();
+  if (cue === undefined) {
     speaking = false;
     endRecordingCues();
     return;
   }
-  say(text);
+  say(cue);
 }
 
-export function speakWatchCue(text: string, interrupt: boolean): void {
+/** `language` is the BCP 47 tag the cue is written in; empty means the app's. */
+export function speakWatchCue(
+  text: string,
+  interrupt: boolean,
+  language?: string
+): void {
   if (!text) return;
+  const cue = { text, language: language || undefined };
   if (!speaking) beginRecordingCues();
   if (interrupt) {
     queue.length = 0;
     generation += 1;
-    say(text);
+    say(cue);
     return;
   }
-  queue.push(text);
+  queue.push(cue);
   if (!speaking) next();
 }
 

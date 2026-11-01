@@ -21,6 +21,7 @@ import ImageLightbox from './ImageLightbox';
 import CompletionCheck from './CompletionCheck';
 import FormInput from './FormInput';
 import RestPeriodChip from './RestPeriodChip';
+import PlateBarGraphic from './PlateBarGraphic';
 import ActiveWorkoutSetRow, {
   type SetRowAccessoryHandle,
   type SetRowState,
@@ -65,6 +66,7 @@ import {
 import {
   NO_ADAPTIVE_ADJUSTMENT,
   isBodyweightModality,
+  usesBarbell,
   shouldSuggestVariation,
 } from '@workspace/shared';
 import { useBodyWeightKg } from '../hooks/useBodyWeightKg';
@@ -619,6 +621,26 @@ function ActiveWorkoutExerciseCard({
   // set this session earns a PR — the better of that and the stamped session
   // set. The server number stays historical (the stats query excludes this
   // session), so the stamped set is what surfaces the new record.
+  // The set the plates graphic shows: the active one, else the first working
+  // set, using the weight it would log (typed or assumed).
+  const plateEquipment = exercise.exercise_snapshot?.equipment ?? null;
+  const showPlates =
+    mode !== 'view' && !cardioForm && usesBarbell(plateEquipment);
+  const plateTargetKg = useMemo(() => {
+    if (!showPlates) return null;
+    const activeIndex = exercise.sets.findIndex(
+      (set) => String(set.id) === activeSetId
+    );
+    const index =
+      activeIndex >= 0
+        ? activeIndex
+        : exercise.sets.findIndex((set) => set.set_type !== 'warmup');
+    if (index < 0) return null;
+    const kg =
+      exercise.sets[index]?.weight ?? assumedSetValues?.[index]?.weight;
+    return kg != null && Number.isFinite(kg) && kg > 0 ? kg : null;
+  }, [showPlates, exercise.sets, activeSetId, assumedSetValues]);
+
   const stampedBest = useMemo(() => {
     if (!isLive || !prSetIds) return null;
     const bodyweight = isBodyweightModality(modality);
@@ -1385,6 +1407,7 @@ function ActiveWorkoutExerciseCard({
         )}
 
         {((showRestChip && !cardioForm) ||
+          showPlates ||
           bestDisplay != null ||
           caloriesField ||
           caloriesText != null ||
@@ -1501,6 +1524,13 @@ function ActiveWorkoutExerciseCard({
                   })}
                 </Text>
               </View>
+            )}
+            {showPlates && plateTargetKg != null && (
+              <PlateBarGraphic
+                targetWeight={storedWeightInUnit(plateTargetKg, weightUnit)}
+                weightUnit={weightUnit}
+                equipment={plateEquipment}
+              />
             )}
             {bestDisplay != null && (
               <View

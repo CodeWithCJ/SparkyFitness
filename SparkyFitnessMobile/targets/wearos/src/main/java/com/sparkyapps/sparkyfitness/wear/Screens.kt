@@ -231,7 +231,7 @@ fun GoalsSummaryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
   }
 }
 
-private fun nutrientColor(key: String): Color = when (key.lowercase()) {
+internal fun nutrientColor(key: String): Color = when (key.lowercase(Locale.US)) {
   "protein" -> SparkyColors.Cyan
   "carbs", "carbohydrates" -> SparkyColors.Amber
   "fat" -> SparkyColors.Rose
@@ -1517,5 +1517,118 @@ fun RoundStepperButton(label: String, onClick: () -> Unit) {
       fontWeight = FontWeight.Bold,
       color = Color.White
     )
+  }
+}
+
+@Composable
+fun SleepDetailPage(store: CheckInStore, onDismiss: () -> Unit) {
+  val sleep by store.sleep.collectAsState()
+  val model = remember(sleep) { TileModels.buildSleepTileModel(sleep) }
+  val listState = rememberScalingLazyListState()
+
+  ScalingLazyColumn(
+    state = listState,
+    autoCentering = null,
+    modifier = Modifier
+      .fillMaxSize()
+      .background(Color.Black)
+      .wearRotaryScroll(listState, true),
+    contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 28.dp, bottom = 32.dp),
+    horizontalAlignment = Alignment.CenterHorizontally
+  ) {
+    item {
+      Text(
+        text = "Sleep Health",
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = SparkyColors.Purple,
+        modifier = Modifier.padding(bottom = 6.dp)
+      )
+    }
+
+    if (!model.hasData) {
+      item {
+        EmptyStateCard("Open SparkyFitness on your phone to sync today's sleep data.")
+      }
+    } else {
+      item {
+        Column(
+          horizontalAlignment = Alignment.CenterHorizontally,
+          modifier = Modifier.padding(bottom = 8.dp)
+        ) {
+          Text(
+            text = model.durationText,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White
+          )
+          model.scoreText?.let { score ->
+            Text(
+              text = score,
+              fontSize = 12.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = SparkyColors.Purple
+            )
+          }
+          model.windowText?.let { window ->
+            Text(
+              text = window,
+              fontSize = 11.sp,
+              color = SparkyColors.Muted
+            )
+          }
+        }
+      }
+
+      if (model.stages.isNotEmpty()) {
+        items(model.stages, key = { it.label }) { stage ->
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(vertical = 2.dp)
+              .clip(RoundedCornerShape(10.dp))
+              .background(SparkyColors.CardBg)
+              .padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = stage.label,
+              fontSize = 11.sp,
+              fontWeight = FontWeight.SemiBold,
+              color = Color.White
+            )
+            Text(
+              text = stage.durationText,
+              fontSize = 11.sp,
+              fontWeight = FontWeight.Bold,
+              color = Color(stage.colorArgb)
+            )
+          }
+        }
+      }
+
+      model.biometricsText?.let { bio ->
+        item {
+          Spacer(Modifier.height(4.dp))
+          Text(
+            text = bio,
+            fontSize = 11.sp,
+            color = SparkyColors.Muted,
+            textAlign = TextAlign.Center
+          )
+        }
+      }
+    }
+
+    item {
+      Spacer(Modifier.height(8.dp))
+      SmallPillButton(
+        label = "Close",
+        color = SparkyColors.CardBg,
+        textColor = Color.White,
+        onClick = onDismiss
+      )
+    }
   }
 }

@@ -16,6 +16,9 @@ struct WatchIndoorAutoPause {
         switch kind {
         case .walk: return 10
         case .run: return 8
+        // A jump rope reads as steps on the pedometer, so stopping the rope
+        // stops the count and pauses it like a run.
+        case .jumpRope: return 8
         }
     }
 

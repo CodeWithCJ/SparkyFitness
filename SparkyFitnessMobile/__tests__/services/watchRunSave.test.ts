@@ -284,3 +284,38 @@ describe('cadence and stride from the phone', () => {
     expect(saved).toEqual({ entryId: 'e1', form });
   });
 });
+
+test('a jump rope files a Jump Rope entry with no distance', async () => {
+  jest
+    .mocked(resolveRecordingExercise)
+    .mockResolvedValue({ id: 'ex9', name: 'Jump Rope' } as never);
+  const jumpRope = {
+    ...outdoor,
+    kind: 'jumpRope' as const,
+    place: 'indoor' as const,
+    route: [],
+    distanceMeters: 0,
+    distanceSeries: [
+      [0, 0],
+      [10, 28],
+    ],
+    laps: [T0 + 300_000],
+    lapDistances: [900],
+  };
+  await saveWatchRun(jumpRope, 'km', undefined, jest.fn());
+
+  expect(resolveRecordingExercise).toHaveBeenCalledWith('jumpRope');
+  expect(createExerciseEntry).toHaveBeenCalledWith(
+    expect.objectContaining({
+      exercise_id: 'ex9',
+      distance: null,
+    })
+  );
+  expect(attachExerciseEntryGpsTrack).not.toHaveBeenCalled();
+  expect(attachExerciseEntryLaps).not.toHaveBeenCalled();
+  expect(attachExerciseEntryDistanceSeries).not.toHaveBeenCalled();
+  expect(attachExerciseEntryWatchTelemetry).toHaveBeenCalledWith(
+    'e1',
+    expect.objectContaining({ activeEnergyKcal: 210 })
+  );
+});

@@ -23,7 +23,7 @@ vi.mock('../models/calorieRuleHistoryRepository.js', () => ({
 }));
 vi.mock('../models/exerciseEntry.js');
 vi.mock('../models/genericHealthRepository.js', () => ({
-  getHealthConnectTotalCaloriesByDateRange: vi.fn().mockResolvedValue([]),
+  getDeviceTotalCaloriesByDateRange: vi.fn().mockResolvedValue([]),
 }));
 vi.mock('../services/bmrService.js');
 vi.mock('../services/AdaptiveTdeeService.js');
@@ -66,8 +66,11 @@ describe('percentage macro exercise earn-back', () => {
       calorieRuleHistoryRepository.getCalorieRuleHistory
     ).mockResolvedValue([]);
     vi.mocked(
-      weeklyGoalPlanRepository.getActiveWeeklyGoalPlan
-    ).mockResolvedValue(null);
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
+    ).mockResolvedValue([]);
+    vi.mocked(
+      weeklyGoalPlanRepository.getActiveWeeklyGoalPlansInRange
+    ).mockResolvedValue([]);
     vi.mocked(goalRepository.getGoalsInRange).mockResolvedValue([]);
     vi.mocked(goalRepository.getMostRecentGoalBeforeDate).mockResolvedValue({
       ...baseGoal,
@@ -198,6 +201,33 @@ describe('percentage macro exercise earn-back', () => {
     expectMacros((await goalsFor())[date], 2300);
   });
 
+  it('uses the device capture time when projecting exercise macro credit', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(`${date}T18:00:00Z`));
+    try {
+      vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
+        ...basePreferences,
+        calorie_goal_adjustment_mode: 'tdee',
+      });
+      vi.mocked(
+        genericHealthRepository.getDeviceTotalCaloriesByDateRange
+      ).mockResolvedValue([
+        {
+          entry_date: date,
+          source_provider: 'health_connect',
+          total_calories: 1500,
+          captured_at: `${date}T12:00:00Z`,
+        },
+      ]);
+
+      // At capture, 500 activity kcal make up 1000 projected kcal. The
+      // remaining projected calories are resting energy, not macro earn-back.
+      expectMacros((await goalsFor())[date], 3000);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("uses each diary day's recorded earn-back rules after today's rules change", async () => {
     vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
       ...basePreferences,
@@ -250,7 +280,7 @@ describe('percentage macro exercise earn-back', () => {
     ]);
     expectMacros((await goalsFor())[date], 2300);
     expect(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
     ).toHaveBeenCalledWith('user-1', 'user-1', date, date);
   });
 

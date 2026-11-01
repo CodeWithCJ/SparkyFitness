@@ -4,10 +4,17 @@
 
 ### Features
 
+- **`server.shutdownTimeoutSeconds`** — sets `SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS`, the most seconds a server pod takes to stop while running requests and jobs finish, and sets the server pods' `terminationGracePeriodSeconds` to that plus 5. Unset (default), nothing changes: the server stops within 15 s, inside Kubernetes' default 30 s.
 - **Scheduled jobs run on one replica when `server.replicas` > 1** — one replica is rendered as a separate `-jobs` Deployment (`replicas: 1`, `Recreate`) that runs the scheduled jobs; the other `-server` replicas set `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true`. Total pod count still equals `server.replicas`, and all pods serve traffic. Default is unchanged for `replicas: 1`. Scale through `server.replicas` rather than `kubectl scale`. Requires a server image that supports `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS`.
 - **Server Service, NetworkPolicies and PodDisruptionBudget now select on `sparkyfitness.io/server: "true"`** instead of `app.kubernetes.io/component: server`, so they also cover the `-jobs` pod. The label is added to all server pods. Upgrading from an earlier chart briefly leaves the server Service without endpoints when `server.strategy` is `RollingUpdate`, since existing pods lack the label until they are replaced; the default `Recreate` is unaffected.
 - **`config.disablePasskeyLogin`** — sets `SPARKY_FITNESS_DISABLE_PASSKEY_LOGIN` to turn off passkey sign-in and new passkey registration (default `false`).
 - **`config.forcePasskeyLogin`** — sets `SPARKY_FITNESS_FORCE_PASSKEY_LOGIN`, a fail-safe that keeps passkey login on even when it is turned off in the admin settings or by `config.disablePasskeyLogin` (default `false`).
+- **`server.persistence.uploads.existingClaim` / `server.persistence.backup.existingClaim`** — mount a PersistentVolumeClaim made outside the chart (restored from a snapshot, moved from another install, shared storage) instead of the chart creating one, like `databaseBackup.persistence.existingClaim`. Default empty, so nothing changes unless set.
+
+### Bug Fixes
+
+- **Server pods get a `startupProbe`** (`server.startupProbe`, up to 5 minutes). The server only answers `/api/health` after migrations and startup finish, so a long upgrade was restarted by the liveness probe after about 80 s, mid-migration, and kept crash-looping. Set `server.startupProbe: null` to drop it.
+- **External database credentials set in values now reach the server.** With `postgresql.enabled=false` and `externalDatabase.auth.username`/`password` (no `existingSecret` or External Secrets), the server pods referenced a `<fullname>-postgres` Secret the chart never created, so they could not start. The chart now creates it (under the `existingSecretKeys` key names the server reads), and fails the render when either value is missing. If you created that Secret yourself to get around this, set `externalDatabase.auth.existingSecret` to its name before upgrading, or Helm refuses to take it over.
 
 ## 0.3.0 — 2026-05-08
 

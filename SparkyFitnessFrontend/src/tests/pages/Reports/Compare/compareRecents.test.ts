@@ -40,6 +40,20 @@ describe('compareRecents', () => {
     expect(loadRecentQuestions('user-1')).toEqual([]);
   });
 
+  test('a stored weight-trend since recent is dropped', () => {
+    window.localStorage.setItem(
+      KEY,
+      JSON.stringify([
+        { a: 'meditated', b: 'weightTrend', choice: 'sinceHabit' },
+        { a: 'weightTrend', b: 'mood', choice: 'sinceHabit' },
+        { a: 'meditated', b: 'weightTrend', choice: 'sameDay' },
+      ])
+    );
+    expect(loadRecentQuestions('user-1')).toEqual([
+      { a: 'meditated', b: 'weightTrend', choice: 'sameDay' },
+    ]);
+  });
+
   test('saveRecentQuestion keeps the newest five without duplicates', () => {
     const keys = [
       'energy',

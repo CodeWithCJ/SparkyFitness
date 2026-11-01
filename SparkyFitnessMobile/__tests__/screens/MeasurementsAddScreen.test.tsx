@@ -1,10 +1,12 @@
 import React from 'react';
 import { act, fireEvent, render } from '@testing-library/react-native';
-import { Alert } from 'react-native';
+import { Alert, Platform, type AlertButton } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
+  expectActionPresent,
+  findHeaderItem,
   pressAction,
   skipDuplicatePressWindow,
 } from './helpers/nativeHeaderTestUtils';
@@ -29,7 +31,10 @@ import type {
   CustomCategory,
   CustomMeasurementEntry,
 } from '../../src/types/customMeasurements';
-import type { RootStackScreenProps } from '../../src/types/navigation';
+import type {
+  GuidedCheckInParams,
+  RootStackScreenProps,
+} from '../../src/types/navigation';
 
 type ScreenProps = RootStackScreenProps<'MeasurementsAdd'>;
 
@@ -56,20 +61,6 @@ jest.mock('../../src/hooks/useCustomMeasurements', () => ({
   useLatestManualCustomEntriesOnOrBefore: jest.fn(),
   useSaveCustomMeasurement: jest.fn(),
   useDeleteCustomMeasurement: jest.fn(),
-}));
-
-jest.mock('../../src/hooks/useMindfulness', () => ({
-  useMindfulnessDay: () => ({
-    sessions: [],
-    totalMindfulMinutes: 0,
-    isLoading: false,
-    refetch: jest.fn(),
-  }),
-  useMindfulnessMutations: () => ({
-    saveSession: jest.fn(),
-    updateSession: jest.fn(),
-    deleteSession: jest.fn(),
-  }),
 }));
 
 jest.mock('../../src/components/Icon', () => {
@@ -100,6 +91,8 @@ jest.mock('../../src/components/CalendarSheet', () => {
 const mockNavigation = {
   setOptions: jest.fn(),
   goBack: jest.fn(),
+  replace: jest.fn(),
+  isFocused: jest.fn(() => true),
   navigate: jest.fn(),
   dispatch: jest.fn(),
 } as unknown as ScreenProps['navigation'];
@@ -2187,5 +2180,576 @@ describe('MeasurementsAddScreen — body fat calculator', () => {
     expect(Toast.show).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'error' })
     );
+  });
+});
+
+// AddSheet → Check-In chains MoodLog → MeasurementsAdd → ProgressPhotos for
+// one day. This screen is step 2: it keeps the flow's day and hands over to
+// the photos with navigation.replace instead of going back.
+describe('MeasurementsAddScreen — guided check-in', () => {
+  const CONTINUE_LABEL = 'Save & continue';
+
+  const renderInFlow = (guidedCheckIn: GuidedCheckInParams = {}) => {
+    const route: ScreenProps['route'] = {
+      key: 'MeasurementsAdd-key',
+      name: 'MeasurementsAdd',
+      params: { date: ENTRY_DATE, guidedCheckIn },
+    };
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <MeasurementsAddScreen navigation={mockNavigation} route={route} />
+        </SafeAreaProvider>
+      </QueryClientProvider>
+    );
+  };
+
+  type FlowScreen = ReturnType<typeof renderInFlow>;
+
+  let hasPressedContinue = false;
+
+  /** Presses the step's primary action and flushes the awaited save. */
+  const pressContinue = async (screen: FlowScreen) => {
+    // A retry is a separate deliberate press, seconds after the first.
+    if (hasPressedContinue) skipDuplicatePressWindow();
+    hasPressedContinue = true;
+    pressAction(screen, mockNavigation, CONTINUE_LABEL);
+    await act(async () => {});
+  };
+
+  const skipButton = (screen: FlowScreen) =>
+    screen.getByRole('button', { name: 'Skip this step' });
+  const backButton = (screen: FlowScreen) =>
+    screen.getByRole('button', { name: 'Go back to the previous step' });
+
+  /** What step 2 hands to step 3 for the flow's day. */
+  const toPhotos = (flags: { offerReminders: boolean; saved: boolean }) =>
+    ['ProgressPhotos', { date: ENTRY_DATE, guidedCheckIn: flags }] as const;
+
+  /** The handler of a button in the most recent dialog. */
+  const dialogButton = (style: AlertButton['style']) => {
+    const buttons = jest.mocked(Alert.alert).mock.calls.at(-1)?.[2] ?? [];
+    const onPress = buttons.find((button) => button.style === style)?.onPress;
+    if (!onPress) throw new Error(`no ${style} button in the dialog`);
+    return onPress;
+  };
+
+  const customMutations = () => ({
+    save: mockUseSaveCustomMeasurement.mock.results.at(-1)?.value as {
+      mutateAsync: jest.Mock;
+    },
+    remove: mockUseDeleteCustomMeasurement.mock.results.at(-1)?.value as {
+      mutateAsync: jest.Mock;
+    },
+  });
+
+  const expectNothingWritten = () => {
+    const { save, remove } = customMutations();
+    expect(mutateAsync).not.toHaveBeenCalled();
+    expect(save.mutateAsync).not.toHaveBeenCalled();
+    expect(remove.mutateAsync).not.toHaveBeenCalled();
+  };
+
+  const setPending = (
+    mutation: 'upsert' | 'saveCustom' | 'deleteCustom',
+    isPending: boolean
+  ) => {
+    const value = { mutate: jest.fn(), mutateAsync: jest.fn(), isPending };
+    if (mutation === 'upsert') {
+      mockUseUpsertCheckIn.mockReturnValue(
+        value as unknown as ReturnType<typeof useUpsertCheckIn>
+      );
+    } else if (mutation === 'saveCustom') {
+      mockUseSaveCustomMeasurement.mockReturnValue(
+        value as unknown as ReturnType<typeof useSaveCustomMeasurement>
+      );
+    } else {
+      mockUseDeleteCustomMeasurement.mockReturnValue(
+        value as unknown as ReturnType<typeof useDeleteCustomMeasurement>
+      );
+    }
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    hasPressedContinue = false;
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    jest.mocked(mockNavigation.isFocused).mockReturnValue(true);
+    mutateAsync.mockResolvedValue(undefined);
+    setMeasurements({});
+    setLatestMeasurements(null);
+    setLatestCustomEntries([]);
+    setProfile({});
+    setPreferences({
+      default_weight_unit: 'kg',
+      default_measurement_unit: 'cm',
+    });
+    setCustomCategories([]);
+    setCustomEntries([]);
+    mockUseUpsertCheckIn.mockReturnValue({
+      mutate,
+      mutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUpsertCheckIn>);
+    mockUseSaveCustomMeasurement.mockReturnValue({
+      mutate: jest.fn(),
+      mutateAsync: jest.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof useSaveCustomMeasurement>);
+    mockUseDeleteCustomMeasurement.mockReturnValue({
+      mutate: jest.fn(),
+      mutateAsync: jest.fn().mockResolvedValue(undefined),
+      isPending: false,
+    } as unknown as ReturnType<typeof useDeleteCustomMeasurement>);
+  });
+
+  test('shows step 2 of 3 with Skip, a Save & continue action and a fixed day', () => {
+    const screen = renderInFlow();
+
+    expect(screen.getByText('Check-in: Step 2 of 3')).toBeTruthy();
+    expect(skipButton(screen)).toBeEnabled();
+    expectActionPresent(screen, mockNavigation, CONTINUE_LABEL);
+    expect(findHeaderItem(mockNavigation, SAVE_LABEL)).toBeUndefined();
+    expect(screen.queryByText(SAVE_LABEL)).toBeNull();
+
+    // Every step works on the day the check-in started on: the date row only
+    // names it, and there is no calendar to change it with.
+    const dateRow = screen.getByTestId('measurements-date-row');
+    // Read as one stop, as the pressable row is.
+    expect(dateRow.props.accessible).toBe(true);
+    expect(screen.getByText('Date')).toBeTruthy();
+    expect(screen.queryByTestId('icon-chevron-down')).toBeNull();
+    expect(screen.queryByTestId('calendar-sheet')).toBeNull();
+  });
+
+  test('saves a typed weight, then replaces itself with the photos step without a toast', async () => {
+    const screen = renderInFlow();
+
+    fireEvent.changeText(getInput(screen, 'weight'), '82.5');
+    await pressContinue(screen);
+
+    expect(savedPayload()).toEqual({ entryDate: ENTRY_DATE, weight: 82.5 });
+    expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.replace).toHaveBeenCalledWith(
+      ...toPhotos({ offerReminders: false, saved: true })
+    );
+    // The hand-over waits for the write.
+    expect(mutateAsync.mock.invocationCallOrder[0]).toBeLessThan(
+      jest.mocked(mockNavigation.replace).mock.invocationCallOrder[0]
+    );
+    expect(Toast.show).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  test('the footer Save on the screen-owned header reads Save & continue and hands over', async () => {
+    // Android (and iOS with Liquid Glass off) saves from the sticky footer.
+    const platform = jest.replaceProperty(Platform, 'OS', 'android');
+    try {
+      const screen = renderInFlow();
+
+      expect(mockNavigation.setOptions).not.toHaveBeenCalled();
+      expect(screen.queryByText(SAVE_LABEL)).toBeNull();
+      fireEvent.changeText(getInput(screen, 'weight'), '82.5');
+      await act(async () => {
+        fireEvent.press(screen.getByRole('button', { name: CONTINUE_LABEL }));
+      });
+
+      expect(savedPayload()).toEqual({ entryDate: ENTRY_DATE, weight: 82.5 });
+      expect(mockNavigation.replace).toHaveBeenCalledWith(
+        ...toPhotos({ offerReminders: false, saved: true })
+      );
+    } finally {
+      platform.restore();
+    }
+  });
+
+  test('keeps the flags step 1 handed over when this step saves too', async () => {
+    const screen = renderInFlow({ offerReminders: true, saved: true });
+
+    fireEvent.changeText(getInput(screen, 'steps'), '7000');
+    await pressContinue(screen);
+
+    expect(mockNavigation.replace).toHaveBeenCalledWith(
+      ...toPhotos({ offerReminders: true, saved: true })
+    );
+  });
+
+  test('moves on without writing when a typed value was cleared again', async () => {
+    const screen = renderInFlow();
+
+    // The field stays marked as edited, but there is nothing left to send.
+    fireEvent.changeText(getInput(screen, 'weight'), '8');
+    fireEvent.changeText(getInput(screen, 'weight'), '');
+    await pressContinue(screen);
+
+    expectNothingWritten();
+    expect(Toast.show).not.toHaveBeenCalled();
+    expect(mockNavigation.replace).toHaveBeenCalledWith(
+      ...toPhotos({ offerReminders: false, saved: false })
+    );
+  });
+
+  test("on a prefilled day, a value typed and cleared again neither re-sends the day's values nor counts as saved", async () => {
+    setMeasurements({ weight: 80, steps: 7000 });
+    const screen = renderInFlow();
+
+    fireEvent.changeText(getInput(screen, 'waist'), '8');
+    fireEvent.changeText(getInput(screen, 'waist'), '');
+    await pressContinue(screen);
+
+    expectNothingWritten();
+    expect(Toast.show).not.toHaveBeenCalled();
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(mockNavigation.replace).toHaveBeenCalledWith(
+      ...toPhotos({ offerReminders: false, saved: false })
+    );
+  });
+
+  test("Skip does not ask when every edit is back to the day's value", () => {
+    setMeasurements({ weight: 80 });
+    setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
+    setCustomEntries([
+      customEntry({ id: 'e1', category_id: 'c1', value: '5' }),
+    ]);
+    const screen = renderInFlow();
+
+    fireEvent.changeText(getInput(screen, 'weight'), '81');
+    fireEvent.changeText(getInput(screen, 'weight'), '80');
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '6');
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '5');
+    fireEvent.press(skipButton(screen));
+
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expectNothingWritten();
+    expect(mockNavigation.replace).toHaveBeenCalledWith(
+      ...toPhotos({ offerReminders: false, saved: false })
+    );
+  });
+
+  test('a changed prefilled value still saves the day and hands over as saved', async () => {
+    setMeasurements({ weight: 80 });
+    const screen = renderInFlow();
+
+    fireEvent.changeText(getInput(screen, 'weight'), '79.5');
+    await pressContinue(screen);
+
+    expect(savedPayload()).toEqual({ entryDate: ENTRY_DATE, weight: 79.5 });
+    expect(mockNavigation.replace).toHaveBeenCalledWith(
+      ...toPhotos({ offerReminders: false, saved: true })
+    );
+  });
+
+  test('a second press after the hand-over neither saves nor moves again', async () => {
+    const screen = renderInFlow();
+
+    fireEvent.changeText(getInput(screen, 'weight'), '82.5');
+    await pressContinue(screen);
+    await pressContinue(screen);
+    fireEvent.press(skipButton(screen));
+
+    expect(mutateAsync).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  test('a save that resolves after the step lost focus does not move the stack', async () => {
+    let resolveSave: () => void = () => {};
+    mutateAsync.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSave = resolve;
+        })
+    );
+    const screen = renderInFlow();
+
+    fireEvent.changeText(getInput(screen, 'weight'), '82.5');
+    await pressContinue(screen);
+    expect(mutateAsync).toHaveBeenCalledTimes(1);
+
+    // The user closed the step while the write was in flight.
+    jest.mocked(mockNavigation.isFocused).mockReturnValue(false);
+    await act(async () => {
+      resolveSave();
+    });
+
+    expect(mockNavigation.replace).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    expect(Toast.show).not.toHaveBeenCalled();
+  });
+
+  test('moves on from an untouched empty form without saving or a Nothing to save toast', async () => {
+    const screen = renderInFlow();
+
+    await pressContinue(screen);
+
+    expectNothingWritten();
+    expect(Toast.show).not.toHaveBeenCalled();
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.replace).toHaveBeenCalledWith(
+      ...toPhotos({ offerReminders: false, saved: false })
+    );
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+  });
+
+  test("moves on from an untouched prefilled day without re-sending the day's values", async () => {
+    setMeasurements({ weight: 80, steps: 7000 });
+    setCustomCategories([customCategory({ id: 'c1' })]);
+    setCustomEntries([customEntry({ category_id: 'c1', value: '5' })]);
+    const screen = renderInFlow({ offerReminders: true });
+
+    expect(screen.getByDisplayValue('80')).toBeTruthy();
+    expect(screen.getByTestId('custom-input-c1').props.value).toBe('5');
+    await pressContinue(screen);
+
+    expectNothingWritten();
+    expect(Toast.show).not.toHaveBeenCalled();
+    expect(mockNavigation.replace).toHaveBeenCalledWith(
+      ...toPhotos({ offerReminders: true, saved: false })
+    );
+  });
+
+  test('stays on the step after a partial failure and moves on once a retry saves', async () => {
+    setCustomCategories([customCategory({ id: 'c1' })]);
+    mutateAsync.mockRejectedValueOnce(new Error('boom'));
+    const screen = renderInFlow();
+
+    fireEvent.changeText(screen.getByTestId('custom-input-c1'), '10');
+    fireEvent.changeText(getInput(screen, 'weight'), '80');
+    await pressContinue(screen);
+
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        text1: 'Some changes may not have been saved.',
+      })
+    );
+    expect(mockNavigation.replace).not.toHaveBeenCalled();
+    expect(mockNavigation.goBack).not.toHaveBeenCalled();
+    expect(screen.getByText('Check-in: Step 2 of 3')).toBeTruthy();
+    expect(getInput(screen, 'weight').props.value).toBe('80');
+
+    await pressContinue(screen);
+
+    expect(mutateAsync).toHaveBeenCalledTimes(2);
+    // The custom value that went through is not written twice.
+    expect(customMutations().save.mutateAsync).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.replace).toHaveBeenCalledWith(
+      ...toPhotos({ offerReminders: false, saved: true })
+    );
+  });
+
+  describe('after a partial save', () => {
+    beforeEach(() => {
+      setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
+      setCustomEntries([
+        customEntry({ id: 'e1', category_id: 'c1', value: '5' }),
+      ]);
+      setMeasurements({ weight: 80 });
+      mutateAsync.mockRejectedValueOnce(new Error('boom'));
+    });
+
+    /** The custom value goes through, the weight's upsert fails. */
+    const saveHalf = async (screen: FlowScreen) => {
+      fireEvent.changeText(screen.getByTestId('custom-input-c1'), '6');
+      fireEvent.changeText(getInput(screen, 'weight'), '81');
+      await pressContinue(screen);
+      expect(customMutations().save.mutateAsync).toHaveBeenCalledTimes(1);
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+    };
+
+    test('moving on with nothing left to send still counts the step as saved', async () => {
+      const screen = renderInFlow();
+      await saveHalf(screen);
+
+      // The refetch brings back the value that went through, and the user
+      // keeps the day's old weight after all.
+      setCustomEntries([
+        customEntry({ id: 'e1', category_id: 'c1', value: '6' }),
+      ]);
+      fireEvent.changeText(getInput(screen, 'weight'), '80');
+      await pressContinue(screen);
+
+      expect(mutateAsync).toHaveBeenCalledTimes(1);
+      expect(mockNavigation.replace).toHaveBeenCalledWith(
+        ...toPhotos({ offerReminders: false, saved: true })
+      );
+    });
+
+    test('Skip still counts the step as saved', async () => {
+      const screen = renderInFlow();
+      await saveHalf(screen);
+
+      fireEvent.press(skipButton(screen));
+      act(() => dialogButton('destructive')());
+
+      expect(mockNavigation.replace).toHaveBeenCalledWith(
+        ...toPhotos({ offerReminders: false, saved: true })
+      );
+    });
+
+    test('Back still counts the step as saved', async () => {
+      const screen = renderInFlow();
+      await saveHalf(screen);
+
+      fireEvent.press(backButton(screen));
+      act(() => dialogButton('destructive')());
+
+      expect(mockNavigation.replace).toHaveBeenCalledWith('MoodLog', {
+        date: ENTRY_DATE,
+        guidedCheckIn: { offerReminders: false, saved: true },
+      });
+    });
+  });
+
+  test('Skip on an untouched form moves on without asking or writing', () => {
+    setMeasurements({ weight: 80 });
+    const screen = renderInFlow();
+
+    fireEvent.press(skipButton(screen));
+
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expectNothingWritten();
+    expect(mockNavigation.replace).toHaveBeenCalledWith(
+      ...toPhotos({ offerReminders: false, saved: false })
+    );
+  });
+
+  test.each([
+    [
+      'a typed weight',
+      (screen: FlowScreen) =>
+        fireEvent.changeText(getInput(screen, 'weight'), '82.5'),
+    ],
+    [
+      'a typed custom value',
+      (screen: FlowScreen) =>
+        fireEvent.changeText(screen.getByTestId('custom-input-c1'), '10'),
+    ],
+    [
+      'a deleted custom entry',
+      (screen: FlowScreen) =>
+        fireEvent.press(screen.getByTestId('delete-custom-entry-e1')),
+    ],
+  ])(
+    'Skip after %s asks first, and the destructive Skip moves on without writing',
+    (_edit, makeEdit) => {
+      setCustomCategories([customCategory({ id: 'c1', frequency: 'Daily' })]);
+      setCustomEntries([
+        customEntry({ id: 'e1', category_id: 'c1', value: '5' }),
+      ]);
+      const screen = renderInFlow({ saved: true });
+
+      makeEdit(screen);
+      fireEvent.press(skipButton(screen));
+
+      expect(Alert.alert).toHaveBeenCalledTimes(1);
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Skip this step?',
+        "Your changes on this step won't be saved.",
+        expect.any(Array),
+        expect.objectContaining({ cancelable: true })
+      );
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+
+      // Cancel keeps the user on the step with the edit.
+      act(() => dialogButton('cancel')());
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+
+      fireEvent.press(skipButton(screen));
+      expect(Alert.alert).toHaveBeenCalledTimes(2);
+      act(() => dialogButton('destructive')());
+
+      expectNothingWritten();
+      expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
+      // Skipping this step keeps what step 1 saved.
+      expect(mockNavigation.replace).toHaveBeenCalledWith(
+        ...toPhotos({ offerReminders: false, saved: true })
+      );
+    }
+  );
+
+  test.each(['upsert', 'saveCustom', 'deleteCustom'] as const)(
+    'Skip and Back are disabled while the %s mutation is pending',
+    (mutation) => {
+      setPending(mutation, true);
+      const screen = renderInFlow();
+
+      expect(skipButton(screen)).toBeDisabled();
+      expect(backButton(screen)).toBeDisabled();
+      fireEvent.press(skipButton(screen));
+      fireEvent.press(backButton(screen));
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+    }
+  );
+
+  test('Back reopens step 1 with every flag, the check-in it created included', () => {
+    const flags = {
+      offerReminders: true,
+      saved: true,
+      moodCheckin: { id: 'checkin-1', date: ENTRY_DATE },
+    };
+    setMeasurements({ weight: 80 });
+    const screen = renderInFlow(flags);
+
+    fireEvent.press(backButton(screen));
+
+    expect(Alert.alert).not.toHaveBeenCalled();
+    expectNothingWritten();
+    expect(mockNavigation.replace).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.replace).toHaveBeenCalledWith('MoodLog', {
+      date: ENTRY_DATE,
+      guidedCheckIn: flags,
+    });
+  });
+
+  test('Back asks first when the form differs from the day, and Cancel stays', () => {
+    const screen = renderInFlow();
+
+    fireEvent.changeText(getInput(screen, 'weight'), '82.5');
+    fireEvent.press(backButton(screen));
+
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Go back a step?',
+      "Your changes on this step won't be saved.",
+      expect.any(Array),
+      expect.objectContaining({ cancelable: true })
+    );
+    act(() => dialogButton('cancel')());
+    expect(mockNavigation.replace).not.toHaveBeenCalled();
+
+    fireEvent.press(backButton(screen));
+    act(() => dialogButton('destructive')());
+
+    expectNothingWritten();
+    expect(mockNavigation.replace).toHaveBeenCalledWith('MoodLog', {
+      date: ENTRY_DATE,
+      guidedCheckIn: { offerReminders: false, saved: false },
+    });
+  });
+
+  test('out of the flow, a save still shows the Saved toast and goes back', async () => {
+    const screen = renderScreen();
+
+    expect(screen.queryByText(/Check-in: Step/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Skip this step' })).toBeNull();
+    expect(screen.getByTestId('calendar-sheet')).toBeTruthy();
+    // Mindfulness is logged from its own Add menu row and Dashboard card, so
+    // it is not offered among the measurements.
+    expect(screen.queryByLabelText('Open mindfulness details')).toBeNull();
+    expect(screen.queryByText('Mindfulness')).toBeNull();
+
+    fireEvent.changeText(getInput(screen, 'weight'), '82.5');
+    await pressSave(screen);
+
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success', text1: 'Saved' })
+    );
+    expect(mockNavigation.goBack).toHaveBeenCalledTimes(1);
+    expect(mockNavigation.replace).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-const uuid = z.string().uuid();
+// No published regex: these schemas are also sent as chat tool parameters,
+// where Zod's long UUID pattern costs tokens on every request.
+const uuid = z.string().uuid().meta({ pattern: undefined });
 const text = z.string().trim().min(1).max(2000);
 export const foodAssistantTaskStatusSchema = z.enum([
   'draft',

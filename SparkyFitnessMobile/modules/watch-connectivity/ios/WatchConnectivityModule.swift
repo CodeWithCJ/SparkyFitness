@@ -377,6 +377,7 @@ public class WatchConnectivityModule: Module {
                     "medicationId": payload["medicationId"] as? String ?? "",
                     "scheduleId": payload["scheduleId"] as? String ?? "",
                     "taken": payload["taken"] as? Bool ?? true,
+                    "skipped": payload["skipped"] as? Bool ?? false,
                 ])
             }
             self.delegateHandler.onSetCompleted = { [weak self] payload in
@@ -508,7 +509,7 @@ public class WatchConnectivityModule: Module {
                     "clientId": payload["clientId"] as? String ?? "",
                     "action": payload["action"] as? String ?? "",
                 ]
-                for key in ["exerciseEntryId", "setId", "exerciseId", "setType"] {
+                for key in ["exerciseEntryId", "anchorEntryId", "setId", "exerciseId", "setType"] {
                     if let value = payload[key] as? String { event[key] = value }
                 }
                 self?.sendEvent("onWorkoutEdit", event)
@@ -570,6 +571,7 @@ public class WatchConnectivityModule: Module {
                     "id": payload["id"] as? String ?? "",
                     "text": payload["text"] as? String ?? "",
                     "interrupt": payload["interrupt"] as? Bool ?? false,
+                    "language": payload["language"] as? String ?? "",
                 ])
             }
             self.delegateHandler.onRunFinished = { [weak self] payload in

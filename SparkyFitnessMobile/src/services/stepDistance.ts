@@ -8,11 +8,11 @@ import {
   isStepActivity,
   MIN_CALIBRATION_METERS,
 } from '../utils/stride';
-import type { RecordingActivity } from '../utils/gpsRecording';
+import type { DiaryActivity } from '../utils/gpsRecording';
 
 /** What a recording needs to turn steps into distance. */
 export interface StepWindow {
-  activity: RecordingActivity;
+  activity: DiaryActivity;
   startedAt: number;
   finishedAt: number;
   /** Time on the clock, with pauses removed. */
@@ -86,7 +86,7 @@ export async function estimateIndoorDistance(
  * took to cover it.
  */
 export async function learnFromIndoorEntry(
-  activity: RecordingActivity,
+  activity: DiaryActivity,
   estimate: IndoorDistanceEstimate | null,
   enteredKm: number | null
 ): Promise<void> {

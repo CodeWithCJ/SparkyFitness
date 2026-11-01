@@ -112,6 +112,21 @@ describe('resolveRecordingExercise', () => {
     expect(mockedCreateExercise).not.toHaveBeenCalled();
   });
 
+  it('ignores an existing jump rope saved with distance and creates a duration one', async () => {
+    mockedSearch.mockResolvedValue([
+      exercise({ id: 'old', name: 'Jump Rope', modality: 'duration_distance' }),
+    ]);
+    mockedCreateExercise.mockResolvedValue(
+      exercise({ id: 'new', name: 'Jump Rope', modality: 'duration' })
+    );
+
+    await resolveRecordingExercise('jumpRope');
+
+    expect(mockedCreateExercise).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Jump Rope', modality: 'duration' })
+    );
+  });
+
   it('creates a cardio exercise when the library has none', async () => {
     mockedSearch.mockResolvedValue([]);
     mockedCreateExercise.mockResolvedValue(

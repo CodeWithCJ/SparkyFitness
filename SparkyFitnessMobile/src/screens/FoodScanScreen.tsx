@@ -21,7 +21,8 @@ import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import SegmentedControl from '../components/SegmentedControl';
 import type { RootStackScreenProps } from '../types/navigation';
-import type { FoodInfoItem } from '../types/foodInfo';
+import { barcodeResultToFoodInfo } from '../utils/barcodeFoods';
+import { getActiveServerConfig } from '../services/storage';
 import { useCSSVariable } from 'uniwind';
 import {
   CameraView,
@@ -33,7 +34,6 @@ import {
   lookupBarcodeV2,
   scanNutritionLabel,
 } from '../services/api/externalFoodSearchApi';
-import { selectDisplayVariant } from '../utils/foodDetails';
 import { getApiErrorMessage } from '../services/api/errors';
 import { TimeoutError } from '../utils/concurrency';
 import { fireSuccessHaptic } from '../services/haptics';
@@ -236,141 +236,19 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
     setNotFoundBarcode(null);
     setLookupError(null);
     try {
-      const result = await lookupBarcodeV2(barcode, providerId);
+      const [account, result] = await Promise.all([
+        getActiveServerConfig(),
+        lookupBarcodeV2(barcode, providerId),
+      ]);
+      const accountId = account?.id;
+      const currentAccountId = (await getActiveServerConfig())?.id;
+      if (!labelScanActive.current || accountId !== currentAccountId) return;
 
       if (!result.food) {
         setNotFoundBarcode(barcode);
-      } else if (result.source === 'local') {
-        if (shouldFireSuccessHaptic) {
-          fireSuccessHaptic();
-        }
-        const defaultVariant = result.food.default_variant;
-        const item: FoodInfoItem = {
-          id: result.food.id!,
-          name: result.food.name,
-          brand: result.food.brand,
-          barcode: result.food.barcode ?? barcode,
-          provider_type: result.food.provider_type ?? undefined,
-          provider_external_id: result.food.provider_external_id ?? undefined,
-          is_custom: result.food.is_custom,
-          servingSize: defaultVariant.serving_size,
-          servingUnit: defaultVariant.serving_unit,
-          calories: defaultVariant.calories,
-          protein: defaultVariant.protein,
-          carbs: defaultVariant.carbs,
-          fat: defaultVariant.fat,
-          fiber: defaultVariant.dietary_fiber,
-          saturatedFat: defaultVariant.saturated_fat,
-          sodium: defaultVariant.sodium,
-          sugars: defaultVariant.sugars,
-          transFat: defaultVariant.trans_fat,
-          potassium: defaultVariant.potassium,
-          calcium: defaultVariant.calcium,
-          iron: defaultVariant.iron,
-          caffeineMg: defaultVariant.caffeine_mg,
-          waterMl: defaultVariant.water_ml,
-          alcoholG: defaultVariant.alcohol_g,
-          cholesterol: defaultVariant.cholesterol,
-          vitaminA: defaultVariant.vitamin_a,
-          vitaminC: defaultVariant.vitamin_c,
-          allergens: defaultVariant.allergens ?? null,
-          traces: defaultVariant.traces ?? null,
-          variantId: defaultVariant.id,
-          source: 'local',
-          provider_verified: result.food.provider_verified,
-          // Carry the scanned product's photo through to the add screen, which
-          // passes it to the create payload. Omitting it here is why a scanned
-          // barcode would save a food with no picture.
-          images: result.food.images ?? null,
-          image_url: result.food.image_url ?? null,
-          image_source_url: result.food.image_source_url ?? null,
-          originalItem: result.food,
-        };
-        navigation.replace('FoodEntryAdd', {
-          item,
-          date,
-          pickerMode: selectionPickerMode,
-          returnDepth,
-          mealTypeId,
-          mealPlanTarget,
-        });
       } else {
-        if (shouldFireSuccessHaptic) {
-          fireSuccessHaptic();
-        }
-        const dv = result.food.default_variant;
-        const { displayVariant, orderedVariants } = selectDisplayVariant(
-          dv,
-          result.food.variants
-        );
-        const item: FoodInfoItem = {
-          id: result.food.provider_external_id ?? result.food.id ?? '',
-          name: result.food.name,
-          brand: result.food.brand,
-          barcode: result.food.barcode ?? barcode,
-          provider_type: result.food.provider_type ?? undefined,
-          provider_external_id: result.food.provider_external_id ?? undefined,
-          is_custom: result.food.is_custom,
-          servingSize: displayVariant.serving_size,
-          servingUnit: displayVariant.serving_unit,
-          servingDescription:
-            displayVariant.serving_description ??
-            `${displayVariant.serving_size} ${displayVariant.serving_unit}`,
-          calories: displayVariant.calories,
-          protein: displayVariant.protein,
-          carbs: displayVariant.carbs,
-          fat: displayVariant.fat,
-          fiber: displayVariant.dietary_fiber,
-          saturatedFat: displayVariant.saturated_fat,
-          sodium: displayVariant.sodium,
-          sugars: displayVariant.sugars,
-          transFat: displayVariant.trans_fat,
-          potassium: displayVariant.potassium,
-          calcium: displayVariant.calcium,
-          iron: displayVariant.iron,
-          caffeineMg: displayVariant.caffeine_mg,
-          waterMl: displayVariant.water_ml,
-          alcoholG: displayVariant.alcohol_g,
-          cholesterol: displayVariant.cholesterol,
-          vitaminA: displayVariant.vitamin_a,
-          vitaminC: displayVariant.vitamin_c,
-          allergens: displayVariant.allergens ?? null,
-          traces: displayVariant.traces ?? null,
-          variantId: displayVariant.id,
-          source: 'external',
-          provider_verified: result.food.provider_verified,
-          // Same reason as the local branch above: FoodEntryAddScreen builds its
-          // create payload from these fields, so an external scan without them
-          // imports a food with no picture.
-          images: result.food.images ?? null,
-          image_url: result.food.image_url ?? null,
-          image_source_url: result.food.image_source_url ?? null,
-          externalVariants: orderedVariants?.map((v) => ({
-            serving_size: v.serving_size,
-            serving_unit: v.serving_unit,
-            serving_description:
-              v.serving_description ?? `${v.serving_size} ${v.serving_unit}`,
-            calories: v.calories,
-            protein: v.protein,
-            carbs: v.carbs,
-            fat: v.fat,
-            saturated_fat: v.saturated_fat,
-            sodium: v.sodium,
-            fiber: v.dietary_fiber,
-            sugars: v.sugars,
-            trans_fat: v.trans_fat,
-            cholesterol: v.cholesterol,
-            potassium: v.potassium,
-            calcium: v.calcium,
-            iron: v.iron,
-            caffeine_mg: v.caffeine_mg,
-            water_ml: v.water_ml,
-            alcohol_g: v.alcohol_g,
-            vitamin_a: v.vitamin_a,
-            vitamin_c: v.vitamin_c,
-          })),
-          originalItem: result.food,
-        };
+        if (shouldFireSuccessHaptic) fireSuccessHaptic();
+        const item = barcodeResultToFoodInfo(result, barcode);
         navigation.replace('FoodEntryAdd', {
           item,
           date,
@@ -378,9 +256,18 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
           returnDepth,
           mealTypeId,
           mealPlanTarget,
+          barcodeLookup: {
+            barcode,
+            accountId,
+            providerId:
+              result.providerId ??
+              (result.source === 'local' ? 'local' : undefined),
+            providerName: result.providerName,
+          },
         });
       }
     } catch (error) {
+      if (!labelScanActive.current) return;
       const message =
         error instanceof TimeoutError
           ? t('foodScan.errors.timeout', {
@@ -392,7 +279,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
             }));
       setLookupError({ barcode, message });
     } finally {
-      setLoading(false);
+      if (labelScanActive.current) setLoading(false);
     }
   };
 

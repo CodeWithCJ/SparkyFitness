@@ -1,6 +1,7 @@
 import { vi, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import cycleRepository from '../models/cycleRepository.js';
 import { DAILY_MOOD_VALUE_SQL } from '../models/moodRepository.js';
+import { MAIN_SLEEP_ORDER_SQL } from '../models/sleepRepository.js';
 import { getClient } from '../db/poolManager.js';
 
 vi.mock('../db/poolManager', () => ({
@@ -91,6 +92,22 @@ describe('cycleRepository.getCorrelationSources mood', () => {
     expect(moodSql).toContain(DAILY_MOOD_VALUE_SQL);
     expect(moodSql).toContain('GROUP BY entry_date');
     expect(moodSql).toContain('IS NOT NULL');
+  });
+});
+
+describe('cycleRepository.getCorrelationSources sleep', () => {
+  it('reads one sleep per day, its main sleep, so two sources never count twice', async () => {
+    const client = {
+      query: vi.fn().mockResolvedValue({ rows: [] }),
+      release: vi.fn(),
+    };
+    vi.mocked(getClient).mockResolvedValue(client as never);
+    await cycleRepository.getCorrelationSources('user-1');
+    const sleepSql = client.query.mock.calls
+      .map((c: unknown[]) => String(c[0]))
+      .find((q: string) => q.includes('FROM sleep_entries'));
+    expect(sleepSql).toContain('DISTINCT ON (entry_date)');
+    expect(sleepSql).toContain(MAIN_SLEEP_ORDER_SQL);
   });
 });
 

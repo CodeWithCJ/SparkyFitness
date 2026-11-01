@@ -39,6 +39,7 @@ enum SampleDay {
     static let water = WaterSnapshot(
         day: today,
         consumedMl: 1500,
+        fromFoodMl: 300,
         log: waterLog
     )
 
@@ -118,8 +119,35 @@ enum SampleDay {
             setInputStyle: nil,
             startableWorkouts: startableWorkouts,
             scheduledWorkouts: scheduledWorkouts,
-            suggestedExercises: suggestedExercises
+            suggestedExercises: suggestedExercises,
+            medications: medications,
+            medicationSkip: true,
+            exerciseDoNow: true,
+            setScreenMetrics: !ScreenshotSeed.has("nometrics"),
+            upNextPage: ScreenshotSeed.has("upnext"),
+            largerText: ScreenshotSeed.has("large"),
+            classicWorkout: ScreenshotSeed.has("classicworkout"),
+            // `fast`: 14 h into a 16:8 fast; otherwise synced and not fasting.
+            fast: ScreenshotSeed.has("fast")
+                ? WatchFast(startedAt: Date().addingTimeInterval(-14 * 3600), targetEndAt: Date().addingTimeInterval(2 * 3600), label: "16:8")
+                : nil,
+            fastSynced: true
         )
+    }
+
+    /// A morning with one dose taken, two still due at the same time, an
+    /// evening dose and an as-needed one.
+    static var medications: MedicationSnapshot {
+        func dose(_ id: String, _ name: String, _ detail: String, _ time: String, _ status: MedicationDoseStatus, supplement: Bool = false) -> MedicationDose {
+            MedicationDose(id: "\(id):s-\(id)", medicationId: id, scheduleId: time.isEmpty ? "" : "s-\(id)", name: name, detail: detail, time: time, status: status, supplement: supplement)
+        }
+        return MedicationSnapshot(day: today, doses: [
+            dose("vitd", "Vitamin D3", "1000 IU", "8:00 AM", .taken, supplement: true),
+            dose("omega", "Omega-3", "1 g", "8:00 AM", .pending, supplement: true),
+            dose("levo", "Levothyroxine", "50 mcg", "8:00 AM", .pending),
+            dose("mag", "Magnesium", "400 mg", "9:00 PM", .pending, supplement: true),
+            dose("ibu", "Ibuprofen", "200 mg", "", .pending),
+        ])
     }
 
     /// For Add Exercise during a workout.
@@ -168,7 +196,9 @@ enum SampleDay {
         exercises: [
             PlannedExercise(
                 exerciseEntryId: "preview-ex-1",
-                name: "Barbell Bench Press",
+                // `longname` swaps in a name too long for any watch, to check
+                // that the title scrolls instead of being cut off.
+                name: ScreenshotSeed.has("longname") ? "Seated Cable Row (Close Grip, Machine)" : "Barbell Bench Press",
                 supersetRun: 0,
                 sets: [
                     // A warmup first, so the label above the values is

@@ -54,4 +54,18 @@ describe('RunProgramGuide', () => {
     expect(screen.getByText('Rest days')).toBeTruthy();
     expect(screen.getByText(/back-to-back days/)).toBeTruthy();
   });
+
+  it('explains Zone 2 and the zone check for the Zone 2 programs only', () => {
+    const { unmount } = render(
+      <RunProgramGuide programId="zone2Base" defaultOpen />
+    );
+    expect(screen.getByText('Zone 2 runs')).toBeTruthy();
+    expect(screen.getByText(/talk test/)).toBeTruthy();
+    expect(
+      screen.getByText(/Weeks 4, 8 and 10 each have a zone check/)
+    ).toBeTruthy();
+    unmount();
+    render(<RunProgramGuide programId="beginner5k" defaultOpen />);
+    expect(screen.queryByText('Zone 2 runs')).toBeNull();
+  });
 });

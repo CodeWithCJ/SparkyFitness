@@ -7,20 +7,31 @@ import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 import { toImageArray } from '../utils/imageLocalizer.js';
 import type { FoodEntryInput, FoodEntrySnapshot } from '../types/nutrition.js';
 import {
+  copyFingerprintFor,
   hasExactReviewedFoodEntrySnapshot,
   sanitizeNotes,
+  type CopySelectedFoodEntriesFromUserBody,
+  type FoodEntryCopyFingerprintVersion,
   type ReviewedFoodEntryFingerprint,
 } from '@workspace/shared';
 
-interface ReviewedFoodEntryCopyInput {
+interface FoodEntryCopyContext {
   targetUserId: string;
   actingUserId: string;
   sourceUserId: string;
   sourceDate: string;
-  sourceMealTypeId: string;
   targetDate: string;
   targetMealTypeId: string;
+  fingerprintVersion?: FoodEntryCopyFingerprintVersion;
+}
+
+interface ReviewedFoodEntryCopyInput extends FoodEntryCopyContext {
+  sourceMealTypeId: string;
   reviewedEntries: ReviewedFoodEntryFingerprint[];
+}
+
+interface SelectedFoodEntryCopyInput extends FoodEntryCopyContext {
+  selections: CopySelectedFoodEntriesFromUserBody['entries'];
 }
 
 interface ReviewedSourceEntry extends FoodEntryInput {
@@ -855,10 +866,10 @@ async function getFoodEntryByDetails(
   }
 }
 
-// Copies a complete, reviewed family meal in one serializable transaction.
+// Copies reviewed rows in either direction in one serializable transaction.
 // The source snapshot check belongs next to the writes so an update that races
 // the service's preliminary check cannot leave partially-created containers.
-async function copyReviewedFoodEntriesFromUser({
+async function copyFoodEntriesWithReview({
   targetUserId,
   actingUserId,
   sourceUserId,
@@ -867,7 +878,13 @@ async function copyReviewedFoodEntriesFromUser({
   targetDate,
   targetMealTypeId,
   reviewedEntries,
-}: ReviewedFoodEntryCopyInput) {
+  selections,
+  fingerprintVersion,
+}: FoodEntryCopyContext & {
+  sourceMealTypeId?: string;
+  reviewedEntries: ReviewedFoodEntryFingerprint[];
+  selections?: CopySelectedFoodEntriesFromUserBody['entries'];
+}) {
   const client = await getClient(targetUserId, actingUserId);
   let transactionStarted = false;
   let releaseError: Error | undefined;
@@ -879,7 +896,9 @@ async function copyReviewedFoodEntriesFromUser({
     const sourceResult = (await client.query(
       `SELECT
         fe.id,
+        fe.user_id,
         fe.food_id,
+        fe.meal_id,
         fe.meal_type_id,
         fe.quantity,
         fe.unit,
@@ -918,15 +937,48 @@ async function copyReviewedFoodEntriesFromUser({
        FROM food_entries fe
        WHERE fe.user_id = $1
          AND fe.entry_date = $2
-         AND fe.meal_type_id = $3
+         AND ${selections ? 'fe.id = ANY($3::uuid[])' : 'fe.meal_type_id = $3'}
        FOR SHARE`,
-      [sourceUserId, sourceDate, sourceMealTypeId]
+      [
+        sourceUserId,
+        sourceDate,
+        selections
+          ? selections.map(({ entryId }) => entryId)
+          : sourceMealTypeId,
+      ]
     )) as { rows: ReviewedSourceEntry[] };
     const sourceEntries = sourceResult.rows;
-    if (!hasExactReviewedFoodEntrySnapshot(sourceEntries, reviewedEntries)) {
+    if (
+      !hasExactReviewedFoodEntrySnapshot(
+        sourceEntries,
+        reviewedEntries,
+        copyFingerprintFor(fingerprintVersion)
+      ) ||
+      (selections &&
+        sourceEntries.some(
+          (entry) =>
+            !Number.isFinite(Number(entry.serving_size)) ||
+            Number(entry.serving_size) <= 0
+        ))
+    ) {
       throw reviewedCopyConflict();
     }
 
+    // Recheck destination ownership in the write transaction. A source user's
+    // custom meal type must never be accepted for another user's diary.
+    const targetMealTypeResult = await client.query(
+      'SELECT id FROM meal_types WHERE id = $1 AND (user_id = $2 OR user_id IS NULL)',
+      [targetMealTypeId, targetUserId]
+    );
+    if (targetMealTypeResult.rows.length === 0) {
+      throw Object.assign(new Error('Invalid target meal type.'), {
+        statusCode: 400,
+      });
+    }
+
+    const quantityByEntryId = new Map(
+      selections?.map(({ entryId, quantity }) => [entryId, quantity])
+    );
     const copiedEntries: unknown[] = [];
     const targetMealIdBySourceMealId = new Map<string, string>();
     const existingStandaloneResult = (await client.query(
@@ -952,7 +1004,7 @@ async function copyReviewedFoodEntriesFromUser({
 
     for (const entry of sourceEntries) {
       let targetFoodEntryMealId: string | null = null;
-      if (entry.food_entry_meal_id) {
+      if (!selections && entry.food_entry_meal_id) {
         targetFoodEntryMealId =
           targetMealIdBySourceMealId.get(entry.food_entry_meal_id) ?? null;
 
@@ -1031,6 +1083,11 @@ async function copyReviewedFoodEntriesFromUser({
         if (
           entry.food_id !== null &&
           entry.food_id !== undefined &&
+          // Outbound copies always add every reviewed snapshot. Inbound copies
+          // retain legacy deduplication, including the selected-variant rule.
+          fingerprintVersion !== 'to-user' &&
+          (!selections ||
+            (entry.variant_id !== null && entry.variant_id !== undefined)) &&
           existingStandaloneKeys.has(standaloneKey)
         )
           continue;
@@ -1045,17 +1102,17 @@ async function copyReviewedFoodEntriesFromUser({
           saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
           cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a,
           vitamin_c, calcium, iron, caffeine_mg, water_ml, alcohol_g,
-          glycemic_index, custom_nutrients, notes
+          glycemic_index, custom_nutrients, notes, meal_id
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39
+          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40
         ) RETURNING *`,
         [
           targetUserId,
           entry.food_id,
           targetMealTypeId,
-          entry.quantity,
+          quantityByEntryId.get(entry.id) ?? entry.quantity,
           entry.unit,
           targetDate,
           entry.entry_time ?? null,
@@ -1091,6 +1148,8 @@ async function copyReviewedFoodEntriesFromUser({
           entry.glycemic_index,
           sanitizeCustomNutrients(entry.custom_nutrients),
           sanitizeNotes(entry.notes) ?? null,
+          // A source meal deletion must not cascade into the copied snapshot.
+          null,
         ]
       );
       copiedEntries.push(...inserted.rows);
@@ -1113,6 +1172,19 @@ async function copyReviewedFoodEntriesFromUser({
   } finally {
     client.release(releaseError);
   }
+}
+
+async function copyReviewedFoodEntriesFromUser(
+  input: ReviewedFoodEntryCopyInput
+) {
+  return copyFoodEntriesWithReview(input);
+}
+
+async function copySelectedFoodEntries(input: SelectedFoodEntryCopyInput) {
+  return copyFoodEntriesWithReview({
+    ...input,
+    reviewedEntries: input.selections,
+  });
 }
 
 /**
@@ -1465,6 +1537,7 @@ export { getFoodEntriesByDateAndMealType };
 export { getFoodEntriesByDateRange };
 export { getFoodEntryByDetails };
 export { copyReviewedFoodEntriesFromUser };
+export { copySelectedFoodEntries };
 export { bulkCreateFoodEntries };
 export { getFoodEntryById };
 export { getFoodEntryComponentsByFoodEntryMealId };
@@ -1484,6 +1557,7 @@ export default {
   getFoodEntriesByDateRange,
   getFoodEntryByDetails,
   copyReviewedFoodEntriesFromUser,
+  copySelectedFoodEntries,
   bulkCreateFoodEntries,
   getFoodEntryById,
   getFoodEntryComponentsByFoodEntryMealId,

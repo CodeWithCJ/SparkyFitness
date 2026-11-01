@@ -14,6 +14,13 @@ import { useCSSVariable } from 'uniwind';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { FooterSaveBar } from '../components/FormScreenChrome';
+import CalendarSheet, {
+  type CalendarSheetRef,
+} from '../components/CalendarSheet';
+import TimeSheet, {
+  dateToTimeString,
+  type TimeSheetRef,
+} from '../components/TimeSheet';
 import Switch from '../components/ui/Switch';
 import SeveritySlider from '../components/symptoms/SeveritySlider';
 import SymptomLocationPicker from '../components/symptoms/SymptomLocationPicker';
@@ -26,7 +33,8 @@ import {
   useSymptomEntry,
   useSymptomActions,
 } from '../hooks/useSymptoms';
-import { getTodayDate } from '../utils/dateUtils';
+import { useAppLocale } from '../localization';
+import { getTodayDate, toLocalDateString } from '../utils/dateUtils';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import {
@@ -47,6 +55,7 @@ const IMPACT_OPTIONS: SymptomImpact[] = ['none', 'mild', 'moderate', 'severe'];
 
 export default function SymptomLogScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
+  const locale = useAppLocale();
   const builtInLabels = getBuiltInSymptomLabels(t);
   const tr = (label: string) =>
     translateBuiltInSymptomLabel(builtInLabels, label);
@@ -105,6 +114,10 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
   const [startedAt, setStartedAt] = useState<string | null>(
     existingEntry?.started_at ?? null
   );
+  // Stable fallback for the pickers until a start is chosen.
+  const [openedAt] = useState(() => Date.now());
+  const calendarSheetRef = useRef<CalendarSheetRef>(null);
+  const timeSheetRef = useRef<TimeSheetRef>(null);
   const endedAt = existingEntry?.ended_at ?? null;
   const [treatments, setTreatments] = useState<MobileTreatmentDraft[]>(() =>
     existingEntry?.treatments
@@ -171,11 +184,52 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
     }
   };
 
+  // An episode cannot start in the future, so a picked moment is clamped to now.
+  const applyStartedAt = (d: Date) => {
+    const now = new Date();
+    setStartedAt((d > now ? now : d).toISOString());
+  };
+
+  // The start counts as moved only when it differs from the one the form
+  // opened with, to the minute: the time sheet reports Done even when nothing
+  // moved, and a change that is undone leaves the diary day alone.
+  const originalStartMinute = Math.floor(
+    new Date(existingEntry?.started_at ?? openedAt).getTime() / 60000
+  );
+  const startMoved =
+    startedAt !== null &&
+    Math.floor(new Date(startedAt).getTime() / 60000) !== originalStartMinute;
+
   // Back-dating offset handler
   const handleBackdate = (minutesBack: number) => {
-    const d = new Date(Date.now() - minutesBack * 60 * 1000);
-    setStartedAt(d.toISOString());
+    applyStartedAt(new Date(Date.now() - minutesBack * 60 * 1000));
   };
+
+  const handlePickStartDate = (day: string) => {
+    const [year, month, dayOfMonth] = day.split('-').map(Number);
+    const d = new Date(startedAt ?? openedAt);
+    d.setFullYear(year, month - 1, dayOfMonth);
+    applyStartedAt(d);
+  };
+
+  const handlePickStartTime = (time: string) => {
+    const [hours, minutes] = time.split(':').map(Number);
+    const d = new Date(startedAt ?? openedAt);
+    d.setHours(hours, minutes, 0, 0);
+    applyStartedAt(d);
+  };
+
+  const startDate = new Date(startedAt ?? openedAt);
+  const startDateLabel = startDate.toLocaleDateString(locale, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const startTimeLabel = startDate.toLocaleTimeString(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 
   const handleSelectSymptom = (
     name: string,
@@ -217,8 +271,11 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
       symptom_name_snapshot: symptomName.trim(),
       symptom_id: symptomId,
       severity,
-      entry_date: effectiveDate,
-      started_at: isEpisodic ? startedAt || new Date().toISOString() : null,
+      // A moved start re-derives the day on the server, in the profile timezone.
+      entry_date: isEpisodic && startMoved ? undefined : effectiveDate,
+      started_at: isEpisodic
+        ? startedAt || new Date(openedAt).toISOString()
+        : null,
       ended_at: endedAt,
       body_locations: bodyLocations,
       qualities,
@@ -464,7 +521,7 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
                   </Text>
                   <View className="flex-row gap-1.5 flex-wrap">
                     <TouchableOpacity
-                      onPress={() => setStartedAt(new Date().toISOString())}
+                      onPress={() => handleBackdate(0)}
                       className="px-2.5 py-1.5 rounded-lg bg-background border border-border"
                     >
                       <Text className="text-xs font-medium text-text-primary">
@@ -493,6 +550,57 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
                     >
                       <Text className="text-xs font-medium text-text-primary">
                         {t('symptoms.timing.h3', { defaultValue: '-3h' })}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleBackdate(1440)}
+                      className="px-2.5 py-1.5 rounded-lg bg-background border border-border"
+                    >
+                      <Text className="text-xs font-medium text-text-primary">
+                        {t('symptoms.timing.d1', { defaultValue: '-1d' })}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View className="flex-row gap-2">
+                    <TouchableOpacity
+                      onPress={() => calendarSheetRef.current?.present()}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('symptoms.startDateA11y', {
+                        defaultValue: 'Start date, {{date}}',
+                        date: startDateLabel,
+                      })}
+                      className="flex-1 bg-background border border-border rounded-xl px-3 py-2.5"
+                    >
+                      <Text className="text-xs text-text-muted">
+                        {t('symptoms.startDate', { defaultValue: 'Date' })}
+                      </Text>
+                      <Text
+                        className="text-sm font-semibold text-accent-primary"
+                        numberOfLines={1}
+                      >
+                        {startDateLabel}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => timeSheetRef.current?.present()}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('symptoms.startTimeA11y', {
+                        defaultValue: 'Start time, {{time}}',
+                        time: startTimeLabel,
+                      })}
+                      className="flex-1 bg-background border border-border rounded-xl px-3 py-2.5"
+                    >
+                      <Text className="text-xs text-text-muted">
+                        {t('symptoms.startTime', { defaultValue: 'Time' })}
+                      </Text>
+                      <Text
+                        className="text-sm font-semibold text-accent-primary"
+                        numberOfLines={1}
+                      >
+                        {startTimeLabel}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -721,6 +829,18 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
                 ? t('common.save', { defaultValue: 'Save' })
                 : t('symptoms.logSymptom', { defaultValue: 'Log Symptom' })
             }
+          />
+          <CalendarSheet
+            ref={calendarSheetRef}
+            selectedDate={toLocalDateString(startDate)}
+            onSelectDate={handlePickStartDate}
+            maxDate={today}
+          />
+          <TimeSheet
+            ref={timeSheetRef}
+            value={dateToTimeString(startDate)}
+            onSelectTime={handlePickStartTime}
+            commitOn="done"
           />
         </>
       )}

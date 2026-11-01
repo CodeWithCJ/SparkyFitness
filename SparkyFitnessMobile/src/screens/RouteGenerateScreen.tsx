@@ -4,17 +4,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import { useCSSVariable } from 'uniwind';
+import { useCSSVariable, useUniwind } from 'uniwind';
 import {
   DEFAULT_ROUTE_STYLE,
   buildLoopRequest,
@@ -30,10 +28,13 @@ import {
 } from '@workspace/shared';
 import RouteChip from '../components/RouteChip';
 import RouteOptionCards from '../components/RouteOptionCards';
+import MapSurface from '../components/maps/MapSurface';
+import type { MapSurfaceHandle } from '../components/maps/mapSurfaceTypes';
 import RouteStyleControls from '../components/RouteStyleControls';
 import Button from '../components/ui/Button';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { addLog } from '../services/LogService';
 import {
   generateRouteOptions,
@@ -49,9 +50,8 @@ type Activity = GenerateRouteBody['activity'];
 type Shape = Extract<GenerateRouteBody, { mode: 'loop' }>['shape'];
 type Start = Pick<RoutePoint, 'lat' | 'lon'>;
 
-const FALLBACK_REGION = {
-  latitude: 39.8,
-  longitude: -98.6,
+const FALLBACK_VIEWPORT = {
+  center: { lat: 39.8, lon: -98.6 },
   latitudeDelta: 40,
   longitudeDelta: 40,
 };
@@ -72,13 +72,16 @@ const DEFAULT_DISTANCE: Record<'km' | 'miles', string> = {
 const RouteGenerateScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const { preferences } = usePreferences();
   const unit = preferences?.default_distance_unit ?? 'km';
   const lineColor = useCSSVariable('--color-accent-primary') as string;
+  const { theme } = useUniwind();
+  const isDark = theme === 'dark' || theme === 'amoled';
   const { capabilities, isLoading: checking } =
     useRouteGenerationCapabilities();
   const available = capabilities.available;
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<MapSurfaceHandle>(null);
   const sequence = useRef(0);
   const pickedStart = useRef(false);
 
@@ -120,15 +123,7 @@ const RouteGenerateScreen: React.FC<Props> = ({ navigation }) => {
         lon: position.coords.longitude,
       };
       setStart(here);
-      mapRef.current?.animateToRegion?.(
-        {
-          latitude: here.lat,
-          longitude: here.lon,
-          latitudeDelta: 0.03,
-          longitudeDelta: 0.03,
-        },
-        0
-      );
+      mapRef.current?.centerOn({ lat: here.lat, lon: here.lon }, 0.03);
     })().catch(() => undefined);
   }, []);
 
@@ -138,12 +133,10 @@ const RouteGenerateScreen: React.FC<Props> = ({ navigation }) => {
 
   useEffect(() => {
     if (!preview || preview.points.length < 2) return;
-    mapRef.current?.fitToCoordinates?.(
-      preview.points.map((p) => ({ latitude: p.lat, longitude: p.lon })),
-      {
-        edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
-        animated: true,
-      }
+    mapRef.current?.fitPoints(
+      preview.points.map((p) => ({ lat: p.lat, lon: p.lon })),
+      { top: 40, right: 40, bottom: 40, left: 40 },
+      true
     );
   }, [preview]);
 
@@ -220,7 +213,10 @@ const RouteGenerateScreen: React.FC<Props> = ({ navigation }) => {
 
   if (checking || !available) {
     return (
-      <>
+      <View
+        className="flex-1 bg-background"
+        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+      >
         {header}
         <View className="flex-1 bg-background items-center justify-center px-6">
           {checking ? (
@@ -239,13 +235,13 @@ const RouteGenerateScreen: React.FC<Props> = ({ navigation }) => {
             </>
           )}
         </View>
-      </>
+      </View>
     );
   }
 
-  const coordinates = (preview?.points ?? []).map((p) => ({
-    latitude: p.lat,
-    longitude: p.lon,
+  const previewPoints = (preview?.points ?? []).map((p) => ({
+    lat: p.lat,
+    lon: p.lon,
   }));
   const activityLabel: Record<Activity, string> = {
     run: t('routes.activity.run', { defaultValue: 'Run' }),
@@ -255,38 +251,31 @@ const RouteGenerateScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <View className="flex-1 bg-background">
         <View className="flex-1">
-          <MapView
+          <MapSurface
             ref={mapRef}
-            style={StyleSheet.absoluteFill}
-            initialRegion={FALLBACK_REGION}
-            onPress={(event) => {
-              const { latitude, longitude } = event.nativeEvent.coordinate;
+            initialViewport={FALLBACK_VIEWPORT}
+            dark={isDark}
+            onPress={(point) => {
               pickedStart.current = true;
-              setStart({ lat: latitude, lon: longitude });
+              setStart(point);
             }}
-            showsUserLocation
-            toolbarEnabled={false}
-          >
-            {coordinates.length > 1 ? (
-              <Polyline
-                coordinates={coordinates}
-                strokeColor={lineColor}
-                strokeWidth={4}
-                lineCap="round"
-                lineJoin="round"
-              />
-            ) : null}
-            {start ? (
-              <Marker
-                coordinate={{ latitude: start.lat, longitude: start.lon }}
-                pinColor="green"
-              />
-            ) : null}
-          </MapView>
+            showUserLocation
+            lines={
+              previewPoints.length > 1
+                ? [{ points: previewPoints, color: lineColor, width: 4 }]
+                : []
+            }
+            markers={
+              start ? [{ point: start, shape: 'pin', color: 'green' }] : []
+            }
+          />
         </View>
         {/* The distance field sits low on the screen; keep it above the keyboard. */}
         <KeyboardAvoidingView
@@ -457,7 +446,7 @@ const RouteGenerateScreen: React.FC<Props> = ({ navigation }) => {
           </ScrollView>
         </KeyboardAvoidingView>
       </View>
-    </>
+    </View>
   );
 };
 

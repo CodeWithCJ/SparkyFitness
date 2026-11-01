@@ -1,4 +1,5 @@
 import React from 'react';
+import { Text } from 'react-native';
 import { act, render } from '@testing-library/react-native';
 import { Image } from 'expo-image';
 import ProgressPhotoTimelapseScreen from '../../src/screens/ProgressPhotoTimelapseScreen';
@@ -8,6 +9,7 @@ import { usePreferences } from '../../src/hooks/usePreferences';
 import { useScreenHeader } from '../../src/hooks/useScreenHeader';
 import { formatShortDate, getTodayDate } from '../../src/utils/dateUtils';
 import type { ProgressPhotoDay } from '../../src/types/checkInPhotos';
+import { paddingAbove } from './helpers/insetTestUtils';
 
 jest.mock('../../src/hooks/useCheckInPhotos', () => ({
   useCheckInPhotoGallery: jest.fn(),
@@ -21,8 +23,15 @@ jest.mock('../../src/hooks/usePreferences', () => ({
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: jest.fn(() => null),
 }));
+const mockInsets = { top: 0, bottom: 0, left: 0, right: 0 };
 jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  useSafeAreaInsets: () => mockInsets,
+}));
+// Native iOS header by default; a test turns it off for the screen-owned bar.
+let mockNativeHeadersActive = true;
+jest.mock('../../src/services/nativeTabBarPreference', () => ({
+  ...jest.requireActual('../../src/services/nativeTabBarPreference'),
+  useNativeIOSHeadersActive: () => mockNativeHeadersActive,
 }));
 
 // The real sheet needs a BottomSheetModalProvider. Record its props on each
@@ -334,5 +343,33 @@ describe('ProgressPhotoTimelapseScreen', () => {
     ).toBeTruthy();
     expect(queryByLabelText('Play')).toBeNull();
     expect(queryByLabelText('Pause')).toBeNull();
+  });
+
+  describe('the status bar inset', () => {
+    beforeEach(() => {
+      mockInsets.top = 47;
+      mockUseScreenHeader.mockImplementation(() => <Text>Screen header</Text>);
+      setGallery([day(daysAgo(1))]);
+    });
+    afterEach(() => {
+      mockInsets.top = 0;
+      mockNativeHeadersActive = true;
+      mockUseScreenHeader.mockImplementation(() => null);
+    });
+
+    it('keeps its own header below the status bar (Android, iOS 26+ with Liquid Glass off)', () => {
+      mockNativeHeadersActive = false;
+      const { getByText } = renderScreen();
+
+      expect(paddingAbove(getByText('Screen header'), 'paddingTop')).toBe(47);
+    });
+
+    it('adds no top inset under the native iOS header', () => {
+      const { getByText } = renderScreen();
+
+      expect(
+        paddingAbove(getByText('Screen header'), 'paddingTop')
+      ).toBeUndefined();
+    });
   });
 });

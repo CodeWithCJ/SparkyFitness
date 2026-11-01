@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
-import { Footprints, Pencil, Plus, Star, Trash2 } from 'lucide-react';
-import type { CreateShoeBody, ShoeResponse } from '@workspace/shared';
+import { Dumbbell, Footprints, Pencil, Plus, Star, Trash2 } from 'lucide-react';
+import {
+  inventoryConfigFrom,
+  type CreateShoeBody,
+  type ShoeResponse,
+} from '@workspace/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,7 +26,17 @@ import {
   useShoes,
   useUpdateShoeMutation,
 } from '@/hooks/Shoes/useShoes';
+import {
+  usePlateInventory,
+  useResetPlateInventoryMutation,
+  useSavePlateInventoryMutation,
+} from '@/hooks/PlateInventory/usePlateInventory';
+import {
+  barLabel,
+  formatPlateWeight,
+} from '@/components/PlateCalculator/plateFormat';
 import { ShoeFormDialog } from './ShoeFormDialog';
+import { PlateInventoryDialog } from './PlateInventoryDialog';
 
 const ShoeCard: React.FC<{
   shoe: ShoeResponse;
@@ -142,14 +156,119 @@ const ShoeCard: React.FC<{
   );
 };
 
+/** The bars and plates a person owns, for the plate calculator. */
+const PlateInventorySection: React.FC<{ canWrite: boolean }> = ({
+  canWrite,
+}) => {
+  const { t } = useTranslation();
+  const { weightUnit } = usePreferences();
+  const { data: stored, isLoading, isError } = usePlateInventory();
+  const save = useSavePlateInventoryMutation();
+  const reset = useResetPlateInventoryMutation();
+  const [open, setOpen] = useState(false);
+
+  // Until something is saved, the standard set for the person's unit is used.
+  const config = inventoryConfigFrom(
+    stored,
+    weightUnit === 'kg' ? 'kg' : 'lbs'
+  );
+  const owned = config.plates.filter((plate) => plate.pairs > 0);
+  // A failed load leaves nothing to tell the standard set from the person's
+  // own plates; saving from that would replace their inventory.
+  const loadFailed = isError && stored == null;
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-lg font-semibold">
+          <Dumbbell className="h-5 w-5" />
+          {t('plates.title', 'Plates & bars')}
+        </h3>
+        {canWrite && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={isLoading || loadFailed}
+            onClick={() => setOpen(true)}
+          >
+            <Pencil className="mr-1 h-3.5 w-3.5" />
+            {t('common.edit', 'Edit')}
+          </Button>
+        )}
+      </div>
+      {isLoading ? (
+        <Skeleton className="h-20" />
+      ) : loadFailed ? (
+        <p className="text-sm text-destructive">
+          {t('plates.failedToLoad', 'Failed to load your plates and bars.')}
+        </p>
+      ) : (
+        <div className="space-y-2 text-sm">
+          {!stored && (
+            <p className="text-muted-foreground">
+              {t(
+                'plates.usingStandard',
+                'Using the standard set. Edit it to match the plates you own.'
+              )}
+            </p>
+          )}
+          <p>
+            <span className="font-medium">{t('plates.bars', 'Bars')}: </span>
+            {config.bars
+              .map(
+                (bar) =>
+                  `${barLabel(t, bar)} ${formatPlateWeight(bar.weight)} ${config.unit}`
+              )
+              .join(' · ')}
+          </p>
+          <p>
+            <span className="font-medium">
+              {t('plates.platesLabel', 'Plates')}:{' '}
+            </span>
+            {owned
+              .map(
+                (plate) =>
+                  `${formatPlateWeight(plate.weight)} ${config.unit} × ${plate.pairs}`
+              )
+              .join(' · ')}
+          </p>
+          <p className="text-muted-foreground">
+            {config.collarsEnabled
+              ? t(
+                  'plates.collarsCounted',
+                  'Collars count: {{weight}} {{unit}} each',
+                  {
+                    weight: formatPlateWeight(config.collarWeight),
+                    unit: config.unit,
+                  }
+                )
+              : t('plates.collarsNotCounted', 'Collars are not counted.')}
+          </p>
+        </div>
+      )}
+      <PlateInventoryDialog
+        open={open}
+        onOpenChange={setOpen}
+        initial={config}
+        hasSaved={stored != null}
+        onSubmit={(data) => save.mutateAsync(data)}
+        onReset={() => {
+          reset.mutate();
+          setOpen(false);
+        }}
+        isSaving={save.isPending}
+      />
+    </section>
+  );
+};
+
 /**
- * The Equipment section of the Exercises page. Shoes are the only kind of
- * equipment tracked so far, so they fill it; another kind would get its own
- * heading inside this card.
+ * The Equipment section of the Exercises page: running shoes and the plates
+ * and bars used by the plate calculator.
  */
 const EquipmentManager: React.FC = () => {
   const { t } = useTranslation();
-  const { hasWritePermission } = useActiveUser();
+  const { hasWritePermission, isActingOnBehalf } = useActiveUser();
   // Reads follow the diary or reports permission; every change needs diary write.
   const canWrite = hasWritePermission('diary');
   const { data: shoes, isLoading } = useShoes();
@@ -250,6 +369,8 @@ const EquipmentManager: React.FC = () => {
             )}
           </>
         )}
+
+        {!isActingOnBehalf && <PlateInventorySection canWrite={canWrite} />}
 
         <ShoeFormDialog
           open={dialogOpen}

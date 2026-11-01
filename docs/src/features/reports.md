@@ -115,6 +115,7 @@ When data is available you get:
 
 - **Sleep charts:** sleep stage breakdown (hypnogram), heart rate during sleep, respiration rate, blood oxygen (SpO2), and HRV across the range.
 - **Sleep History & Analytics:** a table of every night in the range, with bedtime, wake time, duration, time asleep, sleep score, efficiency, sleep debt, awake periods, data source, and a plain-language insight for the night (**Good Sleep**, **Needs Improvement**, or **High Debt**).
+- **The same night from two sources counts once.** If two sources record one night (for example Google Health and Health Connect both carrying a Fitbit night, or two watches), the report, the charts and sleep debt use the more detailed record: the one with sleep stages, then the one with more measures such as HRV or resting heart rate. A record that covers only part of the night never replaces the whole night, and in the report a nap from another source that doesn't overlap the night still adds to the day.
 - **Export to CSV:** a button next to the table downloads the full history for your own analysis.
 
 - - -
