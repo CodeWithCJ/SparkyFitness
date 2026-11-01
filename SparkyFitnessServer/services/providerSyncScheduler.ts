@@ -123,8 +123,17 @@ export const PROVIDER_SYNC_CONFIGS: readonly ProviderSyncConfig[] = [
     name: 'COROS',
     types: ['coros_mcp'],
     sync: async (p) => {
-      await corosService.syncCorosData(p.user_id, 'scheduled', p.id);
-      await externalProviderRepository.updateProviderLastSync(p.id, new Date());
+      const result = await corosService.syncCorosData(
+        p.user_id,
+        'scheduled',
+        p.id
+      );
+      await updateLastSyncIfComplete(
+        'COROS',
+        p,
+        result.failedRequiredFetches,
+        result.activitiesFailed
+      );
     },
   },
   {

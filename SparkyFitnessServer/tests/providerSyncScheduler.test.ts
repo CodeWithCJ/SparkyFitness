@@ -170,6 +170,10 @@ describe('providerSyncScheduler', () => {
         sync_frequency: 'hourly',
       } as never,
     ]);
+    vi.mocked(corosService.syncCorosData).mockResolvedValueOnce({
+      failedRequiredFetches: [],
+      activitiesFailed: 0,
+    } as never);
 
     const corosConfig = PROVIDER_SYNC_CONFIGS.find(
       (c) => c.name === 'COROS'
@@ -342,6 +346,10 @@ describe('providerSyncScheduler', () => {
       name: 'Google Health',
       sync: () => vi.mocked(googleHealthService.syncGoogleHealthData),
     },
+    {
+      name: 'COROS',
+      sync: () => vi.mocked(corosService.syncCorosData),
+    },
   ])('$name required fetches', ({ name, sync }) => {
     const run = async () => {
       vi.mocked(
@@ -404,6 +412,15 @@ describe('providerSyncScheduler', () => {
       name: 'Strava',
       mockResult: () =>
         vi.mocked(stravaService.syncStravaData).mockResolvedValueOnce({
+          success: true,
+          failedRequiredFetches: [],
+          activitiesFailed: 2,
+        } as never),
+    },
+    {
+      name: 'COROS',
+      mockResult: () =>
+        vi.mocked(corosService.syncCorosData).mockResolvedValueOnce({
           success: true,
           failedRequiredFetches: [],
           activitiesFailed: 2,
