@@ -273,7 +273,7 @@ export type LabHistoryPoint = {
 };
 
 /**
- * Numeric results as chart points, oldest first; text-only results are
+ * The results a chart plots, oldest first; text-only results are
  * dropped. Given a unit, results in another unit are left out too, since
  * values in different units do not share a scale. Results on the same day
  * keep the order they were entered in.
@@ -284,11 +284,11 @@ export type LabHistoryPoint = {
  * in the chart unit. With a blank chart unit, blank-unit results all belong.
  * `markerRangeUnit` is that unit; leave it out while the marker is unknown.
  */
-export const labHistoryPoints = (
+export const labPlottedResults = (
   results: LabResultResponse[],
   unit?: string,
   markerRangeUnit?: string
-): LabHistoryPoint[] =>
+): LabResultResponse[] =>
   results
     .filter((r) => {
       if (r.value_numeric === null) return false;
@@ -309,8 +309,17 @@ export const labHistoryPoints = (
       (a, b) =>
         a.entry_date.localeCompare(b.entry_date) ||
         (a.created_at ?? '').localeCompare(b.created_at ?? '')
-    )
-    .map((r) => ({ day: r.entry_date, value: r.value_numeric as number }));
+    );
+
+export const labHistoryPoints = (
+  results: LabResultResponse[],
+  unit?: string,
+  markerRangeUnit?: string
+): LabHistoryPoint[] =>
+  labPlottedResults(results, unit, markerRangeUnit).map((r) => ({
+    day: r.entry_date,
+    value: r.value_numeric as number,
+  }));
 
 /** Profile gender as a lab sex; anything else (unset, other) is unknown. */
 export const labSexFromGender = (

@@ -29,6 +29,7 @@ import {
   formatLabRange,
   formatLabValue,
   labHistoryPoints,
+  labPlottedResults,
   labMarkerQueryFromId,
   labResultStatus,
   labResultText,
@@ -77,6 +78,14 @@ const LabResultDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const unit = latest?.unit || marker?.unit || '';
   // The chart shares one scale, so it plots only results in the latest unit.
   const points = labHistoryPoints(results, unit, marker?.ref_range_unit);
+  // The reference band belongs to the plotted unit: it comes from the newest
+  // plotted result, never from a latest result the chart left out (its bounds
+  // may be in a unit nobody recorded). With nothing plotted there is no band.
+  const plotted = labPlottedResults(results, unit, marker?.ref_range_unit);
+  const newestPlotted = plotted[plotted.length - 1] ?? null;
+  const chartBounds = newestPlotted
+    ? effectiveLabRange(newestPlotted, fallback)
+    : { low: null, high: null };
   const otherUnitCount =
     results.filter((r) => r.value_numeric !== null).length - points.length;
   const { low, high } = effectiveLabRange(latest, fallback);
@@ -159,19 +168,25 @@ const LabResultDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                   })}
                 </Text>
               )}
-              {points.length === 1 && low != null && high != null ? (
+              {points.length === 1 &&
+              chartBounds.low != null &&
+              chartBounds.high != null ? (
                 <LabRangeBar
                   value={points[0].value}
-                  low={low}
-                  high={high}
+                  low={chartBounds.low}
+                  high={chartBounds.high}
                   unit={unit}
-                  status={labRangeStatus(points[0].value, low, high)}
+                  status={labRangeStatus(
+                    points[0].value,
+                    chartBounds.low,
+                    chartBounds.high
+                  )}
                 />
               ) : (
                 <LabHistoryChart
                   points={points}
-                  refRangeLow={low}
-                  refRangeHigh={high}
+                  refRangeLow={chartBounds.low}
+                  refRangeHigh={chartBounds.high}
                 />
               )}
               {otherUnitCount > 0 && (

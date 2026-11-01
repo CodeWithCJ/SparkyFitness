@@ -114,6 +114,81 @@ describe('LabResultDetailScreen', () => {
     expect(getByText('1 result in another unit is not plotted.')).toBeTruthy();
   });
 
+  it('draws the reference band from the newest plotted result, not an excluded latest', () => {
+    jest.mocked(useLabMarkers).mockReturnValue({
+      markers: [
+        {
+          ...marker,
+          unit: 'mg/dL',
+          ref_range_low: 70,
+          ref_range_high: 99,
+          ref_range_unit: 'mg/dL',
+        },
+      ],
+    } as never);
+    jest.mocked(useLabHistory).mockReturnValue({
+      data: [
+        // Newest: no unit, with bounds in a unit nobody recorded.
+        result({
+          id: 'n1',
+          entry_date: '2026-09-12',
+          value_numeric: 2.6,
+          unit: '',
+          ref_range_low: 1,
+          ref_range_high: 3,
+        }),
+        result({
+          id: 'n2',
+          entry_date: '2026-06-01',
+          value_numeric: 90,
+          unit: 'mg/dL',
+        }),
+        result({
+          id: 'n3',
+          entry_date: '2026-03-01',
+          value_numeric: 95,
+          unit: 'mg/dL',
+        }),
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as never);
+    const { UNSAFE_root } = render(
+      <LabResultDetailScreen navigation={navigation} route={route} />
+    );
+    const chart = UNSAFE_root.findByType('LabHistoryChart' as never);
+    expect(chart.props.refRangeLow).toBe(70);
+    expect(chart.props.refRangeHigh).toBe(99);
+  });
+
+  it('leaves the reference band off when nothing plotted has compatible bounds', () => {
+    jest.mocked(useLabMarkers).mockReturnValue({
+      markers: [{ ...marker, unit: 'mg/dL', ref_range_unit: 'mg/dL' }],
+    } as never);
+    jest.mocked(useLabHistory).mockReturnValue({
+      data: [
+        result({
+          id: 'n1',
+          entry_date: '2026-09-12',
+          value_numeric: 2.6,
+          unit: '',
+          ref_range_low: 1,
+          ref_range_high: 3,
+        }),
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as never);
+    const { UNSAFE_root } = render(
+      <LabResultDetailScreen navigation={navigation} route={route} />
+    );
+    const chart = UNSAFE_root.findByType('LabHistoryChart' as never);
+    expect(chart.props.refRangeLow).toBeNull();
+    expect(chart.props.refRangeHigh).toBeNull();
+  });
+
   it('says nothing when every result shares the unit', () => {
     const { queryByText } = render(
       <LabResultDetailScreen navigation={navigation} route={route} />
