@@ -726,9 +726,12 @@ async function _updateExerciseEntryWithClient(
   // side before the other deadlocks. Take the entry and its link first, then
   // reread.
   await lockCalorieLinkParticipantsWithClient(client, userId, [id]);
-  // Fetch existing entry to get current snapshot values if not provided in updateData
+  // Fetch existing entry to get current snapshot values if not provided in
+  // updateData. The update below writes every column back, and some writers
+  // (the distance correction) skip the locks above, so the row lock makes
+  // this read wait for them instead of restoring what they replaced.
   const existingEntryResult = await client.query(
-    'SELECT * FROM exercise_entries WHERE id = $1 AND user_id = $2',
+    'SELECT * FROM exercise_entries WHERE id = $1 AND user_id = $2 FOR UPDATE',
     [id, userId]
   );
   if (existingEntryResult.rows.length === 0) {

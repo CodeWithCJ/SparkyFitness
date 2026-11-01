@@ -766,6 +766,19 @@ async function setExerciseEntryDistance(
   const client = await getClient(userId, actingUserId);
   try {
     await client.query('BEGIN');
+    // The laps and pace chart are scaled from the distance being replaced,
+    // so read it under the row lock: another correction or edit that commits
+    // in between would otherwise be scaled from a value it already changed.
+    const locked = (await client.query(
+      'SELECT distance FROM exercise_entries WHERE id = $1 FOR NO KEY UPDATE',
+      [exerciseEntryId]
+    )) as { rows: { distance: string | null }[] };
+    if (locked.rows.length === 0) {
+      const error = new Error('Exercise entry not found.');
+      // @ts-expect-error TS(2339): Property 'status' does not exist on type 'Error'.
+      error.status = 404;
+      throw error;
+    }
     // A route gives the distance; overriding it would leave the track, the
     // splits and the entry disagreeing.
     const track = (await client.query(
@@ -780,7 +793,7 @@ async function setExerciseEntryDistance(
       error.status = 409;
       throw error;
     }
-    const previousKm = Number(entry.distance) || 0;
+    const previousKm = Number(locked.rows[0]!.distance) || 0;
     await client.query(
       'UPDATE exercise_entries SET distance = $2, updated_at = NOW() WHERE id = $1',
       [exerciseEntryId, body.distance_km]
