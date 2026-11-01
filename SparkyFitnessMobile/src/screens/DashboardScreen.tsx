@@ -69,8 +69,8 @@ import {
 import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
 import {
   moodEntriesRootQueryKey,
-  customCategoriesQueryKey,
-  latestManualCustomEntriesRootQueryKey,
+  labLatestQueryKey,
+  labMarkersQueryKey,
   trainingLoadRootQueryKey,
 } from '../hooks/queryKeys';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
@@ -439,10 +439,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       // MoodCard owns its own query.
       queryClient.invalidateQueries({ queryKey: moodEntriesRootQueryKey }),
       // LabResultsCard reads the lab markers and their latest values.
-      queryClient.invalidateQueries({ queryKey: customCategoriesQueryKey }),
-      queryClient.invalidateQueries({
-        queryKey: latestManualCustomEntriesRootQueryKey,
-      }),
+      queryClient.invalidateQueries({ queryKey: labMarkersQueryKey }),
+      queryClient.invalidateQueries({ queryKey: labLatestQueryKey }),
       // TrainingLoadDashboardCard owns its query, and a pull is not a focus.
       trainingLoadCardVisible
         ? queryClient.invalidateQueries({ queryKey: trainingLoadRootQueryKey })

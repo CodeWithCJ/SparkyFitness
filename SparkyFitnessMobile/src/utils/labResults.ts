@@ -8,6 +8,7 @@ import {
   type LabResultResponse,
   type LabSex,
 } from '@workspace/shared';
+import { formatLocalizedNumber } from '../localization';
 
 /** Localized names of the built-in markers, keyed by preset key. */
 export type LabMarkerLabels = Record<string, string>;
@@ -90,6 +91,10 @@ export const labResultStatus = (
   );
 };
 
+/** A lab number in the app locale, keeping up to six decimals. */
+const labNumber = (value: number): string =>
+  formatLocalizedNumber(value, { maximumFractionDigits: 6 });
+
 /** "4 - 5.6 %", "< 200 mg/dL", "> 40 mg/dL", or null with no range. */
 export const formatLabRange = (
   low: number | null | undefined,
@@ -97,14 +102,15 @@ export const formatLabRange = (
   unit: string
 ): string | null => {
   const suffix = unit ? ` ${unit}` : '';
-  if (low != null && high != null) return `${low} - ${high}${suffix}`;
-  if (high != null) return `< ${high}${suffix}`;
-  if (low != null) return `> ${low}${suffix}`;
+  if (low != null && high != null)
+    return `${labNumber(low)} - ${labNumber(high)}${suffix}`;
+  if (high != null) return `< ${labNumber(high)}${suffix}`;
+  if (low != null) return `> ${labNumber(low)}${suffix}`;
   return null;
 };
 
 export const formatLabValue = (value: number, unit: string): string =>
-  unit ? `${value} ${unit}` : String(value);
+  unit ? `${labNumber(value)} ${unit}` : labNumber(value);
 
 /** The value to show for a result: the number with its unit, else the text. */
 export const labResultText = (result: LabResultResponse): string =>
