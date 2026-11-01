@@ -31,9 +31,19 @@ import {
   type TelemetryGpsPoint,
 } from './workoutTelemetryDerivation.js';
 import { upsertSamplesByDay } from './healthMetricSampleWriter.js';
+import workoutDuplicateRepository from '../models/workoutDuplicateRepository.js';
+import {
+  classifyIncomingWorkout,
+  completenessScore,
+  describeMatch,
+  isWorkoutDedupeEnabled,
+  type IncomingWorkoutDecision,
+  type WorkoutSummary,
+} from './workoutDuplicateDetection.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import {
+  addDays,
   BUILT_IN_MOODS,
   instantForDay,
   instantHourMinute,
@@ -1912,10 +1922,73 @@ function localEntryTime(iso: string, tz: string): string | null {
   }
 }
 
+// Probable-duplicate check for a synced workout (#2839), behind
+// SPARKY_FITNESS_HEALTH_WORKOUT_DEDUPE. Looks a day either side so a workout
+// past midnight still meets its twin.
+async function classifyWorkoutAgainstStored(
+  incoming: WorkoutSummary,
+  ctx: HealthEntryContext,
+  tz: string
+): Promise<IncomingWorkoutDecision> {
+  const candidates =
+    await workoutDuplicateRepository.findWorkoutDedupeCandidates(
+      ctx.userId,
+      addDays(ctx.parsedDate, -1),
+      addDays(ctx.parsedDate, 1),
+      tz
+    );
+  const decision = classifyIncomingWorkout(incoming, candidates);
+  if (decision.kind === 'resync') {
+    // Rows stored before the check was switched on are left alone; the
+    // review script lists them instead of anything deleting them here.
+    const others = candidates.filter((c) => c.id !== decision.existing.id);
+    const legacy = classifyIncomingWorkout(incoming, others);
+    if (legacy.kind === 'keep-existing' || legacy.kind === 'replace-existing') {
+      log(
+        'warn',
+        `[workoutDedupe] Not merging stored pair (both already imported): ${describeMatch(incoming, legacy.existing, legacy.metrics)}. ` +
+          'Review with scripts/reportDuplicateWorkouts.script.ts.'
+      );
+    }
+  }
+  return decision;
+}
+
 const workoutHandler: HealthTypeHandler = {
   async handle(entry, ctx) {
     const { type, source = 'manual' } = entry;
     try {
+      const dedupeSourceId =
+        isWorkoutDedupeEnabled() &&
+        typeof entry.source_id === 'string' &&
+        entry.source_id.length > 0
+          ? (entry.source_id as string)
+          : null;
+      if (dedupeSourceId) {
+        let ownerId: string | null = null;
+        try {
+          ownerId = await workoutDuplicateRepository.findMergedDuplicateOwner(
+            ctx.userId,
+            source,
+            dedupeSourceId
+          );
+        } catch (lookupError) {
+          log(
+            'error',
+            `[workoutDedupe] Merged-duplicate lookup failed for ${source}/${dedupeSourceId}, importing normally: ${lookupError instanceof Error ? lookupError.message : String(lookupError)}`
+          );
+        }
+        if (ownerId) {
+          log(
+            'info',
+            `[workoutDedupe] Skipped ${source}/${dedupeSourceId}: already recorded as a duplicate of exercise entry ${ownerId}.`
+          );
+          return {
+            status: 'skipped',
+            reason: `Probable duplicate of exercise entry ${ownerId}; not imported again.`,
+          };
+        }
+      }
       const {
         activityType,
         caloriesBurned,
@@ -2046,6 +2119,87 @@ const workoutHandler: HealthTypeHandler = {
         ...deriveWorkoutTelemetry(gpsPoints, hrSamples),
         ...sanitizeTelemetry(entry.telemetry),
       };
+      let dedupe: IncomingWorkoutDecision = { kind: 'none' };
+      let incomingSummary: WorkoutSummary | null = null;
+      if (dedupeSourceId) {
+        const startMs = Date.parse(ctx.entryTimestamp);
+        incomingSummary = {
+          source,
+          sourceId: dedupeSourceId,
+          activity: exerciseName,
+          startMs: Number.isFinite(startMs) ? startMs : null,
+          durationMinutes: duration ? duration / 60 : 0,
+          distanceKm: typeof distance === 'number' ? distance : null,
+          steps: typeof steps === 'number' ? steps : null,
+          avgHeartRate:
+            typeof telemetry.avg_heart_rate === 'number'
+              ? telemetry.avg_heart_rate
+              : null,
+          maxHeartRate:
+            typeof telemetry.max_heart_rate === 'number'
+              ? telemetry.max_heart_rate
+              : null,
+          completeness: completenessScore({
+            ...telemetry,
+            distance,
+            steps,
+            calories_burned: caloriesBurned,
+            hasGps: gpsPoints.length > 0,
+            hasHrSamples: hrSamples.length > 0,
+          }),
+          isManual: false,
+        };
+        try {
+          dedupe = await classifyWorkoutAgainstStored(incomingSummary, ctx, tz);
+        } catch (dedupeError) {
+          // The check must never cost an import: fall back to today's behaviour.
+          const message =
+            dedupeError instanceof Error
+              ? dedupeError.message
+              : String(dedupeError);
+          log(
+            'error',
+            `[workoutDedupe] Check failed for ${source}/${dedupeSourceId}, importing normally: ${message}`
+          );
+        }
+        if (dedupe.kind === 'manual-overlap') {
+          log(
+            'warn',
+            `[workoutDedupe] Imported anyway, overlaps a manual entry: ${describeMatch(incomingSummary, dedupe.existing, dedupe.metrics)}.`
+          );
+        }
+        if (dedupe.kind === 'keep-existing') {
+          const keptId = dedupe.existing.id as string;
+          try {
+            await workoutDuplicateRepository.recordMergedDuplicate(
+              ctx.userId,
+              keptId,
+              source,
+              {
+                source_id: dedupeSourceId,
+                reason: 'kept existing entry (at least as complete)',
+                decided_at: new Date().toISOString(),
+                ...dedupe.metrics,
+              },
+              ctx.actingUserId
+            );
+          } catch (recordError) {
+            // Without the record the next sync simply decides again, the same way.
+            log(
+              'error',
+              `[workoutDedupe] Could not record ${source}/${dedupeSourceId} as merged into ${keptId}: ${recordError instanceof Error ? recordError.message : String(recordError)}`
+            );
+          }
+          log(
+            'info',
+            `[workoutDedupe] Skipped as duplicate, kept entry ${keptId}: ${describeMatch(incomingSummary, dedupe.existing, dedupe.metrics)}.`
+          );
+          return {
+            status: 'skipped',
+            reason: `Probable duplicate of exercise entry ${keptId}; not imported.`,
+          };
+        }
+      }
       const exerciseEntry = await exerciseEntryDb.createExerciseEntry(
         ctx.userId,
         {
@@ -2113,6 +2267,38 @@ const workoutHandler: HealthTypeHandler = {
           log(
             'error',
             `[processHealthData] Saved workout ${exerciseEntry.id} but failed to persist its telemetry: ${message}`
+          );
+        }
+      }
+      if (dedupe.kind === 'replace-existing' && incomingSummary) {
+        const replaced = dedupe.existing;
+        try {
+          await workoutDuplicateRepository.replaceWithMergedDuplicate(
+            ctx.userId,
+            replaced.id as string,
+            exerciseEntry.id,
+            replaced.source,
+            {
+              source_id: replaced.sourceId as string,
+              reason: 'replaced by a more complete copy',
+              decided_at: new Date().toISOString(),
+              ...dedupe.metrics,
+            },
+            ctx.actingUserId
+          );
+          log(
+            'info',
+            `[workoutDedupe] Replaced entry ${replaced.id} with more complete entry ${exerciseEntry.id}: ${describeMatch(incomingSummary, replaced, dedupe.metrics)}.`
+          );
+        } catch (replaceError) {
+          // Both copies stay, as they would without the check; nothing is lost.
+          const message =
+            replaceError instanceof Error
+              ? replaceError.message
+              : String(replaceError);
+          log(
+            'error',
+            `[workoutDedupe] Saved ${exerciseEntry.id} but could not replace duplicate entry ${replaced.id}: ${message}`
           );
         }
       }
