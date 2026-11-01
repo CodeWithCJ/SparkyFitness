@@ -7,6 +7,7 @@ import { log } from '../../config/logging.js';
 import { loadRawBundle, logRawResponse } from '../../utils/diagnosticLogger.js';
 import { setMockDataContext } from '../../utils/mockDataContext.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
+import { describeError } from '../../utils/errors.js';
 import hevyDataProcessor from './hevyDataProcessor.js';
 import type {
   HevyExerciseTemplate,
@@ -28,10 +29,6 @@ interface HevyProviderRow {
 interface HevyRawBundle {
   last_updated?: string;
   responses: Record<string, { data: unknown }>;
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /** Resolve one owned Hevy connection for the whole synchronization. */
@@ -92,7 +89,7 @@ async function getHevyResponse<T>(
   } catch (error) {
     log(
       'error',
-      `Error fetching Hevy ${dataType} for user ${userId}: ${errorMessage(error)}`
+      `Error fetching Hevy ${dataType} for user ${userId}: ${describeError(error)}`
     );
     throw error;
   }
@@ -277,7 +274,7 @@ async function syncHevyData(
       } catch (error) {
         log(
           'warn',
-          `Skipping optional Hevy user info for user ${userId}: ${errorMessage(error)}`
+          `Skipping optional Hevy user info for user ${userId}: ${describeError(error)}`
         );
       }
     }
@@ -303,8 +300,11 @@ async function syncHevyData(
         templates
       );
     }
-    // Replaying saved responses must not postpone the next live sync.
-    if (!replay) await markProviderSynced(userId, provider.id);
+    // Only a live window covering the current local day can fulfill today's sync.
+    const today = todayInZone(timezone);
+    const coversToday =
+      (!firstDay || firstDay <= today) && (!endDate || endDate >= today);
+    if (!replay && coversToday) await markProviderSynced(userId, provider.id);
     log(
       'info',
       `Hevy synchronization completed for user ${userId}. Total processed: ${workouts.length}`
@@ -318,7 +318,7 @@ async function syncHevyData(
   } catch (error) {
     log(
       'error',
-      `Hevy synchronization failed for user ${userId}: ${errorMessage(error)}`
+      `Hevy synchronization failed for user ${userId}: ${describeError(error)}`
     );
     throw error;
   }

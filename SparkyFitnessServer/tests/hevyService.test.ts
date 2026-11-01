@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HevyWorkout } from '../integrations/hevy/hevyDataProcessor.js';
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   loadRawBundle: vi.fn(),
   logRawResponse: vi.fn(),
   loadUserTimezone: vi.fn(),
+  log: vi.fn(),
 }));
 
 vi.mock('axios', () => ({ default: { get: mocks.get } }));
@@ -24,7 +25,7 @@ vi.mock('../security/encryption.js', () => ({
   decrypt: mocks.decrypt,
   ENCRYPTION_KEY: 'test-encryption-key',
 }));
-vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../config/logging.js', () => ({ log: mocks.log }));
 vi.mock('../utils/diagnosticLogger.js', () => ({
   loadRawBundle: mocks.loadRawBundle,
   logRawResponse: mocks.logRawResponse,
@@ -309,6 +310,141 @@ describe('syncHevyData required API reads', () => {
       [template]
     );
     expect(result.processedCount).toBe(2);
+  });
+});
+
+describe('syncHevyData current-day completion', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-01T20:30:00Z'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it.each([
+    {
+      name: 'historical range',
+      start: '2026-09-01',
+      end: '2026-09-30',
+      full: false,
+      marksSuccess: false,
+    },
+    {
+      name: 'past end without a start',
+      start: null,
+      end: '2026-10-31',
+      full: false,
+      marksSuccess: false,
+    },
+    {
+      name: 'future start without an end',
+      start: '2026-11-02',
+      end: null,
+      full: false,
+      marksSuccess: false,
+    },
+    {
+      name: 'default incremental window',
+      start: null,
+      end: null,
+      full: false,
+      marksSuccess: true,
+    },
+    {
+      name: 'full history',
+      start: null,
+      end: null,
+      full: true,
+      marksSuccess: true,
+    },
+    {
+      name: 'inclusive current-day bounds',
+      start: '2026-11-01',
+      end: '2026-11-01',
+      full: false,
+      marksSuccess: true,
+    },
+  ])(
+    '$name only counts when it covers today',
+    async ({ start, end, full, marksSuccess }) => {
+      await expect(
+        syncHevyData(USER_ID, USER_ID, full, PROVIDER_ID, start, end)
+      ).resolves.toMatchObject({ success: true, source: 'live_api' });
+      expect(syncUpdates()).toHaveLength(marksSuccess ? 1 : 0);
+    }
+  );
+
+  it.each([
+    {
+      timezone: 'Europe/Berlin',
+      now: '2026-11-01T23:30:00Z',
+      marksSuccess: false,
+    },
+    {
+      timezone: 'America/New_York',
+      now: '2026-11-02T02:30:00Z',
+      marksSuccess: true,
+    },
+  ])(
+    'uses the current day in $timezone rather than UTC',
+    async ({ timezone, now, marksSuccess }) => {
+      vi.setSystemTime(new Date(now));
+      mocks.loadUserTimezone.mockResolvedValue(timezone);
+      await syncHevyData(
+        USER_ID,
+        USER_ID,
+        false,
+        PROVIDER_ID,
+        '2026-11-01',
+        '2026-11-01'
+      );
+      expect(syncUpdates()).toHaveLength(marksSuccess ? 1 : 0);
+    }
+  );
+});
+
+describe('syncHevyData error details', () => {
+  const connectionFailure = () =>
+    new AggregateError(
+      [Object.assign(new Error(''), { code: 'ECONNREFUSED' })],
+      ''
+    );
+
+  it('keeps the cause of an aggregate error in request and sync failure logs', async () => {
+    const error = connectionFailure();
+    mocks.get.mockRejectedValueOnce(error);
+    await expect(
+      syncHevyData(USER_ID, USER_ID, true, PROVIDER_ID)
+    ).rejects.toBe(error);
+    expect(mocks.log).toHaveBeenCalledWith(
+      'error',
+      expect.stringMatching(
+        /Error fetching Hevy raw_workouts_page_1.*ECONNREFUSED/
+      )
+    );
+    expect(mocks.log).toHaveBeenCalledWith(
+      'error',
+      expect.stringMatching(/Hevy synchronization failed.*ECONNREFUSED/)
+    );
+  });
+
+  it('keeps the cause of an optional user-info error without failing the import', async () => {
+    const getSuccessfulPage = mocks.get.getMockImplementation()!;
+    mocks.get.mockImplementation(
+      async (url: string, options: { params?: { page: number } }) => {
+        if (url.endsWith('/v1/user/info')) throw connectionFailure();
+        return getSuccessfulPage(url, options);
+      }
+    );
+    await expect(
+      syncHevyData(USER_ID, USER_ID, true, PROVIDER_ID)
+    ).resolves.toMatchObject({ success: true });
+    expect(mocks.log).toHaveBeenCalledWith(
+      'warn',
+      expect.stringMatching(/Skipping optional Hevy user info.*ECONNREFUSED/)
+    );
   });
 });
 
