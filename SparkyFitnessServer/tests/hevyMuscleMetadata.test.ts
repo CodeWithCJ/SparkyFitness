@@ -19,6 +19,7 @@ vi.mock('../integrations/hevy/hevyExerciseRepository.js', () => ({
   default: {
     findByTemplateId: vi.fn().mockResolvedValue(null),
     findLegacyByName: vi.fn().mockResolvedValue(null),
+    findOwnedByName: vi.fn().mockResolvedValue(null),
     fillMissingMuscles: vi.fn().mockResolvedValue(undefined),
   },
 }));
@@ -47,6 +48,7 @@ import {
 import exerciseRepository from '../models/exercise.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import hevyExerciseRepository from '../integrations/hevy/hevyExerciseRepository.js';
+import { log } from '../config/logging.js';
 import { calculateMuscleGroupSets } from '@workspace/shared';
 
 const workout: HevyWorkout = {
@@ -235,7 +237,7 @@ describe('Hevy muscle metadata import', () => {
     }
   );
 
-  it('propagates a failed muscle write instead of reporting a successful import', async () => {
+  it('still imports the workout if its optional muscle write fails', async () => {
     vi.mocked(hevyExerciseRepository.findByTemplateId).mockResolvedValueOnce({
       id: 'existing',
       user_id: 'u-1',
@@ -247,7 +249,71 @@ describe('Hevy muscle metadata import', () => {
     );
     await expect(
       processHevyWorkouts('u-1', 'u-1', [workout], 'UTC', templates)
-    ).rejects.toThrow('Hevy');
-    expect(exerciseEntryRepository.createExerciseEntry).not.toHaveBeenCalled();
+    ).resolves.toBeUndefined();
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledWith(
+      'u-1',
+      expect.objectContaining({ exercise_id: 'existing' }),
+      'u-1',
+      'Hevy',
+      'session-1'
+    );
+    expect(log).toHaveBeenCalledWith(
+      'warn',
+      expect.stringContaining('write failed')
+    );
+  });
+
+  it('preserves an owned linked exercise when an older replay has no template id', async () => {
+    vi.mocked(hevyExerciseRepository.findOwnedByName).mockResolvedValueOnce({
+      id: 'existing-linked',
+      user_id: 'u-1',
+      source: 'Hevy',
+      source_id: 'row-1',
+    });
+    const legacyWorkout = {
+      ...workout,
+      exercises: workout.exercises!.map((exercise) => ({
+        ...exercise,
+        exercise_template_id: null,
+      })),
+    };
+    await processHevyWorkouts('u-1', 'u-1', [legacyWorkout], 'UTC');
+    expect(hevyExerciseRepository.findOwnedByName).toHaveBeenCalledWith(
+      'u-1',
+      'Renamed row',
+      true
+    );
+    expect(exerciseRepository.createExercise).not.toHaveBeenCalled();
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledWith(
+      'u-1',
+      expect.objectContaining({ exercise_id: 'existing-linked' }),
+      'u-1',
+      'Hevy',
+      'session-1'
+    );
+  });
+
+  it("reuses the owner's non-Hevy exercise without changing its identity or muscles", async () => {
+    vi.mocked(hevyExerciseRepository.findOwnedByName).mockResolvedValueOnce({
+      id: 'manual-bench',
+      user_id: 'u-1',
+      source: 'manual',
+      source_id: null,
+    });
+    await processHevyWorkouts('u-1', 'u-1', [workout], 'UTC', templates);
+    expect(hevyExerciseRepository.findOwnedByName).toHaveBeenCalledWith(
+      'u-1',
+      'Renamed row',
+      false
+    );
+    expect(exerciseRepository.createExercise).not.toHaveBeenCalled();
+    expect(hevyExerciseRepository.fillMissingMuscles).not.toHaveBeenCalled();
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledWith(
+      'u-1',
+      expect.objectContaining({ exercise_id: 'manual-bench' }),
+      'u-1',
+      'Hevy',
+      'session-1'
+    );
   });
 });

@@ -33,6 +33,7 @@ vi.mock('../integrations/hevy/hevyExerciseRepository.js', () => ({
         })
       ),
     fillMissingMuscles: vi.fn().mockResolvedValue(undefined),
+    findOwnedByName: vi.fn().mockResolvedValue(null),
   },
 }));
 vi.mock('../models/measurementRepository.js', () => ({

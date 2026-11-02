@@ -12,6 +12,7 @@ import type {
 } from './hevyTypes.js';
 export type { HevyWorkout } from './hevyTypes.js';
 import { log } from '../../config/logging.js';
+import { describeError } from '../../utils/errors.js';
 import {
   todayInZone,
   instantToDay,
@@ -252,24 +253,33 @@ async function processSingleWorkout(
     if (!exercise) {
       // Filter legacy records in the query itself: an unrelated public row
       // returned first by a general name search must not hide the owned row.
-      exercise = templateId
-        ? await hevyExerciseRepository.findLegacyByName(
-            userId,
-            hevyExercise.title
-          )
-        : await exerciseRepository.findExerciseByNameAndUserId(
-            hevyExercise.title,
-            userId
-          );
-    }
-    if (exercise && templateId && template) {
-      await hevyExerciseRepository.fillMissingMuscles(
+      exercise = await hevyExerciseRepository.findLegacyByName(
         userId,
-        exercise.id,
-        templateId,
-        primaryMuscles,
-        secondaryMuscles
+        hevyExercise.title
       );
+    }
+    if (!exercise) {
+      exercise = await hevyExerciseRepository.findOwnedByName(
+        userId,
+        hevyExercise.title,
+        !templateId
+      );
+    }
+    if (exercise?.source === 'Hevy' && templateId && template) {
+      try {
+        await hevyExerciseRepository.fillMissingMuscles(
+          userId,
+          exercise.id,
+          templateId,
+          primaryMuscles,
+          secondaryMuscles
+        );
+      } catch (error) {
+        log(
+          'warn',
+          `Skipping optional Hevy muscle update for exercise ${exercise.id}: ${describeError(error)}`
+        );
+      }
     }
     if (!exercise) {
       exercise = await exerciseRepository.createExercise({

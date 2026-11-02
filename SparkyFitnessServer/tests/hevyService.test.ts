@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   logRawResponse: vi.fn(),
   loadUserTimezone: vi.fn(),
   log: vi.fn(),
+  findTemplateIdsWithMuscles: vi.fn(),
 }));
 
 vi.mock('axios', () => ({ default: { get: mocks.get } }));
@@ -40,6 +41,9 @@ vi.mock('../integrations/hevy/hevyDataProcessor.js', () => ({
     processHevyWorkouts: mocks.processHevyWorkouts,
   },
 }));
+vi.mock('../integrations/hevy/hevyExerciseRepository.js', () => ({
+  default: { findTemplateIdsWithMuscles: mocks.findTemplateIdsWithMuscles },
+}));
 
 import { syncHevyData } from '../integrations/hevy/hevyService.js';
 
@@ -63,7 +67,9 @@ function workout(id: string, startTime = '2026-10-23T18:00:00Z'): HevyWorkout {
     title: 'Strength session',
     start_time: startTime,
     end_time: startTime,
-    exercises: [],
+    exercises: [
+      { index: 0, title: 'Bench Press', exercise_template_id: template.id },
+    ],
   };
 }
 
@@ -130,10 +136,11 @@ beforeEach(() => {
       : [],
     rowCount: 1,
   }));
-  mocks.decrypt.mockReturnValue('decrypted-test-key');
+  mocks.decrypt.mockResolvedValue('decrypted-test-key');
   mocks.loadUserTimezone.mockResolvedValue('Europe/Berlin');
   mocks.processHevyUserInfo.mockResolvedValue(undefined);
   mocks.processHevyWorkouts.mockResolvedValue(undefined);
+  mocks.findTemplateIdsWithMuscles.mockResolvedValue([]);
   mockApi();
 });
 
@@ -193,7 +200,7 @@ describe('syncHevyData required API reads', () => {
     );
   });
 
-  it.each(['/v1/workouts', '/v1/exercise_templates'])(
+  it.each(['/v1/workouts'])(
     'rejects a failed %s read before processing or marking success',
     async (failedEndpoint) => {
       const getSuccessfulPage = mocks.get.getMockImplementation()!;
@@ -213,6 +220,117 @@ describe('syncHevyData required API reads', () => {
       expect(syncUpdates()).toEqual([]);
     }
   );
+
+  it('imports workouts when optional template metadata is unavailable', async () => {
+    const getSuccessfulPage = mocks.get.getMockImplementation()!;
+    mocks.get.mockImplementation(
+      async (url: string, options: { params?: { page: number } }) => {
+        if (url.endsWith('/v1/exercise_templates')) {
+          throw new Error('Template catalogue unavailable');
+        }
+        return getSuccessfulPage(url, options);
+      }
+    );
+    await expect(
+      syncHevyData(USER_ID, USER_ID, true, PROVIDER_ID)
+    ).resolves.toMatchObject({ success: true, processedCount: 1 });
+    expect(mocks.processHevyWorkouts).toHaveBeenCalledWith(
+      USER_ID,
+      USER_ID,
+      [workout('workout-1')],
+      'Europe/Berlin',
+      []
+    );
+    expect(mocks.log).toHaveBeenCalledWith(
+      'warn',
+      expect.stringContaining('Template catalogue unavailable')
+    );
+    expect(syncUpdates()).toHaveLength(1);
+  });
+
+  it('keeps available metadata when a later template page fails', async () => {
+    mockApi(undefined, [
+      { page: 1, page_count: 2, exercise_templates: [template] },
+    ]);
+    await expect(
+      syncHevyData(USER_ID, USER_ID, true, PROVIDER_ID)
+    ).resolves.toMatchObject({ success: true, processedCount: 1 });
+    expect(mocks.processHevyWorkouts).toHaveBeenCalledWith(
+      USER_ID,
+      USER_ID,
+      [workout('workout-1')],
+      'Europe/Berlin',
+      [template]
+    );
+  });
+
+  it('skips template requests when all referenced Hevy identities already have muscles', async () => {
+    mocks.findTemplateIdsWithMuscles.mockResolvedValue([template.id]);
+    await syncHevyData(USER_ID, USER_ID, true, PROVIDER_ID);
+    expect(mocks.get.mock.calls.map(([url]) => url)).not.toContain(
+      'https://api.hevyapp.com/v1/exercise_templates'
+    );
+    expect(mocks.processHevyWorkouts).toHaveBeenCalledWith(
+      USER_ID,
+      USER_ID,
+      [workout('workout-1')],
+      'Europe/Berlin',
+      []
+    );
+  });
+
+  it('fetches templates again for a linked exercise whose muscle metadata is missing', async () => {
+    await syncHevyData(USER_ID, USER_ID, true, PROVIDER_ID);
+    expect(mocks.findTemplateIdsWithMuscles).toHaveBeenCalledWith(USER_ID, [
+      template.id,
+    ]);
+    expect(mocks.get.mock.calls.map(([url]) => url)).toContain(
+      'https://api.hevyapp.com/v1/exercise_templates'
+    );
+  });
+
+  it('does not request templates for workouts outside the requested range', async () => {
+    await syncHevyData(
+      USER_ID,
+      USER_ID,
+      true,
+      PROVIDER_ID,
+      '2026-10-24',
+      '2026-10-24'
+    );
+    expect(mocks.get.mock.calls.map(([url]) => url)).not.toContain(
+      'https://api.hevyapp.com/v1/exercise_templates'
+    );
+    expect(mocks.processHevyWorkouts).not.toHaveBeenCalled();
+  });
+
+  it('rejects unavailable decrypted credentials before making requests', async () => {
+    mocks.decrypt.mockResolvedValue(null);
+    await expect(
+      syncHevyData(USER_ID, USER_ID, true, PROVIDER_ID)
+    ).rejects.toThrow('Hevy API key');
+    expect(mocks.get).not.toHaveBeenCalled();
+    expect(syncUpdates()).toEqual([]);
+  });
+
+  it('reads and decrypts the selected credentials only once for all pages', async () => {
+    mockApi([
+      { page: 1, page_count: 2, workouts: [workout('workout-1')] },
+      { page: 2, page_count: 2, workouts: [workout('workout-2')] },
+    ]);
+    await syncHevyData(USER_ID, USER_ID, true, PROVIDER_ID);
+    expect(mocks.decrypt).toHaveBeenCalledOnce();
+    expect(
+      mocks.query.mock.calls.filter(
+        ([sql]) =>
+          typeof sql === 'string' &&
+          sql.includes('SELECT id, encrypted_app_key')
+      )
+    ).toHaveLength(1);
+    for (const [, options] of mocks.get.mock.calls) {
+      expect(options.headers).toEqual({ 'api-key': 'decrypted-test-key' });
+    }
+  });
 
   it('rejects a later workout page failure before replacing the first page', async () => {
     mockApi([{ page: 1, page_count: 2, workouts: [workout('workout-1')] }]);

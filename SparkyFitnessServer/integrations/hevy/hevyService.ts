@@ -9,6 +9,7 @@ import { setMockDataContext } from '../../utils/mockDataContext.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import { describeError } from '../../utils/errors.js';
 import hevyDataProcessor from './hevyDataProcessor.js';
+import hevyExerciseRepository from './hevyExerciseRepository.js';
 import type {
   HevyExerciseTemplate,
   HevyExerciseTemplatesResponse,
@@ -59,15 +60,21 @@ async function getHevyProvider(userId: string, providerId?: string | null) {
 
 async function getHevyApiKey(userId: string, providerId?: string | null) {
   const provider = await getHevyProvider(userId, providerId);
+  return decryptHevyApiKey(provider);
+}
+
+async function decryptHevyApiKey(provider: HevyProviderRow): Promise<string> {
   if (!provider.encrypted_app_key) {
     throw new Error('Hevy API key is missing for this provider.');
   }
-  return decrypt(
+  const apiKey = await decrypt(
     provider.encrypted_app_key,
     provider.app_key_iv,
     provider.app_key_tag,
     ENCRYPTION_KEY!
   );
+  if (!apiKey) throw new Error('Hevy API key is missing for this provider.');
+  return apiKey;
 }
 
 /** Every request to Hevy is read-only. */
@@ -76,12 +83,13 @@ async function getHevyResponse<T>(
   providerId: string | null | undefined,
   endpoint: string,
   dataType: string,
-  params?: { page: number; pageSize: number }
+  params?: { page: number; pageSize: number },
+  apiKey?: string
 ): Promise<T> {
-  const apiKey = await getHevyApiKey(userId, providerId);
+  const resolvedApiKey = apiKey ?? (await getHevyApiKey(userId, providerId));
   try {
     const response = await axios.get<T>(`${HEVY_API_BASE_URL}${endpoint}`, {
-      headers: { 'api-key': apiKey },
+      headers: { 'api-key': resolvedApiKey },
       ...(params ? { params } : {}),
     });
     logRawResponse('hevy', dataType, response.data);
@@ -95,12 +103,18 @@ async function getHevyResponse<T>(
   }
 }
 
-async function getUserInfo(userId: string, providerId?: string | null) {
+async function getUserInfo(
+  userId: string,
+  providerId?: string | null,
+  apiKey?: string
+) {
   return getHevyResponse<HevyUserInfoResponse>(
     userId,
     providerId,
     '/v1/user/info',
-    'raw_user_info'
+    'raw_user_info',
+    undefined,
+    apiKey
   );
 }
 
@@ -108,14 +122,16 @@ async function getWorkouts(
   userId: string,
   page = 1,
   pageSize = 10,
-  providerId?: string | null
+  providerId?: string | null,
+  apiKey?: string
 ) {
   const data = await getHevyResponse<HevyWorkoutsResponse>(
     userId,
     providerId,
     '/v1/workouts',
     `raw_workouts_page_${page}`,
-    { page, pageSize }
+    { page, pageSize },
+    apiKey
   );
   if (
     !data ||
@@ -132,14 +148,16 @@ async function getExerciseTemplates(
   userId: string,
   page = 1,
   pageSize = 100,
-  providerId?: string | null
+  providerId?: string | null,
+  apiKey?: string
 ) {
   const data = await getHevyResponse<HevyExerciseTemplatesResponse>(
     userId,
     providerId,
     '/v1/exercise_templates',
     `raw_exercise_templates_page_${page}`,
-    { page, pageSize }
+    { page, pageSize },
+    apiKey
   );
   if (
     !data ||
@@ -190,7 +208,7 @@ async function markProviderSynced(userId: string, providerId: string) {
   }
 }
 
-/** Fetch every required page before the processor replaces existing Hevy diary entries. */
+/** Fetch required workout pages before replacing diary entries; metadata is optional. */
 async function syncHevyData(
   userId: string,
   createdByUserId: string,
@@ -242,10 +260,11 @@ async function syncHevyData(
           HevyUserInfoResponse | undefined) ?? null;
       bundleUpdated = bundle.last_updated;
     } else {
+      const apiKey = await decryptHevyApiKey(provider);
       let page = 1;
       let moreWorkouts = true;
       while (moreWorkouts) {
-        const data = await getWorkouts(userId, page, 10, provider.id);
+        const data = await getWorkouts(userId, page, 10, provider.id, apiKey);
         allWorkouts.push(...data.workouts);
         // Hevy returns newest workouts first; stop once an entire page precedes the range.
         const reachesRange =
@@ -259,18 +278,54 @@ async function syncHevyData(
         page++;
       }
 
-      page = 1;
-      let templatePageCount = 1;
-      while (page <= templatePageCount) {
-        const data = await getExerciseTemplates(userId, page, 100, provider.id);
-        templates.push(...data.exercise_templates);
-        templatePageCount = data.page_count;
-        page++;
+      // Already classified library rows supply their own diary snapshots. Fetch
+      // the catalogue only for in-range identities with missing muscle metadata.
+      const templateIds = [
+        ...new Set(
+          allWorkouts
+            .filter((workout) =>
+              isInRange(workout, timezone, firstDay, endDate)
+            )
+            .flatMap((workout) => workout.exercises ?? [])
+            .map((exercise) => exercise.exercise_template_id)
+            .filter((id): id is string => Boolean(id))
+        ),
+      ];
+      if (templateIds.length > 0) {
+        try {
+          const knownIds = new Set(
+            await hevyExerciseRepository.findTemplateIdsWithMuscles(
+              userId,
+              templateIds
+            )
+          );
+          if (templateIds.some((id) => !knownIds.has(id))) {
+            page = 1;
+            let templatePageCount = 1;
+            while (page <= templatePageCount) {
+              const data = await getExerciseTemplates(
+                userId,
+                page,
+                100,
+                provider.id,
+                apiKey
+              );
+              templates.push(...data.exercise_templates);
+              templatePageCount = data.page_count;
+              page++;
+            }
+          }
+        } catch (error) {
+          log(
+            'warn',
+            `Skipping unavailable Hevy muscle metadata for user ${userId}: ${describeError(error)}`
+          );
+        }
       }
 
       // Older Hevy accounts/API versions may not expose this optional endpoint.
       try {
-        userInfo = await getUserInfo(userId, provider.id);
+        userInfo = await getUserInfo(userId, provider.id, apiKey);
       } catch (error) {
         log(
           'warn',
@@ -279,10 +334,9 @@ async function syncHevyData(
       }
     }
 
-    const workouts = allWorkouts.filter((workout) => {
-      const day = instantToDay(new Date(workout.start_time), timezone);
-      return (!firstDay || day >= firstDay) && (!endDate || day <= endDate);
-    });
+    const workouts = allWorkouts.filter((workout) =>
+      isInRange(workout, timezone, firstDay, endDate)
+    );
     if (userInfo) {
       await hevyDataProcessor.processHevyUserInfo(
         userId,
@@ -322,6 +376,16 @@ async function syncHevyData(
     );
     throw error;
   }
+}
+
+function isInRange(
+  workout: HevyWorkout,
+  timezone: string,
+  firstDay: string | null,
+  endDate: string | null
+): boolean {
+  const day = instantToDay(new Date(workout.start_time), timezone);
+  return (!firstDay || day >= firstDay) && (!endDate || day <= endDate);
 }
 
 async function getStatus(userId: string) {
