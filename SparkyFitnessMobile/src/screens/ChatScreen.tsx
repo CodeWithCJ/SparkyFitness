@@ -1473,9 +1473,18 @@ export default function ChatScreen({
   useEffect(() => {
     if (!serviceConfigId) return;
     if (!chatConversationId || chatConversationServiceId !== serviceConfigId) {
-      startChatConversation(serviceConfigId);
+      let cancelled = false;
+      void (async () => {
+        // The history is global, not per provider; refetch so the new thread seeds from the latest messages.
+        await queryClient.refetchQueries({ queryKey: chatHistoryQueryKey });
+        if (!cancelled) startChatConversation(serviceConfigId);
+      })();
+      return () => {
+        cancelled = true;
+      };
     }
   }, [
+    queryClient,
     serviceConfigId,
     chatConversationId,
     chatConversationServiceId,
