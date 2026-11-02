@@ -116,7 +116,10 @@ export async function getDailySummaryRange({
     // Only `calories` is needed, so the custom-nutrient catalog is deliberately not
     // passed — it would inflate the dynamic SQL for columns nothing here reads.
     reportRepository.getNutritionData(targetUserId, startDate, endDate, []),
-    goalService.getUserGoalsForRange(targetUserId, startDate, endDate, true),
+    goalService.getUserGoalsForRange(targetUserId, startDate, endDate, true, {
+      actorUserId,
+      includeCheckin,
+    }),
     exerciseEntryRepository.getDailyExerciseCalorieSplitRange(
       targetUserId,
       startDate,

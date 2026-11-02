@@ -3,6 +3,7 @@ import { log } from '../config/logging.js';
 import exerciseRepository from '../models/exercise.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
+import { bulkInsertExerciseEntryLaps } from '../models/workoutTelemetryRepository.js';
 import { processStravaActivities } from '../integrations/strava/stravaDataProcessor.js';
 
 type StravaActivity = NonNullable<
@@ -26,6 +27,7 @@ vi.mock('../models/exerciseEntry.js', () => ({
 vi.mock('../models/activityDetailsRepository.js', () => ({
   default: { createActivityDetail: vi.fn() },
 }));
+vi.mock('../models/workoutTelemetryRepository.js');
 
 const UID = 1;
 const CID = 1;
@@ -126,6 +128,74 @@ describe('processStravaActivities', () => {
     expect(
       activityDetailsRepository.createActivityDetail
     ).not.toHaveBeenCalled();
+  });
+
+  it('counts saved and failed activities and leaves out those before the sync range', async () => {
+    vi.mocked(exerciseEntryRepository.createExerciseEntry)
+      .mockRejectedValueOnce(new Error('insert failed'))
+      .mockResolvedValueOnce({ id: 'entry-2' });
+
+    const result = await processStravaActivities(
+      UID,
+      CID,
+      [
+        { id: 1, start_date_local: '2026-07-15T07:30:00Z' },
+        { id: 2, start_date_local: '2026-07-15T09:30:00Z' },
+        { id: 3, start_date_local: '2026-07-01T09:30:00Z' },
+      ] as StravaActivity[],
+      {},
+      '2026-07-14'
+    );
+
+    expect(result).toEqual({ processed: 1, failed: 1 });
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledTimes(
+      2
+    );
+  });
+
+  it('counts an activity as processed and warns when only its telemetry fails', async () => {
+    vi.mocked(
+      exerciseEntryRepository.updateExerciseEntryTelemetryOnly
+    ).mockRejectedValueOnce(new Error('telemetry failed'));
+    const activity = { id: 987, name: 'Morning Run' };
+
+    const result = await processStravaActivities(UID, CID, [activity], {
+      987: activity,
+    });
+
+    expect(result).toEqual({ processed: 1, failed: 0 });
+    expect(log).toHaveBeenCalledWith(
+      'warn',
+      expect.stringContaining('telemetry failed')
+    );
+  });
+
+  it('counts an activity as processed and warns when only its laps fail', async () => {
+    vi.mocked(bulkInsertExerciseEntryLaps).mockRejectedValueOnce(
+      new Error('laps failed')
+    );
+    const activity = { id: 987, name: 'Morning Run' };
+
+    const result = await processStravaActivities(UID, CID, [activity], {
+      987: {
+        ...activity,
+        laps: [{ start_date: '2026-07-15T07:30:00Z', elapsed_time: 600 }],
+      },
+    });
+
+    expect(bulkInsertExerciseEntryLaps).toHaveBeenCalledOnce();
+    expect(result).toEqual({ processed: 1, failed: 0 });
+    expect(log).toHaveBeenCalledWith(
+      'warn',
+      expect.stringContaining('laps failed')
+    );
+  });
+
+  it('reports nothing for an empty list', async () => {
+    await expect(processStravaActivities(UID, CID, [])).resolves.toEqual({
+      processed: 0,
+      failed: 0,
+    });
   });
 
   it('does not replace a complete snapshot when the next detail fetch is missing', async () => {

@@ -1,7 +1,8 @@
 /**
  * Editing a workout fills the fields the request left out from the stored
- * entry. A watch telemetry flush or another edit that commits while the edit
- * is running must survive it rather than be overwritten with an older read.
+ * entry. A watch telemetry flush, a distance correction or another edit that
+ * commits while the edit is running must survive it rather than be
+ * overwritten with an older read.
  *
  * Skipped unless a test database is reachable, since the tests briefly lock
  * the whole exercise_entries table.
@@ -9,11 +10,12 @@
 
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { endPool } from '../db/poolManager.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
+import exerciseEntryService from '../services/exerciseEntryService.js';
 import exerciseService from '../services/exerciseService.js';
-import { raceWrites } from './helpers/raceGate.js';
+import { countBehind, raceWrites } from './helpers/raceGate.js';
 
 function ownerClient() {
   return new pg.Client({
@@ -136,6 +138,87 @@ describe.runIf(RUN)('overlapping writes to one workout', () => {
     ]);
 
     expect(await workout(id)).toMatchObject({ notes: 'edited', distance: 5 });
+  });
+
+  it('keeps a distance set while an edit was waiting for the workout', async () => {
+    const id = await insertWorkout();
+    const gatePid: number = (await gate.query('SELECT pg_backend_pid() AS pid'))
+      .rows[0].pid;
+
+    // Holding the sets table stops the distance write after it has updated
+    // the workout row and before it commits, so the edit starts while that
+    // row is changed but not yet committed.
+    await gate.query('BEGIN');
+    await gate.query('LOCK TABLE public.exercise_entry_sets IN SHARE MODE');
+    // Settled at once so a write that fails while the gate is closed is
+    // reported below instead of as an unhandled rejection.
+    const writes: Promise<PromiseSettledResult<unknown>>[] = [];
+    const start = (write: () => Promise<unknown>) =>
+      writes.push(Promise.allSettled([write()]).then(([result]) => result));
+    const waitBehindGate = (n: number) =>
+      vi.waitFor(async () => expect(await countBehind(db, gatePid)).toBe(n), {
+        timeout: 10000,
+        interval: 50,
+      });
+    try {
+      start(() =>
+        exerciseEntryService.setExerciseEntryDistance(userId, userId, id, {
+          distance_km: 7,
+        })
+      );
+      await waitBehindGate(1);
+      start(() =>
+        exerciseService.updateExerciseEntry(userId, userId, id, {
+          notes: 'edited',
+        })
+      );
+      await waitBehindGate(2);
+    } finally {
+      await gate.query('COMMIT');
+    }
+    for (const result of await Promise.all(writes)) {
+      if (result.status === 'rejected') throw result.reason;
+    }
+
+    expect(await workout(id)).toMatchObject({ notes: 'edited', distance: 7 });
+  });
+
+  it('scales laps from the distance the last correction replaced', async () => {
+    const id = await insertWorkout();
+    await db.query(
+      'UPDATE public.exercise_entries SET distance = 10 WHERE id = $1',
+      [id]
+    );
+    await db.query(
+      `INSERT INTO public.exercise_entry_laps
+         (user_id, exercise_entry_id, entry_date, lap_index, start_time,
+          end_time, duration_seconds, distance_meters)
+       VALUES ($1, $2, '2026-09-20', 0, '2026-09-20T06:00:00Z',
+               '2026-09-20T06:30:00Z', 1800, 10000)`,
+      [userId, id]
+    );
+
+    await raceWrites(gate, db, 'exercise_entries', [
+      () =>
+        exerciseEntryService.setExerciseEntryDistance(userId, userId, id, {
+          distance_km: 5,
+        }),
+      () =>
+        exerciseEntryService.setExerciseEntryDistance(userId, userId, id, {
+          distance_km: 8,
+        }),
+    ]);
+
+    const { distance } = await workout(id);
+    const lap = (
+      await db.query(
+        `SELECT distance_meters::float AS distance_meters
+         FROM public.exercise_entry_laps WHERE exercise_entry_id = $1`,
+        [id]
+      )
+    ).rows[0];
+    expect([5, 8]).toContain(distance);
+    expect(lap.distance_meters).toBe(distance * 1000);
   });
 
   it('keeps every field of overlapping edits through the service', async () => {

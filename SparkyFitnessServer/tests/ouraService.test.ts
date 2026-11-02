@@ -33,7 +33,7 @@ vi.mock('../integrations/oura/ouraDataProcessor.js', () => ({
     processOuraCardioAge: vi.fn().mockResolvedValue(undefined),
     processOuraVo2Max: vi.fn().mockResolvedValue(undefined),
     processOuraHeartRate: vi.fn().mockResolvedValue(undefined),
-    processOuraWorkouts: vi.fn().mockResolvedValue(undefined),
+    processOuraWorkouts: vi.fn().mockResolvedValue({ processed: 0, failed: 0 }),
   },
 }));
 vi.mock('../utils/timezoneLoader.js', () => ({
@@ -54,6 +54,8 @@ vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 import { syncOuraData } from '../services/ouraService.js';
 import ouraIntegrationService from '../integrations/oura/ouraService.js';
 import ouraDataProcessor from '../integrations/oura/ouraDataProcessor.js';
+import { log } from '../config/logging.js';
+import { loadRawBundle } from '../utils/diagnosticLogger.js';
 
 const UID = 'user-1';
 
@@ -128,10 +130,77 @@ describe('syncOuraData resilience and bookkeeping', () => {
       new Error('429')
     );
     const result = await syncOuraData(UID, 'scheduled');
-    expect(result).toEqual({ success: true, source: 'live_api' });
+    expect(result).toEqual({
+      success: true,
+      source: 'live_api',
+      workoutsFailed: 0,
+      failedRequiredFetches: ['daily activity'],
+    });
     expect(ouraDataProcessor.processOuraDailyActivity).not.toHaveBeenCalled();
     expect(ouraDataProcessor.processOuraWorkouts).toHaveBeenCalled();
     expect(ouraDataProcessor.processOuraSleep).toHaveBeenCalled();
+  });
+
+  it('leaves last_sync_at alone when a workout fails to save', async () => {
+    vi.mocked(ouraDataProcessor.processOuraWorkouts).mockResolvedValueOnce({
+      processed: 1,
+      failed: 1,
+    });
+    const result = await syncOuraData(UID, 'scheduled');
+    expect(result.workoutsFailed).toBe(1);
+    expect(result.failedRequiredFetches).toEqual([]);
+    expect(queryMock).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledWith(
+      'warn',
+      expect.stringContaining('failed workouts: 1')
+    );
+  });
+
+  it('updates last_sync_at when every workout entry was saved', async () => {
+    vi.mocked(ouraDataProcessor.processOuraWorkouts).mockResolvedValueOnce({
+      processed: 1,
+      failed: 0,
+    });
+    const result = await syncOuraData(UID, 'scheduled');
+    expect(result.workoutsFailed).toBe(0);
+    expect(queryMock).toHaveBeenCalledOnce();
+  });
+
+  it('replays a raw bundle without touching last_sync_at', async () => {
+    vi.mocked(loadRawBundle).mockReturnValueOnce({
+      last_updated: '2026-11-01',
+      responses: {},
+    });
+    const result = await syncOuraData(UID, 'manual', null, null, 'local');
+    expect(result.source).toBe('local_raw_replay');
+    expect(queryMock).not.toHaveBeenCalled();
+  });
+
+  it('leaves last_sync_at alone when a required fetch fails', async () => {
+    vi.mocked(ouraIntegrationService.fetchWorkouts).mockRejectedValueOnce(
+      Object.assign(new Error('unavailable'), { response: { status: 503 } })
+    );
+    const result = await syncOuraData(UID, 'scheduled');
+    expect(result.failedRequiredFetches).toEqual(['workouts']);
+    expect(queryMock).not.toHaveBeenCalled();
+  });
+
+  it('does not count an optional fetch as failed', async () => {
+    vi.mocked(ouraIntegrationService.fetchVo2Max).mockRejectedValueOnce(
+      new Error('unavailable')
+    );
+    const result = await syncOuraData(UID, 'scheduled');
+    expect(result.failedRequiredFetches).toEqual([]);
+    expect(queryMock).toHaveBeenCalled();
+  });
+
+  it('does not count a scope the person did not grant', async () => {
+    vi.mocked(ouraIntegrationService.fetchWorkouts).mockRejectedValueOnce(
+      Object.assign(new Error('forbidden'), { response: { status: 403 } })
+    );
+    const result = await syncOuraData(UID, 'scheduled');
+    expect(result.failedRequiredFetches).toEqual([]);
+    expect(queryMock).toHaveBeenCalled();
   });
 
   it('updates last_sync_at after a successful sync', async () => {

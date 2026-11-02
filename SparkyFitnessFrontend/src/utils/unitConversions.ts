@@ -21,8 +21,13 @@ export const kgToLbs = (kg: number): number =>
 export const lbsToKg = (lbs: number): number =>
   lbs * CONVERSION_FACTORS.LBS_TO_KG;
 
-export const kgToStonesLbs = (kg: number): { stones: number; lbs: number } => {
-  const totalLbs = kgToLbs(kg);
+// The total is rounded to the shown precision before it is split, so 13 st
+// stored in kg (181.9999 lb) comes back as 13 st 0 lb, not 12 st 14 lb.
+export const kgToStonesLbs = (
+  kg: number,
+  precision = 1
+): { stones: number; lbs: number } => {
+  const totalLbs = Number(kgToLbs(kg).toFixed(precision));
   const stones = Math.floor(totalLbs / CONVERSION_FACTORS.LBS_PER_STONE);
   const remainingLbs = totalLbs % CONVERSION_FACTORS.LBS_PER_STONE;
   return { stones, lbs: remainingLbs };
@@ -41,10 +46,12 @@ export const cmToInches = (cm: number): number =>
 export const inchesToCm = (inches: number): number =>
   inches * CONVERSION_FACTORS.IN_TO_CM;
 
+// Rounded before the split for the same reason: 6 ft is 71.9999 in.
 export const cmToFeetInches = (
-  cm: number
+  cm: number,
+  precision = 1
 ): { feet: number; inches: number } => {
-  const totalInches = cmToInches(cm);
+  const totalInches = Number(cmToInches(cm).toFixed(precision));
   const feet = Math.floor(totalInches / CONVERSION_FACTORS.IN_PER_FOOT);
   const remainingInches = totalInches % CONVERSION_FACTORS.IN_PER_FOOT;
   return { feet, inches: remainingInches };
@@ -72,7 +79,7 @@ export const formatWeight = (
       return `${Number(val.toFixed(precision))} lbs`;
     }
     case 'st_lbs': {
-      const { stones, lbs } = kgToStonesLbs(kg);
+      const { stones, lbs } = kgToStonesLbs(kg, precision);
       return `${stones}st ${Number(lbs.toFixed(precision))}lbs`;
     }
     case 'kg':
@@ -95,7 +102,7 @@ export const formatHeight = (
       return `${Number(val.toFixed(precision))} in`;
     }
     case 'ft_in': {
-      const { feet, inches } = cmToFeetInches(cm);
+      const { feet, inches } = cmToFeetInches(cm, precision);
       return `${feet}'${Number(inches.toFixed(precision))}"`;
     }
     case 'cm':

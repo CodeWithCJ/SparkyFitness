@@ -113,13 +113,14 @@ async function processHevyUserInfo(
 
 /**
  * Process a list of workouts from Hevy.
+ * A workout that fails is logged and counted in `failed`; the rest still run.
  */
 async function processHevyWorkouts(
   userId: string,
   createdByUserId: string,
   workouts: HevyWorkout[],
   timezone = 'UTC'
-) {
+): Promise<{ processed: number; failed: number }> {
   log(
     'info',
     `Processing ${workouts.length} Hevy workouts for user ${userId}...`
@@ -161,6 +162,8 @@ async function processHevyWorkouts(
   // second pass creates a duplicate preset-entry session whose exercises stay
   // deduped on the first one, leaving an empty orphan session.
   const seenWorkoutIds = new Set<string>();
+  let processed = 0;
+  let failed = 0;
   for (const workout of workouts) {
     if (workout.id) {
       if (seenWorkoutIds.has(workout.id)) {
@@ -171,13 +174,16 @@ async function processHevyWorkouts(
     }
     try {
       await processSingleWorkout(userId, createdByUserId, workout, timezone);
+      processed += 1;
     } catch (error) {
+      failed += 1;
       log(
         'error',
         `Failed to process Hevy workout ${workout.id}: ${errorMessage(error)}`
       );
     }
   }
+  return { processed, failed };
 }
 
 /**

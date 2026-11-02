@@ -51,6 +51,7 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
     goalMode: prefs?.goal_mode ?? 'maintain',
     goalModeCalculationMethod: prefs?.goal_mode_calculation_method ?? 'manual',
     adaptiveActivitySeparate: prefs?.adaptive_activity_separate ?? false,
+    adjustMacrosWithExercise: prefs?.adjust_macros_with_exercise ?? false,
     goalModeCustomPercentage: prefs?.goal_mode_custom_percentage ?? 0,
     goalModeWeeklyChangeKg: prefs?.goal_mode_weekly_change_kg ?? 0,
     calorieSafetyFloorMode: prefs?.calorie_safety_floor_mode ?? 'standard',
@@ -666,6 +667,35 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           className="bg-surface rounded-xl p-4 mb-4 shadow-sm"
           layout={optionsLayout}
         >
+          <View className="mb-4">
+            <View className="flex-row items-center justify-between gap-3">
+              <Text className="flex-1 text-base font-semibold text-text-primary">
+                {t('calorieSettings.adjustMacrosWithExercise', {
+                  defaultValue:
+                    'Adjust percentage macro goals with exercise calories',
+                })}
+              </Text>
+              <Switch
+                value={normalized.adjustMacrosWithExercise}
+                onValueChange={(value) =>
+                  mutation.mutate({ adjust_macros_with_exercise: value })
+                }
+                accessibilityLabel={t(
+                  'calorieSettings.adjustMacrosWithExercise',
+                  {
+                    defaultValue:
+                      'Adjust percentage macro goals with exercise calories',
+                  }
+                )}
+              />
+            </View>
+            <Text className="text-sm text-text-secondary mt-1">
+              {t('calorieSettings.adjustMacrosWithExerciseHint', {
+                defaultValue:
+                  'Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged. Changes apply from today; earlier days keep their setting.',
+              })}
+            </Text>
+          </View>
           {/* Percentage Input */}
           {showPercentage && (
             <Animated.View layout={optionsLayout}>

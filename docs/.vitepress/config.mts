@@ -46,6 +46,7 @@ export default defineConfig({
         items: [
           { text: 'Interactive .env Generator', link: '/install/env-generator' },
           { text: 'Docker Compose (Quickstart)', link: '/install/docker-compose' },
+          { text: 'Cloud (Managed Hosting)', link: '/install/cloud' },
           { text: 'Portainer', link: '/install/portainer' },
           { text: 'Synology NAS', link: '/install/synology' },
           { text: 'Proxmox', link: '/install/proxmox' },
@@ -100,6 +101,7 @@ export default defineConfig({
           items: [
             { text: '⚡ Interactive .env Generator', link: '/install/env-generator' },
             { text: 'Docker Compose (Recommended)', link: '/install/docker-compose' },
+            { text: 'Cloud (Managed Hosting)', link: '/install/cloud' },
             { text: 'Portainer', link: '/install/portainer' },
             { text: 'Synology NAS', link: '/install/synology' },
             { text: 'Proxmox', link: '/install/proxmox' },

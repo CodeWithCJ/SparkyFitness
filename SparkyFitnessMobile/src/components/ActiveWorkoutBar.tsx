@@ -187,6 +187,7 @@ const HIDDEN_ROUTES = new Set<string>([
   'WaterContainers',
   'MeasurementsAdd',
   'MindfulnessLog',
+  'LabResultAdd',
   'Chat',
   'ActiveWorkout',
 ]);

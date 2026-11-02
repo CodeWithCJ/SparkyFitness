@@ -18,6 +18,42 @@ export interface WorkoutHeartRatePoint {
   elapsedMinutes: number;
 }
 
+export interface WorkoutClockWindow {
+  /** Epoch milliseconds. */
+  startMs: number;
+  /** Epoch milliseconds. */
+  endMs: number;
+}
+
+/**
+ * The wall-clock span a workout covers: `entry_time` on `entry_date` in the
+ * zone it was recorded in, for `duration_minutes`. Null without a start time
+ * or a duration.
+ */
+export function workoutClockWindow(
+  entry: WorkoutHeartRateEntry | null | undefined,
+  fallbackTimezone: string
+): WorkoutClockWindow | null {
+  const entryDate = entry?.entry_date
+    ? String(entry.entry_date).slice(0, 10)
+    : '';
+  if (!entryDate || !entry?.entry_time) return null;
+  // entry_time is wall-clock time in the zone the workout was recorded in.
+  // Older and manual entries have no zone, and those were written in the
+  // user's timezone, not the device's.
+  const recordZone = entry.record_timezone;
+  const entryZone =
+    recordZone && isValidTimeZone(recordZone) ? recordZone : fallbackTimezone;
+  const startMs = localDateTimeToUtc(
+    `${entryDate}T${entry.entry_time}`,
+    entryZone
+  ).getTime();
+  if (!Number.isFinite(startMs) || typeof entry.duration_minutes !== 'number') {
+    return null;
+  }
+  return { startMs, endMs: startMs + entry.duration_minutes * 60_000 };
+}
+
 /**
  * Heart rate for one workout from the day's stored `heart_rate` samples.
  *
@@ -31,26 +67,9 @@ export function buildWorkoutHeartRateSeries(
   entry: WorkoutHeartRateEntry | null | undefined,
   fallbackTimezone: string
 ): WorkoutHeartRatePoint[] {
-  const entryDate = entry?.entry_date
-    ? String(entry.entry_date).slice(0, 10)
-    : '';
-  // entry_time is wall-clock time in the zone the workout was recorded in.
-  // Older and manual entries have no zone, and those were written in the
-  // user's timezone, not the device's.
-  const recordZone = entry?.record_timezone;
-  const entryZone =
-    recordZone && isValidTimeZone(recordZone) ? recordZone : fallbackTimezone;
-  const startMs =
-    entryDate && entry?.entry_time
-      ? localDateTimeToUtc(
-          `${entryDate}T${entry.entry_time}`,
-          entryZone
-        ).getTime()
-      : NaN;
-  const endMs =
-    Number.isFinite(startMs) && typeof entry?.duration_minutes === 'number'
-      ? startMs + entry.duration_minutes * 60_000
-      : NaN;
+  const window = workoutClockWindow(entry, fallbackTimezone);
+  const startMs = window?.startMs ?? NaN;
+  const endMs = window?.endMs ?? NaN;
 
   const tagged: WorkoutHeartRatePoint[] = [];
   const during: WorkoutHeartRatePoint[] = [];

@@ -35,7 +35,19 @@ type ChartScaleModePreferenceInput = Partial<
   Pick<UserPreferencesMutator, 'chart_scale_mode'>
 >;
 
-function validateAdaptiveActivity(preferences: UserPreferencesMutator): void {
+function validateActivityPreferences(
+  preferences: UserPreferencesMutator
+): void {
+  if (
+    !userPreferencesMutatorSchema.shape.adjust_macros_with_exercise.safeParse(
+      preferences.adjust_macros_with_exercise
+    ).success
+  ) {
+    throw Object.assign(
+      new Error('adjust_macros_with_exercise must be a boolean.'),
+      { status: 400 }
+    );
+  }
   if (
     !userPreferencesMutatorSchema.shape.adaptive_activity_separate.safeParse(
       preferences.adaptive_activity_separate
@@ -200,6 +212,7 @@ function getDefaultPreferences() {
     active_voice_ai_service_id: null,
     calorie_goal_adjustment_mode: 'dynamic',
     adaptive_activity_separate: false,
+    adjust_macros_with_exercise: false,
     show_net_carbs: false,
     use_move_ring_active_calories: false,
     timezone: null,
@@ -216,7 +229,7 @@ async function updateUserPreferences(
   preferenceData: UserPreferencesMutator
 ) {
   try {
-    validateAdaptiveActivity(preferenceData);
+    validateActivityPreferences(preferenceData);
     await validateTimezone(preferenceData);
     await validateTimeFormat(preferenceData);
     await validateGoalMode(preferenceData);
@@ -337,7 +350,7 @@ async function upsertUserPreferences(
   preferenceData: UserPreferencesMutator
 ) {
   try {
-    validateAdaptiveActivity(preferenceData);
+    validateActivityPreferences(preferenceData);
     await validateTimezone(preferenceData);
     await validateTimeFormat(preferenceData);
     await validateGoalMode(preferenceData);

@@ -180,6 +180,15 @@ export const checkInPhotoDatesQueryKey = [
 export const customCategoriesQueryKey = ['customCategories'] as const;
 /** Root of every per-day custom-entry list; each row embeds its category info. */
 export const customMeasurementsRootQueryKey = ['customMeasurements'] as const;
+
+/** The user's own lab markers. */
+export const labMarkersQueryKey = ['labMarkers'] as const;
+/** The newest result of every marker. */
+export const labLatestQueryKey = ['labLatest'] as const;
+/** Every lab result for one marker, newest first (`builtin:<key>` or `custom:<id>`). */
+export const labHistoryRootQueryKey = ['labHistory'] as const;
+export const labHistoryQueryKey = (markerId: string) =>
+  [...labHistoryRootQueryKey, markerId] as const;
 export const customMeasurementsByDateQueryKey = (date: string) =>
   [...customMeasurementsRootQueryKey, date] as const;
 

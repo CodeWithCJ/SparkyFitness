@@ -12,6 +12,7 @@ import cookieParser from 'cookie-parser';
 import { bridgeBearerAuthHeader } from './utils/bearerAuthBridge.js';
 import { endPool } from './db/poolManager.js';
 import { installShutdownHandlers } from './utils/gracefulShutdown.js';
+import { watchAuthSchema } from './utils/authSchemaWatch.js';
 import { log } from './config/logging.js';
 import { authenticate, authenticateMcp } from './middleware/authMiddleware.js';
 import { isReadOnlyApiKeyAuthMutation } from './middleware/readOnlyApiKeyGuard.js';
@@ -950,7 +951,11 @@ app.get('/api/api-docs', (_req, res) => res.redirect('/api/api-docs/swagger'));
   // Fix for reverse proxies using HTTP keepalive (e.g. Traefik, Caddy)
   server.keepAliveTimeout = 181000; // Must be > proxy's idle timeout (nginx=75s, traefik=default 180s)
   server.headersTimeout = 182000; // Must be slightly > keepAliveTimeout
-  installShutdownHandlers(server);
+  const shutdown = installShutdownHandlers(server);
+  watchAuthSchema(
+    () => authModule.checkAuthSchema(),
+    () => shutdown('Database schema mismatch')
+  );
 })().catch(async (error) => {
   console.error('Failed to start server:', error);
   // A failed boot must stop the process. Setting process.exitCode alone leaves

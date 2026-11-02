@@ -11,6 +11,7 @@ const mockConvert = (value: number) => value;
 let mockMode = 'dynamic';
 let mockMethod = 'adaptive';
 let mockSeparate = false;
+let mockExerciseMacros = false;
 const defaultCalorieInputs: CalorieInputs = {
   rules: CALORIE_RULE_DEFAULTS,
   age: 36,
@@ -35,6 +36,7 @@ jest.mock('@/contexts/PreferencesContext', () => ({
     goalMode: 'maintain',
     goalModeCalculationMethod: mockMethod,
     adaptiveActivitySeparate: mockSeparate,
+    adjustMacrosWithExercise: mockExerciseMacros,
     activityLevel: 'not_much',
     weightUnit: 'kg',
     timezone: 'UTC',
@@ -113,6 +115,40 @@ beforeEach(() => {
   mockMethod = 'adaptive';
   mockSeparate = false;
   mockCalorieInputs = defaultCalorieInputs;
+  mockExerciseMacros = false;
+});
+
+it('keeps exercise macro adjustment off by default and saves the explicit choice', async () => {
+  render(<CalculationSettings />);
+  const toggle = screen.getByRole('switch', {
+    name: 'Adjust percentage macro goals with exercise calories',
+  });
+  expect(toggle).not.toBeChecked();
+  fireEvent.click(toggle);
+  expect(toggle).toBeChecked();
+  expect(mockSave).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: /Save Preferences/ }));
+  await waitFor(() =>
+    expect(mockSave).toHaveBeenCalledWith(
+      expect.objectContaining({ adjustMacrosWithExercise: true })
+    )
+  );
+});
+
+it('loads and allows disabling saved exercise macro adjustment', async () => {
+  mockExerciseMacros = true;
+  render(<CalculationSettings />);
+  const toggle = screen.getByRole('switch', {
+    name: 'Adjust percentage macro goals with exercise calories',
+  });
+  expect(toggle).toBeChecked();
+  fireEvent.click(toggle);
+  fireEvent.click(screen.getByRole('button', { name: /Save Preferences/ }));
+  await waitFor(() =>
+    expect(mockSave).toHaveBeenCalledWith(
+      expect.objectContaining({ adjustMacrosWithExercise: false })
+    )
+  );
 });
 
 it('saves the opt-in only when Save Preferences is pressed', async () => {

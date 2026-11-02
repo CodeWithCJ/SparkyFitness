@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { userPreferencesSchema } from './UserPreferences.zod.ts';
 
 /**
- * The user_preferences fields that feed a day's calorie target. A past day
+ * The user_preferences fields that feed a day's calorie or macro target. A past day
  * uses the values in force on that day (#1795), so every field the calorie
  * maths reads belongs here, in the history table and in its trigger. Picked
  * from the preferences schema, so each keeps the type user_preferences has.
@@ -22,6 +22,7 @@ export const calorieRulesSchema = userPreferencesSchema.pick({
   activity_level: true,
   use_external_bmr: true,
   include_bmr_in_net_calories: true,
+  adjust_macros_with_exercise: true,
 });
 
 export const CALORIE_RULE_FIELDS = calorieRulesSchema.keyof().options;
