@@ -404,12 +404,15 @@ async function extractLabReport(
   });
 
   if (!result.ok) {
-    // Only the category and provider are logged: the report is health data.
+    // Only the category and provider are logged. The detail is built from the
+    // provider's response, which can quote the request (the report is health
+    // data) and is free text, so it never reaches the log. The caller still
+    // gets it in the error, for the person who sent the report.
     log(
       result.category === 'refused' || result.category === 'no_content'
         ? 'warn'
         : 'error',
-      `Lab report scan: ${provider.service_type} failed for user ${userId} (${result.category}): ${result.detail}`
+      `Lab report scan: ${provider.service_type} failed for user ${userId} (${result.category})`
     );
     return { success: false, category: result.category, error: result.detail };
   }

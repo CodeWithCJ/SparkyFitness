@@ -17,6 +17,7 @@ const destroy = vi.fn(async () => undefined);
 vi.mock('unpdf', () => ({ getDocumentProxy: vi.fn() }));
 
 import { getDocumentProxy } from 'unpdf';
+import { log } from '../config/logging.js';
 import chatRepository from '../models/chatRepository.js';
 import { dispatchAiRequest } from '../ai/providerDispatch.js';
 import {
@@ -489,6 +490,35 @@ describe('extractLabReport', () => {
       success: false,
       category: 'no_ai_configured',
     });
+  });
+
+  it("logs the category and provider of a failed call, never the provider's text", async () => {
+    const detail =
+      'AI service returned status 400: {"echo":"HbA1c 5.4 %"}\nforged log line';
+    vi.mocked(dispatchAiRequest).mockResolvedValue({
+      ok: false,
+      category: 'upstream_error',
+      detail,
+    } as never);
+
+    const result = await extractLabReport(
+      pngDeclaring(100, 100),
+      'image/jpeg',
+      'u1'
+    );
+
+    // The person who sent the report still sees why it failed.
+    expect(result).toMatchObject({
+      success: false,
+      category: 'upstream_error',
+      error: detail,
+    });
+    const logged = vi.mocked(log).mock.calls.map((call) => String(call[1]));
+    expect(logged).toHaveLength(1);
+    expect(logged[0]).toContain('upstream_error');
+    expect(logged[0]).not.toContain('HbA1c');
+    expect(logged[0]).not.toContain('forged log line');
+    expect(logged[0]).not.toContain('\n');
   });
 
   it('turns an unreadable answer into a parse error', async () => {
