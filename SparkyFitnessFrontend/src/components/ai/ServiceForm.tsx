@@ -61,7 +61,15 @@ export const ServiceForm = ({
   const serviceTypes = getServiceTypes(t);
   const modelOptions = getModelOptions(formData.service_type ?? '');
   const isOpenCodeGo = formData.service_type === 'opencode_go';
-  const [opencodeModels, setOpencodeModels] = useState<string[]>([]);
+  const modelRequestKey = `${('id' in formData && formData.id) || ''}\n${formData.api_key?.trim() ?? ''}`;
+  const [loadedOpenCodeModels, setLoadedOpenCodeModels] = useState<{
+    requestKey: string;
+    models: string[];
+  } | null>(null);
+  const opencodeModels =
+    loadedOpenCodeModels?.requestKey === modelRequestKey
+      ? loadedOpenCodeModels.models
+      : [];
   const { loadModels, isLoading: loadingModels } = useOpenCodeGoModels();
   const availableOpenCodeModels =
     isOpenCodeGo &&
@@ -81,6 +89,7 @@ export const ServiceForm = ({
   )?.trim();
 
   const loadOpenCodeModels = async () => {
+    const requestKey = modelRequestKey;
     try {
       const result = await loadModels({
         ...('id' in formData && formData.id ? { id: formData.id } : {}),
@@ -88,7 +97,7 @@ export const ServiceForm = ({
           ? { api_key: formData.api_key.trim() }
           : {}),
       });
-      setOpencodeModels(result.models);
+      setLoadedOpenCodeModels({ requestKey, models: result.models });
     } catch {
       toast({
         title: t(`${translationPrefix}.error`),
