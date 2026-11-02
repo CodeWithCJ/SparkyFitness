@@ -113,3 +113,32 @@ test('shows the HRV reading against the usual one and omits it from older server
   );
   expect(screen.queryByText(/against your usual/)).toBeNull();
 });
+
+test('warns about a raised breathing rate only when the server flags it', () => {
+  const { rerender } = render(
+    <FitnessFatigueCard
+      data={response({
+        factors: { form: 90 },
+        vitals: { respiratoryRate: { current: 16.4, baseline: 14.8 } },
+        signs: ['raisedRespiratoryRate'],
+      })}
+      isLoading={false}
+      isError={false}
+    />
+  );
+  expect(
+    screen.getByText(/Breathing rate 16\.4 per minute against your usual 14\.8/)
+  ).toBeTruthy();
+
+  rerender(
+    <FitnessFatigueCard
+      data={response({
+        factors: { form: 90 },
+        vitals: { respiratoryRate: { current: 15, baseline: 14.8 } },
+      })}
+      isLoading={false}
+      isError={false}
+    />
+  );
+  expect(screen.queryByTestId('readiness-breathing-warning')).toBeNull();
+});

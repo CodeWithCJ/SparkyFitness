@@ -825,13 +825,18 @@ interface ReadinessVitals {
   hrvBaseline: number | null;
   /** Nights the HRV baseline is the median of. */
   hrvBaselineNights: number;
+  respiratoryRate: number | null;
+  respiratoryRateBaseline: number | null;
+  /** Nights the breathing rate baseline is the median of. */
+  respiratoryRateBaselineNights: number;
 }
 
 const toNumberOrNull = (value: string | number | null | undefined) =>
   value === null || value === undefined ? null : Number(value);
 
 /** The sleep_entries columns the readiness vitals read. */
-type SleepVitalColumn = 'resting_heart_rate' | 'avg_overnight_hrv';
+type SleepVitalColumn =
+  'resting_heart_rate' | 'avg_overnight_hrv' | 'average_respiration_value';
 
 /**
  * The newest reading of one sleep vital (nights ending `today` or the day
@@ -911,6 +916,14 @@ async function getReadinessVitals(
       yesterday,
       baselineStart
     );
+    const respiration = await getSleepVital(
+      client,
+      'average_respiration_value',
+      userId,
+      today,
+      yesterday,
+      baselineStart
+    );
     return {
       sleepHours: toNumberOrNull(latest.rows[0]?.sleep_hours),
       restingHeartRate: rhr.value,
@@ -919,6 +932,9 @@ async function getReadinessVitals(
       hrv: hrv.value,
       hrvBaseline: hrv.baseline,
       hrvBaselineNights: hrv.nights,
+      respiratoryRate: respiration.value,
+      respiratoryRateBaseline: respiration.baseline,
+      respiratoryRateBaselineNights: respiration.nights,
     };
   } finally {
     client.release();

@@ -146,6 +146,51 @@ describe('computeReadiness', () => {
     expect(result.level).not.toBe('high');
   });
 
+  it('flags a raised breathing rate and keeps the day from reading high', () => {
+    const result = computeReadiness({
+      fitnessFatigue: fresh,
+      sleepHours: 8,
+      restingHeartRate: 52,
+      restingHeartRateBaseline: 52,
+      hrv: 60,
+      hrvBaseline: 60,
+      respiratoryRate: 16.2,
+      respiratoryRateBaseline: 14.8,
+      respiratoryRateBaselineNights: 10,
+    });
+    expect(result.signs).toEqual(['raisedRespiratoryRate']);
+    expect(result.vitals?.respiratoryRate).toEqual({
+      current: 16.2,
+      baseline: 14.8,
+      nights: 10,
+    });
+    expect(result.factors).not.toHaveProperty('respiratoryRate');
+    expect(result.level).not.toBe('high');
+  });
+
+  it('does not flag a breathing rate close to the usual one', () => {
+    const result = computeReadiness({
+      fitnessFatigue: fresh,
+      sleepHours: 8,
+      respiratoryRate: 15.2,
+      respiratoryRateBaseline: 14.8,
+    });
+    expect(result.signs).toBeUndefined();
+    expect(result.vitals?.respiratoryRate?.current).toBe(15.2);
+  });
+
+  it('ignores a breathing rate baseline built from too few nights', () => {
+    const result = computeReadiness({
+      fitnessFatigue: fresh,
+      sleepHours: 8,
+      respiratoryRate: 19,
+      respiratoryRateBaseline: 14,
+      respiratoryRateBaselineNights: 2,
+    });
+    expect(result.signs).toBeUndefined();
+    expect(result.vitals?.respiratoryRate).toBeUndefined();
+  });
+
   it('does not penalise a higher HRV or a lower resting heart rate', () => {
     const result = computeReadiness({
       fitnessFatigue: fresh,
