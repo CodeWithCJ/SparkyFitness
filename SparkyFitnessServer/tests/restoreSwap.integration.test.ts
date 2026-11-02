@@ -528,6 +528,7 @@ describe.skipIf(!runnable)('restore by staging and swap (PostgreSQL)', () => {
     try {
       expect(result.success).toBe(false);
       expect(result.error).toContain(staged[0]);
+      expect(result.error).toContain('resetting the connection pools failed');
       expect(await liveRows()).toEqual(['restored']);
       expect(staged).toHaveLength(1);
       expect(

@@ -919,6 +919,13 @@ async function restoreHoldingLock(
       // Clients this instance pooled were ended with the old database's
       // sessions.
       await resetPool();
+    } catch (error) {
+      throw new Error(
+        `The database was restored, but resetting the connection pools failed, so the uploads were not moved. The restored uploads are in ${staged}; the previous ones are still in place.`,
+        { cause: error }
+      );
+    }
+    try {
       await swapUploads(staged, retiredUploads);
     } catch (error) {
       throw new Error(
