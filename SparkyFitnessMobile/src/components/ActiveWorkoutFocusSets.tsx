@@ -1,16 +1,30 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View, type TextInput } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { isBodyweightModality } from '@workspace/shared';
 import ActiveWorkoutSetRow, {
   RPE_TONE_VARS,
   formatRpe,
+  parseRirInput,
+  parseRpeInput,
 } from './ActiveWorkoutSetRow';
 import CompletionCheck, { LogCircle } from './CompletionCheck';
 import Icon from './Icon';
 import StepperInput from './StepperInput';
+import {
+  SetCellInput,
+  type SetInputField,
+  type SetRowAccessoryHandle,
+} from './SetRowChrome';
 import { withAlpha } from '../utils/colors';
+import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
 import {
   parseDecimalInput,
   parseSignedDecimalInput,
@@ -62,6 +76,16 @@ interface Props {
   onActivateRpe: (setKey: string) => void;
   /** Long-pressing a row deletes it; omit to disable. */
   onDeleteSet?: (setId: string) => void;
+  /** The screen's keyboard focus (render key and field), as in the list. */
+  focusedSetKey: string | null;
+  focusedField: SetInputField;
+  /** Receives the set's render key. */
+  onActivateSet: (setKey: string, field: Exclude<SetInputField, 'rpe'>) => void;
+  /** Lets the screen's sticky accessory bar act on the focused row. */
+  onRegisterAccessoryHandle: (
+    key: string,
+    handle: SetRowAccessoryHandle | null
+  ) => void;
 }
 
 interface StepperFieldOptions {
@@ -139,6 +163,18 @@ interface FocusSetRowProps {
   onCommitField: (setId: string, patch: ActiveSetPatch) => void;
   onActivateRpe: (setKey: string) => void;
   onDeleteSet?: (setId: string) => void;
+  /** This row holds the keyboard; `activeField` names the input. */
+  isFocused: boolean;
+  activeField: SetInputField;
+  /** Render key of the following set, for Next Set; null on the last set. */
+  nextSetKey: string | null;
+  entryId: string;
+  onActivateSet: (setKey: string, field: Exclude<SetInputField, 'rpe'>) => void;
+  onAddSet: (entryId: string) => void;
+  onRegisterAccessoryHandle: (
+    key: string,
+    handle: SetRowAccessoryHandle | null
+  ) => void;
 }
 
 const FocusSetRow = React.memo(function FocusSetRow({
@@ -155,6 +191,13 @@ const FocusSetRow = React.memo(function FocusSetRow({
   onCommitField,
   onActivateRpe,
   onDeleteSet,
+  isFocused,
+  activeField,
+  nextSetKey,
+  entryId,
+  onActivateSet,
+  onAddSet,
+  onRegisterAccessoryHandle,
 }: FocusSetRowProps) {
   const { t } = useTranslation();
   const [accentPrimary, textMuted, rpeEasy, rpeModerate, rpeHard, rpeMax] =
@@ -209,14 +252,81 @@ const FocusSetRow = React.memo(function FocusSetRow({
     onCommit: (next) => onCommitField(setId, { reps: next }),
   });
 
+  const effortField = metricColumn === 'rir' ? 'rir' : 'rpe';
+  const effort = (effortField === 'rir' ? set.rir : set.rpe) ?? null;
+  const parseEffort = effortField === 'rir' ? parseRirInput : parseRpeInput;
+  const effortInput = useStepperField({
+    value: effort,
+    assumed: null,
+    step: 1,
+    min: 0,
+    format: formatRpe,
+    parse: (text) => parseEffort(text) ?? NaN,
+    onCommit: (next) =>
+      onCommitField(
+        setId,
+        effortField === 'rir' ? { rir: next } : { rpe: next }
+      ),
+  });
+
   const handleComplete = () => {
     if (showWeight) weight.flush();
     reps.flush();
+    effortInput.flush();
     onCompleteSet(setId);
   };
 
-  const effortField = metricColumn === 'rir' ? 'rir' : 'rpe';
-  const effort = (effortField === 'rir' ? set.rir : set.rpe) ?? null;
+  const firstField = showWeight ? 'weight' : 'reps';
+  const handleAdvance = () => {
+    if (nextSetKey != null) onActivateSet(nextSetKey, firstField);
+    else onAddSet(entryId);
+  };
+
+  // The screen's sticky accessory bar (Next, Log, Next Set, plate calculator)
+  // acts on the focused row through this handle, as with the list's rows. The
+  // handle reads the latest closures through a ref so it registers once.
+  const weightInputRef = useRef<TextInput>(null);
+  const repsInputRef = useRef<TextInput>(null);
+  const effortInputRef = useRef<TextInput>(null);
+  const inputRefFor = useCallback(
+    (field: SetInputField) =>
+      field === 'reps'
+        ? repsInputRef
+        : field === 'rpe'
+          ? effortInputRef
+          : weightInputRef,
+    []
+  );
+  const latestRef = useRef({
+    handleComplete,
+    handleAdvance,
+    flushWeight: weight.flush,
+  });
+  useEffect(() => {
+    latestRef.current = {
+      handleComplete,
+      handleAdvance,
+      flushWeight: weight.flush,
+    };
+  });
+  useEffect(() => {
+    onRegisterAccessoryHandle(renderKey, {
+      log: () => latestRef.current.handleComplete(),
+      focusField: (field) => inputRefFor(field).current?.focus(),
+      advance: () => latestRef.current.handleAdvance(),
+      flushWeight: () => latestRef.current.flushWeight(),
+    });
+    return () => onRegisterAccessoryHandle(renderKey, null);
+  }, [renderKey, onRegisterAccessoryHandle, inputRefFor]);
+
+  // Move the keyboard here when the screen focuses this row on its own (Next
+  // Set, or a rest running out); a tap has already focused the input.
+  useEffect(() => {
+    if (!isFocused) return;
+    const ref = inputRefFor(activeField);
+    if (ref.current?.isFocused()) return;
+    return focusWithAndroidImeRetry(ref);
+  }, [isFocused, activeField, inputRefFor]);
   const effortLabel =
     effortField === 'rir'
       ? t('activeWorkout.setRow.rir', { defaultValue: 'RIR' })
@@ -280,6 +390,8 @@ const FocusSetRow = React.memo(function FocusSetRow({
             <StepperInput
               fill
               {...weight.inputProps}
+              inputRef={weightInputRef}
+              inputProps={{ onFocus: () => onActivateSet(renderKey, 'weight') }}
               keyboardType={
                 !bodyweight
                   ? 'decimal-pad'
@@ -308,6 +420,8 @@ const FocusSetRow = React.memo(function FocusSetRow({
           <StepperInput
             fill
             {...reps.inputProps}
+            inputRef={repsInputRef}
+            inputProps={{ onFocus: () => onActivateSet(renderKey, 'reps') }}
             keyboardType="number-pad"
             accessibilityLabels={{
               decrement: t('activeWorkout.focus.sets.decreaseReps', {
@@ -325,27 +439,22 @@ const FocusSetRow = React.memo(function FocusSetRow({
             }}
           />
         </View>
-        <Pressable
-          onPress={() => onActivateRpe(renderKey)}
-          hitSlop={{ top: 6, bottom: 6 }}
-          accessibilityRole="button"
-          accessibilityLabel={t('activeWorkout.focus.sets.effortInput', {
-            defaultValue: '{{metric}} for set {{setNumber}}',
-            metric: effortLabel,
-            setNumber,
-          })}
-          className="h-8 w-10 items-center justify-center rounded-lg bg-raised"
-        >
-          <Text
-            className="text-sm text-text-muted"
-            style={[
-              { fontVariant: ['tabular-nums'] },
-              effortColor != null ? { color: effortColor } : null,
-            ]}
-          >
-            {effort != null ? formatRpe(effort) : '–'}
-          </Text>
-        </Pressable>
+        <View className="w-10">
+          <SetCellInput
+            inputRef={effortInputRef}
+            value={effortInput.inputProps.value}
+            onChangeText={effortInput.inputProps.onChangeText}
+            onBlur={effortInput.flush}
+            onFocus={() => onActivateRpe(renderKey)}
+            keyboardType="decimal-pad"
+            accessibilityLabel={t('activeWorkout.focus.sets.effortInput', {
+              defaultValue: '{{metric}} for set {{setNumber}}',
+              metric: effortLabel,
+              setNumber,
+            })}
+            textColor={effortColor}
+          />
+        </View>
       </View>
       <Pressable
         onPress={isDone ? () => onUncomplete(setId) : handleComplete}
@@ -390,6 +499,10 @@ function ActiveWorkoutFocusSets({
   onAddSet,
   onActivateRpe,
   onDeleteSet,
+  focusedSetKey,
+  focusedField,
+  onActivateSet,
+  onRegisterAccessoryHandle,
 }: Props) {
   const { t } = useTranslation();
   const accentPrimary = String(useCSSVariable('--color-accent-primary'));
@@ -401,6 +514,16 @@ function ActiveWorkoutFocusSets({
   const workingSetNumbers = useMemo(
     () => buildWorkingSetNumbers(exercise.sets),
     [exercise.sets]
+  );
+  // The list's set rows report set ids; the screen keys focus by render key.
+  const activateSetById = useCallback(
+    (id: string, field: Exclude<SetInputField, 'rpe'>) =>
+      onActivateSet(setRenderKeys[id] ?? id, field),
+    [onActivateSet, setRenderKeys]
+  );
+  const activateRpeById = useCallback(
+    (id: string) => onActivateRpe(setRenderKeys[id] ?? id),
+    [onActivateRpe, setRenderKeys]
   );
   const effortHeader =
     metricColumn === 'rir'
@@ -437,6 +560,9 @@ function ActiveWorkoutFocusSets({
       {exercise.sets.map((set, index) => {
         const setId = String(set.id);
         const renderKey = setRenderKeys[setId] ?? setId;
+        const nextSet = exercise.sets[index + 1];
+        const nextSetId = nextSet != null ? String(nextSet.id) : null;
+        const isFocused = focusedSetKey === renderKey;
         const state = completedSetIds[setId]
           ? 'done'
           : setId === activeSetId
@@ -459,6 +585,15 @@ function ActiveWorkoutFocusSets({
             onCommitField={onCommitField}
             onActivateRpe={onActivateRpe}
             onDeleteSet={onDeleteSet}
+            isFocused={isFocused}
+            activeField={focusedField}
+            nextSetKey={
+              nextSetId != null ? (setRenderKeys[nextSetId] ?? nextSetId) : null
+            }
+            entryId={exercise.id}
+            onActivateSet={onActivateSet}
+            onAddSet={onAddSet}
+            onRegisterAccessoryHandle={onRegisterAccessoryHandle}
           />
         ) : (
           <ActiveWorkoutSetRow
@@ -476,9 +611,14 @@ function ActiveWorkoutFocusSets({
             onUncomplete={onUncomplete}
             onCommitField={onCommitField}
             onDelete={onDeleteSet}
-            onActivateRpe={onActivateRpe}
+            activeField={isFocused ? focusedField : undefined}
+            isFocused={isFocused}
+            nextSetId={nextSetId}
             entryId={exercise.id}
             onAddSet={onAddSet}
+            onActivateSet={activateSetById}
+            onActivateRpe={activateRpeById}
+            onRegisterAccessoryHandle={onRegisterAccessoryHandle}
           />
         );
       })}

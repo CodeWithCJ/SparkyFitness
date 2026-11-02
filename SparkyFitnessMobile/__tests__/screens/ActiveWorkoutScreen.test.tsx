@@ -1625,6 +1625,15 @@ describe('ActiveWorkoutScreen focus view', () => {
     expect(getByText('End Workout')).toBeTruthy();
   });
 
+  it('keeps the list in guided mode, where the guided card runs the cues', () => {
+    useAppPreferencesStore.getState().setActiveWorkoutView('focus');
+    useAppPreferencesStore.getState().setGuidedWorkoutEnabled(true);
+    const { getByTestId, queryByTestId } = renderScreen();
+
+    expect(getByTestId('card-ex-a')).toBeTruthy();
+    expect(queryByTestId('focus-view')).toBeNull();
+  });
+
   it('ignores focus mode for the interval formats', () => {
     useAppPreferencesStore.getState().setActiveWorkoutView('focus');
     useActiveWorkoutStore.setState({ workoutFormat: 'tabata' });

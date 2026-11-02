@@ -1005,11 +1005,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     SET_ACCESSORY_BAR_HEIGHT +
     (barCarriesRest ? COMPACT_REST_ROW_HEIGHT : 0) +
     16;
-  // The one-exercise view replaces the rail, Now / guided cards and the list
-  // (standard format only; interval formats keep their HUD).
+  // The one-exercise view replaces the rail, Now card and the list (standard
+  // format only; interval formats keep their HUD, and guided mode keeps the
+  // list, whose guided card runs the spoken cues).
   const focusMode =
     activeWorkoutView === 'focus' &&
-    (workoutFormat ?? 'standard') === 'standard';
+    (workoutFormat ?? 'standard') === 'standard' &&
+    !guidedWorkoutEnabled;
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
@@ -1056,6 +1058,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onDeleteSet={handleDeleteSet}
           onAddSet={handleAddSet}
           onActivateRpe={handleActivateRpe}
+          focusedSetKey={focusedSetKey}
+          focusedField={focusedField}
+          onActivateSet={handleActivateSet}
+          onRegisterAccessoryHandle={handleRegisterAccessoryHandle}
         >
           {footerButtons}
         </ActiveWorkoutFocusView>

@@ -33,6 +33,7 @@ import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
 import Icon from './Icon';
 import ProgressionHintBanner from './ProgressionHintBanner';
 import type { SupersetBorder } from './ActiveWorkoutRail';
+import type { SetInputField, SetRowAccessoryHandle } from './SetRowChrome';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import {
@@ -79,6 +80,14 @@ interface SetEditorProps {
   onAddSet: (entryId: string) => void;
   onActivateRpe: (setKey: string) => void;
   onDeleteSet: (setId: string) => void;
+  /** The screen's keyboard focus, shared with its sticky accessory bar. */
+  focusedSetKey: string | null;
+  focusedField: SetInputField;
+  onActivateSet: (setKey: string, field: Exclude<SetInputField, 'rpe'>) => void;
+  onRegisterAccessoryHandle: (
+    key: string,
+    handle: SetRowAccessoryHandle | null
+  ) => void;
 }
 
 interface HistoryProps {
@@ -459,8 +468,11 @@ function ActiveWorkoutFocusView({
   );
 
   // Refs keep the gesture and handlers stable across page changes.
+  // Synced after commit (declared before the follow effect, which reads it).
   const stateRef = useRef({ exercises, selectedIndex });
-  stateRef.current = { exercises, selectedIndex };
+  useEffect(() => {
+    stateRef.current = { exercises, selectedIndex };
+  });
 
   const goToIndex = useCallback(
     (index: number) => {

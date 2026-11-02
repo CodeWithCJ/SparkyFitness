@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, fireEvent } from '@testing-library/react-native';
+import { act, render, fireEvent } from '@testing-library/react-native';
 import ActiveWorkoutFocusSets from '../../src/components/ActiveWorkoutFocusSets';
 import type {
   AssumedSetValues,
@@ -50,6 +50,8 @@ interface RenderOptions {
   metricColumn?: 'rpe' | 'rir' | 'volume';
   assumed?: (AssumedSetValues | null)[];
   withDelete?: boolean;
+  focusedSetKey?: string | null;
+  focusedField?: 'weight' | 'reps' | 'distance' | 'rpe';
 }
 
 function renderSets(options: RenderOptions = {}) {
@@ -59,6 +61,8 @@ function renderSets(options: RenderOptions = {}) {
     onCommitField: jest.fn(),
     onAddSet: jest.fn(),
     onActivateRpe: jest.fn(),
+    onActivateSet: jest.fn(),
+    onRegisterAccessoryHandle: jest.fn(),
     onDeleteSet: jest.fn(),
   };
   const { onDeleteSet, ...rest } = callbacks;
@@ -72,6 +76,8 @@ function renderSets(options: RenderOptions = {}) {
       weightUnit={options.weightUnit ?? 'kg'}
       distanceUnit="km"
       assumedSetValues={options.assumed}
+      focusedSetKey={options.focusedSetKey ?? null}
+      focusedField={options.focusedField ?? 'weight'}
       {...rest}
       onDeleteSet={options.withDelete ? onDeleteSet : undefined}
     />
@@ -262,9 +268,71 @@ describe('ActiveWorkoutFocusSets', () => {
       sets: [makeSet({ rir: 2 })],
     });
     expect(getByText('RIR')).toBeTruthy();
-    expect(getByText('2')).toBeTruthy();
-    fireEvent.press(getByLabelText('RIR for set 1'));
+    expect(getByLabelText('RIR for set 1').props.value).toBe('2');
+    fireEvent(getByLabelText('RIR for set 1'), 'focus');
     expect(callbacks.onActivateRpe).toHaveBeenCalledWith('key-101');
+  });
+
+  it('commits a typed RPE on blur and a typed RIR to the rir field', () => {
+    const rpe = renderSets();
+    const rpeInput = rpe.getByLabelText('RPE for set 1');
+    fireEvent.changeText(rpeInput, '8.5');
+    expect(rpe.callbacks.onCommitField).not.toHaveBeenCalled();
+    fireEvent(rpeInput, 'blur');
+    expect(rpe.callbacks.onCommitField).toHaveBeenCalledWith('101', {
+      rpe: 8.5,
+    });
+    rpe.unmount();
+
+    const rir = renderSets({ metricColumn: 'rir' });
+    const rirInput = rir.getByLabelText('RIR for set 1');
+    fireEvent.changeText(rirInput, '2');
+    fireEvent(rirInput, 'blur');
+    expect(rir.callbacks.onCommitField).toHaveBeenCalledWith('101', {
+      rir: 2,
+    });
+  });
+
+  it('reports focus with the render key and registers an accessory handle', () => {
+    const { getByLabelText, callbacks } = renderSets();
+    fireEvent(getByLabelText('Weight for set 1'), 'focus');
+    expect(callbacks.onActivateSet).toHaveBeenCalledWith('key-101', 'weight');
+    fireEvent(getByLabelText('Reps for set 1'), 'focus');
+    expect(callbacks.onActivateSet).toHaveBeenCalledWith('key-101', 'reps');
+
+    const [key, handle] = callbacks.onRegisterAccessoryHandle.mock.calls[0];
+    expect(key).toBe('key-101');
+    fireEvent.changeText(getByLabelText('RPE for set 1'), '9');
+    act(() => handle.log());
+    expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 9 });
+    expect(callbacks.onCompleteSet).toHaveBeenCalledWith('101');
+  });
+
+  it('advances to the next set, or adds one after the last', () => {
+    const { callbacks } = renderSets({
+      sets: [makeSet(), makeSet({ id: 102, set_number: 2 })],
+    });
+    const handles = Object.fromEntries(
+      callbacks.onRegisterAccessoryHandle.mock.calls
+    );
+    act(() => handles['key-101'].advance());
+    expect(callbacks.onActivateSet).toHaveBeenCalledWith('102', 'weight');
+    act(() => handles['102'].advance());
+    expect(callbacks.onAddSet).toHaveBeenCalledWith('entry-1');
+  });
+
+  it('keeps a decimal point while typing in a focused fallback row', () => {
+    const { getByLabelText, callbacks } = renderSets({
+      modality: 'weight_distance',
+      sets: [makeSet({ distance: null } as Partial<WorkoutCardSet>)],
+      focusedSetKey: 'key-101',
+      focusedField: 'distance',
+    });
+    const distance = getByLabelText('Distance');
+    fireEvent.changeText(distance, '5.');
+    expect(getByLabelText('Distance').props.value).toBe('5.');
+    fireEvent(distance, 'focus');
+    expect(callbacks.onActivateSet).toHaveBeenCalledWith('key-101', 'distance');
   });
 
   it('falls back to RPE for the volume column', () => {
