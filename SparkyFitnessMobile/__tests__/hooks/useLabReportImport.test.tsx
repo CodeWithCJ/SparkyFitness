@@ -7,12 +7,16 @@ import {
   importLabReport,
   scanLabReport,
 } from '../../src/services/api/labReportApi';
+import { ApiError } from '../../src/services/api/errors';
+import { addLog } from '../../src/services/LogService';
 import { createQueryWrapper, createTestQueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/labReportApi', () => ({
   importLabReport: jest.fn(),
   scanLabReport: jest.fn(),
 }));
+
+jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 
 const body = {
   lab_name: 'Quest',
@@ -81,5 +85,43 @@ describe('useImportLabReport', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(invalidate).not.toHaveBeenCalled();
+  });
+});
+
+describe('lab report failure logging', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('logs a generic scan failure with only the status', async () => {
+    jest
+      .mocked(scanLabReport)
+      .mockRejectedValue(
+        new ApiError('Server error: 502 - HbA1c 5.1 for Jane', 502, 'HbA1c 5.1')
+      );
+    const { result } = renderHook(() => useScanLabReport(), {
+      wrapper: createQueryWrapper(createTestQueryClient()),
+    });
+
+    result.current.mutate({ document: 'AAA', mimeType: 'application/pdf' });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(addLog).toHaveBeenCalledWith(
+      'Failed to scan lab report (HTTP 502)',
+      'ERROR'
+    );
+    expect(JSON.stringify(jest.mocked(addLog).mock.calls)).not.toContain(
+      'HbA1c'
+    );
+  });
+
+  it('logs a generic import failure', async () => {
+    jest.mocked(importLabReport).mockRejectedValue(new Error('HbA1c 5.1'));
+    const { result } = renderHook(() => useImportLabReport(), {
+      wrapper: createQueryWrapper(createTestQueryClient()),
+    });
+
+    result.current.mutate(body);
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(addLog).toHaveBeenCalledWith('Failed to import lab report', 'ERROR');
   });
 });

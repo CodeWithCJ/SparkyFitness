@@ -26,6 +26,8 @@ export const scanLabReport = (
     method: 'POST',
     body: { document, mime_type: mimeType },
     timeoutMs: AI_TIMEOUT_MS,
+    // The request is a lab report, so an error body that quotes it stays out of the log.
+    logResponseBody: false,
   });
 
 /**
@@ -41,6 +43,7 @@ export const importLabReport = (
     operation: 'import lab report',
     method: 'POST',
     body,
+    logResponseBody: false,
   });
 
 /**

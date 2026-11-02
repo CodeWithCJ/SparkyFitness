@@ -6,7 +6,13 @@ import {
   labLatestQueryKey,
   labMarkersQueryKey,
 } from './queryKeys';
+import { ApiError } from '../services/api/errors';
 import { addLog } from '../services/LogService';
+
+// The error message can carry the server's response, which may quote the report,
+// so the log gets a fixed sentence and at most the HTTP status.
+const failureLog = (what: string, err: Error) =>
+  `Failed to ${what}${err instanceof ApiError ? ` (HTTP ${err.statusCode})` : ''}`;
 
 /** Reads a report; the results come back for review and nothing is saved. */
 export function useScanLabReport() {
@@ -19,7 +25,7 @@ export function useScanLabReport() {
       mimeType: string;
     }) => scanLabReport(document, mimeType),
     onError: (err: Error) => {
-      addLog(`Failed to scan lab report: ${err.message}`, 'ERROR');
+      addLog(failureLog('scan lab report', err), 'ERROR');
     },
   });
 }
@@ -39,7 +45,7 @@ export function useImportLabReport() {
       queryClient.invalidateQueries({ queryKey: labHistoryRootQueryKey });
     },
     onError: (err: Error) => {
-      addLog(`Failed to import lab report: ${err.message}`, 'ERROR');
+      addLog(failureLog('import lab report', err), 'ERROR');
     },
   });
 }
