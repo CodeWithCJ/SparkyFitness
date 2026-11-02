@@ -8,7 +8,7 @@ vi.mock('../db/poolManager.js', () => ({
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
-describe('demo account and the lab report scan', () => {
+describe('demo account and the AI document routes', () => {
   const original = process.env;
 
   beforeEach(() => {
@@ -58,6 +58,29 @@ describe('demo account and the lab report scan', () => {
     const { next } = run(
       'someone@example.test',
       '/scan',
+      '/api/v2/lab-reports'
+    );
+    expect(next).toHaveBeenCalled();
+  });
+
+  it.each([
+    ['/api/v2/lab-reports', '/scan'],
+    ['/api/v2/lab-reports', '/scan/'],
+    ['/api/v2/lab-reports', '/SCAN/'],
+    ['/api/foods', '/scan-label/'],
+    ['/api/v2/medications', '/supplement-label/scan/'],
+    ['/api/foods', '/estimate-food-photo/'],
+  ])('refuses %s%s, with or without a trailing slash', (baseUrl, path) => {
+    const { status, next } = run('demo@example.test', path, baseUrl);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(status).toHaveBeenCalledWith(403);
+  });
+
+  it('does not refuse a different route that merely ends in similar words', () => {
+    const { next } = run(
+      'demo@example.test',
+      '/scanned',
       '/api/v2/lab-reports'
     );
     expect(next).toHaveBeenCalled();
