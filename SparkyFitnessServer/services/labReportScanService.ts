@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { extractText, getDocumentProxy } from 'unpdf';
+import { getDocumentProxy } from 'unpdf';
 import chatRepository from '../models/chatRepository.js';
 import { log } from '../config/logging.js';
 import {
@@ -57,6 +57,12 @@ const MIN_PDF_TEXT_CHARS = 80;
 // further down would be missing from the review with nothing to say so, so a
 // longer document is refused and the person sends just the pages with results.
 const MAX_PDF_TEXT_CHARS = 60_000;
+// Text is read from the PDF as a stream and the read stops here, before the
+// whole document's text exists. A PDF stream can expand about a thousandfold,
+// so a small file can hold hundreds of millions of characters. This is on the
+// raw text, before whitespace is collapsed, and is twice the prompt limit so
+// ordinary layout whitespace never trips it.
+const MAX_RAW_PDF_TEXT_CHARS = MAX_PDF_TEXT_CHARS * 2;
 // A lab report is a handful of pages. The text is read page by page on the
 // server's only thread, so a PDF that declares thousands of pages is refused
 // before any page is read, however small the file is.
@@ -195,7 +201,20 @@ export function matchLabReportResults(
 type PdfTextResult =
   | { kind: 'text'; text: string }
   | { kind: 'too_many_pages' }
+  | { kind: 'too_much_text' }
   | { kind: 'unreadable' };
+
+interface TextChunk {
+  items: Array<{ str?: unknown; hasEOL?: boolean }>;
+}
+
+/** Collapses whitespace but keeps line breaks, as unpdf's merged text does. */
+const normalizeMergedText = (pages: string[]): string =>
+  pages
+    .join('\n')
+    .replace(/[^\S\n]+/g, ' ')
+    .replace(/ ?\n ?/g, '\n')
+    .replace(/\n{3,}/g, '\n\n');
 
 async function readPdfText(base64: string): Promise<PdfTextResult> {
   let pdf: Awaited<ReturnType<typeof getDocumentProxy>> | undefined;
@@ -208,8 +227,49 @@ async function readPdfText(base64: string): Promise<PdfTextResult> {
       }
     );
     if (pdf.numPages > MAX_PDF_PAGES) return { kind: 'too_many_pages' };
-    const { text } = await extractText(pdf, { mergePages: true });
-    return { kind: 'text', text: text.trim() };
+
+    // Page by page and chunk by chunk, so the read can stop at the budget
+    // instead of building the whole document's text first.
+    const pages: string[] = [];
+    let total = 0;
+    for (let number = 1; number <= pdf.numPages; number += 1) {
+      const page = await pdf.getPage(number);
+      const reader = page.streamTextContent().getReader();
+      let pageText = '';
+      try {
+        for (;;) {
+          const { done, value } = (await reader.read()) as {
+            done: boolean;
+            value?: TextChunk;
+          };
+          if (done) break;
+          for (const item of value?.items ?? []) {
+            if (typeof item.str !== 'string') continue;
+            const piece = item.str + (item.hasEOL ? '\n' : '');
+            total += piece.length;
+            if (total > MAX_RAW_PDF_TEXT_CHARS) {
+              return { kind: 'too_much_text' };
+            }
+            pageText += piece;
+          }
+        }
+      } finally {
+        // pdf.js's stream refuses a cancel with no reason, and throws rather
+        // than rejects, so the call is guarded as well as given one.
+        try {
+          await reader.cancel(new Error('PDF text budget reached'));
+        } catch {
+          // Nothing left to stop.
+        }
+        page.cleanup();
+      }
+      pages.push(pageText);
+    }
+
+    const text = normalizeMergedText(pages).trim();
+    return text.length > MAX_PDF_TEXT_CHARS
+      ? { kind: 'too_much_text' }
+      : { kind: 'text', text };
   } catch {
     return { kind: 'unreadable' };
   } finally {
@@ -284,8 +344,7 @@ async function extractLabReport(
         error: 'This PDF could not be opened',
       };
     }
-    const { text } = read;
-    if (text.length > MAX_PDF_TEXT_CHARS) {
+    if (read.kind === 'too_much_text') {
       return {
         success: false,
         category: 'document_too_large',
@@ -293,6 +352,7 @@ async function extractLabReport(
           'This PDF has more text than can be read at once. Send just the pages with results.',
       };
     }
+    const { text } = read;
     if (text.length < MIN_PDF_TEXT_CHARS) {
       return {
         success: false,

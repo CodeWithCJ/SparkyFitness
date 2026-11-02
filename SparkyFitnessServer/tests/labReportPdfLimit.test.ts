@@ -21,7 +21,7 @@ import {
 } from '../services/labReportScanService.js';
 
 /** A minimal valid PDF with `pages` pages, all showing the same line of text. */
-function buildPdf(pages: number, line: string): string {
+function buildPdf(pages: number, line: string, repeat = 1): string {
   const objects: string[] = [];
   const kids = Array.from({ length: pages }, (_, i) => `${5 + i} 0 R`).join(
     ' '
@@ -29,7 +29,12 @@ function buildPdf(pages: number, line: string): string {
   objects.push('<< /Type /Catalog /Pages 2 0 R >>');
   objects.push(`<< /Type /Pages /Count ${pages} /Kids [${kids}] >>`);
   objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-  const content = `BT /F1 12 Tf 72 700 Td (${line}) Tj ET`;
+  // Each run is placed on the page: text positioned off it is dropped.
+  const shows = Array.from(
+    { length: repeat },
+    (_, i) => `1 0 0 1 72 ${100 + (i % 60) * 10} Tm (${line}) Tj`
+  );
+  const content = `BT /F1 12 Tf ${shows.join(' ')} ET`;
   objects.push(
     `<< /Length ${content.length} >>\nstream\n${content}\nendstream`
   );
@@ -73,5 +78,18 @@ describe('lab report PDF page limit (real unpdf)', () => {
     // Past the page check; short of the AI step only because no provider is set.
     expect(result).not.toMatchObject({ category: 'document_too_large' });
     expect(result).not.toMatchObject({ category: 'unreadable_pdf' });
+  });
+
+  it('stops reading a PDF whose text runs to hundreds of thousands of characters', async () => {
+    // One page, 40,000 text runs: about 480,000 characters, far past the
+    // read budget, in a file of about a megabyte.
+    const pdf = buildPdf(1, 'HbA1c 5.4 %', 40_000);
+
+    const result = await extractLabReport(pdf, 'application/pdf', 'u1');
+
+    expect(result).toMatchObject({
+      success: false,
+      category: 'document_too_large',
+    });
   });
 });

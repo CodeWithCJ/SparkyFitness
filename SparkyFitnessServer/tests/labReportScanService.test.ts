@@ -14,15 +14,9 @@ vi.mock('../utils/outboundUrlPolicy.js', () => ({
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 const destroy = vi.fn(async () => undefined);
-vi.mock('unpdf', () => ({
-  getDocumentProxy: vi.fn(async () => ({
-    numPages: 2,
-    loadingTask: { destroy },
-  })),
-  extractText: vi.fn(),
-}));
+vi.mock('unpdf', () => ({ getDocumentProxy: vi.fn() }));
 
-import { extractText, getDocumentProxy } from 'unpdf';
+import { getDocumentProxy } from 'unpdf';
 import chatRepository from '../models/chatRepository.js';
 import { dispatchAiRequest } from '../ai/providerDispatch.js';
 import {
@@ -60,6 +54,43 @@ function pngDeclaring(width: number, height: number): string {
     ),
     chunk('IEND', Buffer.alloc(0)),
   ]).toString('base64');
+}
+
+/**
+ * A PDF the service can read page by page. `pages[n][c]` is the list of text
+ * items in chunk `c` of page `n + 1`. `stats` shows how far reading got, and
+ * whether it was cancelled, so a test can tell that reading stopped early.
+ */
+function givenPdf(pages: string[][][], numPages = pages.length) {
+  const stats = { chunksRead: 0, cancelled: 0 };
+  const getPage = vi.fn(async (number: number) => ({
+    cleanup: vi.fn(),
+    streamTextContent: () => {
+      const chunks = pages[number - 1] ?? [];
+      let next = 0;
+      return new ReadableStream({
+        pull(controller) {
+          if (next >= chunks.length) {
+            controller.close();
+            return;
+          }
+          stats.chunksRead += 1;
+          controller.enqueue({
+            items: chunks[next++].map((str) => ({ str, hasEOL: false })),
+          });
+        },
+        cancel() {
+          stats.cancelled += 1;
+        },
+      });
+    },
+  }));
+  vi.mocked(getDocumentProxy).mockResolvedValueOnce({
+    numPages,
+    loadingTask: { destroy },
+    getPage,
+  } as never);
+  return { stats, getPage };
 }
 
 describe('normalizeLabReport number text', () => {
@@ -230,10 +261,7 @@ describe('extractLabReport', () => {
   });
 
   it('reads a PDF text layer and sends it as text, with no image', async () => {
-    vi.mocked(extractText).mockResolvedValue({
-      totalPages: 1,
-      text: REPORT_TEXT,
-    } as never);
+    givenPdf([[[REPORT_TEXT]]]);
 
     const result = await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
 
@@ -248,10 +276,7 @@ describe('extractLabReport', () => {
   });
 
   it('rejects a scanned PDF with no text layer', async () => {
-    vi.mocked(extractText).mockResolvedValue({
-      totalPages: 2,
-      text: '  ',
-    } as never);
+    givenPdf([[['  ']], [['  ']]]);
 
     const result = await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
 
@@ -288,10 +313,8 @@ describe('extractLabReport', () => {
   });
 
   it('refuses a PDF whose text is too long for one prompt instead of cutting it off', async () => {
-    vi.mocked(extractText).mockResolvedValue({
-      totalPages: 2,
-      text: 'HbA1c 5.4 % '.repeat(6_000),
-    } as never);
+    // Under the read budget, over what one prompt takes once normalised.
+    givenPdf([[['HbA1c 5.4 % '.repeat(6_000)]]]);
 
     const result = await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
 
@@ -303,9 +326,26 @@ describe('extractLabReport', () => {
     expect(destroy).toHaveBeenCalled();
   });
 
+  it('stops reading and cancels the stream once the text budget is spent', async () => {
+    // A thousand chunks of 1,000 characters: a million characters in all.
+    const chunks = Array.from({ length: 1000 }, () => ['x'.repeat(1000)]);
+    const { stats } = givenPdf([chunks]);
+
+    const result = await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
+
+    expect(result).toMatchObject({
+      success: false,
+      category: 'document_too_large',
+    });
+    expect(stats.cancelled).toBeGreaterThan(0);
+    expect(stats.chunksRead).toBeLessThan(200);
+    expect(dispatchAiRequest).not.toHaveBeenCalled();
+    expect(destroy).toHaveBeenCalled();
+  });
+
   it('sends the whole text of a PDF that fits', async () => {
     const text = 'HbA1c 5.4 % '.repeat(100);
-    vi.mocked(extractText).mockResolvedValue({ totalPages: 1, text } as never);
+    givenPdf([[[text]]]);
 
     await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
 
@@ -314,10 +354,7 @@ describe('extractLabReport', () => {
   });
 
   it('refuses a PDF with too many pages before reading any of them', async () => {
-    vi.mocked(getDocumentProxy).mockResolvedValueOnce({
-      numPages: 20_000,
-      loadingTask: { destroy },
-    } as never);
+    const { getPage } = givenPdf([], 20_000);
 
     const result = await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
 
@@ -325,29 +362,26 @@ describe('extractLabReport', () => {
       success: false,
       category: 'document_too_large',
     });
-    expect(extractText).not.toHaveBeenCalled();
+    expect(getPage).not.toHaveBeenCalled();
     expect(destroy).toHaveBeenCalled();
     expect(dispatchAiRequest).not.toHaveBeenCalled();
   });
 
   it('reads a PDF at the page limit', async () => {
-    vi.mocked(getDocumentProxy).mockResolvedValueOnce({
-      numPages: MAX_PDF_PAGES,
-      loadingTask: { destroy },
-    } as never);
-    vi.mocked(extractText).mockResolvedValue({
-      totalPages: MAX_PDF_PAGES,
-      text: 'HbA1c 5.4 % '.repeat(20),
-    } as never);
+    const pages = Array.from({ length: MAX_PDF_PAGES }, () => [
+      ['HbA1c 5.4 % '.repeat(20)],
+    ]);
+    const { getPage } = givenPdf(pages);
 
     const result = await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
 
-    expect(extractText).toHaveBeenCalled();
+    expect(getPage).toHaveBeenCalledTimes(MAX_PDF_PAGES);
     expect(result).not.toMatchObject({ category: 'document_too_large' });
   });
 
   it('opens a PDF with a cap on decoded image size and always releases it', async () => {
-    vi.mocked(extractText).mockRejectedValueOnce(new Error('boom'));
+    const { getPage } = givenPdf([[['x']]]);
+    getPage.mockRejectedValueOnce(new Error('boom'));
 
     const result = await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
 
