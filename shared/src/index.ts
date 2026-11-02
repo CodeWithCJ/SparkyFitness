@@ -110,6 +110,7 @@ export * from './schemas/database/OpenFoodFactsSyncQueue.zod.ts';
 export * from './schemas/database/Passkey.zod.ts';
 export * from './schemas/database/Profiles.zod.ts';
 export * from './schemas/database/RateLimitWindows.zod.ts';
+export * from './schemas/database/BulkImports.zod.ts';
 export * from './schemas/database/RlsPolicyState.zod.ts';
 export * from './schemas/database/Session.zod.ts';
 export * from './schemas/database/SleepEntries.zod.ts';
