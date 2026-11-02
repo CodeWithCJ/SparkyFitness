@@ -482,6 +482,7 @@ function ActiveWorkoutSetRow({
       if (seconds == null) return;
       onCommitField?.(setId, { duration: seconds });
       setDurationDraft(String(seconds));
+      setSynced((previous) => ({ ...previous, duration: String(seconds) }));
       return;
     }
     const patch: ActiveSetPatch = {};
@@ -497,31 +498,36 @@ function ActiveWorkoutSetRow({
     onCommitField?.(setId, patch);
     // A focused row skips the store-driven re-seed (drafts win under the
     // keyboard), so mirror the fill into the drafts here; on an unfocused row
-    // the re-seed writes the same values.
+    // the re-seed writes the same values. The baseline moves with them, so
+    // typing the value the field held before the fill counts as an edit.
+    const filled: Partial<typeof synced> = {};
     if (previousSet.weight != null) {
-      setWeightDraft(formatDisplayWeight(previousSet.weight, weightUnit));
+      filled.weight = formatDisplayWeight(previousSet.weight, weightUnit);
     }
     if (weightDuration) {
       if (previousSet.duration != null) {
-        setDurationDraft(String(previousSet.duration));
+        filled.duration = String(previousSet.duration);
       }
     } else if (weightDistance) {
       if (previousSet.distance != null) {
-        setDistanceDraft(
-          String(
-            parseFloat(
-              setDistanceFromKm(
-                previousSet.distance,
-                distanceUnit,
-                modality
-              ).toFixed(2)
-            )
+        filled.distance = String(
+          parseFloat(
+            setDistanceFromKm(
+              previousSet.distance,
+              distanceUnit,
+              modality
+            ).toFixed(2)
           )
         );
       }
     } else if (previousSet.reps != null) {
-      setRepsDraft(String(previousSet.reps));
+      filled.reps = String(previousSet.reps);
     }
+    if (filled.weight != null) setWeightDraft(filled.weight);
+    if (filled.duration != null) setDurationDraft(filled.duration);
+    if (filled.distance != null) setDistanceDraft(filled.distance);
+    if (filled.reps != null) setRepsDraft(filled.reps);
+    setSynced((previous) => ({ ...previous, ...filled }));
   }, [
     previousSet,
     durationLike,

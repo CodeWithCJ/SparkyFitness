@@ -1490,6 +1490,36 @@ describe('ActiveWorkoutSetRow', () => {
       ...o,
     });
 
+    it('commits the original weight typed back after a fill from previous in the same focus', () => {
+      const base = {
+        state: 'current' as const,
+        metricColumn: 'rpe' as const,
+        previousSet: prev({ weight: 100, reps: 5 }),
+      };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+        set: { weight: 60, reps: 10 },
+      });
+      fireEvent.press(getByLabelText('Fill set 1 from previous'));
+      expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+        weight: 100,
+        reps: 5,
+      });
+      // The store takes the fill; the row is still focused.
+      rerenderRow({
+        ...base,
+        isFocused: true,
+        set: { weight: 100, reps: 5 },
+      });
+      expect(getByLabelText('Weight').props.value).toBe('100');
+      fireEvent.changeText(getByLabelText('Weight'), '60');
+      fireEvent(getByLabelText('Weight'), 'blur');
+      expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+        weight: 60,
+      });
+    });
+
     it('renders weight × reps in the display unit', () => {
       const kg = renderRow({ state: 'upcoming', previousSet: prev() });
       expect(kg.getByText('100 × 5')).toBeTruthy();
