@@ -339,6 +339,17 @@ function ActiveWorkoutSetRow({
         )
       : '';
   const [distanceDraft, setDistanceDraft] = useState(distanceSeedText);
+  // The text each value draft was last in step with the store: what it was
+  // seeded from. A draft that still equals it was never edited, so it must not
+  // be written back: while the row was focused a value may have changed under
+  // it (a set edited on the watch), and writing the old draft on blur would
+  // undo that.
+  const [synced, setSynced] = useState(() => ({
+    weight: formatDisplayWeight(set.weight, weightUnit),
+    reps: set.reps != null ? String(set.reps) : '',
+    duration: durationSeedText,
+    distance: distanceSeedText,
+  }));
   // The per-set effort input edits whichever effort metric the column shows:
   // RIR when the RIR column is picked, otherwise RPE. The draft, ref, focus
   // field ('rpe') and accessory-bar wiring are shared between the two.
@@ -363,25 +374,46 @@ function ActiveWorkoutSetRow({
   // keyboard.
   const signature = `${set.weight}|${set.reps}|${set.duration}|${set.distance}|${set.rpe}|${set.rir}|${effortField}|${weightUnit}|${distanceUnit}`;
   const [prevSignature, setPrevSignature] = useState(signature);
-  if (signature !== prevSignature) {
+  // While this row is the focused cell its drafts are the source of truth: a
+  // store change landing under the open keyboard (an autosave echo normalizing
+  // a value, or a set edited on the watch) must not rewrite in-progress text,
+  // so the re-seed waits (the signature is not advanced) until the row loses
+  // focus. By then a draft the user edited but the deactivation commit has not
+  // flushed yet is kept, and the rest follow the store. The commit's own store
+  // write re-enters this block and snaps the kept drafts to their committed
+  // forms.
+  if (signature !== prevSignature && !isFocusedRow) {
     setPrevSignature(signature);
-    // While this row is the focused cell its drafts are the source of
-    // truth: a store change landing under the open keyboard (e.g. an autosave
-    // echo normalizing a value) must not rewrite in-progress text. The
-    // deactivation-commit effect below flushes the drafts, and that store
-    // write re-enters this block to snap them to their committed forms.
-    if (!isFocusedRow) {
-      setWeightDraft(formatDisplayWeight(set.weight, weightUnit));
-      setRepsDraft(set.reps != null ? String(set.reps) : '');
-      setDurationDraft(durationSeedText);
-      setDistanceDraft(distanceSeedText);
-      // RPE alone commits per keystroke in edit mode, so a re-seed can arrive
-      // mid-typing: leave the draft alone while its parse already matches the
-      // committed value (e.g. "0" clamps to 1 — rewriting would jump the text
-      // under the user's cursor). Blur still snaps the text via commitRpe.
-      if (parseEffortInput(rpeDraft) !== effortValue) {
-        setRpeDraft(effortValue != null ? formatRpe(effortValue) : '');
-      }
+    const fromStore = {
+      weight: formatDisplayWeight(set.weight, weightUnit),
+      reps: set.reps != null ? String(set.reps) : '',
+      duration: durationSeedText,
+      distance: distanceSeedText,
+    };
+    const edited = (key: keyof typeof fromStore, draft: string) =>
+      draft !== synced[key] && draft !== fromStore[key];
+    const kept = {
+      weight: edited('weight', weightDraft),
+      reps: edited('reps', repsDraft),
+      duration: edited('duration', durationDraft),
+      distance: edited('distance', distanceDraft),
+    };
+    if (!kept.weight) setWeightDraft(fromStore.weight);
+    if (!kept.reps) setRepsDraft(fromStore.reps);
+    if (!kept.duration) setDurationDraft(fromStore.duration);
+    if (!kept.distance) setDistanceDraft(fromStore.distance);
+    setSynced({
+      weight: kept.weight ? synced.weight : fromStore.weight,
+      reps: kept.reps ? synced.reps : fromStore.reps,
+      duration: kept.duration ? synced.duration : fromStore.duration,
+      distance: kept.distance ? synced.distance : fromStore.distance,
+    });
+    // RPE alone commits per keystroke in edit mode, so a re-seed can arrive
+    // mid-typing: leave the draft alone while its parse already matches the
+    // committed value (e.g. "0" clamps to 1 — rewriting would jump the text
+    // under the user's cursor). Blur still snaps the text via commitRpe.
+    if (parseEffortInput(rpeDraft) !== effortValue) {
+      setRpeDraft(effortValue != null ? formatRpe(effortValue) : '');
     }
   }
 
@@ -537,6 +569,8 @@ function ActiveWorkoutSetRow({
       // user). Only a real edit — a draft that no longer matches — reaches the
       // store. This also spares an unedited log a spurious revision bump.
       if (text === formatDisplayWeight(set.weight, weightUnit)) return;
+      // Never edited here: the store may have moved on under it.
+      if (text === synced.weight) return;
       // A bodyweight set accepts a sign. Every other modality rejects it, so a
       // pasted minus does not become a negative load.
       const value = isBodyweightModality(modality)
@@ -553,20 +587,21 @@ function ActiveWorkoutSetRow({
       if (weightKg === (set.weight ?? null)) return;
       onCommitField?.(setId, { weight: weightKg });
     },
-    [modality, onCommitField, setId, weightUnit, set.weight]
+    [modality, onCommitField, setId, weightUnit, set.weight, synced.weight]
   );
 
   const commitReps = useCallback(
     (text: string) => {
       // Unchanged reps need no re-commit — skip the spurious store write.
       if (text === (set.reps != null ? String(set.reps) : '')) return;
+      if (text === synced.reps) return;
       const value = parseInt(text, 10);
       const reps = Number.isNaN(value) ? null : value;
       // A draft that parses back to the stored reps ("08") is unchanged too.
       if (reps === (set.reps ?? null)) return;
       onCommitField?.(setId, { reps });
     },
-    [onCommitField, setId, set.reps]
+    [onCommitField, setId, set.reps, synced.reps]
   );
 
   const commitDuration = useCallback(
@@ -575,17 +610,19 @@ function ActiveWorkoutSetRow({
       // untouched legacy reps-as-seconds row commits nothing — only a real
       // edit writes `duration` (reps are never migrated silently).
       if (text === durationSeedText) return;
+      if (text === synced.duration) return;
       const value = parseInt(text, 10);
       const seconds = Number.isNaN(value) ? null : value;
       if (seconds === (set.duration ?? null)) return;
       onCommitField?.(setId, { duration: seconds });
     },
-    [onCommitField, setId, set.duration, durationSeedText]
+    [onCommitField, setId, set.duration, durationSeedText, synced.duration]
   );
 
   const commitDistance = useCallback(
     (text: string) => {
       if (text === distanceSeedText) return;
+      if (text === synced.distance) return;
       const value = parseDecimalInput(text);
       // Three decimals of km is a millimetre: enough that a metre or a yard
       // survives the round trip.
@@ -603,6 +640,7 @@ function ActiveWorkoutSetRow({
       distanceSeedText,
       distanceUnit,
       modality,
+      synced.distance,
     ]
   );
 

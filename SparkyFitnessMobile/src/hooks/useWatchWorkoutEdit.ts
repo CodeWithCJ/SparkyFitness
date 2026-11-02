@@ -10,9 +10,11 @@ import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 // Recent edits already applied. A message the watch sent live and then queued
 // as well must not add a second set or drop a second exercise.
 const SEEN_LIMIT = 100;
-// Same tolerance the other arm checks use for the millisecond rounding between
-// the plan's ISO stamp and the epoch value the edit carries.
-const WATCH_ARM_TOLERANCE_MS = 2000;
+// The plan's ISO stamp and the epoch value an edit carries are the same
+// millisecond, so only rounding separates them. Kept as tight as the watch's
+// own arm check (10 ms) so an edit from an arm started a moment earlier is not
+// taken for this one.
+const WATCH_ARM_TOLERANCE_MS = 10;
 const seenClientIds: string[] = [];
 // Add Exercise loads the exercise first. Its id is held here while that runs,
 // and only recorded as applied once the exercise is added, so a delivery that

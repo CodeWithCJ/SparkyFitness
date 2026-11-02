@@ -428,6 +428,49 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
     });
 
+    it('does not write an untouched draft back over a value changed under the keyboard', () => {
+      // A set edited on the watch lands while the phone row is focused.
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { callbacks, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+        set: { weight: 60, reps: 10 },
+      });
+      rerenderRow({ ...base, isFocused: true, set: { weight: 65, reps: 12 } });
+      rerenderRow({ ...base, isFocused: false, set: { weight: 65, reps: 12 } });
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+    });
+
+    it('shows the changed value once the row loses focus', () => {
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { getByLabelText, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+        set: { weight: 60, reps: 10 },
+      });
+      rerenderRow({ ...base, isFocused: true, set: { weight: 65, reps: 12 } });
+      // The focused draft is left alone under the keyboard.
+      expect(getByLabelText('Weight').props.value).toBe('60');
+      rerenderRow({ ...base, isFocused: false, set: { weight: 65, reps: 12 } });
+      expect(getByLabelText('Weight').props.value).toBe('65');
+      expect(getByLabelText('Reps').props.value).toBe('12');
+    });
+
+    it('keeps what was typed when the value also changed under the keyboard', () => {
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+        set: { weight: 60, reps: 10 },
+      });
+      fireEvent.changeText(getByLabelText('Weight'), '80');
+      rerenderRow({ ...base, isFocused: true, set: { weight: 65, reps: 10 } });
+      rerenderRow({ ...base, isFocused: false, set: { weight: 65, reps: 10 } });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 80,
+      });
+    });
+
     it('commits nothing when an untouched row deactivates', () => {
       const base = { state: 'current' as const, metricColumn: 'rpe' as const };
       const { callbacks, rerenderRow } = renderRow({

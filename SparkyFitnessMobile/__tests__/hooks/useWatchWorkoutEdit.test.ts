@@ -92,11 +92,20 @@ describe('applyWatchWorkoutEdit', () => {
       armedAt: 50_000,
     });
     expect(actions.updateSetField).not.toHaveBeenCalled();
+    // A workout re-armed a moment later is still another arm.
     await edit({
       action: 'setValues',
       setId: '17',
       weightKg: 60,
-      armedAt: 100_400,
+      armedAt: 99_000,
+    });
+    expect(actions.updateSetField).not.toHaveBeenCalled();
+    // The same arm, off only by rounding.
+    await edit({
+      action: 'setValues',
+      setId: '17',
+      weightKg: 60,
+      armedAt: 100_001,
     });
     expect(actions.updateSetField).toHaveBeenCalledWith('17', { weight: 60 });
   });
