@@ -1086,6 +1086,24 @@ describe('workout presets', () => {
     );
   });
 
+  it('create_workout_preset still rejects a data-bearing cross-action key (top-level sets) instead of dropping it', async () => {
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'create_workout_preset',
+        name: 'Leg Day',
+        exercises: [{ exercise_id: EXERCISE_ID }],
+        confirmed: true,
+        // Data-bearing: the strict preset schema only accepts sets nested
+        // inside exercises, so a top-level sets must NOT be silently dropped.
+        sets: [{ reps: 10 }],
+      },
+      opts
+    );
+
+    expect(result).toMatch(/^Error \[VALIDATION\]/);
+    expect(workoutPresetService.createWorkoutPreset).not.toHaveBeenCalled();
+  });
+
   it('create_workout_preset builds sets and superset groups', async () => {
     vi.mocked(workoutPresetService.createWorkoutPreset).mockResolvedValue({
       id: 9,

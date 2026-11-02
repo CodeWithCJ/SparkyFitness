@@ -55,6 +55,14 @@ import {
 import { optionalDateSchema } from './schemas/common.js';
 import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
 
+// Unrecognized root-level keys that are safe to drop in the small-model
+// salvage: non-data-bearing flags/dates published on the shared flat input
+// schema for OTHER actions (confirmed → update/delete_workout_preset,
+// start_date/end_date → get_exercise_progress). Anything else — especially
+// data-bearing keys like `sets` — must fail validation rather than be
+// silently discarded (see #3341 review).
+const SAFE_DISCARD_KEYS = new Set(['confirmed', 'start_date', 'end_date']);
+
 const VALID_ACTIONS = [
   'search_exercises',
   'create_exercise',
@@ -852,16 +860,23 @@ Workout formats (workout_format, default standard) drive the in-app timer:
           // confirmed / start_date / end_date, which the flat input schema
           // publishes for update/delete_workout_preset and
           // get_exercise_progress, echoed onto create_workout_preset).
-          // Drop keys the action doesn't accept and re-parse once,
-          // mirroring the foodTools behavior.
-          const badKeys = parsed.error.issues.flatMap((i) =>
-            i.code === 'unrecognized_keys' ? i.keys : []
+          // Only root-level unrecognized keys are considered, and only keys
+          // that are safe to discard are dropped: flags/dates the action
+          // simply doesn't consume. Data-bearing keys (e.g. a top-level
+          // `sets` on a preset write) are NEVER dropped — the validation
+          // error is returned so the model can re-send the call correctly,
+          // mirroring the foodTools behavior without discarding workout data.
+          const badRootKeys = parsed.error.issues.flatMap((i) =>
+            i.code === 'unrecognized_keys' && i.path.length === 0 ? i.keys : []
           );
-          if (badKeys.length > 0) {
-            for (const key of badKeys) delete normalized[key];
+          const droppableKeys = badRootKeys.filter((key) =>
+            SAFE_DISCARD_KEYS.has(key)
+          );
+          if (droppableKeys.length > 0) {
+            for (const key of droppableKeys) delete normalized[key];
             log(
               'info',
-              `[exerciseTools] Dropped unrecognized keys for ${normalized.action}: ${badKeys.join(', ')}`
+              `[exerciseTools] Dropped unrecognized keys for ${normalized.action}: ${droppableKeys.join(', ')}`
             );
             parsed = manageExerciseSchema.safeParse(normalized);
           }
