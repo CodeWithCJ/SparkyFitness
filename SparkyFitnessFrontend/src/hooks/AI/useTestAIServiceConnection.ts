@@ -2,10 +2,11 @@ import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { testAIServiceConnection } from '@/api/Settings/aiServiceSettingsService';
 import { TestAiServiceConnectionRequest } from '@workspace/shared';
+import { providerDetailText } from '@/utils/aiServiceUtils';
 
 // Inline status rendered next to the Test Connection button.
-// `detail` is the provider's own text when the server has it; `message` is the
-// short category label shown next to the button.
+// `message` is the category label; `detail` is the provider's own error as plain
+// text (see providerDetailText), when the server sent one.
 export type TestConnectionStatus =
   | { state: 'success' }
   | { state: 'error'; message: string; detail?: string }
@@ -39,7 +40,9 @@ export const useTestAIServiceConnection = () => {
             `settings.aiService.test.categories.${mutation.data.category ?? 'unknown'}`,
             t('settings.aiService.test.categories.unknown')
           ),
-          detail: mutation.data.detail,
+          detail: mutation.data.detail
+            ? providerDetailText(mutation.data.detail) || undefined
+            : undefined,
         };
   }
 

@@ -148,3 +148,38 @@ export const isCustomModelName = (
   if (!modelName || serviceType === 'opencode_go') return false;
   return !getModelOptions(serviceType).includes(modelName);
 };
+
+const PROVIDER_DETAIL_MAX_CHARS = 300;
+const HTTP_STATUS_PREFIX = /^AI service returned status \d+:\s*/;
+
+const providerErrorMessage = (value: unknown): string | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const { message, error } = value as { message?: unknown; error?: unknown };
+  if (typeof message === 'string' && message.trim()) return message;
+  if (typeof error === 'string' && error.trim()) return error;
+  if (typeof error === 'object' && error !== null) {
+    const nested = (error as { message?: unknown }).message;
+    if (typeof nested === 'string' && nested.trim()) return nested;
+  }
+  return undefined;
+};
+
+// One line of plain text for a provider error: the HTTP status prefix is dropped,
+// the JSON `message` (or `error.message`) is used when there is one, and anything
+// else is shown as its text with HTML tags removed. Always truncated.
+export const providerDetailText = (detail: string): string => {
+  let text = detail.replace(HTTP_STATUS_PREFIX, '').trim();
+  try {
+    const message = providerErrorMessage(JSON.parse(text));
+    if (message) text = message;
+  } catch {
+    // Not JSON: the response text itself is shown.
+  }
+  text = text
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > PROVIDER_DETAIL_MAX_CHARS
+    ? `${text.slice(0, PROVIDER_DETAIL_MAX_CHARS).trimEnd()}…`
+    : text;
+};

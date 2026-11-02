@@ -299,7 +299,7 @@ describe('ServiceForm — test connection button', () => {
     ).toBeTruthy();
   });
 
-  it('shows the provider error under the OpenCode Go model field', () => {
+  it('appends the provider detail to the failure text, without a separate line', () => {
     const utils = renderWithTest(
       makeFormData({
         service_type: 'opencode_go',
@@ -310,28 +310,15 @@ describe('ServiceForm — test connection button', () => {
         testStatus: {
           state: 'error',
           message: 'settings.aiService.test.categories.upstream_error',
-          detail:
-            'AI service returned status 403: model requires a privacy setting change',
+          detail: 'model requires a privacy setting change',
         },
       }
     );
     expect(
       utils.getByText(
-        'AI service returned status 403: model requires a privacy setting change'
+        'settings.aiService.test.failureTitle: settings.aiService.test.categories.upstream_error model requires a privacy setting change'
       )
     ).toBeTruthy();
-  });
-
-  it('does not show a provider detail line for other service types', () => {
-    const utils = renderWithTest(makeFormData({ service_type: 'openai' }), {
-      onTestConnection: jest.fn(),
-      testStatus: {
-        state: 'error',
-        message: 'settings.aiService.test.categories.upstream_error',
-        detail: 'AI service returned status 403: something',
-      },
-    });
-    expect(utils.queryByText(/something/)).toBeNull();
   });
 
   // The result is cleared while a fresh test is in flight.

@@ -382,9 +382,6 @@ export const ServiceForm = ({
                 : t(`${translationPrefix}.loadModels`)}
             </Button>
           </div>
-          {testStatus?.state === 'error' && testStatus.detail && (
-            <p className="text-xs text-destructive mt-1">{testStatus.detail}</p>
-          )}
         </div>
       )}
 
@@ -530,12 +527,17 @@ export const ServiceForm = ({
             className={
               testStatus.state === 'success'
                 ? 'text-sm font-medium text-green-600 dark:text-green-400'
-                : 'text-sm font-medium text-destructive'
+                : 'text-sm font-medium text-destructive break-words'
             }
           >
             {testStatus.state === 'success'
               ? t('settings.aiService.test.successTitle')
-              : `${t('settings.aiService.test.failureTitle')}: ${testStatus.message}`}
+              : [
+                  `${t('settings.aiService.test.failureTitle')}: ${testStatus.message}`,
+                  testStatus.detail,
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
           </span>
         )}
       </div>
