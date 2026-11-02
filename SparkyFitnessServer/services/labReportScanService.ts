@@ -62,15 +62,16 @@ const MAX_PDF_TEXT_CHARS = 60_000;
 // before any page is read, however small the file is.
 export const MAX_PDF_PAGES = 30;
 
-// The same image types and size the food-photo route accepts. A photo is
-// base64-decoded and fully decoded and resized before the AI call, so each
-// bound limits what one request can make the server allocate.
+// The photo types the food-photo route accepts, less HEIC and HEIF: those go
+// through a separate converter that decodes the whole image before it can be
+// bounded, and sharp cannot read their headers to check the size first. The
+// phone app sends JPEG, and anything else can be saved as one.
+// A photo is base64-decoded and fully decoded and resized before the AI call,
+// so each bound limits what one request can make the server allocate.
 const ALLOWED_IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
   'image/png',
   'image/webp',
-  'image/heic',
-  'image/heif',
 ]);
 const MAX_IMAGE_BASE64_CHARS = 8 * 1024 * 1024;
 // A small file can declare enormous dimensions and decode to hundreds of
@@ -78,16 +79,22 @@ const MAX_IMAGE_BASE64_CHARS = 8 * 1024 * 1024;
 // 50 megapixels covers any phone camera's full-resolution photo.
 export const MAX_IMAGE_PIXELS = 50_000_000;
 
-/** True when the image's header declares more pixels than we will decode. */
-async function declaresTooManyPixels(base64: string): Promise<boolean> {
+type ImageHeaderCheck = 'ok' | 'too_many_pixels' | 'unreadable';
+
+/**
+ * Reads the declared size from the image header, without decoding it. A file
+ * whose header cannot be read is refused rather than passed on: nothing past
+ * this point can bound it, and a photo with no readable header is not one.
+ */
+async function checkImageHeader(base64: string): Promise<ImageHeaderCheck> {
   try {
     const { width, height } = await sharp(Buffer.from(base64, 'base64'), {
       limitInputPixels: false,
     }).metadata();
-    return (width ?? 0) * (height ?? 0) > MAX_IMAGE_PIXELS;
+    if (!width || !height) return 'unreadable';
+    return width * height > MAX_IMAGE_PIXELS ? 'too_many_pixels' : 'ok';
   } catch {
-    // Not a header sharp can read; the provider will say what is wrong with it.
-    return false;
+    return 'unreadable';
   }
 }
 
@@ -224,7 +231,7 @@ async function extractLabReport(
       return {
         success: false,
         category: 'unsupported_media',
-        error: 'Send a PDF, or a JPEG, PNG, WebP or HEIC photo of the report',
+        error: 'Send a PDF, or a JPEG, PNG or WebP photo of the report',
       };
     }
     if (base64Document.length > MAX_IMAGE_BASE64_CHARS) {
@@ -234,11 +241,19 @@ async function extractLabReport(
         error: 'This photo is too large to read',
       };
     }
-    if (await declaresTooManyPixels(base64Document)) {
+    const header = await checkImageHeader(base64Document);
+    if (header === 'too_many_pixels') {
       return {
         success: false,
         category: 'image_too_large',
         error: 'This photo has too many pixels to read. Use a smaller photo.',
+      };
+    }
+    if (header === 'unreadable') {
+      return {
+        success: false,
+        category: 'unsupported_media',
+        error: 'This file could not be read as a photo',
       };
     }
   }

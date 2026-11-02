@@ -48,7 +48,7 @@ router.use(checkPermissionMiddleware('checkin'));
  *               mime_type: { type: string, example: application/pdf }
  *     responses:
  *       200: { description: The results read from the report, each matched to a known marker where possible. }
- *       400: { description: Invalid request, an unsupported image type, or a document that is too large (a PDF over 30 pages or with more text than one prompt takes, a photo over 8 MB or 50 megapixels included). }
+ *       400: { description: Invalid request, an unsupported image type (JPEG, PNG and WebP are accepted) or an unreadable photo, or a document that is too large (a PDF over 30 pages or with more text than one prompt takes, a photo over 8 MB or 50 megapixels included). }
  *       429: { description: Too many scans in a short time. }
  *       403: { description: The AI provider URL is on a private network. }
  *       422: { description: No usable AI provider, an unreadable PDF, or the model did not return readable results. }

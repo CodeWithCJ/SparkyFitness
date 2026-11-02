@@ -219,12 +219,13 @@ describe('extractLabReport', () => {
   });
 
   it('sends a photo to the vision provider as an image', async () => {
-    const result = await extractLabReport('abc', 'image/jpeg', 'u1');
+    const photo = pngDeclaring(100, 100);
+    const result = await extractLabReport(photo, 'image/jpeg', 'u1');
 
     expect(result).toMatchObject({ success: true });
     expect(chatRepository.getActiveVisionAiServiceSetting).toHaveBeenCalled();
     expect(vi.mocked(dispatchAiRequest).mock.calls[0][0].images).toEqual([
-      { base64: 'abc', mimeType: 'image/jpeg' },
+      { base64: photo, mimeType: 'image/jpeg' },
     ]);
   });
 
@@ -358,7 +359,14 @@ describe('extractLabReport', () => {
   });
 
   it('refuses a type that is neither a PDF nor a supported photo', async () => {
-    for (const type of ['image/svg+xml', 'image/gif', 'text/html', 'x']) {
+    for (const type of [
+      'image/svg+xml',
+      'image/gif',
+      'image/heic',
+      'image/heif',
+      'text/html',
+      'x',
+    ]) {
       const result = await extractLabReport('abc', type, 'u1');
       expect(result).toMatchObject({
         success: false,
@@ -368,16 +376,34 @@ describe('extractLabReport', () => {
     expect(dispatchAiRequest).not.toHaveBeenCalled();
   });
 
-  it('accepts the photo types the food-photo route accepts, in any case', async () => {
-    for (const type of [
-      'IMAGE/JPEG',
-      ' image/png ',
-      'image/webp',
-      'image/heic',
-    ]) {
-      const result = await extractLabReport('abc', type, 'u1');
+  it('accepts JPEG, PNG and WebP photos, in any case', async () => {
+    const photo = pngDeclaring(100, 100);
+    for (const type of ['IMAGE/JPEG', ' image/png ', 'image/webp']) {
+      const result = await extractLabReport(photo, type, 'u1');
       expect(result).not.toMatchObject({ category: 'unsupported_media' });
     }
+  });
+
+  it('refuses HEIC and HEIF, which cannot be size-checked before conversion', async () => {
+    const photo = pngDeclaring(100, 100);
+    for (const type of ['image/heic', 'image/heif']) {
+      const result = await extractLabReport(photo, type, 'u1');
+      expect(result).toMatchObject({
+        success: false,
+        category: 'unsupported_media',
+      });
+    }
+    expect(dispatchAiRequest).not.toHaveBeenCalled();
+  });
+
+  it('refuses a file whose image header cannot be read instead of passing it on', async () => {
+    const result = await extractLabReport('abc', 'image/jpeg', 'u1');
+
+    expect(result).toMatchObject({
+      success: false,
+      category: 'unsupported_media',
+    });
+    expect(dispatchAiRequest).not.toHaveBeenCalled();
   });
 
   it('refuses an oversized photo before decoding it', async () => {
@@ -420,7 +446,11 @@ describe('extractLabReport', () => {
     vi.mocked(chatRepository.getActiveVisionAiServiceSetting).mockResolvedValue(
       null as never
     );
-    const result = await extractLabReport('abc', 'image/png', 'u1');
+    const result = await extractLabReport(
+      pngDeclaring(100, 100),
+      'image/png',
+      'u1'
+    );
     expect(result).toMatchObject({
       success: false,
       category: 'no_ai_configured',
@@ -432,7 +462,11 @@ describe('extractLabReport', () => {
       ok: true,
       json: { results: [] },
     } as never);
-    const result = await extractLabReport('abc', 'image/jpeg', 'u1');
+    const result = await extractLabReport(
+      pngDeclaring(100, 100),
+      'image/jpeg',
+      'u1'
+    );
     expect(result).toMatchObject({ success: false, category: 'parse_error' });
   });
 });
