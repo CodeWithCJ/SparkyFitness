@@ -173,6 +173,20 @@ const FitnessFatigueCard: React.FC<FitnessFatigueCardProps> = ({
     const peak = Math.max(1, ...recent.map((point) => Math.abs(point.form)));
     const half = BAR_AREA_HEIGHT / 2;
     const formText = statusText(fitnessFatigue.status);
+    const breathing = readiness.vitals?.respiratoryRate;
+    const breathingWarning =
+      readiness.signs?.includes('raisedRespiratoryRate') && breathing
+        ? t('exerciseStatistics.fitness.sign.raisedRespiratoryRate', {
+            current: formatLocalizedNumber(breathing.current, {
+              maximumFractionDigits: 1,
+            }),
+            baseline: formatLocalizedNumber(breathing.baseline, {
+              maximumFractionDigits: 1,
+            }),
+            defaultValue:
+              'Breathing rate {{current}} per minute against your usual {{baseline}}. A raised breathing rate can be an early sign of illness, so take it easy if you feel unwell.',
+          })
+        : null;
     return (
       <>
         <View className="flex-row items-end mb-1">
@@ -214,6 +228,14 @@ const FitnessFatigueCard: React.FC<FitnessFatigueCardProps> = ({
             </View>
           );
         })}
+        {breathingWarning ? (
+          <Text
+            className="text-text-warning text-xs mt-2"
+            testID="readiness-breathing-warning"
+          >
+            {breathingWarning}
+          </Text>
+        ) : null}
         {today ? (
           <>
             <View className="flex-row justify-between mt-3 mb-2">

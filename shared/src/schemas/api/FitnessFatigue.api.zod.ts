@@ -47,8 +47,11 @@ export const readinessSchema = z.object({
     .object({
       restingHeartRate: readinessVitalSchema.optional(),
       hrv: readinessVitalSchema.optional(),
+      respiratoryRate: readinessVitalSchema.optional(),
     })
     .optional(),
+  /** Warnings from unscored vitals; absent from older servers. */
+  signs: z.array(z.enum(['raisedRespiratoryRate'])).optional(),
   weakest: readinessFactorSchema.nullable(),
 });
 

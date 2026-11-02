@@ -7179,6 +7179,9 @@
         "restingHeartRate": "Resting heart rate",
         "hrv": "HRV"
       },
+      "sign": {
+        "raisedRespiratoryRate": "Breathing rate {{current}} per minute against your usual {{baseline}}. A raised breathing rate can be an early sign of illness, so take it easy if you feel unwell."
+      },
       "vital": {
         "hrv": "{{current}} ms against your usual {{baseline}} ms",
         "hrvNights": "{{current}} ms against your usual {{baseline}} ms (median of {{count}} nights)",

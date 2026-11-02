@@ -71,6 +71,9 @@ const vitals = {
   hrv: null,
   hrvBaseline: null,
   hrvBaselineNights: 0,
+  respiratoryRate: null,
+  respiratoryRateBaseline: null,
+  respiratoryRateBaselineNights: 0,
 };
 
 describe('getRunningEstimates', () => {
