@@ -6793,7 +6793,7 @@
     "setInputCrown": "Digital Crown",
     "layoutTitle": "Layout",
     "setScreenMetricsTitle": "Metrics on the set screen",
-    "setScreenMetricsSubtitle": "Elapsed time, heart rate and calories. Off moves them to their own page after the set screen (after Up Next, when that page is on).",
+    "setScreenMetricsSubtitle": "Elapsed time, heart rate and calories. Off moves them to their own page above the set screen: swipe down to see them.",
     "upNextTitle": "Up Next page",
     "upNextSubtitle": "A page one swipe up from the set screen with the next exercise, its target, and a Swap button to do another exercise first.",
     "largerTextTitle": "Larger text on the watch",

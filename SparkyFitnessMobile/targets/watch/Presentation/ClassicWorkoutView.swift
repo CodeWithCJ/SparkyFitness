@@ -403,7 +403,10 @@ private struct ActiveWorkoutView: View {
     @EnvironmentObject private var checkIn: CheckInStore
 
     @State private var showingExercises = false
-    @State private var page: WorkoutPageID? = .set
+    /// Nil until the view appears: set to `.set` then, so the scroll moves
+    /// to the set screen even with the metrics page above it. Starting at
+    /// `.set` asked for nothing and left the scroll at the top page.
+    @State private var page: WorkoutPageID?
     /// A logged set held back while the wearer picks an effort. Held here and
     /// not in `CurrentSetView`: logging a set starts the rest, which swaps that
     /// view for `RestView` and would take the screen, and the set with it,
@@ -435,6 +438,15 @@ private struct ActiveWorkoutView: View {
         GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 0) {
+                    // Above the set screen, a swipe down away, when the set
+                    // screen leaves its readings off (Settings → Apple Watch on
+                    // the phone): checking them is a glance back, not a trip
+                    // past the set and exercise options below.
+                    if !checkIn.context.effectiveSetScreenMetrics {
+                        WorkoutMetricsPage()
+                            .workoutPage(geo)
+                            .id(WorkoutPageID.metrics)
+                    }
                     setScreen
                         .workoutPage(geo, alignment: .top)
                         .id(WorkoutPageID.set)
@@ -444,13 +456,6 @@ private struct ActiveWorkoutView: View {
                         UpNextPage(onOpenList: { showingExercises = true })
                             .workoutPage(geo)
                             .id(WorkoutPageID.upNext)
-                    }
-                    // The page stands in for the readings the strip on the set
-                    // screen is not showing.
-                    if !checkIn.context.effectiveSetScreenMetrics {
-                        WorkoutMetricsPage()
-                            .workoutPage(geo)
-                            .id(WorkoutPageID.metrics)
                     }
                     if let step = store.currentStep {
                         SetOptionsPage(step: step)
@@ -477,6 +482,7 @@ private struct ActiveWorkoutView: View {
         // A set logged here or on the phone, an edit, or a jump from the
         // list moves the cursor: back to the set screen.
         .onChange(of: store.currentStep?.plannedSet.setId) { page = .set }
+        .onAppear { page = .set }
         .padding(.horizontal, 4)
         .sheet(isPresented: $showingExercises) {
             ExerciseListView { exerciseEntryId in

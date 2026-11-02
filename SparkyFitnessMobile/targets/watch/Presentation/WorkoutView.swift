@@ -412,7 +412,10 @@ private struct ActiveWorkoutView: View {
     @EnvironmentObject private var checkIn: CheckInStore
 
     @State private var showingExercises = false
-    @State private var page: WorkoutPageID? = .set
+    /// Nil until the view appears: set to `.set` then, so the scroll moves
+    /// to the set screen even with the metrics page above it. Starting at
+    /// `.set` asked for nothing and left the scroll at the top page.
+    @State private var page: WorkoutPageID?
     /// A logged set held back while the wearer picks an effort. Held here and
     /// not in `CurrentSetView`: logging a set starts the rest, which swaps that
     /// view for `RestView` and would take the screen, and the set with it,
@@ -444,21 +447,24 @@ private struct ActiveWorkoutView: View {
         GeometryReader { geo in
             ScrollView {
                 VStack(spacing: 0) {
-                    setScreen
-                        .workoutPage(geo, alignment: .top)
-                        .id(WorkoutPageID.set)
-                    // Both pages are the wearer's choice (Settings → Apple
-                    // Watch on the phone). The metrics page only stands in
-                    // for the metrics the set screen is not showing.
-                    if checkIn.context.effectiveUpNextPage {
-                        UpNextPage(onOpenList: { showingExercises = true })
-                            .workoutPage(geo)
-                            .id(WorkoutPageID.upNext)
-                    }
+                    // Above the set screen, a swipe down away, when the set
+                    // screen leaves its readings off (Settings → Apple Watch on
+                    // the phone): checking them is a glance back, not a trip
+                    // past the set and exercise options below.
                     if !checkIn.context.effectiveSetScreenMetrics {
                         WorkoutMetricsPage()
                             .workoutPage(geo)
                             .id(WorkoutPageID.metrics)
+                    }
+                    setScreen
+                        .workoutPage(geo, alignment: .top)
+                        .id(WorkoutPageID.set)
+                    // The wearer's choice (Settings → Apple Watch on the
+                    // phone).
+                    if checkIn.context.effectiveUpNextPage {
+                        UpNextPage(onOpenList: { showingExercises = true })
+                            .workoutPage(geo)
+                            .id(WorkoutPageID.upNext)
                     }
                     if let step = store.currentStep {
                         SetOptionsPage(step: step)
@@ -485,6 +491,7 @@ private struct ActiveWorkoutView: View {
         // A set logged here or on the phone, an edit, or a jump from the
         // list moves the cursor: back to the set screen.
         .onChange(of: store.currentStep?.plannedSet.setId) { page = .set }
+        .onAppear { page = .set }
         .padding(.horizontal, 4)
         .sheet(isPresented: $showingExercises) {
             ExerciseListView { exerciseEntryId in
@@ -1911,10 +1918,10 @@ private struct RestView: View {
             // it and the heart rate coming down under that.
             ZStack {
                 Circle()
-                    .stroke(Color.blue.opacity(0.25), lineWidth: WatchStyle.s(8))
+                    .stroke(Color.blue.opacity(0.25), lineWidth: WatchStyle.s(7))
                 Circle()
                     .trim(from: 0, to: CGFloat(1 - progress(now: now)))
-                    .stroke(Color.blue, style: StrokeStyle(lineWidth: WatchStyle.s(8), lineCap: .round))
+                    .stroke(Color.blue, style: StrokeStyle(lineWidth: WatchStyle.s(7), lineCap: .round))
                     .rotationEffect(.degrees(-90))
                 VStack(spacing: 0) {
                     Text(store.restPausedRemaining != nil
@@ -1923,7 +1930,7 @@ private struct RestView: View {
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(store.restPausedRemaining != nil ? Color.orange : Color.secondary)
                     Text(remainingLabel(now: now))
-                        .font(.system(size: WatchStyle.s(34), weight: .bold, design: .rounded))
+                        .font(.system(size: WatchStyle.s(30), weight: .bold, design: .rounded))
                         .monospacedDigit()
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
@@ -1937,7 +1944,9 @@ private struct RestView: View {
                 }
                 .padding(WatchStyle.s(10))
             }
-            .frame(width: WatchStyle.s(108), height: WatchStyle.s(108))
+            // Smaller than the set screen's numbers: during a rest the next
+            // set is what gets read, the ring only needs a glance.
+            .frame(width: WatchStyle.s(88), height: WatchStyle.s(88))
 
             // Back 15 s, skip the rest, forward 15 s: three equal squircles.
             HStack(spacing: 6) {
@@ -1956,16 +1965,27 @@ private struct RestView: View {
 
             if let next = store.currentStep {
                 Button(action: Haptics.tapping(onOpenList)) {
+                    // The next set reads from across the bench: the
+                    // exercise, then its target in large type, with which set
+                    // it is in smaller print.
                     VStack(spacing: 0) {
                         Text(next.exerciseName)
-                            .font(.footnote.weight(.semibold))
+                            .font(.headline)
                             .foregroundStyle(nextSupersetColor(next) ?? Color.primary)
                             .lineLimit(1)
-                        Text(Self.targetLabel(for: next, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit))
+                            .minimumScaleFactor(0.8)
+                        if let target = Self.target(for: next, store: store, unit: checkIn.context.effectiveWeightUnit, carry: checkIn.context.effectiveCarryUnit) {
+                            Text(target)
+                                .font(.title3.weight(.semibold))
+                                .fontDesign(.rounded)
+                                .monospacedDigit()
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        }
+                        Text(SetProgressRow.title(for: next))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
                     }
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())
@@ -2009,13 +2029,6 @@ private struct RestView: View {
     private func nextSupersetColor(_ step: WorkoutStep) -> Color? {
         guard continuesSuperset(step), let run = step.supersetRun else { return nil }
         return SupersetPalette.color(for: run)
-    }
-
-    /// "Set 1 of 3 · 40kg × 10", what a set is aiming for.
-    static func targetLabel(for step: WorkoutStep, store: WorkoutSessionStore, unit: WeightUnit, carry: CarryUnit) -> String {
-        let label = SetProgressRow.title(for: step)
-        guard let target = target(for: step, store: store, unit: unit, carry: carry) else { return label }
-        return "\(label) · \(target)"
     }
 
     /// "40kg × 10" alone; nil when the set has no values yet.
