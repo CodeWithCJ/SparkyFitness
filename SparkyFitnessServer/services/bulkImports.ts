@@ -65,7 +65,14 @@ export async function beginBulkImport<S extends ImportStatus>(
       try {
         await save(final);
       } finally {
-        // Closing the connection frees the lock; a pooled one would keep it.
+        // Unlock first: closing the connection frees the lock only once the
+        // backend exits, and a restart meanwhile would be refused. A dead
+        // connection has already lost it. A pooled one would keep the lock.
+        await client
+          .query('SELECT pg_advisory_unlock(hashtextextended($1, 0))', [
+            lockKey(kind, userId),
+          ])
+          .catch(() => {});
         client.release(true);
       }
     },

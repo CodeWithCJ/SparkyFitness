@@ -747,7 +747,11 @@ export async function startCnfImport(
       });
       throw error;
     } finally {
-      await job.finish(status);
+      await job
+        .finish(status)
+        .catch((error) =>
+          log('error', 'Could not save the CNF import status:', error)
+        );
     }
   })();
   return { done };

@@ -9,7 +9,7 @@ vi.mock('../db/poolManager.js', () => ({
 const bulkImport = vi.hoisted(() => ({
   client: undefined as unknown,
   save: vi.fn(),
-  finish: vi.fn(),
+  finish: vi.fn(async () => {}),
 }));
 vi.mock('../services/bulkImports.js', () => ({
   beginBulkImport: vi.fn(async () => bulkImport),
@@ -236,6 +236,29 @@ describe('cnfBulkImportService', () => {
     expect(bulkImport.finish).toHaveBeenCalledWith(
       expect.objectContaining({ isRunning: false, status: 'failed' })
     );
+  });
+
+  it('keeps the import error when saving the final status also fails', async () => {
+    const zipBuf = createMockZip([
+      {
+        name: 'FOOD NAME.csv',
+        content: 'FoodID,FoodCode,FoodDescription\n1,571,"Chicken"',
+      },
+      {
+        name: 'NUTRIENT AMOUNT.csv',
+        content: 'FoodID,NutrientID,NutrientValue\n1,208,130',
+      },
+      {
+        name: 'NUTRIENT NAME.csv',
+        content: 'NutrientID,NutrientCode,NutrientName\n208,208,Energy',
+      },
+    ]);
+    bulkImport.save.mockRejectedValueOnce(new Error('Connection terminated'));
+    bulkImport.finish.mockRejectedValueOnce(new Error('Status save failed'));
+
+    await expect(
+      importCnfFromZipBuffer('user-1', zipBuf, { syncPastEntries: false })
+    ).rejects.toThrow('Connection terminated');
   });
 
   it('updates existing foods, recalculates meal_foods and food_entries when syncPastEntries is true', async () => {

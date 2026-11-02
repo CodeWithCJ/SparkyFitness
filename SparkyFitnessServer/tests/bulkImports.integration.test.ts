@@ -85,6 +85,14 @@ describe.skipIf(!reachable)('bulk food imports (PostgreSQL)', () => {
       status: 'completed',
       processed: 0,
     });
+    // Restartable as soon as finish() returns.
+    const again = await beginBulkImport('slv-test', userId, running());
+    expect(again).not.toBeNull();
+    await again!.finish({
+      isRunning: false,
+      status: 'completed',
+      processed: 0,
+    });
 
     await job!.save(running(40));
     expect(await readBulkImport('cnf-test', userId)).toEqual(running(40));
