@@ -471,6 +471,29 @@ describe('ActiveWorkoutSetRow', () => {
       });
     });
 
+    it('commits a value typed back to the original after an earlier commit in the same focus', () => {
+      // Blur on weight commits 80 while focus moves on to reps in the same row,
+      // so the row stays focused. Typing 60 again must still commit.
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+        set: { weight: 60, reps: 10 },
+      });
+      fireEvent.changeText(getByLabelText('Weight'), '80');
+      fireEvent(getByLabelText('Weight'), 'blur');
+      expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+        weight: 80,
+      });
+      // The store takes the committed value; the row is still focused.
+      rerenderRow({ ...base, isFocused: true, set: { weight: 80, reps: 10 } });
+      fireEvent.changeText(getByLabelText('Weight'), '60');
+      fireEvent(getByLabelText('Weight'), 'blur');
+      expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+        weight: 60,
+      });
+    });
+
     it('commits nothing when an untouched row deactivates', () => {
       const base = { state: 'current' as const, metricColumn: 'rpe' as const };
       const { callbacks, rerenderRow } = renderRow({
