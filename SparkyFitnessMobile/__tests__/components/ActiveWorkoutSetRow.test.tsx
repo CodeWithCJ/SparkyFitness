@@ -494,6 +494,40 @@ describe('ActiveWorkoutSetRow', () => {
       });
     });
 
+    it('commits a value typed away and back to the original after the store changed under the keyboard', () => {
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+        set: { weight: 60, reps: 10 },
+      });
+      // A watch update lands while the row is focused.
+      rerenderRow({ ...base, isFocused: true, set: { weight: 80, reps: 10 } });
+      fireEvent.changeText(getByLabelText('Weight'), '70');
+      fireEvent.changeText(getByLabelText('Weight'), '60');
+      fireEvent(getByLabelText('Weight'), 'blur');
+      expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+        weight: 60,
+      });
+    });
+
+    it('does not keep an old draft across a later change once the row is unfocused', () => {
+      // Typed "60" (the same number the store held), so nothing was written;
+      // a later watch edit must still be shown, not overwritten.
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+        set: { weight: 60, reps: 10 },
+      });
+      fireEvent.changeText(getByLabelText('Weight'), '60');
+      fireEvent(getByLabelText('Weight'), 'blur');
+      rerenderRow({ ...base, isFocused: false, set: { weight: 60, reps: 10 } });
+      rerenderRow({ ...base, isFocused: false, set: { weight: 80, reps: 10 } });
+      expect(getByLabelText('Weight').props.value).toBe('80');
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+    });
+
     it('commits nothing when an untouched row deactivates', () => {
       const base = { state: 'current' as const, metricColumn: 'rpe' as const };
       const { callbacks, rerenderRow } = renderRow({
