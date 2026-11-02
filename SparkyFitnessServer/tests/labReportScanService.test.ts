@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { crc32 } from 'node:zlib';
 
 vi.mock('../models/chatRepository.js', () => ({
   default: {
@@ -33,6 +34,33 @@ import {
 
 const REPORT_TEXT =
   'Quest Diagnostics. Collected 2026-09-20. Hemoglobin A1c 5.4 % (4.0 - 5.6). LDL Cholesterol 130 mg/dL (<100).';
+
+/** A PNG header declaring `width` x `height` pixels, a few dozen bytes long. */
+function pngDeclaring(width: number, height: number): string {
+  const chunk = (type: string, data: Buffer) => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, 'latin1'), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(body));
+    return Buffer.concat([length, body, crc]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header[8] = 8; // bit depth
+  header[9] = 2; // RGB
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', header),
+    // An empty compressed stream: the image data a decoder insists on seeing.
+    chunk(
+      'IDAT',
+      Buffer.from([0x78, 0x9c, 0x03, 0x00, 0x00, 0x00, 0x00, 0x01])
+    ),
+    chunk('IEND', Buffer.alloc(0)),
+  ]).toString('base64');
+}
 
 describe('normalizeLabReport number text', () => {
   const read = (value: unknown) =>
@@ -327,6 +355,65 @@ describe('extractLabReport', () => {
       maxImageSize: expect.any(Number),
     });
     expect(destroy).toHaveBeenCalled();
+  });
+
+  it('refuses a type that is neither a PDF nor a supported photo', async () => {
+    for (const type of ['image/svg+xml', 'image/gif', 'text/html', 'x']) {
+      const result = await extractLabReport('abc', type, 'u1');
+      expect(result).toMatchObject({
+        success: false,
+        category: 'unsupported_media',
+      });
+    }
+    expect(dispatchAiRequest).not.toHaveBeenCalled();
+  });
+
+  it('accepts the photo types the food-photo route accepts, in any case', async () => {
+    for (const type of [
+      'IMAGE/JPEG',
+      ' image/png ',
+      'image/webp',
+      'image/heic',
+    ]) {
+      const result = await extractLabReport('abc', type, 'u1');
+      expect(result).not.toMatchObject({ category: 'unsupported_media' });
+    }
+  });
+
+  it('refuses an oversized photo before decoding it', async () => {
+    const result = await extractLabReport(
+      'a'.repeat(8 * 1024 * 1024 + 1),
+      'image/jpeg',
+      'u1'
+    );
+
+    expect(result).toMatchObject({
+      success: false,
+      category: 'image_too_large',
+    });
+    expect(dispatchAiRequest).not.toHaveBeenCalled();
+  });
+
+  it('refuses a small file that declares an enormous pixel size', async () => {
+    const png = pngDeclaring(20_000, 20_000);
+    expect(png.length).toBeLessThan(200);
+
+    const result = await extractLabReport(png, 'image/png', 'u1');
+
+    expect(result).toMatchObject({
+      success: false,
+      category: 'image_too_large',
+    });
+    expect(dispatchAiRequest).not.toHaveBeenCalled();
+  });
+
+  it('lets a photo of ordinary size through to the AI step', async () => {
+    const png = pngDeclaring(4000, 3000);
+
+    const result = await extractLabReport(png, 'image/png', 'u1');
+
+    expect(result).not.toMatchObject({ category: 'image_too_large' });
+    expect(dispatchAiRequest).toHaveBeenCalled();
   });
 
   it('reports no AI configured', async () => {

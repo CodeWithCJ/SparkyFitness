@@ -26,8 +26,11 @@ export const labReportExtractionSchema = z.object({
 
 /** POST /api/v2/lab-reports/scan */
 export const labReportScanRequestSchema = z.object({
-  /** Base64 of the PDF or image. */
-  document: z.string().min(1),
+  /**
+   * Base64 of the PDF or image. The server's own limits are tighter (a PDF up
+   * to 20M characters, a photo up to 8M); this keeps an absurd body out early.
+   */
+  document: z.string().min(1).max(20_000_000),
   mime_type: z.string().min(1),
 });
 

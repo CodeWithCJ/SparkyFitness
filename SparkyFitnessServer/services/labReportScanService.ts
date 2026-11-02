@@ -1,3 +1,4 @@
+import sharp from 'sharp';
 import { extractText, getDocumentProxy } from 'unpdf';
 import chatRepository from '../models/chatRepository.js';
 import { log } from '../config/logging.js';
@@ -60,6 +61,35 @@ const MAX_PDF_TEXT_CHARS = 60_000;
 // server's only thread, so a PDF that declares thousands of pages is refused
 // before any page is read, however small the file is.
 export const MAX_PDF_PAGES = 30;
+
+// The same image types and size the food-photo route accepts. A photo is
+// base64-decoded and fully decoded and resized before the AI call, so each
+// bound limits what one request can make the server allocate.
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]);
+const MAX_IMAGE_BASE64_CHARS = 8 * 1024 * 1024;
+// A small file can declare enormous dimensions and decode to hundreds of
+// megabytes, so the declared size is read from the header (no decoding) first.
+// 50 megapixels covers any phone camera's full-resolution photo.
+export const MAX_IMAGE_PIXELS = 50_000_000;
+
+/** True when the image's header declares more pixels than we will decode. */
+async function declaresTooManyPixels(base64: string): Promise<boolean> {
+  try {
+    const { width, height } = await sharp(Buffer.from(base64, 'base64'), {
+      limitInputPixels: false,
+    }).metadata();
+    return (width ?? 0) * (height ?? 0) > MAX_IMAGE_PIXELS;
+  } catch {
+    // Not a header sharp can read; the provider will say what is wrong with it.
+    return false;
+  }
+}
 
 const asText = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
@@ -188,6 +218,31 @@ async function extractLabReport(
 ): Promise<ExtractLabReportResult> {
   const isPdf = mimeType.trim().toLowerCase() === PDF_MIME;
 
+  const imageMimeType = mimeType.trim().toLowerCase();
+  if (!isPdf) {
+    if (!ALLOWED_IMAGE_MIME_TYPES.has(imageMimeType)) {
+      return {
+        success: false,
+        category: 'unsupported_media',
+        error: 'Send a PDF, or a JPEG, PNG, WebP or HEIC photo of the report',
+      };
+    }
+    if (base64Document.length > MAX_IMAGE_BASE64_CHARS) {
+      return {
+        success: false,
+        category: 'image_too_large',
+        error: 'This photo is too large to read',
+      };
+    }
+    if (await declaresTooManyPixels(base64Document)) {
+      return {
+        success: false,
+        category: 'image_too_large',
+        error: 'This photo has too many pixels to read. Use a smaller photo.',
+      };
+    }
+  }
+
   let prompt = LAB_REPORT_PROMPT;
   if (isPdf) {
     if (base64Document.length > MAX_PDF_BASE64_CHARS) {
@@ -267,7 +322,9 @@ async function extractLabReport(
     provider,
     networkPolicy: await resolveAiNetworkPolicy(aiService, actorIsAdmin),
     prompt,
-    ...(isPdf ? {} : { images: [{ base64: base64Document, mimeType }] }),
+    ...(isPdf
+      ? {}
+      : { images: [{ base64: base64Document, mimeType: imageMimeType }] }),
     parseJson: true,
   });
 
