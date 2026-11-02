@@ -22,18 +22,26 @@ vi.mock('../models/workoutTelemetryRepository', () => ({}));
 const userId = 'user-1';
 const entryId = 'entry-1';
 const client = { query: vi.fn(), release: vi.fn() };
+// What the row lock inside the transaction reads.
+let lockedDistance: string | null;
+const answer = async (sql: string) =>
+  sql.includes('FOR NO KEY UPDATE')
+    ? { rows: [{ distance: lockedDistance }] }
+    : { rows: [] };
 
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getClient).mockResolvedValue(client as never);
-  client.query.mockResolvedValue({ rows: [] });
+  lockedDistance = '4';
+  client.query.mockImplementation(answer);
   vi.mocked(exerciseEntryRepository.getExerciseEntryOwnerId).mockResolvedValue(
     userId
   );
   vi.mocked(exerciseEntryRepository.getExerciseEntryById).mockResolvedValue({
     id: entryId,
     entry_date: '2026-10-06',
-    distance: '4',
+    // Stale: a correction committed after this read and before the lock.
+    distance: '3',
   });
 });
 
@@ -56,28 +64,36 @@ describe('setExerciseEntryDistance', () => {
     const laps = client.query.mock.calls.find((call) =>
       String(call[0]).includes('UPDATE exercise_entry_laps')
     );
-    // 5 km entered over the 4 km the watch estimated.
+    // 5 km entered over the 4 km the locked row holds, not the 3 km read
+    // before the transaction.
     expect(laps?.[1]).toEqual([entryId, 1.25]);
     expect(client.release).toHaveBeenCalled();
   });
 
   it('leaves the laps alone when the entry had no distance to scale from', async () => {
-    vi.mocked(exerciseEntryRepository.getExerciseEntryById).mockResolvedValue({
-      id: entryId,
-      entry_date: '2026-10-06',
-      distance: null,
-    });
+    lockedDistance = null;
     await setExerciseEntryDistance(userId, 'actor-1', entryId, {
       distance_km: 5,
     });
     expect(sqlOf().some((s) => s.includes('exercise_entry_laps'))).toBe(false);
   });
 
+  it('answers 404 and rolls back when the entry is deleted before the lock', async () => {
+    client.query.mockImplementation(async () => ({ rows: [] }));
+    await expect(
+      setExerciseEntryDistance(userId, 'actor-1', entryId, { distance_km: 5 })
+    ).rejects.toMatchObject({ status: 404 });
+    const sql = sqlOf();
+    expect(sql).toContain('ROLLBACK');
+    expect(sql.some((s) => s.startsWith('UPDATE'))).toBe(false);
+    expect(client.release).toHaveBeenCalled();
+  });
+
   it('refuses an entry that has a GPS track and rolls back', async () => {
     client.query.mockImplementation(async (sql: string) =>
       sql.includes('exercise_entry_gps_points')
         ? { rows: [{ '?column?': 1 }] }
-        : { rows: [] }
+        : answer(sql)
     );
     await expect(
       setExerciseEntryDistance(userId, 'actor-1', entryId, { distance_km: 5 })

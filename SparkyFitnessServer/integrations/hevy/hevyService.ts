@@ -4,12 +4,16 @@ import { getSystemClient } from '../../db/poolManager.js';
 import { decrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
 import { log } from '../../config/logging.js';
 import { loadRawBundle } from '../../utils/diagnosticLogger.js';
-import hevyDataProcessor from './hevyDataProcessor.js';
+import hevyDataProcessor, { type HevyWorkout } from './hevyDataProcessor.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import { todayInZone, addDays, dayToUtcRange } from '@workspace/shared';
 import { logRawResponse } from '../../utils/diagnosticLogger.js';
 
 const HEVY_API_BASE_URL = 'https://api.hevyapp.com';
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * Get the Hevy API key for a specific provider instance.
@@ -215,8 +219,7 @@ async function syncHevyData(
         );
       }
       // 2. Process workouts (Look for all pages)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const allWorkouts: any = [];
+      const allWorkouts: HevyWorkout[] = [];
       Object.keys(responses).forEach((key) => {
         if (key.startsWith('raw_workouts_page')) {
           const pageData = responses[key].data;
@@ -225,33 +228,25 @@ async function syncHevyData(
           }
         }
       });
+      let processedWorkouts = 0;
       if (allWorkouts.length > 0) {
-        await hevyDataProcessor.processHevyWorkouts(
+        const { processed } = await hevyDataProcessor.processHevyWorkouts(
           userId,
           createdByUserId,
           allWorkouts,
           tz
         );
+        processedWorkouts = processed;
       }
-      // 3. Update last sync time
-      const client = await getSystemClient();
-      try {
-        await client.query(
-          `UPDATE external_data_providers
-                     SET last_sync_at = NOW(), updated_at = NOW()
-                     WHERE user_id = $1 AND provider_type = 'hevy'`,
-          [userId]
-        );
-      } finally {
-        client.release();
-      }
+      // A replay fetches nothing new, so it leaves last_sync_at alone: moving it
+      // would make the scheduler skip the next live daily sync.
       log(
         'info',
         `[hevyService] Hevy sync from raw bundle completed for user ${userId}.`
       );
       return {
         success: true,
-        processedCount: allWorkouts.length,
+        processedCount: processedWorkouts,
         source: 'local_raw_replay',
         bundle_updated: bundle.last_updated,
       };
@@ -266,9 +261,12 @@ async function syncHevyData(
     }
   }
   try {
+    const failedFetches: string[] = [];
     // Helper to safely fetch and log raw data without stopping the whole sync
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    async function safeFetch(dataType: any, fetchFn: any) {
+    async function safeFetch<T>(
+      dataType: string,
+      fetchFn: () => Promise<T>
+    ): Promise<T | null> {
       try {
         const data = await fetchFn();
         if (data) {
@@ -278,9 +276,9 @@ async function syncHevyData(
       } catch (error) {
         log(
           'warn',
-          // @ts-expect-error TS(2571): Object is of type 'unknown'.
-          `[hevyService] Failed to fetch ${dataType} for user ${userId}: ${error.message}`
+          `[hevyService] Failed to fetch ${dataType} for user ${userId}: ${errorMessage(error)}`
         );
+        failedFetches.push(dataType);
         return null;
       }
     }
@@ -335,26 +333,42 @@ async function syncHevyData(
         tz
       );
     }
+    let totalProcessed = 0;
+    let failedWorkouts = 0;
     if (allWorkouts.length > 0) {
-      await hevyDataProcessor.processHevyWorkouts(
+      const { processed, failed } = await hevyDataProcessor.processHevyWorkouts(
         userId,
         createdByUserId,
         allWorkouts,
         tz
       );
+      totalProcessed = processed;
+      failedWorkouts = failed;
     }
-    const totalProcessed = allWorkouts.length;
-    // 3. Update last sync time
-    const client = await getSystemClient();
-    try {
-      await client.query(
-        `UPDATE external_data_providers
-                 SET last_sync_at = NOW(), updated_at = NOW()
-                 WHERE id = $1`,
-        [providerId || (await getHevyProviderId(userId))]
+    // 3. Update last sync time, unless a workout page or a workout failed: the
+    // scheduler reads last_sync_at to decide when a daily sync is due, so a
+    // partial sync must leave it alone to be retried on the next tick. A failed
+    // user-info fetch does not block it.
+    const failedWorkoutPages = failedFetches.filter((key) =>
+      key.startsWith('raw_workouts_page')
+    );
+    if (failedWorkoutPages.length === 0 && failedWorkouts === 0) {
+      const client = await getSystemClient();
+      try {
+        await client.query(
+          `UPDATE external_data_providers
+                   SET last_sync_at = NOW(), updated_at = NOW()
+                   WHERE id = $1 AND user_id = $2`,
+          [providerId || (await getHevyProviderId(userId)), userId]
+        );
+      } finally {
+        client.release();
+      }
+    } else {
+      log(
+        'warn',
+        `[hevyService] Hevy sync for user ${userId} is incomplete (failed pages: ${failedWorkoutPages.join(', ') || 'none'}; failed workouts: ${failedWorkouts}); last_sync_at not updated.`
       );
-    } finally {
-      client.release();
     }
     log(
       'info',

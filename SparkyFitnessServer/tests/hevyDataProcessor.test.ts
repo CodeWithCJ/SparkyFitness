@@ -381,6 +381,35 @@ describe('processHevyWorkouts — duplicate workout guard', () => {
   });
 });
 
+describe('processHevyWorkouts — result counts', () => {
+  it('counts processed and failed workouts and keeps going after a failure', async () => {
+    const second = sampleWorkout();
+    second.id = 'workout-2';
+    vi.mocked(
+      exercisePresetEntryRepository.createExercisePresetEntry
+    ).mockRejectedValueOnce(new Error('insert failed'));
+
+    const result = await processHevyWorkouts(
+      UID,
+      CID,
+      [sampleWorkout(), second],
+      'UTC'
+    );
+
+    expect(result).toEqual({ processed: 1, failed: 1 });
+  });
+
+  it('does not count a repeated workout id or an empty batch', async () => {
+    await expect(
+      processHevyWorkouts(UID, CID, [sampleWorkout(), sampleWorkout()], 'UTC')
+    ).resolves.toEqual({ processed: 1, failed: 0 });
+    await expect(processHevyWorkouts(UID, CID, [], 'UTC')).resolves.toEqual({
+      processed: 0,
+      failed: 0,
+    });
+  });
+});
+
 describe('processHevyWorkouts — re-sync cleanup', () => {
   it('clears existing Hevy entries and preset entries over the batch date range', async () => {
     const older = sampleWorkout();

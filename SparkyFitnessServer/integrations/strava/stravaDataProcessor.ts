@@ -85,6 +85,9 @@ function mapSportTypeToCategory(sportType: string) {
  * @param {Array} activities - List of SummaryActivity objects from Strava
  * @param {Array} detailedActivities - Map of activityId -> DetailedActivity (with laps, GPS, etc.)
  * @param {string} startDate - Start date of sync range (YYYY-MM-DD) for filtering
+ * An activity whose entry cannot be saved is logged and counted in `failed`; the
+ * rest still run. A failed telemetry or lap write only logs a warning, and the
+ * activity still counts as processed. One outside the sync range counts as neither.
  */
 async function processStravaActivities(
   userId: number,
@@ -93,8 +96,10 @@ async function processStravaActivities(
   detailedActivities: Record<string | number, unknown> = {},
   startDate: string | null = null,
   timezone = 'UTC'
-) {
-  if (!activities || activities.length === 0) return;
+): Promise<{ processed: number; failed: number }> {
+  let processed = 0;
+  let failed = 0;
+  if (!activities || activities.length === 0) return { processed, failed };
   for (const activity of activities) {
     try {
       // Extract entry date from start_date_local (e.g., "2024-01-15T07:30:00Z")
@@ -206,24 +211,31 @@ async function processStravaActivities(
         // Only the DetailedActivity response (fetched per-activity) carries laps and
         // the fuller telemetry summary; a bare SummaryActivity has neither.
         if (detailedActivity) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const detailedRecord = detailedActivity as any;
-          await exerciseEntryRepository.updateExerciseEntryTelemetryOnly(
-            newEntry.id,
-            String(userId),
-            extractStravaTelemetryFields(detailedRecord)
-          );
-          const laps = extractStravaLaps(detailedRecord);
-          if (laps.length > 0) {
-            await workoutTelemetryRepo.bulkInsertExerciseEntryLaps(
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const detailedRecord = detailedActivity as any;
+            await exerciseEntryRepository.updateExerciseEntryTelemetryOnly(
+              newEntry.id,
               String(userId),
-              String(createdByUserId),
-              laps.map((lap) => ({
-                user_id: String(userId),
-                exercise_entry_id: newEntry.id,
-                entry_date: entryDate,
-                ...lap,
-              }))
+              extractStravaTelemetryFields(detailedRecord)
+            );
+            const laps = extractStravaLaps(detailedRecord);
+            if (laps.length > 0) {
+              await workoutTelemetryRepo.bulkInsertExerciseEntryLaps(
+                String(userId),
+                String(createdByUserId),
+                laps.map((lap) => ({
+                  user_id: String(userId),
+                  exercise_entry_id: newEntry.id,
+                  entry_date: entryDate,
+                  ...lap,
+                }))
+              );
+            }
+          } catch (error) {
+            log(
+              'warn',
+              `[stravaDataProcessor] Failed to store telemetry for activity "${activity.name || activity.id}": ${error instanceof Error ? error.message : String(error)}`
             );
           }
         }
@@ -232,7 +244,9 @@ async function processStravaActivities(
         'info',
         `[stravaDataProcessor] Processed activity "${exerciseName}" (${sportType}) for user ${userId} on ${entryDate}`
       );
+      processed += 1;
     } catch (error) {
+      failed += 1;
       log(
         'error',
         `[stravaDataProcessor] Error processing activity "${activity.name || activity.id}": ${error instanceof Error ? error.message : String(error)}`
@@ -240,6 +254,7 @@ async function processStravaActivities(
       // Continue processing remaining activities
     }
   }
+  return { processed, failed };
 }
 /**
  * Process Strava athlete weight and store as check-in measurement
