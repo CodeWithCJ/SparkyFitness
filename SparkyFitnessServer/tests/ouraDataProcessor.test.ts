@@ -54,6 +54,8 @@ import measurementRepository from '../models/measurementRepository.js';
 import sleepRepository from '../models/sleepRepository.js';
 import exerciseRepository from '../models/exercise.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
+import activityDetailsRepository from '../models/activityDetailsRepository.js';
+import { log } from '../config/logging.js';
 
 const UID = 'user-1';
 const CID = 'user-1';
@@ -367,6 +369,45 @@ describe('processOuraWorkouts', () => {
     label: null,
     source: 'confirmed',
   };
+
+  it('counts saved and failed workouts and keeps the saved ones', async () => {
+    vi.mocked(exerciseEntryRepository.createExerciseEntry)
+      .mockRejectedValueOnce(new Error('insert failed'))
+      .mockResolvedValueOnce({ id: 'entry-2' });
+
+    const result = await processOuraWorkouts(
+      UID,
+      CID,
+      [workout, { ...workout, id: 'w-2' }],
+      'UTC'
+    );
+
+    expect(result).toEqual({ processed: 1, failed: 1 });
+    expect(exerciseEntryRepository.createExerciseEntry).toHaveBeenCalledTimes(
+      2
+    );
+  });
+
+  it('counts a workout as processed and warns when only its activity detail fails', async () => {
+    vi.mocked(
+      activityDetailsRepository.createActivityDetail
+    ).mockRejectedValueOnce(new Error('detail failed'));
+
+    const result = await processOuraWorkouts(UID, CID, [workout], 'UTC');
+
+    expect(result).toEqual({ processed: 1, failed: 0 });
+    expect(log).toHaveBeenCalledWith(
+      'warn',
+      expect.stringContaining('detail failed')
+    );
+  });
+
+  it('reports nothing for an empty list', async () => {
+    await expect(processOuraWorkouts(UID, CID, [], 'UTC')).resolves.toEqual({
+      processed: 0,
+      failed: 0,
+    });
+  });
 
   it('deletes existing Oura entries for the day, then creates exercise + entry', async () => {
     await processOuraWorkouts(UID, CID, [workout], 'UTC');

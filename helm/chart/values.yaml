@@ -203,14 +203,28 @@ server:
     pullPolicy: IfNotPresent
   # -- Server replica count. Above 1, one replica runs as a separate `-jobs`
   # Deployment that runs the scheduled jobs and the rest skip them. Change it
-  # here rather than with `kubectl scale`. Requires ReadWriteMany backup/uploads PVCs.
+  # here rather than with `kubectl scale`. Above 1 the chart also requires
+  # ReadWriteMany backup/uploads volumes (rendering fails otherwise), rolls
+  # updates one pod at a time, and adds a PodDisruptionBudget, a spread across
+  # nodes and a preStop delay unless you configure them yourself.
   replicas: 1
   port: 3010
-  # -- Deployment update strategy. Default `Recreate` is required when the
-  # server PVCs are ReadWriteOnce (default). Switch to `RollingUpdate` only
-  # if the backup/uploads PVCs use a ReadWriteMany StorageClass.
-  strategy:
-    type: Recreate
+  # -- Deployment update strategy. Empty (default) picks one: `Recreate` for a
+  # single replica on a ReadWriteOnce volume (a surge pod on another node could
+  # never attach it), otherwise `RollingUpdate` with maxSurge 1 and
+  # maxUnavailable 0. The `-jobs` Deployment always uses `Recreate`.
+  strategy: {}
+  # -- Seconds a new pod must stay ready before it counts as available.
+  # Unset: 5 when updates roll (replicas > 1 or a RollingUpdate strategy),
+  # else omitted.
+  minReadySeconds: ~
+  # -- Seconds the container waits in preStop before it gets SIGTERM, so the
+  # Service stops routing to it first. Unset: 5 when updates roll, else none.
+  # 0 disables. Ignored when `lifecycle` is set. The pod's grace period
+  # grows to cover it.
+  preStopDelaySeconds: ~
+  # -- Full container lifecycle override (replaces the preStop delay).
+  lifecycle: {}
   # -- The server answers only once migrations and startup have finished, which
   # can take minutes on a large upgrade. Liveness waits until this passes, so
   # a long boot is not restarted midway. Allows up to 5 minutes (60 x 5 s).
@@ -223,8 +237,9 @@ server:
     failureThreshold: 60
   # -- Most seconds the server takes to stop, letting running requests and
   # jobs finish (`SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS`). Empty keeps the
-  # server default of 15, inside Kubernetes' default 30 s grace period. When
-  # set (1 to 3600), the server pods' `terminationGracePeriodSeconds` is this plus 5.
+  # server default of 15, inside Kubernetes' default 30 s grace period. The
+  # server pods' `terminationGracePeriodSeconds` is this (or 15) plus the
+  # preStop delay plus 5, set when this is set or that sum is over 30.
   shutdownTimeoutSeconds: ""
   livenessProbe:
     httpGet:
@@ -298,10 +313,19 @@ server:
     existingSecretKeys:
       username: username
       password: password
+  # -- Server volumes. `accessMode` is the access mode of the claim the server
+  # mounts, including an existingClaim; above one replica both must be
+  # ReadWriteMany.
   persistence:
+    # -- Accept ReadWriteOnce backup and uploads volumes with server.replicas
+    # above 1. Only safe on a single-node cluster, where every pod can attach
+    # them; on several nodes, pods scheduled away from the volume never start.
+    # ReadWriteOncePod is always refused. Also leaves the server's default
+    # PodDisruptionBudget off, since a drain on one node could never finish.
+    allowSingleNodeVolumes: false
     backup:
       # -- Mount this existing PersistentVolumeClaim instead of creating one
-      # (size, accessMode and storageClass are then ignored)
+      # (size and storageClass are then ignored; set accessMode to the claim's)
       existingClaim: ""
       size: 5Gi
       accessMode: ReadWriteOnce
@@ -311,7 +335,7 @@ server:
       mountPath: /app/SparkyFitnessServer/backup
     uploads:
       # -- Mount this existing PersistentVolumeClaim instead of creating one
-      # (size, accessMode and storageClass are then ignored)
+      # (size and storageClass are then ignored; set accessMode to the claim's)
       existingClaim: ""
       size: 10Gi
       accessMode: ReadWriteOnce
@@ -336,10 +360,12 @@ server:
     create: true
     automountServiceAccountToken: false
     annotations: {}
-  # -- PodDisruptionBudget (only useful with replicas > 1).
-  # Set exactly one of minAvailable / maxUnavailable.
+  # -- PodDisruptionBudget. `enabled` unset (default) renders one only when
+  # replicas > 1 and server.persistence.allowSingleNodeVolumes is off; true or
+  # false forces it. Set at most one of minAvailable / maxUnavailable (0
+  # counts as set); with neither, maxUnavailable is 1.
   podDisruptionBudget:
-    enabled: false
+    enabled: ~
     minAvailable: ""
     maxUnavailable: ""
   # -- Pod scheduling controls (all default empty / no-op).
@@ -347,6 +373,9 @@ server:
   nodeSelector: {}
   tolerations: []
   topologySpreadConstraints: []
+  # -- With replicas > 1 and no topologySpreadConstraints, spread pods across
+  # nodes (kubernetes.io/hostname, maxSkew 1, ScheduleAnyway).
+  defaultTopologySpread: true
 
 # -- Frontend (nginx, runs as non-root)
 # NOTE: readOnlyRootFilesystem is enabled; nginx writable dirs are mounted as emptyDir.
@@ -362,8 +391,19 @@ frontend:
     # -- Image digest (e.g. "sha256:abc..."). When set, takes precedence over tag.
     digest: ""
     pullPolicy: IfNotPresent
+  # -- Frontend replica count. 2 or more keeps the UI up through a node loss;
+  # above 1 the chart adds a PodDisruptionBudget, a spread across nodes, a
+  # preStop delay and minReadySeconds unless you configure them yourself.
   replicas: 1
   port: 80
+  # -- Unset: 5 when replicas > 1, else omitted.
+  minReadySeconds: ~
+  # -- preStop delay before SIGTERM. Unset: 5 when replicas > 1, else none.
+  # 0 disables. Ignored when `lifecycle` is set. The pod's grace period
+  # grows to cover it.
+  preStopDelaySeconds: ~
+  # -- Full container lifecycle override (replaces the preStop delay).
+  lifecycle: {}
   # -- nginx rate limit zone for /api/auth/ endpoints (passed as NGINX_RATE_LIMIT
   # to the image entrypoint, which envsubsts it into the rendered nginx config).
   # Format: "<requests>r/s" or "<requests>r/m".
@@ -438,10 +478,13 @@ frontend:
     create: true
     automountServiceAccountToken: false
     annotations: {}
-  # -- PodDisruptionBudget (only useful with replicas > 1).
-  # Set exactly one of minAvailable / maxUnavailable.
+  # -- PodDisruptionBudget. `enabled` unset (default) renders one only when
+  # replicas > 1; true or false forces it. On a single-node cluster set
+  # enabled: false, or a drain blocks once the evicted pod cannot reschedule.
+  # Set at most one of minAvailable / maxUnavailable (0 counts as set); with
+  # neither, maxUnavailable is 1.
   podDisruptionBudget:
-    enabled: false
+    enabled: ~
     minAvailable: ""
     maxUnavailable: ""
   # -- Pod scheduling controls (all default empty / no-op).
@@ -449,6 +492,9 @@ frontend:
   nodeSelector: {}
   tolerations: []
   topologySpreadConstraints: []
+  # -- With replicas > 1 and no topologySpreadConstraints, spread pods across
+  # nodes (kubernetes.io/hostname, maxSkew 1, ScheduleAnyway).
+  defaultTopologySpread: true
 
 # -- Garmin microservice (python, USER daemon UID 1)
 # Only deployed when config.garmin.enabled=true.

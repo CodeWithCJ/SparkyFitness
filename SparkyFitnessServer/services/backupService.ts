@@ -14,6 +14,7 @@ import { describeError } from '../utils/errors.js';
 import {
   assertRestoreAllowed,
   RestoreRefusedError,
+  markRestoreRunning,
 } from './onlineRestoreGuard.js';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
@@ -438,6 +439,7 @@ async function performRestore(backupFilePath: any) {
   await assertRestoreAllowed();
   log('info', `Starting restore process from ${backupFilePath}`);
   let tempRestoreDir; // Declare tempRestoreDir outside the try block
+  let endRestoreMark: (() => void) | undefined;
   try {
     // 1. Validate backup file
     await fsp.access(backupFilePath, fsp.constants.R_OK);
@@ -470,6 +472,7 @@ async function performRestore(backupFilePath: any) {
     // started meanwhile.
     await assertRestoreAllowed();
     log('warn', 'Wiping current database...');
+    endRestoreMark = markRestoreRunning();
     // End all connections in the pool
     await endPool();
     log('info', 'Closed database connection pool.');
@@ -600,6 +603,8 @@ async function performRestore(backupFilePath: any) {
     if (error instanceof RestoreRefusedError) throw error;
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     return { success: false, error: error.message };
+  } finally {
+    endRestoreMark?.();
   }
 }
 export { performBackup };

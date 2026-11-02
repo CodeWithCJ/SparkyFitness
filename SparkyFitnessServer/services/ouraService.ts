@@ -2,6 +2,7 @@ import { setMockDataContext } from '../utils/mockDataContext.js';
 import { log } from '../config/logging.js';
 import ouraIntegrationService from '../integrations/oura/ouraService.js';
 import ouraDataProcessor from '../integrations/oura/ouraDataProcessor.js';
+import { isPermissionRejection } from './providerFetchResult.js';
 import { getSystemClient } from '../db/poolManager.js';
 import { loadRawBundle } from '../utils/diagnosticLogger.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
@@ -131,7 +132,8 @@ async function syncOuraData(
           responses['raw_workouts'].data,
           tz
         );
-      await updateLastSyncAt(userId);
+      // A replay fetches nothing new, so it leaves last_sync_at alone: moving it
+      // would make the scheduler skip the next live daily sync.
       log(
         'info',
         `[ouraService] Oura sync from raw bundle completed for user ${userId}.`
@@ -140,6 +142,7 @@ async function syncOuraData(
         success: true,
         source: 'local_raw_replay',
         bundle_updated: bundle.last_updated,
+        failedRequiredFetches: [],
       };
     } catch (error) {
       log(
@@ -158,14 +161,19 @@ async function syncOuraData(
         'No Oura access token available. Please authorize first.'
       );
     }
+    const failedRequiredFetches: string[] = [];
     const safeFetch = async <T>(
       fetchFn: () => Promise<T>,
-      name: string
+      name: string,
+      required = false
     ): Promise<T | null> => {
       try {
         await new Promise((resolve) => setTimeout(resolve, 200));
         return await fetchFn();
       } catch (error) {
+        if (required && !isPermissionRejection(error)) {
+          failedRequiredFetches.push(name);
+        }
         log(
           'warn',
           `[ouraService] Failed to fetch ${name} for user ${userId}: ${(error as Error).message}`
@@ -182,7 +190,8 @@ async function syncOuraData(
           inclusiveEndDate,
           accessToken
         ),
-      'sleep periods'
+      'sleep periods',
+      true
     );
     log('debug', `[ouraService] Fetching daily sleep for ${userId}...`);
     const dailySleepData = await safeFetch(
@@ -193,7 +202,8 @@ async function syncOuraData(
           inclusiveEndDate,
           accessToken
         ),
-      'daily sleep'
+      'daily sleep',
+      true
     );
     log('debug', `[ouraService] Fetching daily activity for ${userId}...`);
     const dailyActivityData = await safeFetch(
@@ -204,7 +214,8 @@ async function syncOuraData(
           endDate,
           accessToken
         ),
-      'daily activity'
+      'daily activity',
+      true
     );
     log('debug', `[ouraService] Fetching daily readiness for ${userId}...`);
     const dailyReadinessData = await safeFetch(
@@ -281,7 +292,8 @@ async function syncOuraData(
           inclusiveEndDate,
           accessToken
         ),
-      'workouts'
+      'workouts',
+      true
     );
     log('debug', `[ouraService] Processing fetched data for ${userId}...`);
     if (sleepData || dailySleepData)
@@ -334,16 +346,31 @@ async function syncOuraData(
         heartRateData.data,
         tz
       );
-    if (workoutsData)
-      await ouraDataProcessor.processOuraWorkouts(
+    let workoutsFailed = 0;
+    if (workoutsData) {
+      const { failed } = await ouraDataProcessor.processOuraWorkouts(
         userId,
         userId,
         workoutsData.data,
         tz
       );
-    await updateLastSyncAt(userId);
+      workoutsFailed = failed;
+    }
+    if (failedRequiredFetches.length === 0 && workoutsFailed === 0) {
+      await updateLastSyncAt(userId);
+    } else {
+      log(
+        'warn',
+        `[ouraService] Oura sync for user ${userId} is incomplete (failed required fetches: ${failedRequiredFetches.join(', ') || 'none'}; failed workouts: ${workoutsFailed}); last_sync_at not updated.`
+      );
+    }
     log('info', `[ouraService] Full Oura sync completed for user ${userId}.`);
-    return { success: true, source: 'live_api' };
+    return {
+      success: true,
+      source: 'live_api',
+      workoutsFailed,
+      failedRequiredFetches,
+    };
   } catch (error) {
     log(
       'error',

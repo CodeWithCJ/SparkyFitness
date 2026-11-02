@@ -18,6 +18,28 @@ const RESTORE_REFUSED_CODE = 'restore_requires_single_instance';
 const BEST_EFFORT_NOTE =
   'This check is best effort: an instance that has been idle for about 30 seconds holds no database connection and cannot be seen, so make sure only one instance is running before you restore.';
 
+// A restore ends the pools and terminates every session before it drops the
+// database, and dropdb refuses while any session is connected. Readiness
+// probes would reconnect in that gap, so they leave the database alone while
+// any restore has marked itself. Restores are not serialized, so each one
+// clears only its own mark.
+let restoresRunning = 0;
+
+/** Marks a restore as running; call the returned function when it ends. */
+function markRestoreRunning(): () => void {
+  restoresRunning++;
+  let ended = false;
+  return () => {
+    if (ended) return;
+    ended = true;
+    restoresRunning--;
+  };
+}
+
+function isRestoreRunning(): boolean {
+  return restoresRunning > 0;
+}
+
 class RestoreRefusedError extends Error {
   readonly code = RESTORE_REFUSED_CODE;
 }
@@ -62,6 +84,8 @@ async function assertRestoreAllowed(): Promise<void> {
 export {
   assertRestoreAllowed,
   findOtherInstances,
+  isRestoreRunning,
+  markRestoreRunning,
   RestoreRefusedError,
   RESTORE_REFUSED_CODE,
 };

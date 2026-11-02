@@ -4,6 +4,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { noteWorkActivity, throwIfWorkAborted } from '../utils/abortScope.js';
 import { requestConnectRetry, retryOnConnectionError } from './connectRetry.js';
 import { applicationName } from './applicationName.js';
+import { trackPoolProgress } from './poolBusy.js';
 const { Pool, types } = pg;
 
 export const dbContextStorage = new AsyncLocalStorage<{
@@ -88,6 +89,7 @@ function createAppPoolInstance() {
   });
   handleConnectionLoss(newPool, 'app');
   noteQueriesAsWorkActivity(newPool);
+  trackPoolProgress(newPool);
   return newPool;
 }
 function _getRawOwnerPool() {
@@ -201,6 +203,7 @@ export { getClient };
 export { getSystemClient };
 export { getPoolStats };
 export { _getRawOwnerPool as getRawOwnerPool };
+export { _getRawAppPool as getRawAppPool };
 export { handleConnectionLoss };
 export default {
   endPool,

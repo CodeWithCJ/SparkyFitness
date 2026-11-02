@@ -1,5 +1,36 @@
 import type pg from 'pg';
 import { expect, vi } from 'vitest';
+import { ownApplicationNames } from '../../db/applicationName.js';
+
+/**
+ * Counts this process's sessions waiting on a lock that `pid` holds, directly
+ * or through a chain of other waiting sessions. Integration files run in
+ * parallel against one database, and a gate on a whole table also holds up
+ * other files' writers to it; the pools name their sessions after the
+ * process, so those are left out.
+ */
+export async function countBehind(
+  observer: pg.Client,
+  pid: number
+): Promise<number> {
+  const waiting = await observer.query(
+    `WITH RECURSIVE waiting AS (
+       SELECT pid, application_name, pg_blocking_pids(pid) AS blockers
+       FROM pg_stat_activity
+       WHERE datname = current_database() AND wait_event_type = 'Lock'
+     ),
+     behind AS (
+       SELECT pid, application_name FROM waiting WHERE $1 = ANY(blockers)
+       UNION
+       SELECT w.pid, w.application_name FROM waiting w
+       JOIN behind b ON b.pid = ANY(w.blockers)
+     )
+     SELECT count(*)::int AS n FROM behind
+     WHERE application_name = ANY($2::text[])`,
+    [pid, ownApplicationNames()]
+  );
+  return waiting.rows[0].n;
+}
 
 /**
  * Runs overlapping writes against a real database in the interleaving that
@@ -10,11 +41,11 @@ import { expect, vi } from 'vitest';
  * behind the first and read what it wrote.
  *
  * `gate` and `observer` are owner connections of their own; the writes use the
- * application's pool. Waiters are counted only when the gate blocks them,
- * directly or through a chain of other waiting sessions, so other tests
- * sharing the database cannot satisfy or stall the wait. With more writes than
- * the pool has connections, pass `waiters` (at most the pool size): the rest
- * queue for a connection, not on a lock.
+ * application's pool. Only this process's sessions that the gate blocks,
+ * directly or through a chain of other waiting sessions, are counted, so
+ * other tests sharing the database cannot satisfy or stall the wait. With
+ * more writes than the pool has connections, pass `waiters` (at most the pool
+ * size): the rest queue for a connection, not on a lock.
  */
 export async function raceWrites<T>(
   gate: pg.Client,
@@ -35,22 +66,9 @@ export async function raceWrites<T>(
   try {
     await vi.waitFor(
       async () => {
-        const waiting = await observer.query(
-          `WITH RECURSIVE waiting AS (
-             SELECT pid, pg_blocking_pids(pid) AS blockers
-             FROM pg_stat_activity
-             WHERE datname = current_database() AND wait_event_type = 'Lock'
-           ),
-           behind_gate AS (
-             SELECT pid FROM waiting WHERE $1 = ANY(blockers)
-             UNION
-             SELECT w.pid FROM waiting w
-             JOIN behind_gate b ON b.pid = ANY(w.blockers)
-           )
-           SELECT count(*)::int AS n FROM behind_gate`,
-          [gatePid]
+        expect(await countBehind(observer, gatePid)).toBeGreaterThanOrEqual(
+          waiters
         );
-        expect(waiting.rows[0].n).toBeGreaterThanOrEqual(waiters);
       },
       { timeout: 10000, interval: 50 }
     );
