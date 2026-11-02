@@ -417,6 +417,50 @@ describe('log_exercise', () => {
     );
   });
 
+  it('remaps a single misfiled start_date to entry_date instead of defaulting to today', async () => {
+    vi.mocked(exerciseService.createExerciseEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'log_exercise',
+        exercise_id: EXERCISE_ID,
+        // Cross-action key from get_exercise_progress; for a logging action
+        // the intended date is unambiguous, so it must land on the entry.
+        start_date: '2026-06-10',
+        duration_minutes: 30,
+      },
+      opts
+    );
+
+    expect(exerciseService.createExerciseEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ entry_date: '2026-06-10' }),
+      expect.anything()
+    );
+  });
+
+  it('does not default entry_date to today when both start_date and end_date are misfiled onto a log action', async () => {
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'log_exercise',
+        exercise_id: EXERCISE_ID,
+        start_date: '2026-06-10',
+        end_date: '2026-06-12',
+        duration_minutes: 30,
+      },
+      opts
+    );
+
+    // The meaning is ambiguous, so the call must fail validation instead of
+    // silently filing the entry on today's date.
+    expect(result).toMatch(/^Error \[VALIDATION\]/);
+    expect(result).toContain('entry_date');
+    expect(exerciseService.createExerciseEntry).not.toHaveBeenCalled();
+  });
+
   it('logs by exercise_id with repository-shaped sets', async () => {
     vi.mocked(exerciseService.createExerciseEntry).mockResolvedValue({
       id: ENTRY_ID,

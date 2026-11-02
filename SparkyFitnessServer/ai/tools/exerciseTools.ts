@@ -844,14 +844,36 @@ Workout formats (workout_format, default standard) drive the in-app timer:
           }
         ) as Record<string, unknown>;
 
-        // Default missing entry_date to today's date string for logging actions
+        // Default missing entry_date to today's date string for logging actions.
+        // If a date arrived under a cross-action key (start_date / end_date
+        // belong to get_exercise_progress), the intended meaning for a
+        // logging action is unambiguous: remap a single misfiled date to
+        // entry_date (mirrors foodTools). When BOTH are present the meaning
+        // is ambiguous — do NOT default to today (that would silently file
+        // the entry on the wrong day); leave entry_date unset so validation
+        // reports the missing field after the safe-key salvage drops the
+        // cross-action dates.
         const loggingActions = ['log_exercise', 'log_workout_preset'];
         if (
           normalized.entry_date === undefined &&
           typeof normalized.action === 'string' &&
           loggingActions.includes(normalized.action)
         ) {
-          normalized.entry_date = todayInZone(tz);
+          const misfiledDates = [normalized.start_date, normalized.end_date];
+          const supplied = misfiledDates.filter(
+            (d) => typeof d === 'string' && d.length > 0
+          );
+          if (supplied.length === 1) {
+            normalized.entry_date = supplied[0];
+            delete normalized.start_date;
+            delete normalized.end_date;
+            log(
+              'info',
+              `[exerciseTools] Remapped misfiled date '${supplied[0]}' to entry_date for ${normalized.action}`
+            );
+          } else if (supplied.length === 0) {
+            normalized.entry_date = todayInZone(tz);
+          }
         }
 
         let parsed = manageExerciseSchema.safeParse(normalized);
