@@ -1,4 +1,6 @@
+import { userHourMinute } from '@workspace/shared';
 import type { FoodEntry } from '../types/foodEntries';
+import { getDeviceTimezone } from './dateUtils';
 import type { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 
 const SNAPSHOT_NUTRIENTS = [
@@ -40,14 +42,16 @@ function toNumber(value: unknown): number | undefined {
 export function buildFoodEntryCopyPayload(
   entry: FoodEntry,
   targetDate: string,
-  targetMealTypeId: string
+  targetMealTypeId: string,
+  /** 'HH:MM' to log the copy at instead of the original's time, e.g. for "Now". */
+  entryTime?: string
 ): CreateFoodEntryPayload {
   const payload: CreateFoodEntryPayload = {
     meal_type_id: targetMealTypeId,
     quantity: toNumber(entry.quantity) ?? 1,
     unit: entry.unit,
     entry_date: targetDate,
-    entry_time: entry.entry_time ?? null,
+    entry_time: entryTime ?? entry.entry_time ?? null,
     notes: entry.notes ?? null,
     food_name: entry.food_name,
     brand_name: entry.brand_name,
@@ -66,4 +70,10 @@ export function buildFoodEntryCopyPayload(
     payload.custom_nutrients = entry.custom_nutrients;
   }
   return payload;
+}
+
+/** The device's current local time as 'HH:MM', the format entry_time takes. */
+export function currentEntryTime(): string {
+  const { hour, minute } = userHourMinute(getDeviceTimezone());
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }

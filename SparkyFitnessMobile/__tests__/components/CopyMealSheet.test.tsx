@@ -277,7 +277,7 @@ describe('CopyMealSheet', () => {
         targetDate: sourceDate,
         targetMealType: 'Brunch',
       },
-      { targetMealTypeId: 'brunch-id' }
+      { targetMealTypeId: 'brunch-id', quickTarget: null }
     );
   });
 
@@ -294,7 +294,28 @@ describe('CopyMealSheet', () => {
     fireEvent.press(view.getByLabelText('Copy'));
     expect(onCopy).toHaveBeenCalledWith(
       expect.objectContaining({ targetMealType: 'Breakfast' }),
-      { targetMealTypeId: 'breakfast-id' }
+      { targetMealTypeId: 'breakfast-id', quickTarget: null }
+    );
+  });
+
+  it('tells the caller a single food was copied to now', () => {
+    useMealTypesMock.mockReturnValue({
+      mealTypes: defaultMealTypes,
+      defaultMealTypeId: 'brunch-id',
+    });
+    const onCopy = jest.fn();
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
+    act(() =>
+      ref.current?.present(addDays(getTodayDate(), -1), 'brunch-id', 'Brunch', {
+        foodName: 'Pepsi Max',
+      })
+    );
+    fireEvent.press(view.getByTestId('copy-meal-quick-now'));
+    fireEvent.press(view.getByLabelText('Copy'));
+    expect(onCopy).toHaveBeenCalledWith(
+      expect.objectContaining({ targetDate: getTodayDate() }),
+      { targetMealTypeId: 'brunch-id', quickTarget: 'now' }
     );
   });
 });
