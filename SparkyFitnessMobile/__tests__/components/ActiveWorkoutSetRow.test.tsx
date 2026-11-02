@@ -1554,6 +1554,28 @@ describe('ActiveWorkoutSetRow', () => {
       });
     });
 
+    it('does not write a filled value back over a later watch edit after typing before the fill', () => {
+      const base = {
+        state: 'current' as const,
+        metricColumn: 'rpe' as const,
+        previousSet: prev({ weight: 100, reps: 5 }),
+      };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+        set: { weight: 60, reps: 10 },
+      });
+      fireEvent.changeText(getByLabelText('Weight'), '70');
+      fireEvent.press(getByLabelText('Fill set 1 from previous'));
+      expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
+      rerenderRow({ ...base, isFocused: true, set: { weight: 100, reps: 5 } });
+      // A watch edit lands while the row is still focused.
+      rerenderRow({ ...base, isFocused: true, set: { weight: 90, reps: 5 } });
+      rerenderRow({ ...base, isFocused: false, set: { weight: 90, reps: 5 } });
+      expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
+      expect(getByLabelText('Weight').props.value).toBe('90');
+    });
+
     it('renders weight × reps in the display unit', () => {
       const kg = renderRow({ state: 'upcoming', previousSet: prev() });
       expect(kg.getByText('100 × 5')).toBeTruthy();

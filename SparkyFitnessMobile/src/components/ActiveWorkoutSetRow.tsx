@@ -506,6 +506,7 @@ function ActiveWorkoutSetRow({
       if (seconds == null) return;
       onCommitField?.(setId, { duration: seconds });
       setDurationDraft(String(seconds));
+      setEdited((previous) => ({ ...previous, duration: false }));
       return;
     }
     const patch: ActiveSetPatch = {};
@@ -550,6 +551,14 @@ function ActiveWorkoutSetRow({
     if (filled.duration != null) setDurationDraft(filled.duration);
     if (filled.distance != null) setDistanceDraft(filled.distance);
     if (filled.reps != null) setRepsDraft(filled.reps);
+    // What the fill wrote is committed, so a field typed in before the fill is
+    // no longer an unwritten edit. Fields the fill did not touch keep theirs.
+    setEdited((previous) => ({
+      weight: filled.weight != null ? false : previous.weight,
+      reps: filled.reps != null ? false : previous.reps,
+      duration: filled.duration != null ? false : previous.duration,
+      distance: filled.distance != null ? false : previous.distance,
+    }));
   }, [
     previousSet,
     durationLike,
