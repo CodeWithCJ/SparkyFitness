@@ -27,6 +27,10 @@ export const getServiceTypes = (t: (key: string) => string): ServiceType[] => [
     label: t('settings.aiService.serviceTypes.perplexity'),
   },
   { value: 'meta', label: t('settings.aiService.serviceTypes.meta') },
+  {
+    value: 'opencode_go',
+    label: t('settings.aiService.serviceTypes.opencodeGo'),
+  },
   { value: 'custom', label: t('settings.aiService.serviceTypes.custom') },
 ];
 
@@ -125,11 +129,57 @@ export const getModelOptions = (serviceType: string): string[] => {
       // Meta Superintelligence Labs' Muse Spark, served over an
       // OpenAI-compatible Chat Completions API. One published model for now.
       return ['muse-spark-1.1'];
+    // 'opencode_go' loads models from its API endpoint at runtime.
     // 'openai_compatible' and 'custom' point at arbitrary user-hosted servers,
     // so there is no model name we can suggest — OpenAI's names won't exist on
-    // most of them. Returning [] makes the form fall back to the custom-model
-    // text input where the user supplies their server's own model name.
+    // most of them. Returning [] makes the form fall back to a model text input.
     default:
       return [];
   }
+};
+
+// Whether a saved model must be edited in custom-model mode. OpenCode Go's
+// catalog is fetched at runtime, so its saved model cannot be checked against
+// a static list; ServiceForm keeps an unlisted saved model in its dropdown.
+export const isCustomModelName = (
+  serviceType: string,
+  modelName: string | null | undefined
+): boolean => {
+  if (!modelName || serviceType === 'opencode_go') return false;
+  return !getModelOptions(serviceType).includes(modelName);
+};
+
+const PROVIDER_DETAIL_MAX_CHARS = 300;
+const HTTP_STATUS_PREFIX = /^AI service returned status \d+:\s*/;
+
+const providerErrorMessage = (value: unknown): string | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined;
+  const { message, error } = value as { message?: unknown; error?: unknown };
+  if (typeof message === 'string' && message.trim()) return message;
+  if (typeof error === 'string' && error.trim()) return error;
+  if (typeof error === 'object' && error !== null) {
+    const nested = (error as { message?: unknown }).message;
+    if (typeof nested === 'string' && nested.trim()) return nested;
+  }
+  return undefined;
+};
+
+// One line of plain text for a provider error: the HTTP status prefix is dropped,
+// the JSON `message` (or `error.message`) is used when there is one, and anything
+// else is shown as its text with HTML tags removed. Always truncated.
+export const providerDetailText = (detail: string): string => {
+  let text = detail.replace(HTTP_STATUS_PREFIX, '').trim();
+  try {
+    const message = providerErrorMessage(JSON.parse(text));
+    if (message) text = message;
+  } catch {
+    // Not JSON: the response text itself is shown.
+  }
+  text = text
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > PROVIDER_DETAIL_MAX_CHARS
+    ? `${text.slice(0, PROVIDER_DETAIL_MAX_CHARS).trimEnd()}…`
+    : text;
 };
