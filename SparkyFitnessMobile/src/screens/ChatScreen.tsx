@@ -86,7 +86,6 @@ import {
   type PickedChatImage,
 } from '../utils/pickImage';
 import { resolveSpeechLocale } from '../utils/speechLocale';
-import { newUuid } from '../utils/ids';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
@@ -1412,16 +1411,16 @@ export default function ChatScreen({
   // `messages` changes after mount), so bump this to clear the thread.
   const [threadKey, setThreadKey] = useState(0);
   // Kept across reopening the chat so session-affine providers keep their
-  // session; rotated only when the history is cleared.
+  // session; rotated when the history is cleared or the provider changes.
   const chatConversationId = useAppPreferencesStore(
     (s) => s.chatConversationId
   );
-  const setChatConversationId = useAppPreferencesStore(
-    (s) => s.setChatConversationId
+  const chatConversationServiceId = useAppPreferencesStore(
+    (s) => s.chatConversationServiceId
   );
-  useEffect(() => {
-    if (!chatConversationId) setChatConversationId(newUuid());
-  }, [chatConversationId, setChatConversationId]);
+  const startChatConversation = useAppPreferencesStore(
+    (s) => s.startChatConversation
+  );
   const { data: setting, isLoading: loadingSetting } =
     useActiveAiServiceSetting();
   const { preferences, refetch: refetchPreferences } = usePreferences({
@@ -1471,6 +1470,18 @@ export default function ChatScreen({
 
   const serviceConfigId = setting?.id ?? null;
 
+  useEffect(() => {
+    if (!serviceConfigId) return;
+    if (!chatConversationId || chatConversationServiceId !== serviceConfigId) {
+      startChatConversation(serviceConfigId);
+    }
+  }, [
+    serviceConfigId,
+    chatConversationId,
+    chatConversationServiceId,
+    startChatConversation,
+  ]);
+
   const handleClear = useCallback(() => {
     Alert.alert(
       t('chat.clearTitle', { defaultValue: 'Clear chat' }),
@@ -1491,7 +1502,7 @@ export default function ChatScreen({
               await clearAllChatHistory();
               // Reset the raw (pre-select) cache so a remount seeds an empty thread.
               queryClient.setQueryData(chatHistoryQueryKey, []);
-              setChatConversationId(newUuid());
+              startChatConversation(serviceConfigId);
               setThreadKey((k) => k + 1);
             } catch (error) {
               addLog('Failed to clear chat history', 'ERROR', [
@@ -1511,7 +1522,7 @@ export default function ChatScreen({
         },
       ]
     );
-  }, [queryClient, setChatConversationId, t]);
+  }, [queryClient, serviceConfigId, startChatConversation, t]);
 
   // Clear chat is disabled while a stream runs so the server's in-flight
   // onFinish save can't resurrect the exchange after the DELETE.
@@ -1573,7 +1584,8 @@ export default function ChatScreen({
                 'No active AI provider. Configure one in the web app first.',
             })}
           />
-        ) : !chatConversationId ? (
+        ) : !chatConversationId ||
+          chatConversationServiceId !== serviceConfigId ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={accent} />
           </View>

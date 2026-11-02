@@ -54,6 +54,7 @@ import {
 import type { LanguagePreference } from '../localization';
 import type { TrendRange } from '../utils/trendRange';
 import type { OwnershipFilter } from '../utils/shareStatus';
+import { newUuid } from '../utils/ids';
 
 const STORE_KEY = '@SparkyFitness/app-preferences';
 const STORE_VERSION = 1;
@@ -172,6 +173,7 @@ export const PREFERENCE_DEFAULTS = {
   hiddenReportSections: [] as ReportSectionKey[],
   compareRecentQuestions: [] as CompareQuestion[],
   chatConversationId: null as string | null,
+  chatConversationServiceId: null as string | null,
   reportNutrientOrder: [] as string[],
   shownReportNutrients: [...DEFAULT_REPORT_NUTRIENTS] as string[],
   foodSearchOwnershipFilter: 'all' as OwnershipFilter,
@@ -285,7 +287,9 @@ export type AppPreferencesData = {
   addCompareRecentQuestion: (q: CompareQuestion) => void;
   /** The Sparky chat conversation ID, kept across reopening the chat; null until first use. */
   chatConversationId: string | null;
-  setChatConversationId: (id: string | null) => void;
+  /** The AI provider the conversation ID was started with; a new provider starts a new conversation. */
+  chatConversationServiceId: string | null;
+  startChatConversation: (serviceConfigId: string | null) => void;
   /** Order of the nutrients the Nutrition report can average; unknown ones follow in catalog order. */
   reportNutrientOrder: string[];
   /** Nutrients (standard keys or custom names) the Nutrition report's "Your nutrients" card shows. */
@@ -629,7 +633,11 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
             isHidden
           ),
         })),
-      setChatConversationId: (id) => set({ chatConversationId: id }),
+      startChatConversation: (serviceConfigId) =>
+        set({
+          chatConversationId: newUuid(),
+          chatConversationServiceId: serviceConfigId,
+        }),
       setReportNutrientOrder: (order) => set({ reportNutrientOrder: order }),
       setReportNutrientShown: (key, isShown) =>
         set((state) => ({
@@ -775,6 +783,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         hiddenReportSections: state.hiddenReportSections,
         compareRecentQuestions: state.compareRecentQuestions,
         chatConversationId: state.chatConversationId,
+        chatConversationServiceId: state.chatConversationServiceId,
         reportNutrientOrder: state.reportNutrientOrder,
         shownReportNutrients: state.shownReportNutrients,
         foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,
