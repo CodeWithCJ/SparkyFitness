@@ -9823,5 +9823,23 @@
     "deleteMarkerTitle": "Delete marker",
     "deleteMarkerMessage": "Delete {{name}} and all of its results? This cannot be undone.",
     "deleteMarkerFailed": "Could not delete the marker"
+  },
+  "waterLog": {
+    "title": "Drinks",
+    "history": "History",
+    "open": "Drink history",
+    "drink": "Drink",
+    "linkedDrink": "Linked to a food entry",
+    "noWaterCredit": "No water",
+    "deleteTitle": "Delete drink",
+    "deleteMessage": "Delete this drink?",
+    "deleteLinkedMessage": "Delete this drink? Its food diary entry is deleted too.",
+    "deleteDrink": "Delete {{name}} at {{time}}",
+    "deleteFailed": "Could not delete that drink",
+    "loading": "Loading drinks...",
+    "loadFailed": "Could not load drinks",
+    "loadFailedSubtitle": "Check your connection and try again.",
+    "emptyTitle": "No drinks logged",
+    "emptySubtitle": "Drinks you log with the water buttons, a drink preset, the watch or a synced app show up here."
   }
 }
