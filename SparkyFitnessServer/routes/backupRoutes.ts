@@ -195,7 +195,7 @@ router.post('/manual', authenticate, isAdmin, async (req, res) => {
  *       500:
  *         description: Server error during restore.
  *       503:
- *         description: Could not check for other instances; the restore was not started.
+ *         description: Could not check for other instances, or another restore is already running (refused before the upload, with Retry-After); the restore was not started.
  */
 router.post(
   '/restore',

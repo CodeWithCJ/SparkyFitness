@@ -492,20 +492,29 @@ const restoreStamp = () =>
  * restore that could not finish never starts.
  */
 async function assertCanEndSessions(client: pg.Client, dbName: string) {
-  const { rows } = await client.query<{ role: string }>(
-    `SELECT role FROM (
+  // pg_signal_backend does not reach a superuser's sessions; only a superuser
+  // can end those.
+  const { rows } = await client.query<{ role: string; superuser: boolean }>(
+    `SELECT role, r.rolsuper AS superuser FROM (
        SELECT usename::text AS role FROM pg_stat_activity
         WHERE datname = $1 AND usename IS NOT NULL
        UNION SELECT $2::text WHERE $2::text IS NOT NULL
      ) roles
-     WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role)
-       AND NOT (SELECT rolsuper FROM pg_roles WHERE rolname = current_user)
-       AND NOT pg_has_role(current_user, 'pg_signal_backend', 'USAGE')
-       AND NOT pg_has_role(current_user, role, 'USAGE')`,
+     JOIN pg_roles r ON r.rolname = role
+     WHERE NOT (SELECT rolsuper FROM pg_roles WHERE rolname = current_user)
+       AND (r.rolsuper
+            OR (NOT pg_has_role(current_user, 'pg_signal_backend', 'USAGE')
+                AND NOT pg_has_role(current_user, role, 'USAGE')))`,
     [dbName, process.env.SPARKY_FITNESS_APP_DB_USER ?? null]
   );
+  const owner = process.env.SPARKY_FITNESS_DB_USER;
+  const superusers = rows.filter((r) => r.superuser).map((r) => r.role);
+  if (superusers.length > 0) {
+    throw new Error(
+      `Superuser ${superusers.join(', ')} has a session open on ${dbName} (for example psql or pgAdmin), which the database user ${owner} cannot end. Close it, then restore again. Nothing was changed.`
+    );
+  }
   if (rows.length > 0) {
-    const owner = process.env.SPARKY_FITNESS_DB_USER;
     throw new Error(
       `The database user ${owner} cannot end sessions of ${rows.map((r) => r.role).join(', ')}, which a restore must do to swap the restored database in. Run GRANT pg_signal_backend TO "${owner}" as a superuser, then restore again. Nothing was changed.`
     );
@@ -687,8 +696,10 @@ async function swapDatabases(
     const deadline = Date.now() + SESSION_END_TIMEOUT_MS;
     for (;;) {
       const { rows } = await client.query<{ sessions: number }>(
+        // Autovacuum workers have no role, and only a superuser may end them
+        // before PostgreSQL 18; the rename below stops them itself.
         `SELECT count(pg_terminate_backend(pid))::int AS sessions
-           FROM pg_stat_activity WHERE datname = $1`,
+           FROM pg_stat_activity WHERE datname = $1 AND usename IS NOT NULL`,
         [dbName]
       );
       if (rows[0]!.sessions === 0) break;

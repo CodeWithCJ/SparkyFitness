@@ -471,6 +471,34 @@ describe.skipIf(!runnable)('restore by staging and swap (PostgreSQL)', () => {
     ]);
   }, 60_000);
 
+  it("refuses up front when a superuser's session is open and the owner is not one", async () => {
+    await resetLive();
+    await admin.query(`GRANT pg_signal_backend TO ${OWNER}`);
+    const superuser = new pg.Client({ ...target, database: DB_NAME });
+    await superuser.connect();
+    try {
+      const backup = archive(
+        'superuser.tar.gz',
+        dump("CREATE TABLE t (v text);\nINSERT INTO t VALUES ('blocked');\n"),
+        { 'food_images/new.jpg': 'new' }
+      );
+
+      const result = await backupService.performRestore(backup);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Superuser');
+      expect(result.error).toContain('Nothing was changed');
+    } finally {
+      await superuser.end();
+      await admin.query(`REVOKE pg_signal_backend FROM ${OWNER}`);
+    }
+    expect(await liveRows()).toEqual(['live']);
+    expect(await databases()).toEqual([DB_NAME, LOOKALIKE]);
+    expect(fs.readdirSync(path.join(uploads, 'food_images'))).toEqual([
+      'old.jpg',
+    ]);
+  }, 60_000);
+
   it('refuses while another restore holds the lock, touching nothing', async () => {
     await resetLive();
     const holder = new pg.Client({ ...target, database: 'postgres' });
