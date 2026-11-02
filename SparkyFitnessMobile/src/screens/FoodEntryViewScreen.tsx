@@ -50,6 +50,10 @@ import {
 } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
+import { useCopyFoodEntry } from '../hooks/useCopyFoodEntry';
+import CopyMealSheet, {
+  type CopyMealSheetRef,
+} from '../components/CopyMealSheet';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import { useProfile } from '../hooks/useProfile';
 import type { UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
@@ -185,6 +189,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const { profile } = useProfile();
   const calendarRef = useRef<CalendarSheetRef>(null);
   const timeSheetRef = useRef<TimeSheetRef>(null);
+  const copySheetRef = useRef<CopyMealSheetRef>(null);
+  const { copyFood, isPending: isCopyPending } = useCopyFoodEntry({
+    onSuccess: () => copySheetRef.current?.dismiss(),
+  });
 
   useEffect(() => {
     if (entry.food_entry_meal_id) {
@@ -1561,8 +1569,42 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 })}
           </Button>
         </Animated.View>
+
+        {canEdit && !isEditing ? (
+          <Button
+            variant="outline"
+            onPress={() =>
+              copySheetRef.current?.present(
+                normalizeDate(entry.entry_date),
+                entry.meal_type_id ?? null,
+                entry.meal_type,
+                { foodName: entry.food_name ?? '' }
+              )
+            }
+            accessibilityRole="button"
+            accessibilityLabel={t('foodEntryView.copyEntry', {
+              defaultValue: 'Copy Food',
+            })}
+            className="mt-3"
+          >
+            {t('foodEntryView.copyEntry', { defaultValue: 'Copy Food' })}
+          </Button>
+        ) : null}
       </ScrollView>
 
+      {canEdit && (
+        <CopyMealSheet
+          ref={copySheetRef}
+          isPending={isCopyPending}
+          onCopy={(payload, { targetMealTypeId }) =>
+            copyFood({
+              entry,
+              targetDate: payload.targetDate,
+              targetMealTypeId,
+            })
+          }
+        />
+      )}
       {isEditing && (
         <CalendarSheet
           ref={calendarRef}

@@ -57,6 +57,16 @@ jest.mock('../../src/hooks/useFoodVariants', () => ({
   useCreateFoodVariant: jest.fn(),
 }));
 
+jest.mock('../../src/hooks/useCopyFoodEntry', () => ({
+  useCopyFoodEntry: () => ({ copyFood: jest.fn(), isPending: false }),
+}));
+
+// The copy sheet has its own tests; here it only needs to mount.
+jest.mock('../../src/components/CopyMealSheet', () => {
+  const { forwardRef } = require('react');
+  return { __esModule: true, default: forwardRef(() => null) };
+});
+
 jest.mock('../../src/hooks/useDeleteFoodEntry', () => ({
   useDeleteFoodEntry: jest.fn(),
 }));
