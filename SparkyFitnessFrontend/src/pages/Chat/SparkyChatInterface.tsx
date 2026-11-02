@@ -17,6 +17,7 @@ import { Thread } from '@/components/thread';
 import { useToast } from '@/hooks/use-toast';
 import { useChatToolCategories } from '@/contexts/ChatToolCategoriesContext';
 import { useEffect } from 'react';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { FoodAssistantState } from '@/components/ai/FoodAssistantState';
 
@@ -49,6 +50,7 @@ const SparkyChatInner = ({
   const queryClient = useQueryClient();
   const userDate = formatDateToYYYYMMDD(new Date());
   const { toast } = useToast();
+  const { activeUserId } = useActiveUser();
 
   // Runtime tool-category selection, scoped to the active service and prefilled
   // from its full/core profile. getSelected() is stable and reads the latest
@@ -148,7 +150,7 @@ const SparkyChatInner = ({
             toolCategories: hasCustomSelection ? getSelected() : undefined,
             // Stable per-conversation ID. The server pins providers that need
             // session affinity (OpenCode Go) to it.
-            conversationId: getChatConversationId(),
+            conversationId: await getChatConversationId(activeUserId ?? ''),
             messages: processedMessages,
           },
         };
@@ -199,6 +201,7 @@ const SparkyChatInner = ({
 
 const SparkyChatInterface = () => {
   const { user } = useAuth();
+  const { activeUserId } = useActiveUser();
   const { data: activeAIServiceSetting, isLoading: isActiveServiceLoading } =
     useActiveAIService(!!user);
   const { data: preferences, isLoading: isPrefsLoading } =
@@ -218,6 +221,7 @@ const SparkyChatInterface = () => {
 
   return (
     <SparkyChatInner
+      key={activeUserId ?? ''}
       activeAIServiceSetting={activeAIServiceSetting || null}
       history={history || []}
     />

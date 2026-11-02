@@ -20,6 +20,7 @@ import {
 import { useState } from 'react';
 import { useClearChatHistoryMutation } from '@/hooks/AI/useSparkyChat';
 import { rotateChatConversationId } from '@/utils/chatConversationId';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useAuth } from '@/hooks/useAuth';
 
 import { useTranslation } from 'react-i18next';
@@ -27,6 +28,7 @@ const SparkyChat = () => {
   const { t } = useTranslation();
   const { isChatOpen, closeChat } = useChatbotVisibility();
   const { user } = useAuth();
+  const { activeUserId } = useActiveUser();
   const { data: services } = useAIServices();
   const { data: activeService } = useActiveAIService(!!user);
   const { data: preferences } = useUserAIPreferences();
@@ -38,8 +40,8 @@ const SparkyChat = () => {
 
   const handleClearHistory = () => {
     clearHistory('all', {
-      onSuccess: () => {
-        rotateChatConversationId();
+      onSuccess: async () => {
+        await rotateChatConversationId(activeUserId ?? '');
         setResetKey((prev) => prev + 1);
       },
     });
@@ -56,13 +58,13 @@ const SparkyChat = () => {
     return null;
   }
 
-  const handleServiceSwitch = (serviceId: string) => {
+  const handleServiceSwitch = async (serviceId: string) => {
     updatePreferences({
       active_ai_service_id: serviceId,
       auto_clear_history: preferences?.auto_clear_history || 'never',
     });
     // Reset chat since we're switching providers
-    rotateChatConversationId();
+    await rotateChatConversationId(activeUserId ?? '');
     setResetKey((prev) => prev + 1);
   };
 
