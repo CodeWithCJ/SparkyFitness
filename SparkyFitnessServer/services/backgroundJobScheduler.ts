@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import { scheduleJob } from './scheduledJobs.js';
 import { scheduleBackupsOnStartup } from './backupScheduler.js';
 import { scheduleOpenFoodFactsAutoSyncOnStartup } from './openFoodFactsAutoSyncScheduler.js';
 import { startProviderSyncSchedulers } from './providerSyncScheduler.js';
@@ -12,7 +12,7 @@ import { scheduledJobsDisabled } from '../utils/scheduledJobs.js';
 // Session cleanup scheduling
 const scheduleSessionCleanup = async () => {
   // Run every day at 3 AM
-  cron.schedule('0 3 * * *', async () => {
+  scheduleJob('session-cleanup', '0 3 * * *', async () => {
     try {
       await cleanupSessions();
     } catch (error) {

@@ -116,5 +116,30 @@ export default tseslint.config(
     rules: {
       'n/no-process-exit': 'off',
     },
+  },
+
+  // Every scheduled job goes through scheduleJob() so each tick runs on one
+  // instance. Shutdown stops node-cron itself; tests may pin its behaviour.
+  {
+    files: ['**/*.js', '**/*.ts'],
+    ignores: [
+      'services/scheduledJobs.ts',
+      'utils/gracefulShutdown.ts',
+      'tests/**',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'node-cron',
+              message:
+                'Use scheduleJob() from services/scheduledJobs.ts: it runs each tick on one instance.',
+            },
+          ],
+        },
+      ],
+    },
   }
 );
