@@ -46,10 +46,12 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
     exerciseCaloriePercentage: prefs?.exercise_calorie_percentage ?? 100,
     includeBmrInNetCalories: prefs?.include_bmr_in_net_calories ?? false,
     useExternalBmr: prefs?.use_external_bmr ?? false,
+    useMoveRingActiveCalories: prefs?.use_move_ring_active_calories ?? false,
     tdeeAllowNegativeAdjustment: prefs?.tdee_allow_negative_adjustment ?? false,
     goalMode: prefs?.goal_mode ?? 'maintain',
     goalModeCalculationMethod: prefs?.goal_mode_calculation_method ?? 'manual',
     adaptiveActivitySeparate: prefs?.adaptive_activity_separate ?? false,
+    adjustMacrosWithExercise: prefs?.adjust_macros_with_exercise ?? false,
     goalModeCustomPercentage: prefs?.goal_mode_custom_percentage ?? 0,
     goalModeWeeklyChangeKg: prefs?.goal_mode_weekly_change_kg ?? 0,
     calorieSafetyFloorMode: prefs?.calorie_safety_floor_mode ?? 'standard',
@@ -365,6 +367,13 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     [mutation]
   );
 
+  const handleMoveRingToggle = useCallback(
+    (value: boolean) => {
+      mutation.mutate({ use_move_ring_active_calories: value });
+    },
+    [mutation]
+  );
+
   const handleNegativeAdjustmentToggle = useCallback(
     (value: boolean) => {
       mutation.mutate({ tdee_allow_negative_adjustment: value });
@@ -658,6 +667,35 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           className="bg-surface rounded-xl p-4 mb-4 shadow-sm"
           layout={optionsLayout}
         >
+          <View className="mb-4">
+            <View className="flex-row items-center justify-between gap-3">
+              <Text className="flex-1 text-base font-semibold text-text-primary">
+                {t('calorieSettings.adjustMacrosWithExercise', {
+                  defaultValue:
+                    'Adjust percentage macro goals with exercise calories',
+                })}
+              </Text>
+              <Switch
+                value={normalized.adjustMacrosWithExercise}
+                onValueChange={(value) =>
+                  mutation.mutate({ adjust_macros_with_exercise: value })
+                }
+                accessibilityLabel={t(
+                  'calorieSettings.adjustMacrosWithExercise',
+                  {
+                    defaultValue:
+                      'Adjust percentage macro goals with exercise calories',
+                  }
+                )}
+              />
+            </View>
+            <Text className="text-sm text-text-secondary mt-1">
+              {t('calorieSettings.adjustMacrosWithExerciseHint', {
+                defaultValue:
+                  'Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged. Changes apply from today; earlier days keep their setting.',
+              })}
+            </Text>
+          </View>
           {/* Percentage Input */}
           {showPercentage && (
             <Animated.View layout={optionsLayout}>
@@ -1042,6 +1080,34 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             </Text>
           )}
         </View>
+
+        {/* An account setting so it follows the person to a new phone; only the
+            iPhone sync reads it. */}
+        {Platform.OS === 'ios' && (
+          <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-base font-semibold text-text-primary flex-1 mr-3">
+                {t('calorieSettings.useMoveRingActiveCalories', {
+                  defaultValue: 'Use Move ring for active calories',
+                })}
+              </Text>
+              <Switch
+                onValueChange={handleMoveRingToggle}
+                value={normalized.useMoveRingActiveCalories}
+                accessibilityLabel={t(
+                  'calorieSettings.useMoveRingActiveCalories',
+                  { defaultValue: 'Use Move ring for active calories' }
+                )}
+              />
+            </View>
+            <Text className="text-text-secondary text-sm mt-3">
+              {t('calorieSettings.useMoveRingActiveCaloriesHint', {
+                defaultValue:
+                  'Off by default, active calories come from the Apple Health Active Energy total. When on, they come from your Move ring, so they match the Fitness app. The ring counts what your Apple Watch and iPhone measure, and workouts other apps save to Apple Health can add to it too. A day with no ring, such as when Activity access is off, uses the Active Energy total. Applies to days synced after the change.',
+              })}
+            </Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );

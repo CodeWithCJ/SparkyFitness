@@ -114,6 +114,7 @@ export const PREFERENCE_DEFAULTS = {
   onDeviceLabelScanEnabled: true,
   healthTrendsCardVisible: true,
   mindfulnessCardVisible: true,
+  labResultsCardVisible: true,
   trainingLoadCardVisible: true,
   dashboardCardOrder: [...DASHBOARD_CARD_KEYS] as DashboardCardKey[],
   medicationRemindersEnabled: true,
@@ -131,7 +132,6 @@ export const PREFERENCE_DEFAULTS = {
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
   diarySummaryVisible: false,
   diarySummaryExpanded: false,
-  guidedCheckInEnabled: false,
   defaultRestSec: DEFAULT_REST_SEC as number,
   paceReferenceRace: null as PaceReferenceRace | null,
   paceReferenceOnWatch: false,
@@ -203,6 +203,7 @@ export type AppPreferencesData = {
   onDeviceLabelScanEnabled: boolean;
   healthTrendsCardVisible: boolean;
   mindfulnessCardVisible: boolean;
+  labResultsCardVisible: boolean;
   trainingLoadCardVisible: boolean;
   dashboardCardOrder: DashboardCardKey[];
   medicationRemindersEnabled: boolean;
@@ -220,8 +221,6 @@ export type AppPreferencesData = {
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
   diarySummaryVisible: boolean;
   diarySummaryExpanded: boolean;
-  /** Adds the AddSheet's Check-In row (Settings > Diary). Off by default. */
-  guidedCheckInEnabled: boolean;
   defaultRestSec: number;
   /**
    * A recent race result the training paces are worked out from (device-local),
@@ -343,6 +342,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setOnDeviceLabelScanEnabled: (value: boolean) => void;
   setHealthTrendsCardVisible: (value: boolean) => void;
   setMindfulnessCardVisible: (value: boolean) => void;
+  setLabResultsCardVisible: (value: boolean) => void;
   setTrainingLoadCardVisible: (value: boolean) => void;
   setDashboardCardOrder: (order: DashboardCardKey[]) => void;
   setMedicationRemindersEnabled: (value: boolean) => void;
@@ -361,7 +361,6 @@ export interface AppPreferencesState extends AppPreferencesData {
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
   setDiarySummaryVisible: (value: boolean) => void;
   setDiarySummaryExpanded: (value: boolean) => void;
-  setGuidedCheckInEnabled: (value: boolean) => void;
   setDefaultRestSec: (value: number) => void;
   setPaceReferenceRace: (value: PaceReferenceRace | null) => void;
   setPaceReferenceOnWatch: (value: boolean) => void;
@@ -496,6 +495,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ healthTrendsCardVisible: value }),
       setMindfulnessCardVisible: (value) =>
         set({ mindfulnessCardVisible: value }),
+      setLabResultsCardVisible: (value) =>
+        set({ labResultsCardVisible: value }),
       setTrainingLoadCardVisible: (value) =>
         set({ trainingLoadCardVisible: value }),
       setDashboardCardOrder: (order) => set({ dashboardCardOrder: order }),
@@ -524,7 +525,6 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ activeWorkoutMetricColumn: value }),
       setDiarySummaryVisible: (value) => set({ diarySummaryVisible: value }),
       setDiarySummaryExpanded: (value) => set({ diarySummaryExpanded: value }),
-      setGuidedCheckInEnabled: (value) => set({ guidedCheckInEnabled: value }),
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
       setPaceReferenceRace: (value) => set({ paceReferenceRace: value }),
       setPaceReferenceOnWatch: (value) => set({ paceReferenceOnWatch: value }),
@@ -710,6 +710,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         onDeviceLabelScanEnabled: state.onDeviceLabelScanEnabled,
         healthTrendsCardVisible: state.healthTrendsCardVisible,
         mindfulnessCardVisible: state.mindfulnessCardVisible,
+        labResultsCardVisible: state.labResultsCardVisible,
         trainingLoadCardVisible: state.trainingLoadCardVisible,
         dashboardCardOrder: state.dashboardCardOrder,
         medicationRemindersEnabled: state.medicationRemindersEnabled,
@@ -729,7 +730,6 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         activeWorkoutMetricColumn: state.activeWorkoutMetricColumn,
         diarySummaryVisible: state.diarySummaryVisible,
         diarySummaryExpanded: state.diarySummaryExpanded,
-        guidedCheckInEnabled: state.guidedCheckInEnabled,
         defaultRestSec: state.defaultRestSec,
         paceReferenceRace: state.paceReferenceRace,
         paceReferenceOnWatch: state.paceReferenceOnWatch,

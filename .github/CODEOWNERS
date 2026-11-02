@@ -30,3 +30,11 @@
 # ---------------------------------------------------------------------------
 
 /.github/release.yml             @CodeWithCJ
+
+# ---------------------------------------------------------------------------
+# Tag site (tag.sparkyfitness.com)
+# Serves the files Apple and Google use to decide which apps open NFC tag
+# links; a change here can redirect those links to another app.
+# ---------------------------------------------------------------------------
+
+/SparkyFitnessTag/               @CodeWithCJ

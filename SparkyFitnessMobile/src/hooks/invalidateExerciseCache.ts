@@ -33,6 +33,7 @@ export function invalidateExerciseCache(
   void queryClient.invalidateQueries({
     queryKey: dailySummaryQueryKey(entryDate),
   });
+  void queryClient.invalidateQueries({ queryKey: ['goalsRange'] });
   // Every cached single-session read, by prefix. Watch telemetry lands on an
   // entry AFTER the workout is saved, so a screen already showing that session
   // — the completion summary most of all, which opens the moment a workout

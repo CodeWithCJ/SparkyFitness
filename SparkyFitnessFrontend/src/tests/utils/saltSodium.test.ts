@@ -1,4 +1,4 @@
-import { saltGramsToSodiumMg, sodiumMgToSaltGrams } from '@/utils/saltSodium';
+import { saltGramsToSodiumMg, sodiumMgToSaltGrams } from '@workspace/shared';
 
 describe('saltSodium', () => {
   it('converts label salt (g) to sodium (mg) at 400 mg per gram', () => {

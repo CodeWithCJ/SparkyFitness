@@ -354,7 +354,8 @@
       "norwegianBokmal": "Norsk bokmål",
       "dutch": "Nederlands",
       "brazilianPortuguese": "Português (Brasil)",
-      "russian": "Русский"
+      "russian": "Русский",
+      "turkish": "Turks"
     },
     "lastSynced": "Laatst gesynchroniseerd {{time}}",
     "addServer": "Tik om een server toe te voegen",
@@ -380,7 +381,10 @@
       "about": "Over",
       "shareReport": "Diagnostisch rapport delen",
       "watch": "Apple Watch",
-      "ai": "AI"
+      "ai": "AI",
+      "fasting": "Vasten",
+      "goals": "Doelen",
+      "reports": "Reportages"
     },
     "theme": {
       "title": "Thema",
@@ -436,7 +440,8 @@
       "logAsTaken": "Als ingenomen registreren",
       "skip": "Overslaan",
       "logAllAsTaken": "Alles als ingenomen registreren",
-      "skipAll": "Alles overslaan"
+      "skipAll": "Alles overslaan",
+      "remindInMinutes": "Herinner mij in {{minutes}}min"
     },
     "permission": {
       "notificationsOff": "Meldingen uitgeschakeld",
@@ -683,7 +688,10 @@
       "workout": "Training",
       "exercise": "Oefening",
       "set": "Set",
-      "setOf": "van"
+      "setOf": "van",
+      "subtractFifteenSecondsShort": "-15s",
+      "skip": "Overslaan",
+      "next": "Volgende"
     },
     "bar": {
       "clearWorkout": "Training wissen",
@@ -860,7 +868,8 @@
     "logCycle": "Cyclus Registreren",
     "progressPhotos": "Voortgangsfoto's",
     "symptoms": "Symptomen",
-    "mindfulness": "Mindfulness"
+    "mindfulness": "Mindfulness",
+    "mood": "Gemoedstoestand"
   },
   "screens": {
     "foods": "Voedingsmiddelen",
@@ -942,7 +951,11 @@
       "mealPlans": "Maaltijdplannen",
       "mealPlansSubtitle": "Maaltijden op bepaalde dagen herhalen",
       "waterContainers": "Watercontainers",
-      "waterContainersSubtitle": "Flessen, glazen en dranken gekoppeld aan voedingsmiddelen"
+      "waterContainersSubtitle": "Flessen, glazen en dranken gekoppeld aan voedingsmiddelen",
+      "reports": "Rapportages",
+      "personalRecords": "Persoonlijke records",
+      "routes": "Routes",
+      "equipment": "Materiaal"
     },
     "sleep": "Slaap",
     "healthTrendsSettings": "Gezondheidstrends",
@@ -957,7 +970,11 @@
     "exerciseStatistics": "Oefenstatistieken",
     "cardioSession": "Cardiosessie",
     "watchSettings": "Apple Watch",
-    "aiSettings": "AI"
+    "aiSettings": "AI",
+    "moodLog": "Gemoedstoestand",
+    "reports": "Rapportages",
+    "moodReport": "Gemoedstoestand",
+    "measurementsReport": "Maten"
   },
   "healthMetrics": {
     "steps": "Stappen",
@@ -3816,7 +3833,10 @@
       "goals": "Doelen",
       "lookedUp": "{{name}} opgezocht"
     },
-    "typing": "Sparky is aan het typen"
+    "typing": "Sparky is aan het typen",
+    "voice": {
+      "stop": "Stop dicteren"
+    }
   },
   "foodImagePicker": {
     "photos": "Foto's",

@@ -276,35 +276,33 @@ describe('AddSheet', () => {
   });
 
   describe('guided check-in row', () => {
-    it('is hidden by default', () => {
-      const { ref, getByText, queryByText } = renderAddSheet();
-
-      act(() => ref.current?.present());
-
-      expect(getByText('Progress Photos')).toBeTruthy();
-      expect(queryByText('Daily Check-In')).toBeNull();
-    });
-
-    it('stays hidden while showCheckIn is off, even with a handler, and appears once it is on', () => {
+    it('shows with no setting to turn on, as soon as there is a handler', () => {
       const onStartCheckIn = jest.fn();
-      const { ref, props, queryByText, getByText, rerender } = renderAddSheet({
-        onStartCheckIn,
-        showCheckIn: false,
-      });
+      const { ref, getByText } = renderAddSheet({ onStartCheckIn });
 
       act(() => ref.current?.present());
-      expect(queryByText('Daily Check-In')).toBeNull();
-
-      rerender(<AddSheet ref={ref} {...props} showCheckIn />);
 
       expect(getByText('Daily Check-In')).toBeTruthy();
       expect(onStartCheckIn).not.toHaveBeenCalled();
     });
 
+    it('is left out when hidden in Quick Actions, like any other item', () => {
+      __resetAppPreferencesStoreForTests();
+      useAppPreferencesStore.setState({ hiddenAddMenuItems: ['checkIn'] });
+      const { ref, getByText, queryByText } = renderAddSheet({
+        onStartCheckIn: jest.fn(),
+      });
+
+      act(() => ref.current?.present());
+
+      expect(queryByText('Daily Check-In')).toBeNull();
+      expect(getByText('Progress Photos')).toBeTruthy();
+      __resetAppPreferencesStoreForTests();
+    });
+
     it('shows the Check-In row before Progress Photos, first among the secondary rows', () => {
       const { ref, getAllByText } = renderAddSheet({
         onStartCheckIn: jest.fn(),
-        showCheckIn: true,
         onAddMood: jest.fn(),
       });
 
@@ -322,7 +320,6 @@ describe('AddSheet', () => {
       const onDismissWithoutAction = jest.fn();
       const { ref, getByText } = renderAddSheet({
         onStartCheckIn,
-        showCheckIn: true,
         onAddMood,
         onDismissWithoutAction,
       });

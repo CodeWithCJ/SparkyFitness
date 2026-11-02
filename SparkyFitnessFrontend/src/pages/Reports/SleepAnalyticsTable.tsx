@@ -18,6 +18,7 @@ import { getUserLoggingLevel } from '@/utils/userPreferences';
 import {
   formatSecondsToHHMM,
   formatTimeInZone,
+  mainSleepZone,
   sleepEntryZone,
 } from '@/utils/timeFormatters';
 import {
@@ -156,6 +157,8 @@ const SleepAnalyticsTable = ({
               // session's recording zone), so stage labels agree with the
               // hypnogram axis and header dates.
               const zone = sleepEntryZone(sleepEntry, timezone);
+              // Bed and wake times are the main sleep's, in its own zone.
+              const bedWakeZone = mainSleepZone(sleepAnalyticsData, timezone);
 
               const aggregatedStages = sleepEntry.stage_events?.reduce(
                 (acc, event) => {
@@ -190,10 +193,18 @@ const SleepAnalyticsTable = ({
                       )}
                     </TableCell>
                     <TableCell>
-                      {formatTimeInZone(sleepEntry.bedtime, zone, timeFormat)}
+                      {formatTimeInZone(
+                        sleepEntry.bedtime,
+                        bedWakeZone,
+                        timeFormat
+                      )}
                     </TableCell>
                     <TableCell>
-                      {formatTimeInZone(sleepEntry.wake_time, zone, timeFormat)}
+                      {formatTimeInZone(
+                        sleepEntry.wake_time,
+                        bedWakeZone,
+                        timeFormat
+                      )}
                     </TableCell>
                     <TableCell>{totalSleepDuration}</TableCell>
                     <TableCell>{timeAsleep}</TableCell>

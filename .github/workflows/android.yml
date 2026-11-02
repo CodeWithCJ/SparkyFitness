@@ -88,14 +88,14 @@ jobs:
 
       - name: Build Release APK
         if: github.event_name != 'pull_request'
+        env:
+          SPARKY_RELEASE_STORE_FILE: ${{ github.workspace }}/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore
+          SPARKY_RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          SPARKY_RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          SPARKY_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           cd SparkyFitnessMobile/android
-          ./gradlew :app:assembleRelease \
-            -PMYAPP_RELEASE_STORE_FILE=${{ github.workspace }}/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore \
-            -PMYAPP_RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }} \
-            -PMYAPP_RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }} \
-            -PMYAPP_RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }} \
-            --stacktrace
+          ./gradlew :app:assembleRelease --stacktrace
 
       - name: Get APK path
         if: github.event_name != 'pull_request'
@@ -107,14 +107,14 @@ jobs:
 
       - name: Build Release AAB
         if: github.event_name != 'pull_request'
+        env:
+          SPARKY_RELEASE_STORE_FILE: ${{ github.workspace }}/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore
+          SPARKY_RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          SPARKY_RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          SPARKY_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           cd SparkyFitnessMobile/android
-          ./gradlew :app:bundleRelease \
-            -PMYAPP_RELEASE_STORE_FILE=${{ github.workspace }}/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore \
-            -PMYAPP_RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }} \
-            -PMYAPP_RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }} \
-            -PMYAPP_RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }} \
-            --stacktrace
+          ./gradlew :app:bundleRelease --stacktrace
 
       - name: Get AAB path
         if: github.event_name != 'pull_request'
@@ -123,6 +123,25 @@ jobs:
           AAB_PATH=$(find SparkyFitnessMobile/android/app/build/outputs/bundle/release -name "*.aab" | head -n 1)
           echo "path=$AAB_PATH" >> $GITHUB_OUTPUT
           echo "name=$(basename $AAB_PATH)" >> $GITHUB_OUTPUT
+
+      - name: Test Wear OS app
+        if: github.event_name != 'pull_request'
+        run: |
+          cd SparkyFitnessMobile/android
+          ./gradlew :wearos:testDebugUnitTest --stacktrace
+
+      # Signed with the phone app's key: the Data Layer only connects the two
+      # when package name and signature match.
+      - name: Build Wear OS Release APK
+        if: github.event_name != 'pull_request'
+        env:
+          SPARKY_RELEASE_STORE_FILE: ${{ github.workspace }}/SparkyFitnessMobile/android/app/sparky-fitness-release-key.keystore
+          SPARKY_RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          SPARKY_RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          SPARKY_RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          cd SparkyFitnessMobile/android
+          ./gradlew :wearos:assembleRelease --stacktrace
 
       - name: Get version from package.json
         if: github.event_name != 'pull_request'
@@ -139,6 +158,7 @@ jobs:
           files: |
             ${{ steps.apk.outputs.path }}
             ${{ steps.aab.outputs.path }}
+            SparkyFitnessMobile/android/wearos/build/outputs/apk/release/wearos-release.apk
           draft: false
           prerelease: false
           generate_release_notes: true

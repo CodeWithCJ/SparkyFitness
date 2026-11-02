@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-27_
+_Last updated: 2026-10-29_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -35,7 +35,7 @@ pnpm run build
 
 - `pnpm run validate` runs typecheck, lint (`--max-warnings 0`), Prettier check, and Knip (`pnpm run knip` for unused files and exports) together.
 - `pnpm test` runs Jest (`ts-jest`, `jsdom`); config is inline in `package.json`, setup in `src/tests/setupTests.ts`.
-- `pnpm run build` runs `validate` first, then `vite build`.
+- `pnpm run build` runs `vite build`.
 - CI (`.github/workflows/ci-tests.yml`) runs `pnpm run validate` and `pnpm run test:ci` for this package when its files change; matching those locally means a green PR.
 
 ## Domain-Mirrored Layout (the most important convention)

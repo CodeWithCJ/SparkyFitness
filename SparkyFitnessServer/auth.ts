@@ -5,6 +5,7 @@ import { log } from './config/logging.js';
 import { handleConnectionLoss } from './db/poolManager.js';
 import { retryPoolConnects } from './db/connectRetry.js';
 import { applicationName } from './db/applicationName.js';
+import { isPoolBusy, trackPoolProgress } from './db/poolBusy.js';
 import bcrypt from 'bcryptjs';
 import { syncUserGroups } from './utils/oidcGroupSync.js';
 import userRepository from './models/userRepository.js';
@@ -118,8 +119,9 @@ authPool.on('error', (err) => {
   log('error', 'Unexpected error on idle Better Auth client', err);
 });
 handleConnectionLoss(authPool, 'Better Auth');
+trackPoolProgress(authPool);
 // Better Auth acquires its own connections, so the retry has to live on the pool.
-retryPoolConnects(authPool);
+const connectAuthPoolOnce = retryPoolConnects(authPool);
 // Persistent array reference for trusted providers
 // Mutation of this array will be visible to Better Auth since it holds the reference
 // @ts-expect-error
@@ -1061,11 +1063,34 @@ async function cleanupSessions() {
     client.release();
   }
 }
+/**
+ * For the readiness check: a connection from the Better Auth pool without the
+ * connect retry, so a probe reports what a request would see now.
+ */
+function connectAuthPoolForProbe(): Promise<pg.PoolClient> {
+  return connectAuthPoolOnce();
+}
+/**
+ * Rejects while Better Auth has a schema mismatch cached, which fails every
+ * sign-in until the process restarts.
+ */
+async function checkAuthSchema(): Promise<void> {
+  const ctx = await auth.$context;
+  await ctx.checkSchema?.();
+}
+/** Whether the Better Auth pool is full of work that is still finishing. */
+function isAuthPoolBusy(): boolean {
+  return isPoolBusy(authPool);
+}
 export { auth };
+export { checkAuthSchema };
+export { connectAuthPoolForProbe };
+export { isAuthPoolBusy };
 export { syncTrustedProviders };
 export { cleanupSessions };
 export default {
   auth,
+  checkAuthSchema,
   syncTrustedProviders,
   cleanupSessions,
 };

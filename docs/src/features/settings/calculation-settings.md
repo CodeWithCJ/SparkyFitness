@@ -99,6 +99,32 @@ This setting determines **how physical activity changes your calorie budget** th
 
 ---
 
+### Percentage macro goals and exercise
+
+**Adjust percentage macro goals with exercise calories** is available in web
+Calculation Settings and mobile Calorie Settings. It is off by default.
+
+When enabled, protein, carbohydrate and fat gram targets use your saved percentage
+split and the positive exercise calories credited by your calorie adjustment mode.
+For example, a 2,000 kcal goal plus 500 credited exercise calories uses 2,500 kcal
+for the macro calculation. With 50% exercise earn-back, it uses 2,250 kcal instead.
+The existing fiber calorie allocation is preserved; fiber and micronutrient targets
+do not increase.
+
+Fixed goals and goals entered directly in grams stay unchanged. Adaptive targets
+that already include activity do not earn it back again; **Count activity calories
+separately** can credit that day's resolved activity once. Device Projection uses
+the positive exercise-attributable increase above its no-activity budget and the
+base goal, without adding the workout again. Resting-only projection changes are
+not added as exercise.
+
+Targets follow the selected diary date and update when activity is edited, removed
+or synced. The saved base goals and percentage split remain unchanged. Changes to
+this option apply from today in your timezone, alongside the other recorded
+calorie settings. Earlier days keep their own on/off choice: enabling it does not
+raise past macro targets, and disabling it does not remove past exercise credit.
+Turning it off restores the existing macro calculation from today onward.
+
 ## 4. Goal Mode & Caloric Deficits
 
 **Goal Mode** adjusts your baseline calorie target. Select **Weekly weight change** to enter a desired weekly change directly, or keep one of the existing percentage-based modes.
@@ -178,6 +204,20 @@ it inactive. Percentage Earn-Back continues to suppress extra activity credit
 under the Adaptive Method.
 
 Device Projection always uses the projected device TDEE as the live baseline for the selected Goal Mode; the calculation-method selector controls the saved non-device baseline and previews used by the other modes.
+
+### Use Move ring for active calories
+
+On iPhone, SparkyFitness can read your active calories from the Move ring instead
+of the Apple Health Active Energy total, so they match the Fitness app. This is
+**off by default**. Turn on **Use Move ring for active calories** in Calories &
+BMR on the iPhone app; the setting is saved to your account.
+
+- **The ring is built from your Apple Watch and iPhone.** Workouts other apps save
+  to Apple Health can add to it too.
+- **Days without a ring keep the Active Energy total**, for example when Activity
+  access is off in Apple Health.
+- **It applies to days synced after the change.** Earlier days keep what they had
+  until they sync again.
 
 ---
 

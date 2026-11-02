@@ -8,6 +8,7 @@ import Icon, { type IconName } from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { startGuidedCheckIn } from '../hooks/useGuidedCheckIn';
 import { useWatchConnectivity } from '../hooks/useWatchConnectivity';
 import { getTodayDate } from '../utils/dateUtils';
 import { canUseLiquidGlass } from '../utils/liquidGlass';
@@ -740,14 +741,19 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
       }),
       body: t('whatsNewPage.features.checkIn.body', {
         defaultValue:
-          'Log your mood, measurements, and a progress photo in three quick steps. Turn it on in Diary settings.',
+          'Log your mood, measurements, and a progress photo in three quick steps. Find Daily Check-In in the + menu.',
       }),
       hero: <CheckInMockup />,
       cta: {
         label: t('whatsNewPage.features.checkIn.cta', {
-          defaultValue: 'Open diary settings',
+          defaultValue: 'Start a check-in',
         }),
-        onPress: () => navigation.navigate('DiarySettings'),
+        onPress: () => {
+          const date = getTodayDate();
+          startGuidedCheckIn(date, t, (step, guidedCheckIn) =>
+            navigation.navigate(step, { date, guidedCheckIn })
+          );
+        },
       },
     },
     {
