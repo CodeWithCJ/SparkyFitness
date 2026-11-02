@@ -540,6 +540,41 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onCommitField).not.toHaveBeenCalled();
     });
 
+    it('keeps a typed draft when a watch value happens to match it and then changes again', () => {
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+        set: { weight: 60, reps: 10 },
+      });
+      fireEvent.changeText(getByLabelText('Weight'), '80');
+      // The watch sets 80 (not a phone commit), then changes it again.
+      rerenderRow({ ...base, isFocused: true, set: { weight: 80, reps: 10 } });
+      rerenderRow({ ...base, isFocused: true, set: { weight: 90, reps: 10 } });
+      expect(getByLabelText('Weight').props.value).toBe('80');
+      rerenderRow({ ...base, isFocused: false, set: { weight: 90, reps: 10 } });
+      expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+        weight: 80,
+      });
+    });
+
+    it('clears a stale edited flag when focus returns to the row', () => {
+      const base = { state: 'current' as const, metricColumn: 'rpe' as const };
+      const { getByLabelText, rerenderRow } = renderRow({
+        ...base,
+        isFocused: true,
+        set: { weight: 60, reps: 10 },
+      });
+      // Typed the value the set already holds; focus leaves without a blur
+      // event, so the flag is not cleared by a commit.
+      fireEvent.changeText(getByLabelText('Weight'), '60');
+      rerenderRow({ ...base, isFocused: false, set: { weight: 60, reps: 10 } });
+      rerenderRow({ ...base, isFocused: true, set: { weight: 60, reps: 10 } });
+      // A change from elsewhere in the new focus must show.
+      rerenderRow({ ...base, isFocused: true, set: { weight: 80, reps: 10 } });
+      expect(getByLabelText('Weight').props.value).toBe('80');
+    });
+
     it('commits nothing when an untouched row deactivates', () => {
       const base = { state: 'current' as const, metricColumn: 'rpe' as const };
       const { callbacks, rerenderRow } = renderRow({

@@ -396,11 +396,20 @@ function ActiveWorkoutSetRow({
   // row is focused, so an untouched field never shows or writes back a stale
   // value. A draft the user edited and has not committed yet is kept while the
   // row is focused and in the render where focus is lost (the deactivation
-  // commit writes it); any later re-seed, including the one that commit's own
-  // store write causes, replaces every draft.
+  // commit writes it), whatever the store holds: a watch value that happens to
+  // match the draft is not a phone commit. Any later re-seed, including the one
+  // that commit's own store write causes, replaces every draft. The flags only
+  // mean something within one focus, so they are cleared when focus returns.
   const [wasFocused, setWasFocused] = useState(isFocusedRow);
   const justLostFocus = wasFocused && !isFocusedRow;
+  const justGainedFocus = !wasFocused && isFocusedRow;
   if (wasFocused !== isFocusedRow) setWasFocused(isFocusedRow);
+  if (justGainedFocus) {
+    setEdited({ weight: false, reps: false, duration: false, distance: false });
+  }
+  const liveEdited = justGainedFocus
+    ? { weight: false, reps: false, duration: false, distance: false }
+    : edited;
   if (signature !== prevSignature) {
     setPrevSignature(signature);
     const keepEdits = isFocusedRow || justLostFocus;
@@ -411,12 +420,10 @@ function ActiveWorkoutSetRow({
       distance: distanceSeedText,
     };
     const kept = {
-      weight: keepEdits && edited.weight && weightDraft !== fromStore.weight,
-      reps: keepEdits && edited.reps && repsDraft !== fromStore.reps,
-      duration:
-        keepEdits && edited.duration && durationDraft !== fromStore.duration,
-      distance:
-        keepEdits && edited.distance && distanceDraft !== fromStore.distance,
+      weight: keepEdits && liveEdited.weight,
+      reps: keepEdits && liveEdited.reps,
+      duration: keepEdits && liveEdited.duration,
+      distance: keepEdits && liveEdited.distance,
     };
     if (!kept.weight) setWeightDraft(fromStore.weight);
     if (!kept.reps) setRepsDraft(fromStore.reps);
