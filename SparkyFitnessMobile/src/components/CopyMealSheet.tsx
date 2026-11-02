@@ -26,18 +26,28 @@ import type { CopyFoodEntriesPayload } from '../services/api/foodEntriesApi';
 const QUICK_TARGETS = ['now', 'today', 'tomorrow'] as const;
 type QuickTarget = (typeof QUICK_TARGETS)[number];
 
+/** Copying one food instead of a whole meal: titled by the food's name. */
+export interface CopySingleFoodOptions {
+  foodName: string;
+}
+
 export interface CopyMealSheetRef {
   present: (
     sourceDate: string,
     sourceMealTypeId: string | null,
-    sourceMealTypeName: string
+    sourceMealTypeName: string,
+    singleFood?: CopySingleFoodOptions
   ) => void;
   dismiss: () => void;
 }
 
 interface CopyMealSheetProps {
   isPending?: boolean;
-  onCopy: (payload: CopyFoodEntriesPayload) => void;
+  /** `targetMealTypeId` is the picked meal type's id, for single-food copies. */
+  onCopy: (
+    payload: CopyFoodEntriesPayload,
+    target: { targetMealTypeId: string }
+  ) => void;
 }
 
 const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
@@ -62,6 +72,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       date: string;
       mealTypeId: string | null;
       mealTypeName: string;
+      singleFood?: CopySingleFoodOptions;
     } | null>(null);
     const [targetDate, setTargetDate] = useState<string>('');
     const [targetMealTypeId, setTargetMealTypeId] = useState<string | null>(
@@ -77,10 +88,12 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       present: (
         sourceDate: string,
         sourceMealTypeId: string | null,
-        sourceMealTypeName: string
+        sourceMealTypeName: string,
+        singleFood?: CopySingleFoodOptions
       ) => {
         setSource({
           date: sourceDate,
+          singleFood,
           mealTypeId: sourceMealTypeId,
           mealTypeName: sourceMealTypeName,
         });
@@ -178,6 +191,21 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       const targetType = mealTypes.find((mt) => mt.id === targetMealTypeId);
       if (!targetType) return;
 
+      // A single food is copied by meal-type id, so duplicate names do not
+      // matter for it.
+      if (source.singleFood) {
+        onCopy(
+          {
+            sourceDate: source.date,
+            sourceMealType: source.mealTypeName,
+            targetDate,
+            targetMealType: targetType.name,
+          },
+          { targetMealTypeId: targetType.id }
+        );
+        return;
+      }
+
       // A name-only endpoint cannot tell two same-named types apart. Block the
       // copy instead of silently copying to/from the wrong type.
       const nameIsAmbiguous = (name: string) => {
@@ -203,12 +231,15 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
         return;
       }
 
-      onCopy({
-        sourceDate: source.date,
-        sourceMealType: source.mealTypeName,
-        targetDate,
-        targetMealType: targetType.name,
-      });
+      onCopy(
+        {
+          sourceDate: source.date,
+          sourceMealType: source.mealTypeName,
+          targetDate,
+          targetMealType: targetType.name,
+        },
+        { targetMealTypeId: targetType.id }
+      );
     }, [source, targetDate, targetMealTypeId, mealTypes, onCopy, t]);
 
     return (
@@ -226,10 +257,15 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
             <View className="px-5">
               <View className="items-center mb-4">
                 <Text className="text-text-primary text-lg font-semibold text-center">
-                  {t('copyMeal.title', {
-                    defaultValue: 'Copy meal: {{meal}}',
-                    meal: sourceTitle,
-                  })}
+                  {source.singleFood
+                    ? t('copyMeal.foodTitle', {
+                        defaultValue: 'Copy food: {{food}}',
+                        food: source.singleFood.foodName,
+                      })
+                    : t('copyMeal.title', {
+                        defaultValue: 'Copy meal: {{meal}}',
+                        meal: sourceTitle,
+                      })}
                 </Text>
                 <Text className="text-text-secondary text-sm mt-1 text-center">
                   {t('copyMeal.sourceDate', {
@@ -370,7 +406,10 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                   isPending ||
                   !targetDate ||
                   !targetMealTypeId ||
-                  (source.date === targetDate &&
+                  // Copying a whole meal onto itself does nothing useful, but a
+                  // single food can be logged again in the same meal.
+                  (!source.singleFood &&
+                    source.date === targetDate &&
                     source.mealTypeId === targetMealTypeId)
                 }
               >

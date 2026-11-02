@@ -1,0 +1,46 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import Toast from 'react-native-toast-message';
+import { createFoodEntry } from '../services/api/foodEntriesApi';
+import type { FoodEntry } from '../types/foodEntries';
+import { buildFoodEntryCopyPayload } from '../utils/foodEntryCopy';
+import { invalidateFoodCache } from './invalidateFoodCache';
+
+interface CopyFoodEntryInput {
+  entry: FoodEntry;
+  targetDate: string;
+  targetMealTypeId: string;
+}
+
+/** Logs a single diary food again on another day or meal. */
+export function useCopyFoodEntry(options?: { onSuccess?: () => void }) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationFn: ({ entry, targetDate, targetMealTypeId }: CopyFoodEntryInput) =>
+      createFoodEntry(
+        buildFoodEntryCopyPayload(entry, targetDate, targetMealTypeId)
+      ),
+    onSuccess: (_data, { targetDate }) => {
+      // Only the target day changes; the source entry is left untouched.
+      invalidateFoodCache(queryClient, targetDate);
+      Toast.show({
+        type: 'success',
+        text1: t('foodEntryCopy.foodSuccess', { defaultValue: 'Food copied' }),
+      });
+      options?.onSuccess?.();
+    },
+    onError: () => {
+      Toast.show({
+        type: 'error',
+        text1: t('foodEntryCopy.foodFailed', {
+          defaultValue: 'Failed to copy food',
+        }),
+        text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+      });
+    },
+  });
+
+  return { copyFood: mutation.mutate, isPending: mutation.isPending };
+}
