@@ -44,6 +44,13 @@ vi.mock('../services/onlineRestoreGuard.js', () => {
   };
 });
 
+const pools = vi.hoisted(() => ({ resetPool: vi.fn() }));
+vi.mock('../db/poolManager.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../db/poolManager.js')>();
+  pools.resetPool.mockImplementation(actual.resetPool);
+  return { ...actual, resetPool: pools.resetPool };
+});
+
 const suffix = randomUUID().slice(0, 8);
 const DB_NAME = `restore_swap_${suffix}`;
 const OWNER = `restore_swap_owner_${suffix}`;
@@ -498,6 +505,45 @@ describe.skipIf(!runnable)('restore by staging and swap (PostgreSQL)', () => {
       'old.jpg',
     ]);
   }, 60_000);
+
+  it('keeps the restored uploads when the pool reset after the swap fails', async () => {
+    await resetLive();
+    // As when shutdown already ended the pools while the restore ran on.
+    pools.resetPool.mockRejectedValueOnce(
+      new Error('Called end on pool more than once')
+    );
+    const backup = archive(
+      'reset-fails.tar.gz',
+      dump("CREATE TABLE t (v text);\nINSERT INTO t VALUES ('restored');\n"),
+      { 'food_images/new.jpg': 'new' }
+    );
+
+    const result = await backupService.performRestore(backup);
+
+    await poolManager.resetPool();
+    const staging = path.join(uploads, '_staging');
+    const staged = fs
+      .readdirSync(staging)
+      .filter((entry) => entry.startsWith('restored-'));
+    try {
+      expect(result.success).toBe(false);
+      expect(result.error).toContain(staged[0]);
+      expect(await liveRows()).toEqual(['restored']);
+      expect(staged).toHaveLength(1);
+      expect(
+        fs.readdirSync(path.join(staging, staged[0]!, 'food_images'))
+      ).toEqual(['new.jpg']);
+    } finally {
+      for (const entry of staged) {
+        fs.rmSync(path.join(staging, entry), { recursive: true });
+      }
+      for (const name of await databases()) {
+        if (name.startsWith(`${DB_NAME}_pre_restore_`)) {
+          await admin.query(`DROP DATABASE ${name}`);
+        }
+      }
+    }
+  }, 120_000);
 
   it('refuses while another restore holds the lock, touching nothing', async () => {
     await resetLive();

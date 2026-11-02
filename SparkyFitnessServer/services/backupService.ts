@@ -907,8 +907,6 @@ async function restoreHoldingLock(
     await swapDatabases(client, dbName, stagingDb, retiredDb);
     stagingDb = undefined;
     log('info', `Database replaced; the previous one is kept as ${retiredDb}.`);
-    // Clients this instance pooled were ended with the old database's sessions.
-    await resetPool();
     const staged = uploadsStaging;
     // Past the database swap, a failure leaves the staged uploads for an
     // operator instead of removing them.
@@ -918,6 +916,9 @@ async function restoreHoldingLock(
       `pre-restore-${stamp}`
     );
     try {
+      // Clients this instance pooled were ended with the old database's
+      // sessions.
+      await resetPool();
       await swapUploads(staged, retiredUploads);
     } catch (error) {
       throw new Error(
