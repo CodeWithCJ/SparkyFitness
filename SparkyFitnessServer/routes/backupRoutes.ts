@@ -4,6 +4,7 @@ import { log } from '../config/logging.js';
 import {
   performBackup,
   performRestore,
+  RestoreInProgressError,
   BACKUP_DIR,
   BACKUP_FILE_PATTERN,
   listBackups,
@@ -190,7 +191,7 @@ router.post('/manual', authenticate, isAdmin, async (req, res) => {
  *       400:
  *         description: No backup file uploaded.
  *       409:
- *         description: Refused because other server instances appear to be using the database (best effort; scale to one instance first).
+ *         description: Refused because other server instances appear to be using the database (best effort; scale to one instance first), or another restore is already running.
  *       500:
  *         description: Server error during restore.
  *       503:
@@ -240,6 +241,9 @@ router.post(
     } catch (error) {
       if (error instanceof RestoreRefusedError) {
         return sendRestoreRefused(res, error);
+      }
+      if (error instanceof RestoreInProgressError) {
+        return res.status(409).json({ message: error.message });
       }
       log('error', 'Error during restore:', error);
       res.status(500).json({

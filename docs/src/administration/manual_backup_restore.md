@@ -13,14 +13,24 @@ All backup files are stored in a Docker volume mounted to the `SparkyFitnessServ
 
 A backup is built in the `.tmp` folder inside the backup directory and only moved into the backup directory once it is complete, so a backup that fails or is cut off never shows up as a backup. If the server is killed while a backup runs, its unfinished files stay in `.tmp`; the next backup clears anything there that is more than a day old, and you can delete the rest while no backup is running.
 
-**Restoring from the admin page with more than one server instance:**
+**How a restore from the admin page works:**
 
-A restore from the admin page deletes the database and the uploads folder and rebuilds them from the archive, from inside the server that received the upload. Any other server instance using the same database and uploads keeps serving during that time and would write into a half-restored database. Before you restore, scale to a single server instance:
+The server loads the archive beside your data: the database into a new database named after yours with `_restore_` and a random suffix added, and the uploads into a folder under `uploads/_staging`. It then brings that copy up to the running version's database schema, as a server start would. The app keeps showing your current data meanwhile, but refuses changes (`503`, with `Retry-After`) until the restore is done, so nothing is saved into data that is about to be replaced; apps and browsers try again afterwards.
+
+Once everything has loaded, the server closes the current database to new connections, ends the sessions still open on it, and renames both databases in one step: the restored copy takes your database's name, and the previous database is kept as `<name>_pre_restore_<date>_<time>` (UTC). The previous uploads are kept in `uploads/_staging/pre-restore-<date>_<time>`. Requests in that moment fail once and work again on the next try.
+
+If the archive is damaged, the load fails, or the swap cannot happen, your current data is left as it was. Only one restore runs at a time; a second one answers `409` until the first has finished.
+
+**Keeping or removing the previous data:** the kept database does not accept connections. Once you are happy with the restore, delete it with `DROP DATABASE <name>_pre_restore_<date>_<time>;` and delete the `pre-restore-*` folder. To go back to it instead, stop the server, then run `ALTER DATABASE <name> RENAME TO <name>_unwanted;`, `ALTER DATABASE <name>_pre_restore_<date>_<time> RENAME TO <name>;` and `ALTER DATABASE <name> WITH ALLOW_CONNECTIONS true;`, and move the folder's contents back into `uploads` (each entry carries a short random suffix to drop).
+
+**Requirements:** room for a second copy of the database and the uploads, and a database user (`SPARKY_FITNESS_DB_USER`) that can create databases, connect to the `postgres` maintenance database, and end the sessions of every role connected to your database, including `SPARKY_FITNESS_APP_DB_USER`. A superuser can do all of this. Otherwise grant it `pg_signal_backend` (`GRANT pg_signal_backend TO <user>;`, run by a superuser). Without it the restore stops before changing anything and says so.
+
+**With more than one server instance:** a restore replaces the database and the uploads folder that every instance shares. Scale to a single server instance first:
 
 - **Helm:** set `server.replicas: 1` and run `helm upgrade`. With one replica the chart runs no separate `-jobs` Deployment and does not set `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS`. Wait until `kubectl get pods` lists exactly one server pod and no server pod is still `Terminating`, then restore, then set the replica count back.
 - **Docker Compose or several containers:** stop every server container but one (for example `docker compose up -d --scale sparkyfitness-server=1`, and stop a separate jobs service if you added one), make sure the remaining one does not have `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true`, restore, then start the others again.
 
-The server refuses the restore (`409`, before the archive is uploaded) when it runs with `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true`, or when it sees database connections opened by another SparkyFitness server. It checks again just before it deletes anything. This check is best effort and does not replace scaling down: a server instance closes its idle database connections after about 30 seconds, so an instance that is running but has had no traffic for that long cannot be seen.
+The server refuses the restore (`409`, before the archive is uploaded) when it runs with `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true`, or when it sees database connections opened by another SparkyFitness server. It checks again just before the swap. This check is best effort and does not replace scaling down: a server instance closes its idle database connections after about 30 seconds, so an instance that is running but has had no traffic for that long cannot be seen.
 
 ## 2. Manual Restore (Disaster Recovery)
 

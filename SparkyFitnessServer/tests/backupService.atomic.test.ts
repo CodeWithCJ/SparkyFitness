@@ -116,6 +116,17 @@ vi.mock('../db/poolManager.js', () => ({
   resetPool: vi.fn(),
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+const restore = vi.hoisted(() => ({
+  inProgress: vi.fn(),
+  databaseId: vi.fn(),
+}));
+vi.mock('../services/restoreLock.js', () => ({
+  restoreInProgress: restore.inProgress,
+  liveDatabaseId: restore.databaseId,
+  openOwnerClient: vi.fn(),
+  RESTORE_FENCE_MS: 1000,
+  restoreLockKey: vi.fn(),
+}));
 
 import {
   BACKUP_DIR,
@@ -154,6 +165,8 @@ beforeEach(() => {
     backup_enabled: true,
     retention_days: 7,
   });
+  restore.inProgress.mockResolvedValue(false);
+  restore.databaseId.mockReturnValue('16384');
 });
 
 afterAll(() => {
@@ -516,5 +529,28 @@ describe('retention', () => {
     } finally {
       statSpy.mockRestore();
     }
+  });
+});
+
+describe('performBackup and a restore', () => {
+  it('skips the backup while a restore runs', async () => {
+    restore.inProgress.mockResolvedValue(true);
+
+    const result = await performBackup();
+
+    expect(result.success).toBe(false);
+    expect(mocks.tarCalls).toEqual([]);
+    expect(await listBackups(BACKUP_DIR)).toEqual([]);
+  });
+
+  it('discards an archive when a restore swapped the database in meanwhile', async () => {
+    restore.databaseId.mockReturnValueOnce('16384').mockReturnValue('24576');
+
+    const result = await performBackup();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/restored while this backup ran/);
+    expect(await listBackups(BACKUP_DIR)).toEqual([]);
+    expect(tmpEntries()).toEqual([]);
   });
 });

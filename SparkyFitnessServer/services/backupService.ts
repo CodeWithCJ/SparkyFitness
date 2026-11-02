@@ -6,9 +6,21 @@ import { promises } from 'fs';
 import zlib from 'zlib';
 import { pipeline } from 'stream/promises';
 import { randomBytes } from 'crypto';
+import { StringDecoder } from 'string_decoder';
 import { log } from '../config/logging.js';
 import backupSettingsRepository from '../models/backupSettingsRepository.js';
-import { endPool, resetPool } from '../db/poolManager.js';
+import pg from 'pg';
+import { resetPool } from '../db/poolManager.js';
+import type { PoolClient } from 'pg';
+import { applyMigrations } from '../utils/dbMigrations.js';
+import { applyRlsPolicies } from '../utils/applyRlsPolicies.js';
+import {
+  liveDatabaseId,
+  openOwnerClient,
+  RESTORE_FENCE_MS,
+  restoreInProgress,
+  restoreLockKey,
+} from './restoreLock.js';
 import { UPLOAD_STAGING_DIR } from '../utils/uploadsPath.js';
 import { describeError } from '../utils/errors.js';
 import {
@@ -268,6 +280,14 @@ async function performBackup(isManual = false) {
     log('info', 'Automated backup is disabled. Skipping backup.');
     return { success: true, message: 'Automated backup is disabled.' };
   }
+  if (await restoreInProgress()) {
+    log('warn', 'A backup is being restored; this backup was skipped.');
+    return {
+      success: false,
+      error: 'A backup is being restored; try again once it has finished.',
+    };
+  }
+  const startedOn = liveDatabaseId();
   await sweepStaleWorkDirs();
   const startedAt = new Date();
   const timestamp = startedAt.toISOString().replace(/[:.]/g, '-');
@@ -299,6 +319,13 @@ async function performBackup(isManual = false) {
       uploadsBackupFileName,
     ]);
     await syncFile(workArchivePath);
+    // A restore meanwhile would leave this archive with the old database and
+    // the restored uploads.
+    if ((await restoreInProgress()) || liveDatabaseId() !== startedOn) {
+      throw new Error(
+        'A backup was restored while this backup ran, so it was discarded.'
+      );
+    }
     await fsp.rename(workArchivePath, fullBackupPath);
     await syncDirectory(BACKUP_DIR);
     log('info', `Combined backup created: ${fullBackupPath}`);
@@ -432,26 +459,378 @@ async function applyRetentionPolicy() {
   }
   log('info', 'Retention policy applied successfully.');
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function performRestore(backupFilePath: any) {
-  // Also checked by the route before the upload; repeated here so no caller
-  // starts a restore without it.
-  await assertRestoreAllowed();
+class RestoreInProgressError extends Error {}
+
+// PostgreSQL silently truncates longer names, which could land on another
+// database's name.
+const MAX_DATABASE_NAME_BYTES = 63;
+
+function databaseName(dbName: string, suffix: string): string {
+  const name = `${dbName}_${suffix}`;
+  if (Buffer.byteLength(name) > MAX_DATABASE_NAME_BYTES) {
+    throw new Error(
+      `Database name ${dbName} is too long to restore beside: ${name} exceeds ${MAX_DATABASE_NAME_BYTES} bytes.`
+    );
+  }
+  return name;
+}
+
+/**
+ * e.g. 20261031_201500 (UTC): digits only, so the kept database's name needs
+ * no quoting when an operator drops or renames it.
+ */
+const restoreStamp = () =>
+  new Date()
+    .toISOString()
+    .replace(/\.\d+Z$/, '')
+    .replace(/[-:]/g, '')
+    .replace('T', '_');
+
+/**
+ * The swap ends every session on the live database, which takes the right to
+ * signal each role connected there. Checked before anything is loaded, so a
+ * restore that could not finish never starts.
+ */
+async function assertCanEndSessions(client: pg.Client, dbName: string) {
+  const { rows } = await client.query<{ role: string }>(
+    `SELECT role FROM (
+       SELECT usename::text AS role FROM pg_stat_activity
+        WHERE datname = $1 AND usename IS NOT NULL
+       UNION SELECT $2::text WHERE $2::text IS NOT NULL
+     ) roles
+     WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = role)
+       AND NOT (SELECT rolsuper FROM pg_roles WHERE rolname = current_user)
+       AND NOT pg_has_role(current_user, 'pg_signal_backend', 'USAGE')
+       AND NOT pg_has_role(current_user, role, 'USAGE')`,
+    [dbName, process.env.SPARKY_FITNESS_APP_DB_USER ?? null]
+  );
+  if (rows.length > 0) {
+    const owner = process.env.SPARKY_FITNESS_DB_USER;
+    throw new Error(
+      `The database user ${owner} cannot end sessions of ${rows.map((r) => r.role).join(', ')}, which a restore must do to swap the restored database in. Run GRANT pg_signal_backend TO "${owner}" as a superuser, then restore again. Nothing was changed.`
+    );
+  }
+}
+
+/**
+ * Statements an older install's backup can hold that only a superuser may
+ * run, and that a restore does without: the database it loads into already
+ * has its own public schema, and pg_stat_statements only collects query
+ * statistics.
+ */
+const SUPERUSER_ONLY_STATEMENTS = [
+  /^COMMENT ON SCHEMA public IS /,
+  /^CREATE EXTENSION IF NOT EXISTS pg_stat_statements /,
+  /^COMMENT ON EXTENSION pg_stat_statements IS /,
+];
+
+/** "Name" or name, as PostgreSQL resolves it. */
+function roleName(identifier: string): string {
+  const name = identifier.trim();
+  return name.startsWith('"')
+    ? name.slice(1, -1).replaceAll('""', '"')
+    : name.toLowerCase();
+}
+
+/** The roles a GRANT, REVOKE or ALTER DEFAULT PRIVILEGES line names. */
+function rolesNamed(line: string): { actors: string[]; grantees: string[] } {
+  const role = '("(?:[^"]|"")+"|[^\\s,;]+)';
+  const actors = [
+    line.match(new RegExp(`\\bFOR ROLE ${role}`)),
+    line.match(new RegExp(`\\sGRANTED BY ${role};$`)),
+  ].flatMap((match) => (match ? [roleName(match[1]!)] : []));
+  const granteeList = line.match(
+    /^.*\s(?:TO|FROM)\s+(.+?)(?:\s+WITH GRANT OPTION)?(?:\s+GRANTED BY\s+.+)?;$/
+  );
+  const grantees = (granteeList?.[1]?.split(',') ?? [])
+    .map(roleName)
+    .filter((name) => name !== 'public');
+  return { actors, grantees };
+}
+
+/** Role names on this install, and those the restoring user can act as. */
+interface InstallRoles {
+  existing: ReadonlySet<string>;
+  actAs: ReadonlySet<string>;
+}
+
+/**
+ * Drops the statements of a plain dump this install cannot run, never
+ * touching COPY data: ownership (every object stays with the owner running
+ * the restore, as pg_dump --no-owner would leave it), grants and revokes
+ * naming a role that does not exist here (a backup from an install with other
+ * role names; the migrations run afterwards grant the app role) or acting for
+ * a role the restoring user cannot act as (a backup taken as postgres,
+ * restored by an owner that is not a superuser), and the superuser-only
+ * statements above. The old restore ran on past their errors.
+ */
+function skipStatementsThisInstallCannotRun(roles: InstallRoles) {
+  const unrunnable = (line: string) => {
+    const { actors, grantees } = rolesNamed(line);
+    return (
+      actors.some((role) => !roles.actAs.has(role)) ||
+      grantees.some((role) => !roles.existing.has(role))
+    );
+  };
+  const skipped = (line: string) =>
+    /^ALTER .* OWNER TO /.test(line) ||
+    SUPERUSER_ONLY_STATEMENTS.some((pattern) => pattern.test(line)) ||
+    (/^(?:GRANT|REVOKE|ALTER DEFAULT PRIVILEGES) /.test(line) &&
+      unrunnable(line));
+  return async function* (source: AsyncIterable<Buffer>) {
+    const decoder = new StringDecoder('utf8');
+    let partial = '';
+    let inCopy = false;
+    const keep = (line: string) => {
+      if (inCopy) {
+        if (line === '\\.') inCopy = false;
+        return true;
+      }
+      if (line.startsWith('COPY ') && line.endsWith(' FROM stdin;')) {
+        inCopy = true;
+      }
+      return !skipped(line);
+    };
+    for await (const chunk of source) {
+      const lines = (partial + decoder.write(chunk)).split('\n');
+      partial = lines.pop()!;
+      const kept = lines.filter(keep);
+      if (kept.length > 0) yield kept.join('\n') + '\n';
+    }
+    const last = partial + decoder.end();
+    if (last && keep(last)) yield last;
+  };
+}
+
+async function loadDump(
+  dumpPath: string,
+  database: string,
+  roles: InstallRoles
+) {
+  const psql = spawn(
+    'psql',
+    [
+      '-h',
+      process.env.SPARKY_FITNESS_DB_HOST!,
+      '-p',
+      process.env.SPARKY_FITNESS_DB_PORT!,
+      '-U',
+      process.env.SPARKY_FITNESS_DB_USER!,
+      '-d',
+      database,
+      // Without it psql skips a failing statement and exits 0, and a partly
+      // loaded copy would replace the live database.
+      '-v',
+      'ON_ERROR_STOP=1',
+    ],
+    {
+      env: {
+        PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD,
+        ...process.env,
+      },
+      stdio: ['pipe', 'ignore', 'inherit'],
+    }
+  );
+  const exited = new Promise<void>((resolve, reject) => {
+    psql.on('close', (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error(`psql process exited with code ${code}`))
+    );
+    psql.on('error', reject);
+  });
+  await Promise.all([
+    pipeline(
+      fs.createReadStream(dumpPath),
+      zlib.createGunzip(),
+      skipStatementsThisInstallCannotRun(roles),
+      psql.stdin
+    ),
+    exited,
+  ]);
+}
+
+/**
+ * Brings the restored copy to this version's schema and policies the way a
+ * boot does, so a backup from an older release serves at once, and so a
+ * migration that fails on it fails before the swap.
+ */
+async function upgradeRestoredDatabase(database: string) {
+  const client = await openOwnerClient(database);
+  try {
+    // Both only query through the client they are given.
+    await applyMigrations(client as unknown as PoolClient);
+    await applyRlsPolicies(client as unknown as PoolClient);
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
+const SESSION_END_TIMEOUT_MS = 15_000;
+
+/**
+ * Swaps the restored database in under the live name and keeps the live one
+ * as `retired`. New sessions are refused first and the live ones ended, since
+ * a database with sessions cannot be renamed; both renames then commit
+ * together, so the live name is never missing and a failure leaves it as it
+ * was.
+ */
+async function swapDatabases(
+  client: pg.Client,
+  dbName: string,
+  restoredDb: string,
+  retiredDb: string
+) {
+  const live = client.escapeIdentifier(dbName);
+  await client.query(`ALTER DATABASE ${live} WITH ALLOW_CONNECTIONS false`);
+  try {
+    const deadline = Date.now() + SESSION_END_TIMEOUT_MS;
+    for (;;) {
+      const { rows } = await client.query<{ sessions: number }>(
+        `SELECT count(pg_terminate_backend(pid))::int AS sessions
+           FROM pg_stat_activity WHERE datname = $1`,
+        [dbName]
+      );
+      if (rows[0]!.sessions === 0) break;
+      if (Date.now() > deadline) {
+        throw new Error(
+          `${rows[0]!.sessions} sessions on ${dbName} did not end within ${SESSION_END_TIMEOUT_MS / 1000} s.`
+        );
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    await client.query('BEGIN');
+    try {
+      await client.query(
+        `ALTER DATABASE ${live} RENAME TO ${client.escapeIdentifier(retiredDb)}`
+      );
+      await client.query(
+        `ALTER DATABASE ${client.escapeIdentifier(restoredDb)} RENAME TO ${live}`
+      );
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw error;
+    }
+  } catch (error) {
+    await client
+      .query(`ALTER DATABASE ${live} WITH ALLOW_CONNECTIONS true`)
+      .catch((reopenError) =>
+        log('error', `Failed to reopen ${dbName} to connections:`, reopenError)
+      );
+    throw error;
+  }
+}
+
+// Restore staging lives under the request staging directory: the same
+// filesystem as the uploads, so the swap is a rename, and skipped by backups.
+const UPLOADS_STAGING_PREFIX = 'restore-';
+const uploadsStagingRoot = () =>
+  path.join(UPLOADS_BASE_DIR, UPLOAD_STAGING_DIR);
+
+async function removeStaleUploadStaging() {
+  let entries: string[];
+  try {
+    entries = await fsp.readdir(uploadsStagingRoot());
+  } catch (error) {
+    if (isNotFound(error)) return;
+    throw error;
+  }
+  for (const entry of entries) {
+    if (entry.startsWith(UPLOADS_STAGING_PREFIX)) {
+      await fsp.rm(path.join(uploadsStagingRoot(), entry), {
+        recursive: true,
+        force: true,
+      });
+    }
+  }
+}
+
+/**
+ * Moves the current uploads into `retired` and the restored ones into place,
+ * entry by entry, leaving request staging alone.
+ */
+async function swapUploads(staged: string, retired: string) {
+  await fsp.mkdir(retired, { recursive: true });
+  const retire = async (entry: string) =>
+    fsp.rename(
+      path.join(UPLOADS_BASE_DIR, entry),
+      path.join(retired, `${entry}-${randomBytes(4).toString('hex')}`)
+    );
+  for (const entry of await fsp.readdir(UPLOADS_BASE_DIR)) {
+    if (entry !== UPLOAD_STAGING_DIR) await retire(entry);
+  }
+  for (const entry of await fsp.readdir(staged)) {
+    // A request staging directory in the archive is never restored.
+    if (entry === UPLOAD_STAGING_DIR) continue;
+    const target = path.join(UPLOADS_BASE_DIR, entry);
+    try {
+      await fsp.rename(path.join(staged, entry), target);
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== 'EEXIST' && code !== 'ENOTEMPTY') throw error;
+      await retire(entry);
+      await fsp.rename(path.join(staged, entry), target);
+    }
+  }
+  await fsp.rm(staged, { recursive: true, force: true });
+}
+
+/**
+ * Restores a combined backup while the server keeps serving reads:
+ * - one restore at a time, under a session-level advisory lock in the
+ *   maintenance database (freed if this process dies); while it is held every
+ *   instance refuses writes (middleware/restoreWriteFence.ts), since anything
+ *   written now would be replaced;
+ * - the database loads into a new database and the uploads into a staging
+ *   folder, and the copy is upgraded to this version; a failure up to here
+ *   leaves the live data untouched;
+ * - the restored database is swapped in by rename, the live one kept as
+ *   `<db>_pre_restore_<stamp>` and the current uploads as
+ *   `uploads/_staging/pre-restore-<stamp>`, for an operator to roll back to or
+ *   delete.
+ * Throws RestoreInProgressError when another restore holds the lock.
+ */
+async function performRestore(backupFilePath: string) {
   log('info', `Starting restore process from ${backupFilePath}`);
-  let tempRestoreDir; // Declare tempRestoreDir outside the try block
+  const dbName = process.env.SPARKY_FITNESS_DB_NAME!;
+  const client = await openOwnerClient();
+  try {
+    const { rows } = await client.query<{ locked: boolean }>(
+      'SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS locked',
+      [restoreLockKey(dbName)]
+    );
+    if (!rows[0]!.locked) {
+      throw new RestoreInProgressError(
+        'Another restore is already running; try again once it has finished.'
+      );
+    }
+    // Instances trust their last look at the lock for RESTORE_FENCE_MS.
+    const fenced = Date.now() + 2 * RESTORE_FENCE_MS;
+    return await restoreHoldingLock(client, backupFilePath, dbName, fenced);
+  } finally {
+    await client.end().catch(() => {});
+  }
+}
+
+async function restoreHoldingLock(
+  client: pg.Client,
+  backupFilePath: string,
+  dbName: string,
+  fenced: number
+) {
+  let tempRestoreDir: string | undefined;
+  let stagingDb: string | undefined;
+  let uploadsStaging: string | undefined;
   let endRestoreMark: (() => void) | undefined;
   try {
-    // 1. Validate backup file
     await fsp.access(backupFilePath, fsp.constants.R_OK);
-    log('info', `Backup file ${backupFilePath} is accessible.`);
-    // 2. Create a temporary directory for extraction
+    await assertRestoreAllowed();
+    await assertCanEndSessions(client, dbName);
     tempRestoreDir = path.join(BACKUP_DIR, `restore_temp_${Date.now()}`);
     await fsp.mkdir(tempRestoreDir, { recursive: true });
-    log('info', `Created temporary restore directory: ${tempRestoreDir}`);
-    // 3. Extract the combined archive
     log('info', `Extracting combined backup archive: ${backupFilePath}`);
     await executeCommand('tar', ['-xzf', backupFilePath, '-C', tempRestoreDir]);
-    log('info', 'Combined backup archive extracted.');
     const extractedFiles = await fsp.readdir(tempRestoreDir);
     const dbDumpFile = extractedFiles.find(
       (f) => f.startsWith('sparkyfitness_db_backup_') && f.endsWith('.sql.gz')
@@ -465,151 +844,121 @@ async function performRestore(backupFilePath: any) {
         'Combined backup archive does not contain expected database dump or uploads tar file.'
       );
     }
-    const extractedDbDumpPath = path.join(tempRestoreDir, dbDumpFile);
-    const extractedUploadsTarPath = path.join(tempRestoreDir, uploadsTarFile);
-    // 4. Wipe current database and uploads
-    // Extracting a large archive takes a while; another instance may have
-    // started meanwhile.
-    await assertRestoreAllowed();
-    log('warn', 'Wiping current database...');
-    endRestoreMark = markRestoreRunning();
-    // End all connections in the pool
-    await endPool();
-    log('info', 'Closed database connection pool.');
-    // Terminate all other connections to the database
-    const terminateConnectionsCommand = `SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = '${process.env.SPARKY_FITNESS_DB_NAME}' AND pid <> pg_backend_pid();`;
-    await executeCommand(
-      'psql',
-      [
-        '-h',
-        process.env.SPARKY_FITNESS_DB_HOST!,
-        '-p',
-        process.env.SPARKY_FITNESS_DB_PORT!,
-        '-U',
-        process.env.SPARKY_FITNESS_DB_USER!,
-        '-d',
-        'postgres',
-        '-c',
-        terminateConnectionsCommand,
-      ],
-      {
-        env: {
-          PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD,
-          ...process.env,
-        },
-      }
+    // A name no other database has: the staging database is dropped on
+    // failure, so it must be one this restore created.
+    stagingDb = databaseName(
+      dbName,
+      `restore_${randomBytes(6).toString('hex')}`
     );
-    log('info', 'Terminated active database connections.');
-    // Drop and recreate database to ensure a clean state
-    const dbEnv = {
-      PGPASSWORD: process.env.SPARKY_FITNESS_DB_PASSWORD,
-      ...process.env,
-    };
-    const dbConnectionArgs = [
-      '-h',
-      process.env.SPARKY_FITNESS_DB_HOST!,
-      '-p',
-      process.env.SPARKY_FITNESS_DB_PORT!,
-      '-U',
-      process.env.SPARKY_FITNESS_DB_USER!,
-      process.env.SPARKY_FITNESS_DB_NAME!,
-    ];
-    await executeCommand('dropdb', ['--if-exists', ...dbConnectionArgs], {
-      env: dbEnv,
+    const stamp = restoreStamp();
+    const retiredDb = databaseName(dbName, `pre_restore_${stamp}`);
+    await client.query(`CREATE DATABASE ${client.escapeIdentifier(stagingDb)}`);
+    log('info', `Loading the backup into ${stagingDb}...`);
+    const { rows: roleRows } = await client.query<{
+      rolname: string;
+      act_as: boolean;
+    }>(
+      `SELECT rolname, pg_has_role(current_user, oid, 'MEMBER') AS act_as
+         FROM pg_roles`
+    );
+    await loadDump(path.join(tempRestoreDir, dbDumpFile), stagingDb, {
+      existing: new Set(roleRows.map((row) => row.rolname)),
+      actAs: new Set(
+        roleRows.filter((row) => row.act_as).map((row) => row.rolname)
+      ),
     });
-    await executeCommand('createdb', dbConnectionArgs, { env: dbEnv });
-    log('info', 'Database wiped and recreated.');
-    // Reinitialize the pool after database recreation
-    await resetPool();
-    log('info', 'Reinitialized database connection pool.');
-    // Reconfigure session middleware with the new pool
-    // const { configureSessionMiddleware } = require('../SparkyFitnessServer');
-    // configureSessionMiddleware(getRawOwnerPool());
-    // log('info', 'Reconfigured session middleware with new database pool.');
-    log('warn', `Wiping current uploads directory: ${UPLOADS_BASE_DIR}...`);
-    await fsp.rm(UPLOADS_BASE_DIR, { recursive: true, force: true });
-    await fsp.mkdir(UPLOADS_BASE_DIR, { recursive: true });
-    log('info', 'Uploads directory wiped.');
-    // 5. Restore database
-    log('info', 'Restoring database from dump...');
-    const psqlArgs = [
-      '-h',
-      process.env.SPARKY_FITNESS_DB_HOST,
-      '-p',
-      process.env.SPARKY_FITNESS_DB_PORT,
-      '-U',
-      process.env.SPARKY_FITNESS_DB_USER,
-      '-d',
-      process.env.SPARKY_FITNESS_DB_NAME,
-    ];
-    // @ts-expect-error TS(2769): No overload matches this call.
-    const psql = spawn('psql', psqlArgs, { env: dbEnv });
-    const gunzip = zlib.createGunzip();
-    const input = fs.createReadStream(extractedDbDumpPath);
-    // @ts-expect-error TS(2339): Property 'stdin' does not exist on type 'never'.
-    await pipeline(input, gunzip, psql.stdin);
-    await new Promise((resolve, reject) => {
-      // @ts-expect-error TS(2339): Property 'on' does not exist on type 'never'.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      psql.on('close', (code: any) => {
-        if (code === 0) {
-          // @ts-expect-error TS(2794): Expected 1 arguments, but got 0. Did you forget to... Remove this comment to see the full error message
-          resolve();
-        } else {
-          reject(new Error(`psql process exited with code ${code}`));
-        }
-      });
-      // @ts-expect-error TS(2339): Property 'on' does not exist on type 'never'.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      psql.on('error', (err: any) => reject(err));
-    });
-    log('info', 'Database restored successfully.');
-    // 6. Restore uploads
-    log('info', 'Restoring uploads folder...');
+    await upgradeRestoredDatabase(stagingDb);
+    await removeStaleUploadStaging();
+    uploadsStaging = path.join(
+      uploadsStagingRoot(),
+      `${UPLOADS_STAGING_PREFIX}${randomBytes(6).toString('hex')}`
+    );
+    await fsp.mkdir(uploadsStaging, { recursive: true });
     await executeCommand('tar', [
       '-xzf',
-      extractedUploadsTarPath,
+      path.join(tempRestoreDir, uploadsTarFile),
       '-C',
-      UPLOADS_BASE_DIR,
+      uploadsStaging,
     ]);
-    log('info', 'Uploads folder restored successfully.');
-    // 7. Clean up temporary directory
-    log('info', `Cleaning up temporary restore directory: ${tempRestoreDir}`);
-    await fsp.rm(tempRestoreDir, { recursive: true, force: true });
-    log('info', 'Temporary restore directory removed.');
+    const unfenced = fenced - Date.now();
+    if (unfenced > 0) await new Promise((r) => setTimeout(r, unfenced));
+    // Loading a large backup takes a while; another instance may have
+    // started meanwhile.
+    await assertRestoreAllowed();
+    // Out of the restore- prefix before the database swap: if this process
+    // dies before the uploads are moved, a later restore's cleanup must not
+    // delete the uploads of a database already swapped in.
+    const promoted = path.join(uploadsStagingRoot(), `restored-${stamp}`);
+    await fsp.rename(uploadsStaging, promoted);
+    uploadsStaging = promoted;
+    log('warn', `Swapping the restored database in as ${dbName}...`);
+    endRestoreMark = markRestoreRunning();
+    await swapDatabases(client, dbName, stagingDb, retiredDb);
+    stagingDb = undefined;
+    log('info', `Database replaced; the previous one is kept as ${retiredDb}.`);
+    // Clients this instance pooled were ended with the old database's sessions.
+    await resetPool();
+    const staged = uploadsStaging;
+    // Past the database swap, a failure leaves the staged uploads for an
+    // operator instead of removing them.
+    uploadsStaging = undefined;
+    const retiredUploads = path.join(
+      uploadsStagingRoot(),
+      `pre-restore-${stamp}`
+    );
+    try {
+      await swapUploads(staged, retiredUploads);
+    } catch (error) {
+      throw new Error(
+        `The database was restored, but moving the uploads failed. The restored uploads are in ${staged}, the previous ones in ${retiredUploads}.`,
+        { cause: error }
+      );
+    }
+    log(
+      'info',
+      `Uploads replaced; the previous ones are kept in ${retiredUploads}.`
+    );
     return { success: true };
   } catch (error) {
     log('error', 'Restore failed:', error);
-    // Attempt to clean up temp directory even if restore fails
-    if (tempRestoreDir) {
-      try {
-        log(
-          'info',
-          `Attempting to clean up temporary restore directory ${tempRestoreDir} after failure.`
+    if (stagingDb) {
+      const name = stagingDb;
+      await client
+        .query(
+          `DROP DATABASE IF EXISTS ${client.escapeIdentifier(name)} WITH (FORCE)`
+        )
+        .catch((cleanupError) =>
+          log('error', `Failed to drop staging database ${name}:`, cleanupError)
         );
-        await fsp.rm(tempRestoreDir, { recursive: true, force: true });
-        log(
-          'info',
-          `Temporary restore directory ${tempRestoreDir} cleaned up successfully after failure.`
+    }
+    if (uploadsStaging) {
+      await fsp
+        .rm(uploadsStaging, { recursive: true, force: true })
+        .catch((cleanupError) =>
+          log('error', `Failed to remove ${uploadsStaging}:`, cleanupError)
         );
-      } catch (cleanupError) {
-        log(
-          'error',
-          `Failed to clean up temporary restore directory ${tempRestoreDir}:`,
-          cleanupError
-        );
-      }
     }
     if (error instanceof RestoreRefusedError) throw error;
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    return { success: false, error: error.message };
+    return { success: false, error: describeError(error) };
   } finally {
     endRestoreMark?.();
+    if (tempRestoreDir) {
+      await fsp
+        .rm(tempRestoreDir, { recursive: true, force: true })
+        .catch((cleanupError) =>
+          log('error', `Failed to remove ${tempRestoreDir}:`, cleanupError)
+        );
+    }
   }
 }
+
 export { performBackup };
 export { applyRetentionPolicy };
-export { performRestore };
+export {
+  performRestore,
+  RestoreInProgressError,
+  skipStatementsThisInstallCannotRun,
+};
 export { ensureBackupDirectory };
 export { executeCommand };
 export { BACKUP_DIR };
