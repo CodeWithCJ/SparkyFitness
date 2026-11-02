@@ -5,7 +5,7 @@ import type {
   WorkoutPresetExercise,
   WorkoutPresetSet,
 } from '@/types/workout';
-import { firstExerciseImage } from '@/utils/exerciseArrays';
+import { firstExerciseImage } from '@/utils/exercises';
 import { generateClientId } from '@/utils/generateClientId';
 import { debug } from '@/utils/logging';
 import {

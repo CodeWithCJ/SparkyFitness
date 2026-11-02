@@ -39,21 +39,3 @@ export function normalizeExerciseArrays(exercise: Exercise): Exercise {
     secondary_muscles: toStringArray(raw.secondary_muscles),
   };
 }
-
-// A real image reference is a path or URL. A lone "[" or '"' is the first
-// character of a JSON array or string mistaken for an array, which is what
-// earlier web preset saves stored as a preset exercise's image_url.
-function isImageReference(value: string): boolean {
-  return value.length > 1 && !value.startsWith('[') && !value.startsWith('"');
-}
-
-/**
- * The first usable image of an exercise: from an images array, its stored
- * JSON text, or a single stored image_url. Returns undefined when there is
- * none, including for those stray characters.
- */
-export function firstExerciseImage(value: unknown): string | undefined {
-  return (toStringArray(value) ?? [])
-    .map((item) => item.trim())
-    .find(isImageReference);
-}

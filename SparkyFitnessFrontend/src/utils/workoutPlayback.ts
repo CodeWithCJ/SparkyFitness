@@ -19,7 +19,7 @@ import {
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
 import type { Exercise } from '@/types/exercises';
 import { defaultSetForModality } from '@/constants/exercises';
-import { firstExerciseImage } from '@/utils/exerciseArrays';
+import { firstExerciseImage } from '@/utils/exercises';
 import { generateClientId } from '@/utils/generateClientId';
 
 export const DEFAULT_REST_SECONDS = 90;
