@@ -1,4 +1,7 @@
-import { buildFoodEntryCopyPayload } from '../../src/utils/foodEntryCopy';
+import {
+  buildFoodEntryCopyPayload,
+  currentEntryTime,
+} from '../../src/utils/foodEntryCopy';
 import type { FoodEntry } from '../../src/types/foodEntries';
 
 const baseEntry: FoodEntry = {
@@ -58,5 +61,24 @@ describe('buildFoodEntryCopyPayload', () => {
     expect(payload.variant_id).toBeUndefined();
     expect(payload.food_name).toBe('Porridge');
     expect(payload.calories).toBe(150);
+  });
+
+  it('logs the copy at the given time instead of the original one', () => {
+    const payload = buildFoodEntryCopyPayload(
+      baseEntry,
+      '2026-11-02',
+      'lunch-id',
+      '21:36'
+    );
+    expect(payload.entry_time).toBe('21:36');
+  });
+});
+
+describe('currentEntryTime', () => {
+  afterEach(() => jest.useRealTimers());
+
+  it('is the device local time as HH:MM', () => {
+    jest.useFakeTimers().setSystemTime(new Date(2026, 10, 2, 21, 36, 15));
+    expect(currentEntryTime()).toBe('21:36');
   });
 });

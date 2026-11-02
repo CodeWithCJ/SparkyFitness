@@ -24,7 +24,7 @@ import { addDays, dayToPickerDate, localDateToDay } from '@workspace/shared';
 import type { CopyFoodEntriesPayload } from '../services/api/foodEntriesApi';
 
 const QUICK_TARGETS = ['now', 'today', 'tomorrow'] as const;
-type QuickTarget = (typeof QUICK_TARGETS)[number];
+export type QuickTarget = (typeof QUICK_TARGETS)[number];
 
 /** Copying one food instead of a whole meal: titled by the food's name. */
 export interface CopySingleFoodOptions {
@@ -43,10 +43,13 @@ export interface CopyMealSheetRef {
 
 interface CopyMealSheetProps {
   isPending?: boolean;
-  /** `targetMealTypeId` is the picked meal type's id, for single-food copies. */
+  /**
+   * `targetMealTypeId` is the picked meal type's id, for single-food copies;
+   * `quickTarget` is the quick choice behind the date, if one was used.
+   */
   onCopy: (
     payload: CopyFoodEntriesPayload,
-    target: { targetMealTypeId: string }
+    target: { targetMealTypeId: string; quickTarget: QuickTarget | null }
   ) => void;
 }
 
@@ -201,7 +204,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
             targetDate,
             targetMealType: targetType.name,
           },
-          { targetMealTypeId: targetType.id }
+          { targetMealTypeId: targetType.id, quickTarget }
         );
         return;
       }
@@ -238,9 +241,17 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
           targetDate,
           targetMealType: targetType.name,
         },
-        { targetMealTypeId: targetType.id }
+        { targetMealTypeId: targetType.id, quickTarget }
       );
-    }, [source, targetDate, targetMealTypeId, mealTypes, onCopy, t]);
+    }, [
+      source,
+      targetDate,
+      targetMealTypeId,
+      mealTypes,
+      onCopy,
+      t,
+      quickTarget,
+    ]);
 
     return (
       <BottomSheetModal

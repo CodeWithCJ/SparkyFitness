@@ -50,6 +50,7 @@ import {
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
 import { useCopyFoodEntry } from '../hooks/useCopyFoodEntry';
+import { currentEntryTime } from '../utils/foodEntryCopy';
 import CopyMealSheet, {
   type CopyMealSheetRef,
 } from '../components/CopyMealSheet';
@@ -1591,11 +1592,16 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         <CopyMealSheet
           ref={copySheetRef}
           isPending={isCopyPending}
-          onCopy={(payload, { targetMealTypeId }) =>
+          onCopy={(payload, { targetMealTypeId, quickTarget }) =>
             copyFood({
               entry,
               targetDate: payload.targetDate,
               targetMealTypeId,
+              // "Now" logs the copy at the current time; any other target
+              // keeps the time of day the food was first logged at.
+              ...(quickTarget === 'now'
+                ? { entryTime: currentEntryTime() }
+                : {}),
             })
           }
         />

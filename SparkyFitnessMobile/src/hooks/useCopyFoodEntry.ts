@@ -10,6 +10,8 @@ interface CopyFoodEntryInput {
   entry: FoodEntry;
   targetDate: string;
   targetMealTypeId: string;
+  /** 'HH:MM' to log the copy at; omitted keeps the original's time. */
+  entryTime?: string;
 }
 
 /** Logs a single diary food again on another day or meal. */
@@ -18,9 +20,19 @@ export function useCopyFoodEntry(options?: { onSuccess?: () => void }) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: ({ entry, targetDate, targetMealTypeId }: CopyFoodEntryInput) =>
+    mutationFn: ({
+      entry,
+      targetDate,
+      targetMealTypeId,
+      entryTime,
+    }: CopyFoodEntryInput) =>
       createFoodEntry(
-        buildFoodEntryCopyPayload(entry, targetDate, targetMealTypeId)
+        buildFoodEntryCopyPayload(
+          entry,
+          targetDate,
+          targetMealTypeId,
+          entryTime
+        )
       ),
     onSuccess: (_data, { targetDate }) => {
       // Only the target day changes; the source entry is left untouched.
