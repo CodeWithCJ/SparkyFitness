@@ -72,3 +72,16 @@ export const rotateChatConversationId = async (
     warnFallback('Could not clear the stored conversation ID', error);
   }
 };
+
+// A provider change starts a new conversation for every acting user. It doesn't
+// know which user is acting, so it clears all stored IDs.
+export const rotateAllChatConversationIds = (): void => {
+  memoryFallback.clear();
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith(`${STORAGE_PREFIX}:`)) localStorage.removeItem(key);
+    }
+  } catch (error) {
+    warnFallback('Could not clear the stored conversation IDs', error);
+  }
+};

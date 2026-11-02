@@ -2,6 +2,7 @@ import { webcrypto } from 'node:crypto';
 import { warn } from '@/utils/logging';
 import {
   getChatConversationId,
+  rotateAllChatConversationIds,
   rotateChatConversationId,
 } from '@/utils/chatConversationId';
 
@@ -36,6 +37,16 @@ describe('chatConversationId', () => {
     await rotateChatConversationId('user-a');
     expect(await getChatConversationId('user-a')).not.toBe(a);
     expect(await getChatConversationId('user-b')).toBe(b);
+  });
+
+  it('rotates every stored ID and leaves other stored values alone', async () => {
+    const a = await getChatConversationId('user-a');
+    const b = await getChatConversationId('user-b');
+    localStorage.setItem('unrelated-key', 'keep');
+    rotateAllChatConversationIds();
+    expect(await getChatConversationId('user-a')).not.toBe(a);
+    expect(await getChatConversationId('user-b')).not.toBe(b);
+    expect(localStorage.getItem('unrelated-key')).toBe('keep');
   });
 
   it('never stores the raw user ID in the storage key', async () => {

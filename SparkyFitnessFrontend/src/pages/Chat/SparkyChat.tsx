@@ -58,13 +58,12 @@ const SparkyChat = () => {
     return null;
   }
 
-  const handleServiceSwitch = async (serviceId: string) => {
+  const handleServiceSwitch = (serviceId: string) => {
     updatePreferences({
       active_ai_service_id: serviceId,
       auto_clear_history: preferences?.auto_clear_history || 'never',
     });
     // Reset chat since we're switching providers
-    await rotateChatConversationId(activeUserId ?? '');
     setResetKey((prev) => prev + 1);
   };
 
