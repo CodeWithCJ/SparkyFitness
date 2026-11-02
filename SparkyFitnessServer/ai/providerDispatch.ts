@@ -9,6 +9,7 @@ import {
   getDefaultVisionModel,
   getOpenAiCompatibleBaseUrl,
   getPerplexityPreset,
+  OPENCODE_GO_USER_AGENT,
 } from './config.js';
 import {
   createGuardedDispatcher,
@@ -766,6 +767,7 @@ function buildOpenAiFamilyRequest(ctx: BuildContext): BuiltRequest {
       Authorization: `Bearer ${ctx.provider.api_key || 'no-key'}`,
       ...(ctx.provider.service_type === 'opencode_go' && {
         'x-opencode-session': ctx.sessionId,
+        'User-Agent': OPENCODE_GO_USER_AGENT,
       }),
     },
     body,

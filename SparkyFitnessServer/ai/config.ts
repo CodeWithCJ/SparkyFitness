@@ -1,3 +1,8 @@
+import pkg from '../package.json' with { type: 'json' };
+
+// OpenCode asks clients to identify themselves rather than send a generic SDK name.
+const OPENCODE_GO_USER_AGENT = `${pkg.name}/${pkg.version} (https://github.com/CodeWithCJ/SparkyFitness)`;
+
 function getDefaultModel(serviceType?: string | null): string {
   switch (serviceType) {
     case 'openai':
@@ -112,6 +117,7 @@ export { getDefaultModel };
 export { getDefaultVisionModel };
 export { getOpenAiCompatibleBaseUrl };
 export { getPerplexityPreset };
+export { OPENCODE_GO_USER_AGENT };
 export default {
   getDefaultModel,
   getDefaultVisionModel,

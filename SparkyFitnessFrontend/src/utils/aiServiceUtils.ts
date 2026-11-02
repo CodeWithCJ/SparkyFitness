@@ -137,3 +137,14 @@ export const getModelOptions = (serviceType: string): string[] => {
       return [];
   }
 };
+
+// Whether a saved model must be edited in custom-model mode. OpenCode Go's
+// catalog is fetched at runtime, so its saved model cannot be checked against
+// a static list; ServiceForm keeps an unlisted saved model in its dropdown.
+export const isCustomModelName = (
+  serviceType: string,
+  modelName: string | null | undefined
+): boolean => {
+  if (!modelName || serviceType === 'opencode_go') return false;
+  return !getModelOptions(serviceType).includes(modelName);
+};

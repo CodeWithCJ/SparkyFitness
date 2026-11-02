@@ -620,11 +620,13 @@ describe('chatService.listOpenCodeGoModels', () => {
       model_name: 'gpt-4o',
       is_public: false,
     });
+    const fetchMock = vi.fn();
+    global.fetch = fetchMock as typeof global.fetch;
 
     await expect(
       chatService.listOpenCodeGoModels({ id: 'service-1' }, USER_ID, false)
     ).rejects.toMatchObject({ statusCode: 400 });
-    expect(global.fetch).toBe(originalFetch);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it('blocks non-admin access to a saved global API key', async () => {
@@ -635,11 +637,13 @@ describe('chatService.listOpenCodeGoModels', () => {
       model_name: 'glm-5.3-flash',
       is_public: true,
     });
+    const fetchMock = vi.fn();
+    global.fetch = fetchMock as typeof global.fetch;
 
     await expect(
       chatService.listOpenCodeGoModels({ id: 'global-1' }, USER_ID, false)
     ).rejects.toMatchObject({ statusCode: 403 });
-    expect(global.fetch).toBe(originalFetch);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 
@@ -656,7 +660,12 @@ describe('OpenCode Go chat model session header', () => {
     expect(mockCreateOpenAI).toHaveBeenCalledWith({
       baseURL: 'https://opencode.ai/inference/go/openai/v1',
       apiKey: 'go-key',
-      headers: { 'x-opencode-session': 'stable-session-id' },
+      headers: {
+        'x-opencode-session': 'stable-session-id',
+        'User-Agent': expect.stringContaining(
+          'github.com/CodeWithCJ/SparkyFitness'
+        ),
+      },
     });
   });
 });

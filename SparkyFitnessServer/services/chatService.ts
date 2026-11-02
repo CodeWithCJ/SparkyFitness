@@ -6,6 +6,7 @@ import {
   getDefaultModel,
   getOpenAiCompatibleBaseUrl,
   getPerplexityPreset,
+  OPENCODE_GO_USER_AGENT,
 } from '../ai/config.js';
 import {
   dispatchAiRequest,
@@ -74,6 +75,7 @@ interface ChatMessage {
 
 import {
   APICallError,
+  RetryError,
   generateText,
   streamText,
   stepCountIs,
@@ -1574,7 +1576,10 @@ function createChatModelInstance(
       baseURL,
       apiKey: apiKey || 'no-key',
       ...(aiService.service_type === 'opencode_go' && {
-        headers: { 'x-opencode-session': sessionId },
+        headers: {
+          'x-opencode-session': sessionId,
+          'User-Agent': OPENCODE_GO_USER_AGENT,
+        },
       }),
     };
     if (aiService.service_type === 'perplexity') {
@@ -1633,6 +1638,7 @@ async function runWithTemperatureFallback<T>(
 // into user-facing detail), but bounded so a verbose provider cannot flood the
 // log.
 const MAX_LOGGED_ERROR_CHARS = 300;
+const MAX_CLIENT_ERROR_CHARS = 500;
 
 /**
  * Renders a provider error as a log-safe one-liner.
@@ -1656,6 +1662,24 @@ function describeProviderError(error: unknown): string {
     return `${error.name}: ${truncate(error.message)}`;
   }
   return 'unknown error';
+}
+
+/**
+ * The text a chat client receives when a stream fails. The AI SDK replaces
+ * every stream error with a generic message unless told otherwise. A provider's
+ * own API error message is what the user needs to act on (for example, a model
+ * that needs an account setting changed), so it is passed through. Anything
+ * else stays generic.
+ */
+function chatStreamErrorMessage(error: unknown): string {
+  const apiError = RetryError.isInstance(error) ? error.lastError : error;
+  if (APICallError.isInstance(apiError) && apiError.message.trim()) {
+    const text = apiError.message.trim();
+    return text.length > MAX_CLIENT_ERROR_CHARS
+      ? `${text.slice(0, MAX_CLIENT_ERROR_CHARS)}…`
+      : text;
+  }
+  return 'The AI service could not complete the request.';
 }
 
 /**
@@ -2159,6 +2183,20 @@ Your response must contain ONLY the matched domain names as a comma-separated li
   return [];
 }
 
+/**
+ * Stable per-conversation session ID for providers that pin a conversation to
+ * one server-side session (OpenCode Go's x-opencode-session affinity header).
+ * Without a client-supplied conversation ID each turn gets a fresh session.
+ */
+function buildChatSessionId(
+  authenticatedUserId: string,
+  conversationId?: string
+): string {
+  return createHash('sha256')
+    .update(`${authenticatedUserId}:${conversationId?.trim() || randomUUID()}`)
+    .digest('hex');
+}
+
 async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -2166,7 +2204,7 @@ async function processChatMessage(
   authenticatedUserId: string,
   actorIsAdmin = false,
   toolCategories?: readonly string[],
-  opencodeSessionId?: string
+  conversationId?: string
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -2196,11 +2234,7 @@ async function processChatMessage(
     const modelName =
       aiService.model_name || getDefaultModel(aiService.service_type);
     const networkPolicy = await resolveAiNetworkPolicy(aiService, actorIsAdmin);
-    const sessionId = createHash('sha256')
-      .update(
-        `${authenticatedUserId}:${opencodeSessionId?.trim() || randomUUID()}`
-      )
-      .digest('hex');
+    const sessionId = buildChatSessionId(authenticatedUserId, conversationId);
 
     const modelInstance = createChatModelInstance(
       aiService,
@@ -2686,6 +2720,7 @@ async function listOpenCodeGoModels(
         Authorization: `Bearer ${apiKey}`,
         Accept: 'application/json',
         'x-opencode-session': randomUUID(),
+        'User-Agent': OPENCODE_GO_USER_AGENT,
       },
       signal: AbortSignal.timeout(TEST_CONNECTION_TIMEOUT_MS),
     });
@@ -2806,7 +2841,7 @@ async function processChatMessageStream(
   authenticatedUserId: string,
   actorIsAdmin = false,
   toolCategories?: readonly string[],
-  opencodeSessionId?: string
+  conversationId?: string
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -2826,11 +2861,7 @@ async function processChatMessageStream(
     const modelName =
       aiService.model_name || getDefaultModel(aiService.service_type);
     const networkPolicy = await resolveAiNetworkPolicy(aiService, actorIsAdmin);
-    const sessionId = createHash('sha256')
-      .update(
-        `${authenticatedUserId}:${opencodeSessionId?.trim() || randomUUID()}`
-      )
-      .digest('hex');
+    const sessionId = buildChatSessionId(authenticatedUserId, conversationId);
 
     log(
       'info',
@@ -3087,6 +3118,7 @@ async function processChatMessageStream(
             part.type === 'finish'
               ? mapUsageToMetadata(part.totalUsage)
               : undefined,
+          onError: chatStreamErrorMessage,
         })
       ),
     };
@@ -3115,6 +3147,7 @@ export { processFoodOptionsRequest };
 export { testAiServiceConnection };
 export { listOpenCodeGoModels };
 export { processChatMessageStream };
+export { chatStreamErrorMessage };
 export { createPerplexityFetch };
 export { createChatModelInstance };
 export default {

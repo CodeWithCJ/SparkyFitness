@@ -78,7 +78,7 @@ export const testAiServiceConnectionResponseSchema = z.object({
 });
 
 export const listOpenCodeGoModelsRequestSchema = z.object({
-  id: z.string().optional(),
+  id: z.string().uuid().optional(),
   api_key: z.string().optional(),
 });
 

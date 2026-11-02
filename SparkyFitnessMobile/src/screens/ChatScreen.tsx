@@ -86,6 +86,7 @@ import {
   type PickedChatImage,
 } from '../utils/pickImage';
 import { resolveSpeechLocale } from '../utils/speechLocale';
+import { newUuid } from '../utils/ids';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   useActiveAiServiceSetting,
@@ -168,6 +169,9 @@ function useSparkyChatRuntime({
   initialMessages: InitialMessages;
 }) {
   const { t } = useTranslation();
+  // One ID per mounted thread: ChatThread remounts on "clear chat", which starts
+  // a new conversation. The server pins session-affine providers to it.
+  const [conversationId] = useState(newUuid);
   const transport = useMemo(
     () =>
       new AssistantChatTransport({
@@ -185,15 +189,14 @@ function useSparkyChatRuntime({
             : {};
         },
         // Merged into the request body alongside `messages`; the server reads it.
-        body: { service_config_id: serviceConfigId },
+        body: { service_config_id: serviceConfigId, conversationId },
       }),
-    [baseUrl, serviceConfigId]
+    [baseUrl, serviceConfigId, conversationId]
   );
 
   // Thread-level safety net: a per-message error box can't render if the stream
-  // fails before any assistant message exists, so surface a toast too. (AI SDK 6
-  // redacts mid-stream server errors to a generic message on the client unless the
-  // server supplies an onError mapper to its stream response — out of mobile scope.)
+  // fails before any assistant message exists, so surface a toast too. The server's
+  // stream onError mapper passes provider error messages through, so this shows them.
   return useChatRuntime({
     transport,
     // Seed prior history (the runtime ignores changes after mount — see ChatThread's key).

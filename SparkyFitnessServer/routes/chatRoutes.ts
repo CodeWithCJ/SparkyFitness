@@ -285,8 +285,8 @@ router.post('/', authenticate, async (req, res, next) => {
       req.authenticatedUserId,
       isAdmin,
       toolCategories,
-      typeof req.body?.opencodeSessionId === 'string'
-        ? req.body.opencodeSessionId
+      typeof req.body?.conversationId === 'string'
+        ? req.body.conversationId
         : undefined
     );
     return res.status(200).json({ content, action: actionType, executedTools });
@@ -350,8 +350,8 @@ router.post('/stream', authenticate, async (req, res, next) => {
       req.authenticatedUserId,
       isAdmin,
       toolCategories,
-      typeof req.body?.opencodeSessionId === 'string'
-        ? req.body.opencodeSessionId
+      typeof req.body?.conversationId === 'string'
+        ? req.body.conversationId
         : undefined
     );
 

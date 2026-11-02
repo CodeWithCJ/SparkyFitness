@@ -382,6 +382,9 @@ export const ServiceForm = ({
                 : t(`${translationPrefix}.loadModels`)}
             </Button>
           </div>
+          {testStatus?.state === 'error' && testStatus.detail && (
+            <p className="text-xs text-destructive mt-1">{testStatus.detail}</p>
+          )}
         </div>
       )}
 

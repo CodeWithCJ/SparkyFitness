@@ -123,6 +123,8 @@ export const listOpenCodeGoModels = async (
     {
       method: 'POST',
       body: payload,
+      // ServiceForm shows its own failure toast.
+      suppressErrorToast: true,
     }
   );
   return listOpenCodeGoModelsResponseSchema.parse(response);

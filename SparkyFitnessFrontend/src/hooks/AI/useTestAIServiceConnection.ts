@@ -4,8 +4,12 @@ import { testAIServiceConnection } from '@/api/Settings/aiServiceSettingsService
 import { TestAiServiceConnectionRequest } from '@workspace/shared';
 
 // Inline status rendered next to the Test Connection button.
+// `detail` is the provider's own text when the server has it; `message` is the
+// short category label shown next to the button.
 export type TestConnectionStatus =
-  { state: 'success' } | { state: 'error'; message: string } | null;
+  | { state: 'success' }
+  | { state: 'error'; message: string; detail?: string }
+  | null;
 
 // Shared hook so the test call + category→message mapping isn't duplicated
 // across the parents that own a ServiceForm. Both pages (per-user + global)
@@ -35,6 +39,7 @@ export const useTestAIServiceConnection = () => {
             `settings.aiService.test.categories.${mutation.data.category ?? 'unknown'}`,
             t('settings.aiService.test.categories.unknown')
           ),
+          detail: mutation.data.detail,
         };
   }
 

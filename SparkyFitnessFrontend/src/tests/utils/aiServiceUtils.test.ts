@@ -1,6 +1,7 @@
 import {
   getModelOptions,
   getServiceTypes,
+  isCustomModelName,
   requiresApiKey,
 } from '@/utils/aiServiceUtils';
 
@@ -93,5 +94,21 @@ describe('requiresApiKey', () => {
     'meta',
   ])('requires a key for cloud provider %s', (serviceType) => {
     expect(requiresApiKey(serviceType)).toBe(true);
+  });
+});
+
+describe('isCustomModelName', () => {
+  it('keeps a saved OpenCode Go model out of custom mode', () => {
+    expect(isCustomModelName('opencode_go', 'glm-5.3-flash')).toBe(false);
+  });
+
+  it('treats a model outside a static preset list as custom', () => {
+    expect(isCustomModelName('openai_compatible', 'my-local-model')).toBe(true);
+    expect(isCustomModelName('openai', 'gpt-4o')).toBe(false);
+  });
+
+  it('is not custom when no model is saved', () => {
+    expect(isCustomModelName('openai_compatible', '')).toBe(false);
+    expect(isCustomModelName('openai', null)).toBe(false);
   });
 });

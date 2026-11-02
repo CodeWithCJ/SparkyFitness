@@ -206,7 +206,9 @@ describe('ServiceForm — test connection button', () => {
       onTestConnection?: (model: string) => void;
       testing?: boolean;
       testStatus?:
-        { state: 'success' } | { state: 'error'; message: string } | null;
+        | { state: 'success' }
+        | { state: 'error'; message: string; detail?: string }
+        | null;
     } = {}
   ) {
     const onSubmit = jest.fn();
@@ -295,6 +297,41 @@ describe('ServiceForm — test connection button', () => {
     expect(
       utils.getByText('settings.aiService.test.failureTitle: Bad API key')
     ).toBeTruthy();
+  });
+
+  it('shows the provider error under the OpenCode Go model field', () => {
+    const utils = renderWithTest(
+      makeFormData({
+        service_type: 'opencode_go',
+        model_name: 'iceman-contributor-free',
+      }),
+      {
+        onTestConnection: jest.fn(),
+        testStatus: {
+          state: 'error',
+          message: 'settings.aiService.test.categories.upstream_error',
+          detail:
+            'AI service returned status 403: model requires a privacy setting change',
+        },
+      }
+    );
+    expect(
+      utils.getByText(
+        'AI service returned status 403: model requires a privacy setting change'
+      )
+    ).toBeTruthy();
+  });
+
+  it('does not show a provider detail line for other service types', () => {
+    const utils = renderWithTest(makeFormData({ service_type: 'openai' }), {
+      onTestConnection: jest.fn(),
+      testStatus: {
+        state: 'error',
+        message: 'settings.aiService.test.categories.upstream_error',
+        detail: 'AI service returned status 403: something',
+      },
+    });
+    expect(utils.queryByText(/something/)).toBeNull();
   });
 
   // The result is cleared while a fresh test is in flight.
