@@ -55,6 +55,14 @@ import {
 import { optionalDateSchema } from './schemas/common.js';
 import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
 
+// Unrecognized root-level keys that are safe to drop in the small-model
+// salvage: non-data-bearing flags/dates published on the shared flat input
+// schema for OTHER actions (confirmed → update/delete_workout_preset,
+// start_date/end_date → get_exercise_progress). Anything else — especially
+// data-bearing keys like `sets` — must fail validation rather than be
+// silently discarded (see #3341 review).
+const SAFE_DISCARD_KEYS = new Set(['confirmed', 'start_date', 'end_date']);
+
 const VALID_ACTIONS = [
   'search_exercises',
   'create_exercise',
@@ -836,17 +844,65 @@ Workout formats (workout_format, default standard) drive the in-app timer:
           }
         ) as Record<string, unknown>;
 
-        // Default missing entry_date to today's date string for logging actions
+        // Default missing entry_date to today's date string for logging actions.
+        // If a date arrived under a cross-action key (start_date / end_date
+        // belong to get_exercise_progress), the intended meaning for a
+        // logging action is unambiguous: remap a single misfiled date to
+        // entry_date (mirrors foodTools). When BOTH are present the meaning
+        // is ambiguous — do NOT default to today (that would silently file
+        // the entry on the wrong day); leave entry_date unset so validation
+        // reports the missing field after the safe-key salvage drops the
+        // cross-action dates.
         const loggingActions = ['log_exercise', 'log_workout_preset'];
         if (
           normalized.entry_date === undefined &&
           typeof normalized.action === 'string' &&
           loggingActions.includes(normalized.action)
         ) {
-          normalized.entry_date = todayInZone(tz);
+          const misfiledDates = [normalized.start_date, normalized.end_date];
+          const supplied = misfiledDates.filter(
+            (d) => typeof d === 'string' && d.length > 0
+          );
+          if (supplied.length === 1) {
+            normalized.entry_date = supplied[0];
+            delete normalized.start_date;
+            delete normalized.end_date;
+            log(
+              'info',
+              `[exerciseTools] Remapped misfiled date '${supplied[0]}' to entry_date for ${normalized.action}`
+            );
+          } else if (supplied.length === 0) {
+            normalized.entry_date = todayInZone(tz);
+          }
         }
 
-        const parsed = manageExerciseSchema.safeParse(normalized);
+        let parsed = manageExerciseSchema.safeParse(normalized);
+        if (!parsed.success) {
+          // Small-model salvage: models bleed fields across actions (e.g.
+          // confirmed / start_date / end_date, which the flat input schema
+          // publishes for update/delete_workout_preset and
+          // get_exercise_progress, echoed onto create_workout_preset).
+          // Only root-level unrecognized keys are considered, and only keys
+          // that are safe to discard are dropped: flags/dates the action
+          // simply doesn't consume. Data-bearing keys (e.g. a top-level
+          // `sets` on a preset write) are NEVER dropped — the validation
+          // error is returned so the model can re-send the call correctly,
+          // mirroring the foodTools behavior without discarding workout data.
+          const badRootKeys = parsed.error.issues.flatMap((i) =>
+            i.code === 'unrecognized_keys' && i.path.length === 0 ? i.keys : []
+          );
+          const droppableKeys = badRootKeys.filter((key) =>
+            SAFE_DISCARD_KEYS.has(key)
+          );
+          if (droppableKeys.length > 0) {
+            for (const key of droppableKeys) delete normalized[key];
+            log(
+              'info',
+              `[exerciseTools] Dropped unrecognized keys for ${normalized.action}: ${droppableKeys.join(', ')}`
+            );
+            parsed = manageExerciseSchema.safeParse(normalized);
+          }
+        }
         if (!parsed.success) {
           return formatZodError(parsed.error);
         }
