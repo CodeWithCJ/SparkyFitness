@@ -391,19 +391,19 @@ function ActiveWorkoutSetRow({
   // keyboard.
   const signature = `${set.weight}|${set.reps}|${set.duration}|${set.distance}|${set.rpe}|${set.rir}|${effortField}|${weightUnit}|${distanceUnit}`;
   const [prevSignature, setPrevSignature] = useState(signature);
-  // While this row is the focused cell its drafts are the source of truth: a
-  // store change landing under the open keyboard (an autosave echo normalizing
-  // a value, or a set edited on the watch) must not rewrite in-progress text,
-  // so the re-seed waits (the signature is not advanced) until the row loses
-  // focus. In the render where focus is lost, a draft the user edited but the
-  // deactivation commit has not flushed yet is kept and the rest follow the
-  // store; any later re-seed (including the one the flush's own store write
-  // causes) replaces every draft.
+  // A store change (an autosave echo normalizing a value, or a set edited on
+  // the watch) re-seeds every draft the user has not typed in, even while this
+  // row is focused, so an untouched field never shows or writes back a stale
+  // value. A draft the user edited and has not committed yet is kept while the
+  // row is focused and in the render where focus is lost (the deactivation
+  // commit writes it); any later re-seed, including the one that commit's own
+  // store write causes, replaces every draft.
   const [wasFocused, setWasFocused] = useState(isFocusedRow);
   const justLostFocus = wasFocused && !isFocusedRow;
   if (wasFocused !== isFocusedRow) setWasFocused(isFocusedRow);
-  if (signature !== prevSignature && !isFocusedRow) {
+  if (signature !== prevSignature) {
     setPrevSignature(signature);
+    const keepEdits = isFocusedRow || justLostFocus;
     const fromStore = {
       weight: formatDisplayWeight(set.weight, weightUnit),
       reps: set.reps != null ? String(set.reps) : '',
@@ -411,17 +411,12 @@ function ActiveWorkoutSetRow({
       distance: distanceSeedText,
     };
     const kept = {
-      weight:
-        justLostFocus && edited.weight && weightDraft !== fromStore.weight,
-      reps: justLostFocus && edited.reps && repsDraft !== fromStore.reps,
+      weight: keepEdits && edited.weight && weightDraft !== fromStore.weight,
+      reps: keepEdits && edited.reps && repsDraft !== fromStore.reps,
       duration:
-        justLostFocus &&
-        edited.duration &&
-        durationDraft !== fromStore.duration,
+        keepEdits && edited.duration && durationDraft !== fromStore.duration,
       distance:
-        justLostFocus &&
-        edited.distance &&
-        distanceDraft !== fromStore.distance,
+        keepEdits && edited.distance && distanceDraft !== fromStore.distance,
     };
     if (!kept.weight) setWeightDraft(fromStore.weight);
     if (!kept.reps) setRepsDraft(fromStore.reps);
@@ -436,8 +431,10 @@ function ActiveWorkoutSetRow({
     // RPE alone commits per keystroke in edit mode, so a re-seed can arrive
     // mid-typing: leave the draft alone while its parse already matches the
     // committed value (e.g. "0" clamps to 1 — rewriting would jump the text
-    // under the user's cursor). Blur still snaps the text via commitRpe.
-    if (parseEffortInput(rpeDraft) !== effortValue) {
+    // under the user's cursor). Blur still snaps the text via commitRpe. Its
+    // draft is never re-seeded under the keyboard: a live row only commits it
+    // on blur, so a draft being typed has no flag to tell it from a stale one.
+    if (!isFocusedRow && parseEffortInput(rpeDraft) !== effortValue) {
       setRpeDraft(effortValue != null ? formatRpe(effortValue) : '');
     }
   }
