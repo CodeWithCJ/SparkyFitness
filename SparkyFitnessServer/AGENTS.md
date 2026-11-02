@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-30_
+_Last updated: 2026-11-02_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -31,6 +31,7 @@ If a task also touches `shared/`, the frontend, or the mobile app, read the rele
 - The package is now effectively TypeScript-first; almost all source files are `.ts`
 - Main domains: food and meal tracking, exercise logging, health and sleep data, sleep science, fasting, medications, symptom and episode tracking, mood, menstrual cycle and pregnancy, reporting, AI chat, onboarding, identity, admin tooling, NFC action tags, and external provider integrations
 - External provider integrations include the Intervals.icu API-key provider (`routes/intervalsRoutes.ts`, `integrations/intervals/`) for activities and wellness
+- Several server instances can share one database; each scheduled job tick runs on one of them, claimed in `system.scheduled_jobs` (`services/scheduledJobs.ts`)
 
 ## Verified Commands
 
@@ -69,6 +70,7 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - `SparkyFitnessServer.ts` - Express app shell, route mounting, Swagger/ReDoc, startup
 - `utils/gracefulShutdown.ts` - SIGTERM/SIGINT drain: stops accepting connections, closes keep-alive connections once their responses are written out (never cutting off a response still being sent), stops scheduled jobs from firing and waits for running ones, provider syncs and tracked background work, releases sync claims still held, closes the pools, and exits 1 after `SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS` (default 15, parsed by `shutdownTimeoutMs`). Work a route or job starts without awaiting (a 202 reply, a `void` call) must go through `trackBackgroundWork` in `utils/shutdownHooks.ts`, or shutdown closes the pools under it; long loops check `isShuttingDown()` before starting the next item
 - `services/backgroundJobScheduler.ts` - starts every scheduled background job at startup, including the demo reset; provider syncs are listed in `services/providerSyncScheduler.ts`; `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` skips them all
+- `services/scheduledJobs.ts` - `scheduleJob()`, the only place `node-cron` is imported: every instance registers every job and the first to claim a tick in `system.scheduled_jobs` (`models/scheduledJobRepository.ts`) runs it
 - `services/onlineRestoreGuard.ts` - `assertRestoreAllowed()`: refuses an in-app restore (409, before the upload, and again inside `performRestore` before anything is deleted) when `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` or another instance's `sparkyfitness-*` sessions show in `pg_stat_activity`. Best effort: idle pools close after 30 s, so an idle instance is invisible; operators scale to one instance first
 - `services/providerSyncClaim.ts` - every provider sync, manual or scheduled, runs through `startProviderSync`, which claims the account and stops the sync when the claim is lost or it gets no database connection and runs no query for 20 minutes; a stopped sync's next `getClient`/`getSystemClient` throws (`utils/abortScope.ts`), while a transaction already running on a connection it holds still finishes, so sync writes stay idempotent. Sync code gets connections only through those two, and never through `runOutsideAbortScope`, which is for fenced cleanup such as releasing the claim
 - `auth.ts` - Better Auth configuration, plugins, session behavior, SSO provider syncing
@@ -289,6 +291,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect `index.ts`, `SparkyFitnessServer.ts`, `utils/secretLoader.ts`, `utils/preflightChecks.ts`, and `config/logging.ts`
 - Provider sync stopped, skipped as already running, or holding an account:
   inspect `services/providerSyncClaim.ts` (claim, renewal, stall stop) and `utils/abortScope.ts` (how a stopped sync's next `getClient`/`getSystemClient` is refused and how connections and queries count as progress, hooked in `db/poolManager.ts`)
+- Scheduled job ran twice, ran on no instance, or ran on the wrong one:
+  inspect `services/scheduledJobs.ts`, `models/scheduledJobRepository.ts` and the job's `system.scheduled_jobs` row (`last_slot`, `claimed_by`)
 - Auth, session, MFA, or API key issue:
   inspect `auth.ts`, `middleware/authMiddleware.ts`, `routes/authRoutes.ts`, and `routes/auth/`
 - Remote MCP OAuth, discovery, consent, token, or redirect allowlist issue:
