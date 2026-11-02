@@ -61,17 +61,38 @@ export const MAX_PDF_PAGES = 30;
 const asText = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
 
-/** A number the model wrote as a string ("1,000", "5.4") is read, not rejected. */
-function asNumber(value: unknown): number | null {
-  if (typeof value === 'number') {
-    return Number.isFinite(value) && value >= 0 ? value : null;
-  }
-  if (typeof value !== 'string') return null;
-  const compact = value.replace(/[\s,\u00A0\u202F]/g, '');
+/**
+ * Reads a number the model wrote as a string. A comma is a decimal separator
+ * when it is the only one and not followed by exactly three digits ("5,4" is
+ * 5.4, "0,0075" is 0.0075) and a thousands separator otherwise ("1,000",
+ * "1,234,567"). With both a comma and a dot, whichever comes last is the
+ * decimal separator ("1.234,5" is 1234.5, "1,234.5" is 1234.5).
+ */
+function parseNumberText(value: string): number | null {
+  const text = value.replace(/[\s\u00A0\u202F]/g, '');
   // Number('') is 0, so a blank must not become a measured zero.
-  if (compact === '') return null;
-  const n = Number(compact);
-  return Number.isFinite(n) && n >= 0 ? n : null;
+  if (text === '') return null;
+  const commas = text.split(',').length - 1;
+  let normalized = text;
+  if (commas > 0 && text.includes('.')) {
+    normalized =
+      text.lastIndexOf(',') > text.lastIndexOf('.')
+        ? text.replace(/\./g, '').replace(',', '.')
+        : text.replace(/,/g, '');
+  } else if (commas === 1) {
+    const digitsAfter = text.length - text.indexOf(',') - 1;
+    normalized =
+      digitsAfter === 3 ? text.replace(',', '') : text.replace(',', '.');
+  } else if (commas > 1) {
+    normalized = text.replace(/,/g, '');
+  }
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
+}
+
+function asNumber(value: unknown): number | null {
+  const n = typeof value === 'string' ? parseNumberText(value) : value;
+  return typeof n === 'number' && Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 function asDate(value: unknown): string | null {

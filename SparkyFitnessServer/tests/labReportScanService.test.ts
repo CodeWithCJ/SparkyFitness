@@ -34,6 +34,46 @@ import {
 const REPORT_TEXT =
   'Quest Diagnostics. Collected 2026-09-20. Hemoglobin A1c 5.4 % (4.0 - 5.6). LDL Cholesterol 130 mg/dL (<100).';
 
+describe('normalizeLabReport number text', () => {
+  const read = (value: unknown) =>
+    normalizeLabReport({ results: [{ name: 'X', value }] })?.results[0]?.value;
+
+  it('reads a single comma as a decimal separator', () => {
+    expect(read('5,4')).toBe(5.4);
+    expect(read('12,34')).toBe(12.34);
+    expect(read('0,0075')).toBe(0.0075);
+    expect(read(',5')).toBe(0.5);
+  });
+
+  it('reads a comma before exactly three digits as a thousands separator', () => {
+    expect(read('1,130')).toBe(1130);
+    expect(read('250,000')).toBe(250000);
+    expect(read('1,234,567')).toBe(1234567);
+  });
+
+  it('reads the last of a comma and a dot as the decimal separator', () => {
+    expect(read('1.234,5')).toBe(1234.5);
+    expect(read('1,234.5')).toBe(1234.5);
+  });
+
+  it('still reads plain and spaced numbers, and rejects blanks and junk', () => {
+    expect(read('5.4')).toBe(5.4);
+    expect(read('1 130')).toBe(1130);
+    // A line whose value cannot be read is left out rather than guessed.
+    expect(read('  ')).toBeUndefined();
+    expect(read('abc')).toBeUndefined();
+    expect(read('-2')).toBeUndefined();
+    expect(read(5.4)).toBe(5.4);
+  });
+
+  it('reads the reference range with the same rule', () => {
+    const report = normalizeLabReport({
+      results: [{ name: 'X', value: 5, ref_low: '4,0', ref_high: '5,6' }],
+    });
+    expect(report?.results[0]).toMatchObject({ ref_low: 4, ref_high: 5.6 });
+  });
+});
+
 describe('normalizeLabReport', () => {
   it('reads loose values and drops lines without a name or a number', () => {
     const report = normalizeLabReport({

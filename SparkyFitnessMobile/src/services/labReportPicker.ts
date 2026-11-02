@@ -27,17 +27,32 @@ export async function pickLabReportPdf(): Promise<PickedLabReport> {
     if (result.canceled) return { status: 'cancelled' };
     const asset = result.assets?.[0];
     if (!asset?.uri) return { status: 'cancelled' };
+    // copyToCacheDirectory made a copy before any check, so every way out of
+    // here removes it: platform cache cleanup is opportunistic, and repeated
+    // oversized picks would otherwise pile up in cache storage.
+    const file = new File(asset.uri);
+    const discardCopy = () => {
+      try {
+        file.delete();
+      } catch {
+        // The cached copy is cleaned up with the cache; nothing depends on it.
+      }
+    };
     if (asset.size && asset.size > LAB_REPORT_MAX_PDF_BYTES) {
+      discardCopy();
       return { status: 'too_large' };
     }
-    const file = new File(asset.uri);
-    const document = await file.base64();
     try {
-      file.delete();
-    } catch {
-      // The cached copy is cleaned up with the cache; nothing depends on it.
+      const document = await file.base64();
+      // A picker that reports no size is checked on what was read: base64 is
+      // about 4/3 of the bytes.
+      if (document.length > Math.ceil((LAB_REPORT_MAX_PDF_BYTES * 4) / 3)) {
+        return { status: 'too_large' };
+      }
+      return { status: 'ok', document, mimeType: 'application/pdf' };
+    } finally {
+      discardCopy();
     }
-    return { status: 'ok', document, mimeType: 'application/pdf' };
   } catch (error) {
     addLog(`[Lab Report] PDF pick failed: ${String(error)}`, 'ERROR');
     return { status: 'failed' };
