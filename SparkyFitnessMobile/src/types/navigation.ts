@@ -127,6 +127,10 @@ export type RootStackParamList = {
   FitnessTestResult: { id: string };
   RunProgramEdit: { id?: string; fromProgramId?: string } | undefined;
   PersonalRecords: undefined;
+  LabResults: undefined;
+  /** `marker` is a `LabMarker` id: `builtin:<key>` or `custom:<uuid>`. */
+  LabResultDetail: { marker: string; name?: string };
+  LabResultAdd: { marker?: string };
   Routes: undefined;
   RouteDetail: { id: string };
   /** `routeId` opens a saved route in the editor and saves over it. */
