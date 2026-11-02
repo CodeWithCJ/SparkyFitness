@@ -55,7 +55,7 @@ jobs:
       - name: Render — every server pod gets the startup probe
         run: |
           out=$(helm template t helm/chart --set server.replicas=2 --set server.persistence.allowSingleNodeVolumes=true --show-only templates/server/deployment.yaml)
-          test "$(grep -c 'startupProbe:' <<< "$out")" = 2
+          test "$(grep -c 'startupProbe:' <<< "$out")" = 1
           if helm template t helm/chart --set server.startupProbe=null --show-only templates/server/deployment.yaml | grep -q 'startupProbe:'; then
             echo "server.startupProbe=null should drop the probe"; exit 1
           fi
@@ -91,8 +91,8 @@ jobs:
         run: |
           out=$(helm template t helm/chart --set server.replicas=2 --set server.persistence.allowSingleNodeVolumes=true --set server.shutdownTimeoutSeconds=60)
           # The 5 s preStop sleep above one replica runs inside the grace period too.
-          test "$(grep -c 'terminationGracePeriodSeconds: 70' <<< "$out")" = 2
-          test "$(grep -A1 'name: SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS' <<< "$out" | grep -c 'value: "60"')" = 2
+          test "$(grep -c 'terminationGracePeriodSeconds: 70' <<< "$out")" = 1
+          test "$(grep -A1 'name: SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS' <<< "$out" | grep -c 'value: "60"')" = 1
           helm template t helm/chart --set server.shutdownTimeoutSeconds=60 | grep -q 'terminationGracePeriodSeconds: 65'
           # Without a timeout, the server's default 15 s plus a long preStop can pass Kubernetes' 30 s default.
           helm template t helm/chart --set server.preStopDelaySeconds=20 | grep -q 'terminationGracePeriodSeconds: 40'
@@ -156,12 +156,16 @@ jobs:
           rwx="--set server.persistence.uploads.accessMode=ReadWriteMany --set server.persistence.backup.accessMode=ReadWriteMany"
           out=$(helm template t helm/chart --set server.replicas=3 $rwx \
             --show-only templates/server/deployment.yaml --show-only templates/server/pdb.yaml)
-          # -server rolls one pod at a time; -jobs keeps Recreate.
+          # One Deployment of every replica, rolling one pod at a time.
+          test "$(grep -c '^kind: Deployment' <<< "$out")" = 1
+          grep -q '^  replicas: 3' <<< "$out"
           grep -q 'maxUnavailable: 0' <<< "$out"
-          test "$(grep -c 'type: Recreate' <<< "$out")" = 1
-          test "$(grep -c 'whenUnsatisfiable: ScheduleAnyway' <<< "$out")" = 2
-          test "$(grep -c 'command: \["sleep", "5"\]' <<< "$out")" = 2
-          test "$(grep -c 'minReadySeconds: 5' <<< "$out")" = 2
+          if grep -q 'type: Recreate\|SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS' <<< "$out"; then
+            echo "replicas above 1 should neither Recreate nor disable scheduled jobs"; exit 1
+          fi
+          test "$(grep -c 'whenUnsatisfiable: ScheduleAnyway' <<< "$out")" = 1
+          test "$(grep -c 'command: \["sleep", "5"\]' <<< "$out")" = 1
+          test "$(grep -c 'minReadySeconds: 5' <<< "$out")" = 1
           grep -q 'kind: PodDisruptionBudget' <<< "$out"
           grep -q '^  maxUnavailable: 1' <<< "$out"
           # One replica on ReadWriteOnce: Recreate, and none of the above.
@@ -201,18 +205,18 @@ jobs:
           if grep -qE 'topologySpreadConstraints|preStop' <<< "$out"; then
             echo "defaultTopologySpread=false and preStopDelaySeconds=0 should drop them"; exit 1
           fi
-          test "$(grep -c 'minReadySeconds: 0' <<< "$out")" = 2
+          test "$(grep -c 'minReadySeconds: 0' <<< "$out")" = 1
           out=$(helm template t helm/chart $rwx \
             --set 'server.topologySpreadConstraints[0].maxSkew=2' \
             --set 'server.topologySpreadConstraints[0].topologyKey=topology.kubernetes.io/zone' \
             --set 'server.topologySpreadConstraints[0].whenUnsatisfiable=DoNotSchedule' \
             --set server.strategy.type=Recreate \
             --show-only templates/server/deployment.yaml)
-          test "$(grep -c 'whenUnsatisfiable: DoNotSchedule' <<< "$out")" = 2
+          test "$(grep -c 'whenUnsatisfiable: DoNotSchedule' <<< "$out")" = 1
           if grep -q 'ScheduleAnyway' <<< "$out"; then
             echo "configured topologySpreadConstraints should replace the default"; exit 1
           fi
-          test "$(grep -c 'type: Recreate' <<< "$out")" = 2
+          test "$(grep -c 'type: Recreate' <<< "$out")" = 1
 
       - name: Render — a PodDisruptionBudget limit of 0 is kept
         run: |
