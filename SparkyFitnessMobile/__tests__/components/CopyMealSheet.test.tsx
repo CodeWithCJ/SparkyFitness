@@ -185,4 +185,65 @@ describe('CopyMealSheet', () => {
     );
     expect(view.getByText('Copy meal: my old meal')).toBeTruthy();
   });
+
+  it('copies to tomorrow, keeping the chosen meal, from the quick targets', () => {
+    const onCopy = jest.fn();
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
+    const sourceDate = addDays(getTodayDate(), -1);
+    act(() => ref.current?.present(sourceDate, 'brunch-id', 'Brunch'));
+
+    expect(view.getByText('Copy to')).toBeTruthy();
+    fireEvent.press(view.getByTestId('copy-meal-quick-tomorrow'));
+    expect(
+      view.getByTestId('copy-meal-quick-tomorrow').props.accessibilityState
+    ).toEqual({ selected: true });
+    fireEvent.press(view.getByLabelText('Copy'));
+
+    expect(onCopy).toHaveBeenCalledWith({
+      sourceDate,
+      sourceMealType: 'Brunch',
+      targetDate: addDays(getTodayDate(), 1),
+      targetMealType: 'Brunch',
+    });
+  });
+
+  it('copies to now: today and the meal for the current time', () => {
+    useMealTypesMock.mockReturnValue({
+      mealTypes: defaultMealTypes,
+      defaultMealTypeId: 'breakfast-id',
+    });
+    const onCopy = jest.fn();
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
+    const sourceDate = addDays(getTodayDate(), -3);
+    act(() => ref.current?.present(sourceDate, 'brunch-id', 'Brunch'));
+
+    fireEvent.press(view.getByTestId('copy-meal-quick-now'));
+    fireEvent.press(view.getByLabelText('Copy'));
+
+    expect(onCopy).toHaveBeenCalledWith({
+      sourceDate,
+      sourceMealType: 'Brunch',
+      targetDate: getTodayDate(),
+      targetMealType: 'Breakfast',
+    });
+  });
+
+  it('clears the quick target when a meal is picked by hand', () => {
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
+    act(() =>
+      ref.current?.present(addDays(getTodayDate(), -1), 'brunch-id', 'Brunch')
+    );
+
+    fireEvent.press(view.getByTestId('copy-meal-quick-today'));
+    expect(
+      view.getByTestId('copy-meal-quick-today').props.accessibilityState
+    ).toEqual({ selected: true });
+    fireEvent.press(view.getByText('Breakfast'));
+    expect(
+      view.getByTestId('copy-meal-quick-today').props.accessibilityState
+    ).toEqual({ selected: false });
+  });
 });

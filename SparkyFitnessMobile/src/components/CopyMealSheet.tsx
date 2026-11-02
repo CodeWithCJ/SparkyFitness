@@ -20,8 +20,11 @@ import { getLocalizedMealLabel } from '../constants/meals';
 import { getHistoricalMealTypeLabel } from '../utils/mealNutrition';
 import { formatDateLabel } from '../utils/dateUtils';
 import { useCalendarPresentation } from '../utils/calendarLocalization';
-import { dayToPickerDate, localDateToDay } from '@workspace/shared';
+import { addDays, dayToPickerDate, localDateToDay } from '@workspace/shared';
 import type { CopyFoodEntriesPayload } from '../services/api/foodEntriesApi';
+
+const QUICK_TARGETS = ['now', 'today', 'tomorrow'] as const;
+type QuickTarget = (typeof QUICK_TARGETS)[number];
 
 export interface CopyMealSheetRef {
   present: (
@@ -65,7 +68,10 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       null
     );
 
-    const { mealTypes } = useMealTypes();
+    const { mealTypes, defaultMealTypeId } = useMealTypes();
+    // The quick target the person tapped, cleared once they pick a calendar
+    // day or a meal by hand so the highlighted chip always matches the copy.
+    const [quickTarget, setQuickTarget] = useState<QuickTarget | null>(null);
 
     useImperativeHandle(ref, () => ({
       present: (
@@ -82,6 +88,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
         // before copying.
         setTargetDate(sourceDate);
         setTargetMealTypeId(sourceMealTypeId);
+        setQuickTarget(null);
         bottomSheetRef.current?.present();
       },
       dismiss: () => bottomSheetRef.current?.dismiss(),
@@ -105,7 +112,36 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
         jsDate = new Date(date);
       }
       setTargetDate(localDateToDay(jsDate));
+      setQuickTarget(null);
     }, []);
+
+    const applyQuickTarget = useCallback(
+      (target: QuickTarget) => {
+        const today = localDateToDay(new Date());
+        setTargetDate(target === 'tomorrow' ? addDays(today, 1) : today);
+        // "Now" also picks the meal for the current time of day; Today and
+        // Tomorrow keep the meal already chosen.
+        if (target === 'now' && defaultMealTypeId) {
+          setTargetMealTypeId(defaultMealTypeId);
+        }
+        setQuickTarget(target);
+      },
+      [defaultMealTypeId]
+    );
+
+    const quickTargetLabel = useCallback(
+      (target: QuickTarget) => {
+        switch (target) {
+          case 'now':
+            return t('copyMeal.quick.now', { defaultValue: 'Now' });
+          case 'today':
+            return t('copyMeal.quick.today', { defaultValue: 'Today' });
+          case 'tomorrow':
+            return t('copyMeal.quick.tomorrow', { defaultValue: 'Tomorrow' });
+        }
+      },
+      [t]
+    );
 
     const dateValue = useMemo(
       () => (targetDate ? dayToPickerDate(targetDate) : new Date()),
@@ -203,6 +239,43 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                 </Text>
               </View>
 
+              {/* Quick targets */}
+              <Text className="text-xs font-semibold uppercase text-text-muted mb-2">
+                {t('copyMeal.copyTo', { defaultValue: 'Copy to' })}
+              </Text>
+              <View className="flex-row flex-wrap gap-2 mb-4">
+                {QUICK_TARGETS.map((target) => {
+                  const isSelected = quickTarget === target;
+                  const label = quickTargetLabel(target);
+                  return (
+                    <TouchableOpacity
+                      key={target}
+                      accessibilityRole="button"
+                      accessibilityLabel={label}
+                      accessibilityState={{ selected: isSelected }}
+                      onPress={() => applyQuickTarget(target)}
+                      activeOpacity={0.7}
+                      testID={`copy-meal-quick-${target}`}
+                      className={`px-4 py-2 rounded-full border ${
+                        isSelected
+                          ? 'bg-accent-primary border-accent-primary'
+                          : 'bg-raised border-border-subtle'
+                      }`}
+                    >
+                      <Text
+                        className={`text-sm ${
+                          isSelected
+                            ? 'text-white font-semibold'
+                            : 'text-text-primary'
+                        }`}
+                      >
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
               {/* Target date */}
               <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
                 {t('copyMeal.targetDate', { defaultValue: 'Target date' })}
@@ -262,7 +335,10 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                       accessibilityRole="button"
                       accessibilityLabel={displayMealType(mt)}
                       accessibilityState={{ selected: isSelected }}
-                      onPress={() => setTargetMealTypeId(mt.id)}
+                      onPress={() => {
+                        setTargetMealTypeId(mt.id);
+                        setQuickTarget(null);
+                      }}
                       activeOpacity={0.7}
                       className={`px-4 py-2 rounded-full border ${
                         isSelected
