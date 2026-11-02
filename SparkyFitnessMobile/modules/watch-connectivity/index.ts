@@ -761,6 +761,12 @@ export interface WatchWorkoutEditPayload {
   distanceKm?: number;
   /** For `setValues`: epoch ms of the edit, so a late copy of an older one is dropped. */
   at?: number;
+  /**
+   * For `setValues`: epoch ms of the arm the edit was made in. A saved workout
+   * can be armed again under the same id, and an edit queued from the earlier
+   * arm is dropped. Absent from an older watch.
+   */
+  armedAt?: number;
 }
 
 /** The wearer's answer to the watch's "update this workout?" question, asked

@@ -37,6 +37,7 @@ describe('applyWatchWorkoutEdit', () => {
     useActiveWorkoutStore.setState({
       sessionId: 'sess-1',
       completedSetIds: {},
+      watchArmedAt: null,
       ...actions,
     });
   });
@@ -80,6 +81,24 @@ describe('applyWatchWorkoutEdit', () => {
   it('carries only the fields the wearer edited', async () => {
     await edit({ action: 'setValues', setId: '13', reps: 10 });
     expect(actions.updateSetField).toHaveBeenCalledWith('13', { reps: 10 });
+  });
+
+  it('ignores a value edit queued from an earlier arm of the same workout', async () => {
+    useActiveWorkoutStore.setState({ watchArmedAt: 100_000 });
+    await edit({
+      action: 'setValues',
+      setId: '17',
+      weightKg: 60,
+      armedAt: 50_000,
+    });
+    expect(actions.updateSetField).not.toHaveBeenCalled();
+    await edit({
+      action: 'setValues',
+      setId: '17',
+      weightKg: 60,
+      armedAt: 100_400,
+    });
+    expect(actions.updateSetField).toHaveBeenCalledWith('17', { weight: 60 });
   });
 
   it('keeps what a set was logged with', async () => {

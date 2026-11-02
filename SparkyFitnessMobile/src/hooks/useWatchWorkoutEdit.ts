@@ -10,6 +10,9 @@ import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 // Recent edits already applied. A message the watch sent live and then queued
 // as well must not add a second set or drop a second exercise.
 const SEEN_LIMIT = 100;
+// Same tolerance the other arm checks use for the millisecond rounding between
+// the plan's ISO stamp and the epoch value the edit carries.
+const WATCH_ARM_TOLERANCE_MS = 2000;
 const seenClientIds: string[] = [];
 // Add Exercise loads the exercise first. Its id is held here while that runs,
 // and only recorded as applied once the exercise is added, so a delivery that
@@ -78,6 +81,16 @@ export async function applyWatchWorkoutEdit(
       // on the phone's set now so both show it before the set is logged. A set
       // already logged keeps what it was logged with.
       if (!payload.setId || live.completedSetIds[payload.setId] != null) return;
+      // An edit queued from an earlier arm of the same saved workout must not
+      // change a set in the arm that replaced it. An older watch sends no
+      // stamp, and that still matches.
+      if (
+        payload.armedAt != null &&
+        live.watchArmedAt != null &&
+        Math.abs(payload.armedAt - live.watchArmedAt) > WATCH_ARM_TOLERANCE_MS
+      ) {
+        return;
+      }
       const patch = freshValuePatch(payload);
       if (Object.keys(patch).length > 0)
         live.updateSetField(payload.setId, patch);

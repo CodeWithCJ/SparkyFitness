@@ -1314,6 +1314,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// fields of several edits merged.
     private struct PendingValueEdit {
         var sessionId: String
+        var armedAt: Date?
         var at: Date
         var weightKg: Double? = nil
         var reps: Double? = nil
@@ -1325,9 +1326,13 @@ final class WatchSessionManager: NSObject, ObservableObject {
     private static let valueEditQuietNanos: UInt64 = 1_500_000_000
 
     private func queueValueEdit(setId: String, weightKg: Double?, reps: Double?, distanceKm: Double?) {
-        guard let sessionId = workoutStore.plan?.sessionId else { return }
-        var edit = pendingValueEdits[setId].flatMap { $0.sessionId == sessionId ? $0 : nil }
-            ?? PendingValueEdit(sessionId: sessionId, at: Date())
+        guard let plan = workoutStore.plan else { return }
+        let sessionId = plan.sessionId
+        // An edit held from an earlier arm of this workout is not merged into
+        // one from the current arm.
+        var edit = pendingValueEdits[setId].flatMap {
+            $0.sessionId == sessionId && Self.sameArm($0.armedAt, plan.armedAt) ? $0 : nil
+        } ?? PendingValueEdit(sessionId: sessionId, armedAt: plan.armedAt, at: Date())
         if let weightKg { edit.weightKg = weightKg }
         if let reps { edit.reps = reps }
         if let distanceKm { edit.distanceKm = distanceKm }
@@ -1341,13 +1346,15 @@ final class WatchSessionManager: NSObject, ObservableObject {
         }
     }
 
-    /// Sends what is held. An edit for a workout that is no longer the live
-    /// one is dropped.
+    /// Sends what is held. An edit for a workout, or an arm of it, that is no
+    /// longer the live one is dropped.
     private func flushValueEdits() {
         let edits = pendingValueEdits
         pendingValueEdits = [:]
         for (setId, edit) in edits {
-            guard workoutStore.plan?.sessionId == edit.sessionId else { continue }
+            guard let plan = workoutStore.plan,
+                  plan.sessionId == edit.sessionId,
+                  Self.sameArm(edit.armedAt, plan.armedAt) else { continue }
             transfer(OutboundPayloads.workoutEditSetValues(
                 sessionId: edit.sessionId,
                 clientId: UUID().uuidString,
@@ -1355,7 +1362,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
                 weightKg: edit.weightKg,
                 reps: edit.reps,
                 distanceKm: edit.distanceKm,
-                at: edit.at
+                at: edit.at,
+                armedAt: edit.armedAt
             ))
         }
     }

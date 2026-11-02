@@ -513,7 +513,7 @@ public class WatchConnectivityModule: Module {
                     if let value = payload[key] as? String { event[key] = value }
                 }
                 // Values typed on the watch (`setValues`): only the ones sent.
-                for key in ["weightKg", "reps", "distanceKm", "at"] {
+                for key in ["weightKg", "reps", "distanceKm", "at", "armedAt"] {
                     if let value = (payload[key] as? NSNumber)?.doubleValue { event[key] = value }
                 }
                 self?.sendEvent("onWorkoutEdit", event)
