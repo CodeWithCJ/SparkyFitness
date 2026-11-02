@@ -23,6 +23,7 @@ import { FoodAssistantState } from '@/components/ai/FoodAssistantState';
 import { MessagePart, ImagePart } from '@/types/Chatbot_types';
 import { type UIMessage } from 'ai';
 import { resizeImageBase64 } from '@/utils/imageResize';
+import { getChatConversationId } from '@/utils/chatConversationId';
 
 import { useTranslation } from 'react-i18next';
 interface SparkyChatInnerProps {
@@ -145,9 +146,9 @@ const SparkyChatInner = ({
             // closure never sends a stale set). Empty => server falls back to
             // the service's profile default.
             toolCategories: hasCustomSelection ? getSelected() : undefined,
-            // Stable per-thread ID. The server pins providers that need session
-            // affinity (OpenCode Go) to it.
-            conversationId: options.id,
+            // Stable per-conversation ID. The server pins providers that need
+            // session affinity (OpenCode Go) to it.
+            conversationId: getChatConversationId(),
             messages: processedMessages,
           },
         };

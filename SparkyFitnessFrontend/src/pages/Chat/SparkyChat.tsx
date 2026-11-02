@@ -19,6 +19,7 @@ import {
 } from '@/hooks/AI/useAIServiceSettings';
 import { useState } from 'react';
 import { useClearChatHistoryMutation } from '@/hooks/AI/useSparkyChat';
+import { rotateChatConversationId } from '@/utils/chatConversationId';
 import { useAuth } from '@/hooks/useAuth';
 
 import { useTranslation } from 'react-i18next';
@@ -38,6 +39,7 @@ const SparkyChat = () => {
   const handleClearHistory = () => {
     clearHistory('all', {
       onSuccess: () => {
+        rotateChatConversationId();
         setResetKey((prev) => prev + 1);
       },
     });
@@ -60,6 +62,7 @@ const SparkyChat = () => {
       auto_clear_history: preferences?.auto_clear_history || 'never',
     });
     // Reset chat since we're switching providers
+    rotateChatConversationId();
     setResetKey((prev) => prev + 1);
   };
 
