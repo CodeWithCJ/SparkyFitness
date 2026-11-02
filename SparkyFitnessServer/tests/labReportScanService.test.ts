@@ -12,8 +12,12 @@ vi.mock('../utils/outboundUrlPolicy.js', () => ({
   resolveAiNetworkPolicy: vi.fn(async () => ({})),
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+const destroy = vi.fn(async () => undefined);
 vi.mock('unpdf', () => ({
-  getDocumentProxy: vi.fn(async () => ({})),
+  getDocumentProxy: vi.fn(async () => ({
+    numPages: 2,
+    loadingTask: { destroy },
+  })),
   extractText: vi.fn(),
 }));
 
@@ -21,6 +25,7 @@ import { extractText, getDocumentProxy } from 'unpdf';
 import chatRepository from '../models/chatRepository.js';
 import { dispatchAiRequest } from '../ai/providerDispatch.js';
 import {
+  MAX_PDF_PAGES,
   extractLabReport,
   matchLabReportResults,
   normalizeLabReport,
@@ -203,6 +208,51 @@ describe('extractLabReport', () => {
       category: 'document_too_large',
     });
     expect(getDocumentProxy).not.toHaveBeenCalled();
+  });
+
+  it('refuses a PDF with too many pages before reading any of them', async () => {
+    vi.mocked(getDocumentProxy).mockResolvedValueOnce({
+      numPages: 20_000,
+      loadingTask: { destroy },
+    } as never);
+
+    const result = await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
+
+    expect(result).toMatchObject({
+      success: false,
+      category: 'document_too_large',
+    });
+    expect(extractText).not.toHaveBeenCalled();
+    expect(destroy).toHaveBeenCalled();
+    expect(dispatchAiRequest).not.toHaveBeenCalled();
+  });
+
+  it('reads a PDF at the page limit', async () => {
+    vi.mocked(getDocumentProxy).mockResolvedValueOnce({
+      numPages: MAX_PDF_PAGES,
+      loadingTask: { destroy },
+    } as never);
+    vi.mocked(extractText).mockResolvedValue({
+      totalPages: MAX_PDF_PAGES,
+      text: 'HbA1c 5.4 % '.repeat(20),
+    } as never);
+
+    const result = await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
+
+    expect(extractText).toHaveBeenCalled();
+    expect(result).not.toMatchObject({ category: 'document_too_large' });
+  });
+
+  it('opens a PDF with a cap on decoded image size and always releases it', async () => {
+    vi.mocked(extractText).mockRejectedValueOnce(new Error('boom'));
+
+    const result = await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
+
+    expect(result).toMatchObject({ category: 'unreadable_pdf' });
+    expect(vi.mocked(getDocumentProxy).mock.calls[0][1]).toMatchObject({
+      maxImageSize: expect.any(Number),
+    });
+    expect(destroy).toHaveBeenCalled();
   });
 
   it('reports no AI configured', async () => {

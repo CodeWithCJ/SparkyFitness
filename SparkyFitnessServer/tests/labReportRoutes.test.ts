@@ -2,7 +2,10 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 // @ts-expect-error supertest has no bundled types in this project
 import request from 'supertest';
 import express from 'express';
-import labReportRoutes from '../routes/v2/labReportRoutes.js';
+import labReportRoutes, {
+  SCAN_RATE_LIMIT_MAX,
+  scanRateLimiter,
+} from '../routes/v2/labReportRoutes.js';
 import { extractLabReport } from '../services/labReportScanService.js';
 
 vi.mock('../services/labReportScanService.js', async (importOriginal) => ({
@@ -50,7 +53,10 @@ app.use('/api/v2/lab-reports', labReportRoutes);
 const body = { document: 'abc', mime_type: 'application/pdf' };
 
 describe('POST /api/v2/lab-reports/scan', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    scanRateLimiter.reset();
+  });
 
   it('returns the results with their matched marker keys', async () => {
     vi.mocked(extractLabReport).mockResolvedValue({
@@ -119,5 +125,34 @@ describe('POST /api/v2/lab-reports/scan', () => {
 
     expect(res.statusCode).toBe(400);
     expect(extractLabReport).not.toHaveBeenCalled();
+  });
+
+  it('answers 429 with Retry-After once a person has scanned too often', async () => {
+    vi.mocked(extractLabReport).mockResolvedValue({
+      success: false,
+      category: 'unreadable_pdf',
+      error: 'x',
+    });
+    for (let i = 0; i < SCAN_RATE_LIMIT_MAX; i += 1) {
+      const ok = await request(app).post('/api/v2/lab-reports/scan').send(body);
+      expect(ok.status).toBe(422);
+    }
+
+    const limited = await request(app)
+      .post('/api/v2/lab-reports/scan')
+      .send(body);
+
+    expect(limited.status).toBe(429);
+    expect(Number(limited.headers['retry-after'])).toBeGreaterThan(0);
+    expect(extractLabReport).toHaveBeenCalledTimes(SCAN_RATE_LIMIT_MAX);
+  });
+
+  it('does not count a request that fails validation', async () => {
+    for (let i = 0; i < SCAN_RATE_LIMIT_MAX + 2; i += 1) {
+      const bad = await request(app)
+        .post('/api/v2/lab-reports/scan')
+        .send({ nope: true });
+      expect(bad.status).toBe(400);
+    }
   });
 });

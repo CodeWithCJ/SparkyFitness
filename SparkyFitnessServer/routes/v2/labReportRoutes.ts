@@ -4,6 +4,7 @@ import { authenticate } from '../../middleware/authMiddleware.js';
 import onBehalfOfMiddleware from '../../middleware/onBehalfOfMiddleware.js';
 import checkPermissionMiddleware from '../../middleware/checkPermissionMiddleware.js';
 import { resolveIsAdmin } from '../../utils/adminCheck.js';
+import { createUserRateLimiter } from '../../utils/userRateLimiter.js';
 import {
   extractLabReport,
   matchLabReportResults,
@@ -11,6 +12,14 @@ import {
 } from '../../services/labReportScanService.js';
 
 const router = express.Router();
+
+/** Each scan reads a document and calls the user's AI provider, so keep it modest. */
+export const SCAN_RATE_LIMIT_MAX = 10;
+export const SCAN_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+export const scanRateLimiter = createUserRateLimiter(
+  SCAN_RATE_LIMIT_MAX,
+  SCAN_RATE_LIMIT_WINDOW_MS
+);
 
 router.use(authenticate);
 router.use(onBehalfOfMiddleware);
@@ -39,7 +48,8 @@ router.use(checkPermissionMiddleware('checkin'));
  *               mime_type: { type: string, example: application/pdf }
  *     responses:
  *       200: { description: The results read from the report, each matched to a known marker where possible. }
- *       400: { description: Invalid request, an unsupported image type, or a document that is too large. }
+ *       400: { description: Invalid request, an unsupported image type, or a document that is too large (a PDF over 30 pages included). }
+ *       429: { description: Too many scans in a short time. }
  *       403: { description: The AI provider URL is on a private network. }
  *       422: { description: No usable AI provider, an unreadable PDF, or the model did not return readable results. }
  *       502: { description: The AI provider failed. }
@@ -73,6 +83,13 @@ const scanLabReport: RequestHandler = async (req, res, next) => {
         error: 'Invalid request',
         details: body.error.flatten(),
       });
+    }
+    const retryAfter = scanRateLimiter.hit(req.userId);
+    if (retryAfter > 0) {
+      res.set('Retry-After', String(retryAfter));
+      return res
+        .status(429)
+        .json({ error: 'Too many lab report scans. Try again shortly.' });
     }
     const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
     const result = await extractLabReport(

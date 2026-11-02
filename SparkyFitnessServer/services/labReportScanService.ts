@@ -53,6 +53,10 @@ const MAX_PDF_BASE64_CHARS = 20_000_000;
 // almost certainly a scan with no text layer.
 const MIN_PDF_TEXT_CHARS = 80;
 const MAX_PDF_TEXT_CHARS = 60_000;
+// A lab report is a handful of pages. The text is read page by page on the
+// server's only thread, so a PDF that declares thousands of pages is refused
+// before any page is read, however small the file is.
+export const MAX_PDF_PAGES = 30;
 
 const asText = (value: unknown): string | null =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
@@ -122,15 +126,28 @@ export function matchLabReportResults(
   }));
 }
 
-async function readPdfText(base64: string): Promise<string | null> {
+type PdfTextResult =
+  | { kind: 'text'; text: string }
+  | { kind: 'too_many_pages' }
+  | { kind: 'unreadable' };
+
+async function readPdfText(base64: string): Promise<PdfTextResult> {
+  let pdf: Awaited<ReturnType<typeof getDocumentProxy>> | undefined;
   try {
-    const pdf = await getDocumentProxy(
-      new Uint8Array(Buffer.from(base64, 'base64'))
+    pdf = await getDocumentProxy(
+      new Uint8Array(Buffer.from(base64, 'base64')),
+      {
+        // Only text is wanted, so no large image is ever decoded.
+        maxImageSize: 1_000_000,
+      }
     );
+    if (pdf.numPages > MAX_PDF_PAGES) return { kind: 'too_many_pages' };
     const { text } = await extractText(pdf, { mergePages: true });
-    return text.trim();
+    return { kind: 'text', text: text.trim() };
   } catch {
-    return null;
+    return { kind: 'unreadable' };
+  } finally {
+    await pdf?.loadingTask.destroy().catch(() => undefined);
   }
 }
 
@@ -153,14 +170,22 @@ async function extractLabReport(
     }
     // The providers take images, not PDFs, so a PDF's text layer is read here
     // and sent as text. The document itself is never stored.
-    const text = await readPdfText(base64Document);
-    if (text === null) {
+    const read = await readPdfText(base64Document);
+    if (read.kind === 'too_many_pages') {
+      return {
+        success: false,
+        category: 'document_too_large',
+        error: `This PDF has more than ${MAX_PDF_PAGES} pages. Send just the pages with results.`,
+      };
+    }
+    if (read.kind === 'unreadable') {
       return {
         success: false,
         category: 'unreadable_pdf',
         error: 'This PDF could not be opened',
       };
     }
+    const { text } = read;
     if (text.length < MIN_PDF_TEXT_CHARS) {
       return {
         success: false,
