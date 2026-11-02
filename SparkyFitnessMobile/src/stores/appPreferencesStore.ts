@@ -171,6 +171,7 @@ export const PREFERENCE_DEFAULTS = {
   reportDefaultRange: DEFAULT_REPORT_RANGE as TrendRange,
   hiddenReportSections: [] as ReportSectionKey[],
   compareRecentQuestions: [] as CompareQuestion[],
+  chatConversationId: null as string | null,
   reportNutrientOrder: [] as string[],
   shownReportNutrients: [...DEFAULT_REPORT_NUTRIENTS] as string[],
   foodSearchOwnershipFilter: 'all' as OwnershipFilter,
@@ -282,6 +283,9 @@ export type AppPreferencesData = {
   /** Recent Compare questions, newest first (at most five). */
   compareRecentQuestions: CompareQuestion[];
   addCompareRecentQuestion: (q: CompareQuestion) => void;
+  /** The Sparky chat conversation ID, kept across reopening the chat; null until first use. */
+  chatConversationId: string | null;
+  setChatConversationId: (id: string | null) => void;
   /** Order of the nutrients the Nutrition report can average; unknown ones follow in catalog order. */
   reportNutrientOrder: string[];
   /** Nutrients (standard keys or custom names) the Nutrition report's "Your nutrients" card shows. */
@@ -625,6 +629,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
             isHidden
           ),
         })),
+      setChatConversationId: (id) => set({ chatConversationId: id }),
       setReportNutrientOrder: (order) => set({ reportNutrientOrder: order }),
       setReportNutrientShown: (key, isShown) =>
         set((state) => ({
@@ -769,6 +774,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         reportDefaultRange: state.reportDefaultRange,
         hiddenReportSections: state.hiddenReportSections,
         compareRecentQuestions: state.compareRecentQuestions,
+        chatConversationId: state.chatConversationId,
         reportNutrientOrder: state.reportNutrientOrder,
         shownReportNutrients: state.shownReportNutrients,
         foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,

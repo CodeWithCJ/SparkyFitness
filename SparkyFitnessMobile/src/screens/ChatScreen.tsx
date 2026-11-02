@@ -87,6 +87,7 @@ import {
 } from '../utils/pickImage';
 import { resolveSpeechLocale } from '../utils/speechLocale';
 import { newUuid } from '../utils/ids';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   useActiveAiServiceSetting,
@@ -162,16 +163,15 @@ function ChatKeyboardAvoidingView(
 function useSparkyChatRuntime({
   baseUrl,
   serviceConfigId,
+  conversationId,
   initialMessages,
 }: {
   baseUrl: string;
   serviceConfigId: string;
+  conversationId: string;
   initialMessages: InitialMessages;
 }) {
   const { t } = useTranslation();
-  // One ID per mounted thread: ChatThread remounts on "clear chat", which starts
-  // a new conversation. The server pins session-affine providers to it.
-  const [conversationId] = useState(newUuid);
   const transport = useMemo(
     () =>
       new AssistantChatTransport({
@@ -1213,6 +1213,7 @@ function ChatThread({
   serviceConfigId,
   voiceServiceConfigId,
   voiceInputEnabled,
+  conversationId,
   initialMessages,
   onRunningChange,
   autoFocusReady,
@@ -1221,6 +1222,7 @@ function ChatThread({
   serviceConfigId: string;
   voiceServiceConfigId?: string | null;
   voiceInputEnabled: boolean;
+  conversationId: string;
   initialMessages: InitialMessages;
   onRunningChange: (running: boolean) => void;
   autoFocusReady: boolean;
@@ -1230,6 +1232,7 @@ function ChatThread({
   const runtime = useSparkyChatRuntime({
     baseUrl,
     serviceConfigId,
+    conversationId,
     initialMessages,
   });
 
@@ -1408,6 +1411,17 @@ export default function ChatScreen({
   // Remounting ChatThread by key resets the in-memory runtime (it ignores
   // `messages` changes after mount), so bump this to clear the thread.
   const [threadKey, setThreadKey] = useState(0);
+  // Kept across reopening the chat so session-affine providers keep their
+  // session; rotated only when the history is cleared.
+  const chatConversationId = useAppPreferencesStore(
+    (s) => s.chatConversationId
+  );
+  const setChatConversationId = useAppPreferencesStore(
+    (s) => s.setChatConversationId
+  );
+  useEffect(() => {
+    if (!chatConversationId) setChatConversationId(newUuid());
+  }, [chatConversationId, setChatConversationId]);
   const { data: setting, isLoading: loadingSetting } =
     useActiveAiServiceSetting();
   const { preferences, refetch: refetchPreferences } = usePreferences({
@@ -1477,6 +1491,7 @@ export default function ChatScreen({
               await clearAllChatHistory();
               // Reset the raw (pre-select) cache so a remount seeds an empty thread.
               queryClient.setQueryData(chatHistoryQueryKey, []);
+              setChatConversationId(newUuid());
               setThreadKey((k) => k + 1);
             } catch (error) {
               addLog('Failed to clear chat history', 'ERROR', [
@@ -1496,7 +1511,7 @@ export default function ChatScreen({
         },
       ]
     );
-  }, [queryClient, t]);
+  }, [queryClient, setChatConversationId, t]);
 
   // Clear chat is disabled while a stream runs so the server's in-flight
   // onFinish save can't resurrect the exchange after the DELETE.
@@ -1558,6 +1573,10 @@ export default function ChatScreen({
                 'No active AI provider. Configure one in the web app first.',
             })}
           />
+        ) : !chatConversationId ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator color={accent} />
+          </View>
         ) : (
           <ChatThread
             key={threadKey}
@@ -1567,6 +1586,7 @@ export default function ChatScreen({
             voiceInputEnabled={
               !!preferences && preferences.voice_input_enabled !== false
             }
+            conversationId={chatConversationId}
             initialMessages={initialMessages}
             onRunningChange={setRunning}
             autoFocusReady={transitionComplete}
