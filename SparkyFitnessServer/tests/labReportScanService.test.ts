@@ -250,6 +250,32 @@ describe('extractLabReport', () => {
     expect(getDocumentProxy).not.toHaveBeenCalled();
   });
 
+  it('refuses a PDF whose text is too long for one prompt instead of cutting it off', async () => {
+    vi.mocked(extractText).mockResolvedValue({
+      totalPages: 2,
+      text: 'HbA1c 5.4 % '.repeat(6_000),
+    } as never);
+
+    const result = await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
+
+    expect(result).toMatchObject({
+      success: false,
+      category: 'document_too_large',
+    });
+    expect(dispatchAiRequest).not.toHaveBeenCalled();
+    expect(destroy).toHaveBeenCalled();
+  });
+
+  it('sends the whole text of a PDF that fits', async () => {
+    const text = 'HbA1c 5.4 % '.repeat(100);
+    vi.mocked(extractText).mockResolvedValue({ totalPages: 1, text } as never);
+
+    await extractLabReport('JVBERi0=', 'application/pdf', 'u1');
+
+    const request = vi.mocked(dispatchAiRequest).mock.calls[0][0];
+    expect(request.prompt).toContain(text.trim());
+  });
+
   it('refuses a PDF with too many pages before reading any of them', async () => {
     vi.mocked(getDocumentProxy).mockResolvedValueOnce({
       numPages: 20_000,

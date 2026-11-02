@@ -52,6 +52,9 @@ const MAX_PDF_BASE64_CHARS = 20_000_000;
 // A readable lab report is a few thousand characters; below this the PDF is
 // almost certainly a scan with no text layer.
 const MIN_PDF_TEXT_CHARS = 80;
+// What fits in one prompt. Text past it is never cut off silently: the results
+// further down would be missing from the review with nothing to say so, so a
+// longer document is refused and the person sends just the pages with results.
 const MAX_PDF_TEXT_CHARS = 60_000;
 // A lab report is a handful of pages. The text is read page by page on the
 // server's only thread, so a PDF that declares thousands of pages is refused
@@ -207,6 +210,14 @@ async function extractLabReport(
       };
     }
     const { text } = read;
+    if (text.length > MAX_PDF_TEXT_CHARS) {
+      return {
+        success: false,
+        category: 'document_too_large',
+        error:
+          'This PDF has more text than can be read at once. Send just the pages with results.',
+      };
+    }
     if (text.length < MIN_PDF_TEXT_CHARS) {
       return {
         success: false,
@@ -215,7 +226,7 @@ async function extractLabReport(
           'This PDF has no readable text. Take a photo or screenshot of the report instead.',
       };
     }
-    prompt = `${LAB_REPORT_PROMPT}\n\nLab report text:\n${text.slice(0, MAX_PDF_TEXT_CHARS)}`;
+    prompt = `${LAB_REPORT_PROMPT}\n\nLab report text:\n${text}`;
   }
 
   const setting = isPdf
