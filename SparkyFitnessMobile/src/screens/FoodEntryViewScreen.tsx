@@ -1547,26 +1547,6 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         </Animated.View>
 
         <Animated.View layout={LinearTransition.duration(300)}>
-          {canEdit && !isEditing ? (
-            <Button
-              variant="outline"
-              onPress={() =>
-                copySheetRef.current?.present(
-                  normalizeDate(entry.entry_date),
-                  entry.meal_type_id ?? null,
-                  entry.meal_type,
-                  { foodName: entry.food_name ?? '' }
-                )
-              }
-              accessibilityRole="button"
-              accessibilityLabel={t('foodEntryView.copyEntry', {
-                defaultValue: 'Copy Food',
-              })}
-              className="mt-2"
-            >
-              {t('foodEntryView.copyEntry', { defaultValue: 'Copy Food' })}
-            </Button>
-          ) : null}
           <Button
             variant="destructive"
             onPress={confirmAndDelete}
@@ -1584,6 +1564,27 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 })}
           </Button>
         </Animated.View>
+
+        {canEdit && !isEditing ? (
+          <Button
+            variant="outline"
+            onPress={() =>
+              copySheetRef.current?.present(
+                normalizeDate(entry.entry_date),
+                entry.meal_type_id ?? null,
+                entry.meal_type,
+                { foodName: entry.food_name ?? '' }
+              )
+            }
+            accessibilityRole="button"
+            accessibilityLabel={t('foodEntryView.copyEntry', {
+              defaultValue: 'Copy Food',
+            })}
+            className="mt-3"
+          >
+            {t('foodEntryView.copyEntry', { defaultValue: 'Copy Food' })}
+          </Button>
+        ) : null}
       </ScrollView>
 
       {canEdit && (
