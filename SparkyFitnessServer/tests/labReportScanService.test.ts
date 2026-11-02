@@ -43,6 +43,14 @@ describe('normalizeLabReport number text', () => {
     expect(read('12,34')).toBe(12.34);
     expect(read('0,0075')).toBe(0.0075);
     expect(read(',5')).toBe(0.5);
+    expect(read('1234,567')).toBe(1234.567);
+  });
+
+  it('reads a zero whole part with three decimals as a decimal, not thousands', () => {
+    expect(read('0,007')).toBe(0.007);
+    expect(read('0,500')).toBe(0.5);
+    expect(read(',007')).toBe(0.007);
+    expect(read('00,125')).toBe(0.125);
   });
 
   it('reads a comma before exactly three digits as a thousands separator', () => {

@@ -66,9 +66,10 @@ const asText = (value: unknown): string | null =>
 
 /**
  * Reads a number the model wrote as a string. A comma is a decimal separator
- * when it is the only one and not followed by exactly three digits ("5,4" is
- * 5.4, "0,0075" is 0.0075) and a thousands separator otherwise ("1,000",
- * "1,234,567"). With both a comma and a dot, whichever comes last is the
+ * when it is the only one, unless it is a thousands separator: three digits
+ * follow it and the whole part is one to three digits without a leading zero
+ * ("1,130" is 1130, but "5,4", "0,007" and "1234,567" are decimals). Several
+ * commas are all thousands separators ("1,234,567"). With both a comma and a dot, whichever comes last is the
  * decimal separator ("1.234,5" is 1234.5, "1,234.5" is 1234.5).
  */
 function parseNumberText(value: string): number | null {
@@ -83,9 +84,13 @@ function parseNumberText(value: string): number | null {
         ? text.replace(/\./g, '').replace(',', '.')
         : text.replace(/,/g, '');
   } else if (commas === 1) {
-    const digitsAfter = text.length - text.indexOf(',') - 1;
-    normalized =
-      digitsAfter === 3 ? text.replace(',', '') : text.replace(',', '.');
+    const at = text.indexOf(',');
+    const whole = text.slice(0, at);
+    const digitsAfter = text.length - at - 1;
+    // Thousands groups follow a whole part of one to three digits that does
+    // not start with a zero, so "0,007" and ",007" are decimals.
+    const thousands = digitsAfter === 3 && /^[1-9]\d{0,2}$/.test(whole);
+    normalized = thousands ? text.replace(',', '') : text.replace(',', '.');
   } else if (commas > 1) {
     normalized = text.replace(/,/g, '');
   }
