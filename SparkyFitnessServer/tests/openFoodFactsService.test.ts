@@ -916,6 +916,124 @@ describe('openFoodFactsService', () => {
         'Current Product',
       ]);
     });
+
+    describe('brand search', () => {
+      const hitsResponse = (hits: object[]) => ({
+        ok: true,
+        json: () =>
+          Promise.resolve({ hits, page: 1, page_size: 20, count: hits.length }),
+      });
+      const productsResponse = (products: object[]) => ({
+        ok: true,
+        json: () => Promise.resolve({ products }),
+      });
+      const searchQueries = () =>
+        fetchMock.mock.calls
+          .filter(([url]) => url === 'https://search.openfoodfacts.org/search')
+          .map(([, init]) => JSON.parse(init.body).q as string);
+      const namedKirkland = {
+        code: 'named',
+        product_name: 'Kirkland',
+        nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+      };
+      const kirklandBagel = {
+        code: 'bagel',
+        product_name: 'Everything Bagel',
+        brands: ['Kirkland Signature'],
+        nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+      };
+
+      it('asks again with a word as the brand when no hit has every word', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel]))
+          .mockResolvedValueOnce(
+            productsResponse([
+              { ...namedKirkland },
+              { ...kirklandBagel, brands: 'Kirkland Signature' },
+            ])
+          );
+
+        const result = await searchOpenFoodFacts('Kirkland bagel');
+
+        expect(searchQueries()[1]).toMatch(/^brands:kirkland bagel /);
+        expect(result.products.map((product) => product.code)).toEqual([
+          'bagel',
+          'named',
+        ]);
+        // One hydration call for the merged page.
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+        expect(String(fetchMock.mock.calls[2][0])).toContain(
+          'code=bagel,named'
+        );
+      });
+
+      it('tries the next word when the first brand guess finds nothing', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(hitsResponse([]))
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        const result = await searchOpenFoodFacts('bagel kirkland');
+
+        expect(searchQueries().slice(1)).toEqual([
+          expect.stringMatching(/^brands:bagel kirkland /),
+          expect.stringMatching(/^brands:kirkland bagel /),
+        ]);
+        expect(result.products.map((product) => product.code)).toEqual([
+          'bagel',
+          'named',
+        ]);
+      });
+
+      it('strips query syntax from the words it sends as the brand', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        await searchOpenFoodFacts('kirkland:* (bagel)');
+
+        expect(searchQueries()[1]).toMatch(/^brands:kirkland bagel /);
+      });
+
+      it('does not ask again when a hit already has every word', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel, namedKirkland]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        await searchOpenFoodFacts('kirkland bagel');
+
+        expect(searchQueries()).toHaveLength(1);
+      });
+
+      it('does not ask again for a one-word search or a later page', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(productsResponse([]))
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        await searchOpenFoodFacts('bagel');
+        await searchOpenFoodFacts('kirkland bagel', 2);
+
+        expect(searchQueries()).toHaveLength(2);
+      });
+
+      it('keeps the plain results when the brand search fails', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce({ ok: false, status: 503 })
+          .mockResolvedValueOnce(productsResponse([]));
+
+        const result = await searchOpenFoodFacts('kirkland bagel');
+
+        expect(result.products.map((product) => product.code)).toEqual([
+          'named',
+        ]);
+      });
+    });
   });
 
   describe('searchOpenFoodFactsByBarcodeFields', () => {
