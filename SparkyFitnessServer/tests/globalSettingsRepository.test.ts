@@ -99,6 +99,28 @@ describe('globalSettingsRepository', () => {
       }
     );
     it.each([
+      [true, undefined, undefined, true],
+      [false, undefined, undefined, false],
+      [null, undefined, undefined, true],
+      [true, undefined, 'true', false],
+      [false, 'true', undefined, true],
+      [true, 'true', 'true', true],
+    ])(
+      'resolves magic link login from saved=%s FORCE=%s DISABLE=%s to %s',
+      async (saved, force, disable, expected) => {
+        vi.stubEnv('SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN', force);
+        vi.stubEnv('SPARKY_FITNESS_DISABLE_MAGIC_LINK_LOGIN', disable);
+        mockClient.query.mockResolvedValue({
+          rows: [{ id: 1, enable_magic_link_login: saved }],
+        });
+        const result = await globalSettingsRepository.getGlobalSettings();
+        expect(result.enable_magic_link_login).toBe(expected);
+        expect(result.is_magic_link_login_env_configured).toBe(
+          force === 'true' || disable === 'true'
+        );
+      }
+    );
+    it.each([
       [true, true],
       [false, false],
       [undefined, false],
@@ -217,6 +239,33 @@ describe('globalSettingsRepository', () => {
       expect(params[12]).toBe(false);
     });
 
+    it('saves the magic link login setting', async () => {
+      mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
+      await globalSettingsRepository.saveGlobalSettings({
+        enable_magic_link_login: false,
+      });
+      const [sql, params] = mockClient.query.mock.calls[0];
+      expect(sql).toContain(
+        'enable_magic_link_login = COALESCE($17, enable_magic_link_login, true)'
+      );
+      expect(params[16]).toBe(false);
+    });
+
+    it.each([
+      'SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN',
+      'SPARKY_FITNESS_DISABLE_MAGIC_LINK_LOGIN',
+    ])(
+      'keeps the stored magic link setting while %s forces it',
+      async (envVar) => {
+        vi.stubEnv(envVar, 'true');
+        mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
+        await globalSettingsRepository.saveGlobalSettings({
+          enable_magic_link_login: false,
+        });
+        expect(mockClient.query.mock.calls[0][1][16]).toBeNull();
+      }
+    );
+
     it('saves the version check setting', async () => {
       mockClient.query.mockResolvedValue({ rows: [{ id: 1 }] });
       await globalSettingsRepository.saveGlobalSettings({
@@ -259,6 +308,7 @@ describe('globalSettingsRepository', () => {
           false,
           null,
           false,
+          null,
           null,
           null,
           null,
