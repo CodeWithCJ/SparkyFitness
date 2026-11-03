@@ -6,6 +6,7 @@ import { addLog } from './LogService';
 import { getActiveServerConfigId } from './storage';
 import { saveWatchRun } from './watchRunSave';
 import { learnFromWatchRun, type WatchRunForm } from './stepDistance';
+import { rememberPendingWatchForm } from './pendingWatchForm';
 import {
   completeProgramWorkout,
   rateProgramWorkout,
@@ -466,6 +467,22 @@ async function drainOnce(
           ),
         item.form ?? null
       );
+      // The watch's steps may not have reached Apple Health yet, which leaves
+      // the entry without cadence and stride; measure it again later.
+      if (!form) {
+        await rememberPendingWatchForm({
+          entryId,
+          ownerId: item.payload.ownerId ?? activeOwnerId,
+          activity: item.payload.kind,
+          startedAt: item.payload.startedAt,
+          endedAt: item.payload.endedAt,
+          activeSeconds: item.payload.activeSeconds,
+          distanceMeters: item.payload.distanceMeters,
+          taughtDistance:
+            item.payload.place === 'indoor' &&
+            item.payload.estimatedDistanceMeters != null,
+        });
+      }
       await patchEffort(clientId, {
         entryId,
         day: toLocalDateString(new Date(item.payload.startedAt)),

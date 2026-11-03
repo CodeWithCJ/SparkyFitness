@@ -280,7 +280,8 @@ async function attachWatchTelemetryToExerciseEntry(
   activeEnergyKcal?: number,
   durationMinutes?: number,
   appleZones?: unknown,
-  strideLengthCm?: number | null
+  strideLengthCm?: number | null,
+  avgCadence?: number | null
 ): Promise<void> {
   // Fail closed: family/delegate diary *read* can SELECT another user's
   // entry via RLS, but this route must not 204 after an UPDATE that
@@ -331,6 +332,9 @@ async function attachWatchTelemetryToExerciseEntry(
   }
   if (strideLengthCm !== undefined) {
     fields.stride_length_cm = strideLengthCm;
+  }
+  if (avgCadence !== undefined) {
+    fields.avg_cadence = avgCadence;
   }
 
   // Apple's finished-workout zones win over a fresh bucketing of the series.

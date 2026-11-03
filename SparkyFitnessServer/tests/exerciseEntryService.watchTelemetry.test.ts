@@ -139,6 +139,32 @@ describe('attachWatchTelemetryToExerciseEntry', () => {
     );
   });
 
+  it('writes a cadence and stride alone, leaving heart rate and calories out', async () => {
+    await attachWatchTelemetryToExerciseEntry(
+      userId,
+      userId,
+      entryId,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      104.5,
+      124
+    );
+
+    expect(
+      exerciseEntryRepository.applyWatchTelemetryAtomically
+    ).toHaveBeenCalledWith(
+      entryId,
+      userId,
+      userId,
+      { stride_length_cm: 104.5, avg_cadence: 124 },
+      null,
+      undefined,
+      false
+    );
+  });
+
   it("404s instead of attaching telemetry to another user's entry", async () => {
     // @ts-expect-error TS(2339): mock method not on typed function.
     exerciseEntryRepository.getExerciseEntryOwnerId.mockResolvedValue(

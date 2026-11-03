@@ -433,6 +433,8 @@ export interface WatchTelemetryFields {
   watch_duration_minutes?: number | null;
   /** Stride length in cm; null clears it. */
   stride_length_cm?: number | null;
+  /** Average cadence in steps per minute; null clears it. */
+  avg_cadence?: number | null;
 }
 
 /**

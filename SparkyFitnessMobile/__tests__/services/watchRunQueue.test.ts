@@ -21,6 +21,7 @@ import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
 import type { WatchRunPayload } from '../../src/utils/watchRun';
 import { learnWatchIndoorScale } from '../../src/services/watchIndoorScale';
 import { learnFromWatchRun } from '../../src/services/stepDistance';
+import { rememberPendingWatchForm } from '../../src/services/pendingWatchForm';
 
 jest.mock('../../modules/watch-connectivity', () => ({
   __esModule: true,
@@ -34,6 +35,9 @@ jest.mock('../../src/services/watchIndoorScale', () => ({
 }));
 jest.mock('../../src/services/stepDistance', () => ({
   learnFromWatchRun: jest.fn(() => Promise.resolve(true)),
+}));
+jest.mock('../../src/services/pendingWatchForm', () => ({
+  rememberPendingWatchForm: jest.fn(() => Promise.resolve()),
 }));
 jest.mock('../../src/services/runProgramService', () => ({
   completeProgramWorkout: jest.fn(() => Promise.resolve()),
@@ -334,6 +338,31 @@ test('learns the indoor factor from a treadmill distance entered on the wrist', 
     'watch',
     'entry-1'
   );
+});
+
+test('remembers a run whose cadence and stride could not be measured yet', async () => {
+  jest.mocked(rememberPendingWatchForm).mockClear();
+  mockedSave.mockResolvedValue({ entryId: 'entry-1', form: null });
+  await enqueueWatchRun({ ...run('f1'), place: 'indoor' });
+  await processWatchRunQueue('km');
+  expect(rememberPendingWatchForm).toHaveBeenCalledWith(
+    expect.objectContaining({
+      entryId: 'entry-1',
+      activity: 'walk',
+      taughtDistance: false,
+    })
+  );
+});
+
+test('does not remember a run whose form was measured', async () => {
+  jest.mocked(rememberPendingWatchForm).mockClear();
+  mockedSave.mockResolvedValue({
+    entryId: 'entry-1',
+    form: { avgCadence: 120, strideLengthCm: 80, steps: 3000 },
+  });
+  await enqueueWatchRun({ ...run('f2'), place: 'indoor' });
+  await processWatchRunQueue('km');
+  expect(rememberPendingWatchForm).not.toHaveBeenCalled();
 });
 
 test('learns nothing when the watch figure was kept', async () => {

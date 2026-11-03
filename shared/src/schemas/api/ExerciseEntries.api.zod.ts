@@ -374,6 +374,12 @@ export const attachExerciseEntryWatchTelemetryRequestSchema = z
      * leaves the duration and everything else on the entry alone.
      */
     strideLengthCm: z.number().positive().max(500).nullable().optional(),
+    /**
+     * Average cadence of the entry, in steps per minute; null clears it.
+     * Telemetry only, like `strideLengthCm`: a run filed before its steps had
+     * reached Apple Health gets its cadence filled in afterwards.
+     */
+    avgCadence: z.number().positive().max(400).nullable().optional(),
   })
   .strict()
   .refine(
@@ -381,11 +387,12 @@ export const attachExerciseEntryWatchTelemetryRequestSchema = z
       body.hrSamples !== undefined ||
       body.activeEnergyKcal !== undefined ||
       body.strideLengthCm !== undefined ||
+      body.avgCadence !== undefined ||
       (body.durationMinutes !== undefined && body.durationMinutes > 0) ||
       (body.appleZones !== undefined && body.appleZones.length > 0),
     {
       message:
-        'At least one of hrSamples, activeEnergyKcal, durationMinutes, strideLengthCm, or appleZones is required.',
+        'At least one of hrSamples, activeEnergyKcal, durationMinutes, strideLengthCm, avgCadence, or appleZones is required.',
     }
   );
 

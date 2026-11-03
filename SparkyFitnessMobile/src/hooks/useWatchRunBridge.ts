@@ -14,6 +14,8 @@ import { queryClient } from './queryClient';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
 import { usePreferences } from './usePreferences';
 import { addLog } from '../services/LogService';
+import { retryPendingWatchForms } from '../services/pendingWatchForm';
+import { getActiveServerConfigId } from '../services/storage';
 import {
   acceptPendingWatchRuns,
   enqueueWatchRun,
@@ -64,6 +66,13 @@ export function useWatchRunBridge(
         announceWatchRun(payload, unitRef.current, tRef.current, entryId, form)
     );
     for (const day of new Set(days)) invalidateExerciseCache(queryClient, day);
+    // Runs filed before their steps reached Apple Health get cadence and
+    // stride now, if the steps are there.
+    const filled = await retryPendingWatchForms(
+      await getActiveServerConfigId()
+    );
+    for (const day of new Set(filled))
+      invalidateExerciseCache(queryClient, day);
   });
 
   // What the watch says about a run in progress, for the phone's live view.

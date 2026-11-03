@@ -1,0 +1,136 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import {
+  FORM_GIVE_UP_AFTER_MS,
+  FORM_RETRY_AFTER_MS,
+  rememberPendingWatchForm,
+  retryPendingWatchForms,
+} from '../../src/services/pendingWatchForm';
+import { ApiError } from '../../src/services/api/errors';
+import { setExerciseEntryForm } from '../../src/services/api/exerciseApi';
+import { measureWatchRunForm } from '../../src/services/stepDistance';
+import { learnStride } from '../../src/services/strideCalibration';
+
+jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
+jest.mock('../../src/services/api/exerciseApi', () => ({
+  setExerciseEntryForm: jest.fn(() => Promise.resolve()),
+}));
+jest.mock('../../src/services/stepDistance', () => ({
+  measureWatchRunForm: jest.fn(),
+}));
+jest.mock('../../src/services/strideCalibration', () => ({
+  learnStride: jest.fn(() => Promise.resolve(true)),
+}));
+
+const KEY = '@SparkyFitness/pendingWatchForm';
+const T0 = Date.UTC(2026, 10, 2, 11, 0, 0);
+const run = {
+  entryId: 'entry-1',
+  ownerId: 'server-1',
+  activity: 'run' as const,
+  startedAt: T0 - 30 * 60_000,
+  endedAt: T0,
+  activeSeconds: 1687,
+  distanceMeters: 2897,
+  taughtDistance: false,
+};
+const form = { avgCadence: 124, strideLengthCm: 83.1, steps: 3487 };
+
+const stored = async () =>
+  JSON.parse((await AsyncStorage.getItem(KEY)) ?? '[]');
+
+beforeEach(async () => {
+  jest.clearAllMocks();
+  await AsyncStorage.clear();
+  jest.mocked(measureWatchRunForm).mockResolvedValue(form);
+});
+
+it('keeps a run once, however often it is remembered', async () => {
+  await rememberPendingWatchForm(run, T0);
+  await rememberPendingWatchForm(run, T0);
+  expect(await stored()).toHaveLength(1);
+});
+
+it('waits before looking again', async () => {
+  await rememberPendingWatchForm(run, T0);
+  expect(await retryPendingWatchForms('server-1', T0 + 60_000)).toEqual([]);
+  expect(measureWatchRunForm).not.toHaveBeenCalled();
+});
+
+it('fills in cadence and stride once the steps are there, and forgets the run', async () => {
+  await rememberPendingWatchForm(run, T0);
+
+  const days = await retryPendingWatchForms(
+    'server-1',
+    T0 + FORM_RETRY_AFTER_MS
+  );
+
+  expect(setExerciseEntryForm).toHaveBeenCalledWith('entry-1', {
+    avgCadence: 124,
+    strideLengthCm: 83.1,
+  });
+  expect(days).toHaveLength(1);
+  expect(await stored()).toEqual([]);
+  expect(learnStride).not.toHaveBeenCalled();
+});
+
+it('teaches the stride too when a treadmill distance was entered', async () => {
+  await rememberPendingWatchForm({ ...run, taughtDistance: true }, T0);
+
+  await retryPendingWatchForms('server-1', T0 + FORM_RETRY_AFTER_MS);
+
+  expect(learnStride).toHaveBeenCalledWith('run', 3487, 2897, 'entry-1');
+});
+
+it('keeps the run and tries later while Apple Health has no steps', async () => {
+  jest.mocked(measureWatchRunForm).mockResolvedValue(null);
+  await rememberPendingWatchForm(run, T0);
+
+  const now = T0 + FORM_RETRY_AFTER_MS;
+  expect(await retryPendingWatchForms('server-1', now)).toEqual([]);
+
+  expect(setExerciseEntryForm).not.toHaveBeenCalled();
+  const [kept] = await stored();
+  expect(kept.nextAttemptAt).toBe(now + FORM_RETRY_AFTER_MS);
+});
+
+it('keeps the run when the server cannot be reached', async () => {
+  jest
+    .mocked(setExerciseEntryForm)
+    .mockRejectedValueOnce(new ApiError('offline', 503));
+  await rememberPendingWatchForm(run, T0);
+
+  expect(
+    await retryPendingWatchForms('server-1', T0 + FORM_RETRY_AFTER_MS)
+  ).toEqual([]);
+  expect(await stored()).toHaveLength(1);
+});
+
+it('drops a run whose entry is gone', async () => {
+  jest
+    .mocked(setExerciseEntryForm)
+    .mockRejectedValueOnce(new ApiError('gone', 404));
+  await rememberPendingWatchForm(run, T0);
+
+  await retryPendingWatchForms('server-1', T0 + FORM_RETRY_AFTER_MS);
+
+  expect(await stored()).toEqual([]);
+});
+
+it('leaves another server’s runs alone', async () => {
+  await rememberPendingWatchForm(run, T0);
+
+  await retryPendingWatchForms('server-2', T0 + FORM_RETRY_AFTER_MS);
+
+  expect(measureWatchRunForm).not.toHaveBeenCalled();
+  expect(await stored()).toHaveLength(1);
+});
+
+it('gives up on a run the steps never came for', async () => {
+  await rememberPendingWatchForm(run, T0);
+
+  await retryPendingWatchForms('server-1', T0 + FORM_GIVE_UP_AFTER_MS + 1);
+
+  expect(measureWatchRunForm).not.toHaveBeenCalled();
+  expect(await stored()).toEqual([]);
+});

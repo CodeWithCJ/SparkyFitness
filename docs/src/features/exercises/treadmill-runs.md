@@ -28,6 +28,10 @@ Walking and running each show the stride the app uses to turn steps into distanc
 - **Learned from N real distances.** Each distance you corrected, or each saved outdoor walk or run, taught it. Newer distances move it gradually, so one odd treadmill does not undo a good stride. A watch run teaches it too, from the steps Apple Health holds over the run, whether you typed the distance on the watch or on the run summary. A run counts once: a figure you enter again for the same run replaces the first instead of adding to it.
 - **Set by you.** You typed it or calibrated it. It counts for a few learned distances, so the next real distance nudges it instead of replacing it.
 
+## Cadence and stride on a watch run
+
+A watch run is saved as soon as it reaches the phone, which can be before the watch's steps have reached Apple Health. When that happens the run is saved without cadence and stride, and the app measures it again every 15 minutes while it is open, for up to three days, until the steps are there. It then adds them to the run you already have, and teaches your stride if you entered the treadmill's distance.
+
 ## Watch treadmill distance
 
 A watch estimates a treadmill run's distance from your motion, and the estimate can be off by a steady amount. Each time you enter what the treadmill showed after a watch run, the app works out how far off the watch was, and the watch applies that to its next treadmill run. Walks and runs are learned separately.
