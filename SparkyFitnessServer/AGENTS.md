@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-01_
+_Last updated: 2026-11-02_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -31,6 +31,7 @@ If a task also touches `shared/`, the frontend, or the mobile app, read the rele
 - The package is now effectively TypeScript-first; almost all source files are `.ts`
 - Main domains: food and meal tracking, exercise logging, health and sleep data, sleep science, fasting, medications, symptom and episode tracking, mood, menstrual cycle and pregnancy, reporting, AI chat, onboarding, identity, admin tooling, NFC action tags, and external provider integrations
 - External provider integrations include the Intervals.icu API-key provider (`routes/intervalsRoutes.ts`, `integrations/intervals/`) for activities and wellness
+- Several server instances can share one database; each scheduled job tick runs on one of them, claimed in `system.scheduled_jobs` (`services/scheduledJobs.ts`)
 
 ## Verified Commands
 
@@ -69,6 +70,7 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - `SparkyFitnessServer.ts` - Express app shell, route mounting, Swagger/ReDoc, startup
 - `utils/gracefulShutdown.ts` - SIGTERM/SIGINT drain: stops accepting connections, closes keep-alive connections once their responses are written out (never cutting off a response still being sent), stops scheduled jobs from firing and waits for running ones, provider syncs and tracked background work, releases sync claims still held, closes the pools, and exits 1 after `SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS` (default 15, parsed by `shutdownTimeoutMs`). Work a route or job starts without awaiting (a 202 reply, a `void` call) must go through `trackBackgroundWork` in `utils/shutdownHooks.ts`, or shutdown closes the pools under it; long loops check `isShuttingDown()` before starting the next item
 - `services/backgroundJobScheduler.ts` - starts every scheduled background job at startup, including the demo reset; provider syncs are listed in `services/providerSyncScheduler.ts`; `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` skips them all
+- `services/scheduledJobs.ts` - `scheduleJob()`, the only place `node-cron` is imported: every instance registers every job and the first to claim a tick in `system.scheduled_jobs` (`models/scheduledJobRepository.ts`) runs it
 - `services/onlineRestoreGuard.ts` - `assertRestoreAllowed()`: refuses an in-app restore (409, before the upload, and again inside `performRestore` just before the swap) when `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` or another instance's `sparkyfitness-*` sessions show in `pg_stat_activity`. Best effort: idle pools close after 30 s, so an idle instance is invisible; operators scale to one instance first
 - Restore (backupService.ts `performRestore`): see [source-map.md](agent-docs/source-map.md#restore-backupservicets-performrestore).
 - `services/providerSyncClaim.ts` - every provider sync, manual or scheduled, runs through `startProviderSync`, which claims the account and stops the sync when the claim is lost or it gets no database connection and runs no query for 20 minutes; a stopped sync's next `getClient`/`getSystemClient` throws (`utils/abortScope.ts`), while a transaction already running on a connection it holds still finishes, so sync writes stay idempotent. Sync code gets connections only through those two, and never through `runOutsideAbortScope`, which is for fenced cleanup such as releasing the claim
@@ -258,6 +260,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - Current adapters span food/nutrition (OpenFoodFacts, FatSecret, Nutritionix, USDA, Mealie, Tandoor, Norish, SwissFood, Yazio), fitness devices (Garmin Connect sync plus FIT file import via `integrations/garminfit/` + `services/fitImportService.ts`, Withings, Fitbit, Oura, Polar, Strava, COROS, Hevy, Liftosaur, Intervals.icu), exercise databases (Wger, FreeExerciseDB), and health-data import (Google Health, generic/mobile health data)
 - Scheduled jobs include backups, session cleanup, and provider sync loops for Withings, Garmin, Fitbit, Oura, Polar, Strava, COROS, Google Health, Hevy, Liftosaur, and Intervals.icu. Hevy's daily frequency is due at 21:00 in the user's timezone and runs at most once per local day; manual connections are skipped.
 - Hevy imports: `integrations/hevy/hevyService.ts` reads workout and exercise-template pages before processing. `hevyDataProcessor.ts` matches templates by id and maps primary/secondary muscles; `hevyExerciseRepository.ts` fills only empty muscle columns on owned Hevy library rows before the diary snapshots them. A full-history re-sync rebuilds older Hevy snapshots with this metadata.
+- Schedule a job with `scheduleJob(name, expression, fn)` from `services/scheduledJobs.ts` (lint forbids importing `node-cron` elsewhere) and give it a unique name. Every instance registers every job and the first to claim a tick in `system.scheduled_jobs` runs it, so with several instances each tick runs on at most one. A tick is skipped everywhere when shutdown begins during its claim or the claim query fails (node-cron then skips the tick). Nothing is held while a job runs: a run longer than its interval can meet the next tick on another instance, so a long job claims what it works on or is safe to run twice, as on one instance. `{ local: true }` is only for per-instance reconciliation that must run everywhere
 - Google Health heart rate for logged workouts (#3285): at the end of each sync `integrations/googlehealth/googleHealthWorkoutHeartRate.ts` takes the workouts logged in SparkyFitness in the sync range that have a start time but no heart rate (`workoutTelemetryRepository.getWorkoutEntriesWithoutHeartRate`; sources `''`/`manual`/`sparky`), works out each one's span with the shared `workoutClockWindow`, fetches the `heart-rate` readings for those spans (`fetchHeartRateSamples`, filtered by instant with no unfiltered fallback) and attaches them through `exerciseEntryService.attachWatchTelemetryToExerciseEntry` with the series kept under `Google Health`. A workout is filled only once the readings reach its end (the request looks 5 minutes past it), so a tracker that has not uploaded yet is retried by the next sync; calories are left alone
 - Integration work often spans route, service, repository, cron, and external-provider settings code; inspect the whole path before calling the work complete
 - **OAuth linking (`/authorize`, `/callback`) is self-only, and `state` is a server-issued single-use nonce.** Never derive a user id from a callback request body, and never gate an authorize route with `checkPermissionMiddleware('diary')` — on GET that resolves to `diary_read`, which would hand a read-only delegate the owner's decrypted OAuth client id. Use `requireSelfActor` plus `utils/oauthState.ts`. Withings and Polar follow this pattern; Oura, Fitbit and Strava are self-only but still send `state = userId` and ignore it on callback (tracked follow-up)
@@ -291,6 +294,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect `index.ts`, `SparkyFitnessServer.ts`, `utils/secretLoader.ts`, `utils/preflightChecks.ts`, and `config/logging.ts`
 - Provider sync stopped, skipped as already running, or holding an account:
   inspect `services/providerSyncClaim.ts` (claim, renewal, stall stop) and `utils/abortScope.ts` (how a stopped sync's next `getClient`/`getSystemClient` is refused and how connections and queries count as progress, hooked in `db/poolManager.ts`)
+- Scheduled job ran twice, ran on no instance, or ran on the wrong one:
+  inspect `services/scheduledJobs.ts`, `models/scheduledJobRepository.ts` and the job's `system.scheduled_jobs` row (`last_slot`, `claimed_by`)
 - Auth, session, MFA, or API key issue:
   inspect `auth.ts`, `middleware/authMiddleware.ts`, `routes/authRoutes.ts`, and `routes/auth/`
 - Remote MCP OAuth, discovery, consent, token, or redirect allowlist issue:

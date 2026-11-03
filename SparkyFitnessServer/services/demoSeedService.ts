@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
-import cron from 'node-cron';
+import { scheduleJob, type ScheduledTask } from './scheduledJobs.js';
 import type { PoolClient } from 'pg';
 import { getSystemClient } from '../db/poolManager.js';
 import userRepository from '../models/userRepository.js';
@@ -1642,14 +1642,15 @@ export async function purgeDemoUserIfExists(): Promise<void> {
 /**
  * Registers an in-process midnight UTC cron job to reset demo user data daily without downtime.
  */
-let demoCronTask: ReturnType<typeof cron.schedule> | null = null;
+let demoCronTask: ScheduledTask | null = null;
 
 export function scheduleDemoMidnightReset(): void {
   if (!isDemoMode()) return;
   if (demoCronTask) return;
 
   log('info', '[DEMO] Scheduling in-process daily reset cron at 00:00 UTC');
-  demoCronTask = cron.schedule(
+  demoCronTask = scheduleJob(
+    'demo-midnight-reset',
     '0 0 * * *',
     async () => {
       try {
