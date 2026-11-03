@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
 import ActiveWorkoutFocusView from '../../src/components/ActiveWorkoutFocusView';
 import { useExerciseStats } from '../../src/hooks/useExerciseStats';
 import {
@@ -128,6 +129,7 @@ function viewElement(
   return (
     <ActiveWorkoutFocusView
       session={sessionOverride as any}
+      scrollRef={{ current: null }}
       expandedSetKey={null}
       noteEditorEntryId={null}
       prSetIds={{}}
@@ -366,6 +368,29 @@ describe('ActiveWorkoutFocusView', () => {
     render(viewElement('a'));
     expect(screen.getByText('Plan: 2 × 12')).toBeTruthy();
     expect(screen.getByText('Last time: 40×7, 35×9')).toBeTruthy();
+  });
+
+  it('reformats the last-time weights when the app language changes', async () => {
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
+    mockUseExerciseStats.mockReturnValue({
+      data: {
+        bestSet: null,
+        recentSessions: [
+          { sets: [{ weight: 42.5, reps: 5, setType: 'normal' }] },
+        ],
+      },
+    });
+    render(viewElement('a'));
+    expect(screen.getByText('Last time: 42.5×5')).toBeTruthy();
+
+    await act(async () => {
+      await i18n.changeLanguage('pl');
+    });
+    expect(screen.getByText('Last time: 42,5×5')).toBeTruthy();
+    await act(async () => {
+      await i18n.changeLanguage('en');
+    });
   });
 
   it('omits the context lines without a plan or history', () => {

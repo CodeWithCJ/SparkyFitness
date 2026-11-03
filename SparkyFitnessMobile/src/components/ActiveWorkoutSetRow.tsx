@@ -787,8 +787,7 @@ function ActiveWorkoutSetRow({
   // this idempotent with any blur that did fire. Edit rows don't flush:
   // they're controlled by the form reducer per keystroke, and this row's
   // local drafts can hold stale values there.
-  useEffect(() => {
-    if (!isLive || isFocusedRow) return;
+  const writeDrafts = useCallback(() => {
     if (durationLike) {
       writeDuration(durationDraft);
     } else if (weightDuration) {
@@ -803,8 +802,6 @@ function ActiveWorkoutSetRow({
     }
     if (isEffortColumn) commitRpeValue(rpeDraft);
   }, [
-    isLive,
-    isFocusedRow,
     durationLike,
     weightDuration,
     weightDistance,
@@ -820,6 +817,21 @@ function ActiveWorkoutSetRow({
     distanceDraft,
     rpeDraft,
   ]);
+  useEffect(() => {
+    if (!isLive || isFocusedRow) return;
+    writeDrafts();
+  }, [isLive, isFocusedRow, writeDrafts]);
+
+  // A row unmounted while it holds the keyboard (the focus view paging to
+  // another exercise) never sees a blur or a deactivation render, so flush
+  // once on the way out. It reads the latest writers through a ref so the
+  // cleanup runs on unmount only, not on every keystroke, and goes through
+  // the same edited / unchanged guards: an untouched draft writes nothing.
+  const unmountFlushRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    unmountFlushRef.current = isLive && isFocusedRow ? writeDrafts : () => {};
+  });
+  useEffect(() => () => unmountFlushRef.current(), []);
 
   // Log the set: flush any in-progress edits first so the values the user
   // sees are exactly what gets completed (and autosaved). The completion

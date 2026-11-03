@@ -426,6 +426,25 @@ describe('ActiveWorkoutFocusSets', () => {
     );
   });
 
+  it.each([
+    ['duration', { weight: null, reps: null, duration: 30 }],
+    ['weight_duration', { weight: 20, reps: null, duration: 30 }],
+    ['weight_distance', { weight: 20, reps: null, distance: 0.1 }],
+  ])(
+    'heads %s fallback rows and lets the metric be changed',
+    (modality, set) => {
+      const { getByLabelText, callbacks } = renderSets({
+        modality,
+        sets: [makeSet(set as Partial<WorkoutCardSet>)],
+      });
+      fireEvent.press(getByLabelText('Change metric column'));
+      expect(callbacks.onPressMetricHeader).toHaveBeenCalledWith(
+        { x: 1, y: 2, width: 3, height: 4 },
+        true
+      );
+    }
+  );
+
   it('opens the set-type menu from the set number', () => {
     const { getByLabelText, callbacks } = renderSets();
     fireEvent.press(getByLabelText('Change type for set 1'));

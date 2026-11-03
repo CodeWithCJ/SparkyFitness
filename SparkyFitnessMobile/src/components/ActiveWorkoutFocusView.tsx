@@ -47,6 +47,7 @@ import {
   useLiveAssumedSetValues,
   useLiveProgression,
 } from '../hooks/useLiveExerciseCoaching';
+import { useAppLocale } from '../localization';
 import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
 import { fireSelectionHaptic } from '../services/haptics';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
@@ -125,6 +126,8 @@ interface Props extends SetEditorProps, HistoryProps {
   onCommitExerciseNote: (entryId: string, text: string) => void;
   /** Opens ranked alternatives from the adaptive banner (#1560). */
   onSeeAlternatives?: (entryId: string) => void;
+  /** The screen's scroll ref, so it can scroll to the end buttons after the last set. */
+  scrollRef: React.RefObject<KeyboardAwareScrollViewRef | null>;
   /** The screen's bottom padding, which clears its rest bar. */
   scrollContentStyle: StyleProp<ViewStyle>;
   /** Space kept between a focused input and the keyboard. */
@@ -252,10 +255,11 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
     () => summarizePlan(exercise.sets, plannedSetValues),
     [exercise.sets, plannedSetValues]
   );
-  const lastTime = useMemo(
-    () => formatLastTimeSets(previousSessionSets, weightUnit),
-    [previousSessionSets, weightUnit]
-  );
+  // Subscribes to the app locale so a language switch re-renders; the
+  // formatter reads it, so the (at most five) sets are formatted per render
+  // rather than memoized past the switch.
+  useAppLocale();
+  const lastTime = formatLastTimeSets(previousSessionSets, weightUnit);
   const muscle = localizeExerciseTaxonomyValue(
     t,
     'muscle',
@@ -478,6 +482,7 @@ function ActiveWorkoutFocusView({
   sessionId,
   verifiedSourcePresetId,
   historyScopeSettled,
+  scrollRef,
   scrollContentStyle,
   keyboardBottomOffset,
   children,
@@ -520,7 +525,6 @@ function ActiveWorkoutFocusView({
     transform: [{ translateX: slide.value }],
   }));
 
-  const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
   const showExercise = useCallback(
     (id: string, direction: -1 | 1) => {
       setSelectedId(id);
@@ -532,7 +536,7 @@ function ActiveWorkoutFocusView({
       slide.value = withTiming(0, { duration: SLIDE_MS });
       fade.value = withTiming(1, { duration: SLIDE_MS });
     },
-    [reducedMotion, slide, fade]
+    [reducedMotion, slide, fade, scrollRef]
   );
 
   // Refs keep the gesture and handlers stable across page changes.

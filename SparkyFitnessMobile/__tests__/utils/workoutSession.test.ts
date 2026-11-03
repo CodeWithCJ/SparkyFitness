@@ -1,4 +1,5 @@
 import {
+  plateTargetKg,
   summarizeWorkoutEffort,
   summarizeWorkoutHeartRate,
   CATEGORY_ICON_MAP,
@@ -393,6 +394,37 @@ describe('workoutSession', () => {
 
     it('returns the trimmed source string as-is for unknown sources', () => {
       expect(getSourceLabel('MyFitnessPal')).toBe('MyFitnessPal');
+    });
+  });
+
+  describe('plateTargetKg', () => {
+    const sets = (types: (string | null)[]) =>
+      types.map((set_type, i) => ({
+        id: i + 1,
+        set_type,
+        weight: 20 * (i + 1),
+      }));
+
+    it('prefers the active set', () => {
+      expect(plateTargetKg(sets(['warmup', 'normal']), '2', null)).toBe(40);
+    });
+
+    it.each(['warmup', 'Warm-up', 'Warmup', 'WARM UP'])(
+      'skips a %s set when falling back to the first working set',
+      (type) => {
+        expect(plateTargetKg(sets([type, 'normal']), null, null)).toBe(40);
+      }
+    );
+
+    it('uses the assumed weight and ignores empty or non-positive weights', () => {
+      expect(
+        plateTargetKg([{ id: 1, set_type: 'normal', weight: null }], null, [
+          { weight: 55 },
+        ])
+      ).toBe(55);
+      expect(
+        plateTargetKg([{ id: 1, set_type: 'normal', weight: 0 }], null, null)
+      ).toBeNull();
     });
   });
 

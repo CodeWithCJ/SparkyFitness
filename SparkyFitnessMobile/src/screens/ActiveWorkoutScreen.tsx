@@ -396,7 +396,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const viewportHeightRef = useRef(0);
   const programmaticScrollUntilRef = useRef(0);
 
+  const focusModeRef = useRef(focusMode);
+  useEffect(() => {
+    focusModeRef.current = focusMode;
+  }, [focusMode]);
+
   const scrollToExercise = useCallback((entryId: string) => {
+    // The focus view has no list cards: offsets left from a list session
+    // (the view can be switched mid-workout) would scroll its page to a stale
+    // position. Read through a ref so a view switch does not re-run effects.
+    if (focusModeRef.current) return;
     const y = cardOffsetsRef.current[entryId];
     if (y == null) return;
     programmaticScrollUntilRef.current = Date.now() + 600;
@@ -622,10 +631,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   useEffect(() => {
     isFocusedRef.current = isFocused;
   }, [isFocused]);
-  const focusModeRef = useRef(focusMode);
-  useEffect(() => {
-    focusModeRef.current = focusMode;
-  }, [focusMode]);
   useEffect(
     () =>
       useActiveWorkoutStore.subscribe((state, prev) => {
@@ -1045,6 +1050,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
       {focusMode ? (
         <ActiveWorkoutFocusView
+          scrollRef={scrollRef}
           session={session}
           prSetIds={prSetIds}
           activeExerciseId={activeExerciseId}

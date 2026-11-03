@@ -54,7 +54,7 @@ function ActiveWorkoutSetDetail({
           accessibilityRole="button"
           className="mt-1 min-h-11 items-start justify-center active:opacity-70"
         >
-          <Text className="text-sm font-semibold text-text-danger">
+          <Text className="text-sm font-semibold text-text-danger-subtle">
             {t('activeWorkout.setDetail.deleteSet', {
               defaultValue: 'Delete set',
             })}

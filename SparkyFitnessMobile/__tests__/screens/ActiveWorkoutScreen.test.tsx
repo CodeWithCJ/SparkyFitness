@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useIsFocused } from '@react-navigation/native';
 import ActiveWorkoutScreen from '../../src/screens/ActiveWorkoutScreen';
+import { KeyboardController } from 'react-native-keyboard-controller';
 import { useActiveWorkoutAutosave } from '../../src/hooks/useActiveWorkoutAutosave';
 import { useNavigationActionGuard } from '../../src/hooks/useNavigationActionGuard';
 import {
@@ -103,24 +104,33 @@ const mockAccessoryHandles: Record<
 
 // The focus view's own behaviour is covered in its component test; here it
 // only has to show up in place of the list, with the screen's handlers.
+const mockFocusScrollToEnd = jest.fn();
+const mockFocusScrollTo = jest.fn();
 jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
+  const React = require('react');
   const { View, Pressable, Text } = require('react-native');
-  return {
-    __esModule: true,
-    default: ({
-      activeExerciseId,
-      children,
-      session,
-      onRegisterAccessoryHandle,
-      onPressOverflow,
-      onPressRestChip,
-      onPressMetricHeader,
-      onPressSetType,
-      onToggleSetDetail,
-      onActivateSet,
-      expandedSetKey,
-      noteEditorEntryId,
-    }: any) => (
+  const MockFocusView = ({
+    activeExerciseId,
+    children,
+    session,
+    onRegisterAccessoryHandle,
+    onPressOverflow,
+    onPressRestChip,
+    onPressMetricHeader,
+    onPressSetType,
+    onToggleSetDetail,
+    onActivateSet,
+    onCompleteSet,
+    scrollRef,
+    expandedSetKey,
+    noteEditorEntryId,
+  }: any) => {
+    // The real view owns the scroll view the screen's ref points at.
+    React.useImperativeHandle(scrollRef, () => ({
+      scrollTo: mockFocusScrollTo,
+      scrollToEnd: mockFocusScrollToEnd,
+    }));
+    return (
       <View
         testID="focus-view"
         accessibilityLabel={`active:${String(activeExerciseId)}`}
@@ -170,10 +180,15 @@ jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
             />
           ))
         )}
+        <Pressable
+          testID="focus-complete-last"
+          onPress={() => onCompleteSet('301')}
+        />
         {children}
       </View>
-    ),
+    );
   };
+  return { __esModule: true, default: MockFocusView };
 });
 
 // Trigger pressables standing in for each card, driving the screen's wiring.
@@ -1790,6 +1805,66 @@ describe('ActiveWorkoutScreen focus view', () => {
       expect(getByTestId('focus-state').props.children).toContain(
         'detail:null'
       );
+    });
+
+    it('scrolls to the end buttons after the last set is logged', () => {
+      jest.mocked(KeyboardController.isVisible).mockReturnValue(false);
+      const store = useActiveWorkoutStore.getState();
+      for (const id of ['101', '102', '201']) store.completeSet(id);
+      const { getByTestId } = renderScreen();
+
+      fireEvent.press(getByTestId('focus-complete-last'));
+      act(() => {
+        jest.advanceTimersByTime(400);
+      });
+
+      expect(mockFocusScrollToEnd).toHaveBeenCalledWith({ animated: true });
+      jest.mocked(KeyboardController.isVisible).mockReturnValue(true);
+    });
+
+    it('ignores list card offsets left over from a list session when the active exercise changes', () => {
+      jest.mocked(KeyboardController.isVisible).mockReturnValue(false);
+      useAppPreferencesStore.getState().setActiveWorkoutView('list');
+      const { getByTestId } = renderScreen();
+      // The list cards report their layout, filling the screen's offsets.
+      for (const id of ['ex-a', 'ex-b']) {
+        fireEvent(getByTestId(`card-${id}`).parent!, 'layout', {
+          nativeEvent: { layout: { x: 0, y: 400, width: 300, height: 100 } },
+        });
+      }
+      // Workout Settings switches the view while this screen stays mounted.
+      act(() => {
+        useAppPreferencesStore.getState().setActiveWorkoutView('focus');
+      });
+      act(() => {
+        jest.advanceTimersByTime(400);
+      });
+      mockFocusScrollTo.mockClear();
+
+      // Finishing exercise A moves the active set to B.
+      act(() => {
+        useActiveWorkoutStore.getState().completeSet('102');
+      });
+      act(() => {
+        jest.advanceTimersByTime(400);
+      });
+
+      expect(getByTestId('focus-view').props.accessibilityLabel).toBe(
+        'active:ex-b'
+      );
+      expect(mockFocusScrollTo).not.toHaveBeenCalled();
+      jest.mocked(KeyboardController.isVisible).mockReturnValue(true);
+    });
+
+    it('does not scroll while sets remain', () => {
+      jest.mocked(KeyboardController.isVisible).mockReturnValue(false);
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId('focus-complete-last'));
+      act(() => {
+        jest.advanceTimersByTime(400);
+      });
+      expect(mockFocusScrollToEnd).not.toHaveBeenCalled();
+      jest.mocked(KeyboardController.isVisible).mockReturnValue(true);
     });
 
     it('offers the plate calculator from the weight field on a barbell exercise', () => {

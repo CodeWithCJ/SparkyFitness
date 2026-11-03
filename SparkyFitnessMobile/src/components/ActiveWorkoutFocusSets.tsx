@@ -44,6 +44,7 @@ import {
   isWeightDurationModality,
   quantizeSetWeightKg,
   resolveSnapshotModality,
+  setDistanceUnitLabel,
   setTypeLetter,
   type AssumedSetValues,
   type WorkoutCardExercise,
@@ -633,6 +634,31 @@ function ActiveWorkoutFocusSets({
     measureAnchoredMenuTrigger(metricAnchorRef.current, (anchor) =>
       onPressMetricHeader(anchor, clampedToRpe)
     );
+  const metricTrigger = (
+    <View
+      ref={metricAnchorRef}
+      collapsable={false}
+      className={`${stepperRows ? 'w-10' : 'w-14'} items-center`}
+    >
+      <Pressable
+        onPress={openMetricMenu}
+        hitSlop={{ left: 4, right: 4 }}
+        accessibilityRole="button"
+        accessibilityLabel={t('activeWorkout.exercise.changeMetric', {
+          defaultValue: 'Change metric column',
+        })}
+        className="-my-3.5 min-h-11 flex-row items-center justify-center gap-0.5"
+      >
+        <Text
+          className="text-xs font-medium uppercase"
+          style={{ color: accentPrimary }}
+        >
+          {effortHeader}
+        </Text>
+        <Icon name="chevron-down" size={10} color={accentPrimary} />
+      </Pressable>
+    </View>
+  );
   const headerClass =
     'text-center text-xs font-medium uppercase text-text-muted';
 
@@ -656,31 +682,37 @@ function ActiveWorkoutFocusSets({
             <Text className={`flex-[2] ${headerClass}`}>
               {t('activeWorkout.setRow.reps', { defaultValue: 'Reps' })}
             </Text>
-            <View
-              ref={metricAnchorRef}
-              collapsable={false}
-              className="w-10 items-center"
-            >
-              <Pressable
-                onPress={openMetricMenu}
-                hitSlop={{ left: 4, right: 4 }}
-                accessibilityRole="button"
-                accessibilityLabel={t('activeWorkout.exercise.changeMetric', {
-                  defaultValue: 'Change metric column',
-                })}
-                className="-my-3.5 min-h-11 flex-row items-center justify-center gap-0.5"
-              >
-                <Text
-                  className="text-xs font-medium uppercase"
-                  style={{ color: accentPrimary }}
-                >
-                  {effortHeader}
-                </Text>
-                <Icon name="chevron-down" size={10} color={accentPrimary} />
-              </Pressable>
-            </View>
+            {metricTrigger}
           </View>
           <View className="w-9" />
+        </View>
+      )}
+      {!stepperRows && exercise.sets.length > 0 && (
+        // Same columns as the list card's header for these tables.
+        <View className="flex-row items-center px-1 py-1.5">
+          <Text className={`w-9 ${headerClass}`}>
+            {t('workout.set', { defaultValue: 'Set' })}
+          </Text>
+          {isDurationModality(modality) ? (
+            <Text className={`flex-1 ${headerClass}`}>
+              {t('workout.sec', { defaultValue: 'Sec' })}
+            </Text>
+          ) : (
+            <>
+              <Text className={`flex-1 ${headerClass}`}>
+                {weightUnit === 'kg'
+                  ? t('workout.kg', { defaultValue: 'kg' })
+                  : t('workout.lbs', { defaultValue: 'lbs' })}
+              </Text>
+              <Text className={`flex-1 ${headerClass}`}>
+                {isWeightDurationModality(modality)
+                  ? t('workout.sec', { defaultValue: 'Sec' })
+                  : setDistanceUnitLabel(distanceUnit, modality)}
+              </Text>
+            </>
+          )}
+          {metricTrigger}
+          <View className="w-10" />
         </View>
       )}
       {exercise.sets.map((set, index) => {

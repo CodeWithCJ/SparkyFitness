@@ -2958,7 +2958,7 @@ export function plateTargetKg(
   const index =
     activeIndex >= 0
       ? activeIndex
-      : sets.findIndex((set) => set.set_type !== 'warmup');
+      : sets.findIndex((set) => !isWarmupSetType(set.set_type));
   if (index < 0) return null;
   const kg = sets[index]?.weight ?? assumed?.[index]?.weight;
   return kg != null && Number.isFinite(kg) && kg > 0 ? kg : null;
