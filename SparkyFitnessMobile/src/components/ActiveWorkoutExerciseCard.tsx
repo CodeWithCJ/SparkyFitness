@@ -50,9 +50,11 @@ import {
   alignPreviousSets,
   buildWorkingSetNumbers,
   isDurationModality,
+  isMetricClampedToRpe,
   isWeightDistanceModality,
   isWeightDurationModality,
   setDistanceUnitLabel,
+  plateTargetKg,
   rendersCardioEffortForm,
   resolveSnapshotModality,
   type WorkoutCardExercise,
@@ -377,11 +379,7 @@ function ActiveWorkoutExerciseCard({
   const weightDuration = isWeightDurationModality(modality);
   const weightDistance = isWeightDistanceModality(modality);
   // Loaded holds and carries log no reps, so volume and 1RM stay empty there too.
-  const clampedToRpe =
-    durationLike ||
-    modality === 'reps_only' ||
-    weightDuration ||
-    weightDistance;
+  const clampedToRpe = isMetricClampedToRpe(modality);
   // The per-set ramp only means something where sets carry a weight.
   const weightRampApplies = !durationLike && modality !== 'reps_only';
   const effectiveMetricColumn =
@@ -521,20 +519,13 @@ function ActiveWorkoutExerciseCard({
   const plateEquipment = exercise.exercise_snapshot?.equipment ?? null;
   const showPlates =
     mode !== 'view' && !cardioForm && usesBarbell(plateEquipment);
-  const plateTargetKg = useMemo(() => {
-    if (!showPlates) return null;
-    const activeIndex = exercise.sets.findIndex(
-      (set) => String(set.id) === activeSetId
-    );
-    const index =
-      activeIndex >= 0
-        ? activeIndex
-        : exercise.sets.findIndex((set) => set.set_type !== 'warmup');
-    if (index < 0) return null;
-    const kg =
-      exercise.sets[index]?.weight ?? assumedSetValues?.[index]?.weight;
-    return kg != null && Number.isFinite(kg) && kg > 0 ? kg : null;
-  }, [showPlates, exercise.sets, activeSetId, assumedSetValues]);
+  const plateTargetKgValue = useMemo(
+    () =>
+      showPlates
+        ? plateTargetKg(exercise.sets, activeSetId, assumedSetValues)
+        : null,
+    [showPlates, exercise.sets, activeSetId, assumedSetValues]
+  );
 
   const { bestDisplay, bestIsPr, bestText } = useExerciseBest(
     exercise,
@@ -1363,9 +1354,12 @@ function ActiveWorkoutExerciseCard({
                 </Text>
               </View>
             )}
-            {showPlates && plateTargetKg != null && (
+            {showPlates && plateTargetKgValue != null && (
               <PlateBarGraphic
-                targetWeight={storedWeightInUnit(plateTargetKg, weightUnit)}
+                targetWeight={storedWeightInUnit(
+                  plateTargetKgValue,
+                  weightUnit
+                )}
                 weightUnit={weightUnit}
                 equipment={plateEquipment}
               />

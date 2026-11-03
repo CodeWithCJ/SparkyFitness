@@ -2931,3 +2931,35 @@ export function summarizeWorkoutEffort(
     );
   return ratings.length > 0 ? Math.max(...ratings) : null;
 }
+
+/**
+ * Whether the weight-derived metric columns (Vol / 1RM / 10RM) mean nothing
+ * for this modality, so the effort column is clamped to RPE (or RIR).
+ */
+export function isMetricClampedToRpe(modality: ExerciseModality): boolean {
+  return (
+    isDurationModality(modality) ||
+    modality === 'reps_only' ||
+    isWeightDurationModality(modality) ||
+    isWeightDistanceModality(modality)
+  );
+}
+
+/**
+ * The weight (kg) the plate graphic shows: the active set's, else the first
+ * working set's, using what it would log (typed or assumed). Null if none.
+ */
+export function plateTargetKg(
+  sets: readonly Pick<WorkoutCardSet, 'id' | 'weight' | 'set_type'>[],
+  activeSetId: string | null,
+  assumed: readonly ({ weight?: number | null } | null)[] | null | undefined
+): number | null {
+  const activeIndex = sets.findIndex((set) => String(set.id) === activeSetId);
+  const index =
+    activeIndex >= 0
+      ? activeIndex
+      : sets.findIndex((set) => set.set_type !== 'warmup');
+  if (index < 0) return null;
+  const kg = sets[index]?.weight ?? assumed?.[index]?.weight;
+  return kg != null && Number.isFinite(kg) && kg > 0 ? kg : null;
+}

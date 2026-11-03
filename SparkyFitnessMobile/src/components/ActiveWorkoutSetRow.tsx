@@ -86,6 +86,37 @@ function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
   return formatLocalizedNumber(Math.round(weightFromKg(valueKg, unit)));
 }
 
+/** The read-only weight-derived metric cell (Vol / 1RM / 10RM), shared with the focus view. */
+export function weightMetricText(
+  column: 'volume' | 'e1rm' | 'tenrm',
+  set: WorkoutCardSet,
+  modality: ExerciseModality,
+  bodyWeightKg: number | null,
+  weightUnit: 'kg' | 'lbs'
+): string {
+  switch (column) {
+    case 'volume':
+      return formatMetricWeight(
+        setVolumeKg(set, modality, bodyWeightKg),
+        weightUnit
+      );
+    case 'e1rm':
+      return formatMetricWeight(
+        epley1RmKg(setLoadKg(set.weight, modality, bodyWeightKg), set.reps),
+        weightUnit
+      );
+    case 'tenrm':
+      return formatMetricWeight(
+        estimateRepMaxKg(
+          setLoadKg(set.weight, modality, bodyWeightKg),
+          set.reps,
+          10
+        ),
+        weightUnit
+      );
+  }
+}
+
 export function formatRpe(rpe: number | null): string {
   if (rpe == null) return '–';
   return Number.isInteger(rpe)
@@ -880,27 +911,14 @@ function ActiveWorkoutSetRow({
         return { text: formatRpe(set.rir) };
       }
       case 'volume':
-        return {
-          text: formatMetricWeight(
-            setVolumeKg(set, modality, bodyWeightKg),
-            weightUnit
-          ),
-        };
       case 'e1rm':
-        return {
-          text: formatMetricWeight(
-            epley1RmKg(setLoadKg(set.weight, modality, bodyWeightKg), set.reps),
-            weightUnit
-          ),
-        };
       case 'tenrm':
         return {
-          text: formatMetricWeight(
-            estimateRepMaxKg(
-              setLoadKg(set.weight, modality, bodyWeightKg),
-              set.reps,
-              10
-            ),
+          text: weightMetricText(
+            metricColumn,
+            set,
+            modality,
+            bodyWeightKg,
             weightUnit
           ),
         };

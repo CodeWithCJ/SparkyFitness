@@ -56,6 +56,15 @@ jest.mock('../../src/components/ActiveWorkoutFocusMedia', () => {
     ),
   };
 });
+jest.mock('../../src/components/PlateBarGraphic', () => {
+  const { Text } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ targetWeight }: any) => (
+      <Text testID="plate-graphic">{`plates:${targetWeight}`}</Text>
+    ),
+  };
+});
 jest.mock('../../src/components/ActiveWorkoutFocusSets', () => {
   const { Text } = require('react-native');
   return {
@@ -104,12 +113,23 @@ const handlers = {
   onAddSet: jest.fn(),
   onActivateRpe: jest.fn(),
   onDeleteSet: jest.fn(),
+  onPressRestChip: jest.fn(),
+  onPressMetricHeader: jest.fn(),
+  onPressSetType: jest.fn(),
+  onToggleSetDetail: jest.fn(),
+  onCommitExerciseNote: jest.fn(),
 };
 
-function viewElement(activeExerciseId: string | null) {
+function viewElement(
+  activeExerciseId: string | null,
+  extra: Record<string, unknown> = {},
+  sessionOverride: unknown = session
+) {
   return (
     <ActiveWorkoutFocusView
-      session={session}
+      session={sessionOverride as any}
+      expandedSetKey={null}
+      noteEditorEntryId={null}
       prSetIds={{}}
       activeExerciseId={activeExerciseId}
       supersetBorders={new Map()}
@@ -126,6 +146,7 @@ function viewElement(activeExerciseId: string | null) {
       scrollContentStyle={undefined}
       keyboardBottomOffset={0}
       {...handlers}
+      {...extra}
     />
   );
 }
@@ -255,6 +276,71 @@ describe('ActiveWorkoutFocusView', () => {
     expect(screen.getByText('Chest')).toBeTruthy();
     expect(screen.getByText('Barbell')).toBeTruthy();
     expect(screen.getByLabelText('Best 40 × 8')).toBeTruthy();
+  });
+
+  describe('restored list-view controls', () => {
+    it('shows the exercise rest and opens the rest picker from it', () => {
+      render(viewElement('b'));
+      fireEvent.press(screen.getByLabelText(/^Rest /));
+      expect(handlers.onPressRestChip).toHaveBeenCalledWith('b', null);
+    });
+
+    it('keeps the note editor closed until the menu opens it or a note exists', () => {
+      const { rerender } = render(viewElement('a'));
+      expect(screen.queryByLabelText('Notes for Bench Press')).toBeNull();
+
+      rerender(viewElement('a', { noteEditorEntryId: 'a' }));
+      expect(screen.getByLabelText('Notes for Bench Press')).toBeTruthy();
+
+      rerender(viewElement('a', { noteEditorEntryId: 'b' }));
+      expect(screen.queryByLabelText('Notes for Bench Press')).toBeNull();
+
+      rerender(
+        viewElement(
+          'a',
+          {},
+          {
+            exercises: [
+              makeExercise('a', 'Bench Press', { notes: 'Pause reps' }),
+            ],
+          }
+        )
+      );
+      expect(screen.getByLabelText('Notes for Bench Press').props.value).toBe(
+        'Pause reps'
+      );
+    });
+
+    it('commits a typed exercise note on blur', () => {
+      render(viewElement('a', { noteEditorEntryId: 'a' }));
+      const field = screen.getByLabelText('Notes for Bench Press');
+      fireEvent.changeText(field, 'Slow eccentric');
+      fireEvent(field, 'blur');
+      expect(handlers.onCommitExerciseNote).toHaveBeenCalledWith(
+        'a',
+        'Slow eccentric'
+      );
+    });
+
+    it('draws the plates for a barbell exercise once a weight is set', () => {
+      const withWeight = makeExercise('a', 'Bench Press');
+      withWeight.sets[0].weight = 100;
+      const { rerender } = render(viewElement('a'));
+      expect(screen.queryByTestId('plate-graphic')).toBeNull();
+
+      rerender(viewElement('a', {}, { exercises: [withWeight] }));
+      expect(screen.getByTestId('plate-graphic').props.children).toBe(
+        'plates:100'
+      );
+    });
+
+    it('draws no plates for a non-barbell exercise', () => {
+      const dumbbell = makeExercise('a', 'Curl');
+      dumbbell.exercise_snapshot.equipment = ['dumbbell'];
+      dumbbell.sets[0].weight = 20;
+      render(viewElement('a', {}, { exercises: [dumbbell] }));
+      expect(screen.queryByTestId('plate-graphic')).toBeNull();
+    });
   });
 
   it('shows the plan and last time lines', () => {

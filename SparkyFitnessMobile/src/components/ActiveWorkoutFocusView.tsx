@@ -25,11 +25,15 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
-import type { PresetSessionResponse } from '@workspace/shared';
+import { usesBarbell, type PresetSessionResponse } from '@workspace/shared';
 import ActiveWorkoutFocusChips from './ActiveWorkoutFocusChips';
 import ActiveWorkoutFocusMedia from './ActiveWorkoutFocusMedia';
 import ActiveWorkoutFocusSets from './ActiveWorkoutFocusSets';
 import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
+import PlateBarGraphic from './PlateBarGraphic';
+import RestPeriodChip from './RestPeriodChip';
+import WorkoutNotesField from './WorkoutNotesField';
+import type { AnchorRect } from './AnchoredMenu';
 import Icon from './Icon';
 import ProgressionHintBanner from './ProgressionHintBanner';
 import type { SupersetBorder } from './ActiveWorkoutRail';
@@ -55,6 +59,8 @@ import {
   useAppPreferencesStore,
   type ActiveWorkoutMetricColumn,
 } from '../stores/appPreferencesStore';
+import { plateTargetKg } from '../utils/workoutSession';
+import { storedWeightInUnit } from '../utils/unitConversions';
 import {
   formatLastTimeSets,
   shouldFollowActive,
@@ -80,6 +86,10 @@ interface SetEditorProps {
   onAddSet: (entryId: string) => void;
   onActivateRpe: (setKey: string) => void;
   onDeleteSet: (setId: string) => void;
+  onPressMetricHeader: (anchor: AnchorRect, clampedToRpe: boolean) => void;
+  onPressSetType: (setId: string, anchor: AnchorRect) => void;
+  onToggleSetDetail: (setKey: string) => void;
+  expandedSetKey: string | null;
   /** The screen's keyboard focus, shared with its sticky accessory bar. */
   focusedSetKey: string | null;
   focusedField: SetInputField;
@@ -108,6 +118,11 @@ interface Props extends SetEditorProps, HistoryProps {
   onPressOverflow: (entryId: string) => void;
   /** The quick change for a busy machine, as on the Now card. */
   onSwap: (entryId: string) => void;
+  /** Opens the rest picker for an exercise's sets. */
+  onPressRestChip: (entryId: string, currentSec: number | null) => void;
+  /** The exercise whose note editor the overflow menu opened, if any. */
+  noteEditorEntryId: string | null;
+  onCommitExerciseNote: (entryId: string, text: string) => void;
   /** Opens ranked alternatives from the adaptive banner (#1560). */
   onSeeAlternatives?: (entryId: string) => void;
   /** The screen's bottom padding, which clears its rest bar. */
@@ -148,6 +163,9 @@ interface PageProps extends SetEditorProps {
   onToggleMedia: () => void;
   onPressOverflow: (entryId: string) => void;
   onSwap: (entryId: string) => void;
+  onPressRestChip: (entryId: string, currentSec: number | null) => void;
+  noteEditorEntryId: string | null;
+  onCommitExerciseNote: (entryId: string, text: string) => void;
   onSeeAlternatives?: (entryId: string) => void;
   /** Set while another exercise than the active one is shown. */
   onBackToCurrent?: () => void;
@@ -162,6 +180,9 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   onToggleMedia,
   onPressOverflow,
   onSwap,
+  onPressRestChip,
+  noteEditorEntryId,
+  onCommitExerciseNote,
   onSeeAlternatives,
   onBackToCurrent,
   sessionId,
@@ -211,6 +232,20 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
     prSetIds,
     weightUnit,
     true
+  );
+
+  const plateEquipment = snapshot?.equipment ?? null;
+  const showPlates = usesBarbell(plateEquipment);
+  const plateTarget = useMemo(
+    () =>
+      showPlates
+        ? plateTargetKg(
+            exercise.sets,
+            setEditorProps.activeSetId,
+            assumedSetValues
+          )
+        : null,
+    [showPlates, exercise.sets, setEditorProps.activeSetId, assumedSetValues]
   );
 
   const plan = useMemo(
@@ -323,6 +358,39 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
         {titleBlock}
       </ActiveWorkoutFocusMedia>
       {mediaExpanded && titleBlock}
+
+      <View className="flex-row flex-wrap items-center gap-x-4 gap-y-1 px-1">
+        <RestPeriodChip
+          largeTarget
+          value={exercise.sets[0]?.rest_time}
+          values={exercise.sets.map((set) => set.rest_time)}
+          onPress={() =>
+            onPressRestChip(exercise.id, exercise.sets[0]?.rest_time ?? null)
+          }
+        />
+        {showPlates && plateTarget != null && (
+          <PlateBarGraphic
+            targetWeight={storedWeightInUnit(plateTarget, weightUnit)}
+            weightUnit={weightUnit}
+            equipment={plateEquipment}
+          />
+        )}
+      </View>
+
+      {(!!exercise.notes || noteEditorEntryId === exercise.id) && (
+        <WorkoutNotesField
+          value={exercise.notes}
+          onCommit={(text) => onCommitExerciseNote(exercise.id, text)}
+          label=""
+          placeholder={t('activeWorkout.exercise.notePlaceholder', {
+            defaultValue: 'Add a note for this exercise…',
+          })}
+          accessibilityLabel={t('activeWorkout.exercise.notesFor', {
+            defaultValue: 'Notes for {{name}}',
+            name,
+          })}
+        />
+      )}
 
       {(plan != null || lastTime.length > 0) && (
         <View className="gap-0.5">

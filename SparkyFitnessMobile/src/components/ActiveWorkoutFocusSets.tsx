@@ -9,11 +9,15 @@ import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, Text, View, type TextInput } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { isBodyweightModality } from '@workspace/shared';
+import { useBodyWeightKg } from '../hooks/useBodyWeightKg';
+import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
+import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
 import ActiveWorkoutSetRow, {
   RPE_TONE_VARS,
   formatRpe,
   parseRirInput,
   parseRpeInput,
+  weightMetricText,
 } from './ActiveWorkoutSetRow';
 import CompletionCheck, { LogCircle } from './CompletionCheck';
 import Icon from './Icon';
@@ -35,6 +39,7 @@ import {
   buildWorkingSetNumbers,
   getRpeTone,
   isDurationModality,
+  isMetricClampedToRpe,
   isWeightDistanceModality,
   isWeightDurationModality,
   quantizeSetWeightKg,
@@ -74,8 +79,15 @@ interface Props {
   onAddSet: (entryId: string) => void;
   /** Receives the set's render key, like the list's `onActivateRpe`. */
   onActivateRpe: (setKey: string) => void;
-  /** Long-pressing a row deletes it; omit to disable. */
+  /** Deletes a set: from the detail panel, or by long-press without `onToggleSetDetail`. */
   onDeleteSet?: (setId: string) => void;
+  /** Change the shared effort / metric column; anchored to the header. */
+  onPressMetricHeader: (anchor: AnchorRect, clampedToRpe: boolean) => void;
+  /** Opens the set-type menu from a set's number. */
+  onPressSetType?: (setId: string, anchor: AnchorRect) => void;
+  /** Long-press expands a set's detail panel (per-set note); keyed by render key. */
+  onToggleSetDetail?: (setKey: string) => void;
+  expandedSetKey?: string | null;
   /** The screen's keyboard focus (render key and field), as in the list. */
   focusedSetKey: string | null;
   focusedField: SetInputField;
@@ -102,7 +114,8 @@ interface StepperFieldOptions {
 
 /**
  * Typing-friendly state for one stepper cell: keystrokes stay in a local draft
- * and commit on blur (or flush), +/- commit immediately from the visible value
+ * and commit on blur, unmount (a blur on an unmounting input is never
+ * delivered), or flush; +/- commit immediately from the visible value
  * (typed, committed, or assumed).
  */
 function useStepperField({
@@ -127,6 +140,14 @@ function useStepperField({
         : format(next) === format(value);
     if (!unchanged) onCommit(next);
   }, [draft, parse, value, format, onCommit]);
+
+  // Navigating away unmounts the row with the keyboard still up; commit what
+  // was typed. Synced in an effect so no ref is written during render.
+  const latestFlushRef = useRef(flush);
+  useEffect(() => {
+    latestFlushRef.current = flush;
+  });
+  useEffect(() => () => latestFlushRef.current(), []);
 
   const adjust = (direction: 1 | -1) => {
     const typed = draft === null ? NaN : parse(draft);
@@ -163,6 +184,11 @@ interface FocusSetRowProps {
   onCommitField: (setId: string, patch: ActiveSetPatch) => void;
   onActivateRpe: (setKey: string) => void;
   onDeleteSet?: (setId: string) => void;
+  onPressSetType?: (setId: string, anchor: AnchorRect) => void;
+  /** Long-press toggles the set's detail panel; without it, deletes the set. */
+  onToggleSetDetail?: (setKey: string) => void;
+  /** Read-only weight-derived column (Vol / 1RM / 10RM) in place of the effort input. */
+  bodyWeightKg: number | null;
   /** This row holds the keyboard; `activeField` names the input. */
   isFocused: boolean;
   activeField: SetInputField;
@@ -191,6 +217,9 @@ const FocusSetRow = React.memo(function FocusSetRow({
   onCommitField,
   onActivateRpe,
   onDeleteSet,
+  onPressSetType,
+  onToggleSetDetail,
+  bodyWeightKg,
   isFocused,
   activeField,
   nextSetKey,
@@ -252,6 +281,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
     onCommit: (next) => onCommitField(setId, { reps: next }),
   });
 
+  const isEffortColumn = metricColumn === 'rpe' || metricColumn === 'rir';
   const effortField = metricColumn === 'rir' ? 'rir' : 'rpe';
   const effort = (effortField === 'rir' ? set.rir : set.rpe) ?? null;
   const parseEffort = effortField === 'rir' ? parseRirInput : parseRpeInput;
@@ -338,6 +368,25 @@ const FocusSetRow = React.memo(function FocusSetRow({
 
   const letter = setTypeLetter(set.set_type);
   const isCurrent = state === 'current';
+  const setIndicator = (
+    <Text
+      className="text-sm text-text-muted"
+      style={[
+        { fontVariant: ['tabular-nums'] },
+        isCurrent ? { color: accentPrimary, fontWeight: '700' } : null,
+      ]}
+    >
+      {letter ?? displayNumber}
+    </Text>
+  );
+  // Tap the set number to change this set's type; the menu anchors to it.
+  const setNumberRef = useRef<View>(null);
+  const openSetTypeMenu = () => {
+    if (!onPressSetType) return;
+    measureAnchoredMenuTrigger(setNumberRef.current, (anchor) =>
+      onPressSetType(setId, anchor)
+    );
+  };
   const checkLabel = isDone
     ? t('activeWorkout.setRow.incomplete', {
         defaultValue: 'Un-complete set {{setNumber}}',
@@ -351,9 +400,15 @@ const FocusSetRow = React.memo(function FocusSetRow({
   return (
     <Pressable
       testID="focus-set-row"
-      onLongPress={onDeleteSet ? () => onDeleteSet(setId) : undefined}
+      onLongPress={
+        onToggleSetDetail
+          ? () => onToggleSetDetail(renderKey)
+          : onDeleteSet
+            ? () => onDeleteSet(setId)
+            : undefined
+      }
       accessibilityLabel={
-        onDeleteSet
+        onDeleteSet && !onToggleSetDetail
           ? t('activeWorkout.setRow.delete', {
               defaultValue: 'Delete set {{setNumber}}',
               setNumber,
@@ -367,16 +422,22 @@ const FocusSetRow = React.memo(function FocusSetRow({
           : undefined
       }
     >
-      <View className="w-6 items-center">
-        <Text
-          className="text-sm text-text-muted"
-          style={[
-            { fontVariant: ['tabular-nums'] },
-            isCurrent ? { color: accentPrimary, fontWeight: '700' } : null,
-          ]}
-        >
-          {letter ?? displayNumber}
-        </Text>
+      <View ref={setNumberRef} collapsable={false} className="w-9 items-center">
+        {onPressSetType ? (
+          <Pressable
+            onPress={openSetTypeMenu}
+            accessibilityRole="button"
+            accessibilityLabel={t('activeWorkout.setRow.changeType', {
+              defaultValue: 'Change type for set {{setNumber}}',
+              setNumber,
+            })}
+            className="h-11 w-9 items-center justify-center"
+          >
+            {setIndicator}
+          </Pressable>
+        ) : (
+          setIndicator
+        )}
       </View>
       {/* Done rows recede; the completion check sits outside this wrapper so
           its green stays vivid. */}
@@ -440,20 +501,35 @@ const FocusSetRow = React.memo(function FocusSetRow({
           />
         </View>
         <View className="w-10">
-          <SetCellInput
-            inputRef={effortInputRef}
-            value={effortInput.inputProps.value}
-            onChangeText={effortInput.inputProps.onChangeText}
-            onBlur={effortInput.flush}
-            onFocus={() => onActivateRpe(renderKey)}
-            keyboardType="decimal-pad"
-            accessibilityLabel={t('activeWorkout.focus.sets.effortInput', {
-              defaultValue: '{{metric}} for set {{setNumber}}',
-              metric: effortLabel,
-              setNumber,
-            })}
-            textColor={effortColor}
-          />
+          {!isEffortColumn ? (
+            <Text
+              className="text-center text-sm text-text-muted"
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              {weightMetricText(
+                metricColumn,
+                set,
+                modality,
+                bodyWeightKg,
+                weightUnit
+              )}
+            </Text>
+          ) : (
+            <SetCellInput
+              inputRef={effortInputRef}
+              value={effortInput.inputProps.value}
+              onChangeText={effortInput.inputProps.onChangeText}
+              onBlur={effortInput.flush}
+              onFocus={() => onActivateRpe(renderKey)}
+              keyboardType="decimal-pad"
+              accessibilityLabel={t('activeWorkout.focus.sets.effortInput', {
+                defaultValue: '{{metric}} for set {{setNumber}}',
+                metric: effortLabel,
+                setNumber,
+              })}
+              textColor={effortColor}
+            />
+          )}
         </View>
       </View>
       <Pressable
@@ -499,6 +575,10 @@ function ActiveWorkoutFocusSets({
   onAddSet,
   onActivateRpe,
   onDeleteSet,
+  onPressMetricHeader,
+  onPressSetType,
+  onToggleSetDetail,
+  expandedSetKey = null,
   focusedSetKey,
   focusedField,
   onActivateSet,
@@ -525,10 +605,34 @@ function ActiveWorkoutFocusSets({
     (id: string) => onActivateRpe(setRenderKeys[id] ?? id),
     [onActivateRpe, setRenderKeys]
   );
-  const effortHeader =
-    metricColumn === 'rir'
-      ? t('activeWorkout.setRow.rir', { defaultValue: 'RIR' })
-      : t('activeWorkout.setRow.rpe', { defaultValue: 'RPE' });
+  // Same clamp as the list card: weight-derived columns mean nothing for
+  // reps-only tables, so they show RPE there (never written back).
+  const clampedToRpe = isMetricClampedToRpe(modality);
+  const effectiveMetricColumn: ActiveWorkoutMetricColumn =
+    clampedToRpe && metricColumn !== 'rir' ? 'rpe' : metricColumn;
+  const bodyWeightKg = useBodyWeightKg(
+    undefined,
+    stepperRows && isBodyweightModality(modality)
+  );
+  const effortHeader = (() => {
+    switch (effectiveMetricColumn) {
+      case 'rir':
+        return t('workout.metricRir', { defaultValue: 'RIR' });
+      case 'volume':
+        return t('workout.metricVolumeShort', { defaultValue: 'Vol' });
+      case 'e1rm':
+        return t('workout.metricE1rmShort', { defaultValue: '1RM' });
+      case 'tenrm':
+        return t('workout.metricTenrmShort', { defaultValue: '10RM' });
+      default:
+        return t('workout.metricRpe', { defaultValue: 'RPE' });
+    }
+  })();
+  const metricAnchorRef = useRef<View>(null);
+  const openMetricMenu = () =>
+    measureAnchoredMenuTrigger(metricAnchorRef.current, (anchor) =>
+      onPressMetricHeader(anchor, clampedToRpe)
+    );
   const headerClass =
     'text-center text-xs font-medium uppercase text-text-muted';
 
@@ -536,7 +640,7 @@ function ActiveWorkoutFocusSets({
     <View className="rounded-2xl bg-surface p-2">
       {stepperRows && (
         <View className="flex-row items-center gap-2 px-2 pb-1">
-          <View className="w-6" />
+          <View className="w-9" />
           <View className="flex-1 flex-row items-center gap-2">
             {modality !== 'reps_only' && (
               <Text className={`flex-[3] ${headerClass}`}>
@@ -552,7 +656,29 @@ function ActiveWorkoutFocusSets({
             <Text className={`flex-[2] ${headerClass}`}>
               {t('activeWorkout.setRow.reps', { defaultValue: 'Reps' })}
             </Text>
-            <Text className={`w-10 ${headerClass}`}>{effortHeader}</Text>
+            <View
+              ref={metricAnchorRef}
+              collapsable={false}
+              className="w-10 items-center"
+            >
+              <Pressable
+                onPress={openMetricMenu}
+                hitSlop={{ left: 4, right: 4 }}
+                accessibilityRole="button"
+                accessibilityLabel={t('activeWorkout.exercise.changeMetric', {
+                  defaultValue: 'Change metric column',
+                })}
+                className="-my-3.5 min-h-11 flex-row items-center justify-center gap-0.5"
+              >
+                <Text
+                  className="text-xs font-medium uppercase"
+                  style={{ color: accentPrimary }}
+                >
+                  {effortHeader}
+                </Text>
+                <Icon name="chevron-down" size={10} color={accentPrimary} />
+              </Pressable>
+            </View>
           </View>
           <View className="w-9" />
         </View>
@@ -569,7 +695,7 @@ function ActiveWorkoutFocusSets({
             ? 'current'
             : 'upcoming';
         const assumed = assumedSetValues?.[index] ?? null;
-        return stepperRows ? (
+        const row = stepperRows ? (
           <FocusSetRow
             key={renderKey}
             set={set}
@@ -578,8 +704,11 @@ function ActiveWorkoutFocusSets({
             modality={modality}
             assumed={assumed}
             state={state}
-            metricColumn={metricColumn}
+            metricColumn={effectiveMetricColumn}
             weightUnit={weightUnit}
+            bodyWeightKg={bodyWeightKg}
+            onPressSetType={onPressSetType}
+            onToggleSetDetail={onToggleSetDetail}
             onCompleteSet={onCompleteSet}
             onUncomplete={onUncomplete}
             onCommitField={onCommitField}
@@ -611,6 +740,12 @@ function ActiveWorkoutFocusSets({
             onUncomplete={onUncomplete}
             onCommitField={onCommitField}
             onDelete={onDeleteSet}
+            onPressSetType={onPressSetType}
+            onLongPress={
+              onToggleSetDetail
+                ? (id) => onToggleSetDetail(setRenderKeys[id] ?? id)
+                : undefined
+            }
             activeField={isFocused ? focusedField : undefined}
             isFocused={isFocused}
             nextSetId={nextSetId}
@@ -620,6 +755,18 @@ function ActiveWorkoutFocusSets({
             onActivateRpe={activateRpeById}
             onRegisterAccessoryHandle={onRegisterAccessoryHandle}
           />
+        );
+        return (
+          <React.Fragment key={renderKey}>
+            {row}
+            {expandedSetKey === renderKey && (
+              <ActiveWorkoutSetDetail
+                set={set}
+                onCommitField={onCommitField}
+                onDelete={onDeleteSet}
+              />
+            )}
+          </React.Fragment>
         );
       })}
       <Pressable

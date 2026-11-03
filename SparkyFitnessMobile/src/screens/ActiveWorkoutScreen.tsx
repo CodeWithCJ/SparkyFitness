@@ -142,6 +142,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const workoutFormat = useActiveWorkoutStore((s) => s.workoutFormat);
   useActiveWorkoutIntervalLifecycle(workoutFormat, guidedWorkoutEnabled);
 
+  // The one-exercise view replaces the rail, Now card and the list (standard
+  // format only; interval formats keep their HUD, and guided mode keeps the
+  // list, whose guided card runs the spoken cues).
+  const focusMode =
+    activeWorkoutView === 'focus' &&
+    (workoutFormat ?? 'standard') === 'standard' &&
+    !guidedWorkoutEnabled;
+
   const isFocused = useIsFocused();
   const [verifiedSourcePresetId, setVerifiedSourcePresetId] = useState<
     number | undefined
@@ -614,6 +622,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   useEffect(() => {
     isFocusedRef.current = isFocused;
   }, [isFocused]);
+  const focusModeRef = useRef(focusMode);
+  useEffect(() => {
+    focusModeRef.current = focusMode;
+  }, [focusMode]);
   useEffect(
     () =>
       useActiveWorkoutStore.subscribe((state, prev) => {
@@ -634,8 +646,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           e.sets.some((s) => String(s.id) === setId)
         );
         if (!exercise) return;
+        const key = state.setRenderKeys[setId] ?? setId;
+        // In the one-exercise view the lifter may have paged to another
+        // exercise; its row isn't mounted, so there is nothing to focus and
+        // a stuck focused key would hold autosave. Stay where they went.
+        if (focusModeRef.current && accessoryHandlesRef.current[key] == null)
+          return;
         handleActivateSet(
-          state.setRenderKeys[setId] ?? setId,
+          key,
           firstSetInputField(
             resolveSnapshotModality(exercise.exercise_snapshot)
           )
@@ -1005,13 +1023,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     SET_ACCESSORY_BAR_HEIGHT +
     (barCarriesRest ? COMPACT_REST_ROW_HEIGHT : 0) +
     16;
-  // The one-exercise view replaces the rail, Now card and the list (standard
-  // format only; interval formats keep their HUD, and guided mode keeps the
-  // list, whose guided card runs the spoken cues).
-  const focusMode =
-    activeWorkoutView === 'focus' &&
-    (workoutFormat ?? 'standard') === 'standard' &&
-    !guidedWorkoutEnabled;
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
@@ -1057,6 +1068,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onUncomplete={handleUncomplete}
           onCommitField={handleCommitField}
           onDeleteSet={handleDeleteSet}
+          onPressRestChip={handlePressRestChip}
+          onPressMetricHeader={handlePressMetricHeader}
+          onPressSetType={handlePressSetType}
+          onToggleSetDetail={handleToggleSetDetail}
+          expandedSetKey={expandedSetKey}
+          noteEditorEntryId={noteEditorEntryId}
+          onCommitExerciseNote={handleCommitExerciseNote}
           onAddSet={handleAddSet}
           onActivateRpe={handleActivateRpe}
           focusedSetKey={focusedSetKey}

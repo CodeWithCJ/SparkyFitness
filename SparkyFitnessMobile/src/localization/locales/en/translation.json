@@ -482,7 +482,8 @@
     "setDetail": {
       "addNote": "Add a note for this set…",
       "notesForSet": "Notes for set {{setNumber}}",
-      "notes": "Set notes"
+      "notes": "Set notes",
+      "deleteSet": "Delete set"
     },
     "setRow": {
       "changeType": "Change type for set {{setNumber}}",

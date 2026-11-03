@@ -8,6 +8,15 @@ import type {
   WorkoutCardSet,
 } from '../../src/utils/workoutSession';
 
+jest.mock('../../src/hooks/useBodyWeightKg', () => ({
+  useBodyWeightKg: () => 80,
+}));
+jest.mock('../../src/components/AnchoredMenu', () => ({
+  ...jest.requireActual('../../src/components/AnchoredMenu'),
+  measureAnchoredMenuTrigger: (_node: unknown, cb: (a: object) => void) =>
+    cb({ x: 1, y: 2, width: 3, height: 4 }),
+}));
+
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
@@ -52,6 +61,8 @@ interface RenderOptions {
   withDelete?: boolean;
   focusedSetKey?: string | null;
   focusedField?: 'weight' | 'reps' | 'distance' | 'rpe';
+  expandedSetKey?: string | null;
+  withDetail?: boolean;
 }
 
 function renderSets(options: RenderOptions = {}) {
@@ -64,8 +75,11 @@ function renderSets(options: RenderOptions = {}) {
     onActivateSet: jest.fn(),
     onRegisterAccessoryHandle: jest.fn(),
     onDeleteSet: jest.fn(),
+    onPressMetricHeader: jest.fn(),
+    onPressSetType: jest.fn(),
+    onToggleSetDetail: jest.fn(),
   };
-  const { onDeleteSet, ...rest } = callbacks;
+  const { onDeleteSet, onToggleSetDetail, ...rest } = callbacks;
   const utils = render(
     <ActiveWorkoutFocusSets
       exercise={makeExercise(options.sets ?? [makeSet()], options.modality)}
@@ -80,6 +94,8 @@ function renderSets(options: RenderOptions = {}) {
       focusedField={options.focusedField ?? 'weight'}
       {...rest}
       onDeleteSet={options.withDelete ? onDeleteSet : undefined}
+      onToggleSetDetail={options.withDetail ? onToggleSetDetail : undefined}
+      expandedSetKey={options.expandedSetKey ?? null}
     />
   );
   return { ...utils, callbacks };
@@ -198,6 +214,28 @@ describe('ActiveWorkoutFocusSets', () => {
     fireEvent.changeText(weight, '60');
     fireEvent(weight, 'blur');
     expect(callbacks.onCommitField).not.toHaveBeenCalled();
+  });
+
+  it('commits a typed draft when the row unmounts without a blur', () => {
+    const { getByLabelText, unmount, callbacks } = renderSets();
+    fireEvent.changeText(getByLabelText('Weight for set 1'), '72.5');
+    expect(callbacks.onCommitField).not.toHaveBeenCalled();
+    unmount();
+    expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
+    expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+      weight: 72.5,
+    });
+  });
+
+  it('does not commit on unmount when nothing was typed or the draft is unchanged', () => {
+    const untouched = renderSets();
+    untouched.unmount();
+    expect(untouched.callbacks.onCommitField).not.toHaveBeenCalled();
+
+    const unchanged = renderSets();
+    fireEvent.changeText(unchanged.getByLabelText('Weight for set 1'), '60');
+    unchanged.unmount();
+    expect(unchanged.callbacks.onCommitField).not.toHaveBeenCalled();
   });
 
   it('clears the field when the typed text is emptied', () => {
@@ -335,12 +373,116 @@ describe('ActiveWorkoutFocusSets', () => {
     expect(callbacks.onActivateSet).toHaveBeenCalledWith('key-101', 'distance');
   });
 
-  it('falls back to RPE for the volume column', () => {
-    const { getByLabelText } = renderSets({
+  it('shows the volume column read-only, as the list does', () => {
+    const { getByText, queryByLabelText } = renderSets({
       metricColumn: 'volume',
-      sets: [makeSet({ rpe: 8 })],
+      sets: [makeSet({ weight: 60, reps: 10 })],
     });
+    expect(getByText('Vol')).toBeTruthy();
+    expect(getByText('600')).toBeTruthy();
+    expect(queryByLabelText('RPE for set 1')).toBeNull();
+  });
+
+  it('shows estimated maxes read-only for 1RM and 10RM', () => {
+    const e1rm = renderSets({
+      metricColumn: 'e1rm',
+      sets: [makeSet({ weight: 60, reps: 10 })],
+    });
+    expect(e1rm.getByText('1RM')).toBeTruthy();
+    expect(e1rm.getByText('80')).toBeTruthy();
+    e1rm.unmount();
+    const tenrm = renderSets({
+      metricColumn: 'tenrm',
+      sets: [makeSet({ weight: 60, reps: 10 })],
+    });
+    expect(tenrm.getByText('10RM')).toBeTruthy();
+    expect(tenrm.getByText('60')).toBeTruthy();
+  });
+
+  it('clamps the weight-derived columns to RPE for reps-only tables', () => {
+    const { getByLabelText, getByText } = renderSets({
+      metricColumn: 'volume',
+      modality: 'reps_only',
+      sets: [makeSet({ weight: null, rpe: 8 })],
+    });
+    expect(getByText('RPE')).toBeTruthy();
     expect(getByLabelText('RPE for set 1')).toBeTruthy();
+  });
+
+  it('opens the metric menu from the effort header, flagging a clamped table', () => {
+    const normal = renderSets();
+    fireEvent.press(normal.getByLabelText('Change metric column'));
+    expect(normal.callbacks.onPressMetricHeader).toHaveBeenCalledWith(
+      { x: 1, y: 2, width: 3, height: 4 },
+      false
+    );
+    normal.unmount();
+
+    const clamped = renderSets({ modality: 'reps_only' });
+    fireEvent.press(clamped.getByLabelText('Change metric column'));
+    expect(clamped.callbacks.onPressMetricHeader).toHaveBeenCalledWith(
+      expect.any(Object),
+      true
+    );
+  });
+
+  it('opens the set-type menu from the set number', () => {
+    const { getByLabelText, callbacks } = renderSets();
+    fireEvent.press(getByLabelText('Change type for set 1'));
+    expect(callbacks.onPressSetType).toHaveBeenCalledWith('101', {
+      x: 1,
+      y: 2,
+      width: 3,
+      height: 4,
+    });
+  });
+
+  it('opens the set-type menu from a fallback (timed) row too', () => {
+    const { getByLabelText, callbacks } = renderSets({
+      modality: 'duration',
+      sets: [makeSet({ weight: null, reps: null, duration: 30 })],
+    });
+    fireEvent.press(getByLabelText('Change type for set 1'));
+    expect(callbacks.onPressSetType).toHaveBeenCalledWith(
+      '101',
+      expect.any(Object)
+    );
+  });
+
+  it('toggles the set detail on long press, keyed by render key', () => {
+    const { getByTestId, callbacks } = renderSets({
+      withDetail: true,
+      withDelete: true,
+    });
+    fireEvent(getByTestId('focus-set-row'), 'longPress');
+    expect(callbacks.onToggleSetDetail).toHaveBeenCalledWith('key-101');
+    // Long-press no longer deletes once the detail panel owns it.
+    expect(callbacks.onDeleteSet).not.toHaveBeenCalled();
+  });
+
+  it('toggles the set detail from a fallback row long press', () => {
+    const { getByTestId, callbacks } = renderSets({
+      withDetail: true,
+      modality: 'duration',
+      sets: [makeSet({ weight: null, reps: null, duration: 30 })],
+    });
+    fireEvent(getByTestId('set-row'), 'longPress');
+    expect(callbacks.onToggleSetDetail).toHaveBeenCalledWith('key-101');
+  });
+
+  it('shows the set note and a Delete set button under the expanded row', () => {
+    const { getByLabelText, getByText, callbacks } = renderSets({
+      expandedSetKey: 'key-101',
+      withDelete: true,
+    });
+    expect(getByLabelText('Notes for set 1')).toBeTruthy();
+    fireEvent.press(getByText('Delete set'));
+    expect(callbacks.onDeleteSet).toHaveBeenCalledWith('101');
+  });
+
+  it('shows no detail panel for a collapsed row', () => {
+    const { queryByLabelText } = renderSets({ withDelete: true });
+    expect(queryByLabelText('Notes for set 1')).toBeNull();
   });
 
   it('hides weight for reps-only exercises', () => {
