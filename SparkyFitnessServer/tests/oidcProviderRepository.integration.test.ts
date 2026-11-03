@@ -67,6 +67,11 @@ async function dbReachable(): Promise<boolean> {
 const RUN = await dbReachable();
 const fixtureIds: string[] = [];
 const issuer = 'https://oidc.example.test';
+/** Discovery response for the test issuer; env providers are saved only after discovery succeeds. */
+const discovery = {
+  ok: true,
+  json: async () => ({ issuer: `${issuer}/` }),
+};
 
 /** Seeds a provider and records its row ID for scoped cleanup. */
 async function seedProvider(
@@ -99,7 +104,7 @@ function configureEnvProvider(providerId: string) {
 
 describe.runIf(RUN)('OIDC provider identity in PostgreSQL', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(discovery));
   });
 
   afterEach(async () => {
@@ -186,7 +191,7 @@ describe.runIf(RUN)('OIDC provider identity in PostgreSQL', () => {
         vi.fn(async () => {
           if (++arrivals === 2) releaseDiscovery();
           await ready;
-          return { ok: false };
+          return discovery;
         })
       );
 

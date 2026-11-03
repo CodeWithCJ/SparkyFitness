@@ -1,5 +1,7 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
-import oidcProviderRepository from '../models/oidcProviderRepository.js';
+import oidcProviderRepository, {
+  OidcDiscoveryError,
+} from '../models/oidcProviderRepository.js';
 import { getSystemClient } from '../db/poolManager.js';
 // Mock dependencies
 vi.mock('../db/poolManager', () => ({
@@ -42,7 +44,10 @@ describe('oidcProviderRepository', () => {
           }
           return { rows: [] };
         });
-        vi.mocked(fetch).mockResolvedValue({ ok: false } as Response);
+        vi.mocked(fetch).mockResolvedValue({
+          ok: true,
+          json: async () => ({ issuer: 'https://identity.example.test/' }),
+        } as Response);
 
         await expect(
           oidcProviderRepository.upsertEnvOidcProvider({
@@ -61,6 +66,77 @@ describe('oidcProviderRepository', () => {
         );
       }
     );
+
+    // Each case uses its own issuer so the discovery cache cannot answer it.
+    it.each([
+      [
+        'a non-200 response',
+        'https://unavailable.example.test/',
+        () => ({ ok: false, status: 503 }) as Response,
+      ],
+      [
+        'a network error',
+        'https://unreachable.example.test/',
+        () => {
+          throw new TypeError('fetch failed');
+        },
+      ],
+    ])(
+      'does not save the provider when discovery fails with %s',
+      async (_label, issuerUrl, respond) => {
+        vi.mocked(fetch).mockImplementation(async () => respond());
+
+        await expect(
+          oidcProviderRepository.upsertEnvOidcProvider({
+            provider_id: 'test-provider',
+            issuer_url: issuerUrl,
+            client_id: 'client',
+            client_secret: 'secret',
+            domain: 'example.test',
+            is_env_configured: true,
+          })
+        ).rejects.toBeInstanceOf(OidcDiscoveryError);
+
+        expect(getSystemClient).not.toHaveBeenCalled();
+        expect(mockClient.query).not.toHaveBeenCalled();
+      }
+    );
+
+    it('stores the issuer from the discovery document', async () => {
+      mockClient.query.mockResolvedValue({ rows: [] });
+      vi.mocked(fetch).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          issuer: 'https://auth.example.test/application/o/sparky/',
+          jwks_uri: 'https://auth.example.test/jwks',
+          token_endpoint: 'https://auth.example.test/token',
+          authorization_endpoint: 'https://auth.example.test/authorize',
+          userinfo_endpoint: 'https://auth.example.test/userinfo',
+        }),
+      } as Response);
+
+      await oidcProviderRepository.upsertEnvOidcProvider({
+        provider_id: 'test-provider',
+        issuer_url: 'https://auth.example.test/application/o/sparky',
+        client_id: 'client',
+        client_secret: 'secret',
+        domain: 'example.test',
+        is_env_configured: true,
+      });
+
+      const insert = mockClient.query.mock.calls.find(([sql]: [string]) =>
+        sql.includes('INSERT INTO')
+      );
+      expect(insert[1][1]).toBe(
+        'https://auth.example.test/application/o/sparky/'
+      );
+      expect(insert[1][12]).toEqual(
+        expect.objectContaining({
+          issuer: 'https://auth.example.test/application/o/sparky/',
+          tokenEndpoint: 'https://auth.example.test/token',
+        })
+      );
+    });
   });
   describe('createOidcProvider', () => {
     it('should persist is_env_configured in additional_config', async () => {

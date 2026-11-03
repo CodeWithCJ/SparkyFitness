@@ -1,10 +1,20 @@
-import { vi, afterAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  vi,
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
 import {
   getEnvOidcConfig,
   upsertEnvOidcProvider,
+  upsertEnvOidcProviderWithRetry,
 } from '../utils/oidcEnvConfig.js';
+import { log } from '../config/logging.js';
 
-const { repository, client } = vi.hoisted(() => ({
+const { repository, client, OidcDiscoveryError } = vi.hoisted(() => ({
   repository: {
     getOidcProviderById: vi.fn(),
     updateOidcProvider: vi.fn(),
@@ -13,8 +23,12 @@ const { repository, client } = vi.hoisted(() => ({
     deleteOidcProvider: vi.fn(),
   },
   client: { query: vi.fn(), release: vi.fn() },
+  OidcDiscoveryError: class OidcDiscoveryError extends Error {},
 }));
-vi.mock('../models/oidcProviderRepository.js', () => ({ default: repository }));
+vi.mock('../models/oidcProviderRepository.js', () => ({
+  default: repository,
+  OidcDiscoveryError,
+}));
 vi.mock('../db/poolManager.js', () => ({
   getSystemClient: async () => client,
 }));
@@ -102,6 +116,71 @@ describe('oidcEnvConfig', () => {
         expect.objectContaining({ provider_id: 'authentik' })
       );
       expect(repository.updateOidcProvider).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('upsertEnvOidcProviderWithRetry', () => {
+    beforeEach(() => {
+      vi.resetAllMocks();
+      vi.useFakeTimers();
+      repository.getOidcProviderById.mockResolvedValue(null);
+      process.env.SPARKY_FITNESS_OIDC_AUTH_ENABLED = 'true';
+      process.env.SPARKY_FITNESS_OIDC_ISSUER_URL =
+        'https://identity.example.com/';
+      process.env.SPARKY_FITNESS_OIDC_CLIENT_ID = 'sparky';
+      process.env.SPARKY_FITNESS_OIDC_CLIENT_SECRET = 'test-secret';
+      process.env.SPARKY_FITNESS_OIDC_PROVIDER_SLUG = 'authentik';
+    });
+    afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    });
+
+    it('retries with backoff until discovery succeeds', async () => {
+      repository.upsertEnvOidcProvider
+        .mockRejectedValueOnce(new OidcDiscoveryError('down'))
+        .mockRejectedValueOnce(new OidcDiscoveryError('down'))
+        .mockResolvedValueOnce([]);
+
+      await upsertEnvOidcProviderWithRetry();
+      expect(repository.upsertEnvOidcProvider).toHaveBeenCalledTimes(1);
+
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(repository.upsertEnvOidcProvider).toHaveBeenCalledTimes(2);
+
+      // The second retry waits twice as long.
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(repository.upsertEnvOidcProvider).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(repository.upsertEnvOidcProvider).toHaveBeenCalledTimes(3);
+
+      // Saved, so no further retries are scheduled.
+      expect(vi.getTimerCount()).toBe(0);
+      expect(log).toHaveBeenCalledWith(
+        'info',
+        '[OIDC ENV] Saved provider "authentik" from environment.'
+      );
+    });
+
+    it('caps the retry delay at five minutes', async () => {
+      repository.upsertEnvOidcProvider.mockRejectedValue(
+        new OidcDiscoveryError('down')
+      );
+
+      await upsertEnvOidcProviderWithRetry(10);
+
+      expect(log).toHaveBeenCalledWith(
+        'warn',
+        expect.stringContaining('retrying in 300s')
+      );
+    });
+
+    it('rethrows other errors without scheduling a retry', async () => {
+      const failure = new Error('database unavailable');
+      repository.upsertEnvOidcProvider.mockRejectedValue(failure);
+
+      await expect(upsertEnvOidcProviderWithRetry()).rejects.toBe(failure);
+      expect(vi.getTimerCount()).toBe(0);
     });
   });
 

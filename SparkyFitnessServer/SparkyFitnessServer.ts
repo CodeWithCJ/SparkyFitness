@@ -141,7 +141,7 @@ import oidcSettingsRoutes from './routes/oidcSettingsRoutes.js';
 import adminAuthRoutes from './routes/adminAuthRoutes.js';
 import workoutPresetRoutes from './routes/workoutPresetRoutes.js';
 import workoutPlanTemplateRoutes from './routes/workoutPlanTemplateRoutes.js';
-import { upsertEnvOidcProvider } from './utils/oidcEnvConfig.js';
+import { upsertEnvOidcProviderWithRetry } from './utils/oidcEnvConfig.js';
 import userRepository from './models/userRepository.js';
 import genericHealthRoutes from './routes/genericHealthRoutes.js';
 import { revokeOAuthAuthorization } from './models/oauthClientRepository.js';
@@ -887,7 +887,7 @@ app.get('/api/api-docs', (_req, res) => res.redirect('/api/api-docs/swagger'));
 (async () => {
   // Upsert OIDC provider from env when SPARKY_FITNESS_OIDC_ISSUER_URL + CLIENT_ID + SECRET + PROVIDER_SLUG are set
   try {
-    await upsertEnvOidcProvider();
+    await upsertEnvOidcProviderWithRetry();
   } catch (err) {
     log('error', 'OIDC env provider upsert failed:', err);
   }

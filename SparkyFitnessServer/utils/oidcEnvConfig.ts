@@ -1,5 +1,9 @@
 import { log } from '../config/logging.js';
-import oidcProviderRepository from '../models/oidcProviderRepository.js';
+import oidcProviderRepository, {
+  OidcDiscoveryError,
+} from '../models/oidcProviderRepository.js';
+const DISCOVERY_RETRY_BASE_MS = 5_000;
+const DISCOVERY_RETRY_MAX_MS = 5 * 60_000;
 const ENV_ISSUER = 'SPARKY_FITNESS_OIDC_ISSUER_URL';
 const ENV_CLIENT_ID = 'SPARKY_FITNESS_OIDC_CLIENT_ID';
 const ENV_CLIENT_SECRET = 'SPARKY_FITNESS_OIDC_CLIENT_SECRET';
@@ -103,9 +107,37 @@ async function upsertEnvOidcProvider() {
     `[OIDC ENV] Saved provider "${config.provider_id}" from environment.`
   );
 }
+/**
+ * Runs {@link upsertEnvOidcProvider} at startup. When the IdP's discovery
+ * document is unavailable (e.g. the IdP is still starting), retries in the
+ * background with capped exponential backoff instead of saving a provider
+ * that cannot complete a login. Other errors are thrown to the caller.
+ */
+async function upsertEnvOidcProviderWithRetry(attempt = 0): Promise<void> {
+  try {
+    await upsertEnvOidcProvider();
+  } catch (error) {
+    if (!(error instanceof OidcDiscoveryError)) throw error;
+    const delay = Math.min(
+      DISCOVERY_RETRY_BASE_MS * 2 ** attempt,
+      DISCOVERY_RETRY_MAX_MS
+    );
+    log(
+      'warn',
+      `[OIDC ENV] ${error.message}; provider not saved, retrying in ${delay / 1000}s.`
+    );
+    setTimeout(() => {
+      upsertEnvOidcProviderWithRetry(attempt + 1).catch((err) =>
+        log('error', 'OIDC env provider upsert failed:', err)
+      );
+    }, delay).unref();
+  }
+}
 export { getEnvOidcConfig };
 export { upsertEnvOidcProvider };
+export { upsertEnvOidcProviderWithRetry };
 export default {
   getEnvOidcConfig,
   upsertEnvOidcProvider,
+  upsertEnvOidcProviderWithRetry,
 };

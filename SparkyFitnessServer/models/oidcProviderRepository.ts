@@ -5,6 +5,16 @@ import type { OidcProviderUpdate } from '../schemas/oidcProviderSchemas.js';
 import type { PoolClient } from 'pg';
 const discoveryCache = new NodeCache({ stdTTL: 3600 });
 
+/** Thrown when a provider cannot be saved because its discovery document is unavailable. */
+class OidcDiscoveryError extends Error {
+  readonly discoveryEndpoint: string;
+  constructor(discoveryEndpoint: string) {
+    super(`OIDC discovery document unavailable at ${discoveryEndpoint}`);
+    this.name = 'OidcDiscoveryError';
+    this.discoveryEndpoint = discoveryEndpoint;
+  }
+}
+
 /** Falls back to Better Auth's configuration when the legacy client ID column is unset. */
 function getStoredClientId(row: {
   client_id: string | null;
@@ -294,6 +304,12 @@ async function upsertEnvOidcProvider(
   const providerId = providerData.provider_id;
   const { config, discoveryEndpoint, endpoints, oidcConfig } =
     await prepareOidcProvider(providerData, providerId);
+  // Without discovery the row would carry the configured issuer instead of the
+  // IdP's, and no endpoints, so every login would fail until the next restart.
+  // Leave any existing row untouched and let the caller retry.
+  if (!endpoints.issuer) {
+    throw new OidcDiscoveryError(discoveryEndpoint);
+  }
   const client: PoolClient = await getSystemClient();
   let rollbackFailed = false;
   let removed: string[];
@@ -514,6 +530,7 @@ export { getActiveOidcProviderIds };
 export { createOidcProvider };
 export { updateOidcProvider };
 export { upsertEnvOidcProvider };
+export { OidcDiscoveryError };
 export { deleteOidcProvider };
 export { setProviderLogo };
 export default {
