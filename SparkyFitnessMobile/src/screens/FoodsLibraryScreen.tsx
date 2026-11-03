@@ -6,6 +6,7 @@ import { useCSSVariable } from 'uniwind';
 import LibrarySearchBar from '../components/LibrarySearchBar';
 import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import FoodLibraryRow from '../components/FoodLibraryRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import {
@@ -46,7 +47,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({
   );
   const [refreshing, setRefreshing] = useState(false);
 
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { isConnected } = useServerConnection();
   const { profile } = useProfile();
   const {
     foods,
@@ -137,29 +138,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({
   };
 
   const renderContent = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          iconSize={64}
-          title={t('foodLibrary.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('foodLibrary.configure', {
-            defaultValue:
-              'Configure your server connection in Settings to view your food library.',
-          })}
-          action={{
-            label: t('foodLibrary.go', { defaultValue: 'Go to Settings' }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
-
-    if (isLoading || isConnectionLoading) {
+    if (isLoading) {
       return (
         <StatusView
           loading
@@ -271,7 +250,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({
           isSearching={isSearching}
         />
       ) : null}
-      {renderContent()}
+      <ServerGate>{renderContent()}</ServerGate>
     </View>
   );
 };

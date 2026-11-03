@@ -4,6 +4,7 @@ import { View, FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import LibrarySearchBar from '../components/LibrarySearchBar';
 import MealLibraryRow from '../components/MealLibraryRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
@@ -45,7 +46,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({
   );
   const [refreshing, setRefreshing] = useState(false);
 
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { isConnected } = useServerConnection();
   const { profile } = useProfile();
   const {
     meals,
@@ -157,29 +158,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({
   };
 
   const renderContent = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          iconSize={64}
-          title={t('mealLibrary.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('mealLibrary.configure', {
-            defaultValue:
-              'Configure your server connection in Settings to view your meal library.',
-          })}
-          action={{
-            label: t('mealLibrary.go', { defaultValue: 'Go to Settings' }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
-
-    if (isLoading || isConnectionLoading) {
+    if (isLoading) {
       return (
         <StatusView
           loading
@@ -273,7 +252,7 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({
     >
       {header}
       {isConnected ? renderSearchBar() : null}
-      {renderContent()}
+      <ServerGate>{renderContent()}</ServerGate>
     </View>
   );
 };

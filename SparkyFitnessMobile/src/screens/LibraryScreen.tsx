@@ -25,6 +25,7 @@ import { programTitle } from '../components/recording/RunProgramCard';
 import { useRunProgram } from '../services/runProgramService';
 import MealLibraryRow from '../components/MealLibraryRow';
 import StatusView from '../components/StatusView';
+import { ServerStatusView } from '../components/ServerGate';
 import {
   useFavorites,
   useFoods,
@@ -203,25 +204,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
         className="flex-1 bg-background"
         style={usesNativeTabs ? undefined : { paddingTop: insets.top }}
       >
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          iconSize={64}
-          title={t('screens.library.noServerConfigured', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('screens.library.configureServer', {
-            defaultValue:
-              'Configure your server connection in Settings to view your library.',
-          })}
-          action={{
-            label: t('screens.library.goToSettings', {
-              defaultValue: 'Go to Settings',
-            }),
-            onPress: () => navigation.navigate('Settings'),
-            variant: 'primary',
-          }}
-        />
+        <ServerStatusView />
       </View>
     );
   }
