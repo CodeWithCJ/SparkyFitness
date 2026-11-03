@@ -235,15 +235,18 @@ async function preCleanEntriesBySourceAndDate(
     // Kept as sent: the handler stores this exact value, so the delete must
     // match it. Only the emptiness check ignores surrounding whitespace.
     const source = typeof entry.source === 'string' ? entry.source : '';
-    if (!source.trim() || isUserOriginatedSource(source) || isRejected(entry)) {
-      continue;
-    }
-    const resolved = resolveHealthEntryDate(entry, fallbackTimezone);
-    if (!resolved) continue;
-    (daysBySource[source] ??= new Set()).add(resolved.parsedDate);
+    if (!source.trim() || isUserOriginatedSource(source)) continue;
+    // Held back even when the record is rejected or its date is unreadable:
+    // it will not be re-inserted, so a valid sibling's span must not sweep
+    // away the copy already stored.
     if (typeof entry.source_id === 'string' && entry.source_id.length > 0) {
       (keepIdsBySource[source] ??= new Set()).add(entry.source_id);
     }
+    // A rejected record never widens the span it would have replaced.
+    if (isRejected(entry)) continue;
+    const resolved = resolveHealthEntryDate(entry, fallbackTimezone);
+    if (!resolved) continue;
+    (daysBySource[source] ??= new Set()).add(resolved.parsedDate);
   }
   for (const source of Object.keys(daysBySource)) {
     const days = [...daysBySource[source]].sort();

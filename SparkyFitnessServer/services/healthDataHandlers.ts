@@ -1923,7 +1923,11 @@ export function invalidWorkoutReason(
   const { sets } = entry;
   if (sets === undefined || sets === null) return null;
   if (!Array.isArray(sets)) return 'Invalid workout: sets must be an array.';
-  if (sets.some((set) => typeof set !== 'object' || set === null)) {
+  if (
+    sets.some(
+      (set) => typeof set !== 'object' || set === null || Array.isArray(set)
+    )
+  ) {
     return 'Invalid workout: every set must be an object.';
   }
   return null;

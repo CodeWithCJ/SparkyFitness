@@ -118,6 +118,40 @@ describe('processHealthData pre-cleanup (#2938)', () => {
     ]);
   });
 
+  it('rejects a set that is itself an array before deleting anything', async () => {
+    const bad = workout({ source: 'HealthKit', sets: [[1, 2]] });
+    const result = await measurementService.processHealthData(
+      [bad],
+      'user-1',
+      'user-1'
+    );
+
+    expect(deleteMock()).not.toHaveBeenCalled();
+    expect(result.errors).toEqual([
+      { error: 'Invalid workout: every set must be an object.', entry: bad },
+    ]);
+  });
+
+  it("keeps a rejected workout's stored copy when a valid one shares its day", async () => {
+    await measurementService.processHealthData(
+      [
+        workout({ source: 'HealthKit', source_id: 'hk-bad', sets: {} }),
+        workout({ source: 'HealthKit', source_id: 'hk-good' }),
+      ],
+      'user-1',
+      'user-1'
+    );
+
+    expect(deleteMock()).toHaveBeenCalledTimes(1);
+    const [, startDate, endDate, , , keepSourceIds] =
+      deleteMock().mock.calls[0];
+    expect({ startDate, endDate }).toEqual({
+      startDate: '2026-10-16',
+      endDate: '2026-10-16',
+    });
+    expect([...keepSourceIds].sort()).toEqual(['hk-bad', 'hk-good']);
+  });
+
   it('limits the delete to the days of the valid workouts in a mixed batch', async () => {
     await measurementService.processHealthData(
       [
