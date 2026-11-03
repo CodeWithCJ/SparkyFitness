@@ -82,7 +82,7 @@ function renderScreen() {
       />
     </QueryClientProvider>
   );
-  return { ...utils, invalidate };
+  return { ...utils, invalidate, queryClient };
 }
 
 describe('WaterLogScreen', () => {
@@ -154,5 +154,26 @@ describe('WaterLogScreen', () => {
         })
       )
     );
+  });
+
+  it('keeps the cached drinks when a refetch fails', async () => {
+    mockFetch.mockResolvedValueOnce([entry({})]);
+    const { findAllByTestId, queryByText, queryClient } = renderScreen();
+    expect(await findAllByTestId('water-log-row')).toHaveLength(1);
+
+    mockFetch.mockRejectedValue(new Error('offline'));
+    await queryClient.invalidateQueries({
+      queryKey: ['waterIntakeLog', '2026-11-02'],
+    });
+
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    expect(queryByText('Could not load drinks')).toBeNull();
+    expect(await findAllByTestId('water-log-row')).toHaveLength(1);
+  });
+
+  it('shows the error view when the first load fails', async () => {
+    mockFetch.mockRejectedValue(new Error('offline'));
+    const { findByText } = renderScreen();
+    expect(await findByText('Could not load drinks')).toBeTruthy();
   });
 });

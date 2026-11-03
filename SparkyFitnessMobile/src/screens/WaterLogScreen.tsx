@@ -72,15 +72,11 @@ const WaterLogScreen: React.FC<WaterLogScreenProps> = ({ route }) => {
   const unit = preferences?.water_display_unit ?? 'ml';
   const unitLabel = WATER_UNIT_LABELS[unit] ?? unit;
 
-  const {
-    data: entries = [],
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: waterIntakeLogQueryKey(date),
     queryFn: () => fetchWaterIntakeLog(date),
   });
+  const entries = data ?? [];
 
   const header = useScreenHeader({
     title: t('waterLog.title', { defaultValue: 'Drinks' }),
@@ -237,7 +233,9 @@ const WaterLogScreen: React.FC<WaterLogScreenProps> = ({ route }) => {
         />
       );
     }
-    if (isError) {
+    // A failed refetch keeps the cached drinks on screen; only a load with
+    // nothing cached falls back to the error view.
+    if (isError && data === undefined) {
       return (
         <StatusView
           icon="alert-circle"
