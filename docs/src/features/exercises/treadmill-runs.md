@@ -25,7 +25,7 @@ Open **Settings > Workout > Treadmill & stride**. Everything here is kept on you
 Walking and running each show the stride the app uses to turn steps into distance, in metres or feet to match your distance unit, and where it came from:
 
 - **Default stride. Not learned yet.** A typical adult's stride is used.
-- **Learned from N real distances.** Each distance you corrected, or each saved outdoor walk or run, taught it. Newer distances move it gradually, so one odd treadmill does not undo a good stride.
+- **Learned from N real distances.** Each distance you corrected, or each saved outdoor walk or run, taught it. Newer distances move it gradually, so one odd treadmill does not undo a good stride. A watch run teaches it too, from the steps Apple Health holds over the run, whether you typed the distance on the watch or on the run summary. A run counts once: a figure you enter again for the same run replaces the first instead of adding to it.
 - **Set by you.** You typed it or calibrated it. It counts for a few learned distances, so the next real distance nudges it instead of replacing it.
 
 To set a stride by hand, type it under the stride and tap **Save**. A step shorter than 0.3 m or longer than 2.5 m is refused. **Reset and learn from scratch** forgets one activity's stride and goes back to the default.

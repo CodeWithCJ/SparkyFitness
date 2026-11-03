@@ -8623,7 +8623,7 @@
     "strideManual": "Set by you. New distances nudge it from here.",
     "strideLearned_one": "Learned from {{count}} real distance.",
     "strideLearned_other": "Learned from {{count}} real distances.",
-    "strideDefault": "Default stride. Not learned yet: it learns when you correct a treadmill distance after a run with the phone on you, or set it below.",
+    "strideDefault": "Default stride. Not learned yet: it learns when you enter the distance a treadmill showed after a run, or set it below.",
     "correction": "Correct treadmill distance",
     "correctionSubtitle": "If your treadmill display reads long or short, take that off the distance you enter from it. Distances the phone estimates from steps are not changed. Kept on this device.",
     "correctionA11y": "Correct treadmill distance",

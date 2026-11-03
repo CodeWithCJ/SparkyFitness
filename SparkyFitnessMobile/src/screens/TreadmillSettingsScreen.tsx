@@ -214,7 +214,7 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
     }
     return t('treadmillSettings.strideDefault', {
       defaultValue:
-        'Default stride. Not learned yet: it learns when you correct a treadmill distance after a run with the phone on you, or set it below.',
+        'Default stride. Not learned yet: it learns when you enter the distance a treadmill showed after a run, or set it below.',
     });
   };
 

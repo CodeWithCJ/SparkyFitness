@@ -131,15 +131,35 @@ export async function resetStride(activity: StepActivity): Promise<boolean> {
 export async function learnStride(
   activity: StepActivity,
   steps: number,
-  distanceMeters: number
+  distanceMeters: number,
+  runId?: string
 ): Promise<boolean> {
   const sample = strideFromSample(steps, distanceMeters);
   if (sample == null) return false;
   try {
     const stored = await read();
+    const current = stored[activity];
+    // A run counts once: teaching the one taught last again starts from what
+    // the stride was before it, so the new sample replaces the old.
+    const replacing =
+      runId != null && current?.last != null && current.last.runId === runId;
+    const base = replacing ? (current?.last?.before ?? undefined) : current;
+    const { last: _last, ...before } = base ?? {};
+    const hasBefore = base != null;
     const next = {
       ...stored,
-      [activity]: blendStride(stored[activity], sample),
+      [activity]: {
+        ...blendStride(
+          hasBefore ? (before as StrideCalibration) : undefined,
+          sample
+        ),
+        ...(runId != null && {
+          last: {
+            runId,
+            before: hasBefore ? (before as StrideCalibration) : null,
+          },
+        }),
+      },
     };
     await AsyncStorage.setItem(KEY, JSON.stringify(next));
     return true;

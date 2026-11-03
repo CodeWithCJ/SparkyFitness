@@ -132,7 +132,28 @@ describe('learnFromWatchRun', () => {
 
     expect(mockedHealthSteps).toHaveBeenCalledWith(START, START + 30 * 60_000);
     expect(mockedSteps).not.toHaveBeenCalled();
-    expect(mockedLearn).toHaveBeenCalledWith('run', 5200, 5000);
+    expect(mockedLearn).toHaveBeenCalledWith('run', 5200, 5000, undefined);
+  });
+
+  it('names the run, so teaching it again replaces its sample', async () => {
+    mockedHealthSteps.mockResolvedValue(5200);
+
+    await learnFromWatchRun(window({ activity: 'run' }), 5000, 'entry-1');
+
+    expect(mockedLearn).toHaveBeenCalledWith('run', 5200, 5000, 'entry-1');
+  });
+
+  it('does not ask for Motion & Fitness when told not to', async () => {
+    await learnFromWatchRun(
+      window({ activity: 'run' }),
+      5000,
+      'entry-1',
+      false
+    );
+
+    expect(mockedSteps).toHaveBeenCalledWith(START, START + 30 * 60_000, {
+      askForPermission: false,
+    });
   });
 
   it('leaves paused time out of the Health steps', async () => {
@@ -143,7 +164,7 @@ describe('learnFromWatchRun', () => {
       4000
     );
 
-    expect(mockedLearn).toHaveBeenCalledWith('run', 3467, 4000);
+    expect(mockedLearn).toHaveBeenCalledWith('run', 3467, 4000, undefined);
   });
 
   it('learns from the phone’s steps over the run and the corrected distance, asking for access', async () => {
@@ -154,7 +175,7 @@ describe('learnFromWatchRun', () => {
     expect(mockedSteps).toHaveBeenCalledWith(START, START + 30 * 60_000, {
       askForPermission: true,
     });
-    expect(mockedLearn).toHaveBeenCalledWith('run', 3900, 5000);
+    expect(mockedLearn).toHaveBeenCalledWith('run', 3900, 5000, undefined);
   });
 
   it('learns nothing from a phone that was left behind', async () => {

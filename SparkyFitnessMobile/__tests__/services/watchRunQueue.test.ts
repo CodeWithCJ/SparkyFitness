@@ -20,6 +20,7 @@ import { ApiError } from '../../src/services/api/errors';
 import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
 import type { WatchRunPayload } from '../../src/utils/watchRun';
 import { learnWatchIndoorScale } from '../../src/services/watchIndoorScale';
+import { learnFromWatchRun } from '../../src/services/stepDistance';
 
 jest.mock('../../modules/watch-connectivity', () => ({
   __esModule: true,
@@ -30,6 +31,9 @@ jest.mock('../../modules/watch-connectivity', () => ({
 jest.mock('../../src/services/watchRunSave');
 jest.mock('../../src/services/watchIndoorScale', () => ({
   learnWatchIndoorScale: jest.fn(() => Promise.resolve()),
+}));
+jest.mock('../../src/services/stepDistance', () => ({
+  learnFromWatchRun: jest.fn(() => Promise.resolve(true)),
 }));
 jest.mock('../../src/services/runProgramService', () => ({
   completeProgramWorkout: jest.fn(() => Promise.resolve()),
@@ -322,7 +326,14 @@ test('learns the indoor factor from a treadmill distance entered on the wrist', 
     estimatedDistanceMeters: 4400,
   });
   await processWatchRunQueue('km');
-  expect(learnWatchIndoorScale).toHaveBeenCalledWith('walk', 1.1, 4400, 5000);
+  expect(learnWatchIndoorScale).toHaveBeenCalledWith(
+    'walk',
+    1.1,
+    4400,
+    5000,
+    'watch',
+    'entry-1'
+  );
 });
 
 test('learns nothing when the watch figure was kept', async () => {
@@ -351,6 +362,7 @@ describe('treadmill correction on a wrist-entered distance', () => {
     useAppPreferencesStore.getState().setTreadmillCorrectionPercent(4);
     mockedSave.mockResolvedValue({ entryId: 'entry-1', form: null });
     jest.mocked(learnWatchIndoorScale).mockClear();
+    jest.mocked(learnFromWatchRun).mockClear();
 
     await enqueueWatchRun(typedOnWrist('t'));
     await processWatchRunQueue('km');
@@ -362,7 +374,16 @@ describe('treadmill correction on a wrist-entered distance', () => {
       'walk',
       1,
       4600,
-      expect.closeTo(5000)
+      expect.closeTo(5000),
+      'watch',
+      'entry-1'
+    );
+    // The stride learns from the same figure and run, without asking for access.
+    expect(learnFromWatchRun).toHaveBeenCalledWith(
+      expect.objectContaining({ activity: 'walk' }),
+      expect.closeTo(5000),
+      'entry-1',
+      false
     );
   });
 

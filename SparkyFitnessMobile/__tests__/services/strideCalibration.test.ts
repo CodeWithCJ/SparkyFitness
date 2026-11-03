@@ -9,6 +9,8 @@ import {
 } from '../../src/services/strideCalibration';
 import { DEFAULT_STRIDE_METERS } from '../../src/utils/stride';
 
+const KEY = '@SparkyFitness/strideCalibration';
+
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 
 beforeEach(async () => {
@@ -125,5 +127,32 @@ describe('the stride profile', () => {
 
     expect((await getStrideProfile()).walk.calibrated).toBe(false);
     expect((await getStrideProfile()).run.calibrated).toBe(true);
+  });
+});
+
+describe('one run counts once', () => {
+  const stored = async () =>
+    JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}').run;
+
+  it('replaces the sample a run taught earlier instead of adding another', async () => {
+    await learnStride('run', 1000, 1000, 'entry-1');
+    expect((await stored()).samples).toBe(1);
+
+    await learnStride('run', 1000, 900, 'entry-1');
+    const after = await stored();
+    expect(after.samples).toBe(1);
+    expect(after.meters).toBeCloseTo(0.9, 5);
+  });
+
+  it('adds a sample for a different run', async () => {
+    await learnStride('run', 1000, 1000, 'entry-1');
+    await learnStride('run', 1000, 900, 'entry-2');
+    expect((await stored()).samples).toBe(2);
+  });
+
+  it('counts every call that names no run', async () => {
+    await learnStride('run', 1000, 1000);
+    await learnStride('run', 1000, 1000);
+    expect((await stored()).samples).toBe(2);
   });
 });

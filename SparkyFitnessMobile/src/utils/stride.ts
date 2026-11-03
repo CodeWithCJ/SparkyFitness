@@ -35,6 +35,11 @@ export interface StrideCalibration {
   samples: number;
   /** Set by the person (typed or calibrated on purpose), not yet learned from. */
   manual?: boolean;
+  /**
+   * The run that taught it last and the stride before that run, so teaching
+   * the same run again replaces its sample instead of adding another.
+   */
+  last?: { runId: string; before: StrideCalibration | null };
 }
 
 /** A hand-set stride weighs as much as this many learned distances. */

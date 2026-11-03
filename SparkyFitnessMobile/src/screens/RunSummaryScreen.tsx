@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import Toast from 'react-native-toast-message';
 import { ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -106,7 +106,6 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const [distanceSaved, setDistanceSaved] = useState(false);
   // What the machine showed when a correction was taken off it: from the watch
   // (typed on the wrist, corrected when the run was filed) or from here.
-  const taught = useRef(false);
   const [displayedMeters, setDisplayedMeters] = useState<number | null>(
     summary.treadmillDisplayMeters ?? null
   );
@@ -165,23 +164,19 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
       setDisplayedMeters(corrected.applied ? corrected.displayedMeters : null);
       await followStride(summary.entryId, km);
       // The watch's indoor estimate and the stride learn from the machine's
-      // figure, once per run: a run whose figure was typed on the wrist has
-      // already taught the scale when it was filed, and pressing Update again
-      // would count the same run as another sample.
-      if (summary.watchIndoor && !taught.current) {
-        taught.current = true;
+      // figure. Both are keyed by this run, so a figure already typed on the
+      // wrist (which taught them when the run was filed) is replaced by this
+      // one rather than counted as a second sample.
+      if (summary.watchIndoor) {
         const { estimatedMeters, startedAt, endedAt } = summary.watchIndoor;
-        const typedOnWrist =
-          Math.abs(summary.distanceMeters - estimatedMeters) >
-          estimatedMeters * 0.01;
-        if (!typedOnWrist) {
-          void learnWatchIndoorScale(
-            summary.activity,
-            summary.watchIndoor.scale,
-            estimatedMeters,
-            km * METERS_PER_KM
-          );
-        }
+        void learnWatchIndoorScale(
+          summary.activity,
+          summary.watchIndoor.scale,
+          estimatedMeters,
+          km * METERS_PER_KM,
+          'phone',
+          summary.entryId
+        );
         if (startedAt != null && endedAt != null) {
           // The stride too, from the steps Apple Health holds over the run.
           void learnFromWatchRun(
@@ -191,7 +186,8 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
               finishedAt: endedAt,
               activeSeconds: summary.activeSeconds,
             },
-            km * METERS_PER_KM
+            km * METERS_PER_KM,
+            summary.entryId
           );
         }
       }

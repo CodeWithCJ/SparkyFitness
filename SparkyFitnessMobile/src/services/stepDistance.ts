@@ -103,12 +103,15 @@ export async function learnFromIndoorEntry(
  * what the machine showed. The steps come from Apple Health over the run's
  * window (the watch writes them there, and the phone can be left on the
  * treadmill), falling back to the phone's pedometer. A window with too few steps teaches nothing. Asks for
- * Motion & Fitness only on that fallback, since the person has just acted on
- * the run. Returns whether a stride was learned.
+ * Motion & Fitness only on that fallback, and only when `askForPermission`
+ * (the person has just acted on the run), never from a background filing. `runId` keeps a run to one sample however often it is taught.
+ * Returns whether a stride was learned.
  */
 export async function learnFromWatchRun(
   window: StepWindow,
-  distanceMeters: number
+  distanceMeters: number,
+  runId?: string,
+  askForPermission = true
 ): Promise<boolean> {
   if (!isStepActivity(window.activity)) return false;
   const health = await getHealthStepsBetween(
@@ -124,9 +127,9 @@ export async function learnFromWatchRun(
               (window.finishedAt - window.startedAt) / 1000
             )
         )
-      : await activeSteps(window, true);
+      : await activeSteps(window, askForPermission);
   if (steps == null || steps < MIN_STEPS_FOR_ESTIMATE) return false;
-  return learnStride(window.activity, steps, distanceMeters);
+  return learnStride(window.activity, steps, distanceMeters, runId);
 }
 
 /**

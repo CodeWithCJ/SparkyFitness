@@ -392,7 +392,7 @@ describe('treadmill correction', () => {
     expect(screen.getByText('5.00')).toBeTruthy();
   });
 
-  it('teaches once per run, and not the scale for a figure typed on the wrist', async () => {
+  it('teaches the run under its entry on every Update, so a later figure replaces the earlier', async () => {
     const watchIndoor = {
       scale: 1,
       estimatedMeters: 4000,
@@ -410,9 +410,23 @@ describe('treadmill correction', () => {
       fireEvent.press(screen.getByText('Update'));
       await screen.findByText('Distance updated.');
     }
-    // The wrist already taught the scale when the run was filed.
-    expect(learnWatchIndoorScale).not.toHaveBeenCalled();
-    expect(learnFromWatchRun).toHaveBeenCalledTimes(1);
+    // Keyed by the entry, so the figure typed on the wrist is replaced, not
+    // counted again, and so is the first Update by the second.
+    expect(learnWatchIndoorScale).toHaveBeenCalledTimes(2);
+    expect(learnWatchIndoorScale).toHaveBeenLastCalledWith(
+      'run',
+      1,
+      4000,
+      expect.closeTo(5100, 3),
+      'phone',
+      'entry-1'
+    );
+    expect(learnFromWatchRun).toHaveBeenCalledTimes(2);
+    expect(learnFromWatchRun).toHaveBeenLastCalledWith(
+      expect.anything(),
+      expect.closeTo(5100, 3),
+      'entry-1'
+    );
   });
 
   it('teaches the watch factor from the corrected figure, not the display', async () => {
@@ -438,7 +452,9 @@ describe('treadmill correction', () => {
       'run',
       1,
       4000,
-      expect.closeTo(5000, 3)
+      expect.closeTo(5000, 3),
+      'phone',
+      'entry-1'
     );
     // The stride learns from the phone's steps over the run, same corrected figure.
     expect(learnFromWatchRun).toHaveBeenCalledWith(
@@ -447,7 +463,8 @@ describe('treadmill correction', () => {
         finishedAt: 2_200_000,
         activeSeconds: 1200,
       }),
-      expect.closeTo(5000, 3)
+      expect.closeTo(5000, 3),
+      'entry-1'
     );
   });
 
