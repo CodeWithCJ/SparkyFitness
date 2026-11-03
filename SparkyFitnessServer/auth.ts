@@ -19,13 +19,7 @@ import { createDefaultNutrientPreferencesForUser } from './services/nutrientDisp
 import { isPrivateNetworkAddress } from './utils/corsHelper.js';
 import { apiKey } from '@better-auth/api-key';
 import { v4 } from 'uuid';
-import {
-  emailOTP,
-  magicLink,
-  admin,
-  twoFactor,
-  jwt,
-} from 'better-auth/plugins';
+import { magicLink, admin, twoFactor, jwt } from 'better-auth/plugins';
 import { sso } from '@better-auth/sso';
 import { expo } from '@better-auth/expo';
 import { expoSsoCookieRelay } from './utils/expoSsoCookieRelay.js';
@@ -424,7 +418,6 @@ const auth = betterAuth({
     customRules: {
       '/sign-in/email': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
       '/two-factor/*': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
-      '/email-otp/verify-email': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
     },
   },
   // Email/Password authentication
@@ -576,10 +569,10 @@ const auth = betterAuth({
       // SparkyFitness has no email-verification flow to satisfy that gate:
       // `requireEmailVerification` is false, no verification email is ever sent,
       // and there is no verify route -- so nothing sets email_verified except
-      // an incidental magic-link or email-OTP sign-in, which itself needs SMTP
-      // that many self-hosted instances never configure. Leaving the gate on
-      // therefore breaks SSO permanently for every existing account rather than
-      // prompting anyone to verify anything.
+      // an incidental magic-link sign-in, which itself needs SMTP that many
+      // self-hosted instances never configure. Leaving the gate on therefore
+      // breaks SSO permanently for every existing account rather than prompting
+      // anyone to verify anything.
       //
       // The residual risk needs signup to be open on this instance AND the
       // attacker to register the victim's address before the victim's first SSO
@@ -925,12 +918,6 @@ const auth = betterAuth({
     // /sso/callback redirects (the official plugin only covers /callback paths).
     expo(),
     expoSsoCookieRelay(),
-    emailOTP({
-      // @ts-expect-error
-      async sendVerificationOTP({ user, otp }) {
-        await sendEmailMfaCode(user.email, otp);
-      },
-    }),
     magicLink({
       expiresIn: 900, // 15 minutes (matches email template)
       sendMagicLink: async ({ email, url }) => {

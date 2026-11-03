@@ -3,7 +3,6 @@ import {
   magicLinkClient,
   twoFactorClient,
   adminClient,
-  emailOTPClient,
 } from 'better-auth/client/plugins';
 import { apiKeyClient } from '@better-auth/api-key/client';
 import { ssoClient } from '@better-auth/sso/client';
@@ -50,7 +49,6 @@ export const authClient = createAuthClient({
     magicLinkClient(),
     adminClient(),
     twoFactorClient(),
-    emailOTPClient(),
     ssoClient(),
     passkeyClient(),
     apiKeyClient(),
