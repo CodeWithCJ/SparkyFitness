@@ -1,6 +1,6 @@
 # Database Security & RLS Tiers
 
-*Last updated: 2026-10-20*
+*Last updated: 2026-11-03*
 
 SparkyFitness uses PostgreSQL Row-Level Security (RLS) to enforce strict data isolation between accounts, caregivers, family members, and third-party integrations (API keys). This document covers the security design, context switching mechanism, and the three-tier database table classifications.
 
@@ -35,6 +35,8 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `passkey_registration_tickets` | Short-lived (~60s), single-use tickets bridging the mobile→browser passkey registration handoff (transient session material) | System-Only (RLS on, no policies; `getSystemClient` only) | System-Only |
 | `account` | Auth credentials and email accounts | Owner-Only | Owner-Only |
 | `sparky_chat_history` | AI Assistant chat messages and history | Owner-Only | Owner-Only |
+| `recipe_imports` | Mealie base-recipe provenance, reviewed ingredient mappings, source/local fingerprints and confirmed nutrition sync time; ordinary shared meal snapshots are separate | Owner-Only | Owner-Only |
+| `recipe_food_mappings` | Confirmed source-food to accessible nutrient-backed food/variant mappings, private to the provider owner | Owner-Only | Owner-Only |
 | `food_assistant_preferences` | Explicit lasting food preferences | Owner-Only | Owner-Only |
 | `food_assistant_tasks` | Recoverable food tasks, ingredient drafts and source evidence | Owner-Only | Owner-Only |
 | `food_assistant_operations` | Idempotent operations and before/after audit records | Owner-Only | Owner-Only |

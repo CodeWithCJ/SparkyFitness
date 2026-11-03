@@ -6,6 +6,8 @@ The system is built with **least-privilege boundary isolation** using PostgreSQL
 
 AI service model and reasoning settings remain private to their owner. An administrator can publish a shared configuration; family diary access does not grant access to personal AI credentials or settings.
 
+Mealie ingredient imports and nutrition sync are available only for your own account. Family delegates can use the resulting reusable meals and diary snapshots through the normal meal-library and diary permissions. Recipe-provider credentials, saved source-food mappings and integration provenance are private, even when a meal is shared. Editing or logging a meal never changes the original Mealie recipe or an earlier diary entry.
+
 ---
 
 ## How to Set Up Sharing

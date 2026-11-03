@@ -144,10 +144,10 @@ function buildMealFoodValues(mealId: string) {
   };
 }
 // --- Meal Template CRUD Operations ---
-async function createMeal(mealData: MealInput) {
-  const client = await getClient(mealData.user_id); // User-specific operation
+async function createMeal(mealData: MealInput, transactionClient?: PoolClient) {
+  const client = transactionClient ?? (await getClient(mealData.user_id)); // User-specific operation
   try {
-    await client.query('BEGIN');
+    if (!transactionClient) await client.query('BEGIN');
     const mealResult = await client.query(
       `INSERT INTO meals (user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, notes, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, now(), now()) RETURNING id, user_id, name, description, is_public, serving_size, serving_unit, total_servings, images, notes, created_at, updated_at`,
@@ -181,7 +181,8 @@ async function createMeal(mealData: MealInput) {
       );
       await client.query(mealFoodsQuery);
     }
-    await client.query('COMMIT');
+    if (!transactionClient) await client.query('COMMIT');
+    if (transactionClient) return newMeal;
 
     // Pull any externally-hosted images local once the meal has an id. Runs
     // after COMMIT so network latency never holds the transaction open.
@@ -205,11 +206,11 @@ async function createMeal(mealData: MealInput) {
 
     return newMeal;
   } catch (error) {
-    await client.query('ROLLBACK');
+    if (!transactionClient) await client.query('ROLLBACK');
     log('error', 'Error creating meal:', error);
     throw error;
   } finally {
-    client.release();
+    if (!transactionClient) client.release();
   }
 }
 async function getMeals(userId: string, filter = 'all') {
