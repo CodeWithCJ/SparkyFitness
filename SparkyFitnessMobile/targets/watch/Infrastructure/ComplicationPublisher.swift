@@ -52,7 +52,14 @@ enum ComplicationPublisher {
             "proteinGoalComplication",
             "carbsGoalComplication",
             "fatGoalComplication",
+            CalorieGoal.kind,
         ]
+    }
+
+    /// The calories-only complication reads the Energy snapshot above, so it
+    /// has no key of its own — only a kind to reload.
+    private enum CalorieGoal {
+        static let kind = "calorieGoalComplication"
     }
 
     private enum Water {
