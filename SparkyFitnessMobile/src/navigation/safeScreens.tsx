@@ -38,6 +38,7 @@ import MealPlanFormScreen from '../screens/MealPlanFormScreen';
 import WorkoutPlansScreen from '../screens/WorkoutPlansScreen';
 import WorkoutPlanFormScreen from '../screens/WorkoutPlanFormScreen';
 import WaterContainersScreen from '../screens/WaterContainersScreen';
+import WaterLogScreen from '../screens/WaterLogScreen';
 import WaterContainerEditScreen from '../screens/WaterContainerEditScreen';
 import ActionTagsScreen from '../screens/ActionTagsScreen';
 import ActionTagFormScreen from '../screens/ActionTagFormScreen';
@@ -171,6 +172,7 @@ export const SafeMealPlanForm = withErrorBoundary(MealPlanFormScreen, 'MealPlanF
 export const SafeWorkoutPlans = withErrorBoundary(WorkoutPlansScreen, 'WorkoutPlans', { canGoBack: true });
 export const SafeWorkoutPlanForm = withErrorBoundary(WorkoutPlanFormScreen, 'WorkoutPlanForm', { canGoBack: true });
 export const SafeWaterContainers = withErrorBoundary(WaterContainersScreen, 'WaterContainers', { canGoBack: true });
+export const SafeWaterLog = withErrorBoundary(WaterLogScreen, 'WaterLog', { canGoBack: true });
 export const SafeWaterContainerEdit = withErrorBoundary(WaterContainerEditScreen, 'WaterContainerEdit', { canGoBack: true });
 export const SafeActionTags = withErrorBoundary(ActionTagsScreen, 'ActionTags', { canGoBack: true });
 export const SafeActionTagForm = withErrorBoundary(ActionTagFormScreen, 'ActionTagForm', { canGoBack: true });

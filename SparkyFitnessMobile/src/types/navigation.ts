@@ -142,6 +142,8 @@ export type RootStackParamList = {
   // #2115, Phase 12: mobile-only water-container CRUD.
   WaterContainers: undefined;
   WaterContainerEdit: { containerId?: number } | undefined;
+  /** The drinks logged on `date` (YYYY-MM-DD). */
+  WaterLog: { date: string };
   // NFC tags (#941): the list, the setup form and the screen a tag link opens.
   ActionTags: undefined;
   /** `tagId` edits a saved tag; `tagCode` saves a tapped tag the account does not know; `presetAction` pre-fills a new one. */
