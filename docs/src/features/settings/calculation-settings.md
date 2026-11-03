@@ -97,6 +97,20 @@ This setting determines **how physical activity changes your calorie budget** th
 > [!NOTE]
 > If you use [Nutrient Goal Direction](/features/goals)'s **Target range** for calories, note that Adaptive, Dynamic, Percentage Earn-Back, and Device Projection all recalculate your calorie goal value regularly — a manually entered target band won't move with it. Target range for calories works best paired with **Fixed Goal**.
 
+### The same workout imported from different sources
+
+The calorie balance counts clearly matching imported endurance workouts once, even
+when both providers' entries remain in the diary. To match, the entries must have
+the same day, start time, sport, duration (to the second), distance (to 0.01 km),
+and calorie estimate (to 0.01 kcal), with only one candidate per source and no
+conflicting recorded timezones. Workout steps use the highest reported count,
+so duplicate copies do not reduce background walking calories twice.
+
+Manual entries, preset children, and entries with a calorie override or explicit
+calorie link are not automatically reconciled. Missing information, different
+estimates, or ambiguous matches remain separate. This rule changes the calorie
+balance, not stored workouts or the original provider data.
+
 ---
 
 ### Percentage macro goals and exercise

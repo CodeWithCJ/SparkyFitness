@@ -12,6 +12,10 @@ import exerciseRepository from './exercise.js';
 import activityDetailsRepository from './activityDetailsRepository.js';
 import * as workoutTelemetryRepository from './workoutTelemetryRepository.js';
 import { bodyWeightJoinSql } from '../utils/exerciseLoadSql.js';
+import {
+  sumExerciseCalorieStats,
+  type ExerciseCalorieEntry,
+} from '../utils/exerciseCalorieStats.js';
 import { assertSetWeightSign } from '../utils/setWeightSign.js';
 import {
   mergeManualFields,
@@ -2244,49 +2248,49 @@ export interface DailyExerciseCalorieSplit {
 }
 
 /**
- * Per-day active / logged / step splits for a whole range, in one query.
- *
- * This is the ranged equivalent of walking `getExerciseEntriesByDateV2`'s session tree
- * through `extractExerciseStats`. The tree exists for the Diary's UI; the calorie balance
- * only ever reduces it to these three sums, and both individual entries and preset
- * children live in this one table, so a GROUP BY reproduces it exactly.
- *
- * Two predicates carry the whole correctness of #2094:
- *
- *  - `IS DISTINCT FROM`, never `<>`. `exercise_name` is nullable, and `<>` yields NULL for
- *    a null-named row, so its calories would land in neither bucket and silently vanish --
- *    the same class of undercount this fix exists to remove.
- *  - `exercise_preset_entry_id IS NULL` on the active bucket, because `extractExerciseStats`
- *    folds every preset child into the logged arm regardless of its name. Without it, an
- *    "Active Calories" row inside a preset would be classified one way by the Diary and
- *    another way here.
- *
- * Deliberately not `getDailyExerciseTotalsRange`: that cannot separate the device summary
- * row from logged workouts, which is precisely the discrimination this needs.
+ * Per-day active / logged / step splits in one lightweight query. Resolve the
+ * projected rows with the same helper as the Diary, before summing: a SQL SUM
+ * would charge matching cross-source copies of one workout twice. Do not fetch
+ * sets or raw provider dumps for this calorie-only path.
  */
 async function getDailyExerciseCalorieSplitRange(
   userId: string,
   startDate: string,
   endDate: string
 ): Promise<DailyExerciseCalorieSplit[]> {
-  const client = await getClient(userId);
+  const client: PoolClient = await getClient(userId);
   try {
-    const result = await client.query(
+    const result = await client.query<
+      ExerciseCalorieEntry & { entry_date: string }
+    >(
       `SELECT TO_CHAR(entry_date, 'YYYY-MM-DD') AS entry_date,
-              COALESCE(SUM(COALESCE(calories_applied, calories_burned)) FILTER (
-                WHERE exercise_name = 'Active Calories'
-                  AND exercise_preset_entry_id IS NULL), 0)::float8 AS active_calories,
-              COALESCE(SUM(COALESCE(calories_applied, calories_burned)) FILTER (
-                WHERE exercise_name IS DISTINCT FROM 'Active Calories'
-                   OR exercise_preset_entry_id IS NOT NULL), 0)::float8 AS other_calories,
-              COALESCE(SUM(steps), 0)::int AS activity_steps
+              exercise_name, category, notes, source,
+              entry_time::text AS entry_time, record_timezone,
+              duration_minutes::float8 AS duration_minutes,
+              distance::float8 AS distance,
+              calories_burned::float8 AS calories_burned,
+              calories_applied::float8 AS calories_applied,
+              calorie_link_id, exercise_preset_entry_id, steps
        FROM exercise_entries
        WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
-       GROUP BY entry_date
-       ORDER BY entry_date ASC`,
+       ORDER BY entry_date ASC, id ASC`,
       [userId, startDate, endDate]
     );
-    return result.rows as DailyExerciseCalorieSplit[];
+    const byDate = new Map<string, ExerciseCalorieEntry[]>();
+    for (const row of result.rows) {
+      const entries = byDate.get(row.entry_date);
+      if (entries) entries.push(row);
+      else byDate.set(row.entry_date, [row]);
+    }
+    return [...byDate].map(([entry_date, entries]) => {
+      const stats = sumExerciseCalorieStats(entries);
+      return {
+        entry_date,
+        active_calories: stats.activeCalories,
+        other_calories: stats.otherCalories,
+        activity_steps: stats.activitySteps,
+      };
+    });
   } finally {
     client.release();
   }
