@@ -535,27 +535,32 @@ async function requestSearchALicious(
   page: number,
   pageSize: number,
   language: string,
-  fields: string[]
+  fields: string[],
+  timeoutMs: number = OFF_FETCH_TIMEOUT_MS
 ): Promise<SearchALiciousResponse> {
   const langs = language === 'en' ? ['en'] : [language, 'en'];
-  const response = await fetchWithTimeout(SEARCH_A_LICIOUS_URL, {
-    method: 'POST',
-    headers: {
-      ...OFF_HEADERS,
-      'Content-Type': 'application/json',
+  const response = await fetchWithTimeout(
+    SEARCH_A_LICIOUS_URL,
+    {
+      method: 'POST',
+      headers: {
+        ...OFF_HEADERS,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        // Search-a-licious treats adjacent free-text and field clauses as
+        // required terms. Grouping the free text itself (or inserting AND
+        // after a multi-word phrase) currently yields an empty result set.
+        q: `${text} ${OFF_CORE_NUTRITION_SEARCH_CLAUSE}`,
+        page,
+        page_size: pageSize,
+        boost_phrase: true,
+        langs,
+        fields,
+      }),
     },
-    body: JSON.stringify({
-      // Search-a-licious treats adjacent free-text and field clauses as
-      // required terms. Grouping the free text itself (or inserting AND
-      // after a multi-word phrase) currently yields an empty result set.
-      q: `${text} ${OFF_CORE_NUTRITION_SEARCH_CLAUSE}`,
-      page,
-      page_size: pageSize,
-      boost_phrase: true,
-      langs,
-      fields,
-    }),
-  });
+    timeoutMs
+  );
   if (!response.ok) {
     log(
       'error',
@@ -599,15 +604,21 @@ async function searchBrandHits(
   });
   if (hasEveryWord) return [];
 
+  // One deadline for every try, so the retries together never hold page 1
+  // longer than a single request could.
+  const deadline = Date.now() + OFF_FETCH_TIMEOUT_MS;
   try {
     for (const brandWord of words.slice(0, BRAND_RETRY_MAX_WORDS)) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) break;
       const rest = words.filter((word) => word !== brandWord).join(' ');
       const data = await requestSearchALicious(
         `brands:${brandWord} ${rest}`,
         1,
         BRAND_RETRY_MAX_HITS,
         language,
-        fields
+        fields,
+        remainingMs
       );
       if (data.hits.length > 0) return data.hits;
     }
@@ -771,9 +782,15 @@ async function searchOpenFoodFacts(
         baseUrl,
       })
     ).filter(hasUsableOffCoreNutrition);
+    const pagination = getSearchALiciousPagination(data, page, pageSize);
     return {
       products,
-      pagination: getSearchALiciousPagination(data, page, pageSize),
+      // Brand hits are on this page but not in the plain count; without them
+      // a plain search with no hits would report 0 next to the products shown.
+      pagination: {
+        ...pagination,
+        totalCount: Math.max(pagination.totalCount, products.length),
+      },
     };
   } catch (error) {
     log(

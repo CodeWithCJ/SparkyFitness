@@ -1077,6 +1077,44 @@ describe('openFoodFactsService', () => {
         expect(JSON.parse(fetchMock.mock.calls[1][1].body).page_size).toBe(20);
       });
 
+      it('counts brand hits when the plain search finds nothing', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([]))
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        const result = await searchOpenFoodFacts('kirkland bagel');
+
+        expect(result.products.map((product) => product.code)).toEqual([
+          'bagel',
+        ]);
+        expect(result.pagination.totalCount).toBe(1);
+      });
+
+      it('stops the brand tries once their shared deadline has passed', async () => {
+        let now = 1_000_000;
+        const nowSpy = vi.spyOn(Date, 'now').mockImplementation(() => now);
+        try {
+          fetchMock
+            .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+            .mockImplementationOnce(async () => {
+              // The first brand try uses up the whole budget.
+              now += 10_001;
+              return hitsResponse([]);
+            })
+            .mockResolvedValueOnce(productsResponse([]));
+
+          const result = await searchOpenFoodFacts('kirkland bagel');
+
+          expect(searchQueries()).toHaveLength(2);
+          expect(result.products.map((product) => product.code)).toEqual([
+            'named',
+          ]);
+        } finally {
+          nowSpy.mockRestore();
+        }
+      });
+
       it('keeps a brand hit that has no barcode', async () => {
         const codelessBagel = {
           product_name: kirklandBagel.product_name,
