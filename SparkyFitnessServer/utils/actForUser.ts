@@ -15,10 +15,12 @@ export async function canActForUser(
   targetUserId: string,
   actorUserId: string
 ): Promise<boolean> {
-  const results = await Promise.all(
-    ACT_FOR_USER_PERMISSIONS.map((permission) =>
-      canAccessUserData(targetUserId, permission, actorUserId)
-    )
-  );
-  return results.some(Boolean);
+  // One at a time: each check borrows pooled connections, and reports comes
+  // first because it also passes for diary and check-in holders.
+  for (const permission of ACT_FOR_USER_PERMISSIONS) {
+    if (await canAccessUserData(targetUserId, permission, actorUserId)) {
+      return true;
+    }
+  }
+  return false;
 }

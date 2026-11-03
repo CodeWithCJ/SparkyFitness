@@ -1,15 +1,24 @@
 /**
- * Family delegation against a real database: `x-on-behalf-of-user-id` and
- * account switching must honour the grants as they are stored in
- * `family_access.access_permissions` (`can_manage_diary`, ...). A mocked
+ * Family delegation against a real database: `x-on-behalf-of-user-id`,
+ * account switching and the `sparky_active_user_id` cookie must honour the
+ * grants as they are stored in `family_access.access_permissions`
+ * (`can_manage_diary`, ...). A mocked
  * repository would only echo back the names passed in, so this seeds real
  * grants and runs the real checks. Skips unless a test database is reachable.
  */
 import pg from 'pg';
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { getSystemClient, endPool } from '../db/poolManager.js';
+import { authenticate } from '../middleware/authMiddleware.js';
 import onBehalfOfMiddleware from '../middleware/onBehalfOfMiddleware.js';
 import { switchUserContext } from '../services/authService.js';
+
+// Only the session lookup is faked; the cookie is then checked against the
+// stored grants.
+const { mockGetSession } = vi.hoisted(() => ({ mockGetSession: vi.fn() }));
+vi.mock('../auth.js', () => ({
+  auth: { api: { getSession: mockGetSession } },
+}));
 
 async function dbReachable(): Promise<boolean> {
   if (
@@ -83,6 +92,23 @@ async function actOnBehalf(actorId: string, targetId: string) {
   const next = vi.fn();
   await onBehalfOfMiddleware(req, res, next);
   return { req, res, next };
+}
+
+async function authenticateWithActiveUser(actorId: string, activeId: string) {
+  mockGetSession.mockResolvedValueOnce({
+    // A recent login keeps the middleware from writing a new one.
+    user: { id: actorId, name: 'Delegate', lastLoginAt: new Date() },
+  });
+  const req = {
+    headers: {},
+    cookies: { sparky_active_user_id: activeId },
+    method: 'GET',
+    originalUrl: '/api/x',
+    path: '/api/x',
+  } as Record<string, unknown>;
+  const next = vi.fn();
+  await authenticate(req as never, {} as never, next);
+  return { req, next };
 }
 
 describe.runIf(RUN)('family delegation with stored grants', () => {
@@ -160,5 +186,21 @@ describe.runIf(RUN)('family delegation with stored grants', () => {
     await expect(switchUserContext(STRANGER, OWNER)).rejects.toThrow(
       /Forbidden/
     );
+  });
+
+  it('keeps a symptoms-only delegate in the owner account on later requests', async () => {
+    const { req, next } = await authenticateWithActiveUser(
+      DELEGATES.symptoms[0],
+      OWNER
+    );
+    expect(next).toHaveBeenCalledOnce();
+    expect(req.userId).toBe(OWNER);
+    expect(req.authenticatedUserId).toBe(DELEGATES.symptoms[0]);
+  });
+
+  it('ignores the active-account cookie without a grant', async () => {
+    const { req, next } = await authenticateWithActiveUser(STRANGER, OWNER);
+    expect(next).toHaveBeenCalledOnce();
+    expect(req.userId).toBe(STRANGER);
   });
 });
