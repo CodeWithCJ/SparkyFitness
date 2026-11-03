@@ -448,6 +448,16 @@ describe('Labs page', () => {
   });
 
   it('prefills the unit and range when Add is opened from a marker', async () => {
+    // A latest result that differs from the HbA1c preset (% with 4 - 5.6), so
+    // the test fails if the dialog seeds from the preset instead.
+    api.listLatestLabResults.mockResolvedValue([
+      result({
+        value_numeric: 36,
+        unit: 'mmol/mol',
+        ref_range_low: 20,
+        ref_range_high: 42,
+      }),
+    ]);
     api.createLabResult.mockResolvedValue(result());
     renderPage();
     fireEvent.click(await screen.findByRole('button', { name: /HbA1c/ }));
@@ -457,21 +467,21 @@ describe('Labs page', () => {
     });
     fireEvent.click(addButtons[addButtons.length - 1] as HTMLElement);
 
-    expect(screen.getByLabelText('Unit')).toHaveValue('%');
-    expect(screen.getByLabelText('Low')).toHaveValue('4');
-    expect(screen.getByLabelText('High')).toHaveValue('5.6');
+    expect(screen.getByLabelText('Unit')).toHaveValue('mmol/mol');
+    expect(screen.getByLabelText('Low')).toHaveValue('20');
+    expect(screen.getByLabelText('High')).toHaveValue('42');
     fireEvent.change(screen.getByLabelText('Result', { exact: true }), {
-      target: { value: '5.3' },
+      target: { value: '34' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(api.createLabResult).toHaveBeenCalledTimes(1));
     expect(first(api.createLabResult.mock.calls)[0]).toMatchObject({
       marker_key: 'hba1c',
-      value_numeric: 5.3,
-      unit: '%',
-      ref_range_low: 4,
-      ref_range_high: 5.6,
+      value_numeric: 34,
+      unit: 'mmol/mol',
+      ref_range_low: 20,
+      ref_range_high: 42,
     });
   });
 });
