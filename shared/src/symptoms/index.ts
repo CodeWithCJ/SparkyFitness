@@ -7,3 +7,4 @@ export * from './metrics.ts';
 export * from './choices.ts';
 export * from './entryForm.ts';
 export * from './entryDays.ts';
+export * from './severityWindow.ts';

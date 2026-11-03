@@ -276,6 +276,53 @@ describe('layoutSeverityChart', () => {
     ]);
   });
 
+  it('keeps an effect changed after the last reading in view while ongoing', () => {
+    // Logged at 9:00 as Moderate; only the effect changes, to Severe at 13:00.
+    const layout = layoutSeverityChart(
+      {
+        ...base,
+        started_at: '2026-10-01T09:00:00.000Z',
+        logged_at: '2026-10-01T09:00:00.000Z',
+        ended_at: null,
+        severity_timeline: [{ at: '2026-10-01T09:00:00.000Z', severity: 5 }],
+        impact: 'severe',
+        impact_timeline: [
+          { at: '2026-10-01T09:00:00.000Z', impact: 'moderate' },
+          { at: '2026-10-01T13:00:00.000Z', impact: 'severe' },
+        ],
+        treatments: [],
+      },
+      10,
+      box
+    )!;
+    expect(layout.endIso).toBe('2026-10-01T13:30:00.000Z');
+    expect(layout.band.map((s) => s.impact)).toEqual(['moderate', 'severe']);
+    const last = layout.band[1];
+    expect(last.x).toBeGreaterThan(26);
+    expect(last.x + last.width).toBeCloseTo(290);
+    expect(last.width).toBeGreaterThan(2);
+  });
+
+  it('draws an effect changed after the end at the end of the chart', () => {
+    const layout = layoutSeverityChart(
+      {
+        ...base,
+        impact: 'mild',
+        impact_timeline: [
+          { at: '2026-10-01T10:00:00.000Z', impact: 'severe' },
+          { at: '2026-10-01T15:00:00.000Z', impact: 'mild' },
+        ],
+      },
+      10,
+      box
+    )!;
+    expect(layout.endIso).toBe('2026-10-01T12:00:00.000Z');
+    expect(layout.band.map((s) => s.impact)).toEqual(['severe', 'mild']);
+    expect(layout.band[0].x + layout.band[0].width).toBeCloseTo(290);
+    expect(layout.band[1].x).toBe(288);
+    expect(layout.band[1].width).toBe(2);
+  });
+
   it('draws no band when no effect is recorded', () => {
     expect(layoutSeverityChart(base, 10, box)!.band).toEqual([]);
     expect(

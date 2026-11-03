@@ -1,4 +1,5 @@
 import {
+  severityChartWindow,
   symptomEntryDays,
   type SymptomDayWindow,
   type SymptomEntryResponse,
@@ -137,30 +138,17 @@ export interface ChartBox {
 
 /**
  * Where each reading, treatment marker, gridline and section of the effect
- * band goes. An episode still
- * running ends at its latest reading (or 30 minutes after the start when there
- * is only one), so the chart never needs the clock.
+ * band goes. The time span comes from `severityChartWindow`, which the web
+ * chart uses too.
  */
 export function layoutSeverityChart(
   entry: SeverityChartInput,
   max: number,
   box: ChartBox
 ): SeverityChartLayout | null {
-  const startIso = entry.started_at ?? entry.logged_at;
-  const timeline =
-    entry.severity_timeline.length > 0
-      ? entry.severity_timeline
-      : entry.severity != null
-        ? [{ at: startIso, severity: entry.severity }]
-        : [];
-  if (timeline.length === 0 || max <= 0) return null;
-
-  const start = new Date(startIso).getTime();
-  const lastPoint = Math.max(...timeline.map((p) => new Date(p.at).getTime()));
-  const end = entry.ended_at
-    ? new Date(entry.ended_at).getTime()
-    : Math.max(lastPoint, start + 30 * 60_000);
-  const span = Math.max(end - start, 60_000);
+  const frame = severityChartWindow(entry);
+  if (!frame || max <= 0) return null;
+  const { start, end, span, startIso } = frame;
 
   const left = box.padLeft;
   const right = box.width - box.padRight;
@@ -177,29 +165,17 @@ export function layoutSeverityChart(
       : [];
   });
 
-  // Sorted by time: an effect changed through an edit is appended with the
-  // current time, which can come before a reading recorded for later.
-  const impactPoints = (
-    entry.impact_timeline && entry.impact_timeline.length > 0
-      ? [...entry.impact_timeline]
-      : entry.impact != null
-        ? [{ at: startIso, impact: entry.impact }]
-        : []
-  ).sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
-  const band = impactPoints.map((p, i) => {
-    const from = Math.max(new Date(p.at).getTime(), start);
-    const next = impactPoints[i + 1];
-    const to = Math.min(next ? new Date(next.at).getTime() : end, end);
-    return {
-      x: x(from),
-      width: Math.max(x(to) - x(from), 2),
-      at: p.at,
-      impact: p.impact,
-    };
-  });
+  // At least 2 wide so a level recorded at the very end still shows, and kept
+  // inside the plot.
+  const band = frame.impact.map((s) => ({
+    x: Math.min(x(s.from), right - 2),
+    width: Math.max(x(s.to) - x(s.from), 2),
+    at: s.at,
+    impact: s.impact,
+  }));
 
   return {
-    points: timeline.map((p) => ({
+    points: frame.points.map((p) => ({
       x: x(new Date(p.at).getTime()),
       y: y(p.severity),
       at: p.at,
