@@ -50,3 +50,10 @@ export const isPermanentlyUnavailableError = (error: unknown): boolean => {
     pattern.test(message)
   );
 };
+
+// An unknown native failure is retryable. Only an explicit permission or
+// unsupported-type error is stable; quota/client failures take precedence.
+export const isRetryableHealthReadError = (error: unknown): boolean =>
+  isQuotaExceededError(error) ||
+  isClientUnavailableError(error) ||
+  !isPermanentlyUnavailableError(error);
