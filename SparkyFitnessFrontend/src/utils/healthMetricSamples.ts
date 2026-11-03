@@ -12,7 +12,10 @@ export function samplesForDay(
   const out: unknown[] = [];
   for (const row of rows ?? []) {
     if (String(row.entry_date || '').slice(0, 10) !== day) continue;
-    if (Array.isArray(row.samples)) out.push(...row.samples);
+    if (!Array.isArray(row.samples)) continue;
+    // One push per sample: spreading a full day (86,400 readings at 1 Hz)
+    // passes more arguments than Safari allows and throws.
+    for (const sample of row.samples) out.push(sample);
   }
   return out;
 }

@@ -27,6 +27,20 @@ describe('samplesForDay', () => {
     ]);
   });
 
+  it('joins a row too large to spread into one call', () => {
+    const samples = Array.from({ length: 200_000 }, (_, i) => ({
+      t: i,
+      bpm: 60,
+    }));
+    const result = samplesForDay(
+      [row('2026-10-28', 'xiaomi', samples)],
+      '2026-10-28'
+    );
+
+    expect(result).toHaveLength(200_000);
+    expect(result[199_999]).toEqual({ t: 199_999, bpm: 60 });
+  });
+
   it('returns nothing without rows', () => {
     expect(samplesForDay(undefined, '2026-10-28')).toEqual([]);
   });
