@@ -3,9 +3,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   FORM_GIVE_UP_AFTER_MS,
   FORM_RETRY_AFTER_MS,
+  FORM_SWEEP_EVERY_MS,
   rememberPendingWatchForm,
   retryPendingWatchForms,
+  sweepRecentRunsMissingForm,
 } from '../../src/services/pendingWatchForm';
+import { fetchCardioSessionsPage } from '../../src/services/api/exerciseStatsApi';
 import { ApiError } from '../../src/services/api/errors';
 import { setExerciseEntryForm } from '../../src/services/api/exerciseApi';
 import { measureWatchRunForm } from '../../src/services/stepDistance';
@@ -14,6 +17,9 @@ import { learnStride } from '../../src/services/strideCalibration';
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/api/exerciseApi', () => ({
   setExerciseEntryForm: jest.fn(() => Promise.resolve()),
+}));
+jest.mock('../../src/services/api/exerciseStatsApi', () => ({
+  fetchCardioSessionsPage: jest.fn(),
 }));
 jest.mock('../../src/services/stepDistance', () => ({
   measureWatchRunForm: jest.fn(),
@@ -133,4 +139,89 @@ it('gives up on a run the steps never came for', async () => {
 
   expect(measureWatchRunForm).not.toHaveBeenCalled();
   expect(await stored()).toEqual([]);
+});
+
+describe('sweeping for runs without a cadence', () => {
+  const NOW = new Date(2026, 10, 3, 19, 0, 0).getTime();
+  const item = (over: Record<string, unknown> = {}) => ({
+    id: 'entry-1',
+    exerciseName: 'Running',
+    entryDate: '2026-11-02',
+    entryTime: '06:22:00',
+    durationMinutes: 28.12,
+    movingDurationMinutes: null,
+    distanceMeters: 2897,
+    avgCadence: null,
+    source: 'Manual',
+    ...over,
+  });
+  const serve = (...items: Record<string, unknown>[]) =>
+    jest
+      .mocked(fetchCardioSessionsPage)
+      .mockResolvedValue({ items, page: 1, totalPages: 1 } as never);
+
+  it('queues a recent run with no cadence and measures it at once', async () => {
+    serve(item());
+
+    await sweepRecentRunsMissingForm('server-1', NOW);
+    const days = await retryPendingWatchForms('server-1', NOW);
+
+    expect(measureWatchRunForm).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activity: 'run',
+        startedAt: new Date(2026, 10, 2, 6, 22, 0).getTime(),
+        activeSeconds: 1687,
+      }),
+      2897
+    );
+    expect(setExerciseEntryForm).toHaveBeenCalledWith('entry-1', {
+      avgCadence: 124,
+      strideLengthCm: 83.1,
+    });
+    expect(days).toEqual(['2026-11-02']);
+  });
+
+  it('leaves out runs that have a cadence, other sources, strength and tiny entries', async () => {
+    serve(
+      item({ id: 'a', avgCadence: 120 }),
+      item({ id: 'b', source: 'HealthKit' }),
+      item({ id: 'c', exerciseName: 'Chest Press' }),
+      item({ id: 'd', distanceMeters: 40 }),
+      item({ id: 'e', durationMinutes: 2 })
+    );
+
+    await sweepRecentRunsMissingForm('server-1', NOW);
+
+    expect(await stored()).toEqual([]);
+  });
+
+  it('does not take a run again once it was filled in', async () => {
+    serve(item());
+    await sweepRecentRunsMissingForm('server-1', NOW);
+    await retryPendingWatchForms('server-1', NOW);
+    jest.mocked(measureWatchRunForm).mockClear();
+
+    await sweepRecentRunsMissingForm('server-1', NOW + FORM_SWEEP_EVERY_MS + 1);
+
+    expect(await stored()).toEqual([]);
+  });
+
+  it('asks the server only now and then', async () => {
+    serve();
+    await sweepRecentRunsMissingForm('server-1', NOW);
+    await sweepRecentRunsMissingForm('server-1', NOW + 60_000);
+    expect(fetchCardioSessionsPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('does nothing without a server, and survives one that fails', async () => {
+    await sweepRecentRunsMissingForm(null, NOW);
+    expect(fetchCardioSessionsPage).not.toHaveBeenCalled();
+
+    jest
+      .mocked(fetchCardioSessionsPage)
+      .mockRejectedValue(new Error('offline'));
+    await expect(
+      sweepRecentRunsMissingForm('server-1', NOW)
+    ).resolves.toBeUndefined();
+  });
 });

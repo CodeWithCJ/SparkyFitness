@@ -30,7 +30,7 @@ Walking and running each show the stride the app uses to turn steps into distanc
 
 ## Cadence and stride on a watch run
 
-A watch run is saved as soon as it reaches the phone, which can be before the watch's steps have reached Apple Health. When that happens the run is saved without cadence and stride, and the app measures it again every 15 minutes while it is open, for up to three days, until the steps are there. It then adds them to the run you already have, and teaches your stride if you entered the treadmill's distance.
+A watch run is saved as soon as it reaches the phone, which can be before the watch's steps have reached Apple Health. When that happens the run is saved without cadence and stride, and the app measures it again every 15 minutes while it is open, for up to three days, until the steps are there. It then adds them to the run you already have, and teaches your stride if you entered the treadmill's distance. The app also looks back over the last three days for runs and walks that were saved without a cadence and measures those too.
 
 ## Watch treadmill distance
 

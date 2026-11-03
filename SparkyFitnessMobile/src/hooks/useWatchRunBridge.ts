@@ -14,7 +14,10 @@ import { queryClient } from './queryClient';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
 import { usePreferences } from './usePreferences';
 import { addLog } from '../services/LogService';
-import { retryPendingWatchForms } from '../services/pendingWatchForm';
+import {
+  retryPendingWatchForms,
+  sweepRecentRunsMissingForm,
+} from '../services/pendingWatchForm';
 import { getActiveServerConfigId } from '../services/storage';
 import {
   acceptPendingWatchRuns,
@@ -68,9 +71,9 @@ export function useWatchRunBridge(
     for (const day of new Set(days)) invalidateExerciseCache(queryClient, day);
     // Runs filed before their steps reached Apple Health get cadence and
     // stride now, if the steps are there.
-    const filled = await retryPendingWatchForms(
-      await getActiveServerConfigId()
-    );
+    const ownerId = await getActiveServerConfigId();
+    await sweepRecentRunsMissingForm(ownerId);
+    const filled = await retryPendingWatchForms(ownerId);
     for (const day of new Set(filled))
       invalidateExerciseCache(queryClient, day);
   });

@@ -3,8 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError } from './api/errors';
 import { setExerciseEntryForm } from './api/exerciseApi';
 import { addLog } from './LogService';
+import { fetchCardioSessionsPage } from './api/exerciseStatsApi';
 import { measureWatchRunForm } from './stepDistance';
 import { learnStride } from './strideCalibration';
+import { addDays } from '@workspace/shared';
 import { toLocalDateString } from '../utils/dateUtils';
 
 /**
@@ -15,6 +17,14 @@ import { toLocalDateString } from '../utils/dateUtils';
  * already filed.
  */
 const KEY = '@SparkyFitness/pendingWatchForm';
+/** Entries already filled in or given up on, so a sweep never takes them again. */
+const DONE_KEY = '@SparkyFitness/pendingWatchFormDone';
+const SWEPT_KEY = '@SparkyFitness/pendingWatchFormSweptAt';
+const DONE_LIMIT = 200;
+/** How far back a sweep looks for runs that never got a cadence. */
+const SWEEP_DAYS = 3;
+/** How often a sweep may ask the server for recent runs. */
+export const FORM_SWEEP_EVERY_MS = 30 * 60_000;
 /** How long to wait between looks: the watch syncs steps in its own time. */
 export const FORM_RETRY_AFTER_MS = 15 * 60_000;
 /** After this the steps are not coming, or the run is too old to matter. */
@@ -57,6 +67,41 @@ async function read(): Promise<PendingWatchForm[]> {
 const write = (items: PendingWatchForm[]) =>
   AsyncStorage.setItem(KEY, JSON.stringify(items));
 
+async function readDone(): Promise<string[]> {
+  try {
+    const parsed: unknown = JSON.parse(
+      (await AsyncStorage.getItem(DONE_KEY)) ?? '[]'
+    );
+    return Array.isArray(parsed) ? (parsed as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Notes entries as finished, newest last, keeping only the latest few. */
+async function markDone(entryIds: string[]): Promise<void> {
+  if (entryIds.length === 0) return;
+  const done = await readDone();
+  await AsyncStorage.setItem(
+    DONE_KEY,
+    JSON.stringify([...done, ...entryIds].slice(-DONE_LIMIT))
+  );
+}
+
+/** Adds a run to the stored list unless it is already there. Caller holds the lock. */
+async function addPending(
+  run: Omit<PendingWatchForm, 'createdAt' | 'nextAttemptAt'>,
+  now: number,
+  firstLookAfterMs: number
+): Promise<void> {
+  const items = await read();
+  if (items.some((item) => item.entryId === run.entryId)) return;
+  await write([
+    ...items,
+    { ...run, createdAt: now, nextAttemptAt: now + firstLookAfterMs },
+  ]);
+}
+
 /** Keeps a filed run whose cadence and stride could not be measured yet. */
 export function rememberPendingWatchForm(
   run: Omit<PendingWatchForm, 'createdAt' | 'nextAttemptAt'>,
@@ -64,12 +109,7 @@ export function rememberPendingWatchForm(
 ): Promise<void> {
   return serial(async () => {
     try {
-      const items = await read();
-      if (items.some((item) => item.entryId === run.entryId)) return;
-      await write([
-        ...items,
-        { ...run, createdAt: now, nextAttemptAt: now + FORM_RETRY_AFTER_MS },
-      ]);
+      await addPending(run, now, FORM_RETRY_AFTER_MS);
     } catch (error) {
       addLog(
         `[Watch Run] Could not remember a run to measure later: ${String(error)}`,
@@ -94,11 +134,13 @@ export function retryPendingWatchForms(
       const items = await read();
       if (items.length === 0) return days;
       const kept: PendingWatchForm[] = [];
+      const finished: string[] = [];
       for (const item of items) {
         if (now - item.createdAt > FORM_GIVE_UP_AFTER_MS) {
           addLog(
             `[Watch Run] Gave up measuring cadence and stride for ${item.activity} entry ${item.entryId}: no steps came from Apple Health`
           );
+          finished.push(item.entryId);
           continue;
         }
         if (item.ownerId !== activeOwnerId || now < item.nextAttemptAt) {
@@ -140,9 +182,13 @@ export function retryPendingWatchForms(
             );
           }
           days.push(toLocalDateString(new Date(item.startedAt)));
+          finished.push(item.entryId);
         } catch (error) {
           // The entry is gone: nothing to fill in. Anything else, try again.
-          if (error instanceof ApiError && error.statusCode === 404) continue;
+          if (error instanceof ApiError && error.statusCode === 404) {
+            finished.push(item.entryId);
+            continue;
+          }
           addLog(
             `[Watch Run] Could not fill in cadence and stride yet: ${String(error)}`,
             'WARNING'
@@ -151,6 +197,7 @@ export function retryPendingWatchForms(
         }
       }
       await write(kept);
+      await markDone(finished);
     } catch (error) {
       addLog(
         `[Watch Run] Could not measure remembered runs: ${String(error)}`,
@@ -158,5 +205,93 @@ export function retryPendingWatchForms(
       );
     }
     return days;
+  });
+}
+
+const activityOf = (name: string): 'walk' | 'run' | null =>
+  /\b(run|running|jog|jogging|treadmill)\b/i.test(name)
+    ? 'run'
+    : /\b(walk|walking)\b/i.test(name)
+      ? 'walk'
+      : null;
+
+/** `06:22:00` or `06:22` on a day, as a local instant. */
+const localInstant = (day: string, time: string): number =>
+  new Date(`${day}T${time.slice(0, 5)}:00`).getTime();
+
+/**
+ * Finds runs and walks from the last few days that have no cadence, whether
+ * they were filed before this existed or slipped past it, and queues them to
+ * be measured. At most once in a while, and never for an entry already filled
+ * in or given up on. Best effort: a server that cannot be reached just means
+ * the next sweep.
+ */
+export function sweepRecentRunsMissingForm(
+  activeOwnerId: string | null,
+  now = Date.now()
+): Promise<void> {
+  if (!activeOwnerId) return Promise.resolve();
+  return serial(async () => {
+    try {
+      const lastSweep = Number(await AsyncStorage.getItem(SWEPT_KEY)) || 0;
+      if (now - lastSweep < FORM_SWEEP_EVERY_MS) return;
+      const today = toLocalDateString(new Date(now));
+      const page = await fetchCardioSessionsPage({
+        startDate: addDays(today, -SWEEP_DAYS),
+        endDate: today,
+        page: 1,
+        pageSize: 50,
+        unitSystem: 'metric',
+      });
+      await AsyncStorage.setItem(SWEPT_KEY, String(now));
+      const skip = new Set([
+        ...(await readDone()),
+        ...(await read()).map((item) => item.entryId),
+      ]);
+      const found: Omit<PendingWatchForm, 'createdAt' | 'nextAttemptAt'>[] = [];
+      for (const item of page.items) {
+        const activity = activityOf(item.exerciseName);
+        if (
+          !activity ||
+          skip.has(item.id) ||
+          item.avgCadence != null ||
+          item.entryTime == null ||
+          (item.source != null && item.source !== 'Manual') ||
+          !((item.distanceMeters ?? 0) >= 100) ||
+          !(item.durationMinutes >= 5)
+        ) {
+          continue;
+        }
+        const startedAt = localInstant(item.entryDate, item.entryTime);
+        if (!Number.isFinite(startedAt)) continue;
+        const activeMinutes =
+          item.movingDurationMinutes ?? item.durationMinutes;
+        found.push({
+          entryId: item.id,
+          ownerId: activeOwnerId,
+          activity,
+          startedAt,
+          endedAt: startedAt + item.durationMinutes * 60_000,
+          activeSeconds: Math.round(activeMinutes * 60),
+          distanceMeters: item.distanceMeters ?? 0,
+          // A stride is learned only from a distance the person gave.
+          taughtDistance: false,
+        });
+      }
+      for (const run of found) {
+        // Due at once: it is already old enough for its steps to be in Health.
+        await addPending(run, now, 0);
+      }
+      if (found.length > 0) {
+        addLog(
+          `[Watch Run] Found ${found.length} recent run(s) without cadence; measuring them from Apple Health`
+        );
+      }
+    } catch (error) {
+      addLog(
+        `[Watch Run] Could not look for runs without cadence: ${String(error)}`,
+        'WARNING'
+      );
+    }
   });
 }
