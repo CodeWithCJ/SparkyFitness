@@ -73,8 +73,12 @@ describe('upsertSleepEntry keepExistingBiometrics', () => {
 
   it('default id-UPDATE assigns the incoming biometrics directly', async () => {
     const { text } = await run({ ...ENTRY, id: 'sleep-1' });
-    expect(text).toMatch(/avg_overnight_hrv = \$23,/);
-    expect(text).toMatch(/resting_heart_rate = \$25,/);
+    expect(text).toMatch(
+      /'avg_overnight_hrv' = ANY\(\$28::text\[\]\) THEN \$23 ELSE/
+    );
+    expect(text).toMatch(
+      /'resting_heart_rate' = ANY\(\$28::text\[\]\) THEN \$25 ELSE/
+    );
   });
 
   it('keep flag: a re-sync of a stored session coalesces with the stored values', async () => {
@@ -86,10 +90,10 @@ describe('upsertSleepEntry keepExistingBiometrics', () => {
     expect(text).toContain('UPDATE sleep_entries');
     expect(values[0]).toBe('sleep-1');
     expect(text).toMatch(
-      /avg_overnight_hrv = COALESCE\(\$23, sleep_entries\.avg_overnight_hrv\)/
+      /THEN COALESCE\(\$23, sleep_entries\.avg_overnight_hrv\) ELSE/
     );
     expect(text).toMatch(
-      /resting_heart_rate = COALESCE\(\$25, sleep_entries\.resting_heart_rate\)/
+      /THEN COALESCE\(\$25, sleep_entries\.resting_heart_rate\) ELSE/
     );
   });
 
@@ -99,10 +103,10 @@ describe('upsertSleepEntry keepExistingBiometrics', () => {
       { keepExistingBiometrics: true }
     );
     expect(text).toMatch(
-      /avg_overnight_hrv = COALESCE\(\$23, sleep_entries\.avg_overnight_hrv\)/
+      /THEN COALESCE\(\$23, sleep_entries\.avg_overnight_hrv\) ELSE/
     );
     expect(text).toMatch(
-      /resting_heart_rate = COALESCE\(\$25, sleep_entries\.resting_heart_rate\)/
+      /THEN COALESCE\(\$25, sleep_entries\.resting_heart_rate\) ELSE/
     );
   });
 

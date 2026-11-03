@@ -54,21 +54,26 @@ const maxPlaceholder = (sql: string): number => {
 const distinctPlaceholders = (sql: string): number =>
   new Set(sql.match(/\$(\d+)/g) || []).size;
 
-// Returns the param bound to `column = $N` (or `column = COALESCE($N, ...)`)
-// in an UPDATE without building a dynamic RegExp
-// (security/detect-non-literal-regexp).
+// Returns the param bound to `column = $N`, `column = COALESCE($N, ...)` or
+// the THEN branch of `column = CASE WHEN ... THEN $N ...` in an UPDATE
+// without building a dynamic RegExp (security/detect-non-literal-regexp).
 const boundValueFor = (
   sql: string,
   values: unknown[],
   column: string
 ): unknown => {
-  for (const marker of [`${column} = $`, `${column} = COALESCE($`]) {
-    const at = sql.indexOf(marker);
-    if (at !== -1) {
-      const digits = sql.slice(at + marker.length).match(/^\d+/);
-      expect(digits).toBeTruthy();
-      return values[Number(digits![0]) - 1];
-    }
+  let rest: string | undefined;
+  const conditional = sql.indexOf(`${column} = CASE WHEN `);
+  if (conditional !== -1) {
+    rest = sql.slice(sql.indexOf(' THEN ', conditional) + ' THEN '.length);
+  } else {
+    const at = sql.indexOf(`${column} = `);
+    if (at !== -1) rest = sql.slice(at + `${column} = `.length);
+  }
+  if (rest !== undefined) {
+    const digits = rest.replace(/^COALESCE\(/, '').match(/^\$(\d+)/);
+    expect(digits).toBeTruthy();
+    return values[Number(digits![1]) - 1];
   }
   throw new Error(`expected "${column} = $N" in the UPDATE`);
 };
@@ -153,6 +158,31 @@ describe('sleepRepository placeholder integrity', () => {
     expect(
       boundValueFor(update.text, update.values!, 'resting_heart_rate')
     ).toBe(54);
+  });
+
+  it('upsertSleepEntry UPDATE keeps an omitted measurement and clears an explicit null', async () => {
+    mockClient.query.mockImplementation(async (text: string) => {
+      if (text.includes('UPDATE sleep_entries')) {
+        return { rows: [{ id: 'sleep-1' }] };
+      }
+      return { rows: [] };
+    });
+
+    const { average_spo2_value: _spo2, ...withoutSpo2 } = FULL_ENTRY;
+    await sleepRepository.upsertSleepEntry('user-1', 'user-1', {
+      ...withoutSpo2,
+      id: 'sleep-1',
+      avg_overnight_hrv: null,
+    });
+
+    const update = findCall('UPDATE sleep_entries');
+    expect(update.text).toContain(
+      "average_spo2_value = CASE WHEN 'average_spo2_value' = ANY($28::text[]) THEN $14 ELSE sleep_entries.average_spo2_value END"
+    );
+    const sent = update.values![27] as string[];
+    expect(sent).not.toContain('average_spo2_value');
+    expect(sent).toContain('avg_overnight_hrv');
+    expect(sent).toContain('resting_heart_rate');
   });
 
   it('upsertSleepEntry UPDATE by id preserves stored zone metadata when the payload omits it', async () => {
