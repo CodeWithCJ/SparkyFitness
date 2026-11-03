@@ -1,5 +1,5 @@
 import { Text } from 'react-native';
-import { render, fireEvent } from '@testing-library/react-native';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import ServerGate, { ServerStatusView } from '../../src/components/ServerGate';
 import type { ServerConnectionStatus } from '../../src/hooks/useServerConnection';
 
@@ -20,12 +20,21 @@ jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: mockNavigate }),
 }));
 
-const mockRefetch = jest.fn();
+const mockInvalidateQueries = jest.fn();
+
+let mockRetryConnected = false;
+const mockRefetch = jest.fn(() =>
+  Promise.resolve({ data: mockRetryConnected })
+);
 const mockConnection = {
   status: 'connected' as ServerConnectionStatus,
   isFetching: false,
 };
 jest.mock('../../src/hooks', () => ({
+  queryClient: {
+    invalidateQueries: (filters: unknown) => mockInvalidateQueries(filters),
+  },
+  serverConnectionQueryKey: ['serverConnection'],
   useServerConnection: () => ({
     ...mockConnection,
     isConnected: mockConnection.status === 'connected',
@@ -45,6 +54,7 @@ describe('ServerGate', () => {
     jest.clearAllMocks();
     mockConnection.status = 'connected';
     mockConnection.isFetching = false;
+    mockRetryConnected = false;
   });
 
   it('renders the screen content when connected', () => {
@@ -84,6 +94,34 @@ describe('ServerGate', () => {
 
     fireEvent.press(getByText('Go to Settings'));
     expect(mockNavigate).toHaveBeenCalledWith('Tabs', { screen: 'Settings' });
+  });
+
+  it('reloads screen data, but not the connection check, after a successful retry', async () => {
+    mockConnection.status = 'unreachable';
+    mockRetryConnected = true;
+    const { getByText } = renderGate();
+
+    fireEvent.press(getByText('Try again'));
+
+    await waitFor(() => {
+      expect(mockInvalidateQueries).toHaveBeenCalledTimes(1);
+    });
+    const { predicate } = mockInvalidateQueries.mock.calls[0][0];
+    expect(predicate({ queryKey: ['dailySummary', '2026-11-03'] })).toBe(true);
+    expect(predicate({ queryKey: ['serverConnection'] })).toBe(false);
+  });
+
+  it('leaves screen data alone when the retry still cannot reach the server', async () => {
+    mockConnection.status = 'unreachable';
+    const { getByText } = renderGate();
+
+    fireEvent.press(getByText('Try again'));
+
+    await waitFor(() => {
+      expect(mockRefetch).toHaveBeenCalledTimes(1);
+    });
+    await Promise.resolve();
+    expect(mockInvalidateQueries).not.toHaveBeenCalled();
   });
 
   it('shows a spinner while a retry is running', () => {

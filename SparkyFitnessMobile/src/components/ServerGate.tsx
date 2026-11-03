@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import StatusView from './StatusView';
-import { useServerConnection } from '../hooks';
+import {
+  queryClient,
+  serverConnectionQueryKey,
+  useServerConnection,
+} from '../hooks';
 import type { RootStackParamList } from '../types/navigation';
 
 /**
@@ -19,6 +23,17 @@ export function ServerStatusView() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { status, isFetching, refetch } = useServerConnection();
+
+  // Screen data uses staleTime: Infinity, so once the gate lets the screen
+  // back in it would show its pre-outage cache (or the error from the failed
+  // load). Mark every data query stale after a successful retry so it reloads.
+  const retry = async () => {
+    const { data: connected } = await refetch();
+    if (!connected) return;
+    void queryClient.invalidateQueries({
+      predicate: (query) => query.queryKey[0] !== serverConnectionQueryKey[0],
+    });
+  };
 
   if (status === 'loading' || (status !== 'connected' && isFetching)) {
     return <StatusView loading />;
@@ -60,7 +75,7 @@ export function ServerStatusView() {
       })}
       action={{
         label: t('serverStatus.tryAgain', { defaultValue: 'Try again' }),
-        onPress: () => void refetch(),
+        onPress: () => void retry(),
         variant: 'primary',
       }}
       secondaryAction={goToSettings}

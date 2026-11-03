@@ -1,4 +1,9 @@
-import { QueryCache, QueryClient, type QueryKey } from '@tanstack/react-query';
+import {
+  MutationCache,
+  QueryCache,
+  QueryClient,
+  type QueryKey,
+} from '@tanstack/react-query';
 import { ApiError } from '../services/api/errors';
 import { TimeoutError } from '../utils/concurrency';
 import { serverConnectionQueryKey } from './queryKeys';
@@ -6,6 +11,7 @@ import { serverConnectionQueryKey } from './queryKeys';
 // At most one connection re-check per window, however many queries fail at once.
 const SERVER_RECHECK_INTERVAL_MS = 10_000;
 let lastServerRecheckAt = -Infinity;
+let trailingServerRecheck: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * True when a failed request suggests the server itself is not answering: a
@@ -25,21 +31,38 @@ function serverMayBeDown(error: unknown): boolean {
  * Data queries refetch on refresh, Retry and health-sync invalidation without
  * re-running the connection check, so a stopped server showed each screen's
  * own load error instead of "Can't reach your server". Re-check the connection
- * when a query fails that way; `ServerGate` then shows the shared offline state
+ * when a query or mutation fails that way; `ServerGate` then shows the shared offline state
  * if the server really is down, and nothing changes if it answers (#3385).
  */
-function recheckServerConnection(error: unknown, queryKey: QueryKey) {
-  if (queryKey[0] === serverConnectionQueryKey[0]) return;
+function recheckServerConnection(error: unknown, queryKey?: QueryKey) {
+  if (queryKey?.[0] === serverConnectionQueryKey[0]) return;
   if (!serverMayBeDown(error)) return;
-  const now = Date.now();
-  if (now - lastServerRecheckAt < SERVER_RECHECK_INTERVAL_MS) return;
-  lastServerRecheckAt = now;
+  const sinceLast = Date.now() - lastServerRecheckAt;
+  if (sinceLast >= SERVER_RECHECK_INTERVAL_MS) {
+    runServerRecheck();
+    return;
+  }
+  // Throttled: the last check may have passed just before the server went
+  // down, so check once more when the window ends rather than dropping it.
+  trailingServerRecheck ??= setTimeout(
+    runServerRecheck,
+    SERVER_RECHECK_INTERVAL_MS - sinceLast
+  );
+}
+
+function runServerRecheck() {
+  if (trailingServerRecheck) clearTimeout(trailingServerRecheck);
+  trailingServerRecheck = null;
+  lastServerRecheckAt = Date.now();
   void queryClient.invalidateQueries({ queryKey: serverConnectionQueryKey });
 }
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => recheckServerConnection(error, query.queryKey),
+  }),
+  mutationCache: new MutationCache({
+    onError: (error) => recheckServerConnection(error),
   }),
   defaultOptions: {
     queries: {

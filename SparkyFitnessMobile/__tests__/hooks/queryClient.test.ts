@@ -99,3 +99,58 @@ describe('queryClient re-checks the server connection on failures (#3385)', () =
     expect(invalidate).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('queryClient trailing and mutation re-checks (#3385)', () => {
+  type OnError = (error: unknown, ...rest: unknown[]) => void;
+  const queryOnError = queryClient.getQueryCache().config.onError as OnError;
+  const mutationOnError = queryClient.getMutationCache().config
+    .onError as OnError;
+  const dataQuery = { queryKey: ['dailySummary', '2026-11-03'] };
+  let invalidate: jest.SpyInstance;
+  // The fake clock restarts at real time in every test, so move each test an
+  // hour past the last one; the re-check throttle is module state.
+  let offsetMs = 0;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    offsetMs += 60 * 60_000;
+    jest.setSystemTime(Date.now() + offsetMs);
+    invalidate = jest
+      .spyOn(queryClient, 'invalidateQueries')
+      .mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  test('a failure inside the window re-checks once when the window ends', () => {
+    queryOnError(new ApiError('x', 500), dataQuery);
+    expect(invalidate).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(3_000);
+    queryOnError(new ApiError('x', 502), dataQuery);
+    queryOnError(new ApiError('x', 502), { queryKey: ['goals'] });
+    expect(invalidate).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(6_999);
+    expect(invalidate).toHaveBeenCalledTimes(1);
+    jest.advanceTimersByTime(1);
+    expect(invalidate).toHaveBeenCalledTimes(2);
+
+    jest.advanceTimersByTime(60_000);
+    expect(invalidate).toHaveBeenCalledTimes(2);
+  });
+
+  test('a failed mutation re-checks the connection too', () => {
+    mutationOnError(new TypeError('Network request failed'));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['serverConnection'] });
+  });
+
+  test('a mutation the server rejected with a 4xx does not re-check', () => {
+    mutationOnError(new ApiError('x', 400));
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+});
