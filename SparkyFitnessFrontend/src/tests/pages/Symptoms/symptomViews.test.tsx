@@ -686,6 +686,60 @@ describe('EpisodeDetailDialog', () => {
     ).toEqual(['moderate · 09:00', 'mild · 10:30']);
   });
 
+  it('keeps an effect changed after the last reading in view while ongoing', () => {
+    render(
+      <EpisodeDetailDialog
+        entry={{
+          ...timelineEntry,
+          ended_at: null,
+          severity_timeline: [{ at: '2026-09-29T09:00:00.000Z', severity: 5 }],
+          impact: 'severe',
+          impact_timeline: [
+            { at: '2026-09-29T09:00:00.000Z', impact: 'moderate' },
+            { at: '2026-09-29T13:00:00.000Z', impact: 'severe' },
+          ],
+        }}
+        meds={[]}
+        onClose={jest.fn()}
+        onEdit={jest.fn()}
+      />
+    );
+    const band = screen.getByRole('group', { name: 'Effect on your day' });
+    const severe = within(band)
+      .getByText('Effect on your day: severe · 13:00')
+      .closest('rect') as SVGRectElement;
+    // The chart runs to 13:30, so 13:00 to 13:30 is a ninth of the plot and
+    // ends at its right edge.
+    const x = Number(severe.getAttribute('x'));
+    const width = Number(severe.getAttribute('width'));
+    expect(width).toBeCloseTo(29.33, 1);
+    expect(x + width).toBeCloseTo(290);
+  });
+
+  it('draws an effect changed after the end at the end of the chart', () => {
+    render(
+      <EpisodeDetailDialog
+        entry={{
+          ...timelineEntry,
+          impact: 'mild',
+          impact_timeline: [
+            { at: '2026-09-29T09:00:00.000Z', impact: 'moderate' },
+            { at: '2026-09-29T12:00:00.000Z', impact: 'mild' },
+          ],
+        }}
+        meds={[]}
+        onClose={jest.fn()}
+        onEdit={jest.fn()}
+      />
+    );
+    const band = screen.getByRole('group', { name: 'Effect on your day' });
+    const mild = within(band)
+      .getByText('Effect on your day: mild · 12:00')
+      .closest('rect') as SVGRectElement;
+    expect(Number(mild.getAttribute('x'))).toBe(288);
+    expect(Number(mild.getAttribute('width'))).toBe(2);
+  });
+
   it('shows the current effect from the start when the server sends no timeline', () => {
     render(
       <EpisodeDetailDialog
