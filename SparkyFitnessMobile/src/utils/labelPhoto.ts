@@ -19,18 +19,19 @@ export interface PreparedLabelPhoto {
 }
 
 /**
- * Downscales a picked label photo to `LABEL_MAX_DIMENSION` and returns it as
- * JPEG base64, or null when the image cannot be encoded.
+ * Downscales a picked photo to `maxDimension` (default `LABEL_MAX_DIMENSION`)
+ * and returns it as JPEG base64, or null when the image cannot be encoded.
  */
 export async function prepareLabelPhoto(
-  asset: PickedLabelAsset
+  asset: PickedLabelAsset,
+  maxDimension: number = LABEL_MAX_DIMENSION
 ): Promise<PreparedLabelPhoto | null> {
   const longEdge = Math.max(asset.width ?? 0, asset.height ?? 0);
-  if (longEdge > LABEL_MAX_DIMENSION && asset.width && asset.height) {
+  if (longEdge > maxDimension && asset.width && asset.height) {
     const scaleTo =
       asset.width >= asset.height
-        ? { width: LABEL_MAX_DIMENSION }
-        : { height: LABEL_MAX_DIMENSION };
+        ? { width: maxDimension }
+        : { height: maxDimension };
     const processed = await ImageManipulator.manipulateAsync(
       asset.uri,
       [{ resize: scaleTo }],

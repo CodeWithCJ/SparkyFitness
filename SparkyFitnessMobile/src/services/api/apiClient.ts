@@ -18,6 +18,14 @@ interface ApiFetchOptions {
   body?: unknown;
   headers?: Record<string, string>;
   timeoutMs?: number;
+  /**
+   * Whether a failed response's body goes in the app log. It does by default,
+   * which helps with diagnostics. Turn it off where the request carries health
+   * data: the body can quote the request, and the log is stored on the device
+   * and can be shared in a diagnostic report. The caller still gets the body
+   * on the `ApiError`.
+   */
+  logResponseBody?: boolean;
 }
 
 export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
@@ -29,6 +37,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
     body,
     headers: customHeaders,
     timeoutMs = DEFAULT_API_TIMEOUT_MS,
+    logResponseBody = true,
   } = options;
 
   const config = await getActiveServerConfig();
@@ -85,7 +94,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
       addLog(
         `[${serviceName}] Failed to ${operation}: ${response.status}`,
         'ERROR',
-        [errorText]
+        logResponseBody ? [errorText] : undefined
       );
       throw new ApiError(
         `Server error: ${response.status} - ${errorText}`,
@@ -103,7 +112,14 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
 
     return await response.json();
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    // An ApiError's message embeds the response body, so with body logging off
+    // only its status is logged.
+    const message =
+      !logResponseBody && error instanceof ApiError
+        ? `HTTP ${error.statusCode}`
+        : error instanceof Error
+          ? error.message
+          : String(error);
     addLog(`[${serviceName}] Failed to ${operation}: ${message}`, 'ERROR');
     throw error;
   }

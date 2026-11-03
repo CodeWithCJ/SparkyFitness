@@ -809,6 +809,9 @@ importers:
       undici:
         specifier: ^8.12.3
         version: 8.12.3
+      unpdf:
+        specifier: ^1.9.1
+        version: 1.9.1
       uuid:
         specifier: ^14.0.3
         version: 14.0.3
@@ -11911,6 +11914,15 @@ packages:
       '@expo/metro-config':
         optional: true
       metro-transform-worker:
+        optional: true
+
+  unpdf@1.9.1:
+    resolution: {integrity: sha512-nO1npM2kNyd4hj1fKzUVU6bvnWjDSxI97eycM/DgzI83dYyW+pNRI9NeMQVEfef8fI3Q06i9lkMeE1HxrQqKoA==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      '@napi-rs/canvas': ^0.1.69 || ^1.0.0
+    peerDependenciesMeta:
+      '@napi-rs/canvas':
         optional: true
 
   unpipe@1.0.0:
@@ -26354,6 +26366,8 @@ snapshots:
     optionalDependencies:
       '@expo/metro-config': 57.0.13(expo@57.0.31)(typescript@6.0.3)
       metro-transform-worker: 0.84.6
+
+  unpdf@1.9.1: {}
 
   unpipe@1.0.0: {}
 
