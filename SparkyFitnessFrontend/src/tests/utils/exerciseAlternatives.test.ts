@@ -3,7 +3,6 @@ import {
   alternativeReasonLabel,
   buildExerciseReplaceContext,
   exerciseFromAlternative,
-  normalizeImportedExercise,
 } from '@/utils/exerciseAlternatives';
 import type { TFunction } from 'i18next';
 
@@ -71,30 +70,5 @@ describe('alternativeReasonLabel', () => {
     expect(alternativeReasonLabel(t, 'different_equipment')).toBe(
       'Different equipment'
     );
-  });
-});
-
-describe('normalizeImportedExercise', () => {
-  it('decodes JSON-string array columns from a freshly imported row', () => {
-    const imported = {
-      id: 'x',
-      name: 'Cable Crossover',
-      category: 'strength',
-      images: '["Cable_Crossover/0.jpg"]',
-      instructions: '["Pull.","Squeeze."]',
-      equipment: '["cable"]',
-      primary_muscles: '["chest"]',
-      secondary_muscles: null,
-      force: null,
-      level: null,
-      mechanic: null,
-    } as unknown as Parameters<typeof normalizeImportedExercise>[0];
-    expect(normalizeImportedExercise(imported)).toMatchObject({
-      images: ['Cable_Crossover/0.jpg'],
-      instructions: ['Pull.', 'Squeeze.'],
-      equipment: ['cable'],
-      primary_muscles: ['chest'],
-      secondary_muscles: null,
-    });
   });
 });

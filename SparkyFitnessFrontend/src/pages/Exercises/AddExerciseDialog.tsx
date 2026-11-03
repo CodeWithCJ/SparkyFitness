@@ -18,6 +18,7 @@ import { useAddCustomExerciseForm } from '@/hooks/Exercises/useAddCustomExercise
 import AddCustomExerciseForm from './AddCustomExerciseForm';
 import ExerciseAlternativesPanel from './ExerciseAlternativesPanel';
 import type { ExerciseReplaceContext } from '@/utils/exerciseAlternatives';
+import { normalizeExerciseArrays } from '@/utils/exerciseArrays';
 
 interface AddExerciseDialogProps {
   open: boolean;
@@ -46,7 +47,17 @@ const AddExerciseDialog = ({
   replaceFor,
 }: AddExerciseDialogProps) => {
   const { t } = useTranslation();
-  const customForm = useAddCustomExerciseForm(onExerciseAdded, onOpenChange);
+  // Created and imported exercises come back as stored, with JSON-text array
+  // columns, so every tab hands its consumer normalized arrays.
+  const addExercise: AddExerciseDialogProps['onExerciseAdded'] = (
+    exercise,
+    sourceMode
+  ) =>
+    onExerciseAdded(
+      exercise ? normalizeExerciseArrays(exercise) : exercise,
+      sourceMode
+    );
+  const customForm = useAddCustomExerciseForm(addExercise, onOpenChange);
   const openingTab: AddExerciseDialogTab =
     initialTab ??
     (replaceFor
@@ -79,7 +90,7 @@ const AddExerciseDialog = ({
             'Exercise added successfully'
           ),
     });
-    onExerciseAdded(exercise, sourceMode); // Pass the selected exercise and source mode
+    addExercise(exercise, sourceMode);
     onOpenChange(false);
   };
 
