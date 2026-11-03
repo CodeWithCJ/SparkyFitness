@@ -154,6 +154,13 @@ function positiveSource(value: unknown): number | null {
     ? Number(value)
     : null;
 }
+function normalizedIngredientContext(value: string | null | undefined): string {
+  return (value ?? '')
+    .normalize('NFKC')
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase();
+}
 function ingredientRows(
   recipe: MealieIngredientRecipe
 ): RecipeImportIngredient[] {
@@ -169,8 +176,15 @@ function ingredientRows(
     if (row.referencedRecipe) issues.push('linked_recipe');
     return {
       ingredientId: row.referenceId || 'ingredient-' + index,
+      // Quantity is deliberately excluded: a reviewed food/preparation can scale to another batch.
       sourceFoodKey:
-        (row.food?.id || name.trim().toLowerCase()) + '|' + (unit || ''),
+        'context-v1:' +
+        recipeFingerprint({
+          foodId: row.food?.id ?? null,
+          foodName: normalizedIngredientContext(row.food?.name),
+          unit: unit ?? null,
+          preparation: normalizedIngredientContext(row.note),
+        }),
       name,
       originalText: row.originalText || row.display || row.note || name,
       note: row.note || '',
@@ -433,6 +447,43 @@ async function getSource(
     );
   return source;
 }
+/** Stable recipe content: update timestamps and regenerated instruction IDs are not source edits. */
+function sourceContentFingerprint(recipe: MealieIngredientRecipe): string {
+  const instructions = Array.isArray(recipe.recipeInstructions)
+    ? recipe.recipeInstructions.map((step: unknown) => {
+        if (!step || typeof step !== 'object') return step;
+        const content = step as Record<string, unknown>;
+        return { title: content.title ?? null, text: content.text ?? null };
+      })
+    : (recipe.recipeInstructions ?? []);
+  return recipeFingerprint({
+    id: recipe.id ?? null,
+    slug: recipe.slug,
+    name: recipe.name,
+    recipeServings: positiveSource(recipe.recipeServings),
+    ingredients: recipe.recipeIngredient.map((row) => ({
+      referenceId: row.referenceId ?? null,
+      quantity: positiveSource(row.quantity),
+      food: row.food
+        ? { id: row.food.id ?? null, name: row.food.name ?? null }
+        : null,
+      unit: row.unit
+        ? {
+            id: row.unit.id ?? null,
+            name: row.unit.name ?? null,
+            abbreviation: row.unit.abbreviation ?? null,
+            standardUnit: row.unit.standardUnit ?? null,
+            standardQuantity: row.unit.standardQuantity ?? null,
+          }
+        : null,
+      note: row.note ?? '',
+      originalText: row.originalText ?? '',
+      title: row.title ?? null,
+      referencedRecipe: row.referencedRecipe ?? null,
+    })),
+    instructions,
+  });
+}
 async function syncNutrition(
   userId: string,
   actorId: string,
@@ -497,6 +548,12 @@ async function syncNutrition(
       'Mealie did not confirm the nutrition update. Recheck the source recipe before retrying.'
     );
   }
+  if (sourceContentFingerprint(updated) !== sourceContentFingerprint(recipe))
+    throw new RecipeImportError(
+      409,
+      'REMOTE_CHANGED',
+      'The Mealie recipe changed while nutrition was being updated. The write may already have occurred. Review the source recipe and reopen its preview before syncing again.'
+    );
   if (
     Object.entries(patch).some(([key, value]) => {
       const actual = updated.nutrition?.[key];
