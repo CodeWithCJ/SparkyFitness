@@ -119,7 +119,7 @@ describe('oidcEnvConfig', () => {
       const config = getEnvOidcConfig();
       expect(config).toEqual(
         expect.objectContaining({
-          issuer_url: 'http://issuer.com',
+          issuer_url: 'http://issuer.com/',
           client_id: 'test-client',
           client_secret: 'test-secret',
           provider_id: 'test-slug',
