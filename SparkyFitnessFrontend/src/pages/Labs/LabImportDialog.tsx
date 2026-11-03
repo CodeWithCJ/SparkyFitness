@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   labImportBody,
   planLabImport,
+  isDayString,
   todayInZone,
   type LabImportRow,
   type LabMarker,
@@ -31,6 +32,7 @@ import {
 import {
   LAB_REPORT_ACCEPT,
   LAB_REPORT_MAX_FILE_BYTES,
+  LAB_REPORT_MAX_PHOTO_BYTES,
   exactLabValue,
   formatLabRange,
   labNumber,
@@ -88,6 +90,18 @@ const LabImportDialog = ({
     const id = ++selection.current;
     const stale = () => id !== selection.current;
     setFileError(null);
+    if (
+      file.type.startsWith('image/') &&
+      file.size > LAB_REPORT_MAX_PHOTO_BYTES
+    ) {
+      setFileError(
+        t(
+          'labs.import.photoTooLarge',
+          'That photo is too large to read (limit 6 MB). Try a smaller photo or a screenshot.'
+        )
+      );
+      return;
+    }
     if (file.size > LAB_REPORT_MAX_FILE_BYTES) {
       setFileError(
         t(
@@ -157,7 +171,8 @@ const LabImportDialog = ({
     ])
   );
   const invalid = chosen.some((row) => parsed[row.key] === null);
-  const future = date > todayInZone(timezone);
+  const badDate = !isDayString(date);
+  const future = !badDate && date > todayInZone(timezone);
 
   const save = async () => {
     const body = labImportBody(chosen, {
@@ -165,6 +180,7 @@ const LabImportDialog = ({
       date,
       values: parsed as Record<string, number>,
     });
+    const id = selection.current;
     try {
       const saved = await importReport.mutateAsync(body);
       toast({
@@ -174,7 +190,8 @@ const LabImportDialog = ({
           defaultValue_other: 'Saved {{count}} results',
         }),
       });
-      close(false);
+      // A different report picked while this one was saving stays on screen.
+      if (id === selection.current) close(false);
     } catch {
       // The mutation's toast reports it; the review stays for another try.
     }
@@ -247,6 +264,11 @@ const LabImportDialog = ({
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
+                {badDate && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {t('labs.dateInvalid', 'Enter the date of the test.')}
+                  </p>
+                )}
                 {future && (
                   <p role="alert" className="text-xs text-destructive">
                     {t(
@@ -357,6 +379,7 @@ const LabImportDialog = ({
               disabled={
                 chosen.length === 0 ||
                 invalid ||
+                badDate ||
                 future ||
                 importReport.isPending
               }

@@ -8,6 +8,7 @@ import {
 import '@testing-library/jest-dom';
 import { buildLabMarkers } from '@workspace/shared';
 import * as labApi from '@/api/Labs/labResultsApi';
+import { toast } from '@/hooks/use-toast';
 import LabImportDialog from '@/pages/Labs/LabImportDialog';
 import { first, result, wrapper } from './labsTestKit';
 
@@ -348,6 +349,8 @@ describe('LabImportDialog', () => {
     expect(
       screen.queryByText(/Could not read that report/)
     ).not.toBeInTheDocument();
+    // Nor does a toast: the scan reports failures only in the dialog.
+    expect(toast).not.toHaveBeenCalled();
   });
 
   it('saves an untouched scanned value exactly, and an edited one as typed', async () => {
@@ -392,5 +395,66 @@ describe('LabImportDialog', () => {
     const saved = first(api.importLabReport.mock.calls)[0].results;
     expect(first(saved).value_numeric).toBe(precise);
     expect(saved.at(1)?.value_numeric).toBe(1.5);
+  });
+
+  it('refuses a photo over the 6 MB the server reads, before sending it', async () => {
+    renderDialog();
+    const photo = new File(['x'], 'r.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(photo, 'size', { value: 7 * 1024 * 1024 });
+    pick(photo);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /photo is too large/
+    );
+    expect(api.scanLabReport).not.toHaveBeenCalled();
+  });
+
+  it('does not save a report without a test date', async () => {
+    api.scanLabReport.mockResolvedValue(scanResponse);
+    renderDialog();
+    pick(new File(['x'], 'r.pdf', { type: 'application/pdf' }));
+
+    fireEvent.change(await screen.findByLabelText('Date of test'), {
+      target: { value: '' },
+    });
+
+    expect(screen.getByText('Enter the date of the test.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /^Save \d results$/ })
+    ).toBeDisabled();
+  });
+
+  it('keeps a newer report on screen when an earlier save finishes', async () => {
+    let finishSave: () => void = () => undefined;
+    api.scanLabReport.mockResolvedValue(scanResponse);
+    api.importLabReport.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishSave = () =>
+            resolve({ report: {} as never, results: [result()] });
+        })
+    );
+    const { onOpenChange } = renderDialog();
+    pick(new File(['a'], 'first.pdf', { type: 'application/pdf' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /^Save \d results$/ })
+    );
+    await waitFor(() => expect(api.importLabReport).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Choose a different report' })
+    );
+    pick(new File(['b'], 'second.pdf', { type: 'application/pdf' }));
+    await screen.findAllByLabelText('Result for HbA1c');
+
+    await act(async () => {
+      finishSave();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+    expect(screen.getAllByLabelText('Result for HbA1c').length).toBeGreaterThan(
+      0
+    );
   });
 });

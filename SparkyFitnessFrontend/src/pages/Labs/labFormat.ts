@@ -77,3 +77,9 @@ export const LAB_REPORT_ACCEPT =
 
 /** The server's own PDF limit is 20M base64 characters; stay inside it. */
 export const LAB_REPORT_MAX_FILE_BYTES = 14 * 1024 * 1024;
+
+/**
+ * The server reads a photo of at most 8 MiB of base64 text, which is 6 MiB of
+ * file. A larger photo is refused before it is sent.
+ */
+export const LAB_REPORT_MAX_PHOTO_BYTES = 6 * 1024 * 1024;

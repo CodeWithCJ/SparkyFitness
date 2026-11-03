@@ -154,6 +154,7 @@ export const useScanLabReport = () =>
     }) => labApi.scanLabReport(document, mimeType),
     // No toast: the import dialog shows a failure inline, and only for the
     // report it is still showing.
+    meta: { silentError: true },
   });
 
 export const useImportLabReport = () => {

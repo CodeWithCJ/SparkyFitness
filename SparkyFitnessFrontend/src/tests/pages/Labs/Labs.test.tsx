@@ -351,8 +351,8 @@ describe('Labs page', () => {
     api.listLabResults.mockResolvedValue([
       result({
         value_numeric: precise,
-        ref_range_low: 4,
-        ref_range_high: 5.6,
+        ref_range_low: 3.900000000000001,
+        ref_range_high: 5.600000000000001,
       }),
     ]);
     api.updateLabResult.mockResolvedValue(result());
@@ -370,8 +370,57 @@ describe('Labs page', () => {
     await waitFor(() => expect(api.updateLabResult).toHaveBeenCalledTimes(1));
     expect(first(api.updateLabResult.mock.calls)[1]).toMatchObject({
       value_numeric: precise,
-      ref_range_high: 5.6,
+      ref_range_low: 3.900000000000001,
+      ref_range_high: 5.600000000000001,
       notes: 'fasting',
     });
+  });
+
+  it('asks for a date instead of saving a result without one', async () => {
+    api.listLatestLabResults.mockResolvedValue([]);
+    api.listLabMarkers.mockResolvedValue([]);
+    renderPage();
+
+    fireEvent.click(
+      first(await screen.findAllByRole('button', { name: 'Add lab result' }))
+    );
+    fireEvent.change(screen.getByLabelText('Search markers'), {
+      target: { value: 'hba1c' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'HbA1c' }));
+    fireEvent.change(screen.getByLabelText('Result', { exact: true }), {
+      target: { value: '5' },
+    });
+    fireEvent.change(screen.getByLabelText('Date of test'), {
+      target: { value: '' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Enter the date of the test.'
+    );
+    expect(api.createLabResult).not.toHaveBeenCalled();
+  });
+
+  it('edits the notes of a text-only result and keeps its text', async () => {
+    api.listLabResults.mockResolvedValue([
+      result({ value_numeric: null, value_text: 'Negative', unit: '' }),
+    ]);
+    api.updateLabResult.mockResolvedValue(result());
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /HbA1c/ }));
+    fireEvent.click(
+      first(await screen.findAllByRole('button', { name: 'Edit' }))
+    );
+
+    fireEvent.change(screen.getByLabelText('Notes'), {
+      target: { value: 'checked twice' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(api.updateLabResult).toHaveBeenCalledTimes(1));
+    const body = first(api.updateLabResult.mock.calls)[1];
+    expect(body).toMatchObject({ notes: 'checked twice' });
+    expect(body).not.toHaveProperty('value_numeric');
   });
 });

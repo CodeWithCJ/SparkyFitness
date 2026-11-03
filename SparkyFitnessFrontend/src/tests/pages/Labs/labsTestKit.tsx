@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createMutationCache } from '@/lib/mutationCache';
 import type { LabMarkerResponse, LabResultResponse } from '@workspace/shared';
 
 export const result = (
@@ -38,7 +39,9 @@ export const customMarker = (
 });
 
 export const wrapper = () => {
+  // The app's own mutation cache, so a test sees the toasts the app would raise.
   const client = new QueryClient({
+    mutationCache: createMutationCache(),
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const Wrapper = ({ children }: { children: ReactNode }) => (

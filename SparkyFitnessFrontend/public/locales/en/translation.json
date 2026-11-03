@@ -10238,7 +10238,8 @@
       "editHintWeb": "Check the values against your report. Each result is saved with the unit and reference range shown here: the ones the report printed, or the marker's default when the report printed none.",
       "tooLarge": "That file is too large to read (limit 14 MB).",
       "nothingFound": "No results were found in that report.",
-      "readFailed": "Could not open that file."
+      "readFailed": "Could not open that file.",
+      "photoTooLarge": "That photo is too large to read (limit 6 MB). Try a smaller photo or a screenshot."
     },
     "moreActions": "More actions",
     "deleteMarker": "Delete marker and all results",
@@ -10248,6 +10249,7 @@
     "labName": "Lab",
     "notes": "Notes",
     "valueInvalid": "Enter a marker and a numeric result.",
-    "historyCutOff": "History shows at most the newest {{count}} results."
+    "historyCutOff": "History shows at most the newest {{count}} results.",
+    "dateInvalid": "Enter the date of the test."
   }
 }

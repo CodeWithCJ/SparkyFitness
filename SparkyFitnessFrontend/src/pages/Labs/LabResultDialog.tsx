@@ -6,6 +6,7 @@ import {
   dropStalePrefilledRange,
   labPresetDefaults,
   labPresetName,
+  isDayString,
   todayInZone,
   type CreateLabResultBody,
   type LabMarker,
@@ -188,7 +189,14 @@ const LabResultDialog = ({
     const numeric = exactLabValue(value, origin.value);
     const lowBound = exactRangeBound(low, origin.low);
     const highBound = exactRangeBound(high, origin.high);
-    if (numeric === null || (!picked && !result)) {
+    // A result saved as text only (such as "Negative") has no number to show;
+    // its other fields can still be edited, and the text is left as it is.
+    const textOnly =
+      result != null &&
+      result.value_numeric === null &&
+      result.value_text != null &&
+      value.trim() === '';
+    if ((numeric === null && !textOnly) || (!picked && !result)) {
       setError(t('labs.valueInvalid', 'Enter a marker and a numeric result.'));
       return;
     }
@@ -207,6 +215,10 @@ const LabResultDialog = ({
       );
       return;
     }
+    if (!isDayString(date)) {
+      setError(t('labs.dateInvalid', 'Enter the date of the test.'));
+      return;
+    }
     if (date > todayInZone(timezone)) {
       setError(t('labs.dateFuture', 'The test date cannot be in the future.'));
       return;
@@ -222,7 +234,8 @@ const LabResultDialog = ({
     const rangeHigh = exactRangeBound(range.high, origin.high);
     const common = {
       entry_date: date,
-      value_numeric: numeric,
+      // Left out for a text-only result, so its text is kept.
+      ...(textOnly ? {} : { value_numeric: numeric }),
       unit: unit.trim(),
       ref_range_low: rangeLow.ok ? rangeLow.value : null,
       ref_range_high: rangeHigh.ok ? rangeHigh.value : null,
