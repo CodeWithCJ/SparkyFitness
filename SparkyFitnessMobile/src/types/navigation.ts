@@ -131,6 +131,7 @@ export type RootStackParamList = {
   /** `marker` is a `LabMarker` id: `builtin:<key>` or `custom:<uuid>`. */
   LabResultDetail: { marker: string; name?: string };
   LabResultAdd: { marker?: string };
+  LabReportImport: undefined;
   Routes: undefined;
   RouteDetail: { id: string };
   /** `routeId` opens a saved route in the editor and saves over it. */

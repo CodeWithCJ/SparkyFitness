@@ -45,7 +45,11 @@ function buildApp() {
       .split('/')
       .filter(Boolean)[0]
       ?.toLowerCase();
-    if (firstSegment && SENSITIVE_UPLOAD_SUBTREES.has(firstSegment)) {
+    if (
+      firstSegment &&
+      (SENSITIVE_UPLOAD_SUBTREES.has(firstSegment) ||
+        firstSegment === '_staging')
+    ) {
       res.status(404).end();
       return;
     }
@@ -125,6 +129,22 @@ describe('public uploads static mounts', () => {
       expect(res.status).toBe(404);
     }
   );
+
+  // A restore stages the archive's uploads, and keeps the previous ones,
+  // under _staging, so every sensitive subtree has a copy there.
+  it.each([
+    '/uploads/_staging/pre-restore-20261101_033336/pregnancy-ab12cd34/user-1/w12.png',
+    '/api/uploads/_staging/restore-0123456789ab/check-in/user-1/front.png',
+    '/uploads/exercises/..%2f_staging/request-1/part.png',
+  ])('denies restore and request staging via %s', async (url) => {
+    await seed(
+      decodeURIComponent(url)
+        .replace(/^\/(api\/)?uploads\//, '')
+        .replace('exercises/../', '')
+    );
+    const res = await request(buildApp()).get(url);
+    expect(res.status).toBe(404);
+  });
 
   it('still serves genuinely public uploads', async () => {
     const res = await request(buildApp()).get(

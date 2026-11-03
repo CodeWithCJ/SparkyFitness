@@ -18,6 +18,9 @@ vi.mock('../models/labResultRepository.js', () => ({
   createLabResult: vi.fn(),
   updateLabResult: vi.fn(),
   deleteLabResult: vi.fn(),
+  importLabReport: vi.fn(),
+  deleteLabReports: vi.fn(),
+  deleteResultsForMarkerKey: vi.fn(),
 }));
 
 vi.mock('../middleware/authMiddleware.js', () => ({
@@ -238,6 +241,114 @@ describe('Lab result routes (v2)', () => {
         `/api/v2/lab-results/entries/${ID}`
       );
       expect(res.statusCode).toBe(200);
+    });
+  });
+
+  describe('imports', () => {
+    const reportBody = {
+      lab_name: 'Quest',
+      entry_date: '2026-09-12',
+      results: [
+        { marker_key: 'hba1c', value_numeric: 5.1, unit: '%' },
+        { marker_name: 'ApoB', value_numeric: 80, unit: 'mg/dL' },
+      ],
+    };
+
+    it('saves a reviewed report', async () => {
+      vi.mocked(labRepo.importLabReport).mockResolvedValue({
+        report: {
+          id: ID,
+          user_id: 'test-user-id',
+          lab_name: 'Quest',
+          collected_on: '2026-09-12',
+          created_at: result.created_at,
+        },
+        results: [result],
+      });
+      const res = await request(app)
+        .post('/api/v2/lab-results/imports')
+        .send(reportBody);
+      expect(res.statusCode).toBe(201);
+      expect(labRepo.importLabReport).toHaveBeenCalledWith(
+        'test-user-id',
+        expect.objectContaining({ entry_date: '2026-09-12' }),
+        'test-user-id'
+      );
+    });
+
+    it('rejects a result with both or neither marker, and an empty report', async () => {
+      const post = (results: unknown[]) =>
+        request(app)
+          .post('/api/v2/lab-results/imports')
+          .send({ entry_date: '2026-09-12', results });
+      expect(
+        (
+          await post([
+            { marker_key: 'hba1c', marker_name: 'x', value_numeric: 1 },
+          ])
+        ).statusCode
+      ).toBe(400);
+      expect((await post([{ value_numeric: 1 }])).statusCode).toBe(400);
+      expect((await post([])).statusCode).toBe(400);
+      expect(labRepo.importLabReport).not.toHaveBeenCalled();
+    });
+
+    it('deletes every import, or one report', async () => {
+      vi.mocked(labRepo.deleteLabReports).mockResolvedValue({
+        reports: 2,
+        results: 9,
+        markers: 1,
+      });
+      const all = await request(app).delete('/api/v2/lab-results/imports');
+      expect(all.body).toEqual({ reports: 2, results: 9, markers: 1 });
+      expect(labRepo.deleteLabReports).toHaveBeenLastCalledWith(
+        'test-user-id',
+        null,
+        'test-user-id'
+      );
+
+      await request(app).delete(`/api/v2/lab-results/imports/${ID}`);
+      expect(labRepo.deleteLabReports).toHaveBeenLastCalledWith(
+        'test-user-id',
+        ID,
+        'test-user-id'
+      );
+    });
+
+    it('answers 404 for an unknown or malformed report id', async () => {
+      vi.mocked(labRepo.deleteLabReports).mockResolvedValue(null);
+      expect(
+        (await request(app).delete(`/api/v2/lab-results/imports/${ID}`))
+          .statusCode
+      ).toBe(404);
+      expect(
+        (await request(app).delete('/api/v2/lab-results/imports/nope'))
+          .statusCode
+      ).toBe(404);
+    });
+  });
+
+  describe('deleting the results of a built-in marker', () => {
+    it('deletes them by marker key', async () => {
+      vi.mocked(labRepo.deleteResultsForMarkerKey).mockResolvedValue(3);
+      const res = await request(app).delete(
+        '/api/v2/lab-results/entries?markerKey=hba1c'
+      );
+      expect(res.body).toEqual({ results: 3 });
+    });
+
+    it('rejects a missing or unknown marker key', async () => {
+      expect(
+        (await request(app).delete('/api/v2/lab-results/entries')).statusCode
+      ).toBe(400);
+      expect(
+        (
+          await request(app).delete(
+            '/api/v2/lab-results/entries?markerKey=nope'
+          )
+        ).statusCode
+      ).toBe(400);
+      expect(labRepo.deleteResultsForMarkerKey).not.toHaveBeenCalled();
     });
   });
 });

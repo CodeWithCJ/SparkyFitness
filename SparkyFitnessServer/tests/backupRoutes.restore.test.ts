@@ -30,6 +30,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../services/backupService.js', () => ({
   performBackup: vi.fn(),
   performRestore: mocks.performRestore,
+  RestoreInProgressError: class RestoreInProgressError extends Error {},
   BACKUP_DIR: env.backups,
   BACKUP_FILE_PATTERN: /^sparkyfitness_full_backup_[\w.-]+\.tar\.gz$/,
   listBackups: vi.fn(),
@@ -58,6 +59,7 @@ vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 import backupRoutes from '../routes/backupRoutes.js';
 import { RestoreRefusedError } from '../services/onlineRestoreGuard.js';
+import { RestoreInProgressError } from '../services/backupService.js';
 
 const app = express();
 app.use('/admin/backup', backupRoutes);
@@ -199,6 +201,22 @@ describe('POST /admin/backup/restore with other instances running', () => {
 
     expect(res.statusCode).toBe(409);
     expect(res.body.message).toBe('Restore refused: late arrival');
+    await expectBackupFolder([]);
+  });
+});
+
+describe('POST /admin/backup/restore while another restore runs', () => {
+  it('answers 409 and removes the archive', async () => {
+    mocks.performRestore.mockRejectedValue(
+      new RestoreInProgressError('Another restore is already running.')
+    );
+
+    const res = await postRestore();
+
+    expect(res.statusCode).toBe(409);
+    expect(res.body).toEqual({
+      message: 'Another restore is already running.',
+    });
     await expectBackupFolder([]);
   });
 });

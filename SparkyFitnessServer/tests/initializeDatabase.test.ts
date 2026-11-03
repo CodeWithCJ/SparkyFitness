@@ -16,6 +16,9 @@ vi.mock('../utils/applyRlsPolicies.js', () => ({
   applyRlsPolicies: applyPolicies,
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../services/restoreLock.js', () => ({
+  reopenAfterInterruptedRestore: vi.fn(async () => {}),
+}));
 
 const keepalives =
   'SET tcp_keepalives_idle = 30; SET tcp_keepalives_interval = 10; SET tcp_keepalives_count = 3';

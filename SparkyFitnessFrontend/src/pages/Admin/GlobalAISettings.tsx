@@ -31,7 +31,7 @@ import { useSettings, useUpdateSettings } from '@/hooks/Admin/useSettings';
 import { useTranslation } from 'react-i18next';
 import { ServiceForm } from '@/components/ai/ServiceForm';
 import { ServiceList } from '@/components/ai/ServiceList';
-import { getModelOptions, requiresApiKey } from '@/utils/aiServiceUtils';
+import { isCustomModelName, requiresApiKey } from '@/utils/aiServiceUtils';
 import {
   useGlobalAIServices,
   useCreateGlobalAIService,
@@ -263,11 +263,10 @@ const GlobalAISettings = () => {
     // Clear any prior service's test result so it never lingers on this form.
     resetTestStatus();
     setEditingService(service.id);
-    const isCustomModel = service.model_name
-      ? !getModelOptions(service.service_type ?? '').includes(
-          service.model_name
-        )
-      : false;
+    const isCustomModel = isCustomModelName(
+      service.service_type ?? '',
+      service.model_name
+    );
     setEditData({
       service_name: service.service_name,
       service_type: service.service_type,
