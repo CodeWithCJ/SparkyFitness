@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import pg from 'pg';
 import { log } from '../config/logging.js';
+import { isConnectionError } from '../db/connectRetry.js';
 import { applicationName } from '../db/applicationName.js';
 import { getRawOwnerPool } from '../db/poolManager.js';
 
@@ -109,14 +110,19 @@ export async function restoreInProgress(
       databaseId: rows[0].database_id ?? null,
     };
   } catch (error) {
-    // Refused rather than let through: during the swap this check fails while
-    // the lock is still held, and a write let in then could be lost. With the
-    // database unreachable the write would fail anyway.
     log('debug', 'Could not check for a running restore:', error);
     cached = null;
     if ((error as { code?: unknown } | null)?.code === CLOSED_TO_CONNECTIONS) {
       void reopenAfterInterruptedRestoreThrottled();
+      return true;
     }
+    // An unreachable database is a restart, not a restore: the caller's
+    // connect retry waits it out. A real swap is still caught, since a new
+    // connection to the closed database gets 55000 and the check after an
+    // acquire sees the lock.
+    if (isConnectionError(error)) return false;
+    // Refused rather than let through: a write let in during a swap could be
+    // lost.
     return true;
   }
   return cached.active;

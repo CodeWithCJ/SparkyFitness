@@ -739,6 +739,27 @@ const UPLOADS_STAGING_PREFIX = 'restore-';
 const uploadsStagingRoot = () =>
   path.join(UPLOADS_BASE_DIR, UPLOAD_STAGING_DIR);
 
+/**
+ * Drops the staging databases of restores whose process died during the load.
+ * None can be in use: each belongs to a restore that held the lock this one
+ * now holds.
+ */
+async function dropStaleStagingDatabases(client: pg.Client, dbName: string) {
+  const prefix = `${dbName}_restore_`;
+  const { rows } = await client.query<{ datname: string }>(
+    `SELECT datname FROM pg_database
+      WHERE left(datname, length($1)) = $1
+        AND substr(datname, length($1) + 1) ~ '^[0-9a-f]{12}$'`,
+    [prefix]
+  );
+  for (const { datname } of rows) {
+    log('warn', `Dropping ${datname}, left by an interrupted restore.`);
+    await client.query(
+      `DROP DATABASE IF EXISTS ${client.escapeIdentifier(datname)} WITH (FORCE)`
+    );
+  }
+}
+
 async function removeStaleUploadStaging() {
   let entries: string[];
   try {
@@ -838,6 +859,7 @@ async function restoreHoldingLock(
     await fsp.access(backupFilePath, fsp.constants.R_OK);
     await assertRestoreAllowed();
     await assertCanEndSessions(client, dbName);
+    await dropStaleStagingDatabases(client, dbName);
     tempRestoreDir = path.join(BACKUP_DIR, `restore_temp_${Date.now()}`);
     await fsp.mkdir(tempRestoreDir, { recursive: true });
     log('info', `Extracting combined backup archive: ${backupFilePath}`);

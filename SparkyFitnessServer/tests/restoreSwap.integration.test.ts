@@ -623,6 +623,21 @@ describe.skipIf(!runnable)('restore by staging and swap (PostgreSQL)', () => {
     ]);
   }, 60_000);
 
+  it('drops a staging database an interrupted restore left behind', async () => {
+    await resetLive();
+    const leftover = `${DB_NAME}_restore_0123456789ab`;
+    await admin.query(`CREATE DATABASE ${leftover} OWNER ${OWNER}`);
+    const backup = archive('after-crash.tar.gz', Buffer.from('not gzip'), {
+      'food_images/new.jpg': 'new',
+    });
+
+    const result = await backupService.performRestore(backup);
+
+    expect(result.success).toBe(false);
+    expect(await liveRows()).toEqual(['live']);
+    expect(await databases()).toEqual([DB_NAME, LOOKALIKE]);
+  }, 60_000);
+
   it('touches nothing when the guard refuses before loading', async () => {
     await resetLive();
     const { RestoreRefusedError } =
