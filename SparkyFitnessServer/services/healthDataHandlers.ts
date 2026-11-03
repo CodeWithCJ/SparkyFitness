@@ -1912,9 +1912,28 @@ function localEntryTime(iso: string, tz: string): string | null {
   }
 }
 
+/**
+ * Shape check for a workout record, run before the pre-cleanup deletes anything
+ * (#2938) and again by the handler. Returns why the record cannot be stored, or
+ * null when it can.
+ */
+export function invalidWorkoutReason(
+  entry: Record<string, unknown>
+): string | null {
+  const { sets } = entry;
+  if (sets === undefined || sets === null) return null;
+  if (!Array.isArray(sets)) return 'Invalid workout: sets must be an array.';
+  if (sets.some((set) => typeof set !== 'object' || set === null)) {
+    return 'Invalid workout: every set must be an object.';
+  }
+  return null;
+}
+
 const workoutHandler: HealthTypeHandler = {
   async handle(entry, ctx) {
     const { type, source = 'manual' } = entry;
+    const invalidReason = invalidWorkoutReason(entry);
+    if (invalidReason) return { status: 'error', error: invalidReason };
     try {
       const {
         activityType,

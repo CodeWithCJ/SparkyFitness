@@ -61,7 +61,9 @@ import {
   customMeasurementHandler,
   createCategoryResolver,
   HEALTH_TYPE_DISPLAY_NAMES,
+  invalidWorkoutReason,
 } from './healthDataHandlers.js';
+import { isUserOriginatedSource } from '../models/syncedDataRepository.js';
 import type {
   HandleBatchFn,
   PreparedHealthEntry,
@@ -196,16 +198,19 @@ function resolveHealthEntryDate(entry: any, fallbackTimezone: any) {
 }
 // Delete-then-insert idempotency for provider-sourced entries: groups the given
 // entries by source, computes each source's [min,max] resolved-day range, and
-// invokes deleteFn(userId, startDate, endDate, source). Shared by the exercise
-// and nutrition pre-cleanup passes so a re-sync of a date range never duplicates
-// rows; manual/web entries (no matching source) are left untouched.
+// invokes deleteFn(userId, startDate, endDate, source) so a re-sync of a date
+// range never duplicates rows.
+//
+// Only provider sources are range-deleted (#2938). An entry with no source, or
+// with a user-originated one ('manual', 'sparky', 'workout preset', ...), is
+// skipped: those rows are what the person logged, and a source-less payload
+// used to default to 'manual' and wipe their logged workout sessions. Entries
+// the handler will reject (see `isRejected`) are skipped too, so a malformed
+// record cannot delete anything before it fails.
 async function preCleanEntriesBySourceAndDate(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entries: any[],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fallbackTimezone: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
+  entries: Record<string, unknown>[],
+  fallbackTimezone: string,
+  userId: string,
   label: string,
   deleteFn: (
     userId: string,
@@ -214,7 +219,8 @@ async function preCleanEntriesBySourceAndDate(
     source: string,
     excludedExerciseName?: string,
     keepSourceIds?: string[]
-  ) => Promise<unknown>
+  ) => Promise<unknown>,
+  isRejected: (entry: Record<string, unknown>) => boolean = () => false
 ) {
   if (entries.length === 0) return;
   const daysBySource: Record<string, Set<string>> = {};
@@ -226,7 +232,12 @@ async function preCleanEntriesBySourceAndDate(
   // what the client never sent (#2300).
   const keepIdsBySource: Record<string, Set<string>> = {};
   for (const entry of entries) {
-    const source = entry.source || 'manual';
+    // Kept as sent: the handler stores this exact value, so the delete must
+    // match it. Only the emptiness check ignores surrounding whitespace.
+    const source = typeof entry.source === 'string' ? entry.source : '';
+    if (!source.trim() || isUserOriginatedSource(source) || isRejected(entry)) {
+      continue;
+    }
     const resolved = resolveHealthEntryDate(entry, fallbackTimezone);
     if (!resolved) continue;
     (daysBySource[source] ??= new Set()).add(resolved.parsedDate);
@@ -302,7 +313,8 @@ async function processHealthData(
     tz,
     userId,
     'exercise entries',
-    exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate
+    exerciseEntryDb.deleteExerciseEntriesByEntrySourceAndDate,
+    (entry) => invalidWorkoutReason(entry) !== null
   );
   // Request-scoped dependencies for the handlers: categories are fetched at
   // most once per request (see createCategoryResolver).
