@@ -10248,6 +10248,6 @@
     "labName": "Lab",
     "notes": "Notes",
     "valueInvalid": "Enter a marker and a numeric result.",
-    "historyCutOff": "Showing the newest {{count}} results. Older ones are not shown."
+    "historyCutOff": "History shows at most the newest {{count}} results."
   }
 }

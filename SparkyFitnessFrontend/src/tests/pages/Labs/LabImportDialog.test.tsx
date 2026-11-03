@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { buildLabMarkers } from '@workspace/shared';
 import * as labApi from '@/api/Labs/labResultsApi';
@@ -226,5 +232,49 @@ describe('LabImportDialog', () => {
     );
     expect(api.scanLabReport).not.toHaveBeenCalled();
     jest.restoreAllMocks();
+  });
+
+  it('ignores the result of a report replaced by a newer pick', async () => {
+    let finishFirst: (value: typeof scanResponse) => void = () => undefined;
+    api.scanLabReport
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishFirst = resolve;
+          })
+      )
+      .mockResolvedValueOnce({
+        report: {
+          lab_name: 'Second lab',
+          collected_on: '2026-10-01',
+          results: [
+            {
+              name: 'LDL',
+              marker_key: 'ldl',
+              value: 99,
+              unit: 'mg/dL',
+              ref_low: null,
+              ref_high: null,
+            },
+          ],
+        },
+      });
+    renderDialog();
+
+    pick(new File(['a'], 'first.pdf', { type: 'application/pdf' }));
+    await waitFor(() => expect(api.scanLabReport).toHaveBeenCalledTimes(1));
+    pick(new File(['b'], 'second.pdf', { type: 'application/pdf' }));
+    expect(
+      await screen.findByLabelText('Result for LDL Cholesterol')
+    ).toHaveValue('99');
+
+    // Let the earlier scan finish and every update it causes settle.
+    await act(async () => {
+      finishFirst(scanResponse);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    expect(screen.getByLabelText('Lab')).toHaveValue('Second lab');
+    expect(screen.queryByLabelText('Result for HbA1c')).not.toBeInTheDocument();
   });
 });

@@ -1,10 +1,13 @@
 import type { LabResultResponse } from '@workspace/shared';
 
-// No grouping: a formatted value is also what a field is prefilled with, and
-// `parseLabValue` cannot read "250,000" back.
+// A formatted value is also what a field is prefilled with, so it must parse
+// back unchanged: no grouping ("250,000" would read as 250), Latin digits
+// whatever the locale, and significant digits rather than a fixed number of
+// decimals, so a very small value is not rounded to 0.
 const NUMBER_FORMAT = new Intl.NumberFormat(undefined, {
-  maximumFractionDigits: 10,
+  maximumSignificantDigits: 15,
   useGrouping: false,
+  numberingSystem: 'latn',
 });
 
 /** A lab number with the decimals it was entered with, in the browser locale. */

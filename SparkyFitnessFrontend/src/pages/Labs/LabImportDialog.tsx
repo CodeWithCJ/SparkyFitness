@@ -57,6 +57,9 @@ const LabImportDialog = ({
   const scan = useScanLabReport();
   const importReport = useImportLabReport();
   const fileInput = useRef<HTMLInputElement>(null);
+  // Each picked file gets a number; a read or scan that finishes after a newer
+  // pick (or a reset) is ignored, so its rows never replace the newer report's.
+  const selection = useRef(0);
 
   const [rows, setRows] = useState<LabImportRow[] | null>(null);
   const [included, setIncluded] = useState<Record<string, boolean>>({});
@@ -66,6 +69,7 @@ const LabImportDialog = ({
   const [fileError, setFileError] = useState<string | null>(null);
 
   const reset = () => {
+    selection.current += 1;
     setRows(null);
     setIncluded({});
     setValues({});
@@ -81,6 +85,8 @@ const LabImportDialog = ({
 
   const onFile = async (file: File | undefined) => {
     if (!file) return;
+    const id = ++selection.current;
+    const stale = () => id !== selection.current;
     setFileError(null);
     if (file.size > LAB_REPORT_MAX_FILE_BYTES) {
       setFileError(
@@ -95,15 +101,18 @@ const LabImportDialog = ({
     try {
       document = await readFileAsBase64(file);
     } catch {
+      if (stale()) return;
       setFileError(t('labs.import.readFailed', 'Could not open that file.'));
       if (fileInput.current) fileInput.current.value = '';
       return;
     }
+    if (stale()) return;
     try {
       const response: LabReportScanResponse = await scan.mutateAsync({
         document,
         mimeType: file.type,
       });
+      if (stale()) return;
       const planned = planLabImport(
         response.report.results,
         markers,

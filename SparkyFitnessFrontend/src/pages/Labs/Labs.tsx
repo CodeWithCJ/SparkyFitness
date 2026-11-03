@@ -128,6 +128,8 @@ const Labs = () => {
   };
 
   const loading = customMarkers.isLoading || latest.isLoading;
+  // Built from empty data, a failed load would look like no results at all.
+  const loadFailed = customMarkers.isError || latest.isError;
 
   return (
     <div className="container mx-auto max-w-5xl space-y-4 p-4">
@@ -165,6 +167,15 @@ const Labs = () => {
 
       {loading ? (
         <Skeleton className="h-48 w-full" />
+      ) : loadFailed ? (
+        <Card>
+          <CardContent
+            role="alert"
+            className="py-10 text-center text-destructive"
+          >
+            {t('labs.loadFailed', 'Could not load your lab results.')}
+          </CardContent>
+        </Card>
       ) : markers.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground">
@@ -326,7 +337,7 @@ const Labs = () => {
                       <p className="text-xs text-muted-foreground">
                         {t(
                           'labs.historyCutOff',
-                          'Showing the newest {{count}} results. Older ones are not shown.',
+                          'History shows at most the newest {{count}} results.',
                           { count: LAB_HISTORY_LIMIT }
                         )}
                       </p>

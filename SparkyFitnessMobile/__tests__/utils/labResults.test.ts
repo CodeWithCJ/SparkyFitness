@@ -51,6 +51,14 @@ const custom = (overrides: Partial<LabMarkerResponse>): LabMarkerResponse => ({
 });
 
 describe('parseLabValue', () => {
+  it('reads digits of other scripts and the Arabic decimal separator', () => {
+    // Arabic-Indic 5٫4, Persian ۱۲۰, Devanagari ९८, full-width ５.５
+    expect(parseLabValue('\u0665\u066B\u0664')).toBe(5.4);
+    expect(parseLabValue('\u06F1\u06F2\u06F0')).toBe(120);
+    expect(parseLabValue('\u096F\u096E')).toBe(98);
+    expect(parseLabValue('\uFF15.\uFF15')).toBe(5.5);
+  });
+
   it('parses numbers and decimal commas', () => {
     expect(parseLabValue('5.4')).toBe(5.4);
     expect(parseLabValue(' 5,4 ')).toBe(5.4);

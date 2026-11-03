@@ -325,4 +325,24 @@ describe('Labs page', () => {
       ref_range_high: 38,
     });
   });
+
+  it('shows a load error, not the empty state, when the markers fail to load', async () => {
+    api.listLabMarkers.mockRejectedValue(new Error('boom'));
+    renderPage();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not load your lab results.'
+    );
+    expect(screen.queryByText(/No lab results yet/)).not.toBeInTheDocument();
+  });
+
+  it('shows a load error when the latest results fail to load', async () => {
+    api.listLatestLabResults.mockRejectedValue(new Error('boom'));
+    renderPage();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not load your lab results.'
+    );
+    expect(screen.queryByText('Homocysteine')).not.toBeInTheDocument();
+  });
 });

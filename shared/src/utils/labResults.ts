@@ -57,11 +57,34 @@ export const labPresetName = (
 ): string => labels[preset.key] ?? preset.displayName;
 
 /**
- * Parses a typed lab value; accepts a decimal comma and a minus sign (base
+ * The zero of each digit script a browser or phone may format numbers in
+ * (Arabic-Indic, Persian, Devanagari, Bengali, Thai, full-width and others).
+ * Each script's digits run 0 to 9 from its zero.
+ */
+const DIGIT_ZEROS: readonly number[] = [
+  0x0660, 0x06f0, 0x07c0, 0x0966, 0x09e6, 0x0a66, 0x0ae6, 0x0b66, 0x0be6,
+  0x0c66, 0x0ce6, 0x0d66, 0x0de6, 0x0e50, 0x0ed0, 0x0f20, 0x1040, 0x1090,
+  0x17e0, 0x1810, 0x1946, 0x19d0, 0x1a80, 0x1a90, 0x1b50, 0x1bb0, 0x1c40,
+  0x1c50, 0xa620, 0xa8d0, 0xa900, 0xa9d0, 0xa9f0, 0xaa50, 0xabf0, 0xff10,
+];
+
+/** Digits of other scripts as ASCII digits, so `Number` can read them. */
+const toAsciiDigits = (text: string): string =>
+  text.replace(/\p{Nd}/gu, (digit) => {
+    const code = digit.codePointAt(0) ?? 0;
+    const zero = DIGIT_ZEROS.find((z) => code >= z && code <= z + 9);
+    return zero === undefined ? digit : String(code - zero);
+  });
+
+/**
+ * Parses a typed lab value; accepts a decimal comma (or the Arabic decimal
+ * separator), digits in any script and a minus sign (base
  * excess and bone-density T-scores are negative). Null when not a number.
  */
 export const parseLabValue = (text: string): number | null => {
-  const trimmed = text.trim().replace(',', '.').replace('\u2212', '-');
+  const trimmed = toAsciiDigits(text.trim())
+    .replace(/[,\u066B]/, '.')
+    .replace('\u2212', '-');
   if (trimmed === '') return null;
   const value = Number(trimmed);
   return Number.isFinite(value) ? value : null;
