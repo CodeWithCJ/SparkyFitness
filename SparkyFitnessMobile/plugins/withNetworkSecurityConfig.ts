@@ -30,6 +30,29 @@ const withNetworkSecurityConfig: ConfigPlugin = (config) => {
 </network-security-config>`
       );
 
+      // Debug builds keep cleartext allowed, which the config would otherwise disable, and also trust user CAs.
+      for (const buildType of ['debug', 'debugOptimized']) {
+        const debugFilePath = path.join(
+          config.modRequest.platformProjectRoot,
+          `app/src/${buildType}/res/xml/network_security_config.xml`
+        );
+
+        fs.mkdirSync(path.dirname(debugFilePath), { recursive: true });
+
+        fs.writeFileSync(
+          debugFilePath,
+          `<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <base-config cleartextTrafficPermitted="true">
+    <trust-anchors>
+      <certificates src="system" />
+      <certificates src="user" />
+    </trust-anchors>
+  </base-config>
+</network-security-config>`
+        );
+      }
+
       return config;
     },
   ]);

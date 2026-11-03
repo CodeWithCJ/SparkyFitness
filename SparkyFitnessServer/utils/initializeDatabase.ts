@@ -3,6 +3,7 @@ import { log } from '../config/logging.js';
 import { getRawOwnerPool } from '../db/poolManager.js';
 import { applyMigrations } from './dbMigrations.js';
 import { applyRlsPolicies } from './applyRlsPolicies.js';
+import { reopenAfterInterruptedRestore } from '../services/restoreLock.js';
 import {
   retryOnConnectionError,
   type ConnectRetryOptions,
@@ -26,6 +27,12 @@ const bootConnectRetry: ConnectRetryOptions = {
  * continue on another connection after the lock-owning session is lost.
  */
 async function initializeDatabase(): Promise<void> {
+  // Best effort: a database left closed by an interrupted restore would
+  // otherwise refuse this boot. Some setups give the owner no access to the
+  // maintenance database; boot goes on and reports its own error.
+  await reopenAfterInterruptedRestore().catch((error) =>
+    log('debug', 'Skipped the interrupted-restore check:', error)
+  );
   // Straight from the pool: getSystemClient's own shorter request retry
   // would run inside this one.
   const client: PoolClient = await retryOnConnectionError(

@@ -16,6 +16,7 @@ import {
   UpdateAiServiceSettingsRequest,
 } from '@workspace/shared';
 import { useAuth } from '@/hooks/useAuth';
+import { rotateAllChatConversationIds } from '@/utils/chatConversationId';
 
 // Query hooks for fetching data
 export const useAIServices = () => {
@@ -166,7 +167,19 @@ export const useUpdateUserAIPreferences = () => {
   return useMutation({
     mutationFn: (preferences: Partial<UserPreferencesChat>) =>
       updateUserPreferences(preferences),
-    onSuccess: (data) => {
+    onMutate: () => ({
+      previousServiceId:
+        queryClient.getQueryData<Partial<UserPreferencesChat>>(
+          userPreferencesKeys.ai()
+        )?.active_ai_service_id ?? null,
+    }),
+    onSuccess: (data, variables, context) => {
+      if (
+        variables.active_ai_service_id !== undefined &&
+        variables.active_ai_service_id !== context.previousServiceId
+      ) {
+        rotateAllChatConversationIds();
+      }
       queryClient.setQueryData(userPreferencesKeys.ai(), data);
       queryClient.invalidateQueries({ queryKey: userPreferencesKeys.ai() });
       // Changing active_ai_service_id (Settings dropdown or chat switcher) must

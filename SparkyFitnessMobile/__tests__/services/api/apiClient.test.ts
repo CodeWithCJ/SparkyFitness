@@ -4,6 +4,7 @@ import {
   getActiveServerConfig,
   ServerConfig,
 } from '../../../src/services/storage';
+import { addLog } from '../../../src/services/LogService';
 import { notifySessionExpired } from '../../../src/services/api/authService';
 import { TimeoutError, fetchWithTimeout } from '../../../src/utils/concurrency';
 
@@ -586,6 +587,43 @@ describe('apiFetch error handling', () => {
     });
     await expect(promise).rejects.toBeInstanceOf(ApiError);
     await expect(promise).rejects.toMatchObject({ statusCode: 503 });
+  });
+
+  describe('logResponseBody', () => {
+    const failWith = (body: string) => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 422,
+        text: async () => body,
+        headers: new Headers(),
+      }) as never;
+    };
+    const logged = () => JSON.stringify(jest.mocked(addLog).mock.calls);
+
+    test('logs the response body by default', async () => {
+      failWith('glucose 99 mg/dL for Jane');
+      await expect(
+        apiFetch({ endpoint: '/api/x', serviceName: 's', operation: 'get' })
+      ).rejects.toBeInstanceOf(ApiError);
+      expect(logged()).toContain('glucose 99 mg/dL');
+    });
+
+    test('keeps the body out of the log but on the ApiError when off', async () => {
+      failWith('glucose 99 mg/dL for Jane');
+      await expect(
+        apiFetch({
+          endpoint: '/api/x',
+          serviceName: 's',
+          operation: 'get',
+          logResponseBody: false,
+        })
+      ).rejects.toMatchObject({
+        statusCode: 422,
+        body: 'glucose 99 mg/dL for Jane',
+      });
+      expect(logged()).not.toContain('glucose');
+      expect(logged()).toContain('422');
+    });
   });
 
   // Regression (#1353): the native HTTP cache (iOS CFNetwork / Android OkHttp)

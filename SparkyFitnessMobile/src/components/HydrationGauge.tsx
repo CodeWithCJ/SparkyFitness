@@ -45,6 +45,8 @@ interface HydrationGaugeProps {
   linkedPressLabel?: string;
   /** Opens the container screen when there is no container to press. */
   onConfigure?: () => void;
+  /** Opens the day's drinks; adds a History link to the header when set. */
+  onPressHistory?: () => void;
   onIncrement?: () => void;
   onDecrement?: () => void;
   disableDecrement?: boolean;
@@ -74,6 +76,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   containerVolume,
   linkedPressLabel,
   onConfigure,
+  onPressHistory,
   onIncrement,
   onDecrement,
   disableDecrement,
@@ -87,6 +90,7 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
   const hydrationColor = useCSSVariable('--color-hydration') as string;
   const trackColor = useCSSVariable('--color-progress-track') as string;
   const outlineColor = useCSSVariable('--color-border-strong') as string;
+  const accentPrimary = useCSSVariable('--color-accent-primary') as string;
 
   const progress = goal > 0 ? Math.min(consumed / goal, 1) : 0;
 
@@ -175,9 +179,27 @@ const HydrationGauge: React.FC<HydrationGaugeProps> = ({
 
   return (
     <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
-      <Text className="text-md font-bold text-text-secondary mb-3">
-        {t('dashboard.hydration', { defaultValue: 'Hydration' })}
-      </Text>
+      <View className="flex-row items-center justify-between mb-3">
+        <Text className="text-md font-bold text-text-secondary">
+          {t('dashboard.hydration', { defaultValue: 'Hydration' })}
+        </Text>
+        {onPressHistory ? (
+          <Pressable
+            onPress={onPressHistory}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            className="flex-row items-center"
+            accessibilityRole="button"
+            accessibilityLabel={t('waterLog.open', {
+              defaultValue: 'Drink history',
+            })}
+          >
+            <Text className="text-xs font-semibold text-accent-primary mr-1">
+              {t('waterLog.history', { defaultValue: 'History' })}
+            </Text>
+            <Icon name="chevron-forward" size={14} color={accentPrimary} />
+          </Pressable>
+        ) : null}
+      </View>
       <View className="flex-row items-center">
         <View className="items-center mr-4">
           <View className="flex-row items-center">

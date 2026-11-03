@@ -1,6 +1,7 @@
 import {
   resolveExerciseImageSrc,
   filterValidExerciseImages,
+  firstExerciseImage,
 } from '@/utils/exercises';
 
 describe('resolveExerciseImageSrc', () => {
@@ -65,10 +66,56 @@ describe('filterValidExerciseImages', () => {
     ).toEqual(['A/0.jpg', 'https://example.com/b.png']);
   });
 
+  it('drops the stray "[" or quote earlier preset saves stored as an image', () => {
+    expect(filterValidExerciseImages('[')).toEqual([]);
+    expect(filterValidExerciseImages('"')).toEqual([]);
+    expect(filterValidExerciseImages(['[', '"', 'Squat/0.jpg'])).toEqual([
+      'Squat/0.jpg',
+    ]);
+  });
+
+  it('decodes stored JSON text, including double-encoded text', () => {
+    expect(filterValidExerciseImages('["Squat/0.jpg","Squat/1.jpg"]')).toEqual([
+      'Squat/0.jpg',
+      'Squat/1.jpg',
+    ]);
+    expect(filterValidExerciseImages('"[\\"Squat/0.jpg\\"]"')).toEqual([
+      'Squat/0.jpg',
+    ]);
+  });
+
   it('returns an empty array for missing or non-array input', () => {
     expect(filterValidExerciseImages(undefined)).toEqual([]);
     expect(filterValidExerciseImages(null)).toEqual([]);
     expect(filterValidExerciseImages([])).toEqual([]);
     expect(filterValidExerciseImages(['[]'])).toEqual([]);
+  });
+});
+
+describe('firstExerciseImage', () => {
+  it('returns the first usable image of an array or its stored JSON text', () => {
+    expect(firstExerciseImage(['Squat/0.jpg', 'Squat/1.jpg'])).toBe(
+      'Squat/0.jpg'
+    );
+    expect(firstExerciseImage('["Squat/0.jpg","Squat/1.jpg"]')).toBe(
+      'Squat/0.jpg'
+    );
+  });
+
+  it('keeps a single stored path or URL', () => {
+    expect(firstExerciseImage('Barbell_Squat/0.jpg')).toBe(
+      'Barbell_Squat/0.jpg'
+    );
+    expect(firstExerciseImage('https://example.com/squat.jpg')).toBe(
+      'https://example.com/squat.jpg'
+    );
+  });
+
+  it('returns undefined for no image or a stray character', () => {
+    expect(firstExerciseImage(undefined)).toBeUndefined();
+    expect(firstExerciseImage('')).toBeUndefined();
+    expect(firstExerciseImage('[]')).toBeUndefined();
+    expect(firstExerciseImage('[')).toBeUndefined();
+    expect(firstExerciseImage('"')).toBeUndefined();
   });
 });

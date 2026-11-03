@@ -168,6 +168,38 @@ enum OutboundPayloads {
         return payload
     }
 
+    /// A weight, reps or carry distance the wearer just typed on the watch for
+    /// a set, sent before the set is logged so the phone shows it too. A
+    /// `workoutEdit` like the others (same `clientId` de-duplication), with only
+    /// the edited fields present. `at` orders edits: a queued copy of an older
+    /// one must not undo a newer one that arrived live. `armedAt` is the arm of
+    /// the plan the edit was made in: a saved workout can be armed again under
+    /// the same id, and an edit queued from the earlier arm must not land on it.
+    static func workoutEditSetValues(
+        sessionId: String,
+        clientId: String,
+        setId: String,
+        weightKg: Double?,
+        reps: Double?,
+        distanceKm: Double?,
+        at: Date,
+        armedAt: Date?
+    ) -> [String: Any] {
+        var payload: [String: Any] = [
+            "type": Kind.workoutEdit,
+            "sessionId": sessionId,
+            "clientId": clientId,
+            "action": "setValues",
+            "setId": setId,
+            "at": at.timeIntervalSince1970 * 1000,
+        ]
+        if let weightKg { payload["weightKg"] = weightKg }
+        if let reps { payload["reps"] = reps }
+        if let distanceKm { payload["distanceKm"] = distanceKm }
+        if let armedAt { payload["armedAt"] = armedAt.timeIntervalSince1970 * 1000 }
+        return payload
+    }
+
     /// The wearer's answer to "update this workout?" on the summary. The phone
     /// owns the server write, so it applies (or drops) the change. `sessionId`
     /// pairs the answer with the workout the question was about.

@@ -1,6 +1,9 @@
 import { getClient } from '../db/poolManager.js';
 import type {
   CreateLabMarkerBody,
+  DeleteLabImportsResponse,
+  ImportLabReportBody,
+  ImportLabReportResponse,
   CreateLabResultBody,
   LabMarkerResponse,
   LabResultListQuery,
@@ -330,6 +333,187 @@ export async function deleteLabResult(
       [resultId, userId]
     );
     return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
+
+const RESULT_COLUMNS = `user_id, marker_key, custom_marker_id, entry_date,
+  value_numeric, unit, ref_range_low, ref_range_high, lab_name, source,
+  report_id, created_by_user_id, updated_by_user_id`;
+
+/**
+ * Saves one reviewed lab report: a `lab_reports` row and all of its results in
+ * one transaction, so a failure leaves nothing half saved. A result for one of
+ * the user's own markers reuses the marker with that name, or creates it.
+ */
+export async function importLabReport(
+  userId: string,
+  data: ImportLabReportBody,
+  authenticatedUserId?: string
+): Promise<ImportLabReportResponse> {
+  const client = await getClient(userId, authenticatedUserId);
+  const actor = authenticatedUserId ?? userId;
+  try {
+    await client.query('BEGIN');
+    const report = await client.query(
+      `INSERT INTO lab_reports (
+        user_id, lab_name, collected_on, created_by_user_id, updated_by_user_id
+      ) VALUES ($1, $2, $3, $4, $4)
+      RETURNING *`,
+      [userId, data.lab_name ?? null, data.entry_date, actor]
+    );
+    const reportId = String(report.rows[0].id);
+
+    const markerIds = new Map<string, string>();
+    const results: LabResultResponse[] = [];
+    for (const item of data.results) {
+      let customMarkerId: string | null = null;
+      if (item.marker_name) {
+        const nameKey = item.marker_name.toLowerCase();
+        customMarkerId = markerIds.get(nameKey) ?? null;
+        if (!customMarkerId) {
+          const found = await client.query(
+            'SELECT id FROM lab_markers WHERE user_id = $1 AND lower(name) = lower($2)',
+            [userId, item.marker_name]
+          );
+          if (found.rows[0]) {
+            customMarkerId = String(found.rows[0].id);
+          } else {
+            const created = await client.query(
+              `INSERT INTO lab_markers (
+                user_id, name, unit, ref_range_low, ref_range_high,
+                created_by_user_id, updated_by_user_id
+              ) VALUES ($1, $2, $3, $4, $5, $6, $6)
+              RETURNING id`,
+              [
+                userId,
+                item.marker_name,
+                item.unit,
+                item.ref_range_low ?? null,
+                item.ref_range_high ?? null,
+                actor,
+              ]
+            );
+            customMarkerId = String(created.rows[0].id);
+          }
+          markerIds.set(nameKey, customMarkerId);
+        }
+      }
+      const saved = await client.query(
+        `INSERT INTO lab_results (${RESULT_COLUMNS})
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'report', $10, $11, $11)
+         RETURNING *`,
+        [
+          userId,
+          item.marker_key ?? null,
+          customMarkerId,
+          data.entry_date,
+          item.value_numeric,
+          item.unit,
+          item.ref_range_low ?? null,
+          item.ref_range_high ?? null,
+          data.lab_name ?? null,
+          reportId,
+          actor,
+        ]
+      );
+      results.push(mapRowToResult(saved.rows[0]));
+    }
+    await client.query('COMMIT');
+
+    const row = report.rows[0];
+    return {
+      report: {
+        id: reportId,
+        user_id: String(row.user_id),
+        lab_name: toStringOrNull(row.lab_name),
+        collected_on: toStringOrNull(row.collected_on)?.split('T')[0] ?? null,
+        created_at: toIso(row.created_at),
+      },
+      results,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Deletes imported lab reports with the results they saved: every report of the
+ * user, or just `reportId`. A custom marker that the delete leaves with no
+ * results is deleted too; a marker the user keeps results in is left alone.
+ * Null when `reportId` is not one of the user's reports.
+ */
+export async function deleteLabReports(
+  userId: string,
+  reportId: string | null,
+  authenticatedUserId?: string
+): Promise<DeleteLabImportsResponse | null> {
+  const client = await getClient(userId, authenticatedUserId);
+  try {
+    await client.query('BEGIN');
+    const affected = await client.query(
+      `SELECT custom_marker_id FROM lab_results
+       WHERE user_id = $1 AND report_id IS NOT NULL
+         AND ($2::uuid IS NULL OR report_id = $2::uuid)`,
+      [userId, reportId]
+    );
+    const reports = await client.query(
+      `DELETE FROM lab_reports
+       WHERE user_id = $1 AND ($2::uuid IS NULL OR id = $2::uuid)`,
+      [userId, reportId]
+    );
+    if (reportId !== null && (reports.rowCount ?? 0) === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+    const markerIds = [
+      ...new Set(
+        (affected.rows as { custom_marker_id: string | null }[])
+          .map((row) => row.custom_marker_id)
+          .filter((id): id is string => typeof id === 'string')
+      ),
+    ];
+    const emptied = markerIds.length
+      ? await client.query(
+          `DELETE FROM lab_markers m
+           WHERE m.user_id = $1 AND m.id = ANY($2::uuid[])
+             AND NOT EXISTS (
+               SELECT 1 FROM lab_results r WHERE r.custom_marker_id = m.id
+             )`,
+          [userId, markerIds]
+        )
+      : { rowCount: 0 };
+    await client.query('COMMIT');
+    return {
+      reports: reports.rowCount ?? 0,
+      results: affected.rowCount ?? 0,
+      markers: emptied.rowCount ?? 0,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/** Deletes every result the user has for one built-in marker. */
+export async function deleteResultsForMarkerKey(
+  userId: string,
+  markerKey: string,
+  authenticatedUserId?: string
+): Promise<number> {
+  const client = await getClient(userId, authenticatedUserId);
+  try {
+    const result = await client.query(
+      'DELETE FROM lab_results WHERE user_id = $1 AND marker_key = $2',
+      [userId, markerKey]
+    );
+    return result.rowCount ?? 0;
   } finally {
     client.release();
   }

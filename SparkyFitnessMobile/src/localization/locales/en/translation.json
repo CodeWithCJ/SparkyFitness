@@ -723,7 +723,8 @@
     "compareReport": "Compare",
     "labResults": "Lab results",
     "labResultDetail": "Lab result",
-    "labResultAdd": "Add lab result"
+    "labResultAdd": "Add lab result",
+    "labReportImport": "Import report"
   },
   "activityShare": {
     "title": "Share Activity",
@@ -6803,7 +6804,7 @@
     "setInputCrown": "Digital Crown",
     "layoutTitle": "Layout",
     "setScreenMetricsTitle": "Metrics on the set screen",
-    "setScreenMetricsSubtitle": "Elapsed time, heart rate and calories. Off moves them to their own page after the set screen (after Up Next, when that page is on).",
+    "setScreenMetricsSubtitle": "Elapsed time, heart rate and calories. Off moves them to their own page above the set screen: swipe down to see them.",
     "upNextTitle": "Up Next page",
     "upNextSubtitle": "A page one swipe up from the set screen with the next exercise, its target, and a Swap button to do another exercise first.",
     "largerTextTitle": "Larger text on the watch",
@@ -9796,6 +9797,62 @@
       "prolactin": "Prolactin",
       "tpo_antibodies": "TPO Antibodies"
     },
-    "rangeFromReport": "Use the range printed on your report. It is saved with this result."
+    "rangeFromReport": "Use the range printed on your report. It is saved with this result.",
+    "import": {
+      "blocked": {
+        "duplicate": "Already included from this report."
+      },
+      "cameraDenied": "Camera access is needed to take a photo.",
+      "chooseAnother": "Choose a different report",
+      "choosePdf": "Choose a PDF",
+      "choosePhoto": "Choose a photo or screenshot",
+      "cta": "Import from a report",
+      "includeRow": "Include {{name}}",
+      "intro": "Choose a lab report PDF, or a photo or screenshot of one. Your AI provider reads it and you review the results before anything is saved. The report itself is not stored.",
+      "newMarker": "New marker",
+      "pickFailed": "Could not open that file.",
+      "reading": "Reading your report...",
+      "saveCount_one": "Save {{count}} result",
+      "saveCount_other": "Save {{count}} results",
+      "saved_one": "Saved {{count}} result",
+      "saved_other": "Saved {{count}} results",
+      "scanFailed": "Could not read that report.",
+      "takePhoto": "Take a photo",
+      "tooLarge": "That PDF is too large to read (limit 14 MB).",
+      "editHint": "Check the values against your report. Tap a value to correct it. Each result is saved with the unit and reference range the report printed.",
+      "valueFor": "Result for {{name}}",
+      "deleteTitle": "Delete imported results",
+      "deleteMessage": "Delete every result that was imported from a report, and any marker of your own left empty? Results you entered yourself are kept.",
+      "deleted_one": "Deleted {{count}} imported result",
+      "deleted_other": "Deleted {{count}} imported results",
+      "deleteFailed": "Could not delete the imported results",
+      "saveFailed": "Could not save the report. Nothing was saved.",
+      "warning": {
+        "unit": "Your earlier results use {{earlierUnit}}, but this report uses {{reportUnit}}. Units are not converted."
+      }
+    },
+    "moreActions": "More actions",
+    "deleteMarker": "Delete marker and all results",
+    "deleteMarkerTitle": "Delete marker",
+    "deleteMarkerMessage": "Delete {{name}} and all of its results? This cannot be undone.",
+    "deleteMarkerFailed": "Could not delete the marker"
+  },
+  "waterLog": {
+    "title": "Drinks",
+    "history": "History",
+    "open": "Drink history",
+    "drink": "Drink",
+    "linkedDrink": "Linked to a food entry",
+    "noWaterCredit": "No water",
+    "deleteTitle": "Delete drink",
+    "deleteMessage": "Delete this drink?",
+    "deleteLinkedMessage": "Delete this drink? Its food diary entry is deleted too.",
+    "deleteDrink": "Delete {{name}} at {{time}}",
+    "deleteFailed": "Could not delete that drink",
+    "loading": "Loading drinks...",
+    "loadFailed": "Could not load drinks",
+    "loadFailedSubtitle": "Check your connection and try again.",
+    "emptyTitle": "No drinks logged",
+    "emptySubtitle": "Drinks you log with the water buttons, a drink preset, the watch or a synced app show up here."
   }
 }

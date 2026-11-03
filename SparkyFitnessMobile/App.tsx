@@ -43,6 +43,7 @@ import {
   SafeFoodsLibrary,
   SafeMealsLibrary,
   SafeMealPlans,
+  SafeLabReportImport,
   SafeLabResultAdd,
   SafeLabResultDetail,
   SafeLabResults,
@@ -63,6 +64,7 @@ import {
   SafeWorkoutPlans,
   SafeWorkoutPlanForm,
   SafeWaterContainers,
+  SafeWaterLog,
   SafeWaterContainerEdit,
   SafeActionTags,
   SafeActionTagForm,
@@ -694,6 +696,15 @@ function AppContent() {
             })}
           />
           <Stack.Screen
+            name="LabReportImport"
+            component={SafeLabReportImport}
+            options={createStackScreenOptions(t('screens.labReportImport', { defaultValue: 'Import report' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
             name="WatchRunLive"
             component={SafeWatchRunLive}
             options={createStackScreenOptions(t('screens.watchRunLive', { defaultValue: 'On your watch' }), { headerBackButtonDisplayMode: 'minimal' })}
@@ -717,6 +728,11 @@ function AppContent() {
             name="WaterContainers"
             component={SafeWaterContainers}
             options={createStackScreenOptions(t('waterContainers.title', { defaultValue: 'Water containers' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="WaterLog"
+            component={SafeWaterLog}
+            options={createStackScreenOptions(t('waterLog.title', { defaultValue: 'Drinks' }), { headerBackTitle: t('navigation.dashboard', { defaultValue: 'Dashboard' }) })}
           />
           <Stack.Screen
             name="WaterContainerEdit"

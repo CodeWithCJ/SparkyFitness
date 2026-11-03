@@ -90,36 +90,3 @@ export function alternativeReasonLabel(
       return t('exercise.alternatives.reasons.inLibrary', 'In your library');
   }
 }
-
-function toStringArray(value: unknown): string[] | null {
-  if (value == null) return null;
-  if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === 'string');
-  }
-  if (typeof value === 'string') {
-    try {
-      return toStringArray(JSON.parse(value));
-    } catch {
-      return value.trim() ? [value.trim()] : [];
-    }
-  }
-  return null;
-}
-
-/**
- * `POST /freeexercisedb/add` returns the newly created library row as stored,
- * with the array columns still JSON-encoded strings. Normalize them before
- * the exercise reaches a workout draft, whose consumers (thumbnails, guided
- * narration) expect arrays.
- */
-export function normalizeImportedExercise(exercise: Exercise): Exercise {
-  const raw = exercise as Exercise & Record<string, unknown>;
-  return {
-    ...exercise,
-    images: toStringArray(raw.images),
-    instructions: toStringArray(raw.instructions),
-    equipment: toStringArray(raw.equipment),
-    primary_muscles: toStringArray(raw.primary_muscles),
-    secondary_muscles: toStringArray(raw.secondary_muscles),
-  };
-}

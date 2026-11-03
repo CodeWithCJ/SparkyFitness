@@ -185,6 +185,22 @@ describe('formatting', () => {
   });
 });
 
+describe('sameLabUnit', () => {
+  it('ignores case, spaces and the micro sign', () => {
+    expect(sameLabUnit('MG/DL ', 'mg/dL')).toBe(true);
+    expect(sameLabUnit('µg/dL', 'ug/dL')).toBe(true);
+  });
+
+  it('treats spellings of the same unit as equal', () => {
+    expect(sameLabUnit('uIU/mL', 'mIU/L')).toBe(true);
+    expect(sameLabUnit('K/uL', 'x10E3/uL')).toBe(true);
+  });
+
+  it('keeps different units apart', () => {
+    expect(sameLabUnit('mmol/L', 'mg/dL')).toBe(false);
+  });
+});
+
 describe('sameLabUnit and mEq/L', () => {
   it('treats mEq/L as mmol/L for a monovalent ion only', () => {
     expect(sameLabUnit('mEq/L', 'mmol/L', 'sodium')).toBe(true);

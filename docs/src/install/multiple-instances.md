@@ -39,13 +39,15 @@ Each of these has a value to change or turn off (`server.strategy`, `server.podD
 
 Have your load balancer check `/api/health/ready` on each instance and send traffic only to instances that answer 200. It answers 503 once that instance has been unable to reach the database for more than about 10 seconds, and while it shuts down, so traffic moves to the others. While a backup is being restored it answers 200 with status `RESTORING`, so a container health check does not restart the server partway through the restore. `/api/health` only says the process is running.
 
-## Run scheduled jobs on one instance
+## Scheduled jobs
 
-Scheduled jobs (nightly cleanup, hourly integration syncs, automatic backups, Open Food Facts syncing and the demo reset) run on every instance by default. Set `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` on every instance except one, so exactly one instance runs them. With `SPARKY_FITNESS_LOG_LEVEL` set to `INFO` or `DEBUG`, each instance with jobs disabled says so in its startup log.
+Scheduled jobs (nightly cleanup, hourly integration syncs, automatic backups, Open Food Facts syncing and the demo reset) need no setup: every instance schedules them, and at each scheduled time the first instance to claim the run in the database runs it while the others skip it. If that instance stops, the next run goes to whichever instance is up.
 
-With Kubernetes, the Helm chart does this for you when `server.replicas` is above 1; change it in your values, not with `kubectl scale`. Without the chart, run the jobs instance as its own Deployment with `replicas: 1` and the `Recreate` strategy, sharing the same ConfigMap and Secrets, and set the variable on the Deployment you scale. With Docker Compose, keep scaling `sparkyfitness-server`, the service the frontend sends requests to, and add `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS: "true"` under its `environment:`. Then add a copy of that service under a new name, such as `sparkyfitness-jobs`, without the variable, to run the jobs. Do not put it in the shared `.env` file, or no instance will run the jobs.
+You can still keep scheduled jobs on one instance by setting `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` on every other instance. With `SPARKY_FITNESS_LOG_LEVEL` set to `INFO` or `DEBUG`, each instance with jobs disabled says so in its startup log.
 
-A backup schedule saved in the admin settings reaches the jobs instance within 5 minutes.
+With Kubernetes, the Helm chart still does this when `server.replicas` is above 1; change it in your values, not with `kubectl scale`. Without the chart, run the jobs instance as its own Deployment with `replicas: 1` and the `Recreate` strategy, sharing the same ConfigMap and Secrets, and set the variable on the Deployment you scale. With Docker Compose, keep scaling `sparkyfitness-server`, the service the frontend sends requests to, and add `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS: "true"` under its `environment:`. Then add a copy of that service under a new name, such as `sparkyfitness-jobs`, without the variable, to run the jobs. Do not put it in the shared `.env` file, or no instance will run the jobs.
+
+A backup schedule saved in the admin settings reaches every instance within 5 minutes.
 
 ## Restoring a backup: scale to one instance first
 

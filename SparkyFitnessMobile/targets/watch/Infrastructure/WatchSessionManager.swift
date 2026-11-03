@@ -898,6 +898,12 @@ final class WatchSessionManager: NSObject, ObservableObject {
                 endsAt: endsAt
             ))
         }
+        // A weight, reps or distance typed here reaches the phone before the
+        // set is logged, so both show the same number. Held until the wearer
+        // stops adjusting (see `queueValueEdit`).
+        workoutStore.onSetValueEditedHere = { [weak self] setId, weightKg, reps, distanceKm in
+            self?.queueValueEdit(setId: setId, weightKg: weightKg, reps: reps, distanceKm: distanceKm)
+        }
         // A hold countdown or stopwatch started here starts the phone's too.
         workoutStore.onSetTimerStartedHere = { [weak self] setId, startedAt in
             guard let self, let sessionId = self.workoutStore.plan?.sessionId else { return }
@@ -1298,6 +1304,68 @@ final class WatchSessionManager: NSObject, ObservableObject {
             update.revision, update.targets, update.completedSetIds, update.rest,
             update.armedAt, ContextPayloadMapper.setTimers(from: payload), update.prSetIds
         )
+    }
+
+    /// Typed values waiting to go to the phone, one entry per set. The crown
+    /// commits after every short pause, and each message makes the phone send
+    /// its whole target list back, which the watch then rebuilds and saves
+    /// while the wearer is still turning. So the values are held until the
+    /// wearer has stopped for `valueEditQuietNanos`, then sent once, with the
+    /// fields of several edits merged.
+    private struct PendingValueEdit {
+        var sessionId: String
+        var armedAt: Date?
+        var at: Date
+        var weightKg: Double? = nil
+        var reps: Double? = nil
+        var distanceKm: Double? = nil
+    }
+
+    private var pendingValueEdits: [String: PendingValueEdit] = [:]
+    private var valueEditFlush: Task<Void, Never>?
+    private static let valueEditQuietNanos: UInt64 = 1_500_000_000
+
+    private func queueValueEdit(setId: String, weightKg: Double?, reps: Double?, distanceKm: Double?) {
+        guard let plan = workoutStore.plan else { return }
+        let sessionId = plan.sessionId
+        // An edit held from an earlier arm of this workout is not merged into
+        // one from the current arm.
+        var edit = pendingValueEdits[setId].flatMap {
+            $0.sessionId == sessionId && Self.sameArm($0.armedAt, plan.armedAt) ? $0 : nil
+        } ?? PendingValueEdit(sessionId: sessionId, armedAt: plan.armedAt, at: Date())
+        if let weightKg { edit.weightKg = weightKg }
+        if let reps { edit.reps = reps }
+        if let distanceKm { edit.distanceKm = distanceKm }
+        edit.at = Date()
+        pendingValueEdits[setId] = edit
+        valueEditFlush?.cancel()
+        valueEditFlush = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: Self.valueEditQuietNanos)
+            guard !Task.isCancelled else { return }
+            self?.flushValueEdits()
+        }
+    }
+
+    /// Sends what is held. An edit for a workout, or an arm of it, that is no
+    /// longer the live one is dropped.
+    private func flushValueEdits() {
+        let edits = pendingValueEdits
+        pendingValueEdits = [:]
+        for (setId, edit) in edits {
+            guard let plan = workoutStore.plan,
+                  plan.sessionId == edit.sessionId,
+                  Self.sameArm(edit.armedAt, plan.armedAt) else { continue }
+            transfer(OutboundPayloads.workoutEditSetValues(
+                sessionId: edit.sessionId,
+                clientId: UUID().uuidString,
+                setId: setId,
+                weightKg: edit.weightKg,
+                reps: edit.reps,
+                distanceKm: edit.distanceKm,
+                at: edit.at,
+                armedAt: edit.armedAt
+            ))
+        }
     }
 
     /// The phone added, removed or regrouped exercises or sets mid-workout.

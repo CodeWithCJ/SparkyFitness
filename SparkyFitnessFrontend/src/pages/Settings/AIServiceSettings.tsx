@@ -29,7 +29,7 @@ import { GlobalOverrideBanner } from '@/components/ai/GlobalOverrideBanner';
 import { ServiceForm } from '@/components/ai/ServiceForm';
 import { VoiceInputSettings } from '@/components/ai/VoiceInputSettings';
 import { UserServiceListItem } from '@/components/ai/UserServiceListItem';
-import { getModelOptions, requiresApiKey } from '@/utils/aiServiceUtils';
+import { isCustomModelName, requiresApiKey } from '@/utils/aiServiceUtils';
 import {
   useAIServices,
   useActiveAIService,
@@ -578,11 +578,10 @@ const AIServiceSettings = () => {
     // Clear any prior service's test result so it never lingers on this form.
     resetTestStatus();
     setEditingService(service.id ?? null);
-    const isCustomModel = service.model_name
-      ? !getModelOptions(service.service_type ?? '').includes(
-          service.model_name
-        )
-      : false;
+    const isCustomModel = isCustomModelName(
+      service.service_type ?? '',
+      service.model_name
+    );
     setEditData({
       service_name: service.service_name,
       service_type: service.service_type,

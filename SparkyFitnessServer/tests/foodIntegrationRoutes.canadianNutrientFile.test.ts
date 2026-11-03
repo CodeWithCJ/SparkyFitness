@@ -8,8 +8,7 @@ import express, {
 } from 'express';
 
 vi.mock('../services/cnfBulkImportService.js', () => ({
-  importCnfFromZipBuffer: vi.fn(),
-  importCnfFromUrl: vi.fn(),
+  startCnfImport: vi.fn(),
   getCnfImportStatus: vi.fn(),
   deleteCnfLibraryFoods: vi.fn(),
 }));
@@ -34,8 +33,7 @@ vi.mock('../config/logging.js', () => ({
 }));
 
 import {
-  importCnfFromZipBuffer,
-  importCnfFromUrl,
+  startCnfImport,
   getCnfImportStatus,
   deleteCnfLibraryFoods,
 } from '../services/cnfBulkImportService.js';
@@ -62,7 +60,7 @@ describe('foodIntegrationRoutes - Canadian Nutrient File endpoints', () => {
 
   describe('GET /api/foods/canadian-nutrient-file/status', () => {
     it('returns the bulk import status', async () => {
-      vi.mocked(getCnfImportStatus).mockReturnValueOnce({
+      vi.mocked(getCnfImportStatus).mockResolvedValueOnce({
         userId: 'test-user-id',
         isRunning: false,
         status: 'completed',
@@ -85,10 +83,8 @@ describe('foodIntegrationRoutes - Canadian Nutrient File endpoints', () => {
 
   describe('POST /api/foods/canadian-nutrient-file/bulk-import', () => {
     it('handles file upload with wait=true', async () => {
-      vi.mocked(importCnfFromZipBuffer).mockResolvedValueOnce({
-        imported: 10,
-        updated: 0,
-        total: 10,
+      vi.mocked(startCnfImport).mockResolvedValueOnce({
+        done: Promise.resolve({ imported: 10, updated: 0, total: 10 }),
       });
 
       const res = await request(app)
@@ -100,20 +96,18 @@ describe('foodIntegrationRoutes - Canadian Nutrient File endpoints', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body.message).toBe('Bulk import completed successfully');
       expect(res.body.imported).toBe(10);
-      expect(importCnfFromZipBuffer).toHaveBeenCalledWith(
+      expect(startCnfImport).toHaveBeenCalledWith(
         'test-user-id',
-        expect.any(Buffer),
+        { zip: expect.any(Buffer) },
         { syncPastEntries: false, language: 'en' }
       );
     });
 
     it('handles URL import asynchronously by default', async () => {
-      vi.mocked(importCnfFromUrl).mockResolvedValueOnce({
-        imported: 5690,
-        updated: 0,
-        total: 5690,
+      vi.mocked(startCnfImport).mockResolvedValueOnce({
+        done: Promise.resolve({ imported: 5690, updated: 0, total: 5690 }),
       });
-      vi.mocked(getCnfImportStatus).mockReturnValueOnce({
+      vi.mocked(getCnfImportStatus).mockResolvedValueOnce({
         userId: 'test-user-id',
         isRunning: true,
         status: 'running',
@@ -134,11 +128,22 @@ describe('foodIntegrationRoutes - Canadian Nutrient File endpoints', () => {
 
       expect(res.statusCode).toBe(202);
       expect(res.body.message).toBe('Bulk import started');
-      expect(importCnfFromUrl).toHaveBeenCalledWith(
+      expect(res.body.status.isRunning).toBe(true);
+      expect(startCnfImport).toHaveBeenCalledWith(
         'test-user-id',
-        'https://example.com/cnf.zip',
+        { url: 'https://example.com/cnf.zip' },
         { syncPastEntries: true, language: 'fr' }
       );
+    });
+
+    it('returns 409 while an import runs on any instance', async () => {
+      vi.mocked(startCnfImport).mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .post('/api/foods/canadian-nutrient-file/bulk-import')
+        .send({});
+
+      expect(res.statusCode).toBe(409);
     });
 
     it('returns 400 for non-positive or NaN maxFoods', async () => {
