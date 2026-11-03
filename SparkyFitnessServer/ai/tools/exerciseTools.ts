@@ -63,6 +63,15 @@ import { normalizeActionArgs, normalizeDayKeywords } from './dates.js';
 // silently discarded (see #3341 review).
 const SAFE_DISCARD_KEYS = new Set(['confirmed', 'start_date', 'end_date']);
 
+// Per-action extra drops: entry_id is meaningless for preset creation, so a
+// model echoing it from a diary-update action must not reject the create.
+// Scoped to create_workout_preset ON PURPOSE: dropping entry_id globally
+// would let log_exercise create a NEW entry when the model meant to update
+// an existing one (maintainer review on #3341).
+const PER_ACTION_DISCARD_KEYS: Record<string, Set<string>> = {
+  create_workout_preset: new Set(['entry_id']),
+};
+
 const VALID_ACTIONS = [
   'search_exercises',
   'create_exercise',
@@ -847,17 +856,24 @@ Workout formats (workout_format, default standard) drive the in-app timer:
         // Default missing entry_date to today's date string for logging actions.
         // If a date arrived under a cross-action key (start_date / end_date
         // belong to get_exercise_progress), the intended meaning for a
-        // logging action is unambiguous: remap a single misfiled date to
-        // entry_date (mirrors foodTools). When BOTH are present the meaning
-        // is ambiguous — do NOT default to today (that would silently file
-        // the entry on the wrong day); leave entry_date unset so validation
-        // reports the missing field after the safe-key salvage drops the
-        // cross-action dates.
-        const loggingActions = ['log_exercise', 'log_workout_preset'];
+        // date-consuming action (logging or entry update) is unambiguous:
+        // remap a single misfiled date to entry_date (mirrors foodTools).
+        // When BOTH are present the meaning is ambiguous — do NOT default to
+        // today (that would silently file the entry on the wrong day). For
+        // log actions entry_date is then reported missing by validation; for
+        // update_exercise_entry the dates are kept OUT of the salvage so the
+        // unrecognized-key error surfaces instead of the entry silently not
+        // moving (maintainer review on #3341).
+        const dateRemapActions = [
+          'log_exercise',
+          'log_workout_preset',
+          'update_exercise_entry',
+        ];
+        let ambiguousMisfiledDates = false;
         if (
           normalized.entry_date === undefined &&
           typeof normalized.action === 'string' &&
-          loggingActions.includes(normalized.action)
+          dateRemapActions.includes(normalized.action)
         ) {
           const misfiledDates = [normalized.start_date, normalized.end_date];
           const supplied = misfiledDates.filter(
@@ -871,7 +887,12 @@ Workout formats (workout_format, default standard) drive the in-app timer:
               'info',
               `[exerciseTools] Remapped misfiled date '${supplied[0]}' to entry_date for ${normalized.action}`
             );
-          } else if (supplied.length === 0) {
+          } else if (supplied.length === 2) {
+            ambiguousMisfiledDates = true;
+          } else if (
+            normalized.action === 'log_exercise' ||
+            normalized.action === 'log_workout_preset'
+          ) {
             normalized.entry_date = todayInZone(tz);
           }
         }
@@ -891,8 +912,14 @@ Workout formats (workout_format, default standard) drive the in-app timer:
           const badRootKeys = parsed.error.issues.flatMap((i) =>
             i.code === 'unrecognized_keys' && i.path.length === 0 ? i.keys : []
           );
-          const droppableKeys = badRootKeys.filter((key) =>
-            SAFE_DISCARD_KEYS.has(key)
+          const droppableKeys = badRootKeys.filter(
+            (key) =>
+              (SAFE_DISCARD_KEYS.has(key) &&
+                !(
+                  ambiguousMisfiledDates &&
+                  (key === 'start_date' || key === 'end_date')
+                )) ||
+              PER_ACTION_DISCARD_KEYS[normalized.action as string]?.has(key)
           );
           if (droppableKeys.length > 0) {
             for (const key of droppableKeys) delete normalized[key];

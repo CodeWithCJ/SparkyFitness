@@ -461,6 +461,45 @@ describe('log_exercise', () => {
     expect(exerciseService.createExerciseEntry).not.toHaveBeenCalled();
   });
 
+  it('update_exercise_entry remaps a single misfiled start_date to entry_date and moves the entry', async () => {
+    vi.mocked(exerciseService.updateExerciseEntry).mockResolvedValue({
+      id: ENTRY_ID,
+    });
+
+    await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'update_exercise_entry',
+        entry_id: ENTRY_ID,
+        // Cross-action key from get_exercise_progress; for an entry update
+        // the intended date is unambiguous, so the entry must move.
+        start_date: '2026-06-15',
+      },
+      opts
+    );
+
+    expect(exerciseService.updateExerciseEntry).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      ENTRY_ID,
+      expect.objectContaining({ entry_date: '2026-06-15' })
+    );
+  });
+
+  it('update_exercise_entry errors (does not silently skip the date) when both start_date and end_date are misfiled', async () => {
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'update_exercise_entry',
+        entry_id: ENTRY_ID,
+        start_date: '2026-06-15',
+        end_date: '2026-06-20',
+      },
+      opts
+    );
+
+    expect(result).toMatch(/^Error \[VALIDATION\]/);
+    expect(exerciseService.updateExerciseEntry).not.toHaveBeenCalled();
+  });
+
   it('logs by exercise_id with repository-shaped sets', async () => {
     vi.mocked(exerciseService.createExerciseEntry).mockResolvedValue({
       id: ENTRY_ID,
@@ -1146,6 +1185,47 @@ describe('workout presets', () => {
 
     expect(result).toMatch(/^Error \[VALIDATION\]/);
     expect(workoutPresetService.createWorkoutPreset).not.toHaveBeenCalled();
+  });
+
+  it('create_workout_preset drops an echoed entry_id (per-action discard)', async () => {
+    // entry_id belongs to update/delete_exercise_entry / rate_workout; a
+    // model can echo it onto a preset create. It is dropped ONLY for
+    // create_workout_preset — not globally (on log_exercise that would turn
+    // an intended update into a duplicate new entry).
+    vi.mocked(workoutPresetService.createWorkoutPreset).mockResolvedValue({
+      id: 9,
+      name: 'Leg Day',
+      exercises: [{}],
+    });
+
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'create_workout_preset',
+        name: 'Leg Day',
+        exercises: [{ exercise_id: EXERCISE_ID }],
+        entry_id: ENTRY_ID,
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '✅ Workout preset "Leg Day" created with 1 exercises.'
+    );
+  });
+
+  it('log_exercise does NOT drop an echoed entry_id (update intent must not become a new entry)', async () => {
+    const result = await tools.sparky_manage_exercise.execute!(
+      {
+        action: 'log_exercise',
+        exercise_id: EXERCISE_ID,
+        entry_id: ENTRY_ID,
+        entry_date: '2026-06-10',
+      },
+      opts
+    );
+
+    expect(result).toMatch(/^Error \[VALIDATION\]/);
+    expect(result).toContain('entry_id');
   });
 
   it('create_workout_preset builds sets and superset groups', async () => {
