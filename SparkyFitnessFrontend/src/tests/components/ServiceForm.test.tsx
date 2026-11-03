@@ -105,6 +105,29 @@ describe('ServiceForm — model validation', () => {
     expect(mockToast).not.toHaveBeenCalled();
   });
 
+  it('uses the standard custom-model toggle for OpenCode Go', () => {
+    const onFormDataChange = jest.fn();
+    renderWithClient(
+      <ServiceForm
+        formData={makeFormData({ service_type: 'opencode_go' })}
+        onFormDataChange={onFormDataChange}
+        onSubmit={jest.fn()}
+        onCancel={jest.fn()}
+        translationPrefix="settings.aiService.userSettings"
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole('switch', {
+        name: 'settings.aiService.userSettings.useCustomModel',
+      })
+    );
+
+    expect(onFormDataChange).toHaveBeenCalledWith({
+      showCustomModelInput: true,
+    });
+  });
+
   // Preset providers (openai, anthropic, ...) have a sensible server-side
   // default, so a blank model is allowed and must not block submission.
   it('allows a preset provider to submit without a model', () => {
@@ -183,7 +206,9 @@ describe('ServiceForm — test connection button', () => {
       onTestConnection?: (model: string) => void;
       testing?: boolean;
       testStatus?:
-        { state: 'success' } | { state: 'error'; message: string } | null;
+        | { state: 'success' }
+        | { state: 'error'; message: string; detail?: string }
+        | null;
     } = {}
   ) {
     const onSubmit = jest.fn();
@@ -271,6 +296,28 @@ describe('ServiceForm — test connection button', () => {
     });
     expect(
       utils.getByText('settings.aiService.test.failureTitle: Bad API key')
+    ).toBeTruthy();
+  });
+
+  it('appends the provider detail to the failure text, without a separate line', () => {
+    const utils = renderWithTest(
+      makeFormData({
+        service_type: 'opencode_go',
+        model_name: 'iceman-contributor-free',
+      }),
+      {
+        onTestConnection: jest.fn(),
+        testStatus: {
+          state: 'error',
+          message: 'settings.aiService.test.categories.upstream_error',
+          detail: 'model requires a privacy setting change',
+        },
+      }
+    );
+    expect(
+      utils.getByText(
+        'settings.aiService.test.failureTitle: settings.aiService.test.categories.upstream_error model requires a privacy setting change'
+      )
     ).toBeTruthy();
   });
 

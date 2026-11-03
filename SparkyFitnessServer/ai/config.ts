@@ -1,8 +1,15 @@
+import pkg from '../package.json' with { type: 'json' };
+
+// OpenCode asks clients to identify themselves rather than send a generic SDK name.
+const OPENCODE_GO_USER_AGENT = `${pkg.name}/${pkg.version} (https://github.com/CodeWithCJ/SparkyFitness)`;
+
 function getDefaultModel(serviceType?: string | null): string {
   switch (serviceType) {
     case 'openai':
     case 'openai_compatible':
       return 'gpt-4o-mini';
+    case 'opencode_go':
+      return 'glm-5.3-flash';
     case 'anthropic':
       return 'claude-sonnet-4-6';
     case 'google':
@@ -31,6 +38,8 @@ function getDefaultVisionModel(serviceType?: string | null): string {
     case 'openai':
     case 'openai_compatible':
       return 'gpt-4.1-mini';
+    case 'opencode_go':
+      return 'glm-5.3-flash';
     case 'anthropic':
       return 'claude-haiku-4-5';
     case 'google':
@@ -81,6 +90,8 @@ function getOpenAiCompatibleBaseUrl(
     case 'meta':
       // Muse Spark's OpenAI-compatible endpoint (auth is Bearer api_key).
       return 'https://api.meta.ai/v1';
+    case 'opencode_go':
+      return 'https://opencode.ai/inference/go/openai/v1';
     default:
       return customUrl ?? undefined;
   }
@@ -106,6 +117,7 @@ export { getDefaultModel };
 export { getDefaultVisionModel };
 export { getOpenAiCompatibleBaseUrl };
 export { getPerplexityPreset };
+export { OPENCODE_GO_USER_AGENT };
 export default {
   getDefaultModel,
   getDefaultVisionModel,

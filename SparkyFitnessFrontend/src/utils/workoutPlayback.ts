@@ -19,6 +19,7 @@ import {
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
 import type { Exercise } from '@/types/exercises';
 import { defaultSetForModality } from '@/constants/exercises';
+import { firstExerciseImage } from '@/utils/exercises';
 import { generateClientId } from '@/utils/generateClientId';
 
 export const DEFAULT_REST_SECONDS = 90;
@@ -401,7 +402,9 @@ export function createWorkoutPlaybackDraftFromPreset(
           exercise.exercise_name ||
           exercise.exercise?.name ||
           `Exercise ${exerciseIndex + 1}`,
-        image_url: exercise.image_url || exercise.exercise?.images?.[0],
+        image_url:
+          firstExerciseImage(exercise.image_url) ??
+          firstExerciseImage(exercise.exercise?.images),
         images: exercise.exercise?.images ?? undefined,
         instructions: exercise.exercise?.instructions ?? undefined,
         mechanic: exercise.exercise?.mechanic ?? null,
@@ -1084,7 +1087,7 @@ export function replaceExerciseInWorkoutDraft(
     exercise_id: exercise.id,
     exercise_name: exercise.name,
     modality,
-    image_url: exercise.images?.[0],
+    image_url: firstExerciseImage(exercise.images),
     images: exercise.images ?? undefined,
     instructions: exercise.instructions ?? undefined,
     notes: current.notes,

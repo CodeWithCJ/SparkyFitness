@@ -141,7 +141,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
     androidPermissions.push(...devAndroidPermissions);
   }
 
-  // Plugins only included in production builds
+  // Included in every build: dev builds need it for the debug CA overlay.
   const prodPlugins = ['./plugins/withNetworkSecurityConfig'];
   const nfcLinkPlugins = ['./plugins/withNfcTagIntent'];
 
@@ -361,7 +361,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
           widgets: [],
         },
       ],
-      ...(!isDev ? prodPlugins : []),
+      ...prodPlugins,
       ...(nfcLinks ? nfcLinkPlugins : []),
     ],
     extra: {
