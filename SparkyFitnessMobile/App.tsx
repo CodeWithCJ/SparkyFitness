@@ -64,6 +64,7 @@ import {
   SafeWorkoutPlans,
   SafeWorkoutPlanForm,
   SafeWaterContainers,
+  SafeWaterLog,
   SafeWaterContainerEdit,
   SafeActionTags,
   SafeActionTagForm,
@@ -727,6 +728,11 @@ function AppContent() {
             name="WaterContainers"
             component={SafeWaterContainers}
             options={createStackScreenOptions(t('waterContainers.title', { defaultValue: 'Water containers' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="WaterLog"
+            component={SafeWaterLog}
+            options={createStackScreenOptions(t('waterLog.title', { defaultValue: 'Drinks' }), { headerBackTitle: t('navigation.dashboard', { defaultValue: 'Dashboard' }) })}
           />
           <Stack.Screen
             name="WaterContainerEdit"

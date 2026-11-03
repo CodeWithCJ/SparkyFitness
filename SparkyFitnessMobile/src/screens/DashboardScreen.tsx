@@ -772,6 +772,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                       ? () => navigation.navigate('WaterContainers')
                       : undefined
                   }
+                  onPressHistory={() =>
+                    navigation.navigate('WaterLog', { date: selectedDate })
+                  }
                   onIncrement={isContainersLoaded ? incrementWater : undefined}
                   onDecrement={isContainersLoaded ? decrementWater : undefined}
                   disableDecrement={summary.waterConsumed <= 0}
