@@ -1,7 +1,16 @@
 import pg from 'pg';
 import { log } from '../config/logging.js';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { noteWorkActivity, throwIfWorkAborted } from '../utils/abortScope.js';
+import {
+  isInsideWorkScope,
+  noteWorkActivity,
+  throwIfWorkAborted,
+} from '../utils/abortScope.js';
+import {
+  isWriteRequest,
+  restoreInProgress,
+  restoredSinceAdmitted,
+} from '../services/restoreLock.js';
 import { requestConnectRetry, retryOnConnectionError } from './connectRetry.js';
 import { applicationName } from './applicationName.js';
 import { trackPoolProgress } from './poolBusy.js';
@@ -123,6 +132,7 @@ async function getClient(
     );
   }
   throwIfWorkAborted();
+  await refuseWorkDuringRestore();
   const store = dbContextStorage.getStore();
   const actualAuthUserId =
     authenticatedUserId || store?.authenticatedUserId || userId;
@@ -143,17 +153,47 @@ async function getClient(
 }
 async function getSystemClient() {
   throwIfWorkAborted();
+  await refuseWorkDuringRestore();
   const client = await retryOnConnectionError(
     async () => _getRawOwnerPool().connect(),
     requestConnectRetry
   );
   return unlessWorkAborted(client);
 }
+/**
+ * A job, sync or write request that was already running when a restore began
+ * (new write requests are refused at the door, in
+ * middleware/restoreWriteFence.ts) gets no further connection, so it cannot
+ * write into the restored database or race the uploads swap. A write request
+ * still running once the restored database is in gets none either, since it
+ * may write what it read before. A connection it already holds is ended by
+ * the swap.
+ */
+async function refuseWorkDuringRestore(
+  connection?: Pick<pg.ClientBase, 'query'>
+): Promise<void> {
+  if (!isInsideWorkScope() && !isWriteRequest()) return;
+  if (await restoreInProgress(connection)) {
+    throw new Error(
+      'A backup is being restored; this work stopped so it does not write into data being replaced.'
+    );
+  }
+  if (restoredSinceAdmitted()) {
+    throw new Error(
+      'A backup was restored while this request ran; it stopped so it does not write what it read before the restore.'
+    );
+  }
+}
 // The acquire can wait (queued behind a full pool, connect retries) past the
-// moment the work was stopped.
-function unlessWorkAborted<T extends { release(): void }>(client: T): T {
+// moment the work was stopped or a restore began.
+async function unlessWorkAborted<
+  T extends Pick<pg.PoolClient, 'release' | 'query'>,
+>(client: T): Promise<T> {
   try {
     throwIfWorkAborted();
+    // On the connection already held: asking the pool for another while
+    // holding this one can starve a full pool.
+    await refuseWorkDuringRestore(client);
   } catch (error) {
     client.release();
     throw error;

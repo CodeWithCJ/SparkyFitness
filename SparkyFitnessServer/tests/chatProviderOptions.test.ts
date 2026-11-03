@@ -135,13 +135,16 @@ describe('buildChatProviderOptions', () => {
     });
   });
 
-  it('keeps system instructions as the system role for OpenAI-compatible backends', () => {
-    expect(
-      buildChatProviderOptions('openai_compatible', 'user-1', 'gpt-5.6-sol')
-    ).toEqual({
-      openai: { systemMessageMode: 'system' },
-    });
-  });
+  it.each(['openai_compatible', 'opencode_go'])(
+    'keeps system instructions as the system role for %s',
+    (serviceType) => {
+      expect(
+        buildChatProviderOptions(serviceType, 'user-1', 'gpt-5.6-sol')
+      ).toEqual({
+        openai: { systemMessageMode: 'system' },
+      });
+    }
+  );
 
   it('turns on Anthropic automatic caching', () => {
     expect(

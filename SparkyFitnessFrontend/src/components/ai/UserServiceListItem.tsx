@@ -56,6 +56,7 @@ export const UserServiceListItem = ({
 
   if (isEditing) {
     const formData: UpdateAiServiceSettingsFormInput = {
+      id: service.id,
       service_name: editData.service_name || service.service_name,
       service_type: editData.service_type || service.service_type,
       api_key: editData.api_key || '',
@@ -65,7 +66,7 @@ export const UserServiceListItem = ({
         editData.is_active !== undefined
           ? editData.is_active
           : service.is_active,
-      model_name: editData.model_name || service.model_name || '',
+      model_name: editData.model_name ?? service.model_name ?? '',
       showCustomModelInput: editData.showCustomModelInput ?? false,
       custom_model_name: editData.custom_model_name ?? service.model_name ?? '',
       chat_tool_profile:

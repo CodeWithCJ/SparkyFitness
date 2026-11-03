@@ -112,6 +112,10 @@ final class WorkoutSessionStore: ObservableObject {
     /// The wearer skipped (`endsAt` nil) or moved the rest here, so the phone
     /// can do the same. Not fired when the rest follows the phone's.
     var onRestChangedHere: ((_ previousEndsAt: Date, _ endsAt: Date?) -> Void)?
+    /// The wearer typed a weight, reps or carry distance for a set here, so the
+    /// phone can show it before the set is logged. Only edits made on the
+    /// watch fire it, never values taken from the phone.
+    var onSetValueEditedHere: ((_ setId: String, _ weightKg: Double?, _ reps: Double?, _ distanceKm: Double?) -> Void)?
     /// A hold countdown or stopwatch was started on the watch (not copied from
     /// the phone), so the phone can start its own from the same moment.
     var onSetTimerStartedHere: ((_ setId: String, _ startedAt: Date) -> Void)?
@@ -735,6 +739,7 @@ final class WorkoutSessionStore: ObservableObject {
         if let distanceKm { values.distanceKm = distanceKm }
         editedValues[setId] = values
         persistSnapshot(reportedEnergyKcal: nil)
+        onSetValueEditedHere?(setId, weightKg, reps, distanceKm)
     }
 
     /// Last session's time for a set, to show in gray before the stopwatch

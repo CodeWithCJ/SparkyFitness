@@ -1,4 +1,4 @@
-import cron, { type ScheduledTask } from 'node-cron';
+import { scheduleJob, type ScheduledTask } from './scheduledJobs.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
 import withingsServiceCentral from './withingsService.js';
 import garminService from './garminService.js';
@@ -302,9 +302,11 @@ export const runProviderSync = async (
 export const scheduleProviderSync = (
   config: ProviderSyncConfig
 ): ScheduledTask => {
-  // Returning the run lets noOverlap skip a tick while the previous pass over
-  // every user is still going, so two passes never sync the same account at once.
-  return cron.schedule(
+  // Returning the run lets noOverlap skip a tick while this instance's previous
+  // pass is still going; a pass on another instance skips the accounts this
+  // one is syncing, since each sync claims its account.
+  return scheduleJob(
+    `provider-sync:${config.name.toLowerCase().replace(/\s+/g, '-')}`,
     config.cronExpression ?? '0 * * * *',
     () => runProviderSync(config),
     { noOverlap: true }

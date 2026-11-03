@@ -823,7 +823,11 @@ describe('providerSyncScheduler', () => {
     expect(cron.schedule).toHaveBeenCalledWith(
       '0 * * * *',
       expect.any(Function),
-      { noOverlap: true }
+      expect.objectContaining({
+        name: 'provider-sync:fitbit',
+        noOverlap: true,
+        distributed: true,
+      })
     );
   });
 
