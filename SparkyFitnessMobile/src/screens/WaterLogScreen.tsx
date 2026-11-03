@@ -1,6 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
+  AppState,
   FlatList,
   Pressable,
   RefreshControl,
@@ -62,7 +63,9 @@ const WaterLogScreen: React.FC<WaterLogScreenProps> = ({ route }) => {
     '--color-icon-danger',
   ]) as [string, string, string];
   const [refreshing, setRefreshing] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingIds, setDeletingIds] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
 
   const { preferences } = usePreferences();
   const timezone =
@@ -75,7 +78,18 @@ const WaterLogScreen: React.FC<WaterLogScreenProps> = ({ route }) => {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: waterIntakeLogQueryKey(date),
     queryFn: () => fetchWaterIntakeLog(date),
+    // Drinks logged from native code (shortcut, Quick Settings tile, widgets)
+    // never touch this cache, and staleTime is Infinity: re-read when the
+    // screen opens and when the app returns to the front.
+    refetchOnMount: 'always',
   });
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refetch();
+    });
+    return () => subscription.remove();
+  }, [refetch]);
   const entries = data ?? [];
 
   const header = useScreenHeader({
@@ -102,7 +116,7 @@ const WaterLogScreen: React.FC<WaterLogScreenProps> = ({ route }) => {
   };
 
   const deleteEntry = async (entry: WaterIntakeLogEntry) => {
-    setDeletingId(entry.id);
+    setDeletingIds((prev) => new Set(prev).add(entry.id));
     try {
       await deleteWaterIntakeLogEntry(entry.id);
     } catch {
@@ -113,7 +127,11 @@ const WaterLogScreen: React.FC<WaterLogScreenProps> = ({ route }) => {
         }),
       });
     } finally {
-      setDeletingId(null);
+      setDeletingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(entry.id);
+        return next;
+      });
       // A linked drink takes its food entry with it, so the food caches
       // refresh too, not only the water ones.
       invalidateFoodCache(queryClient, date);
@@ -204,10 +222,10 @@ const WaterLogScreen: React.FC<WaterLogScreenProps> = ({ route }) => {
         {manual ? (
           <Pressable
             onPress={() => confirmDelete(item)}
-            disabled={deletingId === item.id}
+            disabled={deletingIds.has(item.id)}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             className="ml-3 p-1"
-            style={deletingId === item.id ? { opacity: 0.4 } : undefined}
+            style={deletingIds.has(item.id) ? { opacity: 0.4 } : undefined}
             accessibilityRole="button"
             accessibilityLabel={t('waterLog.deleteDrink', {
               defaultValue: 'Delete {{name}} at {{time}}',

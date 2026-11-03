@@ -1,6 +1,6 @@
 import React from 'react';
-import { Alert } from 'react-native';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Alert, AppState, type AppStateStatus } from 'react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { WaterIntakeLogEntry } from '@workspace/shared';
 import WaterLogScreen from '../../src/screens/WaterLogScreen';
@@ -63,10 +63,11 @@ function entry(overrides: Partial<WaterIntakeLogEntry>): WaterIntakeLogEntry {
   };
 }
 
-function renderScreen() {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false } },
-  });
+function renderScreen(
+  queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+  })
+) {
   const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
   const utils = render(
     <QueryClientProvider client={queryClient}>
@@ -86,8 +87,21 @@ function renderScreen() {
 }
 
 describe('WaterLogScreen', () => {
+  let onAppStateChange: (state: AppStateStatus) => void = () => {};
+  let appState: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    appState = jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((_, cb) => {
+        onAppStateChange = cb;
+        return { remove: jest.fn() };
+      });
+  });
+
+  afterEach(() => {
+    appState.mockRestore();
   });
 
   it("lists the day's drinks with time, name, amount and source", async () => {
@@ -166,7 +180,15 @@ describe('WaterLogScreen', () => {
       queryKey: ['waterIntakeLog', '2026-11-02'],
     });
 
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryState(['waterIntakeLog', '2026-11-02'])?.status
+      ).toBe('error')
+    );
+    // React Query notifies observers on a zero-delay timer; let it commit.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     expect(queryByText('Could not load drinks')).toBeNull();
     expect(await findAllByTestId('water-log-row')).toHaveLength(1);
   });
@@ -175,5 +197,77 @@ describe('WaterLogScreen', () => {
     mockFetch.mockRejectedValue(new Error('offline'));
     const { findByText } = renderScreen();
     expect(await findByText('Could not load drinks')).toBeTruthy();
+  });
+
+  it('keeps a row disabled while its delete runs after another delete finishes', async () => {
+    mockFetch.mockResolvedValue([
+      entry({ id: 'log-1' }),
+      entry({ id: 'log-2', logged_at: '2026-11-02T10:05:00.000Z' }),
+    ]);
+    let resolveFirst!: () => void;
+    mockDelete
+      .mockImplementationOnce(
+        () => new Promise<void>((resolve) => (resolveFirst = resolve))
+      )
+      .mockImplementationOnce(() => new Promise<void>(() => {}));
+    const alert = jest.spyOn(Alert, 'alert');
+    const { findByLabelText, getByLabelText } = renderScreen();
+
+    const confirmLast = () => {
+      const buttons = alert.mock.calls[alert.mock.calls.length - 1][2]!;
+      buttons.find((b) => b.style === 'destructive')!.onPress!();
+    };
+    fireEvent.press(await findByLabelText('Delete Glass at 09:15'));
+    confirmLast();
+    fireEvent.press(getByLabelText('Delete Glass at 10:05'));
+    confirmLast();
+    await waitFor(() => expect(mockDelete).toHaveBeenCalledTimes(2));
+
+    resolveFirst();
+    // The first delete's cleanup refetches the day.
+    await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    // The second delete is still in flight: tapping it again must do nothing.
+    const before = alert.mock.calls.length;
+    fireEvent.press(getByLabelText('Delete Glass at 10:05'));
+    expect(alert.mock.calls.length).toBe(before);
+  });
+
+  it('refetches the drinks when the app returns to the foreground', async () => {
+    mockFetch.mockResolvedValueOnce([entry({})]);
+    const { findAllByTestId, queryAllByTestId } = renderScreen();
+    expect(await findAllByTestId('water-log-row')).toHaveLength(1);
+
+    mockFetch.mockResolvedValue([
+      entry({}),
+      entry({ id: 'log-2', logged_at: '2026-11-02T10:05:00.000Z' }),
+    ]);
+    act(() => onAppStateChange('background'));
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    act(() => onAppStateChange('active'));
+
+    await waitFor(() =>
+      expect(queryAllByTestId('water-log-row')).toHaveLength(2)
+    );
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('refetches cached drinks when the screen is opened again', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    });
+    mockFetch.mockResolvedValueOnce([entry({})]);
+    const first = renderScreen(queryClient);
+    expect(await first.findAllByTestId('water-log-row')).toHaveLength(1);
+    first.unmount();
+
+    mockFetch.mockResolvedValue([
+      entry({}),
+      entry({ id: 'log-2', logged_at: '2026-11-02T10:05:00.000Z' }),
+    ]);
+    const second = renderScreen(queryClient);
+    await waitFor(() =>
+      expect(second.queryAllByTestId('water-log-row')).toHaveLength(2)
+    );
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 });
