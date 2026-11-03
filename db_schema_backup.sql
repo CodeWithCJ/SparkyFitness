@@ -3183,6 +3183,29 @@ COMMENT ON COLUMN public.lab_markers.ref_range_low IS 'Default lower reference b
 
 
 --
+-- Name: lab_reports; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.lab_reports (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    lab_name text,
+    collected_on date,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    created_by_user_id uuid,
+    updated_by_user_id uuid
+);
+
+
+--
+-- Name: TABLE lab_reports; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.lab_reports IS 'One imported lab report (a PDF or photo read into results). The report itself is not stored, only which results came from it.';
+
+
+--
 -- Name: lab_results; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3204,6 +3227,7 @@ CREATE TABLE public.lab_results (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by_user_id uuid,
     updated_by_user_id uuid,
+    report_id uuid,
     CONSTRAINT lab_results_one_marker_check CHECK (((marker_key IS NOT NULL) <> (custom_marker_id IS NOT NULL))),
     CONSTRAINT lab_results_ref_range_check CHECK (((ref_range_low IS NULL) OR (ref_range_high IS NULL) OR (ref_range_low <= ref_range_high))),
     CONSTRAINT lab_results_source_check CHECK ((source = ANY (ARRAY['manual'::text, 'report'::text, 'fhir'::text]))),
@@ -3230,6 +3254,13 @@ COMMENT ON COLUMN public.lab_results.value_text IS 'Qualitative result (e.g. Neg
 --
 
 COMMENT ON COLUMN public.lab_results.source IS 'How the result got here: manual, report (imported from a PDF or photo) or fhir.';
+
+
+--
+-- Name: COLUMN lab_results.report_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.lab_results.report_id IS 'The imported report this result came from. NULL for results entered by hand. Deleting the report deletes the result.';
 
 
 --
@@ -6542,6 +6573,14 @@ ALTER TABLE ONLY public.lab_markers
 
 
 --
+-- Name: lab_reports lab_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_reports
+    ADD CONSTRAINT lab_reports_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: lab_results lab_results_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8042,6 +8081,20 @@ CREATE INDEX idx_injection_entries_user_id ON public.injection_entries USING btr
 --
 
 CREATE UNIQUE INDEX idx_lab_markers_user_name ON public.lab_markers USING btree (user_id, lower(name));
+
+
+--
+-- Name: idx_lab_reports_user_created; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_reports_user_created ON public.lab_reports USING btree (user_id, created_at DESC);
+
+
+--
+-- Name: idx_lab_results_report; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_lab_results_report ON public.lab_results USING btree (report_id) WHERE (report_id IS NOT NULL);
 
 
 --
@@ -9938,6 +9991,30 @@ ALTER TABLE ONLY public.lab_markers
 
 
 --
+-- Name: lab_reports lab_reports_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_reports
+    ADD CONSTRAINT lab_reports_created_by_user_id_fkey FOREIGN KEY (created_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: lab_reports lab_reports_updated_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_reports
+    ADD CONSTRAINT lab_reports_updated_by_user_id_fkey FOREIGN KEY (updated_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: lab_reports lab_reports_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_reports
+    ADD CONSTRAINT lab_reports_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
 -- Name: lab_results lab_results_created_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -9951,6 +10028,14 @@ ALTER TABLE ONLY public.lab_results
 
 ALTER TABLE ONLY public.lab_results
     ADD CONSTRAINT lab_results_custom_marker_id_fkey FOREIGN KEY (custom_marker_id) REFERENCES public.lab_markers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: lab_results lab_results_report_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.lab_results
+    ADD CONSTRAINT lab_results_report_id_fkey FOREIGN KEY (report_id) REFERENCES public.lab_reports(id) ON DELETE CASCADE;
 
 
 --
@@ -11649,6 +11734,12 @@ ALTER TABLE public.jwks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.lab_markers ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: lab_reports; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.lab_reports ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: lab_results; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -11922,6 +12013,13 @@ CREATE POLICY modify_policy ON public.injection_entries USING (public.has_medica
 --
 
 CREATE POLICY modify_policy ON public.lab_markers USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
+
+
+--
+-- Name: lab_reports modify_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY modify_policy ON public.lab_reports USING (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text))) WITH CHECK (((public.authenticated_user_id() = user_id) OR public.has_family_access(user_id, 'can_manage_checkin'::text)));
 
 
 --
@@ -12882,6 +12980,13 @@ CREATE POLICY select_policy ON public.injection_entries FOR SELECT USING (public
 --
 
 CREATE POLICY select_policy ON public.lab_markers FOR SELECT USING (public.has_checkin_read_access(user_id));
+
+
+--
+-- Name: lab_reports select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.lab_reports FOR SELECT USING (public.has_checkin_read_access(user_id));
 
 
 --
@@ -14277,6 +14382,13 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.jwks TO sparky_app;
 --
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.lab_markers TO sparky_app;
+
+
+--
+-- Name: TABLE lab_reports; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.lab_reports TO sparky_app;
 
 
 --
