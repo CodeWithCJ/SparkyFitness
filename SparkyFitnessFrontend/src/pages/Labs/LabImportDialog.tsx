@@ -32,6 +32,7 @@ import {
 import {
   LAB_REPORT_ACCEPT,
   LAB_REPORT_MAX_FILE_BYTES,
+  formatLabRange,
   labNumber,
   readFileAsBase64,
 } from './labFormat';
@@ -259,9 +260,7 @@ const LabImportDialog = ({
                           {t('labs.import.newMarker', 'New marker')} ·{' '}
                         </span>
                       )}
-                      {row.range.low !== null || row.range.high !== null
-                        ? `${row.range.low !== null ? labNumber(row.range.low) : ''} - ${row.range.high !== null ? labNumber(row.range.high) : ''}`
-                        : null}
+                      {formatLabRange(row.range.low, row.range.high, '')}
                     </div>
                     {row.blocked === 'duplicate' && (
                       <p className="text-xs text-destructive">
