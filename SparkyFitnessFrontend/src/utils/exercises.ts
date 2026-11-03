@@ -97,13 +97,22 @@ export function resolveExerciseImageSrc(image: string | undefined): string {
   return `/uploads/exercises/${image}`;
 }
 
+// A usable image is a path or URL, so values of one character or less and
+// values starting with "[" or '"' are rejected. That covers the '[]' sentinel
+// stored when an exercise has no images, and the lone "[" or '"' that earlier
+// web preset saves stored as a preset exercise's image_url (the first
+// character of JSON text read as if it were an array).
+function isUsableImage(value: string): boolean {
+  return value.length > 1 && !value.startsWith('[') && !value.startsWith('"');
+}
+
 /**
- * Return only the usable image entries from an exercise's `images` array.
+ * Return only the usable image entries from an exercise's `images` array (or
+ * the JSON text it is stored as, or a single stored image_url).
  *
- * Persisted `images` can contain unusable entries: empty strings, whitespace,
- * or the `'[]'` sentinel produced when an exercise has no images. Callers must
- * drive presence checks, `<img>` sources, and gallery navigation off the same
- * filtered list so they never disagree and render a broken thumbnail.
+ * Callers must drive presence checks, `<img>` sources, and gallery navigation
+ * off the same filtered list so they never disagree and render a broken
+ * thumbnail.
  */
 export function filterValidExerciseImages(
   images: string[] | string | undefined | null
@@ -111,20 +120,25 @@ export function filterValidExerciseImages(
   if (!images) return [];
   if (typeof images === 'string') {
     try {
-      const parsed = JSON.parse(images);
-      if (Array.isArray(parsed)) {
-        return filterValidExerciseImages(parsed);
+      const parsed: unknown = JSON.parse(images);
+      if (Array.isArray(parsed) || typeof parsed === 'string') {
+        return filterValidExerciseImages(parsed as string[] | string);
       }
     } catch {
-      // not JSON array
+      // not JSON
     }
     const trimmed = images.trim();
-    return trimmed !== '' && trimmed !== '[]' ? [trimmed] : [];
+    return isUsableImage(trimmed) ? [trimmed] : [];
   }
   if (!Array.isArray(images)) return [];
-  return images.filter((img) => {
-    if (typeof img !== 'string') return false;
-    const trimmed = img.trim();
-    return trimmed !== '' && trimmed !== '[]';
-  });
+  return images.filter(
+    (img) => typeof img === 'string' && isUsableImage(img.trim())
+  );
+}
+
+/** The first usable image of an exercise, or undefined when it has none. */
+export function firstExerciseImage(
+  images: string[] | string | undefined | null
+): string | undefined {
+  return filterValidExerciseImages(images)[0]?.trim();
 }

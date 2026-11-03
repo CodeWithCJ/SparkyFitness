@@ -1,6 +1,7 @@
 import { apiCall, HttpApiError } from '@/api/api';
 import {
   createExternalProvider,
+  updateExternalProvider,
   GOOGLE_HEALTH_SYNC_POLL_MS,
   GOOGLE_HEALTH_SYNC_TIMEOUT_MS,
   handleManualSyncGoogleHealth,
@@ -12,6 +13,40 @@ jest.mock('@/api/api', () => ({
 }));
 
 describe('createExternalProvider', () => {
+  it.each(['manual', 'hourly', 'daily'] as const)(
+    'persists the selected Hevy frequency %s',
+    async (frequency) => {
+      jest.mocked(apiCall).mockResolvedValue({
+        id: 'hevy-1',
+        provider_type: 'hevy',
+        is_active: true,
+      });
+
+      await createExternalProvider({
+        user_id: 'user-1',
+        provider_name: 'My Hevy',
+        provider_type: 'hevy',
+        app_key: 'test-key',
+        is_active: true,
+        sync_frequency: frequency,
+      });
+
+      expect(apiCall).toHaveBeenLastCalledWith('/external-providers', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: 'user-1',
+          provider_name: 'My Hevy',
+          provider_type: 'hevy',
+          app_id: null,
+          app_key: 'test-key',
+          is_active: true,
+          base_url: null,
+          sync_frequency: frequency,
+        }),
+      });
+    }
+  );
+
   it('keeps Open Food Facts contribution consent out of provider credentials', async () => {
     jest.mocked(apiCall).mockResolvedValue({
       id: 'provider-1',
@@ -43,6 +78,26 @@ describe('createExternalProvider', () => {
       }),
     });
   });
+});
+
+describe('updateExternalProvider', () => {
+  it.each(['manual', 'hourly', 'daily'] as const)(
+    'sends the selected Hevy frequency %s when editing',
+    async (frequency) => {
+      await updateExternalProvider('hevy-1', {
+        provider_type: 'hevy',
+        sync_frequency: frequency,
+      });
+
+      expect(apiCall).toHaveBeenLastCalledWith('/external-providers/hevy-1', {
+        method: 'PUT',
+        body: JSON.stringify({
+          provider_type: 'hevy',
+          sync_frequency: frequency,
+        }),
+      });
+    }
+  );
 });
 
 describe('handleManualSyncGoogleHealth', () => {

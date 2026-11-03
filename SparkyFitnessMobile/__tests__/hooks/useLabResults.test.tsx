@@ -1,20 +1,34 @@
 import { renderHook, waitFor } from '@testing-library/react-native';
-import { useSaveLabResult } from '../../src/hooks/useLabResults';
+import {
+  useDeleteLabImports,
+  useDeleteLabMarker,
+  useSaveLabResult,
+} from '../../src/hooks/useLabResults';
 import {
   createLabMarker,
   createLabResult,
+  deleteLabMarker,
   fetchLabMarkers,
 } from '../../src/services/api/labResultsApi';
+import {
+  deleteBuiltinMarkerResults,
+  deleteLabImports,
+} from '../../src/services/api/labReportApi';
 import { ApiError } from '../../src/services/api/errors';
 import { createQueryWrapper, createTestQueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/labResultsApi', () => ({
   createLabMarker: jest.fn(),
   createLabResult: jest.fn(),
+  deleteLabMarker: jest.fn(),
   deleteLabResult: jest.fn(),
   fetchLabMarkers: jest.fn(),
   fetchLabResults: jest.fn(),
   fetchLatestLabResults: jest.fn(),
+}));
+jest.mock('../../src/services/api/labReportApi', () => ({
+  deleteBuiltinMarkerResults: jest.fn(),
+  deleteLabImports: jest.fn(),
 }));
 jest.mock('../../src/hooks/useProfile', () => ({
   useProfile: () => ({ profile: undefined }),
@@ -113,5 +127,47 @@ describe('useSaveLabResult', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(createLabResult).not.toHaveBeenCalled();
+  });
+});
+
+describe('deleting lab data', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('deletes a built-in marker by clearing its results', async () => {
+    const { result } = renderHook(() => useDeleteLabMarker(), {
+      wrapper: createQueryWrapper(createTestQueryClient()),
+    });
+
+    result.current.mutate({ markerKey: 'hba1c' });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(deleteBuiltinMarkerResults).toHaveBeenCalledWith('hba1c');
+    expect(deleteLabMarker).not.toHaveBeenCalled();
+  });
+
+  it('deletes one of the user’s own markers outright', async () => {
+    const { result } = renderHook(() => useDeleteLabMarker(), {
+      wrapper: createQueryWrapper(createTestQueryClient()),
+    });
+
+    result.current.mutate({ markerId: 'm-1' });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(deleteLabMarker).toHaveBeenCalledWith('m-1');
+    expect(deleteBuiltinMarkerResults).not.toHaveBeenCalled();
+  });
+
+  it('deletes every imported report', async () => {
+    jest
+      .mocked(deleteLabImports)
+      .mockResolvedValue({ reports: 1, results: 3, markers: 0 });
+    const { result } = renderHook(() => useDeleteLabImports(), {
+      wrapper: createQueryWrapper(createTestQueryClient()),
+    });
+
+    result.current.mutate();
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(deleteLabImports).toHaveBeenCalled();
   });
 });

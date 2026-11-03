@@ -152,6 +152,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `mindfulness_sessions` | Logged mindfulness, meditation, and breathwork sessions |
 | `lab_markers` | A user's own lab markers with optional default reference range (built-in markers are defined in `@workspace/shared`) |
 | `lab_results` | Lab results with their own unit and reference range, for built-in or custom markers |
+| `lab_reports` | One imported lab report (a PDF or photo read into results); results link to it with `report_id`, and the report itself is not stored |
 | `user_custom_moods` | User-defined mood tags (icon/color) |
 | `medications` | Custom medication inventory lists |
 | `medication_schedules` | Reminders and schedules for medications |
@@ -225,6 +226,8 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `openfoodfacts_sync_queue` | Dormant revision-aware automatic upload state and retained history; unused by manual contributions |
 | `rate_limit` | Sign-in rate limit counters shared across server instances |
 | `system.rate_limit_windows` | Per-address limits of the server's own routes (`middleware/ipRateLimit.ts`) shared across server instances |
+| `system.scheduled_jobs` | The latest tick of each scheduled job and the server instance that ran it (`services/scheduledJobs.ts`), so each tick runs on one instance |
+| `system.bulk_imports` | Progress of the latest Canadian Nutrient File and Livsmedelsverket import per user (`services/bulkImports.ts`), so any server instance reports it |
 | `system.rls_policy_state` | The last `rls_policies.sql` apply (`utils/applyRlsPolicies.ts`), so startup skips an unchanged one |
 | `medication_types` | Medication categories lookup |
 | `medication_route_types` | Medication administration routes lookup |

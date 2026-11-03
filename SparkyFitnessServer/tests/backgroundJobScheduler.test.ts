@@ -50,7 +50,8 @@ describe('scheduleBackgroundJobs', () => {
     expect(mocks.demoReset).toHaveBeenCalledExactlyOnceWith();
     expect(mocks.schedule).toHaveBeenCalledExactlyOnceWith(
       '0 3 * * *',
-      expect.any(Function)
+      expect.any(Function),
+      expect.objectContaining({ name: 'session-cleanup', distributed: true })
     );
   });
 

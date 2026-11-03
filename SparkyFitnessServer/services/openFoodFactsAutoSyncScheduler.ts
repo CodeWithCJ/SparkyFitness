@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import { scheduleJob, type ScheduledTask } from './scheduledJobs.js';
 import { log } from '../config/logging.js';
 import { OPEN_FOOD_FACTS_AUTOMATIC_SYNC_ENABLED } from '../constants/openFoodFacts.js';
 import { processOpenFoodFactsAutoSyncBatch } from './openFoodFactsAutoSyncService.js';
@@ -9,8 +9,8 @@ const AUTO_SYNC_CRON = '*/30 * * * * *';
 // reconciliations do not continually supersede each other on active replicas.
 const ACTIVITY_WATCH_CRON = '15,45 * * * * *';
 let isRunning = false;
-let scheduledTask: ReturnType<typeof cron.schedule> | null = null;
-let activityWatcherTask: ReturnType<typeof cron.schedule> | null = null;
+let scheduledTask: ScheduledTask | null = null;
+let activityWatcherTask: ScheduledTask | null = null;
 let reconciliationVersion = 0;
 let reconciliationTail: Promise<void> = Promise.resolve();
 
@@ -46,7 +46,7 @@ async function runOpenFoodFactsAutoSync(): Promise<void> {
 
 function startOpenFoodFactsAutoSyncSchedule(): boolean {
   if (scheduledTask) return false;
-  scheduledTask = cron.schedule(AUTO_SYNC_CRON, () => {
+  scheduledTask = scheduleJob('openfoodfacts-auto-sync', AUTO_SYNC_CRON, () => {
     void runScheduledOpenFoodFactsAutoSync();
   });
   void runOpenFoodFactsAutoSync();
@@ -120,9 +120,14 @@ async function runOpenFoodFactsActivityWatcher(): Promise<void> {
 
 function ensureOpenFoodFactsActivityWatcher(): void {
   if (activityWatcherTask) return;
-  activityWatcherTask = cron.schedule(ACTIVITY_WATCH_CRON, () => {
-    void runOpenFoodFactsActivityWatcher();
-  });
+  activityWatcherTask = scheduleJob(
+    'openfoodfacts-activity-watch',
+    ACTIVITY_WATCH_CRON,
+    () => {
+      void runOpenFoodFactsActivityWatcher();
+    },
+    { local: true }
+  );
 }
 
 export async function refreshOpenFoodFactsAutoSyncSchedule(): Promise<void> {

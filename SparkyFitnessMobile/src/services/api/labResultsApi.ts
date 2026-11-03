@@ -82,3 +82,15 @@ export const deleteLabResult = (id: string): Promise<void> =>
     operation: 'delete lab result',
     method: 'DELETE',
   });
+
+/**
+ * Deletes one of the user's own markers and all of its results.
+ * DELETE /api/v2/lab-results/markers/:id
+ */
+export const deleteLabMarker = (id: string): Promise<void> =>
+  apiFetch<void>({
+    endpoint: `/api/v2/lab-results/markers/${encodeURIComponent(id)}`,
+    serviceName: SERVICE,
+    operation: 'delete lab marker',
+    method: 'DELETE',
+  });

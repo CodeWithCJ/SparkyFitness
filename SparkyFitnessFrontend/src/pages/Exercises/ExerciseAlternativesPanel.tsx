@@ -13,9 +13,9 @@ import type { Exercise } from '@/types/exercises';
 import {
   alternativeReasonLabel,
   exerciseFromAlternative,
-  normalizeImportedExercise,
   type ExerciseReplaceContext,
 } from '@/utils/exerciseAlternatives';
+import { normalizeExerciseArrays } from '@/utils/exerciseArrays';
 import {
   filterValidExerciseImages,
   resolveExerciseImageSrc,
@@ -79,7 +79,7 @@ const ExerciseAlternativesPanel = ({
         exercise,
         type: 'free-exercise-db',
       });
-      onSelect(normalizeImportedExercise(imported), 'external');
+      onSelect(normalizeExerciseArrays(imported), 'external');
     } catch {
       // apiCall has already shown the error toast.
     } finally {

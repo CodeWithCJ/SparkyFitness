@@ -183,6 +183,17 @@ async function upsertSleepEntry(
       // provider fallback branch) preserves a previously captured zone
       // instead of erasing it; clearing to NULL is only possible through
       // updateSleepEntry's explicit-null path.
+      //
+      // The measurements below are optional per source (one sends SpO2,
+      // another only HRV). A field the payload leaves out keeps its stored
+      // value, so a re-sync with less detail does not erase it; an explicit
+      // null still clears it.
+      const sentFields = Object.keys(sleepEntryData).filter(
+        (key) =>
+          sleepEntryData[key as keyof SleepEntryUpsertInput] !== undefined
+      );
+      const ifSent = (column: string, value: string) =>
+        `CASE WHEN '${column}' = ANY($28::text[]) THEN ${value} ELSE sleep_entries.${column} END`;
       const updateQuery = `
                 UPDATE sleep_entries
                 SET
@@ -197,18 +208,18 @@ async function upsertSleepEntry(
                     light_sleep_seconds = $11,
                     rem_sleep_seconds = $12,
                     awake_sleep_seconds = $13,
-                    average_spo2_value = $14,
-                    lowest_spo2_value = $15,
-                    highest_spo2_value = $16,
-                    average_respiration_value = $17,
-                    lowest_respiration_value = $18,
-                    highest_respiration_value = $19,
-                    awake_count = $20,
-                    avg_sleep_stress = $21,
-                    restless_moments_count = $22,
-                    avg_overnight_hrv = ${keepBiometrics ? 'COALESCE($23, sleep_entries.avg_overnight_hrv)' : '$23'},
-                    body_battery_change = $24,
-                    resting_heart_rate = ${keepBiometrics ? 'COALESCE($25, sleep_entries.resting_heart_rate)' : '$25'},
+                    average_spo2_value = ${ifSent('average_spo2_value', '$14')},
+                    lowest_spo2_value = ${ifSent('lowest_spo2_value', '$15')},
+                    highest_spo2_value = ${ifSent('highest_spo2_value', '$16')},
+                    average_respiration_value = ${ifSent('average_respiration_value', '$17')},
+                    lowest_respiration_value = ${ifSent('lowest_respiration_value', '$18')},
+                    highest_respiration_value = ${ifSent('highest_respiration_value', '$19')},
+                    awake_count = ${ifSent('awake_count', '$20')},
+                    avg_sleep_stress = ${ifSent('avg_sleep_stress', '$21')},
+                    restless_moments_count = ${ifSent('restless_moments_count', '$22')},
+                    avg_overnight_hrv = ${ifSent('avg_overnight_hrv', keepBiometrics ? 'COALESCE($23, sleep_entries.avg_overnight_hrv)' : '$23')},
+                    body_battery_change = ${ifSent('body_battery_change', '$24')},
+                    resting_heart_rate = ${ifSent('resting_heart_rate', keepBiometrics ? 'COALESCE($25, sleep_entries.resting_heart_rate)' : '$25')},
                     record_timezone = COALESCE($26, record_timezone),
                     record_utc_offset_minutes = COALESCE($27, record_utc_offset_minutes),
                     updated_at = CURRENT_TIMESTAMP
@@ -243,6 +254,7 @@ async function upsertSleepEntry(
         resting_heart_rate,
         record_timezone,
         record_utc_offset_minutes,
+        sentFields,
       ]);
       if (updateResult.rows.length > 0) {
         sleepEntryId = updateResult.rows[0].id;
