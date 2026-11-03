@@ -83,8 +83,8 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
     );
 
     const { mealTypes, defaultMealTypeId } = useMealTypes();
-    // The quick target the person tapped, cleared once they pick a calendar
-    // day or a meal by hand so the highlighted chip always matches the copy.
+    // The quick target the person tapped. It is about when to copy, so picking
+    // another meal keeps it; picking a calendar day by hand clears it.
     const [quickTarget, setQuickTarget] = useState<QuickTarget | null>(null);
 
     useImperativeHandle(ref, () => ({
@@ -382,10 +382,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
                       accessibilityRole="button"
                       accessibilityLabel={displayMealType(mt)}
                       accessibilityState={{ selected: isSelected }}
-                      onPress={() => {
-                        setTargetMealTypeId(mt.id);
-                        setQuickTarget(null);
-                      }}
+                      onPress={() => setTargetMealTypeId(mt.id)}
                       activeOpacity={0.7}
                       className={`px-4 py-2 rounded-full border ${
                         isSelected
