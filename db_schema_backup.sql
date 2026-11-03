@@ -5975,6 +5975,18 @@ ALTER SEQUENCE public.workout_presets_id_seq OWNED BY public.workout_presets.id;
 
 
 --
+-- Name: bulk_imports; Type: TABLE; Schema: system; Owner: -
+--
+
+CREATE TABLE system.bulk_imports (
+    user_id uuid NOT NULL,
+    kind text NOT NULL,
+    status jsonb NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: rate_limit_windows; Type: TABLE; Schema: system; Owner: -
 --
 
@@ -5996,6 +6008,18 @@ CREATE TABLE system.rls_policy_state (
     catalog_fingerprint text NOT NULL,
     applied_at timestamp with time zone NOT NULL,
     CONSTRAINT rls_policy_state_id_check CHECK (id)
+);
+
+
+--
+-- Name: scheduled_jobs; Type: TABLE; Schema: system; Owner: -
+--
+
+CREATE TABLE system.scheduled_jobs (
+    name text NOT NULL,
+    last_slot timestamp with time zone NOT NULL,
+    claimed_by text NOT NULL,
+    claimed_at timestamp with time zone NOT NULL
 );
 
 
@@ -7589,6 +7613,14 @@ ALTER TABLE ONLY public.workout_presets
 
 
 --
+-- Name: bulk_imports bulk_imports_pkey; Type: CONSTRAINT; Schema: system; Owner: -
+--
+
+ALTER TABLE ONLY system.bulk_imports
+    ADD CONSTRAINT bulk_imports_pkey PRIMARY KEY (user_id, kind);
+
+
+--
 -- Name: rate_limit_windows rate_limit_windows_pkey; Type: CONSTRAINT; Schema: system; Owner: -
 --
 
@@ -7602,6 +7634,14 @@ ALTER TABLE ONLY system.rate_limit_windows
 
 ALTER TABLE ONLY system.rls_policy_state
     ADD CONSTRAINT rls_policy_state_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: scheduled_jobs scheduled_jobs_pkey; Type: CONSTRAINT; Schema: system; Owner: -
+--
+
+ALTER TABLE ONLY system.scheduled_jobs
+    ADD CONSTRAINT scheduled_jobs_pkey PRIMARY KEY (name);
 
 
 --
@@ -11308,6 +11348,14 @@ ALTER TABLE ONLY public.workout_preset_exercises
 
 ALTER TABLE ONLY public.workout_presets
     ADD CONSTRAINT workout_presets_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: bulk_imports bulk_imports_user_id_fkey; Type: FK CONSTRAINT; Schema: system; Owner: -
+--
+
+ALTER TABLE ONLY system.bulk_imports
+    ADD CONSTRAINT bulk_imports_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
 
 
 --
