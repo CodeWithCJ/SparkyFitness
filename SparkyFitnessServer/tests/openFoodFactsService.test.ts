@@ -1033,6 +1033,68 @@ describe('openFoodFactsService', () => {
           'named',
         ]);
       });
+
+      it('keeps every plain hit of a full page when brand hits are added', async () => {
+        const plainHits = ['p1', 'p2', 'p3'].map((code) => ({
+          ...namedKirkland,
+          code,
+        }));
+        fetchMock
+          .mockResolvedValueOnce({
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                hits: plainHits,
+                page: 1,
+                page_size: 3,
+                count: 9,
+              }),
+          })
+          .mockResolvedValueOnce(
+            hitsResponse([kirklandBagel, { ...namedKirkland, code: 'p2' }])
+          )
+          .mockResolvedValueOnce(productsResponse([]));
+
+        const result = await searchOpenFoodFacts(
+          'kirkland bagel',
+          1,
+          'en',
+          undefined,
+          undefined,
+          3
+        );
+
+        // Page 2 starts at plain offset 3, so p1 to p3 must all be on page 1;
+        // the brand copy of p2 is not added twice.
+        expect(result.products.map((product) => product.code)).toEqual([
+          'bagel',
+          'p1',
+          'p2',
+          'p3',
+        ]);
+        expect(result.pagination).toMatchObject({ page: 1, hasMore: true });
+        // The brand search asks for a fixed, small number of hits.
+        expect(JSON.parse(fetchMock.mock.calls[1][1].body).page_size).toBe(20);
+      });
+
+      it('keeps a brand hit that has no barcode', async () => {
+        const codelessBagel = {
+          product_name: kirklandBagel.product_name,
+          brands: kirklandBagel.brands,
+          nutriments: kirklandBagel.nutriments,
+        };
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(hitsResponse([codelessBagel]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        const result = await searchOpenFoodFacts('kirkland bagel');
+
+        expect(result.products.map((product) => product.product_name)).toEqual([
+          'Everything Bagel',
+          'Kirkland',
+        ]);
+      });
     });
   });
 

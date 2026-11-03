@@ -568,6 +568,11 @@ async function requestSearchALicious(
 
 /** At most this many query words are tried as the brand. */
 const BRAND_RETRY_MAX_WORDS = 3;
+/**
+ * Brand hits added to page 1. Kept small whatever the page size, since they
+ * join the page's own hits in one hydration request.
+ */
+const BRAND_RETRY_MAX_HITS = 20;
 
 /**
  * Search-a-licious matches any of the words, so "kirkland bagel" fills the
@@ -581,7 +586,6 @@ const BRAND_RETRY_MAX_WORDS = 3;
 async function searchBrandHits(
   hits: SearchALiciousHit[],
   query: string,
-  pageSize: number,
   language: string,
   fields: string[]
 ): Promise<SearchALiciousHit[]> {
@@ -601,7 +605,7 @@ async function searchBrandHits(
       const data = await requestSearchALicious(
         `brands:${brandWord} ${rest}`,
         1,
-        pageSize,
+        BRAND_RETRY_MAX_HITS,
         language,
         fields
       );
@@ -737,24 +741,27 @@ async function searchOpenFoodFacts(
     );
     const brandHits =
       page === 1
-        ? await searchBrandHits(data.hits, query, pageSize, language, fields)
+        ? await searchBrandHits(data.hits, query, language, fields)
         : [];
-    // Brand hits go in front so the ranking sees them; it still decides the
-    // order, and the page keeps its usual size. Only brand hits already on the
-    // page are dropped; the page's own hits are left exactly as returned.
+    // Brand hits are added to page 1 on top of its own hits, so no plain hit is
+    // pushed off the page: page 2 starts at the plain offset as usual. A brand
+    // hit already on this page is dropped; one whose plain copy ranks on a much
+    // later page can show again there (web drops it when appending pages). A
+    // hit without a code cannot be matched, so it is kept, as on plain pages.
     const seenCodes = new Set(
       data.hits.map((hit) => String(hit.code || '').trim()).filter(Boolean)
     );
     const newBrandHits = brandHits.filter((hit) => {
       const code = String(hit.code || '').trim();
-      if (!code || seenCodes.has(code)) return false;
+      if (!code) return true;
+      if (seenCodes.has(code)) return false;
       seenCodes.add(code);
       return true;
     });
-    const candidates = [...newBrandHits, ...data.hits];
-    const rankedHits = rankSearchHits(candidates, query, language).slice(
-      0,
-      Math.max(pageSize, data.hits.length)
+    const rankedHits = rankSearchHits(
+      [...newBrandHits, ...data.hits],
+      query,
+      language
     );
     const products = (
       await hydrateSearchHits(rankedHits, fields, language, {
