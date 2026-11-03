@@ -38,6 +38,44 @@ export async function getWatchIndoorScale(): Promise<{
   return { walk: stored.walk?.scale ?? 1, run: stored.run?.scale ?? 1 };
 }
 
+/**
+ * What has been learned for each kind, for the settings screen: the factor
+ * the watch multiplies its indoor distance by and how many runs taught it,
+ * or null for a kind with nothing learned.
+ */
+export async function getWatchIndoorScaleProfile(): Promise<
+  Record<Kind, LearnedScale | null>
+> {
+  const stored = await read();
+  const info = (kind: Kind): LearnedScale | null =>
+    stored[kind] && stored[kind].samples > 0
+      ? { scale: stored[kind].scale, samples: stored[kind].samples }
+      : null;
+  return { walk: info('walk'), run: info('run') };
+}
+
+/**
+ * Forgets what was learned for one kind, so the watch goes back to its own
+ * estimate. The change reaches the watch with the next context push. Returns
+ * false when storage fails; never throws.
+ */
+export async function resetWatchIndoorScale(kind: Kind): Promise<boolean> {
+  try {
+    const stored = await read();
+    delete stored[kind];
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    addLog(`[Watch Run] Indoor ${kind} distance factor reset by the user`);
+    listeners.forEach((listener) => listener());
+    return true;
+  } catch (error) {
+    addLog(
+      `[Watch Run] Could not reset the indoor distance factor: ${String(error)}`,
+      'WARNING'
+    );
+    return false;
+  }
+}
+
 /** Called when a learned factor changes, so the watch context is resent. */
 export function onWatchIndoorScaleChange(listener: () => void): () => void {
   listeners.add(listener);

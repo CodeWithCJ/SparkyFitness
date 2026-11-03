@@ -14,6 +14,12 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { formatLocalizedNumber } from '../localization';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
+  getWatchIndoorScaleProfile,
+  onWatchIndoorScaleChange,
+  resetWatchIndoorScale,
+} from '../services/watchIndoorScale';
+import type { LearnedScale } from '../utils/indoorDistanceScale';
+import {
   getStrideProfile,
   resetStride,
   setStride,
@@ -122,6 +128,44 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
       active = false;
     };
   }, []);
+
+  // What the watch has learned about its own indoor distance. It changes when
+  // a run is corrected, so this follows the store rather than loading once.
+  const [watchScale, setWatchScale] = useState<Record<
+    StepActivity,
+    LearnedScale | null
+  > | null>(null);
+  useEffect(() => {
+    let active = true;
+    const load = () => {
+      void getWatchIndoorScaleProfile().then((loaded) => {
+        if (active) setWatchScale(loaded);
+      });
+    };
+    load();
+    const unsubscribe = onWatchIndoorScaleChange(load);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
+  const watchScaleStatus = (info: LearnedScale | null) =>
+    info
+      ? t('treadmillSettings.watchScaleLearned', {
+          count: info.samples,
+          factor: decimal(info.scale, 3),
+          percent: formatTreadmillPercent((info.scale - 1) * 100),
+          defaultValue_one:
+            'The watch’s distance is multiplied by {{factor}} ({{percent}}). Learned from {{count}} correction.',
+          defaultValue_other:
+            'The watch’s distance is multiplied by {{factor}} ({{percent}}). Learned from {{count}} corrections.',
+          defaultValue:
+            'The watch’s distance is multiplied by {{factor}} ({{percent}}). Learned from {{count}} corrections.',
+        })
+      : t('treadmillSettings.watchScaleNone', {
+          defaultValue:
+            'Not learned yet. It learns when you enter the distance a treadmill showed after a watch run.',
+        });
 
   const [strideText, setStrideText] = useState<Record<StepActivity, string>>({
     walk: '',
@@ -317,6 +361,54 @@ const TreadmillSettingsScreen: React.FC<Props> = () => {
             </Text>
           </View>
         ) : null}
+
+        <View className="bg-surface rounded-xl p-4 mb-4" testID="watch-scale">
+          <Text className="text-text-primary text-base font-bold">
+            {t('treadmillSettings.watchScale', {
+              defaultValue: 'Watch treadmill distance',
+            })}
+          </Text>
+          <Text className="text-text-secondary text-sm mt-1">
+            {t('treadmillSettings.watchScaleHint', {
+              defaultValue:
+                'The watch estimates a treadmill run’s distance from your motion. This is how far off that has been, learned from the distances you enter after a watch run. The watch applies it to its next treadmill run. Past runs are not changed.',
+            })}
+          </Text>
+          {ACTIVITIES.map((activity) => {
+            const info = watchScale?.[activity] ?? null;
+            return (
+              <View
+                key={activity}
+                className="mt-3"
+                testID={`watch-scale-${activity}`}
+              >
+                <Text className="text-text-primary text-base font-semibold">
+                  {activity === 'walk'
+                    ? t('treadmillSettings.watchScaleWalk', {
+                        defaultValue: 'Walks',
+                      })
+                    : t('treadmillSettings.watchScaleRun', {
+                        defaultValue: 'Runs',
+                      })}
+                </Text>
+                <Text className="text-text-secondary text-sm mt-1">
+                  {watchScaleStatus(info)}
+                </Text>
+                {info ? (
+                  <Button
+                    variant="secondary"
+                    className="mt-2"
+                    onPress={() => void resetWatchIndoorScale(activity)}
+                  >
+                    {t('treadmillSettings.watchScaleReset', {
+                      defaultValue: 'Reset and learn from scratch',
+                    })}
+                  </Button>
+                ) : null}
+              </View>
+            );
+          })}
+        </View>
 
         {ACTIVITIES.map((activity) => {
           const info = profile?.[activity];

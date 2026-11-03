@@ -1,5 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { learnWatchIndoorScale } from '../../src/services/watchIndoorScale';
+import {
+  getWatchIndoorScaleProfile,
+  learnWatchIndoorScale,
+  onWatchIndoorScaleChange,
+  resetWatchIndoorScale,
+} from '../../src/services/watchIndoorScale';
 import { addLog } from '../../src/services/LogService';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -107,5 +112,54 @@ describe('one run counts once', () => {
     await learnWatchIndoorScale('run', 1, 3000, 2700);
     await learnWatchIndoorScale('run', 1, 3000, 2700);
     expect(stored().samples).toBe(2);
+  });
+});
+
+describe('the learned factor, as the settings screen reads and resets it', () => {
+  let storage: string | null;
+  beforeEach(() => {
+    storage = JSON.stringify({
+      run: { scale: 1.096, samples: 6, last: { runId: 'e', before: null } },
+      walk: { scale: 0.95, samples: 1 },
+    });
+    mockedGetItem.mockImplementation(async () => storage);
+    jest.mocked(AsyncStorage.setItem).mockImplementation(async (_k, v) => {
+      storage = v;
+    });
+  });
+
+  test('reads each kind, without the replace bookkeeping', async () => {
+    expect(await getWatchIndoorScaleProfile()).toEqual({
+      run: { scale: 1.096, samples: 6 },
+      walk: { scale: 0.95, samples: 1 },
+    });
+  });
+
+  test('reads null for a kind with nothing learned', async () => {
+    storage = null;
+    expect(await getWatchIndoorScaleProfile()).toEqual({
+      run: null,
+      walk: null,
+    });
+  });
+
+  test('resets one kind, leaves the other and tells listeners', async () => {
+    const listener = jest.fn();
+    const unsubscribe = onWatchIndoorScaleChange(listener);
+
+    expect(await resetWatchIndoorScale('run')).toBe(true);
+
+    expect(JSON.parse(storage ?? '{}')).toEqual({
+      walk: { scale: 0.95, samples: 1 },
+    });
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  test('reports a storage failure instead of throwing', async () => {
+    jest
+      .mocked(AsyncStorage.setItem)
+      .mockRejectedValueOnce(new Error('disk full'));
+    expect(await resetWatchIndoorScale('run')).toBe(false);
   });
 });

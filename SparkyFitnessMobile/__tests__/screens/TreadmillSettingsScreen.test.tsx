@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -286,5 +287,69 @@ describe('calibrating on purpose', () => {
 
     expect((await getStride('run')).calibrated).toBe(false);
     expect(screen.queryByText(/too short/)).toBeNull();
+  });
+});
+
+describe('the watch treadmill distance', () => {
+  const KEY = '@SparkyFitness/watchIndoorScale';
+
+  it('says nothing has been learned yet', async () => {
+    renderScreen();
+    expect(
+      await screen.findAllByText(/Not learned yet. It learns when you enter/)
+    ).toHaveLength(2);
+    expect(screen.queryByText('Reset and learn from scratch')).toBeNull();
+  });
+
+  it('shows what the watch has learned for runs and walks', async () => {
+    await AsyncStorage.setItem(
+      KEY,
+      JSON.stringify({
+        run: { scale: 1.096, samples: 6 },
+        walk: { scale: 0.95, samples: 1 },
+      })
+    );
+    renderScreen();
+
+    expect(
+      await screen.findByText(
+        /multiplied by 1\.096 \(\+9\.6%\)\. Learned from 6 corrections\./
+      )
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        /multiplied by 0\.950 \(-5%\)\. Learned from 1 correction\./
+      )
+    ).toBeTruthy();
+  });
+
+  it('resets one kind and leaves the other', async () => {
+    await AsyncStorage.setItem(
+      KEY,
+      JSON.stringify({
+        run: { scale: 1.096, samples: 6 },
+        walk: { scale: 0.95, samples: 1 },
+      })
+    );
+    renderScreen();
+    await screen.findByText(/multiplied by 1\.096/);
+
+    fireEvent.press(
+      within(screen.getByTestId('watch-scale-run')).getByText(
+        'Reset and learn from scratch'
+      )
+    );
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId('watch-scale-run')).getByText(
+          /Not learned yet/
+        )
+      ).toBeTruthy()
+    );
+    expect(JSON.parse((await AsyncStorage.getItem(KEY)) ?? '{}')).toEqual({
+      walk: { scale: 0.95, samples: 1 },
+    });
+    expect(screen.getByText(/multiplied by 0\.950/)).toBeTruthy();
   });
 });
