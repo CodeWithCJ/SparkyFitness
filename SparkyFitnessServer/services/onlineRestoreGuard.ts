@@ -6,7 +6,7 @@ import {
 import { scheduledJobsDisabled } from '../utils/scheduledJobs.js';
 
 /**
- * A restore drops the database and replaces the uploads folder, so it is only
+ * A restore replaces the database and the uploads folder, so it is only
  * safe with no other server instance using either. Detection is best effort:
  * an idle instance has closed its pooled connections (30 s, 10 s for Better
  * Auth's pool), so nothing here can see it. The refusal says so; operators
@@ -70,13 +70,13 @@ async function findOtherInstances(): Promise<string[]> {
 async function assertRestoreAllowed(): Promise<void> {
   if (scheduledJobsDisabled()) {
     throw new RestoreRefusedError(
-      'Restore refused: this instance runs with SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true, which is only set when several instances share the database. A restore drops the database and replaces the uploads folder under every instance. Scale to a single instance without that setting, then restore.'
+      'Restore refused: this instance runs with SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true, which is only set when several instances share the database. A restore replaces the database and the uploads folder under every instance. Scale to a single instance without that setting, then restore.'
     );
   }
   const others = await findOtherInstances();
   if (others.length > 0) {
     throw new RestoreRefusedError(
-      `Restore refused: other server instances are using this database (${others.join(', ')}). A restore drops the database and replaces the uploads folder under every instance. Scale to a single instance, then restore. ${BEST_EFFORT_NOTE}`
+      `Restore refused: other server instances are using this database (${others.join(', ')}). A restore replaces the database and the uploads folder under every instance. Scale to a single instance, then restore. ${BEST_EFFORT_NOTE}`
     );
   }
 }

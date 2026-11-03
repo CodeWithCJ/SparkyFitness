@@ -1,6 +1,8 @@
 import path from 'path';
 import { emailLoginGuard } from './middleware/emailLoginGuard.js';
 import { passkeyLoginGuard } from './middleware/passkeyLoginGuard.js';
+import { restoreWriteFence } from './middleware/restoreWriteFence.js';
+import { UPLOAD_STAGING_DIR } from './utils/uploadsPath.js';
 
 import fs from 'fs';
 import type { ServerResponse } from 'http';
@@ -252,6 +254,9 @@ app.use(
     );
   })
 );
+// Before every route, /mcp and Better Auth included; after CORS so a browser
+// can read the 503.
+app.use(restoreWriteFence);
 // OAuth discovery is top-level even though Better Auth itself is mounted under
 // /api/auth. Hosted MCP clients probe both the origin and resource-specific
 // forms. Keep the explicit allowlist so unrelated /.well-known routes (such as
@@ -568,7 +573,13 @@ app.use(['/uploads', '/api/uploads'], (req, res, next) => {
   // Lowercased because Express routing and macOS/Windows filesystems are all
   // case-insensitive, so /uploads/Pregnancy/... reaches the same bytes.
   const firstSegment = normalized.split('/').filter(Boolean)[0]?.toLowerCase();
-  if (firstSegment && SENSITIVE_UPLOAD_SUBTREES.has(firstSegment)) {
+  // Request and restore staging (including a restore's kept copy of every
+  // subtree above) is never served.
+  if (
+    firstSegment &&
+    (SENSITIVE_UPLOAD_SUBTREES.has(firstSegment) ||
+      firstSegment === UPLOAD_STAGING_DIR)
+  ) {
     res.status(404).end();
     return;
   }

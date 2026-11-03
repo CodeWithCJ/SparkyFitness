@@ -30,6 +30,11 @@ vi.mock('pg', () => {
   return { default: { Pool, types } };
 });
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
+vi.mock('../services/restoreLock.js', () => ({
+  restoreInProgress: vi.fn(async () => false),
+  isWriteRequest: vi.fn(() => false),
+  restoredSinceAdmitted: vi.fn(() => false),
+}));
 
 process.env.SPARKY_FITNESS_DB_USER = 'owner_user';
 process.env.SPARKY_FITNESS_APP_DB_USER = 'app_user';
@@ -133,5 +138,25 @@ describe('connections inside stopped work', () => {
     );
 
     expect(onActivity).not.toHaveBeenCalled();
+  });
+});
+
+describe('the restore check after an acquire', () => {
+  it('runs on the connection it got, never asking the full pool for another', async () => {
+    const { restoreInProgress } = await import('../services/restoreLock.js');
+    const check = vi.mocked(restoreInProgress);
+    check.mockReset();
+    check.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const client = fakeClient();
+    ownerPool!.connect.mockResolvedValue(client);
+
+    await expect(
+      runWithAbortSignal(new AbortController().signal, () => getSystemClient())
+    ).rejects.toThrow(/backup is being restored/);
+
+    expect(check.mock.calls).toEqual([[undefined], [client]]);
+    expect(client.release).toHaveBeenCalledOnce();
+    check.mockReset();
+    check.mockResolvedValue(false);
   });
 });
