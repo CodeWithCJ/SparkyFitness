@@ -96,11 +96,25 @@ const LabResultDialog = ({
   const [high, setHigh] = useState(text(result?.ref_range_high));
   const [labName, setLabName] = useState(result?.lab_name ?? '');
   const [notes, setNotes] = useState(result?.notes ?? '');
+  // What the unit and range were filled in with. Editing a saved result starts
+  // from its own values, so changing only the unit drops a range that belonged
+  // to the old one.
   const [prefill, setPrefill] = useState<{
     unit: string;
     low: string;
     high: string;
-  } | null>(null);
+  } | null>(
+    result
+      ? {
+          unit: result.unit,
+          low: text(result.ref_range_low),
+          high: text(result.ref_range_high),
+        }
+      : null
+  );
+  // A marker created for a new name before the result failed to save: a retry
+  // reuses it instead of creating the same name again.
+  const [createdMarkerId, setCreatedMarkerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const options = useMemo(
@@ -112,6 +126,7 @@ const LabResultDialog = ({
   // else the preset's (the profile's sex picks the range).
   const choose = (next: Picked) => {
     setPicked(next);
+    setCreatedMarkerId(null);
     const existing = markers.find((m) =>
       next.kind === 'builtin'
         ? m.markerKey === next.key
@@ -208,15 +223,19 @@ const LabResultDialog = ({
             source: 'manual',
           } as CreateLabResultBody;
         } else {
-          const customId =
-            picked.kind === 'custom'
-              ? picked.id
-              : (
-                  await createMarker.mutateAsync({
-                    name: picked.name,
-                    unit: '',
-                  })
-                ).id;
+          let customId: string;
+          if (picked.kind === 'custom') {
+            customId = picked.id;
+          } else if (createdMarkerId) {
+            customId = createdMarkerId;
+          } else {
+            const created = await createMarker.mutateAsync({
+              name: picked.name,
+              unit: '',
+            });
+            customId = created.id;
+            setCreatedMarkerId(created.id);
+          }
           body = {
             ...common,
             custom_marker_id: customId,

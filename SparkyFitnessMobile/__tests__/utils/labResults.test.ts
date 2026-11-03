@@ -144,8 +144,8 @@ describe('effectiveLabRange', () => {
 describe('formatting', () => {
   it('formats ranges and values', () => {
     expect(formatLabRange(4, 5.6, '%')).toBe('4 - 5.6 %');
-    expect(formatLabRange(null, 200, 'mg/dL')).toBe('< 200 mg/dL');
-    expect(formatLabRange(40, null, 'mg/dL')).toBe('> 40 mg/dL');
+    expect(formatLabRange(null, 200, 'mg/dL')).toBe('≤ 200 mg/dL');
+    expect(formatLabRange(40, null, 'mg/dL')).toBe('≥ 40 mg/dL');
     expect(formatLabRange(null, null, '%')).toBeNull();
     expect(formatLabValue(5.4, '%')).toBe('5.4 %');
     expect(formatLabValue(7, '')).toBe('7');
@@ -160,7 +160,7 @@ describe('formatting', () => {
 
   it('does not round small values to zero', () => {
     expect(formatLabValue(0.0000004, 'mg/L')).toBe('0.0000004 mg/L');
-    expect(formatLabRange(null, 0.0000004, 'mg/L')).toBe('< 0.0000004 mg/L');
+    expect(formatLabRange(null, 0.0000004, 'mg/L')).toBe('≤ 0.0000004 mg/L');
   });
 
   it('uses the app locale decimal separator', async () => {
@@ -168,7 +168,7 @@ describe('formatting', () => {
     await i18n.changeLanguage('pl');
     try {
       expect(formatLabRange(4, 5.6, '%')).toBe('4 - 5,6 %');
-      expect(formatLabRange(null, 0.45, 'mg/dL')).toBe('< 0,45 mg/dL');
+      expect(formatLabRange(null, 0.45, 'mg/dL')).toBe('≤ 0,45 mg/dL');
       expect(formatLabValue(5.4, '%')).toBe('5,4 %');
     } finally {
       await i18n.changeLanguage('en');

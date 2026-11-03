@@ -174,4 +174,57 @@ describe('LabImportDialog', () => {
       screen.getByRole('button', { name: /^Save \d results$/ })
     ).toBeDisabled();
   });
+
+  it('saves a large value as typed, without a grouping separator', async () => {
+    api.scanLabReport.mockResolvedValue({
+      report: {
+        lab_name: null,
+        collected_on: '2026-09-12',
+        results: [
+          {
+            name: 'Platelets',
+            marker_key: null,
+            value: 250000,
+            unit: '/uL',
+            ref_low: null,
+            ref_high: null,
+          },
+        ],
+      },
+    });
+    api.importLabReport.mockResolvedValue({
+      report: {} as never,
+      results: [result()],
+    });
+    renderDialog();
+    pick(new File(['x'], 'r.pdf', { type: 'application/pdf' }));
+
+    // The field is prefilled with the value as it will be parsed back.
+    expect(await screen.findByLabelText('Result for Platelets')).toHaveValue(
+      '250000'
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save 1 result' }));
+
+    await waitFor(() => expect(api.importLabReport).toHaveBeenCalledTimes(1));
+    expect(first(api.importLabReport.mock.calls)[0].results[0]).toMatchObject({
+      value_numeric: 250000,
+    });
+  });
+
+  it('says so when the file cannot be read', async () => {
+    renderDialog();
+    const file = new File(['x'], 'r.pdf', { type: 'application/pdf' });
+    jest
+      .spyOn(FileReader.prototype, 'readAsDataURL')
+      .mockImplementation(function (this: FileReader) {
+        this.dispatchEvent(new Event('error'));
+      });
+    pick(file);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not open that file.'
+    );
+    expect(api.scanLabReport).not.toHaveBeenCalled();
+    jest.restoreAllMocks();
+  });
 });

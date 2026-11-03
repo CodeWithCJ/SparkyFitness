@@ -1,7 +1,10 @@
 import type { LabResultResponse } from '@workspace/shared';
 
+// No grouping: a formatted value is also what a field is prefilled with, and
+// `parseLabValue` cannot read "250,000" back.
 const NUMBER_FORMAT = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 10,
+  useGrouping: false,
 });
 
 /** A lab number with the decimals it was entered with, in the browser locale. */
@@ -10,7 +13,7 @@ export const labNumber = (value: number): string => NUMBER_FORMAT.format(value);
 export const formatLabValue = (value: number, unit: string): string =>
   unit ? `${labNumber(value)} ${unit}` : labNumber(value);
 
-/** "4 - 5.6 %", "< 200 mg/dL", "> 40 mg/dL", or null with no range. */
+/** "4 - 5.6 %", "≤ 200 mg/dL", "≥ 40 mg/dL", or null with no range. */
 export const formatLabRange = (
   low: number | null | undefined,
   high: number | null | undefined,
@@ -19,8 +22,8 @@ export const formatLabRange = (
   const suffix = unit ? ` ${unit}` : '';
   if (low != null && high != null)
     return `${labNumber(low)} - ${labNumber(high)}${suffix}`;
-  if (high != null) return `< ${labNumber(high)}${suffix}`;
-  if (low != null) return `> ${labNumber(low)}${suffix}`;
+  if (high != null) return `≤ ${labNumber(high)}${suffix}`;
+  if (low != null) return `≥ ${labNumber(low)}${suffix}`;
   return null;
 };
 

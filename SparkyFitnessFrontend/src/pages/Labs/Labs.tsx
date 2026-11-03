@@ -29,6 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { useProfileQuery } from '@/hooks/Settings/useProfile';
 import {
+  LAB_HISTORY_LIMIT,
   useDeleteLabImports,
   useDeleteLabMarker,
   useDeleteLabResult,
@@ -252,6 +253,10 @@ const Labs = () => {
                 )}
                 {history.isLoading ? (
                   <Skeleton className="h-64 w-full" />
+                ) : history.isError ? (
+                  <p role="alert" className="text-sm text-destructive">
+                    {t('labs.loadFailed', 'Could not load your lab results.')}
+                  </p>
                 ) : (
                   <LabMarkerChart
                     points={points}
@@ -260,56 +265,74 @@ const Labs = () => {
                     high={range.high}
                   />
                 )}
-                {notPlotted > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {t('labs.chartOtherUnits', {
-                      count: notPlotted,
-                      defaultValue_one:
-                        '{{count}} result in another unit is not plotted.',
-                      defaultValue_other:
-                        '{{count}} results in other units are not plotted.',
-                    })}
-                  </p>
+                {!history.isError && (
+                  <>
+                    {notPlotted > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {t('labs.chartOtherUnits', {
+                          count: notPlotted,
+                          defaultValue_one:
+                            '{{count}} result in another unit is not plotted.',
+                          defaultValue_other:
+                            '{{count}} results in other units are not plotted.',
+                        })}
+                      </p>
+                    )}
+                    <ul className="divide-y rounded-md border">
+                      {[...results]
+                        .sort((a, b) =>
+                          b.entry_date.localeCompare(a.entry_date)
+                        )
+                        .map((result) => (
+                          <li
+                            key={result.id}
+                            className="flex items-center justify-between gap-2 p-3"
+                          >
+                            <div>
+                              <div className="text-sm font-medium">
+                                {labResultText(result)}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {result.entry_date}
+                                {result.lab_name ? ` · ${result.lab_name}` : ''}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {statusLabel(result, selected)}
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                aria-label={t('common.edit', 'Edit')}
+                                onClick={() => setEditing(result)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                aria-label={t(
+                                  'labs.deleteTitle',
+                                  'Delete result'
+                                )}
+                                onClick={() => setDeleteResult(result)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </li>
+                        ))}
+                    </ul>
+                    {results.length >= LAB_HISTORY_LIMIT && (
+                      <p className="text-xs text-muted-foreground">
+                        {t(
+                          'labs.historyCutOff',
+                          'Showing the newest {{count}} results. Older ones are not shown.',
+                          { count: LAB_HISTORY_LIMIT }
+                        )}
+                      </p>
+                    )}
+                  </>
                 )}
-                <ul className="divide-y rounded-md border">
-                  {[...results]
-                    .sort((a, b) => b.entry_date.localeCompare(a.entry_date))
-                    .map((result) => (
-                      <li
-                        key={result.id}
-                        className="flex items-center justify-between gap-2 p-3"
-                      >
-                        <div>
-                          <div className="text-sm font-medium">
-                            {labResultText(result)}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {result.entry_date}
-                            {result.lab_name ? ` · ${result.lab_name}` : ''}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {statusLabel(result, selected)}
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label={t('common.edit', 'Edit')}
-                            onClick={() => setEditing(result)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label={t('labs.deleteTitle', 'Delete result')}
-                            onClick={() => setDeleteResult(result)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </li>
-                    ))}
-                </ul>
               </CardContent>
             </Card>
           )}

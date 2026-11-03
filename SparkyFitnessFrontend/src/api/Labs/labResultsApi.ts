@@ -12,6 +12,9 @@ import type {
   UpdateLabResultBody,
 } from '@workspace/shared';
 
+/** The most results one history request returns (the newest ones). */
+export const LAB_HISTORY_LIMIT = 5000;
+
 export interface LabHistoryQuery {
   markerKey?: string;
   markerId?: string;

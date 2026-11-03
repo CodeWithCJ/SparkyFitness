@@ -14,6 +14,8 @@ import type {
   UpdateLabResultBody,
 } from '@workspace/shared';
 
+export { LAB_HISTORY_LIMIT } from '@/api/Labs/labResultsApi';
+
 // Anything that changes a result also changes the marker list (a custom marker
 // appears or goes), the newest-result list and every marker's history, so the
 // whole family refreshes together.
@@ -44,14 +46,15 @@ export const useLatestLabResults = () =>
     },
   });
 
-/** Every result of one marker; `marker` is `builtin:<key>` or `custom:<uuid>`. */
+/** The newest results of one marker (up to `LAB_HISTORY_LIMIT`); `marker` is `builtin:<key>` or `custom:<uuid>`. */
 export const useLabHistory = (
   query: labApi.LabHistoryQuery | null,
   marker: string
 ) =>
   useQuery({
     queryKey: labKeys.history(marker),
-    queryFn: () => labApi.listLabResults({ ...query, limit: 5000 }),
+    queryFn: () =>
+      labApi.listLabResults({ ...query, limit: labApi.LAB_HISTORY_LIMIT }),
     enabled: query !== null,
     meta: {
       errorMessage: i18n.t(

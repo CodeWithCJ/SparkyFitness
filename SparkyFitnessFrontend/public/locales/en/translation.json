@@ -10235,9 +10235,10 @@
       },
       "chooseFile": "Choose a PDF or photo",
       "introWeb": "Choose a lab report PDF, or a photo or screenshot of one. Your AI provider reads it and you review the results before anything is saved. The report itself is not stored.",
-      "editHintWeb": "Check the values against your report. Each result is saved with the unit and reference range the report printed.",
+      "editHintWeb": "Check the values against your report. Each result is saved with the unit and reference range shown here: the ones the report printed, or the marker's default when the report printed none.",
       "tooLarge": "That file is too large to read (limit 14 MB).",
-      "nothingFound": "No results were found in that report."
+      "nothingFound": "No results were found in that report.",
+      "readFailed": "Could not open that file."
     },
     "moreActions": "More actions",
     "deleteMarker": "Delete marker and all results",
@@ -10246,6 +10247,7 @@
     "deleteMarkerFailed": "Could not delete the marker",
     "labName": "Lab",
     "notes": "Notes",
-    "valueInvalid": "Enter a marker and a numeric result."
+    "valueInvalid": "Enter a marker and a numeric result.",
+    "historyCutOff": "Showing the newest {{count}} results. Older ones are not shown."
   }
 }

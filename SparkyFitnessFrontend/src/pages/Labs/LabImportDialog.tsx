@@ -91,8 +91,15 @@ const LabImportDialog = ({
       );
       return;
     }
+    let document: string;
     try {
-      const document = await readFileAsBase64(file);
+      document = await readFileAsBase64(file);
+    } catch {
+      setFileError(t('labs.import.readFailed', 'Could not open that file.'));
+      if (fileInput.current) fileInput.current.value = '';
+      return;
+    }
+    try {
       const response: LabReportScanResponse = await scan.mutateAsync({
         document,
         mimeType: file.type,

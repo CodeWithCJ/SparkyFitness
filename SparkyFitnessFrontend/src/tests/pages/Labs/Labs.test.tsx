@@ -233,4 +233,96 @@ describe('Labs page', () => {
 
     await waitFor(() => expect(api.deleteLabImports).toHaveBeenCalledTimes(1));
   });
+
+  it('shows the load error, not an empty chart, when a history fails', async () => {
+    api.listLabResults.mockRejectedValue(new Error('boom'));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /HbA1c/ }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not load your lab results.'
+    );
+    expect(screen.queryByText('No results yet')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('lab-marker-chart')).not.toBeInTheDocument();
+  });
+
+  it('reuses a new marker created before a failed save instead of creating it twice', async () => {
+    api.listLatestLabResults.mockResolvedValue([]);
+    api.listLabMarkers.mockResolvedValue([]);
+    api.createLabMarker.mockResolvedValue(customMarker({ name: 'Zzz Marker' }));
+    api.createLabResult
+      .mockRejectedValueOnce(new Error('boom'))
+      .mockResolvedValueOnce(result());
+    renderPage();
+
+    fireEvent.click(
+      first(await screen.findAllByRole('button', { name: 'Add lab result' }))
+    );
+    fireEvent.change(screen.getByLabelText('Search markers'), {
+      target: { value: 'Zzz Marker' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Add "Zzz Marker"/ }));
+    fireEvent.change(screen.getByLabelText('Result', { exact: true }), {
+      target: { value: '90' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(api.createLabResult).toHaveBeenCalledTimes(1));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(api.createLabResult).toHaveBeenCalledTimes(2));
+
+    expect(api.createLabMarker).toHaveBeenCalledTimes(1);
+    expect(first(api.createLabResult.mock.calls)[0]).toMatchObject({
+      custom_marker_id: customMarker().id,
+    });
+    expect(api.createLabResult.mock.calls[1]?.[0]).toMatchObject({
+      custom_marker_id: customMarker().id,
+    });
+  });
+
+  it('drops the saved range when only the unit of a saved result is changed', async () => {
+    api.updateLabResult.mockResolvedValue(result());
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /HbA1c/ }));
+    fireEvent.click(
+      first(await screen.findAllByRole('button', { name: 'Edit' }))
+    );
+
+    fireEvent.change(screen.getByLabelText('Unit'), {
+      target: { value: 'mmol/mol' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(api.updateLabResult).toHaveBeenCalledTimes(1));
+    expect(first(api.updateLabResult.mock.calls)[1]).toMatchObject({
+      unit: 'mmol/mol',
+      ref_range_low: null,
+      ref_range_high: null,
+    });
+  });
+
+  it('keeps an edited range when the unit changes too', async () => {
+    api.updateLabResult.mockResolvedValue(result());
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /HbA1c/ }));
+    fireEvent.click(
+      first(await screen.findAllByRole('button', { name: 'Edit' }))
+    );
+
+    fireEvent.change(screen.getByLabelText('Unit'), {
+      target: { value: 'mmol/mol' },
+    });
+    fireEvent.change(screen.getByLabelText('Low'), { target: { value: '20' } });
+    fireEvent.change(screen.getByLabelText('High'), {
+      target: { value: '38' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(api.updateLabResult).toHaveBeenCalledTimes(1));
+    expect(first(api.updateLabResult.mock.calls)[1]).toMatchObject({
+      unit: 'mmol/mol',
+      ref_range_low: 20,
+      ref_range_high: 38,
+    });
+  });
 });
