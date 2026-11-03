@@ -345,4 +345,33 @@ describe('Labs page', () => {
     );
     expect(screen.queryByText('Homocysteine')).not.toBeInTheDocument();
   });
+
+  it('saves an untouched value and range of an edited result exactly', async () => {
+    const precise = 5.123456789012346;
+    api.listLabResults.mockResolvedValue([
+      result({
+        value_numeric: precise,
+        ref_range_low: 4,
+        ref_range_high: 5.6,
+      }),
+    ]);
+    api.updateLabResult.mockResolvedValue(result());
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /HbA1c/ }));
+    fireEvent.click(
+      first(await screen.findAllByRole('button', { name: 'Edit' }))
+    );
+
+    fireEvent.change(screen.getByLabelText('Notes'), {
+      target: { value: 'fasting' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(api.updateLabResult).toHaveBeenCalledTimes(1));
+    expect(first(api.updateLabResult.mock.calls)[1]).toMatchObject({
+      value_numeric: precise,
+      ref_range_high: 5.6,
+      notes: 'fasting',
+    });
+  });
 });

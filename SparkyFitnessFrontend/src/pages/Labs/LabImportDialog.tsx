@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   labImportBody,
-  parseLabValue,
   planLabImport,
   todayInZone,
   type LabImportRow,
@@ -32,6 +31,7 @@ import {
 import {
   LAB_REPORT_ACCEPT,
   LAB_REPORT_MAX_FILE_BYTES,
+  exactLabValue,
   formatLabRange,
   labNumber,
   readFileAsBase64,
@@ -130,8 +130,17 @@ const LabImportDialog = ({
       );
       setLabName(response.report.lab_name ?? '');
       setDate(response.report.collected_on ?? todayInZone(timezone));
-    } catch {
-      // The mutation's toast reports it.
+    } catch (err) {
+      // Reported here, not by a toast, so a scan the person has moved on from
+      // (a newer pick, or the dialog closed) says nothing.
+      if (!stale()) {
+        const detail = err instanceof Error ? err.message : '';
+        const message = t(
+          'labs.import.scanFailed',
+          'Could not read that report.'
+        );
+        setFileError(detail ? `${message} ${detail}` : message);
+      }
     } finally {
       if (fileInput.current) fileInput.current.value = '';
     }
@@ -140,8 +149,12 @@ const LabImportDialog = ({
   const chosen = (rows ?? []).filter(
     (row) => included[row.key] && row.blocked === null
   );
+  // An untouched row keeps the scanned number exactly; an edited one is parsed.
   const parsed = Object.fromEntries(
-    chosen.map((row) => [row.key, parseLabValue(values[row.key] ?? '')])
+    chosen.map((row) => [
+      row.key,
+      exactLabValue(values[row.key] ?? '', row.result.value),
+    ])
   );
   const invalid = chosen.some((row) => parsed[row.key] === null);
   const future = date > todayInZone(timezone);

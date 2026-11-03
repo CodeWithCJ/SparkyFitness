@@ -63,6 +63,8 @@ export const scanLabReport = (
   apiCall('/v2/lab-reports/scan', {
     method: 'POST',
     body: { document, mime_type: mimeType },
+    // The import dialog reports a failure inline for the current report only.
+    suppressErrorToast: true,
   });
 
 export const importLabReport = (

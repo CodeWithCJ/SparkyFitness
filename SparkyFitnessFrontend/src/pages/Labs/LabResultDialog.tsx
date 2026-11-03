@@ -6,8 +6,6 @@ import {
   dropStalePrefilledRange,
   labPresetDefaults,
   labPresetName,
-  parseLabValue,
-  parseRangeBound,
   todayInZone,
   type CreateLabResultBody,
   type LabMarker,
@@ -31,7 +29,7 @@ import {
   useCreateLabMarker,
   useSaveLabResult,
 } from '@/hooks/Labs/useLabResults';
-import { labNumber } from './labFormat';
+import { exactLabValue, exactRangeBound, labNumber } from './labFormat';
 
 interface LabResultDialogProps {
   open: boolean;
@@ -116,6 +114,17 @@ const LabResultDialog = ({
   // reuses it instead of creating the same name again.
   const [createdMarkerId, setCreatedMarkerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The numbers the fields were filled in with, so a field left untouched is
+  // saved as that exact number rather than re-read from its formatted text.
+  const [origin, setOrigin] = useState<{
+    value: number | null;
+    low: number | null;
+    high: number | null;
+  }>({
+    value: result?.value_numeric ?? null,
+    low: result?.ref_range_low ?? null,
+    high: result?.ref_range_high ?? null,
+  });
 
   const options = useMemo(
     () => buildLabPickerOptions(markers, query, labels),
@@ -137,27 +146,37 @@ const LabResultDialog = ({
         ? LAB_MARKER_PRESETS.find((p) => p.key === next.key)
         : undefined;
     const latest = existing?.latest ?? null;
-    let seed = { unit: '', low: '', high: '' };
+    let source: { unit: string; low: number | null; high: number | null } = {
+      unit: '',
+      low: null,
+      high: null,
+    };
     if (latest) {
-      seed = {
+      source = {
         unit: latest.unit,
-        low: text(latest.ref_range_low),
-        high: text(latest.ref_range_high),
+        low: latest.ref_range_low,
+        high: latest.ref_range_high,
       };
     } else if (preset) {
       const defaults = labPresetDefaults(preset, sex);
-      seed = {
+      source = {
         unit: defaults.unit,
-        low: text(defaults.ref_range_low),
-        high: text(defaults.ref_range_high),
+        low: defaults.ref_range_low,
+        high: defaults.ref_range_high,
       };
     } else if (existing) {
-      seed = {
+      source = {
         unit: existing.unit,
-        low: text(existing.ref_range_low),
-        high: text(existing.ref_range_high),
+        low: existing.ref_range_low,
+        high: existing.ref_range_high,
       };
     }
+    const seed = {
+      unit: source.unit,
+      low: text(source.low),
+      high: text(source.high),
+    };
+    setOrigin((prev) => ({ ...prev, low: source.low, high: source.high }));
     setUnit(seed.unit);
     setLow(seed.low);
     setHigh(seed.high);
@@ -166,9 +185,9 @@ const LabResultDialog = ({
 
   const submit = async () => {
     setError(null);
-    const numeric = parseLabValue(value);
-    const lowBound = parseRangeBound(low);
-    const highBound = parseRangeBound(high);
+    const numeric = exactLabValue(value, origin.value);
+    const lowBound = exactRangeBound(low, origin.low);
+    const highBound = exactRangeBound(high, origin.high);
     if (numeric === null || (!picked && !result)) {
       setError(t('labs.valueInvalid', 'Enter a marker and a numeric result.'));
       return;
@@ -199,8 +218,8 @@ const LabResultDialog = ({
       prefill,
       picked?.kind === 'builtin' ? picked.key : null
     );
-    const rangeLow = parseRangeBound(range.low);
-    const rangeHigh = parseRangeBound(range.high);
+    const rangeLow = exactRangeBound(range.low, origin.low);
+    const rangeHigh = exactRangeBound(range.high, origin.high);
     const common = {
       entry_date: date,
       value_numeric: numeric,

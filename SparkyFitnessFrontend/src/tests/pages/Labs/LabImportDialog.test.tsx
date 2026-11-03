@@ -277,4 +277,120 @@ describe('LabImportDialog', () => {
     expect(screen.getByLabelText('Lab')).toHaveValue('Second lab');
     expect(screen.queryByLabelText('Result for HbA1c')).not.toBeInTheDocument();
   });
+
+  it('does not scan a file whose read finishes after a newer pick', async () => {
+    const realRead = FileReader.prototype.readAsDataURL;
+    let finishFirstRead: () => void = () => undefined;
+    let reads = 0;
+    jest
+      .spyOn(FileReader.prototype, 'readAsDataURL')
+      .mockImplementation(function (this: FileReader, blob: Blob) {
+        reads += 1;
+        if (reads === 1) {
+          // Hold the first read open until the second file has been picked.
+          finishFirstRead = () => realRead.call(this, blob);
+          return;
+        }
+        realRead.call(this, blob);
+      });
+    api.scanLabReport.mockResolvedValue(scanResponse);
+    renderDialog();
+
+    pick(new File(['first'], 'first.pdf', { type: 'application/pdf' }));
+    pick(new File(['second'], 'second.pdf', { type: 'application/pdf' }));
+    await waitFor(() => expect(api.scanLabReport).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      finishFirstRead();
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    expect(api.scanLabReport).toHaveBeenCalledTimes(1);
+    // base64 of "second"
+    expect(api.scanLabReport).toHaveBeenCalledWith(
+      'c2Vjb25k',
+      'application/pdf'
+    );
+    jest.restoreAllMocks();
+  });
+
+  it('shows a scan failure inline, with the reason the server gave', async () => {
+    api.scanLabReport.mockRejectedValue(new Error('No AI service is set up.'));
+    renderDialog();
+    pick(new File(['x'], 'r.pdf', { type: 'application/pdf' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not read that report. No AI service is set up.'
+    );
+  });
+
+  it('says nothing about a failed scan of a report replaced by a newer pick', async () => {
+    let failFirst: (error: Error) => void = () => undefined;
+    api.scanLabReport
+      .mockImplementationOnce(
+        () =>
+          new Promise((_resolve, reject) => {
+            failFirst = reject;
+          })
+      )
+      .mockResolvedValueOnce(scanResponse);
+    renderDialog();
+
+    pick(new File(['a'], 'first.pdf', { type: 'application/pdf' }));
+    await waitFor(() => expect(api.scanLabReport).toHaveBeenCalledTimes(1));
+    pick(new File(['b'], 'second.pdf', { type: 'application/pdf' }));
+    await screen.findAllByLabelText('Result for HbA1c');
+
+    await act(async () => {
+      failFirst(new Error('boom'));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+
+    expect(
+      screen.queryByText(/Could not read that report/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('saves an untouched scanned value exactly, and an edited one as typed', async () => {
+    const precise = 1.2345678901234567;
+    api.scanLabReport.mockResolvedValue({
+      report: {
+        lab_name: null,
+        collected_on: '2026-09-12',
+        results: [
+          {
+            name: 'Alpha marker',
+            marker_key: null,
+            value: precise,
+            unit: 'x',
+            ref_low: null,
+            ref_high: null,
+          },
+          {
+            name: 'Beta marker',
+            marker_key: null,
+            value: precise,
+            unit: 'x',
+            ref_low: null,
+            ref_high: null,
+          },
+        ],
+      },
+    });
+    api.importLabReport.mockResolvedValue({
+      report: {} as never,
+      results: [result()],
+    });
+    renderDialog();
+    pick(new File(['x'], 'r.pdf', { type: 'application/pdf' }));
+
+    fireEvent.change(await screen.findByLabelText('Result for Beta marker'), {
+      target: { value: '1,5' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save 2 results' }));
+
+    await waitFor(() => expect(api.importLabReport).toHaveBeenCalledTimes(1));
+    const saved = first(api.importLabReport.mock.calls)[0].results;
+    expect(first(saved).value_numeric).toBe(precise);
+    expect(saved.at(1)?.value_numeric).toBe(1.5);
+  });
 });

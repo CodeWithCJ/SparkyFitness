@@ -152,12 +152,8 @@ export const useScanLabReport = () =>
       document: string;
       mimeType: string;
     }) => labApi.scanLabReport(document, mimeType),
-    meta: {
-      errorMessage: i18n.t(
-        'labs.import.scanFailed',
-        'Could not read that report.'
-      ),
-    },
+    // No toast: the import dialog shows a failure inline, and only for the
+    // report it is still showing.
   });
 
 export const useImportLabReport = () => {

@@ -1,4 +1,4 @@
-import type { LabResultResponse } from '@workspace/shared';
+import { parseLabValue, type LabResultResponse } from '@workspace/shared';
 
 // A formatted value is also what a field is prefilled with, so it must parse
 // back unchanged: no grouping ("250,000" would read as 250), Latin digits
@@ -12,6 +12,29 @@ const NUMBER_FORMAT = new Intl.NumberFormat(undefined, {
 
 /** A lab number with the decimals it was entered with, in the browser locale. */
 export const labNumber = (value: number): string => NUMBER_FORMAT.format(value);
+
+/**
+ * The number a field holds: the number it was filled in with while it still
+ * shows that number's formatted text, so an untouched value is saved exactly,
+ * else the parsed text (null when it is not a number).
+ */
+export const exactLabValue = (
+  text: string,
+  original: number | null | undefined
+): number | null =>
+  original != null && text.trim() === labNumber(original)
+    ? original
+    : parseLabValue(text);
+
+/** A range bound field: empty is "no bound", junk is invalid. */
+export const exactRangeBound = (
+  text: string,
+  original: number | null | undefined
+): { ok: true; value: number | null } | { ok: false } => {
+  if (text.trim() === '') return { ok: true, value: null };
+  const value = exactLabValue(text, original);
+  return value === null ? { ok: false } : { ok: true, value };
+};
 
 export const formatLabValue = (value: number, unit: string): string =>
   unit ? `${labNumber(value)} ${unit}` : labNumber(value);
