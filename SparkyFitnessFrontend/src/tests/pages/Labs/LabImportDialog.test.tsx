@@ -426,7 +426,24 @@ describe('LabImportDialog', () => {
 
   it('keeps a newer report on screen when an earlier save finishes', async () => {
     let finishSave: () => void = () => undefined;
-    api.scanLabReport.mockResolvedValue(scanResponse);
+    api.scanLabReport
+      .mockResolvedValueOnce(scanResponse)
+      .mockResolvedValueOnce({
+        report: {
+          lab_name: 'Second lab',
+          collected_on: '2026-10-01',
+          results: [
+            {
+              name: 'LDL',
+              marker_key: 'ldl',
+              value: 99,
+              unit: 'mg/dL',
+              ref_low: null,
+              ref_high: null,
+            },
+          ],
+        },
+      });
     api.importLabReport.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -445,7 +462,7 @@ describe('LabImportDialog', () => {
       screen.getByRole('button', { name: 'Choose a different report' })
     );
     pick(new File(['b'], 'second.pdf', { type: 'application/pdf' }));
-    await screen.findAllByLabelText('Result for HbA1c');
+    await screen.findByLabelText('Result for LDL Cholesterol');
 
     await act(async () => {
       finishSave();
@@ -453,8 +470,31 @@ describe('LabImportDialog', () => {
     });
 
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
-    expect(screen.getAllByLabelText('Result for HbA1c').length).toBeGreaterThan(
-      0
+    // The second report is still the one on screen.
+    expect(screen.getByLabelText('Lab')).toHaveValue('Second lab');
+    expect(screen.getByLabelText('Result for LDL Cholesterol')).toHaveValue(
+      '99'
+    );
+    expect(screen.queryByLabelText('Result for HbA1c')).not.toBeInTheDocument();
+  });
+
+  it('applies the photo limit and sends a type when the browser gives none', async () => {
+    api.scanLabReport.mockResolvedValue(scanResponse);
+    renderDialog();
+    const big = new File(['x'], 'report.JPG', { type: '' });
+    Object.defineProperty(big, 'size', { value: 7 * 1024 * 1024 });
+    pick(big);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /photo is too large/
+    );
+    expect(api.scanLabReport).not.toHaveBeenCalled();
+
+    pick(new File(['x'], 'report.png', { type: '' }));
+    await waitFor(() =>
+      expect(api.scanLabReport).toHaveBeenCalledWith(
+        expect.any(String),
+        'image/png'
+      )
     );
   });
 });

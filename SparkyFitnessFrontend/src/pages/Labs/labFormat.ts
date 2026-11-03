@@ -83,3 +83,21 @@ export const LAB_REPORT_MAX_FILE_BYTES = 14 * 1024 * 1024;
  * file. A larger photo is refused before it is sent.
  */
 export const LAB_REPORT_MAX_PHOTO_BYTES = 6 * 1024 * 1024;
+
+const PHOTO_TYPES_BY_EXTENSION: Readonly<Record<string, string>> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
+
+/**
+ * The report's type: what the browser says, else from the file name, since a
+ * browser can leave `File.type` empty.
+ */
+export const labReportMimeType = (file: File): string => {
+  if (file.type) return file.type;
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  if (extension === 'pdf') return 'application/pdf';
+  return PHOTO_TYPES_BY_EXTENSION[extension] ?? '';
+};

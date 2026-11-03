@@ -36,6 +36,7 @@ import {
   exactLabValue,
   formatLabRange,
   labNumber,
+  labReportMimeType,
   readFileAsBase64,
 } from './labFormat';
 
@@ -90,8 +91,9 @@ const LabImportDialog = ({
     const id = ++selection.current;
     const stale = () => id !== selection.current;
     setFileError(null);
+    const mimeType = labReportMimeType(file);
     if (
-      file.type.startsWith('image/') &&
+      mimeType.startsWith('image/') &&
       file.size > LAB_REPORT_MAX_PHOTO_BYTES
     ) {
       setFileError(
@@ -124,7 +126,7 @@ const LabImportDialog = ({
     try {
       const response: LabReportScanResponse = await scan.mutateAsync({
         document,
-        mimeType: file.type,
+        mimeType,
       });
       if (stale()) return;
       const planned = planLabImport(

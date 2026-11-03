@@ -51,7 +51,9 @@ export const createMutationCache = () =>
       const description =
         resolvedErrorMessage && errDetail && errDetail !== resolvedErrorMessage
           ? `${resolvedErrorMessage} — ${errDetail}`
-          : resolvedErrorMessage || errDetail || 'An error occurred';
+          : resolvedErrorMessage ||
+            errDetail ||
+            i18n.t('common.errorOccurred', 'An Error Occurred');
       toast({
         title:
           (mutation.meta?.errorTitle as string) ||

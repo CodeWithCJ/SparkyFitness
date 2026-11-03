@@ -423,4 +423,27 @@ describe('Labs page', () => {
     expect(body).toMatchObject({ notes: 'checked twice' });
     expect(body).not.toHaveProperty('value_numeric');
   });
+
+  it('clears the text of a text-only result when a number replaces it', async () => {
+    api.listLabResults.mockResolvedValue([
+      result({ value_numeric: null, value_text: 'Negative', unit: '' }),
+    ]);
+    api.updateLabResult.mockResolvedValue(result());
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /HbA1c/ }));
+    fireEvent.click(
+      first(await screen.findAllByRole('button', { name: 'Edit' }))
+    );
+
+    fireEvent.change(screen.getByLabelText('Result', { exact: true }), {
+      target: { value: '0.2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(api.updateLabResult).toHaveBeenCalledTimes(1));
+    expect(first(api.updateLabResult.mock.calls)[1]).toMatchObject({
+      value_numeric: 0.2,
+      value_text: null,
+    });
+  });
 });

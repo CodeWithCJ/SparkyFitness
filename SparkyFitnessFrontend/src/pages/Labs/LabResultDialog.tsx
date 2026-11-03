@@ -236,6 +236,8 @@ const LabResultDialog = ({
       entry_date: date,
       // Left out for a text-only result, so its text is kept.
       ...(textOnly ? {} : { value_numeric: numeric }),
+      // A number typed for a result saved as text replaces that text.
+      ...(!textOnly && result?.value_text != null ? { value_text: null } : {}),
       unit: unit.trim(),
       ref_range_low: rangeLow.ok ? rangeLow.value : null,
       ref_range_high: rangeHigh.ok ? rangeHigh.value : null,
