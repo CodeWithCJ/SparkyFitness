@@ -1,3 +1,4 @@
+import { addLog } from './LogService';
 import { getHealthStepsBetween, getStepsBetween } from './stepCounter';
 import { getStride, learnStride } from './strideCalibration';
 import {
@@ -128,7 +129,20 @@ export async function learnFromWatchRun(
             )
         )
       : await activeSteps(window, askForPermission);
-  if (steps == null || steps < MIN_STEPS_FOR_ESTIMATE) return false;
+  // Every way this can learn nothing is logged, since the stride otherwise
+  // just stays blank with no hint why.
+  if (steps == null || steps < MIN_STEPS_FOR_ESTIMATE) {
+    addLog(
+      `[Stride] No ${window.activity} stride learned: ${
+        steps == null
+          ? health == null
+            ? 'Apple Health had no steps over the run (not synced from the watch yet, or step access is off) and the phone had none to use'
+            : 'no steps could be counted'
+          : `only ${steps} steps counted`
+      }`
+    );
+    return false;
+  }
   return learnStride(window.activity, steps, distanceMeters, runId);
 }
 

@@ -12,6 +12,9 @@ import { DEFAULT_STRIDE_METERS } from '../../src/utils/stride';
 const KEY = '@SparkyFitness/strideCalibration';
 
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
+const { addLog } = jest.requireMock('../../src/services/LogService') as {
+  addLog: jest.Mock;
+};
 
 beforeEach(async () => {
   await AsyncStorage.clear();
@@ -127,6 +130,22 @@ describe('the stride profile', () => {
 
     expect((await getStrideProfile()).walk.calibrated).toBe(false);
     expect((await getStrideProfile()).run.calibrated).toBe(true);
+  });
+});
+
+describe('what it logs', () => {
+  it('says why a sample was ignored', async () => {
+    expect(await learnStride('run', 80, 1000)).toBe(false);
+    expect(addLog).toHaveBeenCalledWith(
+      expect.stringContaining('run sample ignored: 80 steps over 1000 m')
+    );
+  });
+
+  it('says what the stride became', async () => {
+    await learnStride('run', 1000, 1000);
+    expect(addLog).toHaveBeenCalledWith(
+      expect.stringContaining('run stride now 1.000 m from 1000 steps')
+    );
   });
 });
 

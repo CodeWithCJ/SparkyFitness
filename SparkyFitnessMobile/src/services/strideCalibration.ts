@@ -5,6 +5,10 @@ import {
   blendStride,
   DEFAULT_STRIDE_METERS,
   isPlausibleStride,
+  MAX_PLAUSIBLE_STRIDE_METERS,
+  MIN_CALIBRATION_METERS,
+  MIN_CALIBRATION_STEPS,
+  MIN_PLAUSIBLE_STRIDE_METERS,
   strideFromSample,
   type StepActivity,
   type StrideCalibration,
@@ -135,7 +139,12 @@ export async function learnStride(
   runId?: string
 ): Promise<boolean> {
   const sample = strideFromSample(steps, distanceMeters);
-  if (sample == null) return false;
+  if (sample == null) {
+    addLog(
+      `[Stride] ${activity} sample ignored: ${steps} steps over ${Math.round(distanceMeters)} m is not a usable sample (needs ${MIN_CALIBRATION_STEPS}+ steps, ${MIN_CALIBRATION_METERS}+ m and a step of ${MIN_PLAUSIBLE_STRIDE_METERS} to ${MAX_PLAUSIBLE_STRIDE_METERS} m)`
+    );
+    return false;
+  }
   try {
     const stored = await read();
     const current = stored[activity];
@@ -146,22 +155,25 @@ export async function learnStride(
     const base = replacing ? (current?.last?.before ?? undefined) : current;
     const { last: _last, ...before } = base ?? {};
     const hasBefore = base != null;
-    const next = {
-      ...stored,
-      [activity]: {
-        ...blendStride(
-          hasBefore ? (before as StrideCalibration) : undefined,
-          sample
-        ),
-        ...(runId != null && {
-          last: {
-            runId,
-            before: hasBefore ? (before as StrideCalibration) : null,
-          },
-        }),
-      },
+    const learned: StrideCalibration = {
+      ...blendStride(
+        hasBefore ? (before as StrideCalibration) : undefined,
+        sample
+      ),
+      ...(runId != null && {
+        last: {
+          runId,
+          before: hasBefore ? (before as StrideCalibration) : null,
+        },
+      }),
     };
-    await AsyncStorage.setItem(KEY, JSON.stringify(next));
+    await AsyncStorage.setItem(
+      KEY,
+      JSON.stringify({ ...stored, [activity]: learned })
+    );
+    addLog(
+      `[Stride] ${activity} stride now ${learned.meters.toFixed(3)} m from ${steps} steps over ${Math.round(distanceMeters)} m (${learned.samples} distances${replacing ? ', replacing this run’s earlier one' : ''})`
+    );
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

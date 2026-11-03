@@ -2,6 +2,7 @@ import {
   getHealthStepsBetween,
   getStepsBetween,
 } from '../../src/services/stepCounter';
+import { addLog } from '../../src/services/LogService';
 import { getStride, learnStride } from '../../src/services/strideCalibration';
 import {
   estimateIndoorDistance,
@@ -14,6 +15,7 @@ import {
   type StepWindow,
 } from '../../src/services/stepDistance';
 
+jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/stepCounter');
 jest.mock('../../src/services/strideCalibration');
 
@@ -133,6 +135,24 @@ describe('learnFromWatchRun', () => {
     expect(mockedHealthSteps).toHaveBeenCalledWith(START, START + 30 * 60_000);
     expect(mockedSteps).not.toHaveBeenCalled();
     expect(mockedLearn).toHaveBeenCalledWith('run', 5200, 5000, undefined);
+  });
+
+  it('logs why nothing was learned when Health has no steps', async () => {
+    mockedHealthSteps.mockResolvedValue(null);
+    mockedSteps.mockResolvedValue(null);
+
+    expect(
+      await learnFromWatchRun(
+        window({ activity: 'run' }),
+        5000,
+        'entry-1',
+        false
+      )
+    ).toBe(false);
+
+    expect(addLog).toHaveBeenCalledWith(
+      expect.stringContaining('Apple Health had no steps over the run')
+    );
   });
 
   it('names the run, so teaching it again replaces its sample', async () => {
