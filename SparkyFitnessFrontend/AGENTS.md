@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-29_
+_Last updated: 2026-11-03_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -42,7 +42,7 @@ pnpm run build
 
 Features are organized by domain, and the same domain folder name appears in `src/pages/`, `src/api/`, and `src/hooks/`. A feature change usually touches the matching folder in all three:
 
-- Page domains: `Admin`, `Auth`, `Chat`, `CheckIn`, `Cycle`, `Diary`, `Errors`, `Exercises`, `Fasting`, `Foods`, `Goals`, `Integrations`, `Medications`, `Reports`, `Settings`, `Symptoms`.
+- Page domains: `Admin`, `Auth`, `Chat`, `CheckIn`, `Cycle`, `Diary`, `Errors`, `Exercises`, `Fasting`, `Foods`, `Goals`, `Integrations`, `Labs`, `Medications`, `Reports`, `Settings`, `Symptoms`.
 - API domains add a few more: `AiConversions`, `Chatbot`, `Onboarding`, `Pregnancy`, `SleepScience`, `Symptoms`.
 - Example: a Medications bug lives in `src/pages/Medications/` + `src/api/Medications/` + `src/hooks/` medication hooks. Start there, not with a repo-wide search.
 
@@ -55,6 +55,7 @@ Features are organized by domain, and the same domain folder name appears in `sr
 - `src/pages/<Domain>/` - route screens by domain.
 - Remote MCP OAuth UI: `src/pages/Admin/AuthenticationSettings.tsx` owns the admin feature switch, HTTPS availability warning, full-access warning, and redirect URI allowlist; `src/pages/Auth/OAuthConsent.tsx` shows the client/scopes/redirect before approval; `src/pages/Settings/OAuthClientSettings.tsx` lists and revokes connected applications; API/query code is in `src/api/Auth/oauth.ts` and `src/hooks/Auth/useOAuth.ts`
 - `src/pages/Reports/Compare/` - the Reports > Compare tab (`CompareReport` is the root, mounted by `Reports.tsx` outside its loading gate), with its data from `src/hooks/Reports/useCompare.ts` and `src/api/Reports/compareApi.ts`.
+- Lab results: `/labs` (desktop tab and Add menu, owner only) is `src/pages/Labs/Labs.tsx`: the marker list (`buildLabMarkers`), a marker's chart (`LabMarkerChart`; results in another unit are not plotted) and history, `LabResultDialog` (add and edit; the unit and range start from the marker's latest result, else the preset, and a prefilled range is dropped when its unit is changed) and `LabImportDialog` (a PDF or photo up to 14 MB, `planLabImport` builds the review rows, saved by one `POST /api/v2/lab-results/imports`). Hooks are in `src/hooks/Labs/useLabResults.ts` over `src/api/Labs/labResultsApi.ts`, and every write invalidates `labKeys.all`. Marker names come from `labs.markers.<key>`, never stored text. The range, unit, status and import-planning helpers are shared with mobile in `@workspace/shared` (`utils/labResults.ts`, `utils/labReportImport.ts`); only number formatting (`pages/Labs/labFormat.ts`) is local.
 - `src/api/api.ts` - `apiCall(endpoint, options)` helper: base URL `/api`, query `params`, JSON/FormData bodies, `responseType`, error toasts, `suppress404Toast`. Use it for all backend requests.
 - `src/api/<Domain>/` - per-domain API clients built on `apiCall`.
 - `src/hooks/<Domain>/` and `src/hooks/use*.ts(x)` - TanStack Query hooks and shared UI hooks (`use-toast`, `useDebounce`, `useAuth`, ...).

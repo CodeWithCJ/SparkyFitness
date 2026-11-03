@@ -135,6 +135,7 @@ export default defineConfig({
             { text: 'User Settings', link: '/features/user-settings' },
             { text: 'AI Nutrition Assistant', link: '/features/ai-assistant' },
             { text: 'Measurements', link: '/features/measurements' },
+            { text: 'Lab Results', link: '/features/lab-results' },
             { text: 'MCP Server', link: '/features/mcp-server' },
           ],
         },

@@ -157,6 +157,8 @@ export * from './constants/chartConstants.ts';
 export * from './constants/foodProviderTypes.ts';
 export * from './constants/supplementProviderTypes.ts';
 export * from './constants/labMarkers.ts';
+export * from './utils/labResults.ts';
+export * from './utils/labReportImport.ts';
 export * from './utils/noteImages.ts';
 export * from './utils/markdownToolbar.ts';
 export * from './nutrients/micronutrientCatalog.ts';
