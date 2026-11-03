@@ -223,14 +223,16 @@ async function preCleanEntriesBySourceAndDate(
   isRejected: (entry: Record<string, unknown>) => boolean = () => false
 ) {
   if (entries.length === 0) return;
-  const daysBySource: Record<string, Set<string>> = {};
+  // Maps, not plain objects: a source such as 'constructor' or '__proto__'
+  // would otherwise resolve to an inherited property and throw.
+  const daysBySource = new Map<string, Set<string>>();
   // Records this payload will re-insert anyway. They are held back from the
   // delete so the write path updates them in place instead, which preserves the
   // telemetry a summary-only re-send does not carry — the route, laps and
   // heart-rate zones hang off exercise_entry_id with ON DELETE CASCADE, so
   // deleting the parent first destroys them and the re-insert cannot restore
   // what the client never sent (#2300).
-  const keepIdsBySource: Record<string, Set<string>> = {};
+  const keepIdsBySource = new Map<string, Set<string>>();
   for (const entry of entries) {
     // Kept as sent: the handler stores this exact value, so the delete must
     // match it. Only the emptiness check ignores surrounding whitespace.
@@ -240,20 +242,24 @@ async function preCleanEntriesBySourceAndDate(
     // it will not be re-inserted, so a valid sibling's span must not sweep
     // away the copy already stored.
     if (typeof entry.source_id === 'string' && entry.source_id.length > 0) {
-      (keepIdsBySource[source] ??= new Set()).add(entry.source_id);
+      const keep = keepIdsBySource.get(source) ?? new Set<string>();
+      keep.add(entry.source_id);
+      keepIdsBySource.set(source, keep);
     }
     // A rejected record never widens the span it would have replaced.
     if (isRejected(entry)) continue;
     const resolved = resolveHealthEntryDate(entry, fallbackTimezone);
     if (!resolved) continue;
-    (daysBySource[source] ??= new Set()).add(resolved.parsedDate);
+    const days = daysBySource.get(source) ?? new Set<string>();
+    days.add(resolved.parsedDate);
+    daysBySource.set(source, days);
   }
-  for (const source of Object.keys(daysBySource)) {
-    const days = [...daysBySource[source]].sort();
+  for (const [source, daySet] of daysBySource) {
+    const days = [...daySet].sort();
     if (days.length === 0) continue;
     const startDate = days[0];
     const endDate = days[days.length - 1];
-    const keepSourceIds = [...(keepIdsBySource[source] ?? [])];
+    const keepSourceIds = [...(keepIdsBySource.get(source) ?? [])];
     log(
       'info',
       `[processHealthData] Pre-cleanup: Deleting existing ${label} for source '${source}' from ${startDate} to ${endDate}` +

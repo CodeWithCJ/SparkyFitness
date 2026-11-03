@@ -152,6 +152,20 @@ describe('processHealthData pre-cleanup (#2938)', () => {
     expect([...keepSourceIds].sort()).toEqual(['hk-bad', 'hk-good']);
   });
 
+  it.each(['constructor', '__proto__', 'toString'])(
+    'handles the source name %j without throwing',
+    async (source) => {
+      await measurementService.processHealthData(
+        [workout({ source, source_id: 'id-1' })],
+        'user-1',
+        'user-1'
+      );
+
+      expect(deleteMock()).toHaveBeenCalledTimes(1);
+      expect(deleteMock().mock.calls[0][3]).toBe(source);
+    }
+  );
+
   it('limits the delete to the days of the valid workouts in a mixed batch', async () => {
     await measurementService.processHealthData(
       [
