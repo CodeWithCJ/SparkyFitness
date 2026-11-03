@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-02_
+_Last updated: 2026-11-03_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -239,6 +239,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   - `req.user`
 - `req.userId` is the active RLS target; `req.authenticatedUserId` is the logged-in actor
 - Family and delegated access flow through `middleware/checkPermissionMiddleware.ts`, `middleware/onBehalfOfMiddleware.ts`, and the auth middleware’s active-user switching
+- Whether someone may act for another account at all (account switching, the `sparky_active_user_id` cookie and the `x-on-behalf-of-user-id` header) is one rule, `canActForUser` in `utils/actForUser.ts`: any reports, diary, check-in, medications or symptoms grant; each route then checks its own permission
 - `checkPermissionMiddleware(permissionType)` guards routes; permission types are `'diary'`, `'reports'`, `'checkin'`, `'medications'`, and `'symptoms'` (GET resolves to the read-only `*_read` variant)
 - If you change auth behavior, check both cookie-backed sessions and API key flows
 - API keys carry a scope in `api_key.permissions` (Better Auth format, `@workspace/shared` `ApiKeys.api.zod.ts`): `{ sparky: ["read"] }` is read-only, `{ sparky: ["read", "write"] }` or no permissions is full access. The scope is set only by `POST /api/identity/user/generate-api-key`, because Better Auth refuses `permissions` from a client. `authenticate` sets `req.apiKeyReadOnly` and answers 403 for anything but GET/HEAD/OPTIONS plus the POST allowlist in `utils/apiKeyScope.ts`; the `/api/auth` interceptor refuses mutations from read-only keys via `middleware/readOnlyApiKeyGuard.ts`; `/mcp` filters tools and actions with `ai/mcp/toolAccess.ts`. A new MCP tool or action is unavailable to read-only keys until it is classified there
