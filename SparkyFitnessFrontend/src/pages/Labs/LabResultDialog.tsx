@@ -67,76 +67,11 @@ const LabResultDialog = ({
   const saveResult = useSaveLabResult();
   const createMarker = useCreateLabMarker();
 
-  const initialPick = (): Picked | null => {
-    if (result) {
-      const found = markers.find(
-        (m) =>
-          (result.marker_key && m.markerKey === result.marker_key) ||
-          (result.custom_marker_id && m.markerId === result.custom_marker_id)
-      );
-      return found
-        ? found.markerKey
-          ? { kind: 'builtin', key: found.markerKey, name: found.name }
-          : { kind: 'custom', id: found.markerId as string, name: found.name }
-        : null;
-    }
-    if (!marker) return null;
-    return marker.markerKey
-      ? { kind: 'builtin', key: marker.markerKey, name: marker.name }
-      : { kind: 'custom', id: marker.markerId as string, name: marker.name };
-  };
-
-  const [picked, setPicked] = useState<Picked | null>(initialPick);
-  const [query, setQuery] = useState('');
-  const [date, setDate] = useState(result?.entry_date ?? todayInZone(timezone));
-  const [value, setValue] = useState(text(result?.value_numeric));
-  const [unit, setUnit] = useState(result?.unit ?? '');
-  const [low, setLow] = useState(text(result?.ref_range_low));
-  const [high, setHigh] = useState(text(result?.ref_range_high));
-  const [labName, setLabName] = useState(result?.lab_name ?? '');
-  const [notes, setNotes] = useState(result?.notes ?? '');
-  // What the unit and range were filled in with. Editing a saved result starts
-  // from its own values, so changing only the unit drops a range that belonged
-  // to the old one.
-  const [prefill, setPrefill] = useState<{
-    unit: string;
-    low: string;
-    high: string;
-  } | null>(
-    result
-      ? {
-          unit: result.unit,
-          low: text(result.ref_range_low),
-          high: text(result.ref_range_high),
-        }
-      : null
-  );
-  // A marker created for a new name before the result failed to save: a retry
-  // reuses it instead of creating the same name again.
-  const [createdMarkerId, setCreatedMarkerId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  // The numbers the fields were filled in with, so a field left untouched is
-  // saved as that exact number rather than re-read from its formatted text.
-  const [origin, setOrigin] = useState<{
-    value: number | null;
-    low: number | null;
-    high: number | null;
-  }>({
-    value: result?.value_numeric ?? null,
-    low: result?.ref_range_low ?? null,
-    high: result?.ref_range_high ?? null,
-  });
-
-  const options = useMemo(
-    () => buildLabPickerOptions(markers, query, labels),
-    [markers, query, labels]
-  );
-
   // The unit and range a new result starts from: the marker's latest result,
-  // else the preset's (the profile's sex picks the range).
-  const choose = (next: Picked) => {
-    setPicked(next);
-    setCreatedMarkerId(null);
+  // else the preset's (the profile's sex picks the range), else the marker's.
+  const seedSource = (
+    next: Picked
+  ): { unit: string; low: number | null; high: number | null } => {
     const existing = markers.find((m) =>
       next.kind === 'builtin'
         ? m.markerKey === next.key
@@ -172,6 +107,91 @@ const LabResultDialog = ({
         high: existing.ref_range_high,
       };
     }
+    return source;
+  };
+
+  const initialPick = (): Picked | null => {
+    if (result) {
+      const found = markers.find(
+        (m) =>
+          (result.marker_key && m.markerKey === result.marker_key) ||
+          (result.custom_marker_id && m.markerId === result.custom_marker_id)
+      );
+      return found
+        ? found.markerKey
+          ? { kind: 'builtin', key: found.markerKey, name: found.name }
+          : { kind: 'custom', id: found.markerId as string, name: found.name }
+        : null;
+    }
+    if (!marker) return null;
+    return marker.markerKey
+      ? { kind: 'builtin', key: marker.markerKey, name: marker.name }
+      : { kind: 'custom', id: marker.markerId as string, name: marker.name };
+  };
+
+  // A new result for a marker the dialog opens on starts from the same unit and
+  // range as one picked in it.
+  const [initial] = useState(() => {
+    const pick = initialPick();
+    return { pick, seed: !result && pick ? seedSource(pick) : null };
+  });
+  const [picked, setPicked] = useState<Picked | null>(initial.pick);
+  const [query, setQuery] = useState('');
+  const [date, setDate] = useState(result?.entry_date ?? todayInZone(timezone));
+  const [value, setValue] = useState(text(result?.value_numeric));
+  const [unit, setUnit] = useState(result?.unit ?? initial.seed?.unit ?? '');
+  const [low, setLow] = useState(
+    text(result ? result.ref_range_low : initial.seed?.low)
+  );
+  const [high, setHigh] = useState(
+    text(result ? result.ref_range_high : initial.seed?.high)
+  );
+  const [labName, setLabName] = useState(result?.lab_name ?? '');
+  const [notes, setNotes] = useState(result?.notes ?? '');
+  // What the unit and range were filled in with. Editing a saved result starts
+  // from its own values, so changing only the unit drops a range that belonged
+  // to the old one.
+  const [prefill, setPrefill] = useState<{
+    unit: string;
+    low: string;
+    high: string;
+  } | null>(() => {
+    const from = result
+      ? {
+          unit: result.unit,
+          low: result.ref_range_low,
+          high: result.ref_range_high,
+        }
+      : initial.seed;
+    return from
+      ? { unit: from.unit, low: text(from.low), high: text(from.high) }
+      : null;
+  });
+  // A marker created for a new name before the result failed to save: a retry
+  // reuses it instead of creating the same name again.
+  const [createdMarkerId, setCreatedMarkerId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  // The numbers the fields were filled in with, so a field left untouched is
+  // saved as that exact number rather than re-read from its formatted text.
+  const [origin, setOrigin] = useState<{
+    value: number | null;
+    low: number | null;
+    high: number | null;
+  }>({
+    value: result?.value_numeric ?? null,
+    low: result ? result.ref_range_low : (initial.seed?.low ?? null),
+    high: result ? result.ref_range_high : (initial.seed?.high ?? null),
+  });
+
+  const options = useMemo(
+    () => buildLabPickerOptions(markers, query, labels),
+    [markers, query, labels]
+  );
+
+  const choose = (next: Picked) => {
+    setPicked(next);
+    setCreatedMarkerId(null);
+    const source = seedSource(next);
     const seed = {
       unit: source.unit,
       low: text(source.low),

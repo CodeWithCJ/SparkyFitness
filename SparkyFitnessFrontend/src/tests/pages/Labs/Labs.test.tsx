@@ -446,4 +446,32 @@ describe('Labs page', () => {
       value_text: null,
     });
   });
+
+  it('prefills the unit and range when Add is opened from a marker', async () => {
+    api.createLabResult.mockResolvedValue(result());
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /HbA1c/ }));
+    // The marker view's own Add button (the page header has one too).
+    const addButtons = await screen.findAllByRole('button', {
+      name: 'Add lab result',
+    });
+    fireEvent.click(addButtons[addButtons.length - 1] as HTMLElement);
+
+    expect(screen.getByLabelText('Unit')).toHaveValue('%');
+    expect(screen.getByLabelText('Low')).toHaveValue('4');
+    expect(screen.getByLabelText('High')).toHaveValue('5.6');
+    fireEvent.change(screen.getByLabelText('Result', { exact: true }), {
+      target: { value: '5.3' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(api.createLabResult).toHaveBeenCalledTimes(1));
+    expect(first(api.createLabResult.mock.calls)[0]).toMatchObject({
+      marker_key: 'hba1c',
+      value_numeric: 5.3,
+      unit: '%',
+      ref_range_low: 4,
+      ref_range_high: 5.6,
+    });
+  });
 });
