@@ -1709,6 +1709,36 @@ describe('enrichExerciseSessions', () => {
     }
   );
 
+  test.each(['PERMISSION_ERROR', 'AGGREGATION_NOT_SUPPORTED'])(
+    'keeps active calories when optional basal access fails with code %s',
+    async (code) => {
+      mockAggregateRecord.mockImplementation(
+        ({ recordType }: { recordType: string }) => {
+          if (recordType === 'BasalMetabolicRate') {
+            return Promise.reject(
+              Object.assign(new Error('Native read failed'), { code })
+            );
+          }
+          if (recordType === 'ActiveCaloriesBurned') {
+            return Promise.resolve({
+              ACTIVE_CALORIES_TOTAL: { inKilocalories: 200 },
+            });
+          }
+          if (recordType === 'TotalCaloriesBurned') {
+            return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 300 } });
+          }
+          return Promise.resolve({});
+        }
+      );
+
+      const result = await enrichExerciseSessions(
+        [makeSession()],
+        createTelemetryRunContext()
+      );
+      expect(result[0]).toMatchObject({ energy: { inKilocalories: 200 } });
+    }
+  );
+
   test('keeps valid calories when optional distance and step reads fail', async () => {
     mockAggregateRecord.mockImplementation(
       ({ recordType }: { recordType: string }) => {
