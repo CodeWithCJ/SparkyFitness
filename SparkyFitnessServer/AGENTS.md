@@ -32,6 +32,7 @@ If a task also touches `shared/`, the frontend, or the mobile app, read the rele
 - Main domains: food and meal tracking, exercise logging, health and sleep data, sleep science, fasting, medications, symptom and episode tracking, mood, menstrual cycle and pregnancy, reporting, AI chat, onboarding, identity, admin tooling, NFC action tags, and external provider integrations
 - External provider integrations include the Intervals.icu API-key provider (`routes/intervalsRoutes.ts`, `integrations/intervals/`) for activities and wellness
 - Several server instances can share one database; each scheduled job tick runs on one of them, claimed in `system.scheduled_jobs` (`services/scheduledJobs.ts`)
+- Canadian Nutrient File and Livsmedelsverket import progress lives in `system.bulk_imports` (`services/bulkImports.ts`), so any instance reports it
 
 ## Verified Commands
 
@@ -73,6 +74,7 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - `services/scheduledJobs.ts` - `scheduleJob()`, the only place `node-cron` is imported: every instance registers every job and the first to claim a tick in `system.scheduled_jobs` (`models/scheduledJobRepository.ts`) runs it
 - `services/onlineRestoreGuard.ts` - `assertRestoreAllowed()`: refuses an in-app restore (409, before the upload, and again inside `performRestore` just before the swap) when `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` or another instance's `sparkyfitness-*` sessions show in `pg_stat_activity`. Best effort: idle pools close after 30 s, so an idle instance is invisible; operators scale to one instance first
 - Restore (backupService.ts `performRestore`): see [source-map.md](agent-docs/source-map.md#restore-backupservicets-performrestore).
+- `services/bulkImports.ts` - the Canadian Nutrient File and Livsmedelsverket imports keep their progress in `system.bulk_imports`, so any instance answers the status route, and hold a session advisory lock while they run, so one import per user and kind runs across instances; a row still marked running without the lock reads as failed
 - `services/providerSyncClaim.ts` - every provider sync, manual or scheduled, runs through `startProviderSync`, which claims the account and stops the sync when the claim is lost or it gets no database connection and runs no query for 20 minutes; a stopped sync's next `getClient`/`getSystemClient` throws (`utils/abortScope.ts`), while a transaction already running on a connection it holds still finishes, so sync writes stay idempotent. Sync code gets connections only through those two, and never through `runOutsideAbortScope`, which is for fenced cleanup such as releasing the claim
 - `auth.ts` - Better Auth configuration, plugins, session behavior, SSO provider syncing
 - Remote MCP OAuth: `auth.ts` conditionally installs the JWT/MCP plugins only for HTTPS or loopback public URLs and rechecks authorization redirects against the administrator allowlist through Better Auth's `validateRedirectUri`; `utils/mcpOAuth.ts` owns public/resource/issuer URLs, metadata-probe classification, loopback JWKS verification URL, and redirect allowlist matching; `SparkyFitnessServer.ts` gates discovery and `/api/auth/oauth2*`; `middleware/mcpOAuthAuthInterceptor.ts` enforces registration redirect policy and safe consent deletion; `middleware/authMiddleware.ts` `authenticateMcp` accepts OAuth tokens before the API-key/session fallback; `models/oauthClientRepository.ts` enforces consent, enabled-client status, and revocation
@@ -296,6 +298,8 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect `services/providerSyncClaim.ts` (claim, renewal, stall stop) and `utils/abortScope.ts` (how a stopped sync's next `getClient`/`getSystemClient` is refused and how connections and queries count as progress, hooked in `db/poolManager.ts`)
 - Scheduled job ran twice, ran on no instance, or ran on the wrong one:
   inspect `services/scheduledJobs.ts`, `models/scheduledJobRepository.ts` and the job's `system.scheduled_jobs` row (`last_slot`, `claimed_by`)
+- CNF or Livsmedelsverket import stuck, refused as already running, or showing another instance's progress:
+  inspect `services/bulkImports.ts`, then `services/cnfBulkImportService.ts` or `services/livsmedelsverketBulkImportService.ts`, and the user's `system.bulk_imports` row
 - Auth, session, MFA, or API key issue:
   inspect `auth.ts`, `middleware/authMiddleware.ts`, `routes/authRoutes.ts`, and `routes/auth/`
 - Remote MCP OAuth, discovery, consent, token, or redirect allowlist issue:
