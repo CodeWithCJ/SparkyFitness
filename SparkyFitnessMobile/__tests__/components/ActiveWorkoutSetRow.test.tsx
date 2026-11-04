@@ -84,6 +84,7 @@ interface RenderOverrides {
   enableToggle?: boolean;
   /** Wire the set-type handler (makes the set number a menu trigger). */
   enableSetType?: boolean;
+  disableSwipeDelete?: boolean;
 }
 
 function renderRow(overrides?: RenderOverrides) {
@@ -120,6 +121,7 @@ function renderRow(overrides?: RenderOverrides) {
       nextSetId={current?.nextSetId}
       entryId={current?.entryId}
       rpeEditable={current?.rpeEditable}
+      disableSwipeDelete={current?.disableSwipeDelete}
       completedBadge={current?.completedBadge}
       previousSet={current?.previousSet}
       assumed={current?.assumed}
@@ -196,6 +198,12 @@ describe('ActiveWorkoutSetRow', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'done' });
       fireEvent.press(getByLabelText('Un-complete set 1'));
       expect(callbacks.onUncomplete).toHaveBeenCalledWith('101');
+    });
+
+    it('drops the swipe wrapper when the host owns horizontal drags', () => {
+      const { queryByTestId } = renderRow({ disableSwipeDelete: true });
+      expect(queryByTestId('reanimated-swipeable')).toBeNull();
+      expect(queryByTestId('set-row')).toBeTruthy();
     });
 
     it('exposes swipe delete', () => {
@@ -426,6 +434,83 @@ describe('ActiveWorkoutSetRow', () => {
       });
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { reps: 8 });
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
+    });
+
+    it('commits typed drafts when a focused live row unmounts without a blur', () => {
+      // The focus view pages to another exercise with the keyboard up.
+      const { getByLabelText, callbacks, unmount } = renderRow({
+        state: 'current',
+        isFocused: true,
+        modality: 'weight_distance',
+        set: { weight: 60, distance: null },
+      });
+      fireEvent.changeText(getByLabelText('Weight'), '80');
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+
+      unmount();
+      expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        weight: 80,
+      });
+    });
+
+    it('commits a typed duration on unmount', () => {
+      const { getByLabelText, callbacks, unmount } = renderRow({
+        state: 'current',
+        isFocused: true,
+        modality: 'duration',
+        set: { weight: null, reps: null, duration: null },
+      });
+      fireEvent.changeText(getByLabelText('Duration'), '45');
+      unmount();
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        duration: 45,
+      });
+    });
+
+    it('writes nothing on unmount for an untouched draft, an unfocused row or a read-only row', () => {
+      const untouched = renderRow({
+        state: 'current',
+        isFocused: true,
+        set: { weight: 60, reps: 10 },
+      });
+      untouched.unmount();
+      expect(untouched.callbacks.onCommitField).not.toHaveBeenCalled();
+
+      const unfocused = renderRow({
+        state: 'current',
+        isFocused: false,
+        set: { weight: 60, reps: 10 },
+      });
+      unfocused.unmount();
+      expect(unfocused.callbacks.onCommitField).not.toHaveBeenCalled();
+
+      const edit = renderRow({
+        state: 'current',
+        mode: 'edit',
+        set: { weight: 60, reps: 10 },
+      });
+      edit.unmount();
+      expect(edit.callbacks.onCommitField).not.toHaveBeenCalled();
+    });
+
+    it('does not write an untouched draft over a watch edit when it unmounts', () => {
+      const base = { state: 'current' as const, isFocused: true };
+      const { getByLabelText, callbacks, rerenderRow, unmount } = renderRow({
+        ...base,
+        set: { weight: 60, reps: 10 },
+      });
+      fireEvent.changeText(getByLabelText('Reps'), '12');
+      // The watch changes the weight under the open keyboard.
+      rerenderRow({ ...base, set: { weight: 65, reps: 10 } });
+      unmount();
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        reps: 12,
+      });
+      expect(callbacks.onCommitField).not.toHaveBeenCalledWith(
+        '101',
+        expect.objectContaining({ weight: expect.anything() })
+      );
     });
 
     it('does not write an untouched draft back over a value changed under the keyboard', () => {

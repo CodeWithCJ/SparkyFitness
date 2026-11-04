@@ -17,6 +17,7 @@ const ICON_MAP = {
   'chevron-expand': { sf: 'chevron.up.chevron.down', ion: 'chevron-expand' },
 
   // Actions
+  expand: { sf: 'arrow.up.left.and.arrow.down.right', ion: 'expand-outline' },
   copy: { sf: 'doc.on.doc', ion: 'copy-outline' },
   trash: { sf: 'trash', ion: 'trash-outline' },
   paste: { sf: 'doc.on.clipboard', ion: 'clipboard-outline' },

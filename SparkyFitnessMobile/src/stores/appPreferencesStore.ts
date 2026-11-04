@@ -77,6 +77,9 @@ const LEGACY_KEYS = {
 
 type LegacyKey = keyof typeof LEGACY_KEYS;
 
+export type ActiveWorkoutView = 'list' | 'focus';
+export type FocusMediaDefault = 'expanded' | 'minimized';
+
 /** Which stat the active-workout log shows in its per-set metric column. */
 /** How the Diary lays out food: grouped by meal, or one list by time of day. */
 export type DiaryViewMode = 'meals' | 'timeline';
@@ -168,6 +171,8 @@ export const PREFERENCE_DEFAULTS = {
   watchLargerText: false,
   watchClassicWorkout: false,
   activeWorkoutNowCard: false,
+  activeWorkoutView: 'list' as ActiveWorkoutView,
+  focusMediaDefault: 'expanded' as FocusMediaDefault,
   watchNutrientOrder: [] as string[],
   shownWatchNutrients: [...DEFAULT_WATCH_NUTRIENTS] as string[],
   watchSetInputStyle: 'crown' as WatchSetInputStyle,
@@ -316,6 +321,10 @@ export type AppPreferencesData = {
   watchClassicWorkout: boolean;
   /** Whether the active workout pins the Now card under the exercise rail. */
   activeWorkoutNowCard: boolean;
+  /** Active workout layout: every exercise in one list, or one at a time. */
+  activeWorkoutView: ActiveWorkoutView;
+  /** Whether the focus view opens with the large photo card or a thumbnail. */
+  focusMediaDefault: FocusMediaDefault;
   /**
    * Order of the nutrients the watch's Goals page can list (standard keys and
    * custom nutrient names). Empty until the wearer drags one.
@@ -415,6 +424,8 @@ export interface AppPreferencesState extends AppPreferencesData {
   setWatchLargerText: (value: boolean) => void;
   setWatchClassicWorkout: (value: boolean) => void;
   setActiveWorkoutNowCard: (value: boolean) => void;
+  setActiveWorkoutView: (value: ActiveWorkoutView) => void;
+  setFocusMediaDefault: (value: FocusMediaDefault) => void;
   setWatchNutrientOrder: (order: string[]) => void;
   setWatchNutrientShown: (key: string, isShown: boolean) => void;
   setWatchSetInputStyle: (value: WatchSetInputStyle) => void;
@@ -682,6 +693,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setWatchLargerText: (value) => set({ watchLargerText: value }),
       setWatchClassicWorkout: (value) => set({ watchClassicWorkout: value }),
       setActiveWorkoutNowCard: (value) => set({ activeWorkoutNowCard: value }),
+      setActiveWorkoutView: (value) => set({ activeWorkoutView: value }),
+      setFocusMediaDefault: (value) => set({ focusMediaDefault: value }),
       setWatchPageHidden: (key, isHidden) =>
         set((state) => ({
           hiddenWatchPages: withMembership(
@@ -782,6 +795,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         watchLargerText: state.watchLargerText,
         watchClassicWorkout: state.watchClassicWorkout,
         activeWorkoutNowCard: state.activeWorkoutNowCard,
+        activeWorkoutView: state.activeWorkoutView,
+        focusMediaDefault: state.focusMediaDefault,
         watchNutrientOrder: state.watchNutrientOrder,
         shownWatchNutrients: state.shownWatchNutrients,
         watchSetInputStyle: state.watchSetInputStyle,

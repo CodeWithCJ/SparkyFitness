@@ -26,6 +26,7 @@ SparkyFitness tracks the parts of your life that move your body and your health:
 
 - [Reports](/features/reports): charts, tables, and exports for nutrition, water, exercise, measurements, sleep, fasting, and more
 - [Measurements](/features/measurements): log body metrics and custom categories, then watch the trends
+- [Lab Results](/features/lab-results): keep lab results, import a report and track each marker against its range
 - [Training Consistency](/features/exercises/training-consistency): how regularly you train
 - [Cycle Hub](/features/cycle-hub/): cycle tracking, trying-to-conceive, and pregnancy modes
 
