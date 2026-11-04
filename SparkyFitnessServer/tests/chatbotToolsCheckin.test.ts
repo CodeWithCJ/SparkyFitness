@@ -1866,6 +1866,44 @@ describe('check-in tool output size and local times', () => {
     );
   });
 
+  it('asks for the stored name when two metrics share a display name', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue([
+      {
+        id: 'c10',
+        value: '61',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k10',
+          name: 'garmin_hrv',
+          display_name: 'HRV',
+          measurement_type: 'ms',
+        },
+      },
+      {
+        id: 'c11',
+        value: '48',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k11',
+          name: 'oura_hrv',
+          display_name: 'HRV',
+          measurement_type: 'ms',
+        },
+      },
+    ]);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: 'HRV' },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\nSeveral metrics are shown as "HRV": garmin_hrv, oura_hrv. Ask again with one of these names as category_name.'
+    );
+  });
+
   it('labels a metric by its name when the display name is blank', async () => {
     vi.mocked(
       measurementService.getCustomMeasurementEntriesByDateRange
