@@ -524,6 +524,8 @@ export type RootStackParamList = {
   DashboardSettings: undefined;
   HealthTrendsSettings: undefined;
   WatchSettings: undefined;
+  WatchComplications: undefined;
+  WatchComplicationEdit: { complicationId?: string } | undefined;
   AddMenuSettings: undefined;
   DiarySettings: undefined;
   OfflineSettings: undefined;
