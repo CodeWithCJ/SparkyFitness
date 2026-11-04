@@ -320,6 +320,9 @@ struct CustomComplicationEntry: TimelineEntry {
 }
 
 struct CustomComplicationProvider: AppIntentTimelineProvider {
+    typealias Entry = CustomComplicationEntry
+    typealias Intent = SelectCustomComplicationIntent
+
     func placeholder(in context: Context) -> CustomComplicationEntry {
         CustomComplicationEntry(date: Date(), content: .placeholder)
     }
@@ -343,9 +346,13 @@ struct CustomComplicationProvider: AppIntentTimelineProvider {
         )
     }
 
-    /// watchOS asks a configurable complication for the choices it can offer
-    /// when the wearer adds it to a face, so each saved definition appears as
-    /// a ready-made option rather than leaving the picker to the wearer.
+    /// On watchOS this IS the picker. Apple: watchOS has no interface for
+    /// choosing a complication's intent parameters, so the choices it lists
+    /// are the recommendations a provider returns, and a provider that returns
+    /// none shows "No options available" however good its entity query is. Each
+    /// saved definition (or a starter, until a list arrives) is one choice.
+    /// watchOS caches the answer: `ComplicationPublisher` calls
+    /// `invalidateConfigurationRecommendations()` when the list changes.
     func recommendations() -> [AppIntentRecommendation<SelectCustomComplicationIntent>] {
         loadDefinitions().map { definition in
             var intent = SelectCustomComplicationIntent()
@@ -354,7 +361,9 @@ struct CustomComplicationProvider: AppIntentTimelineProvider {
                 name: definition.name,
                 icon: definition.icon ?? "gauge.with.dots.needle.33percent"
             )
-            return AppIntentRecommendation(intent: intent, description: "\(definition.name)")
+            // The name is the wearer's own text: passed as a plain String, which
+            // picks the `StringProtocol` initialiser, not a localised key.
+            return AppIntentRecommendation(intent: intent, description: definition.name)
         }
     }
 
