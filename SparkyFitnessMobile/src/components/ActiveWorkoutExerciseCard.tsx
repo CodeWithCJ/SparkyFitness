@@ -74,6 +74,8 @@ import type { ExerciseProgressionPatch } from '../hooks/draftExercisesSlice';
 import { useLiveHeartRate } from '../stores/liveHeartRateStore';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
+import ExerciseVideoCard from './ExerciseVideoCard';
+import { useExerciseVideoUrl } from '../hooks/useExerciseVideoUrl';
 import type {
   ActiveSetPatch,
   CompletedSetMap,
@@ -477,6 +479,13 @@ function ActiveWorkoutExerciseCard({
   // (#1691); "View exercise" stays in the ⋯ menu. Other modes keep the
   // thumbnail → details behaviour.
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  // Only the expanded live card looks the video up, so a workout fetches one
+  // exercise at a time as the lifter moves through it.
+  const videoUrl = useExerciseVideoUrl(
+    exercise.exercise_id,
+    exercise.exercise_snapshot?.video_url,
+    isLive && expanded
+  );
   const thumbImages = exercise.exercise_snapshot?.images ?? [];
   const opensImageViewer = isLive && thumbImages.length > 0;
   const [editMode, setEditMode] = useState<
@@ -992,6 +1001,13 @@ function ActiveWorkoutExerciseCard({
           </Animated.View>
         </Pressable>
       </View>
+      {isLive && videoUrl ? (
+        <ExerciseVideoCard
+          url={videoUrl}
+          exerciseName={name}
+          variant="compact"
+        />
+      ) : null}
 
       <Animated.View
         entering={hasRenderedCollapsed ? FadeInDown.duration(200) : undefined}

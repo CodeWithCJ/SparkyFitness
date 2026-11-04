@@ -41,6 +41,8 @@ import {
 import { resolveExerciseImageSrc } from '@/utils/exercises';
 import { TagInput } from '@/components/ui/TagInput';
 import { localizeMuscle, localizeEquipment } from '@/utils/exerciseTaxonomy';
+import ExerciseVideoUrlField from '@/components/Exercises/ExerciseVideoUrlField';
+import { normalizeExerciseVideoUrl } from '@workspace/shared';
 
 interface EditExerciseDatabaseDialogProps {
   open: boolean;
@@ -100,6 +102,7 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
         ? exerciseToEdit.instructions
         : [],
       images: exerciseToEdit.images ? exerciseToEdit.images : [],
+      video_url: exerciseToEdit.video_url ?? '',
     });
     setImageFiles([]);
     setImageUrls([]);
@@ -385,6 +388,14 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
             />
           </div>
 
+          {/* Demonstration video */}
+          <ExerciseVideoUrlField
+            id="edit-exercise-video-url"
+            value={formData.video_url ?? ''}
+            onChange={(value) => handleFieldChange('video_url', value)}
+            exerciseName={formData.name || ''}
+          />
+
           {/* Images Logic */}
           <div className="grid grid-cols-4 items-start gap-4">
             <Label className="text-right mt-1">
@@ -475,7 +486,10 @@ const EditExerciseDatabaseDialog: React.FC<EditExerciseDatabaseDialogProps> = ({
           </div>
         </div>
 
-        <Button onClick={handleSaveExerciseDatabaseEdit}>
+        <Button
+          onClick={handleSaveExerciseDatabaseEdit}
+          disabled={normalizeExerciseVideoUrl(formData.video_url) === undefined}
+        >
           {t('exerciseCard.saveChanges', 'Save Changes')}
         </Button>
       </DialogContent>

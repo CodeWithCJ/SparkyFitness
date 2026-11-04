@@ -41,6 +41,8 @@ import {
   speakText,
   subscribeToSpeechVoices,
 } from '@/utils/speechNarrator';
+import { useExerciseVideoUrl } from '@/hooks/Exercises/useExerciseVideoUrl';
+import ExerciseVideo from '@/components/Exercises/ExerciseVideo';
 
 interface ExercisePlaybackModalProps {
   isOpen: boolean;
@@ -63,6 +65,12 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
   const [selectedVoiceURI, setSelectedVoiceURI] = useState<string | null>(null);
   const speechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const imageTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const videoUrl = useExerciseVideoUrl(
+    exercise?.id,
+    exercise?.video_url,
+    isOpen
+  );
 
   // Ref to keep track of isPlaying state inside callbacks
   const isPlayingRef = useRef(isPlaying);
@@ -403,6 +411,11 @@ const ExercisePlaybackModal: React.FC<ExercisePlaybackModalProps> = ({
           <DialogDescription>{exercise.description}</DialogDescription>
         </DialogHeader>
         <div className="flex-grow flex flex-col items-center justify-center p-4 space-y-4">
+          <ExerciseVideo
+            url={videoUrl}
+            title={exercise.name}
+            className="w-full max-w-[640px]"
+          />
           {currentImageSrc && (
             <img
               src={currentImageSrc}
