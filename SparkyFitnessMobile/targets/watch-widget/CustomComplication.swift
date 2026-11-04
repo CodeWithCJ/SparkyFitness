@@ -313,6 +313,21 @@ struct CustomComplicationProvider: AppIntentTimelineProvider {
         )
     }
 
+    /// watchOS asks a configurable complication for the choices it can offer
+    /// when the wearer adds it to a face, so each saved definition appears as
+    /// a ready-made option rather than leaving the picker to the wearer.
+    func recommendations() -> [AppIntentRecommendation<SelectCustomComplicationIntent>] {
+        loadDefinitions().map { definition in
+            var intent = SelectCustomComplicationIntent()
+            intent.complication = CustomComplicationEntity(
+                id: definition.id,
+                name: definition.name,
+                icon: definition.icon ?? "gauge.with.dots.needle.33percent"
+            )
+            return AppIntentRecommendation(intent: intent, description: "\(definition.name)")
+        }
+    }
+
     func snapshot(for configuration: SelectCustomComplicationIntent, in context: Context) async -> CustomComplicationEntry {
         // The watch-face gallery shows a sample, never the wearer's numbers.
         if context.isPreview { return CustomComplicationEntry(date: Date(), content: .placeholder) }
