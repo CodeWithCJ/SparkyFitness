@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import ActiveWorkoutFocusChips from '../../src/components/ActiveWorkoutFocusChips';
 
@@ -40,5 +40,27 @@ describe('ActiveWorkoutFocusChips', () => {
       animated: false,
     });
     scrollTo.mockRestore();
+  });
+
+  it('draws a completed chip with a tinted fill and a themed, non-white numeral', () => {
+    const { getByTestId, getByText } = render(
+      <ActiveWorkoutFocusChips
+        exercises={exercises}
+        completedSetIds={{ '1': true }}
+        selectedId="e0"
+        supersetBorders={new Map()}
+        onSelect={jest.fn()}
+      />
+    );
+    const numeral = StyleSheet.flatten(getByText('2').props.style);
+    expect(numeral.color).toBeDefined();
+    expect(numeral.color).not.toBe('white');
+    const ring = StyleSheet.flatten(
+      getByTestId('focus-chip-ring-e1').props.style
+    );
+    expect(ring.backgroundColor).not.toBe(
+      StyleSheet.flatten(getByTestId('focus-chip-ring-e2').props.style)
+        .backgroundColor
+    );
   });
 });

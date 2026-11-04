@@ -30,7 +30,7 @@ interface Props {
 
 /**
  * The focus view's exercise pager: one numbered circle per exercise (done =
- * filled green, still numbered so it can be told apart; in progress = tinted, selected = accent ring), superset members tied
+ * green tinted and outlined, still numbered so it can be told apart; in progress = tinted, selected = accent ring), superset members tied
  * together by a bar in the group colour. Keeps the selected chip centred.
  */
 function ActiveWorkoutFocusChips({
@@ -41,11 +41,12 @@ function ActiveWorkoutFocusChips({
   onSelect,
 }: Props) {
   const { t } = useTranslation();
-  const [accentPrimary, textSecondary, success] = useCSSVariable([
+  const [accentPrimary, textPrimary, textSecondary, success] = useCSSVariable([
     '--color-accent-primary',
+    '--color-text-primary',
     '--color-text-secondary',
     '--color-icon-success',
-  ]) as [string, string, string];
+  ]) as [string, string, string, string];
   const scrollRef = useRef<ScrollView>(null);
   const viewportWidthRef = useRef(0);
 
@@ -129,12 +130,16 @@ function ActiveWorkoutFocusChips({
                 width: CIRCLE_SIZE,
                 height: CIRCLE_SIZE,
                 borderWidth: 2,
-                borderColor: isSelected ? accentPrimary : 'transparent',
+                borderColor: isSelected
+                  ? accentPrimary
+                  : isDone
+                    ? success
+                    : 'transparent',
                 backgroundColor:
                   status === 'inProgress'
                     ? withAlpha(accentPrimary, 0.18)
                     : isDone
-                      ? success
+                      ? withAlpha(success, 0.2)
                       : withAlpha(textSecondary, 0.14),
               }}
             >
@@ -142,7 +147,7 @@ function ActiveWorkoutFocusChips({
                 className="text-sm font-semibold"
                 style={{
                   color: isDone
-                    ? 'white'
+                    ? textPrimary
                     : isSelected || status === 'inProgress'
                       ? accentPrimary
                       : textSecondary,

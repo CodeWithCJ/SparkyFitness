@@ -535,26 +535,104 @@ describe('summarizePlan', () => {
 });
 
 describe('formatLastTimeSets', () => {
+  const set = (over: Record<string, unknown>) =>
+    ({ setNumber: 1, setType: 'normal', ...over }) as never;
+
   it('keeps 1.25 kg plate steps exact and lb values free of noise', () => {
-    const sets = [{ setNumber: 1, setType: 'normal', weight: 61.25, reps: 5 }];
-    expect(formatLastTimeSets(sets, 'kg')).toEqual(['61.25×5']);
+    const sets = [set({ weight: 61.25, reps: 5 })];
+    expect(formatLastTimeSets(sets, 'kg', 'weight_reps')).toEqual(['61.25×5']);
     // 46.49 kg is 102.5 lb once restored to the stored precision.
-    expect(formatLastTimeSets([{ ...sets[0], weight: 46.49 }], 'lbs')).toEqual([
-      '102.5×5',
-    ]);
+    expect(
+      formatLastTimeSets(
+        [set({ weight: 46.49, reps: 5 })],
+        'lbs',
+        'weight_reps'
+      )
+    ).toEqual(['102.5×5']);
   });
 
   it('lists working sets in the display unit', () => {
     expect(
       formatLastTimeSets(
         [
-          { setNumber: 1, setType: 'warmup', weight: 20, reps: 10 },
-          { setNumber: 2, setType: 'normal', weight: 40, reps: 7 },
-          { setNumber: 3, setType: 'normal', weight: null, reps: 12 },
+          set({ setType: 'warmup', weight: 20, reps: 10 }),
+          set({ weight: 40, reps: 7 }),
+          set({ weight: null, reps: 12 }),
         ],
-        'kg'
+        'kg',
+        'weight_reps'
       )
     ).toEqual(['40×7', '12']);
-    expect(formatLastTimeSets(undefined, 'kg')).toEqual([]);
+    expect(formatLastTimeSets(undefined, 'kg', 'weight_reps')).toEqual([]);
+  });
+
+  it('shows a plain hold as its duration', () => {
+    expect(
+      formatLastTimeSets(
+        [set({ duration: 45 }), set({ duration: 90 })],
+        'kg',
+        'duration'
+      )
+    ).toEqual(['45s', '1:30']);
+  });
+
+  it('shows a weighted hold as load and duration', () => {
+    expect(
+      formatLastTimeSets(
+        [set({ weight: 20, duration: 45 }), set({ weight: 20 })],
+        'kg',
+        'weight_duration'
+      )
+    ).toEqual(['20×45s', '20']);
+    expect(
+      formatLastTimeSets(
+        [set({ weight: 20, duration: 45 })],
+        'lbs',
+        'weight_duration'
+      )
+    ).toEqual(['44.1×45s']);
+  });
+
+  it('shows cardio as duration and distance in the distance unit', () => {
+    const sets = [set({ duration: 1800, distance: 5 })];
+    expect(formatLastTimeSets(sets, 'kg', 'duration_distance', 'km')).toEqual([
+      '30:00 · 5 km',
+    ]);
+    expect(
+      formatLastTimeSets(sets, 'kg', 'duration_distance', 'miles')
+    ).toEqual(['30:00 · 3.11 mi']);
+    expect(
+      formatLastTimeSets([set({ distance: 5 })], 'kg', 'duration_distance')
+    ).toEqual(['5 km']);
+  });
+
+  it('shows a carry as load and distance in metres or yards', () => {
+    const sets = [set({ weight: 40, distance: 0.05 })];
+    expect(formatLastTimeSets(sets, 'kg', 'weight_distance', 'km')).toEqual([
+      '40×50 m',
+    ]);
+    expect(formatLastTimeSets(sets, 'kg', 'weight_distance', 'miles')).toEqual([
+      '40×54.7 yd',
+    ]);
+    expect(
+      formatLastTimeSets([set({ distance: 0.05 })], 'kg', 'weight_distance')
+    ).toEqual(['50 m']);
+  });
+
+  it('drops sets with nothing to show and caps the list at five', () => {
+    expect(
+      formatLastTimeSets(
+        [set({}), set({ weight: null, reps: null })],
+        'kg',
+        'duration'
+      )
+    ).toEqual([]);
+    expect(
+      formatLastTimeSets(
+        Array.from({ length: 7 }, (_, i) => set({ reps: i + 1 })),
+        'kg',
+        'weight_reps'
+      )
+    ).toEqual(['1', '2', '3', '4', '5']);
   });
 });

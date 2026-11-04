@@ -60,7 +60,10 @@ import {
   useAppPreferencesStore,
   type ActiveWorkoutMetricColumn,
 } from '../stores/appPreferencesStore';
-import { plateTargetKg } from '../utils/workoutSession';
+import {
+  plateTargetKg,
+  resolveSnapshotModality,
+} from '../utils/workoutSession';
 import { storedWeightInUnit } from '../utils/unitConversions';
 import {
   formatLastTimeSets,
@@ -263,7 +266,12 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   // formatter reads it, so the (at most five) sets are formatted per render
   // rather than memoized past the switch.
   useAppLocale();
-  const lastTime = formatLastTimeSets(previousSessionSets, weightUnit);
+  const lastTime = formatLastTimeSets(
+    previousSessionSets,
+    weightUnit,
+    resolveSnapshotModality(snapshot),
+    setEditorProps.distanceUnit
+  );
   const muscle = localizeExerciseTaxonomyValue(
     t,
     'muscle',

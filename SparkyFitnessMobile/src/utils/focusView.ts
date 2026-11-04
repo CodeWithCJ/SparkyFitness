@@ -1,9 +1,19 @@
-import type { ExerciseRecentSessionSet } from '@workspace/shared';
+import type {
+  ExerciseModality,
+  ExerciseRecentSessionSet,
+} from '@workspace/shared';
 import { formatLocalizedNumber } from '../localization';
-import { storedWeightInUnit } from './unitConversions';
+import { distanceFromKm, storedWeightInUnit } from './unitConversions';
 import {
+  effectiveSetDurationSec,
   formatDurationSeconds,
+  isCardioModality,
+  isDurationModality,
   isWarmupSetType,
+  isWeightDistanceModality,
+  isWeightDurationModality,
+  setDistanceFromKm,
+  setDistanceUnitLabel,
   type AssumedSetValues,
 } from './workoutSession';
 
@@ -66,30 +76,64 @@ export function summarizePlan(
     : null;
 }
 
-/** Last session's working sets as "40×7", "7" or "0:45", most relevant first. */
+/**
+ * Last session's working sets, most relevant first, shaped by the exercise
+ * modality: "40×7" or "7" for reps, "0:45" or "20×0:45" for holds, "0:30 · 5 km"
+ * for cardio, "40×50 m" for carries. Sets with nothing to show are dropped.
+ */
 export function formatLastTimeSets(
   previousSets: readonly ExerciseRecentSessionSet[] | undefined,
-  weightUnit: 'kg' | 'lbs'
+  weightUnit: 'kg' | 'lbs',
+  modality: ExerciseModality,
+  distanceUnit: 'km' | 'miles' = 'km'
 ): string[] {
+  const weightText = (kg: number | null | undefined) =>
+    kg == null
+      ? null
+      : formatFocusWeight(storedWeightInUnit(kg, weightUnit), weightUnit);
   return (previousSets ?? [])
     .filter((s) => !isWarmupSetType(s.setType))
     .slice(0, LAST_TIME_MAX_SETS)
     .map((s) => {
-      if (s.weight != null && s.reps != null) {
-        const weight = formatFocusWeight(
-          storedWeightInUnit(s.weight, weightUnit),
-          weightUnit
+      const weight = weightText(s.weight);
+      if (isDurationModality(modality)) {
+        const seconds = effectiveSetDurationSec(
+          { duration: s.duration ?? null, reps: s.reps },
+          modality
         );
-        return `${weight}×${s.reps}`;
+        const distance =
+          isCardioModality(modality) && s.distance != null
+            ? `${formatLocalizedNumber(distanceFromKm(s.distance, distanceUnit), { maximumFractionDigits: 2 })} ${setDistanceUnitLabel(distanceUnit)}`
+            : null;
+        return [
+          seconds != null ? formatDurationSeconds(seconds) : null,
+          distance,
+        ]
+          .filter((part) => part != null)
+          .join(' · ');
       }
+      if (isWeightDistanceModality(modality)) {
+        const distance =
+          s.distance != null
+            ? `${formatLocalizedNumber(
+                setDistanceFromKm(s.distance, distanceUnit, modality),
+                { maximumFractionDigits: 1 }
+              )} ${setDistanceUnitLabel(distanceUnit, modality)}`
+            : null;
+        return [weight, distance].filter((part) => part != null).join('×');
+      }
+      if (isWeightDurationModality(modality)) {
+        return [
+          weight,
+          s.duration != null ? formatDurationSeconds(s.duration) : null,
+        ]
+          .filter((part) => part != null)
+          .join('×');
+      }
+      if (weight != null && s.reps != null) return `${weight}×${s.reps}`;
       if (s.reps != null) return String(s.reps);
       if (s.duration != null) return formatDurationSeconds(s.duration);
-      return s.weight != null
-        ? formatFocusWeight(
-            storedWeightInUnit(s.weight, weightUnit),
-            weightUnit
-          )
-        : '';
+      return weight ?? '';
     })
     .filter((text) => text !== '');
 }
