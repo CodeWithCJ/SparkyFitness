@@ -22,6 +22,7 @@ describe('connection error classification', () => {
     'ECONNRESET',
     'ETIMEDOUT',
     'ENOTFOUND',
+    '55000',
     '57P01',
     '57P03',
   ])('retries %s', (code) => {
