@@ -1,22 +1,24 @@
-export type TemperatureUnit = 'celsius' | 'fahrenheit';
+import { isTemperatureUnit, type TemperatureUnit } from '@workspace/shared';
+import type { UserPreferences } from '../types/preferences';
 
 /**
- * The app has no temperature setting of its own: temperatures follow the distance
- * setting, °F with miles and °C with kilometres, the same way elevation is shown
- * in feet with miles.
+ * The unit temperatures are shown in: the account's `default_temperature_unit`.
+ * A server from before that setting does not send it, so the old rule applies
+ * there: °F with the miles distance setting, otherwise °C.
  */
 export const temperatureUnitFor = (
-  distanceUnit: string | null | undefined
-): TemperatureUnit => (distanceUnit === 'miles' ? 'fahrenheit' : 'celsius');
-
-/** A temperature stored in °C, in the given unit. */
-export const convertTemperature = (
-  celsius: number,
-  unit: TemperatureUnit
-): number => (unit === 'fahrenheit' ? celsius * 1.8 + 32 : celsius);
-
-/** A temperature difference stored in °C, in the given unit (no 32° offset). */
-export const convertTemperatureDelta = (
-  celsius: number,
-  unit: TemperatureUnit
-): number => (unit === 'fahrenheit' ? celsius * 1.8 : celsius);
+  preferences:
+    | Pick<
+        UserPreferences,
+        'default_temperature_unit' | 'default_distance_unit'
+      >
+    | null
+    | undefined
+): TemperatureUnit => {
+  if (isTemperatureUnit(preferences?.default_temperature_unit)) {
+    return preferences.default_temperature_unit;
+  }
+  return preferences?.default_distance_unit === 'miles'
+    ? 'fahrenheit'
+    : 'celsius';
+};

@@ -206,9 +206,7 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
         <SleepBiometrics
           entry={entry}
           skinTemperature={skinTemperature}
-          temperatureUnit={temperatureUnitFor(
-            preferences?.default_distance_unit
-          )}
+          temperatureUnit={temperatureUnitFor(preferences)}
         />
       </ScrollView>
     );

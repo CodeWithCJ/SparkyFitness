@@ -660,6 +660,7 @@ CREATE POLICY modify_policy ON public.profiles FOR ALL TO PUBLIC USING (authenti
 -- adaptive_activity_separate inherits the existing preference read/write rules.
 -- adjust_macros_with_exercise uses the same owner-write, delegate-read rules.
 -- use_move_ring_active_calories inherits the existing preference read/write rules.
+-- default_temperature_unit inherits the existing preference read/write rules.
 CREATE POLICY select_policy ON public.user_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_preferences FOR ALL TO PUBLIC
 USING (authenticated_user_id() = user_id)

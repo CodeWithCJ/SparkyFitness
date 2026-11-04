@@ -1,3 +1,8 @@
+import {
+  convertTemperature,
+  convertTemperatureDelta,
+  type TemperatureUnit,
+} from '@workspace/shared';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
@@ -13,11 +18,6 @@ import {
   type SleepBiometricKey,
   type SleepEntryBiometricKey,
 } from '../utils/sleepBiometricTrend';
-import {
-  convertTemperature,
-  convertTemperatureDelta,
-  type TemperatureUnit,
-} from '../utils/temperatureUnit';
 import Icon, { type IconName } from './Icon';
 import SleepBiometricTrendChart from './SleepBiometricTrendChart';
 

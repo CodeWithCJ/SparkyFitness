@@ -1,7 +1,10 @@
 import type { TFunction } from 'i18next';
-import type { ExerciseActivityQueryItem } from '@workspace/shared';
+import {
+  convertTemperature,
+  type ExerciseActivityQueryItem,
+  type TemperatureUnit,
+} from '@workspace/shared';
 import { formatLocalizedNumber } from '../localization';
-import { convertTemperature, temperatureUnitFor } from './temperatureUnit';
 
 const FEET_PER_METER = 3.28084;
 
@@ -34,8 +37,8 @@ export const spmText = (t: TFunction, cadence: number) =>
 
 /**
  * "9° · Light rain" for the air temperature and conditions at the start. The
- * temperature is stored in °C and shown in °F with the miles setting, as
- * elevation is shown in feet; 0° is a real reading, so only null is skipped.
+ * temperature is stored in °C and shown in the account's temperature unit;
+ * 0° is a real reading, so only null is skipped.
  */
 function weatherText(
   t: TFunction,
@@ -43,13 +46,15 @@ function weatherText(
     ExerciseActivityQueryItem,
     'weatherTempCelsius' | 'weatherCondition'
   >,
-  distanceUnit: 'km' | 'miles'
+  temperatureUnit: TemperatureUnit
 ): string | null {
   const parts: string[] = [];
   if (session.weatherTempCelsius != null) {
-    const unit = temperatureUnitFor(distanceUnit);
-    const fahrenheit = unit === 'fahrenheit';
-    const degrees = convertTemperature(session.weatherTempCelsius, unit);
+    const fahrenheit = temperatureUnit === 'fahrenheit';
+    const degrees = convertTemperature(
+      session.weatherTempCelsius,
+      temperatureUnit
+    );
     const value = formatLocalizedNumber(Math.round(degrees));
     parts.push(
       fahrenheit
@@ -94,7 +99,8 @@ export function strideText(
 export function sessionStats(
   t: TFunction,
   session: ExerciseActivityQueryItem,
-  distanceUnit: 'km' | 'miles'
+  distanceUnit: 'km' | 'miles',
+  temperatureUnit: TemperatureUnit
 ): Stat[] {
   const stats: Stat[] = [];
   if (session.distanceFormatted != null && session.distanceFormatted > 0) {
@@ -185,7 +191,7 @@ export function sessionStats(
       value: strideText(t, session.strideLengthCm, distanceUnit),
     });
   }
-  const weather = weatherText(t, session, distanceUnit);
+  const weather = weatherText(t, session, temperatureUnit);
   if (weather) {
     stats.push({
       key: 'weather',

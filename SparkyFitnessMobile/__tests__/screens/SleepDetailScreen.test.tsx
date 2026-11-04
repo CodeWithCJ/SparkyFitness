@@ -210,7 +210,7 @@ describe('SleepDetailScreen', () => {
     expect(getByText('-0.3 °C')).toBeTruthy();
   });
 
-  test('shows skin temperature in °F when the distance unit is miles', () => {
+  test('shows skin temperature in °F with miles on a server without the temperature setting', () => {
     (usePreferences as jest.Mock).mockReturnValue({
       preferences: { time_format: 'h:mm A', default_distance_unit: 'miles' },
     });
@@ -224,6 +224,23 @@ describe('SleepDetailScreen', () => {
     expect(getByText('95.2 °F')).toBeTruthy();
     expect(getByText('-0.5 °F')).toBeTruthy();
     expect(queryByText('35.1 °C')).toBeNull();
+  });
+
+  test('the temperature setting wins over the distance setting', () => {
+    (usePreferences as jest.Mock).mockReturnValue({
+      preferences: {
+        time_format: 'h:mm A',
+        default_distance_unit: 'miles',
+        default_temperature_unit: 'celsius',
+      },
+    });
+    (useSkinTemperature as jest.Mock).mockReturnValueOnce({
+      celsius: 35.1,
+      deviation: null,
+    });
+    const { getByText } = setupScreen();
+
+    expect(getByText('35.1 °C')).toBeTruthy();
   });
 
   test('tapping a biometric opens its trend, and tapping again closes it', () => {
