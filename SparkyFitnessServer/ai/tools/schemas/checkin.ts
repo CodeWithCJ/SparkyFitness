@@ -241,6 +241,7 @@ const getCustomMetricsHistorySchema = z
     end_date: dateSchema.optional().describe('End date for the history range'),
     category_name: z
       .string()
+      .trim()
       .min(1)
       .max(200)
       .optional()
