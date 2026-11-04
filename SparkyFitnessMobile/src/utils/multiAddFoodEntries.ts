@@ -73,6 +73,8 @@ export interface MultiAddDraft {
   mealTypeId: string;
   /** Calendar-day string (YYYY-MM-DD) the entries are logged to. */
   entryDate: string;
+  /** Local 'HH:MM' entry time shared by every row; empty or absent means none. */
+  entryTime?: string;
 }
 
 export type MultiAddDraftConversion =
@@ -145,7 +147,7 @@ export function convertDraftToPayload(
     quantity,
     unit: variant.serving_unit,
     entry_date: draft.entryDate,
-    entry_time: null,
+    entry_time: draft.entryTime || null,
     notes: null,
   };
 

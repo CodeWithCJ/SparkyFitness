@@ -4,6 +4,8 @@ import Toast from 'react-native-toast-message';
 import CopyMealSheet, {
   type CopyMealSheetRef,
 } from '../../src/components/CopyMealSheet';
+import DateTimePicker from 'react-native-ui-datepicker';
+import { dayToPickerDate } from '@workspace/shared';
 import { getTodayDate, addDays } from '../../src/utils/dateUtils';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 
@@ -98,12 +100,48 @@ describe('CopyMealSheet', () => {
     // Two chips share the name "Breakfast" (system + custom); pick the first.
     fireEvent.press(view.getAllByText('Breakfast')[0]);
     fireEvent.press(view.getByLabelText('Copy'));
-    expect(onCopy).toHaveBeenCalledWith({
-      sourceDate,
-      sourceMealType: 'Brunch',
-      targetDate: sourceDate,
-      targetMealType: 'Breakfast',
-    });
+    expect(onCopy).toHaveBeenCalledWith([
+      {
+        sourceDate,
+        sourceMealType: 'Brunch',
+        targetDate: sourceDate,
+        targetMealType: 'Breakfast',
+      },
+    ]);
+  });
+
+  it('copies to every selected day and leaves out the source slot', () => {
+    const onCopy = jest.fn();
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
+    const sourceDate = addDays(getTodayDate(), -2);
+    const dayAfter = addDays(sourceDate, 1);
+    const twoDaysAfter = addDays(sourceDate, 2);
+    act(() => ref.current?.present(sourceDate, 'brunch-id', 'Brunch'));
+
+    const picker = view.UNSAFE_getByType(DateTimePicker);
+    act(() =>
+      picker.props.onChange({
+        dates: [
+          dayToPickerDate(twoDaysAfter),
+          dayToPickerDate(sourceDate),
+          dayToPickerDate(dayAfter),
+        ],
+      })
+    );
+
+    // The source day is still selected, but with the same meal it is skipped.
+    fireEvent.press(view.getByLabelText('Copy to 2 days'));
+    expect(onCopy).toHaveBeenCalledWith([
+      expect.objectContaining({
+        targetDate: dayAfter,
+        targetMealType: 'Brunch',
+      }),
+      expect.objectContaining({
+        targetDate: twoDaysAfter,
+        targetMealType: 'Brunch',
+      }),
+    ]);
   });
 
   it('renders the pending label while copying', () => {

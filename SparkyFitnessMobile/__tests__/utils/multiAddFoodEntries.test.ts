@@ -82,6 +82,16 @@ describe('multiAddKeyForFood', () => {
 });
 
 describe('convertDraftToPayload', () => {
+  test('carries the shared entry time onto the payload', () => {
+    const conversion = convertDraftToPayload(
+      makeDraft({ quantityText: '1', entryTime: '07:30' })
+    );
+
+    expect(conversion.status).toBe('ok');
+    if (conversion.status !== 'ok') return;
+    expect(conversion.payload.entry_time).toBe('07:30');
+  });
+
   test('builds a linked entry when food id and variant id exist', () => {
     const conversion = convertDraftToPayload(makeDraft({ quantityText: '2' }));
 

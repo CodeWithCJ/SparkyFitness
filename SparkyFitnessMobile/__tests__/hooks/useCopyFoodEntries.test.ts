@@ -15,6 +15,9 @@ jest.mock('react-native-toast-message', () => ({
   show: jest.fn(),
 }));
 
+const mockToastShow = jest.requireMock('react-native-toast-message')
+  .show as jest.Mock;
+
 const mockCopyFoodEntries = copyFoodEntries as jest.MockedFunction<
   typeof copyFoodEntries
 >;
@@ -47,7 +50,7 @@ describe('useCopyFoodEntries', () => {
     });
 
     act(() => {
-      result.current.copyMeal(payload);
+      result.current.copyMeal([payload]);
     });
 
     await waitFor(() => {
@@ -73,11 +76,11 @@ describe('useCopyFoodEntries', () => {
     });
 
     act(() => {
-      result.current.copyMeal(payload);
+      result.current.copyMeal([payload]);
     });
 
     await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalledWith(payload);
+      expect(onSuccess).toHaveBeenCalledWith([payload]);
     });
   });
 
@@ -90,12 +93,70 @@ describe('useCopyFoodEntries', () => {
     });
 
     act(() => {
-      result.current.copyMeal(payload);
+      result.current.copyMeal([payload]);
     });
 
     await waitFor(() => {
       expect(result.current.isPending).toBe(false);
     });
     expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  test('copies to each selected day and invalidates every target day', async () => {
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    mockCopyFoodEntries.mockResolvedValue(undefined);
+    const onSuccess = jest.fn();
+    const second = { ...payload, targetDate: '2026-05-17' };
+
+    const { result } = renderHook(() => useCopyFoodEntries({ onSuccess }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    act(() => {
+      result.current.copyMeal([payload, second]);
+    });
+
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledWith([payload, second]);
+    });
+    expect(mockCopyFoodEntries).toHaveBeenCalledTimes(2);
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['dailySummary', '2026-05-17'],
+      refetchType: 'all',
+    });
+    expect(mockToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'success',
+        text1: 'Meal copied to 2 days',
+      })
+    );
+
+    invalidateSpy.mockRestore();
+  });
+
+  test('keeps the days that copied when one day fails', async () => {
+    mockCopyFoodEntries
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('boom'));
+    const onSuccess = jest.fn();
+    const second = { ...payload, targetDate: '2026-05-17' };
+
+    const { result } = renderHook(() => useCopyFoodEntries({ onSuccess }), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+
+    act(() => {
+      result.current.copyMeal([payload, second]);
+    });
+
+    await waitFor(() => {
+      expect(onSuccess).toHaveBeenCalledWith([payload]);
+    });
+    expect(mockToastShow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        text1: 'Copied to 1 of 2 days',
+      })
+    );
   });
 });

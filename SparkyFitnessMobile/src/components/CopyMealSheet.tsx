@@ -34,8 +34,26 @@ export interface CopyMealSheetRef {
 
 interface CopyMealSheetProps {
   isPending?: boolean;
-  onCopy: (payload: CopyFoodEntriesPayload) => void;
+  onCopy: (payloads: CopyFoodEntriesPayload[]) => void;
 }
+
+// The picker hands back a dayjs object; convert it to a Date, then to a local
+// YYYY-MM-DD day string via the shared helper so there is no timezone day
+// shift. A YYYY-MM-DD string is parsed with the same helper.
+const pickerDateToDay = (date: DateType): string | null => {
+  if (!date) return null;
+  let jsDate: Date;
+  if (date instanceof Date) {
+    jsDate = date;
+  } else if (typeof date === 'object' && 'toDate' in date) {
+    jsDate = date.toDate();
+  } else if (typeof date === 'string') {
+    jsDate = dayToPickerDate(date);
+  } else {
+    jsDate = new Date(date);
+  }
+  return localDateToDay(jsDate);
+};
 
 const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
   ({ isPending = false, onCopy }, ref) => {
@@ -60,7 +78,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
       mealTypeId: string | null;
       mealTypeName: string;
     } | null>(null);
-    const [targetDate, setTargetDate] = useState<string>('');
+    const [targetDates, setTargetDates] = useState<string[]>([]);
     const [targetMealTypeId, setTargetMealTypeId] = useState<string | null>(
       null
     );
@@ -78,9 +96,9 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
           mealTypeId: sourceMealTypeId,
           mealTypeName: sourceMealTypeName,
         });
-        // Default to the same slot the user is viewing; they pick a new date/meal
-        // before copying.
-        setTargetDate(sourceDate);
+        // Default to the same slot the user is viewing; they pick new days or a
+        // new meal before copying. More than one day can be picked.
+        setTargetDates([sourceDate]);
         setTargetMealTypeId(sourceMealTypeId);
         bottomSheetRef.current?.present();
       },
@@ -89,27 +107,32 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
 
     const renderBackdrop = useSheetBackdrop();
 
-    const handleDateChange = useCallback(({ date }: { date: DateType }) => {
-      if (!date) return;
-      // The picker hands back a dayjs object; convert it to a Date, then to a
-      // local YYYY-MM-DD day string via the shared helper so there is no
-      // timezone day shift. A YYYY-MM-DD string is parsed with the same helper.
-      let jsDate: Date;
-      if (date instanceof Date) {
-        jsDate = date;
-      } else if (typeof date === 'object' && 'toDate' in date) {
-        jsDate = date.toDate();
-      } else if (typeof date === 'string') {
-        jsDate = dayToPickerDate(date);
-      } else {
-        jsDate = new Date(date);
-      }
-      setTargetDate(localDateToDay(jsDate));
-    }, []);
+    const handleDatesChange = useCallback(
+      ({ dates }: { dates: DateType[] }) => {
+        const days = dates
+          .map(pickerDateToDay)
+          .filter((day): day is string => day !== null);
+        setTargetDates([...new Set(days)].sort());
+      },
+      []
+    );
 
-    const dateValue = useMemo(
-      () => (targetDate ? dayToPickerDate(targetDate) : new Date()),
-      [targetDate]
+    const dateValues = useMemo(
+      () => targetDates.map((day) => dayToPickerDate(day)),
+      [targetDates]
+    );
+
+    // Copying a meal onto itself does nothing useful, so the source slot is
+    // left out even when its day is still selected.
+    const copyTargetDates = useMemo(
+      () =>
+        source
+          ? targetDates.filter(
+              (day) =>
+                !(day === source.date && source.mealTypeId === targetMealTypeId)
+            )
+          : [],
+      [source, targetDates, targetMealTypeId]
     );
 
     const displayMealType = useCallback(
@@ -134,7 +157,7 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
     }, [source, mealTypes, displayMealType, t]);
 
     const handleCopy = useCallback(() => {
-      if (!source || !targetDate || !targetMealTypeId) return;
+      if (!source || copyTargetDates.length === 0 || !targetMealTypeId) return;
       // The server /food-entries/copy endpoint matches meal types by NAME only
       // (verified contract), so the payload carries names. Selection in the UI
       // is by canonical id; the name is resolved here so two categories that
@@ -167,13 +190,25 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
         return;
       }
 
-      onCopy({
-        sourceDate: source.date,
-        sourceMealType: source.mealTypeName,
-        targetDate,
-        targetMealType: targetType.name,
-      });
-    }, [source, targetDate, targetMealTypeId, mealTypes, onCopy, t]);
+      onCopy(
+        copyTargetDates.map((targetDate) => ({
+          sourceDate: source.date,
+          sourceMealType: source.mealTypeName,
+          targetDate,
+          targetMealType: targetType.name,
+        }))
+      );
+    }, [source, copyTargetDates, targetMealTypeId, mealTypes, onCopy, t]);
+
+    const copyLabel =
+      copyTargetDates.length > 1
+        ? t('copyMeal.copyToDays', {
+            count: copyTargetDates.length,
+            defaultValue: 'Copy to {{count}} days',
+            defaultValue_one: 'Copy to {{count}} day',
+            defaultValue_other: 'Copy to {{count}} days',
+          })
+        : t('copyMeal.copy', { defaultValue: 'Copy' });
 
     return (
       <BottomSheetModal
@@ -207,10 +242,15 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
               <Text className="text-xs font-semibold uppercase text-text-muted mb-1">
                 {t('copyMeal.targetDate', { defaultValue: 'Target date' })}
               </Text>
+              <Text className="text-text-secondary text-sm mb-1">
+                {t('copyMeal.multipleDaysHint', {
+                  defaultValue: 'Tap more days to copy to each of them.',
+                })}
+              </Text>
               <DateTimePicker
-                mode="single"
-                date={dateValue}
-                onChange={handleDateChange}
+                mode="multiple"
+                dates={dateValues}
+                onChange={handleDatesChange}
                 locale={presentation.locale}
                 firstDayOfWeek={presentation.firstDayOfWeek}
                 components={{
@@ -287,20 +327,14 @@ const CopyMealSheet = forwardRef<CopyMealSheetRef, CopyMealSheetProps>(
               <Button
                 variant="primary"
                 onPress={handleCopy}
-                accessibilityLabel={t('copyMeal.copy', {
-                  defaultValue: 'Copy',
-                })}
+                accessibilityLabel={copyLabel}
                 disabled={
-                  isPending ||
-                  !targetDate ||
-                  !targetMealTypeId ||
-                  (source.date === targetDate &&
-                    source.mealTypeId === targetMealTypeId)
+                  isPending || copyTargetDates.length === 0 || !targetMealTypeId
                 }
               >
                 {isPending
                   ? t('copyMeal.copying', { defaultValue: 'Copying...' })
-                  : t('copyMeal.copy', { defaultValue: 'Copy' })}
+                  : copyLabel}
               </Button>
             </View>
           )}

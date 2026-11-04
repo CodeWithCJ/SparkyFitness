@@ -256,6 +256,32 @@ describe('FoodEntryMultiAddScreen', () => {
     expect(draft.quantityText).toBe('1');
   });
 
+  test('one entry time applies to every row: none by default, Now fills it, Clear removes it', async () => {
+    seedBasket([makeFood('f0'), makeFood('f1')]);
+    submitBatch.mockResolvedValue({
+      succeededKeys: [],
+      outcomes: [],
+      invalidKeys: [],
+      authHalted: false,
+    });
+    const screen = renderScreen({ mealTypeId: 'meal-1' });
+
+    expect(screen.getByLabelText('Time for all items: None')).toBeTruthy();
+    fireEvent.press(screen.getByText('Now'));
+    expect(screen.queryByLabelText('Time for all items: None')).toBeNull();
+
+    fireEvent.press(screen.getByText('Add all (2)'));
+    await waitFor(() => expect(submitBatch).toHaveBeenCalledTimes(1));
+    const drafts = submitBatch.mock.calls[0][0];
+    expect(drafts).toHaveLength(2);
+    for (const draft of drafts) {
+      expect(draft.entryTime).toMatch(/^([01]\d|2[0-3]):[0-5]\d$/);
+    }
+
+    fireEvent.press(screen.getByText('Clear'));
+    expect(screen.getByLabelText('Time for all items: None')).toBeTruthy();
+  });
+
   test('invalid-quantity recovery resets to the CHOSEN variant serving, not the default', () => {
     seedBasket([makeFood('f0')]); // default 100 g
     useFoodSearchSelectionStore.getState().setDraftVariant('f0:variant-f0', {
@@ -477,6 +503,8 @@ describe('FoodEntryMultiAddScreen', () => {
         quantityText: '100',
         mealTypeId: 'meal-1',
         entryDate: '2026-09-16',
+        // No time picked: rows log without an entry time, as before.
+        entryTime: '',
       },
     ]);
     expect(
