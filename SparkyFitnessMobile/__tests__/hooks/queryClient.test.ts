@@ -178,7 +178,7 @@ describe('queryClient reloads screen data after a reconnect (#3385)', () => {
   const reloadCalls = () =>
     invalidate.mock.calls.filter(([filters]) => 'predicate' in filters);
 
-  test('marks every data query stale, but not the check, when the server comes back', () => {
+  test('invalidates data queries, but not the check, when the server comes back', () => {
     queryClient.setQueryData(connectionKey, false);
     expect(reloadCalls()).toHaveLength(0);
 
@@ -200,5 +200,25 @@ describe('queryClient reloads screen data after a reconnect (#3385)', () => {
     queryClient.setQueryData(connectionKey, false);
     queryClient.setQueryData(connectionKey, false);
     expect(reloadCalls()).toHaveLength(0);
+  });
+});
+
+describe('queryClient marks cached screen data stale on reconnect (#3385)', () => {
+  const connectionKey = ['serverConnection'];
+  const dataKey = ['dailySummary', '2026-11-03'];
+
+  afterEach(() => {
+    queryClient.removeQueries({ queryKey: connectionKey });
+    queryClient.removeQueries({ queryKey: dataKey });
+  });
+
+  test('cached data is invalidated once the server comes back', () => {
+    queryClient.setQueryData(dataKey, { calories: 1200 });
+    queryClient.setQueryData(connectionKey, false);
+    expect(queryClient.getQueryState(dataKey)?.isInvalidated).toBe(false);
+
+    queryClient.setQueryData(connectionKey, true);
+    expect(queryClient.getQueryState(dataKey)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(connectionKey)?.isInvalidated).toBe(false);
   });
 });
