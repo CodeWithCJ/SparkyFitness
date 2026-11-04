@@ -6,7 +6,12 @@
     "autolinking": {
       "exclude": [
         "@expo/dom-webview"
-      ]
+      ],
+      "android": {
+        "buildFromSource": [
+          "expo-camera"
+        ]
+      }
     }
   },
   "scripts": {
