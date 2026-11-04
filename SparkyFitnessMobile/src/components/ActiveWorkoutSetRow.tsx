@@ -71,7 +71,7 @@ export const RPE_TONE_VARS: Record<RpeTone, string> = {
   max: '--color-icon-danger',
 };
 
-function formatDisplayWeight(
+export function formatDisplayWeight(
   weightKg: number | null,
   unit: 'kg' | 'lbs'
 ): string {
@@ -86,7 +86,38 @@ function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
   return formatLocalizedNumber(Math.round(weightFromKg(valueKg, unit)));
 }
 
-function formatRpe(rpe: number | null): string {
+/** The read-only weight-derived metric cell (Vol / 1RM / 10RM), shared with the focus view. */
+export function weightMetricText(
+  column: 'volume' | 'e1rm' | 'tenrm',
+  set: WorkoutCardSet,
+  modality: ExerciseModality,
+  bodyWeightKg: number | null,
+  weightUnit: 'kg' | 'lbs'
+): string {
+  switch (column) {
+    case 'volume':
+      return formatMetricWeight(
+        setVolumeKg(set, modality, bodyWeightKg),
+        weightUnit
+      );
+    case 'e1rm':
+      return formatMetricWeight(
+        epley1RmKg(setLoadKg(set.weight, modality, bodyWeightKg), set.reps),
+        weightUnit
+      );
+    case 'tenrm':
+      return formatMetricWeight(
+        estimateRepMaxKg(
+          setLoadKg(set.weight, modality, bodyWeightKg),
+          set.reps,
+          10
+        ),
+        weightUnit
+      );
+  }
+}
+
+export function formatRpe(rpe: number | null): string {
   if (rpe == null) return '–';
   return Number.isInteger(rpe)
     ? String(rpe)
@@ -202,6 +233,8 @@ interface ActiveWorkoutSetRowProps {
   entryId?: string;
   /** False hides the RPE input (preset sets store no RPE). */
   rpeEditable?: boolean;
+  /** Drops the swipe-to-delete wrapper, for hosts whose own pan owns horizontal drags. */
+  disableSwipeDelete?: boolean;
   /** Whether this set is completed (draft `completedAt`) — drives the check. */
   completedBadge?: boolean;
   /**
@@ -253,6 +286,7 @@ function ActiveWorkoutSetRow({
   nextSetId,
   entryId,
   rpeEditable = true,
+  disableSwipeDelete = false,
   completedBadge = false,
   onToggleComplete,
   onActivateSet,
@@ -756,8 +790,7 @@ function ActiveWorkoutSetRow({
   // this idempotent with any blur that did fire. Edit rows don't flush:
   // they're controlled by the form reducer per keystroke, and this row's
   // local drafts can hold stale values there.
-  useEffect(() => {
-    if (!isLive || isFocusedRow) return;
+  const writeDrafts = useCallback(() => {
     if (durationLike) {
       writeDuration(durationDraft);
     } else if (weightDuration) {
@@ -772,8 +805,6 @@ function ActiveWorkoutSetRow({
     }
     if (isEffortColumn) commitRpeValue(rpeDraft);
   }, [
-    isLive,
-    isFocusedRow,
     durationLike,
     weightDuration,
     weightDistance,
@@ -789,6 +820,21 @@ function ActiveWorkoutSetRow({
     distanceDraft,
     rpeDraft,
   ]);
+  useEffect(() => {
+    if (!isLive || isFocusedRow) return;
+    writeDrafts();
+  }, [isLive, isFocusedRow, writeDrafts]);
+
+  // A row unmounted while it holds the keyboard (the focus view paging to
+  // another exercise) never sees a blur or a deactivation render, so flush
+  // once on the way out. It reads the latest writers through a ref so the
+  // cleanup runs on unmount only, not on every keystroke, and goes through
+  // the same edited / unchanged guards: an untouched draft writes nothing.
+  const unmountFlushRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    unmountFlushRef.current = isLive && isFocusedRow ? writeDrafts : () => {};
+  });
+  useEffect(() => () => unmountFlushRef.current(), []);
 
   // Log the set: flush any in-progress edits first so the values the user
   // sees are exactly what gets completed (and autosaved). The completion
@@ -880,27 +926,14 @@ function ActiveWorkoutSetRow({
         return { text: formatRpe(set.rir) };
       }
       case 'volume':
-        return {
-          text: formatMetricWeight(
-            setVolumeKg(set, modality, bodyWeightKg),
-            weightUnit
-          ),
-        };
       case 'e1rm':
-        return {
-          text: formatMetricWeight(
-            epley1RmKg(setLoadKg(set.weight, modality, bodyWeightKg), set.reps),
-            weightUnit
-          ),
-        };
       case 'tenrm':
         return {
-          text: formatMetricWeight(
-            estimateRepMaxKg(
-              setLoadKg(set.weight, modality, bodyWeightKg),
-              set.reps,
-              10
-            ),
+          text: weightMetricText(
+            metricColumn,
+            set,
+            modality,
+            bodyWeightKg,
             weightUnit
           ),
         };
@@ -1461,7 +1494,7 @@ function ActiveWorkoutSetRow({
     </Pressable>
   );
 
-  if (readOnly) return row;
+  if (readOnly || disableSwipeDelete) return row;
 
   return (
     <ReanimatedSwipeable
