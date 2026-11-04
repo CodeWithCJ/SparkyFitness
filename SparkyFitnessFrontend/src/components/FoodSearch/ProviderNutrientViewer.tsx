@@ -83,7 +83,7 @@ export const ProviderNutrientViewer = ({
   const { mutateAsync: updateCustomNutrient } =
     useUpdateCustomNutrientMutation();
 
-  const { providerNutrients, providerUnits } = useMemo(() => {
+  const { providerNutrients, providerUnits, providerStandard } = useMemo(() => {
     const variant =
       food?.default_variant ??
       food?.variants?.find((v) => v.is_default) ??
@@ -94,6 +94,7 @@ export const ProviderNutrientViewer = ({
     return {
       providerNutrients: entries,
       providerUnits: variant?.provider_nutrient_units ?? {},
+      providerStandard: variant?.provider_nutrient_standard ?? {},
     };
   }, [food]);
 
@@ -223,9 +224,11 @@ export const ProviderNutrientViewer = ({
               const matchedNutrient = matchByNormalizedLabel.get(
                 normalizeNutrientName(label)
               );
+              // The provider's own code mapping comes first; label aliases
+              // cover providers that don't send one.
               const standardId = matchedNutrient
                 ? null
-                : getStandardNutrientId(label);
+                : (providerStandard[label] ?? getStandardNutrientId(label));
               const standardLabel = standardId
                 ? (CENTRAL_NUTRIENT_CONFIG[standardId]?.defaultLabel ??
                   standardId)
