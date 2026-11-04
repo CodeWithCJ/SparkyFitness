@@ -116,6 +116,7 @@ describe('TodayMedications scheduled doses', () => {
     ['Europe/Berlin', '2026-10-26', '08:00', '2026-10-26T07:00:00.000Z'], // normal day
     ['America/New_York', '2026-11-01', '09:30', '2026-11-01T14:30:00.000Z'], // clocks go back
     ['America/New_York', '2026-03-08', '09:30', '2026-03-08T13:30:00.000Z'], // clocks go forward
+    ['America/New_York', '2026-03-08', '02:30', '2026-03-08T07:30:00.000Z'], // missing hour
   ])(
     'in %s on %s logs a %s dose as scheduled for %s',
     (tz, day, timeOfDay, expected) => {
