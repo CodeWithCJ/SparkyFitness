@@ -7287,6 +7287,21 @@
       "fasting": "Fasting",
       "steps": "Steps"
     },
+    "complications": {
+      "sources": {
+        "calories": "Calories",
+        "caloriesRemaining": "Calories left",
+        "caloriesBurned": "Calories burned",
+        "protein": "Protein",
+        "carbs": "Carbs",
+        "fat": "Fat",
+        "water": "Water",
+        "steps": "Steps",
+        "fasting": "Fasting",
+        "weight": "Weight",
+        "bodyFat": "Body fat"
+      }
+    },
     "nutrientsTitle": "Goals page nutrients",
     "nutrientsDescription": "Choose the nutrients listed under the calorie ring on your watch, and drag to set their order. Each shows today’s amount against its goal.",
     "nutrientReorderHint": "Changes where this nutrient sits on your watch",
