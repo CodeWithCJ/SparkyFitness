@@ -176,7 +176,28 @@ enum ComplicationPublisher {
         guard let defaults = sharedDefaults() else { return }
         guard revision >= defaults.double(forKey: Custom.revisionKey) else { return }
         defaults.set(revision, forKey: Custom.revisionKey)
+
+        let previous = defaults.data(forKey: Custom.key)
+            .flatMap { try? JSONDecoder().decode([CustomDefinition].self, from: $0) }
         write(customDefinitions, forKey: Custom.key, reloading: [Custom.kind])
+
+        // The picker is built from the widget's recommendations, which watchOS
+        // caches until told they changed. Only what the picker lists (the ids
+        // and names) needs it, as in Home Assistant's watch app; a format or
+        // colour change shows up through the normal reload above.
+        if previous?.map(\.id) != customDefinitions.map(\.id)
+            || previous?.map(\.name) != customDefinitions.map(\.name) {
+            invalidateCustomRecommendations()
+        }
+    }
+
+    /// Makes watchOS ask the Custom Complication for its choices again. Apple:
+    /// call this "when your app receives new data for preconfigured widgets
+    /// you'd like to appear in the list of available watch complications". Also
+    /// called at launch, so a picker that cached an empty answer before there
+    /// was a list (or starters) asks again.
+    static func invalidateCustomRecommendations() {
+        WidgetCenter.shared.invalidateConfigurationRecommendations()
     }
 
     /// Publishes the numbers a custom complication can show. Each carries its

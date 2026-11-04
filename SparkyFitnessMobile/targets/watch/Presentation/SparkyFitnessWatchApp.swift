@@ -13,6 +13,12 @@ struct SparkyFitnessWatchApp: App {
     @StateObject private var recordingStore = RecordingStore.shared
     @StateObject private var runStore = WatchRunStore.shared
 
+    init() {
+        // The complication picker is built from recommendations watchOS caches;
+        // ask for them again on every launch (see `invalidateCustomRecommendations`).
+        ComplicationPublisher.invalidateCustomRecommendations()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
