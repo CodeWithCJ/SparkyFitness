@@ -52,17 +52,43 @@ Walks and runs can be recorded on the watch alone with **Cardio**: outdoors with
 
 ## Complications
 
-Add these to a watch face for a one-tap glance that opens the matching page:
+Add these to a watch face for a one-tap glance that opens the matching page.
 
-- Calories, Protein, Carbs and Fat goals
-- Water
-- Fasting
-- Steps
+### Apple Watch
 
-Apple Watch has Protein, Carbs, Fat, Fasting and Steps complications in circular, corner, rectangular and inline sizes. Wear OS offers Calories, Protein, Carbs, Fat, Water, Fasting and Steps.
+| Complication | What it shows | Sizes |
+| --- | --- | --- |
+| **Daily Energy Goal** | Calories as an inner ring, with protein, carbs and fat as an outer ring. In the corner, the rings sit beside a curved row of the four percentages. | Circular, corner |
+| **Calorie Goal** | Just calories, as a percentage of your goal. | Circular, corner |
+| **Protein Goal**, **Carbs Goal**, **Fat Goal** | One macro against its goal. | All four |
+| **Water Intake** | Today's water against your goal. | Circular |
+| **Fasting** | The running fast. | All four |
+| **Steps** | Today's steps against the goal. | All four |
+| **Custom Complication** | Anything you set up yourself, see below. | All four |
+
+The four sizes are circular, corner, rectangular and inline.
+
+### Make your own (Apple Watch)
+
+On the phone, open **Settings → Apple Watch → Complications**. Add as many as you like, and for each one choose:
+
+- **What it shows.** Calories (eaten, left or burned), protein, carbs, fat, water, steps, fasting time, weight, body fat, any nutrient you show on the Goals page, sleep (time, score, deep, REM and light sleep, time in bed), resting heart rate, overnight HRV, blood oxygen, exercise minutes, exercise calories, and workouts today. Sleep and exercise appear once the phone has that day's data.
+- **How it is written.** The value, the percentage of its goal, or what is left to reach it. A value with no goal, such as sleep time, can only show itself. The sleep score is out of 100, so it can show a percentage and fill a gauge.
+- **A gauge**, a **color** and an **icon**.
+- **More values.** A complication can show up to three values together: concentric rings in the circular and corner sizes, a row for each in the rectangular size, and the values joined on one line inline. The editor previews all four sizes as you change things.
+
+The list starts with a set of ready-made ones, including Macros, which shows protein, carbs and fat as three rings, and Sleep score. Changing or adding one makes the list yours. **Reset to starters**, **Export** and **Import** are in the menu at the top right: Export saves your list as a file, and Import adds the complications in a file to your list or replaces it.
+
+To use one, edit the watch face, tap a complication slot and choose **Custom Complication**, then pick one of yours. Put different ones in different slots.
+
+### Wear OS
+
+Wear OS offers Calories, Protein, Carbs, Fat, Water, Fasting and Steps. Custom complications are not on Wear OS yet.
 
 ## Troubleshooting
 
 - **Nothing updates on the watch:** open the phone app once so it can push fresh data, and make sure the phone is signed in and connected to your server.
 - **The Apple Watch or Wear OS item is missing from Settings:** the phone only lists it while a watch with the SparkyFitness app is paired.
+- **The Custom Complication picker is empty, or doesn't show my complications (Apple Watch):** open the SparkyFitness app on the phone and on the watch once, with the watch in range, so the phone can send your list. Until it arrives the picker offers the starter set.
+- **A custom complication shows a dash:** the watch doesn't have that value for today yet, for example last night's sleep before the phone has synced it. Open the phone app and give it a moment.
 - **A workout didn't appear in the diary:** the finished workout is delivered to the phone when it is in range. Open the phone app and give it a moment.
