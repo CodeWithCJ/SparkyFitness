@@ -326,11 +326,14 @@ enum ContextPayloadMapper {
     /// that adds a field does not break this build.
     static func complicationConfig(
         from payload: [String: Any]
-    ) -> (revision: Double, definitions: [ComplicationPublisher.CustomDefinition])? {
+    ) -> (revision: Double, reload: Bool, definitions: [ComplicationPublisher.CustomDefinition])? {
         guard
             let revision = doubleValue(payload["revision"]),
             let raw = payload["definitions"] as? [[String: Any]]
         else { return nil }
+        // Set by the phone's Reload button: refresh the picker and faces even
+        // when the list is the one already held.
+        let reload = payload["reload"] as? Bool ?? false
         let definitions = raw.compactMap { entry -> ComplicationPublisher.CustomDefinition? in
             guard
                 let id = entry["id"] as? String, !id.isEmpty,
@@ -359,7 +362,7 @@ enum ContextPayloadMapper {
                 extras: extras.isEmpty ? nil : Array(extras)
             )
         }
-        return (revision, definitions)
+        return (revision, reload, definitions)
     }
 
     /// The route id a `routeRemove` names.

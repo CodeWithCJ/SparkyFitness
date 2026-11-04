@@ -183,7 +183,11 @@ enum ComplicationPublisher {
     /// Publishes the wearer's custom complications, for the watch-face picker.
     /// Ignores a list older than the one already held, since queued copies can
     /// arrive out of order.
-    static func publish(customDefinitions: [CustomDefinition], revision: Double) {
+    ///
+    /// `reload` is the phone's Reload button: the picker and every face slot
+    /// refresh even when the list is the one already held, which is how a picker
+    /// that cached an old answer is put right.
+    static func publish(customDefinitions: [CustomDefinition], revision: Double, reload: Bool = false) {
         guard let defaults = sharedDefaults() else { return }
         guard revision >= defaults.double(forKey: Custom.revisionKey) else { return }
         defaults.set(revision, forKey: Custom.revisionKey)
@@ -196,9 +200,13 @@ enum ComplicationPublisher {
         // caches until told they changed. Only what the picker lists (the ids
         // and names) needs it, as in Home Assistant's watch app; a format or
         // colour change shows up through the normal reload above.
-        if previous?.map(\.id) != customDefinitions.map(\.id)
+        if reload
+            || previous?.map(\.id) != customDefinitions.map(\.id)
             || previous?.map(\.name) != customDefinitions.map(\.name) {
             invalidateCustomRecommendations()
+        }
+        if reload {
+            WidgetCenter.shared.reloadTimelines(ofKind: Custom.kind)
         }
     }
 

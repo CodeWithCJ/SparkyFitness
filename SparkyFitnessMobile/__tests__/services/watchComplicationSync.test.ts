@@ -46,6 +46,18 @@ describe('sendComplicationsToWatch', () => {
     expect(typeof sent.revision).toBe('number');
   });
 
+  it('marks a manual reload so the watch refreshes its picker', async () => {
+    await sendComplicationsToWatch([water], { reload: true });
+    expect(module.sendComplicationConfig.mock.calls[0][0].reload).toBe(true);
+  });
+
+  it('leaves the reload flag off for an ordinary send', async () => {
+    await sendComplicationsToWatch([water]);
+    expect(module.sendComplicationConfig.mock.calls[0][0]).not.toHaveProperty(
+      'reload'
+    );
+  });
+
   it('sends nothing on Android, whose module has no such message', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'android' });
     await sendComplicationsToWatch([water]);

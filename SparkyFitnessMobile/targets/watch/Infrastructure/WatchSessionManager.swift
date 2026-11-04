@@ -755,7 +755,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
             if let config = ContextPayloadMapper.complicationConfig(from: payload) {
                 ComplicationPublisher.publish(
                     customDefinitions: config.definitions,
-                    revision: config.revision
+                    revision: config.revision,
+                    reload: config.reload
                 )
             }
         case "routeSync":

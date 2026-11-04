@@ -13,12 +13,13 @@ import { addLog } from './LogService';
  * Android half of the module has no such message.
  */
 export async function sendComplicationsToWatch(
-  list: readonly WatchComplicationDefinition[]
+  list: readonly WatchComplicationDefinition[],
+  options: { reload?: boolean } = {}
 ): Promise<void> {
   if (Platform.OS !== 'ios' || !WatchConnectivity) return;
   try {
     await WatchConnectivity.sendComplicationConfig(
-      buildComplicationConfig(list)
+      buildComplicationConfig(list, Date.now(), options.reload === true)
     );
     addLog(`[Watch Complications] Sent ${list.length} to the watch`, 'INFO');
   } catch (error) {
