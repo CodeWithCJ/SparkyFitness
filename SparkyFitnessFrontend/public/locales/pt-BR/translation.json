@@ -1865,7 +1865,7 @@
     "formatTabata": "Tabata",
     "formatEmom": "EMOM",
     "formatAmrap": "AMRAP",
-    "formatForTime": "For Time",
+    "formatForTime": "Por tempo",
     "timeCapLabel": "Tempo limite (minutos)",
     "rampLabel": "Aumento por série (neste treino, {{unit}})",
     "rampPlaceholder": "Desligado",
@@ -2254,7 +2254,7 @@
       "drinksOver_other": "{{count}} doses acima",
       "upcomingDay": "Ainda não",
       "stdDrinksG": "doses-padrão ({{total_g}} g)",
-      "limitG": "Limite: {{limit_standard_drinks}} (<span>{{limit_g}}</span> g)"
+      "limitG": "Limite: {{limit_standard_drinks}} (<span>{{limit_g}}</span>g)"
     },
     "hydration": {
       "title": "Hidratação",
@@ -4455,7 +4455,7 @@
     "legs": "Pernas",
     "calves": "Panturrilhas",
     "forearms": "Antebraços",
-    "_comment": "muscleGroups is a coarser UI grouping for RecoveryTracker (MuscleGroupRecoveryTracker.tsx). Do not consolidate with muscles."
+    "_comment": "muscleGroups é um grupo de interface mais amplo para RecoveryTracker (MuscleGroupRecoveryTracker.tsx). Não consolidar com músculos."
   },
   "common": {
     "active": "Ativo",
@@ -8747,8 +8747,6 @@
       "supersetDAmber": "Bi-set D (âmbar)",
       "equipmentBrand": "Equipamento/marca",
       "eGHammerStrength": "ex.: Hammer Strength",
-      "exerciseNotesCuesOptional": "Notas/dicas do exercício (opcional)",
-      "eGSeatSetting4": "ex.: Banco na posição 4, pegada aberta, pausa embaixo...",
       "addSet": "Adicionar série",
       "workoutPresetBlockEditIndividual": "Bloco de treino predefinido: edite cada exercício no gerenciador de treinos predefinidos.",
       "understandProgressionTechniquesAndConfig": "Entenda as técnicas de progressão e configure metas automáticas de sobrecarga para a sua rotina.",
@@ -8774,9 +8772,6 @@
       "examples25LbsCables": "Exemplos: +2,5 lb (cabos/anilhas pequenas), +5,0 lb (halteres), +10,0 lb (levantamento terra).",
       "theMachineOrStationBranding": "A marca da máquina ou estação. A alavanca varia muito de um fabricante para outro.",
       "examplesHammerStrengthLifeFitnessCable": "Exemplos: Hammer Strength, LifeFitness, polia, halter, gaiola de agachamento.",
-      "exerciseNotesCues": "Notas/dicas do exercício",
-      "equipmentSetupAndFormReminders": "Lembretes de ajuste do equipamento e de execução.",
-      "examplesSeatSetting4Pin": "Exemplos: banco na posição 4, pino 3, pegada aberta, pausa de 2 s no peito.",
       "supersetA": "BI-SET A",
       "supersetB": "BI-SET B",
       "supersetC": "BI-SET C",

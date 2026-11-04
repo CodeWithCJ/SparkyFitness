@@ -17,4 +17,24 @@
     <string name="widget_preview_grams_protein">51 g</string>
     <string name="widget_preview_grams_carbs">136 g</string>
     <string name="widget_preview_grams_fat">32 g</string>
+    <string name="tile_calories_left">Calories restantes</string>
+    <string name="sparky_water_widget_name">Eau</string>
+    <string name="sparky_water_widget_description">Suivi quotidien de l\'eau, avec des boutons pour ajouter ou retirer des quantités données</string>
+    <string name="widget_water_title">Eau</string>
+    <string name="widget_water_amount">%1$s / %2$s %3$s</string>
+    <string name="widget_water_amount_no_goal">%1$s %2$s</string>
+    <string name="widget_water_amount_empty">- %1$s</string>
+    <string name="widget_water_unit_ml">ml</string>
+    <string name="widget_water_unit_oz">oz</string>
+    <string name="widget_water_unit_liter">L</string>
+    <string name="widget_water_add">Ajouter une boisson</string>
+    <string name="widget_water_remove">Retirer une boisson</string>
+    <string name="widget_water_status_sign_in">Ouvrir SparkyFitness et se connecter</string>
+    <string name="widget_water_status_pick_container">Choisir un conteneur d\'eau dans SparkyFitness</string>
+    <string name="widget_water_status_expired">Votre connexion a expiré. Ouvrez SparkyFitness</string>
+    <string name="widget_water_status_unreachable">Impossible d\'accéder à votre serveur</string>
+    <string name="widget_water_status_failed">Impossible d\'enregistrer la consommation d\'eau</string>
+    <string name="widget_water_status_nothing_to_remove">Aucune boisson n\'est à supprimer</string>
+    <string name="widget_preview_water_amount">1,250 / 2,000 ml</string>
+    <string name="tile_log_water">Enregistrer une boisson</string>
 </resources>

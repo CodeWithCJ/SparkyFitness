@@ -46,7 +46,30 @@ GitHub needs your key and passwords to sign the app.
 
 1.  Check in your code (`git push`).
 2.  Create a **Release** in GitHub (tag starting with `v`, e.g., `v1.0.0`) OR just push if your workflow is set to run on push.
-3.  GitHub Actions will build the APK/AAB and attach it to the Release.
+3.  GitHub Actions will build the APK/AAB and attach it to the Release, along with `wearos-release.apk` for the Wear OS app.
+
+Running the workflow by hand also creates or updates the `v<version>` release, so it is not a dry run.
+
+### Wear OS on Google Play
+
+The watch app is a separate upload to its own track, and the phone's `production` build doesn't include it.
+
+1. One time, in Play Console: under **Advanced settings → Form factors**, add Wear OS with a screenshot, which gives it a dedicated track.
+2. Build the watch bundle. It uses the same EAS credentials as the phone, and doesn't change the phone's version code:
+   ```bash
+   eas build --platform android --profile wearos
+   ```
+3. Upload the AAB to the Wear OS track. Upload it whenever you ship the phone app, so the two stay in step.
+
+The `create-production-builds.yml` workflow builds the phone, watch and iOS apps together, and submits none of them. To skip the manual upload for one build, add `--auto-submit`:
+
+```bash
+eas build --platform android --profile wearos --auto-submit
+```
+
+Submitting uses the `eas.json` `submit` profile with the same name as the build profile, so the phone goes to the `alpha` track and the watch to `wear:alpha`. These names must match your tracks in Play Console. Closed testing tracks have names you choose, and a Wear OS one is `wear:<name>`, so `wear:alpha` needs a closed testing track named `alpha` under the dedicated Wear OS track from step 1. Change them in `eas.json` if yours have different names. EAS needs a Google service account key with release access to the app, added once through `eas credentials`. Play reviews the phone and watch releases separately.
+
+A watch release build's version code is minutes since the epoch, because Play requires a code that is unique across form factors and rises with each upload. Two builds in the same minute get the same code, so rebuild if Play rejects one. Set `SPARKY_WEAR_VERSION_CODE` to override it, with a number above the one on Play.
 
 ---
 

@@ -44,10 +44,12 @@ import MedicationsCard from '../components/MedicationsCard';
 import { MindfulnessCard } from '../components/mindfulness/MindfulnessCard';
 import SymptomsCard from '../components/SymptomsCard';
 import MoodCard from '../components/mood/MoodCard';
+import LabResultsCard from '../components/labs/LabResultsCard';
 import ProgressPhotosCard from '../components/ProgressPhotosCard';
 import TrainingLoadDashboardCard from '../components/TrainingLoadDashboardCard';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
+import { ServerStatusView } from '../components/ServerGate';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import {
   caffeineActiveRootQueryKey,
@@ -68,6 +70,8 @@ import {
 import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
 import {
   moodEntriesRootQueryKey,
+  labLatestQueryKey,
+  labMarkersQueryKey,
   trainingLoadRootQueryKey,
 } from '../hooks/queryKeys';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
@@ -388,6 +392,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const mindfulnessCardVisible = useAppPreferencesStore(
     (s) => s.mindfulnessCardVisible
   );
+  const labResultsCardVisible = useAppPreferencesStore(
+    (s) => s.labResultsCardVisible
+  );
   const trainingLoadCardVisible = useAppPreferencesStore(
     (s) => s.trainingLoadCardVisible
   );
@@ -432,6 +439,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       queryClient.invalidateQueries({ queryKey: ['mindfulness'] }),
       // MoodCard owns its own query.
       queryClient.invalidateQueries({ queryKey: moodEntriesRootQueryKey }),
+      // LabResultsCard reads the lab markers and their latest values.
+      queryClient.invalidateQueries({ queryKey: labMarkersQueryKey }),
+      queryClient.invalidateQueries({ queryKey: labLatestQueryKey }),
       // TrainingLoadDashboardCard owns its query, and a pull is not a focus.
       trainingLoadCardVisible
         ? queryClient.invalidateQueries({ queryKey: trainingLoadRootQueryKey })
@@ -463,25 +473,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               </Text>
             </View>
           )}
-          <StatusView
-            icon="cloud-offline"
-            iconTone="muted"
-            iconSize={64}
-            title={t('dashboard.noServerConfigured', {
-              defaultValue: 'No server configured',
-            })}
-            subtitle={t('dashboard.configureServer', {
-              defaultValue:
-                'Configure your server connection in Settings to view your daily summary.',
-            })}
-            action={{
-              label: t('dashboard.goToSettings', {
-                defaultValue: 'Go to Settings',
-              }),
-              onPress: () => navigation.navigate('Settings'),
-              variant: 'primary',
-            }}
-          />
+          <ServerStatusView />
         </View>
       );
     }
@@ -780,6 +772,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                       ? () => navigation.navigate('WaterContainers')
                       : undefined
                   }
+                  onPressHistory={() =>
+                    navigation.navigate('WaterLog', { date: selectedDate })
+                  }
                   onIncrement={isContainersLoaded ? incrementWater : undefined}
                   onDecrement={isContainersLoaded ? decrementWater : undefined}
                   disableDecrement={summary.waterConsumed <= 0}
@@ -902,6 +897,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   key="trainingLoad"
                   navigation={navigation}
                 />
+              ) : null;
+            case 'labResults':
+              return labResultsCardVisible ? (
+                <LabResultsCard key="labResults" navigation={navigation} />
               ) : null;
             case 'mindfulness':
               return mindfulnessCardVisible ? (

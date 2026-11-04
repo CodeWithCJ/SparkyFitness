@@ -21,6 +21,7 @@ import { ceilToLocalDayStart, getSyncStartDate } from '../../utils/syncUtils';
 import {
   isClientUnavailableError,
   isQuotaExceededError,
+  isRetryableHealthReadError,
 } from '../shared/quotaError';
 import {
   createGraceWindowClaimLimiter,
@@ -40,7 +41,11 @@ import {
 import { getErrorMessage } from '../../utils/errors';
 import { loadHealthPreference } from './preferences';
 import { collectSessionTelemetry, sessionCacheKey } from './workoutTelemetry';
-import { deriveActiveCalories } from '@workspace/shared';
+import {
+  deriveActiveCalories,
+  keepMostDetailedSleep,
+  type SleepPlacement,
+} from '@workspace/shared';
 
 // Re-export for backward compatibility with callers importing from this module
 export { getSyncStartDate };
@@ -1484,6 +1489,21 @@ const selectBasalNormalizedSessionCalories = (
   return Math.max(reportedActive, derivedActive);
 };
 
+const assertSessionCalorieReads = (
+  results: readonly PromiseSettledResult<unknown>[]
+): void => {
+  for (const result of results) {
+    if (
+      result.status === 'rejected' &&
+      isRetryableHealthReadError(result.reason)
+    ) {
+      // Failed reads are not evidence of missing/zero energy. Reject the metric
+      // so the sync layer holds its cursor and never uploads this partial result.
+      throw result.reason;
+    }
+  }
+};
+
 const extractSessionCaloriePair = (
   activeResult: PromiseSettledResult<unknown>,
   totalResult: PromiseSettledResult<unknown>
@@ -1566,6 +1586,60 @@ const sleepEnrichmentWindow = (
     ),
     asleepMs: hasRecognizedStages ? asleepMs : endMs - startMs,
   };
+};
+
+/**
+ * Sleep sessions with one per night: of the sessions two apps wrote for the
+ * same night (same wake day, overlapping for most of the shorter one), only the
+ * most detailed, by the shared `keepMostDetailedSleep` rule (among sessions
+ * nearly as long as the longest: more stage kinds, then more stages, then the
+ * longer session). Every session is uploaded as 'Health Connect', so the
+ * server would otherwise merge both apps' nights into one entry. A nap that
+ * does not overlap the night stays, and a session without usable times is
+ * passed through.
+ */
+export const keepMostDetailedSleepSessions = (
+  records: unknown[]
+): unknown[] => {
+  const placed: { index: number; placement: SleepPlacement }[] = [];
+  records.forEach((record, index) => {
+    const w = sleepEnrichmentWindow(record);
+    if (!w) return;
+    const stages =
+      (
+        record as {
+          stages?: { startTime: string; endTime: string; stage: number }[];
+        }
+      ).stages ?? [];
+    const kinds = stages.flatMap((stage) => {
+      const stageType = mapHealthConnectSleepStage(stage.stage);
+      const stageMs = Date.parse(stage.endTime) - Date.parse(stage.startTime);
+      return stageType && Number.isFinite(stageMs) && stageMs > 0
+        ? [stageType]
+        : [];
+    });
+    placed.push({
+      index,
+      placement: {
+        day: w.wakeDay,
+        start: w.startMs,
+        end: w.endMs,
+        detail: {
+          stageKinds: new Set(kinds).size,
+          measures: 0,
+          segments: kinds.length,
+          durationSeconds: (w.endMs - w.startMs) / 1000,
+        },
+      },
+    });
+  });
+  const kept = new Set(
+    keepMostDetailedSleep(placed, (p) => p.placement).map((p) => p.index)
+  );
+  const placedIndexes = new Set(placed.map((p) => p.index));
+  return records.filter(
+    (_, index) => !placedIndexes.has(index) || kept.has(index)
+  );
 };
 
 /**
@@ -1955,6 +2029,11 @@ export const enrichExerciseSessions = async (
       // overwrite potentially valid data with a synthetic zero.
       const enrichedFields: Record<string, unknown> = {};
 
+      assertSessionCalorieReads([
+        activeCaloriesResult,
+        totalCaloriesResult,
+        basalCaloriesResult,
+      ]);
       const scopedCalories = extractSessionCaloriePair(
         activeCaloriesResult,
         totalCaloriesResult
@@ -1992,6 +2071,10 @@ export const enrichExerciseSessions = async (
               timeRangeFilter,
             }),
           ]);
+        assertSessionCalorieReads([
+          unfilteredActiveResult,
+          unfilteredTotalResult,
+        ]);
         const unfilteredCalories = extractSessionCaloriePair(
           unfilteredActiveResult,
           unfilteredTotalResult

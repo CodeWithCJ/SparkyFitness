@@ -200,6 +200,7 @@ describe('MealsLibraryScreen', () => {
 
   it('shows the no-server state', () => {
     mockUseServerConnection.mockReturnValue({
+      status: 'notConfigured',
       isConnected: false,
       isLoading: false,
       isError: false,

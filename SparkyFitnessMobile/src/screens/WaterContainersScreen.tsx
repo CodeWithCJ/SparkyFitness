@@ -20,6 +20,7 @@ import { useCSSVariable } from 'uniwind';
 import FooterActionBar from '../components/FooterActionBar';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import Button from '../components/ui/Button';
 import Switch from '../components/ui/Switch';
@@ -395,28 +396,6 @@ const WaterContainersScreen: React.FC<WaterContainersScreenProps> = ({
   };
 
   const content = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          title={t('waterContainers.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('waterContainers.noServerSubtitle', {
-            defaultValue:
-              'Configure your server connection to manage water containers.',
-          })}
-          action={{
-            label: t('waterContainers.goToSettings', {
-              defaultValue: 'Go to Settings',
-            }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
     if (isLoading || isConnectionLoading) {
       return (
         <StatusView
@@ -587,7 +566,7 @@ const WaterContainersScreen: React.FC<WaterContainersScreenProps> = ({
       style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
-      {content()}
+      <ServerGate>{content()}</ServerGate>
       {containers.length > 0 && !isLoading && !isError ? (
         <FooterActionBar>
           <Button onPress={() => navigation.navigate('WaterContainerEdit', {})}>

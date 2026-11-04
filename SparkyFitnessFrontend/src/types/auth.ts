@@ -23,6 +23,10 @@ export interface LoginSettings {
   passkey?: {
     enabled: boolean;
   };
+  /** Absent on servers that predate SPARKY_FITNESS_DISABLE_MAGIC_LINK_LOGIN, which always allow magic links. */
+  magic_link?: {
+    enabled: boolean;
+  };
   oidc: {
     enabled: boolean;
     providers: OidcProvider[];

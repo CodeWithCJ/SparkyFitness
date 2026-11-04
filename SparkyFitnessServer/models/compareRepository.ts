@@ -4,6 +4,7 @@ import {
   cardioPredicateSql,
   setLoadSql,
 } from '../utils/exerciseLoadSql.js';
+import { MAIN_SLEEP_ORDER_SQL } from './sleepRepository.js';
 
 // Raw per-day values the compare report pairs up. Every query is user-scoped
 // (RLS via getClient) and dates stay calendar-day strings.
@@ -79,7 +80,7 @@ async function getMainSleepDays(userId: string, from: string, to: string) {
             record_utc_offset_minutes
        FROM sleep_entries
       WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
-      ORDER BY entry_date, duration_in_seconds DESC, bedtime ASC, id`,
+      ORDER BY ${MAIN_SLEEP_ORDER_SQL}`,
     [userId, from, to]
   );
   return rows.map((r) => ({

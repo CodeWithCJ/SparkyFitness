@@ -29,6 +29,7 @@ import {
 } from './foodIntegrationService.js';
 import {
   rankProviderMatches,
+  PARTIAL_SERVING_DATA,
   type ProviderFoodItem,
 } from '../utils/foodRanking.js';
 
@@ -263,7 +264,13 @@ export async function enrichFatSecretResults(
     }
   });
 
-  return [...enrichedTop, ...enrichedRest];
+  // An item left as search-mapped carries the summary serving, not the
+  // detail record's default that a save will use.
+  return [...enrichedTop, ...enrichedRest].map((item, index) =>
+    item === items[index] && item?.provider_external_id
+      ? { ...item, [PARTIAL_SERVING_DATA]: true }
+      : item
+  );
 }
 
 // `userId` is the active (possibly switched) data context — used for

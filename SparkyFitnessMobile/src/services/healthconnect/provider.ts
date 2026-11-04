@@ -22,6 +22,7 @@ import {
   readEarliestRecordDetailed,
   enrichExerciseSessions,
   enrichSleepSessions,
+  keepMostDetailedSleepSessions,
   resetClientUnavailableState,
 } from './index';
 import { transformHealthRecords } from './dataTransformation';
@@ -89,7 +90,8 @@ export const readMinMaxAvgByDay = async (
  * over the session window. Reads start at the session's data origin; incomplete
  * or implausible calorie pairs retry across origins so Health Connect can apply
  * source priority. Distance always stays scoped to the session origin. Sleep
- * sessions gain overnight HRV and resting heart rate when those reads succeed.
+ * sessions keep one per night when two apps recorded it, then gain overnight HRV
+ * and resting heart rate when those reads succeed.
  */
 export const postProcessRaw = async (
   metric: Pick<HealthMetric, 'recordType'>,
@@ -100,7 +102,10 @@ export const postProcessRaw = async (
     return enrichExerciseSessions(records, telemetry);
   }
   if (metric.recordType === 'SleepSession') {
-    return enrichSleepSessions(records, telemetry);
+    return enrichSleepSessions(
+      keepMostDetailedSleepSessions(records),
+      telemetry
+    );
   }
   return records;
 };

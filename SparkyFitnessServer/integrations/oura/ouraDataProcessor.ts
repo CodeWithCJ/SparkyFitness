@@ -691,10 +691,12 @@ async function processOuraWorkouts(
   createdByUserId: string,
   workouts: OuraWorkout[] = [],
   timezone = 'UTC'
-) {
+): Promise<{ processed: number; failed: number }> {
+  let processed = 0;
+  let failed = 0;
   if (!Array.isArray(workouts) || workouts.length === 0) {
     log('info', `No Oura workout data to process for user ${userId}.`);
-    return;
+    return { processed, failed };
   }
   // Delete existing Oura exercise entries for the covered dates to prevent duplicates
   const processedDates = new Set<string>();
@@ -813,15 +815,25 @@ async function processOuraWorkouts(
         `Logged Oura workout entry for user ${userId}: ${exercise.name} on ${entryDate}.`
       );
       if (newEntry && newEntry.id) {
-        await activityDetailsRepository.createActivityDetail(userId, {
-          exercise_entry_id: newEntry.id,
-          provider_name: OURA_SOURCE,
-          detail_type: 'workout_summary',
-          detail_data: { ...workout },
-          created_by_user_id: createdByUserId,
-        });
+        // The entry is saved; a missing detail only costs the raw payload.
+        try {
+          await activityDetailsRepository.createActivityDetail(userId, {
+            exercise_entry_id: newEntry.id,
+            provider_name: OURA_SOURCE,
+            detail_type: 'workout_summary',
+            detail_data: { ...workout },
+            created_by_user_id: createdByUserId,
+          });
+        } catch (error) {
+          log(
+            'warn',
+            `Failed to store Oura activity detail for entry ${newEntry.id}: ${(error as Error).message}`
+          );
+        }
       }
+      processed += 1;
     } catch (error) {
+      failed += 1;
       const err = error as Error;
       log(
         'error',
@@ -829,6 +841,7 @@ async function processOuraWorkouts(
       );
     }
   }
+  return { processed, failed };
 }
 
 export { processOuraSleep };

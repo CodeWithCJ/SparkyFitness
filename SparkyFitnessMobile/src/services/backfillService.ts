@@ -45,6 +45,21 @@ import { getErrorMessage } from '../utils/errors';
 
 export const BACKFILL_WINDOW_DAYS = 30;
 export const BACKFILL_METRIC_TIMEOUT_MS = 120_000;
+/**
+ * Smaller window sizes tried, in order, when a window's read times out. A busy
+ * month of workouts can need longer than one timeout to enrich, and retrying
+ * the same window repeats the same work, so the import would never move (#3339).
+ */
+export const BACKFILL_SPLIT_STEPS_DAYS = [7, 1];
+/**
+ * Workouts enriched with full telemetry on a single day that still times out.
+ * The rest go up as summaries; the server upserts on (source, source_id), so a
+ * later "re-send workout details" can fill them in.
+ */
+export const BACKFILL_DAY_TELEMETRY_BUDGET = 10;
+
+const nextSplitStepDays = (windowDays: number): number =>
+  BACKFILL_SPLIT_STEPS_DAYS.find((step) => step < windowDays) ?? 1;
 
 export type BackfillOutcome =
   | 'completed'
@@ -110,7 +125,9 @@ const classifyOutcomes = (
 /**
  * One-time historical import: walks day-aligned windows newest-first from the
  * start of today down to the probe-derived floor, uploading each window as its
- * own contiguous request. Never touches lastSyncedTime and never runs writeback
+ * own contiguous request. A window whose read times out is split into smaller
+ * windows (30 → 7 → 1 day); a single day that still times out is retried once
+ * with a capped workout-telemetry budget. Never touches lastSyncedTime and never runs writeback
  * — this is a third shell over collectHealthData, beside foreground/background
  * sync, with its own resumable per-server checkpoint.
  */
@@ -359,7 +376,11 @@ export const runBackfill = async (
       'INFO'
     );
 
-    for (const window of windows) {
+    // Newest-first work queue: a window that times out is replaced at the front
+    // by its smaller pieces, so the cursor still advances contiguously.
+    const pending = [...windows];
+    while (pending.length > 0) {
+      const window = pending.shift()!;
       if (opts.shouldCancel()) {
         return { outcome: 'cancelled', recordsUploaded };
       }
@@ -378,14 +399,21 @@ export const runBackfill = async (
 
       emitProgress('importing', cp, window);
 
-      // One context per window, because each window uploads on its own: a
-      // window whose upload fails must leave its own staging undrained so the
-      // retry re-collects, without affecting any other window.
-      const telemetry = createTelemetryRunContext({ interactive: false });
+      // One context per window attempt, because each window uploads on its own:
+      // a window whose upload fails must leave its own staging undrained so the
+      // retry re-collects, without affecting any other window. A fresh context
+      // per attempt also drops anything staged by a failed attempt.
+      let telemetry = createTelemetryRunContext({ interactive: false });
 
-      const collectWindow = async (): Promise<MetricSyncOutcome[]> => {
+      const collectWindow = async (
+        telemetryBudget?: number
+      ): Promise<MetricSyncOutcome[]> => {
         appBecameInactive = false;
         resetDatabaseInaccessibleCount();
+        telemetry = createTelemetryRunContext({
+          interactive: false,
+          budget: telemetryBudget,
+        });
         return collectHealthData(
           healthReadProvider,
           windowMetrics,
@@ -404,12 +432,35 @@ export const runBackfill = async (
 
       let outcomes = await collectWindow();
       let issue = classifyOutcomes(outcomes);
-      if (
-        issue &&
-        issue.kind !== 'quota' &&
-        getDatabaseInaccessibleCount() === 0 &&
-        !appBecameInactive
-      ) {
+      const timedOut = (list: MetricSyncOutcome[]): boolean =>
+        list.some((outcome) => outcome.timedOut === true);
+      const usable = (): boolean =>
+        getDatabaseInaccessibleCount() === 0 && !appBecameInactive;
+
+      if (issue && issue.kind !== 'quota' && usable() && timedOut(outcomes)) {
+        const windowDays = countLocalDays(window.start, window.end);
+        if (windowDays > 1) {
+          // Retrying the same window repeats the same work; split it instead.
+          const step = nextSplitStepDays(windowDays);
+          const pieces = enumerateDayAlignedWindows(
+            window.start,
+            window.end,
+            step
+          );
+          addLog(
+            `[Backfill] Window ${window.start.toISOString()} to ${window.end.toISOString()} timed out; splitting into ${pieces.length} window(s) of up to ${step} day(s)`,
+            'WARNING'
+          );
+          pending.unshift(...pieces);
+          continue;
+        }
+        addLog(
+          `[Backfill] Day ${window.start.toISOString()} timed out; retrying with workout details for up to ${BACKFILL_DAY_TELEMETRY_BUDGET} workout(s)`,
+          'WARNING'
+        );
+        outcomes = await collectWindow(BACKFILL_DAY_TELEMETRY_BUDGET);
+        issue = classifyOutcomes(outcomes);
+      } else if (issue && issue.kind !== 'quota' && usable()) {
         outcomes = await collectWindow();
         issue = classifyOutcomes(outcomes);
       }

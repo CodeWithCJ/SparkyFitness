@@ -1,3 +1,5 @@
+{{- $replicas := int .Values.frontend.replicas }}
+{{- $rolling := gt $replicas 1 }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6,7 +8,10 @@ metadata:
     {{- include "sparkyfitness.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
 spec:
-  replicas: {{ .Values.frontend.replicas }}
+  replicas: {{ $replicas }}
+  {{- with include "sparkyfitness.minReadySeconds" (dict "values" .Values.frontend "rolling" $rolling) }}
+  minReadySeconds: {{ . }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
@@ -21,6 +26,11 @@ spec:
       serviceAccountName: {{ include "sparkyfitness.fullname" . }}-frontend
       {{- end }}
       {{- include "sparkyfitness.imagePullSecrets" . | nindent 6 }}
+      {{- /* The preStop sleep runs inside the grace period; nginx keeps the server's default 15 s to stop plus 5. */}}
+      {{- $grace := add (include "sparkyfitness.preStopDelay" (dict "values" .Values.frontend "rolling" $rolling) | int) 20 }}
+      {{- if gt (int $grace) 30 }}
+      terminationGracePeriodSeconds: {{ $grace }}
+      {{- end }}
       {{- with .Values.frontend.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -68,6 +78,10 @@ spec:
               {{- end }}
             {{- end }}
             {{- end }}
+          {{- with include "sparkyfitness.lifecycle" (dict "values" .Values.frontend "rolling" $rolling) }}
+          lifecycle:
+            {{- . | nindent 12 }}
+          {{- end }}
           {{- with .Values.frontend.containerSecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
@@ -112,7 +126,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.frontend.topologySpreadConstraints }}
+      {{- with include "sparkyfitness.topologySpread" (dict "values" .Values.frontend "replicas" $replicas "selector" (printf "%s\napp.kubernetes.io/component: frontend" (include "sparkyfitness.selectorLabels" .))) }}
       topologySpreadConstraints:
-        {{- toYaml . | nindent 8 }}
+        {{- . | nindent 8 }}
       {{- end }}

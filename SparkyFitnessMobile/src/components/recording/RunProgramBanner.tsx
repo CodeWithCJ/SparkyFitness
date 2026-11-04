@@ -23,6 +23,7 @@ import { addLog } from '../../services/LogService';
 import { toLocalDateString } from '../../utils/dateUtils';
 import { findLoggedRun } from '../../utils/loggedRun';
 import { customWorkoutTitle, programTitle } from './RunProgramCard';
+import ZoneCheckNote from './ZoneCheckNote';
 
 /** The current time, read when the Diary renders. */
 const clockNow = (): number => Date.now();
@@ -215,6 +216,9 @@ const RunProgramBanner: React.FC<{
           </Button>
         ) : null}
       </View>
+      {isToday ? (
+        <ZoneCheckNote program={status.program} workout={workout} />
+      ) : null}
       {ease ? (
         <View className="mt-3 pt-3 border-t border-border-subtle">
           <Text className="text-text-secondary text-sm mb-2">

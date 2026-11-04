@@ -194,6 +194,13 @@
   html {
     scrollbar-gutter: stable;
   }
+
+  /* The gutter is already reserved, so react-remove-scroll's margin-right
+     compensation (Radix Select/Dialog/DropdownMenu) would shift the page left. */
+  html body[data-scroll-locked] {
+    --removed-body-scroll-bar-size: 0px !important;
+    margin-right: 0 !important;
+  }
 }
 
 /* Handling apple safe areas at the bottom bar */

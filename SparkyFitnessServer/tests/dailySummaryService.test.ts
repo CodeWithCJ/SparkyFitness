@@ -64,7 +64,7 @@ vi.mock('../models/foodMisc.js', () => ({
 }));
 
 vi.mock('../models/genericHealthRepository.js', () => ({
-  getHealthConnectTotalCaloriesByDateRange: vi.fn(),
+  getDeviceTotalCaloriesByDateRange: vi.fn(),
 }));
 
 vi.mock('../services/bmrService.js', () => ({
@@ -147,7 +147,7 @@ describe('dailySummaryService', () => {
       dietary_fiber: 0,
     });
     vi.mocked(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
     ).mockResolvedValue([]);
     vi.mocked(getExerciseEntriesByDateV2).mockResolvedValue([
       activeCaloriesSession,
@@ -203,6 +203,7 @@ describe('dailySummaryService', () => {
       activity_level: 'active',
       use_external_bmr: false,
       include_bmr_in_net_calories: false,
+      adjust_macros_with_exercise: false,
     };
     vi.mocked(
       calorieRuleHistoryRepository.getCalorieRuleHistory
@@ -269,6 +270,31 @@ describe('dailySummaryService', () => {
     });
   });
 
+  test('returns adjusted macro targets even when the calorie goal is unchanged', async () => {
+    const savedGoals = { calories: 2000, protein: 150, carbs: 250, fat: 44.4 };
+    vi.mocked(goalService.getUserGoals)
+      .mockResolvedValueOnce(savedGoals)
+      .mockResolvedValueOnce({
+        ...savedGoals,
+        protein: 187.5,
+        carbs: 312.5,
+        fat: 55.6,
+      });
+    const result = await getDailySummary({
+      actorUserId,
+      targetUserId,
+      date,
+      includeCheckin: false,
+    });
+    expect(result.goals).toEqual(savedGoals);
+    expect(result.adjustedGoals).toEqual({
+      calories: 2000,
+      protein: 188,
+      carbs: 313,
+      fat: 56,
+    });
+  });
+
   test('does not double-count Garmin active calories with workouts and steps', async () => {
     const garminActiveCalories: ExerciseSessionResponse = {
       ...activeCaloriesSession,
@@ -314,8 +340,14 @@ describe('dailySummaryService', () => {
 
   test('uses Health Connect total burn as the Goal Mode TDEE baseline', async () => {
     vi.mocked(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
-    ).mockResolvedValue([{ entry_date: date, total_calories: 1200 }]);
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
+    ).mockResolvedValue([
+      {
+        entry_date: date,
+        source_provider: 'health_connect',
+        total_calories: 1200,
+      },
+    ]);
     vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
       bmr_algorithm: 'Mifflin-St Jeor',
       activity_level: 'not_much',
@@ -344,17 +376,18 @@ describe('dailySummaryService', () => {
     expect(result.calorieBalance.goal).toBe(2160);
     expect(result.calorieBalance.remaining).toBe(1660);
     expect(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
     ).toHaveBeenCalledWith(targetUserId, actorUserId, date, date);
   });
 
   test('projects a stale view from the Health Connect capture time', async () => {
     vi.setSystemTime(new Date('2024-06-15T20:00:00Z'));
     vi.mocked(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
     ).mockResolvedValue([
       {
         entry_date: date,
+        source_provider: 'health_connect',
         total_calories: 1200,
         captured_at: new Date('2024-06-15T12:00:00Z'),
       },

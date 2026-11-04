@@ -40,14 +40,20 @@ onlyBuiltDependencies:
 
 overrides:
   "@babel/core": "7.29.0"
+  # better-auth's adapters register their schema check in a WeakMap inside
+  # @better-auth/core, and better-auth looks it up in its own copy. pnpm makes
+  # one @better-auth/core copy per peer set, so when any of these three
+  # resolved differently across the workspace the check was silently missing
+  # (tests/betterAuthSchemaCheck.integration.test.ts catches it). Keep them on
+  # the exact versions better-auth itself depends on.
+  "@better-auth/utils": "0.5.0"
+  "@better-fetch/fetch": "1.3.2"
   "@expo/dom-webview": "57.0.1"
-  assistant-cloud: "0.2.0"
+  assistant-cloud: "0.2.8"
   # 7.1 turns on the React Compiler rule set (set-state-in-effect, refs,
   # immutability). Both apps lint with --max-warnings 0, so adopting it is a
   # refactor, not an upgrade. Pinned until that work is scheduled.
   eslint-plugin-react-hooks: "7.0.1"
-  react: "19.2.3"
-  react-dom: "19.2.3"
   side-channel: "1.0.6"
   tailwindcss: "4.3.3"
   "tsx>esbuild": "0.28.1"
@@ -62,7 +68,7 @@ overrides:
   # unrelated pins other packages need. Pinned one patch back until it's
   # resolved upstream.
   "vite>esbuild": "0.28.1"
-  zustand: "5.0.15"
+  zustand: "5.0.16"
 
 packageExtensions:
   "@kingstinct/react-native-healthkit@13":
@@ -83,10 +89,10 @@ packageExtensions:
       "metro-cache": "*"
 
 patchedDependencies:
-  "@bacons/apple-targets@4.0.6": "patches/@bacons__apple-targets@4.0.6.patch"
-  react-native-health-connect@4.1.3: patches/react-native-health-connect@4.1.3.patch
+  '@bacons/apple-targets@4.0.7': patches/@bacons__apple-targets@4.0.7.patch
+  expo-modules-core@57.0.24: patches/expo-modules-core@57.0.24.patch
   react-native-bottom-tabs@1.4.0: patches/react-native-bottom-tabs@1.4.0.patch
-  expo-modules-core@57.0.19: patches/expo-modules-core@57.0.19.patch
+  react-native-health-connect@4.1.3: patches/react-native-health-connect@4.1.3.patch
 
 supportedArchitectures:
   cpu:

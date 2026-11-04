@@ -1,4 +1,4 @@
-import familyAccessRepository from '../models/familyAccessRepository.js';
+import { canActForUser } from '../utils/actForUser.js';
 import { log } from '../config/logging.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const onBehalfOfMiddleware = async (req: any, res: any, next: any) => {
@@ -13,14 +13,7 @@ const onBehalfOfMiddleware = async (req: any, res: any, next: any) => {
       return next();
     }
     try {
-      // Check if the authenticated user has family access to the onBehalfOfUserId
-      // For the middleware, we check for any of the core permissions that would allow "viewing as"
-      const hasAccess =
-        await familyAccessRepository.checkFamilyAccessPermission(
-          authUserId,
-          onBehalfOfUserId,
-          ['diary', 'checkin', 'reports', 'medications', 'can_view_reports']
-        );
+      const hasAccess = await canActForUser(onBehalfOfUserId, authUserId);
       if (hasAccess) {
         req.originalUserId = authUserId; // Store the actual authenticated user's ID
         req.userId = onBehalfOfUserId; // Set the userId to the one being acted on behalf of

@@ -22,7 +22,7 @@ const actions = [
   'cancel_task',
   'resume_task',
 ] as const;
-const taskId = z.string().uuid();
+const taskId = z.string().uuid().meta({ pattern: undefined });
 const schema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('list_preferences') }).strict(),
   z

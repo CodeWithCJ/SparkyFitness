@@ -14,6 +14,7 @@ import {
   type WaterWidgetInfo,
 } from '../services/androidWidgetSyncService';
 import BackgroundWaterModule from '../../modules/background-water';
+import { buildCalorieWidgetSnapshot } from '../services/calorieWidgetSnapshot';
 import { addLog } from '../services/LogService';
 import type { DailySummary } from '../types/dailySummary';
 import { getTodayDate } from '../utils/dateUtils';
@@ -52,10 +53,10 @@ export function useWidgetSync(
       return;
     }
 
-    const balance = summary.calorieBalance;
     const lastUpdated = Math.floor(Date.now() / 1000);
 
     if (Platform.OS === 'ios') {
+      const calorieSnapshot = buildCalorieWidgetSnapshot(summary);
       try {
         if (!iosAppGroup) {
           addLog(
@@ -67,15 +68,9 @@ export function useWidgetSync(
 
         const storage = new ExtensionStorage(iosAppGroup);
 
-        if (balance) {
-          const { eaten, burned, goal, remaining, progress } = balance;
+        if (calorieSnapshot) {
           storage.set(CALORIE_SNAPSHOT_KEY, {
-            date,
-            food: eaten,
-            burned,
-            goal,
-            remaining,
-            progress: goal > 0 ? Math.max(0, Math.min(1, progress / 100)) : 0,
+            ...calorieSnapshot,
             lastUpdated,
           });
         }
@@ -110,7 +105,7 @@ export function useWidgetSync(
           });
         }
 
-        if (balance) {
+        if (calorieSnapshot) {
           ExtensionStorage.reloadWidget(WIDGET_KIND);
         }
         ExtensionStorage.reloadWidget(MACRO_WIDGET_KIND);

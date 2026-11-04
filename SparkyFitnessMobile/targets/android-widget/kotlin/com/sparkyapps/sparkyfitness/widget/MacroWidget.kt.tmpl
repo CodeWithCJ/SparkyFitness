@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.Preferences
@@ -16,6 +15,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.LinearProgressIndicator
@@ -30,6 +30,7 @@ import androidx.glance.layout.Box
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
+import androidx.glance.layout.fillMaxHeight
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
@@ -46,22 +47,26 @@ import kotlin.math.roundToLong
 import org.json.JSONObject
 
 /**
- * Classic base composition, unchanged from the pre-localization macro widget
- * (22415819): one-line localized kcal header, three inline macro rows with
- * progress bars, and the search/scan shortcut row — all rendered in the fixed
- * 2x2 footprint. Only strings, accessibility labels and number formatting
- * follow the app/system language; geometry, footprint and behavior are
- * untouched.
+ * Today's remaining kcal, protein, carbs and fat with a bar toward each
+ * goal, and search / scan shortcuts.
+ *
+ * The classic composition (one-line kcal header, three inline macro rows and
+ * the search/scan row under them) is drawn at the default 2x2. The widget can
+ * be resized, and the steps in [WidgetSizes.macroSizes] add to it:
+ * - wide, each row shows grams against the goal ("92 / 150 g") and the
+ *   shortcuts, with Diary and fasting added, move to a column on the right,
+ *   which keeps them on screen in a two-row widget;
+ * - wide and tall, the shortcut row goes back under the rows, with Diary and
+ *   fasting, the kcal eaten show under the remaining kcal, and the bars
+ *   and spacing grow.
+ * The grams always stay whole: a label too long for its row is cut instead.
+ * Strings, accessibility labels and numbers follow the app/system language.
  */
 class MacroWidget : GlanceAppWidget() {
 
     override val stateDefinition = PreferencesGlanceStateDefinition
 
-    // Classic pre-localization size mode: a single 200x200 responsive size
-    // matching the fixed 2x2 launcher footprint. No resizing.
-    override val sizeMode: SizeMode = SizeMode.Responsive(
-        setOf(DpSize(200.dp, 200.dp)),
-    )
+    override val sizeMode: SizeMode = SizeMode.Responsive(WidgetSizes.macroSizes)
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         provideContent {
@@ -85,58 +90,170 @@ class MacroWidget : GlanceAppWidget() {
         // stay local to widget rendering (see WidgetLocale).
         val widgetContext = WidgetLocale.localizedContext(context)
 
+        val size = LocalSize.current
+        val wide = WidgetSizes.isWide(size)
+        val large = wide && size.height >= WidgetSizes.MACRO_LARGE_HEIGHT
+
         val openAppIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://"))
             .setPackage(context.packageName)
         val searchIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://search"))
             .setPackage(context.packageName)
         val scanIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://scan"))
             .setPackage(context.packageName)
+        val diaryIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://diary"))
+            .setPackage(context.packageName)
+        val fastingIntent = Intent(Intent.ACTION_VIEW, Uri.parse("sparkyfitnessmobile://fasting"))
+            .setPackage(context.packageName)
         val searchFoodLabel = widgetContext.getString(R.string.widget_search_food)
         val scanBarcodeLabel = widgetContext.getString(R.string.widget_scan_barcode)
+        val openDiaryLabel = widgetContext.getString(R.string.widget_open_diary)
+        val openFastingLabel = widgetContext.getString(R.string.widget_open_fasting)
 
         Box(
             modifier = GlanceModifier
                 .fillMaxSize()
                 .background(GlanceTheme.colors.surface)
                 .appWidgetBackgroundCornerRadius()
-                .padding(14.dp)
+                // Wide but short, less padding above and below gives the
+                // three rows the height they need at font scale 1.3.
+                .padding(horizontal = 14.dp, vertical = if (wide && !large) 10.dp else 14.dp)
                 .clickable(actionStartActivity(openAppIntent)),
             contentAlignment = Alignment.Center,
         ) {
-            Column(modifier = GlanceModifier.fillMaxWidth()) {
-                CalorieHeader(context = widgetContext, snapshot = snapshot)
-                Spacer(modifier = GlanceModifier.height(10.dp))
-                MacroRows(context = widgetContext, snapshot = snapshot, spacing = 7)
-                Spacer(modifier = GlanceModifier.height(14.dp))
+            if (wide && !large) {
+                // Wide but short (two rows on most launchers): a shortcut row
+                // under the macros would be cut off, so they go on the right.
                 Row(
                     modifier = GlanceModifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    ActionButton(
-                        intent = searchIntent,
-                        icon = R.drawable.ic_widget_search,
-                        contentDescription = searchFoodLabel,
-                        modifier = GlanceModifier
-                            .defaultWeight()
-                            .height(40.dp),
-                    )
+                    // Tighter than the classic stack so the three rows fit a
+                    // HyperOS 3x2 or 4x2 (167 dp) at font scale 1.3 too.
+                    Column(modifier = GlanceModifier.defaultWeight()) {
+                        CalorieHeader(context = widgetContext, snapshot = snapshot)
+                        Spacer(modifier = GlanceModifier.height(6.dp))
+                        MacroRows(
+                            context = widgetContext,
+                            snapshot = snapshot,
+                            spacing = 5,
+                            showGoals = true,
+                        )
+                    }
+                    Spacer(modifier = GlanceModifier.width(10.dp))
                     Box(
                         modifier = GlanceModifier
                             .width(1.dp)
-                            .height(48.dp)
+                            .fillMaxHeight()
                             .background(GlanceTheme.colors.surfaceVariant),
                     ) {}
-                    ActionButton(
-                        intent = scanIntent,
-                        icon = R.drawable.ic_widget_scan,
-                        contentDescription = scanBarcodeLabel,
-                        modifier = GlanceModifier
-                            .defaultWeight()
-                            .height(40.dp),
+                    Spacer(modifier = GlanceModifier.width(4.dp))
+                    // Four 34dp buttons fit the 139dp a HyperOS 4x2 leaves.
+                    val sideButton = GlanceModifier.fillMaxWidth().height(34.dp)
+                    Column(modifier = GlanceModifier.width(44.dp)) {
+                        ActionButton(
+                            intent = searchIntent,
+                            icon = R.drawable.ic_widget_search,
+                            contentDescription = searchFoodLabel,
+                            modifier = sideButton,
+                        )
+                        ActionButton(
+                            intent = scanIntent,
+                            icon = R.drawable.ic_widget_scan,
+                            contentDescription = scanBarcodeLabel,
+                            modifier = sideButton,
+                        )
+                        ActionButton(
+                            intent = diaryIntent,
+                            icon = R.drawable.ic_widget_diary,
+                            contentDescription = openDiaryLabel,
+                            modifier = sideButton,
+                        )
+                        ActionButton(
+                            intent = fastingIntent,
+                            icon = R.drawable.ic_widget_fasting,
+                            contentDescription = openFastingLabel,
+                            modifier = sideButton,
+                        )
+                    }
+                }
+            } else {
+                // Spacing comes from the existing spacers and the rows'
+                // `spacing`, never extra children: Glance drops anything past
+                // a container's tenth child, and this column already has nine.
+                Column(modifier = GlanceModifier.fillMaxWidth()) {
+                    if (large) {
+                        // One child of this column, however many lines it has.
+                        Column(modifier = GlanceModifier.fillMaxWidth()) {
+                            CalorieHeader(context = widgetContext, snapshot = snapshot)
+                            EatenLine(context = widgetContext, snapshot = snapshot)
+                        }
+                    } else {
+                        CalorieHeader(context = widgetContext, snapshot = snapshot)
+                    }
+                    Spacer(modifier = GlanceModifier.height(10.dp))
+                    MacroRows(
+                        context = widgetContext,
+                        snapshot = snapshot,
+                        spacing = if (large) 8 else 7,
+                        showGoals = large,
+                        barHeight = if (large) 6 else 4,
                     )
+                    Spacer(modifier = GlanceModifier.height(if (large) 12.dp else 14.dp))
+                    Row(
+                        modifier = GlanceModifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        ActionButton(
+                            intent = searchIntent,
+                            icon = R.drawable.ic_widget_search,
+                            contentDescription = searchFoodLabel,
+                            modifier = GlanceModifier
+                                .defaultWeight()
+                                .height(40.dp),
+                        )
+                        ActionDivider()
+                        ActionButton(
+                            intent = scanIntent,
+                            icon = R.drawable.ic_widget_scan,
+                            contentDescription = scanBarcodeLabel,
+                            modifier = GlanceModifier
+                                .defaultWeight()
+                                .height(40.dp),
+                        )
+                        if (large) {
+                            ActionDivider()
+                            ActionButton(
+                                intent = diaryIntent,
+                                icon = R.drawable.ic_widget_diary,
+                                contentDescription = openDiaryLabel,
+                                modifier = GlanceModifier
+                                    .defaultWeight()
+                                    .height(40.dp),
+                            )
+                            ActionDivider()
+                            ActionButton(
+                                intent = fastingIntent,
+                                icon = R.drawable.ic_widget_fasting,
+                                contentDescription = openFastingLabel,
+                                modifier = GlanceModifier
+                                    .defaultWeight()
+                                    .height(40.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
+    }
+
+    @Composable
+    private fun ActionDivider() {
+        Box(
+            modifier = GlanceModifier
+                .width(1.dp)
+                .height(48.dp)
+                .background(GlanceTheme.colors.surfaceVariant),
+        ) {}
     }
 
     @Composable
@@ -159,40 +276,79 @@ class MacroWidget : GlanceAppWidget() {
         )
     }
 
+    /** The kcal eaten under the header, once the header shows what is left. */
     @Composable
-    private fun MacroRows(context: Context, snapshot: MacroSnapshot?, spacing: Int) {
-        MacroRow(
-            context = context,
-            label = context.getString(R.string.widget_protein),
-            grams = snapshot?.protein ?: 0.0,
-            progress = snapshot.progressFor(MacroKind.PROTEIN),
-            color = MacroPalette.protein,
-        )
-        Spacer(modifier = GlanceModifier.height(spacing.dp))
-        MacroRow(
-            context = context,
-            label = context.getString(R.string.widget_carbs),
-            grams = snapshot?.carbs ?: 0.0,
-            progress = snapshot.progressFor(MacroKind.CARBS),
-            color = MacroPalette.carbs,
-        )
-        Spacer(modifier = GlanceModifier.height(spacing.dp))
-        MacroRow(
-            context = context,
-            label = context.getString(R.string.widget_fat),
-            grams = snapshot?.fat ?: 0.0,
-            progress = snapshot.progressFor(MacroKind.FAT),
-            color = MacroPalette.fat,
+    private fun EatenLine(context: Context, snapshot: MacroSnapshot?) {
+        if (snapshot?.hasData != true || snapshot.remaining == null) return
+        Spacer(modifier = GlanceModifier.height(2.dp))
+        Text(
+            text = context.getString(R.string.widget_kcal_eaten, formatInt(context, snapshot.calories)),
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurfaceVariant,
+                fontSize = 12.sp,
+            ),
+            maxLines = 1,
+            modifier = GlanceModifier.fillMaxWidth(),
         )
     }
 
     @Composable
-    private fun MacroRow(
+    private fun MacroRows(
         context: Context,
+        snapshot: MacroSnapshot?,
+        spacing: Int,
+        showGoals: Boolean = false,
+        barHeight: Int = 4,
+    ) {
+        MacroRow(
+            label = context.getString(R.string.widget_protein),
+            value = gramsText(context, snapshot?.protein ?: 0.0, if (showGoals) snapshot?.proteinGoal else null),
+            progress = snapshot.progressFor(MacroKind.PROTEIN),
+            color = MacroPalette.protein,
+            barHeight = barHeight,
+        )
+        Spacer(modifier = GlanceModifier.height(spacing.dp))
+        MacroRow(
+            label = context.getString(R.string.widget_carbs),
+            value = gramsText(context, snapshot?.carbs ?: 0.0, if (showGoals) snapshot?.carbsGoal else null),
+            progress = snapshot.progressFor(MacroKind.CARBS),
+            color = MacroPalette.carbs,
+            barHeight = barHeight,
+        )
+        Spacer(modifier = GlanceModifier.height(spacing.dp))
+        MacroRow(
+            label = context.getString(R.string.widget_fat),
+            value = gramsText(context, snapshot?.fat ?: 0.0, if (showGoals) snapshot?.fatGoal else null),
+            progress = snapshot.progressFor(MacroKind.FAT),
+            color = MacroPalette.fat,
+            barHeight = barHeight,
+        )
+    }
+
+    /**
+     * "51 g", or "51 / 150 g" with a goal. The pair goes inside the translated
+     * gram string, so every language keeps its own unit.
+     */
+    private fun gramsText(context: Context, grams: Double, goal: Double?): String {
+        val amount = if (goal != null && goal > 0.0) {
+            context.getString(
+                R.string.widget_amount_of_goal,
+                formatInt(context, grams),
+                formatInt(context, goal),
+            )
+        } else {
+            formatInt(context, grams)
+        }
+        return context.getString(R.string.widget_grams, amount)
+    }
+
+    @Composable
+    private fun MacroRow(
         label: String,
-        grams: Double,
+        value: String,
         progress: Float,
         color: ColorProvider,
+        barHeight: Int,
     ) {
         Column(modifier = GlanceModifier.fillMaxWidth()) {
             Row(
@@ -206,6 +362,8 @@ class MacroWidget : GlanceAppWidget() {
                         .background(color),
                 ) {}
                 Spacer(modifier = GlanceModifier.width(8.dp))
+                // The label takes what the value leaves, so a long label is
+                // cut and the grams stay whole.
                 Text(
                     text = label,
                     style = TextStyle(
@@ -213,10 +371,11 @@ class MacroWidget : GlanceAppWidget() {
                         fontSize = 14.sp,
                     ),
                     maxLines = 1,
+                    modifier = GlanceModifier.defaultWeight(),
                 )
-                Spacer(modifier = GlanceModifier.defaultWeight())
+                Spacer(modifier = GlanceModifier.width(6.dp))
                 Text(
-                    text = context.getString(R.string.widget_grams, formatInt(context, grams)),
+                    text = value,
                     style = TextStyle(
                         color = GlanceTheme.colors.onSurface,
                         fontSize = 14.sp,
@@ -230,7 +389,7 @@ class MacroWidget : GlanceAppWidget() {
                 progress = progress,
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .height(4.dp),
+                    .height(barHeight.dp),
                 color = color,
                 backgroundColor = GlanceTheme.colors.surfaceVariant,
             )
@@ -364,13 +523,6 @@ class MacroWidget : GlanceAppWidget() {
     private fun JSONObject.safeDouble(name: String): Double {
         val value = optDouble(name, 0.0)
         return if (value.isFinite()) value else 0.0
-    }
-
-    /** Absent, JSON null and non-finite all read as "not supplied". */
-    private fun JSONObject.optionalDouble(name: String): Double? {
-        if (!has(name) || isNull(name)) return null
-        val value = optDouble(name, Double.NaN)
-        return if (value.isFinite()) value else null
     }
 
     private fun formatInt(context: Context, value: Double): String {

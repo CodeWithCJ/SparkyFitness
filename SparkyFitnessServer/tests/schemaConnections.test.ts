@@ -36,6 +36,11 @@ vi.mock('fs', () => ({
 const migrationSql =
   "BEGIN;\nSELECT 1;\n;\nINSERT INTO system.schema_migrations (name) VALUES ('example.sql');\nCOMMIT;";
 
+// The policy file, then its rls_policy_state record, in one transaction.
+const rlsSql = expect.stringMatching(
+  /^BEGIN;\nSET LOCAL lock_timeout = \d+;\nSELECT 1;\n;\nINSERT INTO system\.rls_policy_state [\s\S]*\nCOMMIT;$/
+);
+
 beforeEach(() => {
   vi.resetAllMocks();
   // Probe succeeds: the application role's password still authenticates, so
@@ -60,7 +65,7 @@ afterEach(() => {
 
 describe.each([
   { name: 'migrations', run: applyMigrations, sql: migrationSql },
-  { name: 'RLS policies', run: applyRlsPolicies, sql: 'SELECT 1;' },
+  { name: 'RLS policies', run: applyRlsPolicies, sql: rlsSql },
   {
     name: 'permissions',
     run: grantPermissions,

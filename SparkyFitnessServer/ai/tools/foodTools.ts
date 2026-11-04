@@ -26,11 +26,13 @@ import {
   type ProviderFoodVariant,
   type ProviderLookupResult,
 } from '../../services/foodProviderLookupService.js';
+import { PARTIAL_SERVING_DATA } from '../../utils/foodRanking.js';
 import { fetchProviderFoodDetails } from '../../services/foodProviderDetailService.js';
 import {
   resolveFoodPortion,
   validateNutritionReference,
   nutrientNumber,
+  normalizePortionUnit,
   type PortionVariant,
 } from '../../utils/foodPortionResolver.js';
 import { ERRORS, formatZodError } from './errors.js';
@@ -106,6 +108,20 @@ const COUNT_BASED_UNITS = [
 // search. An exact match could fall outside it only when more than this many
 // foods contain the searched name as a substring.
 const NAME_RESOLUTION_WINDOW = 500;
+
+// One detail read while the chat waits on a lookup; the OpenFoodFacts default
+// (10 s) is for user-initiated requests.
+const SERVING_RETRY_MS = 4_000;
+
+// Not every provider client takes an abort signal (FatSecret does not), so the
+// chat stops waiting at the deadline even when the request itself runs on.
+function withinServingRetry<T>(work: Promise<T | null>): Promise<T | null> {
+  let timer: NodeJS.Timeout | undefined;
+  const deadline = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), SERVING_RETRY_MS);
+  });
+  return Promise.race([work, deadline]).finally(() => clearTimeout(timer));
+}
 
 // Optional inputs and nullable DB columns are treated alike: absent.
 function isSet<T>(value: T | null | undefined): value is T {
@@ -873,7 +889,8 @@ async function fetchVerifiedProviderFood(
   userId: string,
   providerType: string,
   externalId: string,
-  providerId?: string
+  providerId?: string,
+  signal?: AbortSignal
 ): Promise<ProviderFoodItem | null> {
   try {
     const detail = await fetchProviderFoodDetails({
@@ -882,6 +899,8 @@ async function fetchVerifiedProviderFood(
       providerType,
       externalId,
       providerId,
+      signal,
+      requireNutrition: true,
     });
     if (
       !detail ||
@@ -989,7 +1008,7 @@ Actions:
 - list_meal_types() — lists the user's built-in and custom meal types with IDs, names, and sort order.
 - log_food(quantity, meal_type_id?|meal_type?, food_name?|food_id?, unit?, entry_date?, variant_id?) — use meal_type_id for custom meal types; the legacy meal_type fallback accepts "breakfast"|"lunch"|"dinner"|"snacks". meal_type_id takes precedence when both are supplied. Provide food_name or food_id (an internal food UUID, never a lookup result's External ID); unit defaults to the food's serving unit, entry_date defaults to today. Works only for foods already in the database (source='internal').
 - log_external_food(food_name, meal_type_id?|meal_type?, quantity?, unit?, entry_date?, external_id?, provider_type?, is_quick_food?) — PREFERRED way to log an external lookup_food_nutrition match (usda/openfoodfacts/...): the server re-fetches the provider result, saves it with full nutrition, and logs it in one call. quantity is in servings and defaults to 1. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list.
-- create_food(food_name, calories, protein, carbs, fat, brand?, barcode?, notes?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — MANDATORY: You must run lookup_food_nutrition first. Use verified label/source values for custom foods, or estimates only when the user explicitly requests an estimate; for external lookup matches use log_external_food instead. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Include source-supported nutrients and omit unknown values; never replace unknown with zero. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
+- create_food(food_name, calories, protein, carbs, fat, brand?, barcode?, notes?, quantity?, unit?, meal_type_id?, meal_type?, entry_date?, is_quick_food?, saturated_fat?, fiber?, sugar?, sodium?, caffeine_mg?, alcohol_g?, water_ml?, ...) — MANDATORY: You must run lookup_food_nutrition first. Use verified label/source values for custom foods, or estimates only when the user explicitly requests an estimate; for external lookup matches use log_external_food instead. Nutrients are per quantity × unit. Include meal_type_id (or legacy meal_type) + entry_date to also log the food in the same call. Include source-supported nutrients and omit unknown values; never replace unknown with zero. Set is_quick_food:true ONLY when the user explicitly asks to quick-add the food or not save it to their food list; it then requires meal_type_id (or meal_type) in the same call. Pass notes only when the user gave reference detail worth keeping on the food itself — how they order or prepare it, or a recipe; it is markdown, it is not a nutrition field, and you must never invent one.
 - set_food_barcode(food_id, barcode) — updates product metadata only; it never changes variants or diary history.
 - search_meal(meal_name)
 - log_meal(meal_type_id?|meal_type?, entry_date, meal_id?, meal_name?, quantity?)
@@ -1295,7 +1314,23 @@ Actions:
                 return `No verified match is available for "${args.food_name}"${result.source === 'unavailable' ? '; one or more providers failed' : ''}. Try another provider or official source (up to three candidates), then ask for the label or portion weight. Do not invent nutrition.`;
               }
 
-              const f = result.food;
+              let f = result.food;
+              // A search result built from a summary (OpenFoodFacts without
+              // Product Opener hydration, FatSecret without its detail call)
+              // can quote a different serving than the full record that
+              // log_external_food saves. Fetch the shown match's full record.
+              if (f[PARTIAL_SERVING_DATA] && f.provider_external_id) {
+                f =
+                  (await withinServingRetry(
+                    fetchVerifiedProviderFood(
+                      userId,
+                      result.source,
+                      String(f.provider_external_id),
+                      result.provider_id,
+                      AbortSignal.timeout(SERVING_RETRY_MS)
+                    )
+                  )) ?? f;
+              }
               let text = `### Found match in **${result.source}**:\n`;
               text += `**${f.name}**`;
               if (f.brand) text += ` (${f.brand})`;
@@ -1316,6 +1351,9 @@ Actions:
                   : pickBestVariant(f);
               if (v) {
                 text += `\n  Serving Size: ${v.serving_size} ${v.serving_unit}`;
+                if (f[PARTIAL_SERVING_DATA])
+                  text +=
+                    ' (from the search summary; the full record was unavailable, so log by weight)';
                 text += `\n  Energy: ${v.calories ?? v.energy ?? 0} kcal`;
                 text += `\n  Macros: Protein: ${v.protein}g | Carbs: ${v.carbs}g | Fat: ${v.fat}g`;
                 if (
@@ -1385,7 +1423,11 @@ Actions:
                   ...(f.provider_external_id
                     ? { external_id: String(f.provider_external_id) }
                     : {}),
-                  quantity: 1,
+                  ...((result.source === 'openfoodfacts' ||
+                    f[PARTIAL_SERVING_DATA]) &&
+                  v
+                    ? { quantity: Number(v.serving_size), unit: v.serving_unit }
+                    : { quantity: 1 }),
                   meal_type: '<breakfast|lunch|dinner|snacks>',
                 });
                 text += `\n\nNote: this external result is not saved in the food database yet. To save and log it in one step, call sparky_manage_food with: ${exampleCall} (adjust quantity and meal_type). Do NOT pass the External ID as food_id.`;
@@ -1492,7 +1534,7 @@ Actions:
               const pinnedProvider = pinnedDetails
                 ? (await resolveFoodProviderOrder(userId, 'fatsecret'))[0]
                 : undefined;
-              const result = pinnedDetails
+              let result = pinnedDetails
                 ? {
                     source: 'fatsecret',
                     provider_id: pinnedProvider?.id,
@@ -1510,6 +1552,35 @@ Actions:
                     args.provider_type,
                     args.external_id
                   );
+              // Searching again by the product's full name often misses the
+              // item the lookup found under the user's words ("olive oil" vs
+              // "Organic Extra Virgin Olive Oil"). Fetch that exact ID before
+              // refusing, so the model doesn't loop on lookups or retype
+              // nutrition into create_food.
+              if (
+                !result.food &&
+                !pinnedDetails &&
+                args.external_id &&
+                args.provider_type
+              ) {
+                const provider = (
+                  await resolveFoodProviderOrder(userId, args.provider_type)
+                )[0];
+                const food = await fetchVerifiedProviderFood(
+                  userId,
+                  args.provider_type,
+                  args.external_id,
+                  provider?.id
+                );
+                if (food) {
+                  result = {
+                    source: args.provider_type,
+                    provider_id: provider?.id,
+                    food,
+                    alternatives: [],
+                  };
+                }
+              }
               if (result.source === 'ai_estimate' || !result.food) {
                 if (args.external_id && !pinnedDetails)
                   return ERRORS.VALIDATION(
@@ -1600,6 +1671,31 @@ Actions:
                   );
                 }
                 match = detail;
+              }
+              // Same summary gap as in lookup_food_nutrition: save from the
+              // full record so the reference matches what the lookup quoted.
+              if (match[PARTIAL_SERVING_DATA] && match.provider_external_id) {
+                match =
+                  (await fetchVerifiedProviderFood(
+                    userId,
+                    result.source,
+                    String(match.provider_external_id),
+                    result.provider_id
+                  )) ?? match;
+              }
+              // Still the summary: its reference serving may not be the one
+              // the lookup quoted, so a serving count could log the wrong
+              // amount. Only a weight or volume converts safely.
+              if (match[PARTIAL_SERVING_DATA]) {
+                const unit = normalizePortionUnit(args.unit);
+                if (
+                  getConversionFactor('g', unit) === null &&
+                  getConversionFactor('ml', unit) === null
+                ) {
+                  return ERRORS.VALIDATION(
+                    'Full details for this item are unavailable, so its serving size is unconfirmed; nothing was logged. Log it by weight or volume (for example 30 g), or retry.'
+                  );
+                }
               }
               const providerVariants = match.variants?.length
                 ? match.variants

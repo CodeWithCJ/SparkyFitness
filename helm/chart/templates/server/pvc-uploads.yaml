@@ -1,3 +1,4 @@
+{{- if not .Values.server.persistence.uploads.existingClaim }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -17,3 +18,4 @@ spec:
   {{- if $sc }}
   storageClassName: {{ $sc }}
   {{- end }}
+{{- end }}

@@ -175,7 +175,7 @@ const AI_ASSISTANCE_OPTIONS = [
   {
     key: 'tested-only',
     label: 'AI, tested only**',
-    text: '**AI, tested only**: AI wrote this and I did not review the code myself. I tested the behavior only. A maintainer agreed beforehand to review a PR like this (link the issue or Discord message in the description).',
+    text: '**AI, tested only**: AI wrote this and I did not review the code myself. I tested the behavior only.',
     needsExtraReview: true,
   },
 ];

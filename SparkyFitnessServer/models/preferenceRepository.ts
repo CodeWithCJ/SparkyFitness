@@ -137,6 +137,8 @@ async function updateUserPreferences(
         active_voice_ai_service_id = CASE WHEN $55 THEN $54 ELSE active_voice_ai_service_id END,
         voice_input_enabled = COALESCE($56, voice_input_enabled),
         adaptive_activity_separate = COALESCE($57, adaptive_activity_separate),
+        use_move_ring_active_calories = COALESCE($59, use_move_ring_active_calories),
+        adjust_macros_with_exercise = COALESCE($60, adjust_macros_with_exercise),
         measurement_decimal_places = COALESCE($40, measurement_decimal_places),
         added_sugar_algorithm = COALESCE($43, added_sugar_algorithm),
         calorie_safety_floor_mode = COALESCE($45, calorie_safety_floor_mode),
@@ -204,6 +206,8 @@ async function updateUserPreferences(
         preferenceData.voice_input_enabled,
         preferenceData.adaptive_activity_separate,
         preferenceData.goal_mode_weekly_change_kg,
+        preferenceData.use_move_ring_active_calories,
+        preferenceData.adjust_macros_with_exercise,
       ]
     );
     return result.rows[0];
@@ -304,6 +308,8 @@ async function upsertUserPreferences(
        target_bedtime,
        chart_scale_mode,
        adaptive_activity_separate,
+       use_move_ring_active_calories,
+       adjust_macros_with_exercise,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($44, 'HH:mm'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -346,6 +352,8 @@ async function upsertUserPreferences(
        COALESCE($52::time without time zone, '22:30'),
        COALESCE($53, 'time'),
        COALESCE($57, FALSE),
+       COALESCE($59, FALSE),
+       COALESCE($60, FALSE),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -390,6 +398,8 @@ async function upsertUserPreferences(
        active_voice_ai_service_id = CASE WHEN $55 THEN EXCLUDED.active_voice_ai_service_id ELSE user_preferences.active_voice_ai_service_id END,
        voice_input_enabled = COALESCE($56, user_preferences.voice_input_enabled),
        adaptive_activity_separate = COALESCE($57, user_preferences.adaptive_activity_separate),
+       use_move_ring_active_calories = COALESCE($59, user_preferences.use_move_ring_active_calories),
+       adjust_macros_with_exercise = COALESCE($60, user_preferences.adjust_macros_with_exercise),
        measurement_decimal_places = COALESCE(EXCLUDED.measurement_decimal_places, user_preferences.measurement_decimal_places),
        added_sugar_algorithm = COALESCE(EXCLUDED.added_sugar_algorithm, user_preferences.added_sugar_algorithm),
        calorie_safety_floor_mode = COALESCE($45, user_preferences.calorie_safety_floor_mode),
@@ -468,6 +478,8 @@ async function upsertUserPreferences(
         preferenceData.voice_input_enabled,
         preferenceData.adaptive_activity_separate,
         preferenceData.goal_mode_weekly_change_kg,
+        preferenceData.use_move_ring_active_calories,
+        preferenceData.adjust_macros_with_exercise,
       ]
     );
     return result.rows[0];

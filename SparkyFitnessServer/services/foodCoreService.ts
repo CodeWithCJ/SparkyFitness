@@ -32,7 +32,10 @@ import {
 } from '../middleware/imageUpload.js';
 import { resolveImageInput, toImageArray } from '../utils/imageLocalizer.js';
 import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
-import { alcoholGramsForServing } from '@workspace/shared';
+import {
+  alcoholGramsForServing,
+  BARCODE_FALLBACK_PROVIDER_ID,
+} from '@workspace/shared';
 
 /** A food row as returned by the repository. */
 interface FoodRow {
@@ -214,7 +217,14 @@ async function createFood(authenticatedUserId: string, foodData: FoodInput) {
         foodData.barcode,
         authenticatedUserId
       );
-      if (existingFood) {
+      // A selected provider product has its own identity. Another source's
+      // barcode match must not replace that choice or overwrite a custom food.
+      const hasProviderIdentity =
+        !!foodData.provider_type && !!foodData.provider_external_id;
+      const sameProviderIdentity =
+        existingFood?.provider_type === foodData.provider_type &&
+        existingFood?.provider_external_id === foodData.provider_external_id;
+      if (existingFood && (!hasProviderIdentity || sameProviderIdentity)) {
         return refreshExistingExternalFoodMetadata(
           authenticatedUserId,
           existingFood,
@@ -994,40 +1004,83 @@ async function updateFoodEntriesSnapshot(
 // local food library and load preferences. `credentialUserId` is the real
 // authenticated actor whose stored provider secrets and OpenFoodFacts session
 // are used, so a delegate can't decrypt a family member's provider keys.
+export interface BarcodeLookupOptions {
+  signal?: AbortSignal;
+  skipLocal?: boolean;
+  skipFallback?: boolean;
+  ignoreDefaultProvider?: boolean;
+  surfaceErrors?: boolean;
+  includeProviderMetadata?: boolean;
+  preferences?: {
+    language?: string | null;
+    default_barcode_provider_id?: string | null;
+    barcode_fallback_open_food_facts?: boolean | null;
+    auto_scale_open_food_facts_imports?: boolean | null;
+  };
+}
+
 async function lookupBarcode(
   barcode: string,
   userId: string,
   providerId: string | undefined,
   // Defaults to the data-context user for non-delegated callers; routes pass
   // the real authenticated actor so a delegate can't use a family member's keys.
-  credentialUserId: string = userId
+  credentialUserId: string = userId,
+  options: BarcodeLookupOptions = {}
 ) {
   // Providers are tried in turn, each failure caught so the next can run.
-  // Capture the first failure carrying an HTTP status (a surfaceable
-  // misconfiguration, e.g. FatSecret's IP error) to report instead of a
-  // misleading "not found" if every provider fails.
+  // Strict single-source callers need to distinguish an unavailable provider
+  // from a successful search with no match. Legacy callers only surface errors
+  // carrying an HTTP status (e.g. FatSecret's IP misconfiguration).
   let surfaceableError: ProviderError | null = null;
+  const sourceMetadata = (sourceId: string, sourceName: string) =>
+    options.includeProviderMetadata
+      ? { providerId: sourceId, providerName: sourceName }
+      : {};
   const captureSurfaceable = (err: unknown) => {
-    const candidate = err as ProviderError | null;
+    options.signal?.throwIfAborted();
+    // Provider errors can include request URLs, response bodies and credentials.
+    // Expose only a neutral error when the caller asks for strict reporting.
+    const candidate = options.surfaceErrors
+      ? Object.assign(new Error('Barcode provider lookup failed.'), {
+          status: 502,
+        })
+      : (err as ProviderError | null);
     if (!surfaceableError && candidate?.status) {
       surfaceableError = candidate;
     }
+    // Retain the cause for server logs; only surfaceableError reaches callers.
+    return err;
   };
+  const signalArgs = options.signal
+    ? ([options.signal] as const)
+    : ([] as const);
   try {
-    const localFood = await foodRepository.findFoodByBarcode(barcode, userId);
+    options.signal?.throwIfAborted();
+    const localFood = options.skipLocal
+      ? null
+      : await foodRepository.findFoodByBarcode(barcode, userId);
+    options.signal?.throwIfAborted();
     if (localFood) {
-      return { source: 'local', food: localFood };
+      return {
+        source: 'local',
+        food: localFood,
+        ...sourceMetadata('local', 'Saved food'),
+      };
     }
     // Load user preferences once for provider resolution, language, and auto-scale
-    const userPreferences = await preferenceService.getUserPreferences(
-      userId,
-      userId
-    );
+    const userPreferences =
+      options.preferences ??
+      (await preferenceService.getUserPreferences(userId, userId));
+    options.signal?.throwIfAborted();
     // Resolve the barcode provider (explicit param or user preference)
     let provider = null;
     try {
       const resolvedProviderId =
-        providerId || userPreferences?.default_barcode_provider_id;
+        providerId ||
+        (options.ignoreDefaultProvider
+          ? undefined
+          : userPreferences?.default_barcode_provider_id);
       if (resolvedProviderId) {
         const details =
           await externalProviderService.getExternalDataProviderDetails(
@@ -1039,15 +1092,28 @@ async function lookupBarcode(
         }
       }
     } catch (providerError) {
+      options.signal?.throwIfAborted();
       log(
         'warn',
         `Barcode provider resolution failed for user ${userId}:`,
-        providerError
+        options.surfaceErrors
+          ? captureSurfaceable(providerError)
+          : providerError
       );
     }
+    options.signal?.throwIfAborted();
     const language = userPreferences?.language || 'en';
     const autoScale =
       userPreferences?.auto_scale_open_food_facts_imports ?? true;
+    if (
+      options.surfaceErrors &&
+      ((provider?.provider_type === 'usda' && !provider.app_key) ||
+        ((provider?.provider_type === 'fatsecret' ||
+          provider?.provider_type === 'yazio') &&
+          (!provider.app_id || !provider.app_key)))
+    ) {
+      captureSurfaceable(new Error('Missing required provider credentials.'));
+    }
     let triedOpenFoodFacts = false;
     // Try FatSecret if provider is configured
     if (
@@ -1056,22 +1122,39 @@ async function lookupBarcode(
       provider.app_key
     ) {
       try {
-        const fatSecretData = await searchFatSecretByBarcode(
-          barcode,
-          provider.app_id,
-          provider.app_key
-        );
+        const fatSecretData =
+          options.surfaceErrors || options.signal
+            ? await searchFatSecretByBarcode(
+                barcode,
+                provider.app_id,
+                provider.app_key,
+                options.surfaceErrors === true,
+                ...signalArgs
+              )
+            : await searchFatSecretByBarcode(
+                barcode,
+                provider.app_id,
+                provider.app_key
+              );
+        options.signal?.throwIfAborted();
         if (fatSecretData && fatSecretData.food) {
           fatSecretData.food.barcode = barcode;
           return {
             source: 'fatsecret',
             food: mapFatSecretFood(fatSecretData),
             barcode_raw: fatSecretData,
+            ...sourceMetadata(
+              provider.id,
+              provider.provider_name ?? 'FatSecret'
+            ),
           };
         }
       } catch (fsError) {
-        log('warn', `FatSecret barcode lookup failed for ${barcode}:`, fsError);
-        captureSurfaceable(fsError);
+        log(
+          'warn',
+          `FatSecret barcode lookup failed for ${barcode}:`,
+          captureSurfaceable(fsError)
+        );
       }
     }
     // Try USDA if provider is configured
@@ -1091,8 +1174,10 @@ async function lookupBarcode(
         for (const searchBarcode of alternateBarcodes) {
           const usdaData = await searchUsdaFoodsByBarcode(
             searchBarcode,
-            provider.app_key
+            provider.app_key,
+            ...signalArgs
           );
+          options.signal?.throwIfAborted();
           match = (usdaData?.foods || []).find(
             (f: { gtinUpc?: string; description?: string }) =>
               normalizeBarcode(f.gtinUpc) === normalizedBarcode && f.description
@@ -1104,11 +1189,15 @@ async function lookupBarcode(
             source: 'usda',
             food: mapUsdaBarcodeProduct(match),
             barcode_raw: match,
+            ...sourceMetadata(provider.id, provider.provider_name ?? 'USDA'),
           };
         }
       } catch (usdaError) {
-        log('warn', `USDA barcode lookup failed for ${barcode}:`, usdaError);
-        captureSurfaceable(usdaError);
+        log(
+          'warn',
+          `USDA barcode lookup failed for ${barcode}:`,
+          captureSurfaceable(usdaError)
+        );
       }
     }
     // Try YAZIO if provider is configured. This uses YAZIO's private product
@@ -1119,22 +1208,31 @@ async function lookupBarcode(
       provider.app_key
     ) {
       try {
-        const yazioFood = await searchYazioByBarcode(barcode, {
-          username: provider.app_id,
-          password: provider.app_key,
-          baseUrl: provider.base_url,
-          language,
-        });
+        const yazioFood = await searchYazioByBarcode(
+          barcode,
+          {
+            username: provider.app_id,
+            password: provider.app_key,
+            baseUrl: provider.base_url,
+            language,
+          },
+          ...signalArgs
+        );
+        options.signal?.throwIfAborted();
         if (yazioFood) {
           return {
             source: 'yazio',
             food: yazioFood,
             barcode_raw: yazioFood,
+            ...sourceMetadata(provider.id, provider.provider_name ?? 'YAZIO'),
           };
         }
       } catch (yazioError) {
-        log('warn', `YAZIO barcode lookup failed for ${barcode}:`, yazioError);
-        captureSurfaceable(yazioError);
+        log(
+          'warn',
+          `YAZIO barcode lookup failed for ${barcode}:`,
+          captureSurfaceable(yazioError)
+        );
       }
     }
     // Try OpenFoodFacts if it is the configured primary provider
@@ -1147,8 +1245,10 @@ async function lookupBarcode(
           language,
           credentialUserId,
           provider.id,
-          provider.is_public === true ? 'global' : 'personal'
+          provider.is_public === true ? 'global' : 'personal',
+          ...signalArgs
         );
+        options.signal?.throwIfAborted();
         if (offData?.status === 1 && offData.product) {
           const food = mapOpenFoodFactsProduct(offData.product, {
             autoScale,
@@ -1159,6 +1259,10 @@ async function lookupBarcode(
               source: 'openfoodfacts',
               food,
               barcode_raw: offData.product,
+              ...sourceMetadata(
+                provider.id,
+                provider.provider_name ?? 'Open Food Facts'
+              ),
             };
           }
         }
@@ -1166,13 +1270,13 @@ async function lookupBarcode(
         log(
           'warn',
           `OpenFoodFacts barcode lookup failed for ${barcode}:`,
-          error
+          captureSurfaceable(error)
         );
-        captureSurfaceable(error);
       }
     }
     // Fall back to OpenFoodFacts if not already tried and user preference allows it
     if (
+      !options.skipFallback &&
       !triedOpenFoodFacts &&
       userPreferences?.barcode_fallback_open_food_facts !== false
     ) {
@@ -1198,13 +1302,17 @@ async function lookupBarcode(
             ? { id: offProviderId, scope: 'personal' }
             : null;
         } catch (fallbackError) {
+          options.signal?.throwIfAborted();
           log(
             'debug',
             'OpenFoodFacts fallback provider resolution failed:',
-            fallbackError
+            options.surfaceErrors
+              ? captureSurfaceable(fallbackError)
+              : fallbackError
           );
         }
       }
+      options.signal?.throwIfAborted();
       try {
         const offData = await searchOpenFoodFactsByBarcodeFields(
           barcode,
@@ -1212,18 +1320,38 @@ async function lookupBarcode(
           language,
           offProvider ? credentialUserId : undefined,
           offProvider?.id,
-          offProvider?.scope ?? 'personal'
+          offProvider?.scope ?? 'personal',
+          ...signalArgs
         );
+        options.signal?.throwIfAborted();
         if (offData?.status === 1 && offData.product) {
           const food = mapOpenFoodFactsProduct(offData.product, {
             autoScale,
             language,
           });
           if (food.name) {
+            let fallbackName = 'Open Food Facts';
+            if (options.includeProviderMetadata && offProvider) {
+              try {
+                const details =
+                  await externalProviderService.getExternalDataProviderDetails(
+                    credentialUserId,
+                    offProvider.id
+                  );
+                fallbackName = details?.provider_name || fallbackName;
+              } catch {
+                // Display metadata must not discard a successful product match.
+              }
+            }
+            options.signal?.throwIfAborted();
             return {
               source: 'openfoodfacts',
               food,
               barcode_raw: offData.product,
+              ...sourceMetadata(
+                offProvider?.id ?? BARCODE_FALLBACK_PROVIDER_ID,
+                fallbackName
+              ),
             };
           }
         }
@@ -1231,9 +1359,8 @@ async function lookupBarcode(
         log(
           'warn',
           `OpenFoodFacts lookup failed for barcode ${barcode}:`,
-          error
+          captureSurfaceable(error)
         );
-        captureSurfaceable(error);
       }
     }
     // Every provider failed: report a misconfiguration rather than "not found".
@@ -1242,6 +1369,7 @@ async function lookupBarcode(
     }
     return { source: 'not_found', food: null };
   } catch (error) {
+    options.signal?.throwIfAborted();
     log('error', `Error looking up barcode ${barcode}:`, error);
     throw error;
   }

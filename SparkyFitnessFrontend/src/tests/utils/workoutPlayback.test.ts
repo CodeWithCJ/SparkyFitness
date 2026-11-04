@@ -67,6 +67,22 @@ describe('workoutPlayback utils', () => {
     ).toBe(true);
   });
 
+  it('ignores a stray "[" or quote stored as a preset exercise image', () => {
+    const base = createPresetFixture();
+    const preset = {
+      ...base,
+      exercises: base.exercises.map((exercise, index) => ({
+        ...exercise,
+        image_url: index === 0 ? '[' : 'Bent_Over_Barbell_Row/0.jpg',
+      })),
+    } as WorkoutPreset;
+
+    const draft = createWorkoutPlaybackDraftFromPreset(preset, '2026-04-27');
+
+    expect(draft.exercises[0]?.image_url).toBeUndefined();
+    expect(draft.exercises[1]?.image_url).toBe('Bent_Over_Barbell_Row/0.jpg');
+  });
+
   it('builds a route state that carries the draft and return path', () => {
     const routeState = createWorkoutPlaybackRouteState(
       createPresetFixture(),

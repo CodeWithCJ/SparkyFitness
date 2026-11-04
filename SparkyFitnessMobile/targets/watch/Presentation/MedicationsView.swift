@@ -1,17 +1,18 @@
 import SwiftUI
 import WatchKit
 
-/// The Medications page.
+/// The Medications page, laid out like Apple's Medications app.
 ///
-/// Today's scheduled doses as a scrollable column of rows in the Water page's
-/// tile style: a tinted rounded square per dose, name and dose on the left, the
-/// time under it, and a tick on the right. Tapping a pending dose logs it as
-/// taken straight to the phone — there is no local-only state. Tapping a taken
-/// dose un-ticks it (a mistaken tap), which deletes the entry on the phone.
-/// Skipping a dose stays on the phone.
+/// Today's doses in a list grouped by time ("8:00 AM", then "As Needed"),
+/// one large row per dose: an icon, the name and the dose. Tapping a row opens
+/// the dose, with big Taken and Skipped buttons; a group with more than one
+/// dose still to take also has Log All as Taken. Every tap goes straight to
+/// the phone — there is no local-only state. A logged dose can be cleared from
+/// its screen after a mistaken tap, which deletes the entry on the phone.
 struct MedicationsView: View {
     @EnvironmentObject private var store: CheckInStore
     @EnvironmentObject private var session: WatchSessionManager
+    @State private var path: [String] = []
 
     /// Yesterday's doses are worse than none — discarded the same way
     /// `GoalSummaryView` discards stale nutrition.
@@ -21,126 +22,264 @@ struct MedicationsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 4) {
-            // Same status pill as the Water page, scoped to this page's own
-            // ticks so a red dot here is always about a dose.
-            HStack(spacing: 4) {
-                SyncStatusIcon(
-                    state: store.medicationSyncState,
-                    onRetry: { session.retryFailedMedicationTaps() }
-                )
-                Text(headerLabel)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+        NavigationStack(path: $path) {
+            Group {
+                if let snapshot, !snapshot.doses.isEmpty {
+                    doseList(snapshot.doses)
+                } else {
+                    emptyState(synced: snapshot != nil)
+                }
             }
-            content
+            .navigationTitle(String(localized: "watch.medications.title", defaultValue: "Medications"))
+            .toolbar {
+                // Only while a tap is outstanding: a green tick on every visit
+                // is noise. Scoped to this page's taps, so a red dot here is
+                // always about a dose.
+                if store.medicationSyncState != .saved {
+                    ToolbarItem(placement: .topBarLeading) {
+                        SyncStatusIcon(
+                            state: store.medicationSyncState,
+                            onRetry: { session.retryFailedMedicationTaps() }
+                        )
+                    }
+                }
+            }
+            .navigationDestination(for: String.self) { doseId in
+                if let dose = snapshot?.doses.first(where: { $0.id == doseId }) {
+                    MedicationDoseView(dose: dose)
+                }
+            }
         }
-        .padding(.horizontal, 4)
+        #if DEBUG
+        .onAppear {
+            if ScreenshotSeed.opensMedicationDose,
+               let due = snapshot?.doses.first(where: { $0.status == .pending }) {
+                path = [due.id]
+            }
+        }
+        #endif
     }
 
-    /// "2 of 3 taken", or the reason there is nothing to count.
-    private var headerLabel: String {
-        guard let snapshot else { return "Medications not synced yet" }
-        guard !snapshot.doses.isEmpty else { return "Medications" }
-        let taken = snapshot.doses.filter(isTaken).count
-        return "\(taken) of \(snapshot.doses.count) taken"
+    private func doseList(_ doses: [MedicationDose]) -> some View {
+        List {
+            ForEach(MedicationGroup.grouping(doses)) { group in
+                Section {
+                    ForEach(group.doses) { dose in
+                        NavigationLink(value: dose.id) {
+                            MedicationDoseRow(dose: dose, status: store.medicationStatus(for: dose))
+                        }
+                    }
+                    let pending = group.doses.filter { store.medicationStatus(for: $0) == .pending }
+                    if group.isScheduled, pending.count > 1 {
+                        Button {
+                            Haptics.tap()
+                            for dose in pending { log(dose, .taken) }
+                        } label: {
+                            Text(String(localized: "watch.medications.logAll", defaultValue: "Log All as Taken"))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .tint(GoalPalette.medication)
+                    }
+                } header: {
+                    Text(group.title)
+                }
+            }
+        }
+    }
+
+    private func emptyState(synced: Bool) -> some View {
+        VStack(spacing: 8) {
+            Image(systemName: "pills.fill")
+                .watchFont(.title2, classic: .title3)
+                .foregroundStyle(GoalPalette.medication)
+            Text(synced
+                 ? String(localized: "watch.medications.nothingToday", defaultValue: "Nothing scheduled today")
+                 : String(localized: "watch.medications.notSynced", defaultValue: "Open SparkyFitness on your iPhone to see your medications"))
+                .watchFont(.body, classic: .footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func log(_ dose: MedicationDose, _ action: MedicationTapAction) {
+        let clientId = store.recordMedicationTap(dose, action: action)
+        session.sendMedicationTap(dose, clientId: clientId, action: action)
+    }
+}
+
+/// The doses that share a time, in the phone's order (soonest first, untimed
+/// scheduled doses, then as-needed ones).
+struct MedicationGroup: Identifiable {
+    let title: String
+    /// False for the as-needed group, which has nothing to log all of.
+    let isScheduled: Bool
+    let doses: [MedicationDose]
+
+    var id: String { title }
+
+    static func grouping(_ doses: [MedicationDose]) -> [MedicationGroup] {
+        var groups: [MedicationGroup] = []
+        for dose in doses {
+            let asNeeded = dose.scheduleId.isEmpty
+            let title = asNeeded
+                ? String(localized: "watch.medications.asNeeded", defaultValue: "As Needed")
+                : dose.time.isEmpty
+                    ? String(localized: "watch.medications.anyTime", defaultValue: "Any Time")
+                    : dose.time
+            if let last = groups.last, last.title == title {
+                groups[groups.count - 1] = MedicationGroup(title: title, isScheduled: !asNeeded, doses: last.doses + [dose])
+            } else {
+                groups.append(MedicationGroup(title: title, isScheduled: !asNeeded, doses: [dose]))
+            }
+        }
+        return groups
+    }
+}
+
+/// The round icon a dose wears: a pill for a medication, a leaf for a
+/// supplement.
+struct MedicationIcon: View {
+    let dose: MedicationDose
+    var size: CGFloat = 26
+
+    var body: some View {
+        Image(systemName: dose.supplement == true ? "leaf.fill" : "pills.fill")
+            .font(.system(size: size * 0.45, weight: .semibold))
+            .foregroundStyle(GoalPalette.medication)
+            .frame(width: size, height: size)
+            .background(GoalPalette.medication.opacity(0.2), in: Circle())
+            .accessibilityHidden(true)
+    }
+}
+
+private struct MedicationDoseRow: View {
+    let dose: MedicationDose
+    let status: MedicationDoseStatus
+
+    @EnvironmentObject private var store: CheckInStore
+
+    var body: some View {
+        HStack(spacing: 8) {
+            MedicationIcon(dose: dose)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(dose.name)
+                    .watchFont(.headline, classic: .subheadline.weight(.medium))
+                    .lineLimit(2)
+                if let caption {
+                    Text(caption)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+            statusIcon
+        }
+        .padding(.vertical, 4)
+        .opacity(status == .skipped ? 0.6 : 1)
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(MedicationDoseView.statusText(status) ?? "")
+    }
+
+    /// The dose, or "Skipped" in its place once it is skipped.
+    private var caption: String? {
+        if status == .skipped { return MedicationDoseView.statusText(.skipped) }
+        return dose.detail.isEmpty ? nil : dose.detail
     }
 
     @ViewBuilder
-    private var content: some View {
-        if let snapshot, !snapshot.doses.isEmpty {
-            ScrollView {
-                VStack(spacing: 6) {
-                    ForEach(snapshot.doses) { dose in
-                        doseRow(dose)
-                    }
-                }
-            }
-        } else {
-            VStack(spacing: 4) {
-                Image(systemName: "pills")
-                    .font(.system(size: 20))
-                    .foregroundStyle(.secondary)
-                Text(snapshot == nil
-                     ? "Open SparkyFitness on your phone to sync your medications"
-                     : "Nothing scheduled today")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    private var statusIcon: some View {
+        if status == .taken {
+            // Orange until the phone has it, as on the Water page.
+            let queued = store.medicationTap(for: dose.id)?.state == .queued
+            Image(systemName: "checkmark.circle.fill")
+                .watchFont(.title3, classic: .body)
+                .foregroundStyle(queued ? Color.orange : Color.green)
         }
     }
+}
 
-    /// Taken on the phone's say-so, or ticked here and not failed since. A
-    /// failed tick reads as not taken, so the row is tappable again.
-    private func isTaken(_ dose: MedicationDose) -> Bool {
-        if let tap = store.medicationTap(for: dose.id) { return !tap.isUndo }
-        return dose.status == .taken
-    }
+/// One dose, opened from the list: what it is, and Taken / Skipped as the two
+/// big buttons, as in Apple's Medications app.
+struct MedicationDoseView: View {
+    let dose: MedicationDose
 
-    private func tickColor(for dose: MedicationDose) -> Color {
-        guard let tap = store.medicationTap(for: dose.id) else { return .green }
-        return tap.state == .queued ? .orange : .green
-    }
+    @EnvironmentObject private var store: CheckInStore
+    @EnvironmentObject private var session: WatchSessionManager
+    @Environment(\.dismiss) private var dismiss
 
-    private func doseRow(_ dose: MedicationDose) -> some View {
-        let taken = isTaken(dose)
-        return Button {
-            tap(dose)
-        } label: {
-            HStack(spacing: 6) {
-                VStack(alignment: .leading, spacing: 1) {
+    var body: some View {
+        let status = store.medicationStatus(for: dose)
+        ScrollView {
+            VStack(spacing: 6) {
+                MedicationIcon(dose: dose, size: 32)
+                VStack(spacing: 2) {
                     Text(dose.name)
-                        .font(.system(size: 12, weight: .medium))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                    let captionText = caption(for: dose)
-                    if !captionText.isEmpty {
-                        Text(captionText)
-                            .font(.system(size: 9))
+                        .watchFont(.title3.weight(.semibold), classic: .headline)
+                        .multilineTextAlignment(.center)
+                    let caption = [dose.detail, dose.time].filter { !$0.isEmpty }.joined(separator: " · ")
+                    if !caption.isEmpty {
+                        Text(caption)
+                            .font(.footnote)
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
+                            .multilineTextAlignment(.center)
+                    }
+                    if let text = Self.statusText(status) {
+                        Text(text)
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(status == .taken ? Color.green : Color.secondary)
                     }
                 }
-                Spacer(minLength: 0)
-                Image(systemName: taken ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 18))
-                    .foregroundStyle(taken ? tickColor(for: dose) : GoalPalette.medication)
+
+                if status != .taken {
+                    Button {
+                        act(.taken)
+                    } label: {
+                        Label(String(localized: "watch.medications.taken", defaultValue: "Taken"), systemImage: "checkmark")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                }
+                // An as-needed dose has no slot to skip, and an older phone
+                // would read a skip as an un-tick.
+                if status != .skipped, !dose.scheduleId.isEmpty, store.context.medicationSkip == true {
+                    Button {
+                        act(.skipped)
+                    } label: {
+                        Label(String(localized: "watch.medications.skipped", defaultValue: "Skipped"), systemImage: "xmark")
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+                if status != .pending {
+                    Button {
+                        act(.undo)
+                    } label: {
+                        Text(String(localized: "watch.medications.clear", defaultValue: "Clear"))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .foregroundStyle(.red)
+                }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                GoalPalette.medication.opacity(taken ? 0.08 : 0.16),
-                in: RoundedRectangle(cornerRadius: 16)
-            )
-            .opacity(dose.status == .skipped && !taken ? 0.6 : 1)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(accessibilityLabel(for: dose, taken: taken))
     }
 
-    /// "8:00 AM · 10 mg", with whichever half the phone sent.
-    private func caption(for dose: MedicationDose) -> String {
-        var parts = [dose.time, dose.detail].filter { !$0.isEmpty }
-        if dose.status == .skipped { parts.append("Skipped") }
-        return parts.joined(separator: " · ")
+    /// "Taken" or "Skipped" for a logged dose; nil while it is still due.
+    static func statusText(_ status: MedicationDoseStatus) -> String? {
+        switch status {
+        case .pending: return nil
+        case .taken: return String(localized: "watch.medications.statusTaken", defaultValue: "Taken")
+        case .skipped: return String(localized: "watch.medications.statusSkipped", defaultValue: "Skipped")
+        }
     }
 
-    private func accessibilityLabel(for dose: MedicationDose, taken: Bool) -> String {
-        let base = [dose.name, dose.detail, dose.time].filter { !$0.isEmpty }.joined(separator: ", ")
-        return taken ? "\(base), taken. Tap to unmark" : "Mark \(base) as taken"
-    }
-
-    private func tap(_ dose: MedicationDose) {
+    private func act(_ action: MedicationTapAction) {
         // `.click`, not `.success`: all that is certain yet is that the tap
         // registered, the same reasoning as a water tap.
-        WKInterfaceDevice.current().play(.click)
-        let undo = isTaken(dose)
-        let clientId = store.recordMedicationTap(dose, undo: undo)
-        session.sendMedicationTap(dose, clientId: clientId, undo: undo)
+        Haptics.tap()
+        let clientId = store.recordMedicationTap(dose, action: action)
+        session.sendMedicationTap(dose, clientId: clientId, action: action)
+        dismiss()
     }
 }

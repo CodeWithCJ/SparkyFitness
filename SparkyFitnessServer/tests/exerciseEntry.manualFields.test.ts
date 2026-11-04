@@ -198,6 +198,38 @@ describe('manual_fields on exercise entry writes', () => {
     expect(column('manual_fields')).toEqual(['calories_burned', 'distance']);
   });
 
+  it('an edit built from the stored entry gets the row read under the lock', async () => {
+    const resolveUpdate = vi.fn(() => ({
+      updateData: { calories_burned: 480 },
+      markManualFields: ['calories_burned'],
+    }));
+
+    await exerciseEntryDb.updateExerciseEntry(
+      'entry-1',
+      'user-1',
+      'user-1',
+      { calories_burned: 1 },
+      [],
+      resolveUpdate
+    );
+
+    const lockAt = mockClient.query.mock.calls.findIndex(
+      (c: unknown[]) =>
+        typeof c[0] === 'string' && /pg_advisory_xact_lock/i.test(c[0])
+    );
+    const readAt = mockClient.query.mock.calls.findIndex(
+      (c: unknown[]) =>
+        typeof c[0] === 'string' &&
+        /^SELECT \* FROM exercise_entries/.test(c[0])
+    );
+    expect(lockAt).toBeGreaterThanOrEqual(0);
+    expect(readAt).toBeGreaterThan(lockAt);
+    expect(resolveUpdate).toHaveBeenCalledWith(syncedEntry);
+    const column = writtenColumns();
+    expect(column('calories_burned')).toBe(480);
+    expect(column('manual_fields')).toEqual(['calories_burned', 'distance']);
+  });
+
   it('a diary edit still writes the fields the user marked before', async () => {
     await exerciseEntryDb.updateExerciseEntry('entry-1', 'user-1', 'user-1', {
       distance: 6.3,

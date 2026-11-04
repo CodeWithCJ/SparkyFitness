@@ -414,6 +414,8 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       ) as Record<string, number | string>;
       expect(caloriePayload).toMatchObject({
         date: '2024-01-15',
+        food: 350,
+        burned: 100,
         remaining: 1850,
         goal: 2100,
         progress: 0.16,

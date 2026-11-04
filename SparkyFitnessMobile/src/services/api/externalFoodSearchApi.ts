@@ -3,6 +3,7 @@ import { AI_TIMEOUT_MS } from '../../utils/concurrency';
 import type {
   FoodPhotoEstimateErrorCode,
   FoodPhotoEstimateResponse,
+  BarcodeLookupResponse,
 } from '@workspace/shared';
 import { addLog } from '../LogService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
@@ -523,10 +524,12 @@ export interface BarcodeFood {
   variants?: NormalizedFoodVariant[];
 }
 
-export type BarcodeLookupResult =
+export type BarcodeLookupResult = (
   | { source: 'local'; food: BarcodeFood & { id: string } }
   | { source: string; food: BarcodeFood }
-  | { source: 'not_found'; food: null };
+  | { source: 'not_found'; food: null }
+) &
+  Pick<BarcodeLookupResponse, 'providerId' | 'providerName'>;
 
 export function _transformNormalizedFood(
   food: NormalizedFood,
@@ -655,14 +658,16 @@ export async function lookupBarcodeV2(
   const params = new URLSearchParams();
   if (providerId) params.set('providerId', providerId);
   const qs = params.toString();
-  const response = await apiFetch<V2BarcodeResponse>({
+  const response = await apiFetch<
+    V2BarcodeResponse & Omit<BarcodeLookupResponse, 'food' | 'source'>
+  >({
     endpoint: `/api/v2/foods/barcode/${barcode}${qs ? `?${qs}` : ''}`,
     serviceName: 'External Food Search',
     operation: 'barcode lookup (v2)',
   });
 
   if (!response.food) {
-    return { source: 'not_found', food: null };
+    return { ...response, source: 'not_found', food: null };
   }
 
   const food = response.food;
@@ -690,11 +695,12 @@ export async function lookupBarcodeV2(
 
   if (response.source === 'local') {
     return {
+      ...response,
       source: 'local',
       food: barcodeFood as BarcodeFood & { id: string },
     };
   }
-  return { source: response.source, food: barcodeFood };
+  return { ...response, source: response.source, food: barcodeFood };
 }
 
 // --- Nutrition Label Scanning ---

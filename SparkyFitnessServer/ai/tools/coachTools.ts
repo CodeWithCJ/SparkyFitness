@@ -1,11 +1,15 @@
 import { tool } from 'ai';
 import {
   addDays,
+  kgInUnit,
   todayInZone,
   ENERGY_DENSITY_KCAL_PER_KG,
   chatScoreToMoodValue,
 } from '@workspace/shared';
+import type { CalorieTargetReview } from '@workspace/shared';
 import { log } from '../../config/logging.js';
+import calorieTargetReviewService from '../../services/calorieTargetReviewService.js';
+import preferenceService from '../../services/preferenceService.js';
 import coachRepository from '../../models/coachRepository.js';
 import symptomRepository from '../../models/symptomRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
@@ -18,6 +22,7 @@ import {
   Get30DayTrendsSchema,
   DetectPatternsSchema,
   GenerateCoachingPlanSchema,
+  ReviewCalorieTargetSchema,
 } from './schemas/coach.js';
 
 // Trend math and pattern classification ported from MCP's coachService; the
@@ -399,6 +404,84 @@ async function generateCoachingPlan(
   };
 }
 
+function formatCalorieTargetReview(
+  review: CalorieTargetReview,
+  weightUnit: 'kg' | 'lbs'
+): string {
+  const rate = (kg: number | null): string =>
+    kg === null
+      ? 'n/a'
+      : `${kgInUnit(kg, weightUnit) > 0 ? '+' : ''}${kgInUnit(kg, weightUnit)} ${weightUnit}/week`;
+  const lines = [
+    '# Calorie Target Review',
+    '',
+    `- Estimated maintenance: ${review.maintenanceKcal} kcal/day`,
+    `- Saved calorie target: ${review.currentTargetKcal ?? 'none set'}${review.currentTargetKcal ? ' kcal/day' : ''}`,
+    `- Days with food logged: ${review.daysLogged} of ${review.windowDays}`,
+  ];
+  if (review.status === 'learning') {
+    lines.push(
+      '',
+      'The maintenance estimate is still learning (it needs about two weeks of food and weight logs). Do not recommend changing the target yet; say what to keep logging.'
+    );
+  } else if (review.status === 'low_logging') {
+    lines.push(
+      '',
+      'Food was logged on too few days to judge the target. Do not recommend a change; ask the user to log more days first.'
+    );
+  } else {
+    lines.push(
+      `- Average logged intake: ${review.averageIntakeKcal ?? 'n/a'} kcal${review.adherencePercent === null ? '' : ` (${review.adherencePercent}% of target)`}`,
+      `- Rate the target implies: ${rate(review.impliedKgPerWeek)}`,
+      `- Rate the weight trend shows: ${rate(review.observedKgPerWeek)}`
+    );
+    if (review.status === 'no_target') {
+      lines.push('', 'No calorie target is saved.');
+    } else if (review.status === 'on_track') {
+      lines.push(
+        '',
+        'The weight trend matches what the target implies. Say plainly that no change is needed.'
+      );
+    } else if (review.followedTarget === false) {
+      lines.push(
+        '',
+        'Intake was not within 10% of the target, so the gap is mostly how closely it was followed, not the target itself. Do not lower the target; ask how the week went.'
+      );
+    } else {
+      lines.push(
+        '',
+        'Intake followed the target but the weight trend differs from what it implies. Check water retention, a recent change in activity, or missed weigh-ins before changing the target.'
+      );
+    }
+    lines.push('', '## Targets at this maintenance');
+    for (const o of review.options) {
+      lines.push(
+        `- ${rate(o.kgPerWeek)}: ${o.calories} kcal/day${o.belowFloor ? ' (below the safe minimum)' : ''}`
+      );
+    }
+    if (review.suggestion) {
+      const s = review.suggestion;
+      lines.push(
+        '',
+        `For ${rate(s.kgPerWeek)}: ${s.calories} kcal/day${s.changeKcal === null ? '' : ` (${s.changeKcal >= 0 ? '+' : ''}${s.changeKcal} from today)`}.` +
+          (s.belowFloor
+            ? ' This is below the safe minimum; do not recommend it. Offer a slower rate.'
+            : '')
+      );
+    } else {
+      lines.push(
+        '',
+        'Ask which weekly rate the user wants, then call this tool again with desired_kg_per_week.'
+      );
+    }
+  }
+  lines.push(
+    '',
+    'This only reads data. Change the goal only after the user agrees, with sparky_manage_goals set_goals.'
+  );
+  return lines.join('\n');
+}
+
 export function buildCoachTools(userId: string, tz: string) {
   return {
     sparky_get_health_summary: tool({
@@ -514,6 +597,33 @@ export function buildCoachTools(userId: string, tz: string) {
           return formatSuccess(result, 'Coaching Plan');
         } catch (error) {
           log('error', '[Coach Tool] generateCoachingPlan error:', error);
+          return ERRORS.DB_ERROR(error);
+        }
+      },
+    }),
+    sparky_review_calorie_target: tool({
+      description:
+        "Weekly check of the user's saved calorie target against their weight trend: estimated maintenance (adaptive TDEE), the weekly rate the target implies against the rate actually seen, adherence, and the calories for common or a chosen weekly rate (desired_kg_per_week). Read-only.",
+      inputSchema: ReviewCalorieTargetSchema,
+      execute: async (rawArgs) => {
+        const parsed = ReviewCalorieTargetSchema.safeParse(rawArgs);
+        if (!parsed.success) {
+          return formatZodError(parsed.error);
+        }
+        try {
+          const [review, prefs] = await Promise.all([
+            calorieTargetReviewService.getCalorieTargetReview(
+              userId,
+              parsed.data.desired_kg_per_week
+            ),
+            preferenceService.getUserPreferences(userId, userId),
+          ]);
+          return formatCalorieTargetReview(
+            review,
+            prefs.default_weight_unit === 'lbs' ? 'lbs' : 'kg'
+          );
+        } catch (error) {
+          log('error', '[Coach Tool] reviewCalorieTarget error:', error);
           return ERRORS.DB_ERROR(error);
         }
       },

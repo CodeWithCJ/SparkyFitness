@@ -84,8 +84,8 @@ struct CheckInEntryView: View {
     /// change out loud, so an implausible value can still be saved — just never
     /// unknowingly.
     private var saveLabel: String {
-        guard looksWrong, let delta = weightDelta, weightLooksWrong else { return "Save" }
-        return "Save \(String(format: "%+.1f", delta)) \(unit.suffix)"
+        guard looksWrong, let delta = weightDelta, weightLooksWrong else { return String(localized: "watch.common.save", defaultValue: "Save") }
+        return String(localized: "watch.checkin.saveDelta", defaultValue: "Save \(String(format: "%+.1f", delta)) \(unit.suffix)")
     }
 
     var body: some View {
@@ -111,7 +111,7 @@ struct CheckInEntryView: View {
             by: step,
             sensitivity: .medium,
             isContinuous: false,
-            isHapticFeedbackEnabled: true
+            isHapticFeedbackEnabled: store.context.effectiveHapticsEnabled
         )
         .id(active)
         .onAppear(perform: seedIfNeeded)
@@ -122,7 +122,9 @@ struct CheckInEntryView: View {
         .onChange(of: unit) { seedIfNeeded() }
         .sheet(isPresented: $showTypeEntry) {
             TypedValueEntryView(
-                title: active == .weight ? "Weight (\(unit.suffix))" : "Body fat (%)",
+                title: active == .weight
+                    ? String(localized: "watch.checkin.weightTitle", defaultValue: "Weight (\(unit.suffix))")
+                    : String(localized: "watch.checkin.bodyFatTitle", defaultValue: "Body fat (%)"),
                 initial: active == .weight ? weight : bodyFat,
                 range: typedEntryRange
             ) { typed in
@@ -140,7 +142,7 @@ struct CheckInEntryView: View {
                 Text(String(localized: "watch.checkin.replacing", defaultValue: "· replacing")).foregroundStyle(.orange)
             }
         }
-        .font(.caption2)
+        .watchFont(.footnote, classic: .caption2)
         .foregroundStyle(.secondary)
         .lineLimit(1)
     }
@@ -166,15 +168,15 @@ struct CheckInEntryView: View {
     private var deltaLine: some View {
         if let delta = weightDelta, active == .weight {
             Text(String(localized: "watch.checkin.sinceLast", defaultValue: "\(String(format: "%+.1f", delta)) \(unit.suffix) since last"))
-                .font(weightLooksWrong ? .footnote.bold() : .caption2)
+                .watchFont(weightLooksWrong ? .footnote.bold() : .footnote, classic: weightLooksWrong ? .footnote.bold() : .caption2)
                 .foregroundStyle(weightLooksWrong ? .orange : .secondary)
                 .animation(.snappy, value: weightLooksWrong)
         } else if active == .bodyFat, let comparison = store.context.lastBodyFatPercentage, !bodyFatSkipped {
             Text(String(format: "%+.1f %% since last", bodyFat - comparison))
-                .font(bodyFatLooksWrong ? .footnote.bold() : .caption2)
+                .watchFont(bodyFatLooksWrong ? .footnote.bold() : .footnote, classic: bodyFatLooksWrong ? .footnote.bold() : .caption2)
                 .foregroundStyle(bodyFatLooksWrong ? .orange : .secondary)
         } else {
-            Text(" ").font(.caption2)
+            Text(" ").watchFont(.footnote, classic: .caption2)
         }
     }
 
@@ -202,7 +204,7 @@ struct CheckInEntryView: View {
 
     private var actionButton: some View {
         VStack(spacing: 2) {
-            Button(active == .weight ? "Next" : saveLabel) {
+            Button(active == .weight ? String(localized: "watch.common.next", defaultValue: "Next") : saveLabel) {
                 if active == .weight {
                     Haptics.tap()
                     withAnimation(.snappy) { active = .bodyFat }
@@ -223,7 +225,7 @@ struct CheckInEntryView: View {
                     save()
                 }
                 .buttonStyle(.plain)
-                .font(.caption2)
+                .watchFont(.footnote, classic: .caption2)
                 .foregroundStyle(.secondary)
             }
         }
@@ -311,7 +313,7 @@ struct CheckInEntryView: View {
         )
         let state = session.send(checkIn)
         store.markState(state, for: checkIn)
-        WKInterfaceDevice.current().play(.success)
+        Haptics.saved()
         onSaved()
     }
 }
@@ -349,7 +351,7 @@ struct TypedValueEntryView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(title).watchFont(.footnote, classic: .caption).foregroundStyle(.secondary)
             TextField("0.0", text: $text)
                 .font(.title3)
                 .multilineTextAlignment(.center)

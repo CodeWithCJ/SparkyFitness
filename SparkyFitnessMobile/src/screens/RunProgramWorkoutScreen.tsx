@@ -297,7 +297,12 @@ const RunProgramWorkoutScreen: React.FC<Props> = ({ navigation, route }) => {
               className="flex-row justify-between py-1.5 border-b border-border-subtle"
             >
               <Text className="text-text-primary text-sm">
-                {intervalStepName(t, step.kind, workout.plan.style)}
+                {intervalStepName(
+                  t,
+                  step.kind,
+                  workout.plan.style,
+                  step.effort
+                )}
               </Text>
               <Text className="text-text-secondary text-sm">
                 {formatClock(step.seconds)}

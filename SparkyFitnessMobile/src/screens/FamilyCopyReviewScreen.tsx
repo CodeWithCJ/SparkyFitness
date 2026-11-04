@@ -16,12 +16,14 @@ import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
   calculateFamilyCopyTotals,
+  canCopyFamilyDiary,
   familyDiaryUserName,
   isUnchangedWholeMeal,
 } from '../utils/familyDiary';
 import { formatDate, getTodayDate } from '../utils/dateUtils';
 import { parseDecimalInput } from '../utils/numericInput';
-import { foodEntryCopyFingerprint } from '@workspace/shared';
+import { copyFingerprintFor } from '@workspace/shared';
+import { ApiError } from '../services/api/errors';
 
 type FamilyCopyReviewScreenProps = RootStackScreenProps<'FamilyCopyReview'>;
 
@@ -51,8 +53,10 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
     mealTypeId,
     mealTypeName,
     sourceEntries,
-    selectedEntryIds,
+    selectedEntryIds: initialSelectedEntryIds,
+    direction = 'from-family',
   } = route.params;
+  const toFamily = direction === 'to-family';
   const { t, i18n } = useTranslation();
   const locale = i18n?.resolvedLanguage ?? i18n?.language ?? 'en-US';
   const displayName = familyDiaryUserName(
@@ -66,21 +70,37 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
   const submitInFlightRef = useRef(false);
   const wasPendingRef = useRef(false);
   const [targetDate, setTargetDate] = useState(getTodayDate);
-  const [quantityTextById, setQuantityTextById] = useState(() =>
-    initialQuantityTextById(sourceEntries, selectedEntryIds)
+  const [selectedEntryIds, setSelectedEntryIds] = useState(
+    initialSelectedEntryIds
   );
-  const { mealTypes, defaultMealTypeId } = useMealTypes();
+  const [copyAccessDenied, setCopyAccessDenied] = useState(false);
+  const [quantityTextById, setQuantityTextById] = useState(() =>
+    initialQuantityTextById(
+      sourceEntries,
+      toFamily
+        ? sourceEntries.map((entry) => entry.id)
+        : initialSelectedEntryIds
+    )
+  );
+  const {
+    mealTypes,
+    defaultMealTypeId,
+    isLoading: loadingMealTypes,
+    isError: mealTypesFailed,
+    error: mealTypesError,
+    refetch: refetchMealTypes,
+  } = useMealTypes(toFamily ? { familyUserId: familyUser.userId } : undefined);
   const [targetMealTypeId, setTargetMealTypeId] = useState<string | null>(null);
   const sourceMealExists = mealTypeId
     ? mealTypes.some((mealType) => mealType.id === mealTypeId)
     : false;
-  const selectedOwnMealTypeId =
+  const selectedTargetMealTypeId =
     targetMealTypeId &&
     mealTypes.some((mealType) => mealType.id === targetMealTypeId)
       ? targetMealTypeId
       : null;
   const resolvedTargetMealTypeId =
-    selectedOwnMealTypeId ??
+    selectedTargetMealTypeId ??
     (sourceMealExists ? mealTypeId : defaultMealTypeId);
 
   const sourceEntryById = useMemo(
@@ -126,8 +146,16 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
       ),
     [invalidEntryIds, quantitiesById, selectedEntries]
   );
-  const { copyFromFamilyAsync, isPending } = useCopyFamilyFoodEntries({
+  const { copyEntriesAsync, isPending } = useCopyFamilyFoodEntries({
+    direction,
     onSuccess: (request) => {
+      if (toFamily) {
+        navigation.replace('FamilyDiary', {
+          familyUser,
+          date: request.payload.targetDate,
+        });
+        return;
+      }
       useDiaryDateStore.getState().setSelectedDate(request.payload.targetDate);
       navigation.navigate('Tabs', {
         screen: 'Diary',
@@ -135,7 +163,23 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
       });
     },
     onStale: () => {
-      navigation.popTo('FamilyDiary', { familyUser });
+      if (toFamily) {
+        navigation.popTo('MealTypeDetail', {
+          date: sourceDate,
+          mealTypeId: mealTypeId ?? undefined,
+          mealType: mealTypeName,
+        });
+        return;
+      }
+      navigation.popTo('FamilyDiary', { familyUser, date: sourceDate });
+    },
+    onPermissionDenied: () => {
+      if (toFamily) {
+        setCopyAccessDenied(true);
+        navigation.popTo('FamilyMembers', {
+          copySource: { sourceDate, mealTypeId, mealTypeName },
+        });
+      }
     },
   });
 
@@ -150,8 +194,25 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
     left: { kind: 'back' },
   });
   const selectedIds = new Set(selectedEntries.map((entry) => entry.id));
+  const allSelected =
+    !hasInvalidSelection &&
+    sourceEntries.length > 0 &&
+    selectedIds.size === sourceEntries.length;
+  const selectAllLabel = allSelected
+    ? t('familyDiary.deselectAll', { defaultValue: 'Deselect all' })
+    : t('familyDiary.selectAll', { defaultValue: 'Select all' });
+  const copyLabel = toFamily
+    ? t('familyDiary.copyToMember', {
+        name: displayName,
+        defaultValue: 'Copy to {{name}}',
+      })
+    : t('familyDiary.copyToMyDiary', { defaultValue: 'Copy to my diary' });
   const cannotSubmit =
     isPending ||
+    loadingMealTypes ||
+    mealTypesFailed ||
+    copyAccessDenied ||
+    (toFamily && !canCopyFamilyDiary(familyUser)) ||
     hasInvalidSelection ||
     selectedEntries.length === 0 ||
     invalidEntryIds.length > 0 ||
@@ -162,6 +223,9 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
       return;
 
     submitInFlightRef.current = true;
+    const sourceFingerprint = copyFingerprintFor(
+      toFamily ? 'to-user' : undefined
+    );
     const request = isUnchangedWholeMeal(
       sourceEntries,
       selectedIds,
@@ -177,7 +241,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
             targetMealType: resolvedTargetMealTypeId,
             entries: sourceEntries.map((entry) => ({
               entryId: entry.id,
-              sourceFingerprint: foodEntryCopyFingerprint(entry),
+              sourceFingerprint: sourceFingerprint(entry),
             })),
           },
         }
@@ -191,12 +255,12 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
             entries: selectedEntries.map((entry) => ({
               entryId: entry.id,
               quantity: quantitiesById[entry.id],
-              sourceFingerprint: foodEntryCopyFingerprint(entry),
+              sourceFingerprint: sourceFingerprint(entry),
             })),
           },
         };
 
-    void copyFromFamilyAsync(request).catch(() => {
+    void copyEntriesAsync(request).catch(() => {
       submitInFlightRef.current = false;
     });
   };
@@ -214,10 +278,15 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
         }}
       >
         <Text className="text-sm text-text-secondary">
-          {t('familyDiary.copyFrom', {
-            name: displayName,
-            defaultValue: 'Copying from {{name}}',
-          })}
+          {toFamily
+            ? t('familyDiary.copyTo', {
+                name: displayName,
+                defaultValue: 'Copying to {{name}}',
+              })
+            : t('familyDiary.copyFrom', {
+                name: displayName,
+                defaultValue: 'Copying from {{name}}',
+              })}
         </Text>
         <Text className="mt-1 text-2xl font-bold text-text-primary">
           {t('familyDiary.copyMealTitle', {
@@ -226,42 +295,95 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
           })}
         </Text>
 
+        {toFamily ? (
+          <Button
+            variant="secondary"
+            className="mt-5"
+            accessibilityRole="button"
+            accessibilityLabel={selectAllLabel}
+            onPress={() =>
+              setSelectedEntryIds(
+                allSelected ? [] : sourceEntries.map((entry) => entry.id)
+              )
+            }
+          >
+            {selectAllLabel}
+          </Button>
+        ) : null}
+
         <View className="mt-5 gap-3">
-          {selectedEntries.map((entry) => {
+          {(toFamily ? sourceEntries : selectedEntries).map((entry) => {
             const foodName =
               entry.food_name ??
               t('familyDiary.unnamedFood', { defaultValue: 'Unnamed food' });
             const invalid = invalidEntryIds.includes(entry.id);
+            const selected = selectedIds.has(entry.id);
             return (
               <View key={entry.id} className="rounded-xl bg-surface p-4">
-                <Text className="text-base font-semibold text-text-primary">
-                  {foodName}
-                </Text>
-                <View className="mt-3 flex-row items-center gap-3">
-                  <TextInput
-                    accessibilityLabel={t('familyDiary.quantityForFood', {
-                      food: foodName,
-                      defaultValue: 'Quantity for {{food}}',
-                    })}
-                    keyboardType="decimal-pad"
-                    aria-invalid={invalid}
-                    aria-describedby={
-                      invalid
-                        ? `family-copy-quantity-error-${entry.id}`
-                        : undefined
+                {toFamily ? (
+                  <Pressable
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: selected }}
+                    accessibilityLabel={
+                      selected
+                        ? t('familyDiary.deselectFood', {
+                            food: foodName,
+                            defaultValue: 'Deselect {{food}}',
+                          })
+                        : t('familyDiary.selectFood', {
+                            food: foodName,
+                            defaultValue: 'Select {{food}}',
+                          })
                     }
-                    value={quantityTextById[entry.id] ?? ''}
-                    onChangeText={(quantityText) =>
-                      setQuantityTextById((current) => ({
-                        ...current,
-                        [entry.id]: quantityText,
-                      }))
-                    }
-                    className="min-w-24 rounded-lg border border-border-subtle bg-background px-3 py-2 text-base text-text-primary"
                     style={{ minHeight: 44 }}
-                  />
-                  <Text className="text-text-secondary">{entry.unit}</Text>
-                </View>
+                    className="flex-row items-center justify-between gap-3"
+                    onPress={() =>
+                      setSelectedEntryIds((current) =>
+                        current.includes(entry.id)
+                          ? current.filter((id) => id !== entry.id)
+                          : [...current, entry.id]
+                      )
+                    }
+                  >
+                    <Text className="flex-1 text-base font-semibold text-text-primary">
+                      {foodName}
+                    </Text>
+                    <Text className="text-accent-primary">
+                      {selected ? '✓' : '○'}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Text className="text-base font-semibold text-text-primary">
+                    {foodName}
+                  </Text>
+                )}
+                {selected ? (
+                  <View className="mt-3 flex-row items-center gap-3">
+                    <TextInput
+                      accessibilityLabel={t('familyDiary.quantityForFood', {
+                        food: foodName,
+                        defaultValue: 'Quantity for {{food}}',
+                      })}
+                      keyboardType="decimal-pad"
+                      aria-invalid={invalid}
+                      aria-describedby={
+                        invalid
+                          ? `family-copy-quantity-error-${entry.id}`
+                          : undefined
+                      }
+                      value={quantityTextById[entry.id] ?? ''}
+                      onChangeText={(quantityText) =>
+                        setQuantityTextById((current) => ({
+                          ...current,
+                          [entry.id]: quantityText,
+                        }))
+                      }
+                      className="min-w-24 rounded-lg border border-border-subtle bg-background px-3 py-2 text-base text-text-primary"
+                      style={{ minHeight: 44 }}
+                    />
+                    <Text className="text-text-secondary">{entry.unit}</Text>
+                  </View>
+                ) : null}
                 {invalid ? (
                   <Text
                     nativeID={`family-copy-quantity-error-${entry.id}`}
@@ -342,6 +464,29 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
         <Text className="mb-2 text-base font-semibold text-text-primary">
           {t('familyDiary.copyTargetMeal', { defaultValue: 'Copy to meal' })}
         </Text>
+        {mealTypesFailed ? (
+          <View className="mb-3 gap-2">
+            <Text
+              accessibilityRole="alert"
+              className="text-sm text-icon-danger"
+            >
+              {toFamily &&
+              mealTypesError instanceof ApiError &&
+              mealTypesError.statusCode === 404
+                ? t('familyDiary.copyServerUpdateGuidance', {
+                    defaultValue:
+                      'Update your SparkyFitness server to copy foods to family members.',
+                  })
+                : t('familyDiary.copyMealTypesFailed', {
+                    defaultValue:
+                      "Couldn't load the destination meals. Please try again.",
+                  })}
+            </Text>
+            <Button variant="secondary" onPress={() => void refetchMealTypes()}>
+              {t('common.retry', { defaultValue: 'Retry' })}
+            </Button>
+          </View>
+        ) : null}
         <View className="flex-row flex-wrap gap-2">
           {mealTypes.map((mealType) => {
             const selected = mealType.id === resolvedTargetMealTypeId;
@@ -377,13 +522,11 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
           disabled={cannotSubmit}
           loading={isPending}
           accessibilityRole="button"
-          accessibilityLabel={t('familyDiary.copyToMyDiary', {
-            defaultValue: 'Copy to my diary',
-          })}
+          accessibilityLabel={copyLabel}
           accessibilityState={{ disabled: cannotSubmit }}
           onPress={submit}
         >
-          {t('familyDiary.copyToMyDiary', { defaultValue: 'Copy to my diary' })}
+          {copyLabel}
         </Button>
       </ScrollView>
       <CalendarSheet

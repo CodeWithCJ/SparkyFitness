@@ -94,6 +94,16 @@ describe('sinceLineOptions', () => {
     expect(labels(options)[6]).toMatch(/^11:30\sPM$/);
   });
 
+  it('steps a wide bedtime range by the hour, the largest step', () => {
+    const steps = values(
+      lineOptions('bedtime', 300, ranges([0, 600], [60, 540]))
+    );
+    expect(steps[0]).toBe(0);
+    expect(steps.slice(1).map((value, i) => value - steps[i]!)).toEqual(
+      Array(steps.length - 1).fill(60)
+    );
+  });
+
   it('never steps a count below one', () => {
     expect(
       values(lineOptions('steps', 100, ranges([100, 101], [100, 101])))

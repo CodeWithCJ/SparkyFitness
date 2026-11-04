@@ -17,6 +17,7 @@ SparkyFitness supports integration with the following health and fitness data pr
 - Polar Flow (partially tested)
 - Hevy (not tested)
 - [Liftosaur](/features/settings/liftosaur)
+- [Intervals.icu](/features/settings/intervals)
 - [Canadian Nutrient File (Health Canada)](/features/settings/canadian-nutrient-file)
 - [Swedish Food Agency (Livsmedelsverket)](/features/settings/livsmedelsverket)
 - Swiss Food Composition Database
@@ -26,10 +27,23 @@ SparkyFitness supports integration with the following health and fitness data pr
 - Nutritionix
 - Mealie
 - [Valhalla routing](/features/exercises/route-generation) (route generation and Follow roads; a base URL and an optional API key)
+- [Weather (Open-Meteo compatible)](/features/exercises/gps-activity-recording#weather) (adds the temperature and conditions to GPS-recorded activities; a base URL and an optional API key; nothing is looked up until you add one)
 - Tandoor
 - Strava (partially tested)
 - [COROS](/features/settings/coros)
 - NIH Dietary Supplement Label Database (fills in a supplement from its barcode; public, no key, active by default — deactivate it to turn it off). Open Food Facts is the fallback for supplement barcodes the NIH database does not have, mostly outside the US; with both off the supplement barcode scan is hidden
+
+## Hevy automatic sync
+
+When adding or editing a Hevy provider, choose **Manual**, **Hourly**, or **Daily at 21:00** under **Sync Frequency**. New connections default to **Manual**, and existing manual connections stay manual until you change the setting. Keep the provider active to enable automatic sync.
+
+**Daily at 21:00** uses the timezone saved in your SparkyFitness preferences. The server checks hourly and runs the sync at or after 21:00, once per local evening. If an evening attempt fails, a later hourly check can retry before midnight. Only a successful live sync at or after 21:00 whose date range includes the current local day, including a manual sync, counts for that evening. A sync earlier in the day or limited to other dates does not replace the evening run, so today's workouts can still be imported. The server must be running during the evening; missed days are not automatically caught up after midnight.
+
+**Hourly** keeps the existing hourly schedule. You can still use **Sync** manually with any frequency.
+
+Hevy exercise templates also supply the primary and secondary muscle groups used in exercise reports. The importer matches templates by their Hevy ID and fills missing muscle information on your Hevy exercises while preserving populated fields. To add muscle information to workouts imported by an older version, run a full-history sync once so their diary snapshots are rebuilt with the exercise metadata.
+
+Muscle metadata is best effort: if Hevy's template catalogue or a muscle update is unavailable, the workouts still import. Later syncs can fill missing muscles. The catalogue is skipped when all referenced Hevy exercises already have primary muscles, and unchanged library rows are not rewritten. An existing exercise of your own with the same name can be reused without changing its source or muscle fields; global public exercises and other users' exercises are not reused by this importer.
 
 ## Canadian Nutrient File (Health Canada)
 
@@ -41,7 +55,7 @@ For setup instructions, import options, and licensing information, see the [Cana
 
 ## Swedish Food Agency (Livsmedelsverket)
 
-The Swedish Food Agency (*Livsmedelsverket*) publishes the authoritative Swedish Food Composition Database (*Livsmedelsdatabasen*) containing ~2,600 analyzed and calculated food items with over 50 nutritional components each. It is free open data licensed under Creative Commons Attribution 4.0 (CC BY 4.0), requires no credentials or API keys, and is enabled by default.
+The Swedish Food Agency (_Livsmedelsverket_) publishes the authoritative Swedish Food Composition Database (_Livsmedelsdatabasen_) containing ~2,600 analyzed and calculated food items with over 50 nutritional components each. It is free open data licensed under Creative Commons Attribution 4.0 (CC BY 4.0), requires no credentials or API keys, and is enabled by default.
 
 SparkyFitness supports both **live on-demand search** across the official open data API in Swedish and English, as well as **offline bulk catalog import** to cache the entire catalog locally.
 

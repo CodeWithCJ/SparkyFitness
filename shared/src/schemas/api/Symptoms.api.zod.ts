@@ -193,6 +193,10 @@ export const listSymptomEntriesQuerySchema = z.object({
   medicationId: uuid.optional(),
   source: z.string().max(50).optional(),
   episodesOnly: queryBool.optional(),
+  // Also return episodes that overlap the date range without being logged in
+  // it, such as one that started before fromDate and was still going, so a
+  // calendar can mark every day an episode covers.
+  overlapping: queryBool.optional(),
 });
 
 export const symptomEntryResponseSchema = z.object({

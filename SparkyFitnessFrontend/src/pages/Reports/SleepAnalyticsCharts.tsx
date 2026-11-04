@@ -9,7 +9,7 @@ import {
   type SleepChartData,
   type SleepEntry,
 } from '@/types';
-import { formatSecondsToHHMM, sleepEntryZone } from '@/utils/timeFormatters';
+import { formatSecondsToHHMM, mainSleepZone } from '@/utils/timeFormatters';
 import { instantHourMinuteInZone } from '@workspace/shared';
 import {
   DEBT_ZONE_COLOR,
@@ -123,15 +123,15 @@ const SleepAnalyticsCharts = ({
         (data.stagePercentages.light || 0) +
         (data.stagePercentages.awake || 0);
 
-      // Consistency hours derive from the day's recording zone (profile
-      // timezone when absent) so travel weeks chart the wall clock the user
-      // actually slept by. Missing instants stay null so recharts skips the
-      // point instead of charting the 1970 epoch.
-      const zone = sleepEntryZone(data, timezone);
+      // Consistency hours derive from the main sleep's recording zone
+      // (profile timezone when absent) so travel weeks chart the wall clock
+      // the user actually slept by. Missing instants stay null so recharts
+      // skips the point instead of charting the 1970 epoch.
+      const zone = mainSleepZone(data, timezone);
       let bedtimeHours: number | null = null;
-      if (data.earliestBedtime) {
+      if (data.mainBedtime) {
         const { hour, minute } = instantHourMinuteInZone(
-          data.earliestBedtime,
+          data.mainBedtime,
           zone
         );
         bedtimeHours = hour + minute / 60;
@@ -144,9 +144,9 @@ const SleepAnalyticsCharts = ({
       }
 
       let wakeTimeHours: number | null = null;
-      if (data.latestWakeTime) {
+      if (data.mainWakeTime) {
         const { hour, minute } = instantHourMinuteInZone(
-          data.latestWakeTime,
+          data.mainWakeTime,
           zone
         );
         wakeTimeHours = hour + minute / 60;

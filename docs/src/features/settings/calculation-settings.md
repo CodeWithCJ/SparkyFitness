@@ -92,12 +92,38 @@ This setting determines **how physical activity changes your calorie budget** th
 - **Dynamic Goal:** Increases your budget as you burn active calories or take steps (adds exercise directly back to your budget).
 - **Fixed Goal:** Your calorie target remains completely static, ignoring daily exercise.
 - **Percentage Earn-Back:** Adds back a custom percentage (e.g., 50%) of active calories burned to create a buffer against device calorie over-estimations.
-- **Device Projection:** Uses the cumulative **Total Calories** value synced from Health Connect (resting plus active energy). For the current day, it projects that value from its dedicated source capture time to midnight and treats the result as your live TDEE; completed days use the recorded total without extrapolation. Goal Mode is then applied directly: for example, a projected TDEE of 2,400 kcal becomes 2,400 kcal at Maintain, 2,160 kcal at Body Recomposition (-10%), or 2,640 kcal at Lean Bulk (+10%). Enable **Total Calories** in the Android Health Connect sync settings. When that value is unavailable, too early, or implausible for a complete daily total, SparkyFitness falls back to BMR plus projected active calories.
+- **Device Projection:** Uses the cumulative **Total Calories** value (resting plus active energy) synced from Health Connect, Garmin or Polar. When more than one of them has a total for the same day, one is used, never a sum, in this order: Health Connect, Garmin, Polar. Apple Health totals are not used yet. For the current day, it projects that value from its dedicated source capture time to midnight and treats the result as your live TDEE; completed days use the recorded total without extrapolation. Goal Mode is then applied directly: for example, a projected TDEE of 2,400 kcal becomes 2,400 kcal at Maintain, 2,160 kcal at Body Recomposition (-10%), or 2,640 kcal at Lean Bulk (+10%). On Android, enable **Total Calories** in the app's Health Connect sync settings; Garmin and Polar send it with their daily summary. To use Garmin's figure while the phone also syncs, turn off Total Calories in the phone's sync settings; days the phone already synced keep its figure. When that value is unavailable, too early, or implausible for a complete daily total, SparkyFitness falls back to BMR plus projected active calories.
 
 > [!NOTE]
 > If you use [Nutrient Goal Direction](/features/goals)'s **Target range** for calories, note that Adaptive, Dynamic, Percentage Earn-Back, and Device Projection all recalculate your calorie goal value regularly — a manually entered target band won't move with it. Target range for calories works best paired with **Fixed Goal**.
 
 ---
+
+### Percentage macro goals and exercise
+
+**Adjust percentage macro goals with exercise calories** is available in web
+Calculation Settings and mobile Calorie Settings. It is off by default.
+
+When enabled, protein, carbohydrate and fat gram targets use your saved percentage
+split and the positive exercise calories credited by your calorie adjustment mode.
+For example, a 2,000 kcal goal plus 500 credited exercise calories uses 2,500 kcal
+for the macro calculation. With 50% exercise earn-back, it uses 2,250 kcal instead.
+The existing fiber calorie allocation is preserved; fiber and micronutrient targets
+do not increase.
+
+Fixed goals and goals entered directly in grams stay unchanged. Adaptive targets
+that already include activity do not earn it back again; **Count activity calories
+separately** can credit that day's resolved activity once. Device Projection uses
+the positive exercise-attributable increase above its no-activity budget and the
+base goal, without adding the workout again. Resting-only projection changes are
+not added as exercise.
+
+Targets follow the selected diary date and update when activity is edited, removed
+or synced. The saved base goals and percentage split remain unchanged. Changes to
+this option apply from today in your timezone, alongside the other recorded
+calorie settings. Earlier days keep their own on/off choice: enabling it does not
+raise past macro targets, and disabling it does not remove past exercise credit.
+Turning it off restores the existing macro calculation from today onward.
 
 ## 4. Goal Mode & Caloric Deficits
 
@@ -178,6 +204,20 @@ it inactive. Percentage Earn-Back continues to suppress extra activity credit
 under the Adaptive Method.
 
 Device Projection always uses the projected device TDEE as the live baseline for the selected Goal Mode; the calculation-method selector controls the saved non-device baseline and previews used by the other modes.
+
+### Use Move ring for active calories
+
+On iPhone, SparkyFitness can read your active calories from the Move ring instead
+of the Apple Health Active Energy total, so they match the Fitness app. This is
+**off by default**. Turn on **Use Move ring for active calories** in Calories &
+BMR on the iPhone app; the setting is saved to your account.
+
+- **The ring is built from your Apple Watch and iPhone.** Workouts other apps save
+  to Apple Health can add to it too.
+- **Days without a ring keep the Active Energy total**, for example when Activity
+  access is off in Apple Health.
+- **It applies to days synced after the change.** Earlier days keep what they had
+  until they sync again.
 
 ---
 

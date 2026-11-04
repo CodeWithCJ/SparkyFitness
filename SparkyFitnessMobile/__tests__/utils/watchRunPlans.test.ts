@@ -222,3 +222,27 @@ describe('race pace ranges on the program workout', () => {
     expect(withRace.slice(1)).toEqual(free.slice(1));
   });
 });
+
+test('puts the Zone 2 range on a Zone 2 workout, the step names Zone 2 and strides get none', () => {
+  const status = programStatus({ programId: 'zone2Base', next: 15 })!;
+  const band = { minBpm: 111, maxBpm: 129 };
+  const [plan] = buildWatchRunPlans(
+    t,
+    { status, enabled: true },
+    names,
+    null,
+    band
+  );
+  const zone2Steps = plan.steps.filter((s) => s.label === 'Zone 2 run');
+  expect(zone2Steps.length).toBeGreaterThan(0);
+  for (const step of zone2Steps) {
+    expect(step).toMatchObject({ hrMin: 111, hrMax: 129 });
+  }
+  expect(plan.steps.filter((s) => s.hrMin !== undefined)).toEqual(zone2Steps);
+});
+
+test('a Zone 2 workout has no heart-rate range on the watch when none is known', () => {
+  const status = programStatus({ programId: 'zone2Base', next: 0 })!;
+  const [plan] = buildWatchRunPlans(t, { status, enabled: true }, names);
+  expect(plan.steps.some((s) => s.hrMin !== undefined)).toBe(false);
+});

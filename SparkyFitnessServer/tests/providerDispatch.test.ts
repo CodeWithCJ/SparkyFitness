@@ -44,7 +44,16 @@ vi.mock('undici', () => {
     return { destroy: vi.fn() };
   });
   const buildConnector = vi.fn(() => vi.fn());
-  return { default: { Agent, buildConnector }, Agent, buildConnector };
+  // Pass-through, so assertions on the dispatcher still see the Agent.
+  const Dispatcher1Wrapper = vi.fn(function (inner: unknown) {
+    return inner;
+  });
+  return {
+    default: { Agent, buildConnector, Dispatcher1Wrapper },
+    Agent,
+    buildConnector,
+    Dispatcher1Wrapper,
+  };
 });
 
 // Mock heic-convert so tests don't need real HEIC bytes. Default: succeed,
@@ -171,7 +180,7 @@ describe('dispatchAiRequest — preconditions', () => {
     expect(m).not.toHaveBeenCalled();
   });
 
-  it.each(['openai', 'google', 'anthropic', 'groq'])(
+  it.each(['openai', 'google', 'anthropic', 'groq', 'opencode_go'])(
     'returns api_key_missing for %s without an api_key',
     async (serviceType) => {
       const m = vi.fn();
@@ -204,6 +213,12 @@ describe('dispatchAiRequest — preconditions', () => {
     );
     expect(result.ok).toBe(true);
     expect(m).toHaveBeenCalled();
+    // The Agent reaches Node's fetch through the handler-API bridge, not raw.
+    const init = m.mock.calls[0][1] as { dispatcher?: unknown };
+    const { default: undici } = await import('undici');
+    expect(vi.mocked(undici.Dispatcher1Wrapper)).toHaveBeenCalledWith(
+      init.dispatcher
+    );
   });
 
   it('blocks localhost custom URLs by default', async () => {
@@ -519,6 +534,45 @@ describe('dispatchAiRequest — preconditions', () => {
     };
     expect(imagePart.inline_data.mime_type).toBe('image/jpeg');
     expect(imagePart.inline_data.data).toBe(TRANSCODED_JPEG_B64);
+  });
+});
+
+describe('OpenCode Go dispatch', () => {
+  it('uses the OpenCode Go chat endpoint and required session header', async () => {
+    const m = mockFetch(openAiBody('ready'));
+    const result = await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({
+          service_type: 'opencode_go',
+          model_name: 'glm-5.3-flash',
+        }),
+        sessionId: 'stable-conversation-session',
+        jsonSchema: undefined,
+      })
+    );
+
+    expect(result).toMatchObject({ ok: true, text: 'ready' });
+    expect(captured(m)).toMatchObject({
+      url: 'https://opencode.ai/inference/go/openai/v1/chat/completions',
+      headers: {
+        Authorization: 'Bearer sk-test',
+        'x-opencode-session': 'stable-conversation-session',
+      },
+      body: { model: 'glm-5.3-flash' },
+    });
+  });
+
+  it('generates a session header for one-shot requests without a session id', async () => {
+    const m = mockFetch(openAiBody('ready'));
+    await dispatchAiRequest(
+      baseRequest({
+        provider: makeProvider({ service_type: 'opencode_go' }),
+      })
+    );
+
+    expect(captured(m).headers['x-opencode-session']).toMatch(
+      /^[0-9a-f-]{36}$/
+    );
   });
 });
 

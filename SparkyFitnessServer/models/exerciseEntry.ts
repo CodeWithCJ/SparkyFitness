@@ -689,17 +689,23 @@ async function applyWatchTelemetryAtomically(
   }
 }
 
+/**
+ * Builds an edit from the entry as stored once the edit holds the entry's
+ * lock, for a caller that fills in the fields the request left out. Filled in
+ * from a read taken before the lock, they would write back values another
+ * writer (a watch upload, another edit) has changed since.
+ */
+type ResolveExerciseEntryUpdate = (currentEntry: Record<string, unknown>) => {
+  updateData: Record<string, unknown>;
+  markManualFields: readonly string[];
+};
+
 async function _updateExerciseEntryWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updatedByUserId: any,
+  client: PoolClient,
+  id: string,
+  userId: string,
+  updateData: Record<string, unknown>,
+  updatedByUserId: string,
   entrySource: string | undefined,
   // A caller that can recover from a vanished row (the sync path, which just
   // inserts a replacement) passes returnNullIfMissing and gets null instead of
@@ -713,15 +719,19 @@ async function _updateExerciseEntryWithClient(
     returnNullIfMissing?: boolean;
     preserveManualFields?: boolean;
     markManualFields?: readonly string[];
+    resolveUpdate?: ResolveExerciseEntryUpdate;
   } = {}
 ) {
   // A link created after an unlocked read would be ignored, and locking one
   // side before the other deadlocks. Take the entry and its link first, then
   // reread.
   await lockCalorieLinkParticipantsWithClient(client, userId, [id]);
-  // Fetch existing entry to get current snapshot values if not provided in updateData
+  // Fetch existing entry to get current snapshot values if not provided in
+  // updateData. The update below writes every column back, and some writers
+  // (the distance correction) skip the locks above, so the row lock makes
+  // this read wait for them instead of restoring what they replaced.
   const existingEntryResult = await client.query(
-    'SELECT * FROM exercise_entries WHERE id = $1 AND user_id = $2',
+    'SELECT * FROM exercise_entries WHERE id = $1 AND user_id = $2 FOR UPDATE',
     [id, userId]
   );
   if (existingEntryResult.rows.length === 0) {
@@ -731,14 +741,15 @@ async function _updateExerciseEntryWithClient(
     throw new Error('Exercise entry not found for update.');
   }
   const currentEntry = existingEntryResult.rows[0];
+  let markManualFields = options.markManualFields ?? [];
+  if (options.resolveUpdate) {
+    ({ updateData, markManualFields } = options.resolveUpdate(currentEntry));
+  }
   const currentManualFields = storedManualFields(currentEntry.manual_fields);
   if (options.preserveManualFields) {
     updateData = withoutManualFields(updateData, currentManualFields);
   }
-  const manualFields = mergeManualFields(
-    currentManualFields,
-    options.markManualFields ?? []
-  );
+  const manualFields = mergeManualFields(currentManualFields, markManualFields);
   // Merge updateData with currentEntry to ensure all fields are present for the update statement
   // Prioritize updateData, then currentEntry, then defaults
   const mergedData = {
@@ -829,7 +840,7 @@ async function _updateExerciseEntryWithClient(
       userId
     );
     if (!exercise) {
-      throw new Error('Exercise not found for snapshot update.');
+      throw Object.assign(new Error('Exercise not found.'), { status: 404 });
     }
     mergedData.exercise_name = exercise.name;
     mergedData.calories_per_hour = exercise.calories_per_hour;
@@ -1161,7 +1172,9 @@ async function _createExerciseEntryWithClient(
         [entryData.exercise_id]
       );
       if (exerciseSnapshotQuery.rows.length === 0) {
-        throw new Error('Exercise not found for snapshotting.');
+        throw Object.assign(new Error('Exercise not found.'), {
+          status: 404,
+        });
       }
       const snapshot = exerciseSnapshotQuery.rows[0];
       // 2. Insert the exercise entry with the snapshot data. A client-provided
@@ -1355,16 +1368,13 @@ async function getExerciseEntryOwnerId(id: any, userId: any) {
 }
 
 async function updateExerciseEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any,
+  id: string,
+  userId: string,
+  actingUserId: string,
+  updateData: Record<string, unknown>,
   // Fields this edit changed on a synced entry, kept on the next re-sync.
-  markManualFields: readonly string[] = []
+  markManualFields: readonly string[] = [],
+  resolveUpdate?: ResolveExerciseEntryUpdate
 ) {
   const client = await getClient(userId);
   try {
@@ -1380,8 +1390,8 @@ async function updateExerciseEntry(
       userId,
       updateData,
       actingUserId,
-      updateData.source,
-      { markManualFields }
+      typeof updateData.source === 'string' ? updateData.source : undefined,
+      { markManualFields, resolveUpdate }
     );
     await client.query('COMMIT');
     return updatedEntry;

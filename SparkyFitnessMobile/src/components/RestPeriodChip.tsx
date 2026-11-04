@@ -46,6 +46,8 @@ interface RestPeriodChipProps {
   values?: (number | null | undefined)[];
   onPress?: () => void;
   readOnly?: boolean;
+  /** Grows the tap target to 44pt, for layouts without surrounding padding. */
+  largeTarget?: boolean;
 }
 
 function RestPeriodChip({
@@ -53,6 +55,7 @@ function RestPeriodChip({
   values,
   onPress,
   readOnly = false,
+  largeTarget = false,
 }: RestPeriodChipProps) {
   const [textMuted, accentPrimary] = useCSSVariable([
     '--color-text-muted',
@@ -95,7 +98,7 @@ function RestPeriodChip({
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center gap-1"
+      className={`flex-row items-center gap-1 ${largeTarget ? 'min-h-11' : ''}`}
       hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
       accessibilityRole="button"
       accessibilityLabel={t('restPeriod.buttonLabel', {

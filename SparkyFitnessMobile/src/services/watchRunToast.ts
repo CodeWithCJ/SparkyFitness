@@ -66,13 +66,24 @@ export function announceWatchRun(
         ? t('runSummary.watchWalkSaved', {
             defaultValue: 'Walk from your watch saved',
           })
-        : t('runSummary.watchRunSaved', {
-            defaultValue: 'Run from your watch saved',
-          }),
-    text2: `${distance} · ${formatClock(summary.activeSeconds)}\n${t(
-      'runSummary.tapForSummary',
-      { defaultValue: 'Tap to see the summary' }
-    )}`,
+        : payload.kind === 'jumpRope'
+          ? t('runSummary.watchJumpRopeSaved', {
+              defaultValue: 'Jump Rope from your watch saved',
+            })
+          : t('runSummary.watchRunSaved', {
+              defaultValue: 'Run from your watch saved',
+            }),
+    // A jump rope covers no distance, so only the clock is worth showing.
+    text2:
+      payload.kind === 'jumpRope'
+        ? `${formatClock(summary.activeSeconds)}\n${t(
+            'runSummary.tapForSummary',
+            { defaultValue: 'Tap to see the summary' }
+          )}`
+        : `${distance} · ${formatClock(summary.activeSeconds)}\n${t(
+            'runSummary.tapForSummary',
+            { defaultValue: 'Tap to see the summary' }
+          )}`,
     visibilityTime: 8000,
     onPress: () => {
       Toast.hide();

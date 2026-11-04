@@ -300,13 +300,15 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// Asks the phone to say a cue (its headphones are the ones in the wearer's
     /// ears). Returns false when the phone cannot be reached right now, so the
     /// caller speaks it on the watch; otherwise `fallback` runs if the phone
-    /// does not confirm in time or the send fails.
-    func relayRunCue(_ text: String, interrupt: Bool, fallback: @escaping () -> Void) -> Bool {
+    /// does not confirm in time or the send fails. `language` is the BCP 47 tag
+    /// of the language the text is written in, or empty when it includes words
+    /// the phone wrote, so the phone falls back to the app language.
+    func relayRunCue(_ text: String, interrupt: Bool, language: String, fallback: @escaping () -> Void) -> Bool {
         guard WCSession.isSupported(), isActivated, WCSession.default.isReachable else { return false }
         let id = UUID().uuidString
         pendingCues[id] = fallback
         WCSession.default.sendMessage(
-            OutboundPayloads.runCue(id: id, text: text, interrupt: interrupt),
+            OutboundPayloads.runCue(id: id, text: text, interrupt: interrupt, language: language),
             replyHandler: nil
         ) { [weak self] _ in
             Task { @MainActor in self?.failCue(id) }
@@ -502,10 +504,10 @@ final class WatchSessionManager: NSObject, ObservableObject {
         }
     }
 
-    /// Asks the phone to log one dose as taken, or to remove that log when `undo`. Acknowledged like a
-    /// water tap: the phone reports the `clientId` immediately when reachable
-    /// and again in every context push.
-    func sendMedicationTap(_ dose: MedicationDose, clientId: String, undo: Bool = false) {
+    /// Asks the phone to log one dose as taken or skipped, or to remove that
+    /// log (`.undo`). Acknowledged like a water tap: the phone reports the
+    /// `clientId` immediately when reachable and again in every context push.
+    func sendMedicationTap(_ dose: MedicationDose, clientId: String, action: MedicationTapAction) {
         guard WCSession.isSupported() else { return }
         transfer(OutboundPayloads.medicationTaken(
             MedicationTap(
@@ -513,7 +515,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
                 entryDate: CheckInDate.today(),
                 medicationId: dose.medicationId,
                 scheduleId: dose.scheduleId,
-                taken: !undo
+                action: action
             )
         ))
     }
@@ -546,7 +548,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
                 entryDate: tap.day,
                 medicationId: tap.medicationId,
                 scheduleId: tap.scheduleId,
-                taken: !tap.isUndo
+                action: tap.action
             )
         ))
     }
@@ -895,6 +897,12 @@ final class WatchSessionManager: NSObject, ObservableObject {
                 previousEndsAt: previousEndsAt,
                 endsAt: endsAt
             ))
+        }
+        // A weight, reps or distance typed here reaches the phone before the
+        // set is logged, so both show the same number. Held until the wearer
+        // stops adjusting (see `queueValueEdit`).
+        workoutStore.onSetValueEditedHere = { [weak self] setId, weightKg, reps, distanceKm in
+            self?.queueValueEdit(setId: setId, weightKg: weightKg, reps: reps, distanceKm: distanceKm)
         }
         // A hold countdown or stopwatch started here starts the phone's too.
         workoutStore.onSetTimerStartedHere = { [weak self] setId, startedAt in
@@ -1296,6 +1304,68 @@ final class WatchSessionManager: NSObject, ObservableObject {
             update.revision, update.targets, update.completedSetIds, update.rest,
             update.armedAt, ContextPayloadMapper.setTimers(from: payload), update.prSetIds
         )
+    }
+
+    /// Typed values waiting to go to the phone, one entry per set. The crown
+    /// commits after every short pause, and each message makes the phone send
+    /// its whole target list back, which the watch then rebuilds and saves
+    /// while the wearer is still turning. So the values are held until the
+    /// wearer has stopped for `valueEditQuietNanos`, then sent once, with the
+    /// fields of several edits merged.
+    private struct PendingValueEdit {
+        var sessionId: String
+        var armedAt: Date?
+        var at: Date
+        var weightKg: Double? = nil
+        var reps: Double? = nil
+        var distanceKm: Double? = nil
+    }
+
+    private var pendingValueEdits: [String: PendingValueEdit] = [:]
+    private var valueEditFlush: Task<Void, Never>?
+    private static let valueEditQuietNanos: UInt64 = 1_500_000_000
+
+    private func queueValueEdit(setId: String, weightKg: Double?, reps: Double?, distanceKm: Double?) {
+        guard let plan = workoutStore.plan else { return }
+        let sessionId = plan.sessionId
+        // An edit held from an earlier arm of this workout is not merged into
+        // one from the current arm.
+        var edit = pendingValueEdits[setId].flatMap {
+            $0.sessionId == sessionId && Self.sameArm($0.armedAt, plan.armedAt) ? $0 : nil
+        } ?? PendingValueEdit(sessionId: sessionId, armedAt: plan.armedAt, at: Date())
+        if let weightKg { edit.weightKg = weightKg }
+        if let reps { edit.reps = reps }
+        if let distanceKm { edit.distanceKm = distanceKm }
+        edit.at = Date()
+        pendingValueEdits[setId] = edit
+        valueEditFlush?.cancel()
+        valueEditFlush = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: Self.valueEditQuietNanos)
+            guard !Task.isCancelled else { return }
+            self?.flushValueEdits()
+        }
+    }
+
+    /// Sends what is held. An edit for a workout, or an arm of it, that is no
+    /// longer the live one is dropped.
+    private func flushValueEdits() {
+        let edits = pendingValueEdits
+        pendingValueEdits = [:]
+        for (setId, edit) in edits {
+            guard let plan = workoutStore.plan,
+                  plan.sessionId == edit.sessionId,
+                  Self.sameArm(edit.armedAt, plan.armedAt) else { continue }
+            transfer(OutboundPayloads.workoutEditSetValues(
+                sessionId: edit.sessionId,
+                clientId: UUID().uuidString,
+                setId: setId,
+                weightKg: edit.weightKg,
+                reps: edit.reps,
+                distanceKm: edit.distanceKm,
+                at: edit.at,
+                armedAt: edit.armedAt
+            ))
+        }
     }
 
     /// The phone added, removed or regrouped exercises or sets mid-workout.

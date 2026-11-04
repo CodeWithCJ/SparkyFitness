@@ -4,19 +4,35 @@ import { log } from '../config/logging.js';
 import { calculateSleepScore } from './measurementService.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { userAge } from '../utils/dateHelpers.js';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getSleepAnalytics(userId: any, startDate: any, endDate: any) {
+import {
+  keepMostDetailedSleepEntries,
+  type SameNightSleepEntry,
+} from '@workspace/shared';
+
+/** The fields of a stored sleep record this report reads. */
+type SleepAnalyticsRow = SameNightSleepEntry & {
+  time_asleep_in_seconds: number | null;
+  stage_events: { stage_type: string; duration_in_seconds: number }[] | null;
+};
+
+async function getSleepAnalytics(
+  userId: string,
+  startDate: string,
+  endDate: string
+) {
   log(
     'info',
     `Fetching sleep analytics for user ${userId} from ${startDate} to ${endDate}`
   );
   try {
-    const sleepEntries =
+    const rows: SleepAnalyticsRow[] =
       await sleepRepository.getSleepEntriesWithAllDetailsByUserIdAndDateRange(
         userId,
         startDate,
         endDate
       );
+    // A night two sources recorded counts once, from the more detailed record.
+    const sleepEntries = keepMostDetailedSleepEntries(rows);
     const userProfile = await userRepository.getUserProfile(userId);
     const tz = await loadUserTimezone(userId);
     const age = userProfile?.date_of_birth

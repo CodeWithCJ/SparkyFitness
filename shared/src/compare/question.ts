@@ -1,5 +1,9 @@
 import { SINCE_START_MAX_DAYS_AGO } from './since.ts';
-import { COMPARE_METRICS, type CompareMetricKey } from './metrics.ts';
+import {
+  COMPARE_METRICS,
+  offeredInMode,
+  type CompareMetricKey,
+} from './metrics.ts';
 import {
   COMPARE_SPAN_DAYS,
   DEFAULT_COMPARE_SPAN,
@@ -96,16 +100,23 @@ function isTimingChoice(value: unknown): value is CompareTimingChoice {
 /**
  * The stored questions this build still knows. Recents are persisted on the
  * device, so a metric or timing renamed or removed since is dropped here
- * rather than reaching the copy, which would throw on it.
+ * rather than reaching the copy, which would throw on it. A question whose
+ * metric isn't offered in its mode (weight trend since a habit) is dropped too.
  */
 export function knownCompareQuestions(stored: unknown): CompareQuestion[] {
   if (!Array.isArray(stored)) return [];
   return stored.flatMap((item: unknown): CompareQuestion[] => {
     if (typeof item !== 'object' || item === null) return [];
     const { a, b, choice } = item as Record<string, unknown>;
-    return isCompareMetricKey(a) &&
-      isCompareMetricKey(b) &&
-      isTimingChoice(choice)
+    if (
+      !isCompareMetricKey(a) ||
+      !isCompareMetricKey(b) ||
+      !isTimingChoice(choice)
+    ) {
+      return [];
+    }
+    const { mode } = timingOf(choice);
+    return offeredInMode(a, mode) && offeredInMode(b, mode)
       ? [{ a, b, choice }]
       : [];
   });
@@ -121,13 +132,19 @@ export function withRecentQuestion(
   return [q, ...rest].slice(0, MAX_RECENT);
 }
 
+/** Drops any chosen metric the question's mode doesn't offer (no weekly form by the week, no weight trend since a habit started). */
+export function questionForMode(
+  question: Partial<CompareQuestion>,
+  mode: CompareMode
+): Partial<CompareQuestion> {
+  const keep = (key?: CompareMetricKey) =>
+    key && offeredInMode(key, mode) ? key : undefined;
+  return { ...question, a: keep(question.a), b: keep(question.b) };
+}
+
 export function isAskable(q: Partial<CompareQuestion>): q is CompareQuestion {
   const { a, b, choice } = q;
   if (!a || !b || !choice || a === b) return false;
-  if (timingOf(choice).mode === 'week') {
-    return (
-      COMPARE_METRICS[a].weekly !== null && COMPARE_METRICS[b].weekly !== null
-    );
-  }
-  return true;
+  const { mode } = timingOf(choice);
+  return offeredInMode(a, mode) && offeredInMode(b, mode);
 }

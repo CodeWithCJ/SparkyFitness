@@ -7,7 +7,11 @@ import { useMealTypes } from '../../src/hooks/useMealTypes';
 import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
 import type { FoodEntry } from '../../src/types/foodEntries';
 import type { FamilyDiaryUser } from '../../src/types/familyDiary';
-import { foodEntryCopyFingerprint } from '@workspace/shared';
+import { ApiError } from '../../src/services/api/errors';
+import {
+  foodEntryCopyFingerprint,
+  foodEntryCopyToUserFingerprint,
+} from '@workspace/shared';
 
 const familyUser: FamilyDiaryUser = {
   userId: 'member-b',
@@ -49,12 +53,14 @@ const sauce: FoodEntry = {
 const navigation = {
   goBack: jest.fn(),
   navigate: jest.fn(),
+  replace: jest.fn(),
   popTo: jest.fn(),
   setOptions: jest.fn(),
 };
-const copyFromFamilyAsync = jest.fn();
+const copyEntriesAsync = jest.fn();
 let onCopySuccess: ((request: unknown) => void) | undefined;
 let onCopyStale: ((request: unknown) => void) | undefined;
+let onPermissionDenied: (() => void) | undefined;
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: () => null,
@@ -119,6 +125,8 @@ function renderReview({
     { id: 'dinner-id', name: 'Dinner', is_visible: true, sort_order: 2 },
   ],
   defaultMealTypeId = 'breakfast-id',
+  direction,
+  mealTypesError,
 }: {
   selectedEntryIds?: string[];
   mealTypes?: {
@@ -128,12 +136,16 @@ function renderReview({
     sort_order: number;
   }[];
   defaultMealTypeId?: string | null;
+  direction?: 'to-family';
+  mealTypesError?: Error;
 } = {}) {
   mockMealTypes.mockReturnValue({
     mealTypes: mealTypes as never,
     defaultMealTypeId,
     isLoading: false,
-    isError: false,
+    isError: Boolean(mealTypesError),
+    error: mealTypesError,
+    refetch: jest.fn(),
   });
 
   return render(
@@ -155,6 +167,7 @@ function renderReview({
             mealTypeName: 'Dinner',
             sourceEntries: [pasta, sauce],
             selectedEntryIds,
+            direction,
           },
         }}
       />
@@ -168,7 +181,7 @@ describe('FamilyCopyReviewScreen', () => {
     jest.clearAllMocks();
     onCopySuccess = undefined;
     onCopyStale = undefined;
-    copyFromFamilyAsync.mockResolvedValue(undefined);
+    copyEntriesAsync.mockResolvedValue(undefined);
     useDiaryDateStore.setState({
       selectedDate: '2026-08-23',
       lastKnownToday: '2026-08-24',
@@ -176,15 +189,148 @@ describe('FamilyCopyReviewScreen', () => {
     mockCopyMutation.mockImplementation((options) => {
       onCopySuccess = options?.onSuccess as typeof onCopySuccess;
       onCopyStale = options?.onStale as typeof onCopyStale;
+      onPermissionDenied = options?.onPermissionDenied;
       return {
-        copyFromFamily: jest.fn(),
-        copyFromFamilyAsync,
+        copyEntries: jest.fn(),
+        copyEntriesAsync,
         isPending: false,
       };
     });
   });
 
   afterEach(() => jest.useRealTimers());
+
+  test('shows the recipient, uses their custom meal types, and lets foods be excluded with adjusted quantities', () => {
+    const screen = renderReview({
+      direction: 'to-family',
+      mealTypes: [
+        {
+          id: 'recipient-custom',
+          name: 'After work',
+          is_visible: true,
+          sort_order: 1,
+        },
+      ],
+      defaultMealTypeId: 'recipient-custom',
+    });
+    expect(screen.getByText('Copying to Alex Family')).toBeTruthy();
+    expect(mockMealTypes).toHaveBeenCalledWith({ familyUserId: 'member-b' });
+    expect(screen.queryByRole('button', { name: 'Dinner' })).toBeNull();
+    fireEvent.press(
+      screen.getByRole('checkbox', { name: 'Deselect Tomato Sauce' })
+    );
+    fireEvent.changeText(
+      screen.getByLabelText('Quantity for Family Pasta'),
+      '200'
+    );
+    fireEvent.press(screen.getByRole('button', { name: 'Choose August 25' }));
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Copy to Alex Family' })
+    );
+    expect(copyEntriesAsync).toHaveBeenCalledWith({
+      kind: 'selected',
+      payload: {
+        familyUserId: 'member-b',
+        sourceDate: '2026-08-23',
+        targetDate: '2026-08-25',
+        targetMealType: 'recipient-custom',
+        entries: [
+          {
+            entryId: 'pasta-id',
+            quantity: 200,
+            sourceFingerprint: foodEntryCopyToUserFingerprint(pasta),
+          },
+        ],
+      },
+    });
+    expect(pasta.quantity).toBe(150);
+    expect(sauce.quantity).toBe(50);
+  });
+
+  test('copies an unchanged whole meal to family once and replaces the submitted review with their target day', () => {
+    const screen = renderReview({ direction: 'to-family' });
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Copy to Alex Family' })
+    );
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Copy to Alex Family' })
+    );
+    expect(copyEntriesAsync).toHaveBeenCalledTimes(1);
+    expect(copyEntriesAsync.mock.calls[0][0]).toEqual({
+      kind: 'whole',
+      payload: {
+        familyUserId: 'member-b',
+        sourceDate: '2026-08-23',
+        sourceMealType: 'dinner-id',
+        targetDate: '2026-08-24',
+        targetMealType: 'dinner-id',
+        entries: [pasta, sauce].map((entry) => ({
+          entryId: entry.id,
+          sourceFingerprint: foodEntryCopyToUserFingerprint(entry),
+        })),
+      },
+    });
+    onCopySuccess?.(copyEntriesAsync.mock.calls[0][0]);
+    expect(navigation.replace).toHaveBeenCalledWith('FamilyDiary', {
+      familyUser,
+      date: '2026-08-24',
+    });
+    expect(navigation.navigate).not.toHaveBeenCalled();
+    expect(useDiaryDateStore.getState().selectedDate).toBe('2026-08-23');
+  });
+
+  test('blocks outbound copy with no selected entries and can reselect them', () => {
+    const screen = renderReview({ direction: 'to-family' });
+    fireEvent.press(screen.getByRole('button', { name: 'Deselect all' }));
+    expect(
+      screen.getByRole('button', { name: 'Copy to Alex Family' })
+    ).toBeDisabled();
+    fireEvent.press(screen.getByRole('button', { name: 'Select all' }));
+    expect(
+      screen.getByRole('button', { name: 'Copy to Alex Family' })
+    ).not.toBeDisabled();
+  });
+
+  test('returns to the own meal after a stale outbound review', () => {
+    renderReview({ direction: 'to-family' });
+    onCopyStale?.({});
+    expect(navigation.popTo).toHaveBeenCalledWith('MealTypeDetail', {
+      date: '2026-08-23',
+      mealTypeId: 'dinner-id',
+      mealType: 'Dinner',
+    });
+  });
+
+  test('blocks an outbound retry and returns to recipient selection after permission denial', () => {
+    const screen = renderReview({ direction: 'to-family' });
+    act(() => onPermissionDenied?.());
+    fireEvent.press(
+      screen.getByRole('button', { name: 'Copy to Alex Family' })
+    );
+    expect(copyEntriesAsync).not.toHaveBeenCalled();
+    expect(navigation.popTo).toHaveBeenCalledWith('FamilyMembers', {
+      copySource: {
+        sourceDate: '2026-08-23',
+        mealTypeId: 'dinner-id',
+        mealTypeName: 'Dinner',
+      },
+    });
+  });
+
+  test('requires a server update when recipient meal types are unavailable and blocks copy', () => {
+    const screen = renderReview({
+      direction: 'to-family',
+      mealTypesError: new ApiError('Not found', 404),
+    });
+    expect(
+      screen.getByText(
+        'Update your SparkyFitness server to copy foods to family members.'
+      )
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Copy to Alex Family' })
+    ).toBeDisabled();
+  });
 
   test('defaults selected quantities from the source and the target date to today', () => {
     const screen = renderReview();
@@ -256,7 +402,7 @@ describe('FamilyCopyReviewScreen', () => {
 
     expect(screen.getByText('270.9 kcal')).toBeTruthy();
     fireEvent.press(screen.getByText('Copy to my diary'));
-    expect(copyFromFamilyAsync).toHaveBeenCalledWith({
+    expect(copyEntriesAsync).toHaveBeenCalledWith({
       kind: 'selected',
       payload: {
         familyUserId: 'member-b',
@@ -295,7 +441,7 @@ describe('FamilyCopyReviewScreen', () => {
     const screen = renderReview();
     fireEvent.press(screen.getByText('Copy to my diary'));
 
-    expect(copyFromFamilyAsync).toHaveBeenCalledWith({
+    expect(copyEntriesAsync).toHaveBeenCalledWith({
       kind: 'whole',
       payload: {
         familyUserId: 'member-b',
@@ -321,7 +467,7 @@ describe('FamilyCopyReviewScreen', () => {
     const screen = renderReview({ selectedEntryIds: [pasta.id] });
     fireEvent.press(screen.getByText('Copy to my diary'));
 
-    expect(copyFromFamilyAsync).toHaveBeenCalledWith({
+    expect(copyEntriesAsync).toHaveBeenCalledWith({
       kind: 'selected',
       payload: {
         familyUserId: 'member-b',
@@ -347,7 +493,7 @@ describe('FamilyCopyReviewScreen', () => {
     );
     fireEvent.press(screen.getByText('Copy to my diary'));
 
-    expect(copyFromFamilyAsync).toHaveBeenCalledWith({
+    expect(copyEntriesAsync).toHaveBeenCalledWith({
       kind: 'selected',
       payload: {
         familyUserId: 'member-b',
@@ -397,20 +543,21 @@ describe('FamilyCopyReviewScreen', () => {
     fireEvent.press(screen.getByText('Copy to my diary'));
     fireEvent.press(screen.getByText('Copy to my diary'));
 
-    expect(copyFromFamilyAsync).toHaveBeenCalledTimes(1);
+    expect(copyEntriesAsync).toHaveBeenCalledTimes(1);
     expect(screen.getByDisplayValue('200')).toBeTruthy();
     expect(navigation.navigate).not.toHaveBeenCalled();
 
-    onCopySuccess?.(copyFromFamilyAsync.mock.calls[0][0]);
+    onCopySuccess?.(copyEntriesAsync.mock.calls[0][0]);
     expect(useDiaryDateStore.getState().selectedDate).toBe('2026-08-24');
     expect(navigation.navigate).toHaveBeenCalledWith('Tabs', {
       screen: 'Diary',
       params: { selectedDate: '2026-08-24' },
     });
+    expect(navigation.replace).not.toHaveBeenCalled();
   });
 
   test('retains edited quantities and allows a retry after a copy failure', async () => {
-    copyFromFamilyAsync
+    copyEntriesAsync
       .mockRejectedValueOnce(new Error('copy failed'))
       .mockResolvedValue(undefined);
     const screen = renderReview({ selectedEntryIds: [pasta.id] });
@@ -423,17 +570,17 @@ describe('FamilyCopyReviewScreen', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(copyFromFamilyAsync).toHaveBeenCalledTimes(1);
+    expect(copyEntriesAsync).toHaveBeenCalledTimes(1);
     expect(screen.getByDisplayValue('200')).toBeTruthy();
 
     fireEvent.press(screen.getByText('Copy to my diary'));
-    expect(copyFromFamilyAsync).toHaveBeenCalledTimes(2);
+    expect(copyEntriesAsync).toHaveBeenCalledTimes(2);
   });
 
   test('navigates to the submitted target date when the visible date changes while pending', () => {
     const screen = renderReview();
     fireEvent.press(screen.getByText('Copy to my diary'));
-    const submittedRequest = copyFromFamilyAsync.mock.calls[0][0];
+    const submittedRequest = copyEntriesAsync.mock.calls[0][0];
 
     fireEvent.press(screen.getByRole('button', { name: 'Choose August 25' }));
     expect(screen.getByText('Tue, Aug 25')).toBeTruthy();
@@ -445,13 +592,14 @@ describe('FamilyCopyReviewScreen', () => {
     });
   });
 
-  test('returns to the source diary when a stale review is rejected', () => {
+  test('returns to the original source day when a stale inbound review is rejected', () => {
     renderReview();
 
     onCopyStale?.({});
 
     expect(navigation.popTo).toHaveBeenCalledWith('FamilyDiary', {
       familyUser,
+      date: '2026-08-23',
     });
   });
 });

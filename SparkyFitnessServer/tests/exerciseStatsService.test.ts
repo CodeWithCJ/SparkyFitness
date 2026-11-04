@@ -367,6 +367,57 @@ describe('exerciseStatsService', () => {
       expect(res.items[0].strideLengthCm).toBeNull();
     });
 
+    it('carries the weather at the start, keeping a 0 °C reading', async () => {
+      mockClient.query.mockResolvedValueOnce({ rows: [{ count: '2' }] });
+      mockClient.query.mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'entry-cold',
+            user_id: 'user-123',
+            exercise_name: 'Running',
+            entry_date: new Date('2026-10-08'),
+            duration_minutes: 30,
+            distance: 5,
+            calories_burned: 300,
+            weather_temp_celsius: '9.44',
+            weather_condition: 'Light rain',
+            source: 'manual',
+          },
+          {
+            id: 'entry-freezing',
+            user_id: 'user-123',
+            exercise_name: 'Running',
+            entry_date: new Date('2026-10-09'),
+            duration_minutes: 30,
+            distance: 5,
+            calories_burned: 300,
+            weather_temp_celsius: '0.0',
+            weather_condition: null,
+            source: 'manual',
+          },
+        ],
+      });
+
+      const res = await exerciseStatsService.queryExerciseActivities(
+        'user-123',
+        {
+          page: 1,
+          pageSize: 10,
+          sortBy: 'entry_date',
+          sortOrder: 'desc',
+          unitSystem: 'metric',
+        }
+      );
+
+      expect(res.items[0].weatherTempCelsius).toBe(9.4);
+      expect(res.items[0].weatherCondition).toBe('Light rain');
+      expect(res.items[1].weatherTempCelsius).toBe(0);
+      expect(res.items[1].weatherCondition).toBeNull();
+      expect(String(mockClient.query.mock.calls[1]?.[0])).toContain(
+        'weather_temp_celsius'
+      );
+    });
+
     it('does not treat a crunch or a strength session as cardio', async () => {
       mockClient.query.mockResolvedValueOnce({ rows: [{ count: '0' }] });
       mockClient.query.mockResolvedValueOnce({ rows: [] });

@@ -11,6 +11,7 @@ import BottomSheetPicker, {
 } from '../BottomSheetPicker';
 import { formatLocalizedNumber, getAppLocale } from '../../localization';
 import CalendarSheet, { type CalendarSheetRef } from '../CalendarSheet';
+import ZoneCheckNote from './ZoneCheckNote';
 import type { ProgramScheduleChange } from '../../services/runProgramService';
 import { toLocalDateString } from '../../utils/dateUtils';
 import { formatDayLabel } from '../../utils/dayLabel';
@@ -65,6 +66,14 @@ export function programName(t: TFunction, id: string): string {
     case 'fiveToTenK':
       return t('recordActivity.program.name.fiveToTenK', {
         defaultValue: '5K to 10K',
+      });
+    case 'zone2Base':
+      return t('recordActivity.program.name.zone2Base', {
+        defaultValue: 'Zone 2 base',
+      });
+    case 'zone2Base4':
+      return t('recordActivity.program.name.zone2Base4', {
+        defaultValue: 'Zone 2 base (4 runs a week)',
       });
     case 'faster5k':
       return t('recordActivity.program.name.faster5k', {
@@ -212,6 +221,16 @@ export function programDescription(t: TFunction, id: string): string {
       return t('recordActivity.program.advancedMarathonDescription', {
         defaultValue:
           'Advanced marathon: sixteen weeks, five runs a week, with speed or tempo work and long runs building to three hours. For experienced runners.',
+      });
+    case 'zone2Base':
+      return t('recordActivity.program.zone2BaseDescription', {
+        defaultValue:
+          'Zone 2 base: ten weeks, three easy runs a week held to your Zone 2 heart rate (or the talk test), building time in zone with a long run of up to 70 minutes. For when you can run 30 minutes.',
+      });
+    case 'zone2Base4':
+      return t('recordActivity.program.zone2Base4Description', {
+        defaultValue:
+          'Zone 2 base: ten weeks, four easy runs a week held to your Zone 2 heart rate (or the talk test), building time in zone with a long run of up to 70 minutes. For when you can run 30 minutes.',
       });
     case 'halfMarathon4':
       return t('recordActivity.program.halfMarathon4Description', {
@@ -569,6 +588,7 @@ const RunProgramCard: React.FC<Props> = ({
                 'Workout {{done}} of {{total}} done · {{minutes}} min today',
             })}
       </Text>
+      <ZoneCheckNote program={status.program} workout={status.workout} />
       {recentChange ? (
         <Text className="text-text-secondary text-xs mt-2">
           {recentChange.source === 'assistant'

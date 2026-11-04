@@ -24,6 +24,7 @@ import {
   Salad, // Used for Food Log
   BookOpen, // Used for the docs link
   Languages, // Used for the translation link
+  FlaskConical, // Lab results
   HeartPulse, // Used for the delegate-only Symptoms page
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -49,7 +50,7 @@ import { useCycleSettings } from '@/hooks/useCycle';
 import { cn } from '@/lib/utils';
 import { getGridClassNormal } from '@/utils/layout';
 
-const SHOW_SPONSOR_BUTTON = false;
+const SHOW_SPONSOR_BUTTON = true;
 
 interface AddCompItem {
   value: string;
@@ -119,7 +120,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({
     const items: AddCompItem[] = [];
     if (!isActingOnBehalf) {
       // Keep this order consistent with the desktop tab order in availableTabs:
-      // Check-In, Cycle, Medications, Foods, Exercises, Goals.
+      // Check-In, Cycle, Medications, Lab results, Foods, Exercises, Goals.
       items.push({
         value: 'checkin',
         label: t('nav.checkin', 'Check-In'),
@@ -141,6 +142,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           value: 'medications',
           label: t('nav.medications', 'Medications'),
           icon: Pill,
+        },
+        {
+          value: 'labs',
+          label: t('nav.labs', 'Lab results'),
+          icon: FlaskConical,
         },
         { value: 'foods', label: t('nav.foods', 'Foods'), icon: Utensils },
         {
@@ -255,6 +261,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({
           value: '/medications',
           label: t('nav.medications', 'Medications'),
           icon: Pill,
+        },
+        {
+          value: '/labs',
+          label: t('nav.labs', 'Lab results'),
+          icon: FlaskConical,
         },
         { value: '/reports', label: t('nav.reports'), icon: BarChart3 },
         { value: '/foods', label: t('nav.foods'), icon: Utensils },

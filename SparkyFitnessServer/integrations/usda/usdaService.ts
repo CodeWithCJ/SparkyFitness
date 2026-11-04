@@ -161,18 +161,26 @@ async function searchUsdaFoods(
 
 async function searchUsdaFoodsByBarcode(
   barcode: string,
-  apiKey: string | undefined
+  apiKey: string | undefined,
+  signal?: AbortSignal
 ): Promise<{ foods: UsdaFood[] }> {
   try {
+    signal?.throwIfAborted();
     const searchUrl = `${USDA_API_BASE_URL}/foods/search?query=${encodeURIComponent(barcode)}&dataType=Branded&api_key=${apiKey || ''}`;
-    const response = await fetch(searchUrl, { method: 'GET' });
+    const response = await fetch(searchUrl, {
+      method: 'GET',
+      ...(signal && { signal }),
+    });
+    signal?.throwIfAborted();
     log('debug', 'USDA API Barcode Search Response Status:', response.status);
     if (!response.ok) {
       const errorText = await response.text();
+      signal?.throwIfAborted();
       log('error', 'USDA Barcode Search API error:', errorText);
       throw new Error(`USDA API error: ${errorText}`);
     }
     const data = await response.json();
+    signal?.throwIfAborted();
     log('debug', 'USDA API Barcode Search Response Data:', data);
     return data;
   } catch (error) {

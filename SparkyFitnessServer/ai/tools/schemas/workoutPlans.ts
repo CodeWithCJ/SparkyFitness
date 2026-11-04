@@ -106,6 +106,8 @@ export const WORKOUT_PLAN_ACTIONS = [
   'create_workout_plan',
   'update_workout_plan',
   'delete_workout_plan',
+  'propose_plan_changes',
+  'apply_plan_changes',
 ] as const;
 
 const listWorkoutPlansSchema = z
@@ -200,6 +202,29 @@ const deleteWorkoutPlanSchema = z
   })
   .strict();
 
+const proposePlanChangesSchema = z
+  .object({
+    action: z.literal('propose_plan_changes'),
+    plan_id: planIdSchema
+      .optional()
+      .describe('Plan to review; defaults to the active plan'),
+  })
+  .strict();
+
+const applyPlanChangesSchema = z
+  .object({
+    action: z.literal('apply_plan_changes'),
+    plan_id: planIdSchema.describe('Plan the proposals came from'),
+    assignment_ids: z
+      .array(z.coerce.number().int().positive())
+      .min(1)
+      .describe(
+        'assignment_id values from propose_plan_changes that the user agreed to'
+      ),
+    confirmed: confirmedSchema,
+  })
+  .strict();
+
 export const manageWorkoutPlansSchema = z.discriminatedUnion('action', [
   listWorkoutPlansSchema,
   getWorkoutPlanSchema,
@@ -207,6 +232,8 @@ export const manageWorkoutPlansSchema = z.discriminatedUnion('action', [
   createWorkoutPlanSchema,
   updateWorkoutPlanSchema,
   deleteWorkoutPlanSchema,
+  proposePlanChangesSchema,
+  applyPlanChangesSchema,
 ]);
 
 export type ManageWorkoutPlansInput = z.infer<typeof manageWorkoutPlansSchema>;
@@ -225,6 +252,7 @@ export const manageWorkoutPlansInput = z.object({
   start_date: dateSchema.optional(),
   end_date: dateSchema.optional(),
   date: dateSchema.optional(),
+  assignment_ids: z.array(z.coerce.number()).optional(),
   sessions: workoutPlanSessionsInputSchema.optional(),
   assignments: workoutPlanSessionsInputSchema.optional(),
 });

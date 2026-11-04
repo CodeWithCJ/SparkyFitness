@@ -48,10 +48,13 @@ export async function getDailySummary({
     calorieRuleHistory,
     measurements,
     supplementTotals,
-    healthConnectTotalRows,
+    deviceTotalRows,
   ] = await Promise.all([
     goalService.getUserGoals(targetUserId, date, undefined, false),
-    goalService.getUserGoals(targetUserId, date, undefined, true),
+    goalService.getUserGoals(targetUserId, date, undefined, true, {
+      actorUserId,
+      includeCheckin,
+    }),
     foodEntryService.getFoodEntriesByDate(actorUserId, targetUserId, date),
     getExerciseEntriesByDateV2(targetUserId, date),
     includeCheckin
@@ -111,7 +114,7 @@ export async function getDailySummary({
       }),
     includeCheckin
       ? genericHealthRepository
-          .getHealthConnectTotalCaloriesByDateRange(
+          .getDeviceTotalCaloriesByDateRange(
             targetUserId,
             actorUserId,
             date,
@@ -120,7 +123,7 @@ export async function getDailySummary({
           .catch((error: unknown) => {
             log(
               'warn',
-              `Health Connect total-calorie fetch failed for user ${targetUserId} on ${date}:`,
+              `Device total-calorie fetch failed for user ${targetUserId} on ${date}:`,
               error
             );
             return [];
@@ -143,15 +146,15 @@ export async function getDailySummary({
       )
     : 0;
 
-  const healthConnectTotal = healthConnectTotalRows[0];
+  const dayDeviceTotal = deviceTotalRows[0];
   const timezone = userPreferences?.timezone || 'UTC';
   const deviceProjectionSnapshot = resolveDeviceProjectionSnapshot({
     date,
     timezone,
-    deviceTotal: healthConnectTotal
+    deviceTotal: dayDeviceTotal
       ? {
-          totalCalories: healthConnectTotal.total_calories,
-          capturedAt: healthConnectTotal.captured_at,
+          totalCalories: dayDeviceTotal.total_calories,
+          capturedAt: dayDeviceTotal.captured_at,
         }
       : null,
   });
@@ -189,6 +192,11 @@ export async function getDailySummary({
     adjustedGoalData?.water_goal_ml ?? rawWaterGoal
   );
   const waterGoalChanged = adjustedWaterGoal !== rawWaterGoal;
+  const macrosChanged = (['protein', 'carbs', 'fat'] as const).some(
+    (nutrient) =>
+      Number(adjustedGoalData?.[nutrient] ?? 0) !==
+      Number(rawGoalData?.[nutrient] ?? 0)
+  );
 
   const computedAdjustedGoals: {
     calories: number;
@@ -197,7 +205,7 @@ export async function getDailySummary({
     fat: number;
     water_goal_ml?: number;
   } | null =
-    adjCalories !== rawCalories || waterGoalChanged
+    adjCalories !== rawCalories || waterGoalChanged || macrosChanged
       ? {
           calories: Math.round(adjCalories),
           protein: Math.round(Number(adjustedGoalData?.protein) || 0),

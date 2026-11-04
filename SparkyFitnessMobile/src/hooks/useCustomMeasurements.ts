@@ -6,22 +6,85 @@ import {
   fetchLatestManualCustomEntriesOnOrBefore,
   saveCustomMeasurement,
   deleteCustomMeasurement,
+  createCustomCategory,
+  updateCustomCategory,
+  deleteCustomCategory,
 } from '../services/api/measurementsApi';
 import {
   customCategoriesQueryKey,
+  customMeasurementsRootQueryKey,
   customMeasurementsByDateQueryKey,
   latestManualCustomEntriesRootQueryKey,
   latestManualCustomEntriesQueryKey,
 } from './queryKeys';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
 import { addLog } from '../services/LogService';
-import type { SaveCustomMeasurementPayload } from '../types/customMeasurements';
+import type {
+  SaveCustomCategoryPayload,
+  SaveCustomMeasurementPayload,
+} from '../types/customMeasurements';
 
 export function useCustomCategories() {
   return useQuery({
     queryKey: customCategoriesQueryKey,
     queryFn: fetchCustomCategories,
     staleTime: 1000 * 60 * 5,
+  });
+}
+
+/**
+ * Every category mutation refreshes the category list and every cached day of
+ * entries: each entry row embeds its category's name and unit, and a delete
+ * changes which entries exist. Needed because `staleTime` is Infinity app-wide.
+ */
+function useInvalidateCustomCategories() {
+  const queryClient = useQueryClient();
+  return () => {
+    queryClient.invalidateQueries({ queryKey: customCategoriesQueryKey });
+    queryClient.invalidateQueries({ queryKey: customMeasurementsRootQueryKey });
+    queryClient.invalidateQueries({
+      queryKey: latestManualCustomEntriesRootQueryKey,
+    });
+  };
+}
+
+export function useCreateCustomCategory() {
+  const invalidate = useInvalidateCustomCategories();
+  return useMutation({
+    mutationFn: (payload: SaveCustomCategoryPayload) =>
+      createCustomCategory(payload),
+    onSuccess: invalidate,
+    onError: (err: Error) => {
+      addLog(`Failed to create custom category: ${err.message}`, 'ERROR');
+    },
+  });
+}
+
+export function useUpdateCustomCategory() {
+  const invalidate = useInvalidateCustomCategories();
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: SaveCustomCategoryPayload;
+    }) => updateCustomCategory(id, payload),
+    onSuccess: invalidate,
+    onError: (err: Error) => {
+      addLog(`Failed to update custom category: ${err.message}`, 'ERROR');
+    },
+  });
+}
+
+export function useDeleteCustomCategory() {
+  const invalidate = useInvalidateCustomCategories();
+  return useMutation({
+    mutationFn: (id: string) => deleteCustomCategory(id),
+    onSuccess: invalidate,
+    onError: (err: Error) => {
+      addLog(`Failed to delete custom category: ${err.message}`, 'ERROR');
+    },
   });
 }
 

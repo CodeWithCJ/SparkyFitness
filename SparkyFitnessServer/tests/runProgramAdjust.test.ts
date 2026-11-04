@@ -174,3 +174,47 @@ describe('adjustRunning with distance steps', () => {
     );
   });
 });
+
+describe('adjusting a Zone 2 program', () => {
+  const zone2 = findProgram('zone2Base')!;
+  const zoneState = (next: number): ProgramState => ({
+    workouts: zone2.workouts,
+    next,
+  });
+
+  it('eases the Zone 2 running and keeps every step Zone 2', () => {
+    // Workout 9 is week 3, run 3: a 50 minute long run.
+    const result = adjustRunning(zoneState(8), -20, 1, zone2.workouts);
+    const steps = result.workouts[8].plan.steps.filter(
+      (step) => step.kind === 'work'
+    );
+    expect(steps).toHaveLength(1);
+    expect(steps[0]).toMatchObject({ effort: 'zone2', seconds: 2400 });
+    expect(result.workouts[9]).toBe(zone2.workouts[9]);
+  });
+
+  it('never takes a run more than 30% under the original, however often it is eased', () => {
+    let current = zoneState(8);
+    for (let i = 0; i < 5; i++) {
+      try {
+        current = adjustRunning(current, -30, 1, zone2.workouts);
+      } catch (error) {
+        expect(error).toBeInstanceOf(ProgramAdjustError);
+      }
+    }
+    const [step] = current.workouts[8].plan.steps.filter(
+      (s) => s.kind === 'work'
+    );
+    expect(step.seconds).toBe(2100);
+  });
+
+  it('repeats a week and moves around like any other program', () => {
+    expect(repeatWeek(zoneState(20), 3).next).toBe(9);
+    expect(moveTo(zoneState(0), 999).next).toBe(30);
+    expect(moveTo(findProgramState('zone2Base4'), 999).next).toBe(40);
+  });
+
+  function findProgramState(id: string): ProgramState {
+    return { workouts: findProgram(id)!.workouts, next: 0 };
+  }
+});

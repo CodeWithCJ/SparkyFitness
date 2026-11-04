@@ -237,6 +237,20 @@ describe('errorHandler', () => {
     );
   });
 
+  it('maps a reversed lab reference range to 400', async () => {
+    const res = await request(
+      appThrowing(
+        withFields(
+          'new row for relation "lab_results" violates check constraint "lab_results_ref_range_check"',
+          { code: '23514', constraint: 'lab_results_ref_range_check' }
+        )
+      )
+    ).get('/boom');
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('ref_range_low must not exceed ref_range_high');
+  });
+
   it('still maps a too-large payload to 413', async () => {
     const res = await request(
       appThrowing(

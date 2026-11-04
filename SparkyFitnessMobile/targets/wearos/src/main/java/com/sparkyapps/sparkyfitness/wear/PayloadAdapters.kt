@@ -13,6 +13,10 @@ import java.util.TimeZone
  */
 object ContextPayloadMapper {
 
+  /**
+   * Parses an incoming phone-to-watch JSON context payload into a [WatchContext],
+   * carrying forward sticky preferences from [previous] when omitted.
+   */
   fun parseContext(obj: JSONObject, previous: WatchContext): WatchContext {
     val fastKnown = obj.optBoolean("fastKnown", false) || obj.has("fast")
     return WatchContext(
@@ -50,6 +54,8 @@ object ContextPayloadMapper {
       fastSynced = if (fastKnown) true else previous.fastSynced,
       steps = parseSteps(obj.optJSONObject("steps")),
       stepGoal = obj.optIntOrNull("stepGoal") ?: previous.stepGoal,
+      sleep = parseSleep(obj.optJSONObject("sleep")),
+      exerciseSummary = parseExerciseSummary(obj.optJSONObject("exerciseSummary")),
       runVoiceCues = obj.optBooleanOrNull("runVoiceCues") ?: previous.runVoiceCues,
       runAutoPause = obj.optBooleanOrNull("runAutoPause") ?: previous.runAutoPause,
       runCheckInMinutes = obj.optIntOrNull("runCheckInMinutes") ?: previous.runCheckInMinutes,
@@ -221,6 +227,70 @@ object ContextPayloadMapper {
     val day = obj.optStringOrNull("day") ?: return null
     val count = obj.optIntOrNull("count") ?: return null
     return StepsSnapshot(day = day, count = count)
+  }
+
+  /**
+   * Parses the day's sleep summary snapshot from the context payload.
+   */
+  private fun parseSleep(obj: JSONObject?): SleepSnapshot? {
+    if (obj == null) return null
+    val day = obj.optStringOrNull("day") ?: return null
+    val totalSeconds = obj.optIntOrNull("totalSeconds") ?: return null
+    val timeInBedSeconds = obj.optIntOrNull("timeInBedSeconds") ?: totalSeconds
+    return SleepSnapshot(
+      day = day,
+      totalSeconds = totalSeconds,
+      timeInBedSeconds = timeInBedSeconds,
+      sleepScore = obj.optIntOrNull("sleepScore"),
+      bedtime = obj.optStringOrNull("bedtime") ?: "",
+      wakeTime = obj.optStringOrNull("wakeTime") ?: "",
+      deepSeconds = obj.optIntOrNull("deepSeconds"),
+      remSeconds = obj.optIntOrNull("remSeconds"),
+      lightSeconds = obj.optIntOrNull("lightSeconds"),
+      awakeSeconds = obj.optIntOrNull("awakeSeconds"),
+      restingHeartRate = obj.optIntOrNull("restingHeartRate"),
+      hrvMs = obj.optIntOrNull("hrvMs"),
+      spo2 = obj.optIntOrNull("spo2"),
+      napCount = obj.optIntOrNull("napCount") ?: 0,
+      napSeconds = obj.optIntOrNull("napSeconds") ?: 0
+    )
+  }
+
+  /**
+   * Parses the day's exercise summary and logged sessions from the context payload.
+   */
+  private fun parseExerciseSummary(obj: JSONObject?): ExerciseSummarySnapshot? {
+    if (obj == null) return null
+    val day = obj.optStringOrNull("day") ?: return null
+    val minutes = obj.optIntOrNull("minutes") ?: 0
+    val minutesGoal = obj.optIntOrNull("minutesGoal") ?: 0
+    val calories = obj.optIntOrNull("calories") ?: 0
+    val caloriesGoal = obj.optIntOrNull("caloriesGoal") ?: 0
+    val sessionCount = obj.optIntOrNull("sessionCount") ?: 0
+    val sessionsArr = obj.optJSONArray("sessions")
+    val sessions = mutableListOf<ExerciseSessionItem>()
+    if (sessionsArr != null) {
+      for (i in 0 until sessionsArr.length()) {
+        val row = sessionsArr.optJSONObject(i) ?: continue
+        val name = row.optStringOrNull("name")?.takeIf { it.isNotEmpty() } ?: continue
+        sessions.add(
+          ExerciseSessionItem(
+            name = name,
+            durationMinutes = row.optIntOrNull("durationMinutes") ?: 0,
+            calories = row.optIntOrNull("calories") ?: 0
+          )
+        )
+      }
+    }
+    return ExerciseSummarySnapshot(
+      day = day,
+      minutes = minutes,
+      minutesGoal = minutesGoal,
+      calories = calories,
+      caloriesGoal = caloriesGoal,
+      sessionCount = sessionCount,
+      sessions = sessions
+    )
   }
 
   private fun parseStartableWorkouts(obj: JSONObject): List<StartableWorkout>? {

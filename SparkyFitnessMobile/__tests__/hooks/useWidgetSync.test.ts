@@ -162,6 +162,35 @@ describe('useWidgetSync', () => {
     expect(mockAddLog).not.toHaveBeenCalled();
   });
 
+  it('writes the iOS calorie snapshot unchanged', () => {
+    // The flat totals differ from the balance only so this test can tell
+    // which ones the payload reads: iOS has always read the balance.
+    renderHook(() =>
+      useWidgetSync(
+        makeSummary({
+          caloriesConsumed: 1500,
+          caloriesBurned: 180,
+          calorieGoal: 2100,
+        })
+      )
+    );
+
+    const calorieCall = setMock.mock.calls.find(
+      (call) => call[0] === 'calorieSnapshot'
+    );
+    // The builder is shared with Android now; iOS must get exactly the keys
+    // and values it always had.
+    expect(calorieCall?.[1]).toEqual({
+      date: getTodayDate(),
+      food: 1540,
+      burned: 200,
+      goal: 2000,
+      remaining: 460,
+      progress: 0.77,
+      lastUpdated: expect.any(Number),
+    });
+  });
+
   it('writes and reloads the water snapshot when water info is given', () => {
     renderHook(() =>
       useWidgetSync(makeSummary({ waterConsumed: 473, waterGoal: 2000 }), {
@@ -226,6 +255,8 @@ describe('useWidgetSync', () => {
     const payload = JSON.parse(payloadJson as string);
     expect(payload).toMatchObject({
       date: getTodayDate(),
+      food: 1540,
+      burned: 200,
       remaining: 460,
       goal: 2000,
       progress: 0.77,
@@ -277,6 +308,39 @@ describe('useWidgetSync', () => {
     );
     expect(latest).toMatchObject({ protein: 92, proteinGoal: 180 });
     expect(androidReloadMacro).toHaveBeenCalledTimes(2);
+  });
+
+  it('re-pushes the calorie snapshot when only the calories burned change', async () => {
+    Object.defineProperty(Platform, 'OS', {
+      get: () => 'android',
+      configurable: true,
+    });
+
+    const { rerender } = renderHook(({ summary }) => useWidgetSync(summary), {
+      initialProps: { summary: makeSummary() },
+    });
+    await flushWidgetPush();
+    expect(androidSetSnapshot).toHaveBeenCalledTimes(1);
+
+    // In the fixed-goal mode exercise does not move what is left, so only the
+    // Burned figure the wider widget shows changes.
+    const summary = makeSummary();
+    rerender({
+      summary: {
+        ...summary,
+        calorieBalance: { ...summary.calorieBalance, burned: 350 },
+      },
+    });
+    await flushWidgetPush();
+
+    expect(androidSetSnapshot).toHaveBeenCalledTimes(2);
+    expect(
+      JSON.parse(androidSetSnapshot.mock.calls[1][0] as string)
+    ).toMatchObject({
+      burned: 350,
+      remaining: 460,
+    });
+    expect(androidSetMacroSnapshot).toHaveBeenCalledTimes(1);
   });
 
   it('skips Android pushes when only non-rendered summary fields change', async () => {
@@ -404,8 +468,10 @@ describe('useWidgetSync', () => {
     const payload = JSON.parse(
       androidSetMacroSnapshot.mock.calls[1][0] as string
     );
+    // The kcal eaten come from the calorie balance, as on the Dashboard, not
+    // from the flat caloriesConsumed.
     expect(payload).toMatchObject({
-      calories: 1600,
+      calories: 1540,
       protein: 100,
       carbs: 190,
       fat: 55,

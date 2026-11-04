@@ -1,6 +1,8 @@
 /**
- * The migration that keeps one sleep entry per user, night and source and one
- * custom category per user and name, and the writes that rely on it.
+ * The migration that kept one sleep entry per user, night and source (its
+ * unique index is dropped again by the #3240 migration, which allows a nap its
+ * own entry) and keeps one custom category per user and name, and the writes
+ * that rely on it.
  *
  * Both suites run the whole migration, so they share this file: tests in one
  * file run in order, while separate files run in parallel and would clean up
@@ -25,6 +27,13 @@ const MIGRATION_SQL = readFileSync(
   path.join(
     here,
     '../db/migrations/20261006180000_unique_sleep_entries_and_custom_categories.sql'
+  ),
+  'utf8'
+);
+const MULTIPLE_SLEEP_SESSIONS_SQL = readFileSync(
+  path.join(
+    here,
+    '../db/migrations/20261028120000_allow_multiple_sleep_sessions_per_night.sql'
   ),
   'utf8'
 );
@@ -60,7 +69,17 @@ async function isDbReachable(): Promise<boolean> {
 const RUN = await isDbReachable();
 
 afterAll(async () => {
-  if (RUN) await endPool();
+  if (!RUN) return;
+  // Both suites re-run the older migration, which recreates the unique sleep
+  // index; leave the database as the current migrations do.
+  const db = ownerClient();
+  await db.connect();
+  try {
+    await db.query(MULTIPLE_SLEEP_SESSIONS_SQL);
+  } finally {
+    await db.end();
+  }
+  await endPool();
 });
 
 describe.runIf(RUN)('one sleep entry per night and source', () => {
@@ -162,6 +181,8 @@ describe.runIf(RUN)('one sleep entry per night and source', () => {
     await expect(
       insertEntry('2026-09-01', 'Withings', '2026-09-02T10:00:00Z', 90)
     ).rejects.toThrow(/sleep_entries_user_date_source_key/);
+
+    await db.query(MULTIPLE_SLEEP_SESSIONS_SQL);
   });
 
   it('saves one entry when two writes for the same night overlap', async () => {
@@ -182,6 +203,42 @@ describe.runIf(RUN)('one sleep entry per night and source', () => {
     expect(a.id).toBe(rows[0].id);
     expect(b.id).toBe(rows[0].id);
     expect([75, 85]).toContain(rows[0].sleep_score);
+  });
+
+  it('gives a nap its own entry and updates the night on a re-sync (#3240)', async () => {
+    const write = (bedtime: string, wakeTime: string, sleepScore: number) =>
+      sleepRepository.upsertSleepEntry(userId, userId, {
+        entry_date: '2026-09-20',
+        bedtime,
+        wake_time: wakeTime,
+        duration_in_seconds:
+          (new Date(wakeTime).getTime() - new Date(bedtime).getTime()) / 1000,
+        sleep_score: sleepScore,
+        source: 'HealthKit',
+      });
+
+    const night = await write(
+      '2026-09-19T23:00:00Z',
+      '2026-09-20T07:00:00Z',
+      80
+    );
+    const [nap, napAgain] = await Promise.all([
+      write('2026-09-20T13:30:00Z', '2026-09-20T14:15:00Z', 60),
+      write('2026-09-20T13:30:00Z', '2026-09-20T14:15:00Z', 65),
+    ]);
+    // A later fragment of the night, within 4 hours of it.
+    const fragment = await write(
+      '2026-09-20T05:00:00Z',
+      '2026-09-20T07:30:00Z',
+      82
+    );
+
+    expect(night.created).toBe(true);
+    expect(nap.id).not.toBe(night.id);
+    expect(napAgain.id).toBe(nap.id);
+    expect([nap.created, napAgain.created].sort()).toEqual([false, true]);
+    expect(fragment).toMatchObject({ id: night.id, created: false });
+    expect(await entriesFor('2026-09-20', 'HealthKit')).toHaveLength(2);
   });
 });
 

@@ -174,6 +174,24 @@ describe('sparky_manage_run_program', () => {
     expect(text).toContain('Run program started');
   });
 
+  it('starts the Zone 2 base with four runs a week by id', async () => {
+    vi.mocked(getRunProgram).mockResolvedValue(null);
+    vi.mocked(upsertRunProgram).mockResolvedValue(
+      program({ program_id: 'zone2Base4', next_index: 0 })
+    );
+    const text = await run({
+      action: 'start_run_program',
+      program_id: 'zone2Base4',
+      confirmed: true,
+    });
+    expect(upsertRunProgram).toHaveBeenCalledWith(
+      'user-1',
+      { program_id: 'zone2Base4', enabled: true },
+      'user-1'
+    );
+    expect(text).toContain('Run program started');
+  });
+
   it('warns that switching to another program replaces the current one and its adjustments', async () => {
     vi.mocked(getRunProgram).mockResolvedValue(program());
     const text = await run({

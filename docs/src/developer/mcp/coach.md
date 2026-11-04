@@ -7,7 +7,7 @@ description: Provides health summaries and analyzes long-term trends for coachin
 
 The coaching tools are designed to provide high-level insights into a user's health status and long-term trends. It aggregates data from various sources (food, exercise, check-ins) to offer summaries and identify patterns relevant for health coaching.
 
-**Tool Names:** `sparky_get_health_summary`, `sparky_analyze_trends`, `sparky_get_30_day_trends`, `sparky_detect_patterns`, `sparky_generate_coaching_plan` (a group of separate tools, not a single one)
+**Tool Names:** `sparky_get_health_summary`, `sparky_analyze_trends`, `sparky_get_30_day_trends`, `sparky_detect_patterns`, `sparky_generate_coaching_plan`, `sparky_review_calorie_target` (a group of separate tools, not a single one)
 
 ## Tools within Coach
 
@@ -21,6 +21,11 @@ The coaching tools are designed to provide high-level insights into a user's hea
 - **Description:** Analyze weight trends vs. calorie intake to identify plateaus or progress. (Feature coming in full Phase 3 implementation!)
 - **Parameters:**
     - `days` (number, optional): Number of days to analyze. Defaults to 7.
+
+### `sparky_review_calorie_target`
+- **Description:** Read-only weekly check of the saved calorie target. Uses the adaptive TDEE (`services/AdaptiveTdeeService.ts`) as maintenance, the rate the target implies against the rate the weight trend shows, average intake against the target, and the calories for common weekly rates or a chosen one. Judges nothing while the estimate is still learning or fewer than 70% of the days were logged, flags targets under the clinical minimum, and tells the model not to lower a target the user did not follow. The arithmetic is `reviewCalorieTarget` in `shared/src/utils/calorieTargetReview.ts`. Changing the goal is `sparky_manage_goals` `set_goals`.
+- **Parameters:**
+    - `desired_kg_per_week` (number, -1 to 1, optional): Weekly change the user wants; negative to lose.
 
 ### `sparky_get_30_day_trends`
 - **Description:** Get comprehensive trends for the last 30 days including food, exercise, mood, sleep, and biometrics. This tool gathers aggregated data across these domains to provide a holistic view of the user's progress and patterns.

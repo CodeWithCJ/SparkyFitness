@@ -19,6 +19,8 @@ import {
 } from '@/hooks/AI/useAIServiceSettings';
 import { useState } from 'react';
 import { useClearChatHistoryMutation } from '@/hooks/AI/useSparkyChat';
+import { rotateChatConversationId } from '@/utils/chatConversationId';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useAuth } from '@/hooks/useAuth';
 
 import { useTranslation } from 'react-i18next';
@@ -26,6 +28,7 @@ const SparkyChat = () => {
   const { t } = useTranslation();
   const { isChatOpen, closeChat } = useChatbotVisibility();
   const { user } = useAuth();
+  const { activeUserId } = useActiveUser();
   const { data: services } = useAIServices();
   const { data: activeService } = useActiveAIService(!!user);
   const { data: preferences } = useUserAIPreferences();
@@ -37,7 +40,8 @@ const SparkyChat = () => {
 
   const handleClearHistory = () => {
     clearHistory('all', {
-      onSuccess: () => {
+      onSuccess: async () => {
+        await rotateChatConversationId(activeUserId ?? '');
         setResetKey((prev) => prev + 1);
       },
     });

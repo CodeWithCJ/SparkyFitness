@@ -104,10 +104,10 @@ struct RecordingView: View {
                 Spacer()
                 Text("\(state.paceText) \(state.paceUnitText)")
             }
-            .font(.caption.weight(.semibold))
+            .watchFont(.headline, classic: .caption.weight(.semibold))
             .monospacedDigit()
             Label(String(localized: "watch.recording.saveOnPhone", defaultValue: "Save it on your iPhone"), systemImage: "iphone")
-                .font(.caption2)
+                .watchFont(.footnote, classic: .caption2)
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, WatchStyle.s(4))

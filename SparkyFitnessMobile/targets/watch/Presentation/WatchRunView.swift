@@ -71,24 +71,37 @@ struct WatchRunView: View {
     }
 
     private func stats(elapsed: TimeInterval, metrics: WatchRunMetrics) -> [CardioStat] {
-        var stats = [
-            CardioStat(
-                id: "distance",
-                value: WatchRunMetrics.distanceText(metrics.distanceMeters, usesMiles: usesMiles),
-                unit: usesMiles ? "mi" : "km"
-            ),
-            CardioStat(
-                id: "pace",
-                value: WatchRunMetrics.paceText(
-                    WatchRunMetrics.paceSeconds(
-                        elapsed: elapsed,
-                        distanceMeters: metrics.distanceMeters,
-                        usesMiles: usesMiles
-                    )
-                ),
-                unit: usesMiles ? "/mi" : "/km"
-            ),
-        ]
+        var stats: [CardioStat] = []
+        if run.kind.showsDistance {
+            stats.append(
+                CardioStat(
+                    id: "distance",
+                    value: WatchRunMetrics.distanceText(metrics.distanceMeters, usesMiles: usesMiles),
+                    unit: usesMiles ? "mi" : "km"
+                )
+            )
+            stats.append(
+                CardioStat(
+                    id: "pace",
+                    value: WatchRunMetrics.paceText(
+                        WatchRunMetrics.paceSeconds(
+                            elapsed: elapsed,
+                            distanceMeters: metrics.distanceMeters,
+                            usesMiles: usesMiles
+                        )
+                    ),
+                    unit: usesMiles ? "/mi" : "/km"
+                )
+            )
+        } else if metrics.activeEnergyKcal > 0 {
+            stats.append(
+                CardioStat(
+                    id: "active",
+                    value: "\(Int(metrics.activeEnergyKcal.rounded()))",
+                    unit: "kcal"
+                )
+            )
+        }
         stats.append(
             CardioStat(
                 id: "heart",
@@ -105,37 +118,48 @@ struct WatchRunView: View {
     /// red so it is never taken for it; the gear opens this run's switches.
     private var controls: [CardioControl] {
         let running = run.phase == .running
-        return [
-            CardioControl(
-                id: "lap",
-                systemImage: "flag.fill",
-                accessibilityLabel: run.lapCount > 0 ? String(localized: "watch.run.lapCount", defaultValue: "Lap, \(run.lapCount) so far") : String(localized: "watch.run.lap", defaultValue: "Lap"),
-                disabled: !running,
-                action: { run.lap() }
-            ),
+        var controls: [CardioControl] = []
+        // A jump rope covers no distance, so it has no laps to mark.
+        if run.kind.showsDistance {
+            controls.append(
+                CardioControl(
+                    id: "lap",
+                    systemImage: "flag.fill",
+                    accessibilityLabel: run.lapCount > 0 ? String(localized: "watch.run.lapCount", defaultValue: "Lap, \(run.lapCount), so far") : String(localized: "watch.run.lap", defaultValue: "Lap"),
+                    disabled: !running,
+                    action: { run.lap() }
+                )
+            )
+        }
+        controls.append(
             CardioControl(
                 id: "pause",
                 systemImage: running ? "pause.fill" : "play.fill",
                 accessibilityLabel: running ? String(localized: "watch.run.pause", defaultValue: "Pause") : String(localized: "watch.run.resume", defaultValue: "Resume"),
                 prominent: true,
                 action: { if running { run.pause() } else { run.resume() } }
-            ),
+            )
+        )
+        controls.append(
             CardioControl(
                 id: "finish",
                 systemImage: "stop.fill",
                 accessibilityLabel: String(localized: "watch.run.finish", defaultValue: "Finish"),
                 tint: .red,
                 action: { run.finish() }
-            ),
-            // Auto-pause, voice cues and Test voice. In the row, not the
-            // header, where it sat beside the system clock and was missed.
+            )
+        )
+        // Auto-pause, voice cues and Test voice. In the row, not the
+        // header, where it sat beside the system clock and was missed.
+        controls.append(
             CardioControl(
                 id: "settings",
                 systemImage: "gearshape.fill",
                 accessibilityLabel: String(localized: "watch.run.settings", defaultValue: "Auto-pause and voice cues"),
                 action: { showingSettings = true }
-            ),
-        ]
+            )
+        )
+        return controls
     }
 
     /// This walk's or run's switches, changeable while it goes. The phone's
@@ -179,7 +203,7 @@ struct WatchRunView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(String(localized: "watch.run.paceAlert", defaultValue: "Pace alert"))
                     Text(band.map(bandText) ?? String(localized: "watch.run.alertPerStep", defaultValue: "Each step has its own"))
-                        .font(.caption2)
+                        .watchFont(.footnote, classic: .caption2)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -187,7 +211,7 @@ struct WatchRunView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(String(localized: "watch.run.paceAlert", defaultValue: "Pace alert"))
                 Text(String(localized: "watch.run.paceAlertSetup", defaultValue: "Set a pace range on your iPhone"))
-                    .font(.caption2)
+                    .watchFont(.footnote, classic: .caption2)
                     .foregroundStyle(.secondary)
             }
         }
@@ -206,7 +230,7 @@ struct WatchRunView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(String(localized: "watch.run.heartRateAlert", defaultValue: "Heart rate alert"))
                     Text(band.map { "\(Int($0.minBpm))–\(Int($0.maxBpm)) bpm" } ?? String(localized: "watch.run.alertPerStep", defaultValue: "Each step has its own"))
-                        .font(.caption2)
+                        .watchFont(.footnote, classic: .caption2)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -214,7 +238,7 @@ struct WatchRunView: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text(String(localized: "watch.run.heartRateAlert", defaultValue: "Heart rate alert"))
                 Text(String(localized: "watch.run.heartRateAlertSetup", defaultValue: "Set a heart rate range on your iPhone"))
-                    .font(.caption2)
+                    .watchFont(.footnote, classic: .caption2)
                     .foregroundStyle(.secondary)
             }
         }
@@ -245,14 +269,16 @@ struct WatchRunView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                     row(String(localized: "watch.run.row.time", defaultValue: "Time"), RecordingState.clock(summary.elapsed))
-                    row(
-                        String(localized: "watch.run.row.distance", defaultValue: "Distance"),
-                        "\(WatchRunMetrics.distanceText(summary.metrics.distanceMeters, usesMiles: usesMiles)) \(usesMiles ? String(localized: "watch.unit.mi", defaultValue: "mi") : String(localized: "watch.unit.km", defaultValue: "km"))"
-                    )
-                    row(
-                        String(localized: "watch.run.row.pace", defaultValue: "Pace"),
-                        "\(WatchRunMetrics.paceText(WatchRunMetrics.paceSeconds(elapsed: summary.elapsed, distanceMeters: summary.metrics.distanceMeters, usesMiles: usesMiles))) \(usesMiles ? String(localized: "watch.unit.perMi", defaultValue: "/mi") : String(localized: "watch.unit.perKm", defaultValue: "/km"))"
-                    )
+                    if summary.kind.showsDistance {
+                        row(
+                            String(localized: "watch.run.row.distance", defaultValue: "Distance"),
+                            "\(WatchRunMetrics.distanceText(summary.metrics.distanceMeters, usesMiles: usesMiles)) \(usesMiles ? String(localized: "watch.unit.mi", defaultValue: "mi") : String(localized: "watch.unit.km", defaultValue: "km"))"
+                        )
+                        row(
+                            String(localized: "watch.run.row.pace", defaultValue: "Pace"),
+                            "\(WatchRunMetrics.paceText(WatchRunMetrics.paceSeconds(elapsed: summary.elapsed, distanceMeters: summary.metrics.distanceMeters, usesMiles: usesMiles))) \(usesMiles ? String(localized: "watch.unit.perMi", defaultValue: "/mi") : String(localized: "watch.unit.perKm", defaultValue: "/km"))"
+                        )
+                    }
                     if summary.metrics.activeEnergyKcal > 0 {
                         row(String(localized: "watch.run.row.active", defaultValue: "Active"), "\(Int(summary.metrics.activeEnergyKcal.rounded())) \(String(localized: "watch.unit.kcal", defaultValue: "kcal"))")
                     }
@@ -262,7 +288,7 @@ struct WatchRunView: View {
                         }
                     }
                     Text(String(localized: "watch.run.sentToPhone", defaultValue: "Sent to your iPhone. It shows up in SparkyFitness once the phone can reach the server."))
-                        .font(.caption2)
+                        .watchFont(.footnote, classic: .caption2)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                         .padding(.top, 2)
@@ -284,9 +310,9 @@ struct WatchRunView: View {
 
     private func row(_ title: String, _ value: String) -> some View {
         HStack {
-            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(title).watchFont(.body, classic: .caption).foregroundStyle(.secondary)
             Spacer()
-            Text(value).font(.caption.weight(.semibold)).monospacedDigit()
+            Text(value).watchFont(.body.weight(.semibold), classic: .caption.weight(.semibold)).monospacedDigit()
         }
     }
 }
@@ -318,7 +344,7 @@ private struct TreadmillDistanceView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
                 Text(treadmillMessage)
-                    .font(.caption2)
+                    .watchFont(.footnote, classic: .caption2)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                 Button {

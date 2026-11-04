@@ -202,14 +202,59 @@ describe('Demo Mode Infrastructure', () => {
       vi.mocked(poolManager.getSystemClient).mockResolvedValueOnce(
         mockClient as any
       );
-      vi.mocked(userRepository.deleteUser).mockResolvedValueOnce(true);
-
       await purgeDemoUserIfExists();
       expect(userRepository.findUserByEmail).toHaveBeenCalledWith(
         'demo@sparkyfitness.com'
       );
-      expect(userRepository.deleteUser).toHaveBeenCalledWith('mock-demo-id');
+      const sql = mockClient.query.mock.calls.map(([text]) => text);
+      expect(sql.slice(0, 2)).toEqual([
+        'BEGIN',
+        "SELECT pg_advisory_xact_lock(hashtext('sparkyfitness:demo'))",
+      ]);
+      // Deleted on the locked connection, inside the same transaction.
+      expect(mockClient.query).toHaveBeenCalledWith(
+        'DELETE FROM "user" WHERE id = $1',
+        ['mock-demo-id']
+      );
+      expect(sql.at(-1)).toBe('COMMIT');
+      expect(userRepository.deleteUser).not.toHaveBeenCalled();
       expect(mockClient.release).toHaveBeenCalled();
+    });
+
+    it('takes the demo lock before looking the account up when seeding', async () => {
+      process.env.SPARKY_FITNESS_DEMO_MODE = 'true';
+      const order: string[] = [];
+      vi.mocked(userRepository.findUserByEmail).mockImplementationOnce(
+        async () => {
+          order.push('findUserByEmail');
+          return null;
+        }
+      );
+      vi.mocked(userRepository.createUser).mockResolvedValueOnce(
+        'mock-demo-id'
+      );
+      const mockClient = {
+        query: vi.fn().mockImplementation(async (sql: string) => {
+          order.push(sql);
+          if (sql.includes('RETURNING id')) {
+            return { rows: [{ id: 'mock-sample-id' }] };
+          }
+          return { rows: [] };
+        }),
+        release: vi.fn(),
+      };
+      vi.mocked(poolManager.getSystemClient).mockResolvedValue(
+        mockClient as never
+      );
+
+      await seedDemoUser();
+
+      expect(order.slice(0, 3)).toEqual([
+        'BEGIN',
+        "SELECT pg_advisory_xact_lock(hashtext('sparkyfitness:demo'))",
+        'findUserByEmail',
+      ]);
+      expect(order.at(-1)).toBe('COMMIT');
     });
 
     it('resets demo user data strictly scoped by user_id', async () => {
@@ -253,6 +298,12 @@ describe('Demo Mode Infrastructure', () => {
       );
 
       await resetDemoUserData();
+      const sql = mockClient.query.mock.calls.map(([text]) => text);
+      expect(sql.slice(0, 3)).toEqual([
+        'BEGIN',
+        "SELECT pg_advisory_xact_lock(hashtext('sparkyfitness:demo'))",
+        'SELECT bio FROM profiles WHERE id = $1',
+      ]);
       expect(mockClient.query).toHaveBeenCalledWith(
         'DELETE FROM food_entries WHERE user_id = $1',
         ['mock-demo-id']
@@ -385,7 +436,12 @@ describe('Demo Mode Infrastructure', () => {
 
       await resetDemoUserData();
 
-      expect(mockClient.query).not.toHaveBeenCalledWith('BEGIN');
+      expect(mockClient.query).not.toHaveBeenCalledWith(
+        expect.stringContaining('DELETE FROM'),
+        expect.anything()
+      );
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(mockClient.query).not.toHaveBeenCalledWith('COMMIT');
       expect(mockClient.release).toHaveBeenCalled();
     });
   });

@@ -83,8 +83,8 @@ export const BreathworkModal: React.FC<BreathworkModalProps> = ({
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0.7);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const elapsedTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const protocol = PROTOCOLS[protocolKey];
 

@@ -24,6 +24,7 @@ import {
   type WeeklyGoalPlan,
 } from '../types/goals';
 import type { RootStackScreenProps } from '../types/navigation';
+import { getApiErrorMessage } from '../services/api/errors';
 import { formatDate, getTodayDate, normalizeDate } from '../utils/dateUtils';
 
 type WeeklyGoalPlanEditScreenProps = RootStackScreenProps<'WeeklyGoalPlanEdit'>;
@@ -161,13 +162,16 @@ const PlanForm: React.FC<PlanFormProps> = ({ plan, presets, onDone }) => {
       if (draft.id) await updatePlan({ id: draft.id, plan: body });
       else await createPlan(body);
       onDone();
-    } catch {
+    } catch (saveError) {
       Toast.show({
         type: 'error',
         text1: t('common.error', { defaultValue: 'Error' }),
-        text2: t('goals.weekly.saveFailed', {
-          defaultValue: 'Failed to save the weekly plan.',
-        }),
+        // The server explains a refused save, such as overlapping dates.
+        text2:
+          getApiErrorMessage(saveError) ??
+          t('goals.weekly.saveFailed', {
+            defaultValue: 'Failed to save the weekly plan.',
+          }),
       });
     }
   }, [createPlan, draft, onDone, t, updatePlan]);

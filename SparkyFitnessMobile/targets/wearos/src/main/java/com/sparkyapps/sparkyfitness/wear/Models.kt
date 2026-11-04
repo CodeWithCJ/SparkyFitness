@@ -233,6 +233,44 @@ data class StepsSnapshot(
   val isToday: Boolean get() = day == CheckInDate.today()
 }
 
+data class SleepSnapshot(
+  val day: String,
+  val totalSeconds: Int,
+  val timeInBedSeconds: Int,
+  val sleepScore: Int? = null,
+  val bedtime: String = "",
+  val wakeTime: String = "",
+  val deepSeconds: Int? = null,
+  val remSeconds: Int? = null,
+  val lightSeconds: Int? = null,
+  val awakeSeconds: Int? = null,
+  val restingHeartRate: Int? = null,
+  val hrvMs: Int? = null,
+  val spo2: Int? = null,
+  val napCount: Int = 0,
+  val napSeconds: Int = 0
+) {
+  val isToday: Boolean get() = day == CheckInDate.today()
+}
+
+data class ExerciseSessionItem(
+  val name: String,
+  val durationMinutes: Int,
+  val calories: Int
+)
+
+data class ExerciseSummarySnapshot(
+  val day: String,
+  val minutes: Int,
+  val minutesGoal: Int,
+  val calories: Int,
+  val caloriesGoal: Int,
+  val sessionCount: Int,
+  val sessions: List<ExerciseSessionItem> = emptyList()
+) {
+  val isToday: Boolean get() = day == CheckInDate.today()
+}
+
 data class StartableWorkout(
   val presetId: String,
   val name: String
@@ -336,6 +374,8 @@ data class WatchContext(
   val fastSynced: Boolean = false,
   val steps: StepsSnapshot? = null,
   val stepGoal: Int? = null,
+  val sleep: SleepSnapshot? = null,
+  val exerciseSummary: ExerciseSummarySnapshot? = null,
   val runVoiceCues: Boolean? = null,
   val runAutoPause: Boolean? = null,
   val runCheckInMinutes: Int? = null,

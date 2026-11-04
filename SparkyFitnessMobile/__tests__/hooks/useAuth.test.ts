@@ -12,6 +12,7 @@ import { clearServerConfigCache } from '../../src/services/storage';
 import { clearBackgroundWater } from '../../src/services/backgroundWater';
 import { clearAndroidWidgetSnapshots } from '../../src/services/androidWidgetSyncService';
 import { addLog } from '../../src/services/LogService';
+import { useGuidedCheckInStore } from '../../src/stores/guidedCheckInStore';
 import type { ServerConfig } from '../../src/services/storage';
 import { createTestQueryClient, createQueryWrapper } from './queryTestUtils';
 import type { QueryClient } from './queryTestUtils';
@@ -141,6 +142,27 @@ describe('useAuth', () => {
     });
 
     expect(clearBackgroundWater).toHaveBeenCalledTimes(1);
+  });
+
+  test("identity changed callback forgets the previous account's guided check-in in progress", async () => {
+    useGuidedCheckInStore.getState().saveProgress({
+      date: '2026-10-26',
+      step: 'MeasurementsAdd',
+      flags: {
+        saved: true,
+        offerReminders: true,
+        moodCheckin: { id: 'checkin-1', date: '2026-10-26' },
+      },
+    });
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(useGuidedCheckInStore.getState().progress).toBeNull();
   });
 
   test('identity changed callback erases the widget snapshots once the cache is gone', async () => {

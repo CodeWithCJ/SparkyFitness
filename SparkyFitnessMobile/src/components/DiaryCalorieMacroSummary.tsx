@@ -292,7 +292,7 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
           <Text className="text-xs text-text-muted mt-0.5">
             {projection.source === 'health_connect_total'
               ? t('diarySummary.healthConnectProjectionSource', {
-                  defaultValue: 'Health Connect total calories',
+                  defaultValue: 'Device total calories',
                 })
               : projection.source === 'active_plus_bmr'
                 ? t('diarySummary.fallbackProjectionSource', {

@@ -20,6 +20,17 @@ import {
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import {
+  ADD_MENU_ITEM_KEYS,
+  ADD_MENU_ITEM_ROW_STYLES,
+  DEFAULT_ADD_MENU_CARDS,
+  type AddMenuItemKey,
+  type AddMenuRowStyle,
+} from '../constants/addMenuItems';
+import {
+  resolveAddMenuCards,
+  type AddMenuRowStyleOverrides,
+} from '../utils/addMenu';
+import {
   DASHBOARD_CARD_KEYS,
   type DashboardCardKey,
 } from '../constants/dashboardCards';
@@ -43,6 +54,7 @@ import {
 import type { LanguagePreference } from '../localization';
 import type { TrendRange } from '../utils/trendRange';
 import type { OwnershipFilter } from '../utils/shareStatus';
+import { newUuid } from '../utils/ids';
 
 const STORE_KEY = '@SparkyFitness/app-preferences';
 const STORE_VERSION = 1;
@@ -64,6 +76,9 @@ const LEGACY_KEYS = {
 } as const;
 
 type LegacyKey = keyof typeof LEGACY_KEYS;
+
+export type ActiveWorkoutView = 'list' | 'focus';
+export type FocusMediaDefault = 'expanded' | 'minimized';
 
 /** Which stat the active-workout log shows in its per-set metric column. */
 export type ActiveWorkoutMetricColumn =
@@ -103,6 +118,7 @@ export const PREFERENCE_DEFAULTS = {
   onDeviceLabelScanEnabled: true,
   healthTrendsCardVisible: true,
   mindfulnessCardVisible: true,
+  labResultsCardVisible: true,
   trainingLoadCardVisible: true,
   dashboardCardOrder: [...DASHBOARD_CARD_KEYS] as DashboardCardKey[],
   medicationRemindersEnabled: true,
@@ -138,18 +154,31 @@ export const PREFERENCE_DEFAULTS = {
   languagePreference: 'system' as LanguagePreference,
   healthTrendOrder: [...HEALTH_TREND_KEYS] as HealthTrendKey[],
   hiddenHealthTrends: [] as HealthTrendKey[],
+  addMenuCards: [...DEFAULT_ADD_MENU_CARDS] as AddMenuItemKey[],
+  addMenuOrder: [...ADD_MENU_ITEM_KEYS] as AddMenuItemKey[],
+  hiddenAddMenuItems: [] as AddMenuItemKey[],
+  addMenuRowStyles: {} as AddMenuRowStyleOverrides,
   watchPageOrder: [...WATCH_PAGE_KEYS] as WatchPageKey[],
   hiddenWatchPages: [] as WatchPageKey[],
   watchDoubleTapEnabled: true,
   watchRpeEnabled: false,
+  watchSetScreenMetrics: true,
+  watchUpNextPage: false,
+  watchLargerText: false,
+  watchClassicWorkout: false,
+  activeWorkoutNowCard: false,
+  activeWorkoutView: 'list' as ActiveWorkoutView,
+  focusMediaDefault: 'expanded' as FocusMediaDefault,
   watchNutrientOrder: [] as string[],
   shownWatchNutrients: [...DEFAULT_WATCH_NUTRIENTS] as string[],
-  watchSetInputStyle: 'keypad' as WatchSetInputStyle,
+  watchSetInputStyle: 'crown' as WatchSetInputStyle,
   reportOrder: [...REPORT_KEYS] as ReportKey[],
   hiddenReports: [] as ReportKey[],
   reportDefaultRange: DEFAULT_REPORT_RANGE as TrendRange,
   hiddenReportSections: [] as ReportSectionKey[],
   compareRecentQuestions: [] as CompareQuestion[],
+  chatConversationId: null as string | null,
+  chatConversationServiceId: null as string | null,
   reportNutrientOrder: [] as string[],
   shownReportNutrients: [...DEFAULT_REPORT_NUTRIENTS] as string[],
   foodSearchOwnershipFilter: 'all' as OwnershipFilter,
@@ -182,6 +211,7 @@ export type AppPreferencesData = {
   onDeviceLabelScanEnabled: boolean;
   healthTrendsCardVisible: boolean;
   mindfulnessCardVisible: boolean;
+  labResultsCardVisible: boolean;
   trainingLoadCardVisible: boolean;
   dashboardCardOrder: DashboardCardKey[];
   medicationRemindersEnabled: boolean;
@@ -237,6 +267,14 @@ export type AppPreferencesData = {
   languagePreference: LanguagePreference;
   healthTrendOrder: HealthTrendKey[];
   hiddenHealthTrends: HealthTrendKey[];
+  /** The four items in the + sheet's big card slots, in order. */
+  addMenuCards: AddMenuItemKey[];
+  /** Order of the rows under the cards in the + sheet. */
+  addMenuOrder: AddMenuItemKey[];
+  /** + sheet rows turned off in Settings → Quick Actions. */
+  hiddenAddMenuItems: AddMenuItemKey[];
+  /** Items shown as another style than their default (list, pair or button). */
+  addMenuRowStyles: AddMenuRowStyleOverrides;
   /** Swipe order of the Apple Watch app's pages; sent to the watch. */
   watchPageOrder: WatchPageKey[];
   /** Watch pages turned off in Settings → Apple Watch. */
@@ -252,6 +290,11 @@ export type AppPreferencesData = {
   /** Recent Compare questions, newest first (at most five). */
   compareRecentQuestions: CompareQuestion[];
   addCompareRecentQuestion: (q: CompareQuestion) => void;
+  /** The Sparky chat conversation ID, kept across reopening the chat; null until first use. */
+  chatConversationId: string | null;
+  /** The AI provider the conversation ID was started with; a new provider starts a new conversation. */
+  chatConversationServiceId: string | null;
+  startChatConversation: (serviceConfigId: string | null) => void;
   /** Order of the nutrients the Nutrition report can average; unknown ones follow in catalog order. */
   reportNutrientOrder: string[];
   /** Nutrients (standard keys or custom names) the Nutrition report's "Your nutrients" card shows. */
@@ -260,6 +303,23 @@ export type AppPreferencesData = {
   watchDoubleTapEnabled: boolean;
   /** Whether the watch asks for an effort (RPE) after each logged set. */
   watchRpeEnabled: boolean;
+  /**
+   * Whether the watch's set screen shows elapsed time, heart rate and
+   * calories. Off moves them to a metrics page one swipe away.
+   */
+  watchSetScreenMetrics: boolean;
+  /** Whether the watch workout has the Up Next page after the set screen. */
+  watchUpNextPage: boolean;
+  /** Whether the watch's Goals and Water pages use the larger-text layout. */
+  watchLargerText: boolean;
+  /** Keep the original workout page while larger text is on. */
+  watchClassicWorkout: boolean;
+  /** Whether the active workout pins the Now card under the exercise rail. */
+  activeWorkoutNowCard: boolean;
+  /** Active workout layout: every exercise in one list, or one at a time. */
+  activeWorkoutView: ActiveWorkoutView;
+  /** Whether the focus view opens with the large photo card or a thumbnail. */
+  focusMediaDefault: FocusMediaDefault;
   /**
    * Order of the nutrients the watch's Goals page can list (standard keys and
    * custom nutrient names). Empty until the wearer drags one.
@@ -299,6 +359,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setOnDeviceLabelScanEnabled: (value: boolean) => void;
   setHealthTrendsCardVisible: (value: boolean) => void;
   setMindfulnessCardVisible: (value: boolean) => void;
+  setLabResultsCardVisible: (value: boolean) => void;
   setTrainingLoadCardVisible: (value: boolean) => void;
   setDashboardCardOrder: (order: DashboardCardKey[]) => void;
   setMedicationRemindersEnabled: (value: boolean) => void;
@@ -335,6 +396,12 @@ export interface AppPreferencesState extends AppPreferencesData {
   setLanguagePreference: (value: LanguagePreference) => void;
   setHealthTrendOrder: (order: HealthTrendKey[]) => void;
   setHealthTrendHidden: (key: HealthTrendKey, isHidden: boolean) => void;
+  setAddMenuCards: (cards: AddMenuItemKey[]) => void;
+  setAddMenuOrder: (order: AddMenuItemKey[]) => void;
+  setAddMenuItemHidden: (key: AddMenuItemKey, isHidden: boolean) => void;
+  /** Shows an item as `style`; its own default style clears the choice. */
+  setAddMenuRowStyle: (key: AddMenuItemKey, style: AddMenuRowStyle) => void;
+  resetAddMenu: () => void;
   setWatchPageOrder: (order: WatchPageKey[]) => void;
   setWatchPageHidden: (key: WatchPageKey, isHidden: boolean) => void;
   setReportOrder: (order: ReportKey[]) => void;
@@ -346,6 +413,13 @@ export interface AppPreferencesState extends AppPreferencesData {
   resetReportCustomization: () => void;
   setWatchDoubleTapEnabled: (value: boolean) => void;
   setWatchRpeEnabled: (value: boolean) => void;
+  setWatchSetScreenMetrics: (value: boolean) => void;
+  setWatchUpNextPage: (value: boolean) => void;
+  setWatchLargerText: (value: boolean) => void;
+  setWatchClassicWorkout: (value: boolean) => void;
+  setActiveWorkoutNowCard: (value: boolean) => void;
+  setActiveWorkoutView: (value: ActiveWorkoutView) => void;
+  setFocusMediaDefault: (value: FocusMediaDefault) => void;
   setWatchNutrientOrder: (order: string[]) => void;
   setWatchNutrientShown: (key: string, isShown: boolean) => void;
   setWatchSetInputStyle: (value: WatchSetInputStyle) => void;
@@ -440,6 +514,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ healthTrendsCardVisible: value }),
       setMindfulnessCardVisible: (value) =>
         set({ mindfulnessCardVisible: value }),
+      setLabResultsCardVisible: (value) =>
+        set({ labResultsCardVisible: value }),
       setTrainingLoadCardVisible: (value) =>
         set({ trainingLoadCardVisible: value }),
       setDashboardCardOrder: (order) => set({ dashboardCardOrder: order }),
@@ -509,6 +585,43 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
             isHidden
           ),
         })),
+      setAddMenuCards: (cards) =>
+        set((state) => {
+          const resolved = resolveAddMenuCards(cards);
+          return {
+            addMenuCards: resolved,
+            // An item given a card is shown, whatever its row switch said.
+            hiddenAddMenuItems: state.hiddenAddMenuItems.filter(
+              (key) => !resolved.includes(key)
+            ),
+          };
+        }),
+      setAddMenuOrder: (order) => set({ addMenuOrder: order }),
+      setAddMenuItemHidden: (key, isHidden) =>
+        set((state) => ({
+          hiddenAddMenuItems: withMembership(
+            state.hiddenAddMenuItems,
+            key,
+            isHidden
+          ),
+        })),
+      setAddMenuRowStyle: (key, style) =>
+        set((state) => {
+          const { [key]: _previous, ...rest } = state.addMenuRowStyles;
+          return {
+            addMenuRowStyles:
+              style === ADD_MENU_ITEM_ROW_STYLES[key]
+                ? rest
+                : { ...rest, [key]: style },
+          };
+        }),
+      resetAddMenu: () =>
+        set({
+          addMenuCards: [...DEFAULT_ADD_MENU_CARDS],
+          addMenuOrder: [...ADD_MENU_ITEM_KEYS],
+          hiddenAddMenuItems: [],
+          addMenuRowStyles: {},
+        }),
       setWatchPageOrder: (order) => set({ watchPageOrder: order }),
       setReportOrder: (order) => set({ reportOrder: order }),
       setReportHidden: (key, isHidden) =>
@@ -531,6 +644,11 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
             isHidden
           ),
         })),
+      startChatConversation: (serviceConfigId) =>
+        set({
+          chatConversationId: newUuid(),
+          chatConversationServiceId: serviceConfigId,
+        }),
       setReportNutrientOrder: (order) => set({ reportNutrientOrder: order }),
       setReportNutrientShown: (key, isShown) =>
         set((state) => ({
@@ -562,6 +680,14 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setWatchDoubleTapEnabled: (value) =>
         set({ watchDoubleTapEnabled: value }),
       setWatchRpeEnabled: (value) => set({ watchRpeEnabled: value }),
+      setWatchSetScreenMetrics: (value) =>
+        set({ watchSetScreenMetrics: value }),
+      setWatchUpNextPage: (value) => set({ watchUpNextPage: value }),
+      setWatchLargerText: (value) => set({ watchLargerText: value }),
+      setWatchClassicWorkout: (value) => set({ watchClassicWorkout: value }),
+      setActiveWorkoutNowCard: (value) => set({ activeWorkoutNowCard: value }),
+      setActiveWorkoutView: (value) => set({ activeWorkoutView: value }),
+      setFocusMediaDefault: (value) => set({ focusMediaDefault: value }),
       setWatchPageHidden: (key, isHidden) =>
         set((state) => ({
           hiddenWatchPages: withMembership(
@@ -610,6 +736,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         onDeviceLabelScanEnabled: state.onDeviceLabelScanEnabled,
         healthTrendsCardVisible: state.healthTrendsCardVisible,
         mindfulnessCardVisible: state.mindfulnessCardVisible,
+        labResultsCardVisible: state.labResultsCardVisible,
         trainingLoadCardVisible: state.trainingLoadCardVisible,
         dashboardCardOrder: state.dashboardCardOrder,
         medicationRemindersEnabled: state.medicationRemindersEnabled,
@@ -647,10 +774,21 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         languagePreference: state.languagePreference,
         healthTrendOrder: state.healthTrendOrder,
         hiddenHealthTrends: state.hiddenHealthTrends,
+        addMenuCards: state.addMenuCards,
+        addMenuOrder: state.addMenuOrder,
+        hiddenAddMenuItems: state.hiddenAddMenuItems,
+        addMenuRowStyles: state.addMenuRowStyles,
         watchPageOrder: state.watchPageOrder,
         hiddenWatchPages: state.hiddenWatchPages,
         watchDoubleTapEnabled: state.watchDoubleTapEnabled,
         watchRpeEnabled: state.watchRpeEnabled,
+        watchSetScreenMetrics: state.watchSetScreenMetrics,
+        watchUpNextPage: state.watchUpNextPage,
+        watchLargerText: state.watchLargerText,
+        watchClassicWorkout: state.watchClassicWorkout,
+        activeWorkoutNowCard: state.activeWorkoutNowCard,
+        activeWorkoutView: state.activeWorkoutView,
+        focusMediaDefault: state.focusMediaDefault,
         watchNutrientOrder: state.watchNutrientOrder,
         shownWatchNutrients: state.shownWatchNutrients,
         watchSetInputStyle: state.watchSetInputStyle,
@@ -659,6 +797,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         reportDefaultRange: state.reportDefaultRange,
         hiddenReportSections: state.hiddenReportSections,
         compareRecentQuestions: state.compareRecentQuestions,
+        chatConversationId: state.chatConversationId,
+        chatConversationServiceId: state.chatConversationServiceId,
         reportNutrientOrder: state.reportNutrientOrder,
         shownReportNutrients: state.shownReportNutrients,
         foodSearchOwnershipFilter: state.foodSearchOwnershipFilter,

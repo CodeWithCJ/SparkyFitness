@@ -1,4 +1,16 @@
 import type { FoodEntry } from '../types/foodEntries';
+import type { FamilyDiaryUser } from '../types/familyDiary';
+
+export function canCopyFamilyDiary(
+  user: Pick<FamilyDiaryUser, 'canCopy' | 'accessEndDate'>,
+  now = Date.now()
+): boolean {
+  return (
+    user.canCopy &&
+    (user.accessEndDate === null ||
+      new Date(user.accessEndDate).getTime() > now)
+  );
+}
 
 export interface FamilyMealGroup {
   key: string;

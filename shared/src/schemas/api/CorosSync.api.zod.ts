@@ -13,6 +13,8 @@ export const corosSyncResultSchema = z.object({
   skippedExisting: z.number().int().nonnegative(),
   deferred: z.number().int().nonnegative(),
   summaryOnly: z.number().int().nonnegative(),
+  activitiesFailed: z.number().int().nonnegative(),
+  failedRequiredFetches: z.array(z.string()),
   warnings: z.array(z.string()),
 });
 

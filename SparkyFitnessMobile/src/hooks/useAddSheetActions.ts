@@ -6,6 +6,7 @@ import { queryClient } from './queryClient';
 import { serverConnectionQueryKey } from './queryKeys';
 import { useSyncHealthData } from './useSyncHealthData';
 import { promptForActiveWorkoutConflict } from './useStartLiveWorkout';
+import { startGuidedCheckIn } from './useGuidedCheckIn';
 import { loadTimeRange } from '../services/storage';
 import type { TimeRange } from '../services/storage';
 import {
@@ -17,6 +18,7 @@ import { isSyncClaimed } from '../services/autoSyncCoordinator';
 import { loadActiveDraft, clearDraft } from '../services/workoutDraftService';
 import { navigationRef as rootNavigationRef } from '../components/ActiveWorkoutBar';
 import { NON_ADD_TABS, type NonAddTabName } from '../components/TabsLayout';
+import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { RootStackParamList } from '../types/navigation';
 
 function getServerConnectionMessage(
@@ -316,6 +318,16 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     navigateFromSheet('MoodLog', { date });
   }, [getActiveDiaryDate, navigateFromSheet]);
 
+  // Every step needs the same day, so it is fixed here rather than left to
+  // each screen's own fallback (diary store, device today, zone today).
+  const handleStartCheckIn = useCallback(() => {
+    const date =
+      getActiveDiaryDate() ?? useDiaryDateStore.getState().selectedDate;
+    startGuidedCheckIn(date, t, (step, guidedCheckIn) =>
+      navigateFromSheet(step, { date, guidedCheckIn })
+    );
+  }, [getActiveDiaryDate, navigateFromSheet, t]);
+
   const handleAddMindfulness = useCallback(() => {
     const date = getActiveDiaryDate();
     navigateFromSheet('MindfulnessLog', { date });
@@ -404,6 +416,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     handleAddProgressPhotos,
     handleAddSymptoms,
     handleAddMood,
+    handleStartCheckIn,
     handleAddMindfulness,
     handleRecordActivity,
     handleAskSparky,

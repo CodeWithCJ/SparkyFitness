@@ -197,3 +197,21 @@ describe('HydrationGauge headline totals', () => {
     expect(screen.getByText('of 67.6 oz')).toBeTruthy();
   });
 });
+
+describe('HydrationGauge history link', () => {
+  it('shows History only when a handler is given, and opens it', () => {
+    const { rerender } = render(<HydrationGauge consumed={0} goal={2000} />);
+    expect(screen.queryByText('History')).toBeNull();
+
+    const onPressHistory = jest.fn();
+    rerender(
+      <HydrationGauge
+        consumed={0}
+        goal={2000}
+        onPressHistory={onPressHistory}
+      />
+    );
+    fireEvent.press(screen.getByLabelText('Drink history'));
+    expect(onPressHistory).toHaveBeenCalledTimes(1);
+  });
+});

@@ -64,7 +64,7 @@ Pick **one**. This helps maintainers choose how closely to review.
 - [ ] **No AI**: I wrote this change without AI tools.
 - [ ] **AI, reviewed line by line**: AI wrote part of this. I read every generated line and edited it before accepting.
 - [ ] **AI, tested and partly understood**: AI wrote most of this. I tested the behavior, but I only partly understand the generated code.
-- [ ] **AI, tested only**: AI wrote this and I did not review the code myself. I tested the behavior only. A maintainer agreed beforehand to review a PR like this (link the issue or Discord message in the description).
+- [ ] **AI, tested only**: AI wrote this and I did not review the code myself. I tested the behavior only.
 
 ## Validation Proof
 

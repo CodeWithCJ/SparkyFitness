@@ -165,7 +165,7 @@ export function warmPaceFromEasy(easy: PaceBand): PaceBand {
 export interface RacePaceRanges {
   pair: SuggestedPair<PaceBand>;
   /** Ranges for each effort a plan can ask for. Hill repeats get none: pace means nothing uphill. */
-  byEffort: Partial<Record<Exclude<StepEffort, 'hill'>, PaceBand>>;
+  byEffort: Partial<Record<Exclude<StepEffort, 'hill' | 'zone2'>, PaceBand>>;
 }
 
 /**

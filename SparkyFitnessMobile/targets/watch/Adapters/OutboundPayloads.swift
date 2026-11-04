@@ -86,8 +86,10 @@ enum OutboundPayloads {
 
     /// One dose ticked as taken — the phone logs it the way its own dose row
     /// does — or, with `taken` false, un-ticked, which deletes that entry.
+    /// `skipped` marks it skipped instead; it is left out otherwise, so the
+    /// message an older phone reads is unchanged.
     static func medicationTaken(_ tap: MedicationTap) -> [String: Any] {
-        [
+        var payload: [String: Any] = [
             "type": Kind.medicationTaken,
             "clientId": tap.id,
             "entryDate": tap.entryDate,
@@ -95,6 +97,8 @@ enum OutboundPayloads {
             "scheduleId": tap.scheduleId,
             "taken": tap.taken,
         ]
+        if tap.skipped { payload["skipped"] = true }
+        return payload
     }
 
     /// The wearer started a fast from a preset (`presetId` is the phone's id,
@@ -156,7 +160,43 @@ enum OutboundPayloads {
         case .deleteExercise(let exerciseEntryId):
             payload["action"] = "deleteExercise"
             payload["exerciseEntryId"] = exerciseEntryId
+        case .doExerciseNow(let exerciseEntryId, let anchorEntryId):
+            payload["action"] = "doExerciseNow"
+            payload["exerciseEntryId"] = exerciseEntryId
+            payload["anchorEntryId"] = anchorEntryId
         }
+        return payload
+    }
+
+    /// A weight, reps or carry distance the wearer just typed on the watch for
+    /// a set, sent before the set is logged so the phone shows it too. A
+    /// `workoutEdit` like the others (same `clientId` de-duplication), with only
+    /// the edited fields present. `at` orders edits: a queued copy of an older
+    /// one must not undo a newer one that arrived live. `armedAt` is the arm of
+    /// the plan the edit was made in: a saved workout can be armed again under
+    /// the same id, and an edit queued from the earlier arm must not land on it.
+    static func workoutEditSetValues(
+        sessionId: String,
+        clientId: String,
+        setId: String,
+        weightKg: Double?,
+        reps: Double?,
+        distanceKm: Double?,
+        at: Date,
+        armedAt: Date?
+    ) -> [String: Any] {
+        var payload: [String: Any] = [
+            "type": Kind.workoutEdit,
+            "sessionId": sessionId,
+            "clientId": clientId,
+            "action": "setValues",
+            "setId": setId,
+            "at": at.timeIntervalSince1970 * 1000,
+        ]
+        if let weightKg { payload["weightKg"] = weightKg }
+        if let reps { payload["reps"] = reps }
+        if let distanceKm { payload["distanceKm"] = distanceKm }
+        if let armedAt { payload["armedAt"] = armedAt.timeIntervalSince1970 * 1000 }
         return payload
     }
 
@@ -284,13 +324,16 @@ enum OutboundPayloads {
 
     /// A spoken cue for the phone to say instead of the watch, so it comes out
     /// of the headphones paired to the phone. `id` comes back in the phone's
-    /// `runCueAck`; without it the watch says the cue itself.
-    static func runCue(id: String, text: String, interrupt: Bool) -> [String: Any] {
+    /// `runCueAck`; without it the watch says the cue itself. `language` is the
+    /// BCP 47 tag the text is written in, so the phone speaks it with a voice
+    /// for that language.
+    static func runCue(id: String, text: String, interrupt: Bool, language: String) -> [String: Any] {
         [
             "type": Kind.runCue,
             "id": id,
             "text": text,
             "interrupt": interrupt,
+            "language": language,
         ]
     }
 

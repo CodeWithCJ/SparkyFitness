@@ -16,6 +16,12 @@ export const UPLOADS_BASE_DIR = process.env
   : path.join(__dirname, '..', 'uploads');
 
 /**
+ * Per-request upload directory under the uploads root (middleware/imageUpload.ts);
+ * its files are moved out or deleted within the request, so backups skip it.
+ */
+export const UPLOAD_STAGING_DIR = '_staging';
+
+/**
  * Stored file_path values are rooted at the logical 'uploads/' directory
  * (e.g. 'uploads/check-in/<user>/<date>/front.jpg') so records stay portable
  * across deployments. Resolve them against the configured uploads root,

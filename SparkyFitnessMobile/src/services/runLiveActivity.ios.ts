@@ -30,7 +30,7 @@ import {
   METERS_PER_MILE,
   paceSecondsPerUnit,
   summarizeRecording,
-  type RecordingActivity,
+  type DiaryActivity,
 } from '../utils/gpsRecording';
 import { intervalStepName } from '../utils/recordingCues';
 import { notificationText } from '../utils/recordingNotification';
@@ -87,7 +87,7 @@ function logError(what: string, error: unknown): void {
 /** The translated pieces of the activity, built where the language is known. */
 function title(
   t: TFunction,
-  activityKind: RecordingActivity,
+  activityKind: DiaryActivity,
   indoor: boolean
 ): string {
   switch (activityKind) {
@@ -103,6 +103,8 @@ function title(
         : t('recordActivity.title.outdoorRide', {
             defaultValue: 'Outdoor ride',
           });
+    case 'jumpRope':
+      return t('recordActivity.title.jumpRope', { defaultValue: 'Jump Rope' });
     default:
       return indoor
         ? t('recordActivity.title.indoorRun', { defaultValue: 'Indoor run' })
@@ -185,7 +187,8 @@ export function computeRecordingProps(
           name: intervalStepName(
             ctx.t,
             position.step.kind,
-            session.intervals!.plan.style
+            session.intervals!.plan.style,
+            position.step.effort
           ),
           current: position.index + 1,
           total: session.intervals!.plan.steps.length,
@@ -235,7 +238,9 @@ export function computeWatchRunProps(
   const { unitMeters } = unitLabels(ctx);
   const running = run.status === 'running';
   const active = run.elapsed + (running ? age / 1000 : 0);
-  const hasDistance = run.distanceMeters > 0 || run.place === 'outdoor';
+  const hasDistance =
+    run.kind !== 'jumpRope' &&
+    (run.distanceMeters > 0 || run.place === 'outdoor');
   const stepRemaining =
     run.stepRemaining != null
       ? Math.max(0, run.stepRemaining - (running ? age / 1000 : 0))

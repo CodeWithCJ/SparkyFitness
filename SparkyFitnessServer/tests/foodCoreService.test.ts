@@ -141,7 +141,11 @@ describe('foodCoreService.createFood', () => {
 
     const result = await foodCoreService.createFood(
       TEST_USER_ID,
-      makeFoodData({ provider_type: 'yazio', provider_verified: true })
+      makeFoodData({
+        provider_type: undefined,
+        provider_external_id: undefined,
+        provider_verified: true,
+      })
     );
 
     expect(foodRepository.findFoodByProviderExternalId).not.toHaveBeenCalled();

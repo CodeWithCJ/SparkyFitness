@@ -1,5 +1,29 @@
 import { getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import {
+  DEFAULT_MCP_OAUTH_ALLOWED_REDIRECT_URIS,
+  getMcpOAuthAvailability,
+} from '../utils/mcpOAuth.js';
+
+interface GlobalSettingsUpdate {
+  enable_email_password_login?: boolean;
+  is_oidc_active?: boolean;
+  is_mfa_mandatory?: boolean | null;
+  allow_user_ai_config?: boolean;
+  default_vision_ai_service_id?: string | null;
+  allow_openfoodfacts_contributions?: boolean;
+  allow_private_network_ai?: boolean;
+  allow_private_network_food_providers?: boolean;
+  public_api_docs?: boolean;
+  dev_tools_enabled?: boolean;
+  mock_data_enabled?: boolean;
+  enable_passkey_login?: boolean;
+  enable_magic_link_login?: boolean;
+  mcp_oauth_enabled?: boolean;
+  mcp_oauth_allowed_redirect_uris?: string[];
+  enable_version_check?: boolean;
+}
+
 async function getGlobalSettings() {
   const client = await getSystemClient(); // System-level operation
   try {
@@ -46,6 +70,23 @@ async function getGlobalSettings() {
     ) {
       settings.enable_passkey_login = true;
     }
+    // Manage enable_magic_link_login
+    const forceMagicLinkLogin =
+      process.env.SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN === 'true';
+    const disableMagicLinkLogin =
+      process.env.SPARKY_FITNESS_DISABLE_MAGIC_LINK_LOGIN === 'true';
+    settings.is_magic_link_login_env_configured =
+      forceMagicLinkLogin || disableMagicLinkLogin;
+    if (forceMagicLinkLogin) {
+      settings.enable_magic_link_login = true;
+    } else if (disableMagicLinkLogin) {
+      settings.enable_magic_link_login = false;
+    } else if (
+      settings.enable_magic_link_login === undefined ||
+      settings.enable_magic_link_login === null
+    ) {
+      settings.enable_magic_link_login = true;
+    }
     // Manage is_oidc_active
     settings.is_oidc_active_env_configured = oidcAuthEnabledEnv;
     if (oidcAuthEnabledEnv) {
@@ -75,6 +116,18 @@ async function getGlobalSettings() {
     settings.public_api_docs = !!settings.public_api_docs;
     settings.dev_tools_enabled = !!settings.dev_tools_enabled;
     settings.mock_data_enabled = !!settings.mock_data_enabled;
+    settings.mcp_oauth_enabled = !!settings.mcp_oauth_enabled;
+    settings.mcp_oauth_allowed_redirect_uris = Array.isArray(
+      settings.mcp_oauth_allowed_redirect_uris
+    )
+      ? settings.mcp_oauth_allowed_redirect_uris
+      : [...DEFAULT_MCP_OAUTH_ALLOWED_REDIRECT_URIS];
+    const mcpOAuthAvailability = getMcpOAuthAvailability();
+    settings.mcp_oauth_available = mcpOAuthAvailability.available;
+    settings.mcp_oauth_unavailable_reason = mcpOAuthAvailability.reason;
+    // The column is NOT NULL DEFAULT TRUE; a missing row reads as off, matching
+    // isVersionCheckEnabled.
+    settings.enable_version_check = !!settings.enable_version_check;
 
     log(
       'info',
@@ -85,8 +138,7 @@ async function getGlobalSettings() {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function saveGlobalSettings(settings: any) {
+async function saveGlobalSettings(settings: GlobalSettingsUpdate) {
   const client = await getSystemClient(); // System-level operation
   try {
     const allowUserAiConfig =
@@ -103,6 +155,9 @@ async function saveGlobalSettings(settings: any) {
     const passkeyEnvForced =
       process.env.SPARKY_FITNESS_FORCE_PASSKEY_LOGIN === 'true' ||
       process.env.SPARKY_FITNESS_DISABLE_PASSKEY_LOGIN === 'true';
+    const magicLinkEnvForced =
+      process.env.SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN === 'true' ||
+      process.env.SPARKY_FITNESS_DISABLE_MAGIC_LINK_LOGIN === 'true';
     await client.query(
       `UPDATE global_settings
              SET enable_email_password_login = COALESCE($1, enable_email_password_login),
@@ -116,7 +171,11 @@ async function saveGlobalSettings(settings: any) {
                  public_api_docs = COALESCE($10, public_api_docs, false),
                  dev_tools_enabled = COALESCE($11, dev_tools_enabled, false),
                  mock_data_enabled = COALESCE($12, mock_data_enabled, false),
-                 enable_passkey_login = COALESCE($13, enable_passkey_login, true)
+                 enable_passkey_login = COALESCE($13, enable_passkey_login, true),
+                 mcp_oauth_enabled = COALESCE($14, mcp_oauth_enabled, false),
+                 enable_version_check = COALESCE($15, enable_version_check, true),
+                 mcp_oauth_allowed_redirect_uris = COALESCE($16, mcp_oauth_allowed_redirect_uris),
+                 enable_magic_link_login = COALESCE($17, enable_magic_link_login, true)
              WHERE id = 1
              RETURNING *`,
       [
@@ -135,6 +194,10 @@ async function saveGlobalSettings(settings: any) {
         settings.dev_tools_enabled ?? null,
         settings.mock_data_enabled ?? null,
         passkeyEnvForced ? null : (settings.enable_passkey_login ?? null),
+        settings.mcp_oauth_enabled ?? null,
+        settings.enable_version_check ?? null,
+        settings.mcp_oauth_allowed_redirect_uris ?? null,
+        magicLinkEnvForced ? null : (settings.enable_magic_link_login ?? null),
       ]
     );
     // Return the full truth (DB + ENV overrides)
@@ -166,7 +229,9 @@ type BooleanSettingColumn =
   | 'allow_private_network_food_providers'
   | 'public_api_docs'
   | 'dev_tools_enabled'
-  | 'mock_data_enabled';
+  | 'mock_data_enabled'
+  | 'mcp_oauth_enabled'
+  | 'enable_version_check';
 
 /**
  * Reads one boolean policy column from `global_settings`, failing closed.
@@ -209,6 +274,33 @@ async function isPublicApiDocsAllowed(): Promise<boolean> {
 async function isDevToolsEnabled(): Promise<boolean> {
   return readBooleanSetting('dev_tools_enabled');
 }
+async function isMcpOAuthEnabled(): Promise<boolean> {
+  return readBooleanSetting('mcp_oauth_enabled');
+}
+
+/** Reads the administrator-controlled OAuth redirect allowlist, failing closed. */
+async function getMcpOAuthAllowedRedirectUris(): Promise<string[]> {
+  let client;
+  try {
+    client = await getSystemClient();
+    const result = await client.query(
+      'SELECT mcp_oauth_allowed_redirect_uris FROM global_settings WHERE id = 1'
+    );
+    const value = result.rows[0]?.mcp_oauth_allowed_redirect_uris;
+    return Array.isArray(value) &&
+      value.every((item) => typeof item === 'string')
+      ? value
+      : [];
+  } catch (error) {
+    log(
+      'warn',
+      `[GLOBAL SETTINGS REPO] Could not read MCP OAuth redirect allowlist; denying redirects: ${error instanceof Error ? error.message : String(error)}`
+    );
+    return [];
+  } finally {
+    client?.release();
+  }
+}
 /**
  * Admin master switch for the runtime mock-data options. While false, the
  * per-sync `saveMockData` / `dataSource` request options are ignored, so no
@@ -218,6 +310,16 @@ async function isDevToolsEnabled(): Promise<boolean> {
  */
 async function isMockDataEnabled(): Promise<boolean> {
   return readBooleanSetting('mock_data_enabled');
+}
+/**
+ * Whether the server may ask GitHub for the latest release
+ * (`/api/version/latest-github`). On by default; an admin turns it off when
+ * updates are managed outside the app or the server must not contact
+ * api.github.com. Fails closed like the lookups above, so an unreadable
+ * setting skips the request instead of making it.
+ */
+async function isVersionCheckEnabled(): Promise<boolean> {
+  return readBooleanSetting('enable_version_check');
 }
 async function isUserAiConfigAllowed() {
   const client = await getSystemClient();
@@ -246,8 +348,7 @@ async function getMfaMandatorySetting() {
     client.release();
   }
 }
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function setMfaMandatorySetting(isMandatory: any) {
+async function setMfaMandatorySetting(isMandatory: boolean) {
   const client = await getSystemClient();
   try {
     const result = await client.query(
@@ -270,7 +371,10 @@ export {
   isPrivateNetworkFoodProvidersAllowed,
   isPublicApiDocsAllowed,
   isDevToolsEnabled,
+  isMcpOAuthEnabled,
+  getMcpOAuthAllowedRedirectUris,
   isMockDataEnabled,
+  isVersionCheckEnabled,
 };
 export default {
   getGlobalSettings,
@@ -283,5 +387,8 @@ export default {
   isPrivateNetworkFoodProvidersAllowed,
   isPublicApiDocsAllowed,
   isDevToolsEnabled,
+  isMcpOAuthEnabled,
+  getMcpOAuthAllowedRedirectUris,
   isMockDataEnabled,
+  isVersionCheckEnabled,
 };

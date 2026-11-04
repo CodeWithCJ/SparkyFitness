@@ -122,6 +122,27 @@ export function sleepEntryZone(
   );
 }
 
+/**
+ * Resolves the display zone for a day's main-sleep bed and wake times: the
+ * main sleep's own recording zone, which can differ from the day zone when
+ * an earlier nap was recorded elsewhere.
+ */
+export function mainSleepZone(
+  data: {
+    main_record_timezone?: string | null;
+    main_record_utc_offset_minutes?: number | null;
+  },
+  fallbackTz: string
+): RecordZone {
+  return sleepEntryZone(
+    {
+      record_timezone: data.main_record_timezone,
+      record_utc_offset_minutes: data.main_record_utc_offset_minutes,
+    },
+    fallbackTz
+  );
+}
+
 export const formatSecondsClock = (totalSeconds: number): string => {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);

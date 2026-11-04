@@ -15,7 +15,7 @@ let mockAutoScaleOnlineImports = false;
 
 jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({
-    user: { id: 'user-1' },
+    user: { id: 'user-1', activeUserId: 'profile-1' },
   }),
 }));
 
@@ -129,6 +129,80 @@ describe('useCustomFoodForm', () => {
       name: 'Saved Food',
       is_custom: true,
     });
+  });
+
+  it('imports an explicit provider product without a barcode-only conflict confirmation', async () => {
+    mockFetchQuery.mockResolvedValueOnce({
+      source: 'local',
+      food: { id: 'another-source', name: 'A different source' },
+    });
+    const importedFood = createFood({
+      id: '',
+      barcode: '1234567890123',
+      provider_type: 'fatsecret',
+      provider_external_id: 'selected-product',
+      variants: [createVariant({ is_default: true })],
+    });
+    const { result } = renderHook(() =>
+      useCustomFoodForm({
+        onSave: jest.fn(),
+        food: importedFood,
+        initialVariants: importedFood.variants,
+      })
+    );
+
+    await waitFor(() => expect(result.current.variants).toHaveLength(1));
+
+    await act(async () => {
+      await result.current.handleSubmit({
+        preventDefault: jest.fn(),
+      } as unknown as React.FormEvent);
+    });
+
+    expect(result.current.showBarcodeConflictConfirmation).toBe(false);
+    expect(mockSaveFood).toHaveBeenCalledWith(
+      expect.objectContaining({
+        foodData: expect.objectContaining({
+          provider_type: 'fatsecret',
+          provider_external_id: 'selected-product',
+          barcode: '1234567890123',
+        }),
+        foodId: undefined,
+      })
+    );
+    mockFetchQuery.mockReset();
+  });
+
+  it('uses the signed-in account when confirming a manual barcode conflict', async () => {
+    const initialVariants = [createVariant({ is_default: true })];
+    mockFetchQuery.mockResolvedValueOnce({
+      source: 'local',
+      food: { id: 'existing-manual', name: 'Saved yogurt' },
+    });
+    const { result } = renderHook(() =>
+      useCustomFoodForm({ initialVariants, onSave: jest.fn() })
+    );
+    await waitFor(() => expect(result.current.variants).toHaveLength(1));
+    act(() => {
+      result.current.updateField('name', 'New manual yogurt');
+      result.current.updateField('barcode', '1234567890123');
+    });
+    await act(async () =>
+      result.current.handleSubmit({
+        preventDefault: jest.fn(),
+      } as unknown as React.FormEvent)
+    );
+    expect(result.current.showBarcodeConflictConfirmation).toBe(true);
+    expect(mockFetchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: expect.arrayContaining([
+          'lookup',
+          '1234567890123',
+          'user-1',
+          'profile-1',
+        ]),
+      })
+    );
   });
 
   it('retains the same new food id when portions fail and the user retries saving', async () => {
@@ -1849,7 +1923,7 @@ describe('useCustomFoodForm', () => {
     await act(async () => {
       await result.current.handleSubmit({
         preventDefault: jest.fn(),
-      } as any);
+      } as unknown as React.FormEvent);
     });
 
     expect(mockSaveFood).toHaveBeenCalledWith(
@@ -1890,7 +1964,7 @@ describe('useCustomFoodForm', () => {
     await act(async () => {
       await result.current.handleSubmit({
         preventDefault: jest.fn(),
-      } as any);
+      } as unknown as React.FormEvent);
     });
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1911,7 +1985,7 @@ describe('useCustomFoodForm', () => {
     await act(async () => {
       await result.current.handleSubmit({
         preventDefault: jest.fn(),
-      } as any);
+      } as unknown as React.FormEvent);
     });
 
     // It should trigger conflict check and set confirmation state, but not call saveFood yet

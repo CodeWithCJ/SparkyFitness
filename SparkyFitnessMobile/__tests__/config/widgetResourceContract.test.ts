@@ -93,6 +93,13 @@ const REQUIRED_KEYS = [
   'widget_fat',
   'widget_search_food',
   'widget_scan_barcode',
+  'widget_open_diary',
+  'widget_open_fasting',
+  'widget_kcal_eaten',
+  'widget_goal',
+  'widget_food',
+  'widget_burned',
+  'widget_amount_of_goal',
   'tile_log_water',
   'tile_calories_left',
   'widget_preview_calories_left',
@@ -239,6 +246,8 @@ describe('Android widget localization contract', () => {
       const placeholderKeys = [
         'widget_kcal_left',
         'widget_grams',
+        'widget_amount_of_goal',
+        'widget_kcal_eaten',
         'widget_water_amount',
         'widget_water_amount_no_goal',
         'widget_water_amount_empty',
@@ -703,30 +712,75 @@ describe('Android widget localization contract', () => {
     });
   });
 
-  describe('widget provider contract (no resize)', () => {
-    // The pre-localization widgets (22415819) define the base visual language.
-    // Localization must not change the default footprint or composition: the
-    // classic 2x1 calorie card and 2x2 macro card stay fixed and are NOT
-    // resizable. This PR removed the resize/responsive experiment entirely.
-    it('keeps resizeMode="none" on every provider XML', () => {
-      for (const infoXml of WIDGET_INFO_XMLS) {
-        const src = fs.readFileSync(
-          path.join(RES_ROOT, 'xml', infoXml),
-          'utf8'
-        );
-        expect(src).toMatch(/android:resizeMode="none"/);
-      }
-    });
+  describe('widget provider contract (resizable, classic default)', () => {
+    // The widgets can be resized (#2050). Their default footprint and classic
+    // composition stay as they were, and every other size step keeps that
+    // content: the steps live in WidgetSizes.kt.
+    const MIN_RESIZE: Record<string, [string, string]> = {
+      'sparky_calorie_widget_info.xml': ['110dp', '40dp'],
+      'sparky_macro_widget_info.xml': ['110dp', '110dp'],
+      'sparky_water_widget_info.xml': ['110dp', '40dp'],
+    };
 
-    it('never re-enables horizontal or vertical resizing', () => {
+    /** The DpSize steps of one set in WidgetSizes.kt, resolved to dp numbers. */
+    function readWidgetSizes(setName: string): [number, number][] {
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WidgetSizes.kt'),
+        'utf8'
+      );
+      const dps = new Map<string, number>();
+      for (const m of src.matchAll(/val (\w+) = (\d+)\.dp/g)) {
+        dps.set(m[1], Number(m[2]));
+      }
+      const sizes = new Map<string, [number, number]>();
+      const dim = (token: string): number => {
+        const literal = /^(\d+)\.dp$/.exec(token);
+        if (literal) return Number(literal[1]);
+        const member = /^(\w+)\.(width|height)$/.exec(token);
+        if (member) {
+          const size = sizes.get(member[1]);
+          if (!size) throw new Error(`Unknown size ${member[1]}`);
+          return member[2] === 'width' ? size[0] : size[1];
+        }
+        const value = dps.get(token);
+        if (value === undefined) throw new Error(`Unknown dp ${token}`);
+        return value;
+      };
+      for (const m of src.matchAll(/val (\w+) = DpSize\(([^,]+), ([^)]+)\)/g)) {
+        sizes.set(m[1], [dim(m[2].trim()), dim(m[3].trim())]);
+      }
+      const set = new RegExp(
+        `val ${setName}: Set<DpSize> = setOf\\(([\\s\\S]*?)\\n    \\)`
+      ).exec(src);
+      if (!set) throw new Error(`Missing ${setName}`);
+      return set[1]
+        .split('\n')
+        .map((line) => line.trim().replace(/,$/, ''))
+        .filter(Boolean)
+        .map((entry) => {
+          const pair = /^DpSize\(([^,]+), ([^)]+)\)$/.exec(entry);
+          if (pair) return [dim(pair[1].trim()), dim(pair[2].trim())];
+          const named = sizes.get(entry);
+          if (!named) throw new Error(`Unknown step ${entry}`);
+          return named;
+        });
+    }
+
+    it('lets every widget be resized from its default footprint', () => {
       for (const infoXml of WIDGET_INFO_XMLS) {
         const src = fs.readFileSync(
           path.join(RES_ROOT, 'xml', infoXml),
           'utf8'
         );
-        expect(src).not.toMatch(/resizeMode="horizontal\|vertical"/);
-        expect(src).not.toMatch(/minResizeWidth/);
-        expect(src).not.toMatch(/minResizeHeight/);
+        // A plain string: as a regex the pipe would need escaping.
+        expect(src).toContain('android:resizeMode="horizontal|vertical"');
+        expect(src).not.toMatch(/android:resizeMode="none"/);
+        const [width, height] = MIN_RESIZE[infoXml];
+        expect(src).toContain(`android:minResizeWidth="${width}"`);
+        expect(src).toContain(`android:minResizeHeight="${height}"`);
+        // No cap: a launcher turns a maximum into cells per screen
+        // orientation, which can cap the widget below what is intended.
+        expect(src).not.toMatch(/maxResize/);
       }
     });
 
@@ -785,33 +839,113 @@ describe('Android widget localization contract', () => {
       expect(pluginSrc).not.toMatch(/'android:exported': 'true'/);
     });
 
-    it('restores the classic macro size mode (single 200x200 responsive size)', () => {
-      // The pre-localization SizeMode: one responsive size matching the fixed
-      // 2x2 footprint — NOT resizable, NOT SizeMode.Exact. The water widget
-      // shares the footprint.
-      for (const template of ['MacroWidget.kt.tmpl', 'WaterWidget.kt.tmpl']) {
-        const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
-        expect(src).toMatch(
-          /SizeMode\.Responsive\(\s*setOf\(DpSize\(200\.dp, 200\.dp\)\),?\s*\)/
-        );
+    it('draws every widget at its WidgetSizes steps', () => {
+      const calorieSrc = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'),
+        'utf8'
+      );
+      const macroSrc = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
+        'utf8'
+      );
+      expect(calorieSrc).toContain(
+        'SizeMode.Responsive(WidgetSizes.calorieSizes)'
+      );
+      expect(macroSrc).toContain('SizeMode.Responsive(WidgetSizes.macroSizes)');
+      expect(
+        fs.readFileSync(path.join(KOTLIN_ROOT, 'WaterWidget.kt.tmpl'), 'utf8')
+      ).toContain('SizeMode.Responsive(WidgetSizes.waterSizes)');
+
+      for (const [setName, minimum] of [
+        ['calorieSizes', [110, 40]],
+        ['macroSizes', [110, 110]],
+        ['waterSizes', [110, 40]],
+      ] as const) {
+        const steps = readWidgetSizes(setName);
+        // RemoteViews takes at most 16 sizes, and throws past that.
+        expect(steps.length).toBeLessThanOrEqual(16);
+        // The smallest step is the provider minimum, so a widget at its
+        // minimum size still matches a step.
+        expect(steps).toContainEqual([...minimum]);
+        for (const [width, height] of steps) {
+          expect(width).toBeGreaterThanOrEqual(minimum[0]);
+          expect(height).toBeGreaterThanOrEqual(minimum[1]);
+        }
+        // The launcher picks the closest step that fits; with the larger of
+        // any two steps in the set, that is always the largest step that
+        // fits, never a smaller layout.
+        for (const a of steps) {
+          for (const b of steps) {
+            expect(steps).toContainEqual([
+              Math.max(a[0], b[0]),
+              Math.max(a[1], b[1]),
+            ]);
+          }
+        }
       }
+
+      // A Pixel 2x1 is about 102 dp tall, so the default calorie widget keeps
+      // the classic layout there; the steps that add content are sized for
+      // that content at font scale 1.3 (figures 154 dp), or a little under it
+      // so a HyperOS 4x3 (260 dp) still gets the large macro layout.
+      const calorieHeights = readWidgetSizes('calorieSizes').map(([, h]) => h);
+      expect(calorieHeights).toContain(96);
+      expect(Math.max(...calorieHeights)).toBeGreaterThanOrEqual(154);
+      const macroHeights = readWidgetSizes('macroSizes').map(([, h]) => h);
+      expect(Math.max(...macroHeights)).toBeGreaterThanOrEqual(252);
+      // The classic water layout needs about 132 dp at font scale 1.0, and a
+      // HyperOS 2x2 (167 dp) must keep it at the default size.
+      const waterHeights = readWidgetSizes('waterSizes').map(([, h]) => h);
+      expect(Math.max(...waterHeights)).toBeGreaterThanOrEqual(132);
+      expect(Math.max(...waterHeights)).toBeLessThanOrEqual(167);
     });
 
-    it('never uses SizeMode.Exact, LocalSize.current or size-driven logic in the Glance widgets', () => {
+    it('keeps the classic water layout at its default size and the buttons in every layout', () => {
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'WaterWidget.kt.tmpl'),
+        'utf8'
+      );
+      // Narrow and at least the classic height: the 2x2 composition with its
+      // 14dp padding. One row tall it goes compact, and wide side by side.
+      expect(src).toMatch(
+        /wide -> SideBySide\([\s\S]*short -> Compact\([\s\S]*else -> Column\(modifier = GlanceModifier\.fillMaxWidth\(\)\)/
+      );
+      expect(src).toMatch(/else -> GlanceModifier\.padding\(14\.dp\)/);
+      // One composable draws the − / + pair in all three layouts, so the
+      // greyed-out − and its announcement are the same everywhere.
+      expect([
+        ...src.matchAll(/WaterButtons\(\s*widgetContext = /g),
+      ]).toHaveLength(3);
+      // The short layouts have no room for the status line under the bar: the
+      // status goes under the amount (compact, when tall enough), in its
+      // place (compact, on a shorter row) or in place of the bar (side by
+      // side), so the amount stays wherever it can.
+      expect([
+        ...src.matchAll(/val status = statusRes\(snapshot\)/g),
+      ]).toHaveLength(2);
+      expect(src).toMatch(
+        /if \(status == null \|\| roomForStatus\) \{\s*AmountText\(/
+      );
+      expect(src).toMatch(
+        /roomForStatus = WidgetSizes\.fitsWaterStatusUnderAmount\(size\)/
+      );
+    });
+
+    it('never uses SizeMode.Exact or lambda actions in the Glance widgets', () => {
       for (const template of [
         'CalorieWidget.kt.tmpl',
         'MacroWidget.kt.tmpl',
         'WaterWidget.kt.tmpl',
       ]) {
         const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
-        expect(src).not.toMatch(/import androidx\.glance\.LocalSize/);
-        expect(src).not.toMatch(/LocalSize\.current/);
+        // Exact rebuilds the widget on every resize; with Responsive the
+        // launcher picks among the layouts already sent (Android 12L and up).
         expect(src).not.toMatch(/SizeMode\.Exact/);
-        expect(src).not.toMatch(/size\.width/);
-        expect(src).not.toMatch(/size\.height/);
-        expect(src).not.toMatch(/showActions/);
-        expect(src).not.toMatch(/headingFontSize/);
-        expect(src).not.toMatch(/wide/);
+        // With several sizes each layout is composed separately, so a lambda
+        // action would run once per size.
+        expect(src).not.toMatch(/clickable\s*\{/);
+        expect(src).not.toMatch(/onClick\s*=/);
+        expect(src).not.toMatch(/actionRunBlock/);
       }
     });
 
@@ -829,11 +963,47 @@ describe('Android widget localization contract', () => {
       expect(src).toMatch(/\.height\(8\.dp\)/);
       expect(src).toMatch(/GlanceModifier\.defaultWeight\(\)/);
       expect(src).toMatch(/\.height\(32\.dp\)/);
-      expect(src).toMatch(/\.size\(24\.dp\)/);
+      expect(src).toMatch(/iconSize = 24\.dp/);
       expect(src).toMatch(/\.height\(24\.dp\)/);
-      // Actions are always part of the classic default; no height-based hiding.
-      expect(src).toMatch(/R\.drawable\.ic_widget_search/);
-      expect(src).toMatch(/R\.drawable\.ic_widget_scan/);
+      // Search and scan are in every layout; only Diary depends on the width.
+      expect(src).toMatch(/R\.drawable\.ic_widget_search, contentDescription/);
+      expect(src).toMatch(/R\.drawable\.ic_widget_scan, contentDescription/);
+      expect(src).toMatch(
+        /if \(wide\) \{\s*add\(Shortcut\(diaryIntent, R\.drawable\.ic_widget_diary/
+      );
+    });
+
+    it('shows the calorie figures against the food budget, not the base goal', () => {
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'CalorieWidget.kt.tmpl'),
+        'utf8'
+      );
+      for (const key of ['widget_goal', 'widget_food', 'widget_burned']) {
+        expect(src).toContain(`R.string.${key}`);
+      }
+      // Goal is eaten + remaining, as on the Dashboard; the snapshot's `goal`
+      // leaves out the exercise calories some modes add back. No figures
+      // without a goal, as on the Dashboard.
+      expect(src).toMatch(
+        /figures = if \(goal > 0\.0 && food != null && burned != null\) \{\s*CalorieFigures\(goal = food \+ remaining, food = food, burned = burned\)/
+      );
+      // Only wide and tall enough; the default 2x1 never shows them.
+      expect(src).toMatch(
+        /val figures = snapshot\?\.figures\?\.takeIf \{\s*wide && size\.height >= WidgetSizes\.CALORIE_FIGURES_HEIGHT\s*\}/
+      );
+      // Each label over its own value, in the order Goal, Food, Burned.
+      expect(src).toMatch(
+        /Figure\(context\.getString\(R\.string\.widget_goal\), formatInt\(context, figures\.goal\)\)\s*Figure\(context\.getString\(R\.string\.widget_food\), formatInt\(context, figures\.food\)\)\s*Figure\(context\.getString\(R\.string\.widget_burned\), formatInt\(context, figures\.burned\)\)/
+      );
+      // food and burned are optional, so a snapshot stored by an older app
+      // still reads and just shows no figures.
+      expect(src).toMatch(/val food = obj\.optionalDouble\("food"\)/);
+      expect(src).toMatch(/val burned = obj\.optionalDouble\("burned"\)/);
+      // In the flexible space, so a short widget cuts the figures and keeps
+      // the shortcuts.
+      expect(src).toMatch(
+        /Box\(\s*modifier = GlanceModifier\.defaultWeight\(\)\.fillMaxWidth\(\),[\s\S]{0,200}FiguresRow\(/
+      );
     });
 
     it('keeps the classic macro composition (centered content block, inline rows, actions)', () => {
@@ -859,6 +1029,89 @@ describe('Android widget localization contract', () => {
       expect(src).toMatch(/R\.drawable\.ic_widget_scan/);
       expect(src).toMatch(/\.height\(40\.dp\)/);
       expect(src).not.toMatch(/if \(showActions\)/);
+    });
+
+    it('keeps the grams whole and in the translated unit', () => {
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
+        'utf8'
+      );
+      const row = src.slice(
+        src.indexOf('private fun MacroRow('),
+        src.indexOf(
+          'LinearProgressIndicator(',
+          src.indexOf('private fun MacroRow(')
+        )
+      );
+      // The label takes the width the value leaves, so a long label is cut
+      // and the number is not.
+      expect(row).toMatch(
+        /maxLines = 1,\s*modifier = GlanceModifier\.defaultWeight\(\)/
+      );
+      expect(row).not.toMatch(
+        /Spacer\(modifier = GlanceModifier\.defaultWeight\(\)\)/
+      );
+      // "51 / 150" goes inside the gram string, so "г" or "克" stays.
+      expect(src).toMatch(/R\.string\.widget_amount_of_goal/);
+      expect(src).toMatch(/getString\(R\.string\.widget_grams, amount\)/);
+    });
+
+    it('shows the kcal eaten under the kcal left in the large macro layout', () => {
+      const src = fs.readFileSync(
+        path.join(KOTLIN_ROOT, 'MacroWidget.kt.tmpl'),
+        'utf8'
+      );
+      expect(src).toMatch(/R\.string\.widget_kcal_eaten/);
+      // Wrapped with the header in one column, so the outer column keeps nine
+      // children.
+      expect(src).toMatch(
+        /Column\(modifier = GlanceModifier\.fillMaxWidth\(\)\) \{\s*CalorieHeader\(context = widgetContext, snapshot = snapshot\)\s*EatenLine\(/
+      );
+    });
+
+    it('puts the Diary and fasting shortcuts beside scan, never in a container of their own', () => {
+      for (const template of ['CalorieWidget.kt.tmpl', 'MacroWidget.kt.tmpl']) {
+        const src = fs.readFileSync(path.join(KOTLIN_ROOT, template), 'utf8');
+        const diaries = [...src.matchAll(/R\.drawable\.ic_widget_diary/g)];
+        const fastings = [...src.matchAll(/R\.drawable\.ic_widget_fasting/g)];
+        expect(diaries.length).toBeGreaterThan(0);
+        expect(fastings).toHaveLength(diaries.length);
+        for (const [shortcuts, before] of [
+          [diaries, 'R.drawable.ic_widget_scan'],
+          [fastings, 'R.drawable.ic_widget_diary'],
+        ] as const) {
+          for (const shortcut of shortcuts) {
+            const previous = src.lastIndexOf(before, shortcut.index);
+            expect(previous).toBeGreaterThan(-1);
+            // Glance drops a container's children past the tenth, and the
+            // macro column already has nine: the new shortcuts join the
+            // existing row or column of shortcuts instead of adding one.
+            expect(src.slice(previous, shortcut.index)).not.toMatch(
+              /\b(Row|Column|Box)\(/
+            );
+          }
+        }
+        expect(src).toContain('sparkyfitnessmobile://diary');
+        expect(src).toContain('sparkyfitnessmobile://fasting');
+        expect(src).toMatch(
+          /widgetContext\.getString\(R\.string\.widget_open_diary\)/
+        );
+        expect(src).toMatch(
+          /widgetContext\.getString\(R\.string\.widget_open_fasting\)/
+        );
+      }
+      // The fasting link needs its own entry in the app's linking config, on
+      // the root stack beside the scan and search links (not under Tabs, and
+      // not commented out).
+      const app = fs.readFileSync(
+        path.join(__dirname, '../../App.tsx'),
+        'utf8'
+      );
+      const rootLink = app.match(/^( +)FoodScan: 'scan',$/m);
+      expect(rootLink).not.toBeNull();
+      expect(app).toMatch(
+        new RegExp(`^${rootLink?.[1]}FastingDetail: 'fasting',$`, 'm')
+      );
     });
   });
 

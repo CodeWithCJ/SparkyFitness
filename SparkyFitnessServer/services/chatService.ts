@@ -6,6 +6,7 @@ import {
   getDefaultModel,
   getOpenAiCompatibleBaseUrl,
   getPerplexityPreset,
+  OPENCODE_GO_USER_AGENT,
 } from '../ai/config.js';
 import {
   dispatchAiRequest,
@@ -35,11 +36,13 @@ import {
   SparkyChatHistory,
   SparkyChatHistoryMutator,
   TestAiServiceConnectionRequest,
+  ListOpenCodeGoModelsRequest,
   ChatToolCategorySlug,
   CHAT_TOOL_CATEGORY_SLUGS,
   isChatToolCategorySlug,
   isGpt6Model,
 } from '@workspace/shared';
+import { createHash, randomUUID } from 'node:crypto';
 
 interface ChatMessagePart {
   // AI SDK tool parts arrive as `tool-<toolName>`; only sparky_ask_user is
@@ -54,6 +57,7 @@ interface ChatMessagePart {
   image_url?: { url: string };
   input?: unknown;
   output?: unknown;
+  toolName?: string;
 }
 
 interface ProcessedMessagePart {
@@ -71,6 +75,7 @@ interface ChatMessage {
 
 import {
   APICallError,
+  RetryError,
   generateText,
   streamText,
   stepCountIs,
@@ -540,7 +545,10 @@ async function prepareChatContext(
   latestImageDataUrl?: string | null,
   serviceConfigId?: string | null,
   foodResearchTool?: Tool,
-  latestUserText?: string
+  latestUserText?: string,
+  // Auto mode only: tools held back from this turn's base selection (see
+  // ON_DEMAND_TOOLS). Escalating their category still brings them in.
+  heldBackTools: readonly string[] = []
 ) {
   const { chatTz, customCategoriesList } =
     await chatContextInputsCache.getOrLoad(authenticatedUserId, async () => {
@@ -628,11 +636,13 @@ async function prepareChatContext(
     );
     tools = surface.tools;
     activeToolNames = [
-      ...new Set(
-        [...selectedCategories].flatMap(
-          (slug: ChatToolCategorySlug) => surface.toolNamesByCategory[slug]
-        )
-      ),
+      ...[
+        ...new Set(
+          [...selectedCategories].flatMap(
+            (slug: ChatToolCategorySlug) => surface.toolNamesByCategory[slug]
+          )
+        ),
+      ].filter((name) => !heldBackTools.includes(name)),
       ENABLE_TOOLS_TOOL_NAME,
       // Quick-reply chips: full profile only. The tool belongs to no category,
       // so it is never pulled in by the classifier — it has to be added here.
@@ -772,6 +782,28 @@ export function getSystemPrompt(
     }
   }
 
+  if (categories.has('coaching') && suffix === 'full') {
+    const coachingPath = path.join(
+      __dirname,
+      '../prompts',
+      `chatbot-${suffix}-coaching.md`
+    );
+    if (existsSync(coachingPath)) {
+      content += '\n\n' + readFileSync(coachingPath, 'utf-8').trim();
+    }
+  }
+
+  if (categories.has('exercise') && suffix === 'full') {
+    const exercisePath = path.join(
+      __dirname,
+      '../prompts',
+      `chatbot-${suffix}-exercise.md`
+    );
+    if (existsSync(exercisePath)) {
+      content += '\n\n' + readFileSync(exercisePath, 'utf-8').trim();
+    }
+  }
+
   if (categories.has('vision') && suffix === 'full') {
     const visionPath = path.join(
       __dirname,
@@ -834,7 +866,8 @@ const RETENTION_24H_MODEL_PREFIXES = [
 // OpenAI-compatible services still need the SDK-only systemMessageMode override:
 // reasoning-model IDs otherwise convert Sparky's system prompt to `developer`,
 // which older compatible gateways may not recognize as system instructions.
-// (Anthropic caches on the tools — see ai/tools/index.ts; Gemini auto-caches.)
+// Anthropic gets top-level automatic caching (see buildChatSystem); Gemini
+// auto-caches.
 function buildFoodResearchTool(
   serviceType: string,
   modelName: string,
@@ -853,8 +886,15 @@ export function buildChatProviderOptions(
   modelName: string,
   reasoningEffort: 'low' | 'medium' | 'high' | 'xhigh' | 'max' = 'medium'
 ): Record<string, Record<string, JSONValue>> | undefined {
-  if (serviceType === 'openai_compatible') {
+  if (serviceType === 'openai_compatible' || serviceType === 'opencode_go') {
     return { openai: { systemMessageMode: 'system' } };
+  }
+  if (serviceType === 'anthropic') {
+    // Top-level automatic caching: Anthropic moves this breakpoint to the last
+    // block of every request, so each agent step reads the previous step's
+    // prefix (tools, system prompt, history and tool results) from cache
+    // instead of paying full price for it again.
+    return { anthropic: { cacheControl: { type: 'ephemeral' } } };
   }
   if (serviceType !== 'openai') return undefined;
   const openai: Record<string, JSONValue> = {
@@ -869,6 +909,22 @@ export function buildChatProviderOptions(
     openai.promptCacheRetention = '24h';
   }
   return { openai };
+}
+
+// The chat system prompt as the AI SDK `system` option. For Anthropic it
+// carries its own cache breakpoint, so a new turn (whose history differs from
+// the last cached step) still reads tools + system prompt from cache. With the
+// tool-block marker and the automatic one this is 3 of Anthropic's 4
+// breakpoints.
+export function buildChatSystem(serviceType: string, content: string) {
+  if (serviceType !== 'anthropic') return content;
+  return {
+    role: 'system' as const,
+    content,
+    providerOptions: {
+      anthropic: { cacheControl: { type: 'ephemeral' as const } },
+    },
+  };
 }
 
 interface LlmMessage {
@@ -1016,6 +1072,58 @@ function extractTextFromAgentOutput(output: unknown): string | null {
   }
 
   return texts.length > 0 ? texts.join('\n\n') : null;
+}
+
+// OpenRouter caches Claude only when asked. Other OpenRouter models cache on
+// their own, and a plain OpenAI-compatible server (Ollama, vLLM, LM Studio)
+// may reject unknown fields, so only Claude models on openrouter.ai get the
+// markers. Also covers a custom service pointed at OpenRouter.
+function wantsOpenRouterCacheControl(
+  baseURL: string | undefined,
+  modelName: string
+): boolean {
+  if (!baseURL || !/claude/i.test(modelName)) return false;
+  try {
+    return new URL(baseURL).hostname === 'openrouter.ai';
+  } catch {
+    return false;
+  }
+}
+
+// The OpenAI chat adapter has no passthrough for request fields, so the cache
+// hints are added to the body here. The top-level cache_control is automatic
+// caching (the breakpoint follows the last block, so each agent step reads the
+// one before it); the one on the system message keeps tools + system prompt
+// cached across turns, mirroring buildChatSystem on the direct Anthropic path.
+function createOpenRouterCacheFetch(baseFetch?: typeof fetch): typeof fetch {
+  return async (input, init) => {
+    const send = baseFetch ?? fetch;
+    if (typeof init?.body !== 'string') return send(input, init);
+    let body: {
+      messages?: Array<{ role?: string; content?: unknown }>;
+      cache_control?: unknown;
+    };
+    try {
+      body = JSON.parse(init.body);
+    } catch {
+      return send(input, init);
+    }
+    if (!Array.isArray(body.messages)) return send(input, init);
+    body.cache_control = { type: 'ephemeral' };
+    const system = body.messages.find(
+      (m) => m.role === 'system' || m.role === 'developer'
+    );
+    if (system && typeof system.content === 'string') {
+      system.content = [
+        {
+          type: 'text',
+          text: system.content,
+          cache_control: { type: 'ephemeral' },
+        },
+      ];
+    }
+    return send(input, { ...init, body: JSON.stringify(body) });
+  };
 }
 
 function createPerplexityFetch(baseFetch: typeof fetch = fetch): typeof fetch {
@@ -1425,7 +1533,8 @@ function createPerplexityFetch(baseFetch: typeof fetch = fetch): typeof fetch {
 function createChatModelInstance(
   aiService: ChatAiServiceConfig,
   modelName: string,
-  networkPolicy: AiNetworkPolicy
+  networkPolicy: AiNetworkPolicy,
+  sessionId: string = randomUUID()
 ): Parameters<typeof generateText>[0]['model'] {
   const apiKey = aiService.api_key ?? undefined;
 
@@ -1441,6 +1550,7 @@ function createChatModelInstance(
   if (
     aiService.service_type === 'ollama' ||
     aiService.service_type === 'openai_compatible' ||
+    aiService.service_type === 'opencode_go' ||
     aiService.service_type === 'custom' ||
     aiService.service_type === 'mistral' ||
     aiService.service_type === 'groq' ||
@@ -1465,6 +1575,12 @@ function createChatModelInstance(
     const providerOptions: Parameters<typeof createOpenAI>[0] = {
       baseURL,
       apiKey: apiKey || 'no-key',
+      ...(aiService.service_type === 'opencode_go' && {
+        headers: {
+          'x-opencode-session': sessionId,
+          'User-Agent': OPENCODE_GO_USER_AGENT,
+        },
+      }),
     };
     if (aiService.service_type === 'perplexity') {
       const baseFetch = requiresUserSuppliedAiUrl(aiService.service_type)
@@ -1473,6 +1589,9 @@ function createChatModelInstance(
       providerOptions.fetch = createPerplexityFetch(baseFetch);
     } else if (requiresUserSuppliedAiUrl(aiService.service_type)) {
       providerOptions.fetch = createGuardedFetch(networkPolicy);
+    }
+    if (wantsOpenRouterCacheControl(baseURL, modelName)) {
+      providerOptions.fetch = createOpenRouterCacheFetch(providerOptions.fetch);
     }
     return createOpenAI(providerOptions).chat(modelName);
   }
@@ -1519,6 +1638,7 @@ async function runWithTemperatureFallback<T>(
 // into user-facing detail), but bounded so a verbose provider cannot flood the
 // log.
 const MAX_LOGGED_ERROR_CHARS = 300;
+const MAX_CLIENT_ERROR_CHARS = 500;
 
 /**
  * Renders a provider error as a log-safe one-liner.
@@ -1542,6 +1662,24 @@ function describeProviderError(error: unknown): string {
     return `${error.name}: ${truncate(error.message)}`;
   }
   return 'unknown error';
+}
+
+/**
+ * The text a chat client receives when a stream fails. The AI SDK replaces
+ * every stream error with a generic message unless told otherwise. A provider's
+ * own API error message is what the user needs to act on (for example, a model
+ * that needs an account setting changed), so it is passed through. Anything
+ * else stays generic.
+ */
+function chatStreamErrorMessage(error: unknown): string {
+  const apiError = RetryError.isInstance(error) ? error.lastError : error;
+  if (APICallError.isInstance(apiError) && apiError.message.trim()) {
+    const text = apiError.message.trim();
+    return text.length > MAX_CLIENT_ERROR_CHARS
+      ? `${text.slice(0, MAX_CLIENT_ERROR_CHARS)}…`
+      : text;
+  }
+  return 'The AI service could not complete the request.';
 }
 
 /**
@@ -1802,7 +1940,7 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
   {
     category: 'exercise',
     keywords:
-      /\b(run|ran|running|walk|walked|walking|jog|jogged|jogging|lift|lifted|lifting|workout|workouts|exercise|exercises|reps|sets|cardio|strength|gym|heart rate|bpm|treadmill|squats?|bench press|swim|swam|swimming|bike|biking|cycling|cycled|yoga|hike[ds]?|hiking|steps|push-?ups?|pull-?ups?|training|trained|worked out|personal\s+record\w*|best\s+effort\w*|matched\s+course\w*|pace\s+record\w*|workout\s+plan\w*|workout\s+template\w*|training\s+plan\w*|training\s+program\w*)\b/i,
+      /\b(run|ran|running|walk|walked|walking|jog|jogged|jogging|lift|lifted|lifting|workout|workouts|exercise|exercises|reps|sets|cardio|strength|gym|heart rate|bpm|treadmill|squats?|bench press|swim|swam|swimming|bike|biking|cycling|cycled|yoga|hike[ds]?|hiking|steps|push-?ups?|pull-?ups?|training|trained|worked out|personal\s+record\w*|best\s+effort\w*|matched\s+course\w*|pace\s+record\w*|workout\s+plan\w*|workout\s+template\w*|training\s+plan\w*|training\s+program\w*|stalled|stalling|plateau\w*|1rm|one[- ]rep max)\b/i,
   },
   {
     category: 'food',
@@ -1827,7 +1965,7 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
   {
     category: 'coaching',
     keywords:
-      /\b(advice|advise|tips?|motivat\w*|recommend\w*|suggest\w*|coach(?:ing)?|plan)\b/i,
+      /\b(advice|advise|tips?|motivat\w*|recommend\w*|suggest\w*|coach(?:ing)?|plan|recalibrat\w*|maintenance calories|tdee)\b/i,
   },
   {
     category: 'vision',
@@ -1839,6 +1977,42 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
       /\b(profile|habit|habits|preference|preferences|settings|timezone|unit|units|integration\w*|connected\s+(app|service|device|provider)\w*|external\s+provider\w*|wearable\w*|garmin|withings|fitbit|oura|polar|coros|strava|hevy|synced\s+data|delete\s+synced|imported\s+data)\b/i,
   },
 ];
+
+// Large tools that only some requests in their category need. In auto mode
+// each stays out of the request until a user message in the conversation
+// matches its keywords or an earlier step already called it, so plain food
+// logging doesn't resend their schemas on every step. Both signals only grow
+// as the chat goes on, so a tool never drops out again mid-conversation (which
+// would invalidate the cached tool block). sparky_enable_tools with the tool's
+// category brings it in for anything the keywords miss.
+const ON_DEMAND_TOOLS: { tool: string; keywords: RegExp }[] = [
+  {
+    tool: 'sparky_food_assistant_state',
+    keywords:
+      /\b(recipes?|ingredients?|meal\s*plan\w*|plan\w*|import\w*|shopping|grocer\w*|prefer\w*|remember\w*|forget|always|never|tasks?|resume|continue|drafts?|bulk|entries)\b/i,
+  },
+  {
+    tool: 'sparky_get_caffeine_kinetics',
+    keywords:
+      /\b(caffeine|coffee|espresso|latte|cappuccino|tea|energy\s+drinks?|cola|bedtime|sleep|half-?life)\b/i,
+  },
+];
+
+// Exported for unit testing.
+export function heldBackChatTools(messages: ChatMessage[]): string[] {
+  const userText = messages
+    .filter((m) => m.role === 'user')
+    .map(extractMessageText)
+    .join('\n');
+  const parts = messages.flatMap((m) =>
+    Array.isArray(m.parts) ? m.parts : Array.isArray(m.content) ? m.content : []
+  );
+  return ON_DEMAND_TOOLS.filter(
+    ({ tool, keywords }) =>
+      !keywords.test(userText) &&
+      !parts.some((p) => p.type === `tool-${tool}` || p.toolName === tool)
+  ).map(({ tool }) => tool);
+}
 
 function extractMessageText(msg: ChatMessage): string {
   const partsSource = Array.isArray(msg.parts)
@@ -2009,13 +2183,28 @@ Your response must contain ONLY the matched domain names as a comma-separated li
   return [];
 }
 
+/**
+ * Stable per-conversation session ID for providers that pin a conversation to
+ * one server-side session (OpenCode Go's x-opencode-session affinity header).
+ * Without a client-supplied conversation ID each turn gets a fresh session.
+ */
+function buildChatSessionId(
+  authenticatedUserId: string,
+  conversationId?: string
+): string {
+  return createHash('sha256')
+    .update(`${authenticatedUserId}:${conversationId?.trim() || randomUUID()}`)
+    .digest('hex');
+}
+
 async function processChatMessage(
   messages: ChatMessage[],
   serviceConfigId: string,
   userId: string,
   authenticatedUserId: string,
   actorIsAdmin = false,
-  toolCategories?: readonly string[]
+  toolCategories?: readonly string[],
+  conversationId?: string
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -2045,11 +2234,13 @@ async function processChatMessage(
     const modelName =
       aiService.model_name || getDefaultModel(aiService.service_type);
     const networkPolicy = await resolveAiNetworkPolicy(aiService, actorIsAdmin);
+    const sessionId = buildChatSessionId(authenticatedUserId, conversationId);
 
     const modelInstance = createChatModelInstance(
       aiService,
       modelName,
-      networkPolicy
+      networkPolicy,
+      sessionId
     );
 
     // A non-empty toolCategories here is the user's explicit in-chat selection
@@ -2098,7 +2289,8 @@ async function processChatMessage(
           role: 'user',
           content: '',
         }
-      )
+      ),
+      heldBackChatTools(messages)
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -2125,7 +2317,7 @@ async function processChatMessage(
       (sendTemperature) =>
         generateText({
           model: modelInstance,
-          system: systemPromptContent,
+          system: buildChatSystem(aiService.service_type, systemPromptContent),
           messages: llmMessages as NonNullable<
             Parameters<typeof generateText>[0]['messages']
           >,
@@ -2362,12 +2554,14 @@ const TEST_CONNECTION_PROMPT = 'Reply with the single word: OK.';
 // for the 90s/120s dispatch defaults. Retry behavior is safe: only HTTP 429 is
 // retried; timeouts and 401/403 return immediately.
 const TEST_CONNECTION_TIMEOUT_MS = 15_000;
+const OPENCODE_GO_MODELS_URL = 'https://opencode.ai/inference/go/v1/models';
 // Types without preset models point at user-hosted servers with no reliable
 // default, so a blank effective model would let dispatch substitute a
 // meaningless getDefaultModel default the UI never intends.
 const NO_PRESET_SERVICE_TYPES = new Set([
   'ollama',
   'openai_compatible',
+  'opencode_go',
   'custom',
 ]);
 
@@ -2486,6 +2680,98 @@ async function testAiServiceConnection(
   }
   return { ok: true };
 }
+
+async function listOpenCodeGoModels(
+  payload: ListOpenCodeGoModelsRequest,
+  userId: string,
+  isAdmin: boolean
+): Promise<{ models: string[] }> {
+  let apiKey = payload.api_key?.trim() || undefined;
+
+  if (payload.id && !apiKey) {
+    const stored = await chatRepository.getDecryptedAiServiceSettingById(
+      payload.id,
+      userId
+    );
+    if (stored) {
+      if (stored.is_public && !isAdmin) {
+        throw statusError(
+          'Only administrators can access global AI service credentials.',
+          403
+        );
+      }
+      if (stored.service_type === 'opencode_go') {
+        apiKey = stored.api_key ?? undefined;
+      }
+    }
+  }
+
+  if (!apiKey) {
+    throw statusError(
+      'An OpenCode Go API key is required to load models.',
+      400
+    );
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(OPENCODE_GO_MODELS_URL, {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        Accept: 'application/json',
+        'x-opencode-session': randomUUID(),
+        'User-Agent': OPENCODE_GO_USER_AGENT,
+      },
+      signal: AbortSignal.timeout(TEST_CONNECTION_TIMEOUT_MS),
+    });
+  } catch {
+    throw statusError('Could not reach the OpenCode Go models endpoint.', 502);
+  }
+
+  if (!response.ok) {
+    throw statusError(
+      `OpenCode Go model listing failed (HTTP ${response.status}).`,
+      502
+    );
+  }
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw statusError('OpenCode Go returned an invalid models response.', 502);
+  }
+
+  if (!body || typeof body !== 'object') {
+    throw statusError('OpenCode Go returned an invalid models response.', 502);
+  }
+
+  const modelData = body as { data?: unknown; models?: unknown };
+  const items = Array.isArray(modelData.data)
+    ? modelData.data
+    : Array.isArray(modelData.models)
+      ? modelData.models
+      : null;
+  if (!items) {
+    throw statusError('OpenCode Go returned an invalid models response.', 502);
+  }
+
+  const models = items
+    .map((item: unknown) => {
+      if (typeof item === 'string') return item.trim();
+      if (!item || typeof item !== 'object') return '';
+      const record = item as { id?: unknown; name?: unknown };
+      const id = typeof record.id === 'string' ? record.id : record.name;
+      return typeof id === 'string' ? id.trim() : '';
+    })
+    .filter((model: string) => model.length > 0);
+
+  return {
+    models: [...new Set(models)].sort((left, right) =>
+      left.localeCompare(right)
+    ),
+  };
+}
 const EMPTY_TOOL_RESPONSE_TEXT =
   'Tools ran, but the AI service returned no summary. Check your diary and saved changes before retrying.';
 const EMPTY_RESPONSE_ERROR_TEXT =
@@ -2554,7 +2840,8 @@ async function processChatMessageStream(
   userId: string,
   authenticatedUserId: string,
   actorIsAdmin = false,
-  toolCategories?: readonly string[]
+  toolCategories?: readonly string[],
+  conversationId?: string
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -2574,6 +2861,7 @@ async function processChatMessageStream(
     const modelName =
       aiService.model_name || getDefaultModel(aiService.service_type);
     const networkPolicy = await resolveAiNetworkPolicy(aiService, actorIsAdmin);
+    const sessionId = buildChatSessionId(authenticatedUserId, conversationId);
 
     log(
       'info',
@@ -2583,7 +2871,8 @@ async function processChatMessageStream(
     const modelInstance = createChatModelInstance(
       aiService,
       modelName,
-      networkPolicy
+      networkPolicy,
+      sessionId
     );
 
     // A non-empty toolCategories here is the user's explicit in-chat selection
@@ -2633,7 +2922,8 @@ async function processChatMessageStream(
           role: 'user',
           content: '',
         }
-      )
+      ),
+      heldBackChatTools(messages)
     );
 
     const chatProviderOptions = buildChatProviderOptions(
@@ -2659,7 +2949,7 @@ async function processChatMessageStream(
 
     const result = streamText({
       model: modelInstance,
-      system: systemPromptContent,
+      system: buildChatSystem(aiService.service_type, systemPromptContent),
       messages: llmMessages as NonNullable<
         Parameters<typeof streamText>[0]['messages']
       >,
@@ -2828,6 +3118,7 @@ async function processChatMessageStream(
             part.type === 'finish'
               ? mapUsageToMetadata(part.totalUsage)
               : undefined,
+          onError: chatStreamErrorMessage,
         })
       ),
     };
@@ -2854,8 +3145,11 @@ export { saveSparkyChatHistory };
 export { processChatMessage };
 export { processFoodOptionsRequest };
 export { testAiServiceConnection };
+export { listOpenCodeGoModels };
 export { processChatMessageStream };
+export { chatStreamErrorMessage };
 export { createPerplexityFetch };
+export { createChatModelInstance };
 export default {
   handleAiServiceSettings,
   getAiServiceSettings,
@@ -2871,6 +3165,7 @@ export default {
   processChatMessage,
   processFoodOptionsRequest,
   testAiServiceConnection,
+  listOpenCodeGoModels,
   processChatMessageStream,
   createPerplexityFetch,
 };

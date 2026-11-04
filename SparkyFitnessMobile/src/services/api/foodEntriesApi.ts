@@ -3,6 +3,8 @@ import type { FoodEntry } from '../../types/foodEntries';
 import type {
   CopyReviewedFoodEntriesFromUserPayload,
   CopySelectedFoodEntriesFromUserPayload,
+  CopyReviewedFoodEntriesToUserPayload,
+  CopySelectedFoodEntriesToUserPayload,
 } from '@workspace/shared';
 
 export interface CreateFoodEntryPayload {
@@ -188,6 +190,30 @@ export const copySelectedFoodEntriesFromUser = async (
     endpoint: '/api/food-entries/copy-selected-from-user',
     serviceName: 'Food Entries API',
     operation: 'copy selected food entries from family user',
+    method: 'POST',
+    body: payload,
+  });
+};
+
+export const copyReviewedFoodEntriesToUser = async (
+  payload: CopyReviewedFoodEntriesToUserPayload
+): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint: '/api/food-entries/copy-reviewed-to-user',
+    serviceName: 'Food Entries API',
+    operation: 'copy reviewed food entries to family user',
+    method: 'POST',
+    body: payload,
+  });
+};
+
+export const copySelectedFoodEntriesToUser = async (
+  payload: CopySelectedFoodEntriesToUserPayload
+): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint: '/api/food-entries/copy-selected-to-user',
+    serviceName: 'Food Entries API',
+    operation: 'copy selected food entries to family user',
     method: 'POST',
     body: payload,
   });

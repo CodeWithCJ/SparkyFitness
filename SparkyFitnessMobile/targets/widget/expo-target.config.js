@@ -47,6 +47,8 @@ module.exports = (config) => {
   return {
     type: 'widget',
     name: 'CalorieTracker',
+    // Dev builds read "DevSparkyFitness" so they differ from the production app.
+    ...(isDev ? { displayName: 'DevSparkyFitness' } : {}),
     bundleIdentifier: isDev
       ? `${DEV_BUNDLE_IDENTIFIER}.widget`
       : 'com.SparkyApps.SparkyFitnessMobile.widget',

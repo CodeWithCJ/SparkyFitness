@@ -44,6 +44,7 @@ const rules: CalorieRules = {
   activity_level: 'not_much',
   use_external_bmr: false,
   include_bmr_in_net_calories: false,
+  adjust_macros_with_exercise: false,
 };
 
 const row = (
@@ -191,8 +192,8 @@ describe('goal for a day before a settings change', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(
-      weeklyGoalPlanRepository.getActiveWeeklyGoalPlan
-    ).mockResolvedValue(null);
+      weeklyGoalPlanRepository.getActiveWeeklyGoalPlansInRange
+    ).mockResolvedValue([]);
     vi.mocked(goalRepository.getGoalsInRange).mockResolvedValue([]);
     vi.mocked(goalRepository.getMostRecentGoalBeforeDate).mockResolvedValue({
       calories: 2200,

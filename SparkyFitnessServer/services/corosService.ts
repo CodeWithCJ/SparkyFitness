@@ -32,19 +32,10 @@ import {
   type CorosToolCallResult,
 } from '../integrations/coros/corosMcpText.js';
 import { getExistingSourceIds } from '../models/exerciseEntry.js';
-
-// In-process daily FIT download budget tracker keyed by userId/external_user_id
-const fitBudgetMap = new Map<string, { day: string; used: number }>();
-
-function getFitBudget(key: string): { day: string; used: number } {
-  const todayUtc = new Date().toISOString().slice(0, 10);
-  let budget = fitBudgetMap.get(key);
-  if (!budget || budget.day !== todayUtc) {
-    budget = { day: todayUtc, used: 0 };
-    fitBudgetMap.set(key, budget);
-  }
-  return budget;
-}
+import {
+  reserveFitDownload,
+  releaseFitDownload,
+} from '../models/corosFitBudgetRepository.js';
 
 function formatDateYmd(dateStr: string): string {
   return dateStr.replace(/-/g, '');
@@ -117,6 +108,8 @@ export async function syncCorosData(
   let skippedExisting = 0;
   let deferred = 0;
   let summaryOnly = 0;
+  let activitiesFailed = 0;
+  const failedRequiredFetches: string[] = [];
   const recordsMap = new Map<string, CorosSportRecord>();
 
   // --- REPLAY BRANCH ---
@@ -202,6 +195,8 @@ export async function syncCorosData(
       skippedExisting,
       deferred,
       summaryOnly,
+      activitiesFailed,
+      failedRequiredFetches,
       warnings,
     };
   }
@@ -209,7 +204,6 @@ export async function syncCorosData(
   // --- LIVE API BRANCH ---
   const client = await getSystemClient();
   let finalProviderId: string;
-  let externalUserId = '';
   try {
     let q =
       'SELECT id, external_user_id, encrypted_access_token, encrypted_refresh_token, is_active FROM external_data_providers WHERE user_id = $1 AND provider_type = $2';
@@ -245,6 +239,8 @@ export async function syncCorosData(
           skippedExisting: 0,
           deferred: 0,
           summaryOnly: 0,
+          activitiesFailed: 0,
+          failedRequiredFetches: [],
           warnings: [],
         };
       }
@@ -269,6 +265,8 @@ export async function syncCorosData(
           skippedExisting: 0,
           deferred: 0,
           summaryOnly: 0,
+          activitiesFailed: 0,
+          failedRequiredFetches: [],
           warnings: [],
         };
       }
@@ -277,7 +275,6 @@ export async function syncCorosData(
       );
     }
     finalProviderId = row.id;
-    externalUserId = row.external_user_id || '';
   } finally {
     client.release();
   }
@@ -294,6 +291,7 @@ export async function syncCorosData(
         const startYmd = formatDateYmd(winStart);
         const endYmd = formatDateYmd(winEnd);
         const captureKey = `raw_sport_records_${startYmd}_${endYmd}`;
+        const fetchName = `querySportRecords ${winStart}..${winEnd}`;
 
         const result = await call(
           'querySportRecords',
@@ -322,6 +320,9 @@ export async function syncCorosData(
               warnings.push(
                 `Warning from COROS query (${winStart} - ${winEnd}): ${err}`
               );
+              if (!failedRequiredFetches.includes(fetchName)) {
+                failedRequiredFetches.push(fetchName);
+              }
               continue;
             }
             const { records, returnedCount } = parseSportRecords(payload.text);
@@ -353,6 +354,13 @@ export async function syncCorosData(
               }
             }
           }
+        }
+        // isError can arrive without a text report, which the loop never checks.
+        if (result.isError && !failedRequiredFetches.includes(fetchName)) {
+          warnings.push(
+            `Warning from COROS query (${winStart} - ${winEnd}): COROS tool returned isError=true`
+          );
+          failedRequiredFetches.push(fetchName);
         }
         return windowRecords;
       };
@@ -398,9 +406,7 @@ export async function syncCorosData(
         }
       }
 
-      // Track FIT budget
-      const budgetKey = externalUserId || userId;
-      const budget = getFitBudget(budgetKey);
+      let budgetSpent = false;
       let hitDailyLimit = false;
 
       // Sort records newest first
@@ -418,11 +424,22 @@ export async function syncCorosData(
           continue;
         }
 
-        if (hitDailyLimit || budget.used >= COROS_FIT_BUDGET_PER_DAY) {
+        if (hitDailyLimit || budgetSpent) {
           deferred++;
           continue;
         }
 
+        const reserved = await reserveFitDownload(
+          finalProviderId!,
+          COROS_FIT_BUDGET_PER_DAY
+        );
+        if (!reserved) {
+          budgetSpent = true;
+          deferred++;
+          continue;
+        }
+
+        let downloaded = false;
         try {
           const captureKey = `raw_fit_${record.labelId}`;
           const fitResult = await call(
@@ -434,7 +451,10 @@ export async function syncCorosData(
             captureKey
           );
 
-          budget.used++;
+          downloaded = true;
+          if (reserved.used >= COROS_FIT_BUDGET_PER_DAY) {
+            budgetSpent = true;
+          }
 
           const fitResources = extractFitResources(fitResult);
           if (fitResources.length > 0) {
@@ -510,11 +530,33 @@ export async function syncCorosData(
             );
           }
         } catch (err) {
+          if (!downloaded) {
+            await releaseFitDownload(finalProviderId!, reserved.day).catch(
+              (releaseErr) =>
+                log(
+                  'warn',
+                  `Could not return COROS FIT download budget for ${record.labelId}: ${releaseErr}`
+                )
+            );
+          }
           if (
             err instanceof CorosReauthRequiredError ||
             (err as { name?: string })?.name === 'CorosReauthRequiredError'
           ) {
             throw err;
+          }
+          // After a finished download only reading the file and saving the entry
+          // can throw, and saving is the last step, so no entry was stored.
+          if (downloaded) {
+            log(
+              'error',
+              `Failed to save COROS activity ${record.labelId} (${record.name}): ${err}`
+            );
+            activitiesFailed++;
+            warnings.push(
+              `Failed to save ${record.name} (${record.date}); it will be retried on the next sync.`
+            );
+            continue;
           }
           log(
             'warn',
@@ -527,10 +569,7 @@ export async function syncCorosData(
         }
       }
 
-      if (
-        (hitDailyLimit || budget.used >= COROS_FIT_BUDGET_PER_DAY) &&
-        deferred > 0
-      ) {
+      if ((hitDailyLimit || budgetSpent) && deferred > 0) {
         warnings.push(
           'Daily COROS file download limit reached. Remaining activities will be imported after the limit resets (next UTC day).'
         );
@@ -618,17 +657,32 @@ export async function syncCorosData(
     }
   );
 
-  // Update last_sync_at timestamp
-  const updateClient = await getSystemClient();
-  try {
-    await updateClient.query(
-      `UPDATE external_data_providers
-       SET last_sync_at = NOW(), updated_at = NOW()
-       WHERE id = $1`,
-      [finalProviderId]
+  // Update last_sync_at, unless a records query or an activity's entry failed or
+  // a download was deferred: the scheduler reads it to decide when a daily sync
+  // is due, and a deferred activity has no entry yet and would otherwise leave
+  // the sync window before the next daily run. It cannot block for good, because
+  // a scheduled sync only looks at yesterday and today.
+  if (
+    failedRequiredFetches.length === 0 &&
+    activitiesFailed === 0 &&
+    deferred === 0
+  ) {
+    const updateClient = await getSystemClient();
+    try {
+      await updateClient.query(
+        `UPDATE external_data_providers
+         SET last_sync_at = NOW(), updated_at = NOW()
+         WHERE id = $1`,
+        [finalProviderId]
+      );
+    } finally {
+      updateClient.release();
+    }
+  } else {
+    log(
+      'warn',
+      `[corosService] COROS sync for user ${userId} is incomplete (failed required fetches: ${failedRequiredFetches.join(', ') || 'none'}; failed activities: ${activitiesFailed}; deferred downloads: ${deferred}); last_sync_at not updated.`
     );
-  } finally {
-    updateClient.release();
   }
 
   return {
@@ -641,6 +695,8 @@ export async function syncCorosData(
     skippedExisting,
     deferred,
     summaryOnly,
+    activitiesFailed,
+    failedRequiredFetches,
     warnings,
   };
 }

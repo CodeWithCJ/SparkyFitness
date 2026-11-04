@@ -1,4 +1,4 @@
-import type { RecordedPoint, RecordingActivity } from './gpsRecording';
+import type { RecordedPoint, DiaryActivity } from './gpsRecording';
 import { appleWorkoutZonesFromWire } from '@workspace/shared';
 
 /**
@@ -11,7 +11,7 @@ export interface WatchRunPayload {
   clientId: string;
   /** Server config id that was active when the run was accepted on the phone. */
   ownerId?: string;
-  kind: 'walk' | 'run';
+  kind: 'walk' | 'run' | 'jumpRope';
   place: 'indoor' | 'outdoor';
   /** Epoch ms. */
   startedAt: number;
@@ -71,7 +71,9 @@ export function parseWatchRunPayload(raw: unknown): WatchRunPayload | null {
   if (!raw || typeof raw !== 'object') return null;
   const p = raw as Record<string, unknown>;
   if (typeof p.clientId !== 'string' || p.clientId.length === 0) return null;
-  if (p.kind !== 'walk' && p.kind !== 'run') return null;
+  if (p.kind !== 'walk' && p.kind !== 'run' && p.kind !== 'jumpRope') {
+    return null;
+  }
   if (p.place !== 'indoor' && p.place !== 'outdoor') return null;
   if (!finite(p.startedAt) || !finite(p.endedAt) || p.endedAt < p.startedAt) {
     return null;
@@ -130,7 +132,7 @@ export function parseWatchRunPayload(raw: unknown): WatchRunPayload | null {
   };
 }
 
-export function watchRunActivity(payload: WatchRunPayload): RecordingActivity {
+export function watchRunActivity(payload: WatchRunPayload): DiaryActivity {
   return payload.kind;
 }
 

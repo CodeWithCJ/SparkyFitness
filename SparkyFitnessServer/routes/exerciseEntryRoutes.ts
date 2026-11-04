@@ -290,6 +290,8 @@ router.get('/by-date', authenticate, async (req, res, next) => {
  *         description: Invalid request body or exercise ID.
  *       403:
  *         description: User does not have permission to create an exercise entry.
+ *       404:
+ *         description: Exercise not found.
  *       500:
  *         description: Failed to create exercise entry.
  */
@@ -513,6 +515,8 @@ router.post(
  *                 $ref: '#/components/schemas/ExerciseEntry'
  *       403:
  *         description: User does not have permission to log this workout.
+ *       404:
+ *         description: Exercise not found.
  *       500:
  *         description: Failed to log workout from plan.
  */
@@ -735,7 +739,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
  *       403:
  *         description: User does not have permission to update this exercise entry.
  *       404:
- *         description: Exercise entry not found.
+ *         description: Exercise entry or exercise not found.
  *       500:
  *         description: Failed to update exercise entry.
  */
@@ -817,6 +821,17 @@ router.put(
       return res.status(400).json({
         error: 'Exercise Entry ID is required and must be a valid UUID.',
       });
+    }
+    // Checked here because the database would reject it as a server error.
+    if (
+      updateData.exercise_id !== undefined &&
+      updateData.exercise_id !== null &&
+      (typeof updateData.exercise_id !== 'string' ||
+        !uuidRegex.test(updateData.exercise_id))
+    ) {
+      return res
+        .status(400)
+        .json({ error: 'Exercise ID must be a valid UUID.' });
     }
     // @ts-expect-error TS(2339): Property 'file' does not exist on type 'Request<{ ... Remove this comment to see the full error message
     if (req.file) {

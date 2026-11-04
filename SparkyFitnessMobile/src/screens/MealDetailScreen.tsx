@@ -11,6 +11,7 @@ import { NoteMarkdown } from '../components/NoteMarkdown';
 import { usableFoodImages } from '../utils/foodImages';
 import SegmentedControl from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import {
   useDeleteMeal,
@@ -129,7 +130,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
   const textMuted = useCSSVariable('--color-text-muted') as string;
   const [viewMode, setViewMode] = useState<ViewMode>('perServing');
 
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { isConnected } = useServerConnection();
   const { profile } = useProfile();
   const { preferences } = usePreferences({ enabled: isConnected });
   const showNetCarbs = preferences?.show_net_carbs === true;
@@ -281,31 +282,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
   });
 
   const renderContent = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          iconSize={64}
-          title={t('mealDetail.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('mealDetail.configureServer', {
-            defaultValue:
-              'Configure your server connection in Settings to view meal details.',
-          })}
-          action={{
-            label: t('screens.library.goToSettings', {
-              defaultValue: 'Go to Settings',
-            }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
-
-    if ((isLoading || isConnectionLoading) && !meal) {
+    if (isLoading && !meal) {
       return (
         <StatusView
           loading
@@ -549,13 +526,13 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
   // attaches the large-title collapse to a scroll view it finds at the top of
   // the screen, so wrapping it in another View breaks the inset + collapse.
   if (usesNativeHeader) {
-    return renderContent();
+    return <ServerGate>{renderContent()}</ServerGate>;
   }
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       {header}
-      {renderContent()}
+      <ServerGate>{renderContent()}</ServerGate>
     </View>
   );
 };

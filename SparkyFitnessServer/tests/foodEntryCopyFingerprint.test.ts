@@ -1,10 +1,40 @@
 import { describe, expect, it } from 'vitest';
 import {
+  copyFingerprintFor,
   foodEntryCopyFingerprint,
   hasExactReviewedFoodEntrySnapshot,
 } from '@workspace/shared';
 
 describe('foodEntryCopyFingerprint', () => {
+  it.each([undefined, 'to-user'] as const)(
+    'checks snapshot changes using the %s copy contract',
+    (version) => {
+      const fingerprint = copyFingerprintFor(version);
+      const source = { id: 'entry', quantity: 100, notes: 'Before' };
+      const reviewed = [
+        { entryId: source.id, sourceFingerprint: fingerprint(source) },
+      ];
+
+      expect(
+        hasExactReviewedFoodEntrySnapshot([source], reviewed, fingerprint)
+      ).toBe(true);
+      expect(
+        hasExactReviewedFoodEntrySnapshot(
+          [{ ...source, notes: 'After' }],
+          reviewed,
+          fingerprint
+        )
+      ).toBe(version === undefined);
+      expect(
+        hasExactReviewedFoodEntrySnapshot(
+          [{ ...source, quantity: 200 }],
+          reviewed,
+          fingerprint
+        )
+      ).toBe(false);
+    }
+  );
+
   it('normalizes database numeric strings and custom nutrient key order', () => {
     const left = foodEntryCopyFingerprint({
       quantity: '150',

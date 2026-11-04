@@ -8,6 +8,8 @@ import Icon, { type IconName } from '../components/Icon';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { startGuidedCheckIn } from '../hooks/useGuidedCheckIn';
+import { useWatchConnectivity } from '../hooks/useWatchConnectivity';
 import { getTodayDate } from '../utils/dateUtils';
 import { canUseLiquidGlass } from '../utils/liquidGlass';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -376,183 +378,299 @@ const PhotoMockup: React.FC = () => {
   );
 };
 
-const CycleMockup: React.FC = () => {
-  const { t } = useTranslation();
-  const [catPink, textSecondary] = useCSSVariable([
-    '--color-cat-pink',
+type StatCardMockupProps = {
+  colorVariable: string;
+  icon: IconName;
+  title: string;
+  badge: string;
+  left: string;
+  right: string;
+};
+
+const StatCardMockup: React.FC<StatCardMockupProps> = ({
+  colorVariable,
+  icon,
+  title,
+  badge,
+  left,
+  right,
+}) => {
+  const [color, textSecondary] = useCSSVariable([
+    colorVariable,
     '--color-text-secondary',
   ]) as [string, string];
 
   return (
     <View
       className="h-44 items-center justify-center overflow-hidden"
-      style={{ backgroundColor: `${catPink}20` }}
+      style={{ backgroundColor: `${color}20` }}
     >
       <View
         className="bg-surface rounded-2xl shadow-md justify-center px-4 py-3 border border-border-subtle"
         style={{ width: 220, height: 110 }}
       >
         <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center gap-2">
+          <View className="flex-row items-center gap-2 flex-1">
             <View
               className="w-7 h-7 rounded-full items-center justify-center"
-              style={{ backgroundColor: `${catPink}30` }}
+              style={{ backgroundColor: `${color}30` }}
             >
-              <Icon name="sparkles" size={14} color={catPink} />
+              <Icon name={icon} size={14} color={color} />
             </View>
-            <Text className="text-xs font-bold text-text-primary">
-              {t('whatsNewPage.mockup.lutealPhase', {
-                defaultValue: 'Luteal Phase',
-              })}
+            <Text
+              className="text-xs font-bold text-text-primary flex-shrink"
+              numberOfLines={1}
+            >
+              {title}
             </Text>
           </View>
           <View
-            className="px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: `${catPink}25` }}
+            className="px-2 py-0.5 rounded-full ml-2"
+            style={{ backgroundColor: `${color}25` }}
           >
-            <Text
-              className="text-[10px] font-semibold"
-              style={{ color: catPink }}
-            >
-              {t('whatsNewPage.mockup.day18', { defaultValue: 'Day 18' })}
+            <Text className="text-[10px] font-semibold" style={{ color }}>
+              {badge}
             </Text>
           </View>
         </View>
 
         <View className="flex-row items-center justify-between mt-1 pt-2 border-t border-border-subtle">
-          <Text className="text-[11px]" style={{ color: textSecondary }}>
-            {t('whatsNewPage.mockup.symptomFlowLog', {
-              defaultValue: 'Symptom & Flow Log',
-            })}
+          <Text
+            className="text-[11px] flex-shrink"
+            style={{ color: textSecondary }}
+            numberOfLines={1}
+          >
+            {left}
           </Text>
-          <Text className="text-[11px] font-medium text-text-primary">
-            {t('whatsNewPage.mockup.mildNormal', {
-              defaultValue: 'Mild • Normal',
-            })}
+          <Text
+            className="text-[11px] font-medium text-text-primary ml-2 flex-shrink"
+            numberOfLines={1}
+          >
+            {right}
           </Text>
         </View>
       </View>
     </View>
+  );
+};
+
+const CycleMockup: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <StatCardMockup
+      colorVariable="--color-cat-pink"
+      icon="sparkles"
+      title={t('whatsNewPage.mockup.lutealPhase', {
+        defaultValue: 'Luteal Phase',
+      })}
+      badge={t('whatsNewPage.mockup.day18', { defaultValue: 'Day 18' })}
+      left={t('whatsNewPage.mockup.symptomFlowLog', {
+        defaultValue: 'Symptom & Flow Log',
+      })}
+      right={t('whatsNewPage.mockup.mildNormal', {
+        defaultValue: 'Mild • Normal',
+      })}
+    />
   );
 };
 
 const WorkoutMockup: React.FC = () => {
   const { t } = useTranslation();
-  const [exercise, textSecondary] = useCSSVariable([
-    '--color-exercise',
-    '--color-text-secondary',
-  ]) as [string, string];
-
   return (
-    <View
-      className="h-44 items-center justify-center overflow-hidden"
-      style={{ backgroundColor: `${exercise}20` }}
-    >
-      <View
-        className="bg-surface rounded-2xl shadow-md justify-center px-4 py-3 border border-border-subtle"
-        style={{ width: 220, height: 110 }}
-      >
-        <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center gap-2">
-            <View
-              className="w-7 h-7 rounded-full items-center justify-center"
-              style={{ backgroundColor: `${exercise}30` }}
-            >
-              <Icon name="exercise-weights" size={14} color={exercise} />
-            </View>
-            <Text className="text-xs font-bold text-text-primary">
-              {t('whatsNewPage.mockup.benchPress', {
-                defaultValue: 'Bench Press',
-              })}
-            </Text>
-          </View>
-          <View
-            className="px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: `${exercise}25` }}
-          >
-            <Text
-              className="text-[10px] font-semibold"
-              style={{ color: exercise }}
-            >
-              {t('whatsNewPage.mockup.threeSets', {
-                defaultValue: '3 Sets',
-              })}
-            </Text>
-          </View>
-        </View>
-
-        <View className="flex-row items-center justify-between mt-1 pt-2 border-t border-border-subtle">
-          <Text className="text-[11px]" style={{ color: textSecondary }}>
-            {t('whatsNewPage.mockup.setOneReps', {
-              defaultValue: 'Set 1: 10 reps',
-            })}
-          </Text>
-          <Text className="text-[11px] font-medium text-text-primary">
-            {t('whatsNewPage.mockup.doneWeight', {
-              defaultValue: '80 kg • Done',
-            })}
-          </Text>
-        </View>
-      </View>
-    </View>
+    <StatCardMockup
+      colorVariable="--color-exercise"
+      icon="exercise-weights"
+      title={t('whatsNewPage.mockup.benchPress', {
+        defaultValue: 'Bench Press',
+      })}
+      badge={t('whatsNewPage.mockup.threeSets', { defaultValue: '3 Sets' })}
+      left={t('whatsNewPage.mockup.setOneReps', {
+        defaultValue: 'Set 1: 10 reps',
+      })}
+      right={t('whatsNewPage.mockup.doneWeight', {
+        defaultValue: '80 kg • Done',
+      })}
+    />
   );
 };
 
 const MedicationsMockup: React.FC = () => {
   const { t } = useTranslation();
-  const [catTeal, textSecondary] = useCSSVariable([
-    '--color-cat-teal',
-    '--color-text-secondary',
-  ]) as [string, string];
-
   return (
-    <View
-      className="h-44 items-center justify-center overflow-hidden"
-      style={{ backgroundColor: `${catTeal}20` }}
-    >
-      <View
-        className="bg-surface rounded-2xl shadow-md justify-center px-4 py-3 border border-border-subtle"
-        style={{ width: 220, height: 110 }}
-      >
-        <View className="flex-row items-center justify-between mb-2">
-          <View className="flex-row items-center gap-2">
-            <View
-              className="w-7 h-7 rounded-full items-center justify-center"
-              style={{ backgroundColor: `${catTeal}30` }}
-            >
-              <Icon name="medication" size={14} color={catTeal} />
-            </View>
-            <Text className="text-xs font-bold text-text-primary">
-              {t('whatsNewPage.mockup.fauxprofen', {
-                defaultValue: 'Fauxprofen',
-              })}
-            </Text>
-          </View>
-          <View
-            className="px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: `${catTeal}25` }}
-          >
-            <Text
-              className="text-[10px] font-semibold"
-              style={{ color: catTeal }}
-            >
-              {t('whatsNewPage.mockup.eightAm', { defaultValue: '8:00 AM' })}
-            </Text>
-          </View>
-        </View>
+    <StatCardMockup
+      colorVariable="--color-cat-teal"
+      icon="medication"
+      title={t('whatsNewPage.mockup.fauxprofen', {
+        defaultValue: 'Fauxprofen',
+      })}
+      badge={t('whatsNewPage.mockup.eightAm', { defaultValue: '8:00 AM' })}
+      left={t('whatsNewPage.mockup.dailyDose', {
+        defaultValue: '200 mg • Daily',
+      })}
+      right={t('whatsNewPage.mockup.taken', { defaultValue: 'Taken' })}
+    />
+  );
+};
 
-        <View className="flex-row items-center justify-between mt-1 pt-2 border-t border-border-subtle">
-          <Text className="text-[11px]" style={{ color: textSecondary }}>
-            {t('whatsNewPage.mockup.dailyDose', {
-              defaultValue: '200 mg • Daily',
-            })}
-          </Text>
-          <Text className="text-[11px] font-medium text-text-primary">
-            {t('whatsNewPage.mockup.taken', { defaultValue: 'Taken' })}
-          </Text>
-        </View>
-      </View>
-    </View>
+const RunningMockup: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <StatCardMockup
+      colorVariable="--color-hydration"
+      icon="exercise-running"
+      title={t('whatsNewPage.mockup.zoneTwoBase', {
+        defaultValue: 'Zone 2 Base',
+      })}
+      badge={t('whatsNewPage.mockup.weekThree', { defaultValue: 'Week 3' })}
+      left={t('whatsNewPage.mockup.easyRun', {
+        defaultValue: 'Easy run • 40 min',
+      })}
+      right={t('whatsNewPage.mockup.zoneTwoRange', {
+        defaultValue: '125–142 bpm',
+      })}
+    />
+  );
+};
+
+const RoutesMockup: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <StatCardMockup
+      colorVariable="--color-cat-orange"
+      icon="location"
+      title={t('whatsNewPage.mockup.riverLoop', {
+        defaultValue: 'River Loop',
+      })}
+      badge={t('whatsNewPage.mockup.routeDistance', {
+        defaultValue: '5.2 km',
+      })}
+      left={t('whatsNewPage.mockup.routeClimb', {
+        defaultValue: '48 m climb',
+      })}
+      right={t('whatsNewPage.mockup.followRoads', {
+        defaultValue: 'Follows roads',
+      })}
+    />
+  );
+};
+
+const CheckInMockup: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <StatCardMockup
+      colorVariable="--color-cat-pink"
+      icon="mood"
+      title={t('whatsNewPage.mockup.checkIn', { defaultValue: 'Check-in' })}
+      badge={t('whatsNewPage.mockup.stepTwoOfThree', {
+        defaultValue: 'Step 2 of 3',
+      })}
+      left={t('whatsNewPage.mockup.checkInStepName', {
+        defaultValue: 'Measurements',
+      })}
+      right={t('whatsNewPage.mockup.saveContinue', {
+        defaultValue: 'Save & continue',
+      })}
+    />
+  );
+};
+
+const StrengthToolsMockup: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <StatCardMockup
+      colorVariable="--color-exercise"
+      icon="exercise-weights"
+      title={t('whatsNewPage.mockup.plates', {
+        defaultValue: 'Plates',
+      })}
+      badge={t('whatsNewPage.mockup.plateTarget', { defaultValue: '100 kg' })}
+      left={t('whatsNewPage.mockup.plateBar', { defaultValue: 'Bar 20 kg' })}
+      right={t('whatsNewPage.mockup.platesPerSide', {
+        defaultValue: '20 + 20 per side',
+      })}
+    />
+  );
+};
+
+const HeartRateMockup: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <StatCardMockup
+      colorVariable="--color-calories"
+      icon="exercise"
+      title={t('whatsNewPage.mockup.heartRate', {
+        defaultValue: 'Heart rate',
+      })}
+      badge={t('whatsNewPage.mockup.zoneTwo', { defaultValue: 'Zone 2' })}
+      left={t('whatsNewPage.mockup.maxResting', {
+        defaultValue: 'Max 185 • Resting 52',
+      })}
+      right={t('whatsNewPage.mockup.customZones', {
+        defaultValue: 'Your own',
+      })}
+    />
+  );
+};
+
+const ReportsMockup: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <StatCardMockup
+      colorVariable="--color-cat-violet"
+      icon="chart-bar"
+      title={t('whatsNewPage.mockup.compare', { defaultValue: 'Compare' })}
+      badge={t('whatsNewPage.mockup.thirtyDays', { defaultValue: '30 days' })}
+      left={t('whatsNewPage.mockup.sleepVsMood', {
+        defaultValue: 'Sleep vs. mood',
+      })}
+      right={t('whatsNewPage.mockup.moodHigher', {
+        defaultValue: 'Mood is higher',
+      })}
+    />
+  );
+};
+
+const WatchMockup: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <StatCardMockup
+      colorVariable="--color-hydration"
+      icon="watch-settings"
+      title={t('whatsNewPage.mockup.watchApp', {
+        defaultValue: 'Watch app',
+      })}
+      badge={t('whatsNewPage.mockup.caloriesLeftBadge', {
+        defaultValue: '1,515 left',
+      })}
+      left={t('whatsNewPage.mockup.waterMeds', {
+        defaultValue: 'Water • Meds',
+      })}
+      right={t('whatsNewPage.mockup.fastingSteps', {
+        defaultValue: 'Fasting • Steps',
+      })}
+    />
+  );
+};
+
+const WeeklyGoalMockup: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <StatCardMockup
+      colorVariable="--color-calories"
+      icon="scale"
+      title={t('whatsNewPage.mockup.weeklyGoal', {
+        defaultValue: 'Weekly goal',
+      })}
+      badge={t('whatsNewPage.mockup.weeklyRate', {
+        defaultValue: '−0.5 kg',
+      })}
+      left={t('whatsNewPage.mockup.dailyTarget', {
+        defaultValue: 'Daily target',
+      })}
+      right={t('whatsNewPage.mockup.dailyAdjustment', {
+        defaultValue: '≈ −550 kcal',
+      })}
+    />
   );
 };
 
@@ -567,9 +685,178 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   // so its card is gated on the same capability check the setting uses.
   const showLiquidGlassCard = canUseLiquidGlass();
 
+  // The hook re-renders when pairing is discovered later (Android finds its
+  // nodes asynchronously), so the watch button appears without a manual refresh.
+  const { isSupported: watchSupported, isPaired: watchPaired } =
+    useWatchConnectivity();
+  const hasPairedWatch = watchSupported && watchPaired;
+
   // Added or changed a card below? Bump WHATS_NEW_CONTENT_VERSION in
   // services/whatsNewBanner.ts so the banner re-appears for existing users.
   const features: Feature[] = [
+    {
+      eyebrow: t('whatsNewPage.features.running.eyebrow', {
+        defaultValue: 'RUNNING',
+      }),
+      headline: t('whatsNewPage.features.running.headline', {
+        defaultValue: 'Train with run programs',
+      }),
+      body: t('whatsNewPage.features.running.body', {
+        defaultValue:
+          'Follow a Zone 2 Base plan with heart rate guidance, set a weekly distance goal and race countdown, take a guided fitness test to set your paces, and review splits after every run.',
+      }),
+      hero: <RunningMockup />,
+      cta: {
+        label: t('whatsNewPage.features.running.cta', {
+          defaultValue: 'Open run programs',
+        }),
+        onPress: () => navigation.navigate('RunPrograms'),
+      },
+    },
+    {
+      eyebrow: t('whatsNewPage.features.routes.eyebrow', {
+        defaultValue: 'ROUTES',
+      }),
+      headline: t('whatsNewPage.features.routes.headline', {
+        defaultValue: 'Plan and follow routes',
+      }),
+      body: t('whatsNewPage.features.routes.body', {
+        defaultValue:
+          'Draw routes on a satellite map, snap them to roads, generate loops of a set distance, and follow a saved route on your Apple Watch.',
+      }),
+      hero: <RoutesMockup />,
+      cta: {
+        label: t('whatsNewPage.features.routes.cta', {
+          defaultValue: 'Open routes',
+        }),
+        onPress: () => navigation.navigate('Routes'),
+      },
+    },
+    {
+      eyebrow: t('whatsNewPage.features.checkIn.eyebrow', {
+        defaultValue: 'GUIDED CHECK-IN',
+      }),
+      headline: t('whatsNewPage.features.checkIn.headline', {
+        defaultValue: 'Check in in one flow',
+      }),
+      body: t('whatsNewPage.features.checkIn.body', {
+        defaultValue:
+          'Log your mood, measurements, and a progress photo in three quick steps. Find Daily Check-In in the + menu.',
+      }),
+      hero: <CheckInMockup />,
+      cta: {
+        label: t('whatsNewPage.features.checkIn.cta', {
+          defaultValue: 'Start a check-in',
+        }),
+        onPress: () => {
+          const date = getTodayDate();
+          startGuidedCheckIn(date, t, (step, guidedCheckIn) =>
+            navigation.navigate(step, { date, guidedCheckIn })
+          );
+        },
+      },
+    },
+    {
+      eyebrow: t('whatsNewPage.features.strength.eyebrow', {
+        defaultValue: 'STRENGTH TOOLS',
+      }),
+      headline: t('whatsNewPage.features.strength.headline', {
+        defaultValue: 'Smarter strength workouts',
+      }),
+      body: t('whatsNewPage.features.strength.body', {
+        defaultValue:
+          'Pin the set to do now, swap exercises in a tap, keep your sets when you replace an exercise, and load the bar with the plate calculator.',
+      }),
+      hero: <StrengthToolsMockup />,
+      cta: {
+        label: t('whatsNewPage.features.strength.cta', {
+          defaultValue: 'Open workout settings',
+        }),
+        onPress: () => navigation.navigate('WorkoutSettings'),
+      },
+    },
+    {
+      eyebrow: t('whatsNewPage.features.heartRate.eyebrow', {
+        defaultValue: 'HEART RATE',
+      }),
+      headline: t('whatsNewPage.features.heartRate.headline', {
+        defaultValue: 'Heart rate zones, your way',
+      }),
+      body: t('whatsNewPage.features.heartRate.body', {
+        defaultValue:
+          'Set your own max and resting heart rate and zone method, then dig into detailed heart rate reports.',
+      }),
+      hero: <HeartRateMockup />,
+      cta: {
+        label: t('whatsNewPage.features.heartRate.cta', {
+          defaultValue: 'Open zone settings',
+        }),
+        onPress: () => navigation.navigate('HeartRateZonesSettings'),
+      },
+    },
+    {
+      eyebrow: t('whatsNewPage.features.reports.eyebrow', {
+        defaultValue: 'REPORTS & COMPARE',
+      }),
+      headline: t('whatsNewPage.features.reports.headline', {
+        defaultValue: 'See how your habits connect',
+      }),
+      body: t('whatsNewPage.features.reports.body', {
+        defaultValue:
+          'Browse nutrition, hydration, sleep, mood, and measurement reports, then use Compare to see whether one habit goes with another, or whether something changed since you started a new habit.',
+      }),
+      hero: <ReportsMockup />,
+      cta: {
+        label: t('whatsNewPage.features.reports.cta', {
+          defaultValue: 'Open reports',
+        }),
+        onPress: () => navigation.navigate('Reports'),
+      },
+    },
+    {
+      eyebrow: t('whatsNewPage.features.watch.eyebrow', {
+        defaultValue: 'APPLE WATCH & WEAR OS',
+      }),
+      headline: t('whatsNewPage.features.watch.headline', {
+        defaultValue: 'Your day on your wrist',
+      }),
+      body: t('whatsNewPage.features.watch.body', {
+        defaultValue:
+          'The watch app now comes to Apple Watch and Wear OS. See your goals, log water, weight, fasting, and medications, and run workouts that save to your diary, with effort ratings, jump rope, and route following on Apple Watch. Choose your pages in Watch settings.',
+      }),
+      hero: <WatchMockup />,
+      // Settings only lists this row with a watch paired, because the screen
+      // does nothing without one, so the button follows the same rule.
+      ...(hasPairedWatch
+        ? {
+            cta: {
+              label: t('whatsNewPage.features.watch.cta', {
+                defaultValue: 'Open watch settings',
+              }),
+              onPress: () => navigation.navigate('WatchSettings'),
+            },
+          }
+        : {}),
+    },
+    {
+      eyebrow: t('whatsNewPage.features.weeklyGoal.eyebrow', {
+        defaultValue: 'WEIGHT GOALS',
+      }),
+      headline: t('whatsNewPage.features.weeklyGoal.headline', {
+        defaultValue: 'Set a weekly weight goal',
+      }),
+      body: t('whatsNewPage.features.weeklyGoal.body', {
+        defaultValue:
+          'Choose how much weight you want to lose or gain each week and Sparky works out your daily calorie target.',
+      }),
+      hero: <WeeklyGoalMockup />,
+      cta: {
+        label: t('whatsNewPage.features.weeklyGoal.cta', {
+          defaultValue: 'Open calorie settings',
+        }),
+        onPress: () => navigation.navigate('CalorieSettings'),
+      },
+    },
     {
       eyebrow: t('whatsNewPage.features.medications.eyebrow', {
         defaultValue: 'MEDICATIONS',
@@ -579,7 +866,7 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
       }),
       body: t('whatsNewPage.features.medications.body', {
         defaultValue:
-          'Add your medications, set dose schedules, and log each dose from the dashboard with optional reminders.',
+          'Add your medications, set dose schedules, log each dose from the dashboard with optional reminders, and review adherence with a calendar and dose log.',
       }),
       hero: <MedicationsMockup />,
       cta: {

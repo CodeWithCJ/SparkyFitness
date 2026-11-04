@@ -292,6 +292,17 @@ describe('SortableExerciseItem replace/duplicate exercise actions', () => {
       );
     });
 
+    // Presets have no exercise-level notes column; notes live on each set (#3110).
+    it('has no exercise-level notes field', () => {
+      renderPresetItem({}, 'kg');
+      expect(
+        screen.queryByText(/Exercise Notes \/ Cues/)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByPlaceholderText(/Seat setting 4/)
+      ).not.toBeInTheDocument();
+    });
+
     it('omits the ramp where the edit cannot be saved', () => {
       renderItem(
         createExercise({

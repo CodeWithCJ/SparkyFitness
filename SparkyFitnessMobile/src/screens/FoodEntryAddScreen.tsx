@@ -1,4 +1,5 @@
 import AllergenWarning from '../components/AllergenWarning';
+import BarcodeSources from '../components/BarcodeSources';
 import React, {
   useState,
   useRef,
@@ -287,11 +288,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const effectiveMealId = selectedMealId ?? defaultMealTypeId;
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
-  const [entryTime, setEntryTime] = useState('');
+  const [entryTime, setEntryTime] = useState(route.params.entryTime ?? '');
   // The note for THIS diary entry. The food's own note is shown read-only
   // beside it and is never copied in.
-  const [entryNotes, setEntryNotes] = useState('');
-  const entryTimeTouched = useRef(false);
+  const [entryNotes, setEntryNotes] = useState(route.params.entryNotes ?? '');
+  const entryTimeTouched = useRef(route.params.entryTime !== undefined);
   useEffect(() => {
     if (entryTimeTouched.current) return;
     setEntryTime(
@@ -1599,6 +1600,28 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           showNetCarbs={showNetCarbs}
           provider_verified={activeItem.provider_verified}
         />
+
+        {route.params.barcodeLookup && (
+          <BarcodeSources
+            context={route.params.barcodeLookup}
+            disabled={isActionPending}
+            onSelect={(nextItem, barcodeLookup) => {
+              // A fresh route clears serving overrides and saved import identity.
+              // Keep the diary/selection destination and the user's entry fields.
+              navigation.replace('FoodEntryAdd', {
+                item: nextItem,
+                barcodeLookup,
+                date: selectedDate,
+                mealTypeId: effectiveMealId ?? undefined,
+                pickerMode: route.params.pickerMode,
+                returnDepth: route.params.returnDepth,
+                mealPlanTarget,
+                entryNotes,
+                entryTime: entryTimeTouched.current ? entryTime : undefined,
+              });
+            }}
+          />
+        )}
 
         <View className="mt-2">
           <View className="flex-row items-center">

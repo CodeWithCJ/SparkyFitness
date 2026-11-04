@@ -24,6 +24,9 @@ struct WatchAutoPause {
         switch kind {
         case .walk: return Profile(stoppedBelowMps: 0.4, movingAboveMps: 0.9, stoppedFor: 10, movingFor: 3)
         case .run: return Profile(stoppedBelowMps: 0.6, movingAboveMps: 1.5, stoppedFor: 8, movingFor: 3)
+        // Jump rope is recorded indoors, so this GPS-speed profile is never
+        // asked for it; the run values only keep the switch exhaustive.
+        case .jumpRope: return Profile(stoppedBelowMps: 0.6, movingAboveMps: 1.5, stoppedFor: 8, movingFor: 3)
         }
     }
 

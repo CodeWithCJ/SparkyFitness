@@ -15,6 +15,7 @@ const actions = {
   deleteSet: jest.fn(),
   updateSetField: jest.fn(),
   removeExercise: jest.fn(),
+  doExerciseNow: jest.fn(),
   addExercise: jest.fn(),
 };
 
@@ -33,7 +34,12 @@ const edit = (
 describe('applyWatchWorkoutEdit', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useActiveWorkoutStore.setState({ sessionId: 'sess-1', ...actions });
+    useActiveWorkoutStore.setState({
+      sessionId: 'sess-1',
+      completedSetIds: {},
+      watchArmedAt: null,
+      ...actions,
+    });
   });
 
   it('adds a set to the named exercise', async () => {
@@ -48,11 +54,82 @@ describe('applyWatchWorkoutEdit', () => {
     expect(actions.removeExercise).toHaveBeenCalledWith('entry-2');
   });
 
+  it('does an upcoming exercise now', async () => {
+    await edit({
+      action: 'doExerciseNow',
+      exerciseEntryId: 'entry-3',
+      anchorEntryId: 'entry-1',
+    });
+    expect(actions.doExerciseNow).toHaveBeenCalledWith('entry-3', 'entry-1');
+  });
+
   it('changes a set type', async () => {
     await edit({ action: 'setSetType', setId: '12', setType: 'warmup' });
     expect(actions.updateSetField).toHaveBeenCalledWith('12', {
       set_type: 'warmup',
     });
+  });
+
+  it('puts a weight and reps typed on the watch on the phone before the set is logged', async () => {
+    await edit({ action: 'setValues', setId: '12', weightKg: 50, reps: 8 });
+    expect(actions.updateSetField).toHaveBeenCalledWith('12', {
+      weight: 50,
+      reps: 8,
+    });
+  });
+
+  it('carries only the fields the wearer edited', async () => {
+    await edit({ action: 'setValues', setId: '13', reps: 10 });
+    expect(actions.updateSetField).toHaveBeenCalledWith('13', { reps: 10 });
+  });
+
+  it('ignores a value edit queued from an earlier arm of the same workout', async () => {
+    useActiveWorkoutStore.setState({ watchArmedAt: 100_000 });
+    await edit({
+      action: 'setValues',
+      setId: '17',
+      weightKg: 60,
+      armedAt: 50_000,
+    });
+    expect(actions.updateSetField).not.toHaveBeenCalled();
+    // A workout re-armed a moment later is still another arm.
+    await edit({
+      action: 'setValues',
+      setId: '17',
+      weightKg: 60,
+      armedAt: 99_000,
+    });
+    expect(actions.updateSetField).not.toHaveBeenCalled();
+    // The same arm, off only by rounding.
+    await edit({
+      action: 'setValues',
+      setId: '17',
+      weightKg: 60,
+      armedAt: 100_001,
+    });
+    expect(actions.updateSetField).toHaveBeenCalledWith('17', { weight: 60 });
+  });
+
+  it('keeps what a set was logged with', async () => {
+    useActiveWorkoutStore.setState({ completedSetIds: { '14': 1 } });
+    await edit({ action: 'setValues', setId: '14', weightKg: 60 });
+    expect(actions.updateSetField).not.toHaveBeenCalled();
+  });
+
+  it('drops a late copy of an older edit but keeps a newer one', async () => {
+    await edit({ action: 'setValues', setId: '15', weightKg: 60, at: 2000 });
+    await edit({ action: 'setValues', setId: '15', weightKg: 55, at: 1000 });
+    await edit({ action: 'setValues', setId: '15', weightKg: 65, at: 3000 });
+    expect(actions.updateSetField).toHaveBeenCalledTimes(2);
+    expect(actions.updateSetField).toHaveBeenLastCalledWith('15', {
+      weight: 65,
+    });
+  });
+
+  it('judges each field on its own time, so an older reps edit still lands', async () => {
+    await edit({ action: 'setValues', setId: '16', weightKg: 60, at: 2000 });
+    await edit({ action: 'setValues', setId: '16', reps: 5, at: 1000 });
+    expect(actions.updateSetField).toHaveBeenLastCalledWith('16', { reps: 5 });
   });
 
   it('loads and adds an exercise', async () => {

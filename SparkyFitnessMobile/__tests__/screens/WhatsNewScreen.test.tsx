@@ -3,6 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import WhatsNewScreen from '../../src/screens/WhatsNewScreen';
+import { useGuidedCheckInStore } from '../../src/stores/guidedCheckInStore';
+import { getTodayDate } from '../../src/utils/dateUtils';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: jest.fn(() => ({ top: 0, bottom: 0, left: 0, right: 0 })),
@@ -40,6 +42,15 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
+const mockWatch = { supported: false, paired: false };
+jest.mock('../../src/hooks/useWatchConnectivity', () => ({
+  useWatchConnectivity: () => ({
+    isSupported: mockWatch.supported,
+    isPaired: mockWatch.paired,
+    isReachable: false,
+  }),
+}));
+
 jest.mock('uniwind', () => ({
   useCSSVariable: jest.fn((variables: string | string[]) =>
     (Array.isArray(variables) ? variables : [variables]).map(() => '#000000')
@@ -58,6 +69,8 @@ const route = {
 describe('WhatsNewScreen localization', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockWatch.supported = false;
+    mockWatch.paired = false;
     await initializeI18n('en');
     await i18n.changeLanguage('en');
   });
@@ -86,5 +99,38 @@ describe('WhatsNewScreen localization', () => {
     ).toBeTruthy();
     expect(screen.getByText('08:00')).toBeTruthy();
     expect(screen.getByText('1 515')).toBeTruthy();
+  });
+
+  it('points to Daily Check-In in the + menu and starts one for today', () => {
+    useGuidedCheckInStore.setState({ progress: null });
+    render(<WhatsNewScreen navigation={navigation} route={route} />);
+
+    expect(
+      screen.getByText(
+        'Log your mood, measurements, and a progress photo in three quick steps. Find Daily Check-In in the + menu.'
+      )
+    ).toBeTruthy();
+    fireEvent.press(screen.getByText('Start a check-in'));
+
+    expect(navigation.navigate).toHaveBeenCalledWith('MoodLog', {
+      date: getTodayDate(),
+      guidedCheckIn: {},
+    });
+  });
+
+  it('hides the watch settings button without a paired watch', () => {
+    render(<WhatsNewScreen navigation={navigation} route={route} />);
+
+    expect(screen.getByText('Your day on your wrist')).toBeTruthy();
+    expect(screen.queryByText('Open watch settings')).toBeNull();
+  });
+
+  it('opens watch settings from the watch card when a watch is paired', () => {
+    mockWatch.supported = true;
+    mockWatch.paired = true;
+    render(<WhatsNewScreen navigation={navigation} route={route} />);
+
+    fireEvent.press(screen.getByText('Open watch settings'));
+    expect(navigation.navigate).toHaveBeenCalledWith('WatchSettings');
   });
 });

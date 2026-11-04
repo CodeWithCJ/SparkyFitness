@@ -308,6 +308,55 @@ describe('useExternalFoodSearch', () => {
     });
   });
 
+  test('shows a product once when a later page returns it again', async () => {
+    const food = (id: string, name: string) => ({
+      id,
+      name,
+      brand: null,
+      calories: 100,
+      protein: 10,
+      carbs: 10,
+      fat: 5,
+      serving_size: 100,
+      serving_unit: 'g',
+      source: 'openfoodfacts',
+    });
+    mockSearchExternalFoods
+      .mockResolvedValueOnce(
+        makePaginatedResult([food('1', 'Food A'), food('', 'No code')], {
+          page: 1,
+          hasMore: true,
+          totalCount: 4,
+        })
+      )
+      .mockResolvedValueOnce(
+        makePaginatedResult(
+          [food('1', 'Food A'), food('2', 'Food B'), food('', 'No code')],
+          { page: 2, hasMore: false, totalCount: 4 }
+        )
+      );
+
+    const { result } = renderHook(
+      () => useExternalFoodSearch('food', 'openfoodfacts'),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await waitFor(() => {
+      expect(result.current.hasNextPage).toBe(true);
+    });
+
+    result.current.fetchNextPage();
+
+    await waitFor(() => {
+      expect(result.current.searchResults.map((item) => item.name)).toEqual([
+        'Food A',
+        'No code',
+        'Food B',
+        'No code',
+      ]);
+    });
+  });
+
   test('fetches for fatsecret provider type with providerId', async () => {
     mockSearchExternalFoods.mockResolvedValue(
       makePaginatedResult([

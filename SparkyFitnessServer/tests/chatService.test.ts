@@ -617,6 +617,49 @@ describe('chatService', () => {
       expect(toolNames).toContain('sparky_get_report');
     });
 
+    it('holds the food assistant state tool back from plain logging', async () => {
+      const send = async (
+        messages: Parameters<typeof chatService.processChatMessage>[0]
+      ) => {
+        const model = scriptModel([textStep('Sure.')]);
+        await chatService.processChatMessage(
+          messages,
+          'svc-1',
+          activeUserId,
+          actorUserId
+        );
+        return modelToolNames(model);
+      };
+
+      const plain = await send([
+        { role: 'user', content: 'I ate 2 eggs and 50g bread' },
+      ]);
+      expect(plain).toContain('sparky_manage_food');
+      expect(plain).not.toContain('sparky_food_assistant_state');
+
+      expect(
+        await send([{ role: 'user', content: 'import this recipe for me' }])
+      ).toContain('sparky_food_assistant_state');
+
+      // A follow-up in a chat that already used it keeps it, keyword or not.
+      expect(
+        await send([
+          { role: 'user', content: 'save this' },
+          {
+            role: 'assistant',
+            parts: [
+              {
+                type: 'tool-sparky_food_assistant_state',
+                input: { action: 'list_tasks' },
+                output: '[]',
+              },
+            ],
+          },
+          { role: 'user', content: 'the second one' },
+        ])
+      ).toContain('sparky_food_assistant_state');
+    });
+
     it('completes with an ERRORS string as the tool result when a backing service throws', async () => {
       vi.mocked(foodRepository.getFoodsWithPagination).mockRejectedValue(
         new Error('connection refused')
@@ -695,7 +738,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 35\/57 active tools for chatbot \(profile=core/
+          /Loaded 33\/58 active tools for chatbot \(profile=core/
         )
       );
       // The core profile is the mitigation, so no context-window warning.
@@ -777,7 +820,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 57\/57 active tools for chatbot \(profile=full/
+          /Loaded 56\/58 active tools for chatbot \(profile=full/
         )
       );
       // Ollama + full profile is the risky combo, so warn about the 4096 default.
@@ -810,15 +853,15 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 57\/57 active tools for chatbot \(profile=full/
+          /Loaded 56\/58 active tools for chatbot \(profile=full/
         )
       );
     });
 
     it('never trims a non-Ollama service even with a stale core profile stored', async () => {
       // The profile gate keys on service_type, so a service that was Ollama+core
-      // and later switched to OpenAI still loads the full 38-tool surface
-      // (36 domain tools + sparky_enable_tools + sparky_ask_user).
+      // and later switched to OpenAI still loads the full 39-tool surface
+      // (37 domain tools + sparky_enable_tools + sparky_ask_user).
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         {
           ...aiServiceSetting,
@@ -838,7 +881,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 57\/57 active tools for chatbot \(profile=full/
+          /Loaded 56\/58 active tools for chatbot \(profile=full/
         )
       );
       // The context-window warning is Ollama-only; cloud providers never see it.
@@ -1140,8 +1183,12 @@ describe('chatService', () => {
       outputTokens: { total: 5, text: 5, reasoning: 0 },
     };
 
-    const streamModel = (parts: unknown[]) => {
+    const streamModel = (
+      parts: unknown[],
+      supportedUrls?: Record<string, RegExp[]>
+    ) => {
       const model = new MockLanguageModelV3({
+        supportedUrls,
         doStream: async () => ({
           stream: simulateReadableStream({
             chunks: parts as never[],
@@ -1555,22 +1602,8 @@ describe('chatService', () => {
     });
 
     it('maps remote image URLs with detected media types based on extension', async () => {
-      const originalFetch = global.fetch;
-      global.fetch = vi
-        .fn()
-        .mockImplementation(async (url: string | URL | Request) => {
-          const urlStr = typeof url === 'string' ? url : url.toString();
-          if (urlStr.includes('example.com/meal.webp')) {
-            return new Response(new Uint8Array([0x52, 0x49, 0x46, 0x46]), {
-              status: 200,
-              headers: { 'content-type': 'image/webp' },
-            });
-          }
-          return originalFetch(url as RequestInfo, undefined);
-        });
-
-      try {
-        const model = streamModel([
+      const model = streamModel(
+        [
           { type: 'stream-start', warnings: [] },
           { type: 'text-start', id: 't1' },
           { type: 'text-delta', id: 't1', delta: 'ok' },
@@ -1580,37 +1613,39 @@ describe('chatService', () => {
             finishReason: { unified: 'stop', raw: undefined },
             usage,
           },
-        ]);
+        ],
+        // Declared as natively supported so the SDK passes the URL through
+        // instead of downloading it (the SDK's own guarded fetcher is not the
+        // global fetch).
+        { 'image/*': [/^https:\/\/.*$/] }
+      );
 
-        const { stream } = await chatService.processChatMessageStream(
-          [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: 'Analyze this photo' },
-                {
-                  type: 'image_url',
-                  image_url: { url: 'https://example.com/meal.webp' },
-                },
-              ],
-            },
-          ],
-          'svc-1',
-          activeUserId,
-          actorUserId
-        );
-        await drainStream(stream);
+      const { stream } = await chatService.processChatMessageStream(
+        [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'Analyze this photo' },
+              {
+                type: 'image_url',
+                image_url: { url: 'https://example.com/meal.webp' },
+              },
+            ],
+          },
+        ],
+        'svc-1',
+        activeUserId,
+        actorUserId
+      );
+      await drainStream(stream);
 
-        const prompt = model.doStreamCalls[0].prompt;
-        const userMessage = prompt.find((m) => m.role === 'user');
-        const filePart = (
-          userMessage?.content as Array<{ type: string; mediaType?: string }>
-        ).find((p) => p.type === 'file');
-        expect(filePart).toBeDefined();
-        expect(filePart?.mediaType).toBe('image/webp');
-      } finally {
-        global.fetch = originalFetch;
-      }
+      const prompt = model.doStreamCalls[0].prompt;
+      const userMessage = prompt.find((m) => m.role === 'user');
+      const filePart = (
+        userMessage?.content as Array<{ type: string; mediaType?: string }>
+      ).find((p) => p.type === 'file');
+      expect(filePart).toBeDefined();
+      expect(filePart?.mediaType).toBe('image/webp');
     });
 
     it('trims old history to a token budget but always keeps the current turn', async () => {

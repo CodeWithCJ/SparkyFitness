@@ -1598,6 +1598,178 @@ describe('enrichExerciseSessions', () => {
     });
   });
 
+  test.each([
+    'ActiveCaloriesBurned',
+    'TotalCaloriesBurned',
+    'BasalMetabolicRate',
+  ])('rejects an asynchronous %s calorie read failure', async (failedType) => {
+    const failure = new Error('Binder transaction failed');
+    mockAggregateRecord.mockImplementation(
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === failedType) return Promise.reject(failure);
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.resolve({
+            ACTIVE_CALORIES_TOTAL: { inKilocalories: 0 },
+          });
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 75 } });
+        }
+        if (recordType === 'BasalMetabolicRate') {
+          return Promise.resolve({
+            BASAL_CALORIES_TOTAL: { inKilocalories: 75 },
+          });
+        }
+        return Promise.resolve({});
+      }
+    );
+
+    await expect(
+      enrichExerciseSessions([makeSession()], createTelemetryRunContext())
+    ).rejects.toBe(failure);
+  });
+
+  test.each([
+    ['ActiveCaloriesBurned', 'API call quota exceeded'],
+    ['TotalCaloriesBurned', 'Health Connect client is not initialized'],
+  ])(
+    'rejects an asynchronous fallback %s failure',
+    async (failedType, message) => {
+      const failure = new Error(message);
+      mockAggregateRecord.mockImplementation(
+        ({
+          recordType,
+          dataOriginFilter,
+        }: {
+          recordType: string;
+          dataOriginFilter?: string[];
+        }) => {
+          if (!dataOriginFilter && recordType === failedType) {
+            return Promise.reject(failure);
+          }
+          if (recordType === 'ActiveCaloriesBurned') {
+            return Promise.resolve({
+              ACTIVE_CALORIES_TOTAL: { inKilocalories: 0 },
+            });
+          }
+          if (recordType === 'TotalCaloriesBurned') {
+            return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 75 } });
+          }
+          if (recordType === 'BasalMetabolicRate') {
+            return Promise.resolve({
+              BASAL_CALORIES_TOTAL: { inKilocalories: 75 },
+            });
+          }
+          return Promise.resolve({});
+        }
+      );
+
+      await expect(
+        enrichExerciseSessions([makeSession()], createTelemetryRunContext())
+      ).rejects.toBe(failure);
+    }
+  );
+
+  test.each<[string, string, number]>([
+    ['ActiveCaloriesBurned', 'Permission denied', 225],
+    ['TotalCaloriesBurned', 'Record type is not supported', 200],
+    ['BasalMetabolicRate', 'SecurityException: permission denied', 200],
+  ])(
+    'keeps the optional %s fallback when access is unavailable',
+    async (unavailableType, message, expectedCalories) => {
+      mockAggregateRecord.mockImplementation(
+        ({ recordType }: { recordType: string }) => {
+          if (recordType === unavailableType) {
+            return Promise.reject(new Error(message));
+          }
+          if (recordType === 'ActiveCaloriesBurned') {
+            return Promise.resolve({
+              ACTIVE_CALORIES_TOTAL: { inKilocalories: 200 },
+            });
+          }
+          if (recordType === 'TotalCaloriesBurned') {
+            return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 300 } });
+          }
+          if (recordType === 'BasalMetabolicRate') {
+            return Promise.resolve({
+              BASAL_CALORIES_TOTAL: { inKilocalories: 75 },
+            });
+          }
+          return Promise.resolve({});
+        }
+      );
+
+      const result = await enrichExerciseSessions(
+        [makeSession()],
+        createTelemetryRunContext()
+      );
+      expect(result[0]).toMatchObject({
+        energy: { inKilocalories: expectedCalories },
+      });
+    }
+  );
+
+  test.each([
+    'PERMISSION_ERROR',
+    'AGGREGATION_NOT_SUPPORTED',
+    'SDK_VERSION_ERROR',
+  ])(
+    'keeps active calories when optional basal access fails with code %s',
+    async (code) => {
+      mockAggregateRecord.mockImplementation(
+        ({ recordType }: { recordType: string }) => {
+          if (recordType === 'BasalMetabolicRate') {
+            return Promise.reject(
+              Object.assign(new Error('Native read failed'), { code })
+            );
+          }
+          if (recordType === 'ActiveCaloriesBurned') {
+            return Promise.resolve({
+              ACTIVE_CALORIES_TOTAL: { inKilocalories: 200 },
+            });
+          }
+          if (recordType === 'TotalCaloriesBurned') {
+            return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 300 } });
+          }
+          return Promise.resolve({});
+        }
+      );
+
+      const result = await enrichExerciseSessions(
+        [makeSession()],
+        createTelemetryRunContext()
+      );
+      expect(result[0]).toMatchObject({ energy: { inKilocalories: 200 } });
+    }
+  );
+
+  test('keeps valid calories when optional distance and step reads fail', async () => {
+    mockAggregateRecord.mockImplementation(
+      ({ recordType }: { recordType: string }) => {
+        if (recordType === 'Distance' || recordType === 'Steps') {
+          return Promise.reject(new Error('Binder transaction failed'));
+        }
+        if (recordType === 'ActiveCaloriesBurned') {
+          return Promise.resolve({
+            ACTIVE_CALORIES_TOTAL: { inKilocalories: 200 },
+          });
+        }
+        if (recordType === 'TotalCaloriesBurned') {
+          return Promise.resolve({ ENERGY_TOTAL: { inKilocalories: 300 } });
+        }
+        return Promise.resolve({
+          BASAL_CALORIES_TOTAL: { inKilocalories: 75 },
+        });
+      }
+    );
+
+    const result = await enrichExerciseSessions(
+      [makeSession()],
+      createTelemetryRunContext()
+    );
+    expect(result[0]).toMatchObject({ energy: { inKilocalories: 225 } });
+  });
+
   test('leaves record untouched when both calorie aggregates return 0', async () => {
     mockAggregateRecord.mockImplementation(
       ({ recordType }: { recordType: string }) => {

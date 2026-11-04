@@ -1,11 +1,24 @@
 # Watch Apps (Apple Watch and Wear OS)
 
-SparkyFitness has a companion app for **Apple Watch** (watchOS) and for **Wear OS** watches. Both follow your phone: they show today's goals, log water, weight, fasting and medications from the wrist, and run workouts that are saved to your diary. The watch app is installed together with the phone app, and the phone must be signed in to your server.
+SparkyFitness has a companion app for **Apple Watch** (watchOS) and for **Wear OS** watches. Both follow your phone: they show today's goals, log water, weight, fasting and medications from the wrist, and run workouts that are saved to your diary. The phone must be signed in to your server.
 
 ## Setting up
 
 - **Apple Watch:** pair the watch with your iPhone. The SparkyFitness watch app comes with the iPhone app.
-- **Wear OS:** the watch app comes with the Android app on a paired Wear OS watch. Open it on the watch once so it can reach the phone.
+- **Wear OS:** the watch app is a separate install that needs the Android app on the paired phone. See [Installing the Wear OS app](#installing-the-wear-os-app). Open it on the watch once so it can reach the phone.
+
+### Installing the Wear OS app
+
+Each [GitHub release](https://github.com/CodeWithCJ/SparkyFitness/releases) after v1.10.0 carries `wearos-release.apk` beside the phone's `app-release.apk`. It is for watches, so don't install it on your phone. Watches have no file installer, so use `adb` from a computer:
+
+1. On the watch, turn on Developer options and then **Wireless debugging**.
+2. Under **Pair new device**, note the pairing address and code. On the computer, run `adb pair <pairing-address>:<pairing-port>` and enter the code when asked.
+3. Back on the Wireless debugging screen, note the watch's own address and port, which are different, and run `adb connect <address>:<port>`.
+4. Run `adb install wearos-release.apk`.
+
+Install the phone and watch apps from the same place. Only apps signed with the same key can talk to each other, and the GitHub and Google Play builds use different keys, so a GitHub watch app won't connect to a Google Play phone app. Use a phone APK from the same or a later release, because GitHub APKs up to v1.10.0 used a different key.
+
+If you use Obtainium, a release now has two APKs. Choose `app-release.apk` for your phone, or filter on it in the app's settings.
 
 The watch gets everything from the phone, so keep the phone app signed in. If the phone is out of range, check-ins you make on the watch (water, weight, fasting, doses, finished sets) are queued and normally delivered when it is back. If a delivery fails, open the app on both devices and try again.
 

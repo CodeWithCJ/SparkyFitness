@@ -436,3 +436,22 @@ describe('running form', () => {
     });
   });
 });
+
+it('drops distance and pace for a jump rope, and shows its measured calories', () => {
+  renderScreen(
+    params({
+      activity: 'jumpRope',
+      distanceMeters: 0,
+      activeSeconds: 600,
+      activeEnergyKcal: 84,
+      avgHeartRate: 121,
+    })
+  );
+  expect(screen.getByText('Jump Rope saved')).toBeTruthy();
+  expect(screen.getByText('10:00')).toBeTruthy();
+  expect(screen.getByText('84')).toBeTruthy();
+  expect(screen.getByText('121')).toBeTruthy();
+  expect(screen.queryByText('Distance')).toBeNull();
+  expect(screen.queryByText('Avg pace')).toBeNull();
+  expect(screen.queryByText('Treadmill distance')).toBeNull();
+});

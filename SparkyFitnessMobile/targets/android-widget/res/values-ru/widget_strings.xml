@@ -17,4 +17,24 @@
     <string name="widget_preview_grams_protein">51 г</string>
     <string name="widget_preview_grams_carbs">136 г</string>
     <string name="widget_preview_grams_fat">32 г</string>
+    <string name="tile_log_water">Записать потребление воды</string>
+    <string name="tile_calories_left">Осталось калорий</string>
+    <string name="sparky_water_widget_name">Вода</string>
+    <string name="sparky_water_widget_description">Сегодняшнее потребление воды, с кнопками для добавления или удаления напитка</string>
+    <string name="widget_water_title">Вода</string>
+    <string name="widget_water_amount">%1$s / %2$s %3$s</string>
+    <string name="widget_water_amount_no_goal">%1$s %2$s</string>
+    <string name="widget_water_amount_empty">- %1$s</string>
+    <string name="widget_water_unit_ml">мл</string>
+    <string name="widget_water_unit_oz">унция</string>
+    <string name="widget_water_unit_liter">Л</string>
+    <string name="widget_water_add">Добавить напиток</string>
+    <string name="widget_water_remove">Удалить напиток</string>
+    <string name="widget_water_status_sign_in">Откройте SparkyFitness и войдите в систему</string>
+    <string name="widget_water_status_pick_container">Выберите ёмкость для воды в SparkyFitness</string>
+    <string name="widget_water_status_expired">Срок действия сеанса истек. Откройте SparkyFitness</string>
+    <string name="widget_water_status_unreachable">Не удалось подключиться к вашему серверу</string>
+    <string name="widget_water_status_failed">Не удалось записать данные об употреблении воды</string>
+    <string name="widget_water_status_nothing_to_remove">Здесь нет данных о напитках, которые можно было бы удалить</string>
+    <string name="widget_preview_water_amount">1250 / 2000 мл</string>
 </resources>

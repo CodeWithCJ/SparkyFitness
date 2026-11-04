@@ -13,7 +13,7 @@ android {
         minSdkVersion 30
         targetSdkVersion 35
         versionCode 3007
-        versionName "1.9.0"
+        versionName "{{VERSION_NAME}}"
     }
 
     buildFeatures {
@@ -38,11 +38,23 @@ android {
         }
         release {
             def releaseStoreFile = findProperty('SPARKY_RELEASE_STORE_FILE') ?: findProperty('MYAPP_RELEASE_STORE_FILE') ?: System.getenv('SPARKY_RELEASE_STORE_FILE')
+            // EAS only injects signing into android/app, so read the same
+            // credentials.json its injected Gradle script reads. It sits in the
+            // EAS working directory, which is the repo root in this monorepo.
+            def easWorkingDir = System.getenv('EAS_BUILD_WORKINGDIR')
+            def easCredentials = easWorkingDir ? new File(easWorkingDir, 'credentials.json') : null
             if (releaseStoreFile) {
-                storeFile file(releaseStoreFile)
+                // Resolved like the phone's, so a relative path means android/app for both.
+                storeFile project(':app').file(releaseStoreFile)
                 storePassword(findProperty('SPARKY_RELEASE_STORE_PASSWORD') ?: findProperty('MYAPP_RELEASE_STORE_PASSWORD') ?: System.getenv('SPARKY_RELEASE_STORE_PASSWORD'))
                 keyAlias(findProperty('SPARKY_RELEASE_KEY_ALIAS') ?: findProperty('MYAPP_RELEASE_KEY_ALIAS') ?: System.getenv('SPARKY_RELEASE_KEY_ALIAS'))
                 keyPassword(findProperty('SPARKY_RELEASE_KEY_PASSWORD') ?: findProperty('MYAPP_RELEASE_KEY_PASSWORD') ?: System.getenv('SPARKY_RELEASE_KEY_PASSWORD'))
+            } else if (easCredentials?.exists()) {
+                def keystore = new groovy.json.JsonSlurper().parse(easCredentials).android.keystore
+                storeFile file(keystore.keystorePath)
+                storePassword keystore.keystorePassword
+                keyAlias keystore.keyAlias
+                keyPassword(keystore.containsKey('keyPassword') ? keystore.keyPassword : keystore.keystorePassword)
             }
         }
     }
@@ -59,11 +71,24 @@ android {
     }
 }
 
-tasks.matching { it.name == 'validateSigningRelease' }.configureEach {
+// Play needs a version code that is unique across form factors and rises with
+// every upload. The phone's comes from EAS, so the watch keeps its own scheme:
+// minutes since the epoch, well above the phone's and under Play's limit.
+androidComponents {
+    onVariants(selector().withBuildType('release')) { variant ->
+        def versionCodeOverride = findProperty('SPARKY_WEAR_VERSION_CODE') ?: System.getenv('SPARKY_WEAR_VERSION_CODE')
+        def releaseVersionCode = versionCodeOverride ? versionCodeOverride.toString().toInteger() : (int) (System.currentTimeMillis() / 60000L)
+        variant.outputs.each { it.versionCode.set(releaseVersionCode) }
+    }
+}
+
+// Without a keystore the APK path fails on a vague signing error and the bundle
+// path on a bare NullPointerException, so stop before either with a clear one.
+tasks.matching { it.name in ['packageRelease', 'signReleaseBundle'] }.configureEach {
     doFirst {
         if (android.signingConfigs.release.storeFile == null) {
             throw new GradleException(
-                'Wear OS release build requires a release signing keystore (set SPARKY_RELEASE_STORE_FILE or MYAPP_RELEASE_STORE_FILE).'
+                'Wear OS release build requires a release signing keystore (set SPARKY_RELEASE_STORE_FILE or MYAPP_RELEASE_STORE_FILE, or build with EAS).'
             )
         }
     }
@@ -83,6 +108,11 @@ dependencies {
     implementation 'androidx.wear.compose:compose-material:1.4.1'
     implementation 'androidx.wear.compose:compose-foundation:1.4.1'
     implementation 'androidx.wear.watchface:watchface-complications-data-source-ktx:1.2.1'
+    implementation 'androidx.wear.tiles:tiles:1.4.1'
+    implementation 'androidx.wear.protolayout:protolayout:1.2.1'
+    implementation 'androidx.wear.protolayout:protolayout-material:1.2.1'
+    implementation 'androidx.wear.protolayout:protolayout-expression:1.2.1'
+    implementation 'com.google.guava:guava:33.2.1-android'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.json:json:20231013'
 }

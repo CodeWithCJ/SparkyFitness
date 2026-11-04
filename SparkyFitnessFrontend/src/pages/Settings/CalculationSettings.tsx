@@ -135,6 +135,7 @@ const CalculationSettings = () => {
     goalMode: contextGoalMode,
     goalModeCalculationMethod: contextGoalModeCalculationMethod,
     adaptiveActivitySeparate: contextAdaptiveActivitySeparate,
+    adjustMacrosWithExercise: contextAdjustMacrosWithExercise,
     goalModeCustomPercentage: contextGoalModeCustomPercentage,
     goalModeWeeklyChangeKg: contextGoalModeWeeklyChangeKg,
     calorieSafetyFloorMode: contextCalorieSafetyFloorMode,
@@ -166,6 +167,9 @@ const CalculationSettings = () => {
     useState<GoalModeCalculationMethod>(
       contextGoalModeCalculationMethod || 'manual'
     );
+  const [adjustMacrosWithExercise, setAdjustMacrosWithExercise] = useState(
+    contextAdjustMacrosWithExercise ?? false
+  );
   const [adaptiveActivitySeparate, setAdaptiveActivitySeparate] = useState(
     contextAdaptiveActivitySeparate ?? false
   );
@@ -293,6 +297,7 @@ const CalculationSettings = () => {
       setGoalModeCalculationMethod(contextGoalModeCalculationMethod);
     }
     setAdaptiveActivitySeparate(contextAdaptiveActivitySeparate ?? false);
+    setAdjustMacrosWithExercise(contextAdjustMacrosWithExercise ?? false);
     if (contextGoalModeCustomPercentage !== undefined) {
       setGoalModeCustomPercentage(contextGoalModeCustomPercentage);
       setCustomPercentageInput(String(contextGoalModeCustomPercentage));
@@ -332,6 +337,7 @@ const CalculationSettings = () => {
     contextGoalMode,
     contextGoalModeCalculationMethod,
     contextAdaptiveActivitySeparate,
+    contextAdjustMacrosWithExercise,
     contextGoalModeCustomPercentage,
     contextCalorieSafetyFloorMode,
     contextCalorieSafetyFloorValue,
@@ -369,6 +375,7 @@ const CalculationSettings = () => {
         goalMode: goalMode,
         goalModeCalculationMethod: goalModeCalculationMethod,
         adaptiveActivitySeparate,
+        adjustMacrosWithExercise,
         goalModeCustomPercentage: goalModeCustomPercentage,
         goalModeWeeklyChangeKg,
         calorieSafetyFloorMode,
@@ -1020,7 +1027,7 @@ const CalculationSettings = () => {
               <Trans
                 i18nKey="settings.goalMode.deviceProjectionUsesHealthConnect"
                 defaults={
-                  '<span>Device Projection:</span> Uses Health Connect total calories when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.'
+                  '<span>Device Projection:</span> Uses device total calories (Health Connect, Garmin or Polar) when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.'
                 }
                 components={{ span: <span className="font-medium" /> }}
               />
@@ -1150,7 +1157,7 @@ const CalculationSettings = () => {
                   {calorieGoalAdjustmentMode === 'tdee'
                     ? t(
                         'settings.calculationExplanation.burnedTdee',
-                        'Health Connect total calories (BMR + active calories fallback)'
+                        'Device total calories (BMR + active calories fallback)'
                       )
                     : includeBmrInNetCalories
                       ? t(
@@ -1263,7 +1270,7 @@ const CalculationSettings = () => {
                     : calorieGoalAdjustmentMode === 'tdee'
                       ? t(
                           'settings.calculationExplanation.tdeeFootnote',
-                          '* Enable Total Calories in Health Connect sync. The projection converges with the device total at midnight; BMR plus active calories is used as a fallback.'
+                          '* Sync total calories from Health Connect, Garmin or Polar. The projection converges with the device total at midnight; BMR plus active calories is used as a fallback.'
                         )
                       : calorieGoalAdjustmentMode === 'adaptive'
                         ? t(
@@ -1433,6 +1440,32 @@ const CalculationSettings = () => {
             disabled={isSaving}
           />
         )}
+
+        <div className="mb-4 rounded-lg border p-3 space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="adjust-macros-with-exercise">
+              {t(
+                'calculationSettings.adjustMacrosWithExercise',
+                'Adjust percentage macro goals with exercise calories'
+              )}
+            </Label>
+            <Switch
+              id="adjust-macros-with-exercise"
+              checked={adjustMacrosWithExercise}
+              onCheckedChange={setAdjustMacrosWithExercise}
+              aria-describedby="adjust-macros-with-exercise-hint"
+            />
+          </div>
+          <p
+            id="adjust-macros-with-exercise-hint"
+            className="text-sm text-muted-foreground"
+          >
+            {t(
+              'calculationSettings.adjustMacrosWithExerciseHint',
+              'Increase protein, carbohydrate and fat targets using your saved percentages when exercise adds calories to your daily budget. Respects exercise earn-back settings. Goals entered in grams stay unchanged. Changes apply from today; earlier days keep their setting.'
+            )}
+          </p>
+        </div>
 
         {/* Custom Percentage Input (visible only for Manual mode) */}
         {calorieGoalAdjustmentMode === 'dynamic' &&

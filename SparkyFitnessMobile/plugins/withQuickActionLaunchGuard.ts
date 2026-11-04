@@ -17,13 +17,23 @@ const SHORTCUT_ACTION = 'expo.modules.quickactions.SHORTCUT';
 const SHORTCUT_EXTRA = 'shortcut_data';
 // The app's own scheme (app.json "scheme").
 const APP_SCHEME = 'sparkyfitnessmobile';
+// An NFC tag tap arrives as a web link on the tag host (Android 16 and later)
+// or as an NDEF discovery for the same link. Replaying either after the system
+// restored the app would run the tag again and log a second drink (#941).
+// Keep the host in step with ACTION_TAG_HOST in @workspace/shared.
+const TAG_HOST = 'tag.sparkyfitness.com';
+const NDEF_ACTION = 'android.nfc.action.NDEF_DISCOVERED';
 const INTENT_IMPORT = 'import android.content.Intent';
 const GUARD_MARKER = 'Restored after the app was killed';
 
 export const LAUNCH_GUARD = `    // ${GUARD_MARKER}: the shortcut or link that started this task already ran.
     if (savedInstanceState != null && (
         intent?.action == "${SHORTCUT_ACTION}" ||
-        (intent?.action == Intent.ACTION_VIEW && intent?.data?.scheme == "${APP_SCHEME}")
+        intent?.action == "${NDEF_ACTION}" ||
+        (intent?.action == Intent.ACTION_VIEW && (
+          intent?.data?.scheme == "${APP_SCHEME}" ||
+          intent?.data?.host == "${TAG_HOST}"
+        ))
       )) {
       intent = Intent(intent).setAction(Intent.ACTION_MAIN).setData(null).apply {
         removeExtra("${SHORTCUT_EXTRA}")

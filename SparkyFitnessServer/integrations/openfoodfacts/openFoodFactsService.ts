@@ -11,6 +11,7 @@ import {
   alcoholGramsForServing,
 } from '@workspace/shared';
 import package$0 from '../../package.json' with { type: 'json' };
+import { PARTIAL_SERVING_DATA } from '../../utils/foodRanking.js';
 import {
   normalizeBarcode,
   normalizeServingUnit,
@@ -50,11 +51,16 @@ async function fetchWithTimeout(
   fetchImpl: typeof fetch = fetch
 ): Promise<Response> {
   try {
+    init.signal?.throwIfAborted();
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
     return await fetchImpl(url, {
       ...init,
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: init.signal
+        ? AbortSignal.any([init.signal, timeoutSignal])
+        : timeoutSignal,
     });
   } catch (error) {
+    init.signal?.throwIfAborted();
     if (isTimeoutError(error)) {
       log(
         'warn',
@@ -112,6 +118,7 @@ const LEGACY_SEARCH_BATCH_SIZE = 100;
 const LEGACY_SEARCH_MAX_BATCHES = 10;
 
 interface OffProduct {
+  [PARTIAL_SERVING_DATA]?: true;
   product_name?: string;
   product_name_en?: string;
   brands?: string;
@@ -215,6 +222,24 @@ function normalizeSearchText(value: string): string {
 }
 
 /** Stably promotes hits that cover the complete query phrase and tokens. */
+/** The brand and name words of a hit, normalized like the query. */
+function hitSearchTokens(hit: SearchALiciousHit, language: string): string[] {
+  const brand = Array.isArray(hit.brands)
+    ? hit.brands.join(' ')
+    : hit.brands || '';
+  const localizedName = hit[`product_name_${language}`];
+  return normalizeSearchText(
+    [
+      brand,
+      typeof localizedName === 'string' ? localizedName : '',
+      hit.product_name || '',
+      hit.product_name_en || '',
+    ].join(' ')
+  )
+    .split(' ')
+    .filter(Boolean);
+}
+
 function rankSearchHits(
   hits: SearchALiciousHit[],
   query: string,
@@ -227,19 +252,7 @@ function rankSearchHits(
 
   return hits
     .map((hit, index) => {
-      const brand = Array.isArray(hit.brands)
-        ? hit.brands.join(' ')
-        : hit.brands || '';
-      const localizedName = hit[`product_name_${language}`];
-      const searchableText = normalizeSearchText(
-        [
-          brand,
-          typeof localizedName === 'string' ? localizedName : '',
-          hit.product_name || '',
-          hit.product_name_en || '',
-        ].join(' ')
-      );
-      const searchableTokens = searchableText.split(' ').filter(Boolean);
+      const searchableTokens = hitSearchTokens(hit, language);
       const candidateTokens = new Set(searchableTokens);
       const tokenCoverage =
         queryTokens.filter((token) => candidateTokens.has(token)).length /
@@ -295,19 +308,23 @@ async function fetchOpenFoodFacts(
     sessionCookie,
     timeoutMs = OFF_FETCH_TIMEOUT_MS,
     rateLimitProductRead = false,
+    signal,
   }: {
     authenticatedUserId?: string;
     providerId?: string;
     sessionCookie?: string | null;
     timeoutMs?: number;
     rateLimitProductRead?: boolean;
+    signal?: AbortSignal;
   } = {}
 ): Promise<Response> {
+  signal?.throwIfAborted();
   // The unauthenticated retry shares this request's deadline, so a 429/5xx
   // answered near the end of the budget cannot double the wall-clock time.
   const requestDeadline = Date.now() + timeoutMs;
   const remainingBudget = Math.max(0, requestDeadline - Date.now());
   const fetchImpl = await resolveOffFetch(authenticatedUserId, remainingBudget);
+  signal?.throwIfAborted();
   const baseHeaders = { ...OFF_HEADERS };
 
   const headers = sessionCookie
@@ -318,6 +335,7 @@ async function fetchOpenFoodFacts(
     requestHeaders: Record<string, string>
   ): Promise<Response> => {
     const operation = (): Promise<Response> => {
+      signal?.throwIfAborted();
       const remainingTimeoutMs = requestDeadline - Date.now();
       if (remainingTimeoutMs <= 0) {
         log('warn', `OpenFoodFacts request deadline exhausted: ${url}`);
@@ -333,6 +351,7 @@ async function fetchOpenFoodFacts(
           method: 'GET',
           headers: requestHeaders,
           redirect: 'manual',
+          signal,
         },
         remainingTimeoutMs,
         fetchImpl
@@ -350,6 +369,7 @@ async function fetchOpenFoodFacts(
   };
 
   const response = await performGet(headers);
+  signal?.throwIfAborted();
 
   if (sessionCookie && (response.status === 429 || response.status >= 500)) {
     log(
@@ -387,6 +407,12 @@ function productFromSearchHit(hit: SearchALiciousHit): OffProduct {
   };
 }
 
+// Search-a-licious does not index serving fields, so an unhydrated hit maps to
+// a 100 g reference whatever the label says.
+function indexOnlyProduct(hit: SearchALiciousHit): OffProduct {
+  return { ...productFromSearchHit(hit), [PARTIAL_SERVING_DATA]: true };
+}
+
 /**
  * Refreshes ranked hits in one Product Opener bulk request while preserving
  * every original hit when hydration is partial or unavailable.
@@ -409,7 +435,7 @@ async function hydrateSearchHits(
         .filter((code) => code.length > 0)
     ),
   ];
-  if (codes.length === 0) return hits.map(productFromSearchHit);
+  if (codes.length === 0) return hits.map(indexOnlyProduct);
 
   // Ask for both barcode forms so the bulk lookup also finds products Product
   // Opener stores under the sibling UPC-A/EAN-13 representation.
@@ -457,7 +483,6 @@ async function hydrateSearchHits(
       .find((product) => product !== undefined);
   return hits.map((hit) => {
     const code = String(hit.code || '').trim();
-    const indexedProduct = productFromSearchHit(hit);
     const currentProduct = code ? lookupProduct(code) : undefined;
 
     // The full-text index can still hold nutrition while Product Opener is
@@ -465,7 +490,7 @@ async function hydrateSearchHits(
     // case so hydration cannot underfill an otherwise valid search page.
     return currentProduct && hasUsableOffCoreNutrition(currentProduct)
       ? currentProduct
-      : indexedProduct;
+      : indexOnlyProduct(hit);
   });
 }
 
@@ -504,6 +529,105 @@ function getSearchALiciousPagination(
 }
 
 /** Searches either public Search-a-licious or a custom legacy OFF provider. */
+/** One Search-a-licious request for free text plus the core-nutrition filter. */
+async function requestSearchALicious(
+  text: string,
+  page: number,
+  pageSize: number,
+  language: string,
+  fields: string[],
+  timeoutMs: number = OFF_FETCH_TIMEOUT_MS
+): Promise<SearchALiciousResponse> {
+  const langs = language === 'en' ? ['en'] : [language, 'en'];
+  const response = await fetchWithTimeout(
+    SEARCH_A_LICIOUS_URL,
+    {
+      method: 'POST',
+      headers: {
+        ...OFF_HEADERS,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        // Search-a-licious treats adjacent free-text and field clauses as
+        // required terms. Grouping the free text itself (or inserting AND
+        // after a multi-word phrase) currently yields an empty result set.
+        q: `${text} ${OFF_CORE_NUTRITION_SEARCH_CLAUSE}`,
+        page,
+        page_size: pageSize,
+        boost_phrase: true,
+        langs,
+        fields,
+      }),
+    },
+    timeoutMs
+  );
+  if (!response.ok) {
+    log(
+      'error',
+      `OpenFoodFacts Search-a-licious request failed with HTTP ${response.status}`
+    );
+    throw new Error(`OpenFoodFacts search failed (HTTP ${response.status})`);
+  }
+  return parseSearchResponse(response, isSearchALiciousResponse);
+}
+
+/** At most this many query words are tried as the brand. */
+const BRAND_RETRY_MAX_WORDS = 3;
+/**
+ * Brand hits added to page 1. Kept small whatever the page size, since they
+ * join the page's own hits in one hydration request.
+ */
+const BRAND_RETRY_MAX_HITS = 20;
+
+/**
+ * Search-a-licious matches any of the words, so "kirkland bagel" fills the
+ * page with products named Kirkland and leaves the Kirkland bagels far down.
+ * When no hit has every word, ask again with one word at a time as the brand
+ * (`brands:kirkland bagel`) and return the first answer with hits. The words
+ * come from normalizeSearchText, letters and digits only, so the person's text
+ * cannot add query syntax. A failed retry returns nothing: the plain search
+ * already answered.
+ */
+async function searchBrandHits(
+  hits: SearchALiciousHit[],
+  query: string,
+  language: string,
+  fields: string[]
+): Promise<SearchALiciousHit[]> {
+  const words = [
+    ...new Set(normalizeSearchText(query).split(' ').filter(Boolean)),
+  ];
+  if (words.length < 2) return [];
+  const hasEveryWord = hits.some((hit) => {
+    const tokens = new Set(hitSearchTokens(hit, language));
+    return words.every((word) => tokens.has(word));
+  });
+  if (hasEveryWord) return [];
+
+  // One deadline for every try, so the retries together never hold page 1
+  // longer than a single request could.
+  const deadline = Date.now() + OFF_FETCH_TIMEOUT_MS;
+  try {
+    for (const brandWord of words.slice(0, BRAND_RETRY_MAX_WORDS)) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) break;
+      const rest = words.filter((word) => word !== brandWord).join(' ');
+      const data = await requestSearchALicious(
+        `brands:${brandWord} ${rest}`,
+        1,
+        BRAND_RETRY_MAX_HITS,
+        language,
+        fields,
+        remainingMs
+      );
+      if (data.hits.length > 0) return data.hits;
+    }
+  } catch (error) {
+    log('warn', 'OpenFoodFacts brand search unavailable:', error);
+  }
+  return [];
+}
+
 async function searchOpenFoodFacts(
   query: string,
   page = 1,
@@ -619,34 +743,37 @@ async function searchOpenFoodFacts(
       );
     }
 
-    const langs = language === 'en' ? ['en'] : [language, 'en'];
-    const response = await fetchWithTimeout(SEARCH_A_LICIOUS_URL, {
-      method: 'POST',
-      headers: {
-        ...OFF_HEADERS,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        // Search-a-licious treats adjacent free-text and field clauses as
-        // required terms. Grouping the free text itself (or inserting AND
-        // after a multi-word phrase) currently yields an empty result set.
-        q: `${query} ${OFF_CORE_NUTRITION_SEARCH_CLAUSE}`,
-        page,
-        page_size: pageSize,
-        boost_phrase: true,
-        langs,
-        fields,
-      }),
+    const data = await requestSearchALicious(
+      query,
+      page,
+      pageSize,
+      language,
+      fields
+    );
+    const brandHits =
+      page === 1
+        ? await searchBrandHits(data.hits, query, language, fields)
+        : [];
+    // Brand hits are added to page 1 on top of its own hits, so no plain hit is
+    // pushed off the page: page 2 starts at the plain offset as usual. A brand
+    // hit already on this page is dropped; one whose plain copy ranks on a much
+    // later page can show again there (web drops it when appending pages). A
+    // hit without a code cannot be matched, so it is kept, as on plain pages.
+    const seenCodes = new Set(
+      data.hits.map((hit) => String(hit.code || '').trim()).filter(Boolean)
+    );
+    const newBrandHits = brandHits.filter((hit) => {
+      const code = String(hit.code || '').trim();
+      if (!code) return true;
+      if (seenCodes.has(code)) return false;
+      seenCodes.add(code);
+      return true;
     });
-    if (!response.ok) {
-      log(
-        'error',
-        `OpenFoodFacts Search-a-licious request failed with HTTP ${response.status}`
-      );
-      throw new Error(`OpenFoodFacts search failed (HTTP ${response.status})`);
-    }
-    const data = await parseSearchResponse(response, isSearchALiciousResponse);
-    const rankedHits = rankSearchHits(data.hits, query, language);
+    const rankedHits = rankSearchHits(
+      [...newBrandHits, ...data.hits],
+      query,
+      language
+    );
     const products = (
       await hydrateSearchHits(rankedHits, fields, language, {
         authenticatedUserId,
@@ -655,9 +782,15 @@ async function searchOpenFoodFacts(
         baseUrl,
       })
     ).filter(hasUsableOffCoreNutrition);
+    const pagination = getSearchALiciousPagination(data, page, pageSize);
     return {
       products,
-      pagination: getSearchALiciousPagination(data, page, pageSize),
+      // Brand hits are on this page but not in the plain count; without them
+      // a plain search with no hits would report 0 next to the products shown.
+      pagination: {
+        ...pagination,
+        totalCount: Math.max(pagination.totalCount, products.length),
+      },
     };
   } catch (error) {
     log(
@@ -674,7 +807,8 @@ async function searchOpenFoodFactsByBarcodeFields(
   language = 'en',
   authenticatedUserId?: string,
   providerId?: string,
-  credentialScope: OpenFoodFactsCredentialScope = 'personal'
+  credentialScope: OpenFoodFactsCredentialScope = 'personal',
+  signal?: AbortSignal
 ): Promise<{
   status: number;
   status_verbose: string;
@@ -682,6 +816,7 @@ async function searchOpenFoodFactsByBarcodeFields(
   [key: string]: unknown;
 }> {
   try {
+    signal?.throwIfAborted();
     const fieldSet = new Set(fields);
     if (language !== 'en') {
       fieldSet.add(`product_name_${language}`);
@@ -693,13 +828,16 @@ async function searchOpenFoodFactsByBarcodeFields(
       providerId,
       credentialScope
     );
+    signal?.throwIfAborted();
     const searchUrl = `${baseUrl}/api/v2/product/${barcode}.json?fields=${fieldsParam}&lc=${language}`;
     const response = await fetchOpenFoodFacts(searchUrl, {
       authenticatedUserId,
       providerId,
       sessionCookie,
       rateLimitProductRead: true,
+      signal,
     });
+    signal?.throwIfAborted();
     if (!response.ok) {
       if (response.status === 404) {
         log(
@@ -709,6 +847,7 @@ async function searchOpenFoodFactsByBarcodeFields(
         return { status: 0, status_verbose: 'product not found' };
       }
       const errorText = await response.text();
+      signal?.throwIfAborted();
       log('error', 'OpenFoodFacts Barcode Fields Search API error:', errorText);
       throw new Error(`OpenFoodFacts API error (HTTP ${response.status})`);
     }
@@ -718,6 +857,7 @@ async function searchOpenFoodFactsByBarcodeFields(
       product?: OffProduct;
       [key: string]: unknown;
     };
+    signal?.throwIfAborted();
 
     if (data.status !== 1 || !data.product) {
       const alt = altBarcode(barcode);
@@ -729,7 +869,9 @@ async function searchOpenFoodFactsByBarcodeFields(
           providerId,
           sessionCookie,
           rateLimitProductRead: true,
+          signal,
         });
+        signal?.throwIfAborted();
         if (altResponse.ok) {
           const altData = (await altResponse.json()) as {
             status: number;
@@ -737,6 +879,7 @@ async function searchOpenFoodFactsByBarcodeFields(
             product?: OffProduct;
             [key: string]: unknown;
           };
+          signal?.throwIfAborted();
           if (altData.status === 1 && altData.product) {
             data = altData;
           }
@@ -902,6 +1045,30 @@ function hasUsableOffCoreNutrition(product: OffProduct): boolean {
     OFF_CORE_NUTRIENT_SERVING_KEYS.some(
       (key) => parseOffNumber(product.nutriments?.[key]) !== null
     )
+  );
+}
+
+/**
+ * Returns true when OFF declares energy, protein, carbohydrates and fat. The
+ * mapper turns a missing value into 0, so a product that passes only
+ * hasUsableOffCoreNutrition can still map to a food with false zeros.
+ */
+function hasCompleteOffCoreNutrition(product: OffProduct): boolean {
+  const nutriments = product.nutriments;
+  if (!isRecord(nutriments)) return false;
+  const servingQuantity = parseOffNumber(product.serving_quantity);
+  const hasServing = servingQuantity !== null && servingQuantity > 0;
+  const declares = (baseKeys: string[]) =>
+    baseKeys.some(
+      (base) =>
+        parseOffNumber(nutriments[`${base}_100g`]) !== null ||
+        (hasServing && parseOffNumber(nutriments[`${base}_serving`]) !== null)
+    );
+  return (
+    declares(['energy-kcal', 'energy-kj', 'energy']) &&
+    declares(['proteins']) &&
+    declares(['carbohydrates']) &&
+    declares(['fat'])
   );
 }
 
@@ -1227,6 +1394,9 @@ function mapOpenFoodFactsProduct(
     // Hotlinked in search results; localized on import (see models/food.ts).
     image_url: product.image_front_url || product.image_url || null,
     default_variant: metricVariant,
+    ...(product[PARTIAL_SERVING_DATA]
+      ? { [PARTIAL_SERVING_DATA]: true as const }
+      : {}),
     ...(householdVariant
       ? { variants: [metricVariant, householdVariant] }
       : {}),
@@ -1235,6 +1405,7 @@ function mapOpenFoodFactsProduct(
 export { searchOpenFoodFacts };
 export { searchOpenFoodFactsByBarcodeFields };
 export { mapOpenFoodFactsProduct };
+export { hasUsableOffCoreNutrition, hasCompleteOffCoreNutrition };
 export default {
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,

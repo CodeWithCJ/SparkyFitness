@@ -102,6 +102,22 @@ describe('run program routes', () => {
     );
   });
 
+  it('starts the Zone 2 program in either version', async () => {
+    vi.mocked(upsertRunProgram).mockResolvedValue({
+      ...program,
+      program_id: 'zone2Base4',
+    });
+    const res = await request(app)
+      .put('/api/v2/run-program')
+      .send({ program_id: 'zone2Base4' });
+    expect(res.status).toBe(200);
+    expect(upsertRunProgram).toHaveBeenCalledWith(
+      'test-user-id',
+      { program_id: 'zone2Base4' },
+      'test-user-id'
+    );
+  });
+
   it('rejects a bad body and an unknown program', async () => {
     const bad = await request(app)
       .put('/api/v2/run-program')

@@ -756,7 +756,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                 {tdeeProjection.source === 'health_connect_total'
                   ? t(
                       'exercise.dailyProgress.healthConnectProjectionSource',
-                      'Health Connect total calories'
+                      'Device total calories'
                     )
                   : tdeeProjection.source === 'active_plus_bmr'
                     ? t(

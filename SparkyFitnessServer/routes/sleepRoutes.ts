@@ -53,13 +53,19 @@ router.get(
   async (req, res, next) => {
     try {
       const { startDate, endDate, userId } = req.query;
-      if (!startDate || !endDate) {
+      if (
+        typeof startDate !== 'string' ||
+        typeof endDate !== 'string' ||
+        !startDate ||
+        !endDate
+      ) {
         return res.status(400).json({
           error: 'Missing required query parameters: startDate and endDate.',
         });
       }
 
-      const targetUserId = userId || req.userId;
+      const targetUserId =
+        typeof userId === 'string' && userId ? userId : req.userId;
       const analyticsData = await sleepAnalyticsService.getSleepAnalytics(
         targetUserId,
         startDate,

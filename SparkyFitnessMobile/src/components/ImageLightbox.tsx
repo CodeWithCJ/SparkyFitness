@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SafeImage from './SafeImage';
+import ZoomableView from './ZoomableView';
 import Icon from './Icon';
 import { useFoodImageSourceContext } from './FoodImageSourceProvider';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
@@ -59,6 +60,9 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
 
   const [index, setIndex] = useState(initialIndex);
   const [autoplay, setAutoplay] = useState(autoPlay);
+  // A zoomed image takes the drag for panning, so paging waits until it is
+  // back at 1x.
+  const [zoomed, setZoomed] = useState(false);
 
   // Re-seed on every open, so it starts on the tapped image with autoplay
   // running rather than wherever the previous session left off. Done during
@@ -73,6 +77,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
     if (visible) {
       setIndex(initialIndex);
       setAutoplay(autoPlay);
+      setZoomed(false);
     }
   }
 
@@ -110,6 +115,11 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
   );
 
   const stopAutoplay = useCallback(() => setAutoplay(false), []);
+  const handleZoomChange = useCallback((next: boolean) => {
+    setZoomed(next);
+    // Zooming in is browsing too: the slideshow must not move the image away.
+    if (next) setAutoplay(false);
+  }, []);
 
   const getItemLayout = useCallback(
     (_: unknown, i: number) => ({ length: width, offset: width * i, index: i }),
@@ -132,6 +142,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
           data={images}
           horizontal
           pagingEnabled
+          scrollEnabled={!zoomed}
           showsHorizontalScrollIndicator={false}
           initialScrollIndex={initialIndex}
           getItemLayout={getItemLayout}
@@ -139,17 +150,23 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
           onScrollBeginDrag={stopAutoplay}
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-          renderItem={({ item }) => (
+          renderItem={({ item, index: itemIndex }) => (
             <View
               style={{ width, height }}
               className="items-center justify-center"
             >
-              <SafeImage
-                source={getImageSource(item)}
-                style={{ width, height: height * 0.8 }}
-                contentFit="contain"
-                autoplay
-              />
+              {/* Back to 1x once paged away from, and on close. */}
+              <ZoomableView
+                resetKey={visible && itemIndex === index}
+                onZoomChange={handleZoomChange}
+              >
+                <SafeImage
+                  source={getImageSource(item)}
+                  style={{ width, height: height * 0.8 }}
+                  contentFit="contain"
+                  autoplay
+                />
+              </ZoomableView>
             </View>
           )}
         />

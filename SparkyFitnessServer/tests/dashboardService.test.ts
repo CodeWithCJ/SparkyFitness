@@ -45,7 +45,7 @@ vi.mock('../models/preferenceRepository.js', () => ({
 }));
 
 vi.mock('../models/genericHealthRepository.js', () => ({
-  getHealthConnectTotalCaloriesByDateRange: vi.fn(),
+  getDeviceTotalCaloriesByDateRange: vi.fn(),
 }));
 
 vi.mock('../services/nutrientGoalPreferenceService.js', () => ({
@@ -112,7 +112,7 @@ beforeEach(() => {
     null
   );
   vi.mocked(
-    genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+    genericHealthRepository.getDeviceTotalCaloriesByDateRange
   ).mockResolvedValue([]);
 });
 
@@ -152,7 +152,7 @@ describe('getDashboardStats includeCheckin gate', () => {
       measurementRepository.getCheckInMeasurementsByDate
     ).not.toHaveBeenCalled();
     expect(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
     ).not.toHaveBeenCalled();
   });
 
@@ -179,15 +179,21 @@ describe('getDashboardStats includeCheckin gate', () => {
 });
 
 describe('getDashboardStats calorie arithmetic', () => {
-  test('uses Health Connect total burn for the Device Projection target', async () => {
+  test('uses a Garmin total burn for the Device Projection target', async () => {
     vi.mocked(preferenceRepository.getUserPreferences).mockResolvedValue({
       ...basePreferences,
       calorie_goal_adjustment_mode: 'tdee',
       goal_mode: 'maintain',
     });
     vi.mocked(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
-    ).mockResolvedValue([{ entry_date: '2026-06-13', total_calories: 2300 }]);
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
+    ).mockResolvedValue([
+      {
+        entry_date: '2026-06-13',
+        source_provider: 'garmin',
+        total_calories: 2300,
+      },
+    ]);
 
     const result = await getDashboardStats('user1', '2026-06-13', true);
 
@@ -201,7 +207,7 @@ describe('getDashboardStats calorie arithmetic', () => {
       goal_mode: 'maintain',
     });
     vi.mocked(
-      genericHealthRepository.getHealthConnectTotalCaloriesByDateRange
+      genericHealthRepository.getDeviceTotalCaloriesByDateRange
     ).mockRejectedValue(new Error('temporary query failure'));
 
     await expect(

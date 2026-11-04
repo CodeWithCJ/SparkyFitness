@@ -30,14 +30,22 @@ const FamilyDiaryScreen: React.FC<FamilyDiaryScreenProps> = ({
   navigation,
   route,
 }) => {
-  const { familyUser } = route.params;
+  const { familyUser, date } = route.params;
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const calendarRef = useRef<CalendarSheetRef>(null);
-  const [selectedDate, setSelectedDate] = useState(getTodayDate);
+  const [selectedDate, setSelectedDate] = useState(
+    () => date ?? getTodayDate()
+  );
+
+  const [previousRouteParams, setPreviousRouteParams] = useState(route.params);
+  if (previousRouteParams !== route.params) {
+    setPreviousRouteParams(route.params);
+    setSelectedDate(date ?? getTodayDate());
+  }
   const locale = i18n?.resolvedLanguage ?? i18n?.language ?? 'en-US';
   const displayName = familyDiaryUserName(
     familyUser,

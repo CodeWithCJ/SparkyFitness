@@ -21,6 +21,7 @@ export const CALORIE_RULE_DEFAULTS: ResolvedCalorieRules = {
   activity_level: 'not_much',
   use_external_bmr: false,
   include_bmr_in_net_calories: false,
+  adjust_macros_with_exercise: false,
 };
 
 /** The calorie settings of `preferences`, with the defaults for unset ones. */

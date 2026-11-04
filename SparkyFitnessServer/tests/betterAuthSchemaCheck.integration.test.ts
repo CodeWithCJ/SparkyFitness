@@ -21,7 +21,8 @@
 
 import pg from 'pg';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { endPool } from '../db/poolManager.js';
+import { endPool, getSystemClient } from '../db/poolManager.js';
+import { getMcpResourceUrl } from '../utils/mcpOAuth.js';
 
 // Probe the database using environment variables without hardcoded credentials
 async function isDbReachable(): Promise<boolean> {
@@ -56,6 +57,7 @@ describe('Better Auth schema check', () => {
   });
 
   afterAll(async () => {
+    delete process.env.SPARKY_FITNESS_TEST_MCP_OAUTH_PLUGINS;
     await endPool();
   });
 
@@ -67,6 +69,10 @@ describe('Better Auth schema check', () => {
     }
 
     // Imported lazily so a missing database does not evaluate auth.ts at all.
+    // Enable the real OAuth/JWT plugins here so their startup resource seed is
+    // exercised against the migrated database instead of being skipped by the
+    // normal NODE_ENV=test unit-test guard.
+    process.env.SPARKY_FITNESS_TEST_MCP_OAUTH_PLUGINS = 'true';
     const { auth } = await import('../auth.js');
     const ctx = await auth.$context;
 
@@ -91,5 +97,21 @@ describe('Better Auth schema check', () => {
       mismatch,
       'Better Auth cannot write to this schema. Add a migration for the columns listed above (see agent-docs/new-migration-checklist.md) and map them in auth.ts.'
     ).toBeNull();
-  });
+
+    const client = await getSystemClient();
+    try {
+      const resource = await client.query(
+        `SELECT allowed_scopes
+           FROM oauth_resource
+          WHERE identifier = $1`,
+        [getMcpResourceUrl()]
+      );
+      expect(resource.rows).toHaveLength(1);
+      expect(JSON.parse(resource.rows[0].allowed_scopes) as unknown).toEqual([
+        'sparky:mcp',
+      ]);
+    } finally {
+      client.release();
+    }
+  }, 20_000);
 });

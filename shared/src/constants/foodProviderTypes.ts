@@ -90,7 +90,7 @@ export const FOOD_PROVIDER_REGISTRY: Record<
     displayName: 'YAZIO',
     isPublic: false,
     needsDetailFetch: true,
-    supportsBarcode: false,
+    supportsBarcode: true,
     supportsBulkImport: false,
   },
   norish: {

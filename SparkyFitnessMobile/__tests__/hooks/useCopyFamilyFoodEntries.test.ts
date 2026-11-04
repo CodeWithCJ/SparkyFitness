@@ -3,6 +3,8 @@ import Toast from 'react-native-toast-message';
 import {
   copyReviewedFoodEntriesFromUser,
   copySelectedFoodEntriesFromUser,
+  copyReviewedFoodEntriesToUser,
+  copySelectedFoodEntriesToUser,
 } from '../../src/services/api/foodEntriesApi';
 import {
   useCopyFamilyFoodEntries,
@@ -18,6 +20,8 @@ import { ApiError } from '../../src/services/api/errors';
 jest.mock('../../src/services/api/foodEntriesApi', () => ({
   copyReviewedFoodEntriesFromUser: jest.fn(),
   copySelectedFoodEntriesFromUser: jest.fn(),
+  copyReviewedFoodEntriesToUser: jest.fn(),
+  copySelectedFoodEntriesToUser: jest.fn(),
 }));
 
 jest.mock('react-native-toast-message', () => ({ show: jest.fn() }));
@@ -65,6 +69,109 @@ describe('useCopyFamilyFoodEntries', () => {
   afterEach(() => queryClient.clear());
 
   test.each([
+    ['whole', wholeRequest, copyReviewedFoodEntriesToUser],
+    ['selected', selectedRequest, copySelectedFoodEntriesToUser],
+  ] as const)(
+    'routes outbound %s copy to the recipient and invalidates only their target day',
+    async (_kind, request, expectedFn) => {
+      (expectedFn as jest.Mock).mockResolvedValue(undefined);
+      const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+      const { result } = renderHook(
+        () => useCopyFamilyFoodEntries({ direction: 'to-family' }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await act(async () => {
+        await result.current.copyEntriesAsync(request);
+      });
+      expect(expectedFn).toHaveBeenCalledWith(request.payload);
+      expect(invalidateSpy).toHaveBeenCalledTimes(1);
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['familyDailySummary', 'family-user', '2026-08-24'],
+        refetchType: 'all',
+      });
+    }
+  );
+
+  test('refreshes own source and returns to review after outbound source changes', async () => {
+    (copySelectedFoodEntriesToUser as jest.Mock).mockRejectedValue(
+      new ApiError('Conflict', 409)
+    );
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const refetchSpy = jest.spyOn(queryClient, 'refetchQueries');
+    const onStale = jest.fn();
+    const { result } = renderHook(
+      () => useCopyFamilyFoodEntries({ direction: 'to-family', onStale }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+    await expect(
+      act(async () => {
+        await result.current.copyEntriesAsync(selectedRequest);
+      })
+    ).rejects.toThrow('Conflict');
+    await waitFor(() =>
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: ['dailySummary', '2026-08-23'],
+      })
+    );
+    expect(refetchSpy).toHaveBeenCalledWith({
+      queryKey: ['familyCopySource', '2026-08-23'],
+    });
+    expect(onStale).toHaveBeenCalledWith(selectedRequest);
+  });
+
+  test('refreshes access and reports denied outbound permissions to the review', async () => {
+    (copySelectedFoodEntriesToUser as jest.Mock).mockRejectedValue(
+      new ApiError('Forbidden', 403)
+    );
+    const refetchSpy = jest.spyOn(queryClient, 'refetchQueries');
+    const onPermissionDenied = jest.fn();
+    const { result } = renderHook(
+      () =>
+        useCopyFamilyFoodEntries({
+          direction: 'to-family',
+          onPermissionDenied,
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+    await expect(
+      act(async () => {
+        await result.current.copyEntriesAsync(selectedRequest);
+      })
+    ).rejects.toThrow('Forbidden');
+    await waitFor(() =>
+      expect(refetchSpy).toHaveBeenCalledWith({
+        queryKey: ['familyDiaryUsers'],
+      })
+    );
+    expect(onPermissionDenied).toHaveBeenCalledTimes(1);
+  });
+
+  test('explains the required server update when the outbound endpoint is unavailable', async () => {
+    (copySelectedFoodEntriesToUser as jest.Mock).mockRejectedValue(
+      new ApiError('Not found', 404)
+    );
+    const onSuccess = jest.fn();
+    const { result } = renderHook(
+      () => useCopyFamilyFoodEntries({ direction: 'to-family', onSuccess }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+    await expect(
+      act(async () => {
+        await result.current.copyEntriesAsync(selectedRequest);
+      })
+    ).rejects.toThrow('Not found');
+    expect(onSuccess).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(Toast.show).toHaveBeenCalledWith({
+        type: 'error',
+        text1: 'Server update required',
+        text2:
+          'Update your SparkyFitness server to copy foods to family members.',
+      })
+    );
+  });
+
+  test.each([
     ['whole', wholeRequest, copyReviewedFoodEntriesFromUser],
     ['selected', selectedRequest, copySelectedFoodEntriesFromUser],
   ] as const)(
@@ -76,7 +183,7 @@ describe('useCopyFamilyFoodEntries', () => {
       });
 
       await act(async () => {
-        await result.current.copyFromFamilyAsync(request);
+        await result.current.copyEntriesAsync(request);
       });
 
       expect(expectedFn).toHaveBeenCalledWith(request.payload);
@@ -91,7 +198,7 @@ describe('useCopyFamilyFoodEntries', () => {
     });
 
     await act(async () => {
-      await result.current.copyFromFamilyAsync(selectedRequest);
+      await result.current.copyEntriesAsync(selectedRequest);
     });
 
     expect(invalidateSpy).toHaveBeenCalledWith({
@@ -118,7 +225,7 @@ describe('useCopyFamilyFoodEntries', () => {
     );
 
     await act(async () => {
-      await result.current.copyFromFamilyAsync(wholeRequest);
+      await result.current.copyEntriesAsync(wholeRequest);
     });
 
     expect(onSuccess).toHaveBeenCalledWith(wholeRequest);
@@ -139,7 +246,7 @@ describe('useCopyFamilyFoodEntries', () => {
 
     await expect(
       act(async () => {
-        await result.current.copyFromFamilyAsync(selectedRequest);
+        await result.current.copyEntriesAsync(selectedRequest);
       })
     ).rejects.toThrow('boom');
 
@@ -165,7 +272,7 @@ describe('useCopyFamilyFoodEntries', () => {
 
     await expect(
       act(async () => {
-        await result.current.copyFromFamilyAsync(selectedRequest);
+        await result.current.copyEntriesAsync(selectedRequest);
       })
     ).rejects.toThrow('Forbidden');
 
@@ -195,7 +302,7 @@ describe('useCopyFamilyFoodEntries', () => {
 
     await expect(
       act(async () => {
-        await result.current.copyFromFamilyAsync(selectedRequest);
+        await result.current.copyEntriesAsync(selectedRequest);
       })
     ).rejects.toThrow('Conflict');
 

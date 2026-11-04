@@ -57,7 +57,7 @@ enum GpsSignal: Int {
 /// What the wearer is recording from the wrist alone. Raw values are for
 /// logging, not the wire.
 enum WatchRunKind: String {
-    case walk, run
+    case walk, run, jumpRope
 
     func title(_ place: WatchRunPlace) -> String {
         switch (self, place) {
@@ -65,6 +65,7 @@ enum WatchRunKind: String {
         case (.walk, .outdoor): return String(localized: "watch.run.title.outdoorWalk", defaultValue: "Outdoor walk")
         case (.run, .indoor): return String(localized: "watch.run.title.indoorRun", defaultValue: "Indoor run")
         case (.run, .outdoor): return String(localized: "watch.run.title.outdoorRun", defaultValue: "Outdoor run")
+        case (.jumpRope, _): return String(localized: "watch.run.title.jumpRope", defaultValue: "Jump Rope")
         }
     }
 
@@ -72,6 +73,7 @@ enum WatchRunKind: String {
         switch self {
         case .walk: return "figure.walk"
         case .run: return "figure.run"
+        case .jumpRope: return "figure.jumprope"
         }
     }
 
@@ -79,6 +81,21 @@ enum WatchRunKind: String {
         switch self {
         case .walk: return .walking
         case .run: return .running
+        case .jumpRope: return .jumpRope
+        }
+    }
+
+    /// A jump rope covers no distance, so the live and summary views drop the
+    /// distance and pace tiles and show time and heart rate only.
+    var showsDistance: Bool { self != .jumpRope }
+
+    /// The short name on a Cardio choice tile, distinct from the fuller
+    /// `title` used as the recording's heading.
+    var shortLabel: String {
+        switch self {
+        case .walk: return String(localized: "watch.activity.walk", defaultValue: "Walk")
+        case .run: return String(localized: "watch.activity.run", defaultValue: "Run")
+        case .jumpRope: return String(localized: "watch.activity.jumpRope", defaultValue: "Jump Rope")
         }
     }
 }

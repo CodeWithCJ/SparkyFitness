@@ -14,6 +14,23 @@ export function isDemoMode(): boolean {
   return process.env.SPARKY_FITNESS_DEMO_MODE === 'true';
 }
 
+const DEMO_RESTRICTED_AUTH_PREFIXES = [
+  '/api/auth/two-factor',
+  '/api/auth/passkey',
+  '/api/auth/change-password',
+  '/api/auth/set-password',
+  '/api/auth/change-email',
+  '/api/auth/update-user',
+  '/api/auth/delete-user',
+  '/api/auth/oauth2',
+];
+
+export function isDemoRestrictedAuthPath(path: string): boolean {
+  return DEMO_RESTRICTED_AUTH_PREFIXES.some(
+    (prefix) => path === prefix || path.startsWith(prefix + '/')
+  );
+}
+
 export function getDemoEmail(): string {
   return (
     process.env.SPARKY_FITNESS_DEMO_EMAIL?.toLowerCase().trim() ||
@@ -144,14 +161,17 @@ const DEMO_READONLY_PREFIXES = ['/api/identity', '/api/external-providers'];
  * Endpoints that ingest a file, image, or bulk document *without* multipart —
  * base64 in a JSON body, or a pasted CSV/JSON payload — so the content-type
  * check below never sees them. Matched as patterns because several sit behind a
- * dynamic `:id` segment.
+ * dynamic `:id` segment. Express does not use strict routing, so a trailing
+ * slash reaches the same route: each pattern ends in an optional slash, or
+ * `/scan/` would walk straight past a `$`-anchored match.
  */
 const DEMO_BLOCKED_PATH_PATTERNS = [
   // import-from-csv, import-history-csv, import-fit, import-json
   /\/import(-|\/|$)/i,
-  /\/scan-label$/i, // base64 label image -> LLM
-  /\/supplement-label\/scan$/i, // base64 supplement label image -> LLM
-  /\/estimate-food-photo$/i, // base64 meal photo -> LLM
+  /\/scan-label\/?$/i, // base64 label image -> LLM
+  /\/supplement-label\/scan\/?$/i, // base64 supplement label image -> LLM
+  /\/lab-reports\/scan\/?$/i, // base64 lab report PDF or photo -> LLM
+  /\/estimate-food-photo\/?$/i, // base64 meal photo -> LLM
   /\/openfoodfacts\//i, // publishes product data and photos to a public database
 ];
 

@@ -31,7 +31,7 @@ export const MeditationTimerModal: React.FC<MeditationTimerModalProps> = ({
   const [secondsRemaining, setSecondsRemaining] = useState(10 * 60);
   const [stopwatchSeconds, setStopwatchSeconds] = useState(0);
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const triggerHaptic = useCallback((style: Haptics.ImpactFeedbackStyle) => {
     try {
@@ -67,7 +67,7 @@ export const MeditationTimerModal: React.FC<MeditationTimerModalProps> = ({
       if (mode === 'countdown') {
         setSecondsRemaining((prev) => {
           if (prev <= 1) {
-            clearInterval(timerRef.current as NodeJS.Timeout);
+            clearInterval(timerRef.current as ReturnType<typeof setInterval>);
             setIsActive(false);
             triggerHaptic(Haptics.ImpactFeedbackStyle.Heavy);
             return 0;

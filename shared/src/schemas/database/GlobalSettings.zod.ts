@@ -7,6 +7,37 @@ export const globalSettingsIdSchema = z.number().and(
   })
 );
 
+export const MCP_OAUTH_LOOPBACK_REDIRECT_PATTERNS = [
+  'http://localhost:*',
+  'http://127.0.0.1:*',
+  'http://[::1]:*',
+] as const;
+
+const mcpOAuthLoopbackRedirectPatterns = new Set<string>(
+  MCP_OAUTH_LOOPBACK_REDIRECT_PATTERNS
+);
+
+export const mcpOAuthAllowedRedirectUriSchema = z
+  .string()
+  .min(1)
+  .refine((value) => {
+    if (mcpOAuthLoopbackRedirectPatterns.has(value)) return true;
+    if (value !== value.trim() || value.includes('*')) return false;
+    try {
+      const url = new URL(value);
+      if (url.username || url.password || url.hash) return false;
+      const isExactLoopback =
+        url.hostname === 'localhost' ||
+        url.hostname === '127.0.0.1' ||
+        url.hostname === '[::1]';
+      if (url.protocol === 'https:') return !isExactLoopback;
+      if (url.protocol === 'http:') return isExactLoopback;
+      return true;
+    } catch {
+      return false;
+    }
+  }, 'Must be an exact redirect URI or a supported loopback-any-port pattern.');
+
 export const globalSettingsSchema = z.object({
   id: globalSettingsIdSchema,
   enable_email_password_login: z.boolean(),
@@ -22,6 +53,10 @@ export const globalSettingsSchema = z.object({
   dev_tools_enabled: z.boolean(),
   mock_data_enabled: z.boolean(),
   enable_passkey_login: z.boolean(),
+  enable_magic_link_login: z.boolean(),
+  mcp_oauth_enabled: z.boolean(),
+  mcp_oauth_allowed_redirect_uris: z.array(mcpOAuthAllowedRedirectUriSchema),
+  enable_version_check: z.boolean(),
 });
 
 export const globalSettingsInitializerSchema = z.object({
@@ -39,6 +74,12 @@ export const globalSettingsInitializerSchema = z.object({
   dev_tools_enabled: z.boolean().optional(),
   mock_data_enabled: z.boolean().optional(),
   enable_passkey_login: z.boolean().optional(),
+  enable_magic_link_login: z.boolean().optional(),
+  mcp_oauth_enabled: z.boolean().optional(),
+  mcp_oauth_allowed_redirect_uris: z
+    .array(mcpOAuthAllowedRedirectUriSchema)
+    .optional(),
+  enable_version_check: z.boolean().optional(),
 });
 
 export const globalSettingsMutatorSchema = z.object({
@@ -56,6 +97,12 @@ export const globalSettingsMutatorSchema = z.object({
   dev_tools_enabled: z.boolean().optional(),
   mock_data_enabled: z.boolean().optional(),
   enable_passkey_login: z.boolean().optional(),
+  enable_magic_link_login: z.boolean().optional(),
+  mcp_oauth_enabled: z.boolean().optional(),
+  mcp_oauth_allowed_redirect_uris: z
+    .array(mcpOAuthAllowedRedirectUriSchema)
+    .optional(),
+  enable_version_check: z.boolean().optional(),
 });
 
 export type GlobalSettings = z.infer<typeof globalSettingsSchema>;

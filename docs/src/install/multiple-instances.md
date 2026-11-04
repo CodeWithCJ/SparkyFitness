@@ -22,15 +22,38 @@ The Helm chart handles this when Helm can read the cluster: it generates the pas
 
 Uploaded images and backups are stored on the server's disk. Every instance must mount the same uploads and backup folders, or a file uploaded through one instance will be missing on the others.
 
-With Helm, the chart's default volumes are `ReadWriteOnce`, which usually cannot be attached to pods on different nodes. Set `server.persistence.uploads.accessMode` and `server.persistence.backup.accessMode` to `ReadWriteMany` with a StorageClass that supports it, and switch `server.strategy.type` to `RollingUpdate`. The access mode is fixed when a volume is created, so an existing install needs new volumes with its data copied over.
+With Helm, the chart's default volumes are `ReadWriteOnce`, which usually cannot be attached to pods on different nodes, so the chart refuses to render `server.replicas` above 1 until both volumes are `ReadWriteMany`. Set `server.persistence.uploads.accessMode` and `server.persistence.backup.accessMode` to `ReadWriteMany` with a StorageClass that supports it. The access mode is fixed when a volume is created, so an existing install needs new volumes with its data copied over: create them yourself, copy the data, and set `server.persistence.uploads.existingClaim` and `server.persistence.backup.existingClaim` to their names, keeping `accessMode: ReadWriteMany` so the chart knows they can be shared. On a single-node cluster every pod can attach a `ReadWriteOnce` volume, so `server.persistence.allowSingleNodeVolumes: true` keeps the existing volumes; pods scheduled on another node later would never start.
 
-## Run scheduled jobs on one instance
+## What the Helm chart sets up for you
 
-Scheduled jobs (nightly cleanup, hourly integration syncs, automatic backups, Open Food Facts syncing and the demo reset) run on every instance by default. Set `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` on every instance except one, so exactly one instance runs them. With `SPARKY_FITNESS_LOG_LEVEL` set to `INFO` or `DEBUG`, each instance with jobs disabled says so in its startup log.
+With `server.replicas` above 1, the chart also:
 
-With Kubernetes, the Helm chart does this for you when `server.replicas` is above 1; change it in your values, not with `kubectl scale`. Without the chart, run the jobs instance as its own Deployment with `replicas: 1` and the `Recreate` strategy, sharing the same ConfigMap and Secrets, and set the variable on the Deployment you scale. With Docker Compose, keep scaling `sparkyfitness-server`, the service the frontend sends requests to, and add `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS: "true"` under its `environment:`. Then add a copy of that service under a new name, such as `sparkyfitness-jobs`, without the variable, to run the jobs. Do not put it in the shared `.env` file, or no instance will run the jobs.
+- replaces pods one at a time (`RollingUpdate` with `maxUnavailable: 0`) instead of stopping them all first;
+- adds a PodDisruptionBudget so a node drain takes down one server pod at a time (not with `server.persistence.allowSingleNodeVolumes: true`, since on a single node the drained pod cannot start again until the drain ends);
+- asks the scheduler to spread the server pods across nodes (a preference, so a single-node cluster still runs them all);
+- waits 5 seconds in a `preStop` hook so the pod leaves the Service before it stops accepting requests, and waits `minReadySeconds: 5` before counting a new pod as available.
 
-A backup schedule saved in the admin settings reaches the jobs instance within 5 minutes.
+Each of these has a value to change or turn off (`server.strategy`, `server.podDisruptionBudget`, `server.topologySpreadConstraints` or `server.defaultTopologySpread`, `server.preStopDelaySeconds` or `server.lifecycle`, `server.minReadySeconds`). Setting `frontend.replicas: 2` gives the web frontend the same budget, spread, `preStop` delay and `minReadySeconds`, so the UI also survives losing a node. On a single-node cluster, also set `frontend.podDisruptionBudget.enabled: false`, or a node drain waits forever for a frontend pod that cannot start anywhere else.
+
+## Point the load balancer at the readiness check
+
+Have your load balancer check `/api/health/ready` on each instance and send traffic only to instances that answer 200. It answers 503 once that instance has been unable to reach the database for more than about 10 seconds, and while it shuts down, so traffic moves to the others. While a backup is being restored it answers 200 with status `RESTORING`, so a container health check does not restart the server partway through the restore. `/api/health` only says the process is running.
+
+## Scheduled jobs
+
+Scheduled jobs (nightly cleanup, hourly integration syncs, automatic backups, Open Food Facts syncing and the demo reset) need no setup: every instance schedules them, and at each scheduled time the first instance to claim the run in the database runs it while the others skip it. If that instance stops, the next run goes to whichever instance is up.
+
+You can still keep scheduled jobs on one instance by setting `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` on every other instance. With `SPARKY_FITNESS_LOG_LEVEL` set to `INFO` or `DEBUG`, each instance with jobs disabled says so in its startup log.
+
+With Kubernetes, the Helm chart still does this when `server.replicas` is above 1; change it in your values, not with `kubectl scale`. Without the chart, run the jobs instance as its own Deployment with `replicas: 1` and the `Recreate` strategy, sharing the same ConfigMap and Secrets, and set the variable on the Deployment you scale. With Docker Compose, keep scaling `sparkyfitness-server`, the service the frontend sends requests to, and add `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS: "true"` under its `environment:`. Then add a copy of that service under a new name, such as `sparkyfitness-jobs`, without the variable, to run the jobs. Do not put it in the shared `.env` file, or no instance will run the jobs.
+
+A backup schedule saved in the admin settings reaches every instance within 5 minutes.
+
+## Restoring a backup: scale to one instance first
+
+Restoring a backup from the admin page deletes the database and the uploads folder that every instance shares, so it must run with only one instance up. Scale to one instance (with Helm, `server.replicas: 1`; with Compose, one `sparkyfitness-server` without `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS` and no separate jobs service), wait until the others have stopped, restore, then scale back up. See [Manual Backup and Restore](/administration/manual_backup_restore) for the steps.
+
+The server refuses a restore when it can tell other instances are running: when it has `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true`, or when another SparkyFitness server has database connections open. This is a safety net, not a guarantee: an instance with no traffic closes its database connections after about 30 seconds and then cannot be seen.
 
 ## What to expect during a rolling update
 

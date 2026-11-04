@@ -20,6 +20,7 @@ import {
   calculateWarmupSets,
   findDropSetBaseIndex,
   findWarmupBaseIndex,
+  usesBarbell,
 } from '@workspace/shared';
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,6 +41,8 @@ import {
   type SetInputField,
 } from '../components/SetRowChrome';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
+import PlateCalculatorSheet from '../components/PlateCalculatorSheet';
+import { storedWeightInUnit } from '../utils/unitConversions';
 import {
   ActiveWorkoutCompactRestRow,
   COMPACT_REST_ROW_HEIGHT,
@@ -57,12 +60,14 @@ import WorkoutDurationSheet, {
 import WorkoutReorderList from '../components/WorkoutReorderList';
 import ActiveWorkoutIntervalHud from '../components/ActiveWorkoutIntervalHud';
 import ActiveWorkoutGuidedCard from '../components/ActiveWorkoutGuidedCard';
+import ActiveWorkoutNowCard from '../components/ActiveWorkoutNowCard';
 import ActiveWorkoutRenameModal from '../components/ActiveWorkoutRenameModal';
 import ActiveWorkoutLocationModal from '../components/ActiveWorkoutLocationModal';
 import ActiveWorkoutOverflowSheet, {
   type OverflowMenuState,
 } from '../components/ActiveWorkoutOverflowSheet';
 import ActiveWorkoutExerciseList from '../components/ActiveWorkoutExerciseList';
+import ActiveWorkoutFocusView from '../components/ActiveWorkoutFocusView';
 import Button from '../components/ui/Button';
 import { useActiveWorkoutAutosave } from '../hooks/useActiveWorkoutAutosave';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
@@ -125,6 +130,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const guidedWorkoutEnabled = useAppPreferencesStore(
     (s) => s.guidedWorkoutEnabled
   );
+  const nowCardEnabled = useAppPreferencesStore((s) => s.activeWorkoutNowCard);
+  const activeWorkoutView = useAppPreferencesStore((s) => s.activeWorkoutView);
 
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
@@ -134,6 +141,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const workoutFormat = useActiveWorkoutStore((s) => s.workoutFormat);
   useActiveWorkoutIntervalLifecycle(workoutFormat, guidedWorkoutEnabled);
+
+  // The one-exercise view replaces the rail, Now card and the list (standard
+  // format only; interval formats keep their HUD, and guided mode keeps the
+  // list, whose guided card runs the spoken cues).
+  const focusMode =
+    activeWorkoutView === 'focus' &&
+    (workoutFormat ?? 'standard') === 'standard' &&
+    !guidedWorkoutEnabled;
 
   const isFocused = useIsFocused();
   const [verifiedSourcePresetId, setVerifiedSourcePresetId] = useState<
@@ -381,7 +396,23 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const viewportHeightRef = useRef(0);
   const programmaticScrollUntilRef = useRef(0);
 
+  const focusModeRef = useRef(focusMode);
+  useEffect(() => {
+    focusModeRef.current = focusMode;
+  }, [focusMode]);
+
+  // Focus mode has no list to scroll; the rest bar, "do this now" and the
+  // other callers of handleRailPress ask its view to show the exercise.
+  const [focusShowRequest, setFocusShowRequest] = useState<{
+    id: string;
+    seq: number;
+  } | null>(null);
+
   const scrollToExercise = useCallback((entryId: string) => {
+    // The focus view has no list cards: offsets left from a list session
+    // (the view can be switched mid-workout) would scroll its page to a stale
+    // position. Read through a ref so a view switch does not re-run effects.
+    if (focusModeRef.current) return;
     const y = cardOffsetsRef.current[entryId];
     if (y == null) return;
     programmaticScrollUntilRef.current = Date.now() + 600;
@@ -448,6 +479,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         return next;
       });
       setFocusedExerciseId(entryId);
+      if (focusModeRef.current) {
+        setFocusShowRequest((prev) => ({
+          id: entryId,
+          seq: (prev?.seq ?? 0) + 1,
+        }));
+      }
       setTimeout(() => scrollToExercise(entryId), 100);
     },
     [autoExpandedId, scrollToExercise]
@@ -559,6 +596,20 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     overflowSheetRef.current?.present();
   }, []);
 
+  const handleSwapExercise = useCallback((entryId: string) => {
+    Keyboard.dismiss();
+    setOverflowMenu({ entryId, mode: 'swap' });
+    overflowSheetRef.current?.present();
+  }, []);
+
+  const handleDoExerciseNow = useCallback(
+    (entryId: string) => {
+      useActiveWorkoutStore.getState().doExerciseNow(entryId);
+      handleRailPress(entryId);
+    },
+    [handleRailPress]
+  );
+
   const handleActivateSet = useCallback(
     (setKey: string, field: Exclude<SetInputField, 'rpe'>) => {
       setFocusedField(field);
@@ -613,8 +664,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           e.sets.some((s) => String(s.id) === setId)
         );
         if (!exercise) return;
+        const key = state.setRenderKeys[setId] ?? setId;
+        // In the one-exercise view the lifter may have paged to another
+        // exercise; its row isn't mounted, so there is nothing to focus and
+        // a stuck focused key would hold autosave. Stay where they went.
+        if (focusModeRef.current && accessoryHandlesRef.current[key] == null)
+          return;
         handleActivateSet(
-          state.setRenderKeys[setId] ?? setId,
+          key,
           firstSetInputField(
             resolveSnapshotModality(exercise.exercise_snapshot)
           )
@@ -626,6 +683,39 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   useDeactivateOnKeyboardDismiss(
     useCallback(() => setFocusedSetKey(null), [setFocusedSetKey]),
     focusedSetKey != null
+  );
+
+  // The set the plate calculator is open for (its weight is kg, as stored).
+  const [plateCalc, setPlateCalc] = useState<{
+    weightKg: number | null;
+    equipment: readonly string[] | null;
+  } | null>(null);
+  // The plate calculator's target for a set: only a barbell exercise has one.
+  // Reads the store so a weight committed a moment ago (a row flushing its
+  // draft) is not missed by a stale render.
+  const plateTargetFor = useCallback(
+    (setId: string) => {
+      const current = useActiveWorkoutStore.getState().session;
+      const ex = current?.exercises.find((e) =>
+        e.sets.some((s) => String(s.id) === setId)
+      );
+      const equipment = ex?.exercise_snapshot?.equipment ?? null;
+      if (!ex || !usesBarbell(equipment)) return null;
+      const set = ex.sets.find((s) => String(s.id) === setId);
+      const weightKg = Number(set?.weight ?? plannedSetValues[setId]?.weight);
+      return {
+        weightKg: Number.isFinite(weightKg) && weightKg > 0 ? weightKg : null,
+        equipment,
+      };
+    },
+    [plannedSetValues]
+  );
+  const openPlateCalculator = useCallback(
+    (setId: string) => {
+      const target = plateTargetFor(setId);
+      if (target) setPlateCalc(target);
+    },
+    [plateTargetFor]
   );
 
   const handleAccessoryDone = useCallback(() => {
@@ -659,7 +749,32 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           ? ('rpe' as const)
           : null;
     const focusedSetCompleted = completedSetIds[focusedSetId] != null;
+    const focusedExercise = session.exercises.find((e) =>
+      e.sets.some((s) => String(s.id) === focusedSetId)
+    );
+    const showCalculator =
+      focusedField === 'weight' &&
+      usesBarbell(focusedExercise?.exercise_snapshot?.equipment);
     return [
+      ...(showCalculator
+        ? [
+            {
+              key: 'plate-calculator',
+              label: t('plates.calculatorShort', {
+                defaultValue: 'Calculator',
+              }),
+              onPress: () => {
+                // The row commits its weight draft when it loses focus, which
+                // happens after this handler: flush first so the calculator
+                // sees what is on screen.
+                accessoryHandlesRef.current[key]?.flushWeight?.();
+                setFocusedSetKey(null);
+                Keyboard.dismiss();
+                openPlateCalculator(focusedSetId);
+              },
+            },
+          ]
+        : []),
       ...(nextField != null
         ? [
             {
@@ -702,6 +817,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     setRenderKeys,
     completedSetIds,
     metricColumn,
+    openPlateCalculator,
+    setFocusedSetKey,
     t,
   ]);
 
@@ -903,6 +1020,28 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       ? null
       : formatSetLoad(activeSetDescription, weightUnit, t);
 
+  const footerButtons = (
+    <>
+      <Button variant="ghost" onPress={handleAddExercise} className="mt-5 mx-1">
+        {t('workout.addExercise', { defaultValue: 'Add an Exercise' })}
+      </Button>
+
+      <Button
+        variant="primary"
+        onPress={handleConfirmEnd}
+        className="mt-2 mb-2 mx-1"
+      >
+        {t('workout.endWorkout', { defaultValue: 'End Workout' })}
+      </Button>
+    </>
+  );
+  // The focused cell stays clear of the keyboard bar riding on top of the
+  // keyboard, and of the rest row it carries while a rest runs.
+  const keyboardBottomOffset =
+    SET_ACCESSORY_BAR_HEIGHT +
+    (barCarriesRest ? COMPACT_REST_ROW_HEIGHT : 0) +
+    16;
+
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
       <ActiveWorkoutHeader
@@ -910,6 +1049,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         location={session.location}
         startedAt={startedAt}
         progress={progress}
+        progressInSubtitle={focusMode}
         onBack={safeGoBack}
         onDiscard={handleDiscard}
         onEndWorkout={handleConfirmEnd}
@@ -921,100 +1061,148 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onClearAllSets={hasAnyCompletedSets ? handleClearAllSets : undefined}
       />
 
-      <ActiveWorkoutRail
-        exercises={session.exercises}
-        completedSetIds={completedSetIds}
-        focusedEntryId={focusedExerciseId}
-        activeEntryId={activeExerciseId}
-        supersetBorders={supersetBorders}
-        getImageSource={getImageSource}
-        onPressExercise={handleRailPress}
-        onPressAdd={handleAddExercise}
-      />
-
-      <KeyboardAwareScrollView
-        ref={scrollRef}
-        className="flex-1"
-        contentContainerClassName="px-3 pt-2"
-        contentContainerStyle={scrollContentStyle}
-        onScroll={handleScroll}
-        scrollEventThrottle={32}
-        onLayout={handleScrollLayout}
-        keyboardShouldPersistTaps="handled"
-        // The focused cell stays clear of the keyboard bar riding on top of
-        // the keyboard, and of the rest row it carries while a rest runs.
-        bottomOffset={
-          SET_ACCESSORY_BAR_HEIGHT +
-          (barCarriesRest ? COMPACT_REST_ROW_HEIGHT : 0) +
-          16
-        }
-        disableScrollOnKeyboardHide
-      >
-        <ActiveWorkoutIntervalHud getImageSource={getImageSource} />
-
-        {guidedWorkoutEnabled && workoutFormat === 'standard' && (
-          <ActiveWorkoutGuidedCard
-            getImageSource={getImageSource}
-            onCompleteSet={handleCompleteSet}
-          />
-        )}
-
-        <ActiveWorkoutExerciseList
+      {focusMode ? (
+        <ActiveWorkoutFocusView
+          scrollRef={scrollRef}
+          showRequest={focusShowRequest}
+          onDismissKeyboard={handleAccessoryDone}
           session={session}
-          userExpandedIds={userExpandedIds}
-          autoExpandedId={autoExpandedId}
-          supersetBorders={supersetBorders}
-          completedSetIds={completedSetIds}
           prSetIds={prSetIds}
+          activeExerciseId={activeExerciseId}
+          supersetBorders={supersetBorders}
           sessionId={sessionId}
           verifiedSourcePresetId={effectiveVerifiedSourcePresetId}
           historyScopeSettled={historyScopeSettled}
+          completedSetIds={completedSetIds}
           activeSetId={activeSetId}
-          focusedSetKey={focusedSetKey}
           setRenderKeys={setRenderKeys}
-          focusedField={focusedField}
           metricColumn={metricColumn}
           weightUnit={weightUnit}
           distanceUnit={distanceUnit}
-          expandedSetKey={expandedSetKey}
-          noteEditorEntryId={noteEditorEntryId}
-          cardOffsetsRef={cardOffsetsRef}
           getImageSource={getImageSource}
-          onPressThumb={handlePressThumb}
-          onToggleExpanded={handleToggleExpanded}
-          onPressRestChip={handlePressRestChip}
-          onPressMetricHeader={handlePressMetricHeader}
+          scrollContentStyle={scrollContentStyle}
+          keyboardBottomOffset={keyboardBottomOffset}
+          onSwap={handleSwapExercise}
           onPressOverflow={handlePressOverflow}
           onSeeAlternatives={handleReplaceExercise}
           onCompleteSet={handleCompleteSet}
           onUncomplete={handleUncomplete}
           onCommitField={handleCommitField}
           onDeleteSet={handleDeleteSet}
+          onPressRestChip={handlePressRestChip}
+          onPressMetricHeader={handlePressMetricHeader}
           onPressSetType={handlePressSetType}
           onToggleSetDetail={handleToggleSetDetail}
-          onAddSet={handleAddSet}
+          expandedSetKey={expandedSetKey}
+          noteEditorEntryId={noteEditorEntryId}
           onCommitExerciseNote={handleCommitExerciseNote}
-          onActivateSet={handleActivateSet}
+          onAddSet={handleAddSet}
           onActivateRpe={handleActivateRpe}
+          focusedSetKey={focusedSetKey}
+          focusedField={focusedField}
+          onActivateSet={handleActivateSet}
           onRegisterAccessoryHandle={handleRegisterAccessoryHandle}
-        />
-
-        <Button
-          variant="ghost"
-          onPress={handleAddExercise}
-          className="mt-5 mx-1"
         >
-          {t('workout.addExercise', { defaultValue: 'Add an Exercise' })}
-        </Button>
+          {footerButtons}
+        </ActiveWorkoutFocusView>
+      ) : (
+        <>
+          <ActiveWorkoutRail
+            exercises={session.exercises}
+            completedSetIds={completedSetIds}
+            focusedEntryId={focusedExerciseId}
+            activeEntryId={activeExerciseId}
+            supersetBorders={supersetBorders}
+            getImageSource={getImageSource}
+            onPressExercise={handleRailPress}
+            onPressAdd={handleAddExercise}
+          />
 
-        <Button
-          variant="primary"
-          onPress={handleConfirmEnd}
-          className="mt-2 mb-2 mx-1"
-        >
-          {t('workout.endWorkout', { defaultValue: 'End Workout' })}
-        </Button>
-      </KeyboardAwareScrollView>
+          {/* Pinned rather than in the list, so the scroll to the active exercise
+            never hides it; out of the way while a set value is being typed. */}
+          {nowCardEnabled &&
+            !guidedWorkoutEnabled &&
+            workoutFormat === 'standard' &&
+            focusedSetKey == null && (
+              <ActiveWorkoutNowCard
+                session={session}
+                activeSetId={activeSetId}
+                completedSetIds={completedSetIds}
+                weightUnit={weightUnit}
+                resting={restState === 'resting'}
+                getImageSource={getImageSource}
+                onPressExercise={handleRailPress}
+                onSwap={handleSwapExercise}
+              />
+            )}
+
+          <KeyboardAwareScrollView
+            ref={scrollRef}
+            className="flex-1"
+            contentContainerClassName="px-3 pt-2"
+            contentContainerStyle={scrollContentStyle}
+            onScroll={handleScroll}
+            scrollEventThrottle={32}
+            onLayout={handleScrollLayout}
+            keyboardShouldPersistTaps="handled"
+            // The focused cell stays clear of the keyboard bar riding on top of
+            // the keyboard, and of the rest row it carries while a rest runs.
+            bottomOffset={keyboardBottomOffset}
+            disableScrollOnKeyboardHide
+          >
+            <ActiveWorkoutIntervalHud getImageSource={getImageSource} />
+
+            {guidedWorkoutEnabled && workoutFormat === 'standard' && (
+              <ActiveWorkoutGuidedCard
+                getImageSource={getImageSource}
+                onCompleteSet={handleCompleteSet}
+              />
+            )}
+
+            <ActiveWorkoutExerciseList
+              session={session}
+              userExpandedIds={userExpandedIds}
+              autoExpandedId={autoExpandedId}
+              supersetBorders={supersetBorders}
+              completedSetIds={completedSetIds}
+              prSetIds={prSetIds}
+              sessionId={sessionId}
+              verifiedSourcePresetId={effectiveVerifiedSourcePresetId}
+              historyScopeSettled={historyScopeSettled}
+              activeSetId={activeSetId}
+              focusedSetKey={focusedSetKey}
+              setRenderKeys={setRenderKeys}
+              focusedField={focusedField}
+              metricColumn={metricColumn}
+              weightUnit={weightUnit}
+              distanceUnit={distanceUnit}
+              expandedSetKey={expandedSetKey}
+              noteEditorEntryId={noteEditorEntryId}
+              cardOffsetsRef={cardOffsetsRef}
+              getImageSource={getImageSource}
+              onPressThumb={handlePressThumb}
+              onToggleExpanded={handleToggleExpanded}
+              onPressRestChip={handlePressRestChip}
+              onPressMetricHeader={handlePressMetricHeader}
+              onPressOverflow={handlePressOverflow}
+              onSeeAlternatives={handleReplaceExercise}
+              onCompleteSet={handleCompleteSet}
+              onUncomplete={handleUncomplete}
+              onCommitField={handleCommitField}
+              onDeleteSet={handleDeleteSet}
+              onPressSetType={handlePressSetType}
+              onToggleSetDetail={handleToggleSetDetail}
+              onAddSet={handleAddSet}
+              onCommitExerciseNote={handleCommitExerciseNote}
+              onActivateSet={handleActivateSet}
+              onActivateRpe={handleActivateRpe}
+              onRegisterAccessoryHandle={handleRegisterAccessoryHandle}
+            />
+
+            {footerButtons}
+          </KeyboardAwareScrollView>
+        </>
+      )}
 
       {restBarVisible && (
         <LiveActiveWorkoutRestBar
@@ -1072,6 +1260,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         session={session}
         supersetRuns={supersetRuns}
         completedSetIds={completedSetIds}
+        activeSetId={activeSetId}
+        onDoExerciseNow={handleDoExerciseNow}
         onPressThumb={handlePressThumb}
         onToggleExerciseNote={handleToggleExerciseNote}
         onReplaceExercise={handleReplaceExercise}
@@ -1087,6 +1277,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         }}
         onSwitchToPickMode={() => {
           setOverflowMenu((prev) => (prev ? { ...prev, mode: 'pick' } : prev));
+        }}
+        onSwitchToSwapMode={() => {
+          setOverflowMenu((prev) => (prev ? { ...prev, mode: 'swap' } : prev));
         }}
         onSwitchToMainMode={() => {
           setOverflowMenu((prev) => (prev ? { ...prev, mode: 'main' } : prev));
@@ -1106,6 +1299,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               .updateSetField(setId, { set_type: type });
           }
         }}
+        onOpenPlateCalculator={(() => {
+          const setId = setTypeMenu?.setId;
+          if (setId == null) return undefined;
+          const target = plateTargetFor(setId);
+          if (!target) return undefined;
+          return () => {
+            setPlateCalc(target);
+            setSetTypeMenu(null);
+          };
+        })()}
         onGenerateDropSets={(() => {
           const setId = setTypeMenu?.setId;
           if (setId == null) return undefined;
@@ -1131,6 +1334,20 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           };
         })()}
       />
+
+      {plateCalc != null && (
+        <PlateCalculatorSheet
+          visible
+          onClose={() => setPlateCalc(null)}
+          targetWeight={
+            plateCalc?.weightKg != null
+              ? storedWeightInUnit(plateCalc.weightKg, weightUnit)
+              : null
+          }
+          weightUnit={weightUnit}
+          equipment={plateCalc?.equipment}
+        />
+      )}
 
       <WorkoutReorderList
         visible={reorderVisible}

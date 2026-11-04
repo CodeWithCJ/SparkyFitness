@@ -9,7 +9,7 @@ interface StatusViewAction {
   variant?: 'primary' | 'secondary';
 }
 
-interface StatusViewProps {
+export interface StatusViewProps {
   /** Show a loading spinner instead of an icon */
   loading?: boolean;
   /** Icon to display (ignored when loading) */
@@ -26,6 +26,8 @@ interface StatusViewProps {
   subtitle?: string;
   /** Action button */
   action?: StatusViewAction;
+  /** Second action button, shown below `action` */
+  secondaryAction?: StatusViewAction;
   /** Compact block for use inside lists/sections instead of filling the screen */
   inline?: boolean;
   /** Additional className for the outer container */
@@ -41,6 +43,7 @@ export default function StatusView({
   title,
   subtitle,
   action,
+  secondaryAction,
   inline,
   className,
 }: StatusViewProps) {
@@ -83,6 +86,15 @@ export default function StatusView({
           className="mt-4 px-6"
         >
           {action.label}
+        </Button>
+      )}
+      {secondaryAction && (
+        <Button
+          variant={secondaryAction.variant ?? 'secondary'}
+          onPress={secondaryAction.onPress}
+          className="mt-3 px-6"
+        >
+          {secondaryAction.label}
         </Button>
       )}
     </View>

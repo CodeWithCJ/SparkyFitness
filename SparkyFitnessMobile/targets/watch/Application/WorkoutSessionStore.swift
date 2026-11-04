@@ -112,6 +112,10 @@ final class WorkoutSessionStore: ObservableObject {
     /// The wearer skipped (`endsAt` nil) or moved the rest here, so the phone
     /// can do the same. Not fired when the rest follows the phone's.
     var onRestChangedHere: ((_ previousEndsAt: Date, _ endsAt: Date?) -> Void)?
+    /// The wearer typed a weight, reps or carry distance for a set here, so the
+    /// phone can show it before the set is logged. Only edits made on the
+    /// watch fire it, never values taken from the phone.
+    var onSetValueEditedHere: ((_ setId: String, _ weightKg: Double?, _ reps: Double?, _ distanceKm: Double?) -> Void)?
     /// A hold countdown or stopwatch was started on the watch (not copied from
     /// the phone), so the phone can start its own from the same moment.
     var onSetTimerStartedHere: ((_ setId: String, _ startedAt: Date) -> Void)?
@@ -391,6 +395,22 @@ final class WorkoutSessionStore: ObservableObject {
 
     func isCompleted(_ step: WorkoutStep) -> Bool {
         completedSetIds.contains(step.plannedSet.setId)
+    }
+
+    /// The first set still to do of each exercise after the current one, in
+    /// workout order: what Up Next shows and what Swap offers.
+    /// The current exercise's superset partners are left out: they are
+    /// already interleaved with it, and the phone moves a superset as one.
+    var upcomingExercises: [WorkoutStep] {
+        let current = currentStep?.exerciseEntryId
+        let currentRun = currentStep?.supersetRun
+        var seen: Set<String> = []
+        return steps.dropFirst(currentStepIndex).filter { step in
+            step.exerciseEntryId != current
+                && (currentRun == nil || step.supersetRun != currentRun)
+                && !isCompleted(step)
+                && seen.insert(step.exerciseEntryId).inserted
+        }
     }
 
     /// The plan's sets in the order the phone walks them (`setOrder`,
@@ -719,6 +739,7 @@ final class WorkoutSessionStore: ObservableObject {
         if let distanceKm { values.distanceKm = distanceKm }
         editedValues[setId] = values
         persistSnapshot(reportedEnergyKcal: nil)
+        onSetValueEditedHere?(setId, weightKg, reps, distanceKm)
     }
 
     /// Last session's time for a set, to show in gray before the stopwatch
@@ -990,6 +1011,15 @@ final class WorkoutSessionStore: ObservableObject {
         guard currentStepIndex + 1 < steps.count else { return }
         stopRestTimer()
         moveCursor(to: currentStepIndex + 1)
+    }
+
+    /// Moves the cursor to one set, picked from the set screen's dots.
+    func goToStep(setId: String) {
+        guard let index = steps.firstIndex(where: { $0.plannedSet.setId == setId }),
+              index != currentStepIndex
+        else { return }
+        stopRestTimer()
+        moveCursor(to: index)
     }
 
     func goToPreviousStep() {

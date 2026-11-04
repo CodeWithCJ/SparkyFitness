@@ -117,13 +117,19 @@ export const saveSymptomOption = (
 
 // --- Entries -----------------------------------------------------------------
 
-/** Entries with their treatments and photo ids, for a date range. */
+/**
+ * Entries with their treatments and photo ids, for a date range. With
+ * `overlapping`, also the episodes that overlap the range without being logged
+ * in it, such as one that started the month before; an older server ignores
+ * it and returns only the entries logged in the range.
+ */
 export const fetchSymptomEntriesDetailed = (
   fromDate: string,
-  toDate: string
+  toDate: string,
+  { overlapping = false }: { overlapping?: boolean } = {}
 ): Promise<SymptomEntryResponse[]> =>
   apiFetch<SymptomEntryResponse[]>({
-    endpoint: `${BASE}/entries?fromDate=${encodeURIComponent(fromDate)}&toDate=${encodeURIComponent(toDate)}`,
+    endpoint: `${BASE}/entries?fromDate=${encodeURIComponent(fromDate)}&toDate=${encodeURIComponent(toDate)}${overlapping ? '&overlapping=true' : ''}`,
     serviceName: SERVICE,
     operation: 'list symptom entries with details',
   });

@@ -19,11 +19,12 @@ import {
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
 import type { Exercise } from '@/types/exercises';
 import { defaultSetForModality } from '@/constants/exercises';
+import { firstExerciseImage } from '@/utils/exercises';
 import { generateClientId } from '@/utils/generateClientId';
 
 export const DEFAULT_REST_SECONDS = 90;
 export const WORKOUT_PLAYBACK_SET_GRID_CLASSES =
-  'grid w-full min-w-[48rem] grid-cols-4 gap-2 sm:grid-cols-[7rem_10rem_5rem_6rem_6rem_6rem] sm:gap-x-6 sm:gap-y-2';
+  'grid w-full min-w-[48rem] grid-cols-4 gap-2 sm:grid-cols-[7rem_10rem_5rem_6rem_6rem_8rem] sm:gap-x-6 sm:gap-y-2';
 
 export type WorkoutPlaybackRestState = 'idle' | 'running' | 'paused';
 
@@ -69,6 +70,8 @@ export interface WorkoutPlaybackExerciseDraft {
   sets: WorkoutPlaybackSetDraft[];
   /** Library mechanic (compound/isolation), for variation hints. */
   mechanic?: string | null;
+  /** Library equipment, for the plate calculator. */
+  equipment?: string[];
   /** Adaptive coaching applied at load (#1560); null/absent = none. */
   adaptive?: WorkoutPlaybackAdaptiveInfo | null;
   /** Done in most recent sessions; suggest a variation (#1560). */
@@ -399,10 +402,13 @@ export function createWorkoutPlaybackDraftFromPreset(
           exercise.exercise_name ||
           exercise.exercise?.name ||
           `Exercise ${exerciseIndex + 1}`,
-        image_url: exercise.image_url || exercise.exercise?.images?.[0],
+        image_url:
+          firstExerciseImage(exercise.image_url) ??
+          firstExerciseImage(exercise.exercise?.images),
         images: exercise.exercise?.images ?? undefined,
         instructions: exercise.exercise?.instructions ?? undefined,
         mechanic: exercise.exercise?.mechanic ?? null,
+        equipment: exercise.exercise?.equipment ?? undefined,
         modality: resolveExerciseModality(
           exercise.modality ?? exercise.exercise?.modality,
           exercise.category ?? exercise.exercise?.category
@@ -1081,7 +1087,7 @@ export function replaceExerciseInWorkoutDraft(
     exercise_id: exercise.id,
     exercise_name: exercise.name,
     modality,
-    image_url: exercise.images?.[0],
+    image_url: firstExerciseImage(exercise.images),
     images: exercise.images ?? undefined,
     instructions: exercise.instructions ?? undefined,
     notes: current.notes,
@@ -1091,6 +1097,7 @@ export function replaceExerciseInWorkoutDraft(
     ramp_increment: null,
     ramp_base_weight: null,
     mechanic: exercise.mechanic ?? null,
+    equipment: exercise.equipment ?? undefined,
     adaptive: null,
     suggest_variation: false,
     round_sets_count: 1,
