@@ -439,4 +439,10 @@ describe('WatchSettingsScreen', () => {
       });
     }
   });
+
+  test('has a row that opens the complications screen', () => {
+    renderScreen();
+    fireEvent.press(screen.getByTestId('watch-complications-row'));
+    expect(navigation.navigate).toHaveBeenCalledWith('WatchComplications');
+  });
 });

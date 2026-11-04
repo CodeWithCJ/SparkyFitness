@@ -1,4 +1,5 @@
 import type { WatchComplicationConfigPayload } from '../../modules/watch-connectivity';
+import { getNutrientLabel } from '../constants/nutrients';
 
 /**
  * Custom Apple Watch complications: the wearer defines any number of them on
@@ -174,7 +175,10 @@ type Translator = (key: string, options: { defaultValue: string }) => string;
  * i18n audit needs the literal key at the call site; a total record so a
  * source added without a name is a compile error.
  */
-const SOURCE_NAMES: Record<ComplicationSourceKey, (t: Translator) => string> = {
+export const COMPLICATION_SOURCE_LABELS: Record<
+  ComplicationSourceKey,
+  (t: Translator) => string
+> = {
   calories: (t) =>
     t('watchSettings.complications.sources.calories', {
       defaultValue: 'Calories',
@@ -236,7 +240,7 @@ export function starterComplications(
 ): WatchComplicationDefinition[] {
   return STARTER_SOURCES.map((source) => ({
     id: `starter-${source}`,
-    name: SOURCE_NAMES[source](t),
+    name: COMPLICATION_SOURCE_LABELS[source](t),
     source,
     ...SOURCE_LOOKS[source],
   }));
@@ -373,4 +377,192 @@ export function buildComplicationConfig(
       icon: d.icon,
     })),
   };
+}
+
+/** The nutrient behind a `nutrient:<key>` source, or null for a fixed source. */
+export function nutrientKeyOf(source: ComplicationSource): string | null {
+  return source.startsWith(NUTRIENT_SOURCE_PREFIX)
+    ? source.slice(NUTRIENT_SOURCE_PREFIX.length)
+    : null;
+}
+
+const NO_GOAL_SOURCES = [
+  'caloriesRemaining',
+  'caloriesBurned',
+  'weight',
+  'bodyFat',
+] as const;
+
+/**
+ * Whether the number has a goal behind it. Percent and "left" need one, so a
+ * source without it can only show its value; the watch does the same.
+ */
+export function sourceHasGoal(source: ComplicationSource): boolean {
+  return !(NO_GOAL_SOURCES as readonly string[]).includes(source);
+}
+
+/**
+ * The watch's own colours, as the phone draws them in the editor. Mirrors
+ * `ComplicationPalette` and the system colours in
+ * `targets/watch-widget/CustomComplication.swift`: change one, change both.
+ */
+export const COMPLICATION_COLOR_HEX: Record<ComplicationColor, string> = {
+  calories: '#8992DC',
+  protein: '#DBB06F',
+  carbs: '#97C692',
+  fat: '#8AC2DA',
+  water: '#64D2FF',
+  steps: '#66D4CF',
+  fasting: '#FF9F0A',
+  weight: '#6AC4DC',
+  neutral: '#FFFFFF',
+};
+
+export const COMPLICATION_FORMAT_LABELS: Record<
+  ComplicationFormat,
+  (t: Translator) => string
+> = {
+  value: (t) =>
+    t('watchComplications.formats.value', { defaultValue: 'Value' }),
+  percent: (t) =>
+    t('watchComplications.formats.percent', { defaultValue: 'Percent' }),
+  remaining: (t) =>
+    t('watchComplications.formats.remaining', { defaultValue: 'Left' }),
+};
+
+export const COMPLICATION_COLOR_LABELS: Record<
+  ComplicationColor,
+  (t: Translator) => string
+> = {
+  calories: (t) =>
+    t('watchComplications.colors.calories', { defaultValue: 'Violet' }),
+  protein: (t) =>
+    t('watchComplications.colors.protein', { defaultValue: 'Gold' }),
+  carbs: (t) => t('watchComplications.colors.carbs', { defaultValue: 'Green' }),
+  fat: (t) => t('watchComplications.colors.fat', { defaultValue: 'Sky blue' }),
+  water: (t) => t('watchComplications.colors.water', { defaultValue: 'Cyan' }),
+  steps: (t) => t('watchComplications.colors.steps', { defaultValue: 'Mint' }),
+  fasting: (t) =>
+    t('watchComplications.colors.fasting', { defaultValue: 'Orange' }),
+  weight: (t) =>
+    t('watchComplications.colors.weight', { defaultValue: 'Teal' }),
+  neutral: (t) =>
+    t('watchComplications.colors.neutral', { defaultValue: 'White' }),
+};
+
+export const COMPLICATION_ICON_LABELS: Record<
+  ComplicationIcon,
+  (t: Translator) => string
+> = {
+  'flame.fill': (t) =>
+    t('watchComplications.icons.flame', { defaultValue: 'Flame' }),
+  'fish.fill': (t) =>
+    t('watchComplications.icons.fish', { defaultValue: 'Fish' }),
+  'leaf.fill': (t) =>
+    t('watchComplications.icons.leaf', { defaultValue: 'Leaf' }),
+  'drop.fill': (t) =>
+    t('watchComplications.icons.drop', { defaultValue: 'Drop' }),
+  'figure.walk': (t) =>
+    t('watchComplications.icons.walk', { defaultValue: 'Walking' }),
+  timer: (t) => t('watchComplications.icons.timer', { defaultValue: 'Timer' }),
+  'scalemass.fill': (t) =>
+    t('watchComplications.icons.scale', { defaultValue: 'Scale' }),
+  'heart.fill': (t) =>
+    t('watchComplications.icons.heart', { defaultValue: 'Heart' }),
+  'bolt.fill': (t) =>
+    t('watchComplications.icons.bolt', { defaultValue: 'Bolt' }),
+  'fork.knife': (t) =>
+    t('watchComplications.icons.fork', { defaultValue: 'Fork and knife' }),
+  'chart.bar.fill': (t) =>
+    t('watchComplications.icons.chart', { defaultValue: 'Bar chart' }),
+  'gauge.with.dots.needle.33percent': (t) =>
+    t('watchComplications.icons.gauge', { defaultValue: 'Gauge' }),
+};
+
+/** Insert at the end, or replace the entry with the same id. */
+export function upsertComplication(
+  list: readonly WatchComplicationDefinition[],
+  definition: WatchComplicationDefinition
+): WatchComplicationDefinition[] {
+  return list.some((d) => d.id === definition.id)
+    ? list.map((d) => (d.id === definition.id ? definition : d))
+    : [...list, definition];
+}
+
+export function removeComplication(
+  list: readonly WatchComplicationDefinition[],
+  id: string
+): WatchComplicationDefinition[] {
+  return list.filter((d) => d.id !== id);
+}
+
+/** Moves one entry up (-1) or down (1); the list is unchanged at either end. */
+export function moveComplication(
+  list: readonly WatchComplicationDefinition[],
+  id: string,
+  direction: -1 | 1
+): WatchComplicationDefinition[] {
+  const from = list.findIndex((d) => d.id === id);
+  const to = from + direction;
+  if (from < 0 || to < 0 || to >= list.length) return [...list];
+  const next = [...list];
+  [next[from], next[to]] = [next[to], next[from]];
+  return next;
+}
+
+/** How full the sample gauge is in the editor's preview. */
+export const PREVIEW_PROGRESS = 0.65;
+
+// A made-up day for the preview: the value, and what is left to the goal.
+const PREVIEW_SAMPLES: Record<
+  ComplicationSourceKey,
+  { value: string; left: string }
+> = {
+  calories: { value: '1,240', left: '660' },
+  caloriesRemaining: { value: '660', left: '660' },
+  caloriesBurned: { value: '420', left: '420' },
+  protein: { value: '98', left: '52' },
+  carbs: { value: '140', left: '75' },
+  fat: { value: '45', left: '24' },
+  water: { value: '1,300', left: '700' },
+  steps: { value: '6,500', left: '3,500' },
+  fasting: { value: '10:30', left: '5:30' },
+  weight: { value: '72.5', left: '72.5' },
+  bodyFat: { value: '18.5', left: '18.5' },
+};
+
+const PREVIEW_NUTRIENT = { value: '12', left: '6' };
+
+/**
+ * What the complication would show on a sample day, so the editor can preview a
+ * change without any real data. Follows the watch: percent and "left" fall back
+ * to the value when the source has no goal, and a gauge needs one too.
+ */
+export function complicationPreview(
+  definition: Pick<WatchComplicationDefinition, 'source' | 'format' | 'gauge'>
+): { text: string; progress: number | null } {
+  const sample =
+    PREVIEW_SAMPLES[definition.source as ComplicationSourceKey] ??
+    PREVIEW_NUTRIENT;
+  const hasGoal = sourceHasGoal(definition.source);
+  let text = sample.value;
+  if (hasGoal && definition.format === 'percent') {
+    text = `${Math.round(PREVIEW_PROGRESS * 100)}%`;
+  } else if (hasGoal && definition.format === 'remaining') {
+    text = sample.left;
+  }
+  return {
+    text,
+    progress: hasGoal && definition.gauge ? PREVIEW_PROGRESS : null,
+  };
+}
+
+/** A source's name: a fixed source's own, or the nutrient's. */
+export function complicationSourceLabel(
+  source: ComplicationSource,
+  t: Translator
+): string {
+  const nutrient = nutrientKeyOf(source);
+  if (nutrient) return getNutrientLabel(t, nutrient);
+  return COMPLICATION_SOURCE_LABELS[source as ComplicationSourceKey](t);
 }

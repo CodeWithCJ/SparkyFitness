@@ -1,6 +1,20 @@
 import {
   buildComplicationConfig,
+  COMPLICATION_COLORS,
+  COMPLICATION_COLOR_HEX,
+  COMPLICATION_COLOR_LABELS,
+  COMPLICATION_FORMAT_LABELS,
+  COMPLICATION_FORMATS,
+  COMPLICATION_ICON_LABELS,
+  COMPLICATION_ICONS,
   COMPLICATION_SOURCES,
+  complicationPreview,
+  complicationSourceLabel,
+  moveComplication,
+  nutrientKeyOf,
+  removeComplication,
+  sourceHasGoal,
+  upsertComplication,
   defaultLookFor,
   exportComplications,
   isComplicationSource,
@@ -218,5 +232,171 @@ describe('buildComplicationConfig', () => {
 
   it('sends an empty list as an empty list', () => {
     expect(buildComplicationConfig([], 1).definitions).toEqual([]);
+  });
+});
+
+describe('nutrientKeyOf and sourceHasGoal', () => {
+  it('reads the nutrient behind a nutrient source only', () => {
+    expect(nutrientKeyOf('nutrient:dietary_fiber')).toBe('dietary_fiber');
+    expect(nutrientKeyOf('protein')).toBeNull();
+  });
+
+  it('knows which sources have no goal', () => {
+    for (const source of [
+      'caloriesRemaining',
+      'caloriesBurned',
+      'weight',
+      'bodyFat',
+    ] as const) {
+      expect(sourceHasGoal(source)).toBe(false);
+    }
+    for (const source of [
+      'calories',
+      'protein',
+      'water',
+      'steps',
+      'fasting',
+      'nutrient:sodium',
+    ] as const) {
+      expect(sourceHasGoal(source)).toBe(true);
+    }
+  });
+});
+
+describe('labels and colours', () => {
+  it('has a label for every format, colour and icon, and a hex for every colour', () => {
+    for (const format of COMPLICATION_FORMATS) {
+      expect(COMPLICATION_FORMAT_LABELS[format](t)).not.toBe('');
+    }
+    for (const color of COMPLICATION_COLORS) {
+      expect(COMPLICATION_COLOR_LABELS[color](t)).not.toBe('');
+      expect(COMPLICATION_COLOR_HEX[color]).toMatch(/^#[0-9A-F]{6}$/);
+    }
+    for (const icon of COMPLICATION_ICONS) {
+      expect(COMPLICATION_ICON_LABELS[icon](t)).not.toBe('');
+    }
+  });
+
+  it('gives each colour and icon its own label', () => {
+    const colours = COMPLICATION_COLORS.map((c) =>
+      COMPLICATION_COLOR_LABELS[c](t)
+    );
+    const icons = COMPLICATION_ICONS.map((i) => COMPLICATION_ICON_LABELS[i](t));
+    expect(new Set(colours).size).toBe(colours.length);
+    expect(new Set(icons).size).toBe(icons.length);
+  });
+});
+
+describe('complicationSourceLabel', () => {
+  it('names a fixed source from its own label', () => {
+    expect(complicationSourceLabel('caloriesBurned', t)).toBe(
+      'Calories burned'
+    );
+  });
+
+  it('names a nutrient source from the nutrient', () => {
+    expect(complicationSourceLabel('nutrient:protein', t)).toBe('Protein');
+  });
+});
+
+describe('list operations', () => {
+  const a = { ...sample, id: 'a', name: 'A' };
+  const b = { ...sample, id: 'b', name: 'B' };
+  const c = { ...sample, id: 'c', name: 'C' };
+
+  it('upsert adds at the end and replaces in place', () => {
+    expect(upsertComplication([a, b], c).map((d) => d.id)).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+    const renamed = { ...a, name: 'Renamed' };
+    const result = upsertComplication([a, b], renamed);
+    expect(result.map((d) => d.name)).toEqual(['Renamed', 'B']);
+  });
+
+  it('remove drops one entry and leaves the rest in order', () => {
+    expect(removeComplication([a, b, c], 'b').map((d) => d.id)).toEqual([
+      'a',
+      'c',
+    ]);
+    expect(removeComplication([a], 'missing')).toEqual([a]);
+  });
+
+  it('move swaps with the neighbour, and does nothing at the ends', () => {
+    expect(moveComplication([a, b, c], 'b', -1).map((d) => d.id)).toEqual([
+      'b',
+      'a',
+      'c',
+    ]);
+    expect(moveComplication([a, b, c], 'b', 1).map((d) => d.id)).toEqual([
+      'a',
+      'c',
+      'b',
+    ]);
+    expect(moveComplication([a, b, c], 'a', -1).map((d) => d.id)).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+    expect(moveComplication([a, b, c], 'c', 1).map((d) => d.id)).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+    expect(moveComplication([a, b, c], 'missing', 1).map((d) => d.id)).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+  });
+
+  it('never changes the list it was given', () => {
+    const list = [a, b, c];
+    moveComplication(list, 'a', 1);
+    removeComplication(list, 'a');
+    upsertComplication(list, { ...a, name: 'X' });
+    expect(list.map((d) => d.id)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('complicationPreview', () => {
+  it('shows percent and fills the gauge for a source with a goal', () => {
+    expect(
+      complicationPreview({
+        source: 'calories',
+        format: 'percent',
+        gauge: true,
+      })
+    ).toEqual({ text: '65%', progress: 0.65 });
+  });
+
+  it('shows the value, or what is left, in the sample day', () => {
+    expect(
+      complicationPreview({ source: 'steps', format: 'value', gauge: false })
+    ).toEqual({ text: '6,500', progress: null });
+    expect(
+      complicationPreview({
+        source: 'steps',
+        format: 'remaining',
+        gauge: false,
+      })
+    ).toEqual({ text: '3,500', progress: null });
+  });
+
+  it('falls back to the value, with no gauge, when there is no goal', () => {
+    expect(
+      complicationPreview({ source: 'weight', format: 'percent', gauge: true })
+    ).toEqual({ text: '72.5', progress: null });
+  });
+
+  it('previews a nutrient too', () => {
+    expect(
+      complicationPreview({
+        source: 'nutrient:sodium',
+        format: 'value',
+        gauge: true,
+      })
+    ).toEqual({ text: '12', progress: 0.65 });
   });
 });
