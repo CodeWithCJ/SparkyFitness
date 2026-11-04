@@ -991,7 +991,7 @@ Actions:
                     [
                       row.custom_categories?.name,
                       row.custom_categories?.display_name,
-                    ].some((name) => name?.toLowerCase() === wanted)
+                    ].some((name) => name?.trim().toLowerCase() === wanted)
                   )
                 : history;
               if (rows.length === 0) {
@@ -1007,8 +1007,11 @@ Actions:
               for (const row of rows) {
                 const day = String(row.entry_date);
                 const category = row.custom_categories;
-                const label =
-                  category?.display_name || category?.name || 'Unknown';
+                const label = (
+                  category?.display_name ||
+                  category?.name ||
+                  'Unknown'
+                ).trim();
                 const value = formatCustomValue(
                   row.value,
                   category?.measurement_type
