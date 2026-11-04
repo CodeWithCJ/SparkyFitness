@@ -10,7 +10,7 @@ import {
   isAuthPoolBusy,
 } from '../auth.js';
 import { isShuttingDown } from '../utils/shutdownHooks.js';
-import { isRestoreRunning } from '../services/restoreLock.js';
+import { isRestoreRunning } from '../services/onlineRestoreGuard.js';
 import { describeError } from '../utils/errors.js';
 
 const router = express.Router();

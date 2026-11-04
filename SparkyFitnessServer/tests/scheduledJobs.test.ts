@@ -1,28 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import cron, {
-  type RunCoordinator,
-  type TaskContext,
-  type TaskFn,
-  type TaskOptions,
-} from 'node-cron';
+import cron, { type RunCoordinator, type TaskOptions } from 'node-cron';
 
 vi.mock('../models/scheduledJobRepository.js', () => ({
   default: { claimSlot: vi.fn() },
 }));
 vi.mock('../utils/shutdownHooks.js', () => ({ isShuttingDown: vi.fn() }));
-vi.mock('../services/restoreLock.js', () => ({
-  restoreInProgress: vi.fn(),
-  runAsWriteRequest: vi.fn((work: () => unknown) => work()),
-  outsideWriteRequest: vi.fn((work: () => unknown) => work()),
-}));
 
 import scheduledJobRepository from '../models/scheduledJobRepository.js';
 import { isShuttingDown } from '../utils/shutdownHooks.js';
-import {
-  outsideWriteRequest,
-  restoreInProgress,
-  runAsWriteRequest,
-} from '../services/restoreLock.js';
 import { scheduleJob } from '../services/scheduledJobs.js';
 
 const SLOT = '2026-11-01T03:00:00.000Z';
@@ -42,7 +27,6 @@ function coordinatorOf(name: string): RunCoordinator {
 beforeEach(() => {
   vi.spyOn(cron, 'schedule');
   vi.mocked(isShuttingDown).mockReturnValue(false);
-  vi.mocked(restoreInProgress).mockResolvedValue(false);
   vi.mocked(scheduledJobRepository.claimSlot).mockReset();
   vi.stubEnv('SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS', '');
 });
@@ -118,37 +102,6 @@ describe('scheduleJob', () => {
       false
     );
     expect(scheduledJobRepository.claimSlot).not.toHaveBeenCalled();
-  });
-
-  it('claims nothing while a backup restore runs on any instance', async () => {
-    vi.mocked(restoreInProgress).mockResolvedValue(true);
-    scheduleJob('backup', '0 2 * * *', () => {});
-
-    await expect(
-      coordinatorOf('backup').shouldRun(`backup:${SLOT}`, 30_000)
-    ).resolves.toBe(false);
-    expect(scheduledJobRepository.claimSlot).not.toHaveBeenCalled();
-  });
-
-  it('admits each run after a fresh look at the restore lock, so a swap stops it', async () => {
-    const job = vi.fn();
-    scheduleJob('backup', '0 2 * * *', job);
-    const tick = vi.mocked(cron.schedule).mock.calls.at(-1)![1] as TaskFn;
-
-    await tick({} as TaskContext);
-
-    expect(job).toHaveBeenCalledTimes(1);
-    expect(
-      vi.mocked(restoreInProgress).mock.invocationCallOrder[0]
-    ).toBeLessThan(vi.mocked(runAsWriteRequest).mock.invocationCallOrder[0]!);
-  });
-
-  it('creates its timers outside the request or job that scheduled it', () => {
-    scheduleJob('backup', '0 2 * * *', () => {});
-
-    expect(
-      vi.mocked(outsideWriteRequest).mock.invocationCallOrder[0]
-    ).toBeLessThan(vi.mocked(cron.schedule).mock.invocationCallOrder[0]!);
   });
 
   it('gives up a tick it won once shutdown began during the claim', async () => {

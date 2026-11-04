@@ -165,9 +165,9 @@ async function getSystemClient() {
  * (new write requests are refused at the door, in
  * middleware/restoreWriteFence.ts) gets no further connection, so it cannot
  * write into the restored database or race the uploads swap. A write request
- * or scheduled job still running once the restored database is in gets none
- * either, since it may write what it read before. A connection it already
- * holds is ended by the swap.
+ * still running once the restored database is in gets none either, since it
+ * may write what it read before. A connection it already holds is ended by
+ * the swap.
  */
 async function refuseWorkDuringRestore(
   connection?: Pick<pg.ClientBase, 'query'>
@@ -180,7 +180,7 @@ async function refuseWorkDuringRestore(
   }
   if (restoredSinceAdmitted()) {
     throw new Error(
-      'A backup was restored while this work ran; it stopped so it does not write what it read before the restore.'
+      'A backup was restored while this request ran; it stopped so it does not write what it read before the restore.'
     );
   }
 }
