@@ -36,6 +36,7 @@ import DiaryCalorieMacroSummary from '../components/DiaryCalorieMacroSummary';
 import EmptyDayIllustration from '../components/EmptyDayIllustration';
 import ExerciseSummary from '../components/ExerciseSummary';
 import FoodSummary from '../components/FoodSummary';
+import { getDefaultMealTypeId } from '../constants/meals';
 import MeasurementsSummary from '../components/MeasurementsSummary';
 import ServingAdjustSheet, {
   type ServingAdjustSheetRef,
@@ -643,6 +644,17 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               calorieGoal={summary.calorieGoal}
               onAddFood={() =>
                 navigation.navigate('FoodSearch', { date: selectedDate })
+              }
+              onAddFoodAt={(time) =>
+                navigation.navigate('FoodSearch', {
+                  date: selectedDate,
+                  mealTypeId:
+                    getDefaultMealTypeId(
+                      mealTypes.filter((mt) => mt.is_visible),
+                      { hour: Number(time.slice(0, 2)), minute: 0 }
+                    ) ?? undefined,
+                  entryTime: time,
+                })
               }
               onAdjustServing={(entry) =>
                 servingSheetRef.current?.present(entry)

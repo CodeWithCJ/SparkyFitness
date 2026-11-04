@@ -201,6 +201,8 @@ export type RootStackParamList = {
         pickerMode?: FoodPickerMode;
         /** Optional canonical meal type id to pre-select when logging. */
         mealTypeId?: string;
+        /** Optional HH:MM to prefill as the entry time (Diary timeline). */
+        entryTime?: string;
         mealPlanTarget?: MealPlanPickerTarget;
       }
     | undefined;
