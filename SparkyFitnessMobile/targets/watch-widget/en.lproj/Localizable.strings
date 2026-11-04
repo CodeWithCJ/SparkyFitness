@@ -9,6 +9,8 @@
 "watch.custom.starter.fasting" = "Fasting";
 "watch.custom.starter.fat" = "Fat";
 "watch.custom.starter.protein" = "Protein";
+"watch.custom.starter.macros" = "Macros";
+"watch.custom.starter.sleepScore" = "Sleep score";
 "watch.custom.starter.steps" = "Steps";
 "watch.custom.starter.water" = "Water";
 "watch.custom.starter.weight" = "Weight";

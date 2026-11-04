@@ -21,11 +21,13 @@ import { newUuid } from '../utils/ids';
 import {
   COMPLICATION_COLOR_HEX,
   COMPLICATION_FORMAT_LABELS,
+  allowedFormats,
   complicationSourceLabel,
+  itemsOf,
   moveComplication,
   parseComplicationsImport,
   removeComplication,
-  sourceHasGoal,
+  sourceHasProgress,
   type WatchComplicationDefinition,
 } from '../utils/watchComplications';
 
@@ -244,17 +246,26 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
     index: number
   ) => {
     const color = COMPLICATION_COLOR_HEX[definition.color];
-    const details = [
-      complicationSourceLabel(definition.source, t),
-      sourceHasGoal(definition.source) || definition.format === 'value'
-        ? COMPLICATION_FORMAT_LABELS[definition.format](t)
-        : COMPLICATION_FORMAT_LABELS.value(t),
-      definition.gauge && sourceHasGoal(definition.source)
-        ? t('watchComplications.withGauge', { defaultValue: 'Gauge' })
-        : null,
-    ]
-      .filter(Boolean)
-      .join(' • ');
+    // Several values are listed by name; one value shows how it is written.
+    const items = itemsOf(definition);
+    const details =
+      items.length > 1
+        ? items
+            .map((item) => complicationSourceLabel(item.source, t))
+            .join(' + ')
+        : [
+            complicationSourceLabel(definition.source, t),
+            COMPLICATION_FORMAT_LABELS[
+              allowedFormats(definition.source).includes(definition.format)
+                ? definition.format
+                : 'value'
+            ](t),
+            definition.gauge && sourceHasProgress(definition.source)
+              ? t('watchComplications.withGauge', { defaultValue: 'Gauge' })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(' • ');
     return (
       <View
         key={definition.id}

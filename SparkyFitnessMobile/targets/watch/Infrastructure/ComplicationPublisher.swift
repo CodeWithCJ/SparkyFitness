@@ -83,6 +83,17 @@ enum ComplicationPublisher {
         let gauge: Bool
         let color: String
         let icon: String
+        /// The second and third values, shown with the first. Nil for a
+        /// complication with one value, and for a list saved before this existed.
+        let extras: [CustomItem]?
+    }
+
+    /// One more value of a custom complication, with its own look.
+    struct CustomItem: Codable, Equatable {
+        let source: String
+        let format: String
+        let color: String
+        let icon: String
     }
 
     /// Field names here are decoded by `CustomComplication`.

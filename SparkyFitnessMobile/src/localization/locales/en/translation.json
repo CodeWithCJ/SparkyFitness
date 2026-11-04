@@ -7330,7 +7330,10 @@
       "steps": "Mint",
       "fasting": "Orange",
       "weight": "Teal",
-      "neutral": "White"
+      "neutral": "White",
+      "exercise": "Bright green",
+      "heart": "Pink",
+      "sleep": "Indigo"
     },
     "icons": {
       "flame": "Flame",
@@ -7344,14 +7347,29 @@
       "bolt": "Bolt",
       "fork": "Fork and knife",
       "chart": "Bar chart",
-      "gauge": "Gauge"
+      "gauge": "Gauge",
+      "bed": "Bed",
+      "dumbbell": "Dumbbell",
+      "heartbeat": "Heartbeat",
+      "lungs": "Lungs",
+      "moon": "Moon"
     },
     "importDone_one": "Imported {{count}} complication",
     "importDone_other": "Imported {{count}} complications",
     "importMessage_one": "Found {{count}} complication in the file. Add it to your list, or replace your list with it?",
     "importMessage_other": "Found {{count}} complications in the file. Add them to your list, or replace your list with them?",
     "importSkipped_one": "{{count}} entry could not be used.",
-    "importSkipped_other": "{{count}} entries could not be used."
+    "importSkipped_other": "{{count}} entries could not be used.",
+    "addValue": "Add another value",
+    "moreValues": "More values",
+    "moreValuesHelp": "Show up to three values together: rings in the circular and corner sizes, a row each in the rectangular size.",
+    "remove": "Remove",
+    "removeValue": "Remove value {{number}}",
+    "ringsNote": "With more than one value, each value that has a goal gets its own ring or bar.",
+    "starters": {
+      "macros": "Macros"
+    },
+    "valueNumber": "Value {{number}}"
   },
   "watchSettings": {
     "complicationsTitle": "Complications",
@@ -7389,7 +7407,19 @@
         "steps": "Steps",
         "fasting": "Fasting",
         "weight": "Weight",
-        "bodyFat": "Body fat"
+        "bodyFat": "Body fat",
+        "deepSleep": "Deep sleep",
+        "exerciseCalories": "Exercise calories",
+        "exerciseMinutes": "Exercise minutes",
+        "hrv": "Overnight HRV",
+        "lightSleep": "Light sleep",
+        "remSleep": "REM sleep",
+        "restingHeartRate": "Resting heart rate",
+        "sleepDuration": "Sleep time",
+        "sleepScore": "Sleep score",
+        "spo2": "Blood oxygen",
+        "timeInBed": "Time in bed",
+        "workouts": "Workouts today"
       }
     },
     "nutrientsTitle": "Goals page nutrients",

@@ -1,5 +1,10 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
 
 import WatchComplicationEditScreen from '../../src/screens/WatchComplicationEditScreen';
@@ -67,6 +72,9 @@ const renderScreen = (params?: { complicationId?: string }) =>
     />
   );
 
+// The starter set: calories ... weight, the macros, and the sleep score.
+const STARTER_COUNT = 11;
+
 const stored = () => useAppPreferencesStore.getState().watchComplications;
 
 describe('WatchComplicationEditScreen', () => {
@@ -121,8 +129,8 @@ describe('WatchComplicationEditScreen', () => {
     fireEvent.press(screen.getByText('Save'));
 
     const list = stored() ?? [];
-    expect(list).toHaveLength(10);
-    expect(list[9]).toEqual({
+    expect(list).toHaveLength(STARTER_COUNT + 1);
+    expect(list[STARTER_COUNT]).toEqual({
       id: 'new-id',
       name: 'Net kcal',
       source: 'calories',
@@ -153,7 +161,7 @@ describe('WatchComplicationEditScreen', () => {
     fireEvent.press(screen.getByTestId('source-option-water'));
     expect(screen.getByDisplayValue('Water')).toBeTruthy();
     fireEvent.press(screen.getByText('Save'));
-    expect((stored() ?? [])[9]).toMatchObject({
+    expect((stored() ?? [])[STARTER_COUNT]).toMatchObject({
       source: 'water',
       color: 'water',
       icon: 'drop.fill',
@@ -177,7 +185,7 @@ describe('WatchComplicationEditScreen', () => {
       screen.getByTestId('watch-complication-gauge-switch').props.disabled
     ).toBe(true);
     fireEvent.press(screen.getByText('Save'));
-    expect((stored() ?? [])[9]).toMatchObject({
+    expect((stored() ?? [])[STARTER_COUNT]).toMatchObject({
       source: 'weight',
       format: 'value',
       gauge: false,
@@ -193,7 +201,7 @@ describe('WatchComplicationEditScreen', () => {
     fireEvent.press(screen.getByTestId('watch-complication-color-fasting'));
     fireEvent.press(screen.getByTestId('watch-complication-icon-timer'));
     fireEvent.press(screen.getByText('Save'));
-    expect((stored() ?? [])[9]).toMatchObject({
+    expect((stored() ?? [])[STARTER_COUNT]).toMatchObject({
       format: 'remaining',
       color: 'fasting',
       icon: 'timer',
@@ -208,10 +216,11 @@ describe('WatchComplicationEditScreen', () => {
     fireEvent.press(screen.getByText('Save'));
 
     const list = stored() ?? [];
-    expect(list).toHaveLength(9);
+    expect(list).toHaveLength(STARTER_COUNT);
     const edited = list.find((d) => d.id === 'starter-water');
     expect(edited).toMatchObject({ name: 'Hydration', color: 'steps' });
-    expect(list.findIndex((d) => d.id === 'starter-water')).toBe(5);
+    // Water sits after Fat and the Macros starter.
+    expect(list.findIndex((d) => d.id === 'starter-water')).toBe(6);
   });
 
   test('an existing complication keeps its look when its source changes', () => {
@@ -233,5 +242,157 @@ describe('WatchComplicationEditScreen', () => {
     ).toBeTruthy();
     // Protein has a source of its own, so it is not offered a second time.
     expect(screen.queryByTestId('source-option-nutrient:protein')).toBeNull();
+  });
+
+  describe('more values', () => {
+    const extra = (index: number) =>
+      within(screen.getByTestId(`watch-complication-extra-${index}`));
+
+    test('Add another value adds a second value, and the gauge switch gives way to a note', () => {
+      renderScreen({});
+      expect(screen.queryByTestId('watch-complication-extra-0')).toBeNull();
+      expect(
+        screen.getByTestId('watch-complication-gauge-switch')
+      ).toBeTruthy();
+
+      fireEvent.press(screen.getByTestId('watch-complication-add-value'));
+
+      expect(screen.getByTestId('watch-complication-extra-0')).toBeTruthy();
+      expect(
+        screen.queryByTestId('watch-complication-gauge-switch')
+      ).toBeNull();
+      expect(screen.getByTestId('watch-complication-rings-note')).toBeTruthy();
+    });
+
+    test('a new value starts on one that can be a ring, not on one already shown', () => {
+      renderScreen({});
+      fireEvent.press(screen.getByTestId('watch-complication-add-value'));
+      // Calories is the first value; the next with progress after it is protein.
+      expect(extra(0).getByTestId('source-value').props.children).toBe(
+        'protein'
+      );
+    });
+
+    test('the preview shows every value, in rows and joined on one line', () => {
+      renderScreen({});
+      fireEvent.press(screen.getByTestId('watch-complication-add-value'));
+      expect(screen.getByTestId('complication-preview-row-0')).toBeTruthy();
+      expect(screen.getByTestId('complication-preview-row-1')).toBeTruthy();
+      expect(
+        screen.getByTestId('complication-preview-inline-text').props.children
+      ).toBe('65% · 65%');
+    });
+
+    test('is saved with the first value, in order', () => {
+      renderScreen({});
+      fireEvent.press(screen.getByTestId('watch-complication-add-value'));
+      fireEvent.press(screen.getByText('Save'));
+      expect((stored() ?? [])[STARTER_COUNT]).toMatchObject({
+        source: 'calories',
+        extras: [
+          {
+            source: 'protein',
+            format: 'percent',
+            color: 'protein',
+            icon: 'fish.fill',
+          },
+        ],
+      });
+    });
+
+    test('stops at three values', () => {
+      renderScreen({});
+      fireEvent.press(screen.getByTestId('watch-complication-add-value'));
+      expect(screen.getByTestId('watch-complication-add-value')).toBeTruthy();
+      fireEvent.press(screen.getByTestId('watch-complication-add-value'));
+      expect(screen.getByTestId('watch-complication-extra-1')).toBeTruthy();
+      expect(screen.queryByTestId('watch-complication-add-value')).toBeNull();
+    });
+
+    test('Remove takes a value away and brings the gauge switch back', () => {
+      renderScreen({});
+      fireEvent.press(screen.getByTestId('watch-complication-add-value'));
+      fireEvent.press(screen.getByTestId('watch-complication-extra-0-remove'));
+      expect(screen.queryByTestId('watch-complication-extra-0')).toBeNull();
+      expect(
+        screen.getByTestId('watch-complication-gauge-switch')
+      ).toBeTruthy();
+      fireEvent.press(screen.getByText('Save'));
+      expect((stored() ?? [])[STARTER_COUNT]).not.toHaveProperty('extras');
+    });
+
+    test('changing a value’s source gives it that source’s look', () => {
+      renderScreen({});
+      fireEvent.press(screen.getByTestId('watch-complication-add-value'));
+      fireEvent.press(extra(0).getByTestId('source-option-water'));
+      fireEvent.press(screen.getByText('Save'));
+      expect(((stored() ?? [])[STARTER_COUNT].extras ?? [])[0]).toEqual({
+        source: 'water',
+        format: 'percent',
+        color: 'water',
+        icon: 'drop.fill',
+      });
+    });
+
+    test('a source already shown is not offered again, in either picker', () => {
+      renderScreen({});
+      fireEvent.press(screen.getByTestId('watch-complication-add-value'));
+      // The extra can't pick the first value's source...
+      expect(extra(0).queryByTestId('source-option-calories')).toBeNull();
+      // ...and protein, now taken by the extra, is only in the extra's own picker.
+      expect(screen.getAllByTestId('source-option-protein')).toHaveLength(1);
+    });
+
+    test('a value’s format and colour can be chosen', () => {
+      renderScreen({});
+      fireEvent.press(screen.getByTestId('watch-complication-add-value'));
+      fireEvent.press(extra(0).getByText('Value'));
+      fireEvent.press(
+        screen.getByTestId('watch-complication-extra-0-color-fasting')
+      );
+      fireEvent.press(screen.getByText('Save'));
+      expect(((stored() ?? [])[STARTER_COUNT].extras ?? [])[0]).toMatchObject({
+        format: 'value',
+        color: 'fasting',
+      });
+    });
+
+    test('editing a complication that already has extras shows them', () => {
+      renderScreen({ complicationId: 'starter-macros' });
+      expect(screen.getByTestId('watch-complication-extra-0')).toBeTruthy();
+      expect(screen.getByTestId('watch-complication-extra-1')).toBeTruthy();
+      expect(screen.queryByTestId('watch-complication-add-value')).toBeNull();
+    });
+  });
+
+  describe('sleep, heart and exercise sources', () => {
+    test('a source with a score but no goal offers value and percent, not left', () => {
+      renderScreen({});
+      fireEvent.press(screen.getByTestId('source-option-sleepScore'));
+      expect(screen.getByText('Percent')).toBeTruthy();
+      expect(screen.queryByText('Left')).toBeNull();
+      expect(
+        screen.getByTestId('watch-complication-gauge-switch').props.disabled
+      ).toBeFalsy();
+    });
+
+    test('sleep time can only be a value, with no gauge', () => {
+      renderScreen({});
+      fireEvent.press(screen.getByTestId('source-option-sleepDuration'));
+      expect(screen.queryByText('Percent')).toBeNull();
+      expect(
+        screen.getByTestId('watch-complication-gauge-switch').props.disabled
+      ).toBe(true);
+      expect(
+        screen.getByTestId('complication-preview-circular-text').props.children
+      ).toBe('7:42');
+    });
+
+    test('exercise minutes have a goal, so every format is offered', () => {
+      renderScreen({});
+      fireEvent.press(screen.getByTestId('source-option-exerciseMinutes'));
+      expect(screen.getByText('Percent')).toBeTruthy();
+      expect(screen.getByText('Left')).toBeTruthy();
+    });
   });
 });
