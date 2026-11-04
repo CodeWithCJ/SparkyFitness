@@ -1811,6 +1811,28 @@ describe('check-in tool output size and local times', () => {
     );
   });
 
+  it('matches a stored category name that has surrounding spaces', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue([
+      {
+        id: 'c5',
+        value: '61',
+        entry_date: '2026-11-02',
+        custom_categories: { id: 'k5', name: ' HRV ', measurement_type: 'ms' },
+      },
+    ]);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: 'HRV' },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\n## 2026-11-02\n- HRV: 61 ms'
+    );
+  });
+
   it('rejects a blank category_name instead of returning every metric', async () => {
     const result = await tools.sparky_manage_checkin.execute!(
       { action: 'get_custom_metrics_history', category_name: '   ' },
