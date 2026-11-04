@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -12,9 +18,10 @@ import {
   Modal,
   KeyboardAvoidingView,
   ScrollView,
+  AppState,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { CommonActions } from '@react-navigation/native';
+import { CommonActions, useIsFocused } from '@react-navigation/native';
 import UIButton from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
@@ -28,6 +35,7 @@ import {
   CameraView,
   useCameraPermissions,
   type BarcodeScanningResult,
+  type BarcodeSettings,
 } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -62,6 +70,9 @@ type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
 type ScanMode = 'barcode' | 'label' | 'photo';
 
 const SCAN_SEGMENTS: ScanMode[] = ['barcode', 'label', 'photo'];
+const BARCODE_SCANNER_SETTINGS: BarcodeSettings = {
+  barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'],
+};
 
 const GUIDE_WIDTH = 280;
 const GUIDE_HEIGHT = 160;
@@ -89,6 +100,18 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   const [scanned, setScanned] = useState(false);
   const [loading, setLoading] = useState(false);
   const [flashlight, setFlashlight] = useState(false);
+  const isFocused = useIsFocused();
+  const [appActive, setAppActive] = useState(
+    () =>
+      AppState.currentState !== 'background' &&
+      AppState.currentState !== 'inactive'
+  );
+  const appActiveRef = useRef(appActive);
+  const [cameraSession, setCameraSession] = useState(0);
+  const cameraSessionRef = useRef(0);
+  const [cameraFailed, setCameraFailed] = useState(false);
+  const barcodeRequestId = useRef(0);
+  const lookupPending = useRef(false);
   const scanLock = useRef(false);
   const pickerLock = useRef(false);
   const labelRequestLock = useRef(false);
@@ -130,6 +153,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
     return requested;
   });
   const [notFoundBarcode, setNotFoundBarcode] = useState<string | null>(null);
+  const [pendingBarcode, setPendingBarcode] = useState<string | null>(null);
   const [lookupError, setLookupError] = useState<{
     barcode: string;
     message: string;
@@ -153,6 +177,49 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   const isSelectionMode = isMealBuilderMode || isMealPlanMode;
   const selectionPickerMode = isSelectionMode ? pickerMode : undefined;
   const mealPlanTarget = lookupParams?.mealPlanTarget;
+
+  const cancelBarcodeLookup = useCallback(() => {
+    // Invalidate before unlocking so an abandoned request cannot affect a retry.
+    barcodeRequestId.current += 1;
+    lookupPending.current = false;
+    scanLock.current = false;
+    setScanned(false);
+    setLoading(false);
+    setPendingBarcode(null);
+  }, []);
+
+  const restartCamera = useCallback(() => {
+    cameraSessionRef.current += 1;
+    setCameraSession(cameraSessionRef.current);
+    setCameraFailed(false);
+  }, []);
+
+  const handleScanAgain = () => {
+    cancelBarcodeLookup();
+    setNotFoundBarcode(null);
+    setLookupError(null);
+    restartCamera();
+  };
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      const active = state === 'active';
+      appActiveRef.current = active;
+      if (!active) {
+        cancelBarcodeLookup();
+        restartCamera();
+      }
+      setAppActive(active);
+    });
+    return () => subscription.remove();
+  }, [cancelBarcodeLookup, restartCamera]);
+
+  useEffect(() => {
+    if (!isFocused) {
+      cancelBarcodeLookup();
+      restartCamera();
+    }
+  }, [isFocused, cancelBarcodeLookup, restartCamera]);
 
   // Photo estimation always logs to the diary; hide it for meal-builder
   // scans so we don't drop the user into a flow that ignores pickerMode.
@@ -233,6 +300,22 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
       shouldFireSuccessHaptic = false,
     }: { shouldFireSuccessHaptic?: boolean } = {}
   ) => {
+    if (
+      lookupPending.current ||
+      !appActiveRef.current ||
+      !labelScanActive.current ||
+      !navigation.isFocused()
+    )
+      return;
+    lookupPending.current = true;
+    const requestId = ++barcodeRequestId.current;
+    const isCurrentRequest = () =>
+      labelScanActive.current &&
+      appActiveRef.current &&
+      navigation.isFocused() &&
+      requestId === barcodeRequestId.current;
+    setLoading(true);
+    setPendingBarcode(barcode);
     setNotFoundBarcode(null);
     setLookupError(null);
     try {
@@ -242,7 +325,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
       ]);
       const accountId = account?.id;
       const currentAccountId = (await getActiveServerConfig())?.id;
-      if (!labelScanActive.current || accountId !== currentAccountId) return;
+      if (!isCurrentRequest() || accountId !== currentAccountId) return;
 
       if (!result.food) {
         setNotFoundBarcode(barcode);
@@ -267,7 +350,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
         });
       }
     } catch (error) {
-      if (!labelScanActive.current) return;
+      if (!isCurrentRequest()) return;
       const message =
         error instanceof TimeoutError
           ? t('foodScan.errors.timeout', {
@@ -279,7 +362,10 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
             }));
       setLookupError({ barcode, message });
     } finally {
-      if (labelScanActive.current) setLoading(false);
+      if (isCurrentRequest()) {
+        lookupPending.current = false;
+        setLoading(false);
+      }
     }
   };
 
@@ -296,7 +382,15 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   };
 
   const handleBarcodeScanned = async ({ data }: BarcodeScanningResult) => {
-    if (scanLock.current) return;
+    if (
+      scanLock.current ||
+      !isFocused ||
+      !appActiveRef.current ||
+      !navigation.isFocused() ||
+      cameraSession !== cameraSessionRef.current ||
+      !data.trim()
+    )
+      return;
     scanLock.current = true;
     setScanned(true);
     if (isCaptureBarcodeMode) {
@@ -304,13 +398,12 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
       dispatchCapturedBarcode(data);
       return;
     }
-    setLoading(true);
     await performBarcodeLookup(data, { shouldFireSuccessHaptic: true });
   };
 
   const handleManualSubmit = async () => {
     const barcode = manualBarcode.trim();
-    if (!barcode) return;
+    if (!barcode || lookupPending.current) return;
     setManualEntryVisible(false);
     setManualBarcode('');
     scanLock.current = true;
@@ -319,7 +412,6 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
       dispatchCapturedBarcode(barcode);
       return;
     }
-    setLoading(true);
     await performBarcodeLookup(barcode);
   };
 
@@ -546,6 +638,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
       return;
     }
     setScanMode(key);
+    cancelBarcodeLookup();
+    restartCamera();
     setNotFoundBarcode(null);
     setLookupError(null);
     setCapturedPhoto(null);
@@ -719,12 +813,13 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
     setManualBarcode('');
     setScanned(false);
     scanLock.current = false;
+    restartCamera();
   };
 
   const handleScanLabel = () => {
     setScanMode('label');
-    setScanned(false);
-    scanLock.current = false;
+    cancelBarcodeLookup();
+    restartCamera();
   };
 
   if (!permission) {
@@ -733,20 +828,37 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
 
   return (
     <View className="flex-1 flex-col justify-center">
-      {permission.granted ? (
+      {permission.granted &&
+      isFocused &&
+      appActive &&
+      !cameraFailed &&
+      !loading &&
+      !(scanMode === 'barcode' && (notFoundBarcode || lookupError)) &&
+      !manualEntryVisible &&
+      !capturedPhoto &&
+      !labelProcessing &&
+      !photoGateVisible ? (
         <CameraView
+          key={`${scanMode}-${cameraSession}`}
           ref={cameraRef}
+          facing="back"
+          autofocus="on"
+          onMountError={() => {
+            if (
+              appActiveRef.current &&
+              cameraSession === cameraSessionRef.current &&
+              navigation.isFocused()
+            ) {
+              setCameraFailed(true);
+            }
+          }}
           onBarcodeScanned={
             scanMode === 'barcode' && !scanned
               ? handleBarcodeScanned
               : undefined
           }
           barcodeScannerSettings={
-            scanMode === 'barcode'
-              ? {
-                  barcodeTypes: ['ean13', 'ean8', 'upc_a', 'upc_e'],
-                }
-              : undefined
+            scanMode === 'barcode' ? BARCODE_SCANNER_SETTINGS : undefined
           }
           style={StyleSheet.absoluteFill}
           enableTorch={flashlight}
@@ -780,6 +892,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
 
       {permission.granted &&
       scanMode === 'barcode' &&
+      !cameraFailed &&
       !notFoundBarcode &&
       !lookupError &&
       !loading &&
@@ -858,6 +971,25 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
         >
           <Icon name="chevron-back" size={22} color="#fff" />
         </TouchableOpacity>
+        {permission.granted &&
+        scanMode === 'barcode' &&
+        !cameraFailed &&
+        !loading &&
+        !notFoundBarcode &&
+        !lookupError &&
+        !manualEntryVisible ? (
+          <TouchableOpacity
+            onPress={handleScanAgain}
+            accessibilityRole="button"
+            className="bg-black/50 rounded-full px-4 py-2"
+          >
+            <Text className="text-white text-sm font-semibold">
+              {t('foodScan.barcode.restartCamera', {
+                defaultValue: 'Restart camera',
+              })}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
         {permission.granted ? (
           <TouchableOpacity
             onPress={() => setFlashlight(!flashlight)}
@@ -884,8 +1016,29 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
       </View>
 
       {loading || labelProcessing ? (
-        <View className="absolute inset-0 justify-center items-center bg-black/40">
+        <View className="absolute inset-0 justify-center items-center bg-black/80">
           <ActivityIndicator size="large" color="#fff" />
+          {loading ? (
+            <>
+              <Text className="text-white text-base mt-3">
+                {t('foodScan.lookup.searching', {
+                  defaultValue: 'Looking up barcode…',
+                })}
+              </Text>
+              <Text className="text-white text-base mt-2">
+                {pendingBarcode}
+              </Text>
+              <UIButton
+                variant="outline"
+                className="mt-4 bg-surface rounded-lg"
+                onPress={handleScanAgain}
+              >
+                {t('foodScan.barcode.scanAgain', {
+                  defaultValue: 'Scan again',
+                })}
+              </UIButton>
+            </>
+          ) : null}
           {labelProcessing ? (
             <Text className="text-white text-base mt-3">
               {t('foodScan.label.analyzing', {
@@ -893,6 +1046,34 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
               })}
             </Text>
           ) : null}
+        </View>
+      ) : null}
+
+      {cameraFailed &&
+      !loading &&
+      !notFoundBarcode &&
+      !lookupError &&
+      !manualEntryVisible ? (
+        <View className="absolute left-6 right-6 bg-surface rounded-xl p-5 items-center gap-3">
+          <Text className="text-text-primary text-base font-semibold">
+            {t('foodScan.camera.unavailable', {
+              defaultValue: 'Camera unavailable',
+            })}
+          </Text>
+          <Text className="text-text-secondary text-sm text-center">
+            {t('foodScan.camera.restartHelp', {
+              defaultValue: 'Restart the camera to try again.',
+            })}
+          </Text>
+          <UIButton
+            variant="primary"
+            className="self-stretch rounded-lg"
+            onPress={handleScanAgain}
+          >
+            {t('foodScan.barcode.restartCamera', {
+              defaultValue: 'Restart camera',
+            })}
+          </UIButton>
         </View>
       ) : null}
 
@@ -941,9 +1122,16 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
       (notFoundBarcode || lookupError) ? (
         <View
           className="absolute left-0 right-0 items-center px-8"
-          style={{ bottom: Math.max(insets.bottom + 8, 24) + 76 }}
+          style={{
+            bottom: Math.max(insets.bottom + 8, 24) + 76,
+            maxHeight: '75%',
+          }}
         >
-          <View className="self-stretch bg-surface rounded-xl p-5 items-center gap-3">
+          <ScrollView
+            className="self-stretch bg-surface rounded-xl"
+            contentContainerClassName="p-5 items-center gap-3"
+            bounces={false}
+          >
             <Text className="text-text-primary text-base font-semibold">
               {lookupError
                 ? t('foodScan.lookup.failed', { defaultValue: 'Lookup failed' })
@@ -956,12 +1144,38 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
                 ? lookupError.message
                 : t('foodScan.lookup.nextSteps', {
                     defaultValue:
-                      'You can scan the nutrition label or enter it manually.',
+                      'Try scanning again, scan the nutrition label, or enter the food manually.',
                   })}
+            </Text>
+            <Text
+              className="text-text-primary text-base font-semibold"
+              selectable
+            >
+              {lookupError?.barcode ?? notFoundBarcode}
             </Text>
             <View className="gap-3 mt-2 self-stretch">
               <UIButton
                 variant="primary"
+                onPress={handleScanAgain}
+                className="rounded-lg"
+              >
+                {t('foodScan.barcode.scanAgain', {
+                  defaultValue: 'Scan again',
+                })}
+              </UIButton>
+              {lookupError ? (
+                <UIButton
+                  variant="outline"
+                  onPress={() => {
+                    void performBarcodeLookup(lookupError.barcode);
+                  }}
+                  className="rounded-lg"
+                >
+                  {t('foodScan.lookup.retry', { defaultValue: 'Retry lookup' })}
+                </UIButton>
+              ) : null}
+              <UIButton
+                variant="outline"
                 onPress={handleScanLabel}
                 className="rounded-lg"
                 textClassName="text-sm"
@@ -996,7 +1210,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
                 </Text>
               </UIButton>
             </View>
-          </View>
+          </ScrollView>
         </View>
       ) : null}
 

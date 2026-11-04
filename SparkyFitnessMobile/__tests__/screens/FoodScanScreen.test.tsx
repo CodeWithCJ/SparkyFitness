@@ -19,6 +19,11 @@ import {
   markFoodPhotoIntroSeen,
 } from '../../src/services/foodPhotoIntro';
 
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => true,
+}));
+
 jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
   lookupBarcodeV2: jest.fn(),
   scanNutritionLabel: jest.fn(),
@@ -402,7 +407,7 @@ describe('FoodScanScreen', () => {
   });
 
   it('does not retrigger haptics while a scan lookup is locked', async () => {
-    let resolveLookup: ((value: any) => void) | undefined;
+    let resolveLookup: ((value: BarcodeLookupResult) => void) | undefined;
     mockLookupBarcodeV2.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -411,12 +416,11 @@ describe('FoodScanScreen', () => {
     );
 
     const screen = renderScreen();
-
-    fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', {
-      data: '012345678905',
-    });
-    fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', {
-      data: '012345678905',
+    const queuedScan = screen.getByTestId('camera-view').props
+      .onBarcodeScanned as (event: { data: string }) => Promise<void>;
+    await act(async () => {
+      void queuedScan({ data: '012345678905' });
+      void queuedScan({ data: '012345678905' });
     });
 
     expect(mockLookupBarcodeV2).toHaveBeenCalledTimes(1);

@@ -2823,7 +2823,9 @@
     "lookup": {
       "failed": "Lookup failed",
       "noMatch": "No match for barcode",
-      "nextSteps": "You can scan the nutrition label or enter it manually.",
+      "nextSteps": "Try scanning again, scan the nutrition label, or enter the food manually.",
+      "searching": "Looking up barcode…",
+      "retry": "Retry lookup",
       "scanLabel": "Scan Nutrition Label",
       "addManually": "Add Food Manually"
     },
@@ -2834,7 +2836,13 @@
       "logManually": "Log manually"
     },
     "barcode": {
-      "typeInstead": "Type Barcode Instead"
+      "typeInstead": "Type Barcode Instead",
+      "scanAgain": "Scan again",
+      "restartCamera": "Restart camera"
+    },
+    "camera": {
+      "unavailable": "Camera unavailable",
+      "restartHelp": "Restart the camera to try again."
     },
     "manual": {
       "title": "Enter Barcode",
