@@ -1,5 +1,6 @@
 import { MIN_BASELINE_NIGHTS } from '@workspace/shared';
 import type { SkinTemperatureRow } from '../services/api/skinTemperatureApi';
+import { addDays } from './dateUtils';
 
 /** Nights before the wake day that make up the usual temperature. */
 export const SKIN_TEMPERATURE_BASELINE_DAYS = 14;
@@ -41,7 +42,8 @@ const round = (value: number): number => Math.round(value * 10) / 10;
  *
  * A source that reports its own deviation (Polar) wins. Otherwise the deviation is
  * the night against the median of the earlier nights from the same source, once
- * there are `MIN_BASELINE_NIGHTS` of them: sources measure at different places, so
+ * there are `MIN_BASELINE_NIGHTS` of them in the `SKIN_TEMPERATURE_BASELINE_DAYS`
+ * before it: sources measure at different places, so
  * their absolute values are not comparable.
  */
 export const nightSkinTemperature = (
@@ -64,10 +66,12 @@ export const nightSkinTemperature = (
   let deviation = best.reading.deviation;
 
   if (deviation == null && celsius != null) {
+    const baselineStart = addDays(wakeDay, -SKIN_TEMPERATURE_BASELINE_DAYS);
     const earlier = rows
       .filter(
         (row) =>
           row.source_provider === best.row.source_provider &&
+          row.entry_date >= baselineStart &&
           row.entry_date < wakeDay
       )
       .map((row) => lastReading(row)?.celsius)

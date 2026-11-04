@@ -6731,6 +6731,10 @@
     "bpmUnit": "bpm",
     "msUnit": "ms",
     "celsiusUnit": "°C",
+    "fahrenheitUnit": "°F",
+    "showTrendHint": "Shows this value over the last 30 nights",
+    "trendLoadFailed": "Could not load the trend",
+    "trendNotEnoughData": "Not enough nights to show a trend yet",
     "quality": "Sleep Quality"
   },
   "foodProvenance": {

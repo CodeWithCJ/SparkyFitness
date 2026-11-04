@@ -17,6 +17,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { SleepEntry } from '../types/sleep';
 import { formatDateLabel } from '../utils/dateUtils';
+import { temperatureUnitFor } from '../utils/temperatureUnit';
 import {
   formatClockTime,
   formatSleepDuration,
@@ -202,7 +203,13 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
         <SleepDetailHeader entry={entry} zone={zone} />
         <Hypnogram stages={stages} zone={zone} />
         <SleepStagesBreakdown entry={entry} />
-        <SleepBiometrics entry={entry} skinTemperature={skinTemperature} />
+        <SleepBiometrics
+          entry={entry}
+          skinTemperature={skinTemperature}
+          temperatureUnit={temperatureUnitFor(
+            preferences?.default_distance_unit
+          )}
+        />
       </ScrollView>
     );
   };

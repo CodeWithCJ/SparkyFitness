@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import type { ExerciseActivityQueryItem } from '@workspace/shared';
 import { formatLocalizedNumber } from '../localization';
+import { convertTemperature, temperatureUnitFor } from './temperatureUnit';
 
 const FEET_PER_METER = 3.28084;
 
@@ -46,10 +47,9 @@ function weatherText(
 ): string | null {
   const parts: string[] = [];
   if (session.weatherTempCelsius != null) {
-    const fahrenheit = distanceUnit === 'miles';
-    const degrees = fahrenheit
-      ? session.weatherTempCelsius * 1.8 + 32
-      : session.weatherTempCelsius;
+    const unit = temperatureUnitFor(distanceUnit);
+    const fahrenheit = unit === 'fahrenheit';
+    const degrees = convertTemperature(session.weatherTempCelsius, unit);
     const value = formatLocalizedNumber(Math.round(degrees));
     parts.push(
       fahrenheit
