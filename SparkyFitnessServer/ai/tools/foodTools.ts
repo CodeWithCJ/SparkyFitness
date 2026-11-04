@@ -1050,6 +1050,16 @@ Actions:
             if (args.entry_id && args.entry_type) {
               return 'delete_entry';
             }
+            // custom_nutrients is only accepted by update_food_variant. Check
+            // it before the food_name/meal/food_id branches: any of those
+            // would pick an action whose strict schema drops the nutrient
+            // edit (or, for a bare food_id, delete the food).
+            if (
+              (args.food_id || args.variant_id) &&
+              args.custom_nutrients !== undefined
+            ) {
+              return 'update_food_variant';
+            }
             if (args.amount_ml) {
               return 'log_water';
             }

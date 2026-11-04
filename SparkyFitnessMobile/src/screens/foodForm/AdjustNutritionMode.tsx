@@ -192,13 +192,20 @@ export function AdjustNutritionMode({
     ): Promise<FoodUnitSelectionResult> => {
       if (selection.kind === 'existing') {
         setPendingUnitSelection(selection);
-        setCurrentVariantId(selection.variant.id ?? variantId);
+        const nextId = selection.variant.id ?? variantId;
+        // Switching to another saved variant loads its custom nutrients, so the
+        // overwrite check and save compare against that variant, not the
+        // previous one.
+        if (nextId !== currentVariantId) {
+          setCurrentCustomNutrients(selection.variant.custom_nutrients ?? null);
+        }
+        setCurrentVariantId(nextId);
         return selection;
       }
       setPendingUnitSelection(selection);
       return selection;
     },
-    [variantId]
+    [variantId, currentVariantId]
   );
 
   const isDraftSelection = pendingUnitSelection?.kind === 'draft';
@@ -375,6 +382,7 @@ export function AdjustNutritionMode({
               : false;
 
             let saveVariantId = nextVariantId;
+            let savedAsNew = false;
             if (existingSelection && nutritionChanged && foodId) {
               const choice = await confirmVariantOverwrite(
                 `${formatServingSizeForDisplay(existingSelection.variant.serving_size)} ${localizeFoodUnit(existingSelection.variant.serving_unit, t)}`
@@ -398,8 +406,10 @@ export function AdjustNutritionMode({
                   };
                   saveVariantId = createdVariant.id;
                   equivDiffVariantId = createdVariant.id;
+                  savedAsNew = true;
                   setPendingUnitSelection(nextUnitSelection);
                   setCurrentVariantId(createdVariant.id);
+                  invalidateFoodCaches(queryClient, foodId);
                   // New variant has no existing siblings — create draft equivalents
                   // directly rather than diffing against a stale snapshot.
                   const cleanEq = equivalentDraft.filter(
@@ -440,15 +450,16 @@ export function AdjustNutritionMode({
                   });
                   return;
                 }
-                // Fall through to persistFoodEdits with the new variant ID so the
-                // cache is populated with the correct nutrition values.
+                // The new variant already holds the edits. Skip the matching-row
+                // update below: the stale variants list still holds the original
+                // row with the same serving, which the user chose not to change.
               }
             }
 
             // Check whether the form's serving size/unit matches an existing DB
             // variant. If not, save as new directly — no dialog needed since the
             // user explicitly toggled save ON and the variant doesn't exist yet.
-            if (saveVariantId && foodId) {
+            if (saveVariantId && foodId && !savedAsNew) {
               const formServingSize = parseDecimalInput(data.servingSize) || 0;
               const formServingUnit = data.servingUnit || 'serving';
               const matchingDbVariant = (variants ?? []).find(

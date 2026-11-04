@@ -9,6 +9,8 @@ const SNAPSHOT_NUTRIENTS = [
   'carbs',
   'fat',
   'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
   'sodium',
   'dietary_fiber',
   'sugars',
@@ -66,6 +68,7 @@ export function buildFoodEntryCopyPayload(
     const value = toNumber(entry[field]);
     if (value !== undefined) payload[field] = value;
   }
+  if (entry.glycemic_index) payload.glycemic_index = entry.glycemic_index;
   if (entry.custom_nutrients && Object.keys(entry.custom_nutrients).length) {
     payload.custom_nutrients = entry.custom_nutrients;
   }

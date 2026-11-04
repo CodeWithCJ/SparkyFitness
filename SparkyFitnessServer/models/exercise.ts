@@ -582,7 +582,7 @@ async function createExercise(exerciseData: any) {
         calories_per_hour, description, is_custom, user_id, shared_with_public,
         modality, created_at, updated_at
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $19, $12, $13, $14, $15, $16, $17, $18, now(), now())
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $19, $13, $14, $15, $16, $17, $18, now(), now())
        RETURNING *`,
       [
         exerciseData.source,

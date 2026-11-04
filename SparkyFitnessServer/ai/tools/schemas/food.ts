@@ -17,6 +17,16 @@ import {
 // union members and the flat published input schema so both carry the same
 // bound as the editors on web and mobile.
 const notesSchema = z.string().max(NOTES_MAX_LENGTH).optional();
+// z.coerce.number() turns null and '' into 0, which would silently zero a
+// stored custom nutrient amount. Map them to undefined so coercion yields NaN
+// and the parse fails instead.
+const customNutrientAmount = z.preprocess(
+  (value) =>
+    value === null || (typeof value === 'string' && value.trim() === '')
+      ? undefined
+      : value,
+  z.coerce.number().min(0)
+);
 
 // Keep barcode as a string so leading zeroes survive. This matches the existing
 // barcode lookup contract rather than assuming a single barcode standard.
@@ -600,7 +610,7 @@ const updateFoodVariantSchema = z
       .optional()
       .describe('Updated Glycemic Index classification'),
     custom_nutrients: z
-      .record(z.string(), z.coerce.number().min(0))
+      .record(z.string(), customNutrientAmount)
       .optional()
       .describe(
         'Custom nutrient amounts per serving_size, keyed by the exact custom nutrient name (see list_custom_nutrients). Merged into the stored values: only the names given change.'
@@ -965,7 +975,7 @@ export const manageFoodInput = z.object({
     ),
   gi: giIndexEnum.optional().describe('Glycemic index classification'),
   custom_nutrients: z
-    .record(z.string(), z.coerce.number().min(0))
+    .record(z.string(), customNutrientAmount)
     .optional()
     .describe(
       'For update_food_variant: custom nutrient amounts per serving_size, keyed by the exact custom nutrient name. Merged into the stored values.'
