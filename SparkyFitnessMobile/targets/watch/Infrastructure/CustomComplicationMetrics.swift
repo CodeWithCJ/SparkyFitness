@@ -25,6 +25,8 @@ struct CustomMetric: Codable, Equatable {
     /// Fasting only, in epoch ms. Both nil means "not fasting".
     var startedAt: Double? = nil
     var targetEndAt: Double? = nil
+    /// `value` is seconds and is written as H:MM (sleep times).
+    var isDuration: Bool = false
 }
 
 /// Builds the metrics the custom complication can show from what the phone has
@@ -90,6 +92,58 @@ enum CustomComplicationMetrics {
                 startedAt: context.fast.map { $0.startedAt.timeIntervalSince1970 * 1000 },
                 targetEndAt: context.fast?.targetEndAt.map { $0.timeIntervalSince1970 * 1000 }
             ))
+        }
+
+        if let sleep = context.sleep {
+            let day = sleep.day
+            metrics.append(CustomMetric(key: "sleepDuration", value: sleep.totalSeconds, day: day, isDuration: true))
+            if sleep.timeInBedSeconds > 0 {
+                metrics.append(CustomMetric(key: "timeInBed", value: sleep.timeInBedSeconds, day: day, isDuration: true))
+            }
+            // The score is out of 100, so it fills a gauge without needing a goal.
+            if let score = sleep.sleepScore {
+                metrics.append(CustomMetric(
+                    key: "sleepScore", value: score,
+                    progress: max(0, min(1, score / 100)), day: day
+                ))
+            }
+            if let seconds = sleep.deepSeconds {
+                metrics.append(CustomMetric(key: "deepSleep", value: seconds, day: day, isDuration: true))
+            }
+            if let seconds = sleep.remSeconds {
+                metrics.append(CustomMetric(key: "remSleep", value: seconds, day: day, isDuration: true))
+            }
+            if let seconds = sleep.lightSeconds {
+                metrics.append(CustomMetric(key: "lightSleep", value: seconds, day: day, isDuration: true))
+            }
+            if let bpm = sleep.restingHeartRate {
+                metrics.append(CustomMetric(key: "restingHeartRate", value: bpm, unit: "bpm", day: day))
+            }
+            if let ms = sleep.hrvMs {
+                metrics.append(CustomMetric(key: "hrv", value: ms, unit: "ms", day: day))
+            }
+            if let percent = sleep.spo2 {
+                metrics.append(CustomMetric(key: "spo2", value: percent, unit: "%", day: day))
+            }
+        }
+
+        if let exercise = context.exerciseSummary {
+            let day = exercise.day
+            let hasMinutesGoal = exercise.minutesGoal > 0
+            metrics.append(CustomMetric(
+                key: "exerciseMinutes", value: exercise.minutes,
+                goal: hasMinutesGoal ? exercise.minutesGoal : nil,
+                progress: hasMinutesGoal ? max(0, min(1, exercise.minutes / exercise.minutesGoal)) : nil,
+                unit: "min", day: day
+            ))
+            let hasCaloriesGoal = exercise.caloriesGoal > 0
+            metrics.append(CustomMetric(
+                key: "exerciseCalories", value: exercise.calories,
+                goal: hasCaloriesGoal ? exercise.caloriesGoal : nil,
+                progress: hasCaloriesGoal ? max(0, min(1, exercise.calories / exercise.caloriesGoal)) : nil,
+                unit: "kcal", day: day
+            ))
+            metrics.append(CustomMetric(key: "workouts", value: Double(exercise.sessionCount), day: day))
         }
 
         if let kg = context.todayWeightKg ?? context.lastWeightKg {

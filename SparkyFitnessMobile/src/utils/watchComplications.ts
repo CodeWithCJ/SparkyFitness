@@ -27,6 +27,18 @@ export const COMPLICATION_SOURCES = [
   'fasting',
   'weight',
   'bodyFat',
+  'sleepDuration',
+  'sleepScore',
+  'deepSleep',
+  'remSleep',
+  'lightSleep',
+  'timeInBed',
+  'restingHeartRate',
+  'hrv',
+  'spo2',
+  'exerciseMinutes',
+  'exerciseCalories',
+  'workouts',
 ] as const;
 
 export type ComplicationSourceKey = (typeof COMPLICATION_SOURCES)[number];
@@ -54,6 +66,9 @@ export const COMPLICATION_COLORS = [
   'steps',
   'fasting',
   'weight',
+  'sleep',
+  'heart',
+  'exercise',
   'neutral',
 ] as const;
 export type ComplicationColor = (typeof COMPLICATION_COLORS)[number];
@@ -72,8 +87,24 @@ export const COMPLICATION_ICONS = [
   'fork.knife',
   'chart.bar.fill',
   'gauge.with.dots.needle.33percent',
+  'bed.double.fill',
+  'moon.zzz.fill',
+  'waveform.path.ecg',
+  'lungs.fill',
+  'dumbbell.fill',
 ] as const;
 export type ComplicationIcon = (typeof COMPLICATION_ICONS)[number];
+
+/** One value a complication shows: what, how it is written, and its look. */
+export interface ComplicationItem {
+  source: ComplicationSource;
+  format: ComplicationFormat;
+  color: ComplicationColor;
+  icon: ComplicationIcon;
+}
+
+/** A complication shows its own value plus at most two more. */
+export const MAX_COMPLICATION_ITEMS = 3;
 
 export interface WatchComplicationDefinition {
   id: string;
@@ -81,10 +112,19 @@ export interface WatchComplicationDefinition {
   name: string;
   source: ComplicationSource;
   format: ComplicationFormat;
-  /** Draw a gauge when the value has a goal. */
+  /**
+   * Draw a gauge when the value has progress. Only for a complication with one
+   * value: with more, each value that has progress gets its own ring or bar.
+   */
   gauge: boolean;
   color: ComplicationColor;
   icon: ComplicationIcon;
+  /**
+   * The second and third values, shown together with the first (rings in the
+   * circular size, rows in the rectangular one). Optional because a list saved
+   * before this existed has none, and an older watch build ignores it.
+   */
+  extras?: ComplicationItem[];
 }
 
 export const MAX_COMPLICATION_NAME_LENGTH = 24;
@@ -140,6 +180,78 @@ const SOURCE_LOOKS: Record<ComplicationSourceKey, Look> = {
     gauge: false,
     color: 'weight',
     icon: 'scalemass.fill',
+  },
+  sleepDuration: {
+    format: 'value',
+    gauge: false,
+    color: 'sleep',
+    icon: 'bed.double.fill',
+  },
+  sleepScore: {
+    format: 'percent',
+    gauge: true,
+    color: 'sleep',
+    icon: 'moon.zzz.fill',
+  },
+  deepSleep: {
+    format: 'value',
+    gauge: false,
+    color: 'sleep',
+    icon: 'moon.zzz.fill',
+  },
+  remSleep: {
+    format: 'value',
+    gauge: false,
+    color: 'sleep',
+    icon: 'moon.zzz.fill',
+  },
+  lightSleep: {
+    format: 'value',
+    gauge: false,
+    color: 'sleep',
+    icon: 'moon.zzz.fill',
+  },
+  timeInBed: {
+    format: 'value',
+    gauge: false,
+    color: 'sleep',
+    icon: 'bed.double.fill',
+  },
+  restingHeartRate: {
+    format: 'value',
+    gauge: false,
+    color: 'heart',
+    icon: 'heart.fill',
+  },
+  hrv: {
+    format: 'value',
+    gauge: false,
+    color: 'heart',
+    icon: 'waveform.path.ecg',
+  },
+  spo2: {
+    format: 'value',
+    gauge: false,
+    color: 'heart',
+    icon: 'lungs.fill',
+  },
+  exerciseMinutes: {
+    format: 'percent',
+    gauge: true,
+    color: 'exercise',
+    icon: 'dumbbell.fill',
+  },
+  exerciseCalories: {
+    format: 'percent',
+    gauge: true,
+    color: 'exercise',
+    icon: 'bolt.fill',
+  },
+  workouts: {
+    format: 'value',
+    gauge: false,
+    color: 'exercise',
+    icon: 'dumbbell.fill',
   },
 };
 
@@ -218,6 +330,54 @@ export const COMPLICATION_SOURCE_LABELS: Record<
     t('watchSettings.complications.sources.bodyFat', {
       defaultValue: 'Body fat',
     }),
+  sleepDuration: (t) =>
+    t('watchSettings.complications.sources.sleepDuration', {
+      defaultValue: 'Sleep time',
+    }),
+  sleepScore: (t) =>
+    t('watchSettings.complications.sources.sleepScore', {
+      defaultValue: 'Sleep score',
+    }),
+  deepSleep: (t) =>
+    t('watchSettings.complications.sources.deepSleep', {
+      defaultValue: 'Deep sleep',
+    }),
+  remSleep: (t) =>
+    t('watchSettings.complications.sources.remSleep', {
+      defaultValue: 'REM sleep',
+    }),
+  lightSleep: (t) =>
+    t('watchSettings.complications.sources.lightSleep', {
+      defaultValue: 'Light sleep',
+    }),
+  timeInBed: (t) =>
+    t('watchSettings.complications.sources.timeInBed', {
+      defaultValue: 'Time in bed',
+    }),
+  restingHeartRate: (t) =>
+    t('watchSettings.complications.sources.restingHeartRate', {
+      defaultValue: 'Resting heart rate',
+    }),
+  hrv: (t) =>
+    t('watchSettings.complications.sources.hrv', {
+      defaultValue: 'Overnight HRV',
+    }),
+  spo2: (t) =>
+    t('watchSettings.complications.sources.spo2', {
+      defaultValue: 'Blood oxygen',
+    }),
+  exerciseMinutes: (t) =>
+    t('watchSettings.complications.sources.exerciseMinutes', {
+      defaultValue: 'Exercise minutes',
+    }),
+  exerciseCalories: (t) =>
+    t('watchSettings.complications.sources.exerciseCalories', {
+      defaultValue: 'Exercise calories',
+    }),
+  workouts: (t) =>
+    t('watchSettings.complications.sources.workouts', {
+      defaultValue: 'Workouts today',
+    }),
 };
 
 /** The sources a wearer who never customised anything is offered. */
@@ -231,6 +391,7 @@ const STARTER_SOURCES: readonly ComplicationSourceKey[] = [
   'steps',
   'fasting',
   'weight',
+  'sleepScore',
 ];
 
 /**
@@ -241,12 +402,29 @@ const STARTER_SOURCES: readonly ComplicationSourceKey[] = [
 export function starterComplications(
   t: Translator
 ): WatchComplicationDefinition[] {
-  return STARTER_SOURCES.map((source) => ({
+  const single = (
+    source: ComplicationSourceKey
+  ): WatchComplicationDefinition => ({
     id: `starter-${source}`,
     name: COMPLICATION_SOURCE_LABELS[source](t),
     source,
     ...SOURCE_LOOKS[source],
-  }));
+  });
+  // The one starter with several values: the three macros as rings, like the
+  // Daily Energy complication. It sits after Fat.
+  const macros: WatchComplicationDefinition = {
+    id: 'starter-macros',
+    name: t('watchComplications.starters.macros', { defaultValue: 'Macros' }),
+    source: 'protein',
+    ...SOURCE_LOOKS.protein,
+    extras: [
+      { source: 'carbs', format: 'percent', color: 'carbs', icon: 'leaf.fill' },
+      { source: 'fat', format: 'percent', color: 'fat', icon: 'drop.fill' },
+    ],
+  };
+  return STARTER_SOURCES.flatMap((source) =>
+    source === 'fat' ? [single(source), macros] : [single(source)]
+  );
 }
 
 /** What the watch is sent: the wearer's own list, or the starter set until there is one. */
@@ -268,6 +446,37 @@ function oneOf<T extends string>(
     : fallback;
 }
 
+function normalizeItem(input: unknown): ComplicationItem | null {
+  if (!input || typeof input !== 'object') return null;
+  const raw = input as Record<string, unknown>;
+  if (!isComplicationSource(raw.source)) return null;
+  const look = defaultLookFor(raw.source);
+  return {
+    source: raw.source,
+    format: oneOf(COMPLICATION_FORMATS, raw.format, look.format),
+    color: oneOf(COMPLICATION_COLORS, raw.color, look.color),
+    icon: oneOf(COMPLICATION_ICONS, raw.icon, look.icon),
+  };
+}
+
+/** The extra values, at most two, with no source repeated or matching the first. */
+function normalizeExtras(
+  input: unknown,
+  primary: ComplicationSource
+): ComplicationItem[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<string>([primary]);
+  const extras: ComplicationItem[] = [];
+  for (const entry of input) {
+    const item = normalizeItem(entry);
+    if (!item || seen.has(item.source)) continue;
+    seen.add(item.source);
+    extras.push(item);
+    if (extras.length >= MAX_COMPLICATION_ITEMS - 1) break;
+  }
+  return extras;
+}
+
 /**
  * A definition from untrusted input (an import file, an older saved list).
  * Null when it cannot stand: no usable source or no name. Anything else that is
@@ -286,6 +495,7 @@ export function normalizeComplication(
       : '';
   if (!name) return null;
   const look = defaultLookFor(raw.source);
+  const extras = normalizeExtras(raw.extras, raw.source);
   return {
     id,
     name,
@@ -294,6 +504,7 @@ export function normalizeComplication(
     gauge: typeof raw.gauge === 'boolean' ? raw.gauge : look.gauge,
     color: oneOf(COMPLICATION_COLORS, raw.color, look.color),
     icon: oneOf(COMPLICATION_ICONS, raw.icon, look.icon),
+    ...(extras.length > 0 ? { extras } : {}),
   };
 }
 
@@ -309,13 +520,14 @@ export function exportComplications(
       type: EXPORT_TYPE,
       version: EXPORT_VERSION,
       complications: list.map(
-        ({ name, source, format, gauge, color, icon }) => ({
+        ({ name, source, format, gauge, color, icon, extras }) => ({
           name,
           source,
           format,
           gauge,
           color,
           icon,
+          ...(extras && extras.length > 0 ? { extras } : {}),
         })
       ),
     },
@@ -378,6 +590,12 @@ export function buildComplicationConfig(
       gauge: d.gauge,
       color: d.color,
       icon: d.icon,
+      extras: (d.extras ?? []).map((e) => ({
+        source: e.source,
+        format: e.format,
+        color: e.color,
+        icon: e.icon,
+      })),
     })),
   };
 }
@@ -389,19 +607,74 @@ export function nutrientKeyOf(source: ComplicationSource): string | null {
     : null;
 }
 
-const NO_GOAL_SOURCES = [
+/** Sources with no 0...1 progress, so no gauge, ring or percent. */
+const NO_PROGRESS_SOURCES = [
   'caloriesRemaining',
   'caloriesBurned',
   'weight',
   'bodyFat',
+  'sleepDuration',
+  'deepSleep',
+  'remSleep',
+  'lightSleep',
+  'timeInBed',
+  'restingHeartRate',
+  'hrv',
+  'spo2',
+  'workouts',
 ] as const;
 
 /**
- * Whether the number has a goal behind it. Percent and "left" need one, so a
- * source without it can only show its value; the watch does the same.
+ * Sources with no goal to count down to, so no "left". The sleep score has
+ * progress (out of 100) but no goal.
+ */
+const NO_GOAL_SOURCES = [...NO_PROGRESS_SOURCES, 'sleepScore'] as const;
+
+/**
+ * Whether the number has progress behind it: a gauge or ring can be drawn and it
+ * can be written as a percent. The watch does the same.
+ */
+export function sourceHasProgress(source: ComplicationSource): boolean {
+  return !(NO_PROGRESS_SOURCES as readonly string[]).includes(source);
+}
+
+/**
+ * Whether the number has a goal, so "left" (what remains to reach it) means
+ * something. A source without one can still show its value, or its percent when
+ * it has progress.
  */
 export function sourceHasGoal(source: ComplicationSource): boolean {
   return !(NO_GOAL_SOURCES as readonly string[]).includes(source);
+}
+
+/** The formats a source can be written in. */
+export function allowedFormats(
+  source: ComplicationSource
+): ComplicationFormat[] {
+  return COMPLICATION_FORMATS.filter(
+    (format) =>
+      format === 'value' ||
+      (format === 'percent' && sourceHasProgress(source)) ||
+      (format === 'remaining' && sourceHasGoal(source))
+  );
+}
+
+/** Every value a definition shows, the first one first. */
+export function itemsOf(
+  definition: Pick<
+    WatchComplicationDefinition,
+    'source' | 'format' | 'color' | 'icon' | 'extras'
+  >
+): ComplicationItem[] {
+  return [
+    {
+      source: definition.source,
+      format: definition.format,
+      color: definition.color,
+      icon: definition.icon,
+    },
+    ...(definition.extras ?? []),
+  ];
 }
 
 /**
@@ -418,6 +691,9 @@ export const COMPLICATION_COLOR_HEX: Record<ComplicationColor, string> = {
   steps: '#66D4CF',
   fasting: '#FF9F0A',
   weight: '#6AC4DC',
+  sleep: '#7D7AFF',
+  heart: '#FF6482',
+  exercise: '#30D158',
   neutral: '#FFFFFF',
 };
 
@@ -449,6 +725,11 @@ export const COMPLICATION_COLOR_LABELS: Record<
     t('watchComplications.colors.fasting', { defaultValue: 'Orange' }),
   weight: (t) =>
     t('watchComplications.colors.weight', { defaultValue: 'Teal' }),
+  sleep: (t) =>
+    t('watchComplications.colors.sleep', { defaultValue: 'Indigo' }),
+  heart: (t) => t('watchComplications.colors.heart', { defaultValue: 'Pink' }),
+  exercise: (t) =>
+    t('watchComplications.colors.exercise', { defaultValue: 'Bright green' }),
   neutral: (t) =>
     t('watchComplications.colors.neutral', { defaultValue: 'White' }),
 };
@@ -480,6 +761,16 @@ export const COMPLICATION_ICON_LABELS: Record<
     t('watchComplications.icons.chart', { defaultValue: 'Bar chart' }),
   'gauge.with.dots.needle.33percent': (t) =>
     t('watchComplications.icons.gauge', { defaultValue: 'Gauge' }),
+  'bed.double.fill': (t) =>
+    t('watchComplications.icons.bed', { defaultValue: 'Bed' }),
+  'moon.zzz.fill': (t) =>
+    t('watchComplications.icons.moon', { defaultValue: 'Moon' }),
+  'waveform.path.ecg': (t) =>
+    t('watchComplications.icons.heartbeat', { defaultValue: 'Heartbeat' }),
+  'lungs.fill': (t) =>
+    t('watchComplications.icons.lungs', { defaultValue: 'Lungs' }),
+  'dumbbell.fill': (t) =>
+    t('watchComplications.icons.dumbbell', { defaultValue: 'Dumbbell' }),
 };
 
 /** Insert at the end, or replace the entry with the same id. */
@@ -523,6 +814,8 @@ interface PreviewSample {
   /** The goal, when there is one. */
   goal?: string;
   unit?: string;
+  /** How full its gauge is, when that is not the usual sample figure. */
+  progress?: number;
 }
 
 // A made-up day for the preview.
@@ -538,6 +831,18 @@ const PREVIEW_SAMPLES: Record<ComplicationSourceKey, PreviewSample> = {
   fasting: { value: '10:30', left: '5:30', goal: '16:00' },
   weight: { value: '72.5', left: '72.5', unit: 'kg' },
   bodyFat: { value: '18.5', left: '18.5', unit: '%' },
+  sleepDuration: { value: '7:42', left: '7:42' },
+  sleepScore: { value: '82', left: '18', progress: 0.82 },
+  deepSleep: { value: '1:30', left: '1:30' },
+  remSleep: { value: '1:45', left: '1:45' },
+  lightSleep: { value: '4:20', left: '4:20' },
+  timeInBed: { value: '8:05', left: '8:05' },
+  restingHeartRate: { value: '58', left: '58', unit: 'bpm' },
+  hrv: { value: '45', left: '45', unit: 'ms' },
+  spo2: { value: '97', left: '97', unit: '%' },
+  exerciseMinutes: { value: '20', left: '10', goal: '30', unit: 'min' },
+  exerciseCalories: { value: '320', left: '180', goal: '500', unit: 'kcal' },
+  workouts: { value: '1', left: '1' },
 };
 
 const PREVIEW_NUTRIENT: PreviewSample = { value: '12', left: '6', goal: '18' };
@@ -546,11 +851,11 @@ const withUnit = (amount: string, unit?: string) =>
   unit ? `${amount} ${unit}` : amount;
 
 /**
- * What the complication would show on a sample day, so the editor can preview a
- * change without any real data. Follows the watch (`display` in
- * `CustomComplication.swift`): percent and "left" fall back to the value when
- * the source has no goal, and a gauge needs one too. `detail` is the line under
- * the text in the rectangular size.
+ * What one value would show on a sample day, so the editor can preview a change
+ * without any real data. Follows the watch (`display` in
+ * `CustomComplication.swift`): percent needs progress and "left" needs a goal,
+ * else the value is shown, and a gauge needs progress too. `detail` is the line
+ * under the text in the rectangular size.
  */
 export function complicationPreview(
   definition: Pick<WatchComplicationDefinition, 'source' | 'format' | 'gauge'>,
@@ -559,12 +864,14 @@ export function complicationPreview(
   const sample =
     PREVIEW_SAMPLES[definition.source as ComplicationSourceKey] ??
     PREVIEW_NUTRIENT;
+  const hasProgress = sourceHasProgress(definition.source);
   const hasGoal = sourceHasGoal(definition.source);
-  const progress = hasGoal && definition.gauge ? PREVIEW_PROGRESS : null;
+  const fill = sample.progress ?? PREVIEW_PROGRESS;
+  const progress = hasProgress && definition.gauge ? fill : null;
 
-  if (hasGoal && definition.format === 'percent') {
+  if (hasProgress && definition.format === 'percent') {
     return {
-      text: `${Math.round(PREVIEW_PROGRESS * 100)}%`,
+      text: `${Math.round(fill * 100)}%`,
       detail: withUnit(sample.value, sample.unit),
       progress,
     };
@@ -592,6 +899,44 @@ export function complicationPreview(
         : (sample.unit ?? null),
     progress,
   };
+}
+
+export interface ComplicationItemPreview {
+  source: ComplicationSource;
+  color: ComplicationColor;
+  icon: ComplicationIcon;
+  text: string;
+  detail: string | null;
+  progress: number | null;
+}
+
+/**
+ * The preview of every value a definition shows. With one value its gauge
+ * switch decides whether it draws one; with several, each value that has
+ * progress gets a ring or a bar, as on the watch.
+ */
+export function complicationItemPreviews(
+  definition: Pick<
+    WatchComplicationDefinition,
+    'source' | 'format' | 'gauge' | 'color' | 'icon' | 'extras'
+  >,
+  t: Translator
+): ComplicationItemPreview[] {
+  const items = itemsOf(definition);
+  const several = items.length > 1;
+  return items.map((item) => ({
+    source: item.source,
+    color: item.color,
+    icon: item.icon,
+    ...complicationPreview(
+      {
+        source: item.source,
+        format: item.format,
+        gauge: several || definition.gauge,
+      },
+      t
+    ),
+  }));
 }
 
 /** A source's name: a fixed source's own, or the nutrient's. */

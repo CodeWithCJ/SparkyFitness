@@ -131,7 +131,7 @@ describe('WatchComplicationsScreen', () => {
   test('the first row cannot move up and the last cannot move down', () => {
     renderScreen();
     fireEvent.press(screen.getByLabelText('Move Calories up'));
-    fireEvent.press(screen.getByLabelText('Move Weight down'));
+    fireEvent.press(screen.getByLabelText('Move Sleep score down'));
     expect(useAppPreferencesStore.getState().watchComplications).toBeNull();
   });
 
@@ -142,6 +142,17 @@ describe('WatchComplicationsScreen', () => {
       'WatchComplicationEdit',
       {}
     );
+  });
+
+  test('lists a complication with several values by name', () => {
+    renderScreen();
+    expect(screen.getByText('Protein + Carbs + Fat')).toBeTruthy();
+  });
+
+  test('says how a single value is written', () => {
+    renderScreen();
+    expect(screen.getByText('Sleep score • Percent • Gauge')).toBeTruthy();
+    expect(screen.getByText('Weight • Value')).toBeTruthy();
   });
 
   test('tapping a row edits that complication', () => {
@@ -158,7 +169,7 @@ describe('WatchComplicationsScreen', () => {
       menuItem('Export')?.onPress();
     });
     expect(files.shareComplicationsFile).toHaveBeenCalledTimes(1);
-    expect(files.shareComplicationsFile.mock.calls[0][0]).toHaveLength(9);
+    expect(files.shareComplicationsFile.mock.calls[0][0]).toHaveLength(11);
   });
 
   test('a failed export says so', async () => {
@@ -203,7 +214,7 @@ describe('WatchComplicationsScreen', () => {
     expect(alertSpy.mock.calls[0][1]).toContain('2 complications');
 
     pressAlertButton(alertSpy, 'Add');
-    expect(storedNames()).toHaveLength(11);
+    expect(storedNames()).toHaveLength(13);
     expect(storedNames().slice(-2)).toEqual(['Sodium', 'Fibre']);
   });
 

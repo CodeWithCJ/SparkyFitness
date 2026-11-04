@@ -225,6 +225,37 @@ struct StepsSnapshot: Codable, Equatable {
     var isToday: Bool { day == CheckInDate.today() }
 }
 
+/// Last night's sleep as the phone reports it (`sleep` in the context). Only
+/// the custom complications read it. Every figure but the total is optional
+/// because a tracker may not provide it; durations are seconds.
+struct SleepSnapshot: Codable, Equatable {
+    let day: String
+    let totalSeconds: Double
+    let timeInBedSeconds: Double
+    let sleepScore: Double?
+    let deepSeconds: Double?
+    let remSeconds: Double?
+    let lightSeconds: Double?
+    let restingHeartRate: Double?
+    let hrvMs: Double?
+    let spo2: Double?
+
+    var isToday: Bool { day == CheckInDate.today() }
+}
+
+/// Today's exercise as the phone reports it (`exerciseSummary` in the context).
+/// Only the custom complications read it.
+struct ExerciseSummarySnapshot: Codable, Equatable {
+    let day: String
+    let minutes: Double
+    let minutesGoal: Double
+    let calories: Double
+    let caloriesGoal: Double
+    let sessionCount: Int
+
+    var isToday: Bool { day == CheckInDate.today() }
+}
+
 /// A dose the wearer ticked but the phone hasn't confirmed.
 ///
 /// Lives in `CheckInStore` for the same reason `PendingWaterTap` does: the tap
@@ -540,6 +571,11 @@ struct WatchContext: Codable, Equatable {
     var steps: StepsSnapshot? = nil
     /// Daily step goal from the phone. Nil reads as 10,000.
     var stepGoal: Int? = nil
+    /// Last night's sleep. Nil when the phone has none for the day.
+    var sleep: SleepSnapshot? = nil
+    /// Today's exercise minutes and calories against their goals. Nil when the
+    /// phone has not sent them.
+    var exerciseSummary: ExerciseSummarySnapshot? = nil
     /// The phone's "Voice cues" switch: a wrist-only run speaks each completed km or mile.
     var runVoiceCues: Bool? = nil
     /// The app's language (BCP 47), for speaking cue text the phone wrote when

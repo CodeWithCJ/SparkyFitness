@@ -1096,6 +1096,8 @@ export interface WatchComplicationConfigPayload {
     gauge: boolean;
     color: string;
     icon: string;
+    /** The second and third values, shown with the first. */
+    extras: { source: string; format: string; color: string; icon: string }[];
   }[];
 }
 

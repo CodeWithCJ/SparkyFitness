@@ -1,5 +1,10 @@
 import {
+  allowedFormats,
   buildComplicationConfig,
+  complicationItemPreviews,
+  itemsOf,
+  sourceHasProgress,
+  COMPLICATION_SOURCE_LABELS,
   COMPLICATION_COLORS,
   COMPLICATION_COLOR_HEX,
   COMPLICATION_COLOR_LABELS,
@@ -231,6 +236,7 @@ describe('buildComplicationConfig', () => {
           gauge: true,
           color: 'protein',
           icon: 'fish.fill',
+          extras: [],
         },
       ],
     });
@@ -419,5 +425,286 @@ describe('complicationPreview', () => {
         t
       )
     ).toEqual({ text: '12', detail: 'of 18', progress: 0.65 });
+  });
+});
+
+describe('sources added for sleep, heart and exercise', () => {
+  const NEW_SOURCES = [
+    'sleepDuration',
+    'sleepScore',
+    'deepSleep',
+    'remSleep',
+    'lightSleep',
+    'timeInBed',
+    'restingHeartRate',
+    'hrv',
+    'spo2',
+    'exerciseMinutes',
+    'exerciseCalories',
+    'workouts',
+  ] as const;
+
+  it('are valid sources with a name and a look', () => {
+    for (const source of NEW_SOURCES) {
+      expect(isComplicationSource(source)).toBe(true);
+      expect(COMPLICATION_SOURCE_LABELS[source](t)).not.toBe('');
+      expect(defaultLookFor(source).icon).toBeTruthy();
+    }
+  });
+
+  it('give every source a name of its own', () => {
+    const names = COMPLICATION_SOURCES.map((s) =>
+      COMPLICATION_SOURCE_LABELS[s](t)
+    );
+    expect(new Set(names).size).toBe(names.length);
+  });
+});
+
+describe('what each source can be written as', () => {
+  it('lets a source with a goal use every format', () => {
+    for (const source of [
+      'calories',
+      'water',
+      'steps',
+      'exerciseMinutes',
+      'exerciseCalories',
+      'nutrient:sodium',
+    ] as const) {
+      expect(allowedFormats(source)).toEqual(['value', 'percent', 'remaining']);
+    }
+  });
+
+  it('gives the sleep score a percent but nothing to count down to', () => {
+    expect(sourceHasProgress('sleepScore')).toBe(true);
+    expect(sourceHasGoal('sleepScore')).toBe(false);
+    expect(allowedFormats('sleepScore')).toEqual(['value', 'percent']);
+  });
+
+  it('limits a source with no progress to its value', () => {
+    for (const source of [
+      'sleepDuration',
+      'deepSleep',
+      'timeInBed',
+      'restingHeartRate',
+      'hrv',
+      'spo2',
+      'workouts',
+      'weight',
+    ] as const) {
+      expect(sourceHasProgress(source)).toBe(false);
+      expect(allowedFormats(source)).toEqual(['value']);
+    }
+  });
+});
+
+describe('itemsOf', () => {
+  it('is the first value alone when there are no extras', () => {
+    expect(itemsOf(sample)).toEqual([
+      {
+        source: 'protein',
+        format: 'percent',
+        color: 'protein',
+        icon: 'fish.fill',
+      },
+    ]);
+  });
+
+  it('puts the extras after the first value', () => {
+    const items = itemsOf({
+      ...sample,
+      extras: [
+        { source: 'carbs', format: 'value', color: 'carbs', icon: 'leaf.fill' },
+      ],
+    });
+    expect(items.map((i) => i.source)).toEqual(['protein', 'carbs']);
+  });
+});
+
+describe('extra values', () => {
+  const base = { name: 'Macros', source: 'protein' };
+
+  it('are kept with their look filled in', () => {
+    const result = normalizeComplication(
+      {
+        ...base,
+        extras: [
+          { source: 'carbs' },
+          { source: 'sleepScore', format: 'bogus' },
+        ],
+      },
+      'x'
+    );
+    expect(result?.extras).toEqual([
+      { source: 'carbs', format: 'percent', color: 'carbs', icon: 'leaf.fill' },
+      {
+        source: 'sleepScore',
+        format: 'percent',
+        color: 'sleep',
+        icon: 'moon.zzz.fill',
+      },
+    ]);
+  });
+
+  it('stop at two, since the first value is the third', () => {
+    const result = normalizeComplication(
+      {
+        ...base,
+        extras: [{ source: 'carbs' }, { source: 'fat' }, { source: 'water' }],
+      },
+      'x'
+    );
+    expect(result?.extras?.map((e) => e.source)).toEqual(['carbs', 'fat']);
+  });
+
+  it('drop entries with no usable source and repeats of a source already shown', () => {
+    const result = normalizeComplication(
+      {
+        ...base,
+        extras: [
+          null,
+          'text',
+          { source: 'nope' },
+          { source: 'protein' },
+          { source: 'fat' },
+          { source: 'fat' },
+        ],
+      },
+      'x'
+    );
+    expect(result?.extras?.map((e) => e.source)).toEqual(['fat']);
+  });
+
+  it('are left off entirely when there are none, so older lists look the same', () => {
+    expect(normalizeComplication(base, 'x')).not.toHaveProperty('extras');
+    expect(
+      normalizeComplication({ ...base, extras: 'carbs' }, 'x')
+    ).not.toHaveProperty('extras');
+    expect(
+      normalizeComplication({ ...base, extras: [] }, 'x')
+    ).not.toHaveProperty('extras');
+  });
+
+  it('survive an export and an import', () => {
+    const withExtras = {
+      ...sample,
+      extras: [
+        { source: 'carbs', format: 'value', color: 'carbs', icon: 'leaf.fill' },
+      ],
+    } as WatchComplicationDefinition;
+    const result = parseComplicationsImport(
+      exportComplications([withExtras]),
+      makeId
+    );
+    expect(result?.complications[0].extras).toEqual(withExtras.extras);
+  });
+
+  it('are sent to the watch, and an empty list when there are none', () => {
+    const withExtras = {
+      ...sample,
+      extras: [
+        { source: 'carbs', format: 'value', color: 'carbs', icon: 'leaf.fill' },
+      ],
+    } as WatchComplicationDefinition;
+    const [first, second] = buildComplicationConfig(
+      [withExtras, sample],
+      1
+    ).definitions;
+    expect(first.extras).toEqual([
+      { source: 'carbs', format: 'value', color: 'carbs', icon: 'leaf.fill' },
+    ]);
+    expect(second.extras).toEqual([]);
+  });
+});
+
+describe('the starter set', () => {
+  const starters = starterComplications(t);
+
+  it('has a macros complication of three rings, after Fat', () => {
+    const ids = starters.map((d) => d.id);
+    expect(ids.indexOf('starter-macros')).toBe(ids.indexOf('starter-fat') + 1);
+    const macros = starters.find((d) => d.id === 'starter-macros');
+    expect(macros?.name).toBe('Macros');
+    expect(itemsOf(macros!).map((i) => i.source)).toEqual([
+      'protein',
+      'carbs',
+      'fat',
+    ]);
+  });
+
+  it('has the sleep score, which fills a gauge without a goal', () => {
+    const sleep = starters.find((d) => d.id === 'starter-sleepScore');
+    expect(sleep).toMatchObject({
+      source: 'sleepScore',
+      format: 'percent',
+      gauge: true,
+    });
+  });
+
+  it('only uses valid sources, at most three values each', () => {
+    for (const starter of starters) {
+      const items = itemsOf(starter);
+      expect(items.length).toBeLessThanOrEqual(3);
+      expect(items.every((i) => isComplicationSource(i.source))).toBe(true);
+    }
+  });
+});
+
+describe('complicationItemPreviews', () => {
+  it('follows the gauge switch for one value', () => {
+    const on = complicationItemPreviews({ ...sample, gauge: true }, t);
+    const off = complicationItemPreviews({ ...sample, gauge: false }, t);
+    expect(on).toHaveLength(1);
+    expect(on[0].progress).toBe(0.65);
+    expect(off[0].progress).toBeNull();
+  });
+
+  it('draws a ring for each value with progress when there are several', () => {
+    const items = complicationItemPreviews(
+      {
+        ...sample,
+        gauge: false,
+        extras: [
+          {
+            source: 'weight',
+            format: 'value',
+            color: 'weight',
+            icon: 'scalemass.fill',
+          },
+          {
+            source: 'carbs',
+            format: 'percent',
+            color: 'carbs',
+            icon: 'leaf.fill',
+          },
+        ],
+      },
+      t
+    );
+    expect(items.map((i) => i.source)).toEqual(['protein', 'weight', 'carbs']);
+    expect(items.map((i) => i.progress)).toEqual([0.65, null, 0.65]);
+  });
+
+  it('previews the sleep score out of 100 and sleep time as hours and minutes', () => {
+    expect(
+      complicationPreview(
+        { source: 'sleepScore', format: 'percent', gauge: true },
+        t
+      )
+    ).toEqual({ text: '82%', detail: '82', progress: 0.82 });
+    expect(
+      complicationPreview(
+        { source: 'sleepDuration', format: 'value', gauge: false },
+        t
+      ).text
+    ).toBe('7:42');
+  });
+
+  it('shows the sleep score as a plain number when it has no goal to count down to', () => {
+    expect(
+      complicationPreview(
+        { source: 'sleepScore', format: 'remaining', gauge: false },
+        t
+      ).text
+    ).toBe('82');
   });
 });
