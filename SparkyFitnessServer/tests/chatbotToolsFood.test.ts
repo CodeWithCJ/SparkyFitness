@@ -4475,10 +4475,6 @@ describe('update_food_variant', () => {
     expect(foodCoreService.updateFoodEntriesSnapshot).not.toHaveBeenCalled();
   });
 
-  // #2115/#1958/#1925: caffeine_mg and alcohol_g were added as first-class
-  // food_variants columns, but this tool's field map was never updated, so
-  // asking Sparky to add caffeine (or alcohol) to an existing drink silently
-  // had no field to write it to.
   it('merges custom nutrient amounts into the stored ones', async () => {
     vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
       id: VARIANT_ID,
@@ -4545,6 +4541,46 @@ describe('update_food_variant', () => {
     expect(foodRepository.updateFoodVariant).not.toHaveBeenCalled();
   });
 
+  it('infers update_food_variant (not delete_food) for food_id + custom_nutrients', async () => {
+    vi.mocked(foodCoreService.deleteFood).mockClear();
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Oatmeal',
+      user_id: 'user-1',
+      default_variant: { id: VARIANT_ID },
+    });
+    vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
+      id: VARIANT_ID,
+      food_id: FOOD_ID,
+      custom_nutrients: { Iron: 2 },
+    });
+    vi.mocked(customNutrientService.getCustomNutrients).mockResolvedValue([
+      { name: 'Iron' },
+    ]);
+    vi.mocked(foodRepository.updateFoodVariant).mockResolvedValue({
+      id: VARIANT_ID,
+      food_id: FOOD_ID,
+      serving_size: 100,
+      serving_unit: 'g',
+    });
+
+    await tools.sparky_manage_food.execute!(
+      { food_id: FOOD_ID, custom_nutrients: { Iron: 4 } },
+      opts
+    );
+
+    expect(foodRepository.updateFoodVariant).toHaveBeenCalledWith(
+      VARIANT_ID,
+      { custom_nutrients: { Iron: 4 } },
+      'user-1'
+    );
+    expect(foodCoreService.deleteFood).not.toHaveBeenCalled();
+  });
+
+  // #2115/#1958/#1925: caffeine_mg and alcohol_g were added as first-class
+  // food_variants columns, but this tool's field map was never updated, so
+  // asking Sparky to add caffeine (or alcohol) to an existing drink silently
+  // had no field to write it to.
   it('updates caffeine_mg and alcohol_g on an existing variant', async () => {
     vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
       id: VARIANT_ID,
