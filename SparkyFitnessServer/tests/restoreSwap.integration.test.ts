@@ -467,8 +467,11 @@ describe.skipIf(!runnable)('restore by staging and swap (PostgreSQL)', () => {
       );
 
       const client = await waiting;
-      await client.query('SELECT 1');
-      client.release();
+      try {
+        await client.query('SELECT 1');
+      } finally {
+        client.release();
+      }
     } finally {
       requestConnectRetry.windowMs = windowMs;
       await admin.query(
