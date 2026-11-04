@@ -11,9 +11,10 @@ jest.mock('react-i18next', () => ({
   initReactI18next: { type: '3rdParty', init: jest.fn() },
 }));
 
+let mockTimezone = 'Europe/Berlin';
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
-    timezone: 'Europe/Berlin',
+    timezone: mockTimezone,
     timeFormat: 'HH:mm',
     formatTime: () => '',
   }),
@@ -100,37 +101,48 @@ const medWithDose = (timeOfDay: string): MedicationDetail => ({
 describe('TodayMedications scheduled doses', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockTimezone = 'Europe/Berlin';
   });
 
   // Regression for #3319: on clock-change days scheduled_for was built by
   // adding elapsed hours to local midnight, an hour off the dose's time.
+  // In the repeated hour the second occurrence is used, and the missing hour
+  // moves forward an hour, as for drink times.
   it.each([
-    ['2026-10-25', '09:30', '2026-10-25T08:30:00.000Z'], // clocks go back
-    ['2026-03-29', '08:00', '2026-03-29T06:00:00.000Z'], // clocks go forward
-    ['2026-10-26', '08:00', '2026-10-26T07:00:00.000Z'], // normal day
-  ])('on %s logs a %s dose as scheduled for %s', (day, timeOfDay, expected) => {
-    render(
-      <TodayMedications
-        selectedDate={day}
-        today="2026-12-31"
-        meds={[medWithDose(timeOfDay)]}
-        entries={[]}
-        recentEntries={[]}
-        loadingMeds={false}
-        loadingEntries={false}
-        onSelectDate={jest.fn()}
-      />
-    );
+    ['Europe/Berlin', '2026-10-25', '09:30', '2026-10-25T08:30:00.000Z'], // clocks go back
+    ['Europe/Berlin', '2026-10-25', '02:30', '2026-10-25T01:30:00.000Z'], // repeated hour
+    ['Europe/Berlin', '2026-03-29', '08:00', '2026-03-29T06:00:00.000Z'], // clocks go forward
+    ['Europe/Berlin', '2026-03-29', '02:30', '2026-03-29T01:30:00.000Z'], // missing hour
+    ['Europe/Berlin', '2026-10-26', '08:00', '2026-10-26T07:00:00.000Z'], // normal day
+    ['America/New_York', '2026-11-01', '09:30', '2026-11-01T14:30:00.000Z'], // clocks go back
+    ['America/New_York', '2026-03-08', '09:30', '2026-03-08T13:30:00.000Z'], // clocks go forward
+  ])(
+    'in %s on %s logs a %s dose as scheduled for %s',
+    (tz, day, timeOfDay, expected) => {
+      mockTimezone = tz;
+      render(
+        <TodayMedications
+          selectedDate={day}
+          today="2026-12-31"
+          meds={[medWithDose(timeOfDay)]}
+          entries={[]}
+          recentEntries={[]}
+          loadingMeds={false}
+          loadingEntries={false}
+          onSelectDate={jest.fn()}
+        />
+      );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Take' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Take' }));
 
-    expect(mockCreateEntry).toHaveBeenCalledWith(
-      expect.objectContaining({
-        schedule_id: 'sched-1',
-        status: 'taken',
-        scheduled_for: expected,
-      }),
-      expect.anything()
-    );
-  });
+      expect(mockCreateEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          schedule_id: 'sched-1',
+          status: 'taken',
+          scheduled_for: expected,
+        }),
+        expect.anything()
+      );
+    }
+  );
 });
