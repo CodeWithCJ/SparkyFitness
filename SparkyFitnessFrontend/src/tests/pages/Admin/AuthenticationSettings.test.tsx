@@ -81,6 +81,48 @@ describe('AuthenticationSettings passkey switch', () => {
   });
 });
 
+describe('AuthenticationSettings magic link switch', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  it('turns magic link login off', () => {
+    renderWith({ enable_magic_link_login: true });
+    const toggle = screen.getByRole('switch', {
+      name: 'Enable Magic Link Login',
+    });
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    expect(updateSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ enable_magic_link_login: false }),
+      expect.anything()
+    );
+  });
+
+  it('shows magic link login as on when the server does not report it', () => {
+    renderWith({});
+    expect(
+      screen.getByRole('switch', { name: 'Enable Magic Link Login' })
+    ).toBeChecked();
+  });
+
+  it('locks the switch when the environment manages it', () => {
+    renderWith({
+      enable_magic_link_login: false,
+      is_magic_link_login_env_configured: true,
+    });
+    expect(
+      screen.getByRole('switch', { name: 'Enable Magic Link Login' })
+    ).toBeDisabled();
+    expect(screen.getAllByText('Managed by Env')).toHaveLength(1);
+  });
+
+  it('shows how to force magic link login back on', () => {
+    renderWith({ enable_magic_link_login: false });
+    expect(
+      screen.getByText('SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN=true')
+    ).toBeInTheDocument();
+  });
+});
+
 describe('AuthenticationSettings MCP OAuth settings', () => {
   afterEach(() => jest.clearAllMocks());
 

@@ -3020,6 +3020,7 @@ CREATE TABLE public.global_settings (
     mcp_oauth_enabled boolean DEFAULT false NOT NULL,
     mcp_oauth_allowed_redirect_uris text[] DEFAULT ARRAY['https://claude.ai/api/mcp/auth_callback'::text, 'https://claude.com/api/mcp/auth_callback'::text, 'http://localhost:*'::text, 'http://127.0.0.1:*'::text, 'http://[::1]:*'::text] NOT NULL,
     enable_version_check boolean DEFAULT true NOT NULL,
+    enable_magic_link_login boolean DEFAULT true NOT NULL,
     CONSTRAINT single_row_check CHECK ((id = 1))
 );
 

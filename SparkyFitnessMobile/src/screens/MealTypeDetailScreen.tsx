@@ -12,6 +12,7 @@ import CopyMealSheet, {
 } from '../components/CopyMealSheet';
 import SwipeableFoodRow from '../components/SwipeableFoodRow';
 import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useDailySummary, useServerConnection, useMealTypes } from '../hooks';
 import { useCopyFoodEntries } from '../hooks/useCopyFoodEntries';
@@ -47,7 +48,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
   const copySheetRef = useRef<CopyMealSheetRef>(null);
   const accentColor = useCSSVariable('--color-accent-primary') as string;
 
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { isConnected } = useServerConnection();
   const { summary, isLoading, isError, refetch } = useDailySummary({
     date,
     enabled: isConnected,
@@ -121,29 +122,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
   }, [refetch]);
 
   const renderContent = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          iconSize={64}
-          title={t('mealTypeDetail.states.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('mealTypeDetail.states.noServerHint', {
-            defaultValue:
-              'Configure your server connection in Settings to view meal nutrition.',
-          })}
-          action={{
-            label: t('common.goToSettings', { defaultValue: 'Go to Settings' }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
-
-    if (isLoading || isConnectionLoading) {
+    if (isLoading) {
       return (
         <StatusView
           loading
@@ -324,7 +303,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
     >
       {header}
 
-      {renderContent()}
+      <ServerGate>{renderContent()}</ServerGate>
 
       <ServingAdjustSheet
         ref={servingSheetRef}

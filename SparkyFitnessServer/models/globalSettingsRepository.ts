@@ -18,6 +18,7 @@ interface GlobalSettingsUpdate {
   dev_tools_enabled?: boolean;
   mock_data_enabled?: boolean;
   enable_passkey_login?: boolean;
+  enable_magic_link_login?: boolean;
   mcp_oauth_enabled?: boolean;
   mcp_oauth_allowed_redirect_uris?: string[];
   enable_version_check?: boolean;
@@ -68,6 +69,23 @@ async function getGlobalSettings() {
       settings.enable_passkey_login === null
     ) {
       settings.enable_passkey_login = true;
+    }
+    // Manage enable_magic_link_login
+    const forceMagicLinkLogin =
+      process.env.SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN === 'true';
+    const disableMagicLinkLogin =
+      process.env.SPARKY_FITNESS_DISABLE_MAGIC_LINK_LOGIN === 'true';
+    settings.is_magic_link_login_env_configured =
+      forceMagicLinkLogin || disableMagicLinkLogin;
+    if (forceMagicLinkLogin) {
+      settings.enable_magic_link_login = true;
+    } else if (disableMagicLinkLogin) {
+      settings.enable_magic_link_login = false;
+    } else if (
+      settings.enable_magic_link_login === undefined ||
+      settings.enable_magic_link_login === null
+    ) {
+      settings.enable_magic_link_login = true;
     }
     // Manage is_oidc_active
     settings.is_oidc_active_env_configured = oidcAuthEnabledEnv;
@@ -137,6 +155,9 @@ async function saveGlobalSettings(settings: GlobalSettingsUpdate) {
     const passkeyEnvForced =
       process.env.SPARKY_FITNESS_FORCE_PASSKEY_LOGIN === 'true' ||
       process.env.SPARKY_FITNESS_DISABLE_PASSKEY_LOGIN === 'true';
+    const magicLinkEnvForced =
+      process.env.SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN === 'true' ||
+      process.env.SPARKY_FITNESS_DISABLE_MAGIC_LINK_LOGIN === 'true';
     await client.query(
       `UPDATE global_settings
              SET enable_email_password_login = COALESCE($1, enable_email_password_login),
@@ -153,7 +174,8 @@ async function saveGlobalSettings(settings: GlobalSettingsUpdate) {
                  enable_passkey_login = COALESCE($13, enable_passkey_login, true),
                  mcp_oauth_enabled = COALESCE($14, mcp_oauth_enabled, false),
                  enable_version_check = COALESCE($15, enable_version_check, true),
-                 mcp_oauth_allowed_redirect_uris = COALESCE($16, mcp_oauth_allowed_redirect_uris)
+                 mcp_oauth_allowed_redirect_uris = COALESCE($16, mcp_oauth_allowed_redirect_uris),
+                 enable_magic_link_login = COALESCE($17, enable_magic_link_login, true)
              WHERE id = 1
              RETURNING *`,
       [
@@ -175,6 +197,7 @@ async function saveGlobalSettings(settings: GlobalSettingsUpdate) {
         settings.mcp_oauth_enabled ?? null,
         settings.enable_version_check ?? null,
         settings.mcp_oauth_allowed_redirect_uris ?? null,
+        magicLinkEnvForced ? null : (settings.enable_magic_link_login ?? null),
       ]
     );
     // Return the full truth (DB + ENV overrides)

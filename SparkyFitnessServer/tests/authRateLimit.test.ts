@@ -297,7 +297,6 @@ describe('SparkyFitness sign-in customRules', () => {
   const CUSTOM_RULES = {
     '/sign-in/email': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
     '/two-factor/*': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
-    '/email-otp/verify-email': { window: SIGN_IN_WINDOW, max: SIGN_IN_MAX },
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

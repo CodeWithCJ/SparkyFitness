@@ -12,6 +12,7 @@ import { useCSSVariable } from 'uniwind';
 import LibrarySearchBar from '../components/LibrarySearchBar';
 import PaginatedLibraryFooter from '../components/PaginatedLibraryFooter';
 import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import {
   useServerConnection,
@@ -54,7 +55,7 @@ const WorkoutPresetsLibraryScreen: React.FC<
     (s) => s.setWorkoutPresetsLibraryOwnershipFilter
   );
 
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { isConnected } = useServerConnection();
   const { profile } = useProfile();
   const {
     presets,
@@ -172,29 +173,7 @@ const WorkoutPresetsLibraryScreen: React.FC<
   };
 
   const renderContent = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          iconSize={64}
-          title={t('presetLibrary.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('workoutPresetLibrary.configure', {
-            defaultValue:
-              'Configure your server connection in Settings to view your workout presets.',
-          })}
-          action={{
-            label: t('presetLibrary.go', { defaultValue: 'Go to Settings' }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
-
-    if (isLoading || isConnectionLoading) {
+    if (isLoading) {
       return (
         <StatusView
           loading
@@ -303,7 +282,7 @@ const WorkoutPresetsLibraryScreen: React.FC<
           isSearching={isSearching}
         />
       ) : null}
-      {renderContent()}
+      <ServerGate>{renderContent()}</ServerGate>
     </View>
   );
 };
