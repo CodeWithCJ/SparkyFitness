@@ -119,6 +119,21 @@ jest.mock('../../src/hooks/useBodyWeightKg', () => ({
     mockUseBodyWeightKg(date, enabled),
 }));
 
+const mockUseExerciseVideoUrl = jest.fn(
+  (
+    _exerciseId: string | null | undefined,
+    _snapshotUrl: string | null | undefined,
+    _enabled: boolean
+  ): string | null => null
+);
+jest.mock('../../src/hooks/useExerciseVideoUrl', () => ({
+  useExerciseVideoUrl: (
+    exerciseId: string | null | undefined,
+    snapshotUrl: string | null | undefined,
+    enabled: boolean
+  ) => mockUseExerciseVideoUrl(exerciseId, snapshotUrl, enabled),
+}));
+
 jest.mock('../../src/hooks/useExerciseStats', () => ({
   useExerciseStats: jest.fn(() => ({ data: null })),
 }));
@@ -559,6 +574,32 @@ describe('ActiveWorkoutExerciseCard', () => {
     rerender(element(true));
     rerender(element(false));
     expect(mockSafeImage.__getMountCount()).toBe(1);
+  });
+
+  describe('demonstration video (live)', () => {
+    afterEach(() => mockUseExerciseVideoUrl.mockReturnValue(null));
+
+    it('shows a Demo chip when the exercise has a video link', () => {
+      mockUseExerciseVideoUrl.mockReturnValue(
+        'https://youtube.com/shorts/dQw4w9WgXcQ'
+      );
+      const utils = renderCard(true, { mode: 'live' });
+      expect(utils.getByText('Demo')).toBeTruthy();
+    });
+
+    it('looks the video up only while the card is expanded', () => {
+      renderCard(false, { mode: 'live' });
+      expect(mockUseExerciseVideoUrl).toHaveBeenLastCalledWith(
+        expect.anything(),
+        undefined,
+        false
+      );
+    });
+
+    it('shows no chip without a video link', () => {
+      const utils = renderCard(true, { mode: 'live' });
+      expect(utils.queryByText('Demo')).toBeNull();
+    });
   });
 
   describe('long-press menu (live)', () => {

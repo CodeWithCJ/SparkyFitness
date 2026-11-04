@@ -24,6 +24,9 @@ patchedDependencies:
   '@bacons/apple-targets@4.0.7':
     hash: 70bad47148fa08de18f055300ad7be730dac10a17de1153dd4c4924238cab1ef
     path: patches/@bacons__apple-targets@4.0.7.patch
+  expo-location@57.0.22:
+    hash: cbfa0ab287bef861676494150e7c02c5811212e04258728faa1513f2a830d9b5
+    path: patches/expo-location@57.0.22.patch
   expo-modules-core@57.0.24:
     hash: dcc0c1a244cd8191578c090a9339570cf35fa149159d7401c2b275339744375d
     path: patches/expo-modules-core@57.0.24.patch
@@ -492,7 +495,7 @@ importers:
         version: 57.0.2(expo@57.0.31)(react@19.2.3)
       expo-location:
         specifier: ~57.0.20
-        version: 57.0.22(expo@57.0.31)(typescript@6.0.3)
+        version: 57.0.22(patch_hash=cbfa0ab287bef861676494150e7c02c5811212e04258728faa1513f2a830d9b5)(expo@57.0.31)(typescript@6.0.3)
       expo-navigation-bar:
         specifier: ~57.0.2
         version: 57.0.3(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
@@ -20652,7 +20655,7 @@ snapshots:
       react: 19.2.3
       rtl-detect: 1.1.2
 
-  expo-location@57.0.22(expo@57.0.31)(typescript@6.0.3):
+  expo-location@57.0.22(patch_hash=cbfa0ab287bef861676494150e7c02c5811212e04258728faa1513f2a830d9b5)(expo@57.0.31)(typescript@6.0.3):
     dependencies:
       '@expo/image-utils': 0.11.6(typescript@6.0.3)
       expo: 57.0.31(@babel/core@7.29.0)(@expo/dom-webview@57.0.1)(expo-widgets@57.0.27)(react-native-worklets@0.13.1(@babel/core@7.29.0)(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)

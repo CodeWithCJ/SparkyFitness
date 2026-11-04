@@ -100,48 +100,17 @@ describe('CopyMealSheet', () => {
     // Two chips share the name "Breakfast" (system + custom); pick the first.
     fireEvent.press(view.getAllByText('Breakfast')[0]);
     fireEvent.press(view.getByLabelText('Copy'));
-    expect(onCopy).toHaveBeenCalledWith([
-      {
-        sourceDate,
-        sourceMealType: 'Brunch',
-        targetDate: sourceDate,
-        targetMealType: 'Breakfast',
-      },
-    ]);
-  });
-
-  it('copies to every selected day and leaves out the source slot', () => {
-    const onCopy = jest.fn();
-    const ref = createRef<CopyMealSheetRef>();
-    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
-    const sourceDate = addDays(getTodayDate(), -2);
-    const dayAfter = addDays(sourceDate, 1);
-    const twoDaysAfter = addDays(sourceDate, 2);
-    act(() => ref.current?.present(sourceDate, 'brunch-id', 'Brunch'));
-
-    const picker = view.UNSAFE_getByType(DateTimePicker);
-    act(() =>
-      picker.props.onChange({
-        dates: [
-          dayToPickerDate(twoDaysAfter),
-          dayToPickerDate(sourceDate),
-          dayToPickerDate(dayAfter),
-        ],
-      })
+    expect(onCopy).toHaveBeenCalledWith(
+      [
+        {
+          sourceDate,
+          sourceMealType: 'Brunch',
+          targetDate: sourceDate,
+          targetMealType: 'Breakfast',
+        },
+      ],
+      expect.objectContaining({ targetMealTypeId: expect.any(String) })
     );
-
-    // The source day is still selected, but with the same meal it is skipped.
-    fireEvent.press(view.getByLabelText('Copy to 2 days'));
-    expect(onCopy).toHaveBeenCalledWith([
-      expect.objectContaining({
-        targetDate: dayAfter,
-        targetMealType: 'Brunch',
-      }),
-      expect.objectContaining({
-        targetDate: twoDaysAfter,
-        targetMealType: 'Brunch',
-      }),
-    ]);
   });
 
   it('renders the pending label while copying', () => {
@@ -222,5 +191,218 @@ describe('CopyMealSheet', () => {
       ref.current?.present(getTodayDate(), 'deleted-custom-id', 'my old meal')
     );
     expect(view.getByText('Copy meal: my old meal')).toBeTruthy();
+  });
+
+  it('copies to tomorrow, keeping the chosen meal, from the quick targets', () => {
+    const onCopy = jest.fn();
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
+    const sourceDate = addDays(getTodayDate(), -1);
+    act(() => ref.current?.present(sourceDate, 'brunch-id', 'Brunch'));
+
+    expect(view.getByText('Copy to')).toBeTruthy();
+    fireEvent.press(view.getByTestId('copy-meal-quick-tomorrow'));
+    expect(
+      view.getByTestId('copy-meal-quick-tomorrow').props.accessibilityState
+    ).toEqual({ selected: true });
+    fireEvent.press(view.getByLabelText('Copy'));
+
+    expect(onCopy).toHaveBeenCalledWith(
+      [
+        {
+          sourceDate,
+          sourceMealType: 'Brunch',
+          targetDate: addDays(getTodayDate(), 1),
+          targetMealType: 'Brunch',
+        },
+      ],
+      expect.objectContaining({ targetMealTypeId: expect.any(String) })
+    );
+  });
+
+  it('copies to now: today and the meal for the current time', () => {
+    useMealTypesMock.mockReturnValue({
+      mealTypes: defaultMealTypes,
+      defaultMealTypeId: 'breakfast-id',
+    });
+    const onCopy = jest.fn();
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
+    const sourceDate = addDays(getTodayDate(), -3);
+    act(() => ref.current?.present(sourceDate, 'brunch-id', 'Brunch'));
+
+    fireEvent.press(view.getByTestId('copy-meal-quick-now'));
+    fireEvent.press(view.getByLabelText('Copy'));
+
+    expect(onCopy).toHaveBeenCalledWith(
+      [
+        {
+          sourceDate,
+          sourceMealType: 'Brunch',
+          targetDate: getTodayDate(),
+          targetMealType: 'Breakfast',
+        },
+      ],
+      expect.objectContaining({ targetMealTypeId: expect.any(String) })
+    );
+  });
+
+  it('keeps the quick target when another meal is picked', () => {
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
+    act(() =>
+      ref.current?.present(addDays(getTodayDate(), -1), 'brunch-id', 'Brunch')
+    );
+
+    fireEvent.press(view.getByTestId('copy-meal-quick-today'));
+    fireEvent.press(view.getByText('Breakfast'));
+    expect(
+      view.getByTestId('copy-meal-quick-today').props.accessibilityState
+    ).toEqual({ selected: true });
+  });
+
+  it('copies a food to now in a meal picked after Now', () => {
+    useMealTypesMock.mockReturnValue({
+      mealTypes: defaultMealTypes,
+      defaultMealTypeId: 'breakfast-id',
+    });
+    const onCopy = jest.fn();
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
+    const sourceDate = addDays(getTodayDate(), -1);
+    act(() =>
+      ref.current?.present(sourceDate, 'breakfast-id', 'Breakfast', {
+        foodName: 'Pepsi Max',
+      })
+    );
+
+    fireEvent.press(view.getByTestId('copy-meal-quick-now'));
+    fireEvent.press(view.getByText('Brunch'));
+    expect(
+      view.getByTestId('copy-meal-quick-now').props.accessibilityState
+    ).toEqual({ selected: true });
+    fireEvent.press(view.getByLabelText('Copy'));
+
+    expect(onCopy).toHaveBeenCalledWith(
+      [
+        {
+          sourceDate,
+          sourceMealType: 'Breakfast',
+          targetDate: getTodayDate(),
+          targetMealType: 'Brunch',
+        },
+      ],
+      { targetMealTypeId: 'brunch-id', quickTarget: 'now' }
+    );
+  });
+
+  it('copies a single food, allowing the same day and meal', () => {
+    const onCopy = jest.fn();
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
+    const sourceDate = getTodayDate();
+    act(() =>
+      ref.current?.present(sourceDate, 'brunch-id', 'Brunch', {
+        foodName: 'Flat white',
+      })
+    );
+
+    expect(view.getByText('Copy food: Flat white')).toBeTruthy();
+    fireEvent.press(view.getByLabelText('Copy'));
+
+    expect(onCopy).toHaveBeenCalledWith(
+      [
+        {
+          sourceDate,
+          sourceMealType: 'Brunch',
+          targetDate: sourceDate,
+          targetMealType: 'Brunch',
+        },
+      ],
+      { targetMealTypeId: 'brunch-id', quickTarget: null }
+    );
+  });
+
+  it('copies a single food even when meal-type names are duplicated', () => {
+    useMealTypesMock.mockReturnValue({ mealTypes: ambiguousMealTypes });
+    const onCopy = jest.fn();
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
+    act(() =>
+      ref.current?.present(getTodayDate(), 'breakfast-id', 'Breakfast', {
+        foodName: 'Toast',
+      })
+    );
+    fireEvent.press(view.getByLabelText('Copy'));
+    expect(onCopy).toHaveBeenCalledWith(
+      [expect.objectContaining({ targetMealType: 'Breakfast' })],
+      { targetMealTypeId: 'breakfast-id', quickTarget: null }
+    );
+  });
+
+  it('tells the caller a single food was copied to now', () => {
+    useMealTypesMock.mockReturnValue({
+      mealTypes: defaultMealTypes,
+      defaultMealTypeId: 'brunch-id',
+    });
+    const onCopy = jest.fn();
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
+    act(() =>
+      ref.current?.present(addDays(getTodayDate(), -1), 'brunch-id', 'Brunch', {
+        foodName: 'Pepsi Max',
+      })
+    );
+    fireEvent.press(view.getByTestId('copy-meal-quick-now'));
+    fireEvent.press(view.getByLabelText('Copy'));
+    expect(onCopy).toHaveBeenCalledWith(
+      [expect.objectContaining({ targetDate: getTodayDate() })],
+      { targetMealTypeId: 'brunch-id', quickTarget: 'now' }
+    );
+  });
+
+  it('copies to every selected day and leaves out the source slot', () => {
+    const onCopy = jest.fn();
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={onCopy} />);
+    const sourceDate = addDays(getTodayDate(), -2);
+    const dayAfter = addDays(sourceDate, 1);
+    const twoDaysAfter = addDays(sourceDate, 2);
+    act(() => ref.current?.present(sourceDate, 'brunch-id', 'Brunch'));
+
+    const picker = view.UNSAFE_getByType(DateTimePicker);
+    act(() =>
+      picker.props.onChange({
+        dates: [
+          dayToPickerDate(twoDaysAfter),
+          dayToPickerDate(sourceDate),
+          dayToPickerDate(dayAfter),
+        ],
+      })
+    );
+
+    // The source day is still selected, but with the same meal it is skipped.
+    fireEvent.press(view.getByLabelText('Copy to 2 days'));
+    expect(onCopy).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({ targetDate: dayAfter }),
+        expect.objectContaining({ targetDate: twoDaysAfter }),
+      ],
+      { targetMealTypeId: 'brunch-id', quickTarget: null }
+    );
+  });
+
+  it('keeps a single food to one day', () => {
+    const ref = createRef<CopyMealSheetRef>();
+    const view = render(<CopyMealSheet ref={ref} onCopy={jest.fn()} />);
+    act(() =>
+      ref.current?.present(getTodayDate(), 'brunch-id', 'Brunch', {
+        foodName: 'Flat white',
+      })
+    );
+    expect(view.UNSAFE_getByType(DateTimePicker).props.mode).toBe('single');
+    expect(
+      view.queryByText('Tap more days to copy to each of them.')
+    ).toBeNull();
   });
 });

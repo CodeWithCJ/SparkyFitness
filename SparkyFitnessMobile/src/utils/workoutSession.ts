@@ -849,6 +849,8 @@ export interface WorkoutCardExercise {
     mechanic?: string | null;
     /** Used to round dumbbell warm-ups to dumbbell steps. */
     equipment?: string[] | null;
+    /** Demonstration video; undefined means "look it up on the library row". */
+    video_url?: string | null;
   } | null;
   sets: WorkoutCardSet[];
   /** Raw draft string backing the edit-mode calories input (draft mapper only). */

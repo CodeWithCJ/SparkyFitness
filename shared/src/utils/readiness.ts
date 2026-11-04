@@ -11,6 +11,15 @@ export type ReadinessFactor = 'form' | 'sleep' | 'restingHeartRate' | 'hrv';
 export const MIN_BASELINE_NIGHTS = 5;
 
 /** The raw numbers behind a resting heart rate or HRV factor. */
+/**
+ * A warning a vital gives without being a scored factor: last night's
+ * breathing rate well above the person's usual is an early sign of illness.
+ */
+export type ReadinessSign = 'raisedRespiratoryRate';
+
+/** Breaths per minute above the baseline from which a raised breathing rate is flagged. */
+export const RESPIRATORY_RATE_RISE_ALERT = 1;
+
 export interface ReadinessVital {
   current: number;
   baseline: number;
@@ -33,6 +42,10 @@ export interface ReadinessInput {
   hrv?: number | null;
   hrvBaseline?: number | null;
   hrvBaselineNights?: number | null;
+  /** Last night's average breathing rate and the recent average (breaths per minute). */
+  respiratoryRate?: number | null;
+  respiratoryRateBaseline?: number | null;
+  respiratoryRateBaselineNights?: number | null;
 }
 
 export interface Readiness {
@@ -42,7 +55,11 @@ export interface Readiness {
   /** Each factor's 0 to 100 sub-score, only for the ones with data. */
   factors: Partial<Record<ReadinessFactor, number>>;
   /** Today's value against the baseline for the watch factors that were scored. */
-  vitals?: Partial<Record<'restingHeartRate' | 'hrv', ReadinessVital>>;
+  vitals?: Partial<
+    Record<'restingHeartRate' | 'hrv' | 'respiratoryRate', ReadinessVital>
+  >;
+  /** Warnings from vitals that are not scored, such as a raised breathing rate. */
+  signs?: ReadinessSign[];
   /** The factor pulling the score down the most; null when all are high. */
   weakest: ReadinessFactor | null;
 }
@@ -154,10 +171,34 @@ export function computeReadiness(input: ReadinessInput): Readiness {
     vitals.hrv = vital(input.hrv, input.hrvBaseline, input.hrvBaselineNights);
     factors.hrv = Math.round(hrvScore(input.hrv, input.hrvBaseline));
   }
+  const signs: ReadinessSign[] = [];
+  if (
+    present(input.respiratoryRate) &&
+    present(input.respiratoryRateBaseline) &&
+    enoughNights(input.respiratoryRateBaselineNights)
+  ) {
+    vitals.respiratoryRate = vital(
+      input.respiratoryRate,
+      input.respiratoryRateBaseline,
+      input.respiratoryRateBaselineNights
+    );
+    if (
+      input.respiratoryRate - input.respiratoryRateBaseline >=
+      RESPIRATORY_RATE_RISE_ALERT
+    ) {
+      signs.push('raisedRespiratoryRate');
+    }
+  }
 
   const keys = Object.keys(factors) as ReadinessFactor[];
   if (keys.length === 0) {
-    return { score: null, level: 'noData', factors, weakest: null };
+    return {
+      score: null,
+      level: 'noData',
+      factors,
+      ...(signs.length > 0 ? { vitals, signs } : {}),
+      weakest: null,
+    };
   }
   const totalWeight = keys.reduce((sum, key) => sum + WEIGHTS[key], 0);
   const weighted = Math.round(
@@ -166,9 +207,11 @@ export function computeReadiness(input: ReadinessInput): Readiness {
   );
   // A clearly raised resting heart rate or a low HRV is a warning sign that
   // good sleep and a fresh training form should not average away.
-  const warning = VITAL_FACTORS.some(
-    (key) => (factors[key] ?? 100) < VITAL_WARNING_BELOW
-  );
+  // A raised breathing rate is not scored, but it is a reason not to call the
+  // day a high-readiness one either.
+  const warning =
+    signs.length > 0 ||
+    VITAL_FACTORS.some((key) => (factors[key] ?? 100) < VITAL_WARNING_BELOW);
   const score = warning ? Math.min(weighted, HIGH_FROM - 1) : weighted;
   const level: ReadinessLevel =
     score >= HIGH_FROM ? 'high' : score >= 45 ? 'moderate' : 'low';
@@ -180,6 +223,7 @@ export function computeReadiness(input: ReadinessInput): Readiness {
     level,
     factors,
     ...(Object.keys(vitals).length > 0 ? { vitals } : {}),
+    ...(signs.length > 0 ? { signs } : {}),
     weakest: (factors[lowest] ?? 100) < HIGH_FROM ? lowest : null,
   };
 }

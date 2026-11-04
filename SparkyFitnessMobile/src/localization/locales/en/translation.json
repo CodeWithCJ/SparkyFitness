@@ -2326,7 +2326,12 @@
     "doAnotherFirst": "Do another exercise first…",
     "swapTitle": "Swap {{name}}",
     "doNowSets_one": "Do now · {{count}} set",
-    "doNowSets_other": "Do now · {{count}} sets"
+    "doNowSets_other": "Do now · {{count}} sets",
+    "videoLink": "Video link",
+    "videoLinkPlaceholder": "https://youtube.com/shorts/…",
+    "videoLinkHelp": "A short demonstration clip, shown in the How to tab and during workouts.",
+    "invalidVideoLink": "Invalid video link",
+    "invalidVideoLinkHint": "Enter a link starting with https://"
   },
   "cycleCard": {
     "mode": {
@@ -3736,7 +3741,11 @@
     "deleteExercise": "Delete Exercise",
     "makePrivate": "Make private",
     "shareWithPublic": "Share with public",
-    "deleteSheetTitle": "Delete exercise"
+    "deleteSheetTitle": "Delete exercise",
+    "watchVideo": "Watch {{name}} demo",
+    "demo": "Demo",
+    "watchOnYouTube": "Watch on YouTube",
+    "watchDemo": "Watch demonstration video"
   },
   "mealTypeSettings": {
     "reorder": "Reorder {{name}}",
@@ -4552,6 +4561,7 @@
     "selectMeal": "Select Meal",
     "time": "Time",
     "unknownFood": "Unknown food",
+    "copyEntry": "Copy Food",
     "deleteEntry": "Delete Entry",
     "servingOptionsHint": "Opens serving options",
     "mealSelectorHint": "Opens meal selection",
@@ -5475,7 +5485,14 @@
   },
   "copyMeal": {
     "title": "Copy meal: {{meal}}",
+    "foodTitle": "Copy food: {{food}}",
     "sourceDate": "Source date: {{date}}",
+    "copyTo": "Copy to",
+    "quick": {
+      "now": "Now",
+      "today": "Today",
+      "tomorrow": "Tomorrow"
+    },
     "targetDate": "Target date",
     "multipleDaysHint": "Tap more days to copy to each of them.",
     "targetMeal": "Target meal",
@@ -5561,7 +5578,9 @@
     "failed": "Failed to copy meal",
     "successDays_one": "Meal copied to {{count}} day",
     "successDays_other": "Meal copied to {{count}} days",
-    "partial": "Copied to {{copied}} of {{total}} days"
+    "partial": "Copied to {{copied}} of {{total}} days",
+    "foodSuccess": "Food copied",
+    "foodFailed": "Failed to copy food"
   },
   "foodDelete": {
     "failed": "Failed to delete food",
@@ -7145,6 +7164,9 @@
         "sleep": "Sleep",
         "restingHeartRate": "Resting heart rate",
         "hrv": "HRV"
+      },
+      "sign": {
+        "raisedRespiratoryRate": "Breathing rate {{current}} per minute against your usual {{baseline}}. A raised breathing rate can be an early sign of illness, so take it easy if you feel unwell."
       },
       "vital": {
         "hrv": "{{current}} ms against your usual {{baseline}} ms",

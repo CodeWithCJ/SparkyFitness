@@ -225,6 +225,32 @@ describe('Exercises API schemas', () => {
         data: { name: 'Bench Press', category: 'Strength', is_public: true },
       });
     });
+
+    it('normalizes a video link, clears it on blank, and keeps it when omitted', () => {
+      expect(
+        runSchema('exerciseWriteArrayFieldsSchema', {
+          video_url: '  youtu.be/dQw4w9WgXcQ ',
+        }).data
+      ).toEqual({ video_url: 'https://youtu.be/dQw4w9WgXcQ' });
+      expect(
+        runSchema('exerciseWriteArrayFieldsSchema', { video_url: '' }).data
+      ).toEqual({ video_url: null });
+      expect(
+        runSchema('exerciseWriteArrayFieldsSchema', { video_url: null }).data
+      ).toEqual({ video_url: null });
+      expect(runSchema('exerciseWriteArrayFieldsSchema', {}).data).toEqual({});
+    });
+
+    it('rejects a video link that is not http(s)', () => {
+      expect(
+        runSchema('exerciseWriteArrayFieldsSchema', {
+          video_url: 'javascript:alert(1)',
+        }).success
+      ).toBe(false);
+      expect(
+        runSchema('exerciseWriteArrayFieldsSchema', { video_url: 42 }).success
+      ).toBe(false);
+    });
   });
 
   it('round-trips the paginated response envelope', () => {

@@ -5,6 +5,8 @@ import {
   generateDefaultLayouts,
   isMealWidgetKey,
   mealWidgetKey,
+  TIMELINE_WIDGET_KEY,
+  diaryDefaultLayouts,
 } from '@/utils/dashboardLayout';
 
 /**
@@ -51,5 +53,16 @@ describe('Diary widget registry ↔ grid layout coverage', () => {
       (key) => !isMealWidgetKey(key)
     );
     expect([...declared].sort()).toEqual([...registryKeys].sort());
+  });
+
+  it('gives the timeline tile a place in the timeline view layout', () => {
+    const keys = buildWidgetKeys([]).concat(TIMELINE_WIDGET_KEY);
+    const layouts = diaryDefaultLayouts(keys);
+
+    (['lg', 'md', 'sm', 'xs'] as const).forEach((breakpoint) => {
+      const placed = new Set(layouts[breakpoint].map((item) => item.i));
+      const missing = keys.filter((key) => !placed.has(key));
+      expect({ breakpoint, missing }).toEqual({ breakpoint, missing: [] });
+    });
   });
 });

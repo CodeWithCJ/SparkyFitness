@@ -271,6 +271,7 @@ export * from './utils/carryDistance.ts';
 export * from './utils/progressionEngine.ts';
 export * from './utils/intervalEngine.ts';
 export * from './utils/guidedWorkoutCues.ts';
+export * from './utils/exerciseVideo.ts';
 export * from './utils/dropSetCalculator.ts';
 export * from './utils/weightRamp.ts';
 export * from './utils/runningTrends.ts';

@@ -1522,6 +1522,15 @@
       "empty": "No alternatives found",
       "retry": "Retry",
       "catalogUnavailable": "Free Exercise DB is unavailable, so only your library is shown."
+    },
+    "video": {
+      "embedTitle": "{{name}} demonstration video",
+      "help": "A short demonstration clip. YouTube links play right in the workout.",
+      "invalid": "Enter a link starting with https://",
+      "label": "Video link",
+      "openOnYouTube": "Open on YouTube",
+      "placeholder": "https://youtube.com/shorts/…",
+      "watch": "Watch demonstration video"
     }
   },
   "workoutPresetsManager": {
@@ -3715,6 +3724,19 @@
       "restore": "Restore",
       "hide": "Hide",
       "layoutErrorNotice": "The customizable layout hit an error, so a simple view is shown. Your saved layout is kept."
+    },
+    "view": {
+      "label": "Diary view",
+      "meals": "Meals",
+      "timeline": "Timeline"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "addFood": "Add food",
+      "addAt": "Add food at {{time}}",
+      "addDescription": "Pick a food or meal. You can adjust the time and meal next.",
+      "noTime": "No time",
+      "macros": "P {{p}} · C {{c}} · F {{f}}"
     },
     "nutrientLabels": {
       "cal": "cal",

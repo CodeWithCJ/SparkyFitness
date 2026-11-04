@@ -12,6 +12,10 @@ jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
 );
 
+jest.mock('@/hooks/Exercises/useExerciseVideoUrl', () => ({
+  useExerciseVideoUrl: () => null,
+}));
+
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({ loggingLevel: 'SILENT' }),
 }));

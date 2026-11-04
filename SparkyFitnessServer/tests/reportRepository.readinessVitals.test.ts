@@ -18,6 +18,8 @@ describe('getReadinessVitals', () => {
     hrv?: unknown[];
     rhrBaseline?: unknown;
     hrvBaseline?: unknown;
+    resp?: unknown[];
+    respBaseline?: unknown;
   }) => {
     client.query.mockImplementation(async (text: string) => {
       if (text.includes('PERCENTILE_CONT')) {
@@ -25,7 +27,9 @@ describe('getReadinessVitals', () => {
           rows: [
             text.includes('avg_overnight_hrv')
               ? rows.hrvBaseline
-              : rows.rhrBaseline,
+              : text.includes('average_respiration_value')
+                ? rows.respBaseline
+                : rows.rhrBaseline,
           ],
         };
       }
@@ -33,7 +37,9 @@ describe('getReadinessVitals', () => {
       return {
         rows: text.includes('avg_overnight_hrv')
           ? (rows.hrv ?? [])
-          : (rows.rhr ?? []),
+          : text.includes('average_respiration_value')
+            ? (rows.resp ?? [])
+            : (rows.rhr ?? []),
       };
     });
   };
@@ -65,6 +71,9 @@ describe('getReadinessVitals', () => {
       hrv: 41,
       hrvBaseline: 68,
       hrvBaselineNights: 9,
+      respiratoryRate: null,
+      respiratoryRateBaseline: null,
+      respiratoryRateBaselineNights: 0,
     });
     const baselineCalls = client.query.mock.calls.filter(([text]) =>
       String(text).includes('PERCENTILE_CONT')
@@ -98,5 +107,23 @@ describe('getReadinessVitals', () => {
         String(text).includes('PERCENTILE_CONT')
       )
     ).toBe(false);
+  });
+
+  it('reads the latest breathing rate against its own baseline', async () => {
+    answer({
+      resp: [{ value: '16.4', source: 'Garmin' }],
+      respBaseline: { baseline: '14.8', nights: '11' },
+    });
+    const vitals = await getReadinessVitals(
+      'u1',
+      '2026-10-13',
+      '2026-10-12',
+      '2026-09-28'
+    );
+    expect(vitals).toMatchObject({
+      respiratoryRate: 16.4,
+      respiratoryRateBaseline: 14.8,
+      respiratoryRateBaselineNights: 11,
+    });
   });
 });

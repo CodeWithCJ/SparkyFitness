@@ -68,6 +68,8 @@ export const exerciseSnapshotResponseSchema = z
     secondary_muscles: z.array(z.string()).nullable(),
     equipment: z.array(z.string()).nullable(),
     instructions: z.array(z.string()).nullable(),
+    /** Library rows only; diary snapshots don't copy it. */
+    video_url: z.string().nullable().optional(),
     force: z.string().nullable(),
     level: z.string().nullable(),
     mechanic: z.string().nullable(),

@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { paginationSchema } from './Pagination.api.zod.ts';
 import { EXERCISE_MODALITIES } from '../../constants/exercise.ts';
+import {
+  EXERCISE_VIDEO_URL_MAX_LENGTH,
+  normalizeExerciseVideoUrl,
+} from '../../utils/exerciseVideo.ts';
 
 /**
  * Wire enum for exercise modality. Optional on response schemas so
@@ -45,6 +49,28 @@ const exerciseStringArrayFieldSchema = z
   );
 
 /**
+ * A demonstration video link. Blank clears it (null); omitted preserves it.
+ * Anything that is not an http(s) URL is rejected rather than stored.
+ */
+const exerciseVideoUrlFieldSchema = z
+  .string()
+  .max(EXERCISE_VIDEO_URL_MAX_LENGTH)
+  .nullable()
+  .optional()
+  .transform((value, ctx) => {
+    if (value === undefined) return undefined;
+    const normalized = normalizeExerciseVideoUrl(value);
+    if (normalized === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Video link must be an http(s) URL.',
+      });
+      return z.NEVER;
+    }
+    return normalized;
+  });
+
+/**
  * The subset of the create/update exercise payload (`POST /exercises`,
  * `PUT /exercises/:id`) that needs shape normalization before it reaches
  * the database. `.passthrough()` so the rest of the payload (name, category,
@@ -63,6 +89,7 @@ export const exerciseWriteArrayFieldsSchema = z
     secondary_muscles: exerciseStringArrayFieldSchema,
     instructions: exerciseStringArrayFieldSchema,
     images: exerciseStringArrayFieldSchema,
+    video_url: exerciseVideoUrlFieldSchema,
   })
   .passthrough();
 
@@ -89,6 +116,7 @@ export const exerciseLibraryItemSchema = z
     category: z.string().nullable(),
     modality: exerciseModalitySchema.optional(),
     images: z.array(z.string()),
+    video_url: z.string().nullable().optional(),
     calories_per_hour: z.number().nullable(),
     description: z.string().nullable(),
     user_id: z.string().nullable(),

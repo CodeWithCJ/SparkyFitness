@@ -90,6 +90,7 @@ packageExtensions:
 
 patchedDependencies:
   '@bacons/apple-targets@4.0.7': patches/@bacons__apple-targets@4.0.7.patch
+  expo-location@57.0.22: patches/expo-location@57.0.22.patch
   expo-modules-core@57.0.24: patches/expo-modules-core@57.0.24.patch
   react-native-bottom-tabs@1.4.0: patches/react-native-bottom-tabs@1.4.0.patch
   react-native-health-connect@4.1.3: patches/react-native-health-connect@4.1.3.patch
