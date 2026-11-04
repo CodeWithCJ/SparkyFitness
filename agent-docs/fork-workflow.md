@@ -4,7 +4,7 @@ Fork-only guide, loaded from the root `CLAUDE.md`. It covers how work moves thro
 
 ## Branches
 
-- `main` is an exact mirror of upstream `CodeWithCJ/SparkyFitness`. Never commit to it.
+- `main` is an exact mirror of upstream `CodeWithCJ/SparkyFitness`. Never commit or push to it; it changes only by syncing from upstream. Any other branch may be pushed without asking (see `AGENTS.md`).
 - `tdmain` is the fork's production branch. Fork PRs target it.
 - One branch per fix or feature, started from `origin/main` (`git fetch origin main && git checkout -b fix/<topic> origin/main`), so the same branch can be sent upstream unchanged. Name it `fix/<topic>` or `feat/<topic>`.
 - If a session was handed a pre-named branch, start that branch from `origin/main` the same way for code fixes. Only fork-only changes (like this file) start from `origin/tdmain`.
