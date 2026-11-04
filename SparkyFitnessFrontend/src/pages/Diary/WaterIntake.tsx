@@ -196,8 +196,16 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const handleTimeChange = (
     entryId: string,
     entryDate: string,
-    newTime: string
+    newTime: string,
+    currentTime: string
   ) => {
+    // Leaving the field without a change saves nothing: re-saving would drop
+    // the stored seconds and, on the day the clocks go back, move a time in
+    // the repeated hour to its second occurrence.
+    if (newTime === currentTime) {
+      setEditingTimeId(null);
+      return;
+    }
     try {
       // entryDate is a Postgres DATE column serialized as UTC midnight
       // (e.g. "2026-05-14T00:00:00.000Z"). Extract the YYYY-MM-DD substring
@@ -484,7 +492,14 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                             entry.logged_at || entry.created_at
                           )}
                           onBlur={(value) =>
-                            handleTimeChange(entry.id, entry.entry_date, value)
+                            handleTimeChange(
+                              entry.id,
+                              entry.entry_date,
+                              value,
+                              getTimeInputValue(
+                                entry.logged_at || entry.created_at
+                              )
+                            )
                           }
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {
