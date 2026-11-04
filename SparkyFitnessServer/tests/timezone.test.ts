@@ -606,6 +606,8 @@ describe('localDateTimeToUtc on clock-change days', () => {
     ['America/New_York', '2026-03-08T02:30', '2026-03-08T07:30:00.000Z'],
     ['America/Los_Angeles', '2026-03-08T02:30', '2026-03-08T10:30:00.000Z'],
     ['Australia/Sydney', '2026-10-04T02:30', '2026-10-03T16:30:00.000Z'],
+    // A 30-minute change: 02:15 becomes 02:45.
+    ['Australia/Lord_Howe', '2026-10-04T02:15', '2026-10-03T15:45:00.000Z'],
   ])('moves %s %s in the missing hour forward', (tz, local, expected) => {
     expect(localDateTimeToUtc(local, tz).toISOString()).toBe(expected);
   });
