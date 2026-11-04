@@ -72,9 +72,13 @@ export function isWriteRequest(): boolean {
  * the same name. Reads the last check, so call it after restoreInProgress().
  */
 export function restoredSinceAdmitted(): boolean {
-  const admitted = writeRequestStorage.getStore()?.databaseId;
+  const admission = writeRequestStorage.getStore();
   const current = cached?.databaseId;
-  return Boolean(admitted && current && admitted !== current);
+  if (!admission || !current) return false;
+  // The check failed at admission. This look comes before the work's first
+  // connection, so nothing it holds predates the database seen here.
+  admission.databaseId ??= current;
+  return admission.databaseId !== current;
 }
 
 let cached: {

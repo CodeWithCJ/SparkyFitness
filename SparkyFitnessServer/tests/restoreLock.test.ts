@@ -24,6 +24,7 @@ import {
   markRestoreRunning,
   outsideWriteRequest,
   resetRestoreCheckForTests,
+  restoredSinceAdmitted,
   restoreInProgress,
   runAsWriteRequest,
 } from '../services/restoreLock.js';
@@ -66,6 +67,42 @@ describe('restoreInProgress', () => {
       withCode('permission denied for view pg_locks', '42501')
     );
     expect(await restoreInProgress()).toBe(true);
+  });
+});
+
+describe('restoredSinceAdmitted', () => {
+  const lookAt = async (databaseId: string) => {
+    resetRestoreCheckForTests();
+    query.mockResolvedValueOnce({
+      rows: [{ active: false, database_id: databaseId }],
+    });
+    await restoreInProgress();
+  };
+
+  beforeEach(() => {
+    query.mockReset();
+    resetRestoreCheckForTests();
+  });
+
+  it('reports a swap after the database admitted on', async () => {
+    await lookAt('1');
+    await runAsWriteRequest(async () => {
+      await lookAt('1');
+      expect(restoredSinceAdmitted()).toBe(false);
+      await lookAt('2');
+      expect(restoredSinceAdmitted()).toBe(true);
+    });
+  });
+
+  it('reports a swap for work admitted while the check failed', async () => {
+    query.mockRejectedValueOnce(withCode('connect failed', 'ECONNREFUSED'));
+    await restoreInProgress();
+    await runAsWriteRequest(async () => {
+      await lookAt('1');
+      expect(restoredSinceAdmitted()).toBe(false);
+      await lookAt('2');
+      expect(restoredSinceAdmitted()).toBe(true);
+    });
   });
 });
 
