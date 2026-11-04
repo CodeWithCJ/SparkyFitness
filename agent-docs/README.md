@@ -35,6 +35,9 @@ This folder contains runbooks and architectural docs designed to answer complex 
 - Supply-chain/trust pass first, then architecture alignment, logic, existing review threads, and how much to verify locally
 - Also wired up as the `pr-review` skill, so agents load it on their own (see Notes on Conventions)
 
+**Working on the tonydarcy fork?** → [`fork-workflow.md`](fork-workflow.md) (2 min)
+- Branch rules (`main` mirrors upstream, PRs target `tdmain`), upstream PR rules, cheap-fix steps, known sandbox test noise
+
 **Planning a bug-fix issue or a new feature?** → [`planning-ground-rules.md`](planning-ground-rules.md) (3 min) then [`impact-analysis-checklist.md`](impact-analysis-checklist.md) (2 min)
 - Existing-user, old-mobile, integration, deployment, and rollout questions every plan must answer
 - Also wired up as the `issue-plan` (bugs) and `enhancement-plan` (features) skills
