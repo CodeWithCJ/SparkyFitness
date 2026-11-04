@@ -8,6 +8,7 @@ import {
   useFoodWaterIntakeQuery,
   useWaterIntakeLogQuery,
   useUpdateWaterIntakeMutation,
+  useUpdateWaterIntakeLogTimeMutation,
 } from '@/hooks/Diary/useWaterIntake';
 import { renderWithClient } from '../test-utils';
 
@@ -50,16 +51,31 @@ jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'user-1' } }),
 }));
 
+let mockTimezone = 'UTC';
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ water_display_unit: 'ml', timezone: 'UTC' }),
+  usePreferences: () => ({ water_display_unit: 'ml', timezone: mockTimezone }),
 }));
 
 jest.mock('@workspace/shared', () => ({
+  ...jest.requireActual('@workspace/shared'),
   instantHourMinute: () => ({ hour: 12, minute: 0 }),
-  dayToUtcRange: () => ({
-    start: new Date('2023-10-27T00:00:00Z'),
-    end: new Date('2023-10-28T00:00:00Z'),
-  }),
+}));
+
+// The real field is segmented; a plain input is enough to hand a typed time
+// to the component's onBlur.
+jest.mock('@/components/ui/TimeInput', () => ({
+  TimeInput: ({
+    onBlur,
+    'aria-label': ariaLabel,
+  }: {
+    onBlur?: (value: string) => void;
+    'aria-label'?: string;
+  }) => (
+    <input
+      aria-label={ariaLabel}
+      onBlur={(e) => onBlur?.(e.currentTarget.value)}
+    />
+  ),
 }));
 
 jest.mock('@/contexts/ActiveUserContext', () => ({
@@ -315,5 +331,57 @@ describe('WaterIntake Component', () => {
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
     expect(screen.queryByText(/from food/i)).not.toBeInTheDocument();
+  });
+
+  describe('editing a drink time', () => {
+    const mockUpdateLogTime = jest.fn();
+
+    beforeEach(() => {
+      mockTimezone = 'Europe/Berlin';
+      (useUpdateWaterIntakeLogTimeMutation as jest.Mock).mockReturnValue({
+        mutate: mockUpdateLogTime,
+        isPending: false,
+      });
+    });
+
+    afterEach(() => {
+      mockTimezone = 'UTC';
+    });
+
+    const editTime = (day: string, typed: string) => {
+      (useWaterIntakeLogQuery as jest.Mock).mockReturnValue({
+        data: [
+          {
+            id: 'e1',
+            water_ml: 250,
+            container_name: 'Work Bottle',
+            source: 'manual',
+            entry_date: `${day}T00:00:00.000Z`,
+            logged_at: `${day}T10:00:00.000Z`,
+            created_at: `${day}T10:00:00.000Z`,
+          },
+        ],
+      });
+      renderWithClient(<WaterIntake selectedDate={day} />);
+      fireEvent.click(screen.getByTitle('Click to change time'));
+      const field = screen.getByLabelText('Drink time');
+      fireEvent.change(field, { target: { value: typed } });
+      fireEvent.blur(field);
+    };
+
+    // Regression for #3319: on clock-change days the saved instant was an
+    // hour away from the typed wall-clock time.
+    it.each([
+      ['2026-10-25', '09:30', '2026-10-25T08:30:00.000Z'], // clocks go back
+      ['2026-03-29', '08:00', '2026-03-29T06:00:00.000Z'], // clocks go forward
+      ['2026-10-26', '08:00', '2026-10-26T07:00:00.000Z'], // normal day
+    ])('on %s saves %s as %s', (day, typed, expected) => {
+      editTime(day, typed);
+
+      expect(mockUpdateLogTime).toHaveBeenCalledWith({
+        logId: 'e1',
+        loggedAt: expected,
+      });
+    });
   });
 });
