@@ -12,7 +12,6 @@ import {
   Text,
   TouchableOpacity,
   Pressable,
-  Platform,
   ScrollView,
 } from 'react-native';
 import Button from '../components/ui/Button';
@@ -89,13 +88,6 @@ import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import VerifiedBadge from '../components/VerifiedBadge';
 
 type FoodEntryViewScreenProps = RootStackScreenProps<'FoodEntryView'>;
-
-// On Android, Reanimated layout transitions on this screen leave sections at
-// stale positions: expanding "Show more nutrients" draws over the rows below
-// instead of pushing them down, and after entering edit mode the button's touch
-// area no longer matches where it is drawn. Android uses plain layout instead.
-const layoutTransition = (durationMs: number) =>
-  Platform.OS === 'android' ? undefined : LinearTransition.duration(durationMs);
 
 const scaledValue = (value: number | undefined, entry: FoodEntry): number => {
   if (value === undefined || !entry.serving_size) return 0;
@@ -1020,7 +1012,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           paddingBottom: insets.bottom + 16 + activeWorkoutBarPadding,
         }}
       >
-        <Animated.View layout={layoutTransition(300)}>
+        <Animated.View layout={LinearTransition.duration(300)}>
           <View className="flex-row items-start gap-2">
             <Text className="text-text-primary text-3xl font-bold flex-shrink">
               {(isEditing && adjustedValues?.name) ||
@@ -1142,7 +1134,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         </Animated.View>
 
         <Animated.View
-          layout={layoutTransition(300)}
+          layout={LinearTransition.duration(300)}
           className="bg-surface rounded-xl p-4 shadow-sm"
         >
           <Pressable
@@ -1158,7 +1150,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
             }
           >
             <Animated.View
-              layout={layoutTransition(300)}
+              layout={LinearTransition.duration(300)}
               className="flex-row items-center"
             >
               <View className="flex-1 items-center pr-10">
@@ -1172,7 +1164,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                 </Text>
               </View>
               <Animated.View
-                layout={layoutTransition(300)}
+                layout={LinearTransition.duration(300)}
                 className="flex-2 gap-3"
               >
                 {(isEditing
@@ -1282,7 +1274,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         </Animated.View>
 
         {(primaryNutrients.length > 0 || hasAdditional) && (
-          <Animated.View layout={layoutTransition(300)} className="my-2 gap-2">
+          <Animated.View
+            layout={LinearTransition.duration(300)}
+            className="my-2 gap-2"
+          >
             {(primaryNutrients.length > 0 || customNutrientRows.length > 0) && (
               <View className="rounded-xl">
                 {primaryNutrients.map((nutrient, index) => {
@@ -1309,7 +1304,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                   <Animated.View
                     entering={FadeIn.duration(250)}
                     exiting={FadeOut.duration(150)}
-                    layout={layoutTransition(250)}
+                    layout={LinearTransition.duration(250)}
                   >
                     {additionalNutrients.map((nutrient, index) => (
                       <View
@@ -1351,7 +1346,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               </View>
             )}
             {hasAdditional && (
-              <Animated.View layout={layoutTransition(250)}>
+              <Animated.View layout={LinearTransition.duration(250)}>
                 <Button
                   variant="ghost"
                   onPress={() => setShowMoreNutrients((prev) => !prev)}
@@ -1377,7 +1372,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         )}
 
         <Animated.View
-          layout={layoutTransition(300)}
+          layout={LinearTransition.duration(300)}
           className="mt-2 flex-row items-center"
         >
           <View className="flex-1 flex-row items-center">
@@ -1460,7 +1455,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         </Animated.View>
 
         <Animated.View
-          layout={layoutTransition(300)}
+          layout={LinearTransition.duration(300)}
           className="mt-2 flex-row items-center"
         >
           <Text className="text-text-secondary text-base mr-2">
@@ -1518,7 +1513,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           )}
         </Animated.View>
 
-        <Animated.View layout={layoutTransition(300)} className="mt-3">
+        <Animated.View layout={LinearTransition.duration(300)} className="mt-3">
           {isEditing ? (
             <MarkdownNotesField
               images={[
@@ -1552,7 +1547,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           ) : null}
         </Animated.View>
 
-        <Animated.View layout={layoutTransition(300)}>
+        <Animated.View layout={LinearTransition.duration(300)}>
           <Button
             variant="destructive"
             onPress={confirmAndDelete}
