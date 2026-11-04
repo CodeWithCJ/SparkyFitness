@@ -16,7 +16,7 @@ const ENV_TIMEOUT = 'SPARKY_FITNESS_OIDC_TIMEOUT';
 const ENV_ADMIN_GROUP = 'SPARKY_FITNESS_OIDC_ADMIN_GROUP';
 /**
  * Returns OIDC provider payload from env, or null if any required var is missing.
- * Issuer URL is normalized (no trailing slash).
+ * Issuer URL is used as configured.
  */
 function getEnvOidcConfig() {
   const issuer = process.env[ENV_ISSUER]?.trim();
@@ -41,7 +41,7 @@ function getEnvOidcConfig() {
     return null;
   }
   return {
-    issuer_url: issuer.replace(/\/$/, ''),
+    issuer_url: issuer,
     client_id: clientId,
     client_secret: clientSecret,
     provider_id: slug,

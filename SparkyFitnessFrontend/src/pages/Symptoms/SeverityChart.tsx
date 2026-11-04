@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import {
   SYMPTOM_IMPACT_LEVELS,
+  severityChartWindow,
   type SymptomEntryResponse,
   type SymptomImpact,
 } from '@workspace/shared';
@@ -38,23 +39,9 @@ export default function SeverityChart({ entry, max }: SeverityChartProps) {
   const { t } = useTranslation();
   const { formatTime } = usePreferences();
 
-  const startIso = entry.started_at ?? entry.logged_at;
-  const points =
-    entry.severity_timeline.length > 0
-      ? entry.severity_timeline
-      : entry.severity != null
-        ? [{ at: startIso, severity: entry.severity }]
-        : [];
-  if (points.length === 0 || max <= 0) return null;
-
-  const start = new Date(startIso).getTime();
-  const lastPoint = Math.max(...points.map((p) => new Date(p.at).getTime()));
-  // An episode still running ends at its latest reading (or 30 minutes after
-  // the start when there is only one), so the chart never needs the clock.
-  const end = entry.ended_at
-    ? new Date(entry.ended_at).getTime()
-    : Math.max(lastPoint, start + 30 * 60_000);
-  const span = Math.max(end - start, 60_000);
+  const frame = severityChartWindow(entry);
+  if (!frame || max <= 0) return null;
+  const { start, end, span, points, startIso } = frame;
 
   const x = (time: number) =>
     PAD.left + ((time - start) / span) * (W - PAD.left - PAD.right);
@@ -67,23 +54,7 @@ export default function SeverityChart({ entry, max }: SeverityChartProps) {
         `${i === 0 ? 'M' : 'L'}${x(new Date(p.at).getTime())} ${y(p.severity)}`
     )
     .join(' ');
-  // A server without impact_timeline still sends the current impact; show it
-  // from the start, the same way a lone severity is drawn.
-  // Sorted by time: an effect changed through an edit is appended with the
-  // current time, which can come before a reading recorded for later.
-  const impactPoints = (
-    entry.impact_timeline && entry.impact_timeline.length > 0
-      ? [...entry.impact_timeline]
-      : entry.impact != null
-        ? [{ at: startIso, impact: entry.impact }]
-        : []
-  ).sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
-  const bandSegments = impactPoints.map((p, i) => {
-    const from = Math.max(new Date(p.at).getTime(), start);
-    const next = impactPoints[i + 1];
-    const to = next ? new Date(next.at).getTime() : end;
-    return { at: p.at, impact: p.impact, from, to: Math.min(to, end) };
-  });
+  const bandSegments = frame.impact;
   const bandY = H - PAD.bottom + 4;
   const height = bandSegments.length > 0 ? H + BAND.extra : H;
   const impactLabel = t('symptoms.sections.impact', 'Effect on your day');
@@ -172,7 +143,7 @@ export default function SeverityChart({ entry, max }: SeverityChartProps) {
           {bandSegments.map((s) => (
             <rect
               key={s.at}
-              x={x(s.from)}
+              x={Math.min(x(s.from), W - PAD.right - 2)}
               y={bandY}
               width={Math.max(x(s.to) - x(s.from), 2)}
               height={BAND.height}

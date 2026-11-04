@@ -2,8 +2,10 @@ import express from 'express';
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import {
+  LAB_MARKER_PRESETS,
   createLabMarkerBodySchema,
   createLabResultBodySchema,
+  importLabReportBodySchema,
   labResultListQuerySchema,
   updateLabMarkerBodySchema,
   updateLabResultBodySchema,
@@ -15,8 +17,11 @@ import {
   createLabMarker,
   createLabResult,
   deleteLabMarker,
+  deleteLabReports,
   deleteLabResult,
+  deleteResultsForMarkerKey,
   getLabResultById,
+  importLabReport,
   listLabMarkers,
   listLabResults,
   listLatestLabResults,
@@ -530,6 +535,188 @@ router.delete('/entries/:id', async (req, res, next) => {
     if (!deleted)
       return res.status(404).json({ error: 'Lab result not found' });
     res.json({ success: true });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /v2/lab-results/imports:
+ *   post:
+ *     summary: Save the reviewed results of one lab report
+ *     description: >
+ *       Saves a lab report and all of its results in one transaction. Each result
+ *       is for a built-in marker (`marker_key`) or one of the user's own markers
+ *       (`marker_name`, created when it is new) and keeps its own unit and range.
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ImportLabReportInput'
+ *     responses:
+ *       201:
+ *         description: The saved report and its results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ImportLabReportResponse'
+ *       400:
+ *         description: Invalid body, an unknown marker, or a low bound above the high bound
+ *       403:
+ *         description: Missing check-in permission
+ *       500:
+ *         description: Internal server error
+ *   delete:
+ *     summary: Delete every imported report and its results
+ *     description: >
+ *       Results entered by hand are kept. A custom marker left with no results by
+ *       the delete is deleted too.
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: How many reports, results and markers were deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeleteLabImportsResponse'
+ *       403:
+ *         description: Missing check-in permission
+ *       500:
+ *         description: Internal server error
+ */
+// POST /api/v2/lab-results/imports
+router.post('/imports', async (req, res, next) => {
+  try {
+    const { targetUserId, authenticatedUserId } = actingUsers(req);
+    const parsed = importLabReportBodySchema.safeParse(req.body);
+    if (!parsed.success) return invalidBody(res, parsed.error);
+    const saved = await importLabReport(
+      targetUserId,
+      parsed.data,
+      authenticatedUserId
+    );
+    res.status(201).json(saved);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/v2/lab-results/imports
+router.delete('/imports', async (req, res, next) => {
+  try {
+    const { targetUserId, authenticatedUserId } = actingUsers(req);
+    res.json(await deleteLabReports(targetUserId, null, authenticatedUserId));
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /v2/lab-results/imports/{id}:
+ *   delete:
+ *     summary: Delete one imported report and the results it saved
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Report id
+ *     responses:
+ *       200:
+ *         description: How many reports, results and markers were deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeleteLabImportsResponse'
+ *       403:
+ *         description: Missing check-in permission
+ *       404:
+ *         description: Report not found
+ *       500:
+ *         description: Internal server error
+ */
+// DELETE /api/v2/lab-results/imports/:id
+router.delete('/imports/:id', async (req, res, next) => {
+  try {
+    const { targetUserId, authenticatedUserId } = actingUsers(req);
+    if (!uuidSchema.safeParse(req.params.id).success) {
+      return res.status(404).json({ error: 'Lab report not found' });
+    }
+    const outcome = await deleteLabReports(
+      targetUserId,
+      req.params.id,
+      authenticatedUserId
+    );
+    if (!outcome)
+      return res.status(404).json({ error: 'Lab report not found' });
+    res.json(outcome);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /v2/lab-results/entries:
+ *   delete:
+ *     summary: Delete every result of one built-in marker
+ *     description: >
+ *       For a built-in marker, which has no row of its own to delete. To delete a
+ *       custom marker and its results, use `DELETE /markers/{id}`.
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: markerKey
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Built-in marker key such as hba1c
+ *     responses:
+ *       200:
+ *         description: How many results were deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeleteMarkerResultsResponse'
+ *       400:
+ *         description: markerKey is missing or not a built-in marker
+ *       403:
+ *         description: Missing check-in permission
+ *       500:
+ *         description: Internal server error
+ */
+// DELETE /api/v2/lab-results/entries?markerKey=
+router.delete('/entries', async (req, res, next) => {
+  try {
+    const { targetUserId, authenticatedUserId } = actingUsers(req);
+    const markerKey =
+      typeof req.query.markerKey === 'string' ? req.query.markerKey : '';
+    if (!LAB_MARKER_PRESETS.some((preset) => preset.key === markerKey)) {
+      return res
+        .status(400)
+        .json({ error: 'markerKey must be a built-in marker' });
+    }
+    const results = await deleteResultsForMarkerKey(
+      targetUserId,
+      markerKey,
+      authenticatedUserId
+    );
+    res.json({ results });
   } catch (error) {
     next(error);
   }

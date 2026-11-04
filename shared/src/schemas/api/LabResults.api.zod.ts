@@ -154,3 +154,71 @@ export const labResultListQuerySchema = z
     path: ['markerKey'],
   });
 export type LabResultListQuery = z.infer<typeof labResultListQuerySchema>;
+
+const importResultSchema = z
+  .object({
+    /** A built-in marker, or... */
+    marker_key: z
+      .string()
+      .refine((key) => BUILT_IN_MARKER_KEYS.has(key), 'unknown marker_key')
+      .nullable()
+      .optional(),
+    /** ...the name of one of the user's own markers, created when it is new. */
+    marker_name: z.string().trim().min(1).max(120).nullable().optional(),
+    value_numeric: z.number().finite(),
+    unit: unitSchema.default(''),
+    ref_range_low: rangeBoundSchema,
+    ref_range_high: rangeBoundSchema,
+  })
+  .refine(
+    (result) => (result.marker_key != null) !== (result.marker_name != null),
+    {
+      message: 'Provide exactly one of marker_key or marker_name',
+      path: ['marker_key'],
+    }
+  )
+  .refine(refRangeOrdered, refRangeOrderedIssue);
+
+/** POST /api/v2/lab-results/imports: the reviewed results of one lab report. */
+export const importLabReportBodySchema = z.object({
+  lab_name: z.string().trim().max(200).nullable().optional(),
+  /** The test date, `YYYY-MM-DD`; every result of the report gets it. */
+  entry_date: dateStringSchema,
+  results: z.array(importResultSchema).min(1).max(200),
+});
+export type ImportLabReportBody = z.infer<typeof importLabReportBodySchema>;
+
+export const labReportResponseSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  lab_name: z.string().nullable(),
+  collected_on: z.string().nullable(),
+  created_at: z.string(),
+});
+export type LabReportResponse = z.infer<typeof labReportResponseSchema>;
+
+export const importLabReportResponseSchema = z.object({
+  report: labReportResponseSchema,
+  results: z.array(labResultResponseSchema),
+});
+export type ImportLabReportResponse = z.infer<
+  typeof importLabReportResponseSchema
+>;
+
+/** What a delete of imports or of one built-in marker's results removed. */
+export const deleteLabImportsResponseSchema = z.object({
+  reports: z.number().int(),
+  results: z.number().int(),
+  /** The user's own markers deleted because the delete left them with no results. */
+  markers: z.number().int(),
+});
+export type DeleteLabImportsResponse = z.infer<
+  typeof deleteLabImportsResponseSchema
+>;
+
+export const deleteMarkerResultsResponseSchema = z.object({
+  results: z.number().int(),
+});
+export type DeleteMarkerResultsResponse = z.infer<
+  typeof deleteMarkerResultsResponseSchema
+>;

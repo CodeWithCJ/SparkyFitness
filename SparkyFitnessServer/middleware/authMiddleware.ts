@@ -6,7 +6,7 @@ import { requireMcpAuth } from '@better-auth/mcp';
 import { log } from '../config/logging.js';
 import userRepository from '../models/userRepository.js';
 import { auth } from '../auth.js';
-import { canAccessUserData } from '../utils/permissionUtils.js';
+import { canActForUser } from '../utils/actForUser.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
 import { dbContextStorage } from '../db/poolManager.js';
 import { isConnectionError } from '../db/connectRetry.js';
@@ -81,14 +81,7 @@ async function finishAuthentication<P extends ParamsDictionary>(
       ? req.cookies.sparky_active_user_id
       : undefined;
   if (activeUserId && activeUserId !== user.id) {
-    const [hasReports, hasDiary, hasCheckin, hasMedications] =
-      await Promise.all([
-        canAccessUserData(activeUserId, 'reports', user.id),
-        canAccessUserData(activeUserId, 'diary', user.id),
-        canAccessUserData(activeUserId, 'checkin', user.id),
-        canAccessUserData(activeUserId, 'medications', user.id),
-      ]);
-    if (hasReports || hasDiary || hasCheckin || hasMedications) {
+    if (await canActForUser(activeUserId, user.id)) {
       req.activeUserId = activeUserId;
       log(
         'info',

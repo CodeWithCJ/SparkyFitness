@@ -425,6 +425,118 @@ describe('runBackfill', () => {
     expect(engine.collectHealthData).toHaveBeenCalledTimes(3);
   });
 
+  describe('timed-out windows (#3339)', () => {
+    const AUG_1 = new Date(2026, 7, 1, 0, 0, 0, 0);
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    type TelemetryLike = { budget: number };
+
+    const timedOutOutcomes = (metrics: MetricLike[]) =>
+      metrics.map((metric) => ({
+        metric,
+        status: 'rejected' as const,
+        data: [],
+        error: `History import query for ${metric.recordType} timed out after 120000ms`,
+        timedOut: true,
+      }));
+    const fulfilledOutcomes = (metrics: MetricLike[], windows: WindowsLike) =>
+      metrics.map((metric) => ({
+        metric,
+        status: 'fulfilled' as const,
+        data: [{ type: metric.recordType, date: windows.end.toISOString() }],
+        error: undefined,
+      }));
+    const spanDays = (windows: WindowsLike): number =>
+      Math.round(
+        (windows.end.getTime() - windows.sessionStart.getTime()) / DAY_MS
+      );
+
+    test('a window that times out is split into 7-day windows instead of retried', async () => {
+      engine.collectHealthData.mockImplementation(
+        async (
+          _provider: unknown,
+          metrics: MetricLike[],
+          windows: WindowsLike
+        ) =>
+          spanDays(windows) > 7
+            ? timedOutOutcomes(metrics)
+            : fulfilledOutcomes(metrics, windows)
+      );
+
+      const result = await runBackfill(runOpts());
+
+      expect(result.outcome).toBe('completed');
+      // [Jul 4, Aug 3) times out → 5 pieces; [Jun 20, Jul 4) times out → 2 pieces.
+      expect(engine.collectHealthData).toHaveBeenCalledTimes(9);
+      expect(api.syncHealthData).toHaveBeenCalledTimes(7);
+      const spans = engine.collectHealthData.mock.calls.map((call) =>
+        spanDays(call[2] as WindowsLike)
+      );
+      expect(spans).toEqual([30, 7, 7, 7, 7, 2, 14, 7, 7]);
+      const saved = await loadBackfillCheckpoint('server-1');
+      expect(saved?.status).toBe('done');
+      expect(saved?.cursor).toBe(JUN_20.toISOString());
+    });
+
+    test('a single day that times out is retried with a capped workout-detail budget', async () => {
+      await saveBackfillCheckpoint(
+        'server-1',
+        inProgressCheckpoint({
+          cursor: AUG_3.toISOString(),
+          floor: AUG_1.toISOString(),
+          recordsUploaded: 0,
+        })
+      );
+      engine.collectHealthData.mockImplementation(
+        async (
+          _provider: unknown,
+          metrics: MetricLike[],
+          windows: WindowsLike,
+          opts: { telemetry: TelemetryLike }
+        ) =>
+          spanDays(windows) > 1 || !Number.isFinite(opts.telemetry.budget)
+            ? timedOutOutcomes(metrics)
+            : fulfilledOutcomes(metrics, windows)
+      );
+
+      const result = await runBackfill(runOpts());
+
+      expect(result.outcome).toBe('completed');
+      // 2-day window, then each day: uncapped attempt + capped retry.
+      expect(engine.collectHealthData).toHaveBeenCalledTimes(5);
+      const budgets = engine.collectHealthData.mock.calls.map(
+        (call) => (call[3] as { telemetry: TelemetryLike }).telemetry.budget
+      );
+      expect(budgets).toEqual([Infinity, Infinity, 10, Infinity, 10]);
+      expect(api.syncHealthData).toHaveBeenCalledTimes(2);
+      const saved = await loadBackfillCheckpoint('server-1');
+      expect(saved?.status).toBe('done');
+    });
+
+    test('a day that still times out with the capped budget stops without advancing', async () => {
+      await saveBackfillCheckpoint(
+        'server-1',
+        inProgressCheckpoint({
+          cursor: AUG_3.toISOString(),
+          floor: AUG_1.toISOString(),
+          recordsUploaded: 0,
+        })
+      );
+      engine.collectHealthData.mockImplementation(
+        async (_provider: unknown, metrics: MetricLike[]) =>
+          timedOutOutcomes(metrics)
+      );
+
+      const result = await runBackfill(runOpts());
+
+      expect(result.outcome).toBe('window-failed');
+      expect(result.error).toContain('timed out');
+      expect(engine.collectHealthData).toHaveBeenCalledTimes(3);
+      expect(api.syncHealthData).not.toHaveBeenCalled();
+      const saved = await loadBackfillCheckpoint('server-1');
+      expect(saved?.cursor).toBe(AUG_3.toISOString());
+    });
+  });
+
   test('device-locked reads stop the run even when outcomes look clean', async () => {
     // Probes succeed; the device locks during the first window's reads.
     let locked = false;

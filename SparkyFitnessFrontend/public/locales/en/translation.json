@@ -3296,10 +3296,12 @@
         "description": "Enable or disable different methods for users to log in.",
         "enableEmailPasswordLogin": "Enable Email & Password Login",
         "enablePasskeyLogin": "Enable Passkey Login",
+        "enableMagicLinkLogin": "Enable Magic Link Login",
         "enableOidcLoginGlobal": "Enable OIDC Login (Global)",
         "emergencyFailSafe": "Emergency Fail-Safe:",
         "emergencyFailSafeDescription": "If you are ever locked out of your account, you can force email/password login to be enabled by setting the following environment variable on your server and restarting it:",
         "emergencyFailSafePasskeyDescription": "If passkey login was turned off and you can no longer sign in, force it back on with:",
+        "emergencyFailSafeMagicLinkDescription": "If magic link login was turned off and you can no longer sign in, force it back on with:",
         "envVarCopied": "Environment variable copied to clipboard.",
         "enforceMfaForAllUsers": "Enforce MFA for all users",
         "emergencyFailSafeIfYou": "<strong>Emergency Fail-Safe:</strong> If you are ever locked out of your account, you can force email/password login to be enabled by setting the following environment variable on your server and restarting it:"

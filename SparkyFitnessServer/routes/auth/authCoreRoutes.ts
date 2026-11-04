@@ -19,6 +19,7 @@ import { z } from 'zod';
 import { getOAuthClientSummary } from '../../models/oauthClientRepository.js';
 import { verifyMcpOAuthQuery } from '../../utils/mcpOAuth.js';
 import { isPasskeyLoginDisabled } from '../../utils/passkeyLogin.js';
+import { isMagicLinkLoginDisabled } from '../../utils/magicLinkLogin.js';
 import {
   getDemoCredentials,
   seedDemoUser,
@@ -95,6 +96,7 @@ router.get('/settings', async (req, res) => {
         enabled: emailEnabled,
       },
       passkey: { enabled: globalSettings.enable_passkey_login },
+      magic_link: { enabled: globalSettings.enable_magic_link_login },
       oidc: {
         enabled: oidcEnabled,
         providers: activeProviders,
@@ -115,6 +117,7 @@ router.get('/settings', async (req, res) => {
       trusted_origin: null,
       email: { enabled: forceEmailLogin || !disableEmailLogin },
       passkey: { enabled: !isPasskeyLoginDisabled() },
+      magic_link: { enabled: !isMagicLinkLoginDisabled() },
       oidc: {
         enabled: process.env.SPARKY_FITNESS_OIDC_AUTH_ENABLED === 'true',
         providers: [],

@@ -2,8 +2,13 @@ import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../services/api/errors';
 import {
+  deleteBuiltinMarkerResults,
+  deleteLabImports,
+} from '../services/api/labReportApi';
+import {
   createLabMarker,
   createLabResult,
+  deleteLabMarker,
   deleteLabResult,
   fetchLabMarkers,
   fetchLabResults,
@@ -158,6 +163,41 @@ export function useDeleteLabResult() {
     onSuccess: () => invalidateLabCaches(queryClient),
     onError: (err: Error) => {
       addLog(`Failed to delete lab result: ${err.message}`, 'ERROR');
+    },
+  });
+}
+
+/** Deletes every imported report with its results; results typed by hand stay. */
+export function useDeleteLabImports() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteLabImports,
+    onSettled: () => invalidateLabCaches(queryClient),
+    onError: (err: Error) => {
+      addLog(`Failed to delete imported lab results: ${err.message}`, 'ERROR');
+    },
+  });
+}
+
+/**
+ * Deletes a marker with all of its results: one of the user's own markers is
+ * removed outright, a built-in one loses its results (it has no row of its own).
+ */
+export function useDeleteLabMarker() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (marker: LabMarkerQuery) => {
+      if ('markerKey' in marker) {
+        await deleteBuiltinMarkerResults(marker.markerKey);
+      } else {
+        await deleteLabMarker(marker.markerId);
+      }
+    },
+    onSettled: () => invalidateLabCaches(queryClient),
+    onError: (err: Error) => {
+      addLog(`Failed to delete lab marker: ${err.message}`, 'ERROR');
     },
   });
 }

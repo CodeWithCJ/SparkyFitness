@@ -5,6 +5,7 @@ import type {
   WorkoutPresetExercise,
   WorkoutPresetSet,
 } from '@/types/workout';
+import { firstExerciseImage } from '@/utils/exercises';
 import { generateClientId } from '@/utils/generateClientId';
 import { debug } from '@/utils/logging';
 import {
@@ -52,6 +53,9 @@ export function useWorkoutPresetForm({
       initialPreset?.exercises.map((ex) => ({
         ...ex,
         id: ex.id ? String(ex.id) : generateClientId(),
+        // Drops a stray "[" or '"' an earlier save stored, so saving the
+        // preset again repairs it.
+        image_url: firstExerciseImage(ex.image_url) ?? '',
         sets: ex.sets.map((set) => ({
           ...set,
           id: set.id ? String(set.id) : generateClientId(),
@@ -76,8 +80,7 @@ export function useWorkoutPresetForm({
         exercise.modality,
         exercise.category
       );
-      const imageUrl =
-        exercise.images && exercise.images.length > 0 ? exercise.images[0] : '';
+      const imageUrl = firstExerciseImage(exercise.images) ?? '';
       if (replaceTargetIndex !== null) {
         // Swap the exercise identity in place, keeping the entry's already
         // configured sets — the whole point of replace over remove-then-add.

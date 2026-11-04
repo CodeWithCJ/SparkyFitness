@@ -9,6 +9,7 @@ import FooterActionBar from '../components/FooterActionBar';
 import NfcWaitingCard from '../components/NfcWaitingCard';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import Button from '../components/ui/Button';
 import { useServerConnection, useWaterContainersQuery } from '../hooks';
 import { useActionTagsQuery } from '../hooks/useActionTags';
@@ -126,28 +127,6 @@ const ActionTagsScreen: React.FC<ActionTagsScreenProps> = ({ navigation }) => {
   );
 
   const content = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          title={t('actionTags.list.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('actionTags.list.noServerSubtitle', {
-            defaultValue:
-              'Configure your server connection to manage NFC tags.',
-          })}
-          action={{
-            label: t('actionTags.list.goToSettings', {
-              defaultValue: 'Go to Settings',
-            }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
     if (isLoading || isConnectionLoading) {
       return (
         <StatusView
@@ -256,7 +235,7 @@ const ActionTagsScreen: React.FC<ActionTagsScreenProps> = ({ navigation }) => {
       style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
-      {content()}
+      <ServerGate>{content()}</ServerGate>
       <NfcWaitingCard
         visible={scanning}
         onCancel={() => void cancelNfcRequest()}

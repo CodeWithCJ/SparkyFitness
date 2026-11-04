@@ -218,6 +218,35 @@ const AuthenticationSettings: React.FC = () => {
               </div>
               <div className="flex items-center justify-between p-4 border rounded-md">
                 <div className="flex flex-col">
+                  <Label
+                    htmlFor="enable_magic_link_login"
+                    className="font-medium"
+                  >
+                    {t(
+                      'admin.authenticationSettings.loginManagement.enableMagicLinkLogin',
+                      'Enable Magic Link Login'
+                    )}
+                  </Label>
+                  {settings.is_magic_link_login_env_configured && (
+                    <Badge
+                      variant="outline"
+                      className="mt-1 w-fit bg-blue-50 text-blue-700 border-blue-200"
+                    >
+                      {t('admin.oidcSettings.envConfigured', 'Managed by Env')}
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="enable_magic_link_login"
+                  checked={settings.enable_magic_link_login ?? true}
+                  onCheckedChange={(checked) =>
+                    handleSwitchChange('enable_magic_link_login', checked)
+                  }
+                  disabled={settings.is_magic_link_login_env_configured}
+                />
+              </div>
+              <div className="flex items-center justify-between p-4 border rounded-md">
+                <div className="flex flex-col">
                   <Label htmlFor="is_oidc_active" className="font-medium">
                     {t(
                       'admin.authenticationSettings.loginManagement.enableOidcLoginGlobal',
@@ -420,6 +449,13 @@ const AuthenticationSettings: React.FC = () => {
                 )}
               </p>
               <CopyableEnvVar value="SPARKY_FITNESS_FORCE_PASSKEY_LOGIN=true" />
+              <p className="mt-2">
+                {t(
+                  'admin.authenticationSettings.loginManagement.emergencyFailSafeMagicLinkDescription',
+                  'If magic link login was turned off and you can no longer sign in, force it back on with:'
+                )}
+              </p>
+              <CopyableEnvVar value="SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN=true" />
             </div>
           </div>
         </AccordionContent>

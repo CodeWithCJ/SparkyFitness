@@ -1,7 +1,9 @@
 import Papa from 'papaparse';
 import { getSystemClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import type { PoolClient } from 'pg';
 import { parseZipArchive } from '../utils/zipUtils.js';
+import { beginBulkImport, readBulkImport } from './bulkImports.js';
 import {
   cnfFetch,
   mapCanadianNutrientFood,
@@ -35,32 +37,30 @@ export interface CnfJobStatus {
   lastRunAt?: string;
 }
 
-const jobStatuses = new Map<string, CnfJobStatus>();
+const KIND = 'canadian-nutrient-file';
 
-export function getCnfImportStatus(userId: string): CnfJobStatus {
+function idleStatus(userId: string): CnfJobStatus {
+  return {
+    userId,
+    isRunning: false,
+    status: 'idle',
+    progress: 0,
+    total: 0,
+    processed: 0,
+    imported: 0,
+    updated: 0,
+  };
+}
+
+export async function getCnfImportStatus(
+  userId: string
+): Promise<CnfJobStatus> {
   return (
-    jobStatuses.get(userId) ?? {
-      userId,
-      isRunning: false,
-      status: 'idle',
-      progress: 0,
-      total: 0,
-      processed: 0,
-      imported: 0,
-      updated: 0,
-    }
+    (await readBulkImport<CnfJobStatus>(KIND, userId)) ?? idleStatus(userId)
   );
 }
 
-function updateJobStatus(userId: string, patch: Partial<CnfJobStatus>) {
-  const current = getCnfImportStatus(userId);
-  const updated: CnfJobStatus = {
-    ...current,
-    ...patch,
-  };
-  jobStatuses.set(userId, updated);
-  return updated;
-}
+type UpdateStatus = (patch: Partial<CnfJobStatus>) => Promise<void>;
 
 interface RawFoodNameRow {
   FoodID?: string | number;
@@ -138,7 +138,9 @@ function parseCsv<T>(buffer: Buffer): T[] {
 async function executeCnfImport(
   userId: string,
   zipBuffer: Buffer,
-  options: CnfSyncOptions = {}
+  options: CnfSyncOptions,
+  updateJobStatus: UpdateStatus,
+  client: PoolClient
 ): Promise<{ imported: number; updated: number; total: number }> {
   try {
     const entries = parseZipArchive(zipBuffer);
@@ -291,7 +293,7 @@ async function executeCnfImport(
         ? foodNameRows.slice(0, options.maxFoods)
         : foodNameRows;
     const totalFoods = activeFoodRows.length;
-    updateJobStatus(userId, { total: totalFoods });
+    await updateJobStatus({ total: totalFoods });
 
     // Fetch user's custom nutrients to map
     const customDefs = await customNutrientService
@@ -364,8 +366,6 @@ async function executeCnfImport(
       }
 
       if (preparedFoods.length === 0) continue;
-
-      const client = await getSystemClient();
 
       try {
         await client.query('BEGIN');
@@ -647,13 +647,11 @@ async function executeCnfImport(
       } catch (err) {
         await client.query('ROLLBACK');
         throw err;
-      } finally {
-        client.release();
       }
 
       const processed = Math.min(i + batchSize, totalFoods);
       const progress = Math.round((processed / totalFoods) * 100);
-      updateJobStatus(userId, {
+      await updateJobStatus({
         progress,
         processed,
         imported: importedCount,
@@ -668,7 +666,7 @@ async function executeCnfImport(
       }
     }
 
-    updateJobStatus(userId, {
+    await updateJobStatus({
       isRunning: false,
       status: 'completed',
       progress: 100,
@@ -685,95 +683,78 @@ async function executeCnfImport(
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     log('error', `CNF bulk import failed for user ${userId}: ${msg}`);
-    updateJobStatus(userId, {
-      isRunning: false,
-      status: 'failed',
-      error: msg,
-    });
     throw error;
   }
 }
 
-/**
- * Imports Canadian Nutrient File data from a ZIP archive buffer.
- */
-export async function importCnfFromZipBuffer(
+async function downloadCnfArchive(
   userId: string,
-  zipBuffer: Buffer,
-  options: CnfSyncOptions = {}
-): Promise<{ imported: number; updated: number; total: number }> {
-  const currentStatus = getCnfImportStatus(userId);
-  if (currentStatus.isRunning) {
-    throw new Error('A Canadian Nutrient File import is already running.');
-  }
-
-  updateJobStatus(userId, {
-    isRunning: true,
-    status: 'running',
-    progress: 0,
-    total: 0,
-    processed: 0,
-    imported: 0,
-    updated: 0,
-    error: undefined,
-    lastRunAt: new Date().toISOString(),
+  archiveUrl: string
+): Promise<Buffer> {
+  log('info', `Downloading CNF archive from ${archiveUrl} for user ${userId}`);
+  const res = await cnfFetch(archiveUrl, {
+    headers: {
+      'User-Agent': 'SparkyFitness/1.0',
+    },
   });
 
-  return executeCnfImport(userId, zipBuffer, options);
+  if (!res.ok) {
+    throw new Error(`Failed to download CNF archive: HTTP ${res.status}`);
+  }
+
+  return Buffer.from(await res.arrayBuffer());
 }
 
 /**
- * Downloads a CNF archive ZIP from a given URL and imports it.
+ * Starts a Canadian Nutrient File import from an uploaded ZIP archive or a
+ * URL to download one. Returns null while the user's import runs on any
+ * instance; otherwise once the import is marked running, with its outcome.
  */
-export async function importCnfFromUrl(
+export async function startCnfImport(
   userId: string,
-  archiveUrl: string,
+  source: { zip: Buffer } | { url: string },
   options: CnfSyncOptions = {}
-): Promise<{ imported: number; updated: number; total: number }> {
-  const currentStatus = getCnfImportStatus(userId);
-  if (currentStatus.isRunning) {
-    throw new Error('A Canadian Nutrient File import is already running.');
-  }
-
-  updateJobStatus(userId, {
+): Promise<{
+  done: Promise<{ imported: number; updated: number; total: number }>;
+} | null> {
+  const status: CnfJobStatus = {
+    ...idleStatus(userId),
     isRunning: true,
     status: 'running',
-    progress: 0,
-    total: 0,
-    processed: 0,
-    imported: 0,
-    updated: 0,
-    error: undefined,
     lastRunAt: new Date().toISOString(),
-  });
+  };
+  const job = await beginBulkImport(KIND, userId, status);
+  if (!job) return null;
 
-  try {
-    log(
-      'info',
-      `Downloading CNF archive from ${archiveUrl} for user ${userId}`
-    );
-    const res = await cnfFetch(archiveUrl, {
-      headers: {
-        'User-Agent': 'SparkyFitness/1.0',
-      },
-    });
-
-    if (!res.ok) {
-      throw new Error(`Failed to download CNF archive: HTTP ${res.status}`);
+  const done = (async () => {
+    try {
+      const zip =
+        'zip' in source
+          ? source.zip
+          : await downloadCnfArchive(userId, source.url);
+      return await executeCnfImport(
+        userId,
+        zip,
+        options,
+        (patch) => job.save(Object.assign(status, patch)),
+        job.client
+      );
+    } catch (error) {
+      Object.assign(status, {
+        isRunning: false,
+        status: 'failed',
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    } finally {
+      await job
+        .finish(status)
+        .catch((error) =>
+          log('error', 'Could not save the CNF import status:', error)
+        );
     }
-
-    const arrayBuffer = await res.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    return await executeCnfImport(userId, buffer, options);
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    updateJobStatus(userId, {
-      isRunning: false,
-      status: 'failed',
-      error: errorMsg,
-    });
-    throw error;
-  }
+  })();
+  return { done };
 }
 
 /**
@@ -800,7 +781,6 @@ export async function deleteCnfLibraryFoods(
 
 export default {
   getCnfImportStatus,
-  importCnfFromZipBuffer,
-  importCnfFromUrl,
+  startCnfImport,
   deleteCnfLibraryFoods,
 };
