@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  localDateTimeToUtc,
   isDayString,
   dayOfWeek,
   addDays,
@@ -594,5 +595,37 @@ describe('instantForDay', () => {
         '2026-06-01'
       );
     }
+  });
+});
+
+describe('localDateTimeToUtc on clock-change days', () => {
+  // One rule east and west of UTC: a time in the missing hour moves forward
+  // by the change, and a time in the repeated hour is its second occurrence.
+  it.each([
+    ['Europe/Berlin', '2026-03-29T02:30', '2026-03-29T01:30:00.000Z'],
+    ['America/New_York', '2026-03-08T02:30', '2026-03-08T07:30:00.000Z'],
+    ['America/Los_Angeles', '2026-03-08T02:30', '2026-03-08T10:30:00.000Z'],
+    ['Australia/Sydney', '2026-10-04T02:30', '2026-10-03T16:30:00.000Z'],
+  ])('moves %s %s in the missing hour forward', (tz, local, expected) => {
+    expect(localDateTimeToUtc(local, tz).toISOString()).toBe(expected);
+  });
+
+  it.each([
+    ['Europe/Berlin', '2026-10-25T02:30', '2026-10-25T01:30:00.000Z'],
+    ['America/New_York', '2026-11-01T01:30', '2026-11-01T06:30:00.000Z'],
+    ['America/Los_Angeles', '2026-11-01T01:30', '2026-11-01T09:30:00.000Z'],
+    ['Australia/Sydney', '2026-04-05T02:30', '2026-04-04T16:30:00.000Z'],
+    ['Australia/Lord_Howe', '2026-04-05T01:45', '2026-04-04T15:15:00.000Z'],
+  ])('takes the second occurrence of %s %s', (tz, local, expected) => {
+    expect(localDateTimeToUtc(local, tz).toISOString()).toBe(expected);
+  });
+
+  it.each([
+    ['Europe/Berlin', '2026-10-25T09:30', '2026-10-25T08:30:00.000Z'],
+    ['America/New_York', '2026-11-01T09:30', '2026-11-01T14:30:00.000Z'],
+    ['Asia/Kolkata', '2026-06-01T23:59', '2026-06-01T18:29:00.000Z'],
+    ['UTC', '2026-06-01T00:00', '2026-06-01T00:00:00.000Z'],
+  ])('converts %s %s outside a change as before', (tz, local, expected) => {
+    expect(localDateTimeToUtc(local, tz).toISOString()).toBe(expected);
   });
 });
