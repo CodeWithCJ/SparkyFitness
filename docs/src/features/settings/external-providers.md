@@ -54,6 +54,16 @@ If you substitute an ingredient or change an amount for one cooking session, kee
 
 A source conflict requires a fresh import and review. If the remote result cannot be confirmed, inspect the recipe in Mealie before trying again: a timed-out update may already have reached it. The saved SparkyFitness meal remains available even when sync fails.
 
+::: details Android example with a test recipe
+
+The ingredient import is available from the meals library. In this example, the saved whole dish weighs **1,800 g** and contains **2,400 kcal**. Logging **450 g** through the normal meal flow records **600 kcal**.
+
+![Mealie ingredient import in the Android meals library](/integrations/mealie/ingredients-after.png)
+
+![A 450 g portion calculated as 600 kcal](/integrations/mealie/weighed-portion.png)
+
+:::
+
 ## Hevy automatic sync
 
 When adding or editing a Hevy provider, choose **Manual**, **Hourly**, or **Daily at 21:00** under **Sync Frequency**. New connections default to **Manual**, and existing manual connections stay manual until you change the setting. Keep the provider active to enable automatic sync.
