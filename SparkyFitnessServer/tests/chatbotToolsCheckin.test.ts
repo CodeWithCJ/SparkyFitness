@@ -1153,10 +1153,10 @@ describe('list_checkin_diary', () => {
         '- 12:00 8/10 — Good\n' +
         '\n' +
         '## Sleep\n' +
-        '- 7h 30m | score: 85/100 | bed: 2026-05-31T23:30:00.000Z | wake: 2026-06-01T07:00:00.000Z | (manual)\n' +
+        '- 7h 30m | score: 85/100 | bed: 2026-05-31 23:30 | wake: 2026-06-01 07:00 | (manual)\n' +
         '\n' +
         '## Fasting\n' +
-        '- ACTIVE (16:8): 2026-06-01T20:00:00.000Z\n' +
+        '- ACTIVE (16:8): 2026-06-01 20:00\n' +
         '\n' +
         '## Custom Metrics\n' +
         '- **Blood Pressure**: 120\n' +
@@ -1164,7 +1164,7 @@ describe('list_checkin_diary', () => {
     );
   });
 
-  it('renders fasting timestamps from pg Date objects as ISO-8601 strings', async () => {
+  it('renders fasting times from pg Date objects as local date and time', async () => {
     mockEmptyDiary();
     vi.mocked(fastingRepository.getFastingLogsOverlappingDay).mockResolvedValue(
       [
@@ -1186,7 +1186,7 @@ describe('list_checkin_diary', () => {
     expect(result).toBe(
       '### Check-in Diary: 2026-06-01\n\n' +
         '## Fasting\n' +
-        '- COMPLETED (16:8): 2026-06-01T20:00:00.000Z → 2026-06-02T12:00:00.000Z\n' +
+        '- COMPLETED (16:8): 2026-06-01 20:00 → 2026-06-02 12:00\n' +
         '\n'
     );
     expect(fastingRepository.getFastingLogsOverlappingDay).toHaveBeenCalledWith(
@@ -1592,5 +1592,515 @@ describe('error handling', () => {
       entryDate: '2026-06-01',
       entryTimestamp: NOON_JUNE_1,
     });
+  });
+});
+
+// #3378: tool results must give the model local times and stay small enough
+// for a 16K-context local model.
+describe('check-in tool output size and local times', () => {
+  const rawStress = JSON.stringify(
+    Array.from({ length: 400 }, (_, i) => [1780000000000 + i * 180000, 30])
+  );
+
+  it('shows sleep and fasting times in local time, using the recording zone for sleep', async () => {
+    tools = buildCheckinTools('user-1', 'America/New_York');
+    mockEmptyDiary();
+    vi.mocked(
+      sleepRepository.getSleepEntriesByUserIdAndDateRange
+    ).mockResolvedValue([
+      {
+        id: 's1',
+        entry_date: '2026-11-02',
+        duration_in_seconds: 26700,
+        bedtime: '2026-11-02T03:13:31.000Z',
+        wake_time: '2026-11-02T11:00:31.000Z',
+        source: 'garmin',
+        created_at: '2026-11-02T12:00:00Z',
+      },
+      {
+        id: 's2',
+        entry_date: '2026-11-02',
+        duration_in_seconds: 1800,
+        bedtime: '2026-11-02T13:00:00.000Z',
+        wake_time: '2026-11-02T13:30:00.000Z',
+        source: 'manual',
+        record_timezone: 'Europe/Berlin',
+        created_at: '2026-11-02T14:00:00Z',
+      },
+    ]);
+    vi.mocked(fastingRepository.getFastingLogsOverlappingDay).mockResolvedValue(
+      [
+        {
+          id: 'f1',
+          start_time: '2026-11-02T01:00:00.000Z',
+          end_time: '2026-11-02T17:00:00.000Z',
+          status: 'COMPLETED',
+          fasting_type: '16:8',
+        },
+      ]
+    );
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'list_checkin_diary', entry_date: '2026-11-02' },
+      opts
+    );
+
+    expect(result).toBe(
+      '### Check-in Diary: 2026-11-02\n\n' +
+        '## Sleep\n' +
+        '- 7h 25m | bed: 2026-11-01 22:13 | wake: 2026-11-02 06:00 | (garmin)\n' +
+        '- 0h 30m | bed: 2026-11-02 14:00 | wake: 2026-11-02 14:30 | times in Europe/Berlin | (manual)\n' +
+        '\n' +
+        '## Fasting\n' +
+        '- COMPLETED (16:8): 2026-11-01 20:00 → 2026-11-02 12:00\n' +
+        '\n'
+    );
+  });
+
+  it('leaves raw data series out of the diary and rounds long decimals', async () => {
+    mockEmptyDiary();
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDate
+    ).mockResolvedValue([
+      {
+        id: 'm1',
+        value: rawStress,
+        notes: 'Source: Garmin',
+        entry_date: '2026-06-01',
+        created_at: '2026-06-01T09:00:00Z',
+        custom_categories: {
+          name: 'Raw Stress Data',
+          measurement_type: 'JSON',
+        },
+      },
+      {
+        id: 'm2',
+        value: '42.666666667',
+        notes: null,
+        entry_date: '2026-06-01',
+        created_at: '2026-06-01T09:00:00Z',
+        custom_categories: { name: 'HRV', measurement_type: 'ms' },
+      },
+    ]);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'list_checkin_diary', entry_date: '2026-06-01' },
+      opts
+    );
+
+    expect(result).toBe(
+      '### Check-in Diary: 2026-06-01\n\n' +
+        '## Custom Metrics\n' +
+        '- **HRV**: 42.67\n' +
+        '- **Raw Stress Data**: (raw data series, not shown) — Source: Garmin\n' +
+        '\n'
+    );
+  });
+
+  const historyRows = [
+    {
+      id: 'c1',
+      value: '40.25',
+      entry_date: '2026-11-01',
+      custom_categories: {
+        id: 'k1',
+        name: 'hrv_last_night_avg',
+        display_name: 'HRV Last Night Average',
+        measurement_type: 'ms',
+      },
+    },
+    {
+      id: 'c2',
+      value: rawStress,
+      entry_date: '2026-11-01',
+      custom_categories: {
+        id: 'k2',
+        name: 'Raw Stress Data',
+        measurement_type: 'JSON',
+      },
+    },
+    {
+      id: 'c3',
+      value: '42.333333',
+      entry_date: '2026-11-02',
+      custom_categories: {
+        id: 'k1',
+        name: 'hrv_last_night_avg',
+        display_name: 'HRV Last Night Average',
+        measurement_type: 'ms',
+      },
+    },
+    {
+      id: 'c4',
+      value: '3',
+      entry_date: '2026-11-02',
+      custom_categories: {
+        id: 'k3',
+        name: 'Headache',
+        measurement_type: 'N/A',
+      },
+    },
+  ];
+
+  it('returns compact custom metric history, newest day first', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue(historyRows);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'get_custom_metrics_history',
+        start_date: '2026-11-01',
+        end_date: '2026-11-02',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\n' +
+        '## 2026-11-02\n' +
+        '- HRV Last Night Average: 42.33 ms\n' +
+        '- Headache: 3\n\n' +
+        '## 2026-11-01\n' +
+        '- HRV Last Night Average: 40.25 ms\n' +
+        '- Raw Stress Data: (raw data series, not shown)'
+    );
+  });
+
+  it('filters custom metric history by category name or display name', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue(historyRows);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'get_custom_metrics_history',
+        category_name: 'hrv last night average',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\n' +
+        '## 2026-11-02\n' +
+        '- HRV Last Night Average: 42.33 ms\n\n' +
+        '## 2026-11-01\n' +
+        '- HRV Last Night Average: 40.25 ms'
+    );
+  });
+
+  it('filters custom metric history by stored category name', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue(historyRows);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'get_custom_metrics_history',
+        category_name: 'hrv_last_night_avg',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\n' +
+        '## 2026-11-02\n' +
+        '- HRV Last Night Average: 42.33 ms\n\n' +
+        '## 2026-11-01\n' +
+        '- HRV Last Night Average: 40.25 ms'
+    );
+  });
+
+  it('matches a stored category name that has surrounding spaces', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue([
+      {
+        id: 'c5',
+        value: '61',
+        entry_date: '2026-11-02',
+        custom_categories: { id: 'k5', name: ' HRV ', measurement_type: 'ms' },
+      },
+    ]);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: 'HRV' },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\n## 2026-11-02\n- HRV: 61 ms'
+    );
+  });
+
+  it('prefers a stored-name match over another category with that display name', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue([
+      {
+        id: 'c6',
+        value: '61',
+        entry_date: '2026-11-02',
+        custom_categories: { id: 'k6', name: 'HRV', measurement_type: 'ms' },
+      },
+      {
+        id: 'c7',
+        value: '48',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k7',
+          name: 'hrv_last_night_avg',
+          display_name: 'HRV',
+          measurement_type: 'ms',
+        },
+      },
+    ]);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: 'hrv' },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\n## 2026-11-02\n- HRV: 61 ms'
+    );
+  });
+
+  it('asks for the stored name when two metrics share a display name', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue([
+      {
+        id: 'c10',
+        value: '61',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k10',
+          name: 'garmin_hrv',
+          display_name: 'HRV',
+          measurement_type: 'ms',
+        },
+      },
+      {
+        id: 'c11',
+        value: '48',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k11',
+          name: 'oura_hrv',
+          display_name: 'HRV',
+          measurement_type: 'ms',
+        },
+      },
+    ]);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: 'HRV' },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\nSeveral metrics match "HRV": garmin_hrv, oura_hrv. Ask again with one of these names as category_name.'
+    );
+  });
+
+  it('uses an exact stored-name match over one differing only in case', async () => {
+    const rows = [
+      {
+        id: 'c12',
+        value: '61',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k12',
+          name: 'garmin_hrv',
+          measurement_type: 'ms',
+        },
+      },
+      {
+        id: 'c13',
+        value: '48',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k13',
+          name: 'Garmin_HRV',
+          measurement_type: 'ms',
+        },
+      },
+    ];
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue(rows);
+
+    const exact = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: 'Garmin_HRV' },
+      opts
+    );
+    expect(exact).toBe(
+      '# Custom Metrics History\n\n## 2026-11-02\n- Garmin_HRV: 48 ms'
+    );
+
+    const otherCase = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: 'GARMIN_HRV' },
+      opts
+    );
+    expect(otherCase).toBe(
+      '# Custom Metrics History\n\nSeveral metrics match "GARMIN_HRV": garmin_hrv, Garmin_HRV. Ask again with one of these names as category_name.'
+    );
+  });
+
+  it('labels a metric by its name when the display name is blank', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue([
+      {
+        id: 'c8',
+        value: '7',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k8',
+          name: 'Energy',
+          display_name: '   ',
+          measurement_type: 'N/A',
+        },
+      },
+    ]);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history' },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\n## 2026-11-02\n- Energy: 7'
+    );
+  });
+
+  it('rejects a blank category_name instead of returning every metric', async () => {
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: '   ' },
+      opts
+    );
+
+    expect(String(result)).not.toContain('# Custom Metrics History');
+    expect(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).not.toHaveBeenCalled();
+  });
+
+  it('keeps a decimal too large to round as written', async () => {
+    const huge = `${'9'.repeat(320)}.123`;
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue([
+      {
+        id: 'c9',
+        value: huge,
+        entry_date: '2026-11-02',
+        custom_categories: { id: 'k9', name: 'Big', measurement_type: 'N/A' },
+      },
+    ]);
+
+    const result = String(
+      await tools.sparky_manage_checkin.execute!(
+        { action: 'get_custom_metrics_history' },
+        opts
+      )
+    );
+
+    expect(result).not.toContain('Infinity');
+    expect(result).toContain(`- Big: ${huge}`);
+  });
+
+  it('names an offset-only recording zone on the sleep line', async () => {
+    mockEmptyDiary();
+    vi.mocked(
+      sleepRepository.getSleepEntriesByUserIdAndDateRange
+    ).mockResolvedValue([
+      {
+        id: 's3',
+        entry_date: '2026-06-01',
+        duration_in_seconds: 28800,
+        bedtime: '2026-05-31T17:00:00.000Z',
+        wake_time: '2026-06-01T01:00:00.000Z',
+        source: 'manual',
+        record_utc_offset_minutes: 330,
+        created_at: '2026-06-01T02:00:00Z',
+      },
+    ]);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'list_checkin_diary', entry_date: '2026-06-01' },
+      opts
+    );
+
+    expect(result).toContain(
+      '- 8h 0m | bed: 2026-05-31 22:30 | wake: 2026-06-01 06:30 | times in UTC+05:30 | (manual)\n'
+    );
+  });
+
+  it('says so when no custom metric matches', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue(historyRows);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: 'Glucose' },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\nNo custom metrics found for "Glucose" in this range.'
+    );
+  });
+
+  it('keeps the newest days when a long history is cut short', async () => {
+    const days = Array.from({ length: 400 }, (_, i) => ({
+      id: `h${i}`,
+      value: '50',
+      entry_date: `2025-${String(Math.floor(i / 28) + 1).padStart(2, '0')}-${String((i % 28) + 1).padStart(2, '0')}`,
+      custom_categories: { id: 'k1', name: 'HRV', measurement_type: 'ms' },
+    })).filter((row) => Number(row.entry_date.slice(5, 7)) <= 12);
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue(days);
+
+    const result = (await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history' },
+      opts
+    )) as string;
+
+    const newest = days[days.length - 1]!.entry_date;
+    expect(
+      result.startsWith(`# Custom Metrics History\n\n## ${newest}\n`)
+    ).toBe(true);
+    expect(result).toContain('Older days were left out.');
+    // The cut falls between whole lines, never inside one.
+    const kept = result.split('\n\n---\n')[0]!;
+    expect(
+      kept.endsWith('- HRV: 50 ms') || /## \d{4}-\d{2}-\d{2}$/.test(kept)
+    ).toBe(true);
+    expect(result).not.toContain(`## ${days[0]!.entry_date}\n`);
+  });
+
+  it('leaves raw data series out of the biometrics history', async () => {
+    vi.mocked(
+      measurementService.getCheckInMeasurementsByDateRange
+    ).mockResolvedValue([]);
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue([historyRows[1]!, historyRows[0]!]);
+
+    const result = (await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'get_biometrics_history',
+        start_date: '2026-11-01',
+        end_date: '2026-11-01',
+      },
+      opts
+    )) as string;
+
+    expect(result).not.toContain('1780000000000');
+    expect(result).toContain('"value":"(raw data series, not shown)"');
+    expect(result).toContain('"value":"40.25"');
   });
 });

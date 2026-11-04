@@ -14,11 +14,7 @@ import {
   hasEnrichedSession,
   sessionTelemetryKey,
 } from '../shared/enrichedSessionCache';
-import {
-  isClientUnavailableError,
-  isPermanentlyUnavailableError,
-  isQuotaExceededError,
-} from '../shared/quotaError';
+import { isRetryableHealthReadError } from '../shared/quotaError';
 import type {
   WorkoutGpsPoint,
   WorkoutHrSample,
@@ -473,7 +469,8 @@ async function readSeriesForWindow(
     // A quota or dead-client failure says nothing about whether this session
     // has the series — it is the same read failing for everyone. Surface it so
     // the session is not cached as "collected, nothing there".
-    if (isRetryableReadError(error)) throw new RetryableTelemetryError(error);
+    if (isRetryableHealthReadError(error))
+      throw new RetryableTelemetryError(error);
     // Explicitly unsupported or unauthorized: a stable answer, treat as absent.
     return [];
   }
@@ -641,11 +638,6 @@ class RetryableTelemetryError extends Error {
     this.name = 'RetryableTelemetryError';
   }
 }
-
-const isRetryableReadError = (error: unknown): boolean =>
-  isQuotaExceededError(error) ||
-  isClientUnavailableError(error) ||
-  !isPermanentlyUnavailableError(error);
 
 const round = (value: number | null, digits = 2): number | null =>
   value === null ? null : Number(value.toFixed(digits));
