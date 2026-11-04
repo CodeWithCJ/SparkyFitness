@@ -75,6 +75,11 @@ describe('queryClient re-checks the server connection on failures (#3385)', () =
     }
   );
 
+  test('does not re-check after an app error, such as failed validation', () => {
+    onError(new Error('Serving size is required'), dataQuery);
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+
   test('does not re-check after a cancelled request', () => {
     const cancelled = new Error('Request cancelled');
     cancelled.name = 'AbortError';
@@ -152,5 +157,48 @@ describe('queryClient trailing and mutation re-checks (#3385)', () => {
   test('a mutation the server rejected with a 4xx does not re-check', () => {
     mutationOnError(new ApiError('x', 400));
     expect(invalidate).not.toHaveBeenCalled();
+  });
+});
+
+describe('queryClient reloads screen data after a reconnect (#3385)', () => {
+  const connectionKey = ['serverConnection'];
+  let invalidate: jest.SpyInstance;
+
+  beforeEach(() => {
+    invalidate = jest
+      .spyOn(queryClient, 'invalidateQueries')
+      .mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    queryClient.removeQueries({ queryKey: connectionKey });
+    jest.restoreAllMocks();
+  });
+
+  const reloadCalls = () =>
+    invalidate.mock.calls.filter(([filters]) => 'predicate' in filters);
+
+  test('marks every data query stale, but not the check, when the server comes back', () => {
+    queryClient.setQueryData(connectionKey, false);
+    expect(reloadCalls()).toHaveLength(0);
+
+    queryClient.setQueryData(connectionKey, true);
+    expect(reloadCalls()).toHaveLength(1);
+    const { predicate } = reloadCalls()[0][0];
+    expect(predicate({ queryKey: ['dailySummary', '2026-11-03'] })).toBe(true);
+    expect(predicate({ queryKey: connectionKey })).toBe(false);
+  });
+
+  test('leaves screen data alone while the connection stays up', () => {
+    queryClient.setQueryData(connectionKey, true);
+    invalidate.mockClear();
+    queryClient.setQueryData(connectionKey, true);
+    expect(reloadCalls()).toHaveLength(0);
+  });
+
+  test('leaves screen data alone while the server is still down', () => {
+    queryClient.setQueryData(connectionKey, false);
+    queryClient.setQueryData(connectionKey, false);
+    expect(reloadCalls()).toHaveLength(0);
   });
 });

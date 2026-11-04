@@ -15,16 +15,16 @@ let trailingServerRecheck: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * True when a failed request suggests the server itself is not answering: a
- * network error, a timeout, or a 5xx/429 (often a reverse proxy in front of a
- * stopped server). A 4xx answer means the server responded, and a cancelled
- * request is not a failure.
+ * network error (React Native's fetch rejects with a TypeError), a timeout, or
+ * a 5xx/429 (often a reverse proxy in front of a stopped server). A 4xx means
+ * the server answered; app errors such as validation or a cancelled request
+ * say nothing about the connection.
  */
 function serverMayBeDown(error: unknown): boolean {
   if (error instanceof ApiError) {
     return error.statusCode >= 500 || error.statusCode === 429;
   }
-  if (error instanceof TimeoutError) return true;
-  return !(error instanceof Error && error.name === 'AbortError');
+  return error instanceof TimeoutError || error instanceof TypeError;
 }
 
 /**
@@ -93,4 +93,22 @@ export const queryClient = new QueryClient({
       retry: 0,
     },
   },
+});
+
+// Screen data uses staleTime: Infinity, so a screen let back in by `ServerGate`
+// would keep showing its pre-outage cache (or the failed load's error). When
+// the connection check goes from down to up, by Try again, focus, a re-check
+// or a server switch, mark every data query stale so visible screens reload.
+// Checks that stay connected change nothing.
+let lastKnownConnected: boolean | undefined;
+queryClient.getQueryCache().subscribe((event) => {
+  if (event.type !== 'updated' || event.action.type !== 'success') return;
+  if (event.query.queryKey[0] !== serverConnectionQueryKey[0]) return;
+  const connected = event.query.state.data === true;
+  const reconnected = connected && lastKnownConnected === false;
+  lastKnownConnected = connected;
+  if (!reconnected) return;
+  void queryClient.invalidateQueries({
+    predicate: (query) => query.queryKey[0] !== serverConnectionQueryKey[0],
+  });
 });
