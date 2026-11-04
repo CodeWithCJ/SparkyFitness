@@ -1833,6 +1833,66 @@ describe('check-in tool output size and local times', () => {
     );
   });
 
+  it('prefers a stored-name match over another category with that display name', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue([
+      {
+        id: 'c6',
+        value: '61',
+        entry_date: '2026-11-02',
+        custom_categories: { id: 'k6', name: 'HRV', measurement_type: 'ms' },
+      },
+      {
+        id: 'c7',
+        value: '48',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k7',
+          name: 'hrv_last_night_avg',
+          display_name: 'HRV',
+          measurement_type: 'ms',
+        },
+      },
+    ]);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: 'hrv' },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\n## 2026-11-02\n- HRV: 61 ms'
+    );
+  });
+
+  it('labels a metric by its name when the display name is blank', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue([
+      {
+        id: 'c8',
+        value: '7',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k8',
+          name: 'Energy',
+          display_name: '   ',
+          measurement_type: 'N/A',
+        },
+      },
+    ]);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history' },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\n## 2026-11-02\n- Energy: 7'
+    );
+  });
+
   it('rejects a blank category_name instead of returning every metric', async () => {
     const result = await tools.sparky_manage_checkin.execute!(
       { action: 'get_custom_metrics_history', category_name: '   ' },
