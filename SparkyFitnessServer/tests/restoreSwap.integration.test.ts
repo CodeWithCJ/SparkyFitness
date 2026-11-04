@@ -439,6 +439,44 @@ describe.skipIf(!runnable)('restore by staging and swap (PostgreSQL)', () => {
     await admin.query(`DROP DATABASE ${retired[0]}`);
   }, 120_000);
 
+  it('waits for a connection while the database is closed for a swap', async () => {
+    await resetLive();
+    const { requestConnectRetry } = await import('../db/connectRetry.js');
+    const { windowMs } = requestConnectRetry;
+    requestConnectRetry.windowMs = 5_000;
+    await admin.query(`ALTER DATABASE ${DB_NAME} WITH ALLOW_CONNECTIONS false`);
+    try {
+      await admin.query(
+        'SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1',
+        [DB_NAME]
+      );
+      await expect(asOwner().connect()).rejects.toMatchObject({
+        code: '55000',
+      });
+      // The pool notices its ended connections a moment after they end.
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      let connected = false;
+      const waiting = poolManager.getSystemClient().then((client) => {
+        connected = true;
+        return client;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(connected).toBe(false);
+      await admin.query(
+        `ALTER DATABASE ${DB_NAME} WITH ALLOW_CONNECTIONS true`
+      );
+
+      const client = await waiting;
+      await client.query('SELECT 1');
+      client.release();
+    } finally {
+      requestConnectRetry.windowMs = windowMs;
+      await admin.query(
+        `ALTER DATABASE ${DB_NAME} WITH ALLOW_CONNECTIONS true`
+      );
+    }
+  }, 30_000);
+
   it('stops a scheduled job that was running before the swap', async () => {
     await resetLive();
     restoreLock.resetRestoreCheckForTests();
