@@ -278,6 +278,36 @@ enum ContextPayloadMapper {
         return WatchRouteSync(route: route, updatedAt: updatedAt)
     }
 
+    /// The wearer's custom complications from a `complicationConfig`, with the
+    /// revision they were sent at. Entries without an id, name or source are
+    /// dropped; anything else missing takes a plain default, so a newer phone
+    /// that adds a field does not break this build.
+    static func complicationConfig(
+        from payload: [String: Any]
+    ) -> (revision: Double, definitions: [ComplicationPublisher.CustomDefinition])? {
+        guard
+            let revision = doubleValue(payload["revision"]),
+            let raw = payload["definitions"] as? [[String: Any]]
+        else { return nil }
+        let definitions = raw.compactMap { entry -> ComplicationPublisher.CustomDefinition? in
+            guard
+                let id = entry["id"] as? String, !id.isEmpty,
+                let name = entry["name"] as? String, !name.isEmpty,
+                let source = entry["source"] as? String, !source.isEmpty
+            else { return nil }
+            return ComplicationPublisher.CustomDefinition(
+                id: id,
+                name: name,
+                source: source,
+                format: entry["format"] as? String ?? "value",
+                gauge: entry["gauge"] as? Bool ?? false,
+                color: entry["color"] as? String ?? "neutral",
+                icon: entry["icon"] as? String ?? "gauge.with.dots.needle.33percent"
+            )
+        }
+        return (revision, definitions)
+    }
+
     /// The route id a `routeRemove` names.
     static func routeRemoveId(from payload: [String: Any]) -> String? {
         (payload["routeId"] as? String).flatMap { $0.isEmpty ? nil : $0 }

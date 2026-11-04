@@ -2,13 +2,13 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-// PHASE 0 SPIKE for user-defined complications: one configurable complication
-// whose picker lists the definitions the watch app saved to the app group.
-// It answers two questions before the builder is written: does an AppEntity
-// picker work for a watchOS complication, and does a definition written by the
-// watch app show up in it. Values come from the snapshots the other
-// complications already use. Helpers are file-private for the reason spelled
-// out at the top of WaterGoalComplication.
+// The wearer's own complications. One configurable complication whose picker
+// lists the definitions the phone sent (`complicationConfig`, saved by
+// ComplicationPublisher under `customComplicationDefinitions`), so any number
+// can be made and each watch-face slot picks one. What a definition shows comes
+// from `customMetricsSnapshot`, the numbers the watch app copies out of its
+// context. Helpers are file-private for the reason spelled out at the top of
+// WaterGoalComplication.
 
 private let customDateFormatter: DateFormatter = {
     let formatter = DateFormatter()
@@ -26,11 +26,17 @@ private func customDefaults() -> UserDefaults? {
     return UserDefaults(suiteName: appGroup)
 }
 
-/// Mirrors `ComplicationPublisher.CustomDefinition` (targets/watch).
+/// Mirrors `ComplicationPublisher.CustomDefinition` (targets/watch). Every
+/// field but the first three is optional so a list written by a build that
+/// lacked one still decodes.
 private struct StoredDefinition: Decodable {
     let id: String
     let name: String
     let source: String
+    let format: String?
+    let gauge: Bool?
+    let color: String?
+    let icon: String?
 }
 
 private func loadDefinitions() -> [StoredDefinition] {
@@ -41,63 +47,155 @@ private func loadDefinitions() -> [StoredDefinition] {
     return list
 }
 
-private struct ProgressPayload: Decodable {
-    let date: String?
-    let calorieGoalProgress: Double?
-    let progress: Double?
-    let count: Int?
-    let goal: Int?
-}
-
-/// Today's 0...1 progress for a source key, or 0 when there is none yet.
-private func loadProgress(source: String) -> Double {
+/// Mirrors `CustomMetric` (targets/watch).
+private struct StoredMetric: Decodable {
     let key: String
-    switch source {
-    case "calories": key = "energyGoalSnapshot"
-    case "water": key = "waterGoalSnapshot"
-    case "steps": key = "stepsSnapshot"
-    default: return 0
-    }
-    guard
-        let data = customDefaults()?.data(forKey: key),
-        let payload = try? JSONDecoder().decode(ProgressPayload.self, from: data),
-        payload.date == customDateFormatter.string(from: Date())
-    else { return 0 }
     let value: Double
-    switch source {
-    case "calories": value = payload.calorieGoalProgress ?? 0
-    case "water": value = payload.progress ?? 0
-    default:
-        guard let count = payload.count, let goal = payload.goal, goal > 0 else { return 0 }
-        value = Double(count) / Double(goal)
-    }
-    return max(0, min(1, value))
+    let goal: Double?
+    let progress: Double?
+    let decimals: Int?
+    let day: String?
+    let startedAt: Double?
+    let targetEndAt: Double?
 }
 
-struct CustomComplicationEntity: AppEntity {
+private struct StoredMetrics: Decodable {
+    let metrics: [StoredMetric]
+}
+
+/// The metric a source names, unless it describes another day.
+private func loadMetric(source: String, now: Date) -> StoredMetric? {
+    guard
+        let data = customDefaults()?.data(forKey: "customMetricsSnapshot"),
+        let stored = try? JSONDecoder().decode(StoredMetrics.self, from: data),
+        let metric = stored.metrics.first(where: { $0.key == source })
+    else { return nil }
+    if let day = metric.day, day != customDateFormatter.string(from: now) { return nil }
+    return metric
+}
+
+private func formatted(_ value: Double, decimals: Int) -> String {
+    value.formatted(.number.precision(.fractionLength(decimals)))
+}
+
+private func percentText(_ progress: Double) -> String {
+    "\(Int((max(0, min(1, progress)) * 100).rounded()))%"
+}
+
+/// Elapsed or remaining time as H:MM.
+private func clockText(_ seconds: TimeInterval) -> String {
+    let minutes = Int(max(0, seconds) / 60)
+    return String(format: "%d:%02d", minutes / 60, minutes % 60)
+}
+
+/// The text and the 0...1 fill for a definition, or dashes when its number
+/// isn't there. A format that needs a figure the metric lacks (percent without
+/// progress, remaining without a goal) shows the plain value instead.
+private func display(
+    _ definition: StoredDefinition,
+    metric: StoredMetric?,
+    now: Date
+) -> (text: String, progress: Double?) {
+    guard let metric else { return ("–", nil) }
+    let format = definition.format ?? "value"
+
+    if definition.source == "fasting" {
+        // Not fasting: no start time.
+        guard let started = metric.startedAt else { return ("–", nil) }
+        let elapsed = max(0, now.timeIntervalSince1970 - started / 1000)
+        var progress: Double?
+        var remaining: TimeInterval?
+        if let target = metric.targetEndAt {
+            let total = (target - started) / 1000
+            if total > 0 {
+                progress = min(1, elapsed / total)
+                remaining = max(0, total - elapsed)
+            }
+        }
+        if format == "percent", let progress { return (percentText(progress), progress) }
+        if format == "remaining", let remaining { return (clockText(remaining), progress) }
+        return (clockText(elapsed), progress)
+    }
+
+    let decimals = metric.decimals ?? 0
+    if format == "percent", let progress = metric.progress {
+        return (percentText(progress), progress)
+    }
+    if format == "remaining", let goal = metric.goal {
+        return (formatted(max(0, goal - metric.value), decimals: decimals), metric.progress)
+    }
+    return (formatted(metric.value, decimals: decimals), metric.progress)
+}
+
+private func tint(_ color: String?) -> Color {
+    switch color {
+    case "calories": return ComplicationPalette.calories
+    case "protein": return ComplicationPalette.protein
+    case "carbs": return ComplicationPalette.carbs
+    case "fat": return ComplicationPalette.fat
+    case "water": return .cyan
+    case "steps": return .mint
+    case "fasting": return .orange
+    case "weight": return .teal
+    default: return .white
+    }
+}
+
+/// A tap goes to the page that matches what the complication shows.
+private func link(for source: String) -> ComplicationLink {
+    switch source {
+    case "water": return .water
+    case "steps": return .steps
+    case "fasting": return .fasting
+    default: return .goals
+    }
+}
+
+struct CustomComplicationEntity: AppEntity, Sendable {
     static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Complication")
     static let defaultQuery = CustomComplicationQuery()
 
-    var id: String
-    var name: String
-    var source: String
+    let id: String
+    let name: String
+    let icon: String
 
+    // The name is the wearer's own text, so it is passed as a literal rather
+    // than as a localisable string.
     var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(name)")
+        DisplayRepresentation(
+            title: .init(stringLiteral: name),
+            image: .init(systemName: icon)
+        )
     }
 }
 
-struct CustomComplicationQuery: EntityQuery {
-    private func all() -> [CustomComplicationEntity] {
-        loadDefinitions().map { CustomComplicationEntity(id: $0.id, name: $0.name, source: $0.source) }
-    }
-
-    func entities(for identifiers: [String]) async throws -> [CustomComplicationEntity] {
+struct CustomComplicationQuery: EntityQuery, EntityStringQuery {
+    func entities(for identifiers: [CustomComplicationEntity.ID]) async throws -> [CustomComplicationEntity] {
         all().filter { identifiers.contains($0.id) }
     }
 
-    func suggestedEntities() async throws -> [CustomComplicationEntity] {
-        all()
+    func entities(matching string: String) async throws -> IntentItemCollection<CustomComplicationEntity> {
+        .init(items: all().filter { string.isEmpty || $0.name.localizedCaseInsensitiveContains(string) })
+    }
+
+    func suggestedEntities() async throws -> IntentItemCollection<CustomComplicationEntity> {
+        .init(items: all())
+    }
+
+    /// A slot starts on the first complication, so adding one shows something
+    /// before the wearer has picked.
+    func defaultResult() async -> CustomComplicationEntity? {
+        all().first
+    }
+
+    private func all() -> [CustomComplicationEntity] {
+        loadDefinitions().map {
+            CustomComplicationEntity(
+                id: $0.id,
+                name: $0.name,
+                icon: $0.icon ?? "gauge.with.dots.needle.33percent"
+            )
+        }
     }
 }
 
@@ -107,33 +205,65 @@ struct SelectCustomComplicationIntent: WidgetConfigurationIntent {
 
     @Parameter(title: "Complication")
     var complication: CustomComplicationEntity?
+
+    init() {}
+}
+
+/// What a slot draws, worked out once so the view has nothing left to decide.
+struct CustomComplicationContent {
+    let name: String
+    let icon: String
+    let color: Color
+    let text: String
+    /// Nil draws no gauge: the definition turned it off, or the number has no goal.
+    let progress: Double?
+    let link: ComplicationLink
+
+    static let placeholder = CustomComplicationContent(
+        name: "", icon: "gauge.with.dots.needle.33percent", color: .white,
+        text: "60%", progress: 0.6, link: .goals
+    )
+
+    /// The slot has no complication yet, or the one it had was deleted.
+    static let empty = CustomComplicationContent(
+        name: "", icon: "gauge.with.dots.needle.33percent", color: .secondary,
+        text: "–", progress: nil, link: .goals
+    )
 }
 
 struct CustomComplicationEntry: TimelineEntry {
     let date: Date
-    /// Nil until the wearer picks a complication for this slot.
-    let name: String?
-    let progress: Double
+    let content: CustomComplicationContent
 }
 
 struct CustomComplicationProvider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> CustomComplicationEntry {
-        CustomComplicationEntry(date: Date(), name: nil, progress: 0.6)
+        CustomComplicationEntry(date: Date(), content: .placeholder)
     }
 
-    private func entry(for configuration: SelectCustomComplicationIntent) -> CustomComplicationEntry {
-        guard let chosen = configuration.complication else {
-            return CustomComplicationEntry(date: Date(), name: nil, progress: 0)
-        }
-        return CustomComplicationEntry(
-            date: Date(),
-            name: chosen.name,
-            progress: loadProgress(source: chosen.source)
+    /// Looks the definition up again by id rather than trusting the stored
+    /// choice, so an edit shows up and a deleted one falls back to empty.
+    private func content(for configuration: SelectCustomComplicationIntent, at now: Date) -> CustomComplicationContent {
+        guard
+            let chosen = configuration.complication,
+            let definition = loadDefinitions().first(where: { $0.id == chosen.id })
+        else { return .empty }
+        let shown = display(definition, metric: loadMetric(source: definition.source, now: now), now: now)
+        return CustomComplicationContent(
+            name: definition.name,
+            icon: definition.icon ?? "gauge.with.dots.needle.33percent",
+            color: tint(definition.color),
+            text: shown.text,
+            progress: (definition.gauge ?? false) ? shown.progress : nil,
+            link: link(for: definition.source)
         )
     }
 
     func snapshot(for configuration: SelectCustomComplicationIntent, in context: Context) async -> CustomComplicationEntry {
-        entry(for: configuration)
+        // The watch-face gallery shows a sample, never the wearer's numbers.
+        if context.isPreview { return CustomComplicationEntry(date: Date(), content: .placeholder) }
+        let now = Date()
+        return CustomComplicationEntry(date: now, content: content(for: configuration, at: now))
     }
 
     func timeline(for configuration: SelectCustomComplicationIntent, in context: Context) async -> Timeline<CustomComplicationEntry> {
@@ -144,7 +274,10 @@ struct CustomComplicationProvider: AppIntentTimelineProvider {
             matching: DateComponents(hour: 0, minute: 0, second: 0),
             matchingPolicy: .nextTime
         ) ?? in15Minutes
-        return Timeline(entries: [entry(for: configuration)], policy: .after(min(in15Minutes, nextMidnight)))
+        return Timeline(
+            entries: [CustomComplicationEntry(date: now, content: content(for: configuration, at: now))],
+            policy: .after(min(in15Minutes, nextMidnight))
+        )
     }
 }
 
@@ -152,41 +285,68 @@ struct CustomComplicationView: View {
     @Environment(\.widgetFamily) private var family
     let entry: CustomComplicationEntry
 
-    private var percent: Int { Int((entry.progress * 100).rounded()) }
+    private var content: CustomComplicationContent { entry.content }
 
     var body: some View {
-        content
-            .widgetURL(ComplicationLink.goals.url)
+        face
+            .widgetURL(content.link.url)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
                 String(
                     localized: "watch.custom.accessibility",
-                    defaultValue: "\(entry.name ?? "Complication") \(percent)%."
+                    defaultValue: "\(content.name) \(content.text)"
                 )
             )
     }
 
     @ViewBuilder
-    private var content: some View {
+    private var face: some View {
         switch family {
         case .accessoryCorner:
-            Image(systemName: "gauge.with.dots.needle.33percent")
+            Image(systemName: content.icon)
                 .font(.system(.title3, design: .rounded).weight(.semibold))
+                .foregroundStyle(content.color)
                 .widgetLabel {
-                    ProgressView(value: entry.progress) {
-                        Text("\(percent)%")
-                            .minimumScaleFactor(0.7)
-                    }
+                    cornerLabel
                 }
         default:
-            Gauge(value: entry.progress) {
-                Image(systemName: "gauge.with.dots.needle.33percent")
-            } currentValueLabel: {
-                Text("\(percent)%")
-                    .monospacedDigit()
-                    .minimumScaleFactor(0.6)
+            if let progress = content.progress {
+                Gauge(value: progress) {
+                    Image(systemName: content.icon)
+                } currentValueLabel: {
+                    Text(content.text)
+                        .monospacedDigit()
+                        .minimumScaleFactor(0.5)
+                }
+                .gaugeStyle(.accessoryCircular)
+                .tint(content.color)
+            } else {
+                ZStack {
+                    AccessoryWidgetBackground()
+                    VStack(spacing: 1) {
+                        Image(systemName: content.icon)
+                            .font(.caption)
+                            .foregroundStyle(content.color)
+                        Text(content.text)
+                            .font(.system(.body, design: .rounded).weight(.semibold))
+                            .monospacedDigit()
+                            .minimumScaleFactor(0.5)
+                    }
+                }
             }
-            .gaugeStyle(.accessoryCircular)
+        }
+    }
+
+    @ViewBuilder
+    private var cornerLabel: some View {
+        if let progress = content.progress {
+            ProgressView(value: progress) {
+                Text(content.text)
+                    .minimumScaleFactor(0.7)
+            }
+            .tint(content.color)
+        } else {
+            Text(content.text)
         }
     }
 }

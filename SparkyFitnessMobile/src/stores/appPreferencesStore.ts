@@ -48,6 +48,7 @@ import {
   type WatchWorkoutCountdown,
   type WatchWorkoutTopLine,
 } from '../constants/watchPages';
+import type { WatchComplicationDefinition } from '../utils/watchComplications';
 import {
   DEFAULT_REPORT_NUTRIENTS,
   DEFAULT_REPORT_RANGE,
@@ -179,6 +180,7 @@ export const PREFERENCE_DEFAULTS = {
   addMenuRowStyles: {} as AddMenuRowStyleOverrides,
   watchPageOrder: [...WATCH_PAGE_KEYS] as WatchPageKey[],
   hiddenWatchPages: [] as WatchPageKey[],
+  watchComplications: null as WatchComplicationDefinition[] | null,
   watchDoubleTapEnabled: true,
   watchRpeEnabled: false,
   watchSetScreenMetrics: true,
@@ -329,6 +331,8 @@ export type AppPreferencesData = {
   watchPageOrder: WatchPageKey[];
   /** Watch pages turned off in Settings → Apple Watch. */
   hiddenWatchPages: WatchPageKey[];
+  /** The wearer's custom watch complications; null until they make or import one (the starter set is sent meanwhile). */
+  watchComplications: WatchComplicationDefinition[] | null;
   /** Order of the reports on the Reports hub. */
   reportOrder: ReportKey[];
   /** Reports turned off in Reports → Customize. */
@@ -469,6 +473,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setAddMenuRowStyle: (key: AddMenuItemKey, style: AddMenuRowStyle) => void;
   resetAddMenu: () => void;
   setWatchPageOrder: (order: WatchPageKey[]) => void;
+  setWatchComplications: (list: WatchComplicationDefinition[] | null) => void;
   setWatchPageHidden: (key: WatchPageKey, isHidden: boolean) => void;
   setReportOrder: (order: ReportKey[]) => void;
   setReportHidden: (key: ReportKey, isHidden: boolean) => void;
@@ -729,6 +734,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
           addMenuRowStyles: {},
         }),
       setWatchPageOrder: (order) => set({ watchPageOrder: order }),
+      setWatchComplications: (list) => set({ watchComplications: list }),
       setReportOrder: (order) => set({ reportOrder: order }),
       setReportHidden: (key, isHidden) =>
         set((state) => ({
@@ -908,6 +914,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         addMenuRowStyles: state.addMenuRowStyles,
         watchPageOrder: state.watchPageOrder,
         hiddenWatchPages: state.hiddenWatchPages,
+        watchComplications: state.watchComplications,
         watchDoubleTapEnabled: state.watchDoubleTapEnabled,
         watchRpeEnabled: state.watchRpeEnabled,
         watchSetScreenMetrics: state.watchSetScreenMetrics,

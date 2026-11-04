@@ -1081,6 +1081,25 @@ export interface WatchRouteSyncPayload {
 }
 
 /**
+ * The wearer's custom complications (`complicationConfig`): what each one
+ * shows and how it looks. Strings other than `name` are wire values; see
+ * `src/utils/watchComplications.ts`. `revision` is epoch ms; the watch keeps
+ * the newest.
+ */
+export interface WatchComplicationConfigPayload {
+  revision: number;
+  definitions: {
+    id: string;
+    name: string;
+    source: string;
+    format: string;
+    gauge: boolean;
+    color: string;
+    icon: string;
+  }[];
+}
+
+/**
  * What the watch's route library holds (`routeLibrary`): each stored route
  * with the `updatedAt` it was stored at, the ids it turned away (`full` when
  * the library is at `capacity`, `storage` when the file could not be written)
@@ -1214,6 +1233,12 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   sendRoute(sync: WatchRouteSyncPayload): Promise<void>;
   /** Takes a route out of the watch's library (queued). */
   removeRoute(routeId: string): Promise<void>;
+  /**
+   * Sends the wearer's custom complications to the watch (queued, delivered
+   * once). Only the newest list matters, so a copy still waiting is dropped
+   * first. iOS only.
+   */
+  sendComplicationConfig(config: WatchComplicationConfigPayload): Promise<void>;
   /** Pause, resume, lap, finish or discard for the run on the watch, or a switch change (`autoPauseOn`/`Off`, `voiceCuesOn`/`Off`, `paceAlertOn`/`Off`, `heartRateAlertOn`/`Off`). */
   sendRunControl(control: WatchRunControlPayload): Promise<void>;
   /** Tells the watch the phone is saying cue `id`, so it stays quiet. */

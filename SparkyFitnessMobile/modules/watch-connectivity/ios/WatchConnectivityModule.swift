@@ -765,6 +765,20 @@ public class WatchConnectivityModule: Module {
             WCSession.default.transferUserInfo(["type": "routeRemove", "routeId": routeId])
         }
 
+        /// The wearer's custom complications. Queued only: it is a full list,
+        /// so only the newest matters and a copy still waiting is cancelled
+        /// first rather than left to arrive after it.
+        AsyncFunction("sendComplicationConfig") { (config: [String: Any]) -> Void in
+            guard WCSession.isSupported() else { return }
+            for transfer in WCSession.default.outstandingUserInfoTransfers
+            where transfer.userInfo["type"] as? String == "complicationConfig" {
+                transfer.cancel()
+            }
+            var payload = config
+            payload["type"] = "complicationConfig"
+            WCSession.default.transferUserInfo(payload)
+        }
+
         /// Pause, resume, lap, finish or discard for the run going on the
         /// watch. Queued as well as sent live so a finish is not lost.
         AsyncFunction("sendRunControl") { (control: [String: Any]) -> Void in

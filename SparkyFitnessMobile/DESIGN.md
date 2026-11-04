@@ -786,7 +786,7 @@ The watches are native, not React Native, so sections 2–9 (Uniwind tokens, `gl
 | Surface                              | Code                                                                                                                                                         | UI toolkit                                         |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
 | Apple Watch app                      | `targets/watch` (`Presentation/`, `Domain/`, `Application/`, `Infrastructure/`, `Adapters/`)                                                                 | SwiftUI                                            |
-| Apple Watch complications            | `targets/watch-widget` (`index.swift` lists them: Energy, Water, Protein, Carbs, Fat, Fasting, Steps)                                                        | WidgetKit                                          |
+| Apple Watch complications            | `targets/watch-widget` (`index.swift` lists them: Energy, Calorie Goal, Water, Protein, Carbs, Fat, Fasting, Steps, and the wearer's Custom Complication)    | WidgetKit                                          |
 | Wear OS app, complications and tiles | `targets/wearos/src/main/java/com/sparkyapps/sparkyfitness/wear` (`Screens.kt`, `WorkoutScreens.kt`, `NewWorkoutScreens.kt`, `Complications.kt`, `Tiles.kt`) | Compose for Wear OS (`MaterialTheme`), ProtoLayout |
 
 Android home-screen widgets (`targets/android-widget`) and the iOS phone widget (`targets/widget`) are separate from these.
