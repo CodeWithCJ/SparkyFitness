@@ -144,6 +144,9 @@ export const heartRateRangeQueryKeyRoot = ['heartRateRange'] as const;
 export const heartRateRangeQueryKey = (startDate: string, endDate: string) =>
   [...heartRateRangeQueryKeyRoot, startDate, endDate] as const;
 
+export const heartRateDaySleepQueryKey = (day: string) =>
+  ['heartRateDaySleep', day] as const;
+
 export const heartRateReportQueryKeyRoot = ['heartRateReport'] as const;
 
 export const heartRateReportQueryKey = (startDate: string, endDate: string) =>

@@ -1,0 +1,78 @@
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  buildDayHeartRateTimeline,
+  dailyHeartRateAverages,
+  sleepWindowForDay,
+} from '@workspace/shared';
+import { fetchHeartRateSamples } from '../services/api/exerciseStatsApi';
+import { fetchSleepEntries } from '../services/api/sleepApi';
+import { addDays } from '../utils/dateUtils';
+import {
+  deviceClockParts,
+  heartRateReadingsForDay,
+  workoutBandsFromSessions,
+} from '../utils/heartRateDayTimeline';
+import {
+  heartRateDaySleepQueryKey,
+  heartRateSamplesQueryKey,
+} from './queryKeys';
+import { useDailySummary } from './useDailySummary';
+import { useRefetchOnFocus } from './useRefetchOnFocus';
+
+/** Raw heart rate samples for a window of days (one row per source per day). */
+export function useHeartRateSamples(
+  startDate: string,
+  endDate: string,
+  enabled = true
+) {
+  const query = useQuery({
+    queryKey: heartRateSamplesQueryKey(startDate, endDate),
+    queryFn: () => fetchHeartRateSamples(startDate, endDate),
+    enabled,
+  });
+  useRefetchOnFocus(query.refetch, enabled);
+  return query;
+}
+
+/** One average (with low and high) per day of the window, for the range chart. */
+export function useHeartRateDailyAverages(startDate: string, endDate: string) {
+  const query = useHeartRateSamples(startDate, endDate);
+  const days = useMemo(() => dailyHeartRateAverages(query.data), [query.data]);
+  return { days, isLoading: query.isLoading, isError: query.isError };
+}
+
+/** The 24 hour view of one day: readings, sleep, workouts and the day's figures. */
+export function useHeartRateDayTimeline(
+  day: string,
+  workoutFallbackName: string
+) {
+  const samples = useHeartRateSamples(day, day);
+  const sleep = useQuery({
+    queryKey: heartRateDaySleepQueryKey(day),
+    queryFn: () => fetchSleepEntries(addDays(day, -1), addDays(day, 1)),
+  });
+  const { summary } = useDailySummary({ date: day });
+
+  const timeline = useMemo(
+    () =>
+      buildDayHeartRateTimeline(
+        heartRateReadingsForDay(samples.data, day),
+        workoutBandsFromSessions(summary?.exerciseEntries, workoutFallbackName),
+        sleepWindowForDay(sleep.data ?? [], day, deviceClockParts)
+      ),
+    [
+      samples.data,
+      sleep.data,
+      summary?.exerciseEntries,
+      day,
+      workoutFallbackName,
+    ]
+  );
+
+  return {
+    timeline,
+    isLoading: samples.isLoading,
+    isError: samples.isError,
+  };
+}

@@ -9,6 +9,8 @@ import { useHeartRateReport } from '../hooks/useHeartRateReport';
 import { useHeartRateZones } from '../hooks/useHeartRateZones';
 import { useReportCustomization } from '../hooks/useReportCustomization';
 import { formatLocalizedNumber } from '../localization';
+import HeartRateDayTimelineCard from '../components/reports/HeartRateDayTimelineCard';
+import HeartRateRangeCard from '../components/reports/HeartRateRangeCard';
 import HeartRateZoneRanges from '../components/reports/HeartRateZoneRanges';
 import ReportScreenLayout from '../components/reports/ReportScreenLayout';
 import ReportSummaryCard, {
@@ -83,10 +85,20 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = ({
   const font = useChartFont(CHART_LABEL_FONT_SIZE);
   const textMuted = '#9ca3af';
   const heartRateColor = '#f43f5e';
+  const [pickedDay, setPickedDay] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [touchLayout, setTouchLayout] = useState<ChartTouchLayout>(
     EMPTY_CHART_TOUCH_LAYOUT
   );
+
+  // The day shown in the timeline: one picked from the range chart or the day
+  // arrows while it lies inside the window, otherwise the window's last day
+  const timelineDay =
+    pickedDay &&
+    pickedDay >= reportWindow.startDate &&
+    pickedDay <= reportWindow.endDate
+      ? pickedDay
+      : reportWindow.endDate;
 
   const days = useMemo(
     () => (Array.isArray(report?.days) ? report.days : []),
@@ -337,7 +349,25 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = ({
         </View>
       )}
 
-      {/* 2. Heart Rate Zones Guide */}
+      {/* 2. Average heart rate by day across the window */}
+      {isSectionShown('heartRate.rangeTimeline') && (
+        <HeartRateRangeCard
+          startDate={reportWindow.startDate}
+          endDate={reportWindow.endDate}
+          windowDays={reportWindow.days}
+          onSelectDay={setPickedDay}
+        />
+      )}
+
+      {/* 3. One day on a 24 hour axis */}
+      {isSectionShown('heartRate.dayTimeline') && (
+        <HeartRateDayTimelineCard
+          day={timelineDay}
+          onChangeDay={setPickedDay}
+        />
+      )}
+
+      {/* Heart Rate Zones Guide */}
       {isSectionShown('heartRate.zones') && (
         <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
           <Text className="text-text-primary text-lg font-semibold mb-3">
