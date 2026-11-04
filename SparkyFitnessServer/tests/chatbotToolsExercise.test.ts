@@ -1211,6 +1211,13 @@ describe('workout presets', () => {
     expect(result).toBe(
       '✅ Workout preset "Leg Day" created with 1 exercises.'
     );
+    expect(workoutPresetService.createWorkoutPreset).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        name: 'Leg Day',
+        exercises: [expect.objectContaining({ exercise_id: EXERCISE_ID })],
+      })
+    );
   });
 
   it('log_exercise does NOT drop an echoed entry_id (update intent must not become a new entry)', async () => {
@@ -1226,6 +1233,9 @@ describe('workout presets', () => {
 
     expect(result).toMatch(/^Error \[VALIDATION\]/);
     expect(result).toContain('entry_id');
+    // Validation must prevent entry creation outright — a dropped entry_id
+    // here would have logged a NEW entry instead of updating.
+    expect(exerciseService.createExerciseEntry).not.toHaveBeenCalled();
   });
 
   it('create_workout_preset builds sets and superset groups', async () => {
