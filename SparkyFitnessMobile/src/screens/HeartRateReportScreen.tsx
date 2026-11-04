@@ -181,6 +181,32 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = ({
       });
     }
 
+    if (report.restingHrTrendDelta !== null) {
+      const delta = report.restingHrTrendDelta;
+      rows.push({
+        label: t('reports.restingHrTrend', {
+          defaultValue: 'Resting HR Trend',
+        }),
+        value:
+          delta < 0
+            ? t('reports.restingHrTrendImproving', {
+                defaultValue: '↓ {{bpm}} bpm (Improving)',
+                bpm: formatLocalizedNumber(Math.abs(delta)),
+              })
+            : delta > 0
+              ? t('reports.restingHrTrendElevated', {
+                  defaultValue: '↑ {{bpm}} bpm (Elevated)',
+                  bpm: formatLocalizedNumber(delta),
+                })
+              : t('reports.restingHrTrendStable', {
+                  defaultValue: 'Stable',
+                }),
+        hint: t('reports.restingHrTrendHint', {
+          defaultValue: 'Second half of the period vs the first half',
+        }),
+      });
+    }
+
     if (report.avgRecovery1Min !== null) {
       rows.push({
         label: t('reports.heartRateRecovery1Min', {

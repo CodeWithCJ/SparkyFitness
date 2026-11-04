@@ -17,7 +17,8 @@ jest.mock('../../src/hooks/useReportCustomization', () => ({
   useReportCustomization: () => ({
     window: { days: 30 },
     rangeProps: {},
-    isSectionShown: (id: string) => id === 'heartRate.zones',
+    isSectionShown: (id: string) =>
+      id === 'heartRate.zones' || id === 'heartRate.overview',
   }),
 }));
 jest.mock('../../src/hooks/useScreenHeader', () => ({
@@ -65,6 +66,7 @@ const report = {
   minRestingHr: 60,
   maxRestingHr: 60,
   restingHrChange: null,
+  restingHrTrendDelta: null,
   avgRecovery1Min: null,
   daysWithData: 1,
   totalDaysInWindow: 30,
@@ -106,6 +108,23 @@ describe('HeartRateReportScreen zones', () => {
     expect(getByTestId('heart-rate-zone-source').props.children).toContain(
       'Heart rate reserve'
     );
+  });
+
+  it('shows the resting heart rate trend once there is one', () => {
+    mockUseHeartRateZones.mockReturnValue({ zones: reserveZones });
+    mockUseHeartRateReport.mockReturnValue({
+      report: { ...report, restingHrTrendDelta: -3 },
+      isLoading: false,
+      isError: false,
+    });
+    const { getByText } = renderScreen();
+    expect(getByText('↓ 3 bpm (Improving)')).toBeTruthy();
+  });
+
+  it('hides the trend row without enough days', () => {
+    mockUseHeartRateZones.mockReturnValue({ zones: reserveZones });
+    const { queryByText } = renderScreen();
+    expect(queryByText('Resting HR Trend')).toBeNull();
   });
 
   it('folds into four tiers when the person chose them', () => {
