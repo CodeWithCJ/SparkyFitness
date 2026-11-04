@@ -41,7 +41,7 @@ vi.mock('../auth.js', () => ({
 vi.mock('../utils/shutdownHooks.js', () => ({
   isShuttingDown: () => draining.value,
 }));
-vi.mock('../services/restoreLock.js', () => ({
+vi.mock('../services/onlineRestoreGuard.js', () => ({
   isRestoreRunning: () => restoring.value,
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
@@ -411,18 +411,6 @@ describe('GET /api/health/ready during a database outage', () => {
     expect(response.status).toBe(200);
     expect(response.body.checks.database).toBe('retrying');
     expect(appRelease).toHaveBeenCalledWith(true);
-  });
-
-  it('stays ready, degraded, while another instance swaps a restored backup in', async () => {
-    appConnect.mockRejectedValue(
-      Object.assign(
-        new Error('database "sparky" is not currently accepting connections'),
-        { code: '55000' }
-      )
-    );
-    const response = await ready();
-    expect(response.status).toBe(200);
-    expect(response.body.checks.database).toBe('retrying');
   });
 
   it('fails at once on an error that is not a connection error', async () => {

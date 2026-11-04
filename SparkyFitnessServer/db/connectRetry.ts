@@ -7,7 +7,6 @@ const connectionErrorCodes = new Set([
   'ECONNRESET',
   'ETIMEDOUT',
   'ENOTFOUND',
-  '55000', // object_not_in_prerequisite_state: closed by a restore's swap
   '57P01', // admin_shutdown
   '57P03', // cannot_connect_now: starting up, shutting down or in recovery
 ]);

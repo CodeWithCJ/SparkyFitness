@@ -20,10 +20,14 @@ import {
   RESTORE_FENCE_MS,
   restoreInProgress,
   restoreLockKey,
-  markRestoreRunning,
 } from './restoreLock.js';
 import { UPLOAD_STAGING_DIR } from '../utils/uploadsPath.js';
 import { describeError } from '../utils/errors.js';
+import {
+  assertRestoreAllowed,
+  RestoreRefusedError,
+  markRestoreRunning,
+} from './onlineRestoreGuard.js';
 import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -853,6 +857,7 @@ async function restoreHoldingLock(
   let endRestoreMark: (() => void) | undefined;
   try {
     await fsp.access(backupFilePath, fsp.constants.R_OK);
+    await assertRestoreAllowed();
     await assertCanEndSessions(client, dbName);
     await dropStaleStagingDatabases(client, dbName);
     tempRestoreDir = path.join(BACKUP_DIR, `restore_temp_${Date.now()}`);
@@ -910,6 +915,9 @@ async function restoreHoldingLock(
     ]);
     const unfenced = fenced - Date.now();
     if (unfenced > 0) await new Promise((r) => setTimeout(r, unfenced));
+    // Loading a large backup takes a while; another instance may have
+    // started meanwhile.
+    await assertRestoreAllowed();
     // Out of the restore- prefix before the database swap: if this process
     // dies before the uploads are moved, a later restore's cleanup must not
     // delete the uploads of a database already swapped in.
@@ -971,6 +979,7 @@ async function restoreHoldingLock(
           log('error', `Failed to remove ${uploadsStaging}:`, cleanupError)
         );
     }
+    if (error instanceof RestoreRefusedError) throw error;
     return { success: false, error: describeError(error) };
   } finally {
     endRestoreMark?.();
