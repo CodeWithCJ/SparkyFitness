@@ -18,6 +18,7 @@ interface ApiFetchOptions {
   body?: unknown;
   headers?: Record<string, string>;
   timeoutMs?: number;
+  signal?: AbortSignal;
   /**
    * Whether a failed response's body goes in the app log. It does by default,
    * which helps with diagnostics. Turn it off where the request carries health
@@ -37,6 +38,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
     body,
     headers: customHeaders,
     timeoutMs = DEFAULT_API_TIMEOUT_MS,
+    signal,
     logResponseBody = true,
   } = options;
 
@@ -82,6 +84,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
           ...customHeaders,
         },
         ...(body ? { body: JSON.stringify(body) } : {}),
+        ...(signal ? { signal } : {}),
       },
       timeoutMs
     );
@@ -112,6 +115,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
 
     return await response.json();
   } catch (error) {
+    if (signal?.aborted) throw error;
     // An ApiError's message embeds the response body, so with body logging off
     // only its status is logged.
     const message =

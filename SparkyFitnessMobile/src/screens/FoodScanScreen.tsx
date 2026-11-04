@@ -111,17 +111,24 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   const cameraSessionRef = useRef(0);
   const [cameraFailed, setCameraFailed] = useState(false);
   const barcodeRequestId = useRef(0);
+  const barcodeAbortController = useRef<AbortController | null>(null);
   const lookupPending = useRef(false);
   const scanLock = useRef(false);
   const pickerLock = useRef(false);
   const labelRequestLock = useRef(false);
   const labelScanActive = useRef(true);
+  const abortBarcodeRequest = useCallback(() => {
+    barcodeRequestId.current += 1;
+    barcodeAbortController.current?.abort();
+    barcodeAbortController.current = null;
+  }, []);
   useEffect(() => {
     labelScanActive.current = true;
     return () => {
       labelScanActive.current = false;
+      abortBarcodeRequest();
     };
-  }, []);
+  }, [abortBarcodeRequest]);
   const params = route.params;
   const captureParams = params?.mode === 'capture-barcode' ? params : undefined;
   const labelCaptureParams =
@@ -180,13 +187,13 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
 
   const cancelBarcodeLookup = useCallback(() => {
     // Invalidate before unlocking so an abandoned request cannot affect a retry.
-    barcodeRequestId.current += 1;
+    abortBarcodeRequest();
     lookupPending.current = false;
     scanLock.current = false;
     setScanned(false);
     setLoading(false);
     setPendingBarcode(null);
-  }, []);
+  }, [abortBarcodeRequest]);
 
   const restartCamera = useCallback(() => {
     cameraSessionRef.current += 1;
@@ -308,6 +315,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
     )
       return;
     lookupPending.current = true;
+    const controller = new AbortController();
+    barcodeAbortController.current = controller;
     const requestId = ++barcodeRequestId.current;
     const isCurrentRequest = () =>
       labelScanActive.current &&
@@ -321,7 +330,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
     try {
       const [account, result] = await Promise.all([
         getActiveServerConfig(),
-        lookupBarcodeV2(barcode, providerId),
+        lookupBarcodeV2(barcode, providerId, controller.signal),
       ]);
       const accountId = account?.id;
       const currentAccountId = (await getActiveServerConfig())?.id;
@@ -363,6 +372,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
       setLookupError({ barcode, message });
     } finally {
       if (isCurrentRequest()) {
+        barcodeAbortController.current = null;
         lookupPending.current = false;
         setLoading(false);
       }
@@ -404,6 +414,13 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   const handleManualSubmit = async () => {
     const barcode = manualBarcode.trim();
     if (!barcode || lookupPending.current) return;
+    if (
+      !isCaptureBarcodeMode &&
+      (!appActiveRef.current ||
+        !labelScanActive.current ||
+        !navigation.isFocused())
+    )
+      return;
     setManualEntryVisible(false);
     setManualBarcode('');
     scanLock.current = true;

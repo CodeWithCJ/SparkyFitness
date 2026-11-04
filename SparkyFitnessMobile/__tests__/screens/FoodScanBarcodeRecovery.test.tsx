@@ -137,7 +137,11 @@ describe('FoodScan barcode recovery', () => {
           })
         )
       );
-      expect(lookup).toHaveBeenLastCalledWith('4006381333931', 'provider-1');
+      expect(lookup).toHaveBeenLastCalledWith(
+        '4006381333931',
+        'provider-1',
+        expect.any(AbortSignal)
+      );
     }
   );
 
@@ -150,8 +154,38 @@ describe('FoodScan barcode recovery', () => {
     await screen.findByText('Lookup failed');
     fireEvent.press(screen.getByText('Retry lookup'));
     await waitFor(() => expect(navigation.replace).toHaveBeenCalledTimes(1));
-    expect(lookup).toHaveBeenNthCalledWith(2, '012345678905', undefined);
+    expect(lookup).toHaveBeenNthCalledWith(
+      2,
+      '012345678905',
+      undefined,
+      expect.any(AbortSignal)
+    );
   });
+
+  it.each(['rescan', 'background', 'blur', 'unmount'] as const)(
+    'aborts the active network request on %s',
+    (transition) => {
+      const pending = deferred();
+      lookup.mockReturnValueOnce(pending.promise);
+      const screen = render(makeScreen());
+      scan(screen);
+      const signal = lookup.mock.calls[0]?.[2];
+      expect(signal).toBeInstanceOf(AbortSignal);
+      expect(signal?.aborted).toBe(false);
+
+      if (transition === 'rescan')
+        fireEvent.press(screen.getByText('Scan again'));
+      else if (transition === 'background')
+        act(() => changeState('background'));
+      else if (transition === 'blur') {
+        focused.mockReturnValue(false);
+        navigation.isFocused.mockReturnValue(false);
+        screen.rerender(makeScreen());
+      } else screen.unmount();
+
+      expect(signal?.aborted).toBe(true);
+    }
+  );
 
   it.each(['success', 'miss', 'error'] as const)(
     'ignores an abandoned lookup %s while a newer lookup is pending',
@@ -191,7 +225,11 @@ describe('FoodScan barcode recovery', () => {
     expect(lookup).not.toHaveBeenCalled();
     scan(screen, '4006381333931');
     await waitFor(() => expect(navigation.replace).toHaveBeenCalledTimes(1));
-    expect(lookup).toHaveBeenCalledWith('4006381333931', undefined);
+    expect(lookup).toHaveBeenCalledWith(
+      '4006381333931',
+      undefined,
+      expect.any(AbortSignal)
+    );
   });
 
   it('offers in-place recovery from camera startup failure', () => {
@@ -226,6 +264,44 @@ describe('FoodScan barcode recovery', () => {
       void queuedScan({ data: '012345678905' });
     });
     expect(lookup).not.toHaveBeenCalled();
+  });
+
+  it.each(['background', 'blur'] as const)(
+    'preserves manual entry when a queued submit runs during %s',
+    async (transition) => {
+      lookup.mockResolvedValue(found);
+      const screen = render(makeScreen());
+      fireEvent.press(screen.getByText('Type Barcode Instead'));
+      fireEvent.changeText(
+        screen.getByPlaceholderText('Barcode number'),
+        '012345678905'
+      );
+      act(() => {
+        if (transition === 'background') changeState('background');
+        else navigation.isFocused.mockReturnValue(false);
+        fireEvent.press(screen.getByText('Look Up'));
+      });
+      expect(lookup).not.toHaveBeenCalled();
+      expect(screen.getByDisplayValue('012345678905')).toBeTruthy();
+
+      act(() => changeState('active'));
+      navigation.isFocused.mockReturnValue(true);
+      fireEvent.press(screen.getByText('Look Up'));
+      await waitFor(() => expect(navigation.replace).toHaveBeenCalledTimes(1));
+    }
+  );
+
+  it('discards a pending lookup that resolves after returning to the foreground', async () => {
+    const pending = deferred();
+    lookup.mockReturnValueOnce(pending.promise).mockResolvedValueOnce(found);
+    const screen = render(makeScreen());
+    scan(screen);
+    act(() => changeState('background'));
+    act(() => changeState('active'));
+    await act(async () => pending.resolve(found));
+    expect(navigation.replace).not.toHaveBeenCalled();
+    scan(screen, '4006381333931');
+    await waitFor(() => expect(navigation.replace).toHaveBeenCalledTimes(1));
   });
 
   it('releases the preview when unfocused and discards the pending lookup', async () => {

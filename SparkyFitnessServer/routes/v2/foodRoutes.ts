@@ -44,6 +44,11 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
     return;
   }
 
+  const controller = new AbortController();
+  const abortLookup = () => {
+    if (!res.writableFinished) controller.abort();
+  };
+  res.once('close', abortLookup);
   try {
     const providerId = req.query.providerId as string | undefined;
     const result = await foodCoreService.lookupBarcode(
@@ -53,8 +58,9 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
       // Absent means "use the user's default provider", so preserve undefined.
       providerId === undefined ? undefined : String(providerId),
       req.authenticatedUserId,
-      { includeProviderMetadata: true }
+      { includeProviderMetadata: true, signal: controller.signal }
     );
+    controller.signal.throwIfAborted();
 
     // Ensure barcode is preserved on the food when present
     if (result.food && !result.food.barcode) {
@@ -64,6 +70,7 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
     if (result.food) {
       await enrichWithCustomNutrients(req.userId, [result.food]);
     }
+    controller.signal.throwIfAborted();
 
     const normalizedResult = {
       ...result,
@@ -74,6 +81,7 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
     const response = BarcodeResponseSchema.parse(normalizedResult);
     res.status(200).json(response);
   } catch (error: unknown) {
+    if (controller.signal.aborted) return;
     if (error instanceof Error && error.name === 'ZodError') {
       log('error', 'v2 barcode response validation failed:', error);
       next(
@@ -84,6 +92,8 @@ const barcodeHandler: RequestHandler<{ barcode: string }> = async (
       return;
     }
     next(error);
+  } finally {
+    res.removeListener('close', abortLookup);
   }
 };
 

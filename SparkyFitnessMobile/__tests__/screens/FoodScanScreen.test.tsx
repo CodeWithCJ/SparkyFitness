@@ -211,7 +211,8 @@ describe('FoodScanScreen', () => {
       );
       expect(mockLookupBarcodeV2).toHaveBeenCalledWith(
         '1234567890123',
-        requestedProvider
+        requestedProvider,
+        expect.any(AbortSignal)
       );
     }
   );
