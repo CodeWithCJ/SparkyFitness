@@ -360,8 +360,9 @@ describe('WaterIntake Component', () => {
       mockInstantHourMinute.mockImplementation(() => ({ hour: 12, minute: 0 }));
     });
 
-    // Opens the editor for a drink logged at 10:00Z and returns the field.
-    const openEditor = (day: string) => {
+    // Opens the editor for a drink logged at `loggedAt` (10:00Z by default)
+    // and returns the field.
+    const openEditor = (day: string, loggedAt = `${day}T10:00:00.000Z`) => {
       (useWaterIntakeLogQuery as jest.Mock).mockReturnValue({
         data: [
           {
@@ -370,8 +371,8 @@ describe('WaterIntake Component', () => {
             container_name: 'Work Bottle',
             source: 'manual',
             entry_date: `${day}T00:00:00.000Z`,
-            logged_at: `${day}T10:00:00.000Z`,
-            created_at: `${day}T10:00:00.000Z`,
+            logged_at: loggedAt,
+            created_at: loggedAt,
           },
         ],
       });
@@ -409,6 +410,17 @@ describe('WaterIntake Component', () => {
 
       expect(mockUpdateLogTime).not.toHaveBeenCalled();
       expect(screen.queryByLabelText('Drink time')).not.toBeInTheDocument();
+    });
+
+    // 00:30Z is 02:30 in the first run of the repeated hour; re-saving 02:30
+    // would move it to the second run (01:30Z).
+    it('saves nothing when a repeated-hour drink is left unchanged', () => {
+      const field = openEditor('2026-10-25', '2026-10-25T00:30:00.000Z');
+      expect(field.value).toBe('02:30');
+
+      fireEvent.blur(field);
+
+      expect(mockUpdateLogTime).not.toHaveBeenCalled();
     });
   });
 });
