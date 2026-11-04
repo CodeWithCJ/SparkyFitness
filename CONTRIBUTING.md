@@ -2,6 +2,8 @@
 
 Thank you for helping improve SparkyFitness! To keep the project organized, please follow these rules:
 
+By taking part in this project you agree to follow our [Code of Conduct](CODE_OF_CONDUCT.md). To report a security vulnerability, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
+
 ### 1. New Features
 
 If you want to add a new feature, you **must first raise a GitHub Issue**. Get it reviewed and approved by the maintainers before you start coding to ensure we are all aligned.
