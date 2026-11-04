@@ -1,0 +1,169 @@
+import { Platform } from 'react-native';
+import type { HealthMetricSamplesWriteBody } from '@workspace/shared';
+import { postHealthMetricSamples } from '../api/healthSamplesApi';
+import { addLog } from '../LogService';
+import type { TelemetryRunContext } from './telemetryBudget';
+import type { ReadResult } from '../../types/healthRecords';
+
+/**
+ * Source the all-day readings are stored under. The server refuses the names
+ * it uses for its own integrations and for workouts ('HealthKit', 'Health
+ * Connect', 'manual', ...), so a passive write can never replace those rows.
+ */
+export const PASSIVE_HEART_RATE_SOURCE = 'SparkyFitness Mobile';
+
+/** One reading per minute is plenty for a day chart and keeps a week small. */
+const BUCKET_MS = 60_000;
+/** Read, downsample and upload a week at a time so memory stays bounded. */
+const CHUNK_DAYS = 7;
+/** The server accepts at most 31 days in one window; the app never reaches that far back here. */
+const MAX_DAYS = 31;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MIN_BPM = 20;
+const MAX_BPM = 260;
+
+export interface HeartRateReading {
+  /** ISO instant */
+  t: string;
+  bpm: number;
+}
+
+interface RawHeartRateRecord {
+  startTime?: unknown;
+  time?: unknown;
+  samples?: unknown;
+}
+
+const toMs = (value: unknown): number | null => {
+  if (typeof value !== 'string' && !(value instanceof Date)) return null;
+  const ms = new Date(value).getTime();
+  return Number.isNaN(ms) ? null : ms;
+};
+
+/**
+ * Flattens raw `HeartRate` records of both platforms into readings. HealthKit
+ * gives one reading per record (its sample time is the record's start);
+ * Health Connect gives records holding many `{ time, beatsPerMinute }` samples.
+ * Anything without a believable time or rate is dropped.
+ */
+export function heartRateReadingsFromRecords(
+  records: readonly unknown[]
+): HeartRateReading[] {
+  const readings: HeartRateReading[] = [];
+  for (const record of records) {
+    const rec = record as RawHeartRateRecord;
+    if (!Array.isArray(rec?.samples)) continue;
+    const recordTime = toMs(rec.startTime) ?? toMs(rec.time);
+    for (const sample of rec.samples as {
+      time?: unknown;
+      beatsPerMinute?: unknown;
+    }[]) {
+      const bpm = sample?.beatsPerMinute;
+      if (typeof bpm !== 'number' || bpm < MIN_BPM || bpm > MAX_BPM) continue;
+      const ms = toMs(sample.time) ?? recordTime;
+      if (ms === null) continue;
+      readings.push({ t: new Date(ms).toISOString(), bpm });
+    }
+  }
+  return readings;
+}
+
+/** Mean of each minute's readings, in time order, stamped at the minute's start. */
+export function downsampleHeartRate(
+  readings: readonly HeartRateReading[]
+): HeartRateReading[] {
+  const buckets = new Map<number, { sum: number; count: number }>();
+  for (const { t, bpm } of readings) {
+    const bucket = Math.floor(new Date(t).getTime() / BUCKET_MS);
+    const acc = buckets.get(bucket) ?? { sum: 0, count: 0 };
+    acc.sum += bpm;
+    acc.count += 1;
+    buckets.set(bucket, acc);
+  }
+  return [...buckets.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([bucket, acc]) => ({
+      t: new Date(bucket * BUCKET_MS).toISOString(),
+      bpm: Math.round((acc.sum / acc.count) * 10) / 10,
+    }));
+}
+
+/** Back-to-back windows of at most `CHUNK_DAYS`, oldest first, limited to `MAX_DAYS` before `end`. */
+export function heartRateWindows(
+  start: Date,
+  end: Date
+): { start: Date; end: Date }[] {
+  const from = Math.max(start.getTime(), end.getTime() - MAX_DAYS * DAY_MS);
+  const windows: { start: Date; end: Date }[] = [];
+  for (let s = from; s < end.getTime(); s += CHUNK_DAYS * DAY_MS) {
+    windows.push({
+      start: new Date(s),
+      end: new Date(Math.min(s + CHUNK_DAYS * DAY_MS, end.getTime())),
+    });
+  }
+  return windows;
+}
+
+export interface HeartRateSamplesReader {
+  readRaw(
+    recordType: string,
+    startDate: Date,
+    endDate: Date,
+    telemetry?: TelemetryRunContext
+  ): Promise<ReadResult>;
+}
+
+export interface HeartRateSamplesResult {
+  samplesUploaded: number;
+  /** Set when any window failed to read or upload; the rest still went up. */
+  error?: string;
+}
+
+/**
+ * Reads the all-day heart rate of a window and stores it on the server, a week
+ * at a time. Best effort: a failed read or upload is reported and logged but
+ * never throws, so it cannot fail the sync it runs beside. A window with no
+ * readings is skipped rather than sent, since the server needs at least one.
+ */
+export async function syncAllDayHeartRate(
+  reader: HeartRateSamplesReader,
+  start: Date,
+  end: Date,
+  telemetry: TelemetryRunContext,
+  logTag: string
+): Promise<HeartRateSamplesResult> {
+  let samplesUploaded = 0;
+  let error: string | undefined;
+  for (const window of heartRateWindows(start, end)) {
+    try {
+      const read = await reader.readRaw(
+        'HeartRate',
+        window.start,
+        window.end,
+        telemetry
+      );
+      if (read.error) error = read.error;
+      const samples = downsampleHeartRate(
+        heartRateReadingsFromRecords(read.records)
+      );
+      if (samples.length === 0) continue;
+      const body: HealthMetricSamplesWriteBody = {
+        metric: 'heart_rate',
+        source: PASSIVE_HEART_RATE_SOURCE,
+        device_name: Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect',
+        mode: 'merge',
+        window: {
+          start: window.start.toISOString(),
+          end: window.end.toISOString(),
+        },
+        samples: samples.map(({ t, bpm }) => ({ t, bpm })),
+      };
+      await postHealthMetricSamples(body);
+      samplesUploaded += samples.length;
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
+      addLog(`${logTag} All-day heart rate upload failed: ${error}`, 'WARNING');
+    }
+  }
+  return { samplesUploaded, error };
+}

@@ -29,6 +29,7 @@ import {
   FOREGROUND_TELEMETRY_BUDGET,
   type TelemetryRunContext,
 } from './telemetryBudget';
+import { syncAllDayHeartRate } from './heartRateSamplesSync';
 import {
   alignToLocalDayStart,
   buildForegroundWindows,
@@ -468,6 +469,34 @@ export const runForegroundSync = async (
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(`${opts.logTag} Writeback phase failed: ${message}`, 'ERROR');
+  }
+
+  // All-day heart rate readings for the Heart Rate report's day timeline. Rides
+  // on the Heart Rate toggle (no new permission) and is isolated like writeback:
+  // a failure is logged, never added to syncErrors, and re-sent by the next run
+  // since each upload replaces its own window.
+  if (metricsToSync.some((metric) => metric.recordType === 'HeartRate')) {
+    try {
+      const heartRate = await syncAllDayHeartRate(
+        provider,
+        windows.aggregatedStart,
+        windows.end,
+        telemetry,
+        opts.logTag
+      );
+      if (heartRate.samplesUploaded > 0) {
+        addLog(
+          `${opts.logTag} Uploaded ${heartRate.samplesUploaded} all-day heart rate readings`,
+          'INFO'
+        );
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      addLog(
+        `${opts.logTag} All-day heart rate phase failed: ${message}`,
+        'ERROR'
+      );
+    }
   }
 
   if (allTransformedData.length > 0) {

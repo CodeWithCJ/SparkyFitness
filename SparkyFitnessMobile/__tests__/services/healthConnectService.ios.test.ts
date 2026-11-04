@@ -226,7 +226,7 @@ describe('syncHealthData (iOS)', () => {
     expect(minRecord.unit).toBe('bpm');
   });
 
-  test('HeartRate uses native day statistics, not raw samples', async () => {
+  test('HeartRate daily figures use native day statistics; raw samples are read only for the all-day upload', async () => {
     mockQueryStatisticsCollection.mockResolvedValue([
       statsBucket(48, 120, 72.4),
     ]);
@@ -237,8 +237,12 @@ describe('syncHealthData (iOS)', () => {
     });
 
     expect(result.success).toBe(true);
-    // No raw sample read for HeartRate — one discrete-statistics collection query instead.
-    expect(mockQueryQuantitySamples).not.toHaveBeenCalled();
+    // The daily min/max/avg come from one discrete-statistics collection query. The
+    // only raw sample read is the separate all-day heart rate upload.
+    expect(mockQueryQuantitySamples).toHaveBeenCalled();
+    for (const call of mockQueryQuantitySamples.mock.calls) {
+      expect(call[0]).toBe('HKQuantityTypeIdentifierHeartRate');
+    }
     expect(mockQueryStatisticsCollection).toHaveBeenCalledWith(
       'HKQuantityTypeIdentifierHeartRate',
       ['discreteMin', 'discreteMax', 'discreteAverage'],

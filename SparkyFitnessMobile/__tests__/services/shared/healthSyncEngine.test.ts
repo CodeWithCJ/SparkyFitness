@@ -24,6 +24,10 @@ jest.mock('../../../src/services/api/healthDataApi', () => ({
   syncHealthData: jest.fn(),
 }));
 
+jest.mock('../../../src/services/api/healthSamplesApi', () => ({
+  postHealthMetricSamples: jest.fn().mockResolvedValue({}),
+}));
+
 jest.mock('../../../src/services/api/measurementsApi', () => ({
   serverSupportsPerRecordWater: jest.fn().mockResolvedValue(true),
 }));
@@ -696,6 +700,59 @@ describe('runForegroundSync', () => {
     expect(result.uploadErrors).toEqual(recordErrors);
     // Upload rejections are not read errors — the cursor logic keys off syncErrors.
     expect(result.syncErrors).toEqual([]);
+  });
+
+  test('uploads all-day heart rate when Heart Rate sync is on, without touching syncErrors', async () => {
+    const healthSamples =
+      require('../../../src/services/api/healthSamplesApi') as {
+        postHealthMetricSamples: jest.Mock;
+      };
+    const readRaw = jest.fn().mockResolvedValue({
+      records: [
+        {
+          startTime: '2026-07-02T08:00:00.000Z',
+          samples: [{ beatsPerMinute: 64 }],
+        },
+      ],
+    });
+    const provider = fakeProvider({
+      readRaw,
+      readMinMaxAvgByDay: jest.fn().mockResolvedValue({ records: [] }),
+    });
+    healthSamples.postHealthMetricSamples.mockRejectedValue(new Error('down'));
+
+    const result = await runForegroundSync(
+      provider,
+      'today',
+      { isHeartRateSyncEnabled: true },
+      opts
+    );
+
+    expect(readRaw).toHaveBeenCalledWith(
+      'HeartRate',
+      expect.any(Date),
+      expect.any(Date),
+      expect.anything()
+    );
+    expect(healthSamples.postHealthMetricSamples).toHaveBeenCalled();
+    expect(result.success).toBe(true);
+    expect(result.syncErrors).toEqual([]);
+  });
+
+  test('does not read all-day heart rate when Heart Rate sync is off', async () => {
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    await runForegroundSync(
+      fakeProvider({ readRaw }),
+      'today',
+      { isStepsSyncEnabled: true },
+      opts
+    );
+    expect(readRaw).not.toHaveBeenCalledWith(
+      'HeartRate',
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   test('read errors land in syncErrors while other metrics still sync', async () => {
