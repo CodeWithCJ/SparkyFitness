@@ -29,6 +29,7 @@ export const exercisesSchema = z.object({
   secondary_muscles: z.string().nullable(),
   instructions: z.string().nullable(),
   images: z.string().nullable(),
+  video_url: z.string().nullable(),
   is_quick_exercise: z.boolean().nullable(),
   modality: z.string(),
 });
@@ -55,6 +56,7 @@ export const exercisesInitializerSchema = z.object({
   secondary_muscles: z.string().optional().nullable(),
   instructions: z.string().optional().nullable(),
   images: z.string().optional().nullable(),
+  video_url: z.string().optional().nullable(),
   is_quick_exercise: z.boolean().optional().nullable(),
   modality: z.string().optional(),
 });
@@ -81,6 +83,7 @@ export const exercisesMutatorSchema = z.object({
   secondary_muscles: z.string().optional().nullable(),
   instructions: z.string().optional().nullable(),
   images: z.string().optional().nullable(),
+  video_url: z.string().optional().nullable(),
   is_quick_exercise: z.boolean().optional().nullable(),
   modality: z.string().optional(),
 });

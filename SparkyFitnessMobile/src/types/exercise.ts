@@ -17,6 +17,8 @@ export interface Exercise {
   level?: string | null;
   mechanic?: string | null;
   instructions?: string[];
+  /** Demonstration video link; absent on servers without the column. */
+  videoUrl?: string | null;
   description?: string | null;
   userId?: string | null;
   isCustom?: boolean;

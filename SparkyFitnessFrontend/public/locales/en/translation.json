@@ -1522,6 +1522,15 @@
       "empty": "No alternatives found",
       "retry": "Retry",
       "catalogUnavailable": "Free Exercise DB is unavailable, so only your library is shown."
+    },
+    "video": {
+      "embedTitle": "{{name}} demonstration video",
+      "help": "A short demonstration clip. YouTube links play right in the workout.",
+      "invalid": "Enter a link starting with https://",
+      "label": "Video link",
+      "openOnYouTube": "Open on YouTube",
+      "placeholder": "https://youtube.com/shorts/…",
+      "watch": "Watch demonstration video"
     }
   },
   "workoutPresetsManager": {

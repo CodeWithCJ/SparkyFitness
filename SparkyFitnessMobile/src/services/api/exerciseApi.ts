@@ -187,6 +187,7 @@ export interface CreateExercisePayload {
   mechanic?: string;
   /** Image references carried over when duplicating an exercise. */
   images?: string[];
+  video_url?: string | null;
 }
 
 export interface UpdateExercisePayload {
@@ -204,6 +205,8 @@ export interface UpdateExercisePayload {
   level?: string;
   force?: string;
   mechanic?: string;
+  /** null clears the link; omitted preserves it. */
+  video_url?: string | null;
   shared_with_public?: boolean;
 }
 
@@ -278,6 +281,7 @@ export const transformExerciseRow = (
   level: (row.level as string | null) ?? null,
   mechanic: (row.mechanic as string | null) ?? null,
   instructions: parseJsonArray(row.instructions),
+  videoUrl: typeof row.video_url === 'string' ? row.video_url : null,
   description: (row.description as string | null) ?? null,
   userId: row.user_id != null ? String(row.user_id) : null,
   isCustom:

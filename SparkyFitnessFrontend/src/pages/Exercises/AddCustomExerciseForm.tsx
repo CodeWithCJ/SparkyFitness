@@ -28,6 +28,8 @@ import {
 } from '@workspace/shared';
 import { TagInput } from '@/components/ui/TagInput';
 import { localizeMuscle, localizeEquipment } from '@/utils/exerciseTaxonomy';
+import ExerciseVideoUrlField from '@/components/Exercises/ExerciseVideoUrlField';
+import { normalizeExerciseVideoUrl } from '@workspace/shared';
 
 interface AddCustomExerciseFormProps {
   form: ReturnType<typeof useAddCustomExerciseForm>;
@@ -65,6 +67,8 @@ export default function AddCustomExerciseForm({
     setNewExerciseSecondaryMuscles,
     newExerciseInstructions,
     setNewExerciseInstructions,
+    newExerciseVideoUrl,
+    setNewExerciseVideoUrl,
     newExerciseImageUrls,
     handleAddCustomExercise,
     handleImageChange,
@@ -371,6 +375,14 @@ export default function AddCustomExerciseForm({
         />
       </div>
 
+      {/* Demonstration video */}
+      <ExerciseVideoUrlField
+        id="video-url"
+        value={newExerciseVideoUrl}
+        onChange={setNewExerciseVideoUrl}
+        exerciseName={newExerciseName}
+      />
+
       {/* Images */}
       <div className="grid grid-cols-4 items-start gap-4">
         <Label htmlFor="images" className="text-right mt-1">
@@ -418,7 +430,10 @@ export default function AddCustomExerciseForm({
         </div>
       </div>
 
-      <Button onClick={handleAddCustomExercise}>
+      <Button
+        onClick={handleAddCustomExercise}
+        disabled={normalizeExerciseVideoUrl(newExerciseVideoUrl) === undefined}
+      >
         {t('exercise.addExerciseDialog.addButton', 'Add Exercise')}
       </Button>
     </div>

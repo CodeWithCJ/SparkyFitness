@@ -19,6 +19,7 @@ import {
   CANONICAL_EQUIPMENT,
   resolveCanonicalOrCustomMuscle,
   resolveCanonicalOrCustomEquipment,
+  normalizeExerciseVideoUrl,
 } from '@workspace/shared';
 import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
 import type { Exercise } from '../types/exercise';
@@ -122,6 +123,7 @@ interface ExerciseFormState {
   primaryMuscles: string[];
   secondaryMuscles: string[];
   instructions: string;
+  videoUrl: string;
   level: string | null;
   force: string | null;
   mechanic: string | null;
@@ -139,6 +141,7 @@ const hasAdvancedContent = (state: ExerciseFormState): boolean =>
     state.primaryMuscles.length > 0 ||
     state.secondaryMuscles.length > 0 ||
     state.instructions ||
+    state.videoUrl ||
     state.level ||
     state.force ||
     state.mechanic
@@ -471,6 +474,30 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
               style={{ minHeight: 120, textAlignVertical: 'top' }}
             />
           </View>
+
+          <View className="gap-1.5">
+            <Text className="text-text-secondary text-sm font-medium">
+              {t('workout.videoLink', { defaultValue: 'Video link' })}
+            </Text>
+            <FormInput
+              placeholder={t('workout.videoLinkPlaceholder', {
+                defaultValue: 'https://youtube.com/shorts/…',
+              })}
+              value={state.videoUrl}
+              onChangeText={(videoUrl) =>
+                setState((prev) => ({ ...prev, videoUrl }))
+              }
+              keyboardType="url"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <Text className="text-text-muted text-xs">
+              {t('workout.videoLinkHelp', {
+                defaultValue:
+                  'A short demonstration clip, shown in the How to tab and during workouts.',
+              })}
+            </Text>
+          </View>
         </View>
       ) : null}
     </View>
@@ -497,6 +524,27 @@ const validateAndParseCalories = (
     return { ok: false };
   }
   return { ok: true, value: parsed };
+};
+
+/** A blank link clears it (null); anything but an http(s) URL is refused. */
+const validateVideoUrl = (
+  text: string,
+  t: TFunction
+): { ok: true; value: string | null } | { ok: false } => {
+  const value = normalizeExerciseVideoUrl(text);
+  if (value === undefined) {
+    Toast.show({
+      type: 'error',
+      text1: t('workout.invalidVideoLink', {
+        defaultValue: 'Invalid video link',
+      }),
+      text2: t('workout.invalidVideoLinkHint', {
+        defaultValue: 'Enter a link starting with https://',
+      }),
+    });
+    return { ok: false };
+  }
+  return { ok: true, value };
 };
 
 const buildCreatePayload = (
@@ -545,6 +593,7 @@ const formStateFromExercise = (
   primaryMuscles: exercise.primary_muscles ?? [],
   secondaryMuscles: exercise.secondary_muscles ?? [],
   instructions: joinLines(exercise.instructions),
+  videoUrl: exercise.videoUrl ?? '',
   level: exercise.level ?? null,
   force: exercise.force ?? null,
   mechanic: exercise.mechanic ?? null,
@@ -581,6 +630,7 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({
           primaryMuscles: [],
           secondaryMuscles: [],
           instructions: '',
+          videoUrl: '',
           level: null,
           force: null,
           mechanic: null,
@@ -604,7 +654,11 @@ const CreateExerciseMode: React.FC<CreateExerciseModeProps> = ({
     const calories = validateAndParseCalories(state.caloriesPerHourText, t);
     if (!calories.ok) return;
 
+    const video = validateVideoUrl(state.videoUrl, t);
+    if (!video.ok) return;
+
     const payload = buildCreatePayload(trimmedName, state, calories.value);
+    if (video.value) payload.video_url = video.value;
     // A copy keeps the original's images (by reference).
     if (duplicateOf && duplicateOf.images.length > 0) {
       payload.images = duplicateOf.images;
@@ -759,7 +813,13 @@ const EditExerciseMode: React.FC<EditExerciseModeProps> = ({
     const calories = validateAndParseCalories(state.caloriesPerHourText, t);
     if (!calories.ok) return;
 
+    const video = validateVideoUrl(state.videoUrl, t);
+    if (!video.ok) return;
+
     const payload = buildEditPayload(exercise, state, calories.value);
+    if (video.value !== (exercise.videoUrl ?? null)) {
+      payload.video_url = video.value;
+    }
 
     if (Object.keys(payload).length === 0) {
       navigation.goBack();

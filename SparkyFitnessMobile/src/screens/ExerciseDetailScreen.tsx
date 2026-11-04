@@ -29,6 +29,7 @@ import Icon from '../components/Icon';
 import SafeImage from '../components/SafeImage';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import ExerciseHistoryList from '../components/ExerciseHistoryList';
+import ExerciseVideoCard from '../components/ExerciseVideoCard';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { cardioSessionFromDiaryEntry } from '../utils/cardioSession';
 import ActionSheet, {
@@ -361,6 +362,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   }, []);
 
   const hasHowToContent =
+    Boolean(exercise.videoUrl) ||
     imageSources.length > 0 ||
     instructionSteps.length > 0 ||
     description.length > 0;
@@ -737,6 +739,11 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
             />
           ) : resolvedTab === 'how-to' ? (
             <>
+              <ExerciseVideoCard
+                url={exercise.videoUrl}
+                exerciseName={exercise.name}
+              />
+
               {imageGallery}
 
               {instructionSteps.length > 0 ? (

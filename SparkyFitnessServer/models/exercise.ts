@@ -24,7 +24,7 @@ async function getExerciseById(id: any, userId: any) {
   try {
     const result = await client.query(
       `SELECT id, source, source_id, name, force, level, mechanic, equipment,
-              primary_muscles, secondary_muscles, instructions, category, images,
+              primary_muscles, secondary_muscles, instructions, category, images, video_url,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
               modality, created_at, updated_at
        FROM exercises WHERE id = $1`,
@@ -205,7 +205,7 @@ async function getExercisesWithPagination(
     }
     const query = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
-             primary_muscles, secondary_muscles, instructions, category, images,
+             primary_muscles, secondary_muscles, instructions, category, images, video_url,
              calories_per_hour, description, user_id, is_custom, shared_with_public,
              modality, created_at, updated_at
       FROM exercises
@@ -426,7 +426,7 @@ async function searchExercises(
     }
     const finalQuery = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
-              primary_muscles, secondary_muscles, instructions, category, images,
+              primary_muscles, secondary_muscles, instructions, category, images, video_url,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
               modality
        FROM exercises
@@ -526,7 +526,7 @@ async function searchExercisesPaginated(
     const offsetParamIndex = selectParamIndex + 1;
     const finalQuery = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
-              primary_muscles, secondary_muscles, instructions, category, images,
+              primary_muscles, secondary_muscles, instructions, category, images, video_url,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
               modality
        FROM exercises
@@ -578,11 +578,11 @@ async function createExercise(exerciseData: any) {
     const result = await client.query(
       `INSERT INTO exercises (
         source, source_id, name, force, level, mechanic, equipment,
-        primary_muscles, secondary_muscles, instructions, category, images,
+        primary_muscles, secondary_muscles, instructions, category, images, video_url,
         calories_per_hour, description, is_custom, user_id, shared_with_public,
         modality, created_at, updated_at
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, now(), now())
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $19, $12, $13, $14, $15, $16, $17, $18, now(), now())
        RETURNING *`,
       [
         exerciseData.source,
@@ -625,6 +625,9 @@ async function createExercise(exerciseData: any) {
           exerciseData.category,
           normalizeToStringArray(exerciseData.equipment)
         ),
+        typeof exerciseData.video_url === 'string'
+          ? exerciseData.video_url
+          : null,
       ]
     );
     return result.rows[0];
@@ -655,8 +658,11 @@ async function updateExercise(id: any, userId: any, updateData: any) {
         is_quick_exercise = COALESCE($15, is_quick_exercise),
         modality = COALESCE($16, modality),
         source_id = COALESCE($17, source_id),
+        -- Unlike the COALESCE columns, an explicit null clears the video link;
+        -- only an omitted field keeps it.
+        video_url = CASE WHEN $18::boolean THEN $19 ELSE video_url END,
         updated_at = now()
-      WHERE id = $18
+      WHERE id = $20
       RETURNING *`,
       [
         updateData.name,
@@ -692,6 +698,8 @@ async function updateExercise(id: any, userId: any, updateData: any) {
         // preserves it, and editing `category` alone never re-derives it.
         isExerciseModality(updateData.modality) ? updateData.modality : null,
         typeof updateData.source_id === 'string' ? updateData.source_id : null,
+        updateData.video_url !== undefined,
+        typeof updateData.video_url === 'string' ? updateData.video_url : null,
         id,
       ]
     );
@@ -720,7 +728,7 @@ async function getRecentExercises(userId: any, limit: any) {
     const result = await client.query(
       `SELECT
         e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
-        e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
+        e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images, e.video_url,
         e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
         e.modality, e.created_at, e.updated_at
       FROM exercise_entries ee
@@ -728,7 +736,7 @@ async function getRecentExercises(userId: any, limit: any) {
       WHERE ee.user_id = $1
         AND e.is_quick_exercise = FALSE
       GROUP BY e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
-               e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
+               e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images, e.video_url,
                e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
                e.modality, e.created_at, e.updated_at
       ORDER BY MAX(ee.entry_date) DESC, MAX(ee.created_at) DESC
@@ -770,7 +778,7 @@ async function getTopExercises(userId: any, limit: any) {
     const result = await client.query(
       `SELECT
         e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
-        e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
+        e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images, e.video_url,
         e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
         e.modality, e.created_at, e.updated_at,
         COUNT(ee.exercise_id) AS usage_count
@@ -779,7 +787,7 @@ async function getTopExercises(userId: any, limit: any) {
       WHERE ee.user_id = $1
         AND e.is_quick_exercise = FALSE
       GROUP BY e.id, e.source, e.source_id, e.name, e.force, e.level, e.mechanic, e.equipment,
-               e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images,
+               e.primary_muscles, e.secondary_muscles, e.instructions, e.category, e.images, e.video_url,
                e.calories_per_hour, e.description, e.user_id, e.is_custom, e.shared_with_public,
                e.modality, e.created_at, e.updated_at
       ORDER BY usage_count DESC
@@ -826,7 +834,7 @@ async function getExerciseBySourceAndSourceId(
   try {
     const result = await client.query(
       `SELECT id, source, source_id, name, force, level, mechanic, equipment,
-              primary_muscles, secondary_muscles, instructions, category, images,
+              primary_muscles, secondary_muscles, instructions, category, images, video_url,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
               modality, created_at, updated_at
        FROM exercises WHERE source = $1 AND source_id = $2 AND user_id = $3`,
@@ -1202,7 +1210,7 @@ async function findExerciseByNameAndUserId(name: any, userId: any) {
   try {
     const result = await client.query(
       `SELECT id, source, source_id, name, force, level, mechanic, equipment,
-              primary_muscles, secondary_muscles, instructions, category, images,
+              primary_muscles, secondary_muscles, instructions, category, images, video_url,
               calories_per_hour, description, user_id, is_custom, shared_with_public,
               modality, created_at, updated_at
        FROM exercises WHERE name = $1 AND (user_id = $2 OR shared_with_public = TRUE)`,

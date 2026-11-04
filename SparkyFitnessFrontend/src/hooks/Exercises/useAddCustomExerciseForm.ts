@@ -44,6 +44,7 @@ export function useAddCustomExerciseForm(
   const [newExerciseSecondaryMuscles, setNewExerciseSecondaryMuscles] =
     useState<string[]>([]);
   const [newExerciseInstructions, setNewExerciseInstructions] = useState('');
+  const [newExerciseVideoUrl, setNewExerciseVideoUrl] = useState('');
   const [newExerciseImages, setNewExerciseImages] = useState<File[]>([]);
   const [newExerciseImageUrls, setNewExerciseImageUrls] = useState<string[]>(
     []
@@ -71,6 +72,7 @@ export function useAddCustomExerciseForm(
     setNewExercisePrimaryMuscles([]);
     setNewExerciseSecondaryMuscles([]);
     setNewExerciseInstructions('');
+    setNewExerciseVideoUrl('');
     setNewExerciseImages([]);
     setNewExerciseImageUrls([]);
   };
@@ -100,6 +102,7 @@ export function useAddCustomExerciseForm(
           .split('\n')
           .map((s) => s.trim())
           .filter(Boolean),
+        video_url: newExerciseVideoUrl,
       };
       const formData = new FormData();
       formData.append('exerciseData', JSON.stringify(newExercise));
@@ -209,6 +212,8 @@ export function useAddCustomExerciseForm(
     newExerciseSecondaryMuscles,
     setNewExerciseSecondaryMuscles,
     newExerciseInstructions,
+    newExerciseVideoUrl,
+    setNewExerciseVideoUrl,
     setNewExerciseInstructions,
     newExerciseImageUrls,
     handleAddCustomExercise,
