@@ -161,12 +161,22 @@ function formatCustomValue(value: unknown, measurementType?: string): string {
   if (isRawSeries(value, measurementType)) return RAW_SERIES_PLACEHOLDER;
   const text = String(value).trim();
   if (/^-?\d+\.\d{3,}$/.test(text)) {
-    return String(Math.round(Number(text) * 100) / 100);
+    const rounded = Math.round(Number(text) * 100) / 100;
+    if (Number.isFinite(rounded)) return String(rounded);
   }
   if (text.length > NOTE_PREVIEW_LIMIT) {
     return `${text.slice(0, NOTE_PREVIEW_LIMIT)}… (truncated)`;
   }
   return text;
+}
+
+// The zone a time was shown in, for a line whose zone is not the profile's:
+// the IANA name, else the fixed offset as UTC+HH:MM.
+function zoneLabel(zone: RecordZone): string {
+  if (zone.kind === 'tz') return zone.tz;
+  const sign = zone.minutes < 0 ? '-' : '+';
+  const abs = Math.abs(zone.minutes);
+  return `UTC${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
 }
 
 // Unit suffix for a custom metric; categories without a real unit store "N/A".
@@ -721,6 +731,12 @@ Actions:
                   ) ?? { kind: 'tz', tz };
                   return {
                     ...row,
+                    // Named only when it differs from the profile zone, so
+                    // the usual line stays short.
+                    zone_label:
+                      zone.kind === 'tz' && zone.tz === tz
+                        ? null
+                        : zoneLabel(zone),
                     duration_seconds: row.duration_in_seconds,
                     bedtime: row.bedtime
                       ? formatLocalDateTime(row.bedtime, zone)
@@ -816,6 +832,8 @@ Actions:
                     parts.push(`score: ${s.sleep_score}/100`);
                   if (s.bedtime) parts.push(`bed: ${s.bedtime}`);
                   if (s.wake_time) parts.push(`wake: ${s.wake_time}`);
+                  if (s.zone_label && (s.bedtime || s.wake_time))
+                    parts.push(`times in ${s.zone_label}`);
                   if (s.source) parts.push(`(${s.source})`);
                   text += `- ${parts.join(' | ')}\n`;
                 }
@@ -1009,7 +1027,9 @@ Actions:
                 .join('\n\n');
               return truncateIfNeeded(
                 `# Custom Metrics History\n\n${body}`,
-                'Older days were left out. Pass start_date and end_date, or category_name, to narrow the history.'
+                'Older days were left out. Pass start_date and end_date, or category_name, to narrow the history.',
+                'full',
+                true
               );
             }
 

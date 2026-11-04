@@ -1649,7 +1649,7 @@ describe('check-in tool output size and local times', () => {
       '### Check-in Diary: 2026-11-02\n\n' +
         '## Sleep\n' +
         '- 7h 25m | bed: 2026-11-01 22:13 | wake: 2026-11-02 06:00 | (garmin)\n' +
-        '- 0h 30m | bed: 2026-11-02 14:00 | wake: 2026-11-02 14:30 | (manual)\n' +
+        '- 0h 30m | bed: 2026-11-02 14:00 | wake: 2026-11-02 14:30 | times in Europe/Berlin | (manual)\n' +
         '\n' +
         '## Fasting\n' +
         '- COMPLETED (16:8): 2026-11-01 20:00 → 2026-11-02 12:00\n' +
@@ -1789,6 +1789,91 @@ describe('check-in tool output size and local times', () => {
     );
   });
 
+  it('filters custom metric history by stored category name', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue(historyRows);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      {
+        action: 'get_custom_metrics_history',
+        category_name: 'hrv_last_night_avg',
+      },
+      opts
+    );
+
+    expect(result).toBe(
+      '# Custom Metrics History\n\n' +
+        '## 2026-11-02\n' +
+        '- HRV Last Night Average: 42.33 ms\n\n' +
+        '## 2026-11-01\n' +
+        '- HRV Last Night Average: 40.25 ms'
+    );
+  });
+
+  it('rejects a blank category_name instead of returning every metric', async () => {
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: '   ' },
+      opts
+    );
+
+    expect(String(result)).not.toContain('# Custom Metrics History');
+    expect(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).not.toHaveBeenCalled();
+  });
+
+  it('keeps a decimal too large to round as written', async () => {
+    const huge = `${'9'.repeat(320)}.123`;
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue([
+      {
+        id: 'c9',
+        value: huge,
+        entry_date: '2026-11-02',
+        custom_categories: { id: 'k9', name: 'Big', measurement_type: 'N/A' },
+      },
+    ]);
+
+    const result = String(
+      await tools.sparky_manage_checkin.execute!(
+        { action: 'get_custom_metrics_history' },
+        opts
+      )
+    );
+
+    expect(result).not.toContain('Infinity');
+    expect(result).toContain(`- Big: ${huge}`);
+  });
+
+  it('names an offset-only recording zone on the sleep line', async () => {
+    mockEmptyDiary();
+    vi.mocked(
+      sleepRepository.getSleepEntriesByUserIdAndDateRange
+    ).mockResolvedValue([
+      {
+        id: 's3',
+        entry_date: '2026-06-01',
+        duration_in_seconds: 28800,
+        bedtime: '2026-05-31T17:00:00.000Z',
+        wake_time: '2026-06-01T01:00:00.000Z',
+        source: 'manual',
+        record_utc_offset_minutes: 330,
+        created_at: '2026-06-01T02:00:00Z',
+      },
+    ]);
+
+    const result = await tools.sparky_manage_checkin.execute!(
+      { action: 'list_checkin_diary', entry_date: '2026-06-01' },
+      opts
+    );
+
+    expect(result).toContain(
+      '- 8h 0m | bed: 2026-05-31 22:30 | wake: 2026-06-01 06:30 | times in UTC+05:30 | (manual)\n'
+    );
+  });
+
   it('says so when no custom metric matches', async () => {
     vi.mocked(
       measurementService.getCustomMeasurementEntriesByDateRange
@@ -1825,6 +1910,11 @@ describe('check-in tool output size and local times', () => {
       result.startsWith(`# Custom Metrics History\n\n## ${newest}\n`)
     ).toBe(true);
     expect(result).toContain('Older days were left out.');
+    // The cut falls between whole lines, never inside one.
+    const kept = result.split('\n\n---\n')[0]!;
+    expect(
+      kept.endsWith('- HRV: 50 ms') || /## \d{4}-\d{2}-\d{2}$/.test(kept)
+    ).toBe(true);
     expect(result).not.toContain(`## ${days[0]!.entry_date}\n`);
   });
 
