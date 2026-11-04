@@ -3,6 +3,15 @@
 "watch.custom.left" = "%@ left";
 "watch.custom.leftOnly" = "left";
 "watch.custom.ofGoal" = "of %@";
+"watch.custom.starter.calories" = "Calories";
+"watch.custom.starter.caloriesRemaining" = "Calories left";
+"watch.custom.starter.carbs" = "Carbs";
+"watch.custom.starter.fasting" = "Fasting";
+"watch.custom.starter.fat" = "Fat";
+"watch.custom.starter.protein" = "Protein";
+"watch.custom.starter.steps" = "Steps";
+"watch.custom.starter.water" = "Water";
+"watch.custom.starter.weight" = "Weight";
 "watch.energy.accessibility" = "Calories %@ of goal. Fat %@, carbs %@, protein %@ of their goals.";
 "watch.fasting.noFast" = "No fast";
 "watch.fasting.notFasting" = "Not fasting";
