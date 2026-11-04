@@ -121,7 +121,14 @@ export default function RecipeImportReview({
           'All ingredient quantities are for the whole recipe. Confirm every food, variant, quantity and unit before saving.'
         )}
       </p>
-      {preview.syncWarnings.length > 0 && (
+      {preview.syncWarnings.some((warning) =>
+        [
+          'missing_quantity',
+          'missing_unit',
+          'incompatible_unit',
+          'missing_servings',
+        ].includes(warning)
+      ) && (
         <p className="text-sm text-amber-700 dark:text-amber-300">
           {t(
             'recipeImport.sourceWarnings',

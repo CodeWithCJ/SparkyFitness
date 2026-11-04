@@ -292,7 +292,10 @@ export default function RecipeImportReview({
         </Text>
       )}
       {preview.syncWarnings
-        .filter((warning) => warning !== 'missing_servings')
+        .filter(
+          (warning) =>
+            warning !== 'missing_servings' && warning !== 'incomplete_nutrition'
+        )
         .map((warning) => (
           <Text key={warning} className="text-text-secondary">
             {warning}

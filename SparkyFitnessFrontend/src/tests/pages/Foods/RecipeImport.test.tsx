@@ -4,27 +4,44 @@ import {
   act,
   fireEvent,
   render,
+  renderHook,
   screen,
   waitFor,
 } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { Food } from '@/types/food';
+import type { Food, FoodVariant } from '@/types/food';
 import type {
   RecipeImportPreview,
   RecipeImportSaveResponse,
 } from '@workspace/shared';
 import RecipeImportDialog from '@/pages/Foods/RecipeImportDialog';
 import RecipeImportSourcePanel from '@/pages/Foods/RecipeImportSourcePanel';
+import RecipeImportIngredientRow from '@/pages/Foods/RecipeImportIngredientRow';
+import RecipeImportNutritionPreview from '@/pages/Foods/RecipeImportNutritionPreview';
 import * as service from '@/api/Foods/recipeImportService';
 import { useMealInvalidation } from '@/hooks/useInvalidateKeys';
-import { getFoodDetailsV2 } from '@/api/Foods/foodService';
+import { useRecipeImport } from '@/hooks/Foods/useRecipeImport';
+import { getFoodById, getFoodDetailsV2 } from '@/api/Foods/foodService';
 
 let mockActing = false;
+let mockOwner = 'owner';
 let mockRealSelector = false;
+let mockVariants: FoodVariant[] = [mockFoodVariant()];
+function mockFoodVariant() {
+  return {
+    id: 'variant',
+    serving_size: 100,
+    serving_unit: 'g',
+    calories: 400,
+    protein: 10,
+    carbs: 60,
+    fat: 10,
+  };
+}
 jest.mock('@/contexts/ActiveUserContext', () => ({
   useActiveUser: () => ({
     isActingOnBehalf: mockActing,
-    activeUserId: 'owner',
+    activeUserId: mockOwner,
   }),
 }));
 jest.mock('@/api/Foods/recipeImportService');
@@ -76,7 +93,7 @@ jest.mock('@/hooks/AI/useUserAiConfigAllowed', () => ({
 jest.mock('@/hooks/Foods/useFoodVariants', () => ({
   foodVariantsOptions: (foodId: string) => ({
     queryKey: ['food-variants', foodId],
-    queryFn: async () => [],
+    queryFn: async () => mockVariants,
   }),
   useCreateFoodVariantMutation: () => ({
     isPending: false,
@@ -211,7 +228,10 @@ async function mapRice() {
 beforeEach(() => {
   jest.clearAllMocks();
   mockActing = false;
+  mockOwner = 'owner';
   mockRealSelector = false;
+  mockVariants = [mockFoodVariant()];
+  jest.mocked(getFoodById).mockResolvedValue(mockFood);
   api.browseRecipes.mockResolvedValue({
     items: [
       { id: 'recipe', slug: 'rice', name: 'Rice batch', recipeServings: 4 },
@@ -758,3 +778,252 @@ it('does not restore a departed owner source cache after an in-flight sync finis
     client.getQueryData(['meals', 'recipe-import-source', 'owner', 'meal'])
   ).toBeUndefined();
 });
+
+const reviewedMapping = {
+  ingredientId: 'rice',
+  foodId: 'food',
+  variantId: 'variant',
+  quantity: 600,
+  unit: 'g',
+  confirmed: true as const,
+};
+it.each([null, Number.NaN, Number.POSITIVE_INFINITY])(
+  'keeps a nullable/nonfinite selected nutrient editable and recovers after replacement (%s)',
+  async (protein) => {
+    // The legacy Food interface is narrower than the nullable database endpoint.
+    const incomplete = {
+      ...mockFoodVariant(),
+      protein,
+    } as unknown as Food['default_variant'];
+    jest
+      .mocked(getFoodById)
+      .mockResolvedValue({ ...mockFood, default_variant: incomplete });
+    mockVariants = [incomplete!] as typeof mockVariants;
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const view = (variantId: string) => (
+      <QueryClientProvider client={client}>
+        <RecipeImportIngredientRow
+          ingredient={preview.ingredients[0]!}
+          mapping={{ ...reviewedMapping, variantId }}
+          onConfirm={jest.fn()}
+        />
+        <RecipeImportNutritionPreview
+          mappings={[{ ...reviewedMapping, variantId }]}
+          ingredientCount={1}
+        />
+      </QueryClientProvider>
+    );
+    const result = render(view('variant'));
+    expect(await screen.findByText(/P \? g/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Core nutrition is incomplete. Choose a complete food variant.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Choose food for Rice' })
+    ).toBeEnabled();
+    expect(screen.queryByText(/2[,.]?400 kcal/)).not.toBeInTheDocument();
+    mockVariants = [
+      {
+        ...mockFoodVariant(),
+        id: 'complete',
+        serving_description: 'Complete portion',
+      },
+    ];
+    jest.mocked(getFoodById).mockResolvedValue(mockFood);
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ['foods'] });
+    });
+    result.rerender(view('complete'));
+    expect(
+      await screen.findByText(
+        `${(2400).toLocaleString()} kcal · P 60 g · C 360 g · F 60 g`
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        'Core nutrition is incomplete. Choose a complete food variant.'
+      )
+    ).not.toBeInTheDocument();
+  }
+);
+
+it('loads a saved non-default mapping from the variant endpoint and shares it between row and totals', async () => {
+  mockVariants = [
+    {
+      ...mockFoodVariant(),
+      id: 'portion',
+      serving_size: 200,
+      serving_description: 'Named portion',
+    },
+  ];
+  api.previewRecipe.mockResolvedValue({
+    ...preview,
+    ingredients: [
+      {
+        ...preview.ingredients[0]!,
+        mapping: { ...reviewedMapping, variantId: 'portion' },
+        mappingOrigin: 'saved',
+      },
+    ],
+  });
+  setup();
+  await selectRecipe();
+  expect(await screen.findByText('600 g · Named portion')).toBeInTheDocument();
+  expect(
+    await screen.findByText(
+      `${(1200).toLocaleString()} kcal · P 30 g · C 180 g · F 30 g`
+    )
+  ).toBeInTheDocument();
+  expect(getFoodById).toHaveBeenCalledTimes(1);
+});
+
+it('describes known optional gaps without claiming the selected core nutrition is incomplete', async () => {
+  api.previewRecipe.mockResolvedValue({
+    ...preview,
+    syncWarnings: ['incomplete_nutrition'],
+    ingredients: [
+      {
+        ...preview.ingredients[0]!,
+        mapping: reviewedMapping,
+        mappingOrigin: 'saved',
+        issues: ['incomplete_nutrition'],
+        missingNutrients: ['sodium'],
+      },
+    ],
+  });
+  setup();
+  await selectRecipe();
+  expect(
+    await screen.findByText(
+      'Some optional nutrients are unknown. Known nutrition can still be used.'
+    )
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText(
+      'Core nutrition is incomplete. Choose a complete food variant.'
+    )
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(
+      'The source has incomplete or incompatible amounts, units or servings. Review the warnings below. Manual tracking corrections may prevent source sync.'
+    )
+  ).not.toBeInTheDocument();
+  expect(
+    await screen.findByText(
+      `${(2400).toLocaleString()} kcal · P 60 g · C 360 g · F 60 g`
+    )
+  ).toBeInTheDocument();
+});
+
+it('keeps the source amount banner for a real missing source quantity', async () => {
+  api.previewRecipe.mockResolvedValue({
+    ...preview,
+    syncWarnings: ['missing_quantity'],
+    ingredients: [
+      {
+        ...preview.ingredients[0]!,
+        quantity: null,
+        issues: ['missing_quantity'],
+      },
+    ],
+  });
+  setup();
+  await selectRecipe();
+  expect(
+    screen.getByText(
+      'The source has incomplete or incompatible amounts, units or servings. Review the warnings below. Manual tracking corrections may prevent source sync.'
+    )
+  ).toBeInTheDocument();
+});
+
+it.each([false, true])(
+  'does not refill the source cache after a pending save departs (%s)',
+  async (departed) => {
+    let finish: (value: RecipeImportSaveResponse) => void = () => {};
+    api.saveRecipe.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const panel = setup();
+    await selectRecipe();
+    await mapRice();
+    fireEvent.click(screen.getByRole('button', { name: 'Save meal' }));
+    await waitFor(() => expect(api.saveRecipe).toHaveBeenCalledTimes(1));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Saving meal…' })
+    );
+    if (departed) {
+      panel.unmount();
+      panel.client.clear();
+    }
+    await act(async () => finish(saved));
+    await waitFor(() =>
+      expect(
+        panel.client.getQueryData([
+          'meals',
+          'recipe-import-source',
+          'owner',
+          'meal',
+        ])
+      ).toEqual(departed ? undefined : saved.source)
+    );
+    expect(api.saveRecipe).toHaveBeenCalledTimes(1);
+  }
+);
+
+it.each(['owner', 'draft'] as const)(
+  'ignores a pending save after the live %s identity changes',
+  async (change) => {
+    const client = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    });
+    let finish: (value: RecipeImportSaveResponse) => void = () => {};
+    api.saveRecipe.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+    const hook = renderHook(({ value }) => useRecipeImport(value), {
+      initialProps: { value: preview },
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    });
+    act(() =>
+      hook.result.current.save.mutate({
+        providerId: 'provider',
+        recipeSlug: 'rice',
+        sourceFingerprint: preview.sourceFingerprint,
+        mappings: [reviewedMapping],
+      })
+    );
+    await waitFor(() => expect(api.saveRecipe).toHaveBeenCalledTimes(1));
+    if (change === 'owner') mockOwner = 'next-owner';
+    hook.rerender({
+      value:
+        change === 'draft'
+          ? { ...preview, sourceFingerprint: 'b'.repeat(64) }
+          : preview,
+    });
+    client.clear();
+    await act(async () => finish(saved));
+    expect(
+      client.getQueryData(['meals', 'recipe-import-source', 'owner', 'meal'])
+    ).toBeUndefined();
+    expect(
+      client.getQueryData([
+        'meals',
+        'recipe-import-source',
+        'next-owner',
+        'meal',
+      ])
+    ).toBeUndefined();
+  }
+);

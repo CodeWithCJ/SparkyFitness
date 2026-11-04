@@ -1,5 +1,6 @@
 {
   "recipeImport": {
+    "incompleteCoreNutrition": "Core nutrition is incomplete. Choose a complete food variant.",
     "sourceAmount": "Original whole-recipe amount: {{quantity}} {{unit}}",
     "notProvided": "not provided",
     "nutritionSummary": "Whole-recipe nutrition preview",
@@ -66,7 +67,7 @@
       "unstructured_food": "Source food identity needs manual review.",
       "linked_recipe": "Linked recipes cannot be imported here. Use a recipe with explicit ingredients.",
       "mapping_unavailable": "The saved food mapping is unavailable. Choose a food again.",
-      "incomplete_nutrition": "Core nutrition is incomplete. Choose a complete food variant.",
+      "incomplete_nutrition": "Some optional nutrients are unknown. Known nutrition can still be used.",
       "incompatible_unit": "Review the quantity in the selected food unit. Volume is never treated as mass."
     }
   },

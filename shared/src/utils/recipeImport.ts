@@ -3,6 +3,28 @@ import { getConversionFactor } from './servingSizeConversions.ts';
 
 type Suggestions = RecipeImportSuggestionResponse['ingredients'];
 
+const CORE_NUTRIENTS = ['calories', 'protein', 'carbs', 'fat'] as const;
+
+/** Current selected nutrition takes precedence over gaps from an older preview. */
+export function recipeImportNutritionGaps(
+  variant:
+    Partial<Record<(typeof CORE_NUTRIENTS)[number], unknown>> | undefined,
+  knownMissing: readonly string[]
+): { missingCore: boolean; missingNutrients: string[] } {
+  const missingNutrients = variant
+    ? [...new Set([...CORE_NUTRIENTS, ...knownMissing])].filter((key) => {
+        const value: unknown = Reflect.get(variant, key);
+        return (
+          typeof value !== 'number' || !Number.isFinite(value) || value < 0
+        );
+      })
+    : [...knownMissing];
+  return {
+    missingCore: CORE_NUTRIENTS.some((key) => missingNutrients.includes(key)),
+    missingNutrients,
+  };
+}
+
 /** Preserve whole-recipe amounts only across compatible, explicit units. */
 export function recipeImportInitialQuantity(
   quantity: number | null | undefined,

@@ -38,6 +38,20 @@ export function useRecipeImport(preview: RecipeImportPreview) {
       )
   );
   const mappingsRef = useRef(mappings);
+  const identity = JSON.stringify([
+    activeUserId,
+    isActingOnBehalf,
+    preview.providerId,
+    preview.recipeSlug,
+    preview.sourceFingerprint,
+  ]);
+  const currentIdentity = useRef<string | null>(identity);
+  useEffect(() => {
+    currentIdentity.current = identity;
+    return () => {
+      currentIdentity.current = null;
+    };
+  }, [identity]);
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -141,6 +155,7 @@ export function useRecipeImport(preview: RecipeImportPreview) {
   }
 
   const save = useMutation({
+    onMutate: () => ({ identity, ownerId: activeUserId }),
     mutationFn: (request: RecipeImportSaveRequest) => {
       if (!allowed.current)
         throw new Error(
@@ -152,13 +167,19 @@ export function useRecipeImport(preview: RecipeImportPreview) {
       return saveRecipe(request);
     },
     retry: false,
-    onSuccess: (result) => {
+    onSuccess: (result, _request, context) => {
+      if (
+        !alive.current ||
+        !allowed.current ||
+        currentIdentity.current !== context?.identity
+      )
+        return;
       invalidateMeals();
       invalidateFoods();
       client.invalidateQueries({ queryKey: ['mealPlans'] });
       client.invalidateQueries({ queryKey: ['v2', 'foods'] });
       client.setQueryData(
-        ['meals', 'recipe-import-source', activeUserId, result.mealId],
+        ['meals', 'recipe-import-source', context.ownerId, result.mealId],
         result.source
       );
     },

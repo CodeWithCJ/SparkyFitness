@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { recipeImportNutritionGaps } from '@workspace/shared';
 import type {
   RecipeImportCandidate,
   RecipeImportIngredient,
@@ -25,7 +26,7 @@ const issueCopy: Record<RecipeImportIngredient['issues'][number], string> = {
   mapping_unavailable:
     'The saved food mapping is unavailable. Choose a food again.',
   incomplete_nutrition:
-    'Core nutrition is incomplete. Choose a complete food variant.',
+    'Some optional nutrients are unknown. Known nutrition can still be used.',
   incompatible_unit:
     'Review the quantity in the selected food unit. Volume is never treated as mass.',
 };
@@ -70,8 +71,17 @@ export default function RecipeImportIngredientRow({
         ? details.data?.default_variant
         : undefined))
     : undefined;
-  const number = (value: number) =>
-    value.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  const number = (value: number | null | undefined) =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0
+      ? value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+      : '?';
+  const { missingCore, missingNutrients } = recipeImportNutritionGaps(
+    variant,
+    ingredient.missingNutrients
+  );
+  const issues = ingredient.issues.filter(
+    (issue) => issue !== 'incomplete_nutrition'
+  );
   const blocked =
     disabled ||
     busy ||
@@ -200,17 +210,35 @@ export default function RecipeImportIngredientRow({
             : t('recipeImport.unresolved', 'Needs confirmation')}
         </Badge>
       </div>
-      {ingredient.issues.map((issue) => (
+      {issues.map((issue) => (
         <p key={issue} className="text-sm text-amber-700 dark:text-amber-300">
           {t(`recipeImport.issues.${issue}`, issueCopy[issue])}
         </p>
       ))}
-      {ingredient.missingNutrients.length > 0 && (
+      {missingCore && (
+        <p role="alert" className="text-sm text-amber-700 dark:text-amber-300">
+          {t(
+            'recipeImport.incompleteCoreNutrition',
+            'Core nutrition is incomplete. Choose a complete food variant.'
+          )}
+        </p>
+      )}
+      {!missingCore &&
+        (missingNutrients.length > 0 ||
+          (!variant && ingredient.issues.includes('incomplete_nutrition'))) && (
+          <p className="text-sm">
+            {t(
+              'recipeImport.issues.incomplete_nutrition',
+              issueCopy.incomplete_nutrition
+            )}
+          </p>
+        )}
+      {missingNutrients.length > 0 && (
         <p className="text-sm">
           {t(
             'recipeImport.missingNutrients',
             'Missing nutrients: {{nutrients}}',
-            { nutrients: ingredient.missingNutrients.join(', ') }
+            { nutrients: missingNutrients.join(', ') }
           )}
         </p>
       )}
@@ -338,8 +366,8 @@ export default function RecipeImportIngredientRow({
               {!candidate.nutritionComplete && (
                 <p>
                   {t(
-                    'recipeImport.issues.incomplete_nutrition',
-                    issueCopy.incomplete_nutrition
+                    'recipeImport.incompleteCoreNutrition',
+                    'Core nutrition is incomplete. Choose a complete food variant.'
                   )}
                 </p>
               )}

@@ -432,7 +432,7 @@ async function save(
     totalServings: serving.total_servings,
   };
 }
-async function getSource(
+async function storedSource(
   userId: string,
   actorId: string,
   mealId: string
@@ -446,6 +446,28 @@ async function getSource(
       'No recipe import source is available for this meal.'
     );
   return source;
+}
+function localMealMatchesSource(
+  meal: unknown,
+  userId: string,
+  fingerprint: string
+): boolean {
+  const record =
+    meal && typeof meal === 'object' ? (meal as Record<string, unknown>) : {};
+  return record.user_id === userId && mealFingerprint(meal) === fingerprint;
+}
+async function getSource(
+  userId: string,
+  actorId: string,
+  mealId: string
+): Promise<RecipeImportSource> {
+  const source = await storedSource(userId, actorId, mealId);
+  if (!source.syncEligible) return source;
+  const meal: unknown = await mealRepository.getMealById(mealId, userId);
+  return {
+    ...source,
+    syncEligible: localMealMatchesSource(meal, userId, source.mealFingerprint),
+  };
 }
 /** Stable recipe content: update timestamps and regenerated instruction IDs are not source edits. */
 function sourceContentFingerprint(recipe: MealieIngredientRecipe): string {
@@ -489,17 +511,14 @@ async function syncNutrition(
   actorId: string,
   mealId: string
 ): Promise<RecipeImportSyncResponse> {
-  const source = await getSource(userId, actorId, mealId);
+  const source = await storedSource(userId, actorId, mealId);
   const client = await adapter(userId, source.providerId);
   const recipe = await readRecipe(client, source.recipeSlug);
   checkFingerprint(recipeFingerprint(recipe), source.sourceFingerprint);
   const meal: unknown = await mealRepository.getMealById(mealId, userId);
   const record =
     meal && typeof meal === 'object' ? (meal as Record<string, unknown>) : {};
-  if (
-    record.user_id !== userId ||
-    mealFingerprint(meal) !== source.mealFingerprint
-  )
+  if (!localMealMatchesSource(meal, userId, source.mealFingerprint))
     throw new RecipeImportError(
       409,
       'LOCAL_CHANGED',

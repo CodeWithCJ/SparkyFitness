@@ -10,6 +10,7 @@ import type {
   RecipeImportSource,
 } from '@workspace/shared';
 import RecipeImportReview from '../../src/components/recipeImport/RecipeImportReview';
+import RecipeImportIngredientRow from '../../src/components/recipeImport/RecipeImportIngredientRow';
 import {
   saveRecipe,
   syncRecipeNutrition,
@@ -90,6 +91,85 @@ const variant = {
   carbs: 80,
   fat: 2,
 };
+
+it.each([null, Number.NaN, Number.POSITIVE_INFINITY])(
+  'keeps an incomplete endpoint variant editable and clears its warning after replacement (%s)',
+  async (protein) => {
+    // Saved variant endpoints can return null despite the older mobile interface.
+    const incomplete = { ...variant, protein } as unknown as Awaited<
+      ReturnType<typeof fetchFoodVariants>
+    >[number];
+    jest.mocked(fetchFoodVariants).mockResolvedValue([incomplete]);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const choose = jest.fn();
+    const row = {
+      ...preview.ingredients[0],
+      issues: ['incomplete_nutrition' as const],
+      missingNutrients: ['protein', 'sodium'],
+    };
+    const view = (variantId: string) => (
+      <QueryClientProvider client={client}>
+        <RecipeImportIngredientRow
+          ingredient={row}
+          mapping={{ ...mapping, variantId }}
+          scope="owner-server"
+          disabled={false}
+          onChoose={choose}
+          onCandidate={jest.fn()}
+        />
+      </QueryClientProvider>
+    );
+    const screen = render(view(variantId));
+    expect(await screen.findByText(/P \? g/)).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Core nutrition is incomplete. Choose a complete food variant.'
+      )
+    ).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Choose food for Rice'));
+    expect(choose).toHaveBeenCalledTimes(1);
+    jest
+      .mocked(fetchFoodVariants)
+      .mockResolvedValue([{ ...variant, id: 'complete' }]);
+    screen.rerender(view('complete'));
+    expect(await screen.findByText(/P 8 g/)).toBeTruthy();
+    expect(
+      screen.queryByText(
+        'Core nutrition is incomplete. Choose a complete food variant.'
+      )
+    ).toBeNull();
+  }
+);
+
+it('describes optional unknown nutrients without a false core warning on a reused mapping', async () => {
+  const screen = setup({
+    ...preview,
+    syncWarnings: ['incomplete_nutrition'],
+    ingredients: [
+      {
+        ...preview.ingredients[0],
+        mapping,
+        mappingOrigin: 'saved',
+        issues: ['incomplete_nutrition'],
+        missingNutrients: ['sodium'],
+      },
+    ],
+  });
+  expect(await screen.findByText('Nutrient rice · Brand')).toBeTruthy();
+  expect(
+    screen.getByText(
+      'Some optional nutrients are unknown. Known nutrition can still be used.'
+    )
+  ).toBeTruthy();
+  expect(
+    screen.queryByText(
+      'Core nutrition is incomplete. Choose a complete food variant.'
+    )
+  ).toBeNull();
+  expect(screen.queryByText('incomplete_nutrition')).toBeNull();
+});
 const navigation = {
   navigate: jest.fn(),
   replace: jest.fn(),

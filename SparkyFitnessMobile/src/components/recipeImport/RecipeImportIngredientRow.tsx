@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { recipeImportNutritionGaps } from '@workspace/shared';
 import type {
   RecipeImportIngredient,
   RecipeImportMapping,
@@ -12,8 +13,10 @@ import { fetchFoodVariants } from '../../services/api/foodsApi';
 import { formatLocalizedNumber } from '../../localization';
 import Button from '../ui/Button';
 
-const number = (value: number) =>
-  formatLocalizedNumber(value, { maximumFractionDigits: 3 });
+const number = (value: number | null | undefined) =>
+  typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? formatLocalizedNumber(value, { maximumFractionDigits: 3 })
+    : '?';
 interface Props {
   ingredient: RecipeImportIngredient;
   mapping?: RecipeImportMapping;
@@ -62,7 +65,7 @@ export default function RecipeImportIngredientRow({
       case 'incomplete_nutrition':
         return t('recipeImport.issues.incomplete_nutrition', {
           defaultValue:
-            'Core nutrition is incomplete. Choose a complete food variant.',
+            'Some optional nutrients are unknown. Known nutrition can still be used.',
         });
       case 'incompatible_unit':
         return t('recipeImport.issues.incompatible_unit', {
@@ -93,6 +96,10 @@ export default function RecipeImportIngredientRow({
     enabled: !!mapping,
     retry: false,
   });
+  const { missingCore, missingNutrients } = recipeImportNutritionGaps(
+    food.data?.variant,
+    ingredient.missingNutrients
+  );
   return (
     <View
       className="bg-surface rounded-xl p-4 gap-2"
@@ -125,16 +132,34 @@ export default function RecipeImportIngredientRow({
               defaultValue: 'Needs confirmation',
             })}
       </Text>
-      {ingredient.issues.map((issue) => (
-        <Text key={issue} className="text-text-secondary">
-          {issueLabel(issue)}
+      {ingredient.issues
+        .filter((issue) => issue !== 'incomplete_nutrition')
+        .map((issue) => (
+          <Text key={issue} className="text-text-secondary">
+            {issueLabel(issue)}
+          </Text>
+        ))}
+      {missingCore && (
+        <Text accessibilityRole="alert" className="text-danger">
+          {t('recipeImport.incompleteCoreNutrition', {
+            defaultValue:
+              'Core nutrition is incomplete. Choose a complete food variant.',
+          })}
         </Text>
-      ))}
-      {ingredient.missingNutrients.length > 0 && (
+      )}
+      {!missingCore &&
+        (missingNutrients.length > 0 ||
+          (!food.data?.variant &&
+            ingredient.issues.includes('incomplete_nutrition'))) && (
+          <Text className="text-text-secondary">
+            {issueLabel('incomplete_nutrition')}
+          </Text>
+        )}
+      {missingNutrients.length > 0 && (
         <Text className="text-text-secondary">
           {t('recipeImport.missingNutrients', {
             defaultValue: 'Missing nutrients: {{nutrients}}',
-            nutrients: ingredient.missingNutrients.join(', '),
+            nutrients: missingNutrients.join(', '),
           })}
         </Text>
       )}
@@ -245,7 +270,7 @@ export default function RecipeImportIngredientRow({
               )}
               {!candidate.nutritionComplete && (
                 <Text className="text-text-secondary">
-                  {t('recipeImport.issues.incomplete_nutrition', {
+                  {t('recipeImport.incompleteCoreNutrition', {
                     defaultValue:
                       'Core nutrition is incomplete. Choose a complete food variant.',
                   })}

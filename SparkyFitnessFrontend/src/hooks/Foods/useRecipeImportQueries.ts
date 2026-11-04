@@ -20,6 +20,15 @@ import { getFoodById, getFoodDetailsV2 } from '@/api/Foods/foodService';
 import { getExternalDataProviders } from '@/api/Settings/externalProviderService';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import type { Food } from '@/types/food';
+import { foodVariantsOptions } from './useFoodVariants';
+
+async function loadRecipeFood(foodId: string): Promise<Food> {
+  const [food, variants] = await Promise.all([
+    getFoodById(foodId),
+    foodVariantsOptions(foodId).queryFn(),
+  ]);
+  return { ...food, variants };
+}
 
 const foodKey = (ownerId: string | null, foodId?: string) => [
   'foods',
@@ -56,7 +65,7 @@ export function useRecipeImportFoodAccess(foodId?: string) {
   const client = useQueryClient();
   const details = useQuery({
     queryKey: foodKey(activeUserId, foodId),
-    queryFn: () => getFoodById(foodId!),
+    queryFn: () => loadRecipeFood(foodId!),
     enabled: !!foodId && !!activeUserId && !isActingOnBehalf,
     retry: false,
   });
@@ -65,7 +74,10 @@ export function useRecipeImportFoodAccess(foodId?: string) {
     loadFood: getFoodById,
     loadExternalFood: getFoodDetailsV2,
     cacheFood: (food: Food) =>
-      client.setQueryData(foodKey(activeUserId, food.id), food),
+      client.setQueryData<Food>(foodKey(activeUserId, food.id), (previous) => ({
+        ...food,
+        variants: food.variants ?? previous?.variants,
+      })),
   };
 }
 
@@ -74,7 +86,7 @@ export function useRecipeImportNutritionFoods(mappings: RecipeImportMapping[]) {
   return useQueries({
     queries: mappings.map((mapping) => ({
       queryKey: foodKey(activeUserId, mapping.foodId),
-      queryFn: () => getFoodById(mapping.foodId),
+      queryFn: () => loadRecipeFood(mapping.foodId),
       enabled: !!activeUserId && !isActingOnBehalf,
       retry: false,
     })),

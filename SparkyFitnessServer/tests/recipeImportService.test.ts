@@ -430,6 +430,37 @@ describe('explicit safe nutrition sync', () => {
       lastSyncedAt: null,
     });
   });
+  it('reports current local eligibility without blessing the stored baseline or contacting Mealie', async () => {
+    const baseline = await m.source();
+    const unchanged = await service.getSource('u', 'u', 'meal');
+    expect(unchanged.syncEligible).toBe(true);
+    m.meal.mockResolvedValue({
+      user_id: 'u',
+      foods: [{ ...foods[0], quantity: 300 }],
+    });
+    const changed = await service.getSource('u', 'u', 'meal');
+    expect(changed.syncEligible).toBe(false);
+    expect(changed.mealFingerprint).toBe(baseline.mealFingerprint);
+    expect(baseline.syncEligible).toBe(true);
+    expect(m.provider).not.toHaveBeenCalled();
+    expect(m.recipe).not.toHaveBeenCalled();
+    expect(m.save).not.toHaveBeenCalled();
+    expect(m.markSynced).not.toHaveBeenCalled();
+    await expect(service.syncNutrition('u', 'u', 'meal')).rejects.toMatchObject(
+      { status: 409, code: 'LOCAL_CHANGED' }
+    );
+    expect(m.patch).not.toHaveBeenCalled();
+  });
+  it('preserves an originally ineligible baseline even for an unchanged or renamed meal', async () => {
+    const baseline = await m.source();
+    m.source.mockResolvedValue({ ...baseline, syncEligible: false });
+    m.meal.mockResolvedValue({ user_id: 'u', name: 'Renamed batch', foods });
+    expect((await service.getSource('u', 'u', 'meal')).syncEligible).toBe(
+      false
+    );
+    m.source.mockResolvedValue(baseline);
+    expect((await service.getSource('u', 'u', 'meal')).syncEligible).toBe(true);
+  });
   it('rejects remote source changes without sending nutrition', async () => {
     m.recipe.mockResolvedValue({ ...recipe, name: 'Changed' });
     await expect(service.syncNutrition('u', 'u', 'meal')).rejects.toMatchObject(
