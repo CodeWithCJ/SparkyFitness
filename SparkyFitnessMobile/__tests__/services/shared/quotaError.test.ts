@@ -11,14 +11,15 @@ test.each<[string, boolean]>([
   expect(isRetryableHealthReadError(new Error(message))).toBe(expected);
 });
 
-test.each(['PERMISSION_ERROR', 'AGGREGATION_NOT_SUPPORTED'])(
-  'keeps native %s failures permanent without a matching message',
-  (code) => {
-    const failure = Object.assign(new Error('Native read failed'), { code });
-    expect(isRetryableHealthReadError(failure)).toBe(false);
-    expect(isRetryableHealthReadError({ code })).toBe(false);
-  }
-);
+test.each([
+  'PERMISSION_ERROR',
+  'AGGREGATION_NOT_SUPPORTED',
+  'SDK_VERSION_ERROR',
+])('keeps native %s failures permanent without a matching message', (code) => {
+  const failure = Object.assign(new Error('Native read failed'), { code });
+  expect(isRetryableHealthReadError(failure)).toBe(false);
+  expect(isRetryableHealthReadError({ code })).toBe(false);
+});
 
 test.each(['ARGUMENT_VALIDATION_ERROR', 'UNKNOWN_ERROR'])(
   'keeps native %s failures retryable',

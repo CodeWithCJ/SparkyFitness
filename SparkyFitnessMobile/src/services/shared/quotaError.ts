@@ -60,7 +60,8 @@ export const isPermanentlyUnavailableError = (error: unknown): boolean => {
   if (typeof error === 'object' && error !== null && 'code' in error) {
     if (
       error.code === 'PERMISSION_ERROR' ||
-      error.code === 'AGGREGATION_NOT_SUPPORTED'
+      error.code === 'AGGREGATION_NOT_SUPPORTED' ||
+      error.code === 'SDK_VERSION_ERROR'
     ) {
       return true;
     }

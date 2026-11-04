@@ -1709,7 +1709,11 @@ describe('enrichExerciseSessions', () => {
     }
   );
 
-  test.each(['PERMISSION_ERROR', 'AGGREGATION_NOT_SUPPORTED'])(
+  test.each([
+    'PERMISSION_ERROR',
+    'AGGREGATION_NOT_SUPPORTED',
+    'SDK_VERSION_ERROR',
+  ])(
     'keeps active calories when optional basal access fails with code %s',
     async (code) => {
       mockAggregateRecord.mockImplementation(
