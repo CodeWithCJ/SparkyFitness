@@ -78,6 +78,9 @@ const LEGACY_KEYS = {
 type LegacyKey = keyof typeof LEGACY_KEYS;
 
 /** Which stat the active-workout log shows in its per-set metric column. */
+/** How the Diary lays out food: grouped by meal, or one list by time of day. */
+export type DiaryViewMode = 'meals' | 'timeline';
+
 export type ActiveWorkoutMetricColumn =
   'rpe' | 'rir' | 'volume' | 'e1rm' | 'tenrm';
 
@@ -133,6 +136,7 @@ export const PREFERENCE_DEFAULTS = {
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
   diarySummaryVisible: false,
   diarySummaryExpanded: false,
+  diaryViewMode: 'meals' as DiaryViewMode,
   defaultRestSec: DEFAULT_REST_SEC as number,
   paceReferenceRace: null as PaceReferenceRace | null,
   paceReferenceOnWatch: false,
@@ -224,6 +228,7 @@ export type AppPreferencesData = {
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
   diarySummaryVisible: boolean;
   diarySummaryExpanded: boolean;
+  diaryViewMode: DiaryViewMode;
   defaultRestSec: number;
   /**
    * A recent race result the training paces are worked out from (device-local),
@@ -368,6 +373,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
   setDiarySummaryVisible: (value: boolean) => void;
+  setDiaryViewMode: (value: DiaryViewMode) => void;
   setDiarySummaryExpanded: (value: boolean) => void;
   setDefaultRestSec: (value: number) => void;
   setPaceReferenceRace: (value: PaceReferenceRace | null) => void;
@@ -532,6 +538,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setActiveWorkoutMetricColumn: (value) =>
         set({ activeWorkoutMetricColumn: value }),
       setDiarySummaryVisible: (value) => set({ diarySummaryVisible: value }),
+      setDiaryViewMode: (value) => set({ diaryViewMode: value }),
       setDiarySummaryExpanded: (value) => set({ diarySummaryExpanded: value }),
       setDefaultRestSec: (value) => set({ defaultRestSec: value }),
       setPaceReferenceRace: (value) => set({ paceReferenceRace: value }),
@@ -743,6 +750,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         activeWorkoutMetricColumn: state.activeWorkoutMetricColumn,
         diarySummaryVisible: state.diarySummaryVisible,
         diarySummaryExpanded: state.diarySummaryExpanded,
+        diaryViewMode: state.diaryViewMode,
         defaultRestSec: state.defaultRestSec,
         paceReferenceRace: state.paceReferenceRace,
         paceReferenceOnWatch: state.paceReferenceOnWatch,

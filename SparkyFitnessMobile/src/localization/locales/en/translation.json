@@ -1348,6 +1348,14 @@
     "buttonHint": "Opens rest period selection"
   },
   "diary": {
+    "view": {
+      "meals": "Meals",
+      "timeline": "Timeline"
+    },
+    "timeline": {
+      "noTime": "No time",
+      "addAt": "Add food at {{time}}"
+    },
     "chooseDate": "Choose diary date",
     "loading": "Loading diary...",
     "loadFailed": "Failed to load diary",
