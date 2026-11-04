@@ -57,6 +57,19 @@ describe('ProviderNutrientViewer', () => {
     expect(rowFor('Salz (NaCl)')).toHaveTextContent('Add as alias');
   });
 
+  it('does not badge a row the provider map leaves out, even if an alias matches it', () => {
+    // Livsmedelsverket leaves sodium out of the map when it is derived from salt.
+    renderOpen(
+      swissFood({
+        provider_nutrients: { 'Sodium, Na': 0, 'Salt, NaCl': 1 },
+        provider_nutrient_standard: {},
+      })
+    );
+
+    expect(rowFor('Sodium, Na')).not.toHaveTextContent('Standard: Sodium');
+    expect(rowFor('Sodium, Na')).toHaveTextContent('Add as alias');
+  });
+
   it('falls back to the label aliases when the provider sends no map', () => {
     renderOpen(
       swissFood({

@@ -94,7 +94,7 @@ export const ProviderNutrientViewer = ({
     return {
       providerNutrients: entries,
       providerUnits: variant?.provider_nutrient_units ?? {},
-      providerStandard: variant?.provider_nutrient_standard ?? {},
+      providerStandard: variant?.provider_nutrient_standard,
     };
   }, [food]);
 
@@ -224,11 +224,15 @@ export const ProviderNutrientViewer = ({
               const matchedNutrient = matchByNormalizedLabel.get(
                 normalizeNutrientName(label)
               );
-              // The provider's own code mapping comes first; label aliases
-              // cover providers that don't send one.
+              // A provider that sends its code mapping decides alone, so a row
+              // it leaves out on purpose (e.g. sodium derived from salt) is not
+              // badged through an alias. Label aliases cover providers that
+              // don't send one.
               const standardId = matchedNutrient
                 ? null
-                : (providerStandard[label] ?? getStandardNutrientId(label));
+                : providerStandard
+                  ? (providerStandard[label] ?? null)
+                  : getStandardNutrientId(label);
               const standardLabel = standardId
                 ? (CENTRAL_NUTRIENT_CONFIG[standardId]?.defaultLabel ??
                   standardId)
