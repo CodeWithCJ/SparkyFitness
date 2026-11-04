@@ -291,7 +291,9 @@ jobs:
       # every run instead of only at release time. A large deletion waits for a
       # person: once a key leaves the English file, Weblate's cleanup add-on
       # deletes its translations in every language.
+      # A held-back or failed merge fails the run, so the PR is not forgotten.
       - name: Merge the English pull request
+        id: english_merge
         if: steps.english_pr.outputs.pull-request-number != ''
         env:
           GH_TOKEN: ${{ secrets.TRANSLATIONS_PAT }}
@@ -301,19 +303,26 @@ jobs:
         run: |
           set -euo pipefail
           repo=CodeWithCJ/SparkyFitnessTranslations
-          deletions=$(gh pr view "$PR" --repo "$repo" --json deletions --jq .deletions)
+          # Count the deletions of this exact head. The PR's own diff stats are
+          # computed after the push and can still describe the previous head.
+          deletions=$(gh api "repos/$repo/compare/main...$HEAD_SHA" --jq '[.files[].deletions] | add // 0')
           if [ "$deletions" -gt "$MAX_DELETIONS" ]; then
-            echo "::warning::English PR #$PR deletes $deletions lines, so it was left open for a maintainer to review."
-            exit 0
+            note="held back: it deletes $deletions lines (limit $MAX_DELETIONS). Review and merge it by hand."
+            echo "note=$note" >> "$GITHUB_OUTPUT"
+            echo "::error::English PR #$PR $note"
+            exit 1
           fi
           # GitHub can still be working out whether a new PR is mergeable.
           for _ in 1 2 3; do
             if gh pr merge "$PR" --repo "$repo" --merge --delete-branch --match-head-commit "$HEAD_SHA"; then
+              echo "note=merged" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             sleep 20
           done
-          echo "::error::Could not merge English PR #$PR in $repo. Merge it by hand."
+          note="could not be merged. Merge it by hand."
+          echo "note=$note" >> "$GITHUB_OUTPUT"
+          echo "::error::English PR #$PR $note"
           exit 1
 
       # 7. Show both pull requests on the run's summary page.
@@ -325,10 +334,11 @@ jobs:
           WEBLATE_OP: ${{ steps.weblate_pr.outputs.pull-request-operation }}
           ENGLISH_PR: ${{ steps.english_pr.outputs.pull-request-url }}
           ENGLISH_OP: ${{ steps.english_pr.outputs.pull-request-operation }}
+          ENGLISH_NOTE: ${{ steps.english_merge.outputs.note }}
         run: |
           {
             echo "### Sync Translations"
             echo "- SparkyFitnessTranslations commit: ${SHA:-unknown}"
             echo "- Translations PR here: ${WEBLATE_PR:-none} (${WEBLATE_OP:-unchanged})"
-            echo "- English PR there: ${ENGLISH_PR:-none} (${ENGLISH_OP:-unchanged})"
+            echo "- English PR there: ${ENGLISH_PR:-none} (${ENGLISH_OP:-unchanged})${ENGLISH_NOTE:+, $ENGLISH_NOTE}"
           } >> "$GITHUB_STEP_SUMMARY"
