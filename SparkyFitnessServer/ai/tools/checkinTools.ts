@@ -985,34 +985,40 @@ Actions:
                   args.start_date || '1970-01-01',
                   args.end_date || '9999-12-31'
                 );
-              const wanted = args.category_name?.trim().toLowerCase();
-              // A stored name wins over a display name, since one category's
-              // display name can equal another's stored name.
-              const matches = (name: string | null | undefined) =>
-                name?.trim().toLowerCase() === wanted;
-              const byStoredName = history.filter((row) =>
-                matches(row.custom_categories?.name)
+              const requested = args.category_name?.trim();
+              const wanted = requested?.toLowerCase();
+              // Narrowest match first: the exact stored name, then the stored
+              // name in any case, then the display name (one category's
+              // display name can equal another's stored name).
+              const storedName = (row: CustomMeasurementEntryRow) =>
+                row.custom_categories?.name?.trim() ?? '';
+              const exact = history.filter(
+                (row) => storedName(row) === requested
+              );
+              const anyCase = history.filter(
+                (row) => storedName(row).toLowerCase() === wanted
+              );
+              const byDisplay = history.filter(
+                (row) =>
+                  row.custom_categories?.display_name?.trim().toLowerCase() ===
+                  wanted
               );
               const rows = !wanted
                 ? history
-                : byStoredName.length > 0
-                  ? byStoredName
-                  : history.filter((row) =>
-                      matches(row.custom_categories?.display_name)
-                    );
-              // Two categories can share a display name; ask for the stored
-              // name rather than mixing both metrics under one label.
-              const storedNames = [
-                ...new Set(
-                  rows.map((row) => row.custom_categories?.name?.trim() ?? '')
-                ),
-              ];
-              if (
-                wanted &&
-                byStoredName.length === 0 &&
-                storedNames.length > 1
-              ) {
-                return `# Custom Metrics History\n\nSeveral metrics are shown as "${args.category_name}": ${storedNames.join(', ')}. Ask again with one of these names as category_name.`;
+                : exact.length > 0
+                  ? exact
+                  : anyCase.length > 0
+                    ? anyCase
+                    : byDisplay;
+              // Several categories still match (shared display name, or stored
+              // names differing only in case): ask for one rather than mixing
+              // their values under one label.
+              const storedNames = [...new Set(rows.map(storedName))];
+              if (wanted && storedNames.length > 1) {
+                return truncateIfNeeded(
+                  `# Custom Metrics History\n\nSeveral metrics match "${requested}": ${storedNames.join(', ')}. Ask again with one of these names as category_name.`,
+                  'Ask again with the stored name of one metric as category_name.'
+                );
               }
               if (rows.length === 0) {
                 return `# Custom Metrics History\n\nNo custom metrics found${

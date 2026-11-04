@@ -1900,7 +1900,51 @@ describe('check-in tool output size and local times', () => {
     );
 
     expect(result).toBe(
-      '# Custom Metrics History\n\nSeveral metrics are shown as "HRV": garmin_hrv, oura_hrv. Ask again with one of these names as category_name.'
+      '# Custom Metrics History\n\nSeveral metrics match "HRV": garmin_hrv, oura_hrv. Ask again with one of these names as category_name.'
+    );
+  });
+
+  it('uses an exact stored-name match over one differing only in case', async () => {
+    const rows = [
+      {
+        id: 'c12',
+        value: '61',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k12',
+          name: 'garmin_hrv',
+          measurement_type: 'ms',
+        },
+      },
+      {
+        id: 'c13',
+        value: '48',
+        entry_date: '2026-11-02',
+        custom_categories: {
+          id: 'k13',
+          name: 'Garmin_HRV',
+          measurement_type: 'ms',
+        },
+      },
+    ];
+    vi.mocked(
+      measurementService.getCustomMeasurementEntriesByDateRange
+    ).mockResolvedValue(rows);
+
+    const exact = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: 'Garmin_HRV' },
+      opts
+    );
+    expect(exact).toBe(
+      '# Custom Metrics History\n\n## 2026-11-02\n- Garmin_HRV: 48 ms'
+    );
+
+    const otherCase = await tools.sparky_manage_checkin.execute!(
+      { action: 'get_custom_metrics_history', category_name: 'GARMIN_HRV' },
+      opts
+    );
+    expect(otherCase).toBe(
+      '# Custom Metrics History\n\nSeveral metrics match "GARMIN_HRV": garmin_hrv, Garmin_HRV. Ask again with one of these names as category_name.'
     );
   });
 
