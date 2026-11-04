@@ -53,6 +53,7 @@ private struct StoredMetric: Decodable {
     let value: Double
     let goal: Double?
     let progress: Double?
+    let unit: String?
     let decimals: Int?
     let day: String?
     let startedAt: Double?
@@ -88,43 +89,93 @@ private func clockText(_ seconds: TimeInterval) -> String {
     return String(format: "%d:%02d", minutes / 60, minutes % 60)
 }
 
-/// The text and the 0...1 fill for a definition, or dashes when its number
-/// isn't there. A format that needs a figure the metric lacks (percent without
-/// progress, remaining without a goal) shows the plain value instead.
+/// The words a definition shows: the main text, a line under it for the
+/// rectangular size, and the 0...1 fill. Dashes when its number isn't there. A
+/// format that needs a figure the metric lacks (percent without progress,
+/// remaining without a goal) shows the plain value instead.
+private struct Shown {
+    let text: String
+    let detail: String?
+    let progress: Double?
+
+    static let missing = Shown(text: "–", detail: nil, progress: nil)
+}
+
+private func ofGoalText(_ goal: String) -> String {
+    String(localized: "watch.custom.ofGoal", defaultValue: "of \(goal)")
+}
+
+/// "kcal left", or just "left" for a number with no unit.
+private func leftText(unit: String) -> String {
+    unit.isEmpty
+        ? String(localized: "watch.custom.leftOnly", defaultValue: "left")
+        : String(localized: "watch.custom.left", defaultValue: "\(unit) left")
+}
+
+/// An amount and its unit, as one phrase.
+private func amountText(_ value: Double, unit: String, decimals: Int) -> String {
+    let number = formatted(value, decimals: decimals)
+    return unit.isEmpty ? number : "\(number) \(unit)"
+}
+
 private func display(
     _ definition: StoredDefinition,
     metric: StoredMetric?,
     now: Date
-) -> (text: String, progress: Double?) {
-    guard let metric else { return ("–", nil) }
+) -> Shown {
+    guard let metric else { return .missing }
     let format = definition.format ?? "value"
 
     if definition.source == "fasting" {
         // Not fasting: no start time.
-        guard let started = metric.startedAt else { return ("–", nil) }
+        guard let started = metric.startedAt else { return .missing }
         let elapsed = max(0, now.timeIntervalSince1970 - started / 1000)
         var progress: Double?
         var remaining: TimeInterval?
+        var total: TimeInterval?
         if let target = metric.targetEndAt {
-            let total = (target - started) / 1000
-            if total > 0 {
-                progress = min(1, elapsed / total)
-                remaining = max(0, total - elapsed)
+            let span = (target - started) / 1000
+            if span > 0 {
+                total = span
+                progress = min(1, elapsed / span)
+                remaining = max(0, span - elapsed)
             }
         }
-        if format == "percent", let progress { return (percentText(progress), progress) }
-        if format == "remaining", let remaining { return (clockText(remaining), progress) }
-        return (clockText(elapsed), progress)
+        if format == "percent", let progress {
+            return Shown(text: percentText(progress), detail: clockText(elapsed), progress: progress)
+        }
+        if format == "remaining", let remaining {
+            return Shown(text: clockText(remaining), detail: leftText(unit: ""), progress: progress)
+        }
+        return Shown(
+            text: clockText(elapsed),
+            detail: total.map { ofGoalText(clockText($0)) },
+            progress: progress
+        )
     }
 
     let decimals = metric.decimals ?? 0
+    let unit = metric.unit ?? ""
     if format == "percent", let progress = metric.progress {
-        return (percentText(progress), progress)
+        return Shown(
+            text: percentText(progress),
+            detail: amountText(metric.value, unit: unit, decimals: decimals),
+            progress: progress
+        )
     }
     if format == "remaining", let goal = metric.goal {
-        return (formatted(max(0, goal - metric.value), decimals: decimals), metric.progress)
+        return Shown(
+            text: formatted(max(0, goal - metric.value), decimals: decimals),
+            detail: leftText(unit: unit),
+            progress: metric.progress
+        )
     }
-    return (formatted(metric.value, decimals: decimals), metric.progress)
+    return Shown(
+        text: formatted(metric.value, decimals: decimals),
+        detail: metric.goal.map { ofGoalText(amountText($0, unit: unit, decimals: decimals)) }
+            ?? (unit.isEmpty ? nil : unit),
+        progress: metric.progress
+    )
 }
 
 private func tint(_ color: String?) -> Color {
@@ -215,19 +266,21 @@ struct CustomComplicationContent {
     let icon: String
     let color: Color
     let text: String
+    /// A line under the text, for the rectangular size.
+    let detail: String?
     /// Nil draws no gauge: the definition turned it off, or the number has no goal.
     let progress: Double?
     let link: ComplicationLink
 
     static let placeholder = CustomComplicationContent(
         name: "", icon: "gauge.with.dots.needle.33percent", color: .white,
-        text: "60%", progress: 0.6, link: .goals
+        text: "60%", detail: nil, progress: 0.6, link: .goals
     )
 
     /// The slot has no complication yet, or the one it had was deleted.
     static let empty = CustomComplicationContent(
         name: "", icon: "gauge.with.dots.needle.33percent", color: .secondary,
-        text: "–", progress: nil, link: .goals
+        text: "–", detail: nil, progress: nil, link: .goals
     )
 }
 
@@ -254,6 +307,7 @@ struct CustomComplicationProvider: AppIntentTimelineProvider {
             icon: definition.icon ?? "gauge.with.dots.needle.33percent",
             color: tint(definition.color),
             text: shown.text,
+            detail: shown.detail,
             progress: (definition.gauge ?? false) ? shown.progress : nil,
             link: link(for: definition.source)
         )
@@ -302,6 +356,39 @@ struct CustomComplicationView: View {
     @ViewBuilder
     private var face: some View {
         switch family {
+        case .accessoryRectangular:
+            VStack(alignment: .leading, spacing: 2) {
+                Label {
+                    Text(verbatim: content.name)
+                } icon: {
+                    Image(systemName: content.icon)
+                }
+                .font(.headline)
+                .foregroundStyle(content.color)
+                .lineLimit(1)
+                Text(content.text)
+                    .font(.system(.body, design: .rounded).weight(.semibold))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if let progress = content.progress {
+                    ProgressView(value: progress)
+                        .tint(content.color)
+                } else if let detail = content.detail {
+                    Text(detail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        case .accessoryInline:
+            // The value goes first so a long name is what gets cut, never the number.
+            Label {
+                Text(verbatim: "\(content.text) \(content.name)")
+            } icon: {
+                Image(systemName: content.icon)
+            }
         case .accessoryCorner:
             Image(systemName: content.icon)
                 .font(.system(.title3, design: .rounded).weight(.semibold))
@@ -366,6 +453,8 @@ struct CustomComplication: Widget {
         }
         .configurationDisplayName("Custom Complication")
         .description("A complication you set up in the SparkyFitness app.")
-        .supportedFamilies([.accessoryCircular, .accessoryCorner])
+        .supportedFamilies([
+            .accessoryCircular, .accessoryCorner, .accessoryRectangular, .accessoryInline,
+        ])
     }
 }

@@ -214,11 +214,14 @@ const WatchComplicationEditScreen: React.FC<
         }}
         keyboardShouldPersistTaps="handled"
       >
-        <ComplicationPreview definition={form} />
+        <ComplicationPreview
+          definition={form}
+          name={form.name.trim() || complicationSourceLabel(form.source, t)}
+        />
         <Text className="text-xs text-text-muted mt-2 mb-4">
           {t('watchComplications.previewNote', {
             defaultValue:
-              'A sample day, in the circular and corner sizes. The watch face decides the final look.',
+              'A sample day, in each size. The watch face decides the final look.',
           })}
         </Text>
 

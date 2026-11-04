@@ -7300,7 +7300,12 @@
     "saved": "Complication saved",
     "editTitle": "Edit complication",
     "createTitle": "Add complication",
-    "previewNote": "A sample day, in the circular and corner sizes. The watch face decides the final look.",
+    "previewNote": "A sample day, in each size. The watch face decides the final look.",
+    "preview": {
+      "left": "left",
+      "leftUnit": "{{unit}} left",
+      "ofGoal": "of {{goal}}"
+    },
     "name": "Name",
     "namePlaceholder": "e.g. Protein left",
     "source": "Shows",

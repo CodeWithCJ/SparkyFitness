@@ -89,6 +89,32 @@ describe('WatchComplicationEditScreen', () => {
     ).toBe('65%');
   });
 
+  test('previews the rectangular and inline sizes with the name', () => {
+    renderScreen({});
+    fireEvent.changeText(screen.getByDisplayValue('Calories'), 'Net kcal');
+    expect(screen.getByTestId('complication-preview-rectangular')).toBeTruthy();
+    // With a gauge on, the rectangular size shows the bar, not the detail line.
+    expect(
+      screen.queryByTestId('complication-preview-rectangular-detail')
+    ).toBeNull();
+    expect(
+      screen.getByTestId('complication-preview-inline-text').props.children
+    ).toBe('65% Net kcal');
+  });
+
+  test('the rectangular size shows the amount line when there is no gauge', () => {
+    renderScreen({});
+    fireEvent(
+      screen.getByTestId('watch-complication-gauge-switch'),
+      'valueChange',
+      false
+    );
+    expect(
+      screen.getByTestId('complication-preview-rectangular-detail').props
+        .children
+    ).toBe('1,240 kcal');
+  });
+
   test('saving adds it after the starters, which makes the list the wearer’s own', () => {
     renderScreen({});
     fireEvent.changeText(screen.getByDisplayValue('Calories'), '  Net kcal  ');

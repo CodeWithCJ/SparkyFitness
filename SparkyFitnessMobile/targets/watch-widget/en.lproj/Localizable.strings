@@ -1,5 +1,8 @@
 "watch.calories.accessibility" = "Calories %lld%% of goal.";
 "watch.custom.accessibility" = "%@ %@";
+"watch.custom.left" = "%@ left";
+"watch.custom.leftOnly" = "left";
+"watch.custom.ofGoal" = "of %@";
 "watch.energy.accessibility" = "Calories %@ of goal. Fat %@, carbs %@, protein %@ of their goals.";
 "watch.fasting.noFast" = "No fast";
 "watch.fasting.notFasting" = "Not fasting";

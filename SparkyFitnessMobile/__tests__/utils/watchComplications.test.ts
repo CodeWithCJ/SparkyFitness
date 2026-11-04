@@ -26,8 +26,14 @@ import {
   type WatchComplicationDefinition,
 } from '../../src/utils/watchComplications';
 
-const t = (_key: string, options: { defaultValue: string }) =>
-  options.defaultValue;
+// Fills {{name}} placeholders, as i18next does, so the preview's wording shows.
+const t = (
+  _key: string,
+  options: { defaultValue: string; [option: string]: unknown }
+) =>
+  options.defaultValue.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+    String(options[name])
+  );
 
 const sample: WatchComplicationDefinition = {
   id: 'c1',
@@ -361,42 +367,57 @@ describe('list operations', () => {
 });
 
 describe('complicationPreview', () => {
-  it('shows percent and fills the gauge for a source with a goal', () => {
+  it('shows percent with the amount under it, and fills the gauge', () => {
     expect(
-      complicationPreview({
-        source: 'calories',
-        format: 'percent',
-        gauge: true,
-      })
-    ).toEqual({ text: '65%', progress: 0.65 });
+      complicationPreview(
+        { source: 'calories', format: 'percent', gauge: true },
+        t
+      )
+    ).toEqual({ text: '65%', detail: '1,240 kcal', progress: 0.65 });
   });
 
-  it('shows the value, or what is left, in the sample day', () => {
+  it('shows the value with its goal under it, or what is left', () => {
     expect(
-      complicationPreview({ source: 'steps', format: 'value', gauge: false })
-    ).toEqual({ text: '6,500', progress: null });
+      complicationPreview({ source: 'steps', format: 'value', gauge: false }, t)
+    ).toEqual({ text: '6,500', detail: 'of 10,000 steps', progress: null });
     expect(
-      complicationPreview({
-        source: 'steps',
-        format: 'remaining',
-        gauge: false,
-      })
-    ).toEqual({ text: '3,500', progress: null });
+      complicationPreview(
+        { source: 'steps', format: 'remaining', gauge: false },
+        t
+      )
+    ).toEqual({ text: '3,500', detail: 'steps left', progress: null });
   });
 
-  it('falls back to the value, with no gauge, when there is no goal', () => {
+  it('says just "left" for a number with no unit', () => {
     expect(
-      complicationPreview({ source: 'weight', format: 'percent', gauge: true })
-    ).toEqual({ text: '72.5', progress: null });
+      complicationPreview(
+        { source: 'fasting', format: 'remaining', gauge: true },
+        t
+      )
+    ).toEqual({ text: '5:30', detail: 'left', progress: 0.65 });
+    expect(
+      complicationPreview(
+        { source: 'fasting', format: 'value', gauge: false },
+        t
+      )
+    ).toEqual({ text: '10:30', detail: 'of 16:00', progress: null });
+  });
+
+  it('falls back to the value, with its unit and no gauge, when there is no goal', () => {
+    expect(
+      complicationPreview(
+        { source: 'weight', format: 'percent', gauge: true },
+        t
+      )
+    ).toEqual({ text: '72.5', detail: 'kg', progress: null });
   });
 
   it('previews a nutrient too', () => {
     expect(
-      complicationPreview({
-        source: 'nutrient:sodium',
-        format: 'value',
-        gauge: true,
-      })
-    ).toEqual({ text: '12', progress: 0.65 });
+      complicationPreview(
+        { source: 'nutrient:sodium', format: 'value', gauge: true },
+        t
+      )
+    ).toEqual({ text: '12', detail: 'of 18', progress: 0.65 });
   });
 });

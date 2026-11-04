@@ -168,7 +168,10 @@ export function defaultLookFor(source: ComplicationSource): Look {
   return SOURCE_LOOKS[source as ComplicationSourceKey] ?? { ...NUTRIENT_LOOK };
 }
 
-type Translator = (key: string, options: { defaultValue: string }) => string;
+type Translator = (
+  key: string,
+  options: { defaultValue: string; [option: string]: unknown }
+) => string;
 
 /**
  * Names for the starter set. Resolvers rather than key strings because the
@@ -513,47 +516,81 @@ export function moveComplication(
 /** How full the sample gauge is in the editor's preview. */
 export const PREVIEW_PROGRESS = 0.65;
 
-// A made-up day for the preview: the value, and what is left to the goal.
-const PREVIEW_SAMPLES: Record<
-  ComplicationSourceKey,
-  { value: string; left: string }
-> = {
-  calories: { value: '1,240', left: '660' },
-  caloriesRemaining: { value: '660', left: '660' },
-  caloriesBurned: { value: '420', left: '420' },
-  protein: { value: '98', left: '52' },
-  carbs: { value: '140', left: '75' },
-  fat: { value: '45', left: '24' },
-  water: { value: '1,300', left: '700' },
-  steps: { value: '6,500', left: '3,500' },
-  fasting: { value: '10:30', left: '5:30' },
-  weight: { value: '72.5', left: '72.5' },
-  bodyFat: { value: '18.5', left: '18.5' },
+interface PreviewSample {
+  value: string;
+  /** What is left to the goal. */
+  left: string;
+  /** The goal, when there is one. */
+  goal?: string;
+  unit?: string;
+}
+
+// A made-up day for the preview.
+const PREVIEW_SAMPLES: Record<ComplicationSourceKey, PreviewSample> = {
+  calories: { value: '1,240', left: '660', goal: '1,900', unit: 'kcal' },
+  caloriesRemaining: { value: '660', left: '660', unit: 'kcal' },
+  caloriesBurned: { value: '420', left: '420', unit: 'kcal' },
+  protein: { value: '98', left: '52', goal: '150', unit: 'g' },
+  carbs: { value: '140', left: '75', goal: '215', unit: 'g' },
+  fat: { value: '45', left: '24', goal: '69', unit: 'g' },
+  water: { value: '1,300', left: '700', goal: '2,000', unit: 'ml' },
+  steps: { value: '6,500', left: '3,500', goal: '10,000', unit: 'steps' },
+  fasting: { value: '10:30', left: '5:30', goal: '16:00' },
+  weight: { value: '72.5', left: '72.5', unit: 'kg' },
+  bodyFat: { value: '18.5', left: '18.5', unit: '%' },
 };
 
-const PREVIEW_NUTRIENT = { value: '12', left: '6' };
+const PREVIEW_NUTRIENT: PreviewSample = { value: '12', left: '6', goal: '18' };
+
+const withUnit = (amount: string, unit?: string) =>
+  unit ? `${amount} ${unit}` : amount;
 
 /**
  * What the complication would show on a sample day, so the editor can preview a
- * change without any real data. Follows the watch: percent and "left" fall back
- * to the value when the source has no goal, and a gauge needs one too.
+ * change without any real data. Follows the watch (`display` in
+ * `CustomComplication.swift`): percent and "left" fall back to the value when
+ * the source has no goal, and a gauge needs one too. `detail` is the line under
+ * the text in the rectangular size.
  */
 export function complicationPreview(
-  definition: Pick<WatchComplicationDefinition, 'source' | 'format' | 'gauge'>
-): { text: string; progress: number | null } {
+  definition: Pick<WatchComplicationDefinition, 'source' | 'format' | 'gauge'>,
+  t: Translator
+): { text: string; detail: string | null; progress: number | null } {
   const sample =
     PREVIEW_SAMPLES[definition.source as ComplicationSourceKey] ??
     PREVIEW_NUTRIENT;
   const hasGoal = sourceHasGoal(definition.source);
-  let text = sample.value;
+  const progress = hasGoal && definition.gauge ? PREVIEW_PROGRESS : null;
+
   if (hasGoal && definition.format === 'percent') {
-    text = `${Math.round(PREVIEW_PROGRESS * 100)}%`;
-  } else if (hasGoal && definition.format === 'remaining') {
-    text = sample.left;
+    return {
+      text: `${Math.round(PREVIEW_PROGRESS * 100)}%`,
+      detail: withUnit(sample.value, sample.unit),
+      progress,
+    };
+  }
+  if (hasGoal && definition.format === 'remaining') {
+    return {
+      text: sample.left,
+      detail: sample.unit
+        ? t('watchComplications.preview.leftUnit', {
+            defaultValue: '{{unit}} left',
+            unit: sample.unit,
+          })
+        : t('watchComplications.preview.left', { defaultValue: 'left' }),
+      progress,
+    };
   }
   return {
-    text,
-    progress: hasGoal && definition.gauge ? PREVIEW_PROGRESS : null,
+    text: sample.value,
+    detail:
+      hasGoal && sample.goal
+        ? t('watchComplications.preview.ofGoal', {
+            defaultValue: 'of {{goal}}',
+            goal: withUnit(sample.goal, sample.unit),
+          })
+        : (sample.unit ?? null),
+    progress,
   };
 }
 
