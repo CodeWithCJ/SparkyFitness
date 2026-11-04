@@ -272,17 +272,35 @@ struct EnergyGoalComplicationEntryView: View {
             )
     }
 
+    private func coloured(_ fraction: Double, _ color: Color) -> Text {
+        Text(verbatim: "\(Int((max(0, min(1, fraction)) * 100).rounded()))")
+            .foregroundStyle(color)
+    }
+
+    private var cornerNumbers: some View {
+        let snapshot = entry.snapshot
+        let dot = Text(verbatim: " • ").foregroundStyle(.secondary)
+        return (
+            coloured(snapshot.calorieGoalProgress, ComplicationPalette.calories)
+                + dot + coloured(snapshot.fatGoalProgress, ComplicationPalette.fat)
+                + dot + coloured(snapshot.carbsGoalProgress, ComplicationPalette.carbs)
+                + dot + coloured(snapshot.proteinGoalProgress, ComplicationPalette.protein)
+        )
+        .minimumScaleFactor(0.6)
+        .lineLimit(1)
+    }
+
     @ViewBuilder
     private var content: some View {
         switch family {
         case .accessoryCorner:
-            // The corner carries the same calorie + macro rings as the circle,
-            // so it reads differently from the calories-only Calorie Goal
-            // corner (flame glyph and gauge). The curved label is the calorie
-            // percent.
+            // Laid out like Apple's Activity corner: the rings in the corner
+            // and a curved row of coloured numbers beside them, one per ring
+            // in ring order (calories, then fat, carbs, protein). It reads
+            // differently from the calories-only Calorie Goal corner.
             EnergyGoalRings(snapshot: entry.snapshot)
                 .widgetLabel {
-                    Text(percentText(entry.snapshot.calorieGoalProgress))
+                    cornerNumbers
                 }
         default:
             // Bare ring, no visible text — Adam's choice, to keep the watch
