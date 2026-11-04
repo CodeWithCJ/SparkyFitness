@@ -312,7 +312,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
       <CopyMealSheet
         ref={copySheetRef}
         isPending={isCopying}
-        onCopy={(payload) => copyMeal(payload)}
+        onCopy={(payloads) => copyMeal(payloads)}
       />
     </View>
   );

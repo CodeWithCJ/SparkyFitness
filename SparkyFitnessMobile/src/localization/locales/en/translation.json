@@ -4086,7 +4086,8 @@
       "mealForRow": "Meal for {{food}}: {{meal}}",
       "increaseQuantity": "Increase quantity",
       "decreaseQuantity": "Decrease quantity",
-      "changeServing": "Change serving for {{name}}"
+      "changeServing": "Change serving for {{name}}",
+      "timeForAll": "Time for all items: {{time}}"
     },
     "actions": {
       "addAll_one": "Add all ({{count}})",
@@ -5501,8 +5502,11 @@
       "tomorrow": "Tomorrow"
     },
     "targetDate": "Target date",
+    "multipleDaysHint": "Tap more days to copy to each of them.",
     "targetMeal": "Target meal",
     "copy": "Copy",
+    "copyToDays_one": "Copy to {{count}} day",
+    "copyToDays_other": "Copy to {{count}} days",
     "copying": "Copying...",
     "duplicateTitle": "Can't copy meal",
     "duplicateMessage": "Duplicate meal-type names cannot currently be used for Copy Meal."
@@ -5580,6 +5584,9 @@
   "foodEntryCopy": {
     "success": "Meal copied",
     "failed": "Failed to copy meal",
+    "successDays_one": "Meal copied to {{count}} day",
+    "successDays_other": "Meal copied to {{count}} days",
+    "partial": "Copied to {{copied}} of {{total}} days",
     "foodSuccess": "Food copied",
     "foodFailed": "Failed to copy food"
   },

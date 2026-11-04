@@ -21,16 +21,20 @@ import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import StepperInput from '../components/StepperInput';
 import BottomSheetPicker from '../components/BottomSheetPicker';
+import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useMealTypes } from '../hooks/useMealTypes';
+import { usePreferences } from '../hooks/usePreferences';
 import { useAddFoodEntriesBatch } from '../hooks/useAddFoodEntriesBatch';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import type { TFunction } from 'i18next';
 import { useFoodSearchSelection } from '../hooks/useFoodSearchSelection';
 import type { BasketRow } from '../hooks/useFoodSearchSelection';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
-import { formatDateLabel } from '../utils/dateUtils';
+import { formatDateLabel, getDeviceTimezone } from '../utils/dateUtils';
+import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import { userHourMinute } from '@workspace/shared';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import { formatServingUnit } from '../utils/foodDetails';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
@@ -199,6 +203,21 @@ const FoodEntryMultiAddScreen: React.FC<FoodEntryMultiAddScreenProps> = ({
   const [bulkMealTypeId, setBulkMealTypeId] = useState<string | null>(null);
   const effectiveBulkMealTypeId = bulkMealTypeId ?? resolvedDefaultMealTypeId;
 
+  // One entry time for every row ('' = no time), so a whole meal logged
+  // together shares the time it was eaten.
+  const { preferences } = usePreferences();
+  const timeSheetRef = useRef<TimeSheetRef>(null);
+  const [entryTime, setEntryTime] = useState('');
+  const handleSetEntryTimeNow = () => {
+    const { hour, minute } = userHourMinute(getDeviceTimezone());
+    setEntryTime(
+      `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+    );
+  };
+  const entryTimeLabel =
+    formatTimeLabel(entryTime, preferences?.time_format) ??
+    t('foodEntryAdd.labels.none', { defaultValue: 'None' });
+
   // Backfill rows seeded without a meal type (opened generically, with no
   // route mealTypeId context) once the app default resolves. Guarded so it
   // never overwrites a per-row choice made after this runs once, and run as
@@ -275,8 +294,9 @@ const FoodEntryMultiAddScreen: React.FC<FoodEntryMultiAddScreenProps> = ({
       quantityText: row.quantityText,
       mealTypeId: row.mealTypeId || resolvedDefaultMealTypeId,
       entryDate: date,
+      entryTime,
     }),
-    [date, resolvedDefaultMealTypeId]
+    [date, entryTime, resolvedDefaultMealTypeId]
   );
 
   const runBatch = useCallback(
@@ -430,6 +450,60 @@ const FoodEntryMultiAddScreen: React.FC<FoodEntryMultiAddScreenProps> = ({
                   </TouchableOpacity>
                 )}
               />
+            </View>
+
+            <View className="flex-row items-center">
+              <TouchableOpacity
+                onPress={() => timeSheetRef.current?.present()}
+                disabled={isSubmitting}
+                activeOpacity={0.7}
+                className="flex-row items-center"
+                accessibilityRole="button"
+                accessibilityLabel={t(
+                  'foodEntryMultiAdd.accessibility.timeForAll',
+                  {
+                    time: entryTimeLabel,
+                    defaultValue: 'Time for all items: {{time}}',
+                  }
+                )}
+              >
+                <Text className="text-text-secondary text-base mr-2">
+                  {t('foodEntryAdd.labels.time', { defaultValue: 'Time' })}
+                </Text>
+                <Text className="text-text-primary text-base font-medium mr-1">
+                  {entryTimeLabel}
+                </Text>
+                <Icon
+                  name="chevron-down"
+                  size={12}
+                  color={textMuted}
+                  weight="medium"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                className="ml-4"
+                disabled={isSubmitting}
+                onPress={handleSetEntryTimeNow}
+              >
+                <Text className="text-text-link text-sm font-medium">
+                  {t('foodEntryAdd.actions.now', { defaultValue: 'Now' })}
+                </Text>
+              </TouchableOpacity>
+              {entryTime !== '' && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  className="ml-4"
+                  disabled={isSubmitting}
+                  onPress={() => setEntryTime('')}
+                >
+                  <Text className="text-text-link text-sm font-medium">
+                    {t('foodEntryAdd.actions.clear', {
+                      defaultValue: 'Clear',
+                    })}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {hasUnknownRows && (
@@ -641,6 +715,11 @@ const FoodEntryMultiAddScreen: React.FC<FoodEntryMultiAddScreenProps> = ({
           onPress={handleAddAll}
         />
       </KeyboardAvoidingView>
+      <TimeSheet
+        ref={timeSheetRef}
+        value={entryTime}
+        onSelectTime={setEntryTime}
+      />
     </View>
   );
 };
