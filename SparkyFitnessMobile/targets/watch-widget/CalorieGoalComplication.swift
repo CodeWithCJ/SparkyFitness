@@ -95,8 +95,9 @@ struct CalorieComplicationView: View {
             Gauge(value: entry.progress) {
                 Image(systemName: "flame.fill")
             } currentValueLabel: {
-                Text("\(percent)")
+                Text("\(percent)%")
                     .monospacedDigit()
+                    .minimumScaleFactor(0.6)
             }
             .gaugeStyle(.accessoryCircular)
             .tint(ComplicationPalette.calories)

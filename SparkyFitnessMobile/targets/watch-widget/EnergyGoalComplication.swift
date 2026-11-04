@@ -276,17 +276,13 @@ struct EnergyGoalComplicationEntryView: View {
     private var content: some View {
         switch family {
         case .accessoryCorner:
-            // Same shape as the macro corners: a glyph in the corner and a
-            // curved gauge label that carries the calorie percent.
-            Image(systemName: "flame.fill")
-                .font(.system(.title3, design: .rounded).weight(.semibold))
-                .foregroundStyle(ComplicationPalette.calories)
+            // The corner carries the same calorie + macro rings as the circle,
+            // so it reads differently from the calories-only Calorie Goal
+            // corner (flame glyph and gauge). The curved label is the calorie
+            // percent.
+            EnergyGoalRings(snapshot: entry.snapshot)
                 .widgetLabel {
-                    ProgressView(value: entry.snapshot.calorieGoalProgress) {
-                        Text(percentText(entry.snapshot.calorieGoalProgress))
-                            .minimumScaleFactor(0.7)
-                    }
-                    .tint(ComplicationPalette.calories)
+                    Text(percentText(entry.snapshot.calorieGoalProgress))
                 }
         default:
             // Bare ring, no visible text — Adam's choice, to keep the watch
