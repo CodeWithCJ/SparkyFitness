@@ -39,11 +39,41 @@ private struct StoredDefinition: Decodable {
     let icon: String?
 }
 
+/// What the picker offers before the phone's list has reached the watch (a
+/// fresh install, or a watch that has not been in range yet), so it is never
+/// empty. Mirrors `starterComplications` in `src/utils/watchComplications.ts`
+/// and uses the same ids, so a slot set to one of these keeps working once the
+/// phone's list arrives: change one side, change the other.
+private func starterDefinitions() -> [StoredDefinition] {
+    func starter(
+        _ source: String, _ name: String, _ format: String, _ gauge: Bool,
+        _ color: String, _ icon: String
+    ) -> StoredDefinition {
+        StoredDefinition(
+            id: "starter-\(source)", name: name, source: source,
+            format: format, gauge: gauge, color: color, icon: icon
+        )
+    }
+    return [
+        starter("calories", String(localized: "watch.custom.starter.calories", defaultValue: "Calories"), "percent", true, "calories", "flame.fill"),
+        starter("caloriesRemaining", String(localized: "watch.custom.starter.caloriesRemaining", defaultValue: "Calories left"), "value", false, "calories", "flame.fill"),
+        starter("protein", String(localized: "watch.custom.starter.protein", defaultValue: "Protein"), "percent", true, "protein", "fish.fill"),
+        starter("carbs", String(localized: "watch.custom.starter.carbs", defaultValue: "Carbs"), "percent", true, "carbs", "leaf.fill"),
+        starter("fat", String(localized: "watch.custom.starter.fat", defaultValue: "Fat"), "percent", true, "fat", "drop.fill"),
+        starter("water", String(localized: "watch.custom.starter.water", defaultValue: "Water"), "percent", true, "water", "drop.fill"),
+        starter("steps", String(localized: "watch.custom.starter.steps", defaultValue: "Steps"), "value", true, "steps", "figure.walk"),
+        starter("fasting", String(localized: "watch.custom.starter.fasting", defaultValue: "Fasting"), "value", true, "fasting", "timer"),
+        starter("weight", String(localized: "watch.custom.starter.weight", defaultValue: "Weight"), "value", false, "weight", "scalemass.fill"),
+    ]
+}
+
+/// The phone's list, or the starter set while there is none.
 private func loadDefinitions() -> [StoredDefinition] {
     guard
         let data = customDefaults()?.data(forKey: "customComplicationDefinitions"),
-        let list = try? JSONDecoder().decode([StoredDefinition].self, from: data)
-    else { return [] }
+        let list = try? JSONDecoder().decode([StoredDefinition].self, from: data),
+        !list.isEmpty
+    else { return starterDefinitions() }
     return list
 }
 

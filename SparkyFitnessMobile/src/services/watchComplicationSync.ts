@@ -20,6 +20,7 @@ export async function sendComplicationsToWatch(
     await WatchConnectivity.sendComplicationConfig(
       buildComplicationConfig(list)
     );
+    addLog(`[Watch Complications] Sent ${list.length} to the watch`, 'INFO');
   } catch (error) {
     addLog(`[Watch Complications] Could not send: ${error}`, 'ERROR');
     throw error;

@@ -68,6 +68,11 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
     /// reason. Also a full snapshot, so only the latest matters; queued ahead
     /// of held targets on activation, since those may name its new sets.
     private var heldPlanUpdate: [String: Any]?
+    /// The newest `complicationConfig`, held the same way and for the same
+    /// reason: the phone sends it as soon as the app opens, which is before the
+    /// session has usually finished activating, and a transfer made then is
+    /// dropped. A full list, so only the latest matters.
+    private var heldComplicationConfig: [String: Any]?
     private let heldLock = NSLock()
 
     /// Queues `payload` now if the session is activated, else holds it for
@@ -79,6 +84,34 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
     /// As `transferSetTargets`, for a plan update.
     func transferPlanUpdate(_ payload: [String: Any]) {
         transferOrHold(payload, into: \.heldPlanUpdate)
+    }
+
+    /// Queues the wearer's complications now if the session is activated, else
+    /// holds them for `activationDidCompleteWith`.
+    func transferComplicationConfig(_ payload: [String: Any]) {
+        heldLock.lock()
+        defer { heldLock.unlock() }
+        guard WCSession.default.activationState == .activated else {
+            heldComplicationConfig = payload
+            return
+        }
+        heldComplicationConfig = nil
+        sendComplicationConfigNow(payload)
+    }
+
+    /// Only the newest list matters, so a copy still waiting is cancelled rather
+    /// than left to arrive after it. Also sent live when the watch is reachable,
+    /// so an open watch app has it at once; the watch keeps the newest revision,
+    /// so the two copies cannot undo each other.
+    private func sendComplicationConfigNow(_ payload: [String: Any]) {
+        for transfer in WCSession.default.outstandingUserInfoTransfers
+        where transfer.userInfo["type"] as? String == "complicationConfig" {
+            transfer.cancel()
+        }
+        WCSession.default.transferUserInfo(payload)
+        if WCSession.default.isReachable {
+            WCSession.default.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+        }
     }
 
     private func transferOrHold(
@@ -177,11 +210,14 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
             heldLock.lock()
             let plan = heldPlanUpdate
             let targets = heldSetTargets
+            let complications = heldComplicationConfig
             heldPlanUpdate = nil
             heldSetTargets = nil
+            heldComplicationConfig = nil
             heldLock.unlock()
             if let plan { session.transferUserInfo(plan) }
             if let targets { session.transferUserInfo(targets) }
+            if let complications { sendComplicationConfigNow(complications) }
         }
         onReachabilityChange?(session.isReachable)
     }
@@ -765,18 +801,15 @@ public class WatchConnectivityModule: Module {
             WCSession.default.transferUserInfo(["type": "routeRemove", "routeId": routeId])
         }
 
-        /// The wearer's custom complications. Queued only: it is a full list,
-        /// so only the newest matters and a copy still waiting is cancelled
-        /// first rather than left to arrive after it.
+        /// The wearer's custom complications. Queued (and sent live when the
+        /// watch is reachable), and held until the session is activated: the
+        /// phone sends this as the app opens, before activation has usually
+        /// finished. See `transferComplicationConfig`.
         AsyncFunction("sendComplicationConfig") { (config: [String: Any]) -> Void in
             guard WCSession.isSupported() else { return }
-            for transfer in WCSession.default.outstandingUserInfoTransfers
-            where transfer.userInfo["type"] as? String == "complicationConfig" {
-                transfer.cancel()
-            }
             var payload = config
             payload["type"] = "complicationConfig"
-            WCSession.default.transferUserInfo(payload)
+            self.delegateHandler.transferComplicationConfig(payload)
         }
 
         /// Pause, resume, lap, finish or discard for the run going on the
