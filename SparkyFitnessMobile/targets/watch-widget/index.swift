@@ -12,5 +12,6 @@ struct exportWatchWidgets: WidgetBundle {
         FatGoalComplication()
         FastingComplication()
         StepsComplication()
+        CustomComplication()
     }
 }

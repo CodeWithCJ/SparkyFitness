@@ -13,6 +13,11 @@ struct SparkyFitnessWatchApp: App {
     @StateObject private var recordingStore = RecordingStore.shared
     @StateObject private var runStore = WatchRunStore.shared
 
+    init() {
+        // PHASE 0 SPIKE: gives the configurable complication definitions to list.
+        ComplicationPublisher.publishSampleCustomDefinitions()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
