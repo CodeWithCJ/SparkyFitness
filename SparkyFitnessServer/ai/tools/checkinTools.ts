@@ -986,14 +986,20 @@ Actions:
                   args.end_date || '9999-12-31'
                 );
               const wanted = args.category_name?.trim().toLowerCase();
-              const rows = wanted
-                ? history.filter((row) =>
-                    [
-                      row.custom_categories?.name,
-                      row.custom_categories?.display_name,
-                    ].some((name) => name?.trim().toLowerCase() === wanted)
-                  )
-                : history;
+              // A stored name wins over a display name, since one category's
+              // display name can equal another's stored name.
+              const matches = (name: string | null | undefined) =>
+                name?.trim().toLowerCase() === wanted;
+              const byStoredName = history.filter((row) =>
+                matches(row.custom_categories?.name)
+              );
+              const rows = !wanted
+                ? history
+                : byStoredName.length > 0
+                  ? byStoredName
+                  : history.filter((row) =>
+                      matches(row.custom_categories?.display_name)
+                    );
               if (rows.length === 0) {
                 return `# Custom Metrics History\n\nNo custom metrics found${
                   args.category_name ? ` for "${args.category_name}"` : ''
@@ -1007,11 +1013,10 @@ Actions:
               for (const row of rows) {
                 const day = String(row.entry_date);
                 const category = row.custom_categories;
-                const label = (
-                  category?.display_name ||
-                  category?.name ||
-                  'Unknown'
-                ).trim();
+                const label =
+                  category?.display_name?.trim() ||
+                  category?.name?.trim() ||
+                  'Unknown';
                 const value = formatCustomValue(
                   row.value,
                   category?.measurement_type
