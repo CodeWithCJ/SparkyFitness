@@ -42,6 +42,7 @@ import {
   userHourMinute,
   defaultMealTypeForTime,
   getConversionFactor,
+  recipeImportInitialQuantity,
   toHourMinute,
   type AiConfidence,
   type ConfidenceTone,
@@ -576,15 +577,14 @@ const FoodUnitSelector = ({
   useEffect(() => {
     if (!open || !preserveInitialAmountUnit || loading) return;
     setQuantity(
-      initialQuantity !== undefined && initialAmountFactor !== null
-        ? initialQuantity * initialAmountFactor
-        : undefined
+      recipeImportInitialQuantity(initialQuantity, initialUnit, displayUnit)
     );
   }, [
     open,
     preserveInitialAmountUnit,
     loading,
     initialQuantity,
+    initialUnit,
     initialAmountFactor,
     displayUnit,
     selectedVariant?.id,

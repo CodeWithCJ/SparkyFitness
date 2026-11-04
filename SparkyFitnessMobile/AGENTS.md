@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-31_
+_Last updated: 2026-11-04_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -439,6 +439,8 @@ const androidService = require('../../src/services/healthConnectService.ts');
 - Widgets/HUD/tab/add-sheet changes: rerun `useWidgetSync`, active workout store, `AddSheet`, `CustomTabBar`, `ActiveWorkoutBar`, and error-boundary tests.
 
 ## Quick Routing
+
+- Mealie ingredient meals: `RecipeImportScreen`, `components/recipeImport/`, `hooks/useRecipeImport.ts`, and `services/api/recipeImportApi.ts` provide personal source browsing, reviewable mapping, cooked batch weight and explicit unchanged-source nutrition sync. The meals library opens the flow; own meal detail shows provenance. `recipeImportSelection.ts` carries the existing `FoodSearch` / `FoodEntryAdd` picker handoff, preserving compatible source amounts and requiring explicit incompatible amounts. Shared `utils/recipeImport.ts` owns matching batches and late-confirmation protection. Recipe caches live under ordinary meals/foods invalidation roots and include server/profile scope; family diary routes never expose them.
 
 - Health sync bug: start at `healthConnectService.ts` or `.ios.ts`, then `services/healthconnect/` or `services/healthkit/`, `backgroundSyncService.ts`, `autoSyncCoordinator.ts`, `useSyncHealthData.ts`, `SyncScreen.tsx`, and `healthDataApi.ts`.
 - Health writeback bug: inspect `HealthDataWriteback`, `services/writeback.ts` / `.ios.ts`, platform writeback modules, mapper files, tracking storage, app permissions, and inbound source filters.

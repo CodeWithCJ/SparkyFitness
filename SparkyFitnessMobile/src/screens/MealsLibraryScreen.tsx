@@ -3,6 +3,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { View, FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
 import LibrarySearchBar from '../components/LibrarySearchBar';
 import MealLibraryRow from '../components/MealLibraryRow';
@@ -272,6 +273,17 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({
       style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
+      {isConnected ? (
+        <Button
+          variant="secondary"
+          className="mx-4 my-2"
+          onPress={() => navigation.navigate('RecipeImport')}
+        >
+          {t('recipeImport.title', {
+            defaultValue: 'Import Mealie ingredients',
+          })}
+        </Button>
+      ) : null}
       {isConnected ? renderSearchBar() : null}
       {renderContent()}
     </View>

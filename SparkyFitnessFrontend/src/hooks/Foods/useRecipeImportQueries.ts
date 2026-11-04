@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import {
   useMutation,
   useQueries,
@@ -88,7 +89,15 @@ export function useRecipeImportSource(
   const { t } = useTranslation();
   const { activeUserId, isActingOnBehalf } = useActiveUser();
   const client = useQueryClient();
-  const key = ['recipe-import-source', ownerId, mealId];
+  const key = ['meals', 'recipe-import-source', ownerId, mealId];
+  const identity = `${ownerId}:${mealId}`;
+  const current = useRef<string | null>(identity);
+  useEffect(() => {
+    current.current = identity;
+    return () => {
+      current.current = null;
+    };
+  }, [identity]);
   const source = useQuery({
     queryKey: key,
     queryFn: () => getRecipeSource(mealId),
@@ -109,7 +118,12 @@ export function useRecipeImportSource(
     },
     retry: false,
     onSuccess: (result) => {
-      client.setQueryData(key, result.source);
+      if (
+        current.current === identity &&
+        !isActingOnBehalf &&
+        activeUserId === ownerId
+      )
+        client.setQueryData(key, result.source);
     },
   });
   return { source, sync };

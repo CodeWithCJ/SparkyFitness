@@ -16,6 +16,7 @@ import type {
 import RecipeImportDialog from '@/pages/Foods/RecipeImportDialog';
 import RecipeImportSourcePanel from '@/pages/Foods/RecipeImportSourcePanel';
 import * as service from '@/api/Foods/recipeImportService';
+import { useMealInvalidation } from '@/hooks/useInvalidateKeys';
 import { getFoodDetailsV2 } from '@/api/Foods/foodService';
 
 let mockActing = false;
@@ -692,4 +693,68 @@ it('treats absent meal provenance as an ordinary meal without a sync action', as
   expect(
     screen.queryByRole('button', { name: 'Sync nutrition to Mealie' })
   ).not.toBeInTheDocument();
+});
+
+it('refreshes imported source eligibility after ordinary meal edit invalidation', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  function OrdinaryMealEdit() {
+    const invalidate = useMealInvalidation();
+    return <button onClick={invalidate}>Save ordinary meal edit</button>;
+  }
+  render(
+    <QueryClientProvider client={client}>
+      <RecipeImportSourcePanel mealId="meal" />
+      <OrdinaryMealEdit />
+    </QueryClientProvider>
+  );
+  expect(
+    await screen.findByRole('button', { name: 'Sync nutrition to Mealie' })
+  ).toBeEnabled();
+  api.getRecipeSource.mockResolvedValue({
+    ...saved.source,
+    syncEligible: false,
+  });
+  fireEvent.click(screen.getByText('Save ordinary meal edit'));
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'Sync nutrition to Mealie' })
+    ).toBeDisabled()
+  );
+});
+
+it('does not restore a departed owner source cache after an in-flight sync finishes', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  let finish: (
+    value: Awaited<ReturnType<typeof service.syncRecipeNutrition>>
+  ) => void = () => {};
+  api.syncRecipeNutrition.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+  );
+  const panel = render(
+    <QueryClientProvider client={client}>
+      <RecipeImportSourcePanel mealId="meal" />
+    </QueryClientProvider>
+  );
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Sync nutrition to Mealie' })
+  );
+  await waitFor(() => expect(api.syncRecipeNutrition).toHaveBeenCalledTimes(1));
+  panel.unmount();
+  client.clear();
+  await act(async () =>
+    finish({
+      status: 'synced',
+      source: { ...saved.source, lastSyncedAt: '2026-11-04T09:00:00Z' },
+    })
+  );
+  expect(
+    client.getQueryData(['meals', 'recipe-import-source', 'owner', 'meal'])
+  ).toBeUndefined();
 });

@@ -58,11 +58,15 @@ describe.runIf(RUN)('recipe import provenance and mappings real RLS', () => {
       await sys.query('BEGIN');
       for (const id of [owner, other, delegate])
         await sys.query(
-          `INSERT INTO public."user" (id,email,email_verified) VALUES ($1,$2,true)`,
+          `
+INSERT INTO public."user" (id,email,email_verified) VALUES ($1,$2,true)
+`,
           [id, 'recipe-import-rls-' + id + '@example.test']
         );
       await sys.query(
-        `INSERT INTO family_access (owner_user_id,family_user_id,family_email,access_permissions,is_active,status) VALUES ($1,$2,$3,$4::jsonb,true,'active')`,
+        `
+INSERT INTO family_access (owner_user_id,family_user_id,family_email,access_permissions,is_active,status) VALUES ($1,$2,$3,$4::jsonb,true,'active')
+`,
         [
           owner,
           delegate,
@@ -79,29 +83,39 @@ describe.runIf(RUN)('recipe import provenance and mappings real RLS', () => {
         ]
       );
       await sys.query(
-        `INSERT INTO external_data_providers (id,user_id,provider_name,provider_type,is_active,is_public) VALUES ($1,$2,$3,'mealie',true,false)`,
+        `
+INSERT INTO external_data_providers (id,user_id,provider_name,provider_type,is_active,is_public) VALUES ($1,$2,$3,'mealie',true,false)
+`,
         [provider, owner, 'recipe-import-rls']
       );
-      await sys.query(`INSERT INTO foods (id,user_id,name) VALUES ($1,$2,$3)`, [
-        food,
-        owner,
-        'recipe-import-rls-food',
-      ]);
       await sys.query(
-        `INSERT INTO food_variants (id,food_id,serving_size,serving_unit,calories,protein,carbs,fat) VALUES ($1,$2,100,'g',400,10,60,10)`,
+        `
+INSERT INTO foods (id,user_id,name) VALUES ($1,$2,$3)
+`,
+        [food, owner, 'recipe-import-rls-food']
+      );
+      await sys.query(
+        `
+INSERT INTO food_variants (id,food_id,serving_size,serving_unit,calories,protein,carbs,fat) VALUES ($1,$2,100,'g',400,10,60,10)
+`,
         [variant, food]
       );
-      await sys.query(`INSERT INTO meals (id,user_id,name) VALUES ($1,$2,$3)`, [
-        meal,
-        owner,
-        'recipe-import-rls-meal',
-      ]);
       await sys.query(
-        `INSERT INTO recipe_imports (id,user_id,meal_id,provider_id,source) VALUES ($1,$2,$3,$4,$5::jsonb)`,
+        `
+INSERT INTO meals (id,user_id,name) VALUES ($1,$2,$3)
+`,
+        [meal, owner, 'recipe-import-rls-meal']
+      );
+      await sys.query(
+        `
+INSERT INTO recipe_imports (id,user_id,meal_id,provider_id,source) VALUES ($1,$2,$3,$4,$5::jsonb)
+`,
         [provenance, owner, meal, provider, JSON.stringify({})]
       );
       await sys.query(
-        `INSERT INTO recipe_food_mappings (id,user_id,provider_id,source_food_key,food_id,variant_id,quantity_per_source_unit,unit) VALUES ($1,$2,$3,$4,$5,$6,1,'g')`,
+        `
+INSERT INTO recipe_food_mappings (id,user_id,provider_id,source_food_key,food_id,variant_id,quantity_per_source_unit,unit) VALUES ($1,$2,$3,$4,$5,$6,1,'g')
+`,
         [mapping, owner, provider, 'fixture|g', food, variant]
       );
       await sys.query('COMMIT');
@@ -170,14 +184,18 @@ describe.runIf(RUN)('recipe import provenance and mappings real RLS', () => {
           if (table.name === 'recipe_imports')
             await expect(
               client.query(
-                `INSERT INTO recipe_imports (user_id,meal_id,provider_id,source) VALUES ($1,$2,$3,$4::jsonb)`,
+                `
+INSERT INTO recipe_imports (user_id,meal_id,provider_id,source) VALUES ($1,$2,$3,$4::jsonb)
+`,
                 [owner, meal, provider, JSON.stringify({})]
               )
             ).rejects.toMatchObject({ code: '42501' });
           else
             await expect(
               client.query(
-                `INSERT INTO recipe_food_mappings (user_id,provider_id,source_food_key,food_id,variant_id,quantity_per_source_unit,unit) VALUES ($1,$2,$3,$4,$5,1,'g')`,
+                `
+INSERT INTO recipe_food_mappings (user_id,provider_id,source_food_key,food_id,variant_id,quantity_per_source_unit,unit) VALUES ($1,$2,$3,$4,$5,1,'g')
+`,
                 [owner, provider, randomUUID(), food, variant]
               )
             ).rejects.toMatchObject({ code: '42501' });

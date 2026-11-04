@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-04_
 
 `@workspace/shared` is a source-first TypeScript workspace library package for schemas, constants, and timezone/day helpers consumed by SparkyFitnessServer, SparkyFitnessFrontend, and SparkyFitnessMobile.
 
@@ -15,6 +15,8 @@ _Last updated: 2026-11-03_
 `schemas/api/FoodAssistant.api.zod.ts` and `schemas/database/FoodAssistant.zod.ts` define lasting preferences, versioned tasks, unresolved ingredients and idempotent operation records. All state is owner-only; these additive contracts do not change existing chat clients.
 
 ## Structure
+
+- Mealie ingredient imports: `utils/recipeImport.ts` preserves explicit compatible quantities, bounds unresolved matching batches to twenty rows, and merges suggestions without replacing confirmed mappings in web and mobile. The API contract remains in `schemas/api/RecipeImport.api.zod.ts`.
 
 - Family diary copies: `schemas/api/FoodEntryCopy.api.zod.ts` defines reviewed/selected requests in both directions and recipient meal types. `foodEntryCopyFingerprint` remains byte-compatible with older copy-from clients; `copyFingerprintFor(version)` selects the contract for both clients and the server. New copy-to requests use `foodEntryCopyToUserFingerprint`, which also checks notes, meal identity, caffeine, water, and alcohol.
 

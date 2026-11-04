@@ -1,3 +1,5 @@
+import RecipeImportSourcePanel from '../components/recipeImport/RecipeImportSourcePanel';
+import { useRecipeImportAccess } from '../hooks/useRecipeImport';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Text, TouchableOpacity, View, Alert } from 'react-native';
@@ -122,6 +124,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
   route,
 }) => {
   const { t } = useTranslation();
+  const recipeScope = useRecipeImportAccess();
   const { mealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -526,6 +529,14 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
         >
           {t('mealDetail.planMeal', { defaultValue: 'Plan Meal' })}
         </Button>
+
+        {canManageMeal && recipeScope ? (
+          <RecipeImportSourcePanel
+            key={recipeScope}
+            mealId={mealId}
+            scope={recipeScope}
+          />
+        ) : null}
 
         {canManageMeal ? (
           <Button

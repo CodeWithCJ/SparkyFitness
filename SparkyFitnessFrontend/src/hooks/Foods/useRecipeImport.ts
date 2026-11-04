@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import {
+  mergeRecipeImportSuggestions,
+  unresolvedRecipeIngredientBatches,
+} from '@workspace/shared';
 import type {
   RecipeImportMapping,
   RecipeImportPreview,
@@ -84,11 +88,13 @@ export function useRecipeImport(preview: RecipeImportPreview) {
       .map((row) => row.ingredientId);
     setProgress({ done: 0, total: ids.length });
     try {
-      for (let start = 0; start < ids.length; start += 20) {
+      let done = 0;
+      for (const idsBatch of unresolvedRecipeIngredientBatches(
+        ids,
+        new Set(Object.keys(mappingsRef.current))
+      )) {
         if (!alive.current || !allowed.current) return;
-        const batch = ids
-          .slice(start, start + 20)
-          .filter((id) => !mappingsRef.current[id]);
+        const batch = idsBatch.filter((id) => !mappingsRef.current[id]);
         if (batch.length) {
           const response = await suggestRecipe({
             providerId: preview.providerId,
@@ -99,26 +105,20 @@ export function useRecipeImport(preview: RecipeImportPreview) {
             useAi,
           });
           if (!alive.current || !allowed.current) return;
-          setSuggestions((previous) => {
-            const incoming = response.ingredients.filter(
-              (row) => !mappingsRef.current[row.ingredientId]
-            );
-            const replacing = new Set(incoming.map((row) => row.ingredientId));
-            return [
-              ...previous.filter(
-                (row) =>
-                  !replacing.has(row.ingredientId) &&
-                  !mappingsRef.current[row.ingredientId]
-              ),
-              ...incoming,
-            ];
-          });
+          setSuggestions((previous) =>
+            mergeRecipeImportSuggestions(
+              previous,
+              response.ingredients,
+              new Set(Object.keys(mappingsRef.current))
+            )
+          );
           setWarnings((previous) => [
             ...new Set([...previous, ...response.warnings]),
           ]);
         }
+        done += idsBatch.length;
         setProgress({
-          done: Math.min(start + 20, ids.length),
+          done,
           total: ids.length,
         });
       }
@@ -158,7 +158,7 @@ export function useRecipeImport(preview: RecipeImportPreview) {
       client.invalidateQueries({ queryKey: ['mealPlans'] });
       client.invalidateQueries({ queryKey: ['v2', 'foods'] });
       client.setQueryData(
-        ['recipe-import-source', activeUserId, result.mealId],
+        ['meals', 'recipe-import-source', activeUserId, result.mealId],
         result.source
       );
     },

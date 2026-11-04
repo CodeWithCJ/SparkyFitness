@@ -19,6 +19,7 @@ import { setPendingMealIngredientSelection } from '../../src/services/mealBuilde
 import { setPendingMealPlanSelection } from '../../src/services/mealPlanSelection';
 import { buildMealIngredientDraft } from '../../src/utils/mealBuilderDraft';
 import type { BarcodeLookupContext } from '../../src/utils/barcodeFoods';
+import { mealToFoodInfo } from '../../src/types/foodInfo';
 import type { FoodInfoItem } from '../../src/types/foodInfo';
 import type { RootStackParamList } from '../../src/types/navigation';
 import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
@@ -458,6 +459,90 @@ describe('FoodEntryAddScreen', () => {
       isPending: false,
       invalidateCache: mockInvalidateMealCache,
     }));
+  });
+
+  it('logs an imported cooked batch as an ordinary 450g portion worth 600kcal', () => {
+    const item = mealToFoodInfo({
+      id: 'cooked-meal',
+      user_id: 'owner',
+      name: 'Cooked rice',
+      description: null,
+      is_public: false,
+      serving_size: 450,
+      serving_unit: 'g',
+      total_servings: 4,
+      created_at: '2026-11-04',
+      updated_at: '2026-11-04',
+      foods: [
+        {
+          id: 'ingredient',
+          food_id: 'rice',
+          variant_id: 'rice-variant',
+          food_name: 'Dry rice',
+          brand: null,
+          quantity: 600,
+          unit: 'g',
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 400,
+          protein: 10,
+          carbs: 80,
+          fat: 2,
+        },
+      ],
+    });
+    expect(item.servingSize).toBe(450);
+    expect(item.calories).toBe(600);
+    const screen = renderScreen({ item });
+    fireEvent.press(screen.getByText('Add Meal'));
+    expect(mockAddMeal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        meal_template_id: 'cooked-meal',
+        quantity: 450,
+        unit: 'g',
+      })
+    );
+  });
+
+  it('preserves the source mass through the actual recipe food picker', async () => {
+    mockUseFoodVariants.mockReturnValue({
+      variants: undefined,
+      isLoading: false,
+      isError: false,
+    });
+    const screen = renderScreen({
+      item: { ...baseLocalItem, servingSize: 100, servingUnit: 'g' },
+      pickerMode: 'meal-builder',
+      recipeImportTarget: {
+        draftKey: 'draft',
+        ingredientId: 'rice',
+        quantity: 0.6,
+        unit: 'kg',
+      },
+    });
+    expect(screen.getByDisplayValue('600')).toBeTruthy();
+  });
+
+  it('requires an explicit amount when source volume cannot become the selected mass', () => {
+    mockUseFoodVariants.mockReturnValue({
+      variants: undefined,
+      isLoading: false,
+      isError: false,
+    });
+    const screen = renderScreen({
+      item: { ...baseLocalItem, servingSize: 100, servingUnit: 'g' },
+      pickerMode: 'meal-builder',
+      recipeImportTarget: {
+        draftKey: 'draft',
+        ingredientId: 'milk',
+        quantity: 250,
+        unit: 'ml',
+      },
+    });
+    expect(screen.queryByDisplayValue('250')).toBeNull();
+    expect(screen.queryByDisplayValue('100')).toBeNull();
+    fireEvent.press(screen.getByText('Add Food'));
+    expect(mockBuildMealIngredientDraft).not.toHaveBeenCalled();
   });
 
   it.each(['meal-builder', 'meal-plan', undefined] as const)(
