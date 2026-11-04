@@ -8,6 +8,11 @@ import {
   chatScoreToMoodValue,
   moodValueToChatScore,
   instantHourMinute,
+  instantHourMinuteInZone,
+  instantToDay,
+  instantToDayWithOffset,
+  resolveRecordZone,
+  type RecordZone,
 } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import measurementService from '../../services/measurementService.js';
@@ -28,6 +33,7 @@ import {
   formatList,
   formatSuccess,
 } from './formatting.js';
+import { NOTE_PREVIEW_LIMIT, truncateIfNeeded } from './truncation.js';
 import { convertWeight, convertMeasurement } from './unitConversion.js';
 import {
   manageCheckinSchema,
@@ -61,6 +67,8 @@ interface SleepEntryRow {
   wake_time?: string | null;
   source?: string;
   sleep_score?: number | null;
+  record_timezone?: string | null;
+  record_utc_offset_minutes?: number | null;
   [key: string]: unknown;
 }
 
@@ -77,9 +85,10 @@ interface CustomMeasurementEntryRow {
   id: string;
   custom_categories?: {
     name?: string;
+    display_name?: string | null;
     measurement_type?: string;
   } | null;
-  value?: string | number;
+  value?: string | number | null;
   notes?: string;
   entry_date?: string;
   created_at?: string | Date;
@@ -118,6 +127,65 @@ function formatMoodRatings(
 function formatClock(ts: Date | string, tz: string): string {
   const { hour, minute } = instantHourMinute(ts, tz);
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+// `YYYY-MM-DD HH:MM` in `zone`. Models read a bare UTC instant as local time,
+// so times handed to them are converted first; the day is kept because a
+// bedtime or a fast often starts the day before.
+function formatLocalDateTime(ts: Date | string, zone: RecordZone): string {
+  const day =
+    zone.kind === 'tz'
+      ? instantToDay(ts, zone.tz)
+      : instantToDayWithOffset(ts, zone.minutes);
+  const { hour, minute } = instantHourMinuteInZone(ts, zone);
+  return `${day} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+// Integrations store whole-day series as one text metric (Garmin's "Raw Stress
+// Data" is ~20 KB a day, measurement type "JSON"). Only charts use them; in a
+// tool result they crowd out everything else, so they are left out.
+const RAW_SERIES_PLACEHOLDER = '(raw data series, not shown)';
+const RAW_SERIES_MIN_LENGTH = 200;
+
+function isRawSeries(value: unknown, measurementType?: string): boolean {
+  if (measurementType?.toUpperCase() === 'JSON') return true;
+  if (typeof value !== 'string') return false;
+  const text = value.trim();
+  return text.length > RAW_SERIES_MIN_LENGTH && /^[[{]/.test(text);
+}
+
+// A custom metric value as the model should see it: raw series left out, long
+// decimals rounded, long text cut short.
+function formatCustomValue(value: unknown, measurementType?: string): string {
+  if (!isSet(value)) return '';
+  if (isRawSeries(value, measurementType)) return RAW_SERIES_PLACEHOLDER;
+  const text = String(value).trim();
+  if (/^-?\d+\.\d{3,}$/.test(text)) {
+    const rounded = Math.round(Number(text) * 100) / 100;
+    if (Number.isFinite(rounded)) return String(rounded);
+  }
+  if (text.length > NOTE_PREVIEW_LIMIT) {
+    return `${text.slice(0, NOTE_PREVIEW_LIMIT)}… (truncated)`;
+  }
+  return text;
+}
+
+// The zone a time was shown in, for a line whose zone is not the profile's:
+// the IANA name, else the fixed offset as UTC+HH:MM.
+function zoneLabel(zone: RecordZone): string {
+  if (zone.kind === 'tz') return zone.tz;
+  const sign = zone.minutes < 0 ? '-' : '+';
+  const abs = Math.abs(zone.minutes);
+  return `UTC${sign}${String(Math.floor(abs / 60)).padStart(2, '0')}:${String(abs % 60).padStart(2, '0')}`;
+}
+
+// Unit suffix for a custom metric; categories without a real unit store "N/A".
+function customUnit(measurementType?: string): string {
+  if (!measurementType) return '';
+  const unit = measurementType.trim();
+  if (!unit || unit.toUpperCase() === 'N/A' || unit.toUpperCase() === 'JSON')
+    return '';
+  return ` ${unit}`;
 }
 
 // `<score>/10<ratings><tags>` followed by ` — notes` when there are notes. The
@@ -203,7 +271,7 @@ Actions:
 - list_checkin_diary(entry_date?)
 - get_fasting_status() — returns the currently active fasting session if any
 - get_biometrics_history(start_date?, end_date?) — returns standard measurement history
-- get_custom_metrics_history(start_date?, end_date?) — returns custom measurement history with category metadata and source dates`,
+- get_custom_metrics_history(start_date?, end_date?, category_name?) — custom metric values by day, newest first; category_name keeps one metric (if several share that display name, the reply lists their stored names)`,
       inputSchema: manageCheckinInput,
       execute: async (rawArgs) => {
         const normalized = normalizeActionArgs(
@@ -654,23 +722,38 @@ Actions:
                     new Date(a.created_at).getTime() -
                     new Date(b.created_at).getTime()
                 )
-                .map((row: SleepEntryRow) => ({
-                  ...row,
-                  duration_seconds: row.duration_in_seconds,
-                  bedtime: row.bedtime
-                    ? new Date(row.bedtime).toISOString()
-                    : null,
-                  wake_time: row.wake_time
-                    ? new Date(row.wake_time).toISOString()
-                    : null,
-                }));
+                .map((row: SleepEntryRow) => {
+                  // A night is shown in the zone it was recorded in, as the
+                  // web sleep views do; else the profile zone.
+                  const zone: RecordZone = resolveRecordZone(
+                    row.record_timezone,
+                    row.record_utc_offset_minutes
+                  ) ?? { kind: 'tz', tz };
+                  return {
+                    ...row,
+                    // Named only when it differs from the profile zone, so
+                    // the usual line stays short.
+                    zone_label:
+                      zone.kind === 'tz' && zone.tz === tz
+                        ? null
+                        : zoneLabel(zone),
+                    duration_seconds: row.duration_in_seconds,
+                    bedtime: row.bedtime
+                      ? formatLocalDateTime(row.bedtime, zone)
+                      : null,
+                    wake_time: row.wake_time
+                      ? formatLocalDateTime(row.wake_time, zone)
+                      : null,
+                  };
+                });
+              const profileZone: RecordZone = { kind: 'tz', tz };
               const fasts = fastRows.map((row: FastingLogRow) => ({
                 id: row.id,
                 start_time: row.start_time
-                  ? new Date(row.start_time).toISOString()
+                  ? formatLocalDateTime(row.start_time, profileZone)
                   : null,
                 end_time: row.end_time
-                  ? new Date(row.end_time).toISOString()
+                  ? formatLocalDateTime(row.end_time, profileZone)
                   : null,
                 fasting_status: row.status,
                 fasting_type: row.fasting_type,
@@ -678,7 +761,7 @@ Actions:
               interface MappedCustomMetric {
                 id: string;
                 category_name?: string;
-                value?: string | number;
+                value?: string | number | null;
                 measurement_type?: string;
                 notes?: string;
                 entry_date?: string;
@@ -749,6 +832,8 @@ Actions:
                     parts.push(`score: ${s.sleep_score}/100`);
                   if (s.bedtime) parts.push(`bed: ${s.bedtime}`);
                   if (s.wake_time) parts.push(`wake: ${s.wake_time}`);
+                  if (s.zone_label && (s.bedtime || s.wake_time))
+                    parts.push(`times in ${s.zone_label}`);
                   if (s.source) parts.push(`(${s.source})`);
                   text += `- ${parts.join(' | ')}\n`;
                 }
@@ -772,7 +857,7 @@ Actions:
               if (customs.length > 0) {
                 text += '## Custom Metrics\n';
                 for (const c of customs) {
-                  let line = `- **${c.category_name}**: ${c.value}`;
+                  let line = `- **${c.category_name}**: ${formatCustomValue(c.value, c.measurement_type)}`;
                   if (c.notes) line += ` — ${c.notes}`;
                   text += line + '\n';
                 }
@@ -878,8 +963,14 @@ Actions:
                   value_date: measurement.entry_date,
                 })),
                 custom_measurements: customMeasurements.map(
-                  (measurement: Record<string, unknown>) => ({
+                  (measurement: CustomMeasurementEntryRow) => ({
                     ...measurement,
+                    ...(isRawSeries(
+                      measurement.value,
+                      measurement.custom_categories?.measurement_type
+                    )
+                      ? { value: RAW_SERIES_PLACEHOLDER }
+                      : {}),
                     value_date: measurement.entry_date,
                   })
                 ),
@@ -887,14 +978,87 @@ Actions:
             }
 
             case 'get_custom_metrics_history': {
-              const history =
+              const history: CustomMeasurementEntryRow[] =
                 await measurementService.getCustomMeasurementEntriesByDateRange(
                   userId,
                   userId,
                   args.start_date || '1970-01-01',
                   args.end_date || '9999-12-31'
                 );
-              return formatSuccess(history, 'Custom Metrics History');
+              const requested = args.category_name?.trim();
+              const wanted = requested?.toLowerCase();
+              // Narrowest match first: the exact stored name, then the stored
+              // name in any case, then the display name (one category's
+              // display name can equal another's stored name).
+              const storedName = (row: CustomMeasurementEntryRow) =>
+                row.custom_categories?.name?.trim() ?? '';
+              const exact = history.filter(
+                (row) => storedName(row) === requested
+              );
+              const anyCase = history.filter(
+                (row) => storedName(row).toLowerCase() === wanted
+              );
+              const byDisplay = history.filter(
+                (row) =>
+                  row.custom_categories?.display_name?.trim().toLowerCase() ===
+                  wanted
+              );
+              const rows = !wanted
+                ? history
+                : exact.length > 0
+                  ? exact
+                  : anyCase.length > 0
+                    ? anyCase
+                    : byDisplay;
+              // Several categories still match (shared display name, or stored
+              // names differing only in case): ask for one rather than mixing
+              // their values under one label.
+              const storedNames = [...new Set(rows.map(storedName))];
+              if (wanted && storedNames.length > 1) {
+                return truncateIfNeeded(
+                  `# Custom Metrics History\n\nSeveral metrics match "${requested}": ${storedNames.join(', ')}. Ask again with one of these names as category_name.`,
+                  'Ask again with the stored name of one metric as category_name.'
+                );
+              }
+              if (rows.length === 0) {
+                return `# Custom Metrics History\n\nNo custom metrics found${
+                  args.category_name ? ` for "${args.category_name}"` : ''
+                } in this range.`;
+              }
+
+              // One compact line per value, newest day first, so truncation
+              // drops the oldest days rather than the ones being asked about.
+              // The repository returns oldest first; keep each day's own order.
+              const byDay = new Map<string, string[]>();
+              for (const row of rows) {
+                const day = String(row.entry_date);
+                const category = row.custom_categories;
+                const label =
+                  category?.display_name?.trim() ||
+                  category?.name?.trim() ||
+                  'Unknown';
+                const value = formatCustomValue(
+                  row.value,
+                  category?.measurement_type
+                );
+                const unit =
+                  value === RAW_SERIES_PLACEHOLDER
+                    ? ''
+                    : customUnit(category?.measurement_type);
+                const lines = byDay.get(day) ?? [];
+                lines.push(`- ${label}: ${value}${unit}`);
+                byDay.set(day, lines);
+              }
+              const body = [...byDay.entries()]
+                .sort(([a], [b]) => b.localeCompare(a))
+                .map(([day, lines]) => `## ${day}\n${lines.join('\n')}`)
+                .join('\n\n');
+              return truncateIfNeeded(
+                `# Custom Metrics History\n\n${body}`,
+                'Older days were left out. Pass start_date and end_date, or category_name, to narrow the history.',
+                'full',
+                true
+              );
             }
 
             default: {

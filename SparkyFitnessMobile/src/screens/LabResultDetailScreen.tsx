@@ -19,6 +19,7 @@ import LabStatusBadge from '../components/labs/LabStatusBadge';
 import { useRefetchOnFocus } from '../hooks/useRefetchOnFocus';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import {
+  useDeleteLabMarker,
   useDeleteLabResult,
   useLabHistory,
   useLabMarkers,
@@ -50,24 +51,79 @@ const LabResultDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const marker = markers.find((m) => m.id === markerId);
   const history = useLabHistory(labMarkerQueryFromId(markerId));
   const deleteResult = useDeleteLabResult();
+  const deleteMarker = useDeleteLabMarker();
   useRefetchOnFocus(() => void history.refetch(), true);
+  const markerQuery = labMarkerQueryFromId(markerId);
 
   const title =
     marker?.name ??
     name ??
     t('screens.labResultDetail', { defaultValue: 'Lab result' });
+  const confirmDeleteMarker = () => {
+    if (!markerQuery) return;
+    Alert.alert(
+      t('labs.deleteMarkerTitle', { defaultValue: 'Delete marker' }),
+      t('labs.deleteMarkerMessage', {
+        defaultValue:
+          'Delete {{name}} and all of its results? This cannot be undone.',
+        name: title,
+      }),
+      [
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+        {
+          text: t('common.delete', { defaultValue: 'Delete' }),
+          style: 'destructive',
+          onPress: () =>
+            deleteMarker.mutate(markerQuery, {
+              onSuccess: () => navigation.goBack(),
+              onError: () =>
+                Toast.show({
+                  type: 'error',
+                  text1: t('labs.deleteMarkerFailed', {
+                    defaultValue: 'Could not delete the marker',
+                  }),
+                }),
+            }),
+        },
+      ]
+    );
+  };
+
   const header = useScreenHeader({
     title,
     nativeTitle: title,
     left: { kind: 'back' },
-    right: {
-      kind: 'icon',
-      ionicon: 'add-outline',
-      sfSymbol: 'plus',
-      role: 'primary',
-      accessibilityLabel: t('labs.add', { defaultValue: 'Add lab result' }),
-      onPress: () => navigation.navigate('LabResultAdd', { marker: markerId }),
-    },
+    right: [
+      {
+        kind: 'icon',
+        ionicon: 'add-outline',
+        sfSymbol: 'plus',
+        role: 'primary',
+        accessibilityLabel: t('labs.add', { defaultValue: 'Add lab result' }),
+        onPress: () =>
+          navigation.navigate('LabResultAdd', { marker: markerId }),
+      },
+      {
+        kind: 'menu',
+        accessibilityLabel: t('labs.moreActions', {
+          defaultValue: 'More actions',
+        }),
+        items: [
+          {
+            label: t('labs.deleteMarker', {
+              defaultValue: 'Delete marker and all results',
+            }),
+            sfSymbol: 'trash',
+            icon: 'trash',
+            onPress: confirmDeleteMarker,
+          },
+        ],
+        identifier: 'lab-result-detail-menu',
+      },
+    ],
   });
 
   const results = useMemo(() => history.data ?? [], [history.data]);

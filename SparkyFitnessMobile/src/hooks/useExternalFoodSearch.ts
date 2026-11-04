@@ -57,11 +57,19 @@ export function useExternalFoodSearch(
   // Gate on isSearchActive: below the threshold the query is disabled but
   // keepPreviousData still serves the previous term's rows, which would show
   // stale online results under a fresh short query.
-  const searchResults = useMemo(
-    () =>
-      isSearchActive ? (query.data?.pages.flatMap((p) => p.items) ?? []) : [],
-    [isSearchActive, query.data?.pages]
-  );
+  // A product can come back on a later page too (Open Food Facts adds brand
+  // matches to page 1), so keep its first appearance. An item without an id
+  // cannot be matched and is kept as is.
+  const searchResults = useMemo(() => {
+    if (!isSearchActive) return [];
+    const seen = new Set<string>();
+    return (query.data?.pages.flatMap((p) => p.items) ?? []).filter((item) => {
+      if (!item.id) return true;
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }, [isSearchActive, query.data?.pages]);
   // When keepPreviousData is active, isPlaceholderData is true and data belongs
   // to the previous query key. Only treat the error as a load-more error when
   // the current query has real (non-placeholder) pages loaded.

@@ -108,6 +108,8 @@ const oidcScope = ref("openid email profile");
 const disableEmailLogin = ref(false);
 const disablePasskeyLogin = ref(false);
 const forcePasskeyLogin = ref(false);
+const disableMagicLinkLogin = ref(false);
+const forceMagicLinkLogin = ref(false);
 
 // --- 8. Email / SMTP (Optional) ---
 const smtpHost = ref("");
@@ -269,7 +271,9 @@ function applyPreset(preset: "simple" | "full") {
 const hasAlternativeSignIn = computed(
   () =>
     (enableOidc.value && oidcIssuerUrl.value.trim() !== "") ||
-    (enableSmtp.value && smtpHost.value.trim() !== ""),
+    (enableSmtp.value &&
+      smtpHost.value.trim() !== "" &&
+      (forceMagicLinkLogin.value || !disableMagicLinkLogin.value)),
 );
 
 /**
@@ -399,6 +403,11 @@ TZ=${timezone.value}
       out += `SPARKY_FITNESS_FORCE_PASSKEY_LOGIN=true\n`;
     } else if (disablePasskeyLogin.value) {
       out += `SPARKY_FITNESS_DISABLE_PASSKEY_LOGIN=true\n`;
+    }
+    if (forceMagicLinkLogin.value) {
+      out += `SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN=true\n`;
+    } else if (disableMagicLinkLogin.value) {
+      out += `SPARKY_FITNESS_DISABLE_MAGIC_LINK_LOGIN=true\n`;
     }
     if (disableSignup.value) {
       out += `SPARKY_FITNESS_DISABLE_SIGNUP=true\n`;
@@ -1160,6 +1169,32 @@ onMounted(() => {
             <span class="field-hint" style="margin-left: 26px"
               >Fail-safe: keeps passkey login on even if it was turned off in
               the admin settings, and overrides Disable Passkey Login.</span
+            >
+            <label class="checkbox-label" style="margin-top: 10px">
+              <input v-model="disableMagicLinkLogin" type="checkbox" />
+              <span class="checkbox-text">
+                Disable Magic Link Login
+                <code class="var-badge"
+                  >SPARKY_FITNESS_DISABLE_MAGIC_LINK_LOGIN=true</code
+                >
+              </span>
+            </label>
+            <span class="field-hint" style="margin-left: 26px"
+              >Removes magic link sign-in, overriding the admin switch. Links
+              already sent stop working too.</span
+            >
+            <label class="checkbox-label" style="margin-top: 10px">
+              <input v-model="forceMagicLinkLogin" type="checkbox" />
+              <span class="checkbox-text">
+                Force Magic Link Login On
+                <code class="var-badge"
+                  >SPARKY_FITNESS_FORCE_MAGIC_LINK_LOGIN=true</code
+                >
+              </span>
+            </label>
+            <span class="field-hint" style="margin-left: 26px"
+              >Fail-safe: keeps magic link login on even if it was turned off in
+              the admin settings, and overrides Disable Magic Link Login.</span
             >
           </div>
 

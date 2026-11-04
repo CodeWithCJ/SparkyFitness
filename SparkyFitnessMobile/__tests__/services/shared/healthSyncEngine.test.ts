@@ -477,6 +477,12 @@ describe('collectHealthData', () => {
         'skipped',
       ]);
       expect(outcomes[0].error).toContain('Test query for A timed out');
+      expect(outcomes.map((o) => o.timedOut)).toEqual([
+        true,
+        true,
+        true,
+        undefined,
+      ]);
       expect(outcomes[3].error).toBe(
         'Skipped because an earlier metric query timed out.'
       );

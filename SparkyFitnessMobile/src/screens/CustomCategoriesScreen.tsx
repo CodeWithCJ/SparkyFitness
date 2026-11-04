@@ -14,8 +14,8 @@ import { useCSSVariable } from 'uniwind';
 import FooterActionBar from '../components/FooterActionBar';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import Button from '../components/ui/Button';
-import { useServerConnection } from '../hooks';
 import {
   useCustomCategories,
   useDeleteCustomCategory,
@@ -35,7 +35,6 @@ const CustomCategoriesScreen: React.FC<CustomCategoriesScreenProps> = ({
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const [refreshing, setRefreshing] = useState(false);
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const {
     data: categories = [],
     isLoading,
@@ -184,29 +183,7 @@ const CustomCategoriesScreen: React.FC<CustomCategoriesScreenProps> = ({
   };
 
   const content = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          title={t('customCategories.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('customCategories.noServerSubtitle', {
-            defaultValue:
-              'Configure your server connection to manage custom measurements.',
-          })}
-          action={{
-            label: t('customCategories.goToSettings', {
-              defaultValue: 'Go to Settings',
-            }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
-    if (isLoading || isConnectionLoading) {
+    if (isLoading) {
       return (
         <StatusView
           loading
@@ -283,7 +260,7 @@ const CustomCategoriesScreen: React.FC<CustomCategoriesScreenProps> = ({
       style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
-      {content()}
+      <ServerGate>{content()}</ServerGate>
       {categories.length > 0 && !isLoading && !isError ? (
         <FooterActionBar>
           <Button onPress={() => navigation.navigate('CustomCategoryEdit', {})}>

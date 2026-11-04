@@ -29,6 +29,7 @@ BEGIN
     'custom_measurements',
     'lab_markers',
     'lab_results',
+    'lab_reports',
     'exercise_entries',
     'exercise_entry_sets',
     'exercise_entry_activity_details',
@@ -818,6 +819,7 @@ SELECT create_checkin_policy('mindfulness_sessions');
 -- user's own markers and their results are stored, both under the check-in policy.
 SELECT create_checkin_policy('lab_markers');
 SELECT create_checkin_policy('lab_results');
+SELECT create_checkin_policy('lab_reports');
 
 -- Mood display preferences: personal picker config, owner-only.
 SELECT create_owner_policy('user_mood_display_preferences');

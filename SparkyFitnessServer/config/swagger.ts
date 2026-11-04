@@ -176,6 +176,86 @@ const options = {
             source: { type: 'string', enum: ['manual', 'report', 'fhir'] },
           },
         },
+        ImportLabReportInput: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['entry_date', 'results'],
+          properties: {
+            lab_name: { type: 'string', nullable: true },
+            entry_date: { type: 'string', format: 'date' },
+            results: {
+              type: 'array',
+              minItems: 1,
+              maxItems: 200,
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['value_numeric'],
+                description:
+                  'Exactly one of marker_key or marker_name is non-null.',
+                oneOf: [
+                  {
+                    required: ['marker_key'],
+                    properties: { marker_key: { type: 'string' } },
+                  },
+                  {
+                    required: ['marker_name'],
+                    properties: {
+                      marker_name: { type: 'string', minLength: 1 },
+                    },
+                  },
+                ],
+                properties: {
+                  marker_key: { type: 'string', nullable: true },
+                  marker_name: { type: 'string', nullable: true },
+                  value_numeric: { type: 'number' },
+                  unit: { type: 'string' },
+                  ref_range_low: { type: 'number', nullable: true },
+                  ref_range_high: { type: 'number', nullable: true },
+                },
+              },
+            },
+          },
+        },
+        ImportLabReportResponse: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            report: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                id: { type: 'string', format: 'uuid' },
+                user_id: { type: 'string', format: 'uuid' },
+                lab_name: { type: 'string', nullable: true },
+                collected_on: {
+                  type: 'string',
+                  format: 'date',
+                  nullable: true,
+                },
+                created_at: { type: 'string', format: 'date-time' },
+              },
+            },
+            results: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/LabResult' },
+            },
+          },
+        },
+        DeleteLabImportsResponse: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            reports: { type: 'integer' },
+            results: { type: 'integer' },
+            markers: { type: 'integer' },
+          },
+        },
+        DeleteMarkerResultsResponse: {
+          type: 'object',
+          additionalProperties: false,
+          properties: { results: { type: 'integer' } },
+        },
         LabResultUpdate: {
           type: 'object',
           additionalProperties: false,
@@ -1486,6 +1566,7 @@ const options = {
           properties: {
             enable_email_password_login: { type: 'boolean' },
             enable_passkey_login: { type: 'boolean' },
+            enable_magic_link_login: { type: 'boolean' },
             is_oidc_active: { type: 'boolean' },
             is_mfa_mandatory: { type: 'boolean' },
             default_vision_ai_service_id: {

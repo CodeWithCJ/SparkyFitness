@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { instantHourMinute, dayToUtcRange } from '@workspace/shared';
+import { instantHourMinute, localDateTimeToUtc } from '@workspace/shared';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -196,23 +196,30 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
   const handleTimeChange = (
     entryId: string,
     entryDate: string,
-    newTime: string
+    newTime: string,
+    currentTime: string
   ) => {
+    // Leaving the field without a change saves nothing: re-saving would drop
+    // the stored seconds and, on the day the clocks go back, move a time in
+    // the repeated hour to its second occurrence.
+    if (newTime === currentTime) {
+      setEditingTimeId(null);
+      return;
+    }
     try {
       // entryDate is a Postgres DATE column serialized as UTC midnight
       // (e.g. "2026-05-14T00:00:00.000Z"). Extract the YYYY-MM-DD substring
       // directly — do NOT use instantToDay, which would roll back to the
       // previous day for users west of UTC.
       const datePart = entryDate.substring(0, 10);
-      const timeParts = newTime.split(':');
-      const hours = parseInt(timeParts[0] || '0', 10);
-      const minutes = parseInt(timeParts[1] || '0', 10);
+      const [hours = '0', minutes = '0'] = newTime.split(':');
 
-      // Build a UTC instant from the user's local day + time using dayToUtcRange
-      // dayToUtcRange gives midnight UTC for this day in the user's timezone
-      const { start } = dayToUtcRange(datePart, timezone);
-      const loggedAt = new Date(
-        start.getTime() + hours * 3600000 + minutes * 60000
+      // Convert the wall-clock time on that day in the user's timezone. Adding
+      // elapsed hours to local midnight would be an hour off on the days the
+      // clocks change.
+      const loggedAt = localDateTimeToUtc(
+        `${datePart}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`,
+        timezone
       ).toISOString();
 
       updateLogTime({ logId: entryId, loggedAt });
@@ -485,7 +492,14 @@ const WaterIntake = ({ selectedDate }: WaterIntakeProps) => {
                             entry.logged_at || entry.created_at
                           )}
                           onBlur={(value) =>
-                            handleTimeChange(entry.id, entry.entry_date, value)
+                            handleTimeChange(
+                              entry.id,
+                              entry.entry_date,
+                              value,
+                              getTimeInputValue(
+                                entry.logged_at || entry.created_at
+                              )
+                            )
                           }
                           onKeyDown={(e) => {
                             if (e.key === 'Enter') {

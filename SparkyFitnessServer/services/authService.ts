@@ -4,6 +4,7 @@ import userRepository from '../models/userRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
+import { canActForUser } from '../utils/actForUser.js';
 import adminActivityLogRepository from '../models/adminActivityLogRepository.js';
 /**
  * Gets consistent user data by ID.
@@ -150,25 +151,7 @@ async function switchUserContext(authenticatedUserId: any, targetUserId: any) {
       'info',
       `Attempting context switch: User ${authenticatedUserId} -> User ${targetUserId}`
     );
-    // Verify access (allow switch if user has reports, diary, checkin, or
-    // medications access). Each maps to a distinct family_access permission, so
-    // a delegate granted only one of them must still be able to switch context.
-    const [
-      hasReportsAccess,
-      hasDiaryAccess,
-      hasCheckinAccess,
-      hasMedicationsAccess,
-    ] = await Promise.all([
-      canAccessUserData(targetUserId, 'reports', authenticatedUserId),
-      canAccessUserData(targetUserId, 'diary', authenticatedUserId),
-      canAccessUserData(targetUserId, 'checkin', authenticatedUserId),
-      canAccessUserData(targetUserId, 'medications', authenticatedUserId),
-    ]);
-    const hasAccess =
-      hasReportsAccess ||
-      hasDiaryAccess ||
-      hasCheckinAccess ||
-      hasMedicationsAccess;
+    const hasAccess = await canActForUser(targetUserId, authenticatedUserId);
     if (!hasAccess) {
       throw new Error(
         'Forbidden: You do not have permission to switch to this user context.'

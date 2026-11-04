@@ -21,6 +21,7 @@ import { ceilToLocalDayStart, getSyncStartDate } from '../../utils/syncUtils';
 import {
   isClientUnavailableError,
   isQuotaExceededError,
+  isRetryableHealthReadError,
 } from '../shared/quotaError';
 import {
   createGraceWindowClaimLimiter,
@@ -1488,6 +1489,21 @@ const selectBasalNormalizedSessionCalories = (
   return Math.max(reportedActive, derivedActive);
 };
 
+const assertSessionCalorieReads = (
+  results: readonly PromiseSettledResult<unknown>[]
+): void => {
+  for (const result of results) {
+    if (
+      result.status === 'rejected' &&
+      isRetryableHealthReadError(result.reason)
+    ) {
+      // Failed reads are not evidence of missing/zero energy. Reject the metric
+      // so the sync layer holds its cursor and never uploads this partial result.
+      throw result.reason;
+    }
+  }
+};
+
 const extractSessionCaloriePair = (
   activeResult: PromiseSettledResult<unknown>,
   totalResult: PromiseSettledResult<unknown>
@@ -2013,6 +2029,11 @@ export const enrichExerciseSessions = async (
       // overwrite potentially valid data with a synthetic zero.
       const enrichedFields: Record<string, unknown> = {};
 
+      assertSessionCalorieReads([
+        activeCaloriesResult,
+        totalCaloriesResult,
+        basalCaloriesResult,
+      ]);
       const scopedCalories = extractSessionCaloriePair(
         activeCaloriesResult,
         totalCaloriesResult
@@ -2050,6 +2071,10 @@ export const enrichExerciseSessions = async (
               timeRangeFilter,
             }),
           ]);
+        assertSessionCalorieReads([
+          unfilteredActiveResult,
+          unfilteredTotalResult,
+        ]);
         const unfilteredCalories = extractSessionCaloriePair(
           unfilteredActiveResult,
           unfilteredTotalResult

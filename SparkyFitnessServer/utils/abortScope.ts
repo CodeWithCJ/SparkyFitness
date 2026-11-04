@@ -26,6 +26,11 @@ export function throwIfWorkAborted(): void {
   abortScopeStorage.getStore()?.throwIfAborted();
 }
 
+/** True inside work started with runWithAbortSignal (jobs, provider syncs). */
+export function isInsideWorkScope(): boolean {
+  return abortScopeStorage.getStore() !== undefined;
+}
+
 /**
  * Runs `work` so that `onActivity` is called each time it, however deep, gets
  * a database connection or runs a query. A stalled sync is told apart from a

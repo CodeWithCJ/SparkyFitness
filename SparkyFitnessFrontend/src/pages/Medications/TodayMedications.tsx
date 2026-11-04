@@ -24,7 +24,6 @@ import {
   computeChecklistProgress,
   entryMatchesDue,
   getDueDosesForDate,
-  dayToUtcRange,
   localDateTimeToUtc,
   utcToLocalDateTimeInput,
   visibleDoseCards,
@@ -530,12 +529,12 @@ export default function TodayMedications({
     let scheduledFor = null;
     if (due.schedule.time_of_day) {
       try {
-        const { start } = dayToUtcRange(selectedDate, timezone);
-        const [h, m] = due.schedule.time_of_day.split(':');
-        scheduledFor = new Date(
-          start.getTime() +
-            parseInt(h || '0', 10) * 3600000 +
-            parseInt(m || '0', 10) * 60000
+        // Wall-clock time on the selected day, so a dose on a clock-change day
+        // is not stored an hour off.
+        const [h = '0', m = '0'] = due.schedule.time_of_day.split(':');
+        scheduledFor = localDateTimeToUtc(
+          `${selectedDate}T${h.padStart(2, '0')}:${m.padStart(2, '0')}`,
+          timezone
         ).toISOString();
       } catch (e) {
         console.error(e);

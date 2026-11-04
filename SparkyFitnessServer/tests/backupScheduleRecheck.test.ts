@@ -68,7 +68,13 @@ describe('backup settings re-check', () => {
       ([expr]) => expr === RECHECK
     );
     expect(rechecks).toHaveLength(1);
-    expect(rechecks[0][2]).toEqual({ noOverlap: true, timezone: 'UTC' });
+    expect(rechecks[0][2]).toEqual({
+      name: 'backup-settings-recheck',
+      noOverlap: true,
+      timezone: 'UTC',
+      // Each instance re-reads the schedule its own backup task follows.
+      distributed: false,
+    });
   });
 
   it('picks up backups turned on after startup', async () => {

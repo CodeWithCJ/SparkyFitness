@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import LabResultDetailScreen from '../../src/screens/LabResultDetailScreen';
 import {
+  useDeleteLabMarker,
   useDeleteLabResult,
   useLabHistory,
   useLabMarkers,
@@ -20,6 +21,7 @@ jest.mock('../../src/hooks/useRefetchOnFocus', () => ({
 }));
 jest.mock('../../src/components/labs/LabHistoryChart', () => 'LabHistoryChart');
 jest.mock('../../src/hooks/useLabResults', () => ({
+  useDeleteLabMarker: jest.fn(),
   useDeleteLabResult: jest.fn(),
   useLabHistory: jest.fn(),
   useLabMarkers: jest.fn(),
@@ -79,6 +81,9 @@ describe('LabResultDetailScreen', () => {
       refetch: jest.fn(),
     } as never);
     jest.mocked(useDeleteLabResult).mockReturnValue({ mutate } as never);
+    jest
+      .mocked(useDeleteLabMarker)
+      .mockReturnValue({ mutate: jest.fn() } as never);
   });
 
   it('shows the latest result, its status and every result', () => {

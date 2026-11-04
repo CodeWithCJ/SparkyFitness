@@ -62,7 +62,11 @@ describe('Open Food Facts automatic sync scheduling', () => {
     );
     expect(cron.schedule).toHaveBeenCalledWith(
       '*/30 * * * * *',
-      expect.any(Function)
+      expect.any(Function),
+      expect.objectContaining({
+        name: 'openfoodfacts-auto-sync',
+        distributed: true,
+      })
     );
     expect(cron.schedule).toHaveBeenCalledTimes(2);
     expect(

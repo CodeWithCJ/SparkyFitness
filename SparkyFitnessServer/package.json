@@ -65,6 +65,7 @@
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
     "undici": "^8.12.3",
+    "unpdf": "^1.9.1",
     "uuid": "^14.0.3",
     "zod": "^4.6.7"
   },

@@ -71,6 +71,7 @@ const Auth = () => {
   const queryClient = useQueryClient();
   const { data: loginSettings } = useAuthSettings();
   const passkeyEnabled = loginSettings?.passkey?.enabled !== false;
+  const magicLinkEnabled = loginSettings?.magic_link?.enabled !== false;
   const { mutateAsync: loginUser } = useLoginUserMutation();
   const { mutateAsync: demoLogin, isPending: isDemoLoginPending } =
     useDemoLoginMutation();
@@ -623,16 +624,20 @@ const Auth = () => {
                           : t('auth.signIn', 'Sign In')}
                       </Button>
                     </form>
-                    <div className="relative my-6">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
+                    {(passkeyEnabled ||
+                      magicLinkEnabled ||
+                      loginSettings?.oidc.enabled) && (
+                      <div className="relative my-6">
+                        <div className="absolute inset-0 flex items-center">
+                          <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-background px-2 text-muted-foreground">
+                            {t('auth.orSignInWith', 'Or sign in with')}
+                          </span>
+                        </div>
                       </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">
-                          {t('auth.orSignInWith', 'Or sign in with')}
-                        </span>
-                      </div>
-                    </div>
+                    )}
                     {passkeyEnabled && (
                       <Button
                         variant="outline"
@@ -644,14 +649,16 @@ const Auth = () => {
                         {t('auth.signInWithPasskey', 'Sign in with Passkey')}
                       </Button>
                     )}
-                    <Button
-                      variant="outline"
-                      className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center mb-2"
-                      onClick={() => setIsMagicLinkRequestDialogOpen(true)}
-                    >
-                      <Zap className="h-4 w-4 mr-2" />{' '}
-                      {t('auth.requestMagicLink', 'Request Magic Link')}
-                    </Button>
+                    {magicLinkEnabled && (
+                      <Button
+                        variant="outline"
+                        className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center mb-2"
+                        onClick={() => setIsMagicLinkRequestDialogOpen(true)}
+                      >
+                        <Zap className="h-4 w-4 mr-2" />{' '}
+                        {t('auth.requestMagicLink', 'Request Magic Link')}
+                      </Button>
+                    )}
                     {loginSettings?.oidc.enabled && (
                       <>
                         {loginSettings.oidc.providers?.map((provider) => (
@@ -796,11 +803,21 @@ const Auth = () => {
                       {t('auth.signInWithPasskey', 'Sign in with Passkey')}
                     </Button>
                   )}
+                  {magicLinkEnabled && (
+                    <Button
+                      variant="outline"
+                      className="w-full dark:bg-gray-800 dark:hover:bg-gray-600 flex items-center justify-center"
+                      onClick={() => setIsMagicLinkRequestDialogOpen(true)}
+                    >
+                      <Zap className="h-4 w-4 mr-2" />{' '}
+                      {t('auth.requestMagicLink', 'Request Magic Link')}
+                    </Button>
+                  )}
 
                   {loginSettings?.oidc?.enabled &&
                     loginSettings.oidc.providers?.length > 0 && (
                       <>
-                        {passkeyEnabled && (
+                        {(passkeyEnabled || magicLinkEnabled) && (
                           <div className="flex items-center my-4">
                             <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
                             <span className="flex-shrink mx-4 text-gray-400 text-xs uppercase">

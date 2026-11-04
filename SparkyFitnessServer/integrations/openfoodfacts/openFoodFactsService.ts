@@ -222,6 +222,24 @@ function normalizeSearchText(value: string): string {
 }
 
 /** Stably promotes hits that cover the complete query phrase and tokens. */
+/** The brand and name words of a hit, normalized like the query. */
+function hitSearchTokens(hit: SearchALiciousHit, language: string): string[] {
+  const brand = Array.isArray(hit.brands)
+    ? hit.brands.join(' ')
+    : hit.brands || '';
+  const localizedName = hit[`product_name_${language}`];
+  return normalizeSearchText(
+    [
+      brand,
+      typeof localizedName === 'string' ? localizedName : '',
+      hit.product_name || '',
+      hit.product_name_en || '',
+    ].join(' ')
+  )
+    .split(' ')
+    .filter(Boolean);
+}
+
 function rankSearchHits(
   hits: SearchALiciousHit[],
   query: string,
@@ -234,19 +252,7 @@ function rankSearchHits(
 
   return hits
     .map((hit, index) => {
-      const brand = Array.isArray(hit.brands)
-        ? hit.brands.join(' ')
-        : hit.brands || '';
-      const localizedName = hit[`product_name_${language}`];
-      const searchableText = normalizeSearchText(
-        [
-          brand,
-          typeof localizedName === 'string' ? localizedName : '',
-          hit.product_name || '',
-          hit.product_name_en || '',
-        ].join(' ')
-      );
-      const searchableTokens = searchableText.split(' ').filter(Boolean);
+      const searchableTokens = hitSearchTokens(hit, language);
       const candidateTokens = new Set(searchableTokens);
       const tokenCoverage =
         queryTokens.filter((token) => candidateTokens.has(token)).length /
@@ -523,6 +529,105 @@ function getSearchALiciousPagination(
 }
 
 /** Searches either public Search-a-licious or a custom legacy OFF provider. */
+/** One Search-a-licious request for free text plus the core-nutrition filter. */
+async function requestSearchALicious(
+  text: string,
+  page: number,
+  pageSize: number,
+  language: string,
+  fields: string[],
+  timeoutMs: number = OFF_FETCH_TIMEOUT_MS
+): Promise<SearchALiciousResponse> {
+  const langs = language === 'en' ? ['en'] : [language, 'en'];
+  const response = await fetchWithTimeout(
+    SEARCH_A_LICIOUS_URL,
+    {
+      method: 'POST',
+      headers: {
+        ...OFF_HEADERS,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        // Search-a-licious treats adjacent free-text and field clauses as
+        // required terms. Grouping the free text itself (or inserting AND
+        // after a multi-word phrase) currently yields an empty result set.
+        q: `${text} ${OFF_CORE_NUTRITION_SEARCH_CLAUSE}`,
+        page,
+        page_size: pageSize,
+        boost_phrase: true,
+        langs,
+        fields,
+      }),
+    },
+    timeoutMs
+  );
+  if (!response.ok) {
+    log(
+      'error',
+      `OpenFoodFacts Search-a-licious request failed with HTTP ${response.status}`
+    );
+    throw new Error(`OpenFoodFacts search failed (HTTP ${response.status})`);
+  }
+  return parseSearchResponse(response, isSearchALiciousResponse);
+}
+
+/** At most this many query words are tried as the brand. */
+const BRAND_RETRY_MAX_WORDS = 3;
+/**
+ * Brand hits added to page 1. Kept small whatever the page size, since they
+ * join the page's own hits in one hydration request.
+ */
+const BRAND_RETRY_MAX_HITS = 20;
+
+/**
+ * Search-a-licious matches any of the words, so "kirkland bagel" fills the
+ * page with products named Kirkland and leaves the Kirkland bagels far down.
+ * When no hit has every word, ask again with one word at a time as the brand
+ * (`brands:kirkland bagel`) and return the first answer with hits. The words
+ * come from normalizeSearchText, letters and digits only, so the person's text
+ * cannot add query syntax. A failed retry returns nothing: the plain search
+ * already answered.
+ */
+async function searchBrandHits(
+  hits: SearchALiciousHit[],
+  query: string,
+  language: string,
+  fields: string[]
+): Promise<SearchALiciousHit[]> {
+  const words = [
+    ...new Set(normalizeSearchText(query).split(' ').filter(Boolean)),
+  ];
+  if (words.length < 2) return [];
+  const hasEveryWord = hits.some((hit) => {
+    const tokens = new Set(hitSearchTokens(hit, language));
+    return words.every((word) => tokens.has(word));
+  });
+  if (hasEveryWord) return [];
+
+  // One deadline for every try, so the retries together never hold page 1
+  // longer than a single request could.
+  const deadline = Date.now() + OFF_FETCH_TIMEOUT_MS;
+  try {
+    for (const brandWord of words.slice(0, BRAND_RETRY_MAX_WORDS)) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) break;
+      const rest = words.filter((word) => word !== brandWord).join(' ');
+      const data = await requestSearchALicious(
+        `brands:${brandWord} ${rest}`,
+        1,
+        BRAND_RETRY_MAX_HITS,
+        language,
+        fields,
+        remainingMs
+      );
+      if (data.hits.length > 0) return data.hits;
+    }
+  } catch (error) {
+    log('warn', 'OpenFoodFacts brand search unavailable:', error);
+  }
+  return [];
+}
+
 async function searchOpenFoodFacts(
   query: string,
   page = 1,
@@ -638,34 +743,37 @@ async function searchOpenFoodFacts(
       );
     }
 
-    const langs = language === 'en' ? ['en'] : [language, 'en'];
-    const response = await fetchWithTimeout(SEARCH_A_LICIOUS_URL, {
-      method: 'POST',
-      headers: {
-        ...OFF_HEADERS,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        // Search-a-licious treats adjacent free-text and field clauses as
-        // required terms. Grouping the free text itself (or inserting AND
-        // after a multi-word phrase) currently yields an empty result set.
-        q: `${query} ${OFF_CORE_NUTRITION_SEARCH_CLAUSE}`,
-        page,
-        page_size: pageSize,
-        boost_phrase: true,
-        langs,
-        fields,
-      }),
+    const data = await requestSearchALicious(
+      query,
+      page,
+      pageSize,
+      language,
+      fields
+    );
+    const brandHits =
+      page === 1
+        ? await searchBrandHits(data.hits, query, language, fields)
+        : [];
+    // Brand hits are added to page 1 on top of its own hits, so no plain hit is
+    // pushed off the page: page 2 starts at the plain offset as usual. A brand
+    // hit already on this page is dropped; one whose plain copy ranks on a much
+    // later page can show again there (web drops it when appending pages). A
+    // hit without a code cannot be matched, so it is kept, as on plain pages.
+    const seenCodes = new Set(
+      data.hits.map((hit) => String(hit.code || '').trim()).filter(Boolean)
+    );
+    const newBrandHits = brandHits.filter((hit) => {
+      const code = String(hit.code || '').trim();
+      if (!code) return true;
+      if (seenCodes.has(code)) return false;
+      seenCodes.add(code);
+      return true;
     });
-    if (!response.ok) {
-      log(
-        'error',
-        `OpenFoodFacts Search-a-licious request failed with HTTP ${response.status}`
-      );
-      throw new Error(`OpenFoodFacts search failed (HTTP ${response.status})`);
-    }
-    const data = await parseSearchResponse(response, isSearchALiciousResponse);
-    const rankedHits = rankSearchHits(data.hits, query, language);
+    const rankedHits = rankSearchHits(
+      [...newBrandHits, ...data.hits],
+      query,
+      language
+    );
     const products = (
       await hydrateSearchHits(rankedHits, fields, language, {
         authenticatedUserId,
@@ -674,9 +782,15 @@ async function searchOpenFoodFacts(
         baseUrl,
       })
     ).filter(hasUsableOffCoreNutrition);
+    const pagination = getSearchALiciousPagination(data, page, pageSize);
     return {
       products,
-      pagination: getSearchALiciousPagination(data, page, pageSize),
+      // Brand hits are on this page but not in the plain count; without them
+      // a plain search with no hits would report 0 next to the products shown.
+      pagination: {
+        ...pagination,
+        totalCount: Math.max(pagination.totalCount, products.length),
+      },
     };
   } catch (error) {
     log(

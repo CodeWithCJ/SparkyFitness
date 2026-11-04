@@ -105,6 +105,8 @@ export interface MetricSyncOutcome {
   /** May be non-empty alongside an error (partial reads still sync). */
   data: HealthDataPayload;
   error?: string;
+  /** Set when the read hit its per-metric timeout (status 'rejected'). */
+  timedOut?: boolean;
 }
 
 interface CollectedMetric {
@@ -331,7 +333,13 @@ export const collectHealthData = async (
       result.reason instanceof Error
         ? result.reason.message
         : String(result.reason);
-    return { metric, status: 'rejected' as const, data: [], error: message };
+    return {
+      metric,
+      status: 'rejected' as const,
+      data: [],
+      error: message,
+      ...(result.reason instanceof TimeoutError ? { timedOut: true } : {}),
+    };
   });
 };
 
