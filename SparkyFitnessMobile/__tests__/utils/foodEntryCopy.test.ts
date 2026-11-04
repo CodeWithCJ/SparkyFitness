@@ -63,6 +63,22 @@ describe('buildFoodEntryCopyPayload', () => {
     expect(payload.calories).toBe(150);
   });
 
+  it('carries the fat breakdown and glycemic index from the snapshot', () => {
+    const payload = buildFoodEntryCopyPayload(
+      {
+        ...baseEntry,
+        polyunsaturated_fat: 1.1,
+        monounsaturated_fat: 0.9,
+        glycemic_index: 'low',
+      },
+      '2026-11-02',
+      'lunch-id'
+    );
+    expect(payload.polyunsaturated_fat).toBe(1.1);
+    expect(payload.monounsaturated_fat).toBe(0.9);
+    expect(payload.glycemic_index).toBe('low');
+  });
+
   it('logs the copy at the given time instead of the original one', () => {
     const payload = buildFoodEntryCopyPayload(
       baseEntry,
