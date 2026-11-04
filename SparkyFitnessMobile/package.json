@@ -33,7 +33,7 @@
     "test:watch": "jest --watchAll",
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage --maxWorkers=2",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node --max-old-space-size=6144 ./node_modules/typescript/bin/tsc --noEmit",
     "format": "prettier . --write --log-level warn",
     "format:check": "prettier . --check",
     "validate": "pnpm run i18n:generate:check && pnpm run muscle-figure:generate:check && pnpm run typecheck && pnpm run lint && pnpm run i18n:audit && pnpm run i18n:audit:watch && pnpm run knip && pnpm run native-locales:check && pnpm run format:check",

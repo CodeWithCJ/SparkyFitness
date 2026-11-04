@@ -78,6 +78,13 @@ The `sparky_manage_checkin` tool supports the following actions:
     - `source` (string, optional): Source of data (e.g., "manual", "Garmin", "Fitbit").
 
 ### `list_checkin_diary`
-- **Description:** Retrieves all logged health check-in entries (biometrics, mood, sleep, custom metrics) for a specific date. Every mood check-in of the day is listed in time order, each as `- HH:MM <score>/10<ratings><tags> — notes` in the user's timezone (the score is omitted for a check-in with no mood). A device-derived mood (Garmin or import) is shown only when no manual check-in that day has a mood.
+- **Description:** Retrieves all logged health check-in entries (biometrics, mood, sleep, custom metrics) for a specific date. Every mood check-in of the day is listed in time order, each as `- HH:MM <score>/10<ratings><tags> — notes` in the user's timezone (the score is omitted for a check-in with no mood). A device-derived mood (Garmin or import) is shown only when no manual check-in that day has a mood. Sleep bed and wake times are shown as `YYYY-MM-DD HH:MM` in the zone the night was recorded in (else the user's timezone; a recording zone that differs from the user's is named on the line), and fasting start and end times in the user's timezone. Custom metrics that hold a raw data series, such as Garmin's "Raw Stress Data", are listed as `(raw data series, not shown)`.
 - **Parameters:**
     - `entry_date` (string, YYYY-MM-DD, optional): The date to retrieve the diary for. Defaults to today.
+
+### `get_custom_metrics_history`
+- **Description:** Lists custom metric values by day, newest day first, one `- <name>: <value> <unit>` line per value under a `## YYYY-MM-DD` heading. Long decimals are rounded to two places and raw data series are left out, so a week of device metrics fits in one result; when the result is still too long, the oldest days are dropped.
+- **Parameters:**
+    - `start_date` (string, YYYY-MM-DD, optional): Start of the range.
+    - `end_date` (string, YYYY-MM-DD, optional): End of the range.
+    - `category_name` (string, optional): Only this metric, matched on its stored name first, then its display name (case-insensitive). When several metrics share that display name, the reply lists their stored names instead.

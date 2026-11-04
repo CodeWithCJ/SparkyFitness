@@ -8,6 +8,7 @@ import {
   useFoodWaterIntakeQuery,
   useWaterIntakeLogQuery,
   useUpdateWaterIntakeMutation,
+  useUpdateWaterIntakeLogTimeMutation,
 } from '@/hooks/Diary/useWaterIntake';
 import { renderWithClient } from '../test-utils';
 
@@ -50,16 +51,40 @@ jest.mock('@/hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'user-1' } }),
 }));
 
+let mockTimezone = 'UTC';
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ water_display_unit: 'ml', timezone: 'UTC' }),
+  usePreferences: () => ({ water_display_unit: 'ml', timezone: mockTimezone }),
 }));
 
+// Most tests only need a fixed clock; the drink-time tests switch to the real
+// conversion so the shown time is checked too.
+const mockInstantHourMinute = jest.fn(
+  (_ts: Date | string | number, _tz: string) => ({ hour: 12, minute: 0 })
+);
 jest.mock('@workspace/shared', () => ({
-  instantHourMinute: () => ({ hour: 12, minute: 0 }),
-  dayToUtcRange: () => ({
-    start: new Date('2023-10-27T00:00:00Z'),
-    end: new Date('2023-10-28T00:00:00Z'),
-  }),
+  ...jest.requireActual('@workspace/shared'),
+  instantHourMinute: (ts: Date | string | number, tz: string) =>
+    mockInstantHourMinute(ts, tz),
+}));
+
+// The real field is segmented; a plain input is enough to hand a typed time
+// to the component's onBlur.
+jest.mock('@/components/ui/TimeInput', () => ({
+  TimeInput: ({
+    onBlur,
+    defaultValue,
+    'aria-label': ariaLabel,
+  }: {
+    onBlur?: (value: string) => void;
+    defaultValue?: string;
+    'aria-label'?: string;
+  }) => (
+    <input
+      aria-label={ariaLabel}
+      defaultValue={defaultValue}
+      onBlur={(e) => onBlur?.(e.currentTarget.value)}
+    />
+  ),
 }));
 
 jest.mock('@/contexts/ActiveUserContext', () => ({
@@ -315,5 +340,87 @@ describe('WaterIntake Component', () => {
     renderWithClient(<WaterIntake selectedDate="2023-10-27" />);
 
     expect(screen.queryByText(/from food/i)).not.toBeInTheDocument();
+  });
+
+  describe('editing a drink time', () => {
+    const mockUpdateLogTime = jest.fn();
+
+    beforeEach(() => {
+      mockTimezone = 'Europe/Berlin';
+      const { instantHourMinute } = jest.requireActual('@workspace/shared');
+      mockInstantHourMinute.mockImplementation(instantHourMinute);
+      (useUpdateWaterIntakeLogTimeMutation as jest.Mock).mockReturnValue({
+        mutate: mockUpdateLogTime,
+        isPending: false,
+      });
+    });
+
+    afterEach(() => {
+      mockTimezone = 'UTC';
+      mockInstantHourMinute.mockImplementation(() => ({ hour: 12, minute: 0 }));
+    });
+
+    // Opens the editor for a drink logged at `loggedAt` (10:00Z by default)
+    // and returns the field.
+    const openEditor = (day: string, loggedAt = `${day}T10:00:00.000Z`) => {
+      (useWaterIntakeLogQuery as jest.Mock).mockReturnValue({
+        data: [
+          {
+            id: 'e1',
+            water_ml: 250,
+            container_name: 'Work Bottle',
+            source: 'manual',
+            entry_date: `${day}T00:00:00.000Z`,
+            logged_at: loggedAt,
+            created_at: loggedAt,
+          },
+        ],
+      });
+      renderWithClient(<WaterIntake selectedDate={day} />);
+      fireEvent.click(screen.getByTitle('Click to change time'));
+      return screen.getByLabelText('Drink time') as HTMLInputElement;
+    };
+
+    // Regression for #3319: on clock-change days the saved instant was an
+    // hour away from the typed wall-clock time.
+    // The editor opens on 10:00Z in Berlin time: 11:00 in winter, 12:00 in
+    // summer. In the repeated hour of 25 Oct the second occurrence is used,
+    // and the missing hour of 29 Mar moves forward an hour.
+    it.each([
+      ['2026-10-25', '11:00', '09:30', '2026-10-25T08:30:00.000Z'], // clocks go back
+      ['2026-10-25', '11:00', '02:30', '2026-10-25T01:30:00.000Z'], // repeated hour
+      ['2026-03-29', '12:00', '08:00', '2026-03-29T06:00:00.000Z'], // clocks go forward
+      ['2026-03-29', '12:00', '02:30', '2026-03-29T01:30:00.000Z'], // missing hour
+      ['2026-10-26', '11:00', '08:00', '2026-10-26T07:00:00.000Z'], // normal day
+    ])('on %s shows %s and saves %s as %s', (day, shown, typed, expected) => {
+      const field = openEditor(day);
+      expect(field.value).toBe(shown);
+
+      fireEvent.change(field, { target: { value: typed } });
+      fireEvent.blur(field);
+
+      expect(mockUpdateLogTime).toHaveBeenCalledWith({
+        logId: 'e1',
+        loggedAt: expected,
+      });
+    });
+
+    it('saves nothing when the field is left unchanged', () => {
+      fireEvent.blur(openEditor('2026-10-25'));
+
+      expect(mockUpdateLogTime).not.toHaveBeenCalled();
+      expect(screen.queryByLabelText('Drink time')).not.toBeInTheDocument();
+    });
+
+    // 00:30Z is 02:30 in the first run of the repeated hour; re-saving 02:30
+    // would move it to the second run (01:30Z).
+    it('saves nothing when a repeated-hour drink is left unchanged', () => {
+      const field = openEditor('2026-10-25', '2026-10-25T00:30:00.000Z');
+      expect(field.value).toBe('02:30');
+
+      fireEvent.blur(field);
+
+      expect(mockUpdateLogTime).not.toHaveBeenCalled();
+    });
   });
 });
