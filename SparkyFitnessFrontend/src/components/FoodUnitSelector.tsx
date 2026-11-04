@@ -182,8 +182,19 @@ const FoodUnitSelector = ({
         availableMealTypes &&
         availableMealTypes.length > 0
       ) {
-        const nowTime = userHourMinute(timezone);
-        const matched = defaultMealTypeForTime(availableMealTypes, nowTime);
+        // Follow the prefilled time when there is one (the Diary timeline
+        // opens this at a chosen slot), else the current time.
+        const prefilled = toHourMinute(initialTime);
+        const referenceTime = prefilled
+          ? {
+              hour: Number(prefilled.slice(0, 2)),
+              minute: Number(prefilled.slice(3, 5)),
+            }
+          : userHourMinute(timezone);
+        const matched = defaultMealTypeForTime(
+          availableMealTypes,
+          referenceTime
+        );
         setMealType(matched);
       }
     }

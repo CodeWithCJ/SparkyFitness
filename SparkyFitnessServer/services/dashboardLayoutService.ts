@@ -4,8 +4,13 @@ import dashboardLayoutRepository, {
 import { log } from '../config/logging.js';
 
 // Pages that are allowed to persist a widget layout. Kept as an allow-list so a
-// bad/unknown page_key can't write arbitrary rows.
-const ALLOWED_PAGE_KEYS = new Set(['diary', 'reports-measurements']);
+// bad/unknown page_key can't write arbitrary rows. The Diary keeps a separate
+// layout for its timeline view, which swaps the meal cards for one tile.
+const ALLOWED_PAGE_KEYS = new Set([
+  'diary',
+  'diary-timeline',
+  'reports-measurements',
+]);
 
 interface HttpError extends Error {
   status?: number;
