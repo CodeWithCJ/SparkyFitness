@@ -87,7 +87,7 @@ This rate limit is per API key, not per IP. Cookie-based browser sessions are no
 
 ## Sign-In Rate Limiting
 
-Password sign-in, two-factor verification and email-OTP verification are rate-limited per
+Password sign-in and two-factor verification are rate-limited per
 client IP at the application layer, using Better Auth's `customRules`. This **replaces**
 Better Auth's built-in default for those paths.
 
@@ -98,8 +98,7 @@ Better Auth's built-in default for those paths.
 | Time window | 60 seconds |
 | Max attempts | 4 per window |
 
-Applied to `/api/auth/sign-in/email`, `/api/auth/two-factor/*` and
-`/api/auth/email-otp/verify-email`. Each path keeps its **own** budget, so one MFA login
+Applied to `/api/auth/sign-in/email` and `/api/auth/two-factor/*`. Each path keeps its **own** budget, so one MFA login
 (sign-in, then send-OTP, then verify-OTP) does not exhaust a single counter.
 
 ### Why the default is 4 per minute, not a tighter burst

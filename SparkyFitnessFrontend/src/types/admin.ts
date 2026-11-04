@@ -18,6 +18,8 @@ export interface GlobalSettings {
   is_email_login_env_configured?: boolean;
   enable_passkey_login?: boolean;
   is_passkey_login_env_configured?: boolean;
+  enable_magic_link_login?: boolean;
+  is_magic_link_login_env_configured?: boolean;
   is_oidc_active_env_configured?: boolean;
 }
 
