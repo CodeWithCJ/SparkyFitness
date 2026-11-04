@@ -16,6 +16,14 @@ jest.mock('@react-navigation/native', () => ({
   useFocusEffect: jest.fn(),
 }));
 
+const mockServerConfigs = {
+  activeConfig: { url: 'https://sparky.example' } as { url: string } | null,
+  isLoading: false,
+};
+jest.mock('../../src/hooks/useServerConfigs', () => ({
+  useServerConfigs: () => mockServerConfigs,
+}));
+
 const mockCheckServerConnection = checkServerConnection as jest.MockedFunction<
   typeof checkServerConnection
 >;
@@ -26,6 +34,8 @@ describe('useServerConnection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     queryClient = createTestQueryClient();
+    mockServerConfigs.activeConfig = { url: 'https://sparky.example' };
+    mockServerConfigs.isLoading = false;
   });
 
   afterEach(() => {
@@ -153,6 +163,66 @@ describe('useServerConnection', () => {
       await waitFor(() => {
         expect(result.current.isConnected).toBe(true);
       });
+    });
+  });
+
+  describe('status (#3385)', () => {
+    test('is connected when the check passes', async () => {
+      mockCheckServerConnection.mockResolvedValue(true);
+
+      const { result } = renderHook(() => useServerConnection(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.status).toBe('connected');
+      });
+    });
+
+    test('is unreachable when a server is set up but the check fails', async () => {
+      mockCheckServerConnection.mockResolvedValue(false);
+
+      const { result } = renderHook(() => useServerConnection(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.isConnected).toBe(false);
+      expect(result.current.status).toBe('unreachable');
+    });
+
+    test('is notConfigured when no server is set up', async () => {
+      mockServerConfigs.activeConfig = null;
+      mockCheckServerConnection.mockResolvedValue(false);
+
+      const { result } = renderHook(() => useServerConnection(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false);
+      });
+
+      expect(result.current.status).toBe('notConfigured');
+    });
+
+    test('stays loading until the server configs have loaded', async () => {
+      mockServerConfigs.isLoading = true;
+      mockCheckServerConnection.mockResolvedValue(false);
+
+      const { result } = renderHook(() => useServerConnection(), {
+        wrapper: createQueryWrapper(queryClient),
+      });
+
+      await waitFor(() => {
+        expect(mockCheckServerConnection).toHaveBeenCalled();
+      });
+
+      expect(result.current.isLoading).toBe(true);
+      expect(result.current.status).toBe('loading');
     });
   });
 

@@ -49,6 +49,7 @@ import ProgressPhotosCard from '../components/ProgressPhotosCard';
 import TrainingLoadDashboardCard from '../components/TrainingLoadDashboardCard';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
+import { ServerStatusView } from '../components/ServerGate';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import {
   caffeineActiveRootQueryKey,
@@ -472,25 +473,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               </Text>
             </View>
           )}
-          <StatusView
-            icon="cloud-offline"
-            iconTone="muted"
-            iconSize={64}
-            title={t('dashboard.noServerConfigured', {
-              defaultValue: 'No server configured',
-            })}
-            subtitle={t('dashboard.configureServer', {
-              defaultValue:
-                'Configure your server connection in Settings to view your daily summary.',
-            })}
-            action={{
-              label: t('dashboard.goToSettings', {
-                defaultValue: 'Go to Settings',
-              }),
-              onPress: () => navigation.navigate('Settings'),
-              variant: 'primary',
-            }}
-          />
+          <ServerStatusView />
         </View>
       );
     }

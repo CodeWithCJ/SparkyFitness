@@ -14,6 +14,7 @@ import { useCSSVariable } from 'uniwind';
 import FooterActionBar from '../components/FooterActionBar';
 import Icon from '../components/Icon';
 import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import Button from '../components/ui/Button';
 import {
   useDeleteWorkoutPlan,
@@ -43,7 +44,7 @@ const WorkoutPlansScreen: React.FC<WorkoutPlansScreenProps> = ({
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const [refreshing, setRefreshing] = useState(false);
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { isConnected } = useServerConnection();
   const { workoutPlans, isLoading, isError, refetch } = useWorkoutPlans({
     enabled: isConnected,
   });
@@ -259,29 +260,7 @@ const WorkoutPlansScreen: React.FC<WorkoutPlansScreenProps> = ({
   };
 
   const content = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          title={t('workoutPlans.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('workoutPlans.noServerSubtitle', {
-            defaultValue:
-              'Configure your server connection to manage workout plans.',
-          })}
-          action={{
-            label: t('workoutPlans.goToSettings', {
-              defaultValue: 'Go to Settings',
-            }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
-    if (isLoading || isConnectionLoading) {
+    if (isLoading) {
       return (
         <StatusView
           loading
@@ -358,7 +337,7 @@ const WorkoutPlansScreen: React.FC<WorkoutPlansScreenProps> = ({
       style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
-      {content()}
+      <ServerGate>{content()}</ServerGate>
       {workoutPlans.length > 0 && !isLoading && !isError ? (
         <FooterActionBar>
           <Button onPress={() => navigation.navigate('WorkoutPlanForm')}>

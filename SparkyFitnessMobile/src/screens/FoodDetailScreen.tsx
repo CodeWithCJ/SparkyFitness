@@ -24,7 +24,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
 import { NoteMarkdown } from '../components/NoteMarkdown';
 import { usableFoodImages } from '../utils/foodImages';
-import StatusView from '../components/StatusView';
+import ServerGate from '../components/ServerGate';
 import ActionSheet, {
   type ActionSheetItem,
   type ActionSheetRef,
@@ -74,7 +74,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const { isConnected } = useServerConnection();
   const { profile } = useProfile();
   const { preferences } = usePreferences({ enabled: isConnected });
   const showNetCarbs = preferences?.show_net_carbs === true;
@@ -422,28 +422,6 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
   });
 
   const renderContent = () => {
-    if (!isConnectionLoading && !isConnected) {
-      return (
-        <StatusView
-          icon="cloud-offline"
-          iconTone="muted"
-          iconSize={64}
-          title={t('foodDetail.noServer', {
-            defaultValue: 'No server configured',
-          })}
-          subtitle={t('foodDetail.configureServer', {
-            defaultValue:
-              'Configure your server connection in Settings to view food details.',
-          })}
-          action={{
-            label: t('common.goToSettings', { defaultValue: 'Go to Settings' }),
-            onPress: () => navigation.navigate('Tabs', { screen: 'Settings' }),
-            variant: 'primary',
-          }}
-        />
-      );
-    }
-
     return (
       <ScrollView
         className="flex-1"
@@ -599,7 +577,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
       style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
-      {renderContent()}
+      <ServerGate>{renderContent()}</ServerGate>
 
       <ActionSheet
         ref={deleteSheetRef}
