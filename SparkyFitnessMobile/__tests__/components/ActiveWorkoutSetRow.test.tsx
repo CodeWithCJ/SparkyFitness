@@ -84,6 +84,7 @@ interface RenderOverrides {
   enableToggle?: boolean;
   /** Wire the set-type handler (makes the set number a menu trigger). */
   enableSetType?: boolean;
+  disableSwipeDelete?: boolean;
 }
 
 function renderRow(overrides?: RenderOverrides) {
@@ -120,6 +121,7 @@ function renderRow(overrides?: RenderOverrides) {
       nextSetId={current?.nextSetId}
       entryId={current?.entryId}
       rpeEditable={current?.rpeEditable}
+      disableSwipeDelete={current?.disableSwipeDelete}
       completedBadge={current?.completedBadge}
       previousSet={current?.previousSet}
       assumed={current?.assumed}
@@ -196,6 +198,12 @@ describe('ActiveWorkoutSetRow', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'done' });
       fireEvent.press(getByLabelText('Un-complete set 1'));
       expect(callbacks.onUncomplete).toHaveBeenCalledWith('101');
+    });
+
+    it('drops the swipe wrapper when the host owns horizontal drags', () => {
+      const { queryByTestId } = renderRow({ disableSwipeDelete: true });
+      expect(queryByTestId('reanimated-swipeable')).toBeNull();
+      expect(queryByTestId('set-row')).toBeTruthy();
     });
 
     it('exposes swipe delete', () => {

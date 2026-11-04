@@ -126,6 +126,10 @@ interface Props extends SetEditorProps, HistoryProps {
   onCommitExerciseNote: (entryId: string, text: string) => void;
   /** Opens ranked alternatives from the adaptive banner (#1560). */
   onSeeAlternatives?: (entryId: string) => void;
+  /** Asks the view to show an exercise now (rest bar tap, "do this now"); a new `seq` is a new request. */
+  showRequest?: { id: string; seq: number } | null;
+  /** Closes the keyboard and clears the screen's focused set, before a page change. */
+  onDismissKeyboard: () => void;
   /** The screen's scroll ref, so it can scroll to the end buttons after the last set. */
   scrollRef: React.RefObject<KeyboardAwareScrollViewRef | null>;
   /** The screen's bottom padding, which clears its rest bar. */
@@ -482,6 +486,8 @@ function ActiveWorkoutFocusView({
   sessionId,
   verifiedSourcePresetId,
   historyScopeSettled,
+  showRequest,
+  onDismissKeyboard,
   scrollRef,
   scrollContentStyle,
   keyboardBottomOffset,
@@ -527,6 +533,9 @@ function ActiveWorkoutFocusView({
 
   const showExercise = useCallback(
     (id: string, direction: -1 | 1) => {
+      // The unmounting row can leave the IME up (Android) with its focus key
+      // still set; its typed drafts commit through the unmount flushes.
+      onDismissKeyboard();
       setSelectedId(id);
       // Each exercise opens at its photo, not where the last one was scrolled.
       scrollRef.current?.scrollTo({ y: 0, animated: false });
@@ -536,7 +545,7 @@ function ActiveWorkoutFocusView({
       slide.value = withTiming(0, { duration: SLIDE_MS });
       fade.value = withTiming(1, { duration: SLIDE_MS });
     },
-    [reducedMotion, slide, fade, scrollRef]
+    [reducedMotion, slide, fade, scrollRef, onDismissKeyboard]
   );
 
   // Refs keep the gesture and handlers stable across page changes.
@@ -586,14 +595,30 @@ function ActiveWorkoutFocusView({
     }
   }, [activeExerciseId, showExercise]);
 
+  // An explicit "show this exercise": ends the manual-move grace so the
+  // active-set follow works again.
+  const showById = useCallback(
+    (id: string) => {
+      const { exercises: list, selectedIndex: current } = stateRef.current;
+      const index = list.findIndex((e) => e.id === id);
+      if (index < 0) return;
+      lastManualAtRef.current = null;
+      if (index !== current) showExercise(id, index > current ? 1 : -1);
+    },
+    [showExercise]
+  );
   const handleBackToCurrent = useCallback(() => {
-    if (activeExerciseId == null) return;
-    const { exercises: list, selectedIndex: current } = stateRef.current;
-    const index = list.findIndex((e) => e.id === activeExerciseId);
-    if (index < 0) return;
-    lastManualAtRef.current = null;
-    showExercise(activeExerciseId, index > current ? 1 : -1);
-  }, [activeExerciseId, showExercise]);
+    if (activeExerciseId != null) showById(activeExerciseId);
+  }, [activeExerciseId, showById]);
+
+  const handledShowSeqRef = useRef(showRequest?.seq ?? 0);
+  useEffect(() => {
+    if (showRequest == null || showRequest.seq === handledShowSeqRef.current) {
+      return;
+    }
+    handledShowSeqRef.current = showRequest.seq;
+    showById(showRequest.id);
+  }, [showRequest, showById]);
 
   // Pan rather than a paging list: the page is one tall, keyboard-aware
   // column inside the screen's vertical scroll, and a nested horizontal list

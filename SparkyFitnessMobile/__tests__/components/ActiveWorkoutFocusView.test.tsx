@@ -1,4 +1,31 @@
 import React from 'react';
+
+// The global gesture-handler mock swallows every handler it is given, so the
+// pan's `onEnd` cannot be reached through it. Capture it: it decides when a
+// swipe turns the page, which is logic rather than device behaviour.
+const capturedPan: {
+  onEnd?: (event: { translationX: number; velocityX: number }) => void;
+} = {};
+jest.mock('react-native-gesture-handler', () => {
+  const { View } = require('react-native');
+  const makePan = () => {
+    const gesture = {
+      activeOffsetX: () => gesture,
+      failOffsetY: () => gesture,
+      runOnJS: () => gesture,
+      onEnd: (fn: (event: unknown) => void) => {
+        capturedPan.onEnd = fn as typeof capturedPan.onEnd;
+        return gesture;
+      },
+    };
+    return gesture;
+  };
+  return {
+    Gesture: { Pan: makePan },
+    GestureDetector: ({ children }: { children: unknown }) => children,
+    GestureHandlerRootView: View,
+  };
+});
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 import ActiveWorkoutFocusView from '../../src/components/ActiveWorkoutFocusView';
@@ -115,6 +142,7 @@ const handlers = {
   onActivateRpe: jest.fn(),
   onDeleteSet: jest.fn(),
   onPressRestChip: jest.fn(),
+  onDismissKeyboard: jest.fn(),
   onPressMetricHeader: jest.fn(),
   onPressSetType: jest.fn(),
   onToggleSetDetail: jest.fn(),
@@ -196,6 +224,58 @@ describe('ActiveWorkoutFocusView', () => {
       screen.getByLabelText('Next').props.accessibilityState.disabled
     ).toBe(true);
     fireEvent.press(screen.getByLabelText('Previous exercise, Squat'));
+    expect(shownName()).toBe('Squat');
+  });
+
+  it('pages with the swipe gesture: left for next, right for previous, none for a short drag', () => {
+    render(viewElement('b'));
+    act(() => capturedPan.onEnd?.({ translationX: -120, velocityX: 0 }));
+    expect(shownName()).toBe('Deadlift');
+    act(() => capturedPan.onEnd?.({ translationX: 10, velocityX: 0 }));
+    expect(shownName()).toBe('Deadlift');
+    act(() => capturedPan.onEnd?.({ translationX: 120, velocityX: 0 }));
+    expect(shownName()).toBe('Squat');
+    act(() => capturedPan.onEnd?.({ translationX: 120, velocityX: 0 }));
+    expect(shownName()).toBe('Bench Press');
+    // Already first: another right swipe stays put.
+    act(() => capturedPan.onEnd?.({ translationX: 120, velocityX: 0 }));
+    expect(shownName()).toBe('Bench Press');
+  });
+
+  it('hides the keyboard and clears the focused set on every page change', () => {
+    render(viewElement('a'));
+    expect(handlers.onDismissKeyboard).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByLabelText('Next exercise, Squat'));
+    expect(handlers.onDismissKeyboard).toHaveBeenCalledTimes(1);
+    fireEvent.press(screen.getByTestId('focus-chip-c'));
+    expect(handlers.onDismissKeyboard).toHaveBeenCalledTimes(2);
+    act(() => capturedPan.onEnd?.({ translationX: 120, velocityX: 0 }));
+    expect(handlers.onDismissKeyboard).toHaveBeenCalledTimes(3);
+  });
+
+  it('shows a requested exercise at once, even within the manual-move grace', () => {
+    const { rerender } = render(viewElement('a'));
+    fireEvent.press(screen.getByTestId('focus-chip-c'));
+    expect(shownName()).toBe('Deadlift');
+
+    rerender(viewElement('a', { showRequest: { id: 'b', seq: 1 } }));
+    expect(shownName()).toBe('Squat');
+
+    // The same request again (same seq) does not pull the lifter back.
+    fireEvent.press(screen.getByTestId('focus-chip-c'));
+    rerender(viewElement('a', { showRequest: { id: 'b', seq: 1 } }));
+    expect(shownName()).toBe('Deadlift');
+
+    // A new request does, and it ends the grace so following works again.
+    rerender(viewElement('a', { showRequest: { id: 'b', seq: 2 } }));
+    expect(shownName()).toBe('Squat');
+    rerender(viewElement('c', { showRequest: { id: 'b', seq: 2 } }));
+    expect(shownName()).toBe('Deadlift');
+  });
+
+  it('ignores a request for an exercise that is gone', () => {
+    const { rerender } = render(viewElement('b'));
+    rerender(viewElement('b', { showRequest: { id: 'zzz', seq: 1 } }));
     expect(shownName()).toBe('Squat');
   });
 
@@ -455,6 +535,15 @@ describe('summarizePlan', () => {
 });
 
 describe('formatLastTimeSets', () => {
+  it('keeps 1.25 kg plate steps exact and lb values free of noise', () => {
+    const sets = [{ setNumber: 1, setType: 'normal', weight: 61.25, reps: 5 }];
+    expect(formatLastTimeSets(sets, 'kg')).toEqual(['61.25×5']);
+    // 46.49 kg is 102.5 lb once restored to the stored precision.
+    expect(formatLastTimeSets([{ ...sets[0], weight: 46.49 }], 'lbs')).toEqual([
+      '102.5×5',
+    ]);
+  });
+
   it('lists working sets in the display unit', () => {
     expect(
       formatLastTimeSets(

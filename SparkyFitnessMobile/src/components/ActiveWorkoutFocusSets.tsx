@@ -8,7 +8,10 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, Text, View, type TextInput } from 'react-native';
 import { useCSSVariable } from 'uniwind';
-import { isBodyweightModality } from '@workspace/shared';
+import {
+  DEFAULT_WARMUP_PLATE_ROUNDING,
+  isBodyweightModality,
+} from '@workspace/shared';
 import { useBodyWeightKg } from '../hooks/useBodyWeightKg';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
@@ -33,7 +36,6 @@ import {
   parseDecimalInput,
   parseSignedDecimalInput,
 } from '../utils/numericInput';
-import { formatLocalizedNumber } from '../localization';
 import { storedWeightInUnit, weightToKg } from '../utils/unitConversions';
 import {
   buildWorkingSetNumbers,
@@ -54,12 +56,12 @@ import type {
   ActiveSetPatch,
   CompletedSetMap,
 } from '../stores/activeWorkoutStore';
-import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
-
-const formatWeight = (value: number) =>
-  formatLocalizedNumber(value, { maximumFractionDigits: 1 });
-
-const WEIGHT_STEP: Record<'kg' | 'lbs', number> = { kg: 2.5, lbs: 5 };
+import {
+  useAppPreferencesStore,
+  type ActiveWorkoutMetricColumn,
+} from '../stores/appPreferencesStore';
+import { formatFocusWeight } from '../utils/focusView';
+import { resolveWarmupOptions } from '../utils/warmupSettings';
 
 interface Props {
   exercise: WorkoutCardExercise;
@@ -111,6 +113,11 @@ interface StepperFieldOptions {
   format: (value: number) => string;
   parse: (text: string) => number;
   onCommit: (value: number | null) => void;
+  /**
+   * Flushes the draft when this changes (besides on unmount), while the commit
+   * closure still targets what the draft was typed for.
+   */
+  commitKey?: string;
 }
 
 /**
@@ -127,6 +134,7 @@ function useStepperField({
   format,
   parse,
   onCommit,
+  commitKey,
 }: StepperFieldOptions) {
   const [draft, setDraft] = useState<string | null>(null);
 
@@ -148,7 +156,9 @@ function useStepperField({
   useEffect(() => {
     latestFlushRef.current = flush;
   });
-  useEffect(() => () => latestFlushRef.current(), []);
+  // Runs the previous render's flush when `commitKey` changes too, so a draft
+  // typed for RPE is never routed to RIR after a metric switch.
+  useEffect(() => () => latestFlushRef.current(), [commitKey]);
 
   const adjust = (direction: 1 | -1) => {
     const typed = draft === null ? NaN : parse(draft);
@@ -180,6 +190,8 @@ interface FocusSetRowProps {
   state: 'done' | 'current' | 'upcoming';
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
+  /** +/- step for weight, in the display unit. */
+  weightStep: number;
   onCompleteSet: (setId: string) => void;
   onUncomplete: (setId: string) => void;
   onCommitField: (setId: string, patch: ActiveSetPatch) => void;
@@ -213,6 +225,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
   state,
   metricColumn,
   weightUnit,
+  weightStep,
   onCompleteSet,
   onUncomplete,
   onCommitField,
@@ -259,10 +272,10 @@ const FocusSetRow = React.memo(function FocusSetRow({
       assumed?.weight != null
         ? storedWeightInUnit(assumed.weight, weightUnit)
         : null,
-    step: WEIGHT_STEP[weightUnit],
+    step: weightStep,
     // An assisted bodyweight set carries a negative weight.
     min: bodyweight ? -Infinity : 0,
-    format: formatWeight,
+    format: (value) => formatFocusWeight(value, weightUnit),
     parse: bodyweight ? parseSignedDecimalInput : parseDecimalInput,
     onCommit: (next) =>
       onCommitField(setId, {
@@ -293,6 +306,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
     min: 0,
     format: formatRpe,
     parse: (text) => parseEffort(text) ?? NaN,
+    commitKey: effortField,
     onCommit: (next) =>
       onCommitField(
         setId,
@@ -611,6 +625,21 @@ function ActiveWorkoutFocusSets({
   const clampedToRpe = isMetricClampedToRpe(modality);
   const effectiveMetricColumn: ActiveWorkoutMetricColumn =
     clampedToRpe && metricColumn !== 'rir' ? 'rpe' : metricColumn;
+  // The +/- step is the lifter's own warm-up rounding for this equipment
+  // (dumbbell step for dumbbells, plate step for everything else).
+  const warmupMethod = useAppPreferencesStore((s) => s.warmupMethod);
+  const warmupPlateRounding = useAppPreferencesStore(
+    (s) => s.warmupPlateRounding
+  );
+  const warmupDumbbellRounding = useAppPreferencesStore(
+    (s) => s.warmupDumbbellRounding
+  );
+  const weightStep =
+    resolveWarmupOptions(
+      { warmupMethod, warmupPlateRounding, warmupDumbbellRounding },
+      weightUnit,
+      exercise.exercise_snapshot?.equipment
+    ).increment ?? DEFAULT_WARMUP_PLATE_ROUNDING[weightUnit];
   const bodyWeightKg = useBodyWeightKg(
     undefined,
     stepperRows && isBodyweightModality(modality)
@@ -738,6 +767,7 @@ function ActiveWorkoutFocusSets({
             state={state}
             metricColumn={effectiveMetricColumn}
             weightUnit={weightUnit}
+            weightStep={weightStep}
             bodyWeightKg={bodyWeightKg}
             onPressSetType={onPressSetType}
             onToggleSetDetail={onToggleSetDetail}
@@ -772,6 +802,7 @@ function ActiveWorkoutFocusSets({
             onUncomplete={onUncomplete}
             onCommitField={onCommitField}
             onDelete={onDeleteSet}
+            disableSwipeDelete
             onPressSetType={onPressSetType}
             onLongPress={
               onToggleSetDetail

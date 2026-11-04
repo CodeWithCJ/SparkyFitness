@@ -121,6 +121,8 @@ jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
     onToggleSetDetail,
     onActivateSet,
     onCompleteSet,
+    onDismissKeyboard,
+    showRequest,
     scrollRef,
     expandedSetKey,
     noteEditorEntryId,
@@ -135,6 +137,8 @@ jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
         testID="focus-view"
         accessibilityLabel={`active:${String(activeExerciseId)}`}
       >
+        <Text testID="focus-show">{`show:${showRequest?.seq ?? 0}:${String(showRequest?.id)}`}</Text>
+        <Pressable testID="focus-page-change" onPress={onDismissKeyboard} />
         <Text testID="focus-state">{`note:${String(noteEditorEntryId)} detail:${String(expandedSetKey)}`}</Text>
         <Pressable
           testID="focus-overflow"
@@ -180,6 +184,10 @@ jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
             />
           ))
         )}
+        <Pressable
+          testID="focus-unmount-102"
+          onPress={() => onRegisterAccessoryHandle?.('102', null)}
+        />
         <Pressable
           testID="focus-complete-last"
           onPress={() => onCompleteSet('301')}
@@ -1854,6 +1862,50 @@ describe('ActiveWorkoutScreen focus view', () => {
       );
       expect(mockFocusScrollTo).not.toHaveBeenCalled();
       jest.mocked(KeyboardController.isVisible).mockReturnValue(true);
+    });
+
+    it('clears the focused set and hides the keyboard when the view changes page', () => {
+      const { getByTestId, queryByText, getByText } = renderScreen();
+      fireEvent.press(getByTestId('focus-mount-102'));
+      fireEvent.press(getByTestId('focus-weight-field'));
+      expect(getByText('Log')).toBeTruthy();
+
+      fireEvent.press(getByTestId('focus-page-change'));
+      expect(queryByText('Log')).toBeNull();
+    });
+
+    it('asks the view to show the active exercise when the rest bar is tapped', () => {
+      const { getByTestId } = renderScreen();
+      expect(getByTestId('focus-show').props.children).toBe('show:0:undefined');
+
+      fireEvent.press(getByTestId('rest-bar-body'));
+      expect(getByTestId('focus-show').props.children).toBe('show:1:ex-a');
+      fireEvent.press(getByTestId('rest-bar-body'));
+      expect(getByTestId('focus-show').props.children).toBe('show:2:ex-a');
+    });
+
+    it('asks the view to show an exercise picked with "Do another exercise first"', () => {
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId('focus-overflow'));
+      pressSheetItem('do-now');
+      pressSheetItem('ex-b');
+      expect(getByTestId('focus-show').props.children).toBe('show:1:ex-b');
+    });
+
+    it('does not move the keyboard to a row that has left the page', () => {
+      const { getByTestId } = renderScreen();
+      fireEvent.press(getByTestId('focus-mount-102'));
+      fireEvent.press(getByTestId('focus-unmount-102'));
+
+      act(() => {
+        useActiveWorkoutStore.setState({ restExpiredAt: Date.now() });
+      });
+
+      const bar = within(
+        getByTestId('set-accessory-sticky', { includeHiddenElements: true })
+      );
+      expect(bar.queryByText('Next')).toBeNull();
+      expect(bar.queryByText('Log')).toBeNull();
     });
 
     it('does not scroll while sets remain', () => {

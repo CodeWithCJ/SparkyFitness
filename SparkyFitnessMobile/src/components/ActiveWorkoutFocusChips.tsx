@@ -17,6 +17,8 @@ const CHIP_SIZE = 44;
 const CIRCLE_SIZE = 36;
 /** contentContainer gap-2: non-last superset bars extend across it. */
 const CHIP_GAP = 8;
+// The row's `px-3` leading padding, which the chip offsets start after.
+const CONTENT_PADDING_X = 12;
 
 interface Props {
   exercises: ExerciseEntryResponse[];
@@ -48,7 +50,8 @@ function ActiveWorkoutFocusChips({
   const viewportWidthRef = useRef(0);
 
   const scrollToIndex = useCallback((index: number, animated: boolean) => {
-    const center = index * (CHIP_SIZE + CHIP_GAP) + CHIP_SIZE / 2;
+    const center =
+      CONTENT_PADDING_X + index * (CHIP_SIZE + CHIP_GAP) + CHIP_SIZE / 2;
     scrollRef.current?.scrollTo({
       x: Math.max(0, center - viewportWidthRef.current / 2),
       animated,

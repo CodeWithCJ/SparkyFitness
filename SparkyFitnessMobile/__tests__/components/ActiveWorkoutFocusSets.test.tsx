@@ -2,6 +2,10 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { act, render, fireEvent } from '@testing-library/react-native';
 import ActiveWorkoutFocusSets from '../../src/components/ActiveWorkoutFocusSets';
+import {
+  __resetAppPreferencesStoreForTests,
+  useAppPreferencesStore,
+} from '../../src/stores/appPreferencesStore';
 import type {
   AssumedSetValues,
   WorkoutCardExercise,
@@ -40,12 +44,17 @@ function makeSet(overrides?: Partial<WorkoutCardSet>): WorkoutCardSet {
 
 function makeExercise(
   sets: WorkoutCardSet[],
-  modality = 'weight_reps'
+  modality = 'weight_reps',
+  equipment?: string[]
 ): WorkoutCardExercise {
   return {
     id: 'entry-1',
     exercise_id: 'ex-1',
-    exercise_snapshot: { name: 'Bench Press', modality } as never,
+    exercise_snapshot: {
+      name: 'Bench Press',
+      modality,
+      equipment,
+    } as never,
     sets,
   } as WorkoutCardExercise;
 }
@@ -53,6 +62,7 @@ function makeExercise(
 interface RenderOptions {
   sets?: WorkoutCardSet[];
   modality?: string;
+  equipment?: string[];
   completedSetIds?: Record<string, number>;
   activeSetId?: string | null;
   weightUnit?: 'kg' | 'lbs';
@@ -80,9 +90,13 @@ function renderSets(options: RenderOptions = {}) {
     onToggleSetDetail: jest.fn(),
   };
   const { onDeleteSet, onToggleSetDetail, ...rest } = callbacks;
-  const utils = render(
+  const buildElement = (options: RenderOptions) => (
     <ActiveWorkoutFocusSets
-      exercise={makeExercise(options.sets ?? [makeSet()], options.modality)}
+      exercise={makeExercise(
+        options.sets ?? [makeSet()],
+        options.modality,
+        options.equipment
+      )}
       completedSetIds={options.completedSetIds ?? {}}
       activeSetId={options.activeSetId ?? null}
       setRenderKeys={{ '101': 'key-101' }}
@@ -98,10 +112,18 @@ function renderSets(options: RenderOptions = {}) {
       expandedSetKey={options.expandedSetKey ?? null}
     />
   );
-  return { ...utils, callbacks };
+  const utils = render(buildElement(options));
+  /** Re-render the same sets (same callbacks) with updated options. */
+  const rerenderSets = (next: RenderOptions) =>
+    utils.rerender(buildElement(next));
+  return { ...utils, callbacks, rerenderSets };
 }
 
 describe('ActiveWorkoutFocusSets', () => {
+  beforeEach(() => {
+    __resetAppPreferencesStoreForTests();
+  });
+
   it('renders a row per set with weight, reps and the headers', () => {
     const { getByLabelText, getByText } = renderSets({
       sets: [
@@ -444,6 +466,151 @@ describe('ActiveWorkoutFocusSets', () => {
       );
     }
   );
+
+  it("steps weight by the lifter's plate rounding for non-dumbbell exercises", () => {
+    useAppPreferencesStore.setState({
+      warmupPlateRounding: { kg: 5, lbs: 10 },
+    });
+    const { getByLabelText, callbacks } = renderSets({
+      equipment: ['barbell'],
+    });
+    fireEvent.press(getByLabelText('Increase weight for set 1'));
+    expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+      weight: 65,
+    });
+  });
+
+  it('steps weight by the dumbbell rounding for dumbbell exercises, in lbs too', () => {
+    const kg = renderSets({ equipment: ['dumbbell'] });
+    fireEvent.press(kg.getByLabelText('Increase weight for set 1'));
+    expect(kg.callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+      weight: 61,
+    });
+    kg.unmount();
+
+    useAppPreferencesStore.setState({
+      warmupDumbbellRounding: { kg: 1, lbs: 5 },
+    });
+    const lbs = renderSets({
+      equipment: ['dumbbell'],
+      weightUnit: 'lbs',
+      sets: [makeSet({ weight: 45.359237 })],
+    });
+    fireEvent.press(lbs.getByLabelText('Increase weight for set 1'));
+    // 100 lb + one 5 lb step, stored as kg.
+    expect(lbs.callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+      weight: expect.closeTo(47.63, 1),
+    });
+  });
+
+  it('shows a 1.25 kg step exactly and unchanged by the unchanged-value check', () => {
+    useAppPreferencesStore.setState({
+      warmupPlateRounding: { kg: 1.25, lbs: 5 },
+    });
+    const { getByLabelText, callbacks, rerenderSets } = renderSets({
+      equipment: ['barbell'],
+    });
+    fireEvent.press(getByLabelText('Increase weight for set 1'));
+    expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+      weight: 61.25,
+    });
+    rerenderSets({
+      sets: [makeSet({ weight: 61.25 })],
+      equipment: ['barbell'],
+    });
+    const weight = getByLabelText('Weight for set 1');
+    expect(weight.props.value).toBe('61.25');
+
+    // Typing the value already stored is not an edit...
+    callbacks.onCommitField.mockClear();
+    fireEvent.changeText(weight, '61.25');
+    fireEvent(weight, 'blur');
+    expect(callbacks.onCommitField).not.toHaveBeenCalled();
+    // ...but a nearby value is.
+    fireEvent.changeText(weight, '61.3');
+    fireEvent(weight, 'blur');
+    expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+      weight: 61.3,
+    });
+  });
+
+  it('steps lbs by 2.5 without noise: 102.5, 105, 107.5', () => {
+    useAppPreferencesStore.setState({
+      warmupPlateRounding: { kg: 2.5, lbs: 2.5 },
+    });
+    const kgOf = (lbs: number) => Math.round(lbs * 0.45359237 * 100) / 100;
+    let weightKg = kgOf(100);
+    const { getByLabelText, callbacks, rerenderSets } = renderSets({
+      weightUnit: 'lbs',
+      equipment: ['barbell'],
+      sets: [makeSet({ weight: weightKg })],
+    });
+    const shown: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      fireEvent.press(getByLabelText('Increase weight for set 1'));
+      weightKg = (
+        callbacks.onCommitField.mock.calls.at(-1) as [
+          string,
+          { weight: number },
+        ]
+      )[1].weight;
+      rerenderSets({
+        weightUnit: 'lbs',
+        equipment: ['barbell'],
+        sets: [makeSet({ weight: weightKg })],
+      });
+      shown.push(getByLabelText('Weight for set 1').props.value);
+    }
+    expect(shown).toEqual(['102.5', '105', '107.5']);
+  });
+
+  it('keeps the default plate step without equipment', () => {
+    const { getByLabelText, callbacks } = renderSets();
+    fireEvent.press(getByLabelText('Increase weight for set 1'));
+    expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
+      weight: 62.5,
+    });
+  });
+
+  it('commits an effort draft to the metric it was typed for after a switch', () => {
+    const { getByLabelText, callbacks, rerenderSets } = renderSets({
+      metricColumn: 'rpe',
+    });
+    fireEvent.changeText(getByLabelText('RPE for set 1'), '8');
+    expect(callbacks.onCommitField).not.toHaveBeenCalled();
+
+    rerenderSets({ metricColumn: 'rir' });
+    expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
+    expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
+    expect(callbacks.onCommitField).not.toHaveBeenCalledWith(
+      '101',
+      expect.objectContaining({ rir: expect.anything() })
+    );
+    expect(getByLabelText('RIR for set 1').props.value).toBe('');
+  });
+
+  it('disables swipe-to-delete on fallback rows but leaves the detail Delete', () => {
+    const { queryByTestId } = renderSets({
+      modality: 'duration',
+      sets: [makeSet({ weight: null, reps: null, duration: 30 })],
+      withDelete: true,
+    });
+    expect(queryByTestId('set-row')).toBeTruthy();
+    expect(queryByTestId('reanimated-swipeable')).toBeNull();
+  });
+
+  it('unregisters its accessory handle when a row unmounts', () => {
+    const { callbacks, unmount } = renderSets();
+    expect(callbacks.onRegisterAccessoryHandle).toHaveBeenCalledWith(
+      'key-101',
+      expect.any(Object)
+    );
+    unmount();
+    expect(callbacks.onRegisterAccessoryHandle).toHaveBeenLastCalledWith(
+      'key-101',
+      null
+    );
+  });
 
   it('opens the set-type menu from the set number', () => {
     const { getByLabelText, callbacks } = renderSets();

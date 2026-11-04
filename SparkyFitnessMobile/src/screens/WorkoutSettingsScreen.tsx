@@ -86,6 +86,9 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
     (s) => s.setActiveWorkoutNowCard
   );
   const workoutView = useAppPreferencesStore((s) => s.activeWorkoutView);
+  const guidedWorkoutEnabled = useAppPreferencesStore(
+    (s) => s.guidedWorkoutEnabled
+  );
   const setWorkoutView = useAppPreferencesStore((s) => s.setActiveWorkoutView);
   const focusMedia = useAppPreferencesStore((s) => s.focusMediaDefault);
   const setFocusMedia = useAppPreferencesStore((s) => s.setFocusMediaDefault);
@@ -234,10 +237,17 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
           title={t('workoutSettings.workoutView', {
             defaultValue: 'Workout view',
           })}
-          subtitle={t('workoutSettings.workoutViewSubtitle', {
-            defaultValue:
-              'List shows every exercise in one scrolling list; Focus shows one exercise at a time with a large photo card.',
-          })}
+          subtitle={
+            guidedWorkoutEnabled
+              ? t('workoutSettings.workoutViewGuidedSubtitle', {
+                  defaultValue:
+                    'Guided workouts always use the list. Focus applies when guided mode is off.',
+                })
+              : t('workoutSettings.workoutViewSubtitle', {
+                  defaultValue:
+                    'List shows every exercise in one scrolling list; Focus shows one exercise at a time with a large photo card.',
+                })
+          }
           subtitleNumberOfLines={0}
           testID="workout-view-picker"
           rightAccessory={

@@ -7,6 +7,17 @@ import {
   type AssumedSetValues,
 } from './workoutSession';
 
+/**
+ * A weight as the focus view shows it, in the display unit. Matches the
+ * precision `storedWeightInUnit` restores: two decimals for kg (1.25 kg plate
+ * steps stay exact), one for lbs, so converted values carry no noise.
+ */
+export function formatFocusWeight(value: number, unit: 'kg' | 'lbs'): string {
+  return formatLocalizedNumber(value, {
+    maximumFractionDigits: unit === 'kg' ? 2 : 1,
+  });
+}
+
 /** How long after a manual page change the focus view stops following. */
 export const FOCUS_FOLLOW_GRACE_MS = 30_000;
 
@@ -65,18 +76,19 @@ export function formatLastTimeSets(
     .slice(0, LAST_TIME_MAX_SETS)
     .map((s) => {
       if (s.weight != null && s.reps != null) {
-        const weight = formatLocalizedNumber(
+        const weight = formatFocusWeight(
           storedWeightInUnit(s.weight, weightUnit),
-          { maximumFractionDigits: 1 }
+          weightUnit
         );
         return `${weight}×${s.reps}`;
       }
       if (s.reps != null) return String(s.reps);
       if (s.duration != null) return formatDurationSeconds(s.duration);
       return s.weight != null
-        ? formatLocalizedNumber(storedWeightInUnit(s.weight, weightUnit), {
-            maximumFractionDigits: 1,
-          })
+        ? formatFocusWeight(
+            storedWeightInUnit(s.weight, weightUnit),
+            weightUnit
+          )
         : '';
     })
     .filter((text) => text !== '');

@@ -1377,6 +1377,7 @@
     "nowCardSubtitle": "Pin the set to do now above the exercise list: its target in large type, the exercise photo, what comes next, and Swap to do another exercise first.",
     "workoutView": "Workout view",
     "workoutViewSubtitle": "List shows every exercise in one scrolling list; Focus shows one exercise at a time with a large photo card.",
+    "workoutViewGuidedSubtitle": "Guided workouts always use the list. Focus applies when guided mode is off.",
     "workoutViewList": "List",
     "workoutViewFocus": "Focus",
     "focusMedia": "Exercise photo",

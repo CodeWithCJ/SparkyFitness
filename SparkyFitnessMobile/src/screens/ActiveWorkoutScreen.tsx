@@ -401,6 +401,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     focusModeRef.current = focusMode;
   }, [focusMode]);
 
+  // Focus mode has no list to scroll; the rest bar, "do this now" and the
+  // other callers of handleRailPress ask its view to show the exercise.
+  const [focusShowRequest, setFocusShowRequest] = useState<{
+    id: string;
+    seq: number;
+  } | null>(null);
+
   const scrollToExercise = useCallback((entryId: string) => {
     // The focus view has no list cards: offsets left from a list session
     // (the view can be switched mid-workout) would scroll its page to a stale
@@ -472,6 +479,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         return next;
       });
       setFocusedExerciseId(entryId);
+      if (focusModeRef.current) {
+        setFocusShowRequest((prev) => ({
+          id: entryId,
+          seq: (prev?.seq ?? 0) + 1,
+        }));
+      }
       setTimeout(() => scrollToExercise(entryId), 100);
     },
     [autoExpandedId, scrollToExercise]
@@ -1051,6 +1064,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       {focusMode ? (
         <ActiveWorkoutFocusView
           scrollRef={scrollRef}
+          showRequest={focusShowRequest}
+          onDismissKeyboard={handleAccessoryDone}
           session={session}
           prSetIds={prSetIds}
           activeExerciseId={activeExerciseId}
