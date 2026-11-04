@@ -33,6 +33,27 @@ SparkyFitness supports integration with the following health and fitness data pr
 - [COROS](/features/settings/coros)
 - NIH Dietary Supplement Label Database (fills in a supplement from its barcode; public, no key, active by default — deactivate it to turn it off). Open Food Facts is the fallback for supplement barcodes the NIH database does not have, mostly outside the US; with both off the supplement barcode scan is hidden
 
+## Mealie ingredient meals
+
+Mealie recipes can be imported as editable meals with separate ingredients. The existing option to import a recipe as a single food remains available.
+
+1. Add an active Mealie provider under **Settings → Food & Exercise Data Providers**, using your Mealie instance URL and API token.
+2. Open your meals library and choose **Import Mealie ingredients**. Select the provider and recipe.
+3. Match each ingredient to a food with nutrition data. You can search manually or request suggestions. Optional AI matching uses your configured AI service to choose from retrieved foods; review and confirm each selection before saving. Confirmed matches are remembered for the same ingredient and preparation context.
+4. Check the quantities and units for the whole recipe. For weighed portions, enter the finished weight of the entire cooked dish in grams, without the pot. Save the meal, then log the amount you ate through the normal meal diary.
+
+Missing amounts, incompatible units and linked sub-recipes are shown for review. SparkyFitness does not guess a volume-to-weight conversion. Recipes containing a linked sub-recipe require its ingredients to be listed explicitly in Mealie before import. Missing optional nutrients remain unknown rather than becoming zero.
+
+### Updating nutrition in Mealie
+
+Saving or editing a meal does not write to Mealie. After importing, use the separate nutrition-sync action to update the original recipe's nutrition. Your Mealie token must permit recipe updates.
+
+Sync is available only when all ingredients are confirmed, the amounts still match the original recipe, and neither the source recipe nor the imported meal has changed since import. SparkyFitness updates only the supported, known nutrition fields, calculated per original recipe serving. Other nutrition fields and recipe content are preserved.
+
+If you substitute an ingredient or change an amount for one cooking session, keep that variation in your SparkyFitness meal. For a permanent alternative recipe, duplicate and edit the recipe in Mealie, then import that copy. Import and sync use your own provider connection and are unavailable while managing another person's profile.
+
+A source conflict requires a fresh import and review. If the remote result cannot be confirmed, inspect the recipe in Mealie before trying again: a timed-out update may already have reached it. The saved SparkyFitness meal remains available even when sync fails.
+
 ## Hevy automatic sync
 
 When adding or editing a Hevy provider, choose **Manual**, **Hourly**, or **Daily at 21:00** under **Sync Frequency**. New connections default to **Manual**, and existing manual connections stay manual until you change the setting. Keep the provider active to enable automatic sync.
