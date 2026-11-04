@@ -4564,16 +4564,25 @@ describe('update_food_variant', () => {
       serving_unit: 'g',
     });
 
-    await tools.sparky_manage_food.execute!(
-      { food_id: FOOD_ID, custom_nutrients: { Iron: 4 } },
-      opts
-    );
+    // A bare food_id would otherwise infer delete_food, and food_name or
+    // meal_type would infer lookup_food_nutrition or log_food.
+    for (const extra of [
+      {},
+      { food_name: 'Oatmeal' },
+      { meal_type: 'lunch' as const },
+    ]) {
+      vi.mocked(foodRepository.updateFoodVariant).mockClear();
+      await tools.sparky_manage_food.execute!(
+        { food_id: FOOD_ID, custom_nutrients: { Iron: 4 }, ...extra },
+        opts
+      );
 
-    expect(foodRepository.updateFoodVariant).toHaveBeenCalledWith(
-      VARIANT_ID,
-      { custom_nutrients: { Iron: 4 } },
-      'user-1'
-    );
+      expect(foodRepository.updateFoodVariant).toHaveBeenCalledWith(
+        VARIANT_ID,
+        { custom_nutrients: { Iron: 4 } },
+        'user-1'
+      );
+    }
     expect(foodCoreService.deleteFood).not.toHaveBeenCalled();
   });
 
