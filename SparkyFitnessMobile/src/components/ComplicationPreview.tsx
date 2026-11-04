@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import WatchSymbol from './WatchSymbol';
@@ -132,22 +133,126 @@ const CornerFace: React.FC<{
   );
 };
 
-/**
- * What a complication would look like in the circular and corner sizes, on a
- * sample day. Approximate on purpose: the watch face decides the final shape
- * (the corner's label really follows the curve of the screen).
- */
-const ComplicationPreview: React.FC<{ definition: PreviewDefinition }> = ({
-  definition,
-}) => {
-  const { text, progress } = complicationPreview(definition);
+/** The rectangular size: the name and symbol, the value, and a bar or a detail line. */
+const RectangularFace: React.FC<{
+  definition: PreviewDefinition;
+  name: string;
+  text: string;
+  detail: string | null;
+  progress: number | null;
+}> = ({ definition, name, text, detail, progress }) => {
+  const color = COMPLICATION_COLOR_HEX[definition.color];
   return (
     <View
-      className="flex-row items-center justify-around rounded-2xl py-5"
+      testID="complication-preview-rectangular"
+      style={{
+        width: 168,
+        borderRadius: 12,
+        padding: 10,
+        backgroundColor: 'rgba(255,255,255,0.14)',
+      }}
+    >
+      <View className="flex-row items-center gap-1.5">
+        <WatchSymbol name={definition.icon} size={14} color={color} />
+        <Text
+          numberOfLines={1}
+          style={{ color, fontSize: 14, fontWeight: '600', flexShrink: 1 }}
+        >
+          {name}
+        </Text>
+      </View>
+      <Text
+        testID="complication-preview-rectangular-text"
+        numberOfLines={1}
+        style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '600' }}
+      >
+        {text}
+      </Text>
+      {progress !== null ? (
+        <View
+          style={{
+            height: 5,
+            borderRadius: 3,
+            marginTop: 4,
+            backgroundColor: TRACK,
+          }}
+        >
+          <View
+            style={{
+              height: 5,
+              borderRadius: 3,
+              width: `${Math.round(progress * 100)}%`,
+              backgroundColor: color,
+            }}
+          />
+        </View>
+      ) : detail ? (
+        <Text
+          testID="complication-preview-rectangular-detail"
+          numberOfLines={1}
+          style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 }}
+        >
+          {detail}
+        </Text>
+      ) : null}
+    </View>
+  );
+};
+
+/** The inline size: one line with the value first, so a long name is what gets cut. */
+const InlineFace: React.FC<{
+  definition: PreviewDefinition;
+  name: string;
+  text: string;
+}> = ({ definition, name, text }) => (
+  <View
+    testID="complication-preview-inline"
+    className="flex-row items-center gap-1.5"
+  >
+    <WatchSymbol
+      name={definition.icon}
+      size={14}
+      color={COMPLICATION_COLOR_HEX[definition.color]}
+    />
+    <Text
+      testID="complication-preview-inline-text"
+      numberOfLines={1}
+      style={{ color: '#FFFFFF', fontSize: 14 }}
+    >
+      {`${text} ${name}`}
+    </Text>
+  </View>
+);
+
+/**
+ * What a complication would look like in the circular, corner, rectangular and
+ * inline sizes, on a sample day. Approximate on purpose: the watch face decides the final shape
+ * (the corner's label really follows the curve of the screen).
+ */
+const ComplicationPreview: React.FC<{
+  definition: PreviewDefinition;
+  /** The wearer's name for it, shown in the rectangular and inline sizes. */
+  name: string;
+}> = ({ definition, name }) => {
+  const { t } = useTranslation();
+  const { text, detail, progress } = complicationPreview(definition, t);
+  return (
+    <View
+      className="rounded-2xl py-5 gap-5 items-center"
       style={{ backgroundColor: '#000000' }}
     >
-      <CircularFace definition={definition} text={text} progress={progress} />
-      <CornerFace definition={definition} text={text} progress={progress} />
+      <View className="flex-row items-center justify-around self-stretch">
+        <CircularFace definition={definition} text={text} progress={progress} />
+        <CornerFace definition={definition} text={text} progress={progress} />
+      </View>
+      <RectangularFace
+        definition={definition}
+        name={name}
+        text={text}
+        detail={detail}
+        progress={progress}
+      />
+      <InlineFace definition={definition} name={name} text={text} />
     </View>
   );
 };
