@@ -1108,6 +1108,11 @@ Actions:
             if (args.food_id && args.barcode) {
               return 'set_food_barcode';
             }
+            // custom_nutrients is only accepted by update_food_variant, so a
+            // food_id with it must never fall through to delete_food.
+            if ((args.food_id || args.variant_id) && args.custom_nutrients) {
+              return 'update_food_variant';
+            }
             if (args.food_id) {
               return 'delete_food';
             }
