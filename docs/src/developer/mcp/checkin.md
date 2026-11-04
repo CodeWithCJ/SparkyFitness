@@ -87,4 +87,4 @@ The `sparky_manage_checkin` tool supports the following actions:
 - **Parameters:**
     - `start_date` (string, YYYY-MM-DD, optional): Start of the range.
     - `end_date` (string, YYYY-MM-DD, optional): End of the range.
-    - `category_name` (string, optional): Only this metric, matched on its name or display name (case-insensitive).
+    - `category_name` (string, optional): Only this metric, matched on its stored name first, then its display name (case-insensitive). When several metrics share that display name, the reply lists their stored names instead.

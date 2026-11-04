@@ -271,7 +271,7 @@ Actions:
 - list_checkin_diary(entry_date?)
 - get_fasting_status() — returns the currently active fasting session if any
 - get_biometrics_history(start_date?, end_date?) — returns standard measurement history
-- get_custom_metrics_history(start_date?, end_date?, category_name?) — custom metric values by day, newest first; category_name keeps one metric`,
+- get_custom_metrics_history(start_date?, end_date?, category_name?) — custom metric values by day, newest first; category_name keeps one metric (if several share that display name, the reply lists their stored names)`,
       inputSchema: manageCheckinInput,
       execute: async (rawArgs) => {
         const normalized = normalizeActionArgs(
@@ -1000,6 +1000,20 @@ Actions:
                   : history.filter((row) =>
                       matches(row.custom_categories?.display_name)
                     );
+              // Two categories can share a display name; ask for the stored
+              // name rather than mixing both metrics under one label.
+              const storedNames = [
+                ...new Set(
+                  rows.map((row) => row.custom_categories?.name?.trim() ?? '')
+                ),
+              ];
+              if (
+                wanted &&
+                byStoredName.length === 0 &&
+                storedNames.length > 1
+              ) {
+                return `# Custom Metrics History\n\nSeveral metrics are shown as "${args.category_name}": ${storedNames.join(', ')}. Ask again with one of these names as category_name.`;
+              }
               if (rows.length === 0) {
                 return `# Custom Metrics History\n\nNo custom metrics found${
                   args.category_name ? ` for "${args.category_name}"` : ''
