@@ -8,7 +8,7 @@ For how SparkyFitness compares with other apps today, see [How SparkyFitness Com
 
 These are sometimes listed as gaps but already exist, so they are not on this roadmap:
 
-- Adaptive TDEE (expenditure estimated from intake and weight trend)
+- Adaptive TDEE (expenditure estimated from intake and weight trend), and an Adaptive goal method that sets the calorie target from it plus a weekly rate of change
 - Nutrition label scanning, food photo estimates and AI-assisted logging
 - Per-nutrient goal directions (minimum, maximum or range), custom nutrients, goal presets and different goals per weekday
 - Workout presets and plan templates, supersets, RPE, rest timers, a plate calculator and progression suggestions
@@ -19,27 +19,45 @@ These are sometimes listed as gaps but already exist, so they are not on this ro
 
 ## Nutrition
 
-### 1. Target adjustment from Adaptive TDEE
+### 1. Weekly check-in for calorie targets
 
-**Gap:** Adaptive TDEE estimates expenditure, but calorie and macro targets only change when the user edits them. Coaching apps recalculate targets every week towards a goal rate.
+**Already built:** the Adaptive goal method (Settings > Calculation, web and mobile) keeps the calorie target in line with measured expenditure and a weekly kg/lb goal, and updates it continuously. A deterministic weekly review (`shared/src/utils/calorieTargetReview.ts`) works out whether the person is on track, the rate the current target implies, the rate the weight trend shows, and targets for a chosen rate. Today only the AI assistant and the MCP server (`sparky_review_calorie_target`) can show it.
 
-**Proposal:** An optional weekly check-in that shows the current expenditure estimate and offers new targets for a chosen rate of change (for example, lose 0.5% of body weight per week). The user accepts, edits or skips the change. Nothing changes without their consent, and the existing goal history records each accepted change.
+**Gap:** Targets are either fully automatic (Adaptive) or fully manual. There is no in-app check-in where the user sees the review and decides, and the rate can't be set as a share of body weight.
 
-**Size:** Medium. The expenditure calculation already exists; most of the work is the check-in flow on web and mobile.
+**Proposal:** A check-in screen on web and mobile that shows the existing review and offers new targets. The user accepts, edits or skips. Add a rate option as percent of body weight per week (for example, lose 0.5%) and an optional weekly reminder. Accepted changes go into the existing goal history.
 
-### 2. Timeline diary view
+**Size:** Small to medium. The calculation exists; the work is the screen and the reminder.
 
-**Gap:** The diary is grouped by meal only. A timeline view, ordered by time of day, makes quick logging and reviewing intake through the day faster.
+### 2. Timeline diary view on mobile
 
-**Proposal:** An optional diary layout that orders entries by logged time, with quick-add at any point.
+**Already built:** the web diary has a timeline layout ordered by time of day (`SparkyFitnessFrontend/src/pages/Diary/DiaryTimeline.tsx`).
 
-**Size:** Small to medium.
+**Gap:** The mobile diary is grouped by meal only.
+
+**Proposal:** Port the timeline layout to mobile, with quick-add at any point in the day.
+
+**Size:** Small.
+
+### Other nutrition gaps
+
+Smaller or less certain items, not yet numbered. Each needs its own issue like the rest.
+
+| Feature | Seen in | Approach |
+| --- | --- | --- |
+| Expenditure and trend-weight charts over time | MacroFactor | Store a weekly snapshot of the values already computed and chart them. Small. |
+| Diet phases: cut, maintain and bulk blocks with dates, a target weight, a projected finish date, and macros that re-split when calories change | MacroFactor | Extend goal modes with dated phases and a projection from the current rate. Medium. |
+| Faster logging: add several foods at once, quick-add calories or macros only, and copy a meal from another day on mobile | MacroFactor, MyFitnessPal | Interface work only. Small. |
+| Micronutrient insights: weekly averages against goals and the foods that supply each nutrient | MacroFactor | Queries over diary data already stored. Small to medium. |
+| Food data quality: a completeness score, reporting errors, and ranking complete entries first in search | MacroFactor, MyFitnessPal | Score entries from the configured providers by field completeness instead of curating a database. Medium. |
+| Meal planner with a shopping list | MyFitnessPal, Built With Science | Build on meal plan templates and add up their ingredients. Lower priority because Mealie and Tandoor users already have this. Medium. |
+| Short in-app explanations (how Adaptive TDEE works, how to set protein) | Built With Science, MacroFactor | Tips that link to the project's own docs. Small. |
 
 ### 3. First-class recipes
 
 **Gap:** Recipes come through meals and Mealie/Tandoor import, not a dedicated recipe manager.
 
-**Proposal:** Recipes with ingredients, yield and per-serving nutrition, plus import from a recipe URL.
+**Proposal:** Recipes with ingredients, yield and per-serving nutrition, plus import from a recipe URL by reading the schema.org `Recipe` data that recipe sites publish.
 
 **Size:** Medium to large.
 
