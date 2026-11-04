@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-10-29_
+_Last updated: 2026-11-04_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -47,6 +47,8 @@ Features are organized by domain, and the same domain folder name appears in `sr
 - Example: a Medications bug lives in `src/pages/Medications/` + `src/api/Medications/` + `src/hooks/` medication hooks. Start there, not with a repo-wide search.
 
 ## Source Map
+
+- Mealie ingredient meals: `pages/Foods/RecipeImportDialog.tsx` browses configured sources, `RecipeImportReview.tsx` reviews whole-recipe amounts and cooked weight, and `RecipeImportIngredientRow.tsx` reuses food search/import/unit selection. `hooks/Foods/useRecipeImport.ts` guards confirmed mappings and batches matching requests (20 rows); `hooks/Foods/useRecipeImportQueries.ts` owns owner-scoped browsing, food lookups and source sync; `api/Foods/recipeImportService.ts` consumes shared RecipeImport contracts. `RecipeImportSourcePanel.tsx` provides explicit source nutrition sync from saved meals and ordinary meal edit/details; 404 means an ordinary meal, and owner-only panels unmount on profile switches. Recipe unit selection opts into preserving source amounts across compatible units and requires explicit incompatible amounts. Existing quick-food recipe import remains separate.
 
 - Food assistant state: owner-only preferences, recoverable tasks and operation history use `FoodAssistant.api.zod.ts` / `FoodAssistant.zod.ts` in shared. Server: `routes/v2/foodAssistantRoutes.ts`, `services/foodAssistantService.ts`, `models/foodAssistantRepository.ts`, `ai/tools/foodAssistantTools.ts`. Web: `src/components/ai/FoodAssistantState.tsx`, `src/api/Chatbot/foodAssistantService.ts`.
 
@@ -97,6 +99,8 @@ When searching, ignore `node_modules/`, `dist/`, and every locale except `public
 - Lint is strict (`--max-warnings 0`); unused imports fail the build.
 
 ## Quick Routing
+
+- Import Mealie ingredients from the Meals library action in `MealManagement.tsx`. Original ingredient amounts are whole-recipe totals; optional finished cooked grams only define normal meal serving size. AI candidates require explicit review and local food/variant IDs. Saving creates an ordinary meal; source sync has independent pending/error/success state and must preserve a successful local save. Private recipe data and operations stay disabled while acting on behalf.
 
 - Barcode source comparison: `components/FoodSearch/BarcodeSearchResult.tsx`, `hooks/Foods/useBarcodeSearchResult.ts`, and `api/Foods/foodService.ts` use the shared barcode API contracts. Normal scans keep the selected/default provider behavior. Local hits remain visible and Other sources loads alternatives on request. Provider credentials belong to the signed-in account; lookup and alternatives cache keys also include the active profile for local matches. Comparison nutrition uses shared `barcodeNutritionPreview`; import retains the selected source's identity and original portions.
 

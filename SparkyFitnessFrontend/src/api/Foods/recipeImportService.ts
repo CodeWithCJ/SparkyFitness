@@ -1,0 +1,60 @@
+import { apiCall, HttpApiError } from '@/api/api';
+import {
+  recipeImportBrowseResponseSchema,
+  recipeImportPreviewSchema,
+  recipeImportSaveResponseSchema,
+  recipeImportSourceSchema,
+  recipeImportSuggestionResponseSchema,
+  recipeImportSyncResponseSchema,
+  type RecipeImportPreviewRequest,
+  type RecipeImportSaveRequest,
+  type RecipeImportSuggestionRequest,
+} from '@workspace/shared';
+
+const root = '/v2/recipe-imports';
+const quiet = { suppressErrorToast: true };
+
+export const browseRecipes = async (
+  providerId: string,
+  search: string,
+  page: number
+) =>
+  recipeImportBrowseResponseSchema.parse(
+    await apiCall(`${root}/mealie/${encodeURIComponent(providerId)}/recipes`, {
+      ...quiet,
+      params: { search, page },
+    })
+  );
+export const previewRecipe = async (body: RecipeImportPreviewRequest) =>
+  recipeImportPreviewSchema.parse(
+    await apiCall(`${root}/mealie/preview`, { ...quiet, method: 'POST', body })
+  );
+export const suggestRecipe = async (body: RecipeImportSuggestionRequest) =>
+  recipeImportSuggestionResponseSchema.parse(
+    await apiCall(`${root}/mealie/suggest`, { ...quiet, method: 'POST', body })
+  );
+export const saveRecipe = async (body: RecipeImportSaveRequest) =>
+  recipeImportSaveResponseSchema.parse(
+    await apiCall(`${root}/mealie/save`, { ...quiet, method: 'POST', body })
+  );
+export const getRecipeSource = async (mealId: string) => {
+  try {
+    return recipeImportSourceSchema.parse(
+      await apiCall(`${root}/${encodeURIComponent(mealId)}/source`, {
+        ...quiet,
+        suppress404Toast: true,
+      })
+    );
+  } catch (error) {
+    if (error instanceof HttpApiError && error.status === 404) return null;
+    throw error;
+  }
+};
+export const syncRecipeNutrition = async (mealId: string) =>
+  recipeImportSyncResponseSchema.parse(
+    await apiCall(`${root}/${encodeURIComponent(mealId)}/sync-nutrition`, {
+      ...quiet,
+      method: 'POST',
+      body: {},
+    })
+  );

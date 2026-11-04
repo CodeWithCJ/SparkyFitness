@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { recipeImportSourceSchema } from '../api/RecipeImport.api.zod.js';
+import { recipeImportSourceSchema } from '../api/RecipeImport.api.zod.ts';
 export const recipeImportsSchema = z.object({
   id: z.uuid(),
   user_id: z.uuid(),
