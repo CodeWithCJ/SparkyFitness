@@ -12,6 +12,7 @@ import { fetchRecipeFood } from '../../services/api/recipeImportApi';
 import { fetchFoodVariants } from '../../services/api/foodsApi';
 import { formatLocalizedNumber } from '../../localization';
 import Button from '../ui/Button';
+import { recipeImportIssueLabel } from '../../utils/recipeImportIssueLabel';
 
 const number = (value: number | null | undefined) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0
@@ -36,44 +37,6 @@ export default function RecipeImportIngredientRow({
   onCandidate,
 }: Props) {
   const { t } = useTranslation();
-  function issueLabel(issue: RecipeImportIngredient['issues'][number]): string {
-    switch (issue) {
-      case 'missing_quantity':
-        return t('recipeImport.issues.missing_quantity', {
-          defaultValue:
-            'Source quantity is missing. Enter the whole-recipe amount.',
-        });
-      case 'missing_unit':
-        return t('recipeImport.issues.missing_unit', {
-          defaultValue:
-            'Source unit is missing. Select an explicit compatible unit.',
-        });
-      case 'unstructured_food':
-        return t('recipeImport.issues.unstructured_food', {
-          defaultValue: 'Source food identity needs manual review.',
-        });
-      case 'linked_recipe':
-        return t('recipeImport.issues.linked_recipe', {
-          defaultValue:
-            'Linked recipes cannot be imported here. Use a recipe with explicit ingredients.',
-        });
-      case 'mapping_unavailable':
-        return t('recipeImport.issues.mapping_unavailable', {
-          defaultValue:
-            'The saved food mapping is unavailable. Choose a food again.',
-        });
-      case 'incomplete_nutrition':
-        return t('recipeImport.issues.incomplete_nutrition', {
-          defaultValue:
-            'Some optional nutrients are unknown. Known nutrition can still be used.',
-        });
-      case 'incompatible_unit':
-        return t('recipeImport.issues.incompatible_unit', {
-          defaultValue:
-            'Review the quantity in the selected food unit. Volume is never treated as mass.',
-        });
-    }
-  }
   const food = useQuery({
     queryKey: [
       'foods',
@@ -136,7 +99,7 @@ export default function RecipeImportIngredientRow({
         .filter((issue) => issue !== 'incomplete_nutrition')
         .map((issue) => (
           <Text key={issue} className="text-text-secondary">
-            {issueLabel(issue)}
+            {recipeImportIssueLabel(issue, t)}
           </Text>
         ))}
       {missingCore && (
@@ -152,7 +115,7 @@ export default function RecipeImportIngredientRow({
           (!food.data?.variant &&
             ingredient.issues.includes('incomplete_nutrition'))) && (
           <Text className="text-text-secondary">
-            {issueLabel('incomplete_nutrition')}
+            {recipeImportIssueLabel('incomplete_nutrition', t)}
           </Text>
         )}
       {missingNutrients.length > 0 && (

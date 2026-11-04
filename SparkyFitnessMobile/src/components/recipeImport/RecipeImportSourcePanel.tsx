@@ -1,6 +1,8 @@
 import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Button from '../ui/Button';
+import { recipeImportNutritionGaps } from '@workspace/shared';
+import { recipeImportIssueLabel } from '../../utils/recipeImportIssueLabel';
 import { useRecipeSource } from '../../hooks/useRecipeImport';
 import { useAppLocale } from '../../localization';
 
@@ -22,6 +24,10 @@ function ScopedSourcePanel({ mealId, scope }: SourcePanelProps) {
       </Text>
     );
   if (!source.data) return null;
+  const { missingCore } = recipeImportNutritionGaps(
+    undefined,
+    source.data.ingredients.flatMap((ingredient) => ingredient.missingNutrients)
+  );
   return (
     <View className="gap-3 bg-surface rounded-xl p-4">
       <Text className="text-text-primary font-semibold">
@@ -44,12 +50,12 @@ function ScopedSourcePanel({ mealId, scope }: SourcePanelProps) {
       )}
       {source.data.syncWarnings.map((warning) => (
         <Text key={warning} className="text-text-secondary">
-          {warning === 'missing_servings'
-            ? t('recipeImport.missingServings', {
+          {warning === 'incomplete_nutrition' && missingCore
+            ? t('recipeImport.incompleteCoreNutrition', {
                 defaultValue:
-                  'The source has no recipe servings. Enter servings to save for tracking; nutrition sync remains unavailable.',
+                  'Core nutrition is incomplete. Choose a complete food variant.',
               })
-            : warning}
+            : recipeImportIssueLabel(warning, t)}
         </Text>
       ))}
       {source.data.lastSyncedAt && (

@@ -9808,6 +9808,7 @@
     "emptySubtitle": "Drinks you log with the water buttons, a drink preset, the watch or a synced app show up here."
   },
   "recipeImport": {
+    "sourceWarning": "Review the source recipe before syncing nutrition.",
     "incompleteCoreNutrition": "Core nutrition is incomplete. Choose a complete food variant.",
     "sourceAmount": "Original whole-recipe amount: {{quantity}} {{unit}}",
     "notProvided": "not provided",

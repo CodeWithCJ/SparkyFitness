@@ -289,6 +289,69 @@ it('preserves a successful saved meal and shows sync conflicts without a duplica
   });
 });
 
+it.each([
+  {
+    warning: 'incomplete_nutrition',
+    missingNutrients: ['sodium'],
+    label:
+      'Some optional nutrients are unknown. Known nutrition can still be used.',
+    eligible: true,
+  },
+  {
+    warning: 'incompatible_unit',
+    missingNutrients: [],
+    label:
+      'Review the quantity in the selected food unit. Volume is never treated as mass.',
+    eligible: false,
+  },
+  {
+    warning: 'missing_servings',
+    missingNutrients: [],
+    label:
+      'The source has no recipe servings. Enter servings to save for tracking; nutrition sync remains unavailable.',
+    eligible: false,
+  },
+  {
+    warning: 'incomplete_nutrition',
+    missingNutrients: ['protein'],
+    label: 'Core nutrition is incomplete. Choose a complete food variant.',
+    eligible: false,
+  },
+])(
+  'explains saved-source $warning without changing sync eligibility',
+  async ({ warning, missingNutrients, label, eligible }) => {
+    jest.mocked(fetchRecipeSource).mockResolvedValue({
+      ...source,
+      syncWarnings: [warning],
+      ingredients: [{ ...source.ingredients[0], missingNutrients }],
+      syncEligible: eligible,
+    });
+    jest
+      .mocked(syncRecipeNutrition)
+      .mockResolvedValue({ status: 'synced', source });
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const screen = render(
+      <QueryClientProvider client={client}>
+        <RecipeImportSourcePanel mealId="meal" scope="owner-server" />
+      </QueryClientProvider>
+    );
+    expect(await screen.findByText(label)).toBeTruthy();
+    expect(screen.queryByText(warning)).toBeNull();
+    const button = screen.getByText('Sync nutrition to Mealie');
+    if (eligible) expect(button).toBeEnabled();
+    else expect(button).toBeDisabled();
+    fireEvent.press(button);
+    if (eligible) {
+      await waitFor(() => expect(syncRecipeNutrition).toHaveBeenCalledTimes(1));
+      expect(
+        await screen.findByText('Nutrition synced to Mealie.')
+      ).toBeTruthy();
+    } else expect(syncRecipeNutrition).not.toHaveBeenCalled();
+  }
+);
+
 it('updates the rendered source sync eligibility after a normal meal edit invalidates caches', async () => {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
