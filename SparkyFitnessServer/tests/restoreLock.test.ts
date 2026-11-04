@@ -19,8 +19,13 @@ vi.mock('pg', () => ({
 }));
 
 import {
+  isRestoreRunning,
+  isWriteRequest,
+  markRestoreRunning,
+  outsideWriteRequest,
   resetRestoreCheckForTests,
   restoreInProgress,
+  runAsWriteRequest,
 } from '../services/restoreLock.js';
 
 const withCode = (message: string, code: string) =>
@@ -61,5 +66,29 @@ describe('restoreInProgress', () => {
       withCode('permission denied for view pg_locks', '42501')
     );
     expect(await restoreInProgress()).toBe(true);
+  });
+});
+
+describe('outsideWriteRequest', () => {
+  it('leaves the write request, for timers that outlive it', () => {
+    runAsWriteRequest(() => {
+      expect(isWriteRequest()).toBe(true);
+      expect(outsideWriteRequest(isWriteRequest)).toBe(false);
+    });
+  });
+});
+
+describe('markRestoreRunning', () => {
+  it('stays running until every overlapping restore has ended', () => {
+    expect(isRestoreRunning()).toBe(false);
+    const endFirst = markRestoreRunning();
+    const endSecond = markRestoreRunning();
+
+    endFirst();
+    endFirst();
+    expect(isRestoreRunning()).toBe(true);
+
+    endSecond();
+    expect(isRestoreRunning()).toBe(false);
   });
 });

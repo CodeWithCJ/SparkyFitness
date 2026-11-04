@@ -41,7 +41,7 @@ vi.mock('../auth.js', () => ({
 vi.mock('../utils/shutdownHooks.js', () => ({
   isShuttingDown: () => draining.value,
 }));
-vi.mock('../services/onlineRestoreGuard.js', () => ({
+vi.mock('../services/restoreLock.js', () => ({
   isRestoreRunning: () => restoring.value,
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));

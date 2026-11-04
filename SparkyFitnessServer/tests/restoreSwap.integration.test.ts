@@ -3,9 +3,8 @@
  * a role with CREATEDB but not superuser (like a self-hosted install's owner).
  * The backup loads beside the live database and replaces it only once it is
  * complete: a session another client holds on the live database never
- * blocks the swap, and a backup that fails to load, or a restore the guard
- * refuses, leaves the live data and uploads as they were. The guard itself is
- * stubbed here; onlineRestoreGuard.integration.test.ts covers it.
+ * blocks the swap, and a backup that fails to load leaves the live data and
+ * uploads as they were.
  *
  * Skipped unless the configured database user is a superuser (to create the
  * role) and psql is installed.
@@ -17,6 +16,7 @@ import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import express from 'express';
+import type { TaskContext, TaskFn } from 'node-cron';
 import pg from 'pg';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'supertest'
 import request from 'supertest';
@@ -30,19 +30,14 @@ import {
   vi,
 } from 'vitest';
 
-const guard = vi.hoisted(() => ({
-  assertRestoreAllowed: vi.fn(),
+const restoreMark = vi.hoisted(() => ({
   markRestoreRunning: vi.fn(),
   endRestoreMark: vi.fn(),
 }));
-vi.mock('../services/onlineRestoreGuard.js', () => {
-  class RestoreRefusedError extends Error {}
-  return {
-    assertRestoreAllowed: guard.assertRestoreAllowed,
-    markRestoreRunning: guard.markRestoreRunning,
-    RestoreRefusedError,
-  };
-});
+vi.mock('../services/restoreLock.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/restoreLock.js')>()),
+  markRestoreRunning: restoreMark.markRestoreRunning,
+}));
 
 const pools = vi.hoisted(() => ({ resetPool: vi.fn() }));
 vi.mock('../db/poolManager.js', async (importOriginal) => {
@@ -222,9 +217,10 @@ describe.skipIf(!runnable)('restore by staging and swap (PostgreSQL)', () => {
   });
 
   beforeEach(() => {
-    guard.assertRestoreAllowed.mockReset().mockResolvedValue(undefined);
-    guard.endRestoreMark.mockReset();
-    guard.markRestoreRunning.mockReset().mockReturnValue(guard.endRestoreMark);
+    restoreMark.endRestoreMark.mockReset();
+    restoreMark.markRestoreRunning
+      .mockReset()
+      .mockReturnValue(restoreMark.endRestoreMark);
   });
 
   async function resetLive() {
@@ -260,13 +256,9 @@ describe.skipIf(!runnable)('restore by staging and swap (PostgreSQL)', () => {
     const result = await backupService.performRestore(backup);
 
     expect(result).toEqual({ success: true });
-    // Readiness reports the restore only for the swap, after the backup has
-    // loaded beside the live database and the last guard check passed.
-    expect(guard.markRestoreRunning).toHaveBeenCalledOnce();
-    expect(
-      guard.markRestoreRunning.mock.invocationCallOrder[0]
-    ).toBeGreaterThan(guard.assertRestoreAllowed.mock.invocationCallOrder[1]!);
-    expect(guard.endRestoreMark).toHaveBeenCalledOnce();
+    // Readiness reports the restore only for the swap.
+    expect(restoreMark.markRestoreRunning).toHaveBeenCalledOnce();
+    expect(restoreMark.endRestoreMark).toHaveBeenCalledOnce();
     await expect(other.query('COMMIT')).rejects.toThrow();
     await other.end().catch(() => {});
     expect(await liveRows()).toEqual(['restored']);
@@ -357,7 +349,7 @@ describe.skipIf(!runnable)('restore by staging and swap (PostgreSQL)', () => {
     const result = await backupService.performRestore(backup);
 
     expect(result.success).toBe(false);
-    expect(guard.markRestoreRunning).not.toHaveBeenCalled();
+    expect(restoreMark.markRestoreRunning).not.toHaveBeenCalled();
     expect(await liveRows()).toEqual(['live']);
     expect(await databases()).toEqual([DB_NAME, LOOKALIKE]);
     expect(fs.readdirSync(path.join(uploads, 'food_images'))).toEqual([
@@ -434,13 +426,54 @@ describe.skipIf(!runnable)('restore by staging and swap (PostgreSQL)', () => {
     restoreLock.resetRestoreCheckForTests();
     resume();
 
-    await expect(straddling).rejects.toThrow(/restored while this request ran/);
+    await expect(straddling).rejects.toThrow(/restored while this work ran/);
     // A request admitted after the restore goes ahead.
     await restoreLock.restoreInProgress();
     const fresh = await restoreLock.runAsWriteRequest(() =>
       poolManager.getSystemClient()
     );
     fresh.release();
+    const retired = (await databases()).filter((name) =>
+      name.startsWith(`${DB_NAME}_pre_restore_`)
+    );
+    await admin.query(`DROP DATABASE ${retired[0]}`);
+  }, 120_000);
+
+  it('stops a scheduled job that was running before the swap', async () => {
+    await resetLive();
+    restoreLock.resetRestoreCheckForTests();
+    const { default: cron } = await import('node-cron');
+    const { scheduleJob } = await import('../services/scheduledJobs.js');
+    const schedule = vi.spyOn(cron, 'schedule');
+    let resume!: () => void;
+    const waiting = new Promise<void>((resolve) => (resume = resolve));
+    let started!: () => void;
+    const running = new Promise<void>((resolve) => (started = resolve));
+    // Started before the restore, then waiting on a provider's API until the
+    // restored database is in.
+    const task = scheduleJob('straddling-sync', '0 3 * * *', async () => {
+      started();
+      await waiting;
+      (await poolManager.getSystemClient()).release();
+    });
+    const tick = schedule.mock.calls.at(-1)![1] as TaskFn;
+    await task.destroy();
+    schedule.mockRestore();
+    const straddling = tick({} as TaskContext);
+    await running;
+    const backup = archive(
+      'straddled-job.tar.gz',
+      dump("CREATE TABLE t (v text);\nINSERT INTO t VALUES ('restored');\n"),
+      { 'food_images/new.jpg': 'new' }
+    );
+
+    expect(await backupService.performRestore(backup)).toEqual({
+      success: true,
+    });
+    restoreLock.resetRestoreCheckForTests();
+    resume();
+
+    await expect(straddling).rejects.toThrow(/restored while this work ran/);
     const retired = (await databases()).filter((name) =>
       name.startsWith(`${DB_NAME}_pre_restore_`)
     );
@@ -637,58 +670,4 @@ describe.skipIf(!runnable)('restore by staging and swap (PostgreSQL)', () => {
     expect(await liveRows()).toEqual(['live']);
     expect(await databases()).toEqual([DB_NAME, LOOKALIKE]);
   }, 60_000);
-
-  it('touches nothing when the guard refuses before loading', async () => {
-    await resetLive();
-    const { RestoreRefusedError } =
-      await import('../services/onlineRestoreGuard.js');
-    guard.assertRestoreAllowed.mockRejectedValue(
-      new RestoreRefusedError('other instances')
-    );
-    const backup = archive(
-      'refused-early.tar.gz',
-      dump("CREATE TABLE t (v text);\nINSERT INTO t VALUES ('refused');\n"),
-      { 'food_images/new.jpg': 'new' }
-    );
-
-    await expect(backupService.performRestore(backup)).rejects.toBeInstanceOf(
-      RestoreRefusedError
-    );
-
-    expect(await liveRows()).toEqual(['live']);
-    expect(await databases()).toEqual([DB_NAME, LOOKALIKE]);
-    expect(fs.readdirSync(path.join(uploads, '_staging'))).toEqual([
-      'request-1',
-    ]);
-  }, 60_000);
-
-  it('drops the loaded copy when the guard refuses just before the swap', async () => {
-    await resetLive();
-    const { RestoreRefusedError } =
-      await import('../services/onlineRestoreGuard.js');
-    guard.assertRestoreAllowed
-      .mockResolvedValueOnce(undefined)
-      .mockRejectedValueOnce(new RestoreRefusedError('appeared meanwhile'));
-    const backup = archive(
-      'refused-late.tar.gz',
-      dump("CREATE TABLE t (v text);\nINSERT INTO t VALUES ('refused');\n"),
-      { 'food_images/new.jpg': 'new' }
-    );
-
-    await expect(backupService.performRestore(backup)).rejects.toBeInstanceOf(
-      RestoreRefusedError
-    );
-
-    expect(guard.assertRestoreAllowed).toHaveBeenCalledTimes(2);
-    expect(guard.markRestoreRunning).not.toHaveBeenCalled();
-    expect(await liveRows()).toEqual(['live']);
-    expect(await allowsConnections()).toBe(true);
-    expect(await databases()).toEqual([DB_NAME, LOOKALIKE]);
-    expect(fs.readdirSync(path.join(uploads, 'food_images'))).toEqual([
-      'old.jpg',
-    ]);
-    expect(fs.readdirSync(path.join(uploads, '_staging'))).toEqual([
-      'request-1',
-    ]);
-  }, 120_000);
 });

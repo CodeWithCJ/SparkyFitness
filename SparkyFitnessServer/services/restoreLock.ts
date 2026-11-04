@@ -52,6 +52,11 @@ export function runAsWriteRequest<T>(work: () => T): T {
   );
 }
 
+/** Runs `work` as no write request, for timers that outlive the current one. */
+export function outsideWriteRequest<T>(work: () => T): T {
+  return writeRequestStorage.exit(work);
+}
+
 /** The live database's oid at the last check; a restore swaps in a new one. */
 export function liveDatabaseId(): string | null {
   return cached?.databaseId ?? null;
@@ -174,6 +179,27 @@ export async function reopenAfterInterruptedRestore(): Promise<void> {
     // Ending the session frees the lock if it was taken.
     await client.end().catch(() => {});
   }
+}
+
+// The swap closes the live database to connections and ends its sessions, so
+// a readiness probe on the restoring instance would only fail and could get
+// the server restarted mid-restore. Probes leave the database alone while a
+// restore here has marked itself; each one clears only its own mark.
+let restoresRunning = 0;
+
+/** Marks a restore as running; call the returned function when it ends. */
+export function markRestoreRunning(): () => void {
+  restoresRunning++;
+  let ended = false;
+  return () => {
+    if (ended) return;
+    ended = true;
+    restoresRunning--;
+  };
+}
+
+export function isRestoreRunning(): boolean {
+  return restoresRunning > 0;
 }
 
 export function resetRestoreCheckForTests() {
