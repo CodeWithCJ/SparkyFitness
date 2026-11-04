@@ -1088,6 +1088,8 @@ export interface WatchRouteSyncPayload {
  */
 export interface WatchComplicationConfigPayload {
   revision: number;
+  /** Refresh the watch's picker and faces even if the list is unchanged. */
+  reload?: boolean;
   definitions: {
     id: string;
     name: string;

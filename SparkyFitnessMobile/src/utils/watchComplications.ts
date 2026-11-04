@@ -578,10 +578,14 @@ export function parseComplicationsImport(
  */
 export function buildComplicationConfig(
   list: readonly WatchComplicationDefinition[],
-  revision: number = Date.now()
+  revision: number = Date.now(),
+  reload = false
 ): WatchComplicationConfigPayload {
   return {
     revision,
+    // Only on a manual reload: the watch then refreshes its picker and faces
+    // even when nothing in the list changed.
+    ...(reload ? { reload: true } : {}),
     definitions: list.map((d) => ({
       id: d.id,
       name: d.name,

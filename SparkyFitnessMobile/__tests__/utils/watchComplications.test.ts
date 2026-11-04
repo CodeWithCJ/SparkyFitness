@@ -224,6 +224,11 @@ describe('export and import', () => {
 });
 
 describe('buildComplicationConfig', () => {
+  it('adds the reload flag only when asked', () => {
+    expect(buildComplicationConfig([], 1)).not.toHaveProperty('reload');
+    expect(buildComplicationConfig([], 1, true).reload).toBe(true);
+  });
+
   it('carries every field the watch reads, and the revision', () => {
     expect(buildComplicationConfig([sample], 1234)).toEqual({
       revision: 1234,

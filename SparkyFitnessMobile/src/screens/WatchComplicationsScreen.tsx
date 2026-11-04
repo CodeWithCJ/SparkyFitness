@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import WatchSymbol from '../components/WatchSymbol';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useWatchComplicationList } from '../hooks/useWatchComplicationList';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
+import { sendComplicationsToWatch } from '../services/watchComplicationSync';
 import {
   ComplicationFileTooLargeError,
   pickComplicationsFile,
@@ -46,6 +47,38 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { list, isStarter, commit } = useWatchComplicationList();
+
+  const [reloading, setReloading] = useState(false);
+
+  // The watch caches its picker, and a send can go missing, so the wearer can
+  // push the list again and make the watch refresh it, as Home Assistant's
+  // Reload Complications does.
+  const handleReload = useCallback(async () => {
+    setReloading(true);
+    try {
+      await sendComplicationsToWatch(list, { reload: true });
+      Toast.show({
+        type: 'success',
+        text1: t('watchComplications.reloaded', {
+          defaultValue: 'Sent to your watch',
+        }),
+        text2: t('watchComplications.reloadedSubtitle', {
+          defaultValue:
+            'Open the watch app if the picker still shows the old list.',
+        }),
+      });
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: t('watchComplications.reloadFailed', {
+          defaultValue: 'Could not send to your watch',
+        }),
+        text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+      });
+    } finally {
+      setReloading(false);
+    }
+  }, [list, t]);
 
   const addComplication = useCallback(
     () => navigation.navigate('WatchComplicationEdit', {}),
@@ -394,6 +427,22 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
         ) : (
           list.map(renderRow)
         )}
+        <Button
+          variant="outline"
+          testID="watch-complications-reload"
+          loading={reloading}
+          onPress={() => void handleReload()}
+        >
+          {t('watchComplications.reload', {
+            defaultValue: 'Reload complications',
+          })}
+        </Button>
+        <Text className="text-text-muted text-xs mt-2">
+          {t('watchComplications.reloadHint', {
+            defaultValue:
+              'Sends your complications to the Apple Watch and refreshes them.',
+          })}
+        </Text>
       </ScrollView>
       <FooterActionBar>
         <Button onPress={addComplication}>

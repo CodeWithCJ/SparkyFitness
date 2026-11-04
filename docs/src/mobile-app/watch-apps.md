@@ -81,6 +81,8 @@ The list starts with a set of ready-made ones, including Macros, which shows pro
 
 To use one, edit the watch face, tap a complication slot and choose **Custom Complication**, then pick one of yours. Put different ones in different slots.
 
+The watch keeps its own copy of the list and remembers the picker. If a change doesn't show up there, tap **Reload complications** at the bottom of the Complications screen. It sends the list to the watch again and makes the watch refresh the picker and every face.
+
 ### Wear OS
 
 Wear OS offers Calories, Protein, Carbs, Fat, Water, Fasting and Steps. Custom complications are not on Wear OS yet.
@@ -89,6 +91,6 @@ Wear OS offers Calories, Protein, Carbs, Fat, Water, Fasting and Steps. Custom c
 
 - **Nothing updates on the watch:** open the phone app once so it can push fresh data, and make sure the phone is signed in and connected to your server.
 - **The Apple Watch or Wear OS item is missing from Settings:** the phone only lists it while a watch with the SparkyFitness app is paired.
-- **The Custom Complication picker is empty, or doesn't show my complications (Apple Watch):** open the SparkyFitness app on the phone and on the watch once, with the watch in range, so the phone can send your list. Until it arrives the picker offers the starter set.
+- **The Custom Complication picker is empty, or doesn't show my complications (Apple Watch):** open the SparkyFitness app on the phone and on the watch once, with the watch in range, so the phone can send your list. Until it arrives the picker offers the starter set. If the picker still shows an old name or list, tap **Reload complications** on the phone's Complications screen.
 - **A custom complication shows a dash:** the watch doesn't have that value for today yet, for example last night's sleep before the phone has synced it. Open the phone app and give it a moment.
 - **A workout didn't appear in the diary:** the finished workout is delivered to the phone when it is in range. Open the phone app and give it a moment.

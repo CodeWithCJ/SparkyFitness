@@ -43,6 +43,10 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
+jest.mock('../../src/services/watchComplicationSync', () => ({
+  sendComplicationsToWatch: jest.fn(() => Promise.resolve()),
+}));
+
 jest.mock('../../src/services/watchComplicationFile', () => ({
   __esModule: true,
   ComplicationFileTooLargeError: class extends Error {},
@@ -53,6 +57,10 @@ jest.mock('../../src/services/watchComplicationFile', () => ({
 const files = jest.requireMock('../../src/services/watchComplicationFile') as {
   pickComplicationsFile: jest.Mock;
   shareComplicationsFile: jest.Mock;
+};
+
+const sync = jest.requireMock('../../src/services/watchComplicationSync') as {
+  sendComplicationsToWatch: jest.Mock;
 };
 
 const navigation = { navigate: jest.fn(), goBack: jest.fn() };
@@ -100,6 +108,31 @@ describe('WatchComplicationsScreen', () => {
   });
 
   afterEach(() => alertSpy.mockRestore());
+
+  test('Reload sends the list to the watch and asks it to refresh', async () => {
+    renderScreen();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('watch-complications-reload'));
+    });
+    expect(sync.sendComplicationsToWatch).toHaveBeenCalledTimes(1);
+    const [list, options] = sync.sendComplicationsToWatch.mock.calls[0];
+    expect(list.length).toBeGreaterThan(0);
+    expect(options).toEqual({ reload: true });
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success' })
+    );
+  });
+
+  test('Reload says so when the send fails', async () => {
+    sync.sendComplicationsToWatch.mockRejectedValueOnce(new Error('boom'));
+    renderScreen();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('watch-complications-reload'));
+    });
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
+  });
 
   test('shows the starter set with a note until the list is the wearer’s own', () => {
     renderScreen();
