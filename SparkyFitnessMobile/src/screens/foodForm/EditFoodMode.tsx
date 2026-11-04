@@ -47,6 +47,7 @@ import type {
 import {
   buildLocalUnitVariants,
   buildCreateFoodVariantPayload,
+  customNutrientsMatch,
   diffSiblingRows,
   formatServingSizeForDisplay,
   groupEquivalentVariants,
@@ -504,7 +505,11 @@ export function EditFoodMode({
         const createdVariant = await createVariant(
           buildCreateFoodVariantPayload(
             foodId,
-            buildVariantFromFormData(data, draftSelection)
+            buildVariantFromFormData(
+              data,
+              draftSelection,
+              currentCustomNutrients
+            )
           )
         );
         nextVariantId = createdVariant.id;
@@ -559,11 +564,19 @@ export function EditFoodMode({
 
         // If the active variant's nutrition changed, ask whether to overwrite
         // the existing variant or save as a new one.
-        const nutritionChanged = hasFoodFormChanges(
-          variantBaselineValues,
-          data,
-          FOOD_VARIANT_FIELDS
-        );
+        // Custom nutrients sit outside the form fields; a change to them alone
+        // still asks before overwriting the saved variant.
+        const activeStoredCustom = variants?.find(
+          (v) => v.id === currentVariantId
+        )?.custom_nutrients;
+        const nutritionChanged =
+          hasFoodFormChanges(
+            variantBaselineValues,
+            data,
+            FOOD_VARIANT_FIELDS
+          ) ||
+          (currentCustomNutrients != null &&
+            !customNutrientsMatch(currentCustomNutrients, activeStoredCustom));
         if (nutritionChanged && currentVariantId) {
           const activeVariant = variants?.find(
             (v) => v.id === currentVariantId
@@ -584,7 +597,11 @@ export function EditFoodMode({
             const createdVariant = await createVariant(
               buildCreateFoodVariantPayload(
                 foodId,
-                buildVariantFromFormData(data, pendingSelection)
+                buildVariantFromFormData(
+                  data,
+                  pendingSelection,
+                  currentCustomNutrients
+                )
               )
             );
             nextVariantId = createdVariant.id;
