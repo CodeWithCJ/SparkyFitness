@@ -381,12 +381,17 @@ struct CustomComplicationProvider: AppIntentTimelineProvider {
     /// One value, worked out from the definition's source, format and look.
     private func itemContent(
         source: String, format: String?, color: String?, icon: String?,
-        showProgress: Bool, now: Date
+        showProgress: Bool, now: Date, preview: Bool
     ) -> CustomComplicationItemContent {
-        let shown = display(
+        var shown = display(
             source: source, format: format ?? "value",
             metric: loadMetric(source: source, now: now), now: now
         )
+        // The picker and the face gallery draw this too: with no number yet, a
+        // sample in the definition's own look beats a dash.
+        if preview, shown.text == "–" {
+            shown = Shown(text: "60%", detail: nil, progress: 0.6)
+        }
         return CustomComplicationItemContent(
             icon: icon ?? "gauge.with.dots.needle.33percent",
             color: tint(color),
@@ -400,7 +405,7 @@ struct CustomComplicationProvider: AppIntentTimelineProvider {
     /// choice, so an edit shows up and a deleted one falls back to empty. With
     /// extra values every value that has progress gets its own ring or bar; with
     /// one value its gauge switch decides.
-    private func content(for configuration: SelectCustomComplicationIntent, at now: Date) -> CustomComplicationContent {
+    private func content(for configuration: SelectCustomComplicationIntent, at now: Date, preview: Bool = false) -> CustomComplicationContent {
         guard
             let chosen = configuration.complication,
             let definition = loadDefinitions().first(where: { $0.id == chosen.id })
@@ -411,13 +416,14 @@ struct CustomComplicationProvider: AppIntentTimelineProvider {
             itemContent(
                 source: definition.source, format: definition.format,
                 color: definition.color, icon: definition.icon,
-                showProgress: several || (definition.gauge ?? false), now: now
+                showProgress: several || (definition.gauge ?? false), now: now,
+                preview: preview
             )
         ]
         items += extras.map {
             itemContent(
                 source: $0.source, format: $0.format, color: $0.color,
-                icon: $0.icon, showProgress: true, now: now
+                icon: $0.icon, showProgress: true, now: now, preview: preview
             )
         }
         return CustomComplicationContent(
@@ -447,10 +453,11 @@ struct CustomComplicationProvider: AppIntentTimelineProvider {
     }
 
     func snapshot(for configuration: SelectCustomComplicationIntent, in context: Context) async -> CustomComplicationEntry {
-        // The watch-face gallery shows a sample, never the wearer's numbers.
-        if context.isPreview { return CustomComplicationEntry(date: Date(), content: .placeholder) }
         let now = Date()
-        return CustomComplicationEntry(date: now, content: content(for: configuration, at: now))
+        return CustomComplicationEntry(
+            date: now,
+            content: content(for: configuration, at: now, preview: context.isPreview)
+        )
     }
 
     func timeline(for configuration: SelectCustomComplicationIntent, in context: Context) async -> Timeline<CustomComplicationEntry> {
