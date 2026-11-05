@@ -144,6 +144,11 @@ export const heartRateRangeQueryKeyRoot = ['heartRateRange'] as const;
 export const heartRateRangeQueryKey = (startDate: string, endDate: string) =>
   [...heartRateRangeQueryKeyRoot, startDate, endDate] as const;
 
+export const heartRateDaySleepQueryKeyRoot = ['heartRateDaySleep'] as const;
+
+export const heartRateDaySleepQueryKey = (day: string) =>
+  [...heartRateDaySleepQueryKeyRoot, day] as const;
+
 export const heartRateReportQueryKeyRoot = ['heartRateReport'] as const;
 
 export const heartRateReportQueryKey = (startDate: string, endDate: string) =>
@@ -395,8 +400,10 @@ export const cardioSessionDetailQueryKey = (
   exerciseEntryId: string
 ) => ['cardioSessionDetail', part, exerciseEntryId] as const;
 
+export const heartRateSamplesQueryKeyRoot = ['heartRateSamples'] as const;
+
 export const heartRateSamplesQueryKey = (startDate: string, endDate: string) =>
-  ['heartRateSamples', startDate, endDate] as const;
+  [...heartRateSamplesQueryKeyRoot, startDate, endDate] as const;
 
 // --- Cycle & Pregnancy ---
 export const cycleSettingsQueryKey = ['cycleSettings'] as const;
