@@ -143,6 +143,25 @@ const TREATMENT_COLS = `id, user_id, symptom_entry_id, kind, medication_id, medi
 /** `[column, value, cast?]`. A value of `undefined` means "leave the column alone". */
 type ColumnValue = [column: string, value: unknown, cast?: string];
 
+/**
+ * A severity or impact timeline as given in `param`, with every `at` read as
+ * timestamptz and the points oldest first. An appended point is stored the
+ * same way (`SEVERITY_POINT_SQL`), so a start time sent as `20260625` or
+ * without an offset reads the same in every client as the readings after it.
+ */
+function timelineSql(param: string): string {
+  return `(SELECT COALESCE(jsonb_agg(jsonb_set(p, '{at}', to_jsonb((p->>'at')::timestamptz))
+                                     ORDER BY (p->>'at')::timestamptz, n),
+                           '[]'::jsonb)
+             FROM jsonb_array_elements(${param}::jsonb) WITH ORDINALITY AS t(p, n))`;
+}
+
+/** The SQL for one parameter, with its cast. */
+function castParam(param: string, cast?: string): string {
+  if (cast === 'timeline') return timelineSql(param);
+  return cast ? `${param}::${cast}` : param;
+}
+
 function buildSetClause(
   fields: ColumnValue[],
   firstParamIndex: number
@@ -152,10 +171,12 @@ function buildSetClause(
   for (const [column, value, cast] of fields) {
     if (value === undefined) continue;
     params.push(
-      cast === 'jsonb' && value !== null ? JSON.stringify(value) : value
+      (cast === 'jsonb' || cast === 'timeline') && value !== null
+        ? JSON.stringify(value)
+        : value
     );
     sets.push(
-      `${column} = $${firstParamIndex + params.length - 1}${cast ? `::${cast}` : ''}`
+      `${column} = ${castParam(`$${firstParamIndex + params.length - 1}`, cast)}`
     );
   }
   return { sql: sets.join(', '), params };
@@ -354,8 +375,8 @@ function entryColumns(data: SymptomEntryWrite): ColumnValue[] {
     ['phases', data.phases, 'jsonb'],
     ['impact', data.impact],
     ['peak_severity', data.peak_severity],
-    ['severity_timeline', data.severity_timeline, 'jsonb'],
-    ['impact_timeline', data.impact_timeline, 'jsonb'],
+    ['severity_timeline', data.severity_timeline, 'timeline'],
+    ['impact_timeline', data.impact_timeline, 'timeline'],
     ['context_text', data.context_text],
     ['bristol_type', data.bristol_type],
     ['source', data.source],
@@ -444,10 +465,9 @@ async function createSymptomEntry(
       );
       const columns = ['user_id', ...provided.map(([c]) => c)];
       const { params } = buildSetClause(provided, 1);
-      const placeholders = provided.map(([, , cast], i) => {
-        const p = `$${i + 2}`;
-        return cast ? `${p}::${cast}` : p;
-      });
+      const placeholders = provided.map(([, , cast], i) =>
+        castParam(`$${i + 2}`, cast)
+      );
       const inserted = await client.query(
         `INSERT INTO symptom_entries (${columns.join(', ')})
          VALUES ($1${placeholders.length ? ', ' + placeholders.join(', ') : ''})
