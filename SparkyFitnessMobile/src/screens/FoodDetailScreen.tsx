@@ -53,6 +53,7 @@ import {
 } from '../utils/foodDetails';
 import type { RootStackScreenProps } from '../types/navigation';
 import AddNfcTagRow from '../components/AddNfcTagRow';
+import { formatLocalizedNumber } from '../localization';
 import { useActionTagsQuery } from '../hooks/useActionTags';
 import { useNfcSupport } from '../hooks/useNfcSupport';
 
@@ -109,6 +110,14 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
   const { supported: nfcSupported } = useNfcSupport();
   const canAddNfcTag = isLocalFood && isConnected && nfcSupported;
   const { tags: actionTags } = useActionTagsQuery({ enabled: canAddNfcTag });
+  // Only a serving this food still has: a stale id would write the sticker and
+  // then be refused by the server.
+  const candidateVariantId = selectedVariantId ?? food.variantId;
+  const tagVariantId =
+    candidateVariantId &&
+    variants?.some((variant) => variant.id === candidateVariantId)
+      ? candidateVariantId
+      : null;
   const tagsForFood = actionTags.filter(
     (tag) => tag.action.type === 'food' && tag.action.food_id === food.id
   ).length;
@@ -568,7 +577,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
           </Text>
         </Button>
 
-        {canAddNfcTag && (selectedVariantId ?? food.variantId) ? (
+        {canAddNfcTag && tagVariantId ? (
           <AddNfcTagRow
             className=""
             onPress={() =>
@@ -576,7 +585,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
                 presetAction: {
                   type: 'food',
                   food_id: food.id,
-                  variant_id: (selectedVariantId ?? food.variantId) as string,
+                  variant_id: tagVariantId,
                   quantity: displayValues.servingSize,
                   unit: displayValues.servingUnit,
                   meal: { mode: 'auto' },
@@ -588,7 +597,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
               tagsForFood > 0
                 ? t('actionTags.food.count', {
                     count: tagsForFood,
-                    formattedCount: String(tagsForFood),
+                    formattedCount: formatLocalizedNumber(tagsForFood),
                     defaultValue: '{{formattedCount}} tags log this food',
                     defaultValue_one: '{{formattedCount}} tag logs this food',
                     defaultValue_other: '{{formattedCount}} tags log this food',

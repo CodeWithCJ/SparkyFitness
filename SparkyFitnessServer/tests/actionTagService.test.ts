@@ -219,6 +219,7 @@ describe('food and meal tags', () => {
     vi.mocked(mealRepository.getMealById).mockResolvedValue({
       id: MEAL_ID,
       name: 'Overnight oats',
+      serving_unit: 'serving',
     } as MealRow);
     vi.mocked(foodEntryService.createFoodEntryMeal).mockResolvedValue({
       id: 'logged-meal-1',
@@ -299,6 +300,67 @@ describe('food and meal tags', () => {
       USER,
       expect.objectContaining({ meal_type_id: LUNCH_ID })
     );
+  });
+
+  it('never logs into a hidden meal type', async () => {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      ...MEAL_TYPES.map((type) =>
+        type.id === LUNCH_ID ? { ...type, is_visible: false } : type
+      ),
+    ] as Awaited<ReturnType<typeof mealTypeRepository.getAllMealTypes>>);
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({ action: FOOD_ACTION })
+    );
+    await scanActionTag(USER, USER, BODY);
+    expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ meal_type_id: BREAKFAST_ID }),
+      USER
+    );
+  });
+
+  it('matches a fixed meal type id in any letter case', async () => {
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({
+        action: {
+          ...MEAL_ACTION,
+          meal: { mode: 'fixed', meal_type_id: SNACKS_ID.toUpperCase() },
+        } as TagAction,
+      })
+    );
+    await scanActionTag(USER, USER, BODY);
+    expect(foodEntryService.createFoodEntryMeal).toHaveBeenCalledWith(
+      USER,
+      USER,
+      expect.objectContaining({ meal_type_id: SNACKS_ID })
+    );
+  });
+
+  it('reports a food tag whose serving unit changed instead of rescaling it', async () => {
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({ action: FOOD_ACTION })
+    );
+    vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
+      id: VARIANT_ID,
+      food_id: FOOD_ID,
+      serving_unit: 'kg',
+    } as VariantRow);
+    const result = await scanActionTag(USER, USER, BODY);
+    expect(result.status).toBe('target_missing');
+    expect(foodRepository.createFoodEntry).not.toHaveBeenCalled();
+  });
+
+  it("reports a meal tag whose unit is not the meal's own unit", async () => {
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({ action: MEAL_ACTION })
+    );
+    vi.mocked(mealRepository.getMealById).mockResolvedValue({
+      id: MEAL_ID,
+      name: 'Overnight oats',
+      serving_unit: 'g',
+    } as MealRow);
+    const result = await scanActionTag(USER, USER, BODY);
+    expect(result.status).toBe('target_missing');
+    expect(foodEntryService.createFoodEntryMeal).not.toHaveBeenCalled();
   });
 
   it('reports a deleted food and logs nothing', async () => {

@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   ACTION_TAG_LABEL_MAX,
+  createActionTagBodySchema,
   type TagAction,
   type TagMealChoice,
 } from '@workspace/shared';
@@ -27,6 +28,7 @@ import {
 import { useCancelNfcOnBlur } from '../hooks/useCancelNfcOnBlur';
 import { useNfcSupport } from '../hooks/useNfcSupport';
 import { useWaterContainersQuery } from '../hooks';
+import { useFood } from '../hooks/useFoods';
 import { useMeal } from '../hooks/useMeals';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -38,6 +40,7 @@ import {
   writeTag,
 } from '../services/nfc/nfcService';
 import { tagActionTypeLabel, tagMealChoiceLabel } from '../services/tagActions';
+import { useCSSVariable } from 'uniwind';
 import { consumePendingActionTagSelection } from '../services/actionTagSelection';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -73,9 +76,16 @@ function isUnknownActionTypeError(error: unknown): boolean {
   if (!(error instanceof ApiError) || error.statusCode !== 400) return false;
   try {
     const body = JSON.parse(error.body ?? '') as {
-      details?: { action?: { _errors?: unknown[] } };
+      details?: {
+        action?: { _errors?: unknown[]; type?: { _errors?: unknown[] } };
+      };
     };
-    return (body.details?.action?._errors?.length ?? 0) > 0;
+    // Zod reports a discriminator it does not know under `action.type`.
+    const action = body.details?.action;
+    return (
+      (action?._errors?.length ?? 0) > 0 ||
+      (action?.type?._errors?.length ?? 0) > 0
+    );
   } catch {
     return false;
   }
@@ -173,6 +183,9 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
   // Seed from the saved tag the first time it arrives (state adjusted during
   // render, as the container form does, so no blank frame is painted).
   const [seededId, setSeededId] = useState<string | null>(null);
+  // A tag saved by a newer app with an action type this one does not know:
+  // shown as such, never seeded as water and overwritten on save.
+  const [unsupported, setUnsupported] = useState(false);
   if (existing && seededId !== existing.id) {
     setSeededId(existing.id);
     setLabel(existing.label);
@@ -187,18 +200,14 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
       case 'food':
       case 'meal':
         setKind('item');
-        // A food's own name is not stored on the tag, which is named after it
-        // unless the person renamed it; a meal's name is loaded below.
-        setPicked(
-          pickedFromAction(
-            action,
-            action.type === 'food' ? existing.label : null
-          )
-        );
+        // The food's or meal's own name is loaded below from its id.
+        setPicked(pickedFromAction(action, null));
         setAmount(String(action.quantity));
         setUnit(action.unit);
         setMealChoice(mealChoiceValue(action.meal));
         break;
+      default:
+        setUnsupported(true);
     }
   }
 
@@ -206,7 +215,25 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
     picked?.kind === 'meal' ? picked.mealId : undefined,
     { enabled: kind === 'item' && picked?.kind === 'meal' }
   );
-  const pickedName = picked?.name ?? pickedMeal?.name ?? null;
+  // A food tag stores the food's id, not its name, so an edited tag loads it.
+  const { food: pickedFood } = useFood(
+    picked?.kind === 'food' && picked.name === null ? picked.foodId : undefined,
+    { enabled: kind === 'item' && picked?.kind === 'food' }
+  );
+  const pickedName =
+    picked?.name ??
+    (picked?.kind === 'meal' ? pickedMeal?.name : pickedFood?.name) ??
+    null;
+
+  // A fixed meal type that was hidden or deleted logs by time of day on the
+  // server, so the form shows and saves that rather than a blank choice.
+  const effectiveMealChoice =
+    mealChoice === AUTO_MEAL ||
+    mealTypes.length === 0 ||
+    mealTypes.some((type) => type.id === mealChoice)
+      ? mealChoice
+      : AUTO_MEAL;
+  const chevronColor = useCSSVariable('--color-icon-decorative') as string;
 
   // A food or meal picked through the food search and its amount screen.
   useFocusEffect(
@@ -294,10 +321,15 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
     if (kind === 'water') {
       return containerId === null
         ? null
-        : { type: 'water', container_id: containerId, drinks: Number(drinks) };
+        : {
+            type: 'water',
+            container_id: containerId,
+            // The same parser the check above used, so "2,0" stays 2.
+            drinks: parseDecimalInput(drinks),
+          };
     }
     if (!picked) return null;
-    const meal = mealChoiceFromValue(mealChoice);
+    const meal = mealChoiceFromValue(effectiveMealChoice);
     const quantity = parseDecimalInput(amount);
     return picked.kind === 'food'
       ? {
@@ -409,13 +441,28 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
           },
         });
       } else {
-        if (needsWrite && !(await writeSticker(newCode))) return;
-        await createActionTagAsync({
+        const body = {
           tag_code: newCode,
           label: effectiveLabel.trim(),
           action,
           ask_before_running: askFirst,
-        });
+        };
+        // Check against the server's own rules before writing, so a sticker is
+        // never written for a tag the server would then refuse.
+        if (!createActionTagBodySchema.safeParse(body).success) {
+          showError(
+            t('actionTags.form.saveFailed', {
+              defaultValue: 'Could not save the tag',
+            }),
+            t('actionTags.form.errors.invalid', {
+              defaultValue:
+                'Check the amount and the name, then try again. Nothing was written to the tag.',
+            })
+          );
+          return;
+        }
+        if (needsWrite && !(await writeSticker(newCode))) return;
+        await createActionTagAsync(body);
       }
       Toast.show({
         type: 'success',
@@ -521,6 +568,18 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
     );
   }
 
+  if (unsupported) {
+    return container(
+      <StatusView
+        icon="nfc"
+        iconTone="muted"
+        title={t('actionTags.action.unsupported', {
+          defaultValue: 'Update the app to use this tag',
+        })}
+      />
+    );
+  }
+
   if (needsWrite && !supported) {
     return container(
       <StatusView
@@ -621,6 +680,8 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
               onPress={() =>
                 navigation.navigate('FoodSearch', { pickerMode: 'action-tag' })
               }
+              // Leaving mid-save would make the save's goBack pop the search.
+              disabled={isSaving}
               className="flex-row items-center justify-between bg-surface rounded-xl px-4 py-3 shadow-sm"
               style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
             >
@@ -642,7 +703,7 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
                   </View>
                 ) : null}
               </View>
-              <Icon name="chevron-forward" size={20} color="#999" />
+              <Icon name="chevron-forward" size={20} color={chevronColor} />
             </Pressable>
 
             {picked && unit ? (
@@ -673,7 +734,7 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
               {t('actionTags.form.mealType', { defaultValue: 'Log to' })}
             </Text>
             <BottomSheetPicker
-              value={mealChoice}
+              value={effectiveMealChoice}
               options={[
                 {
                   label: tagMealChoiceLabel(t, { mode: 'auto' }, mealTypes),

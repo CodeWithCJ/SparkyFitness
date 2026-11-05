@@ -6106,7 +6106,8 @@
         "containerRequired": "Choose a water container",
         "drinks": "Drinks per tap must be a whole number from 1 to {{max}}",
         "amount": "Enter an amount greater than zero",
-        "itemRequired": "Choose a food or meal"
+        "itemRequired": "Choose a food or meal",
+        "invalid": "Check the amount and the name, then try again. Nothing was written to the tag."
       },
       "holdToWrite": "Hold your phone to the NFC tag",
       "written": "Tag is ready",
@@ -6166,8 +6167,8 @@
     "action": {
       "water": "{{drinks}} × {{name}}",
       "waterMissing": "Water container no longer exists",
-      "servings_one": "{{count}} serving",
-      "servings_other": "{{count}} servings",
+      "servings_one": "{{formattedCount}} serving",
+      "servings_other": "{{formattedCount}} servings",
       "amount": "{{quantity}} {{unit}}",
       "food": "{{amount}} · {{meal}}",
       "unsupported": "Update the app to use this tag"

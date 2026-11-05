@@ -26,6 +26,7 @@ import {
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useActionTagsQuery } from '../hooks/useActionTags';
 import AddNfcTagRow from '../components/AddNfcTagRow';
+import { formatLocalizedNumber } from '../localization';
 import { useNfcSupport } from '../hooks/useNfcSupport';
 import { consumePendingContainerLinkSelection } from '../services/waterContainerLinkSelection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -701,7 +702,7 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
               tagsForContainer > 0
                 ? t('actionTags.container.count', {
                     count: tagsForContainer,
-                    formattedCount: String(tagsForContainer),
+                    formattedCount: formatLocalizedNumber(tagsForContainer),
                     defaultValue: '{{formattedCount}} tags log this container',
                     defaultValue_one:
                       '{{formattedCount}} tag logs this container',

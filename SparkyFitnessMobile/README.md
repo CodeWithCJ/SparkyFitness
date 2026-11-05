@@ -27,7 +27,8 @@ Each shortcut asks which connected phone (or simulator/emulator) to use.
 
 ```bash
 # Debug build: loads JavaScript from Metro (fast refresh, dev menu).
-# The phone must reach your Mac by cable or the same Wi-Fi.
+# iPhone: must be on the same Wi-Fi as the Mac (or start Metro with `npx expo start --tunnel`).
+# Android: a USB cable is enough; Expo forwards the Metro port with `adb reverse`.
 pnpm ios:device
 pnpm android:device
 
@@ -42,7 +43,12 @@ pnpm ios:release:clean
 pnpm android:release:clean
 ```
 
-Dev builds install as **DevSparkyFitness**, next to the store app. Tapping an NFC tag opens a dev build only when it is built with `ENABLE_NFC_LINKS=1` in `.env` and signed with a paid Apple team; otherwise use **Settings → NFC tags → Scan a tag**.
+Dev builds install as **DevSparkyFitness**, next to the store app. Tapping an NFC tag opens a dev build only when it is built with `ENABLE_NFC_LINKS=1` in `.env`, and the tag site (`SparkyFitnessTag/`) lists that app's ID, as it does for the store app and the maintainer's dev build:
+
+- **iPhone:** the build must also be signed with a paid Apple team.
+- **Android 15 and older:** the app's own NFC filter also opens a tapped tag.
+
+Otherwise use **Settings → NFC tags → Scan a tag**.
 
 ### Production Build
 

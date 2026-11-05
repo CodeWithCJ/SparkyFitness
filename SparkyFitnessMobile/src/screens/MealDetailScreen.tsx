@@ -534,7 +534,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
               tagsForMeal > 0
                 ? t('actionTags.meal.count', {
                     count: tagsForMeal,
-                    formattedCount: String(tagsForMeal),
+                    formattedCount: formatLocalizedNumber(tagsForMeal),
                     defaultValue: '{{formattedCount}} tags log this meal',
                     defaultValue_one: '{{formattedCount}} tag logs this meal',
                     defaultValue_other: '{{formattedCount}} tags log this meal',

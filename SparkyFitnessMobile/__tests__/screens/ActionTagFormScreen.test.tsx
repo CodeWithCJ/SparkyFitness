@@ -21,6 +21,8 @@ import { useMeal } from '../../src/hooks/useMeals';
 import { setPendingActionTagSelection } from '../../src/services/actionTagSelection';
 import { useMealTypes } from '../../src/hooks/useMealTypes';
 import { initializeI18n } from '../../src/localization/i18n';
+import { ApiError } from '../../src/services/api/errors';
+import Toast from 'react-native-toast-message';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
 jest.mock('../../src/hooks/useActionTags', () => ({
@@ -35,6 +37,9 @@ jest.mock('../../src/hooks/useNfcSupport', () => ({
 jest.mock('../../src/hooks', () => ({ useWaterContainersQuery: jest.fn() }));
 jest.mock('../../src/hooks/useMealTypes', () => ({ useMealTypes: jest.fn() }));
 jest.mock('../../src/hooks/useMeals', () => ({ useMeal: jest.fn() }));
+jest.mock('../../src/hooks/useFoods', () => ({
+  useFood: () => ({ food: { name: 'Greek yogurt' } }),
+}));
 jest.mock('../../src/services/nfc/nfcService', () => ({
   generateTagCode: () => '0123456789abcdef0123456789abcdef',
   writeTag: jest.fn(),
@@ -52,6 +57,12 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 
+const FOOD_ID = '11111111-1111-4111-8111-111111111111';
+const VARIANT_ID = '22222222-2222-4222-8222-222222222222';
+const MEAL_ID = '33333333-3333-4333-8333-333333333333';
+const SNACKS_ID = '44444444-4444-4444-8444-444444444444';
+const FOOD_2_ID = '55555555-5555-4555-8555-555555555555';
+const VARIANT_2_ID = '66666666-6666-4666-8666-666666666666';
 const CODE = '0123456789abcdef0123456789abcdef';
 const createTag = jest.fn();
 const updateTag = jest.fn();
@@ -88,7 +99,7 @@ beforeEach(() => {
   } as unknown as ReturnType<typeof useWaterContainersQuery>);
   jest.mocked(useMealTypes).mockReturnValue({
     mealTypes: [
-      { id: 'snacks-id', name: 'snacks', user_id: null, sort_order: 4 },
+      { id: SNACKS_ID, name: 'snacks', user_id: null, sort_order: 4 },
     ],
     defaultMealTypeId: null,
     isLoading: false,
@@ -97,7 +108,7 @@ beforeEach(() => {
     refetch: jest.fn(),
   } as unknown as ReturnType<typeof useMealTypes>);
   jest.mocked(useMeal).mockReturnValue({
-    meal: { id: 'meal-1', name: 'Overnight oats' },
+    meal: { id: MEAL_ID, name: 'Overnight oats' },
     isLoading: false,
     isError: false,
     refetch: jest.fn(),
@@ -191,8 +202,8 @@ describe('ActionTagFormScreen', () => {
       tagCode: 'f'.repeat(32),
       presetAction: {
         type: 'food',
-        food_id: 'food-1',
-        variant_id: 'variant-1',
+        food_id: FOOD_ID,
+        variant_id: VARIANT_ID,
         quantity: 170,
         unit: 'g',
         meal: { mode: 'auto' },
@@ -208,8 +219,8 @@ describe('ActionTagFormScreen', () => {
       label: 'Greek yogurt',
       action: {
         type: 'food',
-        food_id: 'food-1',
-        variant_id: 'variant-1',
+        food_id: FOOD_ID,
+        variant_id: VARIANT_ID,
         quantity: 200,
         unit: 'g',
         meal: { mode: 'auto' },
@@ -223,10 +234,10 @@ describe('ActionTagFormScreen', () => {
       tagCode: 'f'.repeat(32),
       presetAction: {
         type: 'meal',
-        meal_template_id: 'meal-1',
+        meal_template_id: MEAL_ID,
         quantity: 1,
         unit: 'serving',
-        meal: { mode: 'fixed', meal_type_id: 'snacks-id' },
+        meal: { mode: 'fixed', meal_type_id: SNACKS_ID },
       },
     });
     fireEvent.press(screen.getByText('Save'));
@@ -236,10 +247,10 @@ describe('ActionTagFormScreen', () => {
         label: 'Overnight oats',
         action: {
           type: 'meal',
-          meal_template_id: 'meal-1',
+          meal_template_id: MEAL_ID,
           quantity: 1,
           unit: 'serving',
-          meal: { mode: 'fixed', meal_type_id: 'snacks-id' },
+          meal: { mode: 'fixed', meal_type_id: SNACKS_ID },
         },
       })
     );
@@ -252,7 +263,7 @@ describe('ActionTagFormScreen', () => {
       .mockImplementation((effect) => React.useEffect(effect, [effect]));
     setPendingActionTagSelection({
       kind: 'meal',
-      mealId: 'meal-1',
+      mealId: MEAL_ID,
       name: 'Creamy chicken pasta',
       quantity: 50,
       unit: 'g',
@@ -268,7 +279,7 @@ describe('ActionTagFormScreen', () => {
         label: 'Creamy chicken pasta',
         action: {
           type: 'meal',
-          meal_template_id: 'meal-1',
+          meal_template_id: MEAL_ID,
           quantity: 50,
           unit: 'g',
           meal: { mode: 'auto' },
@@ -283,8 +294,8 @@ describe('ActionTagFormScreen', () => {
       .mockImplementation((effect) => React.useEffect(effect, [effect]));
     setPendingActionTagSelection({
       kind: 'food',
-      foodId: 'food-2',
-      variantId: 'variant-2',
+      foodId: FOOD_2_ID,
+      variantId: VARIANT_2_ID,
       name: 'Banana',
       quantity: 1,
       unit: 'piece',
@@ -298,8 +309,8 @@ describe('ActionTagFormScreen', () => {
         label: 'Banana',
         action: {
           type: 'food',
-          food_id: 'food-2',
-          variant_id: 'variant-2',
+          food_id: FOOD_2_ID,
+          variant_id: VARIANT_2_ID,
           quantity: 1,
           unit: 'piece',
           meal: { mode: 'auto' },
@@ -310,7 +321,7 @@ describe('ActionTagFormScreen', () => {
 
   it('names a new tag after a long meal name, cut to the server limit', async () => {
     jest.mocked(useMeal).mockReturnValue({
-      meal: { id: 'meal-1', name: 'A'.repeat(200) },
+      meal: { id: MEAL_ID, name: 'A'.repeat(200) },
       isLoading: false,
       isError: false,
       refetch: jest.fn(),
@@ -319,7 +330,7 @@ describe('ActionTagFormScreen', () => {
       tagCode: 'f'.repeat(32),
       presetAction: {
         type: 'meal',
-        meal_template_id: 'meal-1',
+        meal_template_id: MEAL_ID,
         quantity: 1,
         unit: 'serving',
         meal: { mode: 'auto' },
@@ -337,8 +348,8 @@ describe('ActionTagFormScreen', () => {
       tagCode: 'f'.repeat(32),
       presetAction: {
         type: 'food',
-        food_id: 'food-1',
-        variant_id: 'variant-1',
+        food_id: FOOD_ID,
+        variant_id: VARIANT_ID,
         quantity: 170,
         unit: 'g',
         meal: { mode: 'auto' },
@@ -348,6 +359,123 @@ describe('ActionTagFormScreen', () => {
     fireEvent.changeText(screen.getByDisplayValue('170'), '0');
     fireEvent.press(screen.getByText('Save'));
     await waitFor(() => expect(createTag).not.toHaveBeenCalled());
+  });
+
+  it('writes nothing to the sticker for an amount the server would refuse', async () => {
+    renderForm({
+      presetAction: {
+        type: 'food',
+        food_id: FOOD_ID,
+        variant_id: VARIANT_ID,
+        quantity: 170,
+        unit: 'g',
+        meal: { mode: 'auto' },
+      },
+      presetLabel: 'Greek yogurt',
+    });
+    fireEvent.changeText(screen.getByDisplayValue('170'), '20000');
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() =>
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' })
+      )
+    );
+    expect(writeTag).not.toHaveBeenCalled();
+    expect(createTag).not.toHaveBeenCalled();
+  });
+
+  it('says the server is too old when it does not know food tags', async () => {
+    createTag.mockRejectedValue(
+      new ApiError(
+        'Bad request',
+        400,
+        JSON.stringify({
+          error: 'Invalid request body',
+          details: {
+            _errors: [],
+            action: {
+              _errors: [],
+              type: { _errors: ['Invalid discriminator'] },
+            },
+          },
+        })
+      )
+    );
+    renderForm({
+      tagCode: 'f'.repeat(32),
+      presetAction: {
+        type: 'food',
+        food_id: FOOD_ID,
+        variant_id: VARIANT_ID,
+        quantity: 170,
+        unit: 'g',
+        meal: { mode: 'auto' },
+      },
+      presetLabel: 'Greek yogurt',
+    });
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() =>
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text2: expect.stringContaining('does not support food and meal tags'),
+        })
+      )
+    );
+  });
+
+  it("shows the food's own name when editing a food tag", () => {
+    jest.mocked(useActionTagsQuery).mockReturnValue({
+      tags: [
+        {
+          id: 'tag-1',
+          tag_code: CODE,
+          label: 'Desk snack',
+          action: {
+            type: 'food',
+            food_id: FOOD_ID,
+            variant_id: VARIANT_ID,
+            quantity: 170,
+            unit: 'g',
+            meal: { mode: 'auto' },
+          },
+          ask_before_running: false,
+          last_run_at: null,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useActionTagsQuery>);
+    renderForm({ tagId: 'tag-1' });
+    expect(screen.getByText('Greek yogurt')).toBeTruthy();
+    expect(screen.getByDisplayValue('Desk snack')).toBeTruthy();
+  });
+
+  it('does not offer to edit a tag type this app does not know', () => {
+    jest.mocked(useActionTagsQuery).mockReturnValue({
+      tags: [
+        {
+          id: 'tag-1',
+          tag_code: CODE,
+          label: 'Vitamins',
+          action: { type: 'medication' },
+          ask_before_running: false,
+          last_run_at: null,
+          created_at: '',
+          updated_at: '',
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useActionTagsQuery>);
+    renderForm({ tagId: 'tag-1' });
+    expect(screen.getByText('Update the app to use this tag')).toBeTruthy();
+    expect(screen.queryByText('Save')).toBeNull();
   });
 
   it('refuses an invalid number of drinks', async () => {

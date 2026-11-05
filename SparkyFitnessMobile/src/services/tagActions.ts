@@ -7,6 +7,7 @@ import type {
 } from '@workspace/shared';
 import { invalidateFoodCache } from '../hooks/invalidateFoodCache';
 import { invalidateWaterIntakeQueries } from '../hooks/invalidateWaterIntake';
+import { formatLocalizedNumber } from '../localization';
 import { invalidateMealUsageCaches } from '../hooks/useMeals';
 import type { MealType } from '../types/mealTypes';
 import type { WaterContainer } from '../types/measurements';
@@ -40,13 +41,14 @@ function amountLabel(t: TFunction, quantity: number, unit: string): string {
   return unit === 'serving'
     ? t('actionTags.action.servings', {
         count: quantity,
-        defaultValue: '{{count}} servings',
-        defaultValue_one: '{{count}} serving',
-        defaultValue_other: '{{count}} servings',
+        formattedCount: formatLocalizedNumber(quantity),
+        defaultValue: '{{formattedCount}} servings',
+        defaultValue_one: '{{formattedCount}} serving',
+        defaultValue_other: '{{formattedCount}} servings',
       })
     : t('actionTags.action.amount', {
         defaultValue: '{{quantity}} {{unit}}',
-        quantity,
+        quantity: formatLocalizedNumber(quantity),
         unit,
       });
 }

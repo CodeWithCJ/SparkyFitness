@@ -54,7 +54,7 @@ If tapping does nothing, open **Settings, then NFC tags** and use **Scan a tag**
 
 - **Accidental taps:** turn on **Ask before logging** for a tag to get a Log or Cancel prompt on every tap.
 - **Double taps:** a second tap within about 10 seconds is ignored, so holding the phone on the tag too long logs only one drink.
-- **Deleted container, food or meal:** if you delete what a tag logs, the tap tells you and logs nothing. Open the tag and pick something else. Entries the tag logged before stay in your diary.
+- **Deleted container, food or meal:** if you delete what a tag logs, the tap tells you and logs nothing. Open the tag and pick something else. Entries the tag logged before stay in your diary, unless you delete a food together with its history.
 - **Deleted meal type:** if a tag always logs to a meal type you later delete, it logs by time of day instead.
 - **Someone else's tag:** a tag that is not set up on your account logs nothing. The app offers to set it up for you.
 - **Offline:** if your server cannot be reached, the app says so and logs nothing. Tap again when you are back online.

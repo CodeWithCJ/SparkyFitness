@@ -62,7 +62,11 @@ export const tagActionSchema = z.discriminatedUnion('type', [
     /** A saved meal from the Meals library. */
     meal_template_id: z.uuid(),
     quantity: tagQuantitySchema,
-    /** `serving` or the meal's own serving unit, as a logged meal stores it. */
+    /**
+     * The meal's own serving unit (`serving`, or e.g. `g` for a meal measured
+     * by weight), as a logged meal stores it. A tag whose unit no longer
+     * matches the meal reads as pointing at something that was deleted.
+     */
     unit: tagUnitSchema,
     meal: tagMealChoiceSchema,
   }),

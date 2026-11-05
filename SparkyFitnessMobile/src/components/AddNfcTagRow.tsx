@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 
 interface AddNfcTagRowProps {
@@ -20,6 +21,7 @@ const AddNfcTagRow: React.FC<AddNfcTagRowProps> = ({
   className = 'mt-6',
 }) => {
   const { t } = useTranslation();
+  const chevronColor = useCSSVariable('--color-icon-decorative') as string;
   return (
     <Pressable
       accessibilityRole="button"
@@ -33,7 +35,7 @@ const AddNfcTagRow: React.FC<AddNfcTagRowProps> = ({
         </Text>
         <Text className="text-sm text-text-secondary mt-0.5">{subtitle}</Text>
       </View>
-      <Icon name="chevron-forward" size={20} color="#999" />
+      <Icon name="chevron-forward" size={20} color={chevronColor} />
     </Pressable>
   );
 };

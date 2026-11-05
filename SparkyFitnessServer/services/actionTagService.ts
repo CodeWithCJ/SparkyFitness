@@ -42,6 +42,12 @@ interface MealTypeRow {
   id: string;
   name: string;
   default_time?: string | null;
+  is_visible?: boolean | null;
+}
+
+/** Units compare the way people type them: "G" and "g " are both grams. */
+function sameUnit(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
 /** "170 g Greek yogurt", or "2 × Overnight oats" for servings. */
@@ -63,13 +69,27 @@ async function loadFoodTarget(userId: string, action: FoodAction) {
     userId
   );
   if (!variant || String(variant.food_id) !== String(food.id)) return null;
+  // The amount is in the unit the tag was saved with. If the serving's unit
+  // was changed since, 170 g would log as 170 of the new unit, so the tag is
+  // treated as pointing at something that no longer exists.
+  if (!sameUnit(action.unit, variant.serving_unit || 'serving')) return null;
   return { food, variant };
 }
 
+/**
+ * The saved meal a meal tag names, or null when it was deleted or its serving
+ * unit no longer matches the tag. A logged meal's portion is the amount in the
+ * meal's own unit (servings, or grams for a meal measured by weight), so any
+ * other unit would log the wrong share of the meal.
+ */
 async function loadMealTarget(userId: string, action: MealAction) {
-  return (
-    (await mealRepository.getMealById(action.meal_template_id, userId)) ?? null
+  const meal = await mealRepository.getMealById(
+    action.meal_template_id,
+    userId
   );
+  if (!meal) return null;
+  if (!sameUnit(action.unit, meal.serving_unit || 'serving')) return null;
+  return meal;
 }
 
 /**
@@ -82,10 +102,16 @@ async function resolveMealTypeId(
   choice: TagMealChoice,
   tz: string
 ): Promise<string | null> {
-  const mealTypes: MealTypeRow[] =
+  const allTypes: MealTypeRow[] =
     await mealTypeRepository.getAllMealTypes(userId);
+  // Only meal types the diary shows: an entry in a hidden one would not
+  // appear anywhere. A fixed type that was hidden or deleted falls back to
+  // the time of day, which is also what the app shows for it.
+  const visible = allTypes.filter((type) => type.is_visible !== false);
+  const mealTypes = visible.length > 0 ? visible : allTypes;
   if (choice.mode === 'fixed') {
-    const fixed = mealTypes.find((type) => type.id === choice.meal_type_id);
+    const wanted = choice.meal_type_id.toLowerCase();
+    const fixed = mealTypes.find((type) => type.id.toLowerCase() === wanted);
     if (fixed) return fixed.id;
   }
   return pickMealTypeForTime(mealTypes, userHourMinute(tz))?.id ?? null;

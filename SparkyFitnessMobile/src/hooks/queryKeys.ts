@@ -128,6 +128,10 @@ export const goalsRangeQueryKey = (
   adjust: boolean
 ) => ['goalsRange', startDate, endDate, adjust] as const;
 
+/** One saved food; under `foods`, so invalidating the food caches covers it. */
+export const foodDetailQueryKey = (foodId: string) =>
+  ['foods', 'detail', foodId] as const;
+
 export const foodVariantsQueryKey = (foodId: string) =>
   ['foodVariants', foodId] as const;
 
