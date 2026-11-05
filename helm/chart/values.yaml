@@ -205,9 +205,9 @@ server:
     # -- Image digest (e.g. "sha256:abc..."). When set, takes precedence over tag.
     digest: ""
     pullPolicy: IfNotPresent
-  # -- Server replica count. Above 1, one replica runs as a separate `-jobs`
-  # Deployment that runs the scheduled jobs and the rest skip them. Change it
-  # here rather than with `kubectl scale`. Above 1 the chart also requires
+  # -- Server replica count. The replicas share scheduled jobs through the
+  # database, so any of them can stop; a pinned image of v1.11.0 or older would
+  # instead run each job on every replica. Above 1 the chart requires
   # ReadWriteMany backup/uploads volumes (rendering fails otherwise), rolls
   # updates one pod at a time, and adds a PodDisruptionBudget, a spread across
   # nodes and a preStop delay unless you configure them yourself.
@@ -216,7 +216,7 @@ server:
   # -- Deployment update strategy. Empty (default) picks one: `Recreate` for a
   # single replica on a ReadWriteOnce volume (a surge pod on another node could
   # never attach it), otherwise `RollingUpdate` with maxSurge 1 and
-  # maxUnavailable 0. The `-jobs` Deployment always uses `Recreate`.
+  # maxUnavailable 0.
   strategy: {}
   # -- Seconds a new pod must stay ready before it counts as available.
   # Unset: 5 when updates roll (replicas > 1 or a RollingUpdate strategy),
