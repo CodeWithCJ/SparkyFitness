@@ -288,18 +288,24 @@ export async function syncAllDayHeartRate(
 ): Promise<HeartRateSamplesResult> {
   let samplesUploaded = 0;
   let error: string | undefined;
-  // Wait out any coverage sweep, including one started while waiting.
-  let sweep: Promise<void>;
-  do {
-    sweep = coverageSweep;
-    await sweep;
-  } while (sweep !== coverageSweep);
+  // Taken before any wait, so a run whose account changes while it waits
+  // below stops instead of carrying on for the account switched to.
   const generation = accountGeneration;
   const accountChanged = () => generation !== accountGeneration;
   const stopForAccountChange = () => {
     error = 'Account changed; all-day heart rate upload stopped';
     addLog(`${logTag} ${error}`, 'INFO');
   };
+  // Wait out any coverage sweep, including one started while waiting.
+  let sweep: Promise<void>;
+  do {
+    sweep = coverageSweep;
+    await sweep;
+  } while (sweep !== coverageSweep);
+  if (accountChanged()) {
+    stopForAccountChange();
+    return { samplesUploaded, error };
+  }
   const key = await cursorKey();
   const plan = heartRateSyncPlan(start, end, await readCoverage(key));
   for (const window of heartRateWindows(plan.start, end)) {

@@ -393,6 +393,36 @@ describe('syncAllDayHeartRate', () => {
     expect(readRaw.mock.calls[0][1]).toEqual(start);
   });
 
+  it('a run waiting on a sweep stops when the account changes during the wait', async () => {
+    let releaseSweep: () => void = () => {};
+    const realGetAllKeys = AsyncStorage.getAllKeys;
+    jest.spyOn(AsyncStorage, 'getAllKeys').mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseSweep = () => resolve(realGetAllKeys());
+        })
+    );
+    const firstSweep = resetAllDayHeartRateForAccountChange();
+
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    const run = syncAllDayHeartRate(
+      { readRaw },
+      new Date('2026-11-01T00:00:00.000Z'),
+      new Date('2026-11-03T00:00:00.000Z'),
+      telemetry,
+      '[T]'
+    );
+    // A second switch lands while the run is still waiting.
+    const secondSweep = resetAllDayHeartRateForAccountChange();
+    releaseSweep();
+    await Promise.all([firstSweep, secondSweep]);
+
+    const result = await run;
+    expect(result.error).toMatch(/account changed/i);
+    expect(readRaw).not.toHaveBeenCalled();
+    expect(postHealthMetricSamples).not.toHaveBeenCalled();
+  });
+
   it('logs only the status of a failed upload, never the response body', async () => {
     postHealthMetricSamples.mockRejectedValueOnce(
       new ApiError('Server error: 400 - {"t":"…","bpm":66}', 400, '{"bpm":66}')
