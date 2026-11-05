@@ -293,16 +293,37 @@ describe('POST /api/generic-health/samples', () => {
     expect(upsertMock).not.toHaveBeenCalled();
   });
 
-  it('rejects an empty source and an empty sample list', async () => {
+  it('rejects an empty source, and an empty sample list outside merge mode', async () => {
     await request(app)
       .post('/api/generic-health/samples')
       .send({ ...heartRateBody, source: ' ' })
       .expect(400);
+    const { window: _window, ...noWindow } = heartRateBody;
     await request(app)
       .post('/api/generic-health/samples')
-      .send({ ...heartRateBody, samples: [] })
+      .send({ ...noWindow, mode: 'replace', samples: [] })
+      .expect(400);
+    // Merge still needs its window, empty or not.
+    await request(app)
+      .post('/api/generic-health/samples')
+      .send({ ...noWindow, samples: [] })
       .expect(400);
     expect(upsertMock).not.toHaveBeenCalled();
+  });
+
+  it('accepts an empty merge, which clears the window on every day it touches', async () => {
+    upsertMock.mockResolvedValue(2);
+    const res = await request(app)
+      .post('/api/generic-health/samples')
+      .send({ ...heartRateBody, samples: [] })
+      .expect(200);
+
+    expect(res.body).toMatchObject({ days_written: 2, samples_written: 0 });
+    expect(upsertMock.mock.calls[0]?.[4]).toEqual([]);
+    expect(upsertMock.mock.calls[0]?.[5]).toMatchObject({
+      mode: 'merge',
+      days: ['2026-10-28', '2026-10-29'],
+    });
   });
 
   it('returns 403 and writes nothing when the permission check fails', async () => {

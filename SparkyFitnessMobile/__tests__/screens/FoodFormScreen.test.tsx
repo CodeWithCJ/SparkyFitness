@@ -16,6 +16,8 @@ import {
 } from '../../src/hooks/useFoodVariants';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
 import { setPendingMealPlanSelection } from '../../src/services/mealPlanSelection';
+import { consumePendingActionTagSelection } from '../../src/services/actionTagSelection';
+import { consumePendingContainerLinkSelection } from '../../src/services/waterContainerLinkSelection';
 import {
   createFoodVariant,
   fetchFoodVariants,
@@ -2001,6 +2003,83 @@ describe('FoodFormScreen', () => {
             fat: 5,
           },
         }),
+      })
+    );
+    expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('hands a new food back to the NFC tag form instead of logging it', async () => {
+    consumePendingActionTagSelection();
+    mockSaveFoodAsync.mockResolvedValue({
+      id: 'saved-food-1',
+      name: 'Custom Meal Food',
+      brand: 'Brand Co',
+      is_custom: true,
+      default_variant: {
+        id: 'saved-variant-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+      },
+    });
+    const screen = renderScreen({
+      mode: 'create-food',
+      pickerMode: 'action-tag',
+      returnDepth: 2,
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() =>
+      expect(mockNavigation.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'POP' })
+      )
+    );
+    expect(consumePendingActionTagSelection()).toEqual({
+      kind: 'food',
+      foodId: 'saved-food-1',
+      variantId: 'saved-variant-1',
+      name: 'Custom Meal Food',
+      quantity: 100,
+      unit: 'g',
+    });
+    expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('links a new food to the water container instead of logging it', async () => {
+    consumePendingContainerLinkSelection();
+    mockSaveFoodAsync.mockResolvedValue({
+      id: 'saved-food-1',
+      name: 'Custom Meal Food',
+      brand: 'Brand Co',
+      is_custom: true,
+      default_variant: {
+        id: 'saved-variant-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+      },
+    });
+    const screen = renderScreen({
+      mode: 'create-food',
+      pickerMode: 'container-link',
+      returnDepth: 2,
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() =>
+      expect(consumePendingContainerLinkSelection()).toEqual({
+        foodId: 'saved-food-1',
+        variantId: 'saved-variant-1',
+        foodName: 'Custom Meal Food',
+        quantity: 100,
       })
     );
     expect(mockAddEntry).not.toHaveBeenCalled();

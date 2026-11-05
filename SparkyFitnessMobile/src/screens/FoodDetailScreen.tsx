@@ -52,6 +52,10 @@ import {
   applyDisplayValuesToFoodInfo,
 } from '../utils/foodDetails';
 import type { RootStackScreenProps } from '../types/navigation';
+import AddNfcTagRow from '../components/AddNfcTagRow';
+import { formatLocalizedNumber } from '../localization';
+import { useActionTagsQuery } from '../hooks/useActionTags';
+import { useNfcSupport } from '../hooks/useNfcSupport';
 
 type FoodDetailScreenProps = RootStackScreenProps<'FoodDetail'>;
 
@@ -100,6 +104,23 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
     food.userId &&
     profile?.id === food.userId
   );
+
+  // NFC tags that log this food (#941), offered for a saved food on a phone
+  // with NFC.
+  const { supported: nfcSupported } = useNfcSupport();
+  const canAddNfcTag = isLocalFood && isConnected && nfcSupported;
+  const { tags: actionTags } = useActionTagsQuery({ enabled: canAddNfcTag });
+  // Only a serving this food still has: a stale id would write the sticker and
+  // then be refused by the server.
+  const candidateVariantId = selectedVariantId ?? food.variantId;
+  const tagVariantId =
+    candidateVariantId &&
+    variants?.some((variant) => variant.id === candidateVariantId)
+      ? candidateVariantId
+      : null;
+  const tagsForFood = actionTags.filter(
+    (tag) => tag.action.type === 'food' && tag.action.food_id === food.id
+  ).length;
 
   const queryClient = useQueryClient();
   const isPublic = !!food.sharedWithPublic;
@@ -555,6 +576,38 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
             {t('foodDetail.logFood', { defaultValue: 'Log Food' })}
           </Text>
         </Button>
+
+        {canAddNfcTag && tagVariantId ? (
+          <AddNfcTagRow
+            className=""
+            onPress={() =>
+              navigation.navigate('ActionTagForm', {
+                presetAction: {
+                  type: 'food',
+                  food_id: food.id,
+                  variant_id: tagVariantId,
+                  quantity: displayValues.servingSize,
+                  unit: displayValues.servingUnit,
+                  meal: { mode: 'auto' },
+                },
+                presetLabel: food.name,
+              })
+            }
+            subtitle={
+              tagsForFood > 0
+                ? t('actionTags.food.count', {
+                    count: tagsForFood,
+                    formattedCount: formatLocalizedNumber(tagsForFood),
+                    defaultValue: '{{formattedCount}} tags log this food',
+                    defaultValue_one: '{{formattedCount}} tag logs this food',
+                    defaultValue_other: '{{formattedCount}} tags log this food',
+                  })
+                : t('actionTags.food.hint', {
+                    defaultValue: 'Tap a sticker to log this food',
+                  })
+            }
+          />
+        ) : null}
 
         {canManageFood && (
           <Button

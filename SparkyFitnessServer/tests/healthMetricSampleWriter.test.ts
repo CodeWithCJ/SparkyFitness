@@ -438,6 +438,25 @@ describe('upsertSamplesByDay', () => {
       });
     });
 
+    it('clears every listed day when the resend carries no samples at all', async () => {
+      // The client read the window and found nothing left, for example after
+      // the readings were deleted on the device.
+      storedByDay[day1] = [{ t: `${day1}T09:00:00.000Z`, bpm: 60 }];
+      storedByDay[day2] = [{ t: `${day2}T09:00:00.000Z`, bpm: 61 }];
+
+      const written = await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'xiaomi',
+        [],
+        { mode: 'merge', window, days: [day1, day2] }
+      );
+
+      expect(written).toBe(2);
+      expect(writtenByDay()).toEqual({ [day1]: [], [day2]: [] });
+    });
+
     it('does not create a row for a listed day with nothing stored', async () => {
       const written = await upsertSamplesByDay(
         'user-1',

@@ -13,6 +13,7 @@ import ServerGate from '../components/ServerGate';
 import Button from '../components/ui/Button';
 import { useServerConnection, useWaterContainersQuery } from '../hooks';
 import { useActionTagsQuery } from '../hooks/useActionTags';
+import { useMealTypes } from '../hooks/useMealTypes';
 import { useCancelNfcOnBlur } from '../hooks/useCancelNfcOnBlur';
 import { useNfcSupport } from '../hooks/useNfcSupport';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -37,6 +38,7 @@ const ActionTagsScreen: React.FC<ActionTagsScreenProps> = ({ navigation }) => {
     enabled: isConnected,
   });
   const { containers } = useWaterContainersQuery({ enabled: isConnected });
+  const { mealTypes } = useMealTypes({ enabled: isConnected });
   const { supported } = useNfcSupport();
   const serverTooOld = error instanceof ApiError && error.statusCode === 404;
 
@@ -111,7 +113,10 @@ const ActionTagsScreen: React.FC<ActionTagsScreenProps> = ({ navigation }) => {
             {item.label}
           </Text>
           <Text className="text-sm text-text-secondary mt-1">
-            {describeTagAction(t, item.action, { waterContainers: containers })}
+            {describeTagAction(t, item.action, {
+              waterContainers: containers,
+              mealTypes,
+            })}
           </Text>
           {item.ask_before_running ? (
             <Text className="text-xs text-text-muted mt-1">

@@ -21,15 +21,34 @@ pnpm ios
 pnpm start
 ```
 
-### Advanced iOS Runs
+### Run on a phone
+
+Each shortcut asks which connected phone (or simulator/emulator) to use.
 
 ```bash
-# Run on a physical iOS device
-npx expo run:ios --device
+# Debug build: loads JavaScript from Metro (fast refresh, dev menu).
+# iPhone: must be on the same Wi-Fi as the Mac (or start Metro with `npx expo start --tunnel`).
+# Android: a USB cable is enough; Expo forwards the Metro port with `adb reverse`.
+pnpm ios:device
+pnpm android:device
 
-# Run release configuration on a physical iOS device
-npx expo run:ios --configuration Release --device
+# Release build: JavaScript is bundled into the app, runs without Metro,
+# behaves like the store version.
+pnpm ios:release
+pnpm android:release
+
+# Same Release build, but regenerates the native project first.
+# Use after changing native config (app.config.ts, plugins, .env flags such as ENABLE_NFC_LINKS).
+pnpm ios:release:clean
+pnpm android:release:clean
 ```
+
+Dev builds install as **DevSparkyFitness**, next to the store app. Tapping an NFC tag opens a dev build only when it is built with `ENABLE_NFC_LINKS=1` in `.env`, and the tag site (`SparkyFitnessTag/`) lists that app's ID, as it does for the store app and the maintainer's dev build:
+
+- **iPhone:** the build must also be signed with a paid Apple team.
+- **Android 15 and older:** the app's own NFC filter also opens a tapped tag.
+
+Otherwise use **Settings → NFC tags → Scan a tag**.
 
 ### Production Build
 
@@ -41,10 +60,11 @@ APP_VARIANT=production eas build -p ios --profile production --auto-submit
 
 ```bash
 open ios/SparkyFitness.xcworkspace
+```
 
+### Troubleshooting
 
-###Troubleshooting
-
+```bash
 # 1. Clean the cached build folders again
 rm -rf ios/build ios/Pods
 

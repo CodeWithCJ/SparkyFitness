@@ -1,11 +1,11 @@
 # NFC Tags
 
-Stick an NFC tag on a water bottle or cup, and tap your phone on it to log a drink, without opening the app and finding the right button. You set up each tag once; after that, one tap logs it.
+Stick an NFC tag on a water bottle, a snack box or the fridge, and tap your phone on it to log a drink, a food or a saved meal, without opening the app and finding the right button. You set up each tag once; after that, one tap logs it.
 
 NFC tags are in the mobile app only (iPhone and Android). The web app does not manage tags.
 
-::: tip Water first
-Tags log **water and drinks** today. Food, meals, medication and exercise are planned, and a tag you set up now keeps working when they arrive.
+::: tip What a tag can log
+Tags log **water and drinks**, **a food** or **a saved meal**. Medication and exercise are planned, and a tag you set up now keeps working when they arrive.
 :::
 
 ## What you need
@@ -18,9 +18,19 @@ Tags log **water and drinks** today. Food, meals, medication and exercise are pl
 
 ## Set up a tag
 
-1. Open the water container you want to log (Library, then Water containers) and tap **Add NFC tag**. You can also go to **Settings, then NFC tags** and tap **+**.
-2. Choose the container and how many drinks one tap logs, and name the tag.
-3. Save, then hold your phone to the tag when asked.
+1. Open what you want to log and tap **Add NFC tag**:
+   - a water container (Library, then Water containers),
+   - a food (Library, then Foods),
+   - a saved meal (Library, then Meals).
+
+   You can also go to **Settings, then NFC tags**, tap **+** and choose **Water or drink** or **Food or meal**.
+2. Choose what one tap logs, and name the tag:
+   - **Water or drink:** the container and how many drinks.
+   - **Food or meal:** tap the row to open the same search you use for logging, with your foods and saved meals together, online results and barcode scan. Pick the item and set the amount on the same screen as when you log it: a serving or grams of a food, or servings of a meal (grams for a meal measured by weight). You can change the amount later on the tag.
+3. For a food or a meal, choose where it goes under **Log to**: **By time of day** (the default) picks the meal that matches the time of the tap, using each meal type's usual time, as quick logging does. You can also pick one meal type, for example Snacks for a tag on a snack drawer.
+4. Save, then hold your phone to the tag when asked.
+
+The amount is saved with the tag, so a tap never asks for it. To log a different amount, change the tag or log that time by hand. A meal tag logs the saved meal as it is in your Meals library, so editing the meal's ingredients changes what its tags log.
 
 If the tag already holds something else, such as a link or a card, the app asks before replacing it.
 
@@ -36,7 +46,7 @@ Unlock your phone and hold it to the tag. The app does not need to be open.
 | **Android 15 and older** | SparkyFitness opens and logs. |
 | **Android 16 and later** | SparkyFitness opens and logs, or Android shows a notification to tap first. Android 16 may also ask once whether the app may open from NFC. |
 
-A message such as **Logged 1 × Stanley** appears with **Tap to undo**.
+A message such as **Logged 1 × Stanley** or **Logged 170 g Greek yogurt** appears with **Tap to undo**. Undo removes exactly the drink, food or meal that tap logged.
 
 If tapping does nothing, open **Settings, then NFC tags** and use **Scan a tag**, then hold the phone to the tag.
 
@@ -44,7 +54,8 @@ If tapping does nothing, open **Settings, then NFC tags** and use **Scan a tag**
 
 - **Accidental taps:** turn on **Ask before logging** for a tag to get a Log or Cancel prompt on every tap.
 - **Double taps:** a second tap within about 10 seconds is ignored, so holding the phone on the tag too long logs only one drink.
-- **Deleted container:** if you delete the container a tag logs, the tap tells you and logs nothing. Open the tag and pick another container.
+- **Deleted container, food or meal:** if you delete what a tag logs, the tap tells you and logs nothing. Open the tag and pick something else. Entries the tag logged before stay in your diary, unless you delete a food together with its history.
+- **Deleted meal type:** if a tag always logs to a meal type you later delete, it logs by time of day instead.
 - **Someone else's tag:** a tag that is not set up on your account logs nothing. The app offers to set it up for you.
 - **Offline:** if your server cannot be reached, the app says so and logs nothing. Tap again when you are back online.
 - **Several people:** each person sets up their own tags, so two people can use the same bottle, each logging to their own account.
