@@ -10,8 +10,19 @@ import {
   queryQuantitySamples,
 } from '@kingstinct/react-native-healthkit';
 
+import { waitFor } from '@testing-library/react-native';
 import type { HealthMetricStates } from '../../src/types/healthRecords';
 import type { SyncDuration } from '../../src/services/healthkit/preferences';
+
+// The all-day heart rate phase runs only for the account the sync started for.
+jest.mock('../../src/services/storage', () => ({
+  ...jest.requireActual('../../src/services/storage'),
+  getActiveServerConfig: jest.fn().mockResolvedValue({
+    id: 'server-1',
+    url: 'https://sparky.example',
+    apiKey: 'key-1',
+  }),
+}));
 
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
@@ -238,8 +249,9 @@ describe('syncHealthData (iOS)', () => {
 
     expect(result.success).toBe(true);
     // The daily min/max/avg come from one discrete-statistics collection query. The
-    // only raw sample read is the separate all-day heart rate upload.
-    expect(mockQueryQuantitySamples).toHaveBeenCalled();
+    // only raw sample read is the separate all-day heart rate upload, which runs
+    // after the sync has returned.
+    await waitFor(() => expect(mockQueryQuantitySamples).toHaveBeenCalled());
     for (const call of mockQueryQuantitySamples.mock.calls) {
       expect(call[0]).toBe('HKQuantityTypeIdentifierHeartRate');
     }
