@@ -203,12 +203,11 @@ export function AdjustNutritionMode({
         return selection;
       }
       setPendingUnitSelection(selection);
-      // A converted unit carries custom nutrients scaled to its serving; show
-      // and save those, like the scaled standard nutrients.
-      const draftCustom = selection.variant.custom_nutrients;
-      if (draftCustom && Object.keys(draftCustom).length > 0) {
-        setCurrentCustomNutrients(draftCustom);
-      }
+      // The draft carries the custom nutrients of the variant it was built
+      // from, scaled to its serving. Take them even when empty: a conversion
+      // can start from a variant with none, and keeping the previous values
+      // would save them next to nutrients scaled from another variant.
+      setCurrentCustomNutrients(selection.variant.custom_nutrients ?? {});
       return selection;
     },
     [variantId, currentVariantId]
