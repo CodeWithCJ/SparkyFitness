@@ -1068,6 +1068,57 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       values: displayValues,
     });
 
+  /**
+   * A tag logs one of the food's saved servings on every tap, never this
+   * screen's one-off changes. A unit picked here that the food does not have
+   * yet is saved as a serving first, as an online food's unit is; a serving
+   * edited to another unit cannot be kept, so the person picks a saved one.
+   */
+  const pickLocalFoodForActionTag = async (variantId: string) => {
+    let tagVariantId = variantId;
+    let tagUnit = displayValues.servingUnit;
+    const saved = variants?.find((variant) => variant.id === variantId);
+    const isSavedServing = saved
+      ? toNonEmptyString(saved.serving_unit, 'serving').trim().toLowerCase() ===
+        tagUnit.trim().toLowerCase()
+      : // Servings not loaded: the item's own serving, unless one was picked.
+        !pendingVariantToPersist;
+    if (!isSavedServing) {
+      if (!pendingVariantToPersist) {
+        Toast.show({
+          type: 'error',
+          text1: t('foodEntryAdd.errors.tagNeedsSavedServing', {
+            defaultValue: "Choose one of this food's servings",
+          }),
+          text2: t('foodEntryAdd.errors.tagNeedsSavedServingDetails', {
+            defaultValue:
+              'A tag logs a saved serving each time, so a serving changed here cannot be used.',
+          }),
+        });
+        return;
+      }
+      const created = await createVariant(
+        buildCreateFoodVariantPayload(activeItem.id, pendingVariantToPersist)
+      );
+      tagVariantId = toNonEmptyString(created.id, '');
+      tagUnit = toNonEmptyString(created.serving_unit, tagUnit);
+      if (!tagVariantId) {
+        throw new Error('Server did not return a created variant ID');
+      }
+    }
+    finishFoodSelection(
+      buildMealIngredientDraft({
+        foodId: activeItem.id,
+        variantId: tagVariantId,
+        quantity,
+        unit: tagUnit,
+        foodName: adjustedValues?.name || activeItem.name,
+        brand: adjustedValues?.brand ?? activeItem.brand,
+        values: displayValues,
+      })
+    );
+  };
+
   const finishFoodSelection = (ingredient: MealIngredientDraft) => {
     if (isActionTagMode) {
       if (ingredient.food_id && ingredient.variant_id) {
@@ -1150,6 +1201,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           const variantId = selectedVariantId ?? activeItem.variantId;
           if (!variantId) {
             throw new Error('Missing variant ID for local food');
+          }
+
+          if (isActionTagMode) {
+            await pickLocalFoodForActionTag(variantId);
+            return;
           }
 
           finishFoodSelection(

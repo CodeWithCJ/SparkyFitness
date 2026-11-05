@@ -1736,6 +1736,85 @@ describe('FoodEntryAddScreen', () => {
       vitaminC: '',
     };
 
+    it('saves a converted unit as a serving before handing a local food to the NFC tag form', async () => {
+      consumePendingActionTagSelection();
+      mockCreateVariant.mockResolvedValue({
+        id: 'variant-oz-new',
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      });
+      const screen = renderScreen({
+        item: baseLocalItem,
+        pickerMode: 'action-tag',
+        returnDepth: 2,
+        adjustedValues: {
+          name: 'Greek Yogurt',
+          brand: 'Sparky',
+          servingSize: '1',
+          servingUnit: 'oz',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+          fiber: '',
+          saturatedFat: '',
+          sodium: '',
+          sugars: '',
+          transFat: '',
+          potassium: '',
+          calcium: '',
+          iron: '',
+          cholesterol: '',
+          vitaminA: '',
+          vitaminC: '',
+        },
+        adjustedUnitSelection: {
+          kind: 'draft',
+          variant: {
+            serving_size: 1,
+            serving_unit: 'oz',
+            calories: 120,
+            protein: 10,
+            carbs: 8,
+            fat: 4,
+          },
+        },
+      });
+
+      await waitFor(() => {
+        expect(navigation.setParams).toHaveBeenCalledWith({
+          adjustedValues: undefined,
+          adjustedUnitSelection: undefined,
+        });
+      });
+
+      fireEvent.press(screen.getByText('Add Food'));
+
+      await waitFor(() =>
+        expect(navigation.dispatch).toHaveBeenCalledWith({
+          type: 'POP',
+          payload: { count: 2 },
+        })
+      );
+      expect(mockCreateVariant).toHaveBeenCalledWith(
+        expect.objectContaining({ food_id: 'food-1', serving_unit: 'oz' })
+      );
+      expect(consumePendingActionTagSelection()).toEqual(
+        expect.objectContaining({
+          kind: 'food',
+          foodId: 'food-1',
+          variantId: 'variant-oz-new',
+          unit: 'oz',
+        })
+      );
+      expect(mockAddEntry).not.toHaveBeenCalled();
+    });
+
     it('preserves real selectedVariantId for local foods when draft is returned', async () => {
       // Regression: draft branch was calling setSelectedVariantId(draftId) for
       // local foods, poisoning save payloads with a non-persisted variant ID.
