@@ -38,6 +38,14 @@ const CURSOR_KEY_PREFIX = '@SparkyFitness/heartRateSamplesThrough';
  * response cannot hold the phase open.
  */
 const STEP_TIMEOUT_MS = 60_000;
+/**
+ * Whether a week read without error but holding no readings is sent as an
+ * empty `merge`, which clears what was stored for it (readings deleted on the
+ * device). Only Health Connect: it reports a read it is not allowed as an
+ * error, while HealthKit hides a denied read as an empty one, so clearing on
+ * iOS would let a turned-off permission delete the stored readings.
+ */
+const CLEARS_EMPTY_WINDOWS = Platform.OS === 'android';
 
 export interface HeartRateReading {
   /** ISO instant */
@@ -264,8 +272,10 @@ export interface HeartRateSamplesResult {
 /**
  * Reads the all-day heart rate of a window and stores it on the server, a week
  * at a time. Best effort: a failed read or upload is reported and logged but
- * never throws, so it cannot fail the sync it runs beside. A window with no
- * readings is skipped rather than sent, since the server needs at least one.
+ * never throws, so it cannot fail the sync it runs beside. A window read
+ * without error but holding no readings is sent as an empty `merge`, clearing
+ * what was stored for it, where the platform makes that safe
+ * (`clearEmptyWindows`, Android only); otherwise it is skipped.
  * A window whose read failed or timed out is skipped too: its records may be
  * partial, and a `merge` would delete the stored readings missing from them.
  *
@@ -286,7 +296,8 @@ export async function syncAllDayHeartRate(
   end: Date,
   telemetry: TelemetryRunContext,
   logTag: string,
-  stepTimeoutMs: number = STEP_TIMEOUT_MS
+  stepTimeoutMs: number = STEP_TIMEOUT_MS,
+  clearEmptyWindows: boolean = CLEARS_EMPTY_WINDOWS
 ): Promise<HeartRateSamplesResult> {
   let samplesUploaded = 0;
   let error: string | undefined;
@@ -336,7 +347,8 @@ export async function syncAllDayHeartRate(
         }),
         window.start
       );
-      if (samples.length === 0) continue;
+      const clearing = samples.length === 0;
+      if (clearing && !clearEmptyWindows) continue;
       const body: HealthMetricSamplesWriteBody = {
         metric: 'heart_rate',
         source: PASSIVE_HEART_RATE_SOURCE,
@@ -365,6 +377,16 @@ export async function syncAllDayHeartRate(
         );
       } catch (e) {
         upload.abort();
+        // A server from before empty merges were allowed refuses the clear.
+        // It cannot clear the week either way, so this is not a failure that
+        // should hold back coverage and make every sync read the whole range.
+        if (clearing && e instanceof ApiError && e.statusCode === 400) {
+          addLog(
+            `${logTag} Server cannot clear an emptied heart rate week; skipped`,
+            'DEBUG'
+          );
+          continue;
+        }
         throw e;
       }
       samplesUploaded += samples.length;

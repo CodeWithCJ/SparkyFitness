@@ -274,7 +274,7 @@ Example Error Response:
     *   `device_name` (optional, string).
     *   `mode` (optional): `merge` (default) replaces only this source's stored samples inside `window`, on every day the window touches, and keeps the rest of those days, so sending the same window again replaces instead of duplicating; `replace` overwrites every day the samples touch.
     *   `window` (required for `merge`): `{ "start": ISO 8601, "end": ISO 8601 }`, at most 31 days. Every sample must lie inside it.
-    *   `samples` (required, 1–50000): `{ "t": ISO 8601 with offset, ... }` with the field of the metric: `bpm` (heart_rate), `percentage` (spo2), `level` (stress, body_battery), `brpm` (respiration), `rmssd_ms`/`sdnn_ms` (hrv), `celsius` (skin_temperature). Links to workouts or sleep (`ex`, `sl`) are not accepted.
+    *   `samples` (required, up to 50000; empty only in `merge` mode, which then clears this source's samples inside `window`, for a window with no readings left): `{ "t": ISO 8601 with offset, ... }` with the field of the metric: `bpm` (heart_rate), `percentage` (spo2), `level` (stress, body_battery), `brpm` (respiration), `rmssd_ms`/`sdnn_ms` (hrv), `celsius` (skin_temperature). Links to workouts or sleep (`ex`, `sl`) are not accepted.
 *   **Example Request Body**:
     ```json
     {

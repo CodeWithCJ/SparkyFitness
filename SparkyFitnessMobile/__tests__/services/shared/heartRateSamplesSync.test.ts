@@ -483,6 +483,85 @@ describe('syncAllDayHeartRate', () => {
     ]);
   });
 
+  it('sends a week read without error but now empty as an empty merge, which clears it', async () => {
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    const start = new Date('2026-11-01T00:00:00.000Z');
+    const end = new Date('2026-11-03T00:00:00.000Z');
+    const result = await syncAllDayHeartRate(
+      { readRaw },
+      ACCOUNT,
+      start,
+      end,
+      telemetry,
+      '[T]',
+      60_000,
+      true
+    );
+    expect(result).toEqual({ samplesUploaded: 0, error: undefined });
+    expect(postHealthMetricSamples).toHaveBeenCalledTimes(1);
+    const body = postHealthMetricSamples.mock.calls[0][0];
+    expect(body.mode).toBe('merge');
+    expect(body.window).toEqual({
+      start: start.toISOString(),
+      end: end.toISOString(),
+    });
+    expect(body.samples).toEqual([]);
+  });
+
+  it('never clears a week whose read failed', async () => {
+    const readRaw = jest
+      .fn()
+      .mockResolvedValue({ records: [], error: 'no permission' });
+    await syncAllDayHeartRate(
+      { readRaw },
+      ACCOUNT,
+      new Date('2026-11-01T00:00:00.000Z'),
+      new Date('2026-11-03T00:00:00.000Z'),
+      telemetry,
+      '[T]',
+      60_000,
+      true
+    );
+    expect(postHealthMetricSamples).not.toHaveBeenCalled();
+  });
+
+  it('skips an empty week where a denied read looks empty (the iOS default)', async () => {
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    await syncAllDayHeartRate(
+      { readRaw },
+      ACCOUNT,
+      new Date('2026-11-01T00:00:00.000Z'),
+      new Date('2026-11-03T00:00:00.000Z'),
+      telemetry,
+      '[T]'
+    );
+    expect(postHealthMetricSamples).not.toHaveBeenCalled();
+  });
+
+  it('treats an older server refusing the clear as no failure, so coverage still moves on', async () => {
+    postHealthMetricSamples.mockRejectedValueOnce(
+      new ApiError('Server error: 400', 400, '{}')
+    );
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    const end = new Date('2026-11-03T12:00:00.000Z');
+    const start = new Date(end.getTime() - 2 * DAY_MS);
+    const result = await syncAllDayHeartRate(
+      { readRaw },
+      ACCOUNT,
+      start,
+      end,
+      telemetry,
+      '[T]',
+      60_000,
+      true
+    );
+    expect(result.error).toBeUndefined();
+    const stored = await AsyncStorage.getItem(
+      `@SparkyFitness/heartRateSamplesThrough:${heartRateAccountId(ACCOUNT)}`
+    );
+    expect(stored).not.toBeNull();
+  });
+
   it('logs only the status of a failed upload, never the response body', async () => {
     postHealthMetricSamples.mockRejectedValueOnce(
       new ApiError('Server error: 400 - {"t":"…","bpm":66}', 400, '{"bpm":66}')
