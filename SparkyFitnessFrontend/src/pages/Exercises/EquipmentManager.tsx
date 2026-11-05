@@ -4,6 +4,7 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { Dumbbell, Footprints, Pencil, Plus, Star, Trash2 } from 'lucide-react';
 import {
   inventoryConfigFrom,
+  inventoryConfigToBody,
   type CreateShoeBody,
   type ShoeResponse,
 } from '@workspace/shared';
@@ -17,6 +18,13 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -27,6 +35,10 @@ import {
   useUpdateShoeMutation,
 } from '@/hooks/Shoes/useShoes';
 import {
+  useActivateGymMutation,
+  useCreateGymMutation,
+  useDeleteGymMutation,
+  useGyms,
   usePlateInventory,
   useResetPlateInventoryMutation,
   useSavePlateInventoryMutation,
@@ -165,7 +177,20 @@ const PlateInventorySection: React.FC<{ canWrite: boolean }> = ({
   const { data: stored, isLoading, isError } = usePlateInventory();
   const save = useSavePlateInventoryMutation();
   const reset = useResetPlateInventoryMutation();
+  const { data: gyms, isSuccess: gymsSupported } = useGyms();
+  const createGym = useCreateGymMutation();
+  const activateGym = useActivateGymMutation();
+  const deleteGym = useDeleteGymMutation();
   const [open, setOpen] = useState(false);
+  const [confirmDeleteGym, setConfirmDeleteGym] = useState(false);
+  const gymBusy =
+    createGym.isPending || activateGym.isPending || deleteGym.isPending;
+  const gymList = gyms ?? [];
+  const gymName = (gym: { name?: string | null }, index: number) =>
+    gym.name ||
+    t('plates.gym.unnamed', 'Gym {{number}}', { number: index + 1 });
+  const dumbbells = stored?.dumbbells ?? [];
+  const machineStacks = stored?.machine_stacks ?? [];
 
   // Until something is saved, the standard set for the person's unit is used.
   const config = inventoryConfigFrom(
@@ -196,6 +221,64 @@ const PlateInventorySection: React.FC<{ canWrite: boolean }> = ({
           </Button>
         )}
       </div>
+      {gymsSupported && canWrite && (
+        <div className="flex flex-wrap items-center gap-2">
+          {gymList.length > 1 && stored?.id && (
+            <Select
+              value={stored.id}
+              disabled={gymBusy}
+              onValueChange={(id) => activateGym.mutate(id)}
+            >
+              <SelectTrigger
+                className="w-48"
+                aria-label={t('plates.gym.heading', 'Gym')}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {gymList.map((gym, index) => (
+                  <SelectItem key={gym.id} value={gym.id}>
+                    {gymName(gym, index)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={gymBusy || isLoading || loadFailed}
+            onClick={() =>
+              createGym.mutate({
+                ...inventoryConfigToBody(config),
+                name: t('plates.gym.newName', 'Gym {{number}}', {
+                  number: gymList.length + 1,
+                }),
+              })
+            }
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" />
+            {t('plates.gym.add', 'Add gym')}
+          </Button>
+          {gymList.length > 1 && stored?.id && (
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={gymBusy}
+              onClick={() => setConfirmDeleteGym(true)}
+            >
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
+              {t('plates.gym.delete', 'Delete gym')}
+            </Button>
+          )}
+          <span className="text-xs text-muted-foreground">
+            {t(
+              'plates.gym.hint',
+              'Each gym keeps its own equipment. Workouts use the active gym, and progression rounds to the dumbbells and machine stacks it has.'
+            )}
+          </span>
+        </div>
+      )}
       {isLoading ? (
         <Skeleton className="h-20" />
       ) : loadFailed ? (
@@ -244,12 +327,54 @@ const PlateInventorySection: React.FC<{ canWrite: boolean }> = ({
                 )
               : t('plates.collarsNotCounted', 'Collars are not counted.')}
           </p>
+          {dumbbells.length > 0 && (
+            <p>
+              <span className="font-medium">
+                {t('plates.dumbbells', 'Dumbbells')}:{' '}
+              </span>
+              {dumbbells.map(formatPlateWeight).join(' · ')} {config.unit}
+            </p>
+          )}
+          {machineStacks.length > 0 && (
+            <p>
+              <span className="font-medium">
+                {t('plates.machines', 'Machines')}:{' '}
+              </span>
+              {machineStacks
+                .map(
+                  (m) =>
+                    m.exercise_name || t('plates.machineUnnamed', 'Machine')
+                )
+                .join(' · ')}
+            </p>
+          )}
         </div>
       )}
+      <ConfirmationDialog
+        open={confirmDeleteGym}
+        onOpenChange={setConfirmDeleteGym}
+        title={t('plates.gym.deleteTitle', 'Delete this gym?')}
+        description={t(
+          'plates.gym.deleteDescription',
+          'Its plates, bars, dumbbells and machine stacks are removed. Another gym becomes active.'
+        )}
+        variant="destructive"
+        confirmLabel={t('plates.gym.delete', 'Delete gym')}
+        onConfirm={() => {
+          if (stored?.id) deleteGym.mutate(stored.id);
+          setConfirmDeleteGym(false);
+        }}
+      />
       <PlateInventoryDialog
         open={open}
         onOpenChange={setOpen}
         initial={config}
+        gym={{
+          name: stored?.name ?? null,
+          dumbbells,
+          machineStacks,
+        }}
+        gymsSupported={gymsSupported}
         hasSaved={stored != null}
         onSubmit={(data) => save.mutateAsync(data)}
         onReset={() => {

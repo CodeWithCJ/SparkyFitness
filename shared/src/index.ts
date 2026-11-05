@@ -267,6 +267,7 @@ export * from './utils/calorieTargetReview.ts';
 export * from './utils/planProposals.ts';
 export * from './utils/warmupSets.ts';
 export * from './utils/plateCalculator.ts';
+export * from './utils/gymWeights.ts';
 export * from './utils/muscleBodyMap.ts';
 export * from './utils/workoutHeartRateSeries.ts';
 export * from './utils/cardioSession.ts';

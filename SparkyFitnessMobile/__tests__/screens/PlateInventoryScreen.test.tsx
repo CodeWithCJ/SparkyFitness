@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { presetInventory } from '@workspace/shared';
 import PlateInventoryScreen from '../../src/screens/PlateInventoryScreen';
 import {
+  useGyms,
   usePlateInventory,
   usePlateInventoryMutations,
 } from '../../src/hooks/usePlateInventory';
@@ -12,6 +13,7 @@ import type { RootStackScreenProps } from '../../src/types/navigation';
 jest.mock('../../src/hooks/usePlateInventory', () => ({
   usePlateInventory: jest.fn(),
   usePlateInventoryMutations: jest.fn(),
+  useGyms: jest.fn(),
 }));
 // Renders the header's primary action as a plain Save button.
 jest.mock('../../src/hooks/useScreenHeader', () => {
@@ -48,10 +50,16 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
 
 const save = jest.fn();
 const reset = jest.fn();
+const createGym = jest.fn();
+const activateGym = jest.fn();
+const deleteGym = jest.fn();
 
-const renderScreen = (hasSaved = false) => {
+const noGym = { id: null, name: null, dumbbells: [], machineStacks: [] };
+
+const renderScreen = (hasSaved = false, gymFields = noGym) => {
   jest.mocked(usePlateInventory).mockReturnValue({
     inventory: presetInventory('kg'),
+    gymFields,
     hasSaved,
     isLoading: false,
     isError: false,
@@ -77,7 +85,12 @@ beforeEach(() => {
   jest.mocked(usePlateInventoryMutations).mockReturnValue({
     saveMutation: { mutate: save, isPending: false },
     resetMutation: { mutate: reset, isPending: false },
+    createGymMutation: { mutate: createGym, isPending: false },
+    activateGymMutation: { mutate: activateGym, isPending: false },
+    deleteGymMutation: { mutate: deleteGym, isPending: false },
   } as unknown as ReturnType<typeof usePlateInventoryMutations>);
+  // A server from before gym profiles, unless a test says otherwise.
+  jest.mocked(useGyms).mockReturnValue({ gyms: [], supported: false });
 });
 
 describe('PlateInventoryScreen', () => {
@@ -92,6 +105,9 @@ describe('PlateInventoryScreen', () => {
     ]);
     expect(body.bars[0].weight).toBe(20);
     expect(body.collars_enabled).toBe(false);
+    // An older server gets no gym fields and the gym controls stay hidden.
+    expect(body).not.toHaveProperty('dumbbells');
+    expect(screen.queryByText('Add gym')).toBeNull();
   });
 
   it('changes the pairs of a plate', () => {
@@ -162,5 +178,45 @@ describe('PlateInventoryScreen', () => {
   it('offers a reset only when something is saved', () => {
     renderScreen(false);
     expect(screen.queryByText('Reset to standard')).toBeNull();
+  });
+
+  describe('gym profiles', () => {
+    const home = {
+      id: 'gym-home',
+      name: 'Home',
+      dumbbells: [10, 2.5],
+      machineStacks: [],
+    };
+    const withGyms = () => {
+      jest.mocked(useGyms).mockReturnValue({
+        gyms: [
+          { id: 'gym-home', name: 'Home', is_active: true },
+          { id: 'gym-work', name: 'Work', is_active: false },
+        ],
+        supported: true,
+      } as unknown as ReturnType<typeof useGyms>);
+      renderScreen(true, home);
+    };
+
+    it("saves the gym's name and dumbbells", () => {
+      withGyms();
+      fireEvent.changeText(
+        screen.getByLabelText('Dumbbells (kg)'),
+        '2,5 5 10; 12.5'
+      );
+      fireEvent.press(screen.getByText('Save'));
+      const body = save.mock.calls[0][0];
+      expect(body.name).toBe('Home');
+      expect(body.dumbbells).toEqual([2.5, 5, 10, 12.5]);
+      expect(body).not.toHaveProperty('machine_stacks');
+    });
+
+    it('switches to another gym and adds one', () => {
+      withGyms();
+      fireEvent.press(screen.getByText('Work'));
+      expect(activateGym).toHaveBeenCalledWith('gym-work', expect.anything());
+      fireEvent.press(screen.getByText('Add gym'));
+      expect(createGym.mock.calls[0][0].name).toBe('Gym 3');
+    });
   });
 });

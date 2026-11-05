@@ -16,6 +16,7 @@ import {
   type PresetSessionResponse,
   type WorkoutFormat,
   type DropSetWeightUnit,
+  type GymWeightSource,
   buildIntervalPhases,
   calculateDropSetWeightsKg,
   calculateWarmupSets,
@@ -279,6 +280,13 @@ export interface ActiveWorkoutState {
    */
   earlierSessionSets: Record<string, ExerciseRecentSessionSet[][]>;
   /**
+   * The active gym's dumbbells and machine stacks, captured once at live
+   * start so progressed weights snap to equipment that exists. Persisted
+   * with the other placeholder sources. Null when no gym is saved (or the
+   * server predates gym profiles); undefined until captured.
+   */
+  activeGym?: GymWeightSource | null;
+  /**
    * Preset progression and ramp settings per session exercise id, captured at
    * live start — session entries on the server don't carry them. Persisted
    * like `plannedSetValues`: the preset payload is gone after a cold start.
@@ -379,6 +387,8 @@ export interface ActiveWorkoutState {
    * live workout is active and the key is absent. Pass `[]` for an exercise
    * with no history — that still marks it captured.
    */
+  /** Capture the active gym once per live workout; no-op otherwise. */
+  captureActiveGym: (gym: GymWeightSource | null) => void;
   capturePreviousSessionSets: (
     exerciseId: string | null,
     sets: ExerciseRecentSessionSet[],
@@ -502,6 +512,21 @@ export interface ActiveWorkoutState {
    * set removes the exercise from the session entirely.
    */
   deleteSet: (setId: string) => void;
+  /**
+   * Put a deleted set back at its old position, as a new unsaved set (the
+   * saved one may already be gone on the server). No-op when its exercise
+   * is no longer in the session.
+   */
+  restoreSet: (
+    entryId: string,
+    deleted: ExerciseEntrySetResponse,
+    index: number
+  ) => void;
+  /**
+   * Insert a copy of a set right after it: same type, load and targets, not
+   * yet done, with no notes, RPE or PR of its own.
+   */
+  duplicateSet: (setId: string) => void;
   /**
    * Set rest_time on every set of an exercise. For a superset member the
    * write covers every set of every member — rest is per-round, so the
@@ -636,6 +661,7 @@ const initialData: Pick<
   | 'plannedSetValues'
   | 'previousSessionSets'
   | 'earlierSessionSets'
+  | 'activeGym'
   | 'exerciseConfigs'
   | 'coachingSignals'
   | 'declinedAdaptive'
@@ -675,6 +701,7 @@ const initialData: Pick<
   plannedSetValues: {},
   previousSessionSets: {},
   earlierSessionSets: {},
+  activeGym: undefined,
   exerciseConfigs: {},
   coachingSignals: {},
   declinedAdaptive: {},
@@ -979,6 +1006,7 @@ function adoptAssumedSetValues(
     | 'session'
     | 'previousSessionSets'
     | 'earlierSessionSets'
+    | 'activeGym'
     | 'plannedSetValues'
     | 'exerciseConfigs'
     | 'coachingSignals'
@@ -1505,6 +1533,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // live card, like the PR baseline.
           previousSessionSets: {},
           earlierSessionSets: {},
+          activeGym: undefined,
           exerciseConfigs,
           // Adaptive signals are fetched after start, like the history.
           coachingSignals: {},
@@ -1579,6 +1608,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           plannedSetValues: {},
           previousSessionSets: {},
           earlierSessionSets: {},
+          activeGym: undefined,
           // Nor its preset progression/ramp settings — same as the plan.
           exerciseConfigs: {},
           coachingSignals: {},
@@ -1782,6 +1812,13 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         if (state.sessionId == null) return;
         if (exerciseId in state.prBaseline) return;
         set({ prBaseline: { ...state.prBaseline, [exerciseId]: baseline } });
+      },
+
+      captureActiveGym: (gym) => {
+        const state = get();
+        if (state.sessionId == null) return;
+        if (state.activeGym !== undefined) return;
+        set({ activeGym: gym });
       },
 
       capturePreviousSessionSets: (exerciseId, sets, earlierSessions = []) => {
@@ -2491,6 +2528,65 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set(buildSessionEditState(state, next));
       },
 
+      restoreSet: (entryId, deleted, index) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        if (!session.exercises.some((e) => e.id === entryId)) return;
+        const restored: ExerciseEntrySetResponse = {
+          ...deleted,
+          id: nextTempSetId(session, state.setRenderKeys),
+        };
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: session.exercises.map((e) => {
+            if (e.id !== entryId) return e;
+            const sets = [...e.sets];
+            sets.splice(Math.min(Math.max(index, 0), sets.length), 0, restored);
+            return {
+              ...e,
+              sets: sets.map((s, idx) => ({ ...s, set_number: idx + 1 })),
+            };
+          }),
+        };
+        set(buildSessionEditState(state, next));
+      },
+
+      duplicateSet: (setId) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        const exercise = session.exercises.find((e) =>
+          e.sets.some((s) => String(s.id) === setId)
+        );
+        if (!exercise) return;
+        const index = exercise.sets.findIndex((s) => String(s.id) === setId);
+        const source = exercise.sets[index];
+        if (!source) return;
+        const copy: ExerciseEntrySetResponse = {
+          ...source,
+          id: nextTempSetId(session, state.setRenderKeys),
+          notes: null,
+          rpe: null,
+          completed_at: null,
+          is_pr: false,
+        };
+        const sets = [...exercise.sets];
+        sets.splice(index + 1, 0, copy);
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: session.exercises.map((e) =>
+            e.id !== exercise.id
+              ? e
+              : {
+                  ...e,
+                  sets: sets.map((s, idx) => ({ ...s, set_number: idx + 1 })),
+                }
+          ),
+        };
+        set(buildSessionEditState(state, next));
+      },
+
       setExerciseRest: (entryId, seconds) => {
         const state = get();
         const session = state.session;
@@ -3043,6 +3139,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         plannedSetValues: state.plannedSetValues,
         previousSessionSets: state.previousSessionSets,
         earlierSessionSets: state.earlierSessionSets,
+        activeGym: state.activeGym,
         exerciseConfigs: state.exerciseConfigs,
         coachingSignals: state.coachingSignals,
         declinedAdaptive: state.declinedAdaptive,

@@ -78,6 +78,8 @@ Warm-up sets are never counted or changed.
 
 In every mode that adds weight, three sessions in a row that miss the goal at the same weight trigger a deload: the next workout starts about 10% lighter, rounded down to whole increments so the plates still work (100 kg with a 2.5 kg increment → 90 kg; 62.5 kg → 55 kg). The hint says why. Then you build back up from there. Rep-only modes (Step-Load, or a reps increment) never deload.
 
+With [gyms](./plate-calculator.md#gyms-dumbbells-and-machine-stacks) set up, a raised or deloaded dumbbell or machine weight is also rounded to the dumbbells or pin settings the active gym really has: up for an increase, down for a deload.
+
 ### Updating the preset after a workout (mobile)
 
 When you finish a workout on mobile, the app offers to update the preset if what you did differs from it. Values that progression or the ramp filled in, logged as shown, don't count as a difference, so they neither trigger the prompt nor overwrite the weights stored in the preset. Only values you changed yourself do.

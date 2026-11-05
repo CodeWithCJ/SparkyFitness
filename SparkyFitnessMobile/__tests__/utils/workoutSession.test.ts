@@ -4411,6 +4411,24 @@ describe('workoutSession', () => {
         });
       });
 
+      it("snaps a progressed weight to the gym's steps: up on an increase, down on a deload", () => {
+        const steps = [10, 12.5, 15, 17.5, 22.5];
+        const up = resolveAssumedSetValues(
+          [makeSet(1)],
+          [prev(17.5, 10)],
+          undefined,
+          { progressionIncrementKg: 2.5, weightStepsKg: steps }
+        );
+        expect(up[0].weight).toBe(22.5);
+        const down = resolveAssumedSetValues(
+          [makeSet(1)],
+          [prev(22.5, 10)],
+          undefined,
+          { progressionIncrementKg: -2.5, weightStepsKg: steps }
+        );
+        expect(down[0].weight).toBe(17.5);
+      });
+
       it('leaves warmup sets out of the progression bump', () => {
         const result = resolveAssumedSetValues(
           [makeSet(1, { set_type: 'warmup' }), makeSet(2)],

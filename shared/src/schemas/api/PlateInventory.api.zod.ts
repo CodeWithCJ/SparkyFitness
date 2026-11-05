@@ -40,9 +40,38 @@ export const plateBarSchema = z.object({
     .refine(isValidPlateWeight, { message: weightStep }),
 });
 
-/** Full replacement of a person's plate inventory. */
+/** Most dumbbell sizes or stack steps one gym lists. */
+export const GYM_WEIGHT_STEPS_MAX = 80;
+/** Most machines with their own weight stack one gym lists. */
+export const GYM_MACHINE_STACKS_MAX = 60;
+
+/** Sorted, distinct weights (dumbbells or one machine's stack steps). */
+const weightStepsSchema = z
+  .array(plateWeightSchema)
+  .max(GYM_WEIGHT_STEPS_MAX)
+  .transform((weights) => [...new Set(weights)].sort((a, b) => a - b));
+
+/** A machine's real weight stack, odd steps included, in `weight_unit`. */
+export const machineStackSchema = z.object({
+  exercise_id: z.string().uuid(),
+  /** The exercise's name when saved, so lists can show it without a lookup. */
+  exercise_name: z.string().trim().max(120).nullable().optional(),
+  weights: weightStepsSchema,
+});
+
+/**
+ * Full replacement of the active gym's equipment. `name`, `dumbbells` and
+ * `machine_stacks` came with gym profiles; leaving them out keeps what the
+ * gym has, so older apps that only send plates and bars lose nothing.
+ */
 export const savePlateInventoryBodySchema = z
   .object({
+    name: z.string().trim().min(1).max(60).nullable().optional(),
+    dumbbells: weightStepsSchema.optional(),
+    machine_stacks: z
+      .array(machineStackSchema)
+      .max(GYM_MACHINE_STACKS_MAX)
+      .optional(),
     weight_unit: plateUnitSchema,
     bars: z.array(plateBarSchema).min(1).max(BARS_MAX),
     plates: z.array(plateDenominationSchema).max(PLATE_DENOMINATIONS_MAX),
@@ -85,6 +114,19 @@ export type SavePlateInventoryBody = z.infer<
 export const plateInventoryResponseSchema = z.object({
   id: z.string(),
   user_id: z.string(),
+  // Gym profile fields. Optional: servers from before gym profiles omit them.
+  name: z.string().nullable().optional(),
+  is_active: z.boolean().optional(),
+  dumbbells: z.array(z.number()).optional(),
+  machine_stacks: z
+    .array(
+      z.object({
+        exercise_id: z.string(),
+        exercise_name: z.string().nullable().optional(),
+        weights: z.array(z.number()),
+      })
+    )
+    .optional(),
   weight_unit: plateUnitSchema,
   bars: z.array(plateBarSchema),
   plates: z.array(plateDenominationSchema),
@@ -104,3 +146,9 @@ export const getPlateInventoryResponseSchema = z.object({
 export type GetPlateInventoryResponse = z.infer<
   typeof getPlateInventoryResponseSchema
 >;
+
+/** All of a person's gyms; exactly one is active (the one the calculator uses). */
+export const listGymsResponseSchema = z.object({
+  gyms: z.array(plateInventoryResponseSchema),
+});
+export type ListGymsResponse = z.infer<typeof listGymsResponseSchema>;

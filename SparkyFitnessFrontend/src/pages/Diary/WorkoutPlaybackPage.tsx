@@ -17,6 +17,8 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   distributeProgressionReps,
   evaluateProgression,
+  gymWeightStepsFor,
+  snapToWeightStep,
   type ExerciseProgressionConfig,
   type LastExercisePerformance,
   progressionModeSchema,
@@ -63,6 +65,7 @@ import {
 } from '@workspace/shared';
 import { fetchWorkoutCoachingSignals } from '@/hooks/Exercises/useWorkoutCoaching';
 import { fetchBackupExercise } from '@/hooks/Exercises/backupExercise';
+import { fetchActiveGymForProgression } from '@/hooks/PlateInventory/usePlateInventory';
 import WorkoutPlaybackDialogs from './WorkoutPlaybackDialogs';
 import WorkoutPlaybackExercisesList from './WorkoutPlaybackExercisesList';
 import WorkoutPlaybackIntervalHud from './WorkoutPlaybackIntervalHud';
@@ -233,6 +236,10 @@ const WorkoutPlaybackPage = () => {
             )
           ).catch(() => null)
         : null;
+      // The active gym's dumbbells and machine stacks, so a progressed
+      // weight lands on one that exists. Missing (none saved, an older
+      // server, or a delegate) just leaves weights unrounded.
+      const activeGym = await fetchActiveGymForProgression();
       const signalById = new Map(
         (signalsResponse?.signals ?? []).map((signal) => [
           signal.exercise_id,
@@ -352,6 +359,12 @@ const WorkoutPlaybackPage = () => {
                   : progression.status === 'DELOAD'
                     ? progression.suggestedWeight - baseWeightInDisplayUnit
                     : 0;
+              const weightSteps = gymWeightStepsFor(
+                activeGym,
+                exercise.exercise_id,
+                exercise.equipment,
+                weightUnit === 'lbs' ? 'lbs' : 'kg'
+              );
               let sets = exercise.sets;
               if (weightDelta !== 0 && baseWeightInDisplayUnit > 0) {
                 let workingIndex = 0;
@@ -363,7 +376,11 @@ const WorkoutPlaybackPage = () => {
                     ? weightFromKg(Number(previousSet.weight), weightUnit)
                     : baseWeightInDisplayUnit;
                   const targetKg = weightToKgLocal(
-                    Math.max(0, previousWeightInDisplayUnit + weightDelta),
+                    snapToWeightStep(
+                      Math.max(0, previousWeightInDisplayUnit + weightDelta),
+                      weightSteps,
+                      weightDelta > 0 ? 'up' : 'down'
+                    ),
                     weightUnit
                   );
                   return { ...s, weight: targetKg };
