@@ -1,5 +1,5 @@
-import { waitFor } from '@testing-library/react-native';
 import {
+  allDayHeartRateSettled,
   collectHealthData,
   runForegroundSync,
   type HealthReadProvider,
@@ -670,7 +670,10 @@ describe('runForegroundSync', () => {
     timeoutLabelPrefix: 'Test query',
   };
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    // A heart rate phase left over from an earlier test must not run into
+    // this one, or its calls would pass for this sync's.
+    await allDayHeartRateSettled();
     jest.clearAllMocks();
     writeback.runWriteback.mockResolvedValue(undefined);
   });
@@ -742,16 +745,14 @@ describe('runForegroundSync', () => {
     expect(result.success).toBe(true);
     expect(result.syncErrors).toEqual([]);
     // The phase runs after the sync returns.
-    await waitFor(() =>
-      expect(healthSamples.postHealthMetricSamples).toHaveBeenCalled()
-    );
+    await allDayHeartRateSettled();
+    expect(healthSamples.postHealthMetricSamples).toHaveBeenCalled();
     expect(readRaw).toHaveBeenCalledWith(
       'HeartRate',
       expect.any(Date),
       expect.any(Date),
       expect.anything()
     );
-    await flushPromises();
   });
 
   test('uploads the main payload first and returns without waiting for all-day heart rate', async () => {
@@ -793,9 +794,14 @@ describe('runForegroundSync', () => {
 
     // Resolved while the heart rate read is still pending.
     expect(result.success).toBe(true);
-    await waitFor(() => expect(order).toEqual(['upload', 'heartRate']));
+    // The phase reaches its heart rate read after the upload, and is still
+    // waiting on it.
+    for (let i = 0; i < 50 && order.length < 2; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    expect(order).toEqual(['upload', 'heartRate']);
     releaseHeartRate();
-    await flushPromises();
+    await allDayHeartRateSettled();
   });
 
   test('does not read all-day heart rate when Heart Rate sync is off', async () => {
@@ -1125,9 +1131,3 @@ describe('sessionTelemetryOutcomesUsable', () => {
     );
   });
 });
-
-/** Lets a detached phase settle so it cannot leak into the next test. */
-async function flushPromises(): Promise<void> {
-  for (let i = 0; i < 20; i++) await Promise.resolve();
-  await new Promise((resolve) => setTimeout(resolve, 0));
-}

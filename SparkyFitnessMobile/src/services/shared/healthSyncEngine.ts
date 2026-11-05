@@ -397,6 +397,15 @@ export interface ForegroundSyncOptions {
 let allDayHeartRateInFlight: Promise<void> | null = null;
 
 /**
+ * Settles once no all-day heart rate phase is running. The phase is detached
+ * from `runForegroundSync`, so anything that must see its result, or must not
+ * see one left over from an earlier sync (tests), waits on this.
+ */
+export const allDayHeartRateSettled = async (): Promise<void> => {
+  while (allDayHeartRateInFlight) await allDayHeartRateInFlight;
+};
+
+/**
  * The shared foreground sync flow: windows → collect → writeback (isolated) →
  * upload → SyncResult, then the all-day heart rate phase in the background.
  * The caller (useSyncHealthData) owns the sync cursor: it advances

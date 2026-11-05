@@ -10,7 +10,7 @@ import {
   queryQuantitySamples,
 } from '@kingstinct/react-native-healthkit';
 
-import { waitFor } from '@testing-library/react-native';
+import { allDayHeartRateSettled } from '../../src/services/shared/healthSyncEngine';
 import type { HealthMetricStates } from '../../src/types/healthRecords';
 import type { SyncDuration } from '../../src/services/healthkit/preferences';
 
@@ -135,6 +135,9 @@ const statsBucket = (
 
 describe('syncHealthData (iOS)', () => {
   beforeEach(async () => {
+    // A heart rate phase from an earlier sync must finish first, so the calls
+    // a test sees are its own sync's.
+    await allDayHeartRateSettled();
     jest.clearAllMocks();
     // Initialize HealthKit as available for most tests
     mockIsHealthDataAvailable.mockResolvedValue(true);
@@ -251,7 +254,8 @@ describe('syncHealthData (iOS)', () => {
     // The daily min/max/avg come from one discrete-statistics collection query. The
     // only raw sample read is the separate all-day heart rate upload, which runs
     // after the sync has returned.
-    await waitFor(() => expect(mockQueryQuantitySamples).toHaveBeenCalled());
+    await allDayHeartRateSettled();
+    expect(mockQueryQuantitySamples).toHaveBeenCalled();
     for (const call of mockQueryQuantitySamples.mock.calls) {
       expect(call[0]).toBe('HKQuantityTypeIdentifierHeartRate');
     }
