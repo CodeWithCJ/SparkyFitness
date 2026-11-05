@@ -58,6 +58,20 @@ describe('buildDayHeartRateTimeline', () => {
     expect(t.sleepDipPct).toBe(-50);
     expect(t.points.find((p) => p.minutes === 720)?.workoutName).toBe('Run');
   });
+
+  it('draws a bedtime past midnight but leaves it out of the figures', () => {
+    const t = buildDayHeartRateTimeline(
+      [
+        { minutes: 720, bpm: 80 },
+        { minutes: 1430, bpm: 90 },
+      ],
+      [],
+      { wakeMinutes: null, bedMinutes: 1425, bedAfterMidnight: true }
+    );
+    expect(t.points.find((p) => p.minutes === 1430)?.isSleep).toBe(true);
+    expect(t.sleepingAvg).toBeNull();
+    expect(t.daytimeAvg).toBe(85);
+  });
 });
 
 describe('dailyHeartRateAverages', () => {
@@ -106,7 +120,11 @@ describe('sleepWindowForDay', () => {
       '2026-10-05',
       parts
     );
-    expect(w).toEqual({ wakeMinutes: 390, bedMinutes: 1335 });
+    expect(w).toEqual({
+      wakeMinutes: 390,
+      bedMinutes: 1335,
+      bedAfterMidnight: false,
+    });
   });
   it('anchors a bedtime past midnight at the end of the day', () => {
     const w = sleepWindowForDay(
@@ -121,11 +139,60 @@ describe('sleepWindowForDay', () => {
       parts
     );
     expect(w.bedMinutes).toBe(1425);
+    expect(w.bedAfterMidnight).toBe(true);
+  });
+  it('keeps a bedtime from 18:00', () => {
+    const w = sleepWindowForDay(
+      [
+        {
+          entry_date: '2026-10-06',
+          bedtime: '2026-10-05T18:30:00',
+          wake_time: '2026-10-06T02:00:00',
+        },
+      ],
+      '2026-10-05',
+      parts
+    );
+    expect(w.bedMinutes).toBe(1110);
+  });
+  it('keeps the real wake time and prefers the night over a later nap', () => {
+    const w = sleepWindowForDay(
+      [
+        {
+          entry_date: '2026-10-05',
+          bedtime: '2026-10-05T14:00:00',
+          wake_time: '2026-10-05T15:00:00',
+        },
+        {
+          entry_date: '2026-10-05',
+          bedtime: '2026-10-04T21:00:00',
+          wake_time: '2026-10-05T02:00:00',
+        },
+      ],
+      '2026-10-05',
+      parts
+    );
+    expect(w.wakeMinutes).toBe(120);
+  });
+  it('keeps a shift worker wake time after 13:00', () => {
+    const w = sleepWindowForDay(
+      [
+        {
+          entry_date: '2026-10-05',
+          bedtime: '2026-10-05T06:00:00',
+          wake_time: '2026-10-05T14:00:00',
+        },
+      ],
+      '2026-10-05',
+      parts
+    );
+    expect(w.wakeMinutes).toBe(840);
   });
   it('is empty without sessions', () => {
     expect(sleepWindowForDay([], '2026-10-05', parts)).toEqual({
       wakeMinutes: null,
       bedMinutes: null,
+      bedAfterMidnight: false,
     });
   });
 });

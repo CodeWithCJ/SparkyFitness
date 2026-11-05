@@ -19,8 +19,10 @@ export function deviceClockParts(instant: string): ClockParts | null {
 }
 
 /**
- * Every recorded heart rate of `day`, across all of its source rows, placed by
- * the device's wall clock. A day has one row per source, so rows are merged.
+ * Every recorded heart rate whose device-local day is `day`, across all source
+ * rows, placed by the device's wall clock. Rows are filed by the account's
+ * timezone, so pass the rows of the day before and after as well: a reading
+ * near midnight can be filed on a neighbouring day.
  */
 export function heartRateReadingsForDay(
   rows: readonly HealthMetricSamples[] | null | undefined,
@@ -28,13 +30,12 @@ export function heartRateReadingsForDay(
 ): TimelineReading[] {
   const readings: TimelineReading[] = [];
   for (const row of rows ?? []) {
-    if (String(row.entry_date || '').slice(0, 10) !== day) continue;
     if (!Array.isArray(row.samples)) continue;
     for (const sample of row.samples) {
       const { t, bpm } = sample as { t?: unknown; bpm?: unknown };
       if (typeof t !== 'string' || typeof bpm !== 'number') continue;
       const parts = deviceClockParts(t);
-      if (parts) {
+      if (parts && parts.day === day) {
         readings.push({ minutes: parts.hour * 60 + parts.minute, bpm });
       }
     }
@@ -58,11 +59,19 @@ export function workoutBandsFromSessions(
 ): TimelineWorkoutBand[] {
   const bands: TimelineWorkoutBand[] = [];
   for (const session of sessions ?? []) {
-    const startTime =
-      session.type === 'preset'
-        ? session.exercises[0]?.entry_time
-        : session.entry_time;
-    const start = clockMinutes(startTime);
+    // A preset's exercises follow sort_order, not time, so take the earliest
+    // start any of them has
+    let start: number | null = null;
+    if (session.type === 'preset') {
+      for (const exercise of session.exercises) {
+        const minutes = clockMinutes(exercise.entry_time);
+        if (minutes !== null && (start === null || minutes < start)) {
+          start = minutes;
+        }
+      }
+    } else {
+      start = clockMinutes(session.entry_time);
+    }
     if (start === null) continue;
     const duration = Math.max(
       1,

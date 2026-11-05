@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
-import { CartesianChart, Line } from 'victory-native';
+import { CartesianChart, Line, Scatter } from 'victory-native';
 import { Rect } from '@shopify/react-native-skia';
+import { useCSSVariable } from 'uniwind';
 
 import Icon from '../Icon';
 import ReportSummaryCard, { type ReportSummaryRow } from './ReportSummaryCard';
@@ -13,32 +14,52 @@ import {
   computeNiceYAxisScale,
 } from '../charts/chartFormatting';
 import { useHeartRateDayTimeline } from '../../hooks/useHeartRateTimelines';
+import { usePreferences } from '../../hooks/usePreferences';
 import { addDays, getTodayDate } from '../../utils/dateUtils';
+import { formatHourLabel, formatTimeLabel } from '../../utils/entryTimeDisplay';
 import { formatLocalizedNumber } from '../../localization';
 
-const SLEEP_COLOR = '#6366f1';
-const WORKOUT_COLOR = '#f59e0b';
-const LINE_COLOR = '#f43f5e';
-const TEXT_MUTED = '#9ca3af';
 const X_TICKS = [0, 360, 720, 1080, 1440];
 
-const clock = (minutes: number): string =>
+const hourMinute = (minutes: number): string =>
   `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 
 interface Props {
   day: string;
+  /** First and last day the arrows may reach (the report window) */
+  minDay: string;
+  maxDay: string;
   onChangeDay: (day: string) => void;
 }
 
 /** One day of heart rate on a 24 hour axis, with sleep and workout shading. */
-const HeartRateDayTimelineCard: React.FC<Props> = ({ day, onChangeDay }) => {
+const HeartRateDayTimelineCard: React.FC<Props> = ({
+  day,
+  minDay,
+  maxDay,
+  onChangeDay,
+}) => {
   const { t } = useTranslation();
   const font = useChartFont(CHART_LABEL_FONT_SIZE);
-  const { timeline, isLoading, isError } = useHeartRateDayTimeline(
+  const { preferences } = usePreferences();
+  const timeFormat = preferences?.time_format;
+  const [lineColor, sleepColor, workoutColor, textMuted] = useCSSVariable([
+    '--color-heart-rate',
+    '--color-cat-violet',
+    '--color-cat-orange',
+    '--color-text-muted',
+  ]) as [string, string, string, string];
+  const { timeline, workouts, isLoading, isError } = useHeartRateDayTimeline(
     day,
     t('reports.heartRateWorkoutFallback', { defaultValue: 'Workout' })
   );
-  const isToday = day >= getTodayDate();
+  const isFirst = day <= minDay;
+  const isLast = day >= maxDay || day >= getTodayDate();
+  const clock = useCallback(
+    (minutes: number): string =>
+      formatTimeLabel(hourMinute(minutes), timeFormat) ?? hourMinute(minutes),
+    [timeFormat]
+  );
 
   const hasData = timeline.points.length > 0;
   const yScale = useMemo(() => {
@@ -63,20 +84,25 @@ const HeartRateDayTimelineCard: React.FC<Props> = ({ day, onChangeDay }) => {
     return bands;
   }, [timeline.points]);
 
-  const workoutBands = useMemo(() => {
-    const bands: { from: number; to: number }[] = [];
-    let start: number | null = null;
-    for (const p of timeline.points) {
-      const inWorkout = p.workoutName !== null;
-      if (inWorkout && start === null) start = p.minutes;
-      if (!inWorkout && start !== null) {
-        bands.push({ from: start, to: p.minutes });
-        start = null;
-      }
-    }
-    if (start !== null) bands.push({ from: start, to: 1440 });
-    return bands;
-  }, [timeline.points]);
+  // Drawn from the workouts themselves, so one shorter than the 5 minute grid
+  // still shows
+  const workoutBands = useMemo(
+    () => workouts.map((w) => ({ from: w.startMinutes, to: w.endMinutes })),
+    [workouts]
+  );
+
+  // Readings with no recorded neighbour form a one-point segment the line
+  // cannot draw, so they get a dot instead
+  const isolated = useMemo(
+    () =>
+      timeline.points.map(
+        (p, i) =>
+          p.bpm !== null &&
+          (timeline.points[i - 1]?.bpm ?? null) === null &&
+          (timeline.points[i + 1]?.bpm ?? null) === null
+      ),
+    [timeline.points]
+  );
 
   const rows = useMemo<ReportSummaryRow[]>(() => {
     const out: ReportSummaryRow[] = [];
@@ -119,7 +145,7 @@ const HeartRateDayTimelineCard: React.FC<Props> = ({ day, onChangeDay }) => {
       });
     }
     return out;
-  }, [timeline, t]);
+  }, [timeline, t, clock]);
 
   return (
     <>
@@ -136,10 +162,13 @@ const HeartRateDayTimelineCard: React.FC<Props> = ({ day, onChangeDay }) => {
             accessibilityLabel={t('reports.heartRatePreviousDay', {
               defaultValue: 'Previous day',
             })}
+            accessibilityState={{ disabled: isFirst }}
+            disabled={isFirst}
             hitSlop={12}
             onPress={() => onChangeDay(addDays(day, -1))}
+            style={{ opacity: isFirst ? 0.3 : 1 }}
           >
-            <Icon name="chevron-back" size={20} color={TEXT_MUTED} />
+            <Icon name="chevron-back" size={20} color={textMuted} />
           </Pressable>
           <Text className="text-text-secondary text-sm">
             {formatTooltipDate(day)}
@@ -150,13 +179,13 @@ const HeartRateDayTimelineCard: React.FC<Props> = ({ day, onChangeDay }) => {
             accessibilityLabel={t('reports.heartRateNextDay', {
               defaultValue: 'Next day',
             })}
-            accessibilityState={{ disabled: isToday }}
-            disabled={isToday}
+            accessibilityState={{ disabled: isLast }}
+            disabled={isLast}
             hitSlop={12}
             onPress={() => onChangeDay(addDays(day, 1))}
-            style={{ opacity: isToday ? 0.3 : 1 }}
+            style={{ opacity: isLast ? 0.3 : 1 }}
           >
-            <Icon name="chevron-forward" size={20} color={TEXT_MUTED} />
+            <Icon name="chevron-forward" size={20} color={textMuted} />
           </Pressable>
         </View>
 
@@ -189,15 +218,18 @@ const HeartRateDayTimelineCard: React.FC<Props> = ({ day, onChangeDay }) => {
                 xAxis={{
                   font,
                   tickValues: X_TICKS,
-                  labelColor: TEXT_MUTED,
+                  labelColor: textMuted,
                   formatXLabel: (m) =>
-                    `${String(Math.round(Number(m) / 60)).padStart(2, '0')}:00`,
+                    formatHourLabel(
+                      Math.round(Number(m) / 60) % 24,
+                      timeFormat
+                    ),
                 }}
                 yAxis={[
                   {
                     font,
                     tickCount: yScale?.tickValues.length ?? 5,
-                    labelColor: TEXT_MUTED,
+                    labelColor: textMuted,
                     tickValues: yScale?.tickValues,
                   },
                 ]}
@@ -216,26 +248,32 @@ const HeartRateDayTimelineCard: React.FC<Props> = ({ day, onChangeDay }) => {
                           y={chartBounds.top}
                           width={x(b.to) - x(b.from)}
                           height={height}
-                          color={SLEEP_COLOR}
+                          color={sleepColor}
                           opacity={0.14}
                         />
                       ))}
                       {workoutBands.map((b) => (
                         <Rect
-                          key={`w${b.from}`}
+                          key={`w${b.from}-${b.to}`}
                           x={x(b.from)}
                           y={chartBounds.top}
-                          width={x(b.to) - x(b.from)}
+                          width={Math.max(2, x(b.to) - x(b.from))}
                           height={height}
-                          color={WORKOUT_COLOR}
+                          color={workoutColor}
                           opacity={0.2}
                         />
                       ))}
                       <Line
                         points={points.bpm}
-                        color={LINE_COLOR}
+                        color={lineColor}
                         strokeWidth={1.8}
                         curveType="linear"
+                      />
+                      <Scatter
+                        points={points.bpm.filter((_, i) => isolated[i])}
+                        color={lineColor}
+                        radius={2}
+                        shape="circle"
                       />
                     </>
                   );
@@ -245,7 +283,7 @@ const HeartRateDayTimelineCard: React.FC<Props> = ({ day, onChangeDay }) => {
             <View className="flex-row justify-center mt-2" style={{ gap: 16 }}>
               {sleepBands.length > 0 && (
                 <LegendDot
-                  color={SLEEP_COLOR}
+                  color={sleepColor}
                   label={t('reports.heartRateLegendSleep', {
                     defaultValue: 'Asleep',
                   })}
@@ -253,7 +291,7 @@ const HeartRateDayTimelineCard: React.FC<Props> = ({ day, onChangeDay }) => {
               )}
               {workoutBands.length > 0 && (
                 <LegendDot
-                  color={WORKOUT_COLOR}
+                  color={workoutColor}
                   label={t('reports.heartRateLegendWorkout', {
                     defaultValue: 'Workout',
                   })}
@@ -263,7 +301,7 @@ const HeartRateDayTimelineCard: React.FC<Props> = ({ day, onChangeDay }) => {
           </>
         )}
       </View>
-      {hasData && rows.length > 0 && (
+      {!isLoading && !isError && hasData && rows.length > 0 && (
         <ReportSummaryCard
           title={t('reports.heartRateDayFigures', {
             defaultValue: 'Day Figures',

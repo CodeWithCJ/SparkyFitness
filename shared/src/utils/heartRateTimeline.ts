@@ -19,11 +19,14 @@ export interface TimelineWorkoutBand {
 
 /**
  * Where sleep sits on the day: asleep before `wakeMinutes` (morning) and from
- * `bedMinutes` (evening). Either may be unknown.
+ * `bedMinutes` (evening). Either may be unknown. `bedAfterMidnight` marks a
+ * bedtime that falls on the next day: `bedMinutes` is then only an anchor for
+ * drawing (23:45), and the day's statistics do not count it as sleep.
  */
 export interface TimelineSleepWindow {
   wakeMinutes: number | null;
   bedMinutes: number | null;
+  bedAfterMidnight?: boolean;
 }
 
 export type DayHeartRatePoint = {
@@ -116,11 +119,16 @@ export function buildDayHeartRateTimeline(
   const bpms = recorded.map((p) => p.bpm);
   const minBpm = Math.min(...bpms);
   const maxBpm = Math.max(...bpms);
+  // A bedtime after midnight belongs to the next day's sleep, so its 23:45
+  // anchor is drawn but not counted in this day's figures
+  const statsSleep: TimelineSleepWindow = sleep.bedAfterMidnight
+    ? { wakeMinutes: sleep.wakeMinutes, bedMinutes: null }
+    : sleep;
   const sleepingAvg = average(
-    recorded.filter((p) => p.isSleep).map((p) => p.bpm)
+    recorded.filter((p) => isAsleepAt(p.minutes, statsSleep)).map((p) => p.bpm)
   );
   const daytimeAvg = average(
-    recorded.filter((p) => !p.isSleep).map((p) => p.bpm)
+    recorded.filter((p) => !isAsleepAt(p.minutes, statsSleep)).map((p) => p.bpm)
   );
   return {
     points,
@@ -200,10 +208,11 @@ const nextDayOf = (day: string): string => {
 };
 
 /**
- * Where sleep sits on `day`: the session that ended that morning (wake time
- * kept between 03:00 and 13:00) and the one that began that evening, or just
- * after midnight, which is drawn from 23:45. `clockParts` turns an instant into
- * the wall clock of the zone being charted, null when it cannot.
+ * Where sleep sits on `day`: the session that ended that day (the earliest
+ * wake, so a later nap does not replace the night) and the one that began that
+ * evening (from 18:00), or just after midnight, which is drawn from 23:45.
+ * `clockParts` turns an instant into the wall clock of the zone being charted,
+ * null when it cannot.
  */
 export function sleepWindowForDay(
   sessions: readonly SleepSessionTimes[],
@@ -215,20 +224,15 @@ export function sleepWindowForDay(
     String(s.entry_date || '').slice(0, 10);
 
   let wakeMinutes: number | null = null;
-  const morning = sessions.find(
-    (s) =>
-      (s.wake_time ? clockParts(s.wake_time)?.day === day : false) ||
-      filedOn(s) === day
-  );
-  const wake = morning?.wake_time ? clockParts(morning.wake_time) : null;
-  if (wake) {
-    wakeMinutes = Math.min(
-      13 * 60,
-      Math.max(3 * 60, wake.hour * 60 + wake.minute)
-    );
+  for (const s of sessions) {
+    const wake = s.wake_time ? clockParts(s.wake_time) : null;
+    if (!wake || wake.day !== day) continue;
+    const minutes = wake.hour * 60 + wake.minute;
+    if (wakeMinutes === null || minutes < wakeMinutes) wakeMinutes = minutes;
   }
 
   let bedMinutes: number | null = null;
+  let bedAfterMidnight = false;
   const evening = sessions.find((s) => {
     const bed = s.bedtime ? clockParts(s.bedtime) : null;
     if (bed) {
@@ -239,11 +243,12 @@ export function sleepWindowForDay(
   });
   const bed = evening?.bedtime ? clockParts(evening.bedtime) : null;
   if (bed) {
-    if (bed.day === day && bed.hour >= 19) {
+    if (bed.day === day && bed.hour >= 18) {
       bedMinutes = bed.hour * 60 + bed.minute;
     } else if (bed.day === next && bed.hour <= 5) {
       bedMinutes = 1425;
+      bedAfterMidnight = true;
     }
   }
-  return { wakeMinutes, bedMinutes };
+  return { wakeMinutes, bedMinutes, bedAfterMidnight };
 }

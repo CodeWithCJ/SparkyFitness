@@ -13,14 +13,31 @@ jest.mock('../../src/hooks/useHeartRateZones', () => ({
 jest.mock('../../src/hooks/useHeartRateReport', () => ({
   useHeartRateReport: (args: unknown) => mockUseHeartRateReport(args),
 }));
+const defaultSections = ['heartRate.zones', 'heartRate.overview'];
+let mockShownSections = defaultSections;
 jest.mock('../../src/hooks/useReportCustomization', () => ({
   useReportCustomization: () => ({
-    window: { days: 30 },
+    window: { days: 30, startDate: '2026-09-21', endDate: '2026-10-20' },
     rangeProps: {},
-    isSectionShown: (id: string) =>
-      id === 'heartRate.zones' || id === 'heartRate.overview',
+    isSectionShown: (id: string) => mockShownSections.includes(id),
   }),
 }));
+jest.mock('../../src/components/reports/HeartRateRangeCard', () => {
+  const { Text } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ onSelectDay }: { onSelectDay?: unknown }) => (
+      <Text>{onSelectDay ? 'range card (opens days)' : 'range card'}</Text>
+    ),
+  };
+});
+jest.mock('../../src/components/reports/HeartRateDayTimelineCard', () => {
+  const { Text } = require('react-native');
+  return {
+    __esModule: true,
+    default: () => <Text>day card</Text>,
+  };
+});
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: () => null,
 }));
@@ -86,6 +103,7 @@ describe('HeartRateReportScreen zones', () => {
   });
 
   beforeEach(() => {
+    mockShownSections = defaultSections;
     navigate.mockReset();
     mockUseHeartRateReport.mockReturnValue({
       report,
@@ -119,6 +137,34 @@ describe('HeartRateReportScreen zones', () => {
     });
     const { getByText } = renderScreen();
     expect(getByText('↓ 3 bpm (Improving)')).toBeTruthy();
+  });
+
+  it('still shows the timelines when there is no resting heart rate', () => {
+    mockUseHeartRateZones.mockReturnValue({ zones: reserveZones });
+    mockShownSections = [
+      'heartRate.rangeTimeline',
+      'heartRate.dayTimeline',
+      'heartRate.overview',
+    ];
+    mockUseHeartRateReport.mockReturnValue({
+      report: { ...report, days: [] },
+      isLoading: false,
+      isError: false,
+    });
+    const { getByText, queryByText } = renderScreen();
+    expect(
+      getByText('No heart rate data recorded for this period')
+    ).toBeTruthy();
+    expect(getByText('range card (opens days)')).toBeTruthy();
+    expect(getByText('day card')).toBeTruthy();
+    expect(queryByText('Heart Rate Summary')).toBeNull();
+  });
+
+  it('does not offer to open a day while the day timeline is hidden', () => {
+    mockUseHeartRateZones.mockReturnValue({ zones: reserveZones });
+    mockShownSections = ['heartRate.rangeTimeline'];
+    const { getByText } = renderScreen();
+    expect(getByText('range card')).toBeTruthy();
   });
 
   it('hides the trend row without enough days', () => {

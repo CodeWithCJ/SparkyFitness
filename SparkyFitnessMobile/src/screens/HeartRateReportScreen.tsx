@@ -214,7 +214,7 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = ({
                   defaultValue: 'Stable',
                 }),
         hint: t('reports.restingHrTrendHint', {
-          defaultValue: 'Second half of the period vs the first half',
+          defaultValue: 'Later half of the readings vs the earlier half',
         }),
       });
     }
@@ -263,9 +263,13 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = ({
     );
   }
 
-  if (!report || !hasData) {
-    return (
-      <ReportScreenLayout header={header} {...rangeProps}>
+  // Without resting heart rate the resting sections give way to the empty
+  // state, while the timelines read the raw readings and still show
+  const hasRestingData = !!report && hasData;
+
+  return (
+    <ReportScreenLayout header={header} {...rangeProps}>
+      {!hasRestingData && (
         <StatusView
           icon="heart-rate"
           iconTone="muted"
@@ -274,14 +278,10 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = ({
             defaultValue: 'No heart rate data recorded for this period',
           })}
         />
-      </ReportScreenLayout>
-    );
-  }
+      )}
 
-  return (
-    <ReportScreenLayout header={header} {...rangeProps}>
       {/* 1. Multi-Day Resting HR Trend Chart */}
-      {isSectionShown('heartRate.restingHrChart') && (
+      {hasRestingData && isSectionShown('heartRate.restingHrChart') && (
         <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
           <Text className="text-text-primary text-lg font-semibold mb-1">
             {t('reports.restingHeartRateTrend', {
@@ -355,7 +355,9 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = ({
           startDate={reportWindow.startDate}
           endDate={reportWindow.endDate}
           windowDays={reportWindow.days}
-          onSelectDay={setPickedDay}
+          onSelectDay={
+            isSectionShown('heartRate.dayTimeline') ? setPickedDay : undefined
+          }
         />
       )}
 
@@ -363,6 +365,8 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = ({
       {isSectionShown('heartRate.dayTimeline') && (
         <HeartRateDayTimelineCard
           day={timelineDay}
+          minDay={reportWindow.startDate}
+          maxDay={reportWindow.endDate}
           onChangeDay={setPickedDay}
         />
       )}
@@ -385,7 +389,7 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = ({
       )}
 
       {/* 3. Summary Metrics Card */}
-      {isSectionShown('heartRate.overview') && (
+      {hasRestingData && isSectionShown('heartRate.overview') && (
         <ReportSummaryCard
           title={t('reports.heartRateSummary', {
             defaultValue: 'Heart Rate Summary',
@@ -395,7 +399,7 @@ const HeartRateReportScreen: React.FC<HeartRateReportScreenProps> = ({
       )}
 
       {/* 4. Insights & Health Guidance Card */}
-      {isSectionShown('heartRate.insights') && (
+      {report && hasRestingData && isSectionShown('heartRate.insights') && (
         <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
           <Text className="text-text-primary text-lg font-semibold mb-2">
             {t('reports.heartRateInsights', {

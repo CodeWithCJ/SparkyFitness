@@ -8108,7 +8108,7 @@
     "restingHrTrendImproving": "↓ {{bpm}} bpm (Improving)",
     "restingHrTrendElevated": "↑ {{bpm}} bpm (Elevated)",
     "restingHrTrendStable": "Stable",
-    "restingHrTrendHint": "Second half of the period vs the first half",
+    "restingHrTrendHint": "Later half of the readings vs the earlier half",
     "heartRateWorkoutFallback": "Workout",
     "heartRateDaytimeAvg": "Daytime average",
     "heartRateSleepingAvg": "Sleeping average",

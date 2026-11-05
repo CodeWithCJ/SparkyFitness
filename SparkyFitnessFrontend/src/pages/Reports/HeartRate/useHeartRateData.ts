@@ -256,10 +256,7 @@ export const useHeartRateData = (
       const wtInfo = parseTimeInZone(morningSleep.wake_time);
       const btInfo = parseTimeInZone(morningSleep.bedtime);
       if (wtInfo) {
-        morningWakeMinutes = Math.min(
-          13 * 60,
-          Math.max(3 * 60, wtInfo.minutesFromMidnight)
-        );
+        morningWakeMinutes = wtInfo.minutesFromMidnight;
         const endH = Math.floor(morningWakeMinutes / 60);
         const endM = morningWakeMinutes % 60;
         morningWakeTime = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
@@ -297,7 +294,7 @@ export const useHeartRateData = (
       const btInfo = parseTimeInZone(followingSleep.bedtime);
       if (btInfo) {
         eveningBedtimeDisplay = btInfo.timeStr;
-        if (btInfo.dateStr === focusedDate && btInfo.hour >= 19) {
+        if (btInfo.dateStr === focusedDate && btInfo.hour >= 18) {
           eveningBedMinutes = btInfo.minutesFromMidnight;
           eveningBedtime = btInfo.timeStr;
         } else if (btInfo.dateStr === nextDayStr && btInfo.hour <= 5) {

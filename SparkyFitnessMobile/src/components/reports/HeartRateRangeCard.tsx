@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { CartesianChart } from 'victory-native';
+import { useCSSVariable } from 'uniwind';
 
 import {
   useChartFont,
@@ -21,15 +22,15 @@ import ChartTouchOverlay, {
 import { useHeartRateDailyAverages } from '../../hooks/useHeartRateTimelines';
 import { formatLocalizedNumber } from '../../localization';
 
-const TEXT_MUTED = '#9ca3af';
-const LINE_COLOR = '#f43f5e';
-
 interface Props {
   startDate: string;
   endDate: string;
   windowDays: number;
-  /** Called with the day the finger lands on, to open it in the day timeline */
-  onSelectDay: (day: string) => void;
+  /**
+   * Called with the day the finger lands on, to open it in the day timeline.
+   * Left out while the day timeline is hidden, so no hint promises it.
+   */
+  onSelectDay?: (day: string) => void;
 }
 
 /** Average heart rate for every day of the report window. */
@@ -41,6 +42,10 @@ const HeartRateRangeCard: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation();
   const font = useChartFont(CHART_LABEL_FONT_SIZE);
+  const [lineColor, textMuted] = useCSSVariable([
+    '--color-heart-rate',
+    '--color-text-muted',
+  ]) as [string, string];
   const { days, isLoading, isError } = useHeartRateDailyAverages(
     startDate,
     endDate
@@ -72,7 +77,7 @@ const HeartRateRangeCard: React.FC<Props> = ({
       const point = days[index];
       if (!point) return;
       setSelected(index);
-      onSelectDay(point.day);
+      onSelectDay?.(point.day);
     },
     [days, onSelectDay]
   );
@@ -86,9 +91,11 @@ const HeartRateRangeCard: React.FC<Props> = ({
         max: formatLocalizedNumber(point.maxBpm),
         date: formatTooltipDate(point.day),
       })
-    : t('reports.heartRateRangeHint', {
-        defaultValue: 'Touch and hold a day to open it below',
-      });
+    : onSelectDay
+      ? t('reports.heartRateRangeHint', {
+          defaultValue: 'Touch and hold a day to open it below',
+        })
+      : '';
 
   return (
     <View className="bg-surface rounded-xl p-4 my-2 shadow-sm">
@@ -128,7 +135,7 @@ const HeartRateRangeCard: React.FC<Props> = ({
             xAxis={{
               font,
               tickCount: windowDays <= 7 ? 7 : windowDays <= 30 ? 6 : 5,
-              labelColor: TEXT_MUTED,
+              labelColor: textMuted,
               formatXLabel:
                 windowDays <= 7 ? formatXLabel7d : formatXLabel30d90d,
             }}
@@ -136,7 +143,7 @@ const HeartRateRangeCard: React.FC<Props> = ({
               {
                 font,
                 tickCount: yScale?.tickValues.length ?? 5,
-                labelColor: TEXT_MUTED,
+                labelColor: textMuted,
                 tickValues: yScale?.tickValues,
               },
             ]}
@@ -150,7 +157,7 @@ const HeartRateRangeCard: React.FC<Props> = ({
                 />
                 <LineSeriesMark
                   points={points.avgBpm}
-                  color={LINE_COLOR}
+                  color={lineColor}
                   strokeWidth={2.2}
                   curveType="cardinal"
                   connectMissingData

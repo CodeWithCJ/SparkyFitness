@@ -47,32 +47,36 @@ export function useHeartRateDayTimeline(
   day: string,
   workoutFallbackName: string
 ) {
-  const samples = useHeartRateSamples(day, day);
+  // Rows are filed by the account's timezone and readings placed by the
+  // device clock, so read the neighbouring days too
+  const samples = useHeartRateSamples(addDays(day, -1), addDays(day, 1));
   const sleep = useQuery({
     queryKey: heartRateDaySleepQueryKey(day),
     queryFn: () => fetchSleepEntries(addDays(day, -1), addDays(day, 1)),
   });
   const { summary } = useDailySummary({ date: day });
 
+  const workouts = useMemo(
+    () =>
+      workoutBandsFromSessions(summary?.exerciseEntries, workoutFallbackName),
+    [summary?.exerciseEntries, workoutFallbackName]
+  );
+
   const timeline = useMemo(
     () =>
       buildDayHeartRateTimeline(
         heartRateReadingsForDay(samples.data, day),
-        workoutBandsFromSessions(summary?.exerciseEntries, workoutFallbackName),
+        workouts,
         sleepWindowForDay(sleep.data ?? [], day, deviceClockParts)
       ),
-    [
-      samples.data,
-      sleep.data,
-      summary?.exerciseEntries,
-      day,
-      workoutFallbackName,
-    ]
+    [samples.data, sleep.data, workouts, day]
   );
 
+  // The day's figures split readings by sleep, so they wait for sleep too
   return {
     timeline,
-    isLoading: samples.isLoading,
-    isError: samples.isError,
+    workouts,
+    isLoading: samples.isLoading || sleep.isLoading,
+    isError: samples.isError || sleep.isError,
   };
 }
