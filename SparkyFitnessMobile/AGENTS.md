@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-04_
+_Last updated: 2026-11-05_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -135,6 +135,7 @@ npx expo prebuild --clean
 - Bootstrap timezone state before sync. `ensureTimezoneBootstrapped(...)` runs at startup and `healthDataApi.ts` enforces it before upload.
 - Preserve `record_timezone` and `record_utc_offset_minutes` when available.
 - Manual sync, sync-on-open, foreground-return sync, background sync, and iOS observer-triggered sync share coordination logic. Preserve claim/in-flight guards and cooldown recording.
+- All-day heart rate: with the Heart Rate toggle on, `runForegroundSync` starts `syncAllDayHeartRate` (`services/shared/heartRateSamplesSync.ts`) after the main upload without waiting for it; it sends minute readings a week at a time to `POST /api/generic-health/samples`, only ever to the account the sync started for. See [health-sync.md](agent-docs/health-sync.md#all-day-heart-rate).
 - Health uploads are chunked. Simple measurements use large chunks; sleep sessions use smaller session chunks; exercise/workout records are grouped by source to match server delete-then-insert behavior.
 - Sync result objects include `syncErrors`; callers should surface partial failures and avoid advancing `lastSyncedTime` when any metric read failed.
 - `backgroundSyncService.ts` uses overlap windows for sessions and day-aligned rolling windows for cumulative metrics and nutrition. Do not collapse those into one naive window.
