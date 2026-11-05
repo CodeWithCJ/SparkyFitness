@@ -17,6 +17,20 @@ Work out which plates go on each side of the bar for the weight you want to lift
 
 Plates are measured in the unit you pick for the inventory. If your app is set to another unit, the calculator converts the target weight exactly and tells you the result in the inventory's unit.
 
+## Gyms, dumbbells and machine stacks
+
+If you train in more than one place, keep a **gym** for each one. Every gym has its own plates, bars, dumbbells and machine weight stacks, and one gym is active at a time. The plate calculator and workouts use the active gym.
+
+- **Add gym** copies the active gym's plates and bars into a new gym and makes it active. Give it a name (Home, Work, Hotel) and change what differs.
+- Switch the active gym from the gym picker (web) or the gym buttons at the top of **Plates & bars** (mobile).
+- **Delete gym** removes the active gym; another one becomes active. With a single gym, **Reset to standard** goes back to the standard set.
+- **Dumbbells:** type each size the gym has, separated by spaces, for example `2 4 6 8 10 12.5`.
+- **Machine weight stacks (web):** pick the exercise you do on a machine and list the pin settings it really has, odd steps included, for example `5 11.5 18 24.5`. The mobile app keeps them and shows how many are saved.
+
+When progression adds weight (or deloads after a stall), the new weight is rounded to what the active gym has: **up** to the next dumbbell or pin setting for an increase, **down** for a deload. A machine's own stack is used for that exercise; otherwise dumbbell exercises use the dumbbell rack. Barbell weights are not rounded this way; the plate calculator shows how to load them. With no dumbbells or stacks saved, weights are left as they are.
+
+Gyms need an up-to-date server. With an older server the app shows only the plates and bars, as before.
+
 ## Using the calculator
 
 For a barbell, EZ bar or trap bar exercise, open the **Plates** action while you log a set:

@@ -9724,7 +9724,24 @@
     "calculatorShort": "Calculator",
     "barCard": "Bar {{number}}: {{name}}",
     "removeBarShort": "Remove",
-    "barWeightUnit": "Weight ({{unit}})"
+    "barWeightUnit": "Weight ({{unit}})",
+    "dumbbellsHeading": "Dumbbells ({{unit}})",
+    "dumbbellsHint": "Each size you have, separated by spaces. Leave empty if you have none.",
+    "gym": {
+      "heading": "Gym",
+      "name": "Name",
+      "namePlaceholder": "Home, work, hotel…",
+      "hint": "Each gym keeps its own equipment. Workouts use the active gym, and progression rounds to the dumbbells and machine stacks it has.",
+      "machineStacks_one": "{{count}} machine weight stack saved (edit it on the web).",
+      "machineStacks_other": "{{count}} machine weight stacks saved (edit them on the web).",
+      "add": "Add gym",
+      "newName": "Gym {{number}}",
+      "unnamed": "Gym {{number}}",
+      "delete": "Delete gym",
+      "deleteTitle": "Delete this gym?",
+      "deleteDescription": "Its plates, bars, dumbbells and machine stacks are removed. Another gym becomes active.",
+      "changeFailed": "Could not change gyms"
+    }
   },
   "labs": {
     "add": "Add lab result",

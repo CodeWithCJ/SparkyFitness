@@ -25,6 +25,11 @@ jest.mock('@/hooks/PlateInventory/usePlateInventory', () => ({
     isPending: false,
   }),
   useResetPlateInventoryMutation: () => ({ mutate: jest.fn() }),
+  // A server from before gym profiles: the gym controls stay hidden.
+  useGyms: () => ({ data: undefined, isSuccess: false }),
+  useCreateGymMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  useActivateGymMutation: () => ({ mutate: jest.fn(), isPending: false }),
+  useDeleteGymMutation: () => ({ mutate: jest.fn(), isPending: false }),
 }));
 
 jest.mock('@/contexts/PreferencesContext', () => ({

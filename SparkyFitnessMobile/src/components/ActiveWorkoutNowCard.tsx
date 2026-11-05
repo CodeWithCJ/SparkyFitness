@@ -53,6 +53,7 @@ export default function ActiveWorkoutNowCard({
   );
   const plannedSetValues = useActiveWorkoutStore((s) => s.plannedSetValues);
   const exerciseConfigs = useActiveWorkoutStore((s) => s.exerciseConfigs);
+  const activeGym = useActiveWorkoutStore((s) => s.activeGym);
   const workoutFormat = useActiveWorkoutStore((s) => s.workoutFormat);
 
   // Assumed-aware, like the workout bar: a set with empty fields shows the
@@ -61,6 +62,7 @@ export default function ActiveWorkoutNowCard({
     previousSessionSets,
     plannedSetValues,
     exerciseConfigs,
+    activeGym,
     weightUnit,
     workoutFormat,
   });

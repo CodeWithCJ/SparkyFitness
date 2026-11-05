@@ -1,15 +1,21 @@
 import express from 'express';
+import { z } from 'zod';
 import { savePlateInventoryBodySchema } from '@workspace/shared';
 import { authenticate } from '../../middleware/authMiddleware.js';
 import onBehalfOfMiddleware from '../../middleware/onBehalfOfMiddleware.js';
 import { createRequireSelfActor } from '../../middleware/requireSelfMiddleware.js';
 import {
+  activateGym,
+  createGym,
+  deleteGym,
   deletePlateInventory,
   getPlateInventory,
+  listGyms,
   savePlateInventory,
 } from '../../models/plateInventoryRepository.js';
 
 const router = express.Router();
+const gymIdSchema = z.uuid();
 
 router.use(authenticate);
 router.use(onBehalfOfMiddleware);
@@ -149,6 +155,136 @@ router.delete('/', async (req, res, next) => {
       return res.status(404).json({ error: 'Plate inventory not found' });
     }
     res.json({ success: true, message: 'Plate inventory removed' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /v2/plate-inventory/gyms:
+ *   get:
+ *     summary: List every gym profile (equipment set); the active one first
+ *     tags: [Fitness & Workouts]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: The gyms, in `gyms`
+ */
+router.get('/gyms', async (req, res, next) => {
+  try {
+    const authenticatedUserId = req.authenticatedUserId || req.userId;
+    const gyms = await listGyms(req.userId, authenticatedUserId);
+    res.json({ gyms });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /v2/plate-inventory/gyms:
+ *   post:
+ *     summary: Add a gym profile and make it the active one
+ *     tags: [Fitness & Workouts]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       description: Same body as PUT /v2/plate-inventory
+ *     responses:
+ *       201:
+ *         description: The new gym
+ *       400:
+ *         description: Invalid request body
+ */
+router.post('/gyms', async (req, res, next) => {
+  try {
+    const authenticatedUserId = req.authenticatedUserId || req.userId;
+    const parsed = savePlateInventoryBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Invalid request body',
+        details: parsed.error.format(),
+      });
+    }
+    const gym = await createGym(req.userId, parsed.data, authenticatedUserId);
+    res.status(201).json(gym);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /v2/plate-inventory/gyms/{id}/activate:
+ *   put:
+ *     summary: Make a gym profile the active one
+ *     tags: [Fitness & Workouts]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: {type: string, format: uuid}
+ *     responses:
+ *       200:
+ *         description: The now active gym
+ *       404:
+ *         description: Gym not found
+ */
+router.put('/gyms/:id/activate', async (req, res, next) => {
+  try {
+    if (!gymIdSchema.safeParse(req.params.id).success) {
+      return res.status(404).json({ error: 'Gym not found' });
+    }
+    const authenticatedUserId = req.authenticatedUserId || req.userId;
+    const gym = await activateGym(
+      req.userId,
+      req.params.id,
+      authenticatedUserId
+    );
+    if (!gym) return res.status(404).json({ error: 'Gym not found' });
+    res.json(gym);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
+ * /v2/plate-inventory/gyms/{id}:
+ *   delete:
+ *     summary: Delete a gym profile; another one becomes active
+ *     tags: [Fitness & Workouts]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: {type: string, format: uuid}
+ *     responses:
+ *       200:
+ *         description: Removed
+ *       404:
+ *         description: Gym not found
+ */
+router.delete('/gyms/:id', async (req, res, next) => {
+  try {
+    if (!gymIdSchema.safeParse(req.params.id).success) {
+      return res.status(404).json({ error: 'Gym not found' });
+    }
+    const authenticatedUserId = req.authenticatedUserId || req.userId;
+    const deleted = await deleteGym(
+      req.userId,
+      req.params.id,
+      authenticatedUserId
+    );
+    if (!deleted) return res.status(404).json({ error: 'Gym not found' });
+    res.json({ success: true });
   } catch (error) {
     next(error);
   }
