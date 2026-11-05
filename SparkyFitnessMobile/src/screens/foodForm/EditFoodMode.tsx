@@ -324,6 +324,12 @@ export function EditFoodMode({
         return selection;
       }
       setPendingUnitSelection(selection);
+      // A converted unit carries custom nutrients scaled to its serving; show
+      // and save those, like the scaled standard nutrients.
+      const draftCustom = selection.variant.custom_nutrients;
+      if (draftCustom && Object.keys(draftCustom).length > 0) {
+        setCurrentCustomNutrients(draftCustom);
+      }
       return selection;
     },
     [
@@ -617,6 +623,27 @@ export function EditFoodMode({
             setCurrentCustomNutrients(nextCustomNutrients);
             if (hasFoodMetadataChange) {
               await updateFood(foodId, foodPayload, imageArgs);
+            }
+            // The new variant has no saved siblings yet, so create the drafted
+            // equivalent units with its nutrition, as the overwrite path does.
+            const newSiblings = equivalentDraft.filter(
+              (eq) => !isBlankEquivalent(eq)
+            );
+            if (newSiblings.length > 0) {
+              const groupNutrition = buildGroupNutrition(
+                data,
+                variants?.find((v) => v.id === currentVariantId)
+              );
+              await Promise.all(
+                newSiblings.map((eq) =>
+                  createFoodVariant({
+                    food_id: foodId,
+                    serving_size: eq.serving_size,
+                    serving_unit: eq.serving_unit,
+                    ...groupNutrition,
+                  } as CreateFoodVariantPayload)
+                )
+              );
             }
             invalidateFoodCaches(queryClient, foodId);
             await persistPortions();
