@@ -151,6 +151,43 @@ describe('upsertSamplesByDay', () => {
     ]);
   });
 
+  it('a write with no site replaces only untagged samples', async () => {
+    // An older app sends skin temperature without a site; it must not delete
+    // the wrist and body readings a newer one stored in the same span.
+    stored = [
+      { t: at('06:00:00'), celsius: 34, site: 'wrist' },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
+      { t: at('06:45:00'), celsius: 33 },
+    ];
+
+    await upsertSamplesByDay(
+      'user-1',
+      'user-1',
+      'skin_temperature',
+      'healthkit',
+      [
+        {
+          entry_date: DAY,
+          timestamp: new Date(at('06:15:00')),
+          celsius: 35,
+        },
+      ],
+      {
+        mode: 'merge',
+        window: {
+          startMs: Date.parse(at('06:00:00')),
+          endMs: Date.parse(at('07:00:00')),
+        },
+      }
+    );
+
+    expect(writtenSamples()).toEqual([
+      { t: at('06:00:00'), celsius: 34, site: 'wrist' },
+      { t: at('06:15:00'), celsius: 35 },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
+    ]);
+  });
+
   it("keeps another entry's samples that sit inside the window", async () => {
     stored = [
       { t: at('08:00:00'), bpm: 60 },

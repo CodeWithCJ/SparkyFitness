@@ -2475,6 +2475,19 @@ const skinTemperatureHandleBatch: HandleBatchFn = async (entries, ctx) => {
       };
       return;
     }
+    // A site the server does not know is refused rather than dropped: written
+    // without one, the merge would treat it as an older reading.
+    if (
+      entry.site !== undefined &&
+      entry.site !== null &&
+      !isSkinTemperatureSite(entry.site)
+    ) {
+      outcomes[i] = {
+        status: 'error',
+        error: `Invalid skin temperature site: ${String(entry.site)}`,
+      };
+      return;
+    }
     const provider = normalizeHealthSourceProvider(entry.source);
     const site = isSkinTemperatureSite(entry.site) ? entry.site : undefined;
     const key = `${provider}|${site ?? ''}`;

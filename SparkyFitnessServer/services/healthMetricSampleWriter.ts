@@ -54,11 +54,13 @@ export interface SampleWriteOptions {
    */
   ex?: string;
   /**
-   * When set, a merge replaces only this site's samples inside `window` (a
-   * skin temperature's `site`). A sample with a different site is kept, so a
-   * sync of one place (wrist) never erases the other's (body) in the shared
-   * provider row. A stored sample with no site predates the field and is
-   * replaced like a match.
+   * The site of the samples being written (a skin temperature's `site`). A
+   * merge never replaces a stored sample tagged with another site, so a sync of
+   * one place (wrist) never erases the other's (body) in the shared provider
+   * row, and a write with no site (an older app) replaces only untagged
+   * samples. A stored sample with no site predates the field and is replaced
+   * like a match. Metrics without sites are unaffected: none of their samples
+   * carry one.
    */
   site?: string;
   /**
@@ -190,12 +192,8 @@ export async function upsertSamplesByDay(
           const ms = Date.parse(String(sample.t));
           if (!Number.isFinite(ms)) return true;
           if (ms < window.startMs || ms > window.endMs) return true;
-          // Inside the window. A sample from another site stays.
-          if (
-            options.site !== undefined &&
-            typeof sample.site === 'string' &&
-            sample.site !== options.site
-          ) {
+          // Inside the window. A sample tagged with another site stays.
+          if (typeof sample.site === 'string' && sample.site !== options.site) {
             return true;
           }
           // Without an entry id, the whole span is replaced. With one, another

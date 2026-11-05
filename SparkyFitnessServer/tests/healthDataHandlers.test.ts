@@ -1075,7 +1075,7 @@ describe('skinTemperatureHandler', () => {
     }
   );
 
-  it('keeps the measurement site and ignores an unknown one', async () => {
+  it('keeps the measurement site and refuses an unknown one', async () => {
     await handler.handle(
       {
         type: 'skin_temperature',
@@ -1085,7 +1085,7 @@ describe('skinTemperatureHandler', () => {
       },
       ctx
     );
-    await handler.handle(
+    const refused = await handler.handle(
       {
         type: 'skin_temperature',
         value: 34.1,
@@ -1095,10 +1095,13 @@ describe('skinTemperatureHandler', () => {
       ctx
     );
 
-    const [[, , , , wrist], [, , , , unknown]] =
-      vi.mocked(upsertSamplesByDay).mock.calls;
-    expect(wrist[0]).toMatchObject({ site: 'wrist' });
-    expect(unknown[0]).not.toHaveProperty('site');
+    const calls = vi.mocked(upsertSamplesByDay).mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0][4][0]).toMatchObject({ site: 'wrist' });
+    expect(refused).toEqual({
+      status: 'error',
+      error: 'Invalid skin temperature site: ear',
+    });
   });
 
   it('writes a batch once per source and reports each entry in order', async () => {
