@@ -395,6 +395,31 @@ export interface ForegroundSyncOptions {
 
 /** The detached all-day heart rate phase of the last foreground sync, if still running. */
 let allDayHeartRateInFlight: Promise<void> | null = null;
+/**
+ * The phase of the latest sync that found one already running. It starts when
+ * that one settles, so a sync is never left without its upload (for example
+ * one for a newly signed-in account while the previous account's phase was
+ * stopping). Only the latest is kept: it covers the same or a newer range.
+ */
+let allDayHeartRateQueued: (() => Promise<void>) | null = null;
+
+const runAllDayHeartRatePhase = (phase: () => Promise<void>): void => {
+  if (allDayHeartRateInFlight) {
+    allDayHeartRateQueued = phase;
+    return;
+  }
+  allDayHeartRateInFlight = (async () => {
+    try {
+      await phase();
+    } finally {
+      const next = allDayHeartRateQueued;
+      allDayHeartRateQueued = null;
+      allDayHeartRateInFlight = null;
+      // Started in the same turn, so allDayHeartRateSettled() never sees a gap.
+      if (next) runAllDayHeartRatePhase(next);
+    }
+  })();
+};
 
 /**
  * Settles once no all-day heart rate phase is running. The phase is detached
@@ -544,19 +569,18 @@ export const runForegroundSync = async (
     // on the Heart Rate toggle (no new permission) and is isolated like writeback:
     // a failure is logged, never added to syncErrors, and re-sent by the next run
     // since each upload replaces its own window. One run at a time: a sync that
-    // finds the previous phase still going leaves it to finish.
+    // finds the previous phase still going queues its own to start after it.
     if (!metricsToSync.some((metric) => metric.recordType === 'HeartRate')) {
       return;
     }
+    if (!account) return;
     if (allDayHeartRateInFlight) {
       addLog(
-        `${opts.logTag} All-day heart rate still uploading from the last sync; skipped`,
+        `${opts.logTag} All-day heart rate queued behind the last sync's upload`,
         'DEBUG'
       );
-      return;
     }
-    if (!account) return;
-    allDayHeartRateInFlight = (async () => {
+    runAllDayHeartRatePhase(async () => {
       try {
         const heartRate = await syncAllDayHeartRate(
           provider,
@@ -578,9 +602,7 @@ export const runForegroundSync = async (
           `${opts.logTag} All-day heart rate phase failed: ${message}`,
           'ERROR'
         );
-      } finally {
-        allDayHeartRateInFlight = null;
       }
-    })();
+    });
   }
 };

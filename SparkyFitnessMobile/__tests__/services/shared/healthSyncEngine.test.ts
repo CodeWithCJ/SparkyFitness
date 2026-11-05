@@ -804,6 +804,53 @@ describe('runForegroundSync', () => {
     await allDayHeartRateSettled();
   });
 
+  test('a sync that finds a heart rate phase running queues its own after it', async () => {
+    let releaseFirst: () => void = () => {};
+    const firstRead = new Promise<{ records: [] }>((resolve) => {
+      releaseFirst = () => resolve({ records: [] });
+    });
+    const firstReadRaw = jest.fn((type: string) =>
+      type === 'HeartRate' ? firstRead : Promise.resolve({ records: [] })
+    );
+    const secondReadRaw = jest.fn().mockResolvedValue({ records: [] });
+
+    // Day statistics come from their own reader, so readRaw is only the
+    // all-day phase's.
+    const readMinMaxAvgByDay = () => Promise.resolve({ records: [] });
+    await runForegroundSync(
+      fakeProvider({ readRaw: firstReadRaw, readMinMaxAvgByDay }),
+      'today',
+      { isHeartRateSyncEnabled: true },
+      opts
+    );
+    for (let i = 0; i < 50 && firstReadRaw.mock.calls.length === 0; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    await runForegroundSync(
+      fakeProvider({ readRaw: secondReadRaw, readMinMaxAvgByDay }),
+      'today',
+      { isHeartRateSyncEnabled: true },
+      opts
+    );
+    // Held back while the first phase is still running...
+    expect(secondReadRaw).not.toHaveBeenCalledWith(
+      'HeartRate',
+      expect.anything(),
+      expect.anything(),
+      expect.anything()
+    );
+
+    // ...and run, not dropped, once it settles.
+    releaseFirst();
+    await allDayHeartRateSettled();
+    expect(secondReadRaw).toHaveBeenCalledWith(
+      'HeartRate',
+      expect.any(Date),
+      expect.any(Date),
+      expect.anything()
+    );
+  });
+
   test('does not read all-day heart rate when Heart Rate sync is off', async () => {
     const readRaw = jest.fn().mockResolvedValue({ records: [] });
     await runForegroundSync(
