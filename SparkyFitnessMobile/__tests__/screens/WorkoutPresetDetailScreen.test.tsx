@@ -306,6 +306,7 @@ describe('WorkoutPresetDetailScreen', () => {
           superset_group: undefined,
           progression_mode: 'fixed',
           rep_goal: 8,
+          rep_range_min: null,
           increment_type: 'weight',
           increment_value: 2.5,
           equipment_brand: 'Rogue',

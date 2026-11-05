@@ -36,10 +36,11 @@ export const workoutPresetExerciseResponseSchema = z.object({
   superset_group: z.number().int().nullable(),
   // Progression & Equipment Fields
   progression_mode: z
-    .enum(['rep_goal', 'fixed', 'step_load', 'manual'])
+    .enum(['rep_goal', 'fixed', 'step_load', 'manual', 'double', 'triple'])
     .nullable()
     .optional(),
   rep_goal: z.number().int().nullable().optional(),
+  rep_range_min: z.number().int().nullable().optional(),
   increment_type: z.enum(['weight', 'reps']).nullable().optional(),
   increment_value: z.number().nullable().optional(),
   equipment_brand: z.string().nullable().optional(),
@@ -118,10 +119,11 @@ export const workoutPresetExerciseRequestSchema = z
     superset_group: z.number().int().nullable().optional(),
     // Progression & Equipment Fields
     progression_mode: z
-      .enum(['rep_goal', 'fixed', 'step_load', 'manual'])
+      .enum(['rep_goal', 'fixed', 'step_load', 'manual', 'double', 'triple'])
       .nullable()
       .optional(),
     rep_goal: z.number().int().positive().nullable().optional(),
+    rep_range_min: z.number().int().positive().nullable().optional(),
     increment_type: z.enum(['weight', 'reps']).nullable().optional(),
     increment_value: z.number().positive().nullable().optional(),
     equipment_brand: z.string().nullable().optional(),

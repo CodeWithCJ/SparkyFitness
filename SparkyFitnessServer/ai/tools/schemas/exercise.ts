@@ -237,11 +237,11 @@ const presetSetSchema = z
 // (matched by exercise_id); null clears it.
 const presetProgressionFields = {
   progression_mode: z
-    .enum(['rep_goal', 'fixed', 'step_load', 'manual'])
+    .enum(['rep_goal', 'fixed', 'step_load', 'manual', 'double', 'triple'])
     .nullable()
     .optional()
     .describe(
-      'Between-session overload: rep_goal (total reps across working sets), fixed (reps per set), step_load (raise reps at the same load), manual (off)'
+      'Between-session overload: rep_goal (total reps across working sets), fixed (reps per set), step_load (raise reps at the same load), double (reps climb from rep_range_min to rep_goal per set, then load goes up and reps reset), triple (like double, but adds up to 2 sets before adding load), manual (off). Weight modes suggest a ~10% deload after 3 missed sessions at one load'
     ),
   rep_goal: z.coerce
     .number()
@@ -249,7 +249,16 @@ const presetProgressionFields = {
     .positive()
     .nullable()
     .optional()
-    .describe('Total reps (rep_goal/step_load) or reps per set (fixed)'),
+    .describe(
+      'Total reps (rep_goal/step_load), reps per set (fixed), or top of the per-set rep range (double/triple)'
+    ),
+  rep_range_min: z.coerce
+    .number()
+    .int()
+    .positive()
+    .nullable()
+    .optional()
+    .describe('Bottom of the per-set rep range for double/triple'),
   increment_type: z
     .enum(['weight', 'reps'])
     .nullable()
@@ -321,7 +330,7 @@ export const presetExerciseSchema = z
 const presetExercisesInputSchema = z
   .union([z.array(presetExerciseSchema), z.string()])
   .describe(
-    'Exercises as an array of objects or a JSON string; each item is {exercise_id, sets?, superset_group?, progression_mode?, rep_goal?, increment_type?, increment_value?, equipment_brand?, ramp_increment?}'
+    'Exercises as an array of objects or a JSON string; each item is {exercise_id, sets?, superset_group?, progression_mode?, rep_goal?, rep_range_min?, increment_type?, increment_value?, equipment_brand?, ramp_increment?}'
   );
 
 export type PresetExerciseInput = z.infer<typeof presetExerciseSchema>;
@@ -524,7 +533,7 @@ const updateWorkoutPresetSchema = z
       .describe(
         'Replacement exercises as an array of objects or a JSON string; when provided, REPLACES the entire exercise list, ' +
           'so call get_workout_preset first and include every exercise that should remain (not just the ones being changed). ' +
-          'Each item is {exercise_id, sets?, superset_group?, progression_mode?, rep_goal?, increment_type?, increment_value?, equipment_brand?, ramp_increment?}'
+          'Each item is {exercise_id, sets?, superset_group?, progression_mode?, rep_goal?, rep_range_min?, increment_type?, increment_value?, equipment_brand?, ramp_increment?}'
       ),
   })
   .strict();
@@ -743,7 +752,7 @@ export const manageExerciseInput = z.object({
     .describe(
       'Exercises as array of objects or JSON string — for create_workout_preset / update_workout_preset. ' +
         'On update_workout_preset this REPLACES the full exercise list, so call get_workout_preset first and include every exercise that should remain. ' +
-        'Each item is {exercise_id, sets?:[{reps,weight,duration,distance,rest_time,set_type,notes}], superset_group?, progression_mode?, rep_goal?, increment_type?, increment_value?, equipment_brand?, ramp_increment?}; items sharing the same superset_group are grouped as a superset. ' +
+        'Each item is {exercise_id, sets?:[{reps,weight,duration,distance,rest_time,set_type,notes}], superset_group?, progression_mode?, rep_goal?, rep_range_min?, increment_type?, increment_value?, equipment_brand?, ramp_increment?}; items sharing the same superset_group are grouped as a superset. ' +
         'progression_* / increment_* are between-session overload (increment_value is kg for weight). ramp_increment is kg added to each successive working set within ONE session (negative ramps down). ' +
         'On update, a progression or ramp field left out keeps the current value; null clears it.'
     ),

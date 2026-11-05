@@ -274,6 +274,11 @@ export interface ActiveWorkoutState {
    */
   previousSessionSets: Record<string, ExerciseRecentSessionSet[]>;
   /**
+   * The two sessions before `previousSessionSets` per exercise, newest first,
+   * captured with it. Progression reads them to spot a stall and deload.
+   */
+  earlierSessionSets: Record<string, ExerciseRecentSessionSet[][]>;
+  /**
    * Preset progression and ramp settings per session exercise id, captured at
    * live start — session entries on the server don't carry them. Persisted
    * like `plannedSetValues`: the preset payload is gone after a cold start.
@@ -376,7 +381,8 @@ export interface ActiveWorkoutState {
    */
   capturePreviousSessionSets: (
     exerciseId: string | null,
-    sets: ExerciseRecentSessionSet[]
+    sets: ExerciseRecentSessionSet[],
+    earlierSessions?: ExerciseRecentSessionSet[][]
   ) => void;
   /**
    * Record adaptive signals for exercises not captured yet. No-op outside a
@@ -629,6 +635,7 @@ const initialData: Pick<
   | 'setTimerStartedAt'
   | 'plannedSetValues'
   | 'previousSessionSets'
+  | 'earlierSessionSets'
   | 'exerciseConfigs'
   | 'coachingSignals'
   | 'declinedAdaptive'
@@ -667,6 +674,7 @@ const initialData: Pick<
   setTimerStartedAt: {},
   plannedSetValues: {},
   previousSessionSets: {},
+  earlierSessionSets: {},
   exerciseConfigs: {},
   coachingSignals: {},
   declinedAdaptive: {},
@@ -970,6 +978,7 @@ function adoptAssumedSetValues(
     ActiveWorkoutState,
     | 'session'
     | 'previousSessionSets'
+    | 'earlierSessionSets'
     | 'plannedSetValues'
     | 'exerciseConfigs'
     | 'coachingSignals'
@@ -1495,6 +1504,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // Previous-session sets are captured lazily per exercise by the
           // live card, like the PR baseline.
           previousSessionSets: {},
+          earlierSessionSets: {},
           exerciseConfigs,
           // Adaptive signals are fetched after start, like the history.
           coachingSignals: {},
@@ -1568,6 +1578,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // are real. Previous-session sets re-capture lazily.
           plannedSetValues: {},
           previousSessionSets: {},
+          earlierSessionSets: {},
           // Nor its preset progression/ramp settings — same as the plan.
           exerciseConfigs: {},
           coachingSignals: {},
@@ -1773,7 +1784,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set({ prBaseline: { ...state.prBaseline, [exerciseId]: baseline } });
       },
 
-      capturePreviousSessionSets: (exerciseId, sets) => {
+      capturePreviousSessionSets: (exerciseId, sets, earlierSessions = []) => {
         const state = get();
         // Same gating as capturePrBaseline: live workout only, once per
         // exercise, not a session edit.
@@ -1785,6 +1796,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           previousSessionSets: {
             ...state.previousSessionSets,
             [exerciseId]: sets,
+          },
+          earlierSessionSets: {
+            ...state.earlierSessionSets,
+            [exerciseId]: earlierSessions,
           },
         });
       },
@@ -3027,6 +3042,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // may adopt before any card remounts to re-capture history.
         plannedSetValues: state.plannedSetValues,
         previousSessionSets: state.previousSessionSets,
+        earlierSessionSets: state.earlierSessionSets,
         exerciseConfigs: state.exerciseConfigs,
         coachingSignals: state.coachingSignals,
         declinedAdaptive: state.declinedAdaptive,

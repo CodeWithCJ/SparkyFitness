@@ -93,6 +93,7 @@ export function presetFormReducer(
           // Progression & Equipment Fields
           progressionMode: exercise.progression_mode ?? 'rep_goal',
           repGoal: exercise.rep_goal ?? null,
+          repRangeMin: exercise.rep_range_min ?? null,
           incrementType: exercise.increment_type ?? 'weight',
           incrementValue: exercise.increment_value ?? 5,
           equipmentBrand: exercise.equipment_brand ?? null,

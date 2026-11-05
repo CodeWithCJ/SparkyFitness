@@ -9055,7 +9055,15 @@
       "supersetA": "SUPERSET A",
       "supersetB": "SUPERSET B",
       "supersetC": "SUPERSET C",
-      "supersetD": "SUPERSET D"
+      "supersetD": "SUPERSET D",
+      "doubleProgression": "Double Progression (Rep Range)",
+      "tripleProgression": "Triple Progression (Reps, Sets, Load)",
+      "repRangeTop": "Top of Rep Range",
+      "repRangeBottom": "Bottom of Rep Range",
+      "doubleTripleGuideTitle": "Double and Triple Progression (Rep Range)",
+      "doubleGuideBody": "Set a rep range per set, such as 8 to 12. Keep the load while reps climb. Once every working set reaches the top of the range, the load goes up by your increment and reps drop back to the bottom.",
+      "tripleGuideBody": "Triple progression adds a set before adding load: up to two sets more than planned. Once those are all at the top, the load goes up and you go back to the planned sets.",
+      "deloadGuideBody": "• Any mode that adds weight suggests a deload of about 10% (in whole increments) after three sessions in a row miss the goal at the same load."
     },
     "workoutPlansManager": {
       "openMenu": "Open menu"

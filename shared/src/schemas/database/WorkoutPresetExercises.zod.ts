@@ -21,10 +21,11 @@ export const workoutPresetExercisesSchema = z.object({
   superset_group: z.number().nullable(),
   // Progression & Equipment Fields
   progression_mode: z
-    .enum(['rep_goal', 'fixed', 'step_load', 'manual'])
+    .enum(['rep_goal', 'fixed', 'step_load', 'manual', 'double', 'triple'])
     .nullable()
     .optional(),
   rep_goal: z.number().int().nullable().optional(),
+  rep_range_min: z.number().int().nullable().optional(),
   increment_type: z.enum(['weight', 'reps']).nullable().optional(),
   increment_value: z.number().nullable().optional(),
   equipment_brand: z.string().nullable().optional(),
@@ -44,10 +45,11 @@ export const workoutPresetExercisesInitializerSchema = z.object({
   superset_group: z.number().optional().nullable(),
   // Progression & Equipment Fields
   progression_mode: z
-    .enum(['rep_goal', 'fixed', 'step_load', 'manual'])
+    .enum(['rep_goal', 'fixed', 'step_load', 'manual', 'double', 'triple'])
     .optional()
     .nullable(),
   rep_goal: z.number().int().optional().nullable(),
+  rep_range_min: z.number().int().optional().nullable(),
   increment_type: z.enum(['weight', 'reps']).optional().nullable(),
   increment_value: z.number().optional().nullable(),
   equipment_brand: z.string().optional().nullable(),
@@ -67,10 +69,11 @@ export const workoutPresetExercisesMutatorSchema = z.object({
   superset_group: z.number().optional().nullable(),
   // Progression & Equipment Fields
   progression_mode: z
-    .enum(['rep_goal', 'fixed', 'step_load', 'manual'])
+    .enum(['rep_goal', 'fixed', 'step_load', 'manual', 'double', 'triple'])
     .optional()
     .nullable(),
   rep_goal: z.number().int().optional().nullable(),
+  rep_range_min: z.number().int().optional().nullable(),
   increment_type: z.enum(['weight', 'reps']).optional().nullable(),
   increment_value: z.number().optional().nullable(),
   equipment_brand: z.string().optional().nullable(),

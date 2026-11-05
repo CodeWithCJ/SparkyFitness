@@ -119,7 +119,8 @@ export function useLiveWorkoutInputsCapture(connected: boolean): void {
           );
           store.capturePreviousSessionSets(
             exerciseId,
-            stats.recentSessions?.[0]?.sets ?? []
+            stats.recentSessions?.[0]?.sets ?? [],
+            (stats.recentSessions ?? []).slice(1).map((s) => s.sets)
           );
         })
         .catch(() => {

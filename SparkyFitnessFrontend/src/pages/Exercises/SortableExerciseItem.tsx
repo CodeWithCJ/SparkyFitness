@@ -46,6 +46,7 @@ import type {
 } from '@/types/workout';
 import {
   PresetSessionResponse,
+  type ProgressionMode,
   resolveExerciseModality,
 } from '@workspace/shared';
 import { SetColumnHeaders } from './SetHeader';
@@ -112,8 +113,9 @@ export type WorkoutSetField =
   | 'rpe';
 interface SortableExerciseItemProps {
   ex: SortableExerciseItemData & {
-    progression_mode?: 'rep_goal' | 'fixed' | 'step_load' | 'manual' | null;
+    progression_mode?: ProgressionMode | null;
     rep_goal?: number | null;
+    rep_range_min?: number | null;
     increment_type?: 'weight' | 'reps' | null;
     increment_value?: number | null;
     equipment_brand?: string | null;
@@ -185,11 +187,14 @@ export const SortableExerciseItem = ({
   const { distanceUnit } = usePreferences();
 
   // Local React State
-  const [progressionMode, setProgressionMode] = useState<
-    'rep_goal' | 'fixed' | 'step_load' | 'manual'
-  >(ex.progression_mode ?? 'rep_goal');
+  const [progressionMode, setProgressionMode] = useState<ProgressionMode>(
+    ex.progression_mode ?? 'rep_goal'
+  );
   const [repGoal, setRepGoal] = useState<string>(
     ex.rep_goal != null ? String(ex.rep_goal) : ''
+  );
+  const [repRangeMin, setRepRangeMin] = useState<string>(
+    ex.rep_range_min != null ? String(ex.rep_range_min) : ''
   );
   const [incrementType, setIncrementType] = useState<'weight' | 'reps'>(
     ex.increment_type ?? 'weight'
@@ -213,6 +218,9 @@ export const SortableExerciseItem = ({
   const [supersetGroup, setSupersetGroup] = useState<number | null>(
     ex.superset_group ?? null
   );
+
+  const isRangeMode =
+    progressionMode === 'double' || progressionMode === 'triple';
 
   const sortableId = ex.id?.toString() || `ex-${exerciseIndex}`;
 
@@ -273,19 +281,30 @@ export const SortableExerciseItem = ({
     onSetChange(exerciseIndex, 0, field, value);
   };
 
-  const handleModeChange = (
-    val: 'rep_goal' | 'fixed' | 'step_load' | 'manual'
-  ) => {
+  const handleModeChange = (val: ProgressionMode) => {
     setProgressionMode(val);
-    if (val === 'step_load') {
-      setIncrementType('reps');
-      onExerciseFieldChange?.(exerciseIndex, 'increment_type', 'reps');
+    // Step-load always raises reps; double and triple always add load.
+    const forcedType: 'weight' | 'reps' | null =
+      val === 'step_load'
+        ? 'reps'
+        : val === 'double' || val === 'triple'
+          ? 'weight'
+          : null;
+    if (forcedType) {
+      setIncrementType(forcedType);
+      onExerciseFieldChange?.(exerciseIndex, 'increment_type', forcedType);
     }
     onExerciseFieldChange?.(exerciseIndex, 'progression_mode', val);
-    commitIncrementValue(
-      incrementValue,
-      val === 'step_load' ? 'reps' : incrementType,
-      val
+    commitIncrementValue(incrementValue, forcedType ?? incrementType, val);
+  };
+
+  const handleRepRangeMinChange = (text: string) => {
+    setRepRangeMin(text);
+    const num = text ? parseInt(text, 10) : NaN;
+    onExerciseFieldChange?.(
+      exerciseIndex,
+      'rep_range_min',
+      isNaN(num) ? null : num
     );
   };
 
@@ -535,10 +554,7 @@ export const SortableExerciseItem = ({
                   className="h-8 w-full text-xs rounded-md border border-input bg-background px-2 py-1 text-foreground"
                   value={progressionMode}
                   onChange={(e) =>
-                    handleModeChange(
-                      e.target.value as
-                        'rep_goal' | 'fixed' | 'step_load' | 'manual'
-                    )
+                    handleModeChange(e.target.value as ProgressionMode)
                   }
                 >
                   <option value="rep_goal">
@@ -559,6 +575,18 @@ export const SortableExerciseItem = ({
                       'Step-Load (Reps Only)'
                     )}
                   </option>
+                  <option value="double">
+                    {t(
+                      'exercises.sortableExerciseItem.doubleProgression',
+                      'Double Progression (Rep Range)'
+                    )}
+                  </option>
+                  <option value="triple">
+                    {t(
+                      'exercises.sortableExerciseItem.tripleProgression',
+                      'Triple Progression (Reps, Sets, Load)'
+                    )}
+                  </option>
                   <option value="manual">
                     {t(
                       'exercises.sortableExerciseItem.manualNoOverload',
@@ -572,29 +600,53 @@ export const SortableExerciseItem = ({
                 <div>
                   <Label className="text-[11px] font-semibold text-muted-foreground uppercase flex items-center gap-1 mb-1">
                     <Trophy className="h-3 w-3 text-primary" />
-                    {progressionMode === 'fixed'
+                    {isRangeMode
                       ? t(
-                          'exercises.sortableExerciseItem.targetRepsSet',
-                          'Target Reps / Set'
+                          'exercises.sortableExerciseItem.repRangeTop',
+                          'Top of Rep Range'
                         )
-                      : t(
-                          'exercises.sortableExerciseItem.repGoalTotal',
-                          'Rep Goal (Total)'
-                        )}
+                      : progressionMode === 'fixed'
+                        ? t(
+                            'exercises.sortableExerciseItem.targetRepsSet',
+                            'Target Reps / Set'
+                          )
+                        : t(
+                            'exercises.sortableExerciseItem.repGoalTotal',
+                            'Rep Goal (Total)'
+                          )}
                   </Label>
                   <Input
                     type="number"
                     className="h-8 text-xs bg-background"
-                    placeholder="e.g. 24"
+                    placeholder={isRangeMode ? 'e.g. 12' : 'e.g. 24'}
                     value={repGoal}
                     onChange={(e) => handleRepGoalChange(e.target.value)}
                   />
                 </div>
               )}
 
+              {isRangeMode && (
+                <div>
+                  <Label className="text-[11px] font-semibold text-muted-foreground uppercase mb-1 block">
+                    {t(
+                      'exercises.sortableExerciseItem.repRangeBottom',
+                      'Bottom of Rep Range'
+                    )}
+                  </Label>
+                  <Input
+                    type="number"
+                    className="h-8 text-xs bg-background"
+                    placeholder="e.g. 8"
+                    value={repRangeMin}
+                    onChange={(e) => handleRepRangeMinChange(e.target.value)}
+                  />
+                </div>
+              )}
+
               {/* Increment Type: Only for overload modes */}
               {progressionMode !== 'manual' &&
-                progressionMode !== 'step_load' && (
+                progressionMode !== 'step_load' &&
+                !isRangeMode && (
                   <div>
                     <Label className="text-[11px] font-semibold text-muted-foreground uppercase mb-1 block">
                       {t(
@@ -981,6 +1033,34 @@ export const SortableExerciseItem = ({
                   {t(
                     'exercises.sortableExerciseItem.exampleTarget40RepsAt',
                     '• Example: Target 40 reps at bodyweight, Increment 3 reps → Next session targets 43 reps!'
+                  )}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-lg border border-border/60 bg-muted/30 space-y-1.5">
+                <div className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  {t(
+                    'exercises.sortableExerciseItem.doubleTripleGuideTitle',
+                    'Double and Triple Progression (Rep Range)'
+                  )}
+                </div>
+                <p className="text-muted-foreground">
+                  {t(
+                    'exercises.sortableExerciseItem.doubleGuideBody',
+                    'Set a rep range per set, such as 8 to 12. Keep the load while reps climb. Once every working set reaches the top of the range, the load goes up by your increment and reps drop back to the bottom.'
+                  )}
+                </p>
+                <p className="text-muted-foreground">
+                  {t(
+                    'exercises.sortableExerciseItem.tripleGuideBody',
+                    'Triple progression adds a set before adding load: up to two sets more than planned. Once those are all at the top, the load goes up and you go back to the planned sets.'
+                  )}
+                </p>
+                <p className="text-muted-foreground italic">
+                  {t(
+                    'exercises.sortableExerciseItem.deloadGuideBody',
+                    '• Any mode that adds weight suggests a deload of about 10% (in whole increments) after three sessions in a row miss the goal at the same load.'
                   )}
                 </p>
               </div>

@@ -28,8 +28,10 @@ export function generateClientId(): string {
 }
 
 export type ExerciseProgressionPatch = {
-  progressionMode?: 'rep_goal' | 'fixed' | 'step_load' | 'manual' | null;
+  progressionMode?:
+    'rep_goal' | 'fixed' | 'step_load' | 'manual' | 'double' | 'triple' | null;
   repGoal?: number | null;
+  repRangeMin?: number | null;
   incrementType?: 'weight' | 'reps' | null;
   incrementValue?: number | null;
   equipmentBrand?: string | null;
@@ -125,6 +127,7 @@ export function draftExercisesReducer(
           images: action.exercise.images ?? [],
           progressionMode: 'rep_goal',
           repGoal: null,
+          repRangeMin: null,
           incrementType: 'weight',
           incrementValue: 5,
           equipmentBrand: null,

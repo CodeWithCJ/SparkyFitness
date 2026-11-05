@@ -54,8 +54,16 @@ export interface WorkoutPlaybackExerciseDraft {
   workout_plan_assignment_id?: string | number | null;
   // Progression fields
   progression_mode?:
-    'rep_goal' | 'fixed' | 'step_load' | 'manual' | string | null;
+    | 'rep_goal'
+    | 'fixed'
+    | 'step_load'
+    | 'manual'
+    | 'double'
+    | 'triple'
+    | string
+    | null;
   rep_goal?: number | null;
+  rep_range_min?: number | null;
   increment_type?: 'weight' | 'reps' | string | null;
   increment_value?: number | null;
   equipment_brand?: string | null;

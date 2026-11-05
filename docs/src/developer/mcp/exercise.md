@@ -84,8 +84,9 @@ The `sparky_manage_exercise` tool supports the following actions:
 
   Progression and ramp fields (also accepted by `create_workout_preset`):
 
-  - `progression_mode`: `rep_goal`, `fixed`, `step_load`, or `manual` (off).
-  - `rep_goal`: total reps (`rep_goal`, `step_load`) or reps per set (`fixed`).
+  - `progression_mode`: `rep_goal`, `fixed`, `step_load`, `double`, `triple`, or `manual` (off).
+  - `rep_goal`: total reps (`rep_goal`, `step_load`), reps per set (`fixed`), or the top of the per-set rep range (`double`, `triple`).
+  - `rep_range_min`: the bottom of the per-set rep range (`double`, `triple`).
   - `increment_type`: `weight` or `reps`.
   - `increment_value`: amount added once the goal is met; kilograms for `weight`, a rep count for `reps`.
   - `equipment_brand`: optional equipment or machine brand.
