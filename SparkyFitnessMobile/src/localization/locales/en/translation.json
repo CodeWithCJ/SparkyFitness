@@ -2405,7 +2405,10 @@
     "videoLinkPlaceholder": "https://youtube.com/shorts/…",
     "videoLinkHelp": "A short demonstration clip, shown in the How to tab and during workouts.",
     "invalidVideoLink": "Invalid video link",
-    "invalidVideoLinkHint": "Enter a link starting with https://"
+    "invalidVideoLinkHint": "Enter a link starting with https://",
+    "useBackupExercise": "Taken? Use {{name}}",
+    "backupExercise": "the backup",
+    "backupFailed": "Could not load the backup exercise"
   },
   "cycleCard": {
     "mode": {
@@ -5551,7 +5554,10 @@
     "removeExercise": "Remove exercise",
     "addExercise": "Add Exercise",
     "exercise": "Exercise",
-    "duplicateExercise": "Duplicate exercise"
+    "duplicateExercise": "Duplicate exercise",
+    "setBackupExercise": "Set backup exercise…",
+    "changeBackupExercise": "Backup: {{name}}",
+    "removeBackupExercise": "Remove backup exercise"
   },
   "whatsNew": {
     "seeUpdate": "See what's new in this update",
@@ -7089,7 +7095,10 @@
       "more": "More",
       "notOnFigure": "Not on the figure",
       "male": "Male",
-      "female": "Female"
+      "female": "Female",
+      "trained": "Trained",
+      "untrained": "Untrained",
+      "untrainedHint": "Highlighted muscles had no working sets in this range"
     },
     "analysis": {
       "title": "More Analysis",
@@ -7297,6 +7306,29 @@
       "fromTypical_one": "Estimated from your last {{formattedCount}} run, so less precise. A hard run of 3 km or more sharpens it.",
       "fromTypical_other": "Estimated from your last {{formattedCount}} runs, so less precise. A hard run of 3 km or more sharpens it.",
       "fromTest": "Set by your latest fitness test. Threshold pace is about {{pace}} {{unit}}."
+    },
+    "strengthBalance": {
+      "title": "Strength balance",
+      "subtitle": "All-time bests, estimated one-rep max",
+      "lifetimeVolume": "Lifetime volume",
+      "lifetimeSets": "Sets",
+      "lifetimeSessions": "Sessions",
+      "bodyweightMultiple": "{{value}}× body weight",
+      "noKeyLifts": "Log a squat, bench press, deadlift, overhead press or row to see how they compare.",
+      "ratios": "Ratios",
+      "noBodyweight": "Log your body weight to see lifts as a multiple of it.",
+      "lifts": {
+        "squat": "Squat",
+        "bench": "Bench press",
+        "deadlift": "Deadlift",
+        "overheadPress": "Overhead press",
+        "row": "Row"
+      },
+      "status": {
+        "low": "Below range",
+        "high": "Above range",
+        "balanced": "Balanced"
+      }
     }
   },
   "customCategories": {
@@ -8433,7 +8465,8 @@
       "alcoholSummary": "Alcohol summary",
       "substancesWeekly": "Week by week",
       "restingHrChart": "Resting heart rate chart",
-      "heartRateZones": "Intensity zones"
+      "heartRateZones": "Intensity zones",
+      "strengthBalance": "Strength balance"
     },
     "hydrationSections": "Hydration report",
     "measurementsSections": "Measurements report",

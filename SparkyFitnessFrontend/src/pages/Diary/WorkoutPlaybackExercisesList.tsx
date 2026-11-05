@@ -42,6 +42,8 @@ interface WorkoutPlaybackExercisesListProps {
   onAddDropSets?: (exerciseIndex: number) => void;
   /** Swap the exercise for an alternative (issue #1560). */
   onReplaceExercise?: (exerciseIndex: number) => void;
+  /** Swaps in the slot's backup exercise, keeping its sets. */
+  onUseBackupExercise?: (exerciseIndex: number) => void;
   /** "Use my usual" / "Use the adjusted suggestion" (#1560). */
   onAdaptiveDeclined?: (exerciseIndex: number, declined: boolean) => void;
   weightUnit: WeightUnit;
@@ -60,6 +62,7 @@ const WorkoutPlaybackExercisesList = ({
   onAddSet,
   onAddDropSets,
   onReplaceExercise,
+  onUseBackupExercise,
   onAdaptiveDeclined,
   weightUnit,
 }: WorkoutPlaybackExercisesListProps) => {
@@ -145,6 +148,30 @@ const WorkoutPlaybackExercisesList = ({
                       { completedSets, totalSets }
                     )}
                   </p>
+                  {/* Only before a set is logged: logged sets belong to the
+                      exercise they were done on. */}
+                  {onUseBackupExercise &&
+                    exercise.backup_exercise_id &&
+                    completedSets === 0 && (
+                      <button
+                        type="button"
+                        className="mt-0.5 truncate text-left text-[11px] text-primary hover:underline"
+                        onClick={() => onUseBackupExercise(exerciseIndex)}
+                      >
+                        {t(
+                          'exercise.workoutPlaybackPage.useBackup',
+                          'Taken? Use {{name}}',
+                          {
+                            name:
+                              exercise.backup_exercise_name ??
+                              t(
+                                'exercise.workoutPlaybackPage.backupExercise',
+                                'the backup'
+                              ),
+                          }
+                        )}
+                      </button>
+                    )}
                 </div>
                 {onReplaceExercise && (
                   <button

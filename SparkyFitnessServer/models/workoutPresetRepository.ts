@@ -23,6 +23,15 @@ function parsePresetExerciseEquipment<
   return row;
 }
 
+/** A slot's backup exercise, or null; a slot can't back itself up. */
+function backupExerciseIdFor(exercise: {
+  exercise_id?: string | null;
+  backup_exercise_id?: string | null;
+}): string | null {
+  const backup = exercise.backup_exercise_id ?? null;
+  return backup && backup !== exercise.exercise_id ? backup : null;
+}
+
 async function assertPresetExerciseSetWeights(
   client: PoolClient,
   exerciseId: string,
@@ -68,9 +77,10 @@ async function createWorkoutPreset(presetData: any) {
             increment_value,
             equipment_brand,
             ramp_increment,
-            rep_range_min
+            rep_range_min,
+            backup_exercise_id
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
           [
             newPreset.id,
             exercise.exercise_id,
@@ -84,6 +94,7 @@ async function createWorkoutPreset(presetData: any) {
             exercise.equipment_brand ?? null,
             exercise.ramp_increment ?? null,
             exercise.rep_range_min ?? null,
+            backupExerciseIdFor(exercise),
           ]
         );
         const newExerciseId = exerciseResult.rows[0].id;
@@ -149,6 +160,8 @@ async function getWorkoutPresetByName(userId: any, name: any) {
                wpe.progression_mode,
                wpe.rep_goal,
                wpe.rep_range_min,
+               wpe.backup_exercise_id,
+               (SELECT be.name FROM exercises be WHERE be.id = wpe.backup_exercise_id) AS backup_exercise_name,
                wpe.increment_type,
                wpe.increment_value,
                wpe.equipment_brand,
@@ -219,6 +232,8 @@ async function getWorkoutPresets(userId: any, page = 1, limit = 10) {
                 wpe.progression_mode,
                 wpe.rep_goal,
                 wpe.rep_range_min,
+                wpe.backup_exercise_id,
+                (SELECT be.name FROM exercises be WHERE be.id = wpe.backup_exercise_id) AS backup_exercise_name,
                 wpe.increment_type,
                 wpe.increment_value,
                 wpe.equipment_brand,
@@ -279,6 +294,8 @@ async function getWorkoutPresetById(presetId: any, userId: any) {
                 wpe.progression_mode,
                 wpe.rep_goal,
                 wpe.rep_range_min,
+                wpe.backup_exercise_id,
+                (SELECT be.name FROM exercises be WHERE be.id = wpe.backup_exercise_id) AS backup_exercise_name,
                 wpe.increment_type,
                 wpe.increment_value,
                 wpe.equipment_brand,
@@ -368,9 +385,10 @@ async function updateWorkoutPreset(
               increment_value,
               equipment_brand,
               ramp_increment,
-              rep_range_min
+              rep_range_min,
+              backup_exercise_id
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
             [
               presetId,
               exercise.exercise_id,
@@ -384,6 +402,7 @@ async function updateWorkoutPreset(
               exercise.equipment_brand ?? null,
               exercise.ramp_increment ?? null,
               exercise.rep_range_min ?? null,
+              backupExerciseIdFor(exercise),
             ]
           );
           const newExerciseId = exerciseResult.rows[0].id;
@@ -610,6 +629,8 @@ async function searchWorkoutPresets(
                wpe.progression_mode,
                wpe.rep_goal,
                wpe.rep_range_min,
+               wpe.backup_exercise_id,
+               (SELECT be.name FROM exercises be WHERE be.id = wpe.backup_exercise_id) AS backup_exercise_name,
                wpe.increment_type,
                wpe.increment_value,
                wpe.equipment_brand,

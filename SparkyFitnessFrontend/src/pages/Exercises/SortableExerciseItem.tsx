@@ -121,6 +121,8 @@ interface SortableExerciseItemProps {
     equipment_brand?: string | null;
     ramp_increment?: number | null;
     superset_group?: number | null;
+    backup_exercise_id?: string | null;
+    backup_exercise_name?: string | null;
   };
   exerciseIndex: number;
   onRemoveExercise: (index: number) => void;
@@ -137,6 +139,9 @@ interface SortableExerciseItemProps {
   onAddSet?: (exerciseIndex: number) => void;
   onCopyExercise?: (ex: SortableExerciseItemData) => void;
   onReplaceExercise?: (exerciseIndex: number) => void;
+  /** Opens the exercise picker to choose this slot's backup exercise. */
+  onPickBackupExercise?: (exerciseIndex: number) => void;
+  onClearBackupExercise?: (exerciseIndex: number) => void;
   onDuplicateExercise?: (exerciseIndex: number) => void;
   onReorderSets?: (
     exerciseIndex: number,
@@ -174,6 +179,8 @@ export const SortableExerciseItem = ({
   onAddSet,
   onCopyExercise,
   onReplaceExercise,
+  onPickBackupExercise,
+  onClearBackupExercise,
   onDuplicateExercise,
   onReorderSets,
   onExerciseFieldChange,
@@ -752,6 +759,48 @@ export const SortableExerciseItem = ({
                   </option>
                 </select>
               </div>
+
+              {/* Backup exercise ("machine taken") */}
+              {onPickBackupExercise && (
+                <div>
+                  <Label className="text-[11px] font-semibold text-muted-foreground uppercase mb-1 block">
+                    {t('workoutPresetForm.backupExercise', 'Backup exercise')}
+                  </Label>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 flex-1 justify-start truncate text-xs"
+                      title={t(
+                        'workoutPresetForm.backupExerciseHint',
+                        'Swap it in during a workout when this one is taken; the sets stay the same.'
+                      )}
+                      onClick={() => onPickBackupExercise(exerciseIndex)}
+                    >
+                      {ex.backup_exercise_id
+                        ? (ex.backup_exercise_name ??
+                          t('workoutPresetForm.backupChosen', 'Chosen'))
+                        : t('workoutPresetForm.backupNone', 'None, pick one')}
+                    </Button>
+                    {ex.backup_exercise_id && onClearBackupExercise && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        aria-label={t(
+                          'workoutPresetForm.clearBackupExercise',
+                          'Remove backup exercise'
+                        )}
+                        onClick={() => onClearBackupExercise(exerciseIndex)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Equipment / Brand */}
               <div>

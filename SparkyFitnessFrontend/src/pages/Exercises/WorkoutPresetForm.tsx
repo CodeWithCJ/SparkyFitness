@@ -59,6 +59,8 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
     handleOpenAddExercise,
     handleOpenReplaceExercise,
     replaceTargetIndex,
+    handleOpenBackupExercise,
+    handleClearBackupExercise,
     handleRemoveExercise,
     handleDuplicateExercise,
     handleSetChange,
@@ -252,6 +254,8 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                         weightUnit={weightUnit}
                         onRemoveExercise={handleRemoveExercise}
                         onReplaceExercise={handleOpenReplaceExercise}
+                        onPickBackupExercise={handleOpenBackupExercise}
+                        onClearBackupExercise={handleClearBackupExercise}
                         onDuplicateExercise={handleDuplicateExercise}
                         onSetChange={handleSetChange}
                         onDuplicateSet={handleDuplicateSet}

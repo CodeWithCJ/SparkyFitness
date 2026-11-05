@@ -53,6 +53,10 @@ jest.mock('../../src/hooks/useTrainingConsistency', () => ({
 }));
 
 const mockTrainingLoad = jest.fn();
+const mockStrengthSummary = jest.fn(() => ({ data: undefined }));
+jest.mock('../../src/hooks/useStrengthSummary', () => ({
+  useStrengthSummary: () => mockStrengthSummary(),
+}));
 jest.mock('../../src/hooks/useTrainingLoad', () => ({
   useTrainingLoad: () => mockTrainingLoad(),
 }));
@@ -298,6 +302,47 @@ describe('ExerciseStatisticsScreen', () => {
     expect(screen.getByText('Tap a muscle')).toBeTruthy();
     fireEvent.press(screen.getAllByTestId('muscle-figure-abdominals')[0]);
     expect(screen.getByText(' · 5 sets')).toBeTruthy();
+  });
+
+  it('shows strength balance once the server has a summary', () => {
+    const screen = render(<ExerciseStatisticsScreen {...props} />);
+    expect(screen.queryByText('Strength balance')).toBeNull();
+
+    mockStrengthSummary.mockReturnValue({
+      data: {
+        lifetime: {
+          volumeKg: 1000,
+          sets: 10,
+          reps: 50,
+          sessions: 2,
+          firstDate: '2026-10-01',
+        },
+        bodyweightKg: 80,
+        lifts: [
+          {
+            exerciseId: null,
+            exerciseName: 'Back Squat',
+            estimatedOneRMKg: 120,
+            weightKg: 100,
+            reps: 6,
+            achievedAt: '2026-10-02',
+          },
+        ],
+      },
+    } as never);
+    screen.rerender(<ExerciseStatisticsScreen {...props} />);
+    expect(screen.getByText('Strength balance')).toBeTruthy();
+    expect(screen.getByText('1.50× body weight')).toBeTruthy();
+    mockStrengthSummary.mockReturnValue({ data: undefined });
+  });
+
+  it('flips the heat map to show untrained muscles', () => {
+    const screen = render(<ExerciseStatisticsScreen {...props} />);
+    fireEvent.press(screen.getByText('Untrained'));
+    expect(
+      screen.getByText('Highlighted muscles had no working sets in this range')
+    ).toBeTruthy();
+    expect(screen.queryByText('Fewer')).toBeNull();
   });
 
   it('opens one extra analysis section at a time', () => {

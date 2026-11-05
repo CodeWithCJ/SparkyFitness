@@ -1495,7 +1495,9 @@
       "volume": "Volume",
       "replaceExercise": "Replace exercise",
       "replaceExerciseNamed": "Replace {{name}}",
-      "sets": "{{completedSets}}/{{totalSets}} sets"
+      "sets": "{{completedSets}}/{{totalSets}} sets",
+      "useBackup": "Taken? Use {{name}}",
+      "backupExercise": "the backup"
     },
     "workoutFinishSummary": {
       "title": "Workout complete",
@@ -4914,7 +4916,12 @@
     "timeCapLabel": "Time Cap (minutes)",
     "rampLabel": "Add per set (this workout, {{unit}})",
     "rampPlaceholder": "Off",
-    "rampHint": "Each working set after the first pre-fills this much heavier in the same workout; use a negative number to ramp down. Warm-up and drop sets are skipped."
+    "rampHint": "Each working set after the first pre-fills this much heavier in the same workout; use a negative number to ramp down. Warm-up and drop sets are skipped.",
+    "backupExercise": "Backup exercise",
+    "backupExerciseHint": "Swap it in during a workout when this one is taken; the sets stay the same.",
+    "backupChosen": "Chosen",
+    "backupNone": "None, pick one",
+    "clearBackupExercise": "Remove backup exercise"
   },
   "addWorkoutPlanDialog": {
     "editTitle": "Edit Workout Plan",
@@ -5615,7 +5622,11 @@
     "notOnFigure": "Not on the figure",
     "figure": "Body figure",
     "male": "Male",
-    "female": "Female"
+    "female": "Female",
+    "view": "Heat map view",
+    "trained": "Trained",
+    "untrained": "Untrained",
+    "untrainedHint": "Highlighted muscles had no working sets in this range"
   },
   "muscleGroupRecovery": {
     "title": "Muscle Group Recovery",
@@ -10341,5 +10352,28 @@
     "valueInvalid": "Enter a marker and a numeric result.",
     "historyCutOff": "History shows at most the newest {{count}} results.",
     "dateInvalid": "Enter the date of the test."
+  },
+  "strengthBalance": {
+    "title": "Strength balance",
+    "subtitle": "All-time bests, estimated one-rep max",
+    "lifetimeVolume": "Lifetime volume",
+    "lifetimeSets": "Sets",
+    "lifetimeSessions": "Sessions",
+    "bodyweightMultiple": "{{value}}× body weight",
+    "noKeyLifts": "Log a squat, bench press, deadlift, overhead press or row to see how they compare.",
+    "ratios": "Ratios",
+    "noBodyweight": "Log your body weight to see lifts as a multiple of it.",
+    "lifts": {
+      "squat": "Squat",
+      "bench": "Bench press",
+      "deadlift": "Deadlift",
+      "overheadPress": "Overhead press",
+      "row": "Row"
+    },
+    "status": {
+      "low": "Below range",
+      "high": "Above range",
+      "balanced": "Balanced"
+    }
   }
 }

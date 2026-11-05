@@ -181,6 +181,7 @@ export default defineConfig({
             { text: 'Progression & Per-Set Ramp', link: '/features/exercises/progression-and-per-set-ramp' },
             { text: 'Starter Plans', link: '/features/exercises/starter-plans' },
             { text: 'Import from FitNotes or Strong', link: '/features/exercises/import-fitnotes-strong' },
+            { text: 'Strength Balance', link: '/features/exercises/strength-balance' },
             { text: 'Workout Logging Shortcuts', link: '/features/exercises/workout-logging-shortcuts' },
             { text: 'Bodyweight Exercises', link: '/features/exercises/bodyweight-exercises' },
             { text: 'Workout Effort', link: '/features/exercises/workout-effort' },

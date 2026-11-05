@@ -39,6 +39,8 @@ import FitnessFatigueCard from '../components/exerciseStats/FitnessFatigueCard';
 import { useTrainingLoad } from '../hooks/useTrainingLoad';
 import { useRunEstimates } from '../hooks/useRunEstimates';
 import { useFitnessFatigue } from '../hooks/useFitnessFatigue';
+import { useStrengthSummary } from '../hooks/useStrengthSummary';
+import StrengthBalanceCard from '../components/exerciseStats/StrengthBalanceCard';
 import MuscleFigure, {
   MUSCLE_HEAT_COLORS,
 } from '../components/exerciseStats/MuscleFigure';
@@ -129,6 +131,8 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   // Starts from the gender stored for BMR. Switching here is a view choice
   // and is never written back to the profile.
   const [chosenFigure, setChosenFigure] = useState<BodyFigure | null>(null);
+  // "Untrained" flips the colours so muscles with no sets stand out.
+  const [untrainedView, setUntrainedView] = useState(false);
   const { profile } = useProfile();
   const figure = chosenFigure ?? defaultBodyFigure(profile?.gender);
   const [openSection, setOpenSection] = useState<AnalysisSection | null>(null);
@@ -159,6 +163,10 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
     preferences?.default_weight_unit === 'st_lbs'
       ? 'lbs'
       : 'kg';
+
+  const strengthSummary = useStrengthSummary(
+    view === 'strength' && isSectionShown('exercise.strengthBalance')
+  );
 
   const setsByMuscle = useMemo(() => data?.muscleGroupSets ?? {}, [data]);
   const setRows = useMemo(() => muscleSetRows(setsByMuscle), [setsByMuscle]);
@@ -441,7 +449,28 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
                 }}
               />
             </View>
+            <View className="self-stretch mb-3">
+              <SegmentedControl
+                segments={[
+                  {
+                    key: 'trained',
+                    label: t('exerciseStatistics.heatMap.trained', {
+                      defaultValue: 'Trained',
+                    }),
+                  },
+                  {
+                    key: 'untrained',
+                    label: t('exerciseStatistics.heatMap.untrained', {
+                      defaultValue: 'Untrained',
+                    }),
+                  },
+                ]}
+                activeKey={untrainedView ? 'untrained' : 'trained'}
+                onSelect={(next) => setUntrainedView(next === 'untrained')}
+              />
+            </View>
             <MuscleFigure
+              untrained={untrainedView}
               figure={figure}
               setsByMuscle={setsByMuscle}
               selectedKey={pickedMuscle}
@@ -475,24 +504,35 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
                 })}
               </Text>
             )}
-            <View className="flex-row items-center mt-3">
-              <Text className="text-xs text-text-muted mr-1.5">
-                {t('exerciseStatistics.heatMap.fewer', {
-                  defaultValue: 'Fewer',
+            {untrainedView ? (
+              <Text className="mt-3 text-xs text-text-muted">
+                {t('exerciseStatistics.heatMap.untrainedHint', {
+                  defaultValue:
+                    'Highlighted muscles had no working sets in this range',
                 })}
               </Text>
-              <View className="w-3 h-3 rounded-sm mr-1 bg-progress-track" />
-              {MUSCLE_HEAT_COLORS.map((color) => (
-                <View
-                  key={color}
-                  className="w-3 h-3 rounded-sm mr-1"
-                  style={{ backgroundColor: color }}
-                />
-              ))}
-              <Text className="text-xs text-text-muted ml-0.5">
-                {t('exerciseStatistics.heatMap.more', { defaultValue: 'More' })}
-              </Text>
-            </View>
+            ) : (
+              <View className="flex-row items-center mt-3">
+                <Text className="text-xs text-text-muted mr-1.5">
+                  {t('exerciseStatistics.heatMap.fewer', {
+                    defaultValue: 'Fewer',
+                  })}
+                </Text>
+                <View className="w-3 h-3 rounded-sm mr-1 bg-progress-track" />
+                {MUSCLE_HEAT_COLORS.map((color) => (
+                  <View
+                    key={color}
+                    className="w-3 h-3 rounded-sm mr-1"
+                    style={{ backgroundColor: color }}
+                  />
+                ))}
+                <Text className="text-xs text-text-muted ml-0.5">
+                  {t('exerciseStatistics.heatMap.more', {
+                    defaultValue: 'More',
+                  })}
+                </Text>
+              </View>
+            )}
             {notOnFigure.length > 0 ? (
               <View className="self-stretch mt-4">
                 <Text className="text-xs uppercase text-text-muted mb-1">
@@ -511,6 +551,15 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
               </View>
             ) : null}
           </View>
+        ) : null}
+
+        {isSectionShown('exercise.strengthBalance') &&
+        strengthSummary.data &&
+        strengthSummary.data.lifetime.sets > 0 ? (
+          <StrengthBalanceCard
+            summary={strengthSummary.data}
+            weightUnit={weightUnit}
+          />
         ) : null}
 
         {loadCard}

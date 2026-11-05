@@ -5,11 +5,13 @@ import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 import exerciseStatsService from '../services/exerciseStatsService.js';
 import exerciseStatsRoutes from '../routes/exerciseStatsRoutes.js';
+import { canAccessUserData } from '../utils/permissionUtils.js';
 
 vi.mock('../services/exerciseStatsService.js', () => ({
   default: {
     getPersonalRecordMatrix: vi.fn(),
     getMatchedCourses: vi.fn(),
+    getStrengthSummary: vi.fn(),
   },
 }));
 vi.mock('../utils/permissionUtils.js', () => ({
@@ -89,5 +91,34 @@ describe.each([
     const res = await request(app).get(`${path}?unitSystem=Imperial`);
     expect(res.status).toBe(400);
     expect(exerciseStatsService[serviceMethod]).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /exercise-stats/strength-summary', () => {
+  const summary = {
+    lifetime: { volumeKg: 0, sets: 0, reps: 0, sessions: 0, firstDate: null },
+    bodyweightKg: null,
+    lifts: [],
+  };
+
+  it("returns the signed-in person's summary", async () => {
+    (
+      exerciseStatsService.getStrengthSummary as ReturnType<typeof vi.fn>
+    ).mockResolvedValue(summary);
+    const res = await request(app).get('/exercise-stats/strength-summary');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(summary);
+    expect(exerciseStatsService.getStrengthSummary).toHaveBeenCalledWith(
+      'user-123'
+    );
+  });
+
+  it("refuses someone else's without reports permission", async () => {
+    vi.mocked(canAccessUserData).mockResolvedValueOnce(false);
+    const res = await request(app).get(
+      '/exercise-stats/strength-summary?userId=other-user'
+    );
+    expect(res.status).toBe(403);
+    expect(exerciseStatsService.getStrengthSummary).not.toHaveBeenCalled();
   });
 });

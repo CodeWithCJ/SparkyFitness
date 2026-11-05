@@ -244,6 +244,51 @@ router.get('/prs', authenticate, async (req, res, next) => {
 
 /**
  * @swagger
+ * /exercise-stats/strength-summary:
+ *   get:
+ *     summary: Lifetime strength totals, best estimated 1RM per exercise, and the latest body weight
+ *     tags: [Exercise Stats]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string, format: uuid }
+ *         description: Target user; defaults to the authenticated user. Requires reports permission for anyone else.
+ *     responses:
+ *       200:
+ *         description: Lifetime volume, sets, reps and sessions; best lifts strongest first; body weight in kg or null.
+ *       403:
+ *         description: Forbidden — no reports permission for the requested user.
+ */
+router.get('/strength-summary', authenticate, async (req, res, next) => {
+  try {
+    const targetUserId = (req.query.userId as string) || req.userId;
+    if (!targetUserId) {
+      return res.status(400).json({ error: 'Target User ID is required.' });
+    }
+    if (req.query.userId && req.query.userId !== req.userId) {
+      const hasPermission = await canAccessUserData(
+        req.query.userId as string,
+        'reports',
+        req.authenticatedUserId || req.userId
+      );
+      if (!hasPermission) {
+        return res.status(403).json({
+          error:
+            'Forbidden: You do not have permission to view strength for this user.',
+        });
+      }
+    }
+    const summary = await exerciseStatsService.getStrengthSummary(targetUserId);
+    res.status(200).json(summary);
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @swagger
  * /exercise-stats/matched-courses:
  *   get:
  *     summary: Get grouped matched courses and repeated loop activities

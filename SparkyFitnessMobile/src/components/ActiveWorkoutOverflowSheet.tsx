@@ -5,7 +5,10 @@ import ActionSheet, {
   type ActionSheetItem,
   type ActionSheetRef,
 } from './ActionSheet';
-import type { CompletedSetMap } from '../stores/activeWorkoutStore';
+import {
+  useActiveWorkoutStore,
+  type CompletedSetMap,
+} from '../stores/activeWorkoutStore';
 import {
   rendersCardioEffortForm,
   upcomingExercises,
@@ -29,6 +32,8 @@ interface ActiveWorkoutOverflowSheetProps {
   onPressThumb: (entryId: string) => void;
   onToggleExerciseNote: (entryId: string) => void;
   onReplaceExercise: (entryId: string) => void;
+  /** Swaps in the preset slot's backup exercise ("machine taken"). */
+  onUseBackupExercise?: (entryId: string, backupExerciseId: string) => void;
   /** Whether the exercise can take a warm-up ramp: a weight to ramp to, and none logged yet. */
   canAddWarmups: (entryId: string) => boolean;
   onAddWarmups: (entryId: string) => void;
@@ -53,6 +58,7 @@ export default function ActiveWorkoutOverflowSheet({
   onPressThumb,
   onToggleExerciseNote,
   onReplaceExercise,
+  onUseBackupExercise,
   canAddWarmups,
   onAddWarmups,
   onClearExerciseSets,
@@ -65,6 +71,7 @@ export default function ActiveWorkoutOverflowSheet({
   onDismiss,
 }: ActiveWorkoutOverflowSheetProps) {
   const { t } = useTranslation();
+  const exerciseConfigs = useActiveWorkoutStore((s) => s.exerciseConfigs);
 
   const overflowMenuItems = useMemo<ActionSheetItem[]>(() => {
     if (overflowMenu == null || session == null) return [];
@@ -173,6 +180,26 @@ export default function ActiveWorkoutOverflowSheet({
         onPress: () => onAddWarmups(entryId),
       });
     }
+    // The preset slot's backup, offered until a set is logged: logged sets
+    // belong to the exercise they were done on.
+    const backup = exerciseConfigs[entryId];
+    if (
+      onUseBackupExercise &&
+      backup?.backup_exercise_id &&
+      !entryHasCompleted
+    ) {
+      const backupId = backup.backup_exercise_id;
+      items.push({
+        key: 'backup',
+        label: t('workout.useBackupExercise', {
+          defaultValue: 'Taken? Use {{name}}',
+          name:
+            backup.backup_exercise_name ??
+            t('workout.backupExercise', { defaultValue: 'the backup' }),
+        }),
+        onPress: () => onUseBackupExercise(entryId, backupId),
+      });
+    }
     items.push({
       key: 'replace',
       label: t('workout.replaceExercise', { defaultValue: 'Replace exercise' }),
@@ -206,6 +233,8 @@ export default function ActiveWorkoutOverflowSheet({
     onPressThumb,
     onToggleExerciseNote,
     onReplaceExercise,
+    onUseBackupExercise,
+    exerciseConfigs,
     canAddWarmups,
     onAddWarmups,
     onClearExerciseSets,

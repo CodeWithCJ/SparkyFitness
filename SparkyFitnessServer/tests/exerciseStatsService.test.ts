@@ -19,6 +19,80 @@ describe('exerciseStatsService', () => {
     );
   });
 
+  describe('getStrengthSummary', () => {
+    it('maps lifetime totals, best lifts and body weight', async () => {
+      mockClient.query
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              volume_kg: '125000.5',
+              sets: '900',
+              reps: '7200',
+              sessions: '120',
+              first_date: new Date(Date.UTC(2025, 0, 6)),
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              exercise_id: 'ex-1',
+              exercise_name: 'Barbell Squat',
+              estimated_one_rm: '150.0',
+              weight_kg: '125',
+              reps: 6,
+              achieved_on: '2026-10-01',
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rows: [{ weight: '82.4' }] });
+
+      const summary = await exerciseStatsService.getStrengthSummary('user-1');
+      expect(summary.lifetime).toEqual({
+        volumeKg: 125000.5,
+        sets: 900,
+        reps: 7200,
+        sessions: 120,
+        firstDate: '2025-01-06',
+      });
+      expect(summary.lifts[0]).toEqual({
+        exerciseId: 'ex-1',
+        exerciseName: 'Barbell Squat',
+        estimatedOneRMKg: 150,
+        weightKg: 125,
+        reps: 6,
+        achievedAt: '2026-10-01',
+      });
+      expect(summary.bodyweightKg).toBe(82.4);
+      // Warm-ups and interval/WOD sets stay out of lifetime totals.
+      expect(mockClient.query.mock.calls[0]![0]).toContain(
+        "NOT ILIKE '%warm%'"
+      );
+      expect(mockClient.release).toHaveBeenCalledOnce();
+    });
+
+    it('handles someone with nothing logged', async () => {
+      mockClient.query
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              volume_kg: '0',
+              sets: '0',
+              reps: '0',
+              sessions: '0',
+              first_date: null,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [] });
+      const summary = await exerciseStatsService.getStrengthSummary('user-1');
+      expect(summary.lifetime.firstDate).toBeNull();
+      expect(summary.bodyweightKg).toBeNull();
+      expect(summary.lifts).toEqual([]);
+    });
+  });
+
   describe('getExerciseStatsSummary', () => {
     it('should aggregate totals and interval breakdown points correctly', async () => {
       mockClient.query.mockResolvedValueOnce({

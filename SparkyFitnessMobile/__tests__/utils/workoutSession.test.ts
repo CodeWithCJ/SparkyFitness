@@ -71,6 +71,7 @@ import {
   isPrSet,
   setLoadKg,
   upcomingExercises,
+  liveExerciseConfigFromPreset,
 } from '../../src/utils/workoutSession';
 import { wodScoreFormat } from '../../src/utils/wodScore';
 import type {
@@ -6970,5 +6971,22 @@ describe('upcomingExercises', () => {
 
   it('is empty without an active set', () => {
     expect(upcomingExercises(session, null, {})).toEqual([]);
+  });
+});
+
+describe('liveExerciseConfigFromPreset backup exercise', () => {
+  it('carries a slot backup into the live config, and nothing without one', () => {
+    expect(
+      liveExerciseConfigFromPreset({
+        backup_exercise_id: 'b-1',
+        backup_exercise_name: 'Dumbbell Press',
+      })
+    ).toMatchObject({
+      backup_exercise_id: 'b-1',
+      backup_exercise_name: 'Dumbbell Press',
+    });
+    expect(liveExerciseConfigFromPreset({})).not.toHaveProperty(
+      'backup_exercise_id'
+    );
   });
 });

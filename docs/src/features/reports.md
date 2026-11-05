@@ -84,7 +84,7 @@ The **Fasting** tab turns your logged fasting sessions into a consistency report
 
 The **Exercise** tab analyzes your [exercise entries](/features/diary/exercise) over the range. The **view switcher** at the top lets you see **All Workouts**, just **Strength & Resistance**, or just **Cardio & GPS**, and the **Group by** selector aggregates data by day, week, month, or year.
 
-The **All Workouts** view brings everything together: the **Exercise Volume & Interval Totals** chart, snapshot charts (**Muscle Heat Map**, **Muscle Group Recovery**, **Exercise Variety Score**, and **Training Volume by Muscle Group**), and the same analysis charts as the Strength & Resistance view.
+The **All Workouts** view brings everything together: the **Exercise Volume & Interval Totals** chart, snapshot charts (**Strength Balance**, **Muscle Heat Map**, **Muscle Group Recovery**, **Exercise Variety Score**, and **Training Volume by Muscle Group**), and the same analysis charts as the Strength & Resistance view.
 
 **Strength & Resistance** charts include:
 

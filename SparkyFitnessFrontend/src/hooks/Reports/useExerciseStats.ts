@@ -4,6 +4,7 @@ import {
   queryExerciseActivities,
   loadExercisePRs,
   loadMatchedCourses,
+  loadStrengthSummary,
 } from '@/api/Reports/exerciseStatsService';
 
 export const useExerciseStatsSummary = (
@@ -40,6 +41,14 @@ export const useExercisePRs = (
   return useQuery({
     queryKey: ['exercisePRs', userId, unitSystem],
     queryFn: () => loadExercisePRs(userId, unitSystem),
+  });
+};
+
+export const useStrengthSummary = (userId?: string) => {
+  return useQuery({
+    queryKey: ['strengthSummary', userId],
+    queryFn: () => loadStrengthSummary(userId),
+    retry: false,
   });
 };
 

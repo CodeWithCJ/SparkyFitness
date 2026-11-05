@@ -7,6 +7,7 @@ import {
   maxDrawnMuscleSets,
   setsForMuscleKey,
   svgClassToMuscleKey,
+  untrainedHeatLevel,
   type BodyFigure,
 } from '@workspace/shared';
 import { MUSCLE_FIGURES } from './muscleFigurePaths';
@@ -33,6 +34,8 @@ interface MuscleFigureProps {
   selectedKey: string | null;
   onSelect: (key: string) => void;
   accessibilityLabel: string;
+  /** Flips the colours so muscles with no working sets stand out. */
+  untrained?: boolean;
 }
 
 /**
@@ -46,6 +49,7 @@ const MuscleFigure: React.FC<MuscleFigureProps> = ({
   selectedKey,
   onSelect,
   accessibilityLabel,
+  untrained = false,
 }) => {
   const [bodyFill, outlineStroke, regionStroke, emptyFill, selectedStroke] =
     useCSSVariable([
@@ -64,9 +68,11 @@ const MuscleFigure: React.FC<MuscleFigureProps> = ({
         d: path.d,
         outline: path.outline,
         muscle,
-        level: muscle
-          ? heatLevel(setsForMuscleKey(muscle, setsByMuscle), max)
-          : 0,
+        level: !muscle
+          ? 0
+          : untrained
+            ? untrainedHeatLevel(setsForMuscleKey(muscle, setsByMuscle))
+            : heatLevel(setsForMuscleKey(muscle, setsByMuscle), max),
       };
     });
     // The lats wrap around the back. Painting them last keeps them on top of
@@ -75,7 +81,7 @@ const MuscleFigure: React.FC<MuscleFigureProps> = ({
       ...drawn.filter((path) => path.muscle !== 'lats'),
       ...drawn.filter((path) => path.muscle === 'lats'),
     ];
-  }, [figure, setsByMuscle]);
+  }, [figure, setsByMuscle, untrained]);
 
   const { viewBox } = MUSCLE_FIGURES[figure];
   const [, , viewBoxWidth = 1, viewBoxHeight = 1] = viewBox

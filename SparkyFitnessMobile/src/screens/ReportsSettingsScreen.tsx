@@ -88,6 +88,10 @@ const SECTION_LABELS: Record<
     }),
   'exercise.heatMap': (t) =>
     t('reportsSettings.sections.heatMap', { defaultValue: 'Muscle heat map' }),
+  'exercise.strengthBalance': (t) =>
+    t('reportsSettings.sections.strengthBalance', {
+      defaultValue: 'Strength balance',
+    }),
   'exercise.consistency': (t) =>
     t('reportsSettings.sections.trainingConsistency', {
       defaultValue: 'Training consistency',

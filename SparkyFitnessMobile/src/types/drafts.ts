@@ -67,6 +67,9 @@ export interface WorkoutDraftExercise {
   equipmentBrand?: string | null;
   /** Within-session per-set ramp, kg (negative ramps down). Null = off. */
   rampIncrement?: number | null;
+  /** Preset slot's backup exercise ("machine taken"); preset form only. */
+  backupExerciseId?: string | null;
+  backupExerciseName?: string | null;
 }
 
 export interface WorkoutDraft {

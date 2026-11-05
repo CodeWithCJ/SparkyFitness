@@ -77,4 +77,20 @@ describe('MuscleHeatmap', () => {
     expect(mockProfile).toHaveBeenLastCalledWith('family-member');
     expect(mockSvg).toHaveBeenLastCalledWith('female');
   });
+
+  it('flips the colours in the untrained view', () => {
+    mockProfile.mockReturnValue({ data: { gender: null } });
+    mockSvg.mockReturnValue({
+      data: '<svg viewBox="0 0 10 10"><path class="chest" d="M0 0h5v5z"/><path class="quads" d="M5 5h5v5z"/></svg>',
+    });
+    const { container } = render(<MuscleHeatmap setsByMuscle={{ Chest: 4 }} />);
+    const chest = () => container.querySelector('path[data-muscle="chest"]');
+    const quads = () => container.querySelectorAll('path')[1];
+    expect(chest()).toHaveClass('heat-4');
+    expect(quads()).toHaveClass('heat-0');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Untrained' }));
+    expect(chest()).toHaveClass('heat-0');
+    expect(quads()).toHaveClass('heat-4');
+  });
 });
