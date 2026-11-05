@@ -157,10 +157,22 @@ let activeUpload: AbortController | null = null;
  * replaced on the same server config keeps that config's id, so a coverage
  * kept for it would otherwise let the next account skip its own older days.
  */
-export async function resetAllDayHeartRateForAccountChange(): Promise<void> {
+export function resetAllDayHeartRateForAccountChange(): Promise<void> {
   accountGeneration += 1;
   activeUpload?.abort();
   activeUpload = null;
+  coverageSweep = sweepCoverage();
+  return coverageSweep;
+}
+
+/**
+ * The latest coverage sweep. A run waits for it before reading coverage, or a
+ * sync started just after an account change could still read the previous
+ * account's coverage and skip the new account's older days.
+ */
+let coverageSweep: Promise<void> = Promise.resolve();
+
+const sweepCoverage = async (): Promise<void> => {
   try {
     const keys = await AsyncStorage.getAllKeys();
     const stored = keys.filter((key) =>
@@ -173,7 +185,7 @@ export async function resetAllDayHeartRateForAccountChange(): Promise<void> {
       'WARNING'
     );
   }
-}
+};
 
 const readCoverage = async (key: string): Promise<HeartRateCoverage | null> => {
   try {
@@ -276,6 +288,12 @@ export async function syncAllDayHeartRate(
 ): Promise<HeartRateSamplesResult> {
   let samplesUploaded = 0;
   let error: string | undefined;
+  // Wait out any coverage sweep, including one started while waiting.
+  let sweep: Promise<void>;
+  do {
+    sweep = coverageSweep;
+    await sweep;
+  } while (sweep !== coverageSweep);
   const generation = accountGeneration;
   const accountChanged = () => generation !== accountGeneration;
   const stopForAccountChange = () => {
