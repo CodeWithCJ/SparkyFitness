@@ -9,6 +9,7 @@ import type {
   ExerciseRecentSessionSet,
   EntryExerciseSnapshotResponse,
   ExerciseSessionResponse,
+  GymWeightSource,
   PresetSessionExerciseRequest,
   PresetSessionResponse,
   ProgressionEvaluationResult,
@@ -27,6 +28,7 @@ import {
   effectiveLoadKg,
   entryCaloriesCounted,
   evaluateProgression,
+  gymWeightStepsFor,
   isBodyweightModality,
   isCardioModality,
   isExerciseModality,
@@ -36,6 +38,7 @@ import {
   resolveExerciseModality,
   setVolumeKg as sharedSetVolumeKg,
   setsDurationMinutes,
+  snapToWeightStep,
   weightRampStepIndexes,
 } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
@@ -1121,6 +1124,12 @@ export interface AssumedSetOverrides {
    */
   progressionIncrementKg?: number | null;
   /**
+   * Kg weights the active gym actually has for this exercise (its machine
+   * stack or dumbbell rack), ascending. A progressed weight snaps to them:
+   * up for an increase, down for a deload.
+   */
+  weightStepsKg?: readonly number[] | null;
+  /**
    * Rep targets per working set (warm-ups not counted) when progression
    * raised reps; they replace each working set's history/plan reps.
    */
@@ -1223,7 +1232,11 @@ export function resolveAssumedSetValues(
       progressionIncrementKg !== 0 &&
       previous?.weight != null &&
       previous.weight > 0
-        ? Math.max(0, previous.weight + progressionIncrementKg)
+        ? snapToWeightStep(
+            Math.max(0, previous.weight + progressionIncrementKg),
+            overrides?.weightStepsKg,
+            progressionIncrementKg > 0 ? 'up' : 'down'
+          )
         : previous?.weight;
     // A lighter adaptive day applies to whatever the working set would
     // otherwise start from — history, or the plan when this preset has no
@@ -1437,6 +1450,12 @@ export interface LiveAssumeSources {
    * newest first, for stall detection (a deload after three misses).
    */
   earlierSessionSets?: Record<string, ExerciseRecentSessionSet[][]>;
+  /**
+   * The active gym's dumbbells and machine stacks, captured at live start, so
+   * progressed weights land on equipment that exists. Null or absent (no gym
+   * saved, or a server from before gym profiles) leaves weights unsnapped.
+   */
+  activeGym?: GymWeightSource | null;
 }
 
 /**
@@ -1476,7 +1495,8 @@ export interface AssumedValueSources extends LiveAssumeSources {
  * interval/WOD sets are clock-driven.
  */
 export function resolveLiveAssumedSetValues(
-  exercise: Pick<WorkoutCardExercise, 'id' | 'exercise_id' | 'sets'>,
+  exercise: Pick<WorkoutCardExercise, 'id' | 'exercise_id' | 'sets'> &
+    Partial<Pick<WorkoutCardExercise, 'exercise_snapshot'>>,
   previousSets: readonly ExerciseRecentSessionSet[] | undefined,
   sources: LiveAssumeSources
 ): AssumedSetValues[] {
@@ -1523,6 +1543,12 @@ export function resolveLiveAssumedSetValues(
     sources.plannedSetValues,
     {
       progressionIncrementKg,
+      weightStepsKg: gymWeightStepsFor(
+        sources.activeGym,
+        exercise.exercise_id,
+        exercise.exercise_snapshot?.equipment,
+        'kg'
+      ),
       progressionRepTargets,
       rampIncrementKg,
       weightUnit,

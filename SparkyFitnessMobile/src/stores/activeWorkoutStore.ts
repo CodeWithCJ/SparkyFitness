@@ -16,6 +16,7 @@ import {
   type PresetSessionResponse,
   type WorkoutFormat,
   type DropSetWeightUnit,
+  type GymWeightSource,
   buildIntervalPhases,
   calculateDropSetWeightsKg,
   calculateWarmupSets,
@@ -279,6 +280,13 @@ export interface ActiveWorkoutState {
    */
   earlierSessionSets: Record<string, ExerciseRecentSessionSet[][]>;
   /**
+   * The active gym's dumbbells and machine stacks, captured once at live
+   * start so progressed weights snap to equipment that exists. Persisted
+   * with the other placeholder sources. Null when no gym is saved (or the
+   * server predates gym profiles); undefined until captured.
+   */
+  activeGym?: GymWeightSource | null;
+  /**
    * Preset progression and ramp settings per session exercise id, captured at
    * live start — session entries on the server don't carry them. Persisted
    * like `plannedSetValues`: the preset payload is gone after a cold start.
@@ -379,6 +387,8 @@ export interface ActiveWorkoutState {
    * live workout is active and the key is absent. Pass `[]` for an exercise
    * with no history — that still marks it captured.
    */
+  /** Capture the active gym once per live workout; no-op otherwise. */
+  captureActiveGym: (gym: GymWeightSource | null) => void;
   capturePreviousSessionSets: (
     exerciseId: string | null,
     sets: ExerciseRecentSessionSet[],
@@ -636,6 +646,7 @@ const initialData: Pick<
   | 'plannedSetValues'
   | 'previousSessionSets'
   | 'earlierSessionSets'
+  | 'activeGym'
   | 'exerciseConfigs'
   | 'coachingSignals'
   | 'declinedAdaptive'
@@ -675,6 +686,7 @@ const initialData: Pick<
   plannedSetValues: {},
   previousSessionSets: {},
   earlierSessionSets: {},
+  activeGym: undefined,
   exerciseConfigs: {},
   coachingSignals: {},
   declinedAdaptive: {},
@@ -979,6 +991,7 @@ function adoptAssumedSetValues(
     | 'session'
     | 'previousSessionSets'
     | 'earlierSessionSets'
+    | 'activeGym'
     | 'plannedSetValues'
     | 'exerciseConfigs'
     | 'coachingSignals'
@@ -1505,6 +1518,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // live card, like the PR baseline.
           previousSessionSets: {},
           earlierSessionSets: {},
+          activeGym: undefined,
           exerciseConfigs,
           // Adaptive signals are fetched after start, like the history.
           coachingSignals: {},
@@ -1579,6 +1593,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           plannedSetValues: {},
           previousSessionSets: {},
           earlierSessionSets: {},
+          activeGym: undefined,
           // Nor its preset progression/ramp settings — same as the plan.
           exerciseConfigs: {},
           coachingSignals: {},
@@ -1782,6 +1797,13 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         if (state.sessionId == null) return;
         if (exerciseId in state.prBaseline) return;
         set({ prBaseline: { ...state.prBaseline, [exerciseId]: baseline } });
+      },
+
+      captureActiveGym: (gym) => {
+        const state = get();
+        if (state.sessionId == null) return;
+        if (state.activeGym !== undefined) return;
+        set({ activeGym: gym });
       },
 
       capturePreviousSessionSets: (exerciseId, sets, earlierSessions = []) => {
@@ -3043,6 +3065,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         plannedSetValues: state.plannedSetValues,
         previousSessionSets: state.previousSessionSets,
         earlierSessionSets: state.earlierSessionSets,
+        activeGym: state.activeGym,
         exerciseConfigs: state.exerciseConfigs,
         coachingSignals: state.coachingSignals,
         declinedAdaptive: state.declinedAdaptive,

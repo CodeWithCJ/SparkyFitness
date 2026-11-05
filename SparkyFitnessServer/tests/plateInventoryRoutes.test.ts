@@ -11,6 +11,10 @@ vi.mock('../models/plateInventoryRepository.js', () => ({
   getPlateInventory: vi.fn(),
   savePlateInventory: vi.fn(),
   deletePlateInventory: vi.fn(),
+  listGyms: vi.fn(),
+  createGym: vi.fn(),
+  activateGym: vi.fn(),
+  deleteGym: vi.fn(),
 }));
 
 vi.mock('../middleware/authMiddleware.js', () => ({
@@ -182,5 +186,80 @@ describe('Plate inventory routes (v2)', () => {
     vi.mocked(plateRepo.deletePlateInventory).mockResolvedValueOnce(false);
     const missing = await request(app).delete('/api/v2/plate-inventory');
     expect(missing.statusCode).toBe(404);
+  });
+
+  describe('gyms', () => {
+    const gymId = '7c9e6679-7425-40de-944b-e07fc1f90ae7';
+
+    it('lists gyms', async () => {
+      vi.mocked(plateRepo.listGyms).mockResolvedValue([]);
+      const res = await request(app).get('/api/v2/plate-inventory/gyms');
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ gyms: [] });
+    });
+
+    it('creates a gym, and rejects a bad body', async () => {
+      vi.mocked(plateRepo.createGym).mockResolvedValue({
+        id: gymId,
+      } as Awaited<ReturnType<typeof plateRepo.createGym>>);
+      const res = await request(app)
+        .post('/api/v2/plate-inventory/gyms')
+        .send({
+          name: 'Work',
+          weight_unit: 'kg',
+          bars: [{ id: 'b1', name: null, kind: 'barbell', weight: 20 }],
+          plates: [],
+          dumbbells: [10, 5, 5],
+          collars_enabled: false,
+          collar_weight: 0,
+        });
+      expect(res.status).toBe(201);
+      expect(
+        vi.mocked(plateRepo.createGym).mock.calls[0]![1].dumbbells
+      ).toEqual([5, 10]);
+      const bad = await request(app)
+        .post('/api/v2/plate-inventory/gyms')
+        .send({ name: 'x' });
+      expect(bad.status).toBe(400);
+    });
+
+    it('activates a gym, and 404s for an unknown or malformed id', async () => {
+      vi.mocked(plateRepo.activateGym).mockResolvedValueOnce({
+        id: gymId,
+      } as Awaited<ReturnType<typeof plateRepo.activateGym>>);
+      expect(
+        (
+          await request(app).put(
+            `/api/v2/plate-inventory/gyms/${gymId}/activate`
+          )
+        ).status
+      ).toBe(200);
+      vi.mocked(plateRepo.activateGym).mockResolvedValueOnce(null);
+      expect(
+        (
+          await request(app).put(
+            `/api/v2/plate-inventory/gyms/${gymId}/activate`
+          )
+        ).status
+      ).toBe(404);
+      expect(
+        (await request(app).put('/api/v2/plate-inventory/gyms/nope/activate'))
+          .status
+      ).toBe(404);
+      expect(plateRepo.activateGym).toHaveBeenCalledTimes(2);
+    });
+
+    it('deletes a gym', async () => {
+      vi.mocked(plateRepo.deleteGym).mockResolvedValueOnce(true);
+      expect(
+        (await request(app).delete(`/api/v2/plate-inventory/gyms/${gymId}`))
+          .status
+      ).toBe(200);
+      vi.mocked(plateRepo.deleteGym).mockResolvedValueOnce(false);
+      expect(
+        (await request(app).delete(`/api/v2/plate-inventory/gyms/${gymId}`))
+          .status
+      ).toBe(404);
+    });
   });
 });

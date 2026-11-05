@@ -21,6 +21,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { usePreferences } from '../hooks/usePreferences';
 import {
+  useGyms,
   usePlateInventory,
   usePlateInventoryMutations,
 } from '../hooks/usePlateInventory';
@@ -43,6 +44,9 @@ interface BarRow {
   weight: string;
 }
 interface Draft {
+  name: string;
+  /** Dumbbell sizes as typed, separated by spaces. */
+  dumbbells: string;
   unit: PlateUnit;
   plates: PlateRow[];
   bars: BarRow[];
@@ -53,7 +57,30 @@ interface Draft {
 let rowCounter = 0;
 const nextKey = (prefix: string) => `${prefix}-${Date.now()}-${rowCounter++}`;
 
-const toDraft = (config: PlateInventoryConfig): Draft => ({
+interface GymFields {
+  id: string | null;
+  name: string | null;
+  dumbbells: number[];
+  machineStacks: unknown[];
+}
+
+const formatWeights = (weights: readonly number[]) =>
+  weights.map((w) => String(Number(w.toFixed(3)))).join(' ');
+
+/** Sizes separated by spaces or semicolons; a comma can be the decimal mark. */
+const parseWeightList = (text: string): number[] =>
+  text
+    .split(/[\s;]+/)
+    .map((token) => token.replace(/,$/, ''))
+    .filter((token) => token !== '')
+    .map((token) => parseWeight(token));
+
+const toDraft = (
+  config: PlateInventoryConfig,
+  gym?: Pick<GymFields, 'name' | 'dumbbells'>
+): Draft => ({
+  name: gym?.name ?? '',
+  dumbbells: formatWeights(gym?.dumbbells ?? []),
   unit: config.unit,
   plates: config.plates.map((p) => ({
     key: nextKey('plate'),
@@ -84,19 +111,34 @@ type PlateInventoryMutations = ReturnType<typeof usePlateInventoryMutations>;
 
 const PlateInventoryForm: React.FC<{
   initial: PlateInventoryConfig;
+  gym: GymFields;
+  /** The person's gyms; null on a server from before gym profiles. */
+  gyms: { id: string; name?: string | null }[] | null;
   hasSaved: boolean;
   onDone: () => void;
   mutations: PlateInventoryMutations;
   /** The header's Save button calls whatever the form last put here. */
   saveRef: React.MutableRefObject<(() => void) | null>;
-}> = ({ initial, hasSaved, onDone, mutations, saveRef }) => {
+}> = ({ initial, gym, gyms, hasSaved, onDone, mutations, saveRef }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const { saveMutation, resetMutation } = mutations;
-  const [draft, setDraft] = useState<Draft>(() => toDraft(initial));
+  const {
+    saveMutation,
+    resetMutation,
+    createGymMutation,
+    activateGymMutation,
+    deleteGymMutation,
+  } = mutations;
+  const [draft, setDraft] = useState<Draft>(() => toDraft(initial, gym));
   const [error, setError] = useState<string | null>(null);
-  const isBusy = saveMutation.isPending || resetMutation.isPending;
+  const isBusy =
+    saveMutation.isPending ||
+    resetMutation.isPending ||
+    createGymMutation.isPending ||
+    activateGymMutation.isPending ||
+    deleteGymMutation.isPending;
+  const gymsSupported = gyms != null;
 
   const patch = (changes: Partial<Draft>) =>
     setDraft((current) => ({ ...current, ...changes }));
@@ -111,12 +153,25 @@ const PlateInventoryForm: React.FC<{
       bars: draft.bars.map((b) => (b.id === id ? { ...b, ...changes } : b)),
     });
   const applyPreset = (unit: PlateUnit) => {
-    setDraft(toDraft(presetInventory(unit)));
+    setDraft((current) => ({
+      ...toDraft(presetInventory(unit)),
+      name: current.name,
+      dumbbells: current.dumbbells,
+    }));
     setError(null);
   };
 
-  const handleSave = () => {
+  /** The draft as a save body, or null (with the error shown) when invalid. */
+  const parseDraft = () => {
     const parsed = savePlateInventoryBodySchema.safeParse({
+      // Gym fields only go to servers that know gym profiles; older ones
+      // would drop them anyway.
+      ...(gymsSupported
+        ? {
+            name: draft.name.trim() === '' ? null : draft.name.trim(),
+            dumbbells: parseWeightList(draft.dumbbells),
+          }
+        : {}),
       weight_unit: draft.unit,
       collars_enabled: draft.collarsEnabled,
       bars: draft.bars.map((b) => ({
@@ -140,28 +195,81 @@ const PlateInventoryForm: React.FC<{
             'Check the weights and pairs: weights have at most 3 decimals, each plate size is listed once, and pairs are whole numbers up to 20.',
         })
       );
-      return;
+      return null;
     }
     setError(null);
-    saveMutation.mutate(
+    return {
+      ...parsed.data,
+      plates: [...parsed.data.plates].sort((a, b) => b.weight - a.weight),
+    };
+  };
+
+  const showGymError = (e: unknown) => {
+    addLog('Failed to change gym', 'ERROR', [String(e)]);
+    Toast.show({
+      type: 'error',
+      text1: t('plates.gym.changeFailed', {
+        defaultValue: 'Could not change gyms',
+      }),
+      text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+    });
+  };
+
+  const handleAddGym = () => {
+    const body = parseDraft();
+    if (!body) return;
+    createGymMutation.mutate(
       {
-        ...parsed.data,
-        plates: [...parsed.data.plates].sort((a, b) => b.weight - a.weight),
+        ...body,
+        name: t('plates.gym.newName', {
+          defaultValue: 'Gym {{number}}',
+          number: (gyms?.length ?? 0) + 1,
+        }),
       },
-      {
-        onSuccess: onDone,
-        onError: (e) => {
-          addLog('Failed to save plate inventory', 'ERROR', [String(e)]);
-          Toast.show({
-            type: 'error',
-            text1: t('plates.saveFailed', {
-              defaultValue: 'Failed to save plates and bars',
-            }),
-            text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
-          });
-        },
-      }
+      { onError: showGymError }
     );
+  };
+
+  const handleDeleteGym = () => {
+    if (!gym.id) return;
+    const gymId = gym.id;
+    Alert.alert(
+      t('plates.gym.deleteTitle', { defaultValue: 'Delete this gym?' }),
+      t('plates.gym.deleteDescription', {
+        defaultValue:
+          'Its plates, bars, dumbbells and machine stacks are removed. Another gym becomes active.',
+      }),
+      [
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+        {
+          text: t('plates.gym.delete', { defaultValue: 'Delete gym' }),
+          style: 'destructive',
+          onPress: () =>
+            deleteGymMutation.mutate(gymId, { onError: showGymError }),
+        },
+      ]
+    );
+  };
+
+  const handleSave = () => {
+    const body = parseDraft();
+    if (!body) return;
+    saveMutation.mutate(body, {
+      onSuccess: onDone,
+      onError: (e) => {
+        addLog('Failed to save plate inventory', 'ERROR', [String(e)]);
+        Toast.show({
+          type: 'error',
+          text1: t('plates.saveFailed', {
+            defaultValue: 'Failed to save plates and bars',
+          }),
+          text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+        });
+      },
+    });
   };
 
   useEffect(() => {
@@ -214,6 +322,76 @@ const PlateInventoryForm: React.FC<{
       }}
       keyboardShouldPersistTaps="handled"
     >
+      {gymsSupported && (
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <SectionTitle
+            title={t('plates.gym.heading', { defaultValue: 'Gym' })}
+          />
+          {gyms.length > 1 && (
+            <View className="flex-row flex-wrap gap-2 mb-3">
+              {gyms.map((g, index) => (
+                <Button
+                  key={g.id}
+                  variant={g.id === gym.id ? 'primary' : 'outline'}
+                  disabled={isBusy}
+                  onPress={() =>
+                    g.id !== gym.id &&
+                    activateGymMutation.mutate(g.id, { onError: showGymError })
+                  }
+                >
+                  {g.name ||
+                    t('plates.gym.unnamed', {
+                      defaultValue: 'Gym {{number}}',
+                      number: index + 1,
+                    })}
+                </Button>
+              ))}
+            </View>
+          )}
+          <Text className="text-xs text-text-muted mb-1">
+            {t('plates.gym.name', { defaultValue: 'Name' })}
+          </Text>
+          <FormInput
+            value={draft.name}
+            onChangeText={(text) => patch({ name: text })}
+            maxLength={60}
+            placeholder={t('plates.gym.namePlaceholder', {
+              defaultValue: 'Home, work, hotel…',
+            })}
+            accessibilityLabel={t('plates.gym.name', { defaultValue: 'Name' })}
+          />
+          <Text className="text-xs text-text-muted mt-2">
+            {t('plates.gym.hint', {
+              defaultValue:
+                'Each gym keeps its own equipment. Workouts use the active gym, and progression rounds to the dumbbells and machine stacks it has.',
+            })}
+          </Text>
+          {gym.machineStacks.length > 0 && (
+            <Text className="text-xs text-text-muted mt-2">
+              {t('plates.gym.machineStacks', {
+                defaultValue:
+                  '{{count}} machine weight stacks saved (edit them on the web).',
+                count: gym.machineStacks.length,
+              })}
+            </Text>
+          )}
+          <View className="flex-row gap-2 mt-3">
+            <Button variant="outline" onPress={handleAddGym} disabled={isBusy}>
+              {t('plates.gym.add', { defaultValue: 'Add gym' })}
+            </Button>
+            {gyms.length > 1 && (
+              <Button
+                variant="outline"
+                onPress={handleDeleteGym}
+                disabled={isBusy}
+              >
+                {t('plates.gym.delete', { defaultValue: 'Delete gym' })}
+              </Button>
+            )}
+          </View>
+        </View>
+      )}
+
       <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
         <SectionTitle
           title={t('plates.startFrom', { defaultValue: 'Start from' })}
@@ -435,6 +613,33 @@ const PlateInventoryForm: React.FC<{
         </Button>
       </View>
 
+      {gymsSupported && (
+        <View className="bg-surface rounded-xl p-4 mb-4 shadow-sm">
+          <SectionTitle
+            title={t('plates.dumbbellsHeading', {
+              defaultValue: 'Dumbbells ({{unit}})',
+              unit: draft.unit,
+            })}
+          />
+          <FormInput
+            value={draft.dumbbells}
+            onChangeText={(text) => patch({ dumbbells: text })}
+            keyboardType="numbers-and-punctuation"
+            placeholder="2 4 6 8 10 12.5"
+            accessibilityLabel={t('plates.dumbbellsHeading', {
+              defaultValue: 'Dumbbells ({{unit}})',
+              unit: draft.unit,
+            })}
+          />
+          <Text className="text-xs text-text-muted mt-2">
+            {t('plates.dumbbellsHint', {
+              defaultValue:
+                'Each size you have, separated by spaces. Leave empty if you have none.',
+            })}
+          </Text>
+        </View>
+      )}
+
       <SettingsRowGroup>
         <SettingsRow
           title={t('plates.collarsCount', { defaultValue: 'Collars count' })}
@@ -494,8 +699,9 @@ const PlateInventoryScreen: React.FC<Props> = ({ navigation }) => {
   const { preferences } = usePreferences();
   const weightUnit: PlateUnit =
     preferences?.default_weight_unit === 'lbs' ? 'lbs' : 'kg';
-  const { inventory, hasSaved, isLoading, isError, refetch } =
+  const { inventory, gymFields, hasSaved, isLoading, isError, refetch } =
     usePlateInventory(weightUnit);
+  const { gyms, supported: gymsSupported } = useGyms();
 
   const mutations = usePlateInventoryMutations();
   const saveRef = useRef<(() => void) | null>(null);
@@ -538,8 +744,11 @@ const PlateInventoryScreen: React.FC<Props> = ({ navigation }) => {
         />
       ) : (
         <PlateInventoryForm
-          key={hasSaved ? 'saved' : 'standard'}
+          // Re-keyed per gym so switching loads that gym's equipment.
+          key={hasSaved ? (gymFields.id ?? 'saved') : 'standard'}
           initial={inventory}
+          gym={gymFields}
+          gyms={gymsSupported ? gyms : null}
           hasSaved={hasSaved}
           onDone={() => navigation.goBack()}
           mutations={mutations}

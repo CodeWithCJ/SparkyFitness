@@ -24,6 +24,49 @@ const renderDialog = (
 };
 
 describe('PlateInventoryDialog', () => {
+  it("saves a gym's name, dumbbells and machine stacks", async () => {
+    const { onSubmit } = renderDialog({
+      gymsSupported: true,
+      gym: {
+        name: 'Home',
+        dumbbells: [5, 2.5],
+        machineStacks: [
+          {
+            exercise_id: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
+            exercise_name: 'Leg press',
+            weights: [5, 11.5],
+          },
+        ],
+      },
+    });
+    fireEvent.change(screen.getByLabelText('Dumbbells (kg)'), {
+      target: { value: '2.5, 5 7.5' },
+    });
+    fireEvent.change(screen.getByLabelText('Leg press'), {
+      target: { value: '5 11.5 18' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    const body = onSubmit.mock.calls[0]![0];
+    expect(body.name).toBe('Home');
+    expect(body.dumbbells).toEqual([2.5, 5, 7.5]);
+    expect(body.machine_stacks).toEqual([
+      {
+        exercise_id: '7c9e6679-7425-40de-944b-e07fc1f90ae7',
+        exercise_name: 'Leg press',
+        weights: [5, 11.5, 18],
+      },
+    ]);
+  });
+
+  it('sends no gym fields to a server without gym profiles', async () => {
+    const { onSubmit } = renderDialog();
+    expect(screen.queryByLabelText('Dumbbells (kg)')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]![0]).not.toHaveProperty('dumbbells');
+  });
+
   it('saves the standard kg set untouched', async () => {
     const { onSubmit } = renderDialog();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));

@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   NO_ADAPTIVE_ADJUSTMENT,
   isBodyweightModality,
@@ -7,6 +8,8 @@ import {
   type ExerciseStatsResponse,
 } from '@workspace/shared';
 import { formatLocalizedNumber } from '../localization';
+import { fetchPlateInventory } from '../services/api/plateInventoryApi';
+import { plateInventoryQueryKey } from './queryKeys';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import type { PrSetMap } from '../stores/activeWorkoutStore';
 import { weightFromKg } from '../utils/unitConversions';
@@ -117,10 +120,12 @@ export function useLiveAssumedSetValues(
   const coachingSignals = useActiveWorkoutStore((s) => s.coachingSignals);
   const declinedAdaptive = useActiveWorkoutStore((s) => s.declinedAdaptive);
   const workoutFormat = useActiveWorkoutStore((s) => s.workoutFormat);
+  const activeGym = useActiveWorkoutStore((s) => s.activeGym);
   return useMemo(
     () =>
       enabled
         ? resolveLiveAssumedSetValues(exercise, previousSessionSets, {
+            activeGym,
             plannedSetValues,
             exerciseConfigs,
             weightUnit,
@@ -133,6 +138,7 @@ export function useLiveAssumedSetValues(
       enabled,
       exercise,
       previousSessionSets,
+      activeGym,
       plannedSetValues,
       exerciseConfigs,
       weightUnit,
@@ -158,6 +164,7 @@ export function useCaptureLiveHistory(
   const capturePreviousSessionSets = useActiveWorkoutStore(
     (s) => s.capturePreviousSessionSets
   );
+  useCaptureActiveGym(enabled);
   useEffect(() => {
     // Wait for the query to resolve (data is null/undefined while loading). A
     // resolved stats object with a null `bestSet` still captures — that's the
@@ -248,4 +255,23 @@ export function useExerciseBest(
         }`
       : null;
   return { bestDisplay, bestIsPr, bestText };
+}
+
+/**
+ * Capture the active gym's dumbbells and machine stacks into the live
+ * workout once, from the same query the plate calculator reads. A failed
+ * fetch captures nothing, so weights stay unsnapped rather than erroring.
+ */
+function useCaptureActiveGym(enabled: boolean) {
+  const captureActiveGym = useActiveWorkoutStore((s) => s.captureActiveGym);
+  const query = useQuery({
+    queryKey: plateInventoryQueryKey,
+    queryFn: fetchPlateInventory,
+    enabled,
+  });
+  const inventory = query.data?.inventory;
+  useEffect(() => {
+    if (!enabled || !query.isSuccess) return;
+    captureActiveGym(inventory ?? null);
+  }, [enabled, query.isSuccess, inventory, captureActiveGym]);
 }

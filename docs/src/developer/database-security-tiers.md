@@ -58,7 +58,7 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `custom_run_programs` | A person's own saved run or walk plans (name, activity, workouts) that they can start | Owner-Only | Owner-Only |
 | `fitness_tests` | A person's running fitness tests (5K time trial, 30-minute run, Cooper test): the measurements, the surface (outdoor or treadmill) and incline, the result and the derived training paces, linked to the recorded activity | Owner-Only | Owner-Only |
 | `routes` | A person's saved routes (a simplified track of points, optional turn cues, distance and elevation) that they drew, imported from GPX or saved from a recorded activity | Owner-Only | Owner-Only |
-| `plate_inventories` | Bars and plates a person owns (one row per user; JSON bars and plates, unit, collar weight) for the plate calculator | Owner-Only | Owner-Only |
+| `plate_inventories` | Gym profiles: bars, plates, dumbbells and machine stacks a person has at each gym (one row per gym, one active per user) for the plate calculator and weight rounding | Owner-Only | Owner-Only |
 | `action_tags` | NFC tags and the saved action behind each (a random tag code, a label and a JSON action such as "log 1 drink from container 7"). A sticker holds only the code, never the action | Owner-Only | Owner-Only |
 | `health_appointments` | Prenatal & other health appointments | Owner-Only | Owner-Only |
 | `openfoodfacts_product_read_rate_limit` | Singleton coordination lease and cooldown for Open Food Facts product reads, including manual previews; contains no user data or credentials | System services only | Deny all |

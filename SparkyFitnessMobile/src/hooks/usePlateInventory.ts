@@ -7,11 +7,15 @@ import {
   type SavePlateInventoryBody,
 } from '@workspace/shared';
 import {
+  activateGym,
+  createGym,
+  deleteGym,
   deletePlateInventory,
+  fetchGyms,
   fetchPlateInventory,
   savePlateInventory,
 } from '../services/api/plateInventoryApi';
-import { plateInventoryQueryKey } from './queryKeys';
+import { gymsQueryKey, plateInventoryQueryKey } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 
 /**
@@ -27,6 +31,15 @@ export function usePlateInventory(fallbackUnit: PlateUnit) {
   useRefetchOnFocus(query.refetch);
 
   const stored = query.data?.inventory ?? null;
+  const gymFields = useMemo(
+    () => ({
+      id: stored?.id ?? null,
+      name: stored?.name ?? null,
+      dumbbells: stored?.dumbbells ?? [],
+      machineStacks: stored?.machine_stacks ?? [],
+    }),
+    [stored]
+  );
   // Stable between renders so the calculator memos that depend on it hold.
   const inventory = useMemo<PlateInventoryConfig>(
     () => inventoryConfigFrom(stored, fallbackUnit),
@@ -36,6 +49,7 @@ export function usePlateInventory(fallbackUnit: PlateUnit) {
   return {
     inventory,
     hasSaved: stored != null,
+    gymFields,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,
@@ -48,6 +62,7 @@ export function usePlateInventoryMutations() {
     void queryClient.invalidateQueries({
       queryKey: [...plateInventoryQueryKey],
     });
+    void queryClient.invalidateQueries({ queryKey: [...gymsQueryKey] });
   };
 
   const saveMutation = useMutation({
@@ -59,5 +74,40 @@ export function usePlateInventoryMutations() {
     onSuccess: refresh,
   });
 
-  return { saveMutation, resetMutation };
+  const createGymMutation = useMutation({
+    mutationFn: (data: SavePlateInventoryBody) => createGym(data),
+    onSuccess: refresh,
+  });
+  const activateGymMutation = useMutation({
+    mutationFn: (id: string) => activateGym(id),
+    onSuccess: refresh,
+  });
+  const deleteGymMutation = useMutation({
+    mutationFn: (id: string) => deleteGym(id),
+    onSuccess: refresh,
+  });
+
+  return {
+    saveMutation,
+    resetMutation,
+    createGymMutation,
+    activateGymMutation,
+    deleteGymMutation,
+  };
+}
+
+/**
+ * The person's gym profiles. Empty (and `supported` false) against a server
+ * from before gym profiles, so the gym switcher just doesn't show.
+ */
+export function useGyms() {
+  const query = useQuery({
+    queryKey: gymsQueryKey,
+    queryFn: fetchGyms,
+    retry: false,
+  });
+  return {
+    gyms: query.data?.gyms ?? [],
+    supported: query.isSuccess,
+  };
 }
