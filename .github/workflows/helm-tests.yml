@@ -158,7 +158,7 @@ jobs:
             --show-only templates/server/deployment.yaml --show-only templates/server/pdb.yaml)
           # One Deployment of every replica, rolling one pod at a time.
           test "$(grep -c '^kind: Deployment' <<< "$out")" = 1
-          grep -q '^  replicas: 3' <<< "$out"
+          grep -q '^  replicas: 3$' <<< "$out"
           grep -q 'maxUnavailable: 0' <<< "$out"
           if grep -q 'type: Recreate\|SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS' <<< "$out"; then
             echo "replicas above 1 should neither Recreate nor disable scheduled jobs"; exit 1

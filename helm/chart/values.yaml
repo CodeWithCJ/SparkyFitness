@@ -206,7 +206,8 @@ server:
     digest: ""
     pullPolicy: IfNotPresent
   # -- Server replica count. The replicas share scheduled jobs through the
-  # database, so any of them can stop. Above 1 the chart requires
+  # database, so any of them can stop; a pinned image of v1.11.0 or older would
+  # instead run each job on every replica. Above 1 the chart requires
   # ReadWriteMany backup/uploads volumes (rendering fails otherwise), rolls
   # updates one pod at a time, and adds a PodDisruptionBudget, a spread across
   # nodes and a preStop delay unless you configure them yourself.
