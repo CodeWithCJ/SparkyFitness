@@ -21,6 +21,8 @@ interface SafeImageProps {
    * detail) opt in.
    */
   autoplay?: boolean;
+  /** Called with the decoded image's natural size once it loads. */
+  onLoadSize?: (width: number, height: number) => void;
 }
 
 function getImageSourceSignature(
@@ -61,6 +63,7 @@ const SafeImage: React.FC<SafeImageProps> = ({
   contentFit,
   fallback = null,
   autoplay = false,
+  onLoadSize,
 }) => {
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -135,7 +138,10 @@ const SafeImage: React.FC<SafeImageProps> = ({
           autoplay={autoplay}
           cachePolicy="memory-disk"
           transition={TRANSITION_MS}
-          onLoad={() => setLoaded(true)}
+          onLoad={(event) => {
+            setLoaded(true);
+            onLoadSize?.(event.source.width, event.source.height);
+          }}
           onError={() => setError(true)}
         />
       )}

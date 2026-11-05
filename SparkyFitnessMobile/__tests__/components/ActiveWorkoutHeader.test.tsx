@@ -93,6 +93,7 @@ describe('ActiveWorkoutHeader', () => {
       onAddExercise?: () => void;
       onOpenSettings?: () => void;
       onClearAllSets?: () => void;
+      progressInSubtitle?: boolean;
     }
   ) {
     const progress = buildExerciseProgress(makeSession(), completedSetIds);
@@ -101,6 +102,7 @@ describe('ActiveWorkoutHeader', () => {
         name="Push Day"
         startedAt={start}
         progress={progress}
+        progressInSubtitle={overrides?.progressInSubtitle}
         onBack={overrides?.onBack ?? jest.fn()}
         onDiscard={overrides?.onDiscard ?? jest.fn()}
         onEndWorkout={overrides?.onEndWorkout}
@@ -154,6 +156,17 @@ describe('ActiveWorkoutHeader', () => {
     });
     expect(getByText('3 / 3 exercises')).toBeTruthy();
     expect(getAllByTestId('header-segment-done')).toHaveLength(3);
+  });
+
+  it('moves the count to the elapsed line and drops the bar on request', () => {
+    const { getByText, queryAllByTestId } = renderHeaderComponent(
+      { '101': true, '102': true },
+      { progressInSubtitle: true }
+    );
+    expect(getByText('01:02 elapsed')).toBeTruthy();
+    expect(getByText('1 / 3 exercises')).toBeTruthy();
+    expect(queryAllByTestId('header-segment')).toHaveLength(0);
+    expect(queryAllByTestId('header-segment-done')).toHaveLength(0);
   });
 
   it('fires onBack from the back button', () => {
