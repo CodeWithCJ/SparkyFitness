@@ -279,12 +279,19 @@ export async function syncAllDayHeartRate(
         samples: samples.map(({ t, bpm }) => ({ t, bpm })),
       };
       // apiFetch's own timeout stops at the response headers; this bounds the
-      // body read too, so a stalled response cannot hold the phase open.
-      await withTimeout(
-        postHealthMetricSamples(body),
-        stepTimeoutMs,
-        'All-day heart rate upload'
-      );
+      // body read too, and aborts the request when it fires, so a stalled
+      // response neither holds the phase open nor keeps its connection.
+      const upload = new AbortController();
+      try {
+        await withTimeout(
+          postHealthMetricSamples(body, upload.signal),
+          stepTimeoutMs,
+          'All-day heart rate upload'
+        );
+      } catch (e) {
+        upload.abort();
+        throw e;
+      }
       samplesUploaded += samples.length;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);

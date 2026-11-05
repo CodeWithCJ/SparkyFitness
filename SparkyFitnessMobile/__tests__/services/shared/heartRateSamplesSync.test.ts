@@ -312,6 +312,9 @@ describe('syncAllDayHeartRate', () => {
       10
     );
     expect(result.error).toMatch(/upload timed out/i);
+    // The stalled request is cancelled, not just abandoned.
+    const signal = postHealthMetricSamples.mock.calls[0][1] as AbortSignal;
+    expect(signal.aborted).toBe(true);
     readRaw.mockClear();
     await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
     expect(readRaw.mock.calls[0][1]).toEqual(start);

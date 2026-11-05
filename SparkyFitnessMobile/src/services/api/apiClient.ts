@@ -26,6 +26,11 @@ interface ApiFetchOptions {
    * on the `ApiError`.
    */
   logResponseBody?: boolean;
+  /**
+   * Cancels the request, including reading the response body, which
+   * `timeoutMs` does not cover.
+   */
+  signal?: AbortSignal;
 }
 
 export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
@@ -38,6 +43,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
     headers: customHeaders,
     timeoutMs = DEFAULT_API_TIMEOUT_MS,
     logResponseBody = true,
+    signal,
   } = options;
 
   const config = await getActiveServerConfig();
@@ -82,6 +88,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
           ...customHeaders,
         },
         ...(body ? { body: JSON.stringify(body) } : {}),
+        ...(signal ? { signal } : {}),
       },
       timeoutMs
     );

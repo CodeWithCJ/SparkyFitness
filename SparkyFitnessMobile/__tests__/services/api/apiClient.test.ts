@@ -152,6 +152,39 @@ describe('apiClient', () => {
       apiKey: 'test-api-key-12345',
     };
 
+    test('a caller signal aborts a response whose body stalls', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockImplementation((_url: string, options?: RequestInit) =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: { get: () => null },
+          json: () =>
+            new Promise((_resolve, reject) => {
+              options?.signal?.addEventListener('abort', () => {
+                const err = new Error('The operation was aborted');
+                err.name = 'AbortError';
+                reject(err);
+              });
+            }),
+        })
+      );
+      const controller = new AbortController();
+      const request = apiFetch({
+        endpoint: '/api/test',
+        serviceName: 'Test',
+        operation: 'test',
+        signal: controller.signal,
+      });
+      const check = expect(request).rejects.toMatchObject({
+        name: 'AbortError',
+      });
+      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      controller.abort();
+      await check;
+    });
+
     test('returns parsed JSON on success', async () => {
       const responseData = { id: 1, name: 'Test' };
       mockGetActiveServerConfig.mockResolvedValue(testConfig);

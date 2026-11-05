@@ -10,7 +10,8 @@ import { apiFetch } from './apiClient';
  * sending the same window again never duplicates.
  */
 export const postHealthMetricSamples = (
-  body: HealthMetricSamplesWriteBody
+  body: HealthMetricSamplesWriteBody,
+  signal?: AbortSignal
 ): Promise<HealthMetricSamplesWriteResponse> =>
   apiFetch<HealthMetricSamplesWriteResponse>({
     endpoint: '/api/generic-health/samples',
@@ -18,4 +19,5 @@ export const postHealthMetricSamples = (
     operation: 'upload heart rate samples',
     method: 'POST',
     body,
+    signal,
   });
