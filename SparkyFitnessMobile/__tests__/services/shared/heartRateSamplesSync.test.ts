@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { ServerConfig } from '../../../src/services/storage';
 import {
   PASSIVE_HEART_RATE_SOURCE,
   downsampleHeartRate,
   heartRateReadingsFromRecords,
+  heartRateAccountId,
   heartRateSyncPlan,
   heartRateWindows,
-  resetAllDayHeartRateForAccountChange,
   syncAllDayHeartRate,
 } from '../../../src/services/shared/heartRateSamplesSync';
 import { createTelemetryRunContext } from '../../../src/services/shared/telemetryBudget';
@@ -22,6 +23,24 @@ const { postHealthMetricSamples } =
   };
 
 const DAY_MS = 86_400_000;
+
+jest.mock('../../../src/services/storage', () => ({
+  ...jest.requireActual('../../../src/services/storage'),
+  getActiveServerConfig: jest.fn(),
+}));
+const { getActiveServerConfig } = jest.requireMock(
+  '../../../src/services/storage'
+) as { getActiveServerConfig: jest.Mock };
+
+const ACCOUNT: ServerConfig = {
+  id: 'server-1',
+  url: 'https://sparky.example',
+  apiKey: '',
+  authType: 'session',
+  sessionToken: 'token-a',
+};
+/** Another person signed in on the same server config. */
+const OTHER_ACCOUNT: ServerConfig = { ...ACCOUNT, sessionToken: 'token-b' };
 
 describe('heartRateReadingsFromRecords', () => {
   it('reads one HealthKit reading per record at its start time', () => {
@@ -118,6 +137,8 @@ describe('syncAllDayHeartRate', () => {
   const telemetry = createTelemetryRunContext();
   beforeEach(async () => {
     postHealthMetricSamples.mockClear();
+    getActiveServerConfig.mockReset();
+    getActiveServerConfig.mockResolvedValue(ACCOUNT);
     await AsyncStorage.clear();
   });
 
@@ -137,6 +158,7 @@ describe('syncAllDayHeartRate', () => {
       .mockResolvedValueOnce({ records: [] });
     const result = await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       start,
       end,
       telemetry,
@@ -163,6 +185,7 @@ describe('syncAllDayHeartRate', () => {
       .mockResolvedValueOnce(record('2026-10-30T08:00:00.000Z'));
     const result = await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       new Date('2026-10-20T00:00:00.000Z'),
       new Date('2026-11-03T00:00:00.000Z'),
       telemetry,
@@ -179,6 +202,7 @@ describe('syncAllDayHeartRate', () => {
       .mockResolvedValue({ records: [], error: 'locked' });
     const result = await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       new Date('2026-11-01T00:00:00.000Z'),
       new Date('2026-11-03T00:00:00.000Z'),
       telemetry,
@@ -200,6 +224,7 @@ describe('syncAllDayHeartRate', () => {
     });
     const result = await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       new Date('2026-11-01T00:00:00.000Z'),
       new Date('2026-11-03T00:00:00.000Z'),
       telemetry,
@@ -224,7 +249,14 @@ describe('syncAllDayHeartRate', () => {
         },
       ],
     });
-    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
+    await syncAllDayHeartRate(
+      { readRaw },
+      ACCOUNT,
+      start,
+      end,
+      telemetry,
+      '[T]'
+    );
     const body = postHealthMetricSamples.mock.calls[0][0];
     expect(body.samples).toEqual([{ t: start.toISOString(), bpm: 60 }]);
   });
@@ -233,6 +265,7 @@ describe('syncAllDayHeartRate', () => {
     const readRaw = jest.fn(() => new Promise<never>(() => {}));
     const result = await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       new Date('2026-11-01T00:00:00.000Z'),
       new Date('2026-11-03T00:00:00.000Z'),
       telemetry,
@@ -248,6 +281,7 @@ describe('syncAllDayHeartRate', () => {
     const end = new Date('2026-11-03T12:00:00.000Z');
     await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       new Date(end.getTime() - 30 * DAY_MS),
       end,
       telemetry,
@@ -259,6 +293,7 @@ describe('syncAllDayHeartRate', () => {
     const later = new Date(end.getTime() + DAY_MS);
     await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       new Date(later.getTime() - 30 * DAY_MS),
       later,
       telemetry,
@@ -275,6 +310,7 @@ describe('syncAllDayHeartRate', () => {
     const end = new Date('2026-11-03T12:00:00.000Z');
     await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       new Date('2026-11-03T00:00:00.000Z'),
       end,
       telemetry,
@@ -284,6 +320,7 @@ describe('syncAllDayHeartRate', () => {
     const thirtyDaysBack = new Date(end.getTime() - 30 * DAY_MS);
     await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       thirtyDaysBack,
       end,
       telemetry,
@@ -308,6 +345,7 @@ describe('syncAllDayHeartRate', () => {
     });
     const result = await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       start,
       end,
       telemetry,
@@ -319,26 +357,51 @@ describe('syncAllDayHeartRate', () => {
     const signal = postHealthMetricSamples.mock.calls[0][1] as AbortSignal;
     expect(signal.aborted).toBe(true);
     readRaw.mockClear();
-    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
+    await syncAllDayHeartRate(
+      { readRaw },
+      ACCOUNT,
+      start,
+      end,
+      telemetry,
+      '[T]'
+    );
     expect(readRaw.mock.calls[0][1]).toEqual(start);
   });
 
-  it('stops before the next week once the account changes, and keeps no coverage', async () => {
+  it("sends every upload with the run's own account, not whichever is active", async () => {
+    const readRaw = jest.fn().mockResolvedValue({
+      records: [
+        {
+          startTime: '2026-11-02T08:00:00.000Z',
+          samples: [{ beatsPerMinute: 66 }],
+        },
+      ],
+    });
+    await syncAllDayHeartRate(
+      { readRaw },
+      ACCOUNT,
+      new Date('2026-11-01T00:00:00.000Z'),
+      new Date('2026-11-03T00:00:00.000Z'),
+      telemetry,
+      '[T]'
+    );
+    expect(postHealthMetricSamples.mock.calls[0][2]).toBe(ACCOUNT);
+  });
+
+  it('stops before uploading once another account is active, even on the same server', async () => {
     const record = (startTime: string) => ({
       records: [{ startTime, samples: [{ beatsPerMinute: 66 }] }],
     });
-    const readRaw = jest
-      .fn()
-      .mockImplementationOnce(async () => {
-        // The switch lands while the first week is being read.
-        await resetAllDayHeartRateForAccountChange();
-        return record('2026-10-22T08:00:00.000Z');
-      })
-      .mockResolvedValue(record('2026-10-29T08:00:00.000Z'));
+    const readRaw = jest.fn().mockImplementationOnce(async () => {
+      // Someone else signs in on the same server while the week is read.
+      getActiveServerConfig.mockResolvedValue(OTHER_ACCOUNT);
+      return record('2026-10-22T08:00:00.000Z');
+    });
     const start = new Date('2026-10-20T00:00:00.000Z');
     const end = new Date('2026-11-03T00:00:00.000Z');
     const result = await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       start,
       end,
       telemetry,
@@ -347,80 +410,77 @@ describe('syncAllDayHeartRate', () => {
     expect(result.error).toMatch(/account changed/i);
     expect(readRaw).toHaveBeenCalledTimes(1);
     expect(postHealthMetricSamples).not.toHaveBeenCalled();
-
-    readRaw.mockClear();
-    readRaw.mockResolvedValue({ records: [] });
-    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
-    expect(readRaw.mock.calls[0][1]).toEqual(start);
   });
 
-  it('forgets stored coverage on an account change, so the next account reads its whole range', async () => {
+  it('stops when no account is active or it cannot be read', async () => {
+    getActiveServerConfig.mockRejectedValue(new Error('storage'));
     const readRaw = jest.fn().mockResolvedValue({ records: [] });
-    const end = new Date('2026-11-03T12:00:00.000Z');
-    const start = new Date(end.getTime() - 14 * DAY_MS);
-    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
-    await resetAllDayHeartRateForAccountChange();
-
-    readRaw.mockClear();
-    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
-    expect(readRaw.mock.calls[0][1]).toEqual(start);
-  });
-
-  it('a run started while the account-change sweep is pending waits for it', async () => {
-    const readRaw = jest.fn().mockResolvedValue({ records: [] });
-    const end = new Date('2026-11-03T12:00:00.000Z');
-    const start = new Date(end.getTime() - 14 * DAY_MS);
-    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
-
-    // Hold the sweep's key listing so the next run starts while it is pending.
-    let releaseSweep: () => void = () => {};
-    const realGetAllKeys = AsyncStorage.getAllKeys;
-    jest.spyOn(AsyncStorage, 'getAllKeys').mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          releaseSweep = () => resolve(realGetAllKeys());
-        })
-    );
-    const sweep = resetAllDayHeartRateForAccountChange();
-
-    readRaw.mockClear();
-    const run = syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
-    await Promise.resolve();
-    expect(readRaw).not.toHaveBeenCalled();
-    releaseSweep();
-    await sweep;
-    await run;
-    expect(readRaw.mock.calls[0][1]).toEqual(start);
-  });
-
-  it('a run waiting on a sweep stops when the account changes during the wait', async () => {
-    let releaseSweep: () => void = () => {};
-    const realGetAllKeys = AsyncStorage.getAllKeys;
-    jest.spyOn(AsyncStorage, 'getAllKeys').mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          releaseSweep = () => resolve(realGetAllKeys());
-        })
-    );
-    const firstSweep = resetAllDayHeartRateForAccountChange();
-
-    const readRaw = jest.fn().mockResolvedValue({ records: [] });
-    const run = syncAllDayHeartRate(
+    const result = await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       new Date('2026-11-01T00:00:00.000Z'),
       new Date('2026-11-03T00:00:00.000Z'),
       telemetry,
       '[T]'
     );
-    // A second switch lands while the run is still waiting.
-    const secondSweep = resetAllDayHeartRateForAccountChange();
-    releaseSweep();
-    await Promise.all([firstSweep, secondSweep]);
-
-    const result = await run;
     expect(result.error).toMatch(/account changed/i);
     expect(readRaw).not.toHaveBeenCalled();
-    expect(postHealthMetricSamples).not.toHaveBeenCalled();
+  });
+
+  it("never reads another account's coverage, with no cleanup step needed", async () => {
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    const end = new Date('2026-11-03T12:00:00.000Z');
+    const start = new Date(end.getTime() - 14 * DAY_MS);
+    await syncAllDayHeartRate(
+      { readRaw },
+      ACCOUNT,
+      start,
+      end,
+      telemetry,
+      '[T]'
+    );
+
+    // The next person on the same server config reads their whole range.
+    getActiveServerConfig.mockResolvedValue(OTHER_ACCOUNT);
+    readRaw.mockClear();
+    await syncAllDayHeartRate(
+      { readRaw },
+      OTHER_ACCOUNT,
+      start,
+      end,
+      telemetry,
+      '[T]'
+    );
+    expect(readRaw.mock.calls[0][1]).toEqual(start);
+  });
+
+  it("keeps one coverage record per server config, dropping its earlier accounts'", async () => {
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    const end = new Date('2026-11-03T12:00:00.000Z');
+    const start = new Date(end.getTime() - 14 * DAY_MS);
+    await syncAllDayHeartRate(
+      { readRaw },
+      ACCOUNT,
+      start,
+      end,
+      telemetry,
+      '[T]'
+    );
+    getActiveServerConfig.mockResolvedValue(OTHER_ACCOUNT);
+    await syncAllDayHeartRate(
+      { readRaw },
+      OTHER_ACCOUNT,
+      start,
+      end,
+      telemetry,
+      '[T]'
+    );
+    const keys = (await AsyncStorage.getAllKeys()).filter((k) =>
+      k.includes('heartRateSamplesThrough')
+    );
+    expect(keys).toEqual([
+      `@SparkyFitness/heartRateSamplesThrough:${heartRateAccountId(OTHER_ACCOUNT)}`,
+    ]);
   });
 
   it('logs only the status of a failed upload, never the response body', async () => {
@@ -437,6 +497,7 @@ describe('syncAllDayHeartRate', () => {
     });
     const result = await syncAllDayHeartRate(
       { readRaw },
+      ACCOUNT,
       new Date('2026-11-01T00:00:00.000Z'),
       new Date('2026-11-03T00:00:00.000Z'),
       telemetry,
@@ -455,6 +516,7 @@ describe('syncAllDayHeartRate', () => {
       .mockResolvedValue({ records: [], error: 'locked' });
     await syncAllDayHeartRate(
       { readRaw: failing },
+      ACCOUNT,
       start,
       end,
       telemetry,
@@ -462,7 +524,14 @@ describe('syncAllDayHeartRate', () => {
     );
 
     const readRaw = jest.fn().mockResolvedValue({ records: [] });
-    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
+    await syncAllDayHeartRate(
+      { readRaw },
+      ACCOUNT,
+      start,
+      end,
+      telemetry,
+      '[T]'
+    );
     expect(readRaw.mock.calls[0][1]).toEqual(start);
   });
 });
@@ -504,5 +573,18 @@ describe('heartRateSyncPlan', () => {
       null
     );
     expect(plan.start).toEqual(new Date(ms(end) - 31 * DAY_MS));
+  });
+});
+
+describe('heartRateAccountId', () => {
+  it('differs between people on one server and is stable for one', () => {
+    expect(heartRateAccountId(ACCOUNT)).toBe(
+      heartRateAccountId({ ...ACCOUNT })
+    );
+    expect(heartRateAccountId(ACCOUNT)).not.toBe(
+      heartRateAccountId(OTHER_ACCOUNT)
+    );
+    expect(heartRateAccountId(ACCOUNT).startsWith('server-1:')).toBe(true);
+    expect(heartRateAccountId(ACCOUNT)).not.toContain('token-a');
   });
 });

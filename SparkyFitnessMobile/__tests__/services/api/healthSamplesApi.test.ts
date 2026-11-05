@@ -19,13 +19,19 @@ describe('postHealthMetricSamples', () => {
       samples: [{ t: '2026-11-01T08:00:00.000Z', bpm: 66 }],
     };
     const signal = new AbortController().signal;
-    await postHealthMetricSamples(body, signal);
+    const serverConfig = {
+      id: 'server-1',
+      url: 'https://sparky.example',
+      apiKey: 'key-1',
+    };
+    await postHealthMetricSamples(body, signal, serverConfig);
     expect(apiFetch).toHaveBeenCalledWith(
       expect.objectContaining({
         endpoint: '/api/generic-health/samples',
         method: 'POST',
         body,
         signal,
+        serverConfig,
         logResponseBody: false,
       })
     );

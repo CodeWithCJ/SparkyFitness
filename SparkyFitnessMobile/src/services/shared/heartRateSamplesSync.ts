@@ -5,7 +5,7 @@ import { postHealthMetricSamples } from '../api/healthSamplesApi';
 import { ApiError } from '../api/errors';
 import { addLog } from '../LogService';
 import { withTimeout } from '../../utils/concurrency';
-import { getActiveServerConfigId } from '../storage';
+import { getActiveServerConfig, type ServerConfig } from '../storage';
 import type { TelemetryRunContext } from './telemetryBudget';
 import type { ReadResult } from '../../types/healthRecords';
 
@@ -128,64 +128,50 @@ export function heartRateWindows(
 }
 
 /**
- * Per server, the span the last fully successful run covered: every window
+ * Per account, the span the last fully successful run covered: every window
  * from `from` to `through` was read and uploaded. Both ends are kept so a run
  * over a short range (a `today` sync) cannot make a later, longer range skip
- * the days before it. Kept per server so switching accounts never skips
- * another account's range. Best effort: an unreadable value means a full run.
+ * the days before it. Best effort: an unreadable value means a full run.
  */
 interface HeartRateCoverage {
   from: number;
   through: number;
 }
 
-const cursorKey = async (): Promise<string> =>
-  `${CURSOR_KEY_PREFIX}:${(await getActiveServerConfigId().catch(() => null)) ?? 'none'}`;
-
 /**
- * Bumped on every account change. A run remembers the value it started with
- * and stops before its next read or upload once it differs, so weeks left in a
- * run never go to, or are recorded for, the account switched to.
+ * 64-bit FNV-1a of a string as hex. Only tells accounts apart in a storage
+ * key; it is not a security measure, and a high-entropy credential cannot be
+ * recovered from it.
  */
-let accountGeneration = 0;
-/** The upload in flight, so an account change can cancel it. */
-let activeUpload: AbortController | null = null;
-
-/**
- * Called when the signed-in account changes (`useAuth`'s identity-change
- * handler). Stops a running phase and forgets every stored coverage: a session
- * replaced on the same server config keeps that config's id, so a coverage
- * kept for it would otherwise let the next account skip its own older days.
- */
-export function resetAllDayHeartRateForAccountChange(): Promise<void> {
-  accountGeneration += 1;
-  activeUpload?.abort();
-  activeUpload = null;
-  coverageSweep = sweepCoverage();
-  return coverageSweep;
-}
-
-/**
- * The latest coverage sweep. A run waits for it before reading coverage, or a
- * sync started just after an account change could still read the previous
- * account's coverage and skip the new account's older days.
- */
-let coverageSweep: Promise<void> = Promise.resolve();
-
-const sweepCoverage = async (): Promise<void> => {
-  try {
-    const keys = await AsyncStorage.getAllKeys();
-    const stored = keys.filter((key) =>
-      key.startsWith(`${CURSOR_KEY_PREFIX}:`)
-    );
-    if (stored.length > 0) await AsyncStorage.multiRemove(stored);
-  } catch (e) {
-    addLog(
-      `All-day heart rate coverage was not cleared on the account change: ${e instanceof Error ? e.message : String(e)}`,
-      'WARNING'
-    );
+const fingerprint = (value: string): string => {
+  let hash = 0xcbf29ce484222325n;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= BigInt(value.charCodeAt(i));
+    hash = (hash * 0x100000001b3n) & 0xffffffffffffffffn;
   }
+  return hash.toString(16).padStart(16, '0');
 };
+
+/**
+ * Who a run is for: the server config plus the credential it signs in with.
+ * Signing in as someone else on the same server keeps the config id but not
+ * the credential, so the two accounts never share an identity.
+ */
+export const heartRateAccountId = (config: ServerConfig): string => {
+  const credential =
+    config.authType === 'session' && config.sessionToken
+      ? `session:${config.sessionToken}`
+      : `key:${config.apiKey}`;
+  return `${config.id}:${fingerprint(`${config.url}\n${credential}`)}`;
+};
+
+/**
+ * Coverage is stored under the account, not the server config, so it is
+ * never read for another account, whatever order an account change and its
+ * cleanup happen in, and even if the app stops between them.
+ */
+const coverageKey = (accountId: string): string =>
+  `${CURSOR_KEY_PREFIX}:${accountId}`;
 
 const readCoverage = async (key: string): Promise<HeartRateCoverage | null> => {
   try {
@@ -208,11 +194,20 @@ const readCoverage = async (key: string): Promise<HeartRateCoverage | null> => {
 };
 
 const writeCoverage = async (
+  config: ServerConfig,
   key: string,
   coverage: HeartRateCoverage
 ): Promise<void> => {
   try {
     await AsyncStorage.setItem(key, JSON.stringify(coverage));
+    // One record per server config: drop those of the config's earlier
+    // accounts (another sign-in, a renewed session) so they do not pile up.
+    const configPrefix = `${CURSOR_KEY_PREFIX}:${config.id}`;
+    const stale = (await AsyncStorage.getAllKeys()).filter(
+      (k) =>
+        k !== key && (k === configPrefix || k.startsWith(`${configPrefix}:`))
+    );
+    if (stale.length > 0) await AsyncStorage.multiRemove(stale);
   } catch {
     // Best effort: the next run just reads further back.
   }
@@ -277,9 +272,16 @@ export interface HeartRateSamplesResult {
  * After a first full run, later runs start shortly before the end of the last
  * run that uploaded every window (see `heartRateSyncPlan`), so a sync on each
  * app open does not re-read and re-send the whole range.
+ *
+ * The run belongs to `account`, the active config when the sync started. Every
+ * upload is sent with that config's own credentials, never whichever is active
+ * at the time, and the run stops before its next read or upload once a
+ * different account is active. So no reading ever goes to another account,
+ * however an account change lines up with the run.
  */
 export async function syncAllDayHeartRate(
   reader: HeartRateSamplesReader,
+  account: ServerConfig,
   start: Date,
   end: Date,
   telemetry: TelemetryRunContext,
@@ -288,28 +290,24 @@ export async function syncAllDayHeartRate(
 ): Promise<HeartRateSamplesResult> {
   let samplesUploaded = 0;
   let error: string | undefined;
-  // Taken before any wait, so a run whose account changes while it waits
-  // below stops instead of carrying on for the account switched to.
-  const generation = accountGeneration;
-  const accountChanged = () => generation !== accountGeneration;
+  const accountId = heartRateAccountId(account);
+  const accountChanged = async (): Promise<boolean> => {
+    try {
+      const active = await getActiveServerConfig();
+      return !active || heartRateAccountId(active) !== accountId;
+    } catch {
+      // Unsure whose data this would be: stop rather than guess.
+      return true;
+    }
+  };
   const stopForAccountChange = () => {
     error = 'Account changed; all-day heart rate upload stopped';
     addLog(`${logTag} ${error}`, 'INFO');
   };
-  // Wait out any coverage sweep, including one started while waiting.
-  let sweep: Promise<void>;
-  do {
-    sweep = coverageSweep;
-    await sweep;
-  } while (sweep !== coverageSweep);
-  if (accountChanged()) {
-    stopForAccountChange();
-    return { samplesUploaded, error };
-  }
-  const key = await cursorKey();
+  const key = coverageKey(accountId);
   const plan = heartRateSyncPlan(start, end, await readCoverage(key));
   for (const window of heartRateWindows(plan.start, end)) {
-    if (accountChanged()) {
+    if (await accountChanged()) {
       stopForAccountChange();
       break;
     }
@@ -354,23 +352,20 @@ export async function syncAllDayHeartRate(
       // body read too, and aborts the request when it fires, so a stalled
       // response neither holds the phase open nor keeps its connection.
       // The read can take a while; the account may have changed meanwhile.
-      if (accountChanged()) {
+      if (await accountChanged()) {
         stopForAccountChange();
         break;
       }
       const upload = new AbortController();
-      activeUpload = upload;
       try {
         await withTimeout(
-          postHealthMetricSamples(body, upload.signal),
+          postHealthMetricSamples(body, upload.signal, account),
           stepTimeoutMs,
           'All-day heart rate upload'
         );
       } catch (e) {
         upload.abort();
         throw e;
-      } finally {
-        if (activeUpload === upload) activeUpload = null;
       }
       samplesUploaded += samples.length;
     } catch (e) {
@@ -385,6 +380,6 @@ export async function syncAllDayHeartRate(
       addLog(`${logTag} All-day heart rate upload failed: ${error}`, 'WARNING');
     }
   }
-  if (!error && !accountChanged()) await writeCoverage(key, plan.coverage);
+  if (!error) await writeCoverage(account, key, plan.coverage);
   return { samplesUploaded, error };
 }

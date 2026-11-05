@@ -30,6 +30,7 @@ import {
   type TelemetryRunContext,
 } from './telemetryBudget';
 import { syncAllDayHeartRate } from './heartRateSamplesSync';
+import { getActiveServerConfig, type ServerConfig } from '../storage';
 import {
   alignToLocalDayStart,
   buildForegroundWindows,
@@ -409,6 +410,12 @@ export const runForegroundSync = async (
   opts: ForegroundSyncOptions
 ): Promise<SyncResult> => {
   const windows = buildForegroundWindows(syncDuration);
+  // The account this sync is for, taken before anything else runs. The
+  // detached all-day heart rate phase uploads only to it, so an account change
+  // during the sync can never send this sync's readings to the next account.
+  const account: ServerConfig | null = await getActiveServerConfig().catch(
+    () => null
+  );
 
   const enabledMetricStates =
     healthMetricStates && typeof healthMetricStates === 'object'
@@ -539,10 +546,12 @@ export const runForegroundSync = async (
       );
       return;
     }
+    if (!account) return;
     allDayHeartRateInFlight = (async () => {
       try {
         const heartRate = await syncAllDayHeartRate(
           provider,
+          account,
           windows.aggregatedStart,
           windows.end,
           telemetry,

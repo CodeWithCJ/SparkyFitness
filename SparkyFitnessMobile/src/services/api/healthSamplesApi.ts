@@ -3,6 +3,7 @@ import type {
   HealthMetricSamplesWriteResponse,
 } from '@workspace/shared';
 import { apiFetch } from './apiClient';
+import type { ServerConfig } from '../storage';
 
 /**
  * Stores passive readings (all-day heart rate) the server has no integration
@@ -11,7 +12,8 @@ import { apiFetch } from './apiClient';
  */
 export const postHealthMetricSamples = (
   body: HealthMetricSamplesWriteBody,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  serverConfig?: ServerConfig
 ): Promise<HealthMetricSamplesWriteResponse> =>
   apiFetch<HealthMetricSamplesWriteResponse>({
     endpoint: '/api/generic-health/samples',
@@ -20,6 +22,7 @@ export const postHealthMetricSamples = (
     method: 'POST',
     body,
     signal,
+    serverConfig,
     // A failed response can quote the readings; keep them out of the app log.
     logResponseBody: false,
   });

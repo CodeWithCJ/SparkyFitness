@@ -185,6 +185,30 @@ describe('apiClient', () => {
       await check;
     });
 
+    test('a given serverConfig is used in place of the active one', async () => {
+      mockGetActiveServerConfig.mockResolvedValue({
+        id: 'other',
+        url: 'https://other.example',
+        apiKey: 'other-key',
+      });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: { get: () => null },
+        json: () => Promise.resolve({}),
+      });
+      await apiFetch({
+        endpoint: '/api/test',
+        serviceName: 'Test',
+        operation: 'test',
+        serverConfig: testConfig,
+      });
+      const [url, init] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://example.com/api/test');
+      expect(init.headers.Authorization).toBe('Bearer test-api-key-12345');
+      expect(mockGetActiveServerConfig).not.toHaveBeenCalled();
+    });
+
     test('returns parsed JSON on success', async () => {
       const responseData = { id: 1, name: 'Test' };
       mockGetActiveServerConfig.mockResolvedValue(testConfig);

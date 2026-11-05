@@ -25,6 +25,14 @@ jest.mock('../../../src/services/api/healthDataApi', () => ({
   syncHealthData: jest.fn(),
 }));
 
+jest.mock('../../../src/services/storage', () => ({
+  ...jest.requireActual('../../../src/services/storage'),
+  getActiveServerConfig: jest.fn().mockResolvedValue({
+    id: 'server-1',
+    url: 'https://sparky.example',
+    apiKey: 'key-1',
+  }),
+}));
 jest.mock('../../../src/services/api/healthSamplesApi', () => ({
   postHealthMetricSamples: jest.fn().mockResolvedValue({}),
 }));
