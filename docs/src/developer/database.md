@@ -118,7 +118,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `exercise_entry_distance_series` | Distance-against-time rows for an indoor entry with no route, behind its pace chart. One row per workout (`points` is JSONB) |
 | `exercise_entry_gps_points` | GPS trackpoints & second-by-second telemetry. One row per workout (the `points` column holds the whole track as JSONB), not one row per trackpoint |
 | `workout_presets` | Custom workout/preset templates |
-| `workout_preset_exercises` | Exercises assigned to presets |
+| `workout_preset_exercises` | Exercises assigned to presets, with an optional backup exercise per slot |
 | `workout_preset_exercise_sets` | Reps/sets configured in presets |
 | `workout_plan_templates` | Templates for weekly and sequential workout schedules |
 | `workout_plan_template_assignments` | Scheduled workout templates (weekday or ordered sequence) |

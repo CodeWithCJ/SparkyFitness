@@ -98,6 +98,8 @@ export function presetFormReducer(
           incrementValue: exercise.increment_value ?? 5,
           equipmentBrand: exercise.equipment_brand ?? null,
           rampIncrement: exercise.ramp_increment ?? null,
+          backupExerciseId: exercise.backup_exercise_id ?? null,
+          backupExerciseName: exercise.backup_exercise_name ?? null,
           sets: exercise.sets.map((set, setIdx) => ({
             clientId: action.clientIds[exerciseIdx].setClientIds[setIdx],
             restTime: set.rest_time,

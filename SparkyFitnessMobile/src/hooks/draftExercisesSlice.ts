@@ -36,6 +36,8 @@ export type ExerciseProgressionPatch = {
   incrementValue?: number | null;
   equipmentBrand?: string | null;
   rampIncrement?: number | null;
+  backupExerciseId?: string | null;
+  backupExerciseName?: string | null;
 };
 
 export type DraftExercisesAction =

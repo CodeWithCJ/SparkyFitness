@@ -31,6 +31,9 @@ export interface WorkoutPresetExercise {
   superset_group?: number | null;
   /** Within-session per-set ramp, kg. Null = off. */
   ramp_increment?: number | null;
+  /** Swapped in, with the same sets, when the planned one is unavailable. */
+  backup_exercise_id?: string | null;
+  backup_exercise_name?: string | null;
   workout_plan_assignment_id?: string | number | null;
 }
 

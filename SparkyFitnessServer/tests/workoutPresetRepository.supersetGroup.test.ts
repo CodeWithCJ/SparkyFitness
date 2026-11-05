@@ -130,7 +130,38 @@ describe('workoutPresetRepository superset_group', () => {
     expect(selects.length).toBeGreaterThanOrEqual(4);
     for (const [sql] of selects) {
       expect(sql).toContain('wpe.superset_group');
+      expect(sql).toContain('wpe.backup_exercise_id');
+      expect(sql).toContain('AS backup_exercise_name');
     }
+  });
+
+  it('saves a backup exercise, but never the slot itself as its backup', async () => {
+    const BACKUP_ID = '22222222-2222-4222-8222-222222222222';
+    await workoutPresetRepository.updateWorkoutPreset(7, USER_ID, {
+      name: 'Push Day',
+      exercises: [
+        {
+          exercise_id: EXERCISE_ID,
+          backup_exercise_id: BACKUP_ID,
+          sort_order: 0,
+          sets: [],
+        },
+        {
+          exercise_id: EXERCISE_ID,
+          backup_exercise_id: EXERCISE_ID,
+          sort_order: 1,
+          sets: [],
+        },
+        { exercise_id: EXERCISE_ID, sort_order: 2, sets: [] },
+      ],
+    });
+    const inserts = exerciseInsertCalls(client);
+    expect(inserts[0][0]).toContain('backup_exercise_id');
+    expect(inserts.map(([, params]) => params?.[12])).toEqual([
+      BACKUP_ID,
+      null,
+      null,
+    ]);
   });
 
   it('looks up a preset by name for the owner or a family share, not every public row', async () => {

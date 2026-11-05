@@ -62,6 +62,7 @@ import {
   shouldSuggestVariation,
 } from '@workspace/shared';
 import { fetchWorkoutCoachingSignals } from '@/hooks/Exercises/useWorkoutCoaching';
+import { fetchBackupExercise } from '@/hooks/Exercises/backupExercise';
 import WorkoutPlaybackDialogs from './WorkoutPlaybackDialogs';
 import WorkoutPlaybackExercisesList from './WorkoutPlaybackExercisesList';
 import WorkoutPlaybackIntervalHud from './WorkoutPlaybackIntervalHud';
@@ -828,6 +829,23 @@ const WorkoutPlaybackPage = () => {
     [replaceExerciseIndex, updateDraft]
   );
 
+  const handleUseBackupExercise = useCallback(
+    async (exerciseIndex: number) => {
+      const backupId =
+        draftRef.current?.exercises[exerciseIndex]?.backup_exercise_id;
+      if (!backupId) return;
+      // A failed load shows the API's error toast; nothing changes.
+      const backup = await fetchBackupExercise(backupId);
+      if (!backup) return;
+      updateDraft((currentDraft) =>
+        replaceExerciseInWorkoutDraft(currentDraft, exerciseIndex, backup, {
+          asBackup: true,
+        })
+      );
+    },
+    [updateDraft]
+  );
+
   const handleAdaptiveDeclined = useCallback(
     (exerciseIndex: number, declined: boolean) => {
       updateDraft((currentDraft) =>
@@ -1197,6 +1215,7 @@ const WorkoutPlaybackPage = () => {
         onAddSet={handleAddSet}
         onAddDropSets={handleAddDropSets}
         onReplaceExercise={setReplaceExerciseIndex}
+        onUseBackupExercise={(index) => void handleUseBackupExercise(index)}
         onAdaptiveDeclined={handleAdaptiveDeclined}
         weightUnit={weightUnit}
       />

@@ -307,6 +307,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
           increment_value: exercise.increment_value ?? null,
           equipment_brand: exercise.equipment_brand ?? null,
           ramp_increment: exercise.ramp_increment ?? null,
+          backup_exercise_id: exercise.backup_exercise_id ?? null,
           sets: exercise.sets.map((set) => ({
             set_number: set.set_number,
             set_type: set.set_type,

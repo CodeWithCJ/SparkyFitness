@@ -1302,6 +1302,9 @@ export interface LiveExerciseConfig {
   increment_value?: number | null;
   equipment_brand?: string | null;
   ramp_increment?: number | null;
+  /** The preset slot's backup exercise, offered in the live swap menu. */
+  backup_exercise_id?: string | null;
+  backup_exercise_name?: string | null;
 }
 
 /** Pick the live-relevant settings off a preset exercise. */
@@ -1320,6 +1323,13 @@ export function liveExerciseConfigFromPreset(
     equipment_brand: exercise.equipment_brand ?? null,
     ramp_increment:
       exercise.ramp_increment != null ? Number(exercise.ramp_increment) : null,
+    // Only when the slot has one, so configs without a backup stay as before.
+    ...(exercise.backup_exercise_id
+      ? {
+          backup_exercise_id: exercise.backup_exercise_id,
+          backup_exercise_name: exercise.backup_exercise_name ?? null,
+        }
+      : {}),
   };
 }
 
@@ -2515,6 +2525,7 @@ export function buildPresetExercisesPayload(
         increment_value: exercise.incrementValue ?? 5,
         equipment_brand: exercise.equipmentBrand ?? null,
         ramp_increment: exercise.rampIncrement ?? null,
+        backup_exercise_id: exercise.backupExerciseId ?? null,
         sets: exercise.sets.map((set, setIndex) => {
           const weight = parseSetWeight(set.weight, modality);
           const reps = parseInt(set.reps, 10);

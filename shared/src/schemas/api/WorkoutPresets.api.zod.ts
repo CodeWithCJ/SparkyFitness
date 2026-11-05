@@ -41,6 +41,12 @@ export const workoutPresetExerciseResponseSchema = z.object({
     .optional(),
   rep_goal: z.number().int().nullable().optional(),
   rep_range_min: z.number().int().nullable().optional(),
+  /**
+   * The slot's backup exercise ("machine taken"), swapped in with the same
+   * sets. Optional: older servers omit both fields.
+   */
+  backup_exercise_id: z.string().nullable().optional(),
+  backup_exercise_name: z.string().nullable().optional(),
   increment_type: z.enum(['weight', 'reps']).nullable().optional(),
   increment_value: z.number().nullable().optional(),
   equipment_brand: z.string().nullable().optional(),
@@ -124,6 +130,7 @@ export const workoutPresetExerciseRequestSchema = z
       .optional(),
     rep_goal: z.number().int().positive().nullable().optional(),
     rep_range_min: z.number().int().positive().nullable().optional(),
+    backup_exercise_id: z.uuid().nullable().optional(),
     increment_type: z.enum(['weight', 'reps']).nullable().optional(),
     increment_value: z.number().positive().nullable().optional(),
     equipment_brand: z.string().nullable().optional(),

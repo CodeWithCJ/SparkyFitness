@@ -681,6 +681,26 @@ describe('replaceExerciseInWorkoutDraft', () => {
     mechanic: null,
   } as Exercise;
 
+  it('swaps in a backup with the same sets and points back at the original', () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      createPresetFixture(),
+      '2026-04-27'
+    );
+    const original = draft.exercises[0]!;
+    const next = replaceExerciseInWorkoutDraft(draft, 0, dumbbellPress, {
+      asBackup: true,
+    });
+    const swapped = next.exercises[0]!;
+    expect(swapped.exercise_id).toBe('exercise-9');
+    if (original.modality === 'weight_reps') {
+      expect(swapped.sets.map((set) => [set.reps, set.weight])).toEqual(
+        original.sets.map((set) => [set.reps, set.weight])
+      );
+    }
+    expect(swapped.backup_exercise_id).toBe(original.exercise_id);
+    expect(swapped.backup_exercise_name).toBe(original.exercise_name);
+  });
+
   it('swaps the exercise in place and resets its sets', () => {
     const draft = createWorkoutPlaybackDraftFromPreset(
       createPresetFixture(),
