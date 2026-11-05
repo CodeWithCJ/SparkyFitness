@@ -1,8 +1,10 @@
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { HealthMetricSamplesWriteBody } from '@workspace/shared';
 import { postHealthMetricSamples } from '../api/healthSamplesApi';
 import { addLog } from '../LogService';
 import { withTimeout } from '../../utils/concurrency';
+import { getActiveServerConfigId } from '../storage';
 import type { TelemetryRunContext } from './telemetryBudget';
 import type { ReadResult } from '../../types/healthRecords';
 
@@ -22,6 +24,13 @@ const MAX_DAYS = 31;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MIN_BPM = 20;
 const MAX_BPM = 260;
+/**
+ * How far behind the last fully uploaded instant each run starts again. Health
+ * apps can add readings late (a watch that syncs to the phone hours after it
+ * measured), and a `merge` over the overlap replaces it, so nothing doubles.
+ */
+const RESEND_OVERLAP_MS = 2 * DAY_MS;
+const CURSOR_KEY_PREFIX = '@SparkyFitness/heartRateSamplesThrough';
 /** Same deadline as one metric read, so a stalled query cannot hold the sync open. */
 const READ_TIMEOUT_MS = 60_000;
 
@@ -113,6 +122,46 @@ export function heartRateWindows(
   return windows;
 }
 
+/**
+ * Per server, the end of the last run whose every window read and uploaded.
+ * Kept per server so switching accounts never skips another account's range.
+ * Best effort: an unreadable value only means a longer run.
+ */
+const cursorKey = async (): Promise<string> =>
+  `${CURSOR_KEY_PREFIX}:${(await getActiveServerConfigId().catch(() => null)) ?? 'none'}`;
+
+const readCursor = async (): Promise<number | null> => {
+  try {
+    const raw = await AsyncStorage.getItem(await cursorKey());
+    const ms = raw === null ? NaN : Number(raw);
+    return Number.isFinite(ms) ? ms : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCursor = async (ms: number): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(await cursorKey(), String(ms));
+  } catch {
+    // Best effort: the next run just reads further back.
+  }
+};
+
+/**
+ * Where a run should start: the caller's range start, or, once a run has
+ * uploaded everything, `RESEND_OVERLAP_MS` before where that run ended,
+ * whichever is later. A cursor in the future (clock change) is ignored.
+ */
+export function heartRateSyncStart(
+  rangeStart: Date,
+  end: Date,
+  cursorMs: number | null
+): Date {
+  if (cursorMs === null || cursorMs > end.getTime()) return rangeStart;
+  return new Date(Math.max(rangeStart.getTime(), cursorMs - RESEND_OVERLAP_MS));
+}
+
 export interface HeartRateSamplesReader {
   readRaw(
     recordType: string,
@@ -135,6 +184,10 @@ export interface HeartRateSamplesResult {
  * readings is skipped rather than sent, since the server needs at least one.
  * A window whose read failed or timed out is skipped too: its records may be
  * partial, and a `merge` would delete the stored readings missing from them.
+ *
+ * After a first full run, later runs start shortly before the end of the last
+ * run that uploaded every window (see `heartRateSyncStart`), so a sync on each
+ * app open does not re-read and re-send the whole range.
  */
 export async function syncAllDayHeartRate(
   reader: HeartRateSamplesReader,
@@ -146,7 +199,8 @@ export async function syncAllDayHeartRate(
 ): Promise<HeartRateSamplesResult> {
   let samplesUploaded = 0;
   let error: string | undefined;
-  for (const window of heartRateWindows(start, end)) {
+  const from = heartRateSyncStart(start, end, await readCursor());
+  for (const window of heartRateWindows(from, end)) {
     try {
       const read = await withTimeout(
         reader.readRaw('HeartRate', window.start, window.end, telemetry),
@@ -191,5 +245,6 @@ export async function syncAllDayHeartRate(
       addLog(`${logTag} All-day heart rate upload failed: ${error}`, 'WARNING');
     }
   }
+  if (!error) await writeCursor(end.getTime());
   return { samplesUploaded, error };
 }

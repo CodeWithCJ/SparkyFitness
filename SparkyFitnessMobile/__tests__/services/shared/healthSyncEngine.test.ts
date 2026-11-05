@@ -1,3 +1,4 @@
+import { waitFor } from '@testing-library/react-native';
 import {
   collectHealthData,
   runForegroundSync,
@@ -730,15 +731,63 @@ describe('runForegroundSync', () => {
       opts
     );
 
+    expect(result.success).toBe(true);
+    expect(result.syncErrors).toEqual([]);
+    // The phase runs after the sync returns.
+    await waitFor(() =>
+      expect(healthSamples.postHealthMetricSamples).toHaveBeenCalled()
+    );
     expect(readRaw).toHaveBeenCalledWith(
       'HeartRate',
       expect.any(Date),
       expect.any(Date),
       expect.anything()
     );
-    expect(healthSamples.postHealthMetricSamples).toHaveBeenCalled();
+    await flushPromises();
+  });
+
+  test('uploads the main payload first and returns without waiting for all-day heart rate', async () => {
+    const order: string[] = [];
+    let releaseHeartRate: () => void = () => {};
+    const heartRateRead = new Promise<{ records: [] }>((resolve) => {
+      releaseHeartRate = () => resolve({ records: [] });
+    });
+    const readRaw = jest.fn((type: string) => {
+      if (type !== 'HeartRate') return Promise.resolve({ records: [] });
+      order.push('heartRate');
+      return heartRateRead;
+    });
+    const provider = fakeProvider({
+      readRaw,
+      readMinMaxAvgByDay: jest.fn().mockResolvedValue({
+        records: [
+          {
+            value: 70,
+            type: 'heart_rate_avg',
+            date: '2026-07-01',
+            unit: 'bpm',
+            source: 'HealthKit',
+          },
+        ],
+      }),
+    });
+    api.syncHealthData.mockImplementation(async () => {
+      order.push('upload');
+      return { success: true };
+    });
+
+    const result = await runForegroundSync(
+      provider,
+      'today',
+      { isHeartRateSyncEnabled: true },
+      opts
+    );
+
+    // Resolved while the heart rate read is still pending.
     expect(result.success).toBe(true);
-    expect(result.syncErrors).toEqual([]);
+    await waitFor(() => expect(order).toEqual(['upload', 'heartRate']));
+    releaseHeartRate();
+    await flushPromises();
   });
 
   test('does not read all-day heart rate when Heart Rate sync is off', async () => {
@@ -1068,3 +1117,9 @@ describe('sessionTelemetryOutcomesUsable', () => {
     );
   });
 });
+
+/** Lets a detached phase settle so it cannot leak into the next test. */
+async function flushPromises(): Promise<void> {
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}

@@ -392,11 +392,15 @@ export interface ForegroundSyncOptions {
   forceTelemetry?: boolean;
 }
 
+/** The detached all-day heart rate phase of the last foreground sync, if still running. */
+let allDayHeartRateInFlight: Promise<void> | null = null;
+
 /**
  * The shared foreground sync flow: windows → collect → writeback (isolated) →
- * upload → SyncResult. The caller (useSyncHealthData) owns the sync cursor: it
- * advances lastSyncedTime only when syncErrors is empty; uploadErrors (per-record
- * server rejections) never hold the cursor.
+ * upload → SyncResult, then the all-day heart rate phase in the background.
+ * The caller (useSyncHealthData) owns the sync cursor: it advances
+ * lastSyncedTime only when syncErrors is empty; uploadErrors (per-record server
+ * rejections) never hold the cursor.
  */
 export const runForegroundSync = async (
   provider: HealthReadProvider,
@@ -471,70 +475,94 @@ export const runForegroundSync = async (
     addLog(`${opts.logTag} Writeback phase failed: ${message}`, 'ERROR');
   }
 
-  // All-day heart rate readings for the Heart Rate report's day timeline. Rides
-  // on the Heart Rate toggle (no new permission) and is isolated like writeback:
-  // a failure is logged, never added to syncErrors, and re-sent by the next run
-  // since each upload replaces its own window.
-  if (metricsToSync.some((metric) => metric.recordType === 'HeartRate')) {
-    try {
-      const heartRate = await syncAllDayHeartRate(
-        provider,
-        windows.aggregatedStart,
-        windows.end,
-        telemetry,
-        opts.logTag
-      );
-      if (heartRate.samplesUploaded > 0) {
+  const result = await uploadInbound();
+  // Started after the main upload and not awaited: this best-effort phase
+  // (several window reads, each with its own timeout) must neither delay the
+  // upload nor keep the sync pending past the sync-on-open watchdog.
+  startAllDayHeartRatePhase();
+  return result;
+
+  async function uploadInbound(): Promise<SyncResult> {
+    if (allTransformedData.length > 0) {
+      try {
+        const apiResponse = await api.syncHealthData(allTransformedData);
+
+        // Commit the telemetry reuse cache only on a fully accepted upload; see
+        // the invariant on markEnrichedSessions. Per-record rejections carry no
+        // usable record identity (RecordSyncError.entry is an opaque echo), so
+        // there is no way to commit just the accepted subset — a partial
+        // rejection leaves the whole run's staging undrained and the next sync
+        // re-collects. Wasteful when an unrelated record is the one rejected,
+        // but the alternative silently strips telemetry from the rejected one.
+        if (telemetryUsable && (apiResponse?.recordErrors?.length ?? 0) === 0) {
+          await markEnrichedSessions(telemetry.drainCollected());
+        }
+        return {
+          success: true,
+          apiResponse,
+          syncErrors,
+          uploadErrors: apiResponse?.recordErrors ?? [],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         addLog(
-          `${opts.logTag} Uploaded ${heartRate.samplesUploaded} all-day heart rate readings`,
-          'INFO'
+          `${opts.logTag} Error sending data to server: ${message}`,
+          'ERROR'
         );
+        return { success: false, error: message, syncErrors };
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(
-        `${opts.logTag} All-day heart rate phase failed: ${message}`,
-        'ERROR'
-      );
     }
+
+    // A run that legitimately found no new records still commits what it read.
+    // Still gated: an empty payload is also what a timed-out session read leaves
+    // behind when it was the only metric with data, and those staged keys belong
+    // to sessions the server never saw.
+    if (telemetryUsable) {
+      await markEnrichedSessions(telemetry.drainCollected());
+    }
+    return { success: true, message: opts.emptyMessage, syncErrors };
   }
 
-  if (allTransformedData.length > 0) {
-    try {
-      const apiResponse = await api.syncHealthData(allTransformedData);
-
-      // Commit the telemetry reuse cache only on a fully accepted upload; see
-      // the invariant on markEnrichedSessions. Per-record rejections carry no
-      // usable record identity (RecordSyncError.entry is an opaque echo), so
-      // there is no way to commit just the accepted subset — a partial
-      // rejection leaves the whole run's staging undrained and the next sync
-      // re-collects. Wasteful when an unrelated record is the one rejected,
-      // but the alternative silently strips telemetry from the rejected one.
-      if (telemetryUsable && (apiResponse?.recordErrors?.length ?? 0) === 0) {
-        await markEnrichedSessions(telemetry.drainCollected());
+  function startAllDayHeartRatePhase(): void {
+    // All-day heart rate readings for the Heart Rate report's day timeline. Rides
+    // on the Heart Rate toggle (no new permission) and is isolated like writeback:
+    // a failure is logged, never added to syncErrors, and re-sent by the next run
+    // since each upload replaces its own window. One run at a time: a sync that
+    // finds the previous phase still going leaves it to finish.
+    if (!metricsToSync.some((metric) => metric.recordType === 'HeartRate')) {
+      return;
+    }
+    if (allDayHeartRateInFlight) {
+      addLog(
+        `${opts.logTag} All-day heart rate still uploading from the last sync; skipped`,
+        'DEBUG'
+      );
+      return;
+    }
+    allDayHeartRateInFlight = (async () => {
+      try {
+        const heartRate = await syncAllDayHeartRate(
+          provider,
+          windows.aggregatedStart,
+          windows.end,
+          telemetry,
+          opts.logTag
+        );
+        if (heartRate.samplesUploaded > 0) {
+          addLog(
+            `${opts.logTag} Uploaded ${heartRate.samplesUploaded} all-day heart rate readings`,
+            'INFO'
+          );
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(
+          `${opts.logTag} All-day heart rate phase failed: ${message}`,
+          'ERROR'
+        );
+      } finally {
+        allDayHeartRateInFlight = null;
       }
-      return {
-        success: true,
-        apiResponse,
-        syncErrors,
-        uploadErrors: apiResponse?.recordErrors ?? [],
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      addLog(
-        `${opts.logTag} Error sending data to server: ${message}`,
-        'ERROR'
-      );
-      return { success: false, error: message, syncErrors };
-    }
+    })();
   }
-
-  // A run that legitimately found no new records still commits what it read.
-  // Still gated: an empty payload is also what a timed-out session read leaves
-  // behind when it was the only metric with data, and those staged keys belong
-  // to sessions the server never saw.
-  if (telemetryUsable) {
-    await markEnrichedSessions(telemetry.drainCollected());
-  }
-  return { success: true, message: opts.emptyMessage, syncErrors };
 };

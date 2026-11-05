@@ -1,7 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   PASSIVE_HEART_RATE_SOURCE,
   downsampleHeartRate,
   heartRateReadingsFromRecords,
+  heartRateSyncStart,
   heartRateWindows,
   syncAllDayHeartRate,
 } from '../../../src/services/shared/heartRateSamplesSync';
@@ -111,7 +113,10 @@ describe('heartRateWindows', () => {
 
 describe('syncAllDayHeartRate', () => {
   const telemetry = createTelemetryRunContext();
-  beforeEach(() => postHealthMetricSamples.mockClear());
+  beforeEach(async () => {
+    postHealthMetricSamples.mockClear();
+    await AsyncStorage.clear();
+  });
 
   it('uploads a merge window per week under the passive source, skipping empty weeks', async () => {
     const start = new Date('2026-10-20T00:00:00.000Z');
@@ -233,5 +238,65 @@ describe('syncAllDayHeartRate', () => {
     );
     expect(result.error).toMatch(/timed out/i);
     expect(postHealthMetricSamples).not.toHaveBeenCalled();
+  });
+
+  it('starts the next run two days before where a full run ended', async () => {
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    const end = new Date('2026-11-03T12:00:00.000Z');
+    await syncAllDayHeartRate(
+      { readRaw },
+      new Date(end.getTime() - 30 * DAY_MS),
+      end,
+      telemetry,
+      '[T]'
+    );
+    expect(readRaw).toHaveBeenCalledTimes(5);
+
+    readRaw.mockClear();
+    const later = new Date(end.getTime() + DAY_MS);
+    await syncAllDayHeartRate(
+      { readRaw },
+      new Date(later.getTime() - 30 * DAY_MS),
+      later,
+      telemetry,
+      '[T]'
+    );
+    expect(readRaw).toHaveBeenCalledTimes(1);
+    expect(readRaw.mock.calls[0][1]).toEqual(
+      new Date(end.getTime() - 2 * DAY_MS)
+    );
+  });
+
+  it('keeps reading the whole range while a run had an error', async () => {
+    const end = new Date('2026-11-03T12:00:00.000Z');
+    const start = new Date(end.getTime() - 14 * DAY_MS);
+    const failing = jest
+      .fn()
+      .mockResolvedValue({ records: [], error: 'locked' });
+    await syncAllDayHeartRate(
+      { readRaw: failing },
+      start,
+      end,
+      telemetry,
+      '[T]'
+    );
+
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
+    expect(readRaw.mock.calls[0][1]).toEqual(start);
+  });
+});
+
+describe('heartRateSyncStart', () => {
+  const start = new Date('2026-10-01T00:00:00.000Z');
+  const end = new Date('2026-11-01T00:00:00.000Z');
+
+  it('uses the range start with no cursor or a cursor in the future', () => {
+    expect(heartRateSyncStart(start, end, null)).toEqual(start);
+    expect(heartRateSyncStart(start, end, end.getTime() + 1)).toEqual(start);
+  });
+
+  it('never starts before the range start', () => {
+    expect(heartRateSyncStart(start, end, start.getTime())).toEqual(start);
   });
 });
