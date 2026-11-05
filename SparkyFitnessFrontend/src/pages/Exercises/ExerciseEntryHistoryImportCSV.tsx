@@ -105,6 +105,12 @@ const ExerciseEntryHistoryImportCSV = ({
         </p>
         <p className="mb-4">
           {t(
+            'exercise.importHistoryCSV.appExportsInfo',
+            'You can also upload a workout export from FitNotes or Strong as it is. It is recognised by its columns, and weights and distances are converted to your units.'
+          )}
+        </p>
+        <p className="mb-4">
+          {t(
             'exercise.importHistoryCSV.customFieldsInfo',
             'Activity Field & Value are custom fields you can add to each exercise entry.'
           )}

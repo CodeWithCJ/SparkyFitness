@@ -19,6 +19,9 @@ import {
   suggestHeaderMapping,
   MAX_CSV_FILE_SIZE_BYTES,
   isDayString,
+  detectWorkoutAppCsv,
+  workoutAppRowsToSessions,
+  type WorkoutAppCsvResult,
   type DecimalFormat,
   type CsvFormatOptions,
   type CsvImportIssue,
@@ -86,6 +89,55 @@ export const requiredHeaders = [
   'exercise_name',
   ...Array.from(dropdownFields),
 ];
+
+const KG_TO_LB = 1 / 0.45359237;
+const KM_TO_MILE = 1 / 1.609344;
+const roundTo = (value: number, digits: number) =>
+  Math.round(value * 10 ** digits) / 10 ** digits;
+
+/**
+ * FitNotes and Strong sessions as history entries. The server reads weights
+ * and distances in the person's preferred units, so they are converted back
+ * from the kilograms and kilometres the parser returns.
+ */
+export function workoutAppEntries(
+  result: WorkoutAppCsvResult,
+  weightUnit: string,
+  distanceUnit: string
+): HistoryGroupedExerciseEntry[] {
+  const toWeight = (kg: number | null) =>
+    kg == null
+      ? undefined
+      : roundTo(weightUnit === 'lbs' ? kg * KG_TO_LB : kg, 2);
+  const toDistance = (km: number) =>
+    roundTo(distanceUnit === 'miles' ? km * KM_TO_MILE : km, 3);
+  const source = result.source === 'fitnotes' ? 'FitNotes' : 'Strong';
+  return result.sessions.map((session) => {
+    const distanceKm = session.sets.reduce(
+      (total, set) => total + (set.distanceKm ?? 0),
+      0
+    );
+    return {
+      id: uuidv4(),
+      entry_date: parse(session.date, 'yyyy-MM-dd', new Date()),
+      exercise_name: session.exerciseName,
+      entry_notes: session.notes ?? undefined,
+      distance: distanceKm > 0 ? toDistance(distanceKm) : undefined,
+      exercise_category: session.category ?? undefined,
+      exercise_source: source,
+      sets: session.sets.map((set) => ({
+        set_number: set.setNumber,
+        set_type: set.setType,
+        reps: set.reps ?? undefined,
+        weight: toWeight(set.weightKg),
+        duration_min:
+          set.durationSeconds != null ? set.durationSeconds / 60 : undefined,
+        notes: set.notes ?? undefined,
+      })),
+      activity_details: [],
+    };
+  });
+}
 
 export function useExerciseHistoryImport(
   fileInputRef: RefObject<HTMLInputElement | null>,
@@ -397,6 +449,46 @@ export function useExerciseHistoryImport(
         variant: 'destructive',
       });
       return false;
+    }
+
+    // FitNotes and Strong exports have their own columns: read them as-is
+    // instead of asking for a header mapping.
+    const appSource = detectWorkoutAppCsv(headers);
+    if (appSource) {
+      const appResult = workoutAppRowsToSessions(appSource, rows, {
+        decimal: resolvedDecimal,
+        fallbackWeightUnit: weightUnit === 'lbs' ? 'lbs' : 'kg',
+        fallbackDistanceUnit: distanceUnit === 'miles' ? 'miles' : 'km',
+      });
+      const grouped = workoutAppEntries(appResult, weightUnit, distanceUnit);
+      setShowMapping(false);
+      setGroupedEntries(grouped);
+      setResult({
+        processed: grouped,
+        skipped: appResult.skippedRows.map((row) => ({
+          row,
+          error: t(
+            'exercise.importHistoryCSV.appRowSkipped',
+            'Row {{row}}: no date or exercise name.',
+            { row }
+          ),
+          entry: rows[row - 1],
+        })),
+        errors: [],
+        parseWarnings: warnings,
+      });
+      toast({
+        title:
+          appSource === 'fitnotes'
+            ? t('exercise.importHistoryCSV.fitnotesDetected', 'FitNotes export')
+            : t('exercise.importHistoryCSV.strongDetected', 'Strong export'),
+        description: t(
+          'exercise.importHistoryCSV.appSessionsFound',
+          '{{count}} exercise sessions ready to import.',
+          { count: grouped.length }
+        ),
+      });
+      return true;
     }
 
     const missingHeaders = requiredHeaders.filter(
