@@ -2539,6 +2539,56 @@ describe('activeWorkoutStore', () => {
       });
     });
 
+    describe('restoreSet', () => {
+      it('puts a deleted set back where it was, as a new unsaved set', () => {
+        const deleted =
+          useActiveWorkoutStore.getState().session!.exercises[0].sets[0];
+        useActiveWorkoutStore.getState().deleteSet('101');
+        useActiveWorkoutStore.getState().restoreSet('ex-uuid-1', deleted, 0);
+        const sets =
+          useActiveWorkoutStore.getState().session!.exercises[0].sets;
+        expect(sets).toHaveLength(2);
+        expect(sets[0].id).toBeLessThan(0);
+        expect(sets[0].weight).toBe(deleted.weight);
+        expect(sets[0].reps).toBe(deleted.reps);
+        expect(sets.map((set) => set.set_number)).toEqual([1, 2]);
+        expect(sets[1].id).toBe(102);
+      });
+
+      it('does nothing once the exercise is gone', () => {
+        const deleted =
+          useActiveWorkoutStore.getState().session!.exercises[1].sets[0];
+        useActiveWorkoutStore.getState().deleteSet('201');
+        const revision = useActiveWorkoutStore.getState().sessionRevision;
+        useActiveWorkoutStore.getState().restoreSet('ex-uuid-2', deleted, 0);
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(revision);
+      });
+    });
+
+    describe('duplicateSet', () => {
+      it('inserts an undone copy right after the set', async () => {
+        useActiveWorkoutStore.getState().completeActiveSet();
+        await flushPromises();
+        useActiveWorkoutStore.getState().duplicateSet('101');
+        const sets =
+          useActiveWorkoutStore.getState().session!.exercises[0].sets;
+        expect(sets).toHaveLength(3);
+        expect(sets[0].id).toBe(101);
+        expect(sets[1].id).toBeLessThan(0);
+        expect(sets[1].weight).toBe(sets[0].weight);
+        expect(sets[1].reps).toBe(sets[0].reps);
+        expect(sets[1].completed_at).toBeNull();
+        expect(sets[1].is_pr).toBe(false);
+        expect(sets[2].id).toBe(102);
+        expect(sets.map((set) => set.set_number)).toEqual([1, 2, 3]);
+      });
+
+      it('is a no-op for an unknown set id', () => {
+        useActiveWorkoutStore.getState().duplicateSet('nope');
+        expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
+      });
+    });
+
     describe('setExerciseRest', () => {
       it('sets rest_time on every set of the exercise and refreshes step restSec', () => {
         useActiveWorkoutStore.getState().setExerciseRest('ex-uuid-1', 150);

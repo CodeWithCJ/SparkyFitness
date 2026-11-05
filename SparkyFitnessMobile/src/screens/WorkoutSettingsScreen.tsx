@@ -66,6 +66,10 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
   const setRestChimeThroughSilent = useAppPreferencesStore(
     (s) => s.setRestChimeThroughSilent
   );
+  const restFlashEnabled = useAppPreferencesStore((s) => s.restFlashEnabled);
+  const setRestFlashEnabled = useAppPreferencesStore(
+    (s) => s.setRestFlashEnabled
+  );
   const duckMusicDuringCues = useAppPreferencesStore(
     (s) => s.duckMusicDuringCues
   );
@@ -192,6 +196,26 @@ const WorkoutSettingsScreen: React.FC<WorkoutSettingsScreenProps> = ({
             }
           />
         ) : null}
+
+        <SettingsRow
+          title={t('workoutSettings.restFlash', {
+            defaultValue: 'Flash the screen when rest ends',
+          })}
+          subtitle={t('workoutSettings.restFlashSubtitle', {
+            defaultValue:
+              "Tint the workout screen briefly when the rest timer runs out, for when you can't hear the sound.",
+          })}
+          subtitleNumberOfLines={0}
+          rightAccessory={
+            <Switch
+              value={restFlashEnabled}
+              onValueChange={setRestFlashEnabled}
+              accessibilityLabel={t('workoutSettings.restFlashAccessibility', {
+                defaultValue: 'Flash the screen when rest ends',
+              })}
+            />
+          }
+        />
 
         <SettingsRow
           title={t('workoutSettings.duckMusic', {
