@@ -46,7 +46,7 @@ import {
   useSymptomFreeDays,
 } from '@/hooks/useSymptoms';
 import { cn } from '@/lib/utils';
-import { episodeImpactPoints, peakImpact } from './impactSummary';
+import { impactTimelineText, peakImpact } from './impactSummary';
 
 interface SymptomsReportProps {
   startDate: string;
@@ -197,9 +197,7 @@ export default function SymptomsReport({
           : '',
         peak_severity: e.peak_severity ?? e.severity ?? '',
         peak_impact: peakImpact(e) ?? '',
-        impact_timeline: episodeImpactPoints(e)
-          .map((p) => `${new Date(p.at).toISOString()} ${p.impact}`)
-          .join('; '),
+        impact_timeline: impactTimelineText(e),
         where: e.body_locations.join('; '),
         triggers: e.triggers.join('; '),
         treatments: e.treatments

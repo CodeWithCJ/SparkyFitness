@@ -20,8 +20,9 @@ export function episodeImpactPoints(
   entry: ImpactSource
 ): { at: string; impact: SymptomImpact }[] {
   if (entry.impact_timeline && entry.impact_timeline.length > 0) {
+    // A time JavaScript cannot parse keeps its place instead of breaking the sort.
     return [...entry.impact_timeline].sort(
-      (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime()
+      (a, b) => Date.parse(a.at) - Date.parse(b.at) || 0
     );
   }
   if (entry.impact == null) return [];
@@ -46,4 +47,19 @@ export function peakImpact(entry: ImpactSource): SymptomImpact | null {
     }
   }
   return peak;
+}
+
+/**
+ * The timeline for a CSV cell: `<ISO time> <level>`, oldest first, joined by
+ * `; `. A time JavaScript cannot parse is written as stored, so one odd value
+ * does not stop the export.
+ */
+export function impactTimelineText(entry: ImpactSource): string {
+  return episodeImpactPoints(entry)
+    .map((p) => {
+      const time = Date.parse(p.at);
+      const at = Number.isNaN(time) ? p.at : new Date(time).toISOString();
+      return `${at} ${p.impact}`;
+    })
+    .join('; ');
 }
