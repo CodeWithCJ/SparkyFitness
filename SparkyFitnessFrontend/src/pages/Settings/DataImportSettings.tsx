@@ -204,7 +204,7 @@ export const DataImportSettings = () => {
           )}
           description={t(
             'settings.dataImport.exerciseHistory.description',
-            'Import past workouts, sets, reps, and weights.'
+            'Import past workouts, sets, reps, and weights, including FitNotes and Strong exports.'
           )}
         >
           {(close) => (

@@ -1415,7 +1415,12 @@
       "validationError": "Row {{rowNum}}: Missing required 'entry_date' or 'exercise_name'. Skipping row.",
       "copiedToClipboard": "'{{value}}' copied to clipboard.",
       "importError": "Failed to import exercise history. Please try again.",
-      "partialImportError": "Some entries could not be imported: {{details}}"
+      "partialImportError": "Some entries could not be imported: {{details}}",
+      "appExportsInfo": "You can also upload a workout export from FitNotes or Strong as it is. It is recognised by its columns, and weights and distances are converted to your units.",
+      "appRowSkipped": "Row {{row}}: no date or exercise name.",
+      "fitnotesDetected": "FitNotes export",
+      "strongDetected": "Strong export",
+      "appSessionsFound": "{{count}} exercise sessions ready to import."
     },
     "exerciseSearch": {
       "add": "Add",
@@ -2618,7 +2623,7 @@
         "title": "Exercise Database (CSV)"
       },
       "exerciseHistory": {
-        "description": "Import past workouts, sets, reps, and weights.",
+        "description": "Import past workouts, sets, reps, and weights, including FitNotes and Strong exports.",
         "title": "Workout History (CSV)"
       },
       "food": {
