@@ -98,6 +98,7 @@ const setupScreen = (overrides: Partial<DetailResult> = {}) => {
   const entry = buildSleepEntry({ id: ENTRY_ID });
   mockUseSleepDetail.mockReturnValue({
     entry,
+    isMainSleep: true,
     stages: [buildStageEvent()],
     isLoading: false,
     isError: false,
@@ -265,7 +266,12 @@ describe('SleepDetailScreen', () => {
     expect(queryByTestId('sleep-biometric-trend-restingHeartRate')).toBeNull();
     fireEvent.press(getByTestId('sleep-biometric-restingHeartRate'));
     expect(getByTestId('sleep-biometric-trend-restingHeartRate')).toBeTruthy();
-    expect(getByTestId('cartesian-chart').props.data).toHaveLength(3);
+    // Placed by night in the 30-night window ending on the entry's day.
+    expect(
+      getByTestId('cartesian-chart').props.data.map(
+        (point: { x: number }) => point.x
+      )
+    ).toEqual([27, 28, 29]);
 
     fireEvent.press(getByTestId('sleep-biometric-restingHeartRate'));
     expect(queryByTestId('sleep-biometric-trend-restingHeartRate')).toBeNull();
@@ -296,6 +302,17 @@ describe('SleepDetailScreen', () => {
       )
     ).toEqual([93.2, 95]);
     (useSkinTemperature as jest.Mock).mockReturnValue(null);
+  });
+
+  test('a nap shows no skin temperature and opens no trend', () => {
+    const { getByTestId, queryByTestId } = setupScreen({
+      entry: buildSleepEntry({ id: ENTRY_ID, resting_heart_rate: 52 }),
+      isMainSleep: false,
+    });
+
+    expect(useSkinTemperature).toHaveBeenLastCalledWith(undefined);
+    fireEvent.press(getByTestId('sleep-biometric-restingHeartRate'));
+    expect(queryByTestId('sleep-biometric-trend-restingHeartRate')).toBeNull();
   });
 
   test('says there is not enough data when a trend has one night', () => {

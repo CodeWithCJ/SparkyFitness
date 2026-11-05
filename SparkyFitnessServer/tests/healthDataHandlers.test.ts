@@ -1075,6 +1075,76 @@ describe('skinTemperatureHandler', () => {
     }
   );
 
+  it('keeps the measurement site and ignores an unknown one', async () => {
+    await handler.handle(
+      {
+        type: 'skin_temperature',
+        value: 34.1,
+        source: 'HealthKit',
+        site: 'wrist',
+      },
+      ctx
+    );
+    await handler.handle(
+      {
+        type: 'skin_temperature',
+        value: 34.1,
+        source: 'HealthKit',
+        site: 'ear',
+      },
+      ctx
+    );
+
+    const [[, , , , wrist], [, , , , unknown]] =
+      vi.mocked(upsertSamplesByDay).mock.calls;
+    expect(wrist[0]).toMatchObject({ site: 'wrist' });
+    expect(unknown[0]).not.toHaveProperty('site');
+  });
+
+  it('writes a batch once per source and reports each entry in order', async () => {
+    const entries = [
+      {
+        type: 'skin_temperature',
+        value: 34.1,
+        source: 'HealthKit',
+        site: 'wrist',
+      },
+      { type: 'skin_temperature', value: 99, source: 'HealthKit' },
+      { type: 'skin_temperature', value: 33.8, source: 'Oura' },
+      {
+        type: 'skin_temperature',
+        value: 36.4,
+        source: 'HealthKit',
+        site: 'body',
+      },
+    ].map((entry) => ({
+      entry,
+      parsedDate: '2026-08-23',
+      entryTimestamp: '2026-08-23T07:30:00.000Z',
+      entryHour: 7,
+    }));
+
+    const outcomes = await handler.handleBatch!(entries, ctx);
+
+    expect(outcomes.map((o) => o.status)).toEqual([
+      'success',
+      'error',
+      'success',
+      'success',
+    ]);
+    const calls = vi.mocked(upsertSamplesByDay).mock.calls;
+    expect(calls).toHaveLength(2);
+    const byProvider = new Map(calls.map((call) => [call[3], call[4]]));
+    expect(byProvider.get('healthkit')).toEqual([
+      expect.objectContaining({ celsius: 34.1, site: 'wrist' }),
+      expect.objectContaining({ celsius: 36.4, site: 'body' }),
+    ]);
+    expect([...byProvider.keys()]).toHaveLength(2);
+    expect(
+      [...byProvider.values()].flat().map((sample) => sample.celsius)
+    ).toEqual(expect.arrayContaining([33.8]));
+  });
+
   it('reports an error when the write fails', async () => {
     vi.mocked(upsertSamplesByDay).mockRejectedValue(new Error('db down'));
 

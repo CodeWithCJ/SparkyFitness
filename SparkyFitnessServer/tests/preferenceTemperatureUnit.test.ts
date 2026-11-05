@@ -56,7 +56,7 @@ describe('temperature unit preference', () => {
     ).resolves.toEqual({ user_id: 'user-1' });
   });
 
-  it.each(['kelvin', 1])('rejects %s with a 400', async (unit) => {
+  it.each(['kelvin', 1, null])('rejects %s with a 400', async (unit) => {
     await expect(
       preferenceService.updateUserPreferences('user-1', 'user-1', {
         default_temperature_unit: unit,

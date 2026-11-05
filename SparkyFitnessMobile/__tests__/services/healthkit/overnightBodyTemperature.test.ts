@@ -25,9 +25,10 @@ const session = (
     ...extra,
   }) as AggregatedSleepSession;
 
-const at = (iso: string, celsius: number) => ({
+const at = (iso: string, celsius: number, source?: string) => ({
   ms: Date.parse(iso),
   celsius,
+  ...(source ? { source } : {}),
 });
 
 const NIGHT = session(
@@ -54,6 +55,7 @@ describe('overnightBodyTemperatures', () => {
         value: 35.2,
         date: '2026-08-23',
         timestamp: '2026-08-23T07:00:00.000Z',
+        site: 'body',
         record_timezone: 'America/Chicago',
       },
     ]);
@@ -140,5 +142,18 @@ describe('overnightBodyTemperatures', () => {
     expect(
       overnightBodyTemperatures([], [at('2026-08-23T02:00:00.000Z', 35)])
     ).toEqual([]);
+  });
+
+  test('averages one source only when two wrote readings that night', () => {
+    const result = overnightBodyTemperatures(
+      [NIGHT],
+      [
+        at('2026-08-23T01:00:00.000Z', 35.0, 'com.ring'),
+        at('2026-08-23T03:00:00.000Z', 35.2, 'com.ring'),
+        at('2026-08-23T05:00:00.000Z', 35.4, 'com.ring'),
+        at('2026-08-23T04:00:00.000Z', 37.0, 'com.thermometer'),
+      ]
+    );
+    expect(result.map((r) => r.value)).toEqual([35.2]);
   });
 });

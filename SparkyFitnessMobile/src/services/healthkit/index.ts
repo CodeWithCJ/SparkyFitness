@@ -2182,11 +2182,15 @@ const handleNutrition: RecordHandler = async (
   return [...correlationRecords, ...looseRecords];
 };
 
+// A night that began before the sync window would otherwise be read from the
+// window start only, and its mean would replace the full night's on the server.
+const OVERNIGHT_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+
 // Body Temperature (a smart ring writes it through the night) as one reading per
-// night: the mean of the readings inside each sleep session. The stored Body
-// Temperature value is one per day, so the night is worked out here from the raw
-// readings. Emits pre-aggregated { value, date, timestamp } records that the
-// shared transformer passes through as the metric's `skin_temperature` type.
+// night: the mean of one source's readings inside each sleep session. The stored
+// Body Temperature value is one per day, so the night is worked out here from the
+// raw readings. Emits pre-aggregated { value, date, timestamp, site } records that
+// the shared transformer passes through as the metric's `skin_temperature` type.
 const handleOvernightBodyTemperature: RecordHandler = async (
   identifier,
   startDate,
@@ -2195,13 +2199,15 @@ const handleOvernightBodyTemperature: RecordHandler = async (
 ) => {
   const sleepRecords = await handleSleepSession(
     HEALTHKIT_TYPE_MAP.SleepSession,
-    startDate,
+    new Date(startDate.getTime() - OVERNIGHT_LOOKBACK_MS),
     endDate,
     telemetry
   );
+  // Read from a day earlier so a night that began before the window is whole,
+  // but send only the nights that ended inside it.
   const sessions = aggregateSleepSessions(
     sleepRecords as Parameters<typeof aggregateSleepSessions>[0]
-  );
+  ).filter((s) => Date.parse(s.wake_time) >= startDate.getTime());
   if (sessions.length === 0) return [];
 
   const spanStart = new Date(
@@ -2233,6 +2239,9 @@ const handleOvernightBodyTemperature: RecordHandler = async (
     samples.map((s) => ({
       ms: new Date(s.startDate).getTime(),
       celsius: s.quantity,
+      source: (
+        s as { sourceRevision?: { source?: { bundleIdentifier?: string } } }
+      ).sourceRevision?.source?.bundleIdentifier,
     }))
   );
 };

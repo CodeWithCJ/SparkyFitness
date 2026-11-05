@@ -13,6 +13,7 @@ import { formatLocalizedNumber } from '../localization';
 import type { SleepEntry } from '../types/sleep';
 import type { NightSkinTemperature } from '../utils/skinTemperature';
 import {
+  biometricTrendStart,
   SLEEP_ENTRY_BIOMETRICS,
   type BiometricTrendPoint,
   type SleepBiometricKey,
@@ -38,6 +39,11 @@ interface SleepBiometricsProps {
   skinTemperature?: NightSkinTemperature | null;
   /** Unit temperatures are shown in; stored values are always °C. */
   temperatureUnit?: TemperatureUnit;
+  /**
+   * Whether tapping a row opens its 30-night trend. Off for a nap: the trend
+   * follows each night's main sleep, so it would not match the nap's values.
+   */
+  showTrends?: boolean;
 }
 
 const TEMPERATURE_FORMAT: Intl.NumberFormatOptions = {
@@ -65,6 +71,7 @@ const SleepBiometrics: React.FC<SleepBiometricsProps> = ({
   entry,
   skinTemperature,
   temperatureUnit = 'celsius',
+  showTrends = true,
 }) => {
   const { t } = useTranslation();
   const [accentPrimary, textMuted] = useCSSVariable([
@@ -74,7 +81,10 @@ const SleepBiometrics: React.FC<SleepBiometricsProps> = ({
   const [expandedKey, setExpandedKey] = useState<SleepBiometricKey | null>(
     null
   );
-  const trend = useSleepBiometricTrend(entry.entry_date, expandedKey);
+  const trend = useSleepBiometricTrend(
+    entry.entry_date,
+    showTrends ? expandedKey : null
+  );
 
   const percentUnit = t('sleep.percentUnit', { defaultValue: '%' });
   const bpmUnit = t('sleep.bpmUnit', { defaultValue: 'bpm' });
@@ -162,16 +172,21 @@ const SleepBiometrics: React.FC<SleepBiometricsProps> = ({
       {rows.map((row) => {
         const value = row.value as number;
         const shown = row.convert ? row.convert(value) : value;
-        const expanded = expandedKey === row.key;
+        const expanded = showTrends && expandedKey === row.key;
         return (
           <View key={row.key}>
             <Pressable
               testID={`sleep-biometric-${row.key}`}
-              accessibilityRole="button"
-              accessibilityState={{ expanded }}
-              accessibilityHint={t('sleep.showTrendHint', {
-                defaultValue: 'Shows this value over the last 30 nights',
-              })}
+              disabled={!showTrends}
+              accessibilityRole={showTrends ? 'button' : undefined}
+              accessibilityState={showTrends ? { expanded } : undefined}
+              accessibilityHint={
+                showTrends
+                  ? t('sleep.showTrendHint', {
+                      defaultValue: 'Shows this value over the last 30 nights',
+                    })
+                  : undefined
+              }
               onPress={() => setExpandedKey(expanded ? null : row.key)}
               className="flex-row items-center justify-between py-1.5"
             >
@@ -187,17 +202,20 @@ const SleepBiometrics: React.FC<SleepBiometricsProps> = ({
               <Text className="text-base font-semibold text-text-primary">
                 {formatLocalizedNumber(shown, row.format)} {row.unit}
               </Text>
-              <Icon
-                name={expanded ? 'chevron-up' : 'chevron-down'}
-                size={14}
-                color={textMuted}
-                style={{ marginLeft: 6 }}
-              />
+              {showTrends ? (
+                <Icon
+                  name={expanded ? 'chevron-up' : 'chevron-down'}
+                  size={14}
+                  color={textMuted}
+                  style={{ marginLeft: 6 }}
+                />
+              ) : null}
             </Pressable>
             {expanded ? (
               <SleepBiometricTrendChart
                 testID={`sleep-biometric-trend-${row.key}`}
                 points={convertPoints(trend.points, row.convert)}
+                startDay={biometricTrendStart(entry.entry_date)}
                 unit={row.unit}
                 format={row.format}
                 isLoading={trend.isLoading}

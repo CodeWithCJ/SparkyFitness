@@ -1,3 +1,4 @@
+import { addDays, daysBetween } from '@workspace/shared';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
@@ -5,7 +6,10 @@ import { CartesianChart } from 'victory-native';
 import { useCSSVariable } from 'uniwind';
 
 import { formatLocalizedNumber } from '../localization';
-import type { BiometricTrendPoint } from '../utils/sleepBiometricTrend';
+import {
+  BIOMETRIC_TREND_NIGHTS,
+  type BiometricTrendPoint,
+} from '../utils/sleepBiometricTrend';
 import ChartTouchOverlay, {
   ChartLayoutReporter,
   EMPTY_CHART_TOUCH_LAYOUT,
@@ -24,6 +28,8 @@ import LineSeriesMark from './charts/LineSeriesMark';
 interface SleepBiometricTrendChartProps {
   /** Points already in the unit shown, oldest first. */
   points: BiometricTrendPoint[];
+  /** First day of the window, so each point sits at its night, gaps included. */
+  startDay: string;
   unit: string;
   format?: Intl.NumberFormatOptions;
   isLoading: boolean;
@@ -39,6 +45,7 @@ const CHART_HEIGHT = 150;
  */
 const SleepBiometricTrendChart: React.FC<SleepBiometricTrendChartProps> = ({
   points,
+  startDay,
   unit,
   format,
   isLoading,
@@ -63,6 +70,21 @@ const SleepBiometricTrendChart: React.FC<SleepBiometricTrendChartProps> = ({
     setSelectionPoints(points);
     setSelectedIndex(null);
   }
+
+  // A numeric x (nights since the window start), not the day string: victory-native
+  // spaces string x values evenly, which would hide a gap of missing nights.
+  const plotted = useMemo(
+    () =>
+      points.map((point) => ({
+        x: daysBetween(startDay, point.day),
+        value: point.value,
+      })),
+    [points, startDay]
+  );
+  const formatNightLabel = useCallback(
+    (x: number) => formatXLabel30d90d(addDays(startDay, Math.round(x))),
+    [startDay]
+  );
 
   const yAxisScale = useMemo(() => {
     if (points.length === 0) return undefined;
@@ -115,18 +137,19 @@ const SleepBiometricTrendChart: React.FC<SleepBiometricTrendChartProps> = ({
           </Text>
           <View style={{ height: CHART_HEIGHT }}>
             <CartesianChart
-              data={points}
-              xKey="day"
+              data={plotted}
+              xKey="x"
               yKeys={['value']}
-              domain={
-                yAxisScale ? { y: [yAxisScale.min, yAxisScale.max] } : undefined
-              }
+              domain={{
+                x: [0, BIOMETRIC_TREND_NIGHTS - 1],
+                ...(yAxisScale ? { y: [yAxisScale.min, yAxisScale.max] } : {}),
+              }}
               domainPadding={{ left: 12, right: 12, top: 8, bottom: 8 }}
               xAxis={{
                 font,
                 tickCount: 4,
                 labelColor: textMuted,
-                formatXLabel: formatXLabel30d90d,
+                formatXLabel: formatNightLabel,
               }}
               yAxis={[
                 {

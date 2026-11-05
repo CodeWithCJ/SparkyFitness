@@ -213,7 +213,6 @@ function assertValidTemperatureUnit(
 ) {
   if (
     preferenceData.default_temperature_unit !== undefined &&
-    preferenceData.default_temperature_unit !== null &&
     !(TEMPERATURE_UNITS as readonly string[]).includes(
       preferenceData.default_temperature_unit
     )

@@ -7,6 +7,7 @@ const row = (
     celsius?: number;
     temperature_celsius?: number;
     deviation_celsius?: number;
+    site?: 'wrist' | 'body';
   },
   source_provider = 'healthkit'
 ): SkinTemperatureRow => ({
@@ -45,7 +46,7 @@ describe('nightSkinTemperature', () => {
         ],
         '2026-08-23'
       )
-    ).toEqual({ celsius: 35.2, deviation: 0.3 });
+    ).toEqual({ celsius: 35.2, deviation: 0.34, source: 'polar' });
   });
 
   test('works the deviation out against the median of earlier nights', () => {
@@ -53,10 +54,9 @@ describe('nightSkinTemperature', () => {
       ...earlierNights(6, 35),
       row('2026-08-23', { celsius: 35.4 }),
     ];
-    expect(nightSkinTemperature(rows, '2026-08-23')).toEqual({
-      celsius: 35.4,
-      deviation: 0.4,
-    });
+    const night = nightSkinTemperature(rows, '2026-08-23');
+    expect(night?.celsius).toBe(35.4);
+    expect(night?.deviation).toBeCloseTo(0.4);
   });
 
   test('gives no deviation with fewer than five earlier nights', () => {
@@ -67,6 +67,7 @@ describe('nightSkinTemperature', () => {
     expect(nightSkinTemperature(rows, '2026-08-23')).toEqual({
       celsius: 35.4,
       deviation: null,
+      source: 'healthkit',
     });
   });
 
@@ -78,6 +79,61 @@ describe('nightSkinTemperature', () => {
     expect(nightSkinTemperature(rows, '2026-08-23')).toEqual({
       celsius: 35.4,
       deviation: null,
+      source: 'healthkit',
     });
+  });
+
+  test('uses the median, not the mean or the latest night', () => {
+    const rows = [34, 35, 35, 35, 35, 42].map((celsius, i) =>
+      row(`2026-08-${String(10 + i).padStart(2, '0')}`, { celsius })
+    );
+    rows.push(row('2026-08-23', { celsius: 35.4 }));
+    expect(nightSkinTemperature(rows, '2026-08-23')?.deviation).toBeCloseTo(
+      0.4
+    );
+  });
+
+  test('leaves out nights older than the 14-day baseline', () => {
+    const rows = [
+      ...Array.from({ length: 6 }, (_, i) =>
+        row(`2026-08-0${1 + i}`, { celsius: 35 })
+      ),
+      row('2026-08-23', { celsius: 35.4 }),
+    ];
+    expect(nightSkinTemperature(rows, '2026-08-23')?.deviation).toBeNull();
+  });
+
+  test('keeps wrist and body readings from one source apart', () => {
+    const rows = [
+      ...Array.from({ length: 6 }, (_, i) =>
+        row(`2026-08-${10 + i}`, { celsius: 36.5, site: 'body' })
+      ),
+      row('2026-08-23', { celsius: 34.1, site: 'wrist' }),
+    ];
+    expect(nightSkinTemperature(rows, '2026-08-23')).toEqual({
+      celsius: 34.1,
+      deviation: null,
+      source: 'healthkit:wrist',
+    });
+  });
+
+  test('reads only the source it is given', () => {
+    const tonight = {
+      ...row('2026-08-23', { celsius: 34.1, site: 'wrist' }),
+      samples: [
+        {
+          t: '2026-08-23T06:00:00.000Z',
+          celsius: 34.1,
+          site: 'wrist' as const,
+        },
+        { t: '2026-08-23T07:00:00.000Z', celsius: 36.4, site: 'body' as const },
+      ],
+    };
+    expect(
+      nightSkinTemperature([tonight], '2026-08-23', 'healthkit:wrist')?.celsius
+    ).toBe(34.1);
+    expect(
+      nightSkinTemperature([tonight], '2026-08-23', 'healthkit:body')?.celsius
+    ).toBe(36.4);
   });
 });

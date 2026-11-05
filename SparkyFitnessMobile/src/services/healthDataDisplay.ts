@@ -469,6 +469,19 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
   BasalBodyTemperature: formatTemperature,
   BodyTemperature: formatTemperature,
   SleepingWristTemperature: formatTemperature,
+  // Pre-aggregated nights ({ value, timestamp } in °C), not raw samples.
+  OvernightBodyTemperature: (records) => {
+    const latest = (records as { value?: number; timestamp?: string }[])
+      .filter((r) => typeof r.value === 'number')
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp ?? '').getTime() -
+          new Date(a.timestamp ?? '').getTime()
+      )[0];
+    return latest?.value != null
+      ? formatTemperature([{ temperature: { inCelsius: latest.value } }])
+      : NO_DATA_DISPLAY;
+  },
 
   BloodGlucose: (records) => {
     const latestGlucose = (

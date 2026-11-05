@@ -129,12 +129,14 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const { entry, stages, isLoading, isError, refetch } = useSleepDetail(
-    entryId,
-    day
-  );
+  const { entry, isMainSleep, stages, isLoading, isError, refetch } =
+    useSleepDetail(entryId, day);
   const { preferences } = usePreferences();
-  const skinTemperature = useSkinTemperature(entry?.entry_date);
+  // Skin temperature and the 30-night trends are the night's, so a nap on the
+  // same day shows neither.
+  const skinTemperature = useSkinTemperature(
+    isMainSleep ? entry?.entry_date : undefined
+  );
 
   // Resolved once for the whole screen so the header's bedtime-to-wake range and the
   // hypnogram's axis labels can never disagree about which clock they are on.
@@ -206,6 +208,7 @@ const SleepDetailScreen: React.FC<Props> = ({ route }) => {
         <SleepBiometrics
           entry={entry}
           skinTemperature={skinTemperature}
+          showTrends={isMainSleep}
           temperatureUnit={temperatureUnitFor(preferences)}
         />
       </ScrollView>

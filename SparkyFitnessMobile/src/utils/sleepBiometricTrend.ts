@@ -65,14 +65,21 @@ export const sleepEntryBiometricTrend = (
   });
 };
 
-/** One point per night with a skin temperature (or a deviation that can be told). */
+/**
+ * One point per night with a skin temperature (or a deviation that can be told),
+ * all from the source of the night being viewed, so one line never mixes a
+ * watch's wrist reading with a ring's.
+ */
 export const skinTemperatureTrend = (
   rows: SkinTemperatureRow[],
   endDay: string,
   key: SkinTemperatureBiometricKey
-): BiometricTrendPoint[] =>
-  trendDays(endDay).flatMap((day) => {
-    const night = nightSkinTemperature(rows, day);
+): BiometricTrendPoint[] => {
+  const source = nightSkinTemperature(rows, endDay)?.source;
+  if (source == null) return [];
+  return trendDays(endDay).flatMap((day) => {
+    const night = nightSkinTemperature(rows, day, source);
     const value = key === 'skinTemperature' ? night?.celsius : night?.deviation;
     return value != null ? [{ day, value }] : [];
   });
+};

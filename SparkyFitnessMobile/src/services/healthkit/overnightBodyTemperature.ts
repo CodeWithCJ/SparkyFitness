@@ -8,6 +8,8 @@ export interface BodyTemperatureReading {
   /** Reading time, epoch ms. */
   ms: number;
   celsius: number;
+  /** The app or device that wrote it, so two writers are never averaged. */
+  source?: string;
 }
 
 export interface OvernightBodyTemperature {
@@ -18,12 +20,36 @@ export interface OvernightBodyTemperature {
   /** When the night ended, so the server dates and orders the reading. */
   timestamp: string;
   record_timezone?: string;
+  /** Tells this reading apart from the wrist temperature on the same source. */
+  site: 'body';
 }
+
+/**
+ * The readings of the one source that wrote the most of them during the night,
+ * so a ring and a thermometer writing Body Temperature are never mixed.
+ */
+const singleSourceReadings = (
+  readings: BodyTemperatureReading[]
+): BodyTemperatureReading[] => {
+  const bySource = new Map<string, BodyTemperatureReading[]>();
+  for (const reading of readings) {
+    const key = reading.source ?? '';
+    const group = bySource.get(key);
+    if (group) group.push(reading);
+    else bySource.set(key, [reading]);
+  }
+  let best: BodyTemperatureReading[] = [];
+  for (const group of bySource.values()) {
+    if (group.length > best.length) best = group;
+  }
+  return best;
+};
 
 /**
  * One reading per wake day: the mean of the body temperature readings that fall
  * inside that day's longest sleep, for a ring or watch that writes Body
- * Temperature through the night.
+ * Temperature through the night. When more than one app or device wrote readings
+ * that night, only the one with the most readings counts.
  *
  * Body Temperature is stored as one value per day, so a night cannot be
  * recovered from the stored value; this works from the raw readings. A night
@@ -65,7 +91,9 @@ export const overnightBodyTemperatures = (
     const startMs = Date.parse(session.bedtime);
     const endMs = Date.parse(session.wake_time);
     if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) continue;
-    const inNight = valid.filter((r) => r.ms >= startMs && r.ms <= endMs);
+    const inNight = singleSourceReadings(
+      valid.filter((r) => r.ms >= startMs && r.ms <= endMs)
+    );
     if (inNight.length === 0) continue;
     const mean =
       inNight.reduce((sum, r) => sum + r.celsius, 0) / inNight.length;
@@ -73,6 +101,7 @@ export const overnightBodyTemperatures = (
       value: Math.round(mean * 100) / 100,
       date,
       timestamp: session.wake_time,
+      site: 'body',
       ...(session.record_timezone
         ? { record_timezone: session.record_timezone }
         : {}),

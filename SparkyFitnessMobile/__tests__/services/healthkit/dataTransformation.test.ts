@@ -405,6 +405,26 @@ describe('transformHealthRecords', () => {
       );
     });
 
+    test('tags the reading as wrist and dates it on the recorded clock', () => {
+      const result = transformHealthRecords(
+        [
+          {
+            // 05:30 UTC is still the 14th in Los Angeles.
+            time: '2024-01-14T22:00:00.000Z',
+            endTime: '2024-01-15T05:30:00.000Z',
+            temperature: { inCelsius: 35.2 },
+            metadata: { HKTimeZone: 'America/Los_Angeles' },
+          },
+        ],
+        config
+      ) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].site).toBe('wrist');
+      expect(result[0].date).toBe('2024-01-14');
+      expect(result[0].record_timezone).toBe('America/Los_Angeles');
+    });
+
     test('falls back to the start time when there is no end', () => {
       const result = transformHealthRecords(
         [

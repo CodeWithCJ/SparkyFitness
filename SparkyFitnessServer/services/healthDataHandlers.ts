@@ -42,6 +42,7 @@ import {
   instantHourMinute,
   instantToDay,
   isDayString,
+  isSkinTemperatureSite,
   MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
@@ -2475,6 +2476,9 @@ const skinTemperatureHandleBatch: HandleBatchFn = async (entries, ctx) => {
       entry_date: parsedDate,
       timestamp,
       celsius: Math.round(celsius * 100) / 100,
+      // Wrist and overnight body temperature both come from one source, so the
+      // site keeps their baselines apart.
+      ...(isSkinTemperatureSite(entry.site) ? { site: entry.site } : {}),
       device_name: typeof entry.source === 'string' ? entry.source : null,
     });
     byProvider.set(provider, group);

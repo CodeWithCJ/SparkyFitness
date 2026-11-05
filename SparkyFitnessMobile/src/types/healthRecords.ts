@@ -4,6 +4,7 @@ import type { RecordSyncError } from '../services/api/healthDataApi';
 import type {
   AppleWorkoutZoneDuration,
   MindfulnessSessionType,
+  SkinTemperatureSite,
 } from '@workspace/shared';
 
 // ==========================================
@@ -268,6 +269,9 @@ export interface TransformedRecord extends RecordTimezoneMetadata {
   source: string;
   timestamp?: string;
   source_id?: string;
+  /** Where a skin temperature was taken, so readings from two places on one
+   *  source never share a baseline. */
+  site?: SkinTemperatureSite;
 }
 
 /** Sparky meal type slug derived from Health Connect MealType constant */

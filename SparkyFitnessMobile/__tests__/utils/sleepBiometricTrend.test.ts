@@ -71,4 +71,49 @@ describe('sleepBiometricTrend', () => {
       skinTemperatureTrend(rows, '2026-08-15', 'skinTemperatureDeviation')
     ).toEqual([{ day: '2026-08-15', value: 0.5 }]);
   });
+
+  test('plots the main sleep, not a nap on the same day', () => {
+    const entries = [
+      buildSleepEntry({
+        id: 'nap',
+        entry_date: '2026-08-23',
+        bedtime: '2026-08-23T13:00:00.000Z',
+        wake_time: '2026-08-23T13:40:00.000Z',
+        duration_in_seconds: 40 * 60,
+        time_asleep_in_seconds: 35 * 60,
+        avg_overnight_hrv: 90,
+      }),
+      buildSleepEntry({
+        id: 'night',
+        entry_date: '2026-08-23',
+        duration_in_seconds: 8 * 3600,
+        time_asleep_in_seconds: 7.5 * 3600,
+        avg_overnight_hrv: 55,
+      }),
+    ];
+
+    expect(
+      sleepEntryBiometricTrend(entries, '2026-08-23', 'overnightHrv')
+    ).toEqual([{ day: '2026-08-23', value: 55 }]);
+  });
+
+  test("keeps the skin temperature line on the viewed night's source", () => {
+    const polar = (entry_date: string, celsius: number) => ({
+      ...skinRow(entry_date, celsius),
+      id: `polar-${entry_date}`,
+      source_provider: 'polar',
+    });
+    const rows = [
+      skinRow('2026-08-21', 34),
+      polar('2026-08-22', 33),
+      skinRow('2026-08-23', 34.2),
+    ];
+
+    expect(skinTemperatureTrend(rows, '2026-08-23', 'skinTemperature')).toEqual(
+      [
+        { day: '2026-08-21', value: 34 },
+        { day: '2026-08-23', value: 34.2 },
+      ]
+    );
+  });
 });
