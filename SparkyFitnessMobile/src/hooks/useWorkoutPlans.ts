@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type {
+  StarterWorkoutPlanCreateRequest,
+  StarterWorkoutPlanKey,
+} from '@workspace/shared';
 import {
+  createStarterWorkoutPlan,
   createWorkoutPlan,
   deleteWorkoutPlan,
+  fetchStarterWorkoutPlans,
   fetchWorkoutPlans,
   updateWorkoutPlan,
 } from '../services/api/workoutPlansApi';
@@ -11,8 +17,10 @@ import type {
 } from '../types/workoutPlans';
 import {
   dailySummaryRootQueryKey,
+  starterWorkoutPlansQueryKey,
   workoutPlansQueryKey,
   workoutPlansRootQueryKey,
+  workoutPresetsQueryKey,
 } from './queryKeys';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
 import { getTodayDate } from '../utils/dateUtils';
@@ -100,5 +108,43 @@ export function useDeleteWorkoutPlan() {
   return {
     deleteWorkoutPlanAsync: (id: string) => mutation.mutateAsync(id),
     isPending: mutation.isPending,
+  };
+}
+
+/**
+ * Built-in starter plans. An older server has none (the request errors), and
+ * the list is then empty so the section stays hidden instead of failing.
+ */
+export function useStarterWorkoutPlans(options?: { enabled?: boolean }) {
+  const query = useQuery({
+    queryKey: starterWorkoutPlansQueryKey,
+    queryFn: fetchStarterWorkoutPlans,
+    enabled: options?.enabled ?? true,
+    staleTime: Infinity,
+    retry: false,
+  });
+  return { starterPlans: query.isError ? [] : (query.data ?? []) };
+}
+
+export function useAddStarterWorkoutPlan() {
+  const invalidate = useInvalidateWorkoutPlans();
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: ({
+      key,
+      body,
+    }: {
+      key: StarterWorkoutPlanKey;
+      body: StarterWorkoutPlanCreateRequest;
+    }) => createStarterWorkoutPlan(key, body),
+    onSuccess: () => {
+      invalidate();
+      // The plan's sessions are new presets.
+      void queryClient.invalidateQueries({ queryKey: workoutPresetsQueryKey });
+    },
+  });
+  return {
+    addStarterPlanAsync: mutation.mutateAsync,
+    pendingKey: mutation.isPending ? mutation.variables?.key : undefined,
   };
 }

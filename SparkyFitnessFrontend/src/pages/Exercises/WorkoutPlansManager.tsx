@@ -27,6 +27,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { error } from '@/utils/logging';
 import type { WorkoutPlanTemplate } from '@/types/workout';
 import AddWorkoutPlanDialog from './AddWorkoutPlanDialog';
+import StarterPlansCard from './StarterPlansCard';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import {
   useCreateWorkoutPlanTemplateMutation,
@@ -492,6 +493,8 @@ const WorkoutPlansManager = () => {
           )}
         </CardContent>
       </Card>
+
+      <StarterPlansCard />
 
       <BulkActionToolbar
         selectedCount={selectedCount}

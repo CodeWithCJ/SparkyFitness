@@ -1,3 +1,8 @@
+import type {
+  StarterWorkoutPlanCreateRequest,
+  StarterWorkoutPlanKey,
+  StarterWorkoutPlanSummary,
+} from '@workspace/shared';
 import { apiFetch } from './apiClient';
 import type {
   SaveWorkoutPlanPayload,
@@ -60,4 +65,32 @@ export const deleteWorkoutPlan = async (id: string): Promise<void> =>
     serviceName: SERVICE_NAME,
     operation: 'delete workout plan',
     method: 'DELETE',
+  });
+
+/**
+ * The built-in starter plans. Servers from before starter plans answer with
+ * an error (the path falls through to the plan-by-id route); callers hide the
+ * section then.
+ */
+export const fetchStarterWorkoutPlans = async (): Promise<
+  StarterWorkoutPlanSummary[]
+> => {
+  const response = await apiFetch<StarterWorkoutPlanSummary[] | null>({
+    endpoint: '/api/workout-plan-templates/starter',
+    serviceName: SERVICE_NAME,
+    operation: 'fetch starter workout plans',
+  });
+  return Array.isArray(response) ? response : [];
+};
+
+export const createStarterWorkoutPlan = async (
+  key: StarterWorkoutPlanKey,
+  body: StarterWorkoutPlanCreateRequest
+): Promise<WorkoutPlanTemplate> =>
+  apiFetch<WorkoutPlanTemplate>({
+    endpoint: `/api/workout-plan-templates/starter/${key}`,
+    serviceName: SERVICE_NAME,
+    operation: 'add starter workout plan',
+    method: 'POST',
+    body,
   });

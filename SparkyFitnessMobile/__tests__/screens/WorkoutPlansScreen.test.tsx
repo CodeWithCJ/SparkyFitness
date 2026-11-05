@@ -5,8 +5,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import WorkoutPlansScreen from '../../src/screens/WorkoutPlansScreen';
 import {
+  useAddStarterWorkoutPlan,
   useDeleteWorkoutPlan,
   useServerConnection,
+  useStarterWorkoutPlans,
   useWorkoutPlans,
 } from '../../src/hooks';
 import type { WorkoutPlanTemplate } from '../../src/types/workoutPlans';
@@ -15,6 +17,8 @@ jest.mock('../../src/hooks', () => ({
   useDeleteWorkoutPlan: jest.fn(),
   useServerConnection: jest.fn(),
   useWorkoutPlans: jest.fn(),
+  useStarterWorkoutPlans: jest.fn(),
+  useAddStarterWorkoutPlan: jest.fn(),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -31,6 +35,13 @@ const mockUseConnection = useServerConnection as jest.MockedFunction<
   typeof useServerConnection
 >;
 
+const mockUseStarter = useStarterWorkoutPlans as jest.MockedFunction<
+  typeof useStarterWorkoutPlans
+>;
+const mockUseAddStarter = useAddStarterWorkoutPlan as jest.MockedFunction<
+  typeof useAddStarterWorkoutPlan
+>;
+const addStarterPlanAsync = jest.fn();
 const deleteWorkoutPlanAsync = jest.fn();
 const refetch = jest.fn();
 const mockNavigation = {
@@ -88,6 +99,45 @@ describe('WorkoutPlansScreen', () => {
     });
     mockUseDelete.mockReturnValue({ deleteWorkoutPlanAsync, isPending: false });
     deleteWorkoutPlanAsync.mockResolvedValue(undefined);
+    mockUseStarter.mockReturnValue({ starterPlans: [] });
+    mockUseAddStarter.mockReturnValue({
+      addStarterPlanAsync,
+      pendingKey: undefined,
+    } as unknown as ReturnType<typeof useAddStarterWorkoutPlan>);
+    addStarterPlanAsync.mockResolvedValue({ id: 'plan-2' });
+  });
+
+  test('hides starter plans when the server offers none', () => {
+    const screen = renderScreen();
+    expect(screen.queryByText('Starter plans')).toBeNull();
+  });
+
+  test('adds a starter plan with translated names', async () => {
+    mockUseStarter.mockReturnValue({
+      starterPlans: [
+        {
+          key: 'push_pull_legs',
+          session_keys: ['push', 'pull', 'legs'],
+          exercise_count: 15,
+        },
+      ],
+    });
+    const screen = renderScreen();
+    expect(screen.getByText('Push → Pull → Legs')).toBeTruthy();
+
+    fireEvent.press(screen.getByText('Add plan'));
+    await waitFor(() =>
+      expect(addStarterPlanAsync).toHaveBeenCalledWith({
+        key: 'push_pull_legs',
+        body: expect.objectContaining({
+          plan_name: 'Push / Pull / Legs',
+          session_names: { push: 'Push', pull: 'Pull', legs: 'Legs' },
+        }),
+      })
+    );
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success' })
+    );
   });
 
   test('shows a plan and opens it for editing', () => {
