@@ -144,11 +144,17 @@ describe('scheduleJob', () => {
   });
 
   it('creates its timers outside the request or job that scheduled it', () => {
+    let scheduledInside = 0;
+    vi.mocked(outsideWriteRequest).mockImplementationOnce((work) => {
+      const before = vi.mocked(cron.schedule).mock.calls.length;
+      const result = work();
+      scheduledInside = vi.mocked(cron.schedule).mock.calls.length - before;
+      return result;
+    });
+
     scheduleJob('backup', '0 2 * * *', () => {});
 
-    expect(
-      vi.mocked(outsideWriteRequest).mock.invocationCallOrder[0]
-    ).toBeLessThan(vi.mocked(cron.schedule).mock.invocationCallOrder[0]!);
+    expect(scheduledInside).toBe(1);
   });
 
   it('gives up a tick it won once shutdown began during the claim', async () => {

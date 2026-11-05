@@ -51,7 +51,7 @@ A backup schedule saved in the admin settings reaches every instance within 5 mi
 
 ## Restoring a backup
 
-A restore from the admin page runs with every instance up. While it loads the backup beside the live data, every instance keeps serving reads, refuses changes with `503` and skips scheduled jobs. It then ends every instance's connections to the old database and swaps the restored one in, so requests fail for a moment and work again on the next try. Only one restore runs at a time across all instances. See [Manual Backup and Restore](/administration/manual_backup_restore) for what it needs and how to roll back.
+A restore from the admin page runs with every instance up. While it loads the backup beside the live data, every instance keeps serving reads, refuses changes with `503` and stops scheduled jobs from using the database. It then ends every instance's connections to the old database and swaps the restored one in, so requests fail for a moment and work again on the next try. Only one restore runs at a time across all instances. See [Manual Backup and Restore](/administration/manual_backup_restore) for what it needs and how to roll back.
 
 ## What to expect during a rolling update
 
