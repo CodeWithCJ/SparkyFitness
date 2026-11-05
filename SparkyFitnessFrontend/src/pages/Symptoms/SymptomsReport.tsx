@@ -18,6 +18,7 @@ import {
   computeSymptomMetrics,
   type FactorKey,
   type SymptomEntryResponse,
+  type SymptomImpact,
   formatDuration,
   minutesBetween,
 } from '@workspace/shared';
@@ -45,6 +46,7 @@ import {
   useSymptomFreeDays,
 } from '@/hooks/useSymptoms';
 import { cn } from '@/lib/utils';
+import { episodeImpactPoints, peakImpact } from './impactSummary';
 
 interface SymptomsReportProps {
   startDate: string;
@@ -175,6 +177,9 @@ export default function SymptomsReport({
     count,
   }));
 
+  const impactLabel = (impact: SymptomImpact | null) =>
+    impact ? t(`symptoms.impact.${impact}`, impact) : '';
+
   const reliefText = (e: SymptomEntryResponse) =>
     e.treatments.map((tr) => tr.name_snapshot).join(', ');
 
@@ -191,6 +196,10 @@ export default function SymptomsReport({
           ? minutesBetween(e.started_at as string, e.ended_at)
           : '',
         peak_severity: e.peak_severity ?? e.severity ?? '',
+        peak_impact: peakImpact(e) ?? '',
+        impact_timeline: episodeImpactPoints(e)
+          .map((p) => `${new Date(p.at).toISOString()} ${p.impact}`)
+          .join('; '),
         where: e.body_locations.join('; '),
         triggers: e.triggers.join('; '),
         treatments: e.treatments
@@ -380,6 +389,7 @@ export default function SymptomsReport({
                     t('symptoms.report.col.started', 'Started'),
                     t('symptoms.report.col.duration', 'Duration'),
                     t('symptoms.report.col.peak', 'Peak'),
+                    t('symptoms.report.col.impact', 'Effect on the day'),
                     t('symptoms.report.col.where', 'Where'),
                     t('symptoms.report.col.triggers', 'Triggers'),
                     t('symptoms.report.col.relief', 'Relief'),
@@ -415,6 +425,9 @@ export default function SymptomsReport({
                       </td>
                       <td className="px-3 py-2 tabular-nums">
                         {e.peak_severity ?? e.severity ?? '–'}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2">
+                        {impactLabel(peakImpact(e)) || '–'}
                       </td>
                       <td className="px-3 py-2">
                         {e.body_locations.join(', ') || '–'}
@@ -640,6 +653,7 @@ export default function SymptomsReport({
                 <td className="py-1 pr-2">
                   {e.peak_severity ?? e.severity ?? ''}
                 </td>
+                <td className="py-1 pr-2">{impactLabel(peakImpact(e))}</td>
                 <td className="py-1 pr-2">{e.body_locations.join(', ')}</td>
                 <td className="py-1 pr-2">{e.triggers.join(', ')}</td>
                 <td className="py-1">{reliefText(e)}</td>

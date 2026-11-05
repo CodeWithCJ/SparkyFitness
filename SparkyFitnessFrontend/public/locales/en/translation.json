@@ -8443,6 +8443,7 @@
         "started": "Started",
         "duration": "Duration",
         "peak": "Peak",
+        "impact": "Effect on the day",
         "where": "Where",
         "triggers": "Triggers",
         "relief": "Relief",
