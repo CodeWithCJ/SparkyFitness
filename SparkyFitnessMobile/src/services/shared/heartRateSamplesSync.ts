@@ -31,8 +31,12 @@ const MAX_BPM = 260;
  */
 const RESEND_OVERLAP_MS = 2 * DAY_MS;
 const CURSOR_KEY_PREFIX = '@SparkyFitness/heartRateSamplesThrough';
-/** Same deadline as one metric read, so a stalled query cannot hold the sync open. */
-const READ_TIMEOUT_MS = 60_000;
+/**
+ * Deadline for each window's read and for its upload (one week of minute
+ * readings is a small body). Same as one metric read, so a stalled query or
+ * response cannot hold the phase open.
+ */
+const STEP_TIMEOUT_MS = 60_000;
 
 export interface HeartRateReading {
   /** ISO instant */
@@ -123,43 +127,79 @@ export function heartRateWindows(
 }
 
 /**
- * Per server, the end of the last run whose every window read and uploaded.
- * Kept per server so switching accounts never skips another account's range.
- * Best effort: an unreadable value only means a longer run.
+ * Per server, the span the last fully successful run covered: every window
+ * from `from` to `through` was read and uploaded. Both ends are kept so a run
+ * over a short range (a `today` sync) cannot make a later, longer range skip
+ * the days before it. Kept per server so switching accounts never skips
+ * another account's range. Best effort: an unreadable value means a full run.
  */
+interface HeartRateCoverage {
+  from: number;
+  through: number;
+}
+
 const cursorKey = async (): Promise<string> =>
   `${CURSOR_KEY_PREFIX}:${(await getActiveServerConfigId().catch(() => null)) ?? 'none'}`;
 
-const readCursor = async (): Promise<number | null> => {
+const readCoverage = async (): Promise<HeartRateCoverage | null> => {
   try {
     const raw = await AsyncStorage.getItem(await cursorKey());
-    const ms = raw === null ? NaN : Number(raw);
-    return Number.isFinite(ms) ? ms : null;
+    const parsed: unknown = raw === null ? null : JSON.parse(raw);
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      'from' in parsed &&
+      'through' in parsed &&
+      Number.isFinite(parsed.from) &&
+      Number.isFinite(parsed.through)
+    ) {
+      return { from: Number(parsed.from), through: Number(parsed.through) };
+    }
+    return null;
   } catch {
     return null;
   }
 };
 
-const writeCursor = async (ms: number): Promise<void> => {
+const writeCoverage = async (coverage: HeartRateCoverage): Promise<void> => {
   try {
-    await AsyncStorage.setItem(await cursorKey(), String(ms));
+    await AsyncStorage.setItem(await cursorKey(), JSON.stringify(coverage));
   } catch {
     // Best effort: the next run just reads further back.
   }
 };
 
 /**
- * Where a run should start: the caller's range start, or, once a run has
- * uploaded everything, `RESEND_OVERLAP_MS` before where that run ended,
- * whichever is later. A cursor in the future (clock change) is ignored.
+ * Where a run should start, and the span it will have covered if every window
+ * succeeds. The range is the caller's, limited to `MAX_DAYS` before `end`. A
+ * stored coverage shortens it only when it already reaches back to the range
+ * start; the run then starts `RESEND_OVERLAP_MS` before where that coverage
+ * ended, and the new coverage keeps its old start. A coverage that ends in
+ * the future (clock change) is ignored.
  */
-export function heartRateSyncStart(
+export function heartRateSyncPlan(
   rangeStart: Date,
   end: Date,
-  cursorMs: number | null
-): Date {
-  if (cursorMs === null || cursorMs > end.getTime()) return rangeStart;
-  return new Date(Math.max(rangeStart.getTime(), cursorMs - RESEND_OVERLAP_MS));
+  coverage: HeartRateCoverage | null
+): { start: Date; coverage: HeartRateCoverage } {
+  const from = Math.max(
+    rangeStart.getTime(),
+    end.getTime() - MAX_DAYS * DAY_MS
+  );
+  if (
+    coverage === null ||
+    coverage.through > end.getTime() ||
+    coverage.from > from
+  ) {
+    return {
+      start: new Date(from),
+      coverage: { from, through: end.getTime() },
+    };
+  }
+  return {
+    start: new Date(Math.max(from, coverage.through - RESEND_OVERLAP_MS)),
+    coverage: { from: coverage.from, through: end.getTime() },
+  };
 }
 
 export interface HeartRateSamplesReader {
@@ -186,7 +226,7 @@ export interface HeartRateSamplesResult {
  * partial, and a `merge` would delete the stored readings missing from them.
  *
  * After a first full run, later runs start shortly before the end of the last
- * run that uploaded every window (see `heartRateSyncStart`), so a sync on each
+ * run that uploaded every window (see `heartRateSyncPlan`), so a sync on each
  * app open does not re-read and re-send the whole range.
  */
 export async function syncAllDayHeartRate(
@@ -195,16 +235,16 @@ export async function syncAllDayHeartRate(
   end: Date,
   telemetry: TelemetryRunContext,
   logTag: string,
-  readTimeoutMs: number = READ_TIMEOUT_MS
+  stepTimeoutMs: number = STEP_TIMEOUT_MS
 ): Promise<HeartRateSamplesResult> {
   let samplesUploaded = 0;
   let error: string | undefined;
-  const from = heartRateSyncStart(start, end, await readCursor());
-  for (const window of heartRateWindows(from, end)) {
+  const plan = heartRateSyncPlan(start, end, await readCoverage());
+  for (const window of heartRateWindows(plan.start, end)) {
     try {
       const read = await withTimeout(
         reader.readRaw('HeartRate', window.start, window.end, telemetry),
-        readTimeoutMs,
+        stepTimeoutMs,
         'All-day heart rate read'
       );
       if (read.error) {
@@ -238,13 +278,19 @@ export async function syncAllDayHeartRate(
         },
         samples: samples.map(({ t, bpm }) => ({ t, bpm })),
       };
-      await postHealthMetricSamples(body);
+      // apiFetch's own timeout stops at the response headers; this bounds the
+      // body read too, so a stalled response cannot hold the phase open.
+      await withTimeout(
+        postHealthMetricSamples(body),
+        stepTimeoutMs,
+        'All-day heart rate upload'
+      );
       samplesUploaded += samples.length;
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
       addLog(`${logTag} All-day heart rate upload failed: ${error}`, 'WARNING');
     }
   }
-  if (!error) await writeCursor(end.getTime());
+  if (!error) await writeCoverage(plan.coverage);
   return { samplesUploaded, error };
 }

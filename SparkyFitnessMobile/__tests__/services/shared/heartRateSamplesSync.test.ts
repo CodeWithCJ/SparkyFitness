@@ -3,7 +3,7 @@ import {
   PASSIVE_HEART_RATE_SOURCE,
   downsampleHeartRate,
   heartRateReadingsFromRecords,
-  heartRateSyncStart,
+  heartRateSyncPlan,
   heartRateWindows,
   syncAllDayHeartRate,
 } from '../../../src/services/shared/heartRateSamplesSync';
@@ -267,6 +267,56 @@ describe('syncAllDayHeartRate', () => {
     );
   });
 
+  it('reads the older days when a short run is followed by a longer range', async () => {
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    const end = new Date('2026-11-03T12:00:00.000Z');
+    await syncAllDayHeartRate(
+      { readRaw },
+      new Date('2026-11-03T00:00:00.000Z'),
+      end,
+      telemetry,
+      '[T]'
+    );
+    readRaw.mockClear();
+    const thirtyDaysBack = new Date(end.getTime() - 30 * DAY_MS);
+    await syncAllDayHeartRate(
+      { readRaw },
+      thirtyDaysBack,
+      end,
+      telemetry,
+      '[T]'
+    );
+    expect(readRaw.mock.calls[0][1]).toEqual(thirtyDaysBack);
+  });
+
+  it('gives up on an upload that never settles and keeps the full range for next time', async () => {
+    postHealthMetricSamples.mockImplementationOnce(
+      () => new Promise<never>(() => {})
+    );
+    const start = new Date('2026-11-01T00:00:00.000Z');
+    const end = new Date('2026-11-03T00:00:00.000Z');
+    const readRaw = jest.fn().mockResolvedValue({
+      records: [
+        {
+          startTime: '2026-11-02T08:00:00.000Z',
+          samples: [{ beatsPerMinute: 66 }],
+        },
+      ],
+    });
+    const result = await syncAllDayHeartRate(
+      { readRaw },
+      start,
+      end,
+      telemetry,
+      '[T]',
+      10
+    );
+    expect(result.error).toMatch(/upload timed out/i);
+    readRaw.mockClear();
+    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
+    expect(readRaw.mock.calls[0][1]).toEqual(start);
+  });
+
   it('keeps reading the whole range while a run had an error', async () => {
     const end = new Date('2026-11-03T12:00:00.000Z');
     const start = new Date(end.getTime() - 14 * DAY_MS);
@@ -287,16 +337,42 @@ describe('syncAllDayHeartRate', () => {
   });
 });
 
-describe('heartRateSyncStart', () => {
-  const start = new Date('2026-10-01T00:00:00.000Z');
+describe('heartRateSyncPlan', () => {
+  const start = new Date('2026-10-05T00:00:00.000Z');
   const end = new Date('2026-11-01T00:00:00.000Z');
+  const ms = (d: Date) => d.getTime();
 
-  it('uses the range start with no cursor or a cursor in the future', () => {
-    expect(heartRateSyncStart(start, end, null)).toEqual(start);
-    expect(heartRateSyncStart(start, end, end.getTime() + 1)).toEqual(start);
+  it('reads the whole range with no coverage or one that ends in the future', () => {
+    for (const coverage of [null, { from: ms(start), through: ms(end) + 1 }]) {
+      expect(heartRateSyncPlan(start, end, coverage)).toEqual({
+        start,
+        coverage: { from: ms(start), through: ms(end) },
+      });
+    }
   });
 
-  it('never starts before the range start', () => {
-    expect(heartRateSyncStart(start, end, start.getTime())).toEqual(start);
+  it('reads the whole range when the coverage starts after it (a short run, then a longer range)', () => {
+    const plan = heartRateSyncPlan(start, end, {
+      from: ms(end) - DAY_MS,
+      through: ms(end) - DAY_MS / 2,
+    });
+    expect(plan.start).toEqual(start);
+    expect(plan.coverage).toEqual({ from: ms(start), through: ms(end) });
+  });
+
+  it('starts two days before covered data ends and keeps the old start', () => {
+    const covered = { from: ms(start) - DAY_MS, through: ms(end) - DAY_MS };
+    const plan = heartRateSyncPlan(start, end, covered);
+    expect(plan.start).toEqual(new Date(ms(end) - 3 * DAY_MS));
+    expect(plan.coverage).toEqual({ from: covered.from, through: ms(end) });
+  });
+
+  it('limits the range to 31 days before the end', () => {
+    const plan = heartRateSyncPlan(
+      new Date('2025-01-01T00:00:00.000Z'),
+      end,
+      null
+    );
+    expect(plan.start).toEqual(new Date(ms(end) - 31 * DAY_MS));
   });
 });
