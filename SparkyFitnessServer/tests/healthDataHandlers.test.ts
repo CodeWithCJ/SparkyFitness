@@ -1132,17 +1132,21 @@ describe('skinTemperatureHandler', () => {
       'success',
       'success',
     ]);
+    // One write per provider and site, each replacing only its own site.
     const calls = vi.mocked(upsertSamplesByDay).mock.calls;
-    expect(calls).toHaveLength(2);
-    const byProvider = new Map(calls.map((call) => [call[3], call[4]]));
-    expect(byProvider.get('healthkit')).toEqual([
-      expect.objectContaining({ celsius: 34.1, site: 'wrist' }),
-      expect.objectContaining({ celsius: 36.4, site: 'body' }),
-    ]);
-    expect([...byProvider.keys()]).toHaveLength(2);
-    expect(
-      [...byProvider.values()].flat().map((sample) => sample.celsius)
-    ).toEqual(expect.arrayContaining([33.8]));
+    expect(calls).toHaveLength(3);
+    const writes = calls.map((call) => ({
+      provider: call[3],
+      celsius: call[4].map((sample) => sample.celsius),
+      site: call[5]?.site,
+    }));
+    expect(writes).toEqual(
+      expect.arrayContaining([
+        { provider: 'healthkit', celsius: [34.1], site: 'wrist' },
+        { provider: 'healthkit', celsius: [36.4], site: 'body' },
+        expect.objectContaining({ celsius: [33.8], site: undefined }),
+      ])
+    );
   });
 
   it('reports an error when the write fails', async () => {

@@ -16,9 +16,11 @@ const at = (time: string): string => `${DAY}T${time}.000Z`;
 
 interface StoredSample {
   t: string;
-  bpm: number;
+  bpm?: number;
   ex?: string;
   sl?: string;
+  site?: string;
+  celsius?: number;
 }
 
 const incoming = (time: string, bpm: number): FlatHealthSample => ({
@@ -106,6 +108,46 @@ describe('upsertSamplesByDay', () => {
       { t: at('09:00:00'), bpm: 105 },
       { t: at('09:01:00'), bpm: 130 },
       { t: at('12:00:00'), bpm: 70 },
+    ]);
+  });
+
+  it("keeps another site's samples inside the window and replaces its own", async () => {
+    // Fields are checked against the metric's schema, so this uses celsius.
+    // Wrist and body temperature share the provider's day row. Syncing only the
+    // wrist must not delete the body readings in the same span; a stored sample
+    // with no site predates the field and is replaced.
+    stored = [
+      { t: at('06:00:00'), celsius: 34, site: 'wrist' },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
+      { t: at('06:45:00'), celsius: 33 },
+    ];
+
+    await upsertSamplesByDay(
+      'user-1',
+      'user-1',
+      'skin_temperature',
+      'healthkit',
+      [
+        {
+          entry_date: DAY,
+          timestamp: new Date(at('06:15:00')),
+          celsius: 35,
+          site: 'wrist',
+        },
+      ],
+      {
+        mode: 'merge',
+        window: {
+          startMs: Date.parse(at('06:00:00')),
+          endMs: Date.parse(at('07:00:00')),
+        },
+        site: 'wrist',
+      }
+    );
+
+    expect(writtenSamples()).toEqual([
+      { t: at('06:15:00'), celsius: 35, site: 'wrist' },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
     ]);
   });
 

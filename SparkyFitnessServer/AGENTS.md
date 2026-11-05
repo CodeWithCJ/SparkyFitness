@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-05_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -313,7 +313,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
   inspect the relevant `integrations/*` code, then the matching service and repository files
 - Open Food Facts publication:
   inspect `services/openFoodFactsManualContributionService.ts`, `integrations/openfoodfacts/openFoodFactsContribution.ts`, and `constants/openFoodFacts.ts`; retained automatic queue code is dormant and needs a new migration before a future release can activate its triggers
-- Skin temperature (Apple sleeping wrist temperature, Polar): the `skin_temperature` handler in `services/healthDataHandlers.ts` takes one record per night from `/api/health-data` (value in °C, 20 to 45) and writes a `skin_temperature` sample through `upsertSamplesByDay` in merge mode, one provider per `source`; Polar's `processPolarSkinTemperature` writes the same metric with its own deviation. Oura's nightly deviation is still the "Skin Temperature Variation" custom measurement. Read it with `GET /api/generic-health/samples?metric=skin_temperature`.
+- Skin temperature (Apple sleeping wrist temperature, Polar): the `skin_temperature` handler in `services/healthDataHandlers.ts` takes one record per night from `/api/health-data` (value in °C, 20 to 45) and writes a `skin_temperature` sample through `upsertSamplesByDay` in merge mode, one write per `source` and `site` (`wrist` for Apple's sleeping wrist temperature, `body` for an overnight Body Temperature mean; both are `healthkit`), passing `site` so the merge keeps the other site's samples in the shared day row (a stored sample with no site predates the field and is replaced); Polar's `processPolarSkinTemperature` writes the same metric with its own deviation. Oura's nightly deviation is still the "Skin Temperature Variation" custom measurement. Read it with `GET /api/generic-health/samples?metric=skin_temperature`.
 - Heart rate zone, max heart rate or time-in-zone issue:
   inspect `../shared/src/utils/heartRateZones.ts`, `services/heartRateZoneService.ts`, `routes/v2/heartRateZoneRoutes.ts`, then `services/healthDataHandlers.ts` (`persistWorkoutTelemetry`) and `services/exerciseEntryService.ts` (watch telemetry) for the write paths
 - Health data or date bucketing issue:

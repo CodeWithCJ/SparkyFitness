@@ -44,6 +44,7 @@ import {
   isDayString,
   isSkinTemperatureSite,
   MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
+  type SkinTemperatureSite,
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
   todayInZone,
@@ -2449,10 +2450,15 @@ const SKIN_TEMPERATURE_BOUNDS = { min: 20, max: 45 };
 
 const skinTemperatureHandleBatch: HandleBatchFn = async (entries, ctx) => {
   const outcomes: HandlerOutcome[] = new Array(entries.length);
-  const byProvider = new Map<
-    string,
-    { indexes: number[]; samples: FlatHealthSample[] }
-  >();
+  // One write per provider and site: wrist and body readings share the
+  // provider's day row, and each write replaces only its own site's samples.
+  interface SiteGroup {
+    provider: string;
+    site: SkinTemperatureSite | undefined;
+    indexes: number[];
+    samples: FlatHealthSample[];
+  }
+  const byProvider = new Map<string, SiteGroup>();
 
   entries.forEach(({ entry, parsedDate, entryTimestamp }, i) => {
     const celsius = parseDailySummaryReading(entry.value);
@@ -2470,7 +2476,14 @@ const skinTemperatureHandleBatch: HandleBatchFn = async (entries, ctx) => {
       return;
     }
     const provider = normalizeHealthSourceProvider(entry.source);
-    const group = byProvider.get(provider) ?? { indexes: [], samples: [] };
+    const site = isSkinTemperatureSite(entry.site) ? entry.site : undefined;
+    const key = `${provider}|${site ?? ''}`;
+    const group: SiteGroup = byProvider.get(key) ?? {
+      provider,
+      site,
+      indexes: [],
+      samples: [],
+    };
     group.indexes.push(i);
     group.samples.push({
       entry_date: parsedDate,
@@ -2478,13 +2491,13 @@ const skinTemperatureHandleBatch: HandleBatchFn = async (entries, ctx) => {
       celsius: Math.round(celsius * 100) / 100,
       // Wrist and overnight body temperature both come from one source, so the
       // site keeps their baselines apart.
-      ...(isSkinTemperatureSite(entry.site) ? { site: entry.site } : {}),
+      ...(site ? { site } : {}),
       device_name: typeof entry.source === 'string' ? entry.source : null,
     });
-    byProvider.set(provider, group);
+    byProvider.set(key, group);
   });
 
-  for (const [provider, group] of byProvider) {
+  for (const { provider, site, ...group } of byProvider.values()) {
     try {
       await upsertSamplesByDay(
         ctx.userId,
@@ -2497,6 +2510,7 @@ const skinTemperatureHandleBatch: HandleBatchFn = async (entries, ctx) => {
           // these readings cover, so a re-sync does not duplicate a night.
           mode: 'merge',
           window: minMax(group.samples.map((s) => s.timestamp.getTime())),
+          ...(site ? { site } : {}),
         }
       );
       for (const i of group.indexes) {

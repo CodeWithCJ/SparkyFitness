@@ -54,6 +54,14 @@ export interface SampleWriteOptions {
    */
   ex?: string;
   /**
+   * When set, a merge replaces only this site's samples inside `window` (a
+   * skin temperature's `site`). A sample with a different site is kept, so a
+   * sync of one place (wrist) never erases the other's (body) in the shared
+   * provider row. A stored sample with no site predates the field and is
+   * replaced like a match.
+   */
+  site?: string;
+  /**
    * Days (YYYY-MM-DD) a `merge` also processes when no incoming sample falls
    * on them, so a resend clears the window on a day that no longer has
    * readings. A listed day without a stored row is skipped, not created.
@@ -182,8 +190,16 @@ export async function upsertSamplesByDay(
           const ms = Date.parse(String(sample.t));
           if (!Number.isFinite(ms)) return true;
           if (ms < window.startMs || ms > window.endMs) return true;
-          // Inside the window. Without an entry id, the whole span is replaced.
-          // With one, another entry's samples in that span stay.
+          // Inside the window. A sample from another site stays.
+          if (
+            options.site !== undefined &&
+            typeof sample.site === 'string' &&
+            sample.site !== options.site
+          ) {
+            return true;
+          }
+          // Without an entry id, the whole span is replaced. With one, another
+          // entry's samples in that span stay.
           const ex = options.ex;
           return (
             ex !== undefined &&
