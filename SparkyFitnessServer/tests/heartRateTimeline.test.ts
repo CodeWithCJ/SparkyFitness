@@ -161,6 +161,46 @@ describe('sleepWindowForDay', () => {
     expect(w.bedMinutes).toBe(1350);
     expect(w.bedAfterMidnight).toBe(false);
   });
+  it('prefers the night over an earlier evening nap', () => {
+    const w = sleepWindowForDay(
+      [
+        {
+          entry_date: '2026-10-05',
+          bedtime: '2026-10-05T19:00:00',
+          wake_time: '2026-10-05T19:30:00',
+        },
+        {
+          entry_date: '2026-10-06',
+          bedtime: '2026-10-05T23:00:00',
+          wake_time: '2026-10-06T07:00:00',
+        },
+      ],
+      '2026-10-05',
+      parts
+    );
+    expect(w.bedMinutes).toBe(1380);
+    expect(w.bedAfterMidnight).toBe(false);
+  });
+  it('prefers a night that starts after midnight over an evening nap', () => {
+    const w = sleepWindowForDay(
+      [
+        {
+          entry_date: '2026-10-05',
+          bedtime: '2026-10-05T20:00:00',
+          wake_time: '2026-10-05T20:40:00',
+        },
+        {
+          entry_date: '2026-10-06',
+          bedtime: '2026-10-06T00:30:00',
+          wake_time: '2026-10-06T07:30:00',
+        },
+      ],
+      '2026-10-05',
+      parts
+    );
+    expect(w.bedMinutes).toBe(1425);
+    expect(w.bedAfterMidnight).toBe(true);
+  });
   it('keeps a bedtime from 18:00', () => {
     const w = sleepWindowForDay(
       [

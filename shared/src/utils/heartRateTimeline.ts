@@ -229,29 +229,36 @@ export function sleepWindowForDay(
     if (wakeMinutes === null || minutes < wakeMinutes) wakeMinutes = minutes;
   }
 
-  let bedMinutes: number | null = null;
-  let bedAfterMidnight = false;
-  let bedRank: number | null = null;
-  // Only a bedtime that falls this evening (from 18:00) or just after midnight
-  // places sleep on the day, so search on that alone and take the earliest:
-  // a session merely filed on the next day (a nap) must not hide the night
+  // The evening's sleep is the session whose bedtime falls this evening (from
+  // 18:00) or just after midnight. A session that wakes on the next day is
+  // the night itself and wins over an evening nap that started earlier;
+  // among equals the earliest bedtime wins. Being filed on the next day says
+  // nothing about the bedtime, so it is not used.
+  let best: { rank: number; overnight: boolean } | null = null;
   for (const s of sessions) {
     const bed = s.bedtime ? clockParts(s.bedtime) : null;
     if (!bed) continue;
-    let minutes: number | null = null;
+    let rank: number;
     if (bed.day === day && bed.hour >= 18) {
-      minutes = bed.hour * 60 + bed.minute;
+      rank = bed.hour * 60 + bed.minute;
     } else if (bed.day === next && bed.hour <= 5) {
       // After midnight: drawn from 23:45, ranked by the real time
-      minutes = MINUTES_PER_DAY + bed.hour * 60 + bed.minute;
+      rank = MINUTES_PER_DAY + bed.hour * 60 + bed.minute;
+    } else {
+      continue;
     }
-    if (minutes !== null && (bedRank === null || minutes < bedRank)) {
-      bedRank = minutes;
+    const overnight = s.wake_time
+      ? clockParts(s.wake_time)?.day === next
+      : false;
+    if (
+      !best ||
+      (overnight && !best.overnight) ||
+      (overnight === best.overnight && rank < best.rank)
+    ) {
+      best = { rank, overnight };
     }
   }
-  if (bedRank !== null) {
-    bedAfterMidnight = bedRank >= MINUTES_PER_DAY;
-    bedMinutes = bedAfterMidnight ? 1425 : bedRank;
-  }
+  const bedAfterMidnight = best !== null && best.rank >= MINUTES_PER_DAY;
+  const bedMinutes = best === null ? null : bedAfterMidnight ? 1425 : best.rank;
   return { wakeMinutes, bedMinutes, bedAfterMidnight };
 }
