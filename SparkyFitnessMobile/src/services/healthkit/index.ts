@@ -1824,6 +1824,9 @@ const QUANTITY_TRANSFORMS: Record<
 };
 
 // Handler for standard quantity types (most common metrics)
+// Quantities that span the night and are dated by their end, the wake day.
+const END_DATED_QUANTITIES = new Set(['SleepingWristTemperature']);
+
 const createQuantityHandler = (recordType: string): RecordHandler => {
   return async (identifier, startDate, endDate) => {
     if (!SUPPORTED_HK_TYPES.has(identifier)) {
@@ -1854,8 +1857,13 @@ const createQuantityHandler = (recordType: string): RecordHandler => {
       return [];
     }
 
+    // A sample dated by its end (the wake day) is matched by its end: last night's
+    // wrist temperature starts the evening before a window that opens at midnight.
+    const matchByEnd = END_DATED_QUANTITIES.has(recordType);
     const filteredSamples = samples.filter((record) => {
-      const recordDate = new Date(record.startDate);
+      const recordDate = new Date(
+        matchByEnd ? record.endDate : record.startDate
+      );
       return isInDateRange(recordDate, startDate, endDate);
     });
 
