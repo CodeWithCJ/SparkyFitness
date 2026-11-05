@@ -54,7 +54,7 @@ export function useHeartRateDayTimeline(
     queryKey: heartRateDaySleepQueryKey(day),
     queryFn: () => fetchSleepEntries(addDays(day, -1), addDays(day, 1)),
   });
-  const { summary } = useDailySummary({ date: day });
+  const { summary, isError: summaryError } = useDailySummary({ date: day });
 
   const workouts = useMemo(
     () =>
@@ -72,11 +72,12 @@ export function useHeartRateDayTimeline(
     [samples.data, sleep.data, workouts, day]
   );
 
-  // The day's figures split readings by sleep, so they wait for sleep too
+  // The day's figures split readings by sleep, so they wait for sleep too;
+  // a failed daily summary would silently drop the workout shading
   return {
     timeline,
     workouts,
     isLoading: samples.isLoading || sleep.isLoading,
-    isError: samples.isError || sleep.isError,
+    isError: samples.isError || sleep.isError || summaryError,
   };
 }

@@ -220,8 +220,6 @@ export function sleepWindowForDay(
   clockParts: (instant: string) => ClockParts | null
 ): TimelineSleepWindow {
   const next = nextDayOf(day);
-  const filedOn = (s: SleepSessionTimes) =>
-    String(s.entry_date || '').slice(0, 10);
 
   let wakeMinutes: number | null = null;
   for (const s of sessions) {
@@ -233,22 +231,27 @@ export function sleepWindowForDay(
 
   let bedMinutes: number | null = null;
   let bedAfterMidnight = false;
-  const evening = sessions.find((s) => {
+  let bedRank: number | null = null;
+  // Only a bedtime that falls this evening (from 18:00) or just after midnight
+  // places sleep on the day, so search on that alone and take the earliest:
+  // a session merely filed on the next day (a nap) must not hide the night
+  for (const s of sessions) {
     const bed = s.bedtime ? clockParts(s.bedtime) : null;
-    if (bed) {
-      if (bed.day === day && bed.hour >= 18) return true;
-      if (bed.day === next && bed.hour <= 5) return true;
-    }
-    return filedOn(s) === next;
-  });
-  const bed = evening?.bedtime ? clockParts(evening.bedtime) : null;
-  if (bed) {
+    if (!bed) continue;
+    let minutes: number | null = null;
     if (bed.day === day && bed.hour >= 18) {
-      bedMinutes = bed.hour * 60 + bed.minute;
+      minutes = bed.hour * 60 + bed.minute;
     } else if (bed.day === next && bed.hour <= 5) {
-      bedMinutes = 1425;
-      bedAfterMidnight = true;
+      // After midnight: drawn from 23:45, ranked by the real time
+      minutes = MINUTES_PER_DAY + bed.hour * 60 + bed.minute;
     }
+    if (minutes !== null && (bedRank === null || minutes < bedRank)) {
+      bedRank = minutes;
+    }
+  }
+  if (bedRank !== null) {
+    bedAfterMidnight = bedRank >= MINUTES_PER_DAY;
+    bedMinutes = bedAfterMidnight ? 1425 : bedRank;
   }
   return { wakeMinutes, bedMinutes, bedAfterMidnight };
 }

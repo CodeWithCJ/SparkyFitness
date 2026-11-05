@@ -141,6 +141,26 @@ describe('sleepWindowForDay', () => {
     expect(w.bedMinutes).toBe(1425);
     expect(w.bedAfterMidnight).toBe(true);
   });
+  it('does not let a nap filed on the next day hide the night', () => {
+    const w = sleepWindowForDay(
+      [
+        {
+          entry_date: '2026-10-06',
+          bedtime: '2026-10-06T14:00:00',
+          wake_time: '2026-10-06T15:00:00',
+        },
+        {
+          entry_date: '2026-10-06',
+          bedtime: '2026-10-05T22:30:00',
+          wake_time: '2026-10-06T06:30:00',
+        },
+      ],
+      '2026-10-05',
+      parts
+    );
+    expect(w.bedMinutes).toBe(1350);
+    expect(w.bedAfterMidnight).toBe(false);
+  });
   it('keeps a bedtime from 18:00', () => {
     const w = sleepWindowForDay(
       [
