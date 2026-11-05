@@ -9,6 +9,14 @@ import {
   PaginatedFoodsResponse,
 } from '../../types/foods';
 
+/** Fetches one saved food by id. */
+export const fetchFood = async (foodId: string): Promise<FoodItem> =>
+  apiFetch<FoodItem>({
+    endpoint: `/api/foods/${encodeURIComponent(foodId)}`,
+    serviceName: 'Foods API',
+    operation: 'fetch food',
+  });
+
 /**
  * Fetches the list of recent and top foods.
  */

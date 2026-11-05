@@ -74,6 +74,9 @@ import {
 } from '../../utils/numericInput';
 import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference';
 import { useScreenHeader } from '../../hooks/useScreenHeader';
+import { setPendingActionTagSelection } from '../../services/actionTagSelection';
+import { setPendingContainerLinkSelection } from '../../services/waterContainerLinkSelection';
+import { isFoodSelectionMode } from '../../utils/foodPickerMode';
 import { BarcodeField, BARCODE_REGEX } from './BarcodeField';
 import {
   FOOD_VARIANT_FIELDS,
@@ -124,7 +127,7 @@ export function CreateFoodMode({
   const returnDepth = params.returnDepth ?? 1;
   const isMealBuilderMode = pickerMode === 'meal-builder';
   const isMealPlanMode = pickerMode === 'meal-plan';
-  const isSelectionMode = isMealBuilderMode || isMealPlanMode;
+  const isSelectionMode = isFoodSelectionMode(pickerMode);
   const isLibraryMode = pickerMode === 'library';
   const isLogEntryMode = !isSelectionMode && !isLibraryMode;
   const showBarcodeField = !isMealBuilderMode;
@@ -740,7 +743,27 @@ export function CreateFoodMode({
           parseDecimalInput(data.servingSize) || 0,
           data.servingUnit || 'serving'
         );
-        if (isMealPlanMode && params.mealPlanTarget) {
+        if (pickerMode === 'action-tag') {
+          if (ingredient.food_id && ingredient.variant_id) {
+            setPendingActionTagSelection({
+              kind: 'food',
+              foodId: ingredient.food_id,
+              variantId: ingredient.variant_id,
+              name: ingredient.food_name ?? savedFood.name,
+              quantity: ingredient.quantity,
+              unit: ingredient.unit,
+            });
+          }
+        } else if (pickerMode === 'container-link') {
+          if (ingredient.food_id && ingredient.variant_id) {
+            setPendingContainerLinkSelection({
+              foodId: ingredient.food_id,
+              variantId: ingredient.variant_id,
+              foodName: ingredient.food_name ?? savedFood.name,
+              quantity: ingredient.quantity,
+            });
+          }
+        } else if (isMealPlanMode && params.mealPlanTarget) {
           setPendingMealPlanSelection({
             ...(params.mealPlanTarget.assignmentIndex === undefined
               ? {}

@@ -6104,7 +6104,10 @@
       "errors": {
         "labelRequired": "Give the tag a name",
         "containerRequired": "Choose a water container",
-        "drinks": "Drinks per tap must be a whole number from 1 to {{max}}"
+        "drinks": "Drinks per tap must be a whole number from 1 to {{max}}",
+        "amount": "Enter an amount greater than zero",
+        "itemRequired": "Choose a food or meal",
+        "invalid": "Check the amount and the name, then try again. Nothing was written to the tag."
       },
       "holdToWrite": "Hold your phone to the NFC tag",
       "written": "Tag is ready",
@@ -6132,7 +6135,14 @@
       "askFirstHint": "Shows a Log or Cancel prompt on every tap instead of logging at once.",
       "writeHint": "When you save, hold your phone to the tag to write it. On metal, such as a steel bottle, use an on-metal tag.",
       "writeAgain": "Write to a tag again",
-      "delete": "Remove this tag"
+      "delete": "Remove this tag",
+      "serverTooOld": "Your server does not support food and meal tags yet. Update the server, then try again.",
+      "amountIn": "Amount per tap ({{unit}})",
+      "servings": "Servings per tap",
+      "mealType": "Log to",
+      "mealTypeHint": "By time of day uses each meal type’s usual time, as quick logging does.",
+      "foodOrMeal": "Food or meal",
+      "foodOrMealPlaceholder": "Choose a food or meal"
     },
     "unsupportedTitle": "This phone cannot use NFC tags",
     "unsupportedSubtitle": "NFC tags need a phone with NFC.",
@@ -6156,16 +6166,33 @@
     "title": "NFC tags",
     "action": {
       "water": "{{drinks}} × {{name}}",
-      "waterMissing": "Water container no longer exists"
+      "waterMissing": "Water container no longer exists",
+      "servings_one": "{{formattedCount}} serving",
+      "servings_other": "{{formattedCount}} servings",
+      "amount": "{{quantity}} {{unit}}",
+      "food": "{{amount}} · {{meal}}",
+      "unsupported": "Update the app to use this tag"
     },
     "type": {
-      "water": "Water or drink"
+      "water": "Water or drink",
+      "foodOrMeal": "Food or meal"
     },
     "container": {
       "add": "Add NFC tag",
       "count_one": "{{formattedCount}} tag logs this container",
       "count_other": "{{formattedCount}} tags log this container",
       "hint": "Tap a sticker on this bottle to log a drink"
+    },
+    "food": {
+      "count_one": "{{formattedCount}} tag logs this food",
+      "count_other": "{{formattedCount}} tags log this food",
+      "hint": "Tap a sticker to log this food"
+    },
+    "meal": {
+      "auto": "By time of day",
+      "count_one": "{{formattedCount}} tag logs this meal",
+      "count_other": "{{formattedCount}} tags log this meal",
+      "hint": "Tap a sticker to log this meal"
     }
   },
   "waterContainers": {
