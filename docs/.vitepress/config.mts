@@ -180,6 +180,7 @@ export default defineConfig({
             { text: 'Following a Route on Apple Watch', link: '/features/exercises/route-following-on-watch' },
             { text: 'Progression & Per-Set Ramp', link: '/features/exercises/progression-and-per-set-ramp' },
             { text: 'Starter Plans', link: '/features/exercises/starter-plans' },
+            { text: 'Workout Logging Shortcuts', link: '/features/exercises/workout-logging-shortcuts' },
             { text: 'Bodyweight Exercises', link: '/features/exercises/bodyweight-exercises' },
             { text: 'Workout Effort', link: '/features/exercises/workout-effort' },
             { text: 'Adaptive Coaching', link: '/features/exercises/adaptive-coaching' },
