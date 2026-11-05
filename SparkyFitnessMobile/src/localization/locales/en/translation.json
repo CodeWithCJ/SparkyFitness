@@ -114,7 +114,8 @@
     "notNow": "Not now",
     "undo": "Undo",
     "all": "All",
-    "builtIn": "Built-in"
+    "builtIn": "Built-in",
+    "copy": "Copy"
   },
   "settings": {
     "app": "App Settings",
@@ -512,7 +513,8 @@
       "fillFromPrevious": "Fill set {{setNumber}} from previous",
       "startTimer": "Start stopwatch",
       "stopTimer": "Stop stopwatch",
-      "inputToolbar": "Set entry actions"
+      "inputToolbar": "Set entry actions",
+      "copy": "Copy set {{setNumber}}"
     },
     "columns": {
       "set": "Set",
@@ -585,7 +587,9 @@
       "previousLabel": "Previous exercise, {{name}}",
       "nextLabel": "Next exercise, {{name}}",
       "backToCurrent": "Back to current"
-    }
+    },
+    "setDeleted": "Set {{setNumber}} deleted",
+    "setDeletedUndo": "Tap to undo"
   },
   "addSheet": {
     "food": "Food",
@@ -1395,7 +1399,10 @@
     "focusMedia": "Exercise photo",
     "focusMediaSubtitle": "Open the focus view with the large photo card or a small thumbnail. You can change it during the workout.",
     "focusMediaLarge": "Large",
-    "focusMediaSmall": "Small"
+    "focusMediaSmall": "Small",
+    "restFlash": "Flash the screen when rest ends",
+    "restFlashSubtitle": "Tint the workout screen briefly when the rest timer runs out, for when you can't hear the sound.",
+    "restFlashAccessibility": "Flash the screen when rest ends"
   },
   "restPeriod": {
     "title": "Rest period",

@@ -145,6 +145,7 @@ export const PREFERENCE_DEFAULTS = {
   paceReferenceOnWatch: false,
   restTimerSoundEnabled: true,
   restChimeThroughSilent: false,
+  restFlashEnabled: false,
   duckMusicDuringCues: false,
   workoutKeepAwakeEnabled: false,
   warmupCalculatorEnabled: true,
@@ -249,6 +250,8 @@ export type AppPreferencesData = {
    * session alive for the length of each rest. Off by default.
    */
   restChimeThroughSilent: boolean;
+  /** Flash the screen once when a rest ends with the app open. Off by default. */
+  restFlashEnabled: boolean;
   /**
    * Lower other apps' music while an interval cue or guided line plays
    * (#1560). Off by default: cues normally mix over music untouched.
@@ -389,6 +392,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setPaceReferenceOnWatch: (value: boolean) => void;
   setRestTimerSoundEnabled: (value: boolean) => void;
   setRestChimeThroughSilent: (value: boolean) => void;
+  setRestFlashEnabled: (value: boolean) => void;
   setDuckMusicDuringCues: (value: boolean) => void;
   setWorkoutKeepAwakeEnabled: (value: boolean) => void;
   setWarmupCalculatorEnabled: (value: boolean) => void;
@@ -558,6 +562,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ restTimerSoundEnabled: value }),
       setRestChimeThroughSilent: (value) =>
         set({ restChimeThroughSilent: value }),
+      setRestFlashEnabled: (value) => set({ restFlashEnabled: value }),
       setDuckMusicDuringCues: (value) => set({ duckMusicDuringCues: value }),
       setWorkoutKeepAwakeEnabled: (value) =>
         set({ workoutKeepAwakeEnabled: value }),
@@ -769,6 +774,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         paceReferenceOnWatch: state.paceReferenceOnWatch,
         restTimerSoundEnabled: state.restTimerSoundEnabled,
         restChimeThroughSilent: state.restChimeThroughSilent,
+        restFlashEnabled: state.restFlashEnabled,
         duckMusicDuringCues: state.duckMusicDuringCues,
         workoutKeepAwakeEnabled: state.workoutKeepAwakeEnabled,
         warmupCalculatorEnabled: state.warmupCalculatorEnabled,

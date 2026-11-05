@@ -513,6 +513,21 @@ export interface ActiveWorkoutState {
    */
   deleteSet: (setId: string) => void;
   /**
+   * Put a deleted set back at its old position, as a new unsaved set (the
+   * saved one may already be gone on the server). No-op when its exercise
+   * is no longer in the session.
+   */
+  restoreSet: (
+    entryId: string,
+    deleted: ExerciseEntrySetResponse,
+    index: number
+  ) => void;
+  /**
+   * Insert a copy of a set right after it: same type, load and targets, not
+   * yet done, with no notes, RPE or PR of its own.
+   */
+  duplicateSet: (setId: string) => void;
+  /**
    * Set rest_time on every set of an exercise. For a superset member the
    * write covers every set of every member — rest is per-round, so the
    * chips must stay in agreement.
@@ -2510,6 +2525,65 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
                       }
                 ),
               };
+        set(buildSessionEditState(state, next));
+      },
+
+      restoreSet: (entryId, deleted, index) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        if (!session.exercises.some((e) => e.id === entryId)) return;
+        const restored: ExerciseEntrySetResponse = {
+          ...deleted,
+          id: nextTempSetId(session, state.setRenderKeys),
+        };
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: session.exercises.map((e) => {
+            if (e.id !== entryId) return e;
+            const sets = [...e.sets];
+            sets.splice(Math.min(Math.max(index, 0), sets.length), 0, restored);
+            return {
+              ...e,
+              sets: sets.map((s, idx) => ({ ...s, set_number: idx + 1 })),
+            };
+          }),
+        };
+        set(buildSessionEditState(state, next));
+      },
+
+      duplicateSet: (setId) => {
+        const state = get();
+        const session = state.session;
+        if (!session) return;
+        const exercise = session.exercises.find((e) =>
+          e.sets.some((s) => String(s.id) === setId)
+        );
+        if (!exercise) return;
+        const index = exercise.sets.findIndex((s) => String(s.id) === setId);
+        const source = exercise.sets[index];
+        if (!source) return;
+        const copy: ExerciseEntrySetResponse = {
+          ...source,
+          id: nextTempSetId(session, state.setRenderKeys),
+          notes: null,
+          rpe: null,
+          completed_at: null,
+          is_pr: false,
+        };
+        const sets = [...exercise.sets];
+        sets.splice(index + 1, 0, copy);
+        const next: PresetSessionResponse = {
+          ...session,
+          exercises: session.exercises.map((e) =>
+            e.id !== exercise.id
+              ? e
+              : {
+                  ...e,
+                  sets: sets.map((s, idx) => ({ ...s, set_number: idx + 1 })),
+                }
+          ),
+        };
         set(buildSessionEditState(state, next));
       },
 
