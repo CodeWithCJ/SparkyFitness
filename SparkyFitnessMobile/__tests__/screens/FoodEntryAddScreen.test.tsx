@@ -49,6 +49,7 @@ const mockNavigation = {
   setParams: jest.fn(),
   dispatch: jest.fn(),
   setOptions: jest.fn(),
+  isFocused: jest.fn(() => true),
 } as any;
 
 jest.mock('@react-navigation/native', () => {
@@ -1736,7 +1737,8 @@ describe('FoodEntryAddScreen', () => {
       vitaminC: '',
     };
 
-    it('saves a converted unit as a serving before handing a local food to the NFC tag form', async () => {
+    // A local food switched to oz, an unsaved unit, picked for an NFC tag.
+    const pickConvertedUnitForTag = async () => {
       consumePendingActionTagSelection();
       mockCreateVariant.mockResolvedValue({
         id: 'variant-oz-new',
@@ -1794,6 +1796,11 @@ describe('FoodEntryAddScreen', () => {
       });
 
       fireEvent.press(screen.getByText('Add Food'));
+      await waitFor(() => expect(mockCreateVariant).toHaveBeenCalledTimes(1));
+    };
+
+    it('saves a converted unit as a serving before handing a local food to the NFC tag form', async () => {
+      await pickConvertedUnitForTag();
 
       await waitFor(() =>
         expect(navigation.dispatch).toHaveBeenCalledWith({
@@ -1802,7 +1809,15 @@ describe('FoodEntryAddScreen', () => {
         })
       );
       expect(mockCreateVariant).toHaveBeenCalledWith(
-        expect.objectContaining({ food_id: 'food-1', serving_unit: 'oz' })
+        expect.objectContaining({
+          food_id: 'food-1',
+          serving_size: 1,
+          serving_unit: 'oz',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        })
       );
       expect(consumePendingActionTagSelection()).toEqual(
         expect.objectContaining({
@@ -1813,6 +1828,16 @@ describe('FoodEntryAddScreen', () => {
         })
       );
       expect(mockAddEntry).not.toHaveBeenCalled();
+    });
+
+    it('drops the NFC tag pick when the screen was left while the serving saved', async () => {
+      navigation.isFocused.mockReturnValueOnce(false);
+
+      await pickConvertedUnitForTag();
+
+      await waitFor(() => expect(navigation.isFocused).toHaveBeenCalled());
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
     });
 
     it('preserves real selectedVariantId for local foods when draft is returned', async () => {

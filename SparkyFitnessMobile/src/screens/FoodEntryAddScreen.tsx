@@ -1100,6 +1100,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       const created = await createVariant(
         buildCreateFoodVariantPayload(activeItem.id, pendingVariantToPersist)
       );
+      // Left while the serving was saving: handing the pick back now would pop
+      // whatever screen is on top and leave a stale pick for the next tag.
+      if (!navigation.isFocused()) return;
       tagVariantId = toNonEmptyString(created.id, '');
       tagUnit = toNonEmptyString(created.serving_unit, tagUnit);
       if (!tagVariantId) {
