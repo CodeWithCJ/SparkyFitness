@@ -181,6 +181,7 @@ export default defineConfig({
             { text: 'Progression & Per-Set Ramp', link: '/features/exercises/progression-and-per-set-ramp' },
             { text: 'Starter Plans', link: '/features/exercises/starter-plans' },
             { text: 'Strength Balance', link: '/features/exercises/strength-balance' },
+            { text: 'Workout Logging Shortcuts', link: '/features/exercises/workout-logging-shortcuts' },
             { text: 'Bodyweight Exercises', link: '/features/exercises/bodyweight-exercises' },
             { text: 'Workout Effort', link: '/features/exercises/workout-effort' },
             { text: 'Adaptive Coaching', link: '/features/exercises/adaptive-coaching' },
