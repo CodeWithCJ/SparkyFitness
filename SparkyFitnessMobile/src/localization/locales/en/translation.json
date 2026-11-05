@@ -482,7 +482,8 @@
     "setDetail": {
       "addNote": "Add a note for this set…",
       "notesForSet": "Notes for set {{setNumber}}",
-      "notes": "Set notes"
+      "notes": "Set notes",
+      "deleteSet": "Delete set"
     },
     "setRow": {
       "changeType": "Change type for set {{setNumber}}",
@@ -535,6 +536,43 @@
       "setOf": "Set {{number}} of {{total}}",
       "warmupOf": "Warm-up {{number}} of {{total}}",
       "then": "Then {{name}}"
+    },
+    "focus": {
+      "media": {
+        "minimize": "Minimize",
+        "minimizeLabel": "Minimize {{name}} image",
+        "expandLabel": "Expand {{name}} image",
+        "expandHint": "Long press to open full screen",
+        "pause": "Pause",
+        "play": "Play",
+        "pauseLabel": "Pause {{name}} animation",
+        "playLabel": "Play {{name}} animation",
+        "openFullScreen": "View {{name}} image full screen",
+        "openFullScreenHint": "Opens the image so you can zoom in"
+      },
+      "sets": {
+        "weightHeader": "Weight ({{unit}})",
+        "weightInput": "Weight for set {{setNumber}}",
+        "repsInput": "Reps for set {{setNumber}}",
+        "effortInput": "{{metric}} for set {{setNumber}}",
+        "increaseWeight": "Increase weight for set {{setNumber}}",
+        "decreaseWeight": "Decrease weight for set {{setNumber}}",
+        "increaseReps": "Increase reps for set {{setNumber}}",
+        "decreaseReps": "Decrease reps for set {{setNumber}}"
+      },
+      "chips": {
+        "label": "Exercise {{number}} of {{total}}, {{name}}, {{status}}",
+        "done": "done",
+        "inProgress": "in progress",
+        "todo": "not started"
+      },
+      "plan": "Plan: {{sets}} × {{reps}}",
+      "lastTime": "Last time: {{sets}}",
+      "previous": "Previous",
+      "next": "Next",
+      "previousLabel": "Previous exercise, {{name}}",
+      "nextLabel": "Next exercise, {{name}}",
+      "backToCurrent": "Back to current"
     }
   },
   "addSheet": {
@@ -1336,7 +1374,16 @@
     "warmupCalculator": "Warm-up calculator",
     "warmupCalculatorSubtitle": "The ramp, and the weights it rounds to, for warm-up sets you add to an exercise.",
     "nowCard": "Now card",
-    "nowCardSubtitle": "Pin the set to do now above the exercise list: its target in large type, the exercise photo, what comes next, and Swap to do another exercise first."
+    "nowCardSubtitle": "Pin the set to do now above the exercise list: its target in large type, the exercise photo, what comes next, and Swap to do another exercise first.",
+    "workoutView": "Workout view",
+    "workoutViewSubtitle": "List shows every exercise in one scrolling list; Focus shows one exercise at a time with a large photo card.",
+    "workoutViewGuidedSubtitle": "Guided workouts always use the list. Focus applies when guided mode is off.",
+    "workoutViewList": "List",
+    "workoutViewFocus": "Focus",
+    "focusMedia": "Exercise photo",
+    "focusMediaSubtitle": "Open the focus view with the large photo card or a small thumbnail. You can change it during the workout.",
+    "focusMediaLarge": "Large",
+    "focusMediaSmall": "Small"
   },
   "restPeriod": {
     "title": "Rest period",

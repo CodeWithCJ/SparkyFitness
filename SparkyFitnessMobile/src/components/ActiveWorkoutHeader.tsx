@@ -22,6 +22,11 @@ interface ActiveWorkoutHeaderProps {
   location?: string | null;
   startedAt: number | null;
   progress: ExerciseProgress[];
+  /**
+   * Show "n / m exercises" on the elapsed line instead of the segmented bar
+   * (the focus view's numbered chips already show each exercise's progress).
+   */
+  progressInSubtitle?: boolean;
   onBack: () => void;
   onDiscard: () => void;
   /** Adds an "End workout" action (the finish flow) in its own menu group. */
@@ -118,6 +123,7 @@ function ActiveWorkoutHeader({
   location,
   startedAt,
   progress,
+  progressInSubtitle = false,
   onBack,
   onDiscard,
   onEndWorkout,
@@ -152,6 +158,18 @@ function ActiveWorkoutHeader({
   const doneCount = progress.filter(
     (p) => p.totalSets > 0 && p.completedSets >= p.totalSets
   ).length;
+  const progressText = (
+    <Text
+      className="text-xs text-text-secondary"
+      style={{ fontVariant: ['tabular-nums'] }}
+    >
+      {t('activeWorkout.header.exerciseProgress', {
+        defaultValue: '{{completed}} / {{count}} exercises',
+        completed: doneCount,
+        count: progress.length,
+      })}
+    </Text>
+  );
 
   const menuItems: ActionSheetItem[] = [];
   if (onAddExercise) {
@@ -263,6 +281,12 @@ function ActiveWorkoutHeader({
           </Text>
           <View className="flex-row items-center gap-2">
             <ElapsedTime startedAt={startedAt} />
+            {progressInSubtitle && (
+              <>
+                <Text className="text-xs text-text-secondary">·</Text>
+                {progressText}
+              </>
+            )}
             {location ? (
               <Pressable
                 onPress={onEditLocation}
@@ -296,46 +320,41 @@ function ActiveWorkoutHeader({
         />
       </View>
 
-      <View className="flex-row items-center gap-3 px-2 mt-1">
-        <View className="flex-1 flex-row gap-1">
-          {progress.map((p) => {
-            const isDone = p.totalSets > 0 && p.completedSets >= p.totalSets;
-            const fillPct =
-              p.totalSets > 0 ? Math.min(1, p.completedSets / p.totalSets) : 0;
-            return (
-              <View
-                key={p.entryId}
-                testID={isDone ? 'header-segment-done' : 'header-segment'}
-                className="flex-1 h-[5px] rounded-full overflow-hidden"
-                style={{
-                  backgroundColor: isDone ? successColor : trackColor,
-                }}
-              >
-                {!isDone && fillPct > 0 && (
-                  <View
-                    testID="header-segment-fill"
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${fillPct * 100}%`,
-                      backgroundColor: accentPrimary,
-                    }}
-                  />
-                )}
-              </View>
-            );
-          })}
+      {!progressInSubtitle && (
+        <View className="flex-row items-center gap-3 px-2 mt-1">
+          <View className="flex-1 flex-row gap-1">
+            {progress.map((p) => {
+              const isDone = p.totalSets > 0 && p.completedSets >= p.totalSets;
+              const fillPct =
+                p.totalSets > 0
+                  ? Math.min(1, p.completedSets / p.totalSets)
+                  : 0;
+              return (
+                <View
+                  key={p.entryId}
+                  testID={isDone ? 'header-segment-done' : 'header-segment'}
+                  className="flex-1 h-[5px] rounded-full overflow-hidden"
+                  style={{
+                    backgroundColor: isDone ? successColor : trackColor,
+                  }}
+                >
+                  {!isDone && fillPct > 0 && (
+                    <View
+                      testID="header-segment-fill"
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${fillPct * 100}%`,
+                        backgroundColor: accentPrimary,
+                      }}
+                    />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+          {progressText}
         </View>
-        <Text
-          className="text-xs text-text-secondary"
-          style={{ fontVariant: ['tabular-nums'] }}
-        >
-          {t('activeWorkout.header.exerciseProgress', {
-            defaultValue: '{{completed}} / {{count}} exercises',
-            completed: doneCount,
-            count: progress.length,
-          })}
-        </Text>
-      </View>
+      )}
 
       <ActionSheet ref={menuSheetRef} title={name} items={menuItems} />
     </View>

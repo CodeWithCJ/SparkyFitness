@@ -1880,6 +1880,17 @@ export function setTypeLetter(
   }
 }
 
+/** Working-set numbers per set index; warmup/drop/failure rows repeat the previous number (they render a letter instead). */
+export function buildWorkingSetNumbers(
+  sets: Pick<WorkoutCardSet, 'set_type'>[]
+): number[] {
+  let workingNumber = 0;
+  return sets.map((set) => {
+    if (setTypeLetter(set.set_type) == null) workingNumber += 1;
+    return workingNumber;
+  });
+}
+
 export function isWarmupSetType(setType: string | null | undefined): boolean {
   if (setType == null) return false;
   return setType
@@ -2919,4 +2930,36 @@ export function summarizeWorkoutEffort(
         typeof value === 'number' && value >= 1 && value <= 10
     );
   return ratings.length > 0 ? Math.max(...ratings) : null;
+}
+
+/**
+ * Whether the weight-derived metric columns (Vol / 1RM / 10RM) mean nothing
+ * for this modality, so the effort column is clamped to RPE (or RIR).
+ */
+export function isMetricClampedToRpe(modality: ExerciseModality): boolean {
+  return (
+    isDurationModality(modality) ||
+    modality === 'reps_only' ||
+    isWeightDurationModality(modality) ||
+    isWeightDistanceModality(modality)
+  );
+}
+
+/**
+ * The weight (kg) the plate graphic shows: the active set's, else the first
+ * working set's, using what it would log (typed or assumed). Null if none.
+ */
+export function plateTargetKg(
+  sets: readonly Pick<WorkoutCardSet, 'id' | 'weight' | 'set_type'>[],
+  activeSetId: string | null,
+  assumed: readonly ({ weight?: number | null } | null)[] | null | undefined
+): number | null {
+  const activeIndex = sets.findIndex((set) => String(set.id) === activeSetId);
+  const index =
+    activeIndex >= 0
+      ? activeIndex
+      : sets.findIndex((set) => !isWarmupSetType(set.set_type));
+  if (index < 0) return null;
+  const kg = sets[index]?.weight ?? assumed?.[index]?.weight;
+  return kg != null && Number.isFinite(kg) && kg > 0 ? kg : null;
 }
