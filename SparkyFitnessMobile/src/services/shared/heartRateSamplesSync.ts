@@ -20,8 +20,14 @@ export const PASSIVE_HEART_RATE_SOURCE = 'SparkyFitness Mobile';
 const BUCKET_MS = 60_000;
 /** Read, downsample and upload a week at a time so memory stays bounded. */
 const CHUNK_DAYS = 7;
-/** The server accepts at most 31 days in one window; the app never reaches that far back here. */
-const MAX_DAYS = 31;
+/**
+ * How far back a run reads. Without the history permission, Health Connect
+ * shows readings from 30 days before the app's first permission grant, and
+ * that grant is never in the future, so the last 30 days are always visible.
+ * Reaching further could read a week that is silently cut short, and the
+ * `merge` sent for it would delete stored readings it no longer shows.
+ */
+const MAX_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MIN_BPM = 20;
 const MAX_BPM = 260;

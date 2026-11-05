@@ -126,10 +126,10 @@ describe('heartRateWindows', () => {
     expect(w[2].end).toEqual(end);
   });
 
-  it('never reaches back more than 31 days', () => {
+  it('never reaches back more than 30 days, which Health Connect always shows', () => {
     const end = new Date('2026-11-04T00:00:00.000Z');
     const w = heartRateWindows(new Date('2025-01-01T00:00:00.000Z'), end);
-    expect(w[0].start.getTime()).toBe(end.getTime() - 31 * DAY_MS);
+    expect(w[0].start.getTime()).toBe(end.getTime() - 30 * DAY_MS);
   });
 });
 
@@ -645,13 +645,13 @@ describe('heartRateSyncPlan', () => {
     expect(plan.coverage).toEqual({ from: covered.from, through: ms(end) });
   });
 
-  it('limits the range to 31 days before the end', () => {
+  it('limits the range to 30 days before the end', () => {
     const plan = heartRateSyncPlan(
       new Date('2025-01-01T00:00:00.000Z'),
       end,
       null
     );
-    expect(plan.start).toEqual(new Date(ms(end) - 31 * DAY_MS));
+    expect(plan.start).toEqual(new Date(ms(end) - 30 * DAY_MS));
   });
 });
 
