@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import type { HealthMetricSamplesWriteBody } from '@workspace/shared';
 import { postHealthMetricSamples } from '../api/healthSamplesApi';
 import { addLog } from '../LogService';
+import { withTimeout } from '../../utils/concurrency';
 import type { TelemetryRunContext } from './telemetryBudget';
 import type { ReadResult } from '../../types/healthRecords';
 
@@ -21,6 +22,8 @@ const MAX_DAYS = 31;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MIN_BPM = 20;
 const MAX_BPM = 260;
+/** Same deadline as one metric read, so a stalled query cannot hold the sync open. */
+const READ_TIMEOUT_MS = 60_000;
 
 export interface HeartRateReading {
   /** ISO instant */
@@ -68,10 +71,16 @@ export function heartRateReadingsFromRecords(
   return readings;
 }
 
-/** Mean of each minute's readings, in time order, stamped at the minute's start. */
+/**
+ * Mean of each minute's readings, in time order, stamped at the minute's start.
+ * With `notBefore`, a minute that starts earlier (the first, partial minute of
+ * a window that is not minute-aligned) is stamped at `notBefore` instead.
+ */
 export function downsampleHeartRate(
-  readings: readonly HeartRateReading[]
+  readings: readonly HeartRateReading[],
+  notBefore?: Date
 ): HeartRateReading[] {
+  const floorMs = notBefore?.getTime() ?? -Infinity;
   const buckets = new Map<number, { sum: number; count: number }>();
   for (const { t, bpm } of readings) {
     const bucket = Math.floor(new Date(t).getTime() / BUCKET_MS);
@@ -83,7 +92,7 @@ export function downsampleHeartRate(
   return [...buckets.entries()]
     .sort(([a], [b]) => a - b)
     .map(([bucket, acc]) => ({
-      t: new Date(bucket * BUCKET_MS).toISOString(),
+      t: new Date(Math.max(bucket * BUCKET_MS, floorMs)).toISOString(),
       bpm: Math.round((acc.sum / acc.count) * 10) / 10,
     }));
 }
@@ -124,27 +133,44 @@ export interface HeartRateSamplesResult {
  * at a time. Best effort: a failed read or upload is reported and logged but
  * never throws, so it cannot fail the sync it runs beside. A window with no
  * readings is skipped rather than sent, since the server needs at least one.
+ * A window whose read failed or timed out is skipped too: its records may be
+ * partial, and a `merge` would delete the stored readings missing from them.
  */
 export async function syncAllDayHeartRate(
   reader: HeartRateSamplesReader,
   start: Date,
   end: Date,
   telemetry: TelemetryRunContext,
-  logTag: string
+  logTag: string,
+  readTimeoutMs: number = READ_TIMEOUT_MS
 ): Promise<HeartRateSamplesResult> {
   let samplesUploaded = 0;
   let error: string | undefined;
   for (const window of heartRateWindows(start, end)) {
     try {
-      const read = await reader.readRaw(
-        'HeartRate',
-        window.start,
-        window.end,
-        telemetry
+      const read = await withTimeout(
+        reader.readRaw('HeartRate', window.start, window.end, telemetry),
+        readTimeoutMs,
+        'All-day heart rate read'
       );
-      if (read.error) error = read.error;
+      if (read.error) {
+        error = read.error;
+        addLog(
+          `${logTag} All-day heart rate read failed, window not uploaded: ${read.error}`,
+          'WARNING'
+        );
+        continue;
+      }
+      // A record overlapping the window edge can carry samples outside it,
+      // and the server rejects the whole write for one such sample.
+      const startMs = window.start.getTime();
+      const endMs = window.end.getTime();
       const samples = downsampleHeartRate(
-        heartRateReadingsFromRecords(read.records)
+        heartRateReadingsFromRecords(read.records).filter(({ t }) => {
+          const ms = new Date(t).getTime();
+          return ms >= startMs && ms <= endMs;
+        }),
+        window.start
       );
       if (samples.length === 0) continue;
       const body: HealthMetricSamplesWriteBody = {

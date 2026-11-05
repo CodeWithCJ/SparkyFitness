@@ -39,7 +39,10 @@ describe('heartRateReadingsFromRecords', () => {
         ],
       },
     ]);
-    expect(out.map((r) => r.bpm)).toEqual([70, 74]);
+    expect(out).toEqual([
+      { t: '2026-11-03T10:00:10.000Z', bpm: 70 },
+      { t: '2026-11-03T10:00:20.000Z', bpm: 74 },
+    ]);
   });
 
   it('drops impossible rates and unreadable times', () => {
@@ -69,6 +72,20 @@ describe('downsampleHeartRate', () => {
     ]);
     expect(out).toEqual([
       { t: '2026-11-03T10:00:00.000Z', bpm: 65 },
+      { t: '2026-11-03T10:01:00.000Z', bpm: 90 },
+    ]);
+  });
+
+  it('stamps a partial first minute at the window start', () => {
+    const out = downsampleHeartRate(
+      [
+        { t: '2026-11-03T10:00:40.000Z', bpm: 60 },
+        { t: '2026-11-03T10:01:10.000Z', bpm: 90 },
+      ],
+      new Date('2026-11-03T10:00:30.500Z')
+    );
+    expect(out).toEqual([
+      { t: '2026-11-03T10:00:30.500Z', bpm: 60 },
       { t: '2026-11-03T10:01:00.000Z', bpm: 90 },
     ]);
   });
@@ -129,14 +146,13 @@ describe('syncAllDayHeartRate', () => {
 
   it('reports a failed upload and keeps going with the next week', async () => {
     postHealthMetricSamples.mockRejectedValueOnce(new Error('boom'));
-    const readRaw = jest.fn().mockResolvedValue({
-      records: [
-        {
-          startTime: '2026-10-25T08:00:00.000Z',
-          samples: [{ beatsPerMinute: 66 }],
-        },
-      ],
+    const record = (startTime: string) => ({
+      records: [{ startTime, samples: [{ beatsPerMinute: 66 }] }],
     });
+    const readRaw = jest
+      .fn()
+      .mockResolvedValueOnce(record('2026-10-25T08:00:00.000Z'))
+      .mockResolvedValueOnce(record('2026-10-30T08:00:00.000Z'));
     const result = await syncAllDayHeartRate(
       { readRaw },
       new Date('2026-10-20T00:00:00.000Z'),
@@ -161,6 +177,61 @@ describe('syncAllDayHeartRate', () => {
       '[T]'
     );
     expect(result.error).toBe('locked');
+    expect(postHealthMetricSamples).not.toHaveBeenCalled();
+  });
+
+  it('does not upload a window whose read failed part-way', async () => {
+    const readRaw = jest.fn().mockResolvedValue({
+      records: [
+        {
+          startTime: '2026-11-01T08:00:00.000Z',
+          samples: [{ beatsPerMinute: 66 }],
+        },
+      ],
+      error: 'page 2 failed',
+    });
+    const result = await syncAllDayHeartRate(
+      { readRaw },
+      new Date('2026-11-01T00:00:00.000Z'),
+      new Date('2026-11-03T00:00:00.000Z'),
+      telemetry,
+      '[T]'
+    );
+    expect(result).toEqual({ samplesUploaded: 0, error: 'page 2 failed' });
+    expect(postHealthMetricSamples).not.toHaveBeenCalled();
+  });
+
+  it('keeps only samples inside the window and never stamps before its start', async () => {
+    const start = new Date('2026-11-01T00:00:30.000Z');
+    const end = new Date('2026-11-03T00:00:00.000Z');
+    const readRaw = jest.fn().mockResolvedValue({
+      records: [
+        {
+          startTime: '2026-10-31T23:59:00.000Z',
+          samples: [
+            { time: '2026-10-31T23:59:50.000Z', beatsPerMinute: 50 },
+            { time: '2026-11-01T00:00:40.000Z', beatsPerMinute: 60 },
+            { time: '2026-11-03T00:00:10.000Z', beatsPerMinute: 99 },
+          ],
+        },
+      ],
+    });
+    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
+    const body = postHealthMetricSamples.mock.calls[0][0];
+    expect(body.samples).toEqual([{ t: start.toISOString(), bpm: 60 }]);
+  });
+
+  it('gives up on a read that never settles', async () => {
+    const readRaw = jest.fn(() => new Promise<never>(() => {}));
+    const result = await syncAllDayHeartRate(
+      { readRaw },
+      new Date('2026-11-01T00:00:00.000Z'),
+      new Date('2026-11-03T00:00:00.000Z'),
+      telemetry,
+      '[T]',
+      10
+    );
+    expect(result.error).toMatch(/timed out/i);
     expect(postHealthMetricSamples).not.toHaveBeenCalled();
   });
 });

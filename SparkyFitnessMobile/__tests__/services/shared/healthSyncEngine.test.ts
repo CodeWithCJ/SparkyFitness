@@ -707,14 +707,16 @@ describe('runForegroundSync', () => {
       require('../../../src/services/api/healthSamplesApi') as {
         postHealthMetricSamples: jest.Mock;
       };
-    const readRaw = jest.fn().mockResolvedValue({
+    // A reading inside whichever window is asked for, so the test does not
+    // depend on today's date.
+    const readRaw = jest.fn(async (_type: string, start: Date) => ({
       records: [
         {
-          startTime: '2026-07-02T08:00:00.000Z',
+          startTime: start.toISOString(),
           samples: [{ beatsPerMinute: 64 }],
         },
       ],
-    });
+    }));
     const provider = fakeProvider({
       readRaw,
       readMinMaxAvgByDay: jest.fn().mockResolvedValue({ records: [] }),
