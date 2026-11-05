@@ -50,6 +50,13 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+jest.mock('../../src/services/shared/heartRateSamplesSync', () => ({
+  resetAllDayHeartRateForAccountChange: jest.fn().mockResolvedValue(undefined),
+}));
+const { resetAllDayHeartRateForAccountChange } = jest.requireMock(
+  '../../src/services/shared/heartRateSamplesSync'
+) as { resetAllDayHeartRateForAccountChange: jest.Mock };
+
 const mockSetOnSessionExpired = setOnSessionExpired as jest.MockedFunction<
   typeof setOnSessionExpired
 >;
@@ -130,6 +137,18 @@ describe('useAuth', () => {
     expect(
       queryClient.getQueryData(['measurements', '2026-01-01'])
     ).toBeUndefined();
+  });
+
+  test('identity changed callback stops the all-day heart rate phase and forgets its coverage', async () => {
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(resetAllDayHeartRateForAccountChange).toHaveBeenCalledTimes(1);
   });
 
   test('identity changed callback erases the shortcut login copy', async () => {

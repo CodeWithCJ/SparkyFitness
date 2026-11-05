@@ -20,4 +20,6 @@ export const postHealthMetricSamples = (
     method: 'POST',
     body,
     signal,
+    // A failed response can quote the readings; keep them out of the app log.
+    logResponseBody: false,
   });

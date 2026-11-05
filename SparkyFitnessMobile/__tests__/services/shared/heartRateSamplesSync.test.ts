@@ -5,9 +5,12 @@ import {
   heartRateReadingsFromRecords,
   heartRateSyncPlan,
   heartRateWindows,
+  resetAllDayHeartRateForAccountChange,
   syncAllDayHeartRate,
 } from '../../../src/services/shared/heartRateSamplesSync';
 import { createTelemetryRunContext } from '../../../src/services/shared/telemetryBudget';
+import { ApiError } from '../../../src/services/api/errors';
+import { addLog } from '../../../src/services/LogService';
 
 jest.mock('../../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../../src/services/api/healthSamplesApi', () => ({
@@ -318,6 +321,73 @@ describe('syncAllDayHeartRate', () => {
     readRaw.mockClear();
     await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
     expect(readRaw.mock.calls[0][1]).toEqual(start);
+  });
+
+  it('stops before the next week once the account changes, and keeps no coverage', async () => {
+    const record = (startTime: string) => ({
+      records: [{ startTime, samples: [{ beatsPerMinute: 66 }] }],
+    });
+    const readRaw = jest
+      .fn()
+      .mockImplementationOnce(async () => {
+        // The switch lands while the first week is being read.
+        await resetAllDayHeartRateForAccountChange();
+        return record('2026-10-22T08:00:00.000Z');
+      })
+      .mockResolvedValue(record('2026-10-29T08:00:00.000Z'));
+    const start = new Date('2026-10-20T00:00:00.000Z');
+    const end = new Date('2026-11-03T00:00:00.000Z');
+    const result = await syncAllDayHeartRate(
+      { readRaw },
+      start,
+      end,
+      telemetry,
+      '[T]'
+    );
+    expect(result.error).toMatch(/account changed/i);
+    expect(readRaw).toHaveBeenCalledTimes(1);
+    expect(postHealthMetricSamples).not.toHaveBeenCalled();
+
+    readRaw.mockClear();
+    readRaw.mockResolvedValue({ records: [] });
+    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
+    expect(readRaw.mock.calls[0][1]).toEqual(start);
+  });
+
+  it('forgets stored coverage on an account change, so the next account reads its whole range', async () => {
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    const end = new Date('2026-11-03T12:00:00.000Z');
+    const start = new Date(end.getTime() - 14 * DAY_MS);
+    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
+    await resetAllDayHeartRateForAccountChange();
+
+    readRaw.mockClear();
+    await syncAllDayHeartRate({ readRaw }, start, end, telemetry, '[T]');
+    expect(readRaw.mock.calls[0][1]).toEqual(start);
+  });
+
+  it('logs only the status of a failed upload, never the response body', async () => {
+    postHealthMetricSamples.mockRejectedValueOnce(
+      new ApiError('Server error: 400 - {"t":"…","bpm":66}', 400, '{"bpm":66}')
+    );
+    const readRaw = jest.fn().mockResolvedValue({
+      records: [
+        {
+          startTime: '2026-11-02T08:00:00.000Z',
+          samples: [{ beatsPerMinute: 66 }],
+        },
+      ],
+    });
+    const result = await syncAllDayHeartRate(
+      { readRaw },
+      new Date('2026-11-01T00:00:00.000Z'),
+      new Date('2026-11-03T00:00:00.000Z'),
+      telemetry,
+      '[T]'
+    );
+    expect(result.error).toBe('HTTP 400');
+    const logged = (addLog as jest.Mock).mock.calls.map((c) => String(c[0]));
+    expect(logged.some((m) => m.includes('bpm'))).toBe(false);
   });
 
   it('keeps reading the whole range while a run had an error', async () => {

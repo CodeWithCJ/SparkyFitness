@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { HealthMetricSamplesWriteBody } from '@workspace/shared';
 import { postHealthMetricSamples } from '../api/healthSamplesApi';
+import { ApiError } from '../api/errors';
 import { addLog } from '../LogService';
 import { withTimeout } from '../../utils/concurrency';
 import { getActiveServerConfigId } from '../storage';
@@ -141,9 +142,42 @@ interface HeartRateCoverage {
 const cursorKey = async (): Promise<string> =>
   `${CURSOR_KEY_PREFIX}:${(await getActiveServerConfigId().catch(() => null)) ?? 'none'}`;
 
-const readCoverage = async (): Promise<HeartRateCoverage | null> => {
+/**
+ * Bumped on every account change. A run remembers the value it started with
+ * and stops before its next read or upload once it differs, so weeks left in a
+ * run never go to, or are recorded for, the account switched to.
+ */
+let accountGeneration = 0;
+/** The upload in flight, so an account change can cancel it. */
+let activeUpload: AbortController | null = null;
+
+/**
+ * Called when the signed-in account changes (`useAuth`'s identity-change
+ * handler). Stops a running phase and forgets every stored coverage: a session
+ * replaced on the same server config keeps that config's id, so a coverage
+ * kept for it would otherwise let the next account skip its own older days.
+ */
+export async function resetAllDayHeartRateForAccountChange(): Promise<void> {
+  accountGeneration += 1;
+  activeUpload?.abort();
+  activeUpload = null;
   try {
-    const raw = await AsyncStorage.getItem(await cursorKey());
+    const keys = await AsyncStorage.getAllKeys();
+    const stored = keys.filter((key) =>
+      key.startsWith(`${CURSOR_KEY_PREFIX}:`)
+    );
+    if (stored.length > 0) await AsyncStorage.multiRemove(stored);
+  } catch (e) {
+    addLog(
+      `All-day heart rate coverage was not cleared on the account change: ${e instanceof Error ? e.message : String(e)}`,
+      'WARNING'
+    );
+  }
+}
+
+const readCoverage = async (key: string): Promise<HeartRateCoverage | null> => {
+  try {
+    const raw = await AsyncStorage.getItem(key);
     const parsed: unknown = raw === null ? null : JSON.parse(raw);
     if (
       typeof parsed === 'object' &&
@@ -161,9 +195,12 @@ const readCoverage = async (): Promise<HeartRateCoverage | null> => {
   }
 };
 
-const writeCoverage = async (coverage: HeartRateCoverage): Promise<void> => {
+const writeCoverage = async (
+  key: string,
+  coverage: HeartRateCoverage
+): Promise<void> => {
   try {
-    await AsyncStorage.setItem(await cursorKey(), JSON.stringify(coverage));
+    await AsyncStorage.setItem(key, JSON.stringify(coverage));
   } catch {
     // Best effort: the next run just reads further back.
   }
@@ -239,8 +276,19 @@ export async function syncAllDayHeartRate(
 ): Promise<HeartRateSamplesResult> {
   let samplesUploaded = 0;
   let error: string | undefined;
-  const plan = heartRateSyncPlan(start, end, await readCoverage());
+  const generation = accountGeneration;
+  const accountChanged = () => generation !== accountGeneration;
+  const stopForAccountChange = () => {
+    error = 'Account changed; all-day heart rate upload stopped';
+    addLog(`${logTag} ${error}`, 'INFO');
+  };
+  const key = await cursorKey();
+  const plan = heartRateSyncPlan(start, end, await readCoverage(key));
   for (const window of heartRateWindows(plan.start, end)) {
+    if (accountChanged()) {
+      stopForAccountChange();
+      break;
+    }
     try {
       const read = await withTimeout(
         reader.readRaw('HeartRate', window.start, window.end, telemetry),
@@ -281,7 +329,13 @@ export async function syncAllDayHeartRate(
       // apiFetch's own timeout stops at the response headers; this bounds the
       // body read too, and aborts the request when it fires, so a stalled
       // response neither holds the phase open nor keeps its connection.
+      // The read can take a while; the account may have changed meanwhile.
+      if (accountChanged()) {
+        stopForAccountChange();
+        break;
+      }
       const upload = new AbortController();
+      activeUpload = upload;
       try {
         await withTimeout(
           postHealthMetricSamples(body, upload.signal),
@@ -291,13 +345,22 @@ export async function syncAllDayHeartRate(
       } catch (e) {
         upload.abort();
         throw e;
+      } finally {
+        if (activeUpload === upload) activeUpload = null;
       }
       samplesUploaded += samples.length;
     } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
+      // An ApiError's message quotes the response body, which can echo the
+      // readings, and the app log can be shared in a diagnostic report.
+      error =
+        e instanceof ApiError
+          ? `HTTP ${e.statusCode}`
+          : e instanceof Error
+            ? e.message
+            : String(e);
       addLog(`${logTag} All-day heart rate upload failed: ${error}`, 'WARNING');
     }
   }
-  if (!error) await writeCoverage(plan.coverage);
+  if (!error && !accountChanged()) await writeCoverage(key, plan.coverage);
   return { samplesUploaded, error };
 }
