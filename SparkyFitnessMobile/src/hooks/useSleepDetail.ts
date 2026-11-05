@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchSleepEntries } from '../services/api/sleepApi';
 import type { SleepEntry, SleepStageEvent } from '../types/sleep';
 import { addDays } from '../utils/dateUtils';
+import { selectMainSleep } from '../utils/sleepSessions';
 import { sleepDayQueryKey } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
 
@@ -24,16 +25,26 @@ export function useSleepDetail(entryId: string, day: string) {
     queryFn: () => fetchSleepEntries(day, windowEnd),
     // A stale id (a deleted entry, a resumed deep link) resolves to null rather than
     // throwing, so the screen shows its not-found empty state instead of an error boundary.
-    select: (entries: SleepEntry[]) =>
-      entries.find((entry) => entry.id === entryId) ?? null,
+    select: (entries: SleepEntry[]) => {
+      const entry = entries.find((e) => e.id === entryId) ?? null;
+      // Whether this session is its day's night rather than a nap, by the same
+      // rule as the Diary and the trend charts.
+      const isMainSleep =
+        entry != null &&
+        selectMainSleep(
+          entries.filter((e) => e.entry_date === entry.entry_date)
+        )?.id === entry.id;
+      return { entry, isMainSleep };
+    },
   });
 
   useRefetchOnFocus(entryQuery.refetch);
 
-  const entry = entryQuery.data ?? null;
+  const entry = entryQuery.data?.entry ?? null;
 
   return {
     entry,
+    isMainSleep: entryQuery.data?.isMainSleep ?? false,
     stages: entry?.stage_events ?? NO_STAGES,
     isLoading: entryQuery.isLoading,
     isError: entryQuery.isError,

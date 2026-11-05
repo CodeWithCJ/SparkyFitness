@@ -20,6 +20,7 @@ vi.mock('../models/actionTagRepository.js', () => {
 
 vi.mock('../services/actionTagService.js', () => ({
   scanActionTag: vi.fn(),
+  actionTargetExists: vi.fn(),
 }));
 
 vi.mock('../middleware/authMiddleware.js', () => ({
@@ -53,6 +54,10 @@ vi.mock('../middleware/requireSelfMiddleware.js', () => ({
       next(),
 }));
 
+const FOOD_ID = '11111111-1111-4111-8111-111111111111';
+const VARIANT_ID = '22222222-2222-4222-8222-222222222222';
+const MEAL_ID = '33333333-3333-4333-8333-333333333333';
+const SNACKS_ID = '44444444-4444-4444-8444-444444444444';
 const app = express();
 app.use(express.json());
 app.use('/api/v2/action-tags', actionTagRoutes);
@@ -61,10 +66,26 @@ app.use(errorHandler);
 const CODE = 'b'.repeat(32);
 const TAG_ID = '3f2b8c1e-7d4a-4e5b-9a6c-1d2e3f4a5b6c';
 const WATER = { type: 'water', container_id: 3, drinks: 1 };
+const FOOD = {
+  type: 'food',
+  food_id: FOOD_ID,
+  variant_id: VARIANT_ID,
+  quantity: 170,
+  unit: 'g',
+  meal: { mode: 'auto' },
+};
+const MEAL = {
+  type: 'meal',
+  meal_template_id: MEAL_ID,
+  quantity: 1,
+  unit: 'serving',
+  meal: { mode: 'fixed', meal_type_id: SNACKS_ID },
+};
 
 describe('Action tag routes (v2)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(service.actionTargetExists).mockResolvedValue(true);
   });
 
   it('lists the tags', async () => {
@@ -85,6 +106,59 @@ describe('Action tag routes (v2)', () => {
       .post('/api/v2/action-tags')
       .send({ tag_code: CODE, label: 'Stanley', action: WATER });
     expect(res.statusCode).toBe(201);
+  });
+
+  it('creates food and meal tags', async () => {
+    vi.mocked(repo.createActionTag).mockResolvedValue({
+      id: 't1',
+    } as Awaited<ReturnType<typeof repo.createActionTag>>);
+    for (const action of [FOOD, MEAL]) {
+      const res = await request(app)
+        .post('/api/v2/action-tags')
+        .send({ tag_code: CODE, label: 'Yogurt', action });
+      expect(res.statusCode).toBe(201);
+    }
+    expect(service.actionTargetExists).toHaveBeenCalledWith(
+      'test-user-id',
+      FOOD
+    );
+  });
+
+  it('refuses a tag whose food, meal or container is not there', async () => {
+    vi.mocked(service.actionTargetExists).mockResolvedValue(false);
+    const create = await request(app)
+      .post('/api/v2/action-tags')
+      .send({ tag_code: CODE, label: 'Yogurt', action: FOOD });
+    const patch = await request(app)
+      .patch(`/api/v2/action-tags/${TAG_ID}`)
+      .send({ action: MEAL });
+    expect(create.statusCode).toBe(400);
+    expect(patch.statusCode).toBe(400);
+    expect(repo.createActionTag).not.toHaveBeenCalled();
+    expect(repo.updateActionTag).not.toHaveBeenCalled();
+  });
+
+  it('rejects a food id that is not a UUID, without touching the database', async () => {
+    const res = await request(app)
+      .post('/api/v2/action-tags')
+      .send({
+        tag_code: CODE,
+        label: 'Yogurt',
+        action: { ...FOOD, food_id: 'abc' },
+      });
+    expect(res.statusCode).toBe(400);
+    expect(service.actionTargetExists).not.toHaveBeenCalled();
+  });
+
+  it('rejects a food tag with no amount', async () => {
+    const res = await request(app)
+      .post('/api/v2/action-tags')
+      .send({
+        tag_code: CODE,
+        label: 'Yogurt',
+        action: { ...FOOD, quantity: 0 },
+      });
+    expect(res.statusCode).toBe(400);
   });
 
   it('rejects a code that is not 32 hex characters', async () => {

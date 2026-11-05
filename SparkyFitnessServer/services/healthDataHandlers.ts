@@ -30,7 +30,10 @@ import {
   type LapWindow,
   type TelemetryGpsPoint,
 } from './workoutTelemetryDerivation.js';
-import { upsertSamplesByDay } from './healthMetricSampleWriter.js';
+import {
+  type FlatHealthSample,
+  upsertSamplesByDay,
+} from './healthMetricSampleWriter.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import {
@@ -39,7 +42,9 @@ import {
   instantHourMinute,
   instantToDay,
   isDayString,
+  isSkinTemperatureSite,
   MAX_HEALTH_TOTAL_CALORIES_PER_DAY,
+  type SkinTemperatureSite,
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
   todayInZone,
@@ -2438,6 +2443,126 @@ const vo2MaxHandler = createDailySummaryReadingHandler('vo2_max', {
   decimals: 1,
 });
 
+// Apple's sleeping wrist temperature arrives as a plain record, one per night.
+// It is kept as a `skin_temperature` sample, not a custom measurement, so the
+// Sleep screen reads it from the same place as Polar's skin temperature.
+const SKIN_TEMPERATURE_BOUNDS = { min: 20, max: 45 };
+
+const skinTemperatureHandleBatch: HandleBatchFn = async (entries, ctx) => {
+  const outcomes: HandlerOutcome[] = new Array(entries.length);
+  // One write per provider and site: wrist and body readings share the
+  // provider's day row, and each write replaces only its own site's samples.
+  interface SiteGroup {
+    provider: string;
+    site: SkinTemperatureSite | undefined;
+    indexes: number[];
+    samples: FlatHealthSample[];
+  }
+  const byProvider = new Map<string, SiteGroup>();
+
+  entries.forEach(({ entry, parsedDate, entryTimestamp }, i) => {
+    const celsius = parseDailySummaryReading(entry.value);
+    const timestamp = new Date(entryTimestamp);
+    if (
+      celsius === null ||
+      celsius < SKIN_TEMPERATURE_BOUNDS.min ||
+      celsius > SKIN_TEMPERATURE_BOUNDS.max ||
+      !Number.isFinite(timestamp.getTime())
+    ) {
+      outcomes[i] = {
+        status: 'error',
+        error: `Invalid skin temperature value: ${String(entry.value)}`,
+      };
+      return;
+    }
+    // A site the server does not know is refused rather than dropped: written
+    // without one, the merge would treat it as an older reading.
+    if (
+      entry.site !== undefined &&
+      entry.site !== null &&
+      !isSkinTemperatureSite(entry.site)
+    ) {
+      outcomes[i] = {
+        status: 'error',
+        error: `Invalid skin temperature site: ${String(entry.site)}`,
+      };
+      return;
+    }
+    const provider = normalizeHealthSourceProvider(entry.source);
+    const site = isSkinTemperatureSite(entry.site) ? entry.site : undefined;
+    const key = `${provider}|${site ?? ''}`;
+    const group: SiteGroup = byProvider.get(key) ?? {
+      provider,
+      site,
+      indexes: [],
+      samples: [],
+    };
+    group.indexes.push(i);
+    group.samples.push({
+      entry_date: parsedDate,
+      timestamp,
+      celsius: Math.round(celsius * 100) / 100,
+      // Wrist and overnight body temperature both come from one source, so the
+      // site keeps their baselines apart.
+      ...(site ? { site } : {}),
+      device_name: typeof entry.source === 'string' ? entry.source : null,
+    });
+    byProvider.set(key, group);
+  });
+
+  for (const { provider, site, ...group } of byProvider.values()) {
+    try {
+      await upsertSamplesByDay(
+        ctx.userId,
+        ctx.actingUserId,
+        'skin_temperature',
+        provider,
+        group.samples,
+        {
+          // One row per (user, metric, day, provider): replace only the span
+          // these readings cover, so a re-sync does not duplicate a night.
+          mode: 'merge',
+          window: minMax(group.samples.map((s) => s.timestamp.getTime())),
+          ...(site ? { site } : {}),
+        }
+      );
+      for (const i of group.indexes) {
+        outcomes[i] = {
+          status: 'success',
+          data: { metric: 'skin_temperature' },
+        };
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      for (const i of group.indexes) {
+        outcomes[i] = {
+          status: 'error',
+          error: `Failed to store skin temperature: ${message}`,
+        };
+      }
+    }
+  }
+  return outcomes;
+};
+
+const skinTemperatureHandler: HealthTypeHandler = {
+  async handle(entry, ctx) {
+    const [outcome] = await skinTemperatureHandleBatch(
+      [
+        {
+          entry,
+          parsedDate: ctx.parsedDate,
+          entryTimestamp: ctx.entryTimestamp,
+          entryHour: ctx.entryHour,
+        },
+      ],
+      ctx
+    );
+    return outcome;
+  },
+  handleBatch: skinTemperatureHandleBatch,
+};
+
 // ── Registry ────────────────────────────────────────────────────────────────
 
 // Handlers keyed by canonical type name.
@@ -2466,6 +2591,7 @@ export const HEALTH_TYPE_HANDLERS: Record<string, HealthTypeHandler> = {
   MindfulnessSession: mindfulnessHandler,
   resting_heart_rate: restingHeartRateHandler,
   vo2_max: vo2MaxHandler,
+  skin_temperature: skinTemperatureHandler,
 };
 
 // Lookup-only normalization of incoming type spellings to canonical handler

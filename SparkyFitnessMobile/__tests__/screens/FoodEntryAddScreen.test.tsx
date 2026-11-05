@@ -17,6 +17,7 @@ import { useAddFoodEntry } from '../../src/hooks/useAddFoodEntry';
 import { useAddFoodEntryMeal } from '../../src/hooks/useAddFoodEntryMeal';
 import { setPendingMealIngredientSelection } from '../../src/services/mealBuilderSelection';
 import { setPendingMealPlanSelection } from '../../src/services/mealPlanSelection';
+import { consumePendingActionTagSelection } from '../../src/services/actionTagSelection';
 import { buildMealIngredientDraft } from '../../src/utils/mealBuilderDraft';
 import type { BarcodeLookupContext } from '../../src/utils/barcodeFoods';
 import type { FoodInfoItem } from '../../src/types/foodInfo';
@@ -974,6 +975,57 @@ describe('FoodEntryAddScreen', () => {
         },
       }),
     });
+    expect(mockToast.show).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Meals not supported here' })
+    );
+  });
+
+  it('hands a food and its amount back to the NFC tag form', async () => {
+    consumePendingActionTagSelection();
+    const screen = renderScreen({
+      item: baseLocalItem,
+      pickerMode: 'action-tag',
+      returnDepth: 2,
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() =>
+      expect(navigation.dispatch).toHaveBeenCalledWith({
+        type: 'POP',
+        payload: { count: 2 },
+      })
+    );
+    expect(consumePendingActionTagSelection()).toEqual({
+      kind: 'food',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+      name: 'Greek Yogurt',
+      quantity: 1,
+      unit: 'cup',
+    });
+    expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('hands a gram-based meal back to the NFC tag form in its own unit', () => {
+    consumePendingActionTagSelection();
+    const screen = renderScreen({
+      item: { ...baseMealItem, servingSize: 200, servingUnit: 'g' },
+      pickerMode: 'action-tag',
+      returnDepth: 2,
+    });
+
+    fireEvent.press(screen.getByText('Add Meal'));
+
+    expect(consumePendingActionTagSelection()).toEqual(
+      expect.objectContaining({
+        kind: 'meal',
+        mealId: 'meal-1',
+        name: 'Breakfast Meal',
+        unit: 'g',
+      })
+    );
+    expect(mockAddMeal).not.toHaveBeenCalled();
     expect(mockToast.show).not.toHaveBeenCalledWith(
       expect.objectContaining({ text1: 'Meals not supported here' })
     );

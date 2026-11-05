@@ -1,3 +1,4 @@
+import { instantToDay, isValidTimeZone } from '@workspace/shared';
 import { addLog } from '../LogService';
 import { attachWorkoutTelemetry } from '../shared/workoutTelemetryPayload';
 import {
@@ -262,6 +263,28 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
     const value = extractNestedValue(rec, 'temperature', 'inCelsius');
     const date = getDateString(rec.time);
     return value !== null && date ? { value, date } : null;
+  },
+
+  // Apple stamps the night's value across the sleep, so key it to the wake day
+  // (the sample's end) like the sleep session it belongs to, on the clock the
+  // sample was recorded on (as the sleep session is) when it says which.
+  SleepingWristTemperature: (rec) => {
+    const value = extractNestedValue(rec, 'temperature', 'inCelsius');
+    const instant = rec.endTime ?? rec.time;
+    const { record_timezone: recordTimezone } = extractTimezoneMetadata(rec);
+    const isInstant = typeof instant === 'string' || instant instanceof Date;
+    const date =
+      recordTimezone && isValidTimeZone(recordTimezone) && isInstant
+        ? instantToDay(instant, recordTimezone)
+        : getDateString(instant);
+    return value !== null && date
+      ? {
+          value,
+          date,
+          site: 'wrist',
+          ...(isInstant ? { timestamp: new Date(instant).toISOString() } : {}),
+        }
+      : null;
   },
 
   // Percentage records

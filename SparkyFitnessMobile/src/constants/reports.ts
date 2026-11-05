@@ -129,6 +129,8 @@ export const HEART_RATE_SECTIONS = [
   'heartRate.overview',
   'heartRate.insights',
   'heartRate.restingHrChart',
+  'heartRate.rangeTimeline',
+  'heartRate.dayTimeline',
   'heartRate.zones',
 ] as const;
 
