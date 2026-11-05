@@ -145,13 +145,13 @@ type ColumnValue = [column: string, value: unknown, cast?: string];
 
 /**
  * A severity or impact timeline as given in `param`, with every `at` read as
- * timestamptz and the points oldest first. An appended point is stored the
- * same way (`SEVERITY_POINT_SQL`), so a start time sent as `20260625` or
+ * timestamptz and the points in the order given. An appended point is stored
+ * the same way (`SEVERITY_POINT_SQL`), so a start time sent as `20260625` or
  * without an offset reads the same in every client as the readings after it.
  */
 function timelineSql(param: string): string {
   return `(SELECT COALESCE(jsonb_agg(jsonb_set(p, '{at}', to_jsonb((p->>'at')::timestamptz))
-                                     ORDER BY (p->>'at')::timestamptz, n),
+                                     ORDER BY n),
                            '[]'::jsonb)
              FROM jsonb_array_elements(${param}::jsonb) WITH ORDINALITY AS t(p, n))`;
 }

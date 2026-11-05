@@ -53,12 +53,13 @@ describe.runIf(RUN)(
     const stored = async (id: string) =>
       (
         await db.query(
-          `SELECT started_at, severity_timeline, impact_timeline
+          `SELECT started_at, impact, severity_timeline, impact_timeline
            FROM public.symptom_entries WHERE id = $1`,
           [id]
         )
       ).rows[0] as {
         started_at: Date;
+        impact: string | null;
         severity_timeline: { at: string; severity: number }[];
         impact_timeline: { at: string; impact: string }[];
       };
@@ -99,7 +100,7 @@ describe.runIf(RUN)(
       }
     );
 
-    it('reads an older raw time the same way on the next change, oldest first', async () => {
+    it('reads an older raw time the same way on the next change', async () => {
       const id = (
         await db.query(
           `INSERT INTO public.symptom_entries
@@ -114,16 +115,17 @@ describe.runIf(RUN)(
         )
       ).rows[0].id as string;
 
-      // The change is recorded now, which is before the 2099 start, so a sort by
-      // the stored text would keep the start first.
       await symptomService.updateEntry(userId, id, { impact: 'severe' });
 
+      // The points keep their order, so the new reading stays last and matches
+      // the current impact; only the old start time is read again.
       const row = await stored(id);
       expect(row.impact_timeline.map((p) => p.impact)).toEqual([
-        'severe',
         'mild',
+        'severe',
       ]);
-      expect(Date.parse(row.impact_timeline[1]!.at)).toBe(
+      expect(row.impact).toBe('severe');
+      expect(Date.parse(row.impact_timeline[0]!.at)).toBe(
         row.started_at.getTime()
       );
       expect(

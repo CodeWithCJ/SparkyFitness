@@ -803,7 +803,11 @@ describe('Symptom Repository', () => {
     expect(update[0]).toContain(
       "impact_timeline = (SELECT COALESCE(jsonb_agg(jsonb_set(p, '{at}', to_jsonb((p->>'at')::timestamptz))"
     );
-    expect(update[0]).toContain("ORDER BY (p->>'at')::timestamptz, n");
+    // Points keep the order they were given in, so the last point stays the
+    // reading this update writes to the scalar columns.
+    expect(update[0]).toMatch(
+      /to_jsonb\(\(p->>'at'\)::timestamptz\)\)\s+ORDER BY n\)/
+    );
   });
 
   it('appendSymptomSeverity passes no impact when the caller sends none', async () => {
