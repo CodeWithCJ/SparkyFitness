@@ -1,6 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert } from 'react-native';
+import Toast from 'react-native-toast-message';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useSelectedExercise } from './useSelectedExercise';
@@ -12,6 +13,8 @@ import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { exerciseFromSnapshot, getSupersetRuns } from '../utils/workoutSession';
 import type { RootStackParamList } from '../types/navigation';
 import { buildExerciseReplaceContext } from '../utils/exerciseReplace';
+import { fetchExerciseById } from '../services/api/exerciseApi';
+import { addLog } from '../services/LogService';
 
 interface UseActiveWorkoutExerciseActionsArgs {
   navigation: NativeStackNavigationProp<RootStackParamList, 'ActiveWorkout'>;
@@ -254,9 +257,31 @@ export function useActiveWorkoutExerciseActions({
     []
   );
 
+  // "Taken? Use …": swap in the preset slot's backup exercise. Same-modality
+  // sets (weight, reps) carry over, as with any replace.
+  const handleUseBackupExercise = useCallback(
+    async (entryId: string, backupExerciseId: string) => {
+      try {
+        const exercise = await fetchExerciseById(backupExerciseId);
+        useActiveWorkoutStore.getState().replaceExercise(entryId, exercise);
+        setFocusedExerciseId(entryId);
+      } catch (error) {
+        addLog('Failed to load backup exercise', 'ERROR', [String(error)]);
+        Toast.show({
+          type: 'error',
+          text1: t('workout.backupFailed', {
+            defaultValue: 'Could not load the backup exercise',
+          }),
+        });
+      }
+    },
+    [setFocusedExerciseId, t]
+  );
+
   return {
     handleAddExercise,
     handleReplaceExercise,
+    handleUseBackupExercise,
     handleRemoveExercise,
     handleClearExerciseSets,
     handleClearAllSets,

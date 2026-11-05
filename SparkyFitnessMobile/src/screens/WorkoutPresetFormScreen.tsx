@@ -43,6 +43,7 @@ import type {
   WorkoutPresetUpdatePayload,
 } from '../services/api/workoutPresetsApi';
 import { buildExerciseReplaceContext } from '../utils/exerciseReplace';
+import { useBackupExercisePicker } from '../hooks/useBackupExercisePicker';
 
 type CreateParams = Extract<
   RootStackParamList['WorkoutPresetForm'],
@@ -89,6 +90,7 @@ interface PresetFormBodyProps {
   isEligibleForPrefill: (clientId: string) => boolean;
   onAddExercisePress: () => void;
   onReplaceExercise: (clientId: string) => void;
+  onPickBackupExercise: (clientId: string) => void;
   onDuplicateExercise: (clientId: string) => void;
   addWarmupSets: (
     clientId: string,
@@ -156,6 +158,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
   isEligibleForPrefill,
   onAddExercisePress,
   onReplaceExercise,
+  onPickBackupExercise,
   onDuplicateExercise,
   addWarmupSets,
   onRegisterAccessoryHandle,
@@ -285,6 +288,7 @@ const PresetFormBody: React.FC<PresetFormBodyProps> = ({
           setExerciseProgression={setExerciseProgression}
           setExerciseRest={setExerciseRest}
           onReplaceExercise={onReplaceExercise}
+          onPickBackupExercise={onPickBackupExercise}
           onDuplicateExercise={onDuplicateExercise}
           addWarmupSets={addWarmupSets}
           supersetWith={supersetWith}
@@ -385,7 +389,11 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({
     addSet,
     replaceExercise: wrappedReplaceExercise,
   });
-  useSelectedExercise(route.params, exerciseSetEditing.handleAddExercise);
+  const backupPicker = useBackupExercisePicker(
+    setExerciseProgression,
+    exerciseSetEditing.handleAddExercise
+  );
+  useSelectedExercise(route.params, backupPicker.handleSelectedExercise);
 
   // Sticky Done/Next bar for the focused set cell, on both platforms.
   const { onRegisterAccessoryHandle, accessoryBar } = useSetEditAccessoryBar({
@@ -438,12 +446,22 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({
     // Plain Add: drop any pending replace target so a cancelled replace can't
     // misroute this add.
     exerciseSetEditing.setReplaceTarget(null);
+    backupPicker.setBackupTarget(null);
+    navigation.navigate('ExerciseSearch', { returnKey: route.key });
+  };
+
+  // ⋮ "Backup exercise": the next ExerciseSearch return becomes this slot's
+  // backup instead of a new exercise.
+  const handlePickBackupExercise = (clientId: string) => {
+    exerciseSetEditing.setReplaceTarget(null);
+    backupPicker.setBackupTarget(clientId);
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
   };
 
   // ⋮ "Replace exercise": the next ExerciseSearch return swaps this entry in
   // place instead of appending.
   const handleReplaceExercise = (clientId: string) => {
+    backupPicker.setBackupTarget(null);
     exerciseSetEditing.setReplaceTarget(clientId);
     navigation.navigate('ExerciseSearch', {
       returnKey: route.key,
@@ -543,6 +561,7 @@ const CreatePresetMode: React.FC<CreatePresetModeProps> = ({
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
         onReplaceExercise={handleReplaceExercise}
+        onPickBackupExercise={handlePickBackupExercise}
         onDuplicateExercise={duplicateExercise}
         addWarmupSets={addWarmupSets}
         onRegisterAccessoryHandle={onRegisterAccessoryHandle}
@@ -689,7 +708,11 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({
     addSet,
     replaceExercise: wrappedReplaceExercise,
   });
-  useSelectedExercise(route.params, exerciseSetEditing.handleAddExercise);
+  const backupPicker = useBackupExercisePicker(
+    setExerciseProgression,
+    exerciseSetEditing.handleAddExercise
+  );
+  useSelectedExercise(route.params, backupPicker.handleSelectedExercise);
 
   // Sticky Done/Next bar for the focused set cell, on both platforms.
   const { onRegisterAccessoryHandle, accessoryBar } = useSetEditAccessoryBar({
@@ -735,12 +758,22 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({
     // Plain Add: drop any pending replace target so a cancelled replace can't
     // misroute this add.
     exerciseSetEditing.setReplaceTarget(null);
+    backupPicker.setBackupTarget(null);
+    navigation.navigate('ExerciseSearch', { returnKey: route.key });
+  };
+
+  // ⋮ "Backup exercise": the next ExerciseSearch return becomes this slot's
+  // backup instead of a new exercise.
+  const handlePickBackupExercise = (clientId: string) => {
+    exerciseSetEditing.setReplaceTarget(null);
+    backupPicker.setBackupTarget(clientId);
     navigation.navigate('ExerciseSearch', { returnKey: route.key });
   };
 
   // ⋮ "Replace exercise": the next ExerciseSearch return swaps this entry in
   // place instead of appending.
   const handleReplaceExercise = (clientId: string) => {
+    backupPicker.setBackupTarget(null);
     exerciseSetEditing.setReplaceTarget(clientId);
     navigation.navigate('ExerciseSearch', {
       returnKey: route.key,
@@ -834,6 +867,7 @@ const EditPresetMode: React.FC<EditPresetModeProps> = ({
         isEligibleForPrefill={isEligibleForPrefill}
         onAddExercisePress={openExerciseSearch}
         onReplaceExercise={handleReplaceExercise}
+        onPickBackupExercise={handlePickBackupExercise}
         onDuplicateExercise={duplicateExercise}
         addWarmupSets={addWarmupSets}
         onRegisterAccessoryHandle={onRegisterAccessoryHandle}

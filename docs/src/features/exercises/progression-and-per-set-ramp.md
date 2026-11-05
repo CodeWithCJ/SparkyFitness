@@ -86,6 +86,17 @@ When you finish a workout on mobile, the app offers to update the preset if what
 
 ---
 
+## Backup exercise ("machine taken")
+
+Each exercise in a preset can have a **backup exercise** for when its machine or station is busy.
+
+- **Web:** in the preset editor, open the exercise's settings and use **Backup exercise** to pick one (the **×** removes it).
+- **Mobile:** in the preset form, open the exercise's **⋮** menu and choose **Set backup exercise…**. The menu then shows the backup and offers **Remove backup exercise**.
+
+During a workout, before you log a set of that exercise, **Taken? Use …** swaps the backup in. It appears under the exercise name in the web workout player and in the exercise's **⋮** menu on mobile. When the backup is measured the same way (weight and reps, for example), the planned sets, weights and reps stay as they are. On the web the backup then points back at the original, so you can swap back.
+
+Backups need an up-to-date server; with an older one the option doesn't appear.
+
 ## AI assistant & MCP
 
 The AI assistant can create and edit presets with these settings. `ramp_increment` and a weight `increment_value` are in kilograms; for example "+10 lb per set" is `ramp_increment: 4.54`. When the assistant updates a preset's exercise list, any setting it leaves out keeps its current value. See the [exercise tool reference](/developer/mcp/exercise).

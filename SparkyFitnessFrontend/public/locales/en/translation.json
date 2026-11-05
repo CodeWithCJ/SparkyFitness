@@ -1490,7 +1490,9 @@
       "volume": "Volume",
       "replaceExercise": "Replace exercise",
       "replaceExerciseNamed": "Replace {{name}}",
-      "sets": "{{completedSets}}/{{totalSets}} sets"
+      "sets": "{{completedSets}}/{{totalSets}} sets",
+      "useBackup": "Taken? Use {{name}}",
+      "backupExercise": "the backup"
     },
     "workoutFinishSummary": {
       "title": "Workout complete",
@@ -4909,7 +4911,12 @@
     "timeCapLabel": "Time Cap (minutes)",
     "rampLabel": "Add per set (this workout, {{unit}})",
     "rampPlaceholder": "Off",
-    "rampHint": "Each working set after the first pre-fills this much heavier in the same workout; use a negative number to ramp down. Warm-up and drop sets are skipped."
+    "rampHint": "Each working set after the first pre-fills this much heavier in the same workout; use a negative number to ramp down. Warm-up and drop sets are skipped.",
+    "backupExercise": "Backup exercise",
+    "backupExerciseHint": "Swap it in during a workout when this one is taken; the sets stay the same.",
+    "backupChosen": "Chosen",
+    "backupNone": "None, pick one",
+    "clearBackupExercise": "Remove backup exercise"
   },
   "addWorkoutPlanDialog": {
     "editTitle": "Edit Workout Plan",

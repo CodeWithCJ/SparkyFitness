@@ -74,8 +74,26 @@ export function useWorkoutPresetForm({
     null
   );
 
+  // While set, the next AddExerciseDialog selection becomes this entry's
+  // backup exercise instead of being added. Cleared like the replace target.
+  const [backupTargetIndex, setBackupTargetIndex] = useState<number | null>(
+    null
+  );
+
   const handleAddExercise = (exercise: Exercise | undefined) => {
-    if (exercise) {
+    if (exercise && backupTargetIndex !== null) {
+      setExercises((prev) =>
+        prev.map((ex, index) =>
+          index === backupTargetIndex && ex.exercise_id !== exercise.id
+            ? {
+                ...ex,
+                backup_exercise_id: exercise.id,
+                backup_exercise_name: exercise.name,
+              }
+            : ex
+        )
+      );
+    } else if (exercise) {
       const modality = resolveExerciseModality(
         exercise.modality,
         exercise.category
@@ -133,17 +151,36 @@ export function useWorkoutPresetForm({
       }
     }
     setReplaceTargetIndex(null);
+    setBackupTargetIndex(null);
     setIsAddExerciseDialogOpen(false);
   };
 
   const handleOpenAddExercise = () => {
     setReplaceTargetIndex(null);
+    setBackupTargetIndex(null);
     setIsAddExerciseDialogOpen(true);
   };
 
   const handleOpenReplaceExercise = (exerciseIndex: number) => {
+    setBackupTargetIndex(null);
     setReplaceTargetIndex(exerciseIndex);
     setIsAddExerciseDialogOpen(true);
+  };
+
+  const handleOpenBackupExercise = (exerciseIndex: number) => {
+    setReplaceTargetIndex(null);
+    setBackupTargetIndex(exerciseIndex);
+    setIsAddExerciseDialogOpen(true);
+  };
+
+  const handleClearBackupExercise = (exerciseIndex: number) => {
+    setExercises((prev) =>
+      prev.map((ex, index) =>
+        index === exerciseIndex
+          ? { ...ex, backup_exercise_id: null, backup_exercise_name: null }
+          : ex
+      )
+    );
   };
 
   const handleRemoveExercise = (index: number) => {
@@ -438,6 +475,8 @@ export function useWorkoutPresetForm({
     handleAddExercise,
     handleOpenAddExercise,
     handleOpenReplaceExercise,
+    handleOpenBackupExercise,
+    handleClearBackupExercise,
     replaceTargetIndex,
     handleExerciseFieldChange,
     handleRemoveExercise,

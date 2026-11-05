@@ -526,6 +526,37 @@ describe('WorkoutFormExerciseList', () => {
       expect(without.queryByText('Replace exercise')).toBeNull();
     });
 
+    it('sets and removes a backup exercise from the menu', () => {
+      const onPickBackupExercise = jest.fn();
+      const setExerciseProgression = jest.fn();
+      const unset = renderList([makeExercise('a')], {
+        onPickBackupExercise,
+        setExerciseProgression,
+      });
+      fireEvent.press(unset.getByTestId('card-a-overflow'));
+      expect(unset.getByText('Set backup exercise…')).toBeTruthy();
+      expect(unset.queryByTestId('menu-item-backup-clear')).toBeNull();
+      fireEvent.press(unset.getByTestId('menu-item-backup'));
+      expect(onPickBackupExercise).toHaveBeenCalledWith('a');
+
+      const withBackup = renderList(
+        [
+          makeExercise('a', {
+            backupExerciseId: 'b-1',
+            backupExerciseName: 'Dumbbell Press',
+          }),
+        ],
+        { onPickBackupExercise, setExerciseProgression }
+      );
+      fireEvent.press(withBackup.getByTestId('card-a-overflow'));
+      expect(withBackup.getByText('Backup: Dumbbell Press')).toBeTruthy();
+      fireEvent.press(withBackup.getByTestId('menu-item-backup-clear'));
+      expect(setExerciseProgression).toHaveBeenCalledWith('a', {
+        backupExerciseId: null,
+        backupExerciseName: null,
+      });
+    });
+
     it('offers Clear logged sets only when the exercise has a completed set', () => {
       const clearExerciseCompletions = jest.fn();
       const utils = renderList(

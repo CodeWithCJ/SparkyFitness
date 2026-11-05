@@ -518,6 +518,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const {
     handleAddExercise,
     handleReplaceExercise,
+    handleUseBackupExercise,
     handleRemoveExercise,
     handleClearExerciseSets,
     handleClearAllSets,
@@ -1291,6 +1292,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onPressThumb={handlePressThumb}
         onToggleExerciseNote={handleToggleExerciseNote}
         onReplaceExercise={handleReplaceExercise}
+        onUseBackupExercise={(entryId, backupId) =>
+          void handleUseBackupExercise(entryId, backupId)
+        }
         canAddWarmups={canAddWarmups}
         onAddWarmups={handleAddWarmups}
         onClearExerciseSets={handleClearExerciseSets}

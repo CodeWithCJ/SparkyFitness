@@ -2405,7 +2405,10 @@
     "videoLinkPlaceholder": "https://youtube.com/shorts/…",
     "videoLinkHelp": "A short demonstration clip, shown in the How to tab and during workouts.",
     "invalidVideoLink": "Invalid video link",
-    "invalidVideoLinkHint": "Enter a link starting with https://"
+    "invalidVideoLinkHint": "Enter a link starting with https://",
+    "useBackupExercise": "Taken? Use {{name}}",
+    "backupExercise": "the backup",
+    "backupFailed": "Could not load the backup exercise"
   },
   "cycleCard": {
     "mode": {
@@ -5551,7 +5554,10 @@
     "removeExercise": "Remove exercise",
     "addExercise": "Add Exercise",
     "exercise": "Exercise",
-    "duplicateExercise": "Duplicate exercise"
+    "duplicateExercise": "Duplicate exercise",
+    "setBackupExercise": "Set backup exercise…",
+    "changeBackupExercise": "Backup: {{name}}",
+    "removeBackupExercise": "Remove backup exercise"
   },
   "whatsNew": {
     "seeUpdate": "See what's new in this update",
