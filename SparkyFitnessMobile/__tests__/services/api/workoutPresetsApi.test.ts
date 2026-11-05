@@ -1,8 +1,10 @@
 import {
+  createWorkoutPreset,
   fetchWorkoutPresets,
   fetchWorkoutPresetsPage,
   getWorkoutPresetById,
   searchWorkoutPresets,
+  updateWorkoutPreset,
 } from '../../../src/services/api/workoutPresetsApi';
 import {
   getActiveServerConfig,
@@ -242,6 +244,65 @@ describe('workoutPresetsApi', () => {
       const result = await fetchWorkoutPresetsPage({ page: 3, pageSize: 20 });
 
       expect(result.pagination.hasMore).toBe(false);
+    });
+  });
+  describe('older servers without double/triple progression', () => {
+    const rejected = {
+      ok: false,
+      status: 400,
+      text: () => Promise.resolve('{"error":"Invalid preset"}'),
+    };
+    const saved = {
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ id: 1 }),
+    };
+    const exercise = {
+      exercise_id: 'ex-1',
+      progression_mode: 'double' as const,
+      rep_goal: 12,
+      rep_range_min: 8,
+      increment_type: 'reps' as const,
+    };
+    const sentBody = (call: number) =>
+      JSON.parse(mockFetch.mock.calls[call][1].body);
+
+    it('retries a rejected create as Fixed Target on the top of the range', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValueOnce(rejected).mockResolvedValueOnce(saved);
+
+      await createWorkoutPreset({ name: 'Push', exercises: [exercise] });
+
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(sentBody(1).exercises[0]).toMatchObject({
+        progression_mode: 'fixed',
+        increment_type: 'weight',
+        rep_goal: 12,
+      });
+    });
+
+    it('retries a rejected update the same way', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValueOnce(rejected).mockResolvedValueOnce(saved);
+
+      await updateWorkoutPreset(3, {
+        exercises: [{ ...exercise, progression_mode: 'triple' }],
+      });
+
+      expect(sentBody(1).exercises[0].progression_mode).toBe('fixed');
+    });
+
+    it('does not retry a 400 for a preset without the new modes', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue(rejected);
+
+      await expect(
+        createWorkoutPreset({
+          name: 'Push',
+          exercises: [{ ...exercise, progression_mode: 'fixed' }],
+        })
+      ).rejects.toThrow();
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
 });
