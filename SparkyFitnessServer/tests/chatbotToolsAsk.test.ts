@@ -62,9 +62,22 @@ describe('sparky_ask_user', () => {
     ).resolves.toMatch(/options/i);
   });
 
+  it('accepts a long provider product option', async () => {
+    await expect(
+      run({
+        ...validInput,
+        mode: 'choose',
+        options: [
+          'American Sandwich Classic (100g: 243 kcal)',
+          'Protein Brot mit Spiegelei und Speck (Billa) (100g: 249 kcal)',
+        ],
+      })
+    ).resolves.toContain('Presented 2 options');
+  });
+
   it('rejects an essay-length option label', async () => {
     await expect(
-      run({ ...validInput, options: ['150g', 'x'.repeat(49)] })
+      run({ ...validInput, options: ['150g', 'x'.repeat(121)] })
     ).resolves.toMatch(/options/i);
   });
 
