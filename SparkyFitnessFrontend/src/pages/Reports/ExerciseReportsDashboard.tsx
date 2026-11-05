@@ -45,6 +45,7 @@ import { TimeUnderTensionChart } from '@/components/ExerciseCharts/TimeUnderTens
 import { BestSetRepRangeChart } from '@/components/ExerciseCharts/BestSetRepRangeChart';
 import { TrainingVolumeByMuscleGroupChart } from '@/components/ExerciseCharts/TrainingVolumeByMuscleGroupChart';
 import { MuscleHeatmap } from '@/components/ExerciseCharts/MuscleHeatmap';
+import { StrengthBalanceCard } from '@/components/ExerciseCharts/StrengthBalanceCard';
 import { PrVisualizationWidget } from '@/components/ExerciseCharts/PrVisualizationWidget';
 import { ActivityTelemetryList } from '@/components/ExerciseCharts/ActivityTelemetryList';
 import { CardioVolumeIntervalChart } from '@/components/ExerciseCharts/CardioVolumeIntervalChart';
@@ -56,6 +57,7 @@ import {
   useExerciseStatsSummary,
   useExercisePRs,
   useMatchedCourses,
+  useStrengthSummary,
   queryExerciseActivities,
 } from '@/hooks/Reports/useExerciseStats';
 import {
@@ -77,6 +79,7 @@ interface ExerciseReportsDashboardProps {
 }
 
 const SNAPSHOT_WIDGETS = [
+  'strengthBalance',
   'muscleHeatmap',
   'muscleGroupRecovery',
   'exerciseVariety',
@@ -203,6 +206,9 @@ const ExerciseReportsDashboard = ({
     () =>
       prMatrix ? predictRaceTimes(runningEfforts(prMatrix.cardioPRs)) : [],
     [prMatrix]
+  );
+  const { data: strengthSummary } = useStrengthSummary(
+    activeUserId ?? undefined
   );
   const { data: matchedCourses } = useMatchedCourses(
     activeUserId ?? undefined,
@@ -356,6 +362,14 @@ const ExerciseReportsDashboard = ({
             availableExercises={availableExercises}
           />
         );
+      case 'strengthBalance':
+        return strengthSummary && strengthSummary.lifetime.sets > 0 ? (
+          <StrengthBalanceCard
+            key="strengthBalance"
+            summary={strengthSummary}
+            weightUnit={weightUnit}
+          />
+        ) : null;
       case 'muscleHeatmap': {
         const setsByMuscle = exerciseDashboardData.muscleGroupSets || {};
         return Object.values(setsByMuscle).some((count) => count > 0) ? (

@@ -5,6 +5,7 @@ import type {
   ExerciseEntryHrZones,
   ExerciseEntryResponse,
   HealthMetricSamples,
+  StrengthSummaryResponse,
 } from '@workspace/shared';
 import { apiFetch } from './apiClient';
 
@@ -112,4 +113,15 @@ export const fetchPersonalRecords = (
     endpoint: `/api/exercise-stats/prs?unitSystem=${unitSystem}`,
     serviceName: SERVICE,
     operation: 'fetch personal records',
+  });
+
+/**
+ * Lifetime strength totals, best set per exercise and latest body weight.
+ * Servers before strength balance answer 404, and the card stays hidden.
+ */
+export const fetchStrengthSummary = (): Promise<StrengthSummaryResponse> =>
+  apiFetch<StrengthSummaryResponse>({
+    endpoint: '/api/exercise-stats/strength-summary',
+    serviceName: SERVICE,
+    operation: 'fetch strength summary',
   });

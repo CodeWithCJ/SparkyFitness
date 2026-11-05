@@ -373,6 +373,8 @@ export const foodEntriesRangeQueryKey = (startDate: string, endDate: string) =>
 export const exerciseDashboardQueryKey = (startDate: string, endDate: string) =>
   ['exerciseDashboard', startDate, endDate] as const;
 
+export const strengthSummaryQueryKey = () => ['strengthSummary'] as const;
+
 export const trainingConsistencyQueryKey = () =>
   ['trainingConsistency'] as const;
 

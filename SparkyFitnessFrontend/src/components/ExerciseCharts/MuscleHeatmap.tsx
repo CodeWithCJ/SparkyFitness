@@ -11,6 +11,7 @@ import {
   setsForMuscleKey,
   svgClassToMuscleKey,
   unmappedMuscleSets,
+  untrainedHeatLevel,
   type BodyFigure,
 } from '@workspace/shared';
 import './MuscleHeatmap.css';
@@ -37,6 +38,8 @@ export const MuscleHeatmap = ({ setsByMuscle }: MuscleHeatmapProps) => {
   const figure = chosenFigure ?? defaultBodyFigure(profile?.gender);
   const { data: svgContent } = useBodyMapSvgQuery(figure);
   const [pickedKey, setPickedKey] = useState<string | null>(null);
+  // "Untrained" flips the colours so muscles with no sets stand out.
+  const [untrained, setUntrained] = useState(false);
   const maxSets = maxDrawnMuscleSets(setsByMuscle);
   const extra = unmappedMuscleSets(setsByMuscle);
   const setsLabel = t('muscleHeatmap.sets', 'sets');
@@ -68,7 +71,9 @@ export const MuscleHeatmap = ({ setsByMuscle }: MuscleHeatmapProps) => {
       const svgClassName = path.getAttribute('class') || '';
       const key = svgClassToMuscleKey(svgClassName);
       const sets = setsForMuscleKey(key, setsByMuscle);
-      const level = heatLevel(sets, maxSets);
+      const level = untrained
+        ? untrainedHeatLevel(sets)
+        : heatLevel(sets, maxSets);
       path.classList.remove('heat-0', 'heat-1', 'heat-2', 'heat-3', 'heat-4');
       path.classList.add(`heat-${level}`);
       path.setAttribute('data-muscle', key);
@@ -101,7 +106,7 @@ export const MuscleHeatmap = ({ setsByMuscle }: MuscleHeatmapProps) => {
     return () => {
       cleanups.forEach((cleanup) => cleanup());
     };
-  }, [svgContent, setsByMuscle, maxSets, setsLabel]);
+  }, [svgContent, setsByMuscle, maxSets, setsLabel, untrained]);
 
   useEffect(() => {
     const container = svgContainerRef.current;
@@ -112,7 +117,7 @@ export const MuscleHeatmap = ({ setsByMuscle }: MuscleHeatmapProps) => {
       path.classList.toggle('is-dimmed', pickedKey !== null && !selected);
       path.setAttribute('aria-pressed', selected ? 'true' : 'false');
     });
-  }, [pickedKey, svgContent, setsByMuscle, maxSets]);
+  }, [pickedKey, svgContent, setsByMuscle, maxSets, untrained]);
 
   return (
     <Card>
@@ -154,6 +159,29 @@ export const MuscleHeatmap = ({ setsByMuscle }: MuscleHeatmapProps) => {
             ))}
           </div>
           <div
+            role="group"
+            aria-label={t('muscleHeatmap.view', 'Heat map view')}
+            className="mb-3 inline-flex rounded-md border bg-muted p-0.5 text-xs"
+          >
+            {[false, true].map((option) => (
+              <button
+                key={String(option)}
+                type="button"
+                aria-pressed={untrained === option}
+                onClick={() => setUntrained(option)}
+                className={`rounded px-3 py-1 font-medium ${
+                  untrained === option
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground'
+                }`}
+              >
+                {option
+                  ? t('muscleHeatmap.untrained', 'Untrained')
+                  : t('muscleHeatmap.trained', 'Trained')}
+              </button>
+            ))}
+          </div>
+          <div
             ref={svgContainerRef}
             className="muscle-heatmap w-full flex justify-center overflow-hidden max-w-[280px]"
           />
@@ -173,19 +201,28 @@ export const MuscleHeatmap = ({ setsByMuscle }: MuscleHeatmapProps) => {
               {t('muscleHeatmap.tap', 'Tap a muscle')}
             </p>
           )}
-          <div className="flex items-center gap-1.5 mt-3 text-[10px] text-muted-foreground">
-            <span>{t('muscleHeatmap.fewer', 'Fewer')}</span>
-            {['#374151', '#86efac', '#22c55e', '#eab308', '#e11d48'].map(
-              (color) => (
-                <span
-                  key={color}
-                  className="inline-block w-3 h-3 rounded-[2px]"
-                  style={{ backgroundColor: color }}
-                />
-              )
-            )}
-            <span>{t('muscleHeatmap.more', 'More')}</span>
-          </div>
+          {untrained ? (
+            <p className="mt-3 text-[10px] text-muted-foreground">
+              {t(
+                'muscleHeatmap.untrainedHint',
+                'Highlighted muscles had no working sets in this range'
+              )}
+            </p>
+          ) : (
+            <div className="flex items-center gap-1.5 mt-3 text-[10px] text-muted-foreground">
+              <span>{t('muscleHeatmap.fewer', 'Fewer')}</span>
+              {['#374151', '#86efac', '#22c55e', '#eab308', '#e11d48'].map(
+                (color) => (
+                  <span
+                    key={color}
+                    className="inline-block w-3 h-3 rounded-[2px]"
+                    style={{ backgroundColor: color }}
+                  />
+                )
+              )}
+              <span>{t('muscleHeatmap.more', 'More')}</span>
+            </div>
+          )}
           {extra.length > 0 && (
             <div className="mt-3 w-full">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
