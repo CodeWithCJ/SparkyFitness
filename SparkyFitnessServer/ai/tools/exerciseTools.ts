@@ -109,6 +109,7 @@ type WorkoutPresetExerciseRow = {
   superset_group?: number | null;
   progression_mode?: PresetProgressionSettings['progression_mode'];
   rep_goal?: number | null;
+  rep_range_min?: number | null;
   increment_type?: PresetProgressionSettings['increment_type'];
   increment_value?: number | null;
   equipment_brand?: string | null;
@@ -125,6 +126,7 @@ function formatPresetProgression(ex: WorkoutPresetExerciseRow): string | null {
   }
   const parts = [`progression_mode ${mode}`];
   if (isSet(ex.rep_goal)) parts.push(`rep_goal ${ex.rep_goal}`);
+  if (isSet(ex.rep_range_min)) parts.push(`rep_range_min ${ex.rep_range_min}`);
   if (isSet(ex.increment_value)) {
     const unit =
       ex.increment_type === 'reps' || mode === 'step_load' ? ' reps' : 'kg';
@@ -279,6 +281,7 @@ function toRepoSets(sets: ExerciseSetInput[]) {
 const PRESET_PROGRESSION_KEYS = [
   'progression_mode',
   'rep_goal',
+  'rep_range_min',
   'increment_type',
   'increment_value',
   'equipment_brand',
@@ -803,7 +806,7 @@ Actions:
 - update_exercise_entry(entry_id, entry_date?, duration_minutes?, calories_burned?, notes?, distance?, avg_heart_rate?, steps?, sets?) — only the provided fields change; sets, when provided, replace all existing sets
 - delete_exercise_entry(entry_id)
 - get_exercise_details(exercise_id?|exercise_name?)
-- create_workout_preset(name, exercises, description?, is_public?, workout_format?, time_cap_seconds?) — exercises: array or JSON string of [{exercise_id, sets?:[{reps,weight,duration,distance,rest_time,set_type,notes}], superset_group?, progression_mode?, rep_goal?, increment_type?, increment_value?, equipment_brand?, ramp_increment?}]; items sharing the same superset_group are grouped as a superset; progression_mode/rep_goal/increment_type/increment_value (kg for weight) are between-session overload; ramp_increment (kg, may be negative) pre-fills each successive working set that much heavier within one session — e.g. "+10 lb per set" is 4.54 — distinct from between-session progression
+- create_workout_preset(name, exercises, description?, is_public?, workout_format?, time_cap_seconds?) — exercises: array or JSON string of [{exercise_id, sets?:[{reps,weight,duration,distance,rest_time,set_type,notes}], superset_group?, progression_mode?, rep_goal?, rep_range_min?, increment_type?, increment_value?, equipment_brand?, ramp_increment?}]; items sharing the same superset_group are grouped as a superset; progression_mode/rep_goal/increment_type/increment_value (kg for weight) are between-session overload; ramp_increment (kg, may be negative) pre-fills each successive working set that much heavier within one session — e.g. "+10 lb per set" is 4.54 — distinct from between-session progression
 - update_workout_preset(preset_id, confirmed, name?, description?, is_public?, workout_format?, time_cap_seconds?, exercises?) — only the provided fields change; exercises, when provided, REPLACES the entire exercise list (same shape as create_workout_preset), so call get_workout_preset first and include every exercise that should remain, not just the ones being changed. Progression and ramp fields left out on an exercise keep their current values; send null to clear one. confirmed=true is required to apply; without it the tool returns a prompt and does not change anything. Get the user's go-ahead first, especially if YOU decided what to change (e.g. "review my workouts and improve them").
 - delete_workout_preset(preset_id, confirmed) — permanently deletes the preset. confirmed=true is required; without it the tool returns a prompt and does not delete. Confirm with the user first.
 

@@ -371,7 +371,19 @@
       "rampDown": "Down",
       "rampAmountLabel": "Weight added per set ({{unit}})",
       "rampPlaceholder": "Off ({{unit}})",
-      "rampHint": "Each working set after the first pre-fills this much heavier (or lighter) in the same workout. Warm-up and drop sets are skipped."
+      "rampHint": "Each working set after the first pre-fills this much heavier (or lighter) in the same workout. Warm-up and drop sets are skipped.",
+      "doubleSummary": "Double · {{min}}–{{max}} reps · +{{value}} {{unit}}",
+      "tripleSummary": "Triple · {{min}}–{{max}} reps · +{{value}} {{unit}}",
+      "modeDouble": "Double",
+      "modeTriple": "Triple",
+      "repRangeTop": "Top of Rep Range",
+      "repRangeBottom": "Bottom of Rep Range",
+      "reason": {
+        "rangeClimbing": "{{setsAtTop}}/{{sets}} sets at {{repMax}} reps. Hold the weight and add reps.",
+        "rangeTopReached": "All sets hit {{repMax}} reps. Add weight and start again at {{repMin}} reps.",
+        "rangeAddSet": "All sets hit {{repMax}} reps. Add a set: {{nextSets}} sets of {{repMin}}.",
+        "stallDeload": "Missed the goal {{stalledSessions}} sessions in a row at this weight. Deload about {{deloadPercent}}% and build back up."
+      }
     },
     "liveActivity": {
       "rest": "Rest",

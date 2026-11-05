@@ -1358,7 +1358,8 @@ describe('ActiveWorkoutExerciseCard', () => {
       renderCard(true, { mode: 'live' });
       expect(mockCapturePreviousSessionSets).toHaveBeenCalledWith(
         'ex-1',
-        STATS_WITH_HISTORY.data.recentSessions[0].sets
+        STATS_WITH_HISTORY.data.recentSessions[0].sets,
+        STATS_WITH_HISTORY.data.recentSessions.slice(1).map((s) => s.sets)
       );
     });
 
@@ -1388,7 +1389,8 @@ describe('ActiveWorkoutExerciseCard', () => {
       );
       expect(mockCapturePreviousSessionSets).toHaveBeenCalledWith(
         'ex-1',
-        STATS_WITH_HISTORY.data.recentSessions[0].sets
+        STATS_WITH_HISTORY.data.recentSessions[0].sets,
+        STATS_WITH_HISTORY.data.recentSessions.slice(1).map((s) => s.sets)
       );
     });
 
@@ -1397,7 +1399,11 @@ describe('ActiveWorkoutExerciseCard', () => {
         data: { bestSet: null, lastSet: null },
       });
       renderCard(true, { mode: 'live' });
-      expect(mockCapturePreviousSessionSets).toHaveBeenCalledWith('ex-1', []);
+      expect(mockCapturePreviousSessionSets).toHaveBeenCalledWith(
+        'ex-1',
+        [],
+        []
+      );
     });
   });
 

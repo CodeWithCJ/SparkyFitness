@@ -39,15 +39,29 @@ export function useLiveProgression(
   const liveConfig = useActiveWorkoutStore((s) =>
     enabled ? s.exerciseConfigs[String(exercise.id)] : undefined
   );
+  // Older sessions for stall detection, captured with the previous one.
+  const earlierSessions = useActiveWorkoutStore((s) =>
+    enabled && exercise.exercise_id != null
+      ? s.earlierSessionSets?.[exercise.exercise_id]
+      : undefined
+  );
   return useMemo(() => {
     const config: LiveExerciseConfig = enabled ? (liveConfig ?? {}) : exercise;
     return evaluateExerciseProgression(
       config,
       exercise.sets,
       previousSessionSets,
-      weightUnit
+      weightUnit,
+      earlierSessions
     );
-  }, [enabled, liveConfig, exercise, previousSessionSets, weightUnit]);
+  }, [
+    enabled,
+    liveConfig,
+    exercise,
+    previousSessionSets,
+    weightUnit,
+    earlierSessions,
+  ]);
 }
 
 /** Adaptive coaching (#1560) for this exercise, from the store's signals. */
@@ -160,7 +174,8 @@ export function useCaptureLiveHistory(
     // lock-screen complete adopts exactly what the row shows.
     capturePreviousSessionSets(
       exerciseId,
-      stats.recentSessions?.[0]?.sets ?? []
+      stats.recentSessions?.[0]?.sets ?? [],
+      (stats.recentSessions ?? []).slice(1).map((s) => s.sets)
     );
   }, [
     enabled,

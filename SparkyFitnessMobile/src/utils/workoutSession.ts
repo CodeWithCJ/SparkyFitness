@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
 import type {
+  LastExercisePerformance,
   AdaptiveAdjustment,
   ExerciseCoachingSignal,
   ExerciseEntrySetRequest,
@@ -857,8 +858,10 @@ export interface WorkoutCardExercise {
   editCaloriesText?: string;
 
   // Progression & Equipment Fields
-  progression_mode?: 'rep_goal' | 'fixed' | 'step_load' | 'manual' | null;
+  progression_mode?:
+    'rep_goal' | 'fixed' | 'step_load' | 'manual' | 'double' | 'triple' | null;
   rep_goal?: number | null;
+  rep_range_min?: number | null;
   increment_type?: 'weight' | 'reps' | null;
   increment_value?: number | null;
   equipment_brand?: string | null;
@@ -892,6 +895,7 @@ export function draftExerciseToCardExercise(
     editCaloriesText: exercise.calories ?? '',
     progression_mode: exercise.progressionMode ?? 'rep_goal',
     rep_goal: exercise.repGoal ?? null,
+    rep_range_min: exercise.repRangeMin ?? null,
     increment_type: exercise.incrementType ?? 'weight',
     increment_value: exercise.incrementValue ?? 5,
     equipment_brand: exercise.equipmentBrand ?? null,
@@ -933,6 +937,7 @@ export function presetExerciseToCardExercise(
     superset_group: exercise.superset_group ?? null,
     progression_mode: exercise.progression_mode ?? 'rep_goal',
     rep_goal: exercise.rep_goal ?? null,
+    rep_range_min: exercise.rep_range_min ?? null,
     increment_type: exercise.increment_type ?? 'weight',
     increment_value: exercise.increment_value ?? 5,
     equipment_brand: exercise.equipment_brand ?? null,
@@ -1111,7 +1116,8 @@ type AssumableSet = Pick<
 export interface AssumedSetOverrides {
   /**
    * Kg added to each working set's prior weight when between-session
-   * progression says to go up (weight-progression overload is active).
+   * progression says to go up (weight-progression overload is active), or
+   * taken off (negative) on a stall deload.
    */
   progressionIncrementKg?: number | null;
   /**
@@ -1214,10 +1220,10 @@ export function resolveAssumedSetValues(
     const progressedPreviousWeight =
       tier === 'working' &&
       progressionIncrementKg != null &&
-      progressionIncrementKg > 0 &&
+      progressionIncrementKg !== 0 &&
       previous?.weight != null &&
       previous.weight > 0
-        ? previous.weight + progressionIncrementKg
+        ? Math.max(0, previous.weight + progressionIncrementKg)
         : previous?.weight;
     // A lighter adaptive day applies to whatever the working set would
     // otherwise start from — history, or the plan when this preset has no
@@ -1288,8 +1294,10 @@ export function resolveAssumedSetValues(
  * Increments that are weights are kg.
  */
 export interface LiveExerciseConfig {
-  progression_mode?: 'rep_goal' | 'fixed' | 'step_load' | 'manual' | null;
+  progression_mode?:
+    'rep_goal' | 'fixed' | 'step_load' | 'manual' | 'double' | 'triple' | null;
   rep_goal?: number | null;
+  rep_range_min?: number | null;
   increment_type?: 'weight' | 'reps' | null;
   increment_value?: number | null;
   equipment_brand?: string | null;
@@ -1303,6 +1311,7 @@ export function liveExerciseConfigFromPreset(
   return {
     progression_mode: exercise.progression_mode ?? null,
     rep_goal: exercise.rep_goal ?? null,
+    rep_range_min: exercise.rep_range_min ?? null,
     increment_type: exercise.increment_type ?? null,
     increment_value:
       exercise.increment_value != null
@@ -1338,55 +1347,76 @@ export function evaluateExerciseProgression(
   config: LiveExerciseConfig,
   sets: readonly Pick<WorkoutCardSet, 'set_type'>[],
   previousSets: readonly ExerciseRecentSessionSet[] | undefined,
-  weightUnit: 'kg' | 'lbs'
+  weightUnit: 'kg' | 'lbs',
+  earlierSessions?: readonly (readonly ExerciseRecentSessionSet[])[]
 ): ProgressionEvaluationResult | null {
   if (!config.rep_goal && config.progression_mode !== 'fixed') return null;
   const workingSets = sets.filter((s) => !isWarmupSetType(s.set_type));
   const progressionMode = config.progression_mode ?? 'rep_goal';
-  const incrementType = config.increment_type ?? 'weight';
+  const isRangeMode =
+    progressionMode === 'double' || progressionMode === 'triple';
+  // Double and triple always add load, whatever increment_type says.
+  const incrementType = isRangeMode
+    ? 'weight'
+    : (config.increment_type ?? 'weight');
   const incrementValue = config.increment_value ?? 2.5;
   // Step-load always raises reps, so its increment is a count even when the
   // stored increment_type says weight (the repository's default).
   const incrementIsWeight =
     incrementType === 'weight' && progressionMode !== 'step_load';
-  const workingPreviousSets = (previousSets ?? []).filter((s) => {
-    const setType = (s as ProgressionPreviousSet).set_type ?? s.setType;
-    return !isWarmupSetType(setType);
-  });
-  const firstWorking = workingPreviousSets[0];
   return evaluateProgression(
     {
       progressionMode,
       targetSets: workingSets.length || 3,
       repGoal: config.rep_goal,
+      repRangeMin: config.rep_range_min ?? null,
       incrementType,
       incrementValue: incrementIsWeight
         ? storedWeightInUnit(incrementValue, weightUnit)
         : incrementValue,
       equipmentBrand: config.equipment_brand ?? null,
     },
-    workingPreviousSets.length > 0
-      ? {
-          // Rounded as they were typed, so the suggestion reads 95 lb rather
-          // than the 94.997… that float kg↔lb round trips add up to.
-          baseWeight: firstWorking?.weight
-            ? storedWeightInUnit(firstWorking.weight, weightUnit)
-            : 0,
-          sets: workingPreviousSets.map((s, idx) => ({
-            setNumber: idx + 1,
-            reps: s.reps ?? 0,
-            weight: s.weight ? storedWeightInUnit(s.weight, weightUnit) : 0,
-          })),
-        }
-      : null
+    toLastPerformance(previousSets, weightUnit),
+    (earlierSessions ?? [])
+      .map((session) => toLastPerformance(session, weightUnit))
+      .filter((p): p is LastExercisePerformance => p != null)
   );
+}
+
+/** A prior session's working sets as the engine reads them, or null. */
+function toLastPerformance(
+  previousSets: readonly ExerciseRecentSessionSet[] | undefined,
+  weightUnit: 'kg' | 'lbs'
+): LastExercisePerformance | null {
+  const workingPreviousSets = (previousSets ?? []).filter((s) => {
+    const setType = (s as ProgressionPreviousSet).set_type ?? s.setType;
+    return !isWarmupSetType(setType);
+  });
+  const firstWorking = workingPreviousSets[0];
+  if (!firstWorking) return null;
+  return {
+    // Rounded as they were typed, so the suggestion reads 95 lb rather
+    // than the 94.997… that float kg↔lb round trips add up to.
+    baseWeight: firstWorking.weight
+      ? storedWeightInUnit(firstWorking.weight, weightUnit)
+      : 0,
+    sets: workingPreviousSets.map((s, idx) => ({
+      setNumber: idx + 1,
+      reps: s.reps ?? 0,
+      weight: s.weight ? storedWeightInUnit(s.weight, weightUnit) : 0,
+    })),
+  };
 }
 
 /** The kg bump placeholders take when progression says to add weight. */
 export function progressionIncrementKgFor(
   config: LiveExerciseConfig,
-  result: ProgressionEvaluationResult | null
+  result: ProgressionEvaluationResult | null,
+  weightUnit: 'kg' | 'lbs' = 'kg'
 ): number | null {
+  if (result?.status === 'DELOAD' && result.suggestedWeightChange) {
+    return weightToKg(result.suggestedWeightChange, weightUnit);
+  }
   return result?.goalAchieved && result.status === 'PROGRESSION_WEIGHT_INCREASE'
     ? Number(config.increment_value) || 2.5
     : null;
@@ -1402,6 +1432,11 @@ export interface LiveAssumeSources {
   coachingSignals?: Record<string, ExerciseCoachingSignal | null>;
   /** Session exercise ids whose adaptive adjustment the user declined. */
   declinedAdaptive?: Record<string, true>;
+  /**
+   * The two sessions before the previous one per library `exercise_id`,
+   * newest first, for stall detection (a deload after three misses).
+   */
+  earlierSessionSets?: Record<string, ExerciseRecentSessionSet[][]>;
 }
 
 /**
@@ -1454,13 +1489,18 @@ export function resolveLiveAssumedSetValues(
           config,
           exercise.sets,
           previousSets,
-          weightUnit
+          weightUnit,
+          exercise.exercise_id != null
+            ? sources.earlierSessionSets?.[exercise.exercise_id]
+            : undefined
         );
   // Adaptive coaching (#1560) nudges the engine's output: it can cancel an
   // increase, add one step, or lighten the day. Pain never adds load.
   const adaptive = liveAdaptiveAdjustment(exercise, sources);
   const engineIncrementKg =
-    config == null ? null : progressionIncrementKgFor(config, progression);
+    config == null
+      ? null
+      : progressionIncrementKgFor(config, progression, weightUnit);
   const progressionIncrementKg = adaptive.blockIncrease
     ? null
     : adaptive.addIncrement && engineIncrementKg == null
@@ -2470,6 +2510,7 @@ export function buildPresetExercisesPayload(
         superset_group: exercise.supersetGroup ?? null,
         progression_mode: exercise.progressionMode ?? 'rep_goal',
         rep_goal: exercise.repGoal ?? null,
+        rep_range_min: exercise.repRangeMin ?? null,
         increment_type: exercise.incrementType ?? 'weight',
         increment_value: exercise.incrementValue ?? 5,
         equipment_brand: exercise.equipmentBrand ?? null,
@@ -2517,8 +2558,10 @@ interface CanonicalPresetExercise {
   image_url: string | null;
   sort_order: number;
   superset_group: number | null;
-  progression_mode?: 'rep_goal' | 'fixed' | 'step_load' | 'manual' | null;
+  progression_mode?:
+    'rep_goal' | 'fixed' | 'step_load' | 'manual' | 'double' | 'triple' | null;
   rep_goal?: number | null;
+  rep_range_min?: number | null;
   increment_type?: 'weight' | 'reps' | null;
   increment_value?: number | null;
   equipment_brand?: string | null;

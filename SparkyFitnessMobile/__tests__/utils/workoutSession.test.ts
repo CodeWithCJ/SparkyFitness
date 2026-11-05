@@ -4724,6 +4724,51 @@ describe('workoutSession', () => {
           expect(result.map((r) => r.weight)).toEqual([102.5, 102.5]);
         });
 
+        it('drops reps to the bottom of the range after double progression adds load', () => {
+          const result = resolveLiveAssumedSetValues(
+            exercise,
+            [prev(60, 12), prev(60, 12)],
+            {
+              plannedSetValues: {},
+              exerciseConfigs: {
+                'ex-1': {
+                  progression_mode: 'double',
+                  rep_goal: 12,
+                  rep_range_min: 8,
+                  increment_value: 2.5,
+                },
+              },
+              weightUnit: 'kg',
+            }
+          );
+          expect(result.map((r) => [r.weight, r.reps])).toEqual([
+            [62.5, 8],
+            [62.5, 8],
+          ]);
+        });
+
+        it('deloads after three missed sessions at the same weight', () => {
+          const missed = [prev(100, 4), prev(100, 4)];
+          const result = resolveLiveAssumedSetValues(
+            { ...exercise, exercise_id: 'lib-1' },
+            missed,
+            {
+              plannedSetValues: {},
+              exerciseConfigs: {
+                'ex-1': {
+                  progression_mode: 'fixed',
+                  rep_goal: 5,
+                  increment_type: 'weight',
+                  increment_value: 2.5,
+                },
+              },
+              earlierSessionSets: { 'lib-1': [missed, missed] },
+              weightUnit: 'kg',
+            }
+          );
+          expect(result.map((r) => r.weight)).toEqual([90, 90]);
+        });
+
         it('raises working-set reps when progression adds reps, warm-ups untouched', () => {
           const result = resolveLiveAssumedSetValues(
             {

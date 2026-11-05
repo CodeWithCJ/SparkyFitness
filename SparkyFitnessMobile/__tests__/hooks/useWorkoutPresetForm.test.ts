@@ -98,6 +98,7 @@ describe('presetFormReducer', () => {
       images: ['bench.png'],
       progressionMode: 'rep_goal',
       repGoal: null,
+      repRangeMin: null,
       incrementType: 'weight',
       incrementValue: 5,
       equipmentBrand: null,
