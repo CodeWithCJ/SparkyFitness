@@ -28,9 +28,11 @@ import {
 import { getSyncStartDate } from '../../utils/syncUtils';
 import { getDeviceTimezone } from '../../utils/dateUtils';
 import {
+  aggregateSleepSessions,
   toLocalDateString,
   mapDayStatisticsToMinMaxAvg,
 } from './dataAggregation';
+import { overnightBodyTemperatures } from './overnightBodyTemperature';
 import { BLOOD_GLUCOSE_MG_DL_PER_MMOL_L } from '../shared/dataTransformation';
 import {
   WATCH_SESSION_METADATA_KEY,
@@ -162,6 +164,7 @@ const SUPPORTED_HK_TYPES = new Set<string>([
   'HKQuantityTypeIdentifierBloodPressureSystolic',
   'HKQuantityTypeIdentifierBloodPressureDiastolic',
   'HKQuantityTypeIdentifierBodyTemperature',
+  'HKQuantityTypeIdentifierAppleSleepingWristTemperature',
   'HKQuantityTypeIdentifierBloodGlucose',
   'HKQuantityTypeIdentifierOxygenSaturation',
   'HKQuantityTypeIdentifierVO2Max',
@@ -241,6 +244,8 @@ const HEALTHKIT_UNIT_MAP: Record<string, string> = {
   Hydration: 'L',
   BodyTemperature: 'degC',
   BasalBodyTemperature: 'degC',
+  SleepingWristTemperature: 'degC',
+  OvernightBodyTemperature: 'degC',
   BloodGlucose: 'mg/dL',
   HeartRateVariabilitySDNN: 'ms',
   // Add other metrics that need explicit units as needed
@@ -260,6 +265,10 @@ export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   BloodPressureSystolic: 'HKQuantityTypeIdentifierBloodPressureSystolic',
   BloodPressureDiastolic: 'HKQuantityTypeIdentifierBloodPressureDiastolic',
   BodyTemperature: 'HKQuantityTypeIdentifierBodyTemperature',
+  SleepingWristTemperature:
+    'HKQuantityTypeIdentifierAppleSleepingWristTemperature',
+  // Body Temperature read against the person's sleep, one mean per night.
+  OvernightBodyTemperature: 'HKQuantityTypeIdentifierBodyTemperature',
   BloodGlucose: 'HKQuantityTypeIdentifierBloodGlucose',
   OxygenSaturation: 'HKQuantityTypeIdentifierOxygenSaturation',
   Vo2Max: 'HKQuantityTypeIdentifierVO2Max',
@@ -1789,6 +1798,10 @@ const QUANTITY_TRANSFORMS: Record<
   Height: (base, q) => ({ ...base, height: { inMeters: q } }),
   BodyFat: (base, q) => ({ ...base, percentage: { inPercent: q * 100 } }),
   BodyTemperature: (base, q) => ({ ...base, temperature: { inCelsius: q } }),
+  SleepingWristTemperature: (base, q) => ({
+    ...base,
+    temperature: { inCelsius: q },
+  }),
   BloodGlucose: (base, q) => ({
     ...base,
     level: { inMilligramsPerDeciliter: q },
@@ -1811,6 +1824,9 @@ const QUANTITY_TRANSFORMS: Record<
 };
 
 // Handler for standard quantity types (most common metrics)
+// Quantities that span the night and are dated by their end, the wake day.
+const END_DATED_QUANTITIES = new Set(['SleepingWristTemperature']);
+
 const createQuantityHandler = (recordType: string): RecordHandler => {
   return async (identifier, startDate, endDate) => {
     if (!SUPPORTED_HK_TYPES.has(identifier)) {
@@ -1841,8 +1857,13 @@ const createQuantityHandler = (recordType: string): RecordHandler => {
       return [];
     }
 
+    // A sample dated by its end (the wake day) is matched by its end: last night's
+    // wrist temperature starts the evening before a window that opens at midnight.
+    const matchByEnd = END_DATED_QUANTITIES.has(recordType);
     const filteredSamples = samples.filter((record) => {
-      const recordDate = new Date(record.startDate);
+      const recordDate = new Date(
+        matchByEnd ? record.endDate : record.startDate
+      );
       return isInDateRange(recordDate, startDate, endDate);
     });
 
@@ -2169,9 +2190,74 @@ const handleNutrition: RecordHandler = async (
   return [...correlationRecords, ...looseRecords];
 };
 
+// A night that began before the sync window would otherwise be read from the
+// window start only, and its mean would replace the full night's on the server.
+const OVERNIGHT_LOOKBACK_MS = 24 * 60 * 60 * 1000;
+
+// Body Temperature (a smart ring writes it through the night) as one reading per
+// night: the mean of one source's readings inside each sleep session. The stored
+// Body Temperature value is one per day, so the night is worked out here from the
+// raw readings. Emits pre-aggregated { value, date, timestamp, site } records that
+// the shared transformer passes through as the metric's `skin_temperature` type.
+const handleOvernightBodyTemperature: RecordHandler = async (
+  identifier,
+  startDate,
+  endDate,
+  telemetry
+) => {
+  const sleepRecords = await handleSleepSession(
+    HEALTHKIT_TYPE_MAP.SleepSession,
+    new Date(startDate.getTime() - OVERNIGHT_LOOKBACK_MS),
+    endDate,
+    telemetry
+  );
+  // Read from a day earlier so a night that began before the window is whole,
+  // but send only the nights that ended inside it.
+  const sessions = aggregateSleepSessions(
+    sleepRecords as Parameters<typeof aggregateSleepSessions>[0]
+  ).filter((s) => Date.parse(s.wake_time) >= startDate.getTime());
+  if (sessions.length === 0) return [];
+
+  const spanStart = new Date(
+    Math.min(...sessions.map((s) => Date.parse(s.bedtime)))
+  );
+  const spanEnd = new Date(
+    Math.max(...sessions.map((s) => Date.parse(s.wake_time)))
+  );
+  if (
+    !Number.isFinite(spanStart.getTime()) ||
+    !Number.isFinite(spanEnd.getTime())
+  ) {
+    return [];
+  }
+
+  const samples = await queryQuantitySamples(
+    identifier as Parameters<typeof queryQuantitySamples>[0],
+    {
+      ascending: false,
+      limit: 0,
+      unit: HEALTHKIT_UNIT_MAP.OvernightBodyTemperature,
+      filter: { date: { startDate: spanStart, endDate: spanEnd } },
+    }
+  );
+  if (!Array.isArray(samples)) return [];
+
+  return overnightBodyTemperatures(
+    sessions,
+    samples.map((s) => ({
+      ms: new Date(s.startDate).getTime(),
+      celsius: s.quantity,
+      source: (
+        s as { sourceRevision?: { source?: { bundleIdentifier?: string } } }
+      ).sourceRevision?.source?.bundleIdentifier,
+    }))
+  );
+};
+
 // Registry mapping record types to their handlers
 const RECORD_HANDLERS: Record<string, RecordHandler> = {
   SleepSession: handleSleepSession,
+  OvernightBodyTemperature: handleOvernightBodyTemperature,
   Stress: handleStress,
   MindfulnessSession: handleMindfulnessSession,
   IntermenstrualBleeding: handleReproductiveHealth,

@@ -377,6 +377,79 @@ describe('transformHealthRecords', () => {
     });
   });
 
+  describe('SleepingWristTemperature records', () => {
+    const config = {
+      recordType: 'SleepingWristTemperature',
+      unit: 'celsius',
+      type: 'skin_temperature',
+    };
+
+    test('keys the reading to the sample end, the wake day', () => {
+      const result = transformHealthRecords(
+        [
+          {
+            time: atLocalTime('2024-01-14', '23:30'),
+            endTime: atLocalTime('2024-01-15', '07:00'),
+            temperature: { inCelsius: 35.2 },
+          },
+        ],
+        config
+      ) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].value).toBe(35.2);
+      expect(result[0].date).toBe('2024-01-15');
+      expect(result[0].type).toBe('skin_temperature');
+      expect(result[0].timestamp).toBe(
+        new Date(atLocalTime('2024-01-15', '07:00')).toISOString()
+      );
+    });
+
+    test('tags the reading as wrist and dates it on the recorded clock', () => {
+      const result = transformHealthRecords(
+        [
+          {
+            // 05:30 UTC is still the 14th in Los Angeles.
+            time: '2024-01-14T22:00:00.000Z',
+            endTime: '2024-01-15T05:30:00.000Z',
+            temperature: { inCelsius: 35.2 },
+            metadata: { HKTimeZone: 'America/Los_Angeles' },
+          },
+        ],
+        config
+      ) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].site).toBe('wrist');
+      expect(result[0].date).toBe('2024-01-14');
+      expect(result[0].record_timezone).toBe('America/Los_Angeles');
+    });
+
+    test('falls back to the start time when there is no end', () => {
+      const result = transformHealthRecords(
+        [
+          {
+            time: atLocalTime('2024-01-15', '03:00'),
+            temperature: { inCelsius: 35.2 },
+          },
+        ],
+        config
+      ) as TransformedRecord[];
+
+      expect(result).toHaveLength(1);
+      expect(result[0].date).toBe('2024-01-15');
+    });
+
+    test('skips a record with no temperature', () => {
+      expect(
+        transformHealthRecords(
+          [{ time: atLocalTime('2024-01-15', '03:00') }],
+          config
+        )
+      ).toHaveLength(0);
+    });
+  });
+
   describe('percentage conversions (decimal to percentage)', () => {
     test('BloodAlcoholContent multiplies decimal by 100', () => {
       const records = [{ startTime: '2024-01-15T08:00:00Z', value: 0.08 }];

@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import {
   exerciseHistoryResetQueryKey,
+  skinTemperatureQueryKeyRoot,
   sleepDayQueryKeyRoot,
   sleepRangeQueryKeyRoot,
   vo2MaxRangeQueryKeyRoot,
@@ -27,6 +28,10 @@ export function refreshHealthSyncCache(queryClient: QueryClient) {
   // restart (reload) refetches /api/sleep.
   void queryClient.invalidateQueries({ queryKey: sleepDayQueryKeyRoot });
   void queryClient.invalidateQueries({ queryKey: sleepRangeQueryKeyRoot });
+  // Sleeping wrist temperature is written with the night's sleep.
+  void queryClient.invalidateQueries({
+    queryKey: skinTemperatureQueryKeyRoot,
+  });
   // The heart rate report's day timeline reads its own sleep query
   void queryClient.invalidateQueries({
     queryKey: heartRateDaySleepQueryKeyRoot,

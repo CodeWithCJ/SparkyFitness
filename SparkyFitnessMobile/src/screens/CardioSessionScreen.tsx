@@ -19,6 +19,7 @@ import {
   paceSeriesFromTrack,
   splitsFromTrack,
 } from '../utils/cardioSession';
+import { useTemperatureUnit } from '../hooks/useTemperatureUnit';
 import { bpmText, sessionStats } from '../utils/cardioSessionStats';
 import Button from '../components/ui/Button';
 import { shareRouteAsGpx } from '../services/gpxExport';
@@ -79,7 +80,8 @@ const CardioSessionScreen: React.FC<CardioSessionScreenProps> = ({
   });
 
   const detail = useCardioSessionDetail(session.id, session.entryDate);
-  const stats = sessionStats(t, session, distanceUnit);
+  const temperatureUnit = useTemperatureUnit();
+  const stats = sessionStats(t, session, distanceUnit, temperatureUnit);
   const exportGpx = async () => {
     try {
       await shareRouteAsGpx({
