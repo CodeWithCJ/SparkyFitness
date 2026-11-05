@@ -24,6 +24,7 @@ import type {
   ExerciseActivityQueryItem,
   ExercisePersonalRecordItem,
   MatchedCourseGroup,
+  StrengthSummaryResponse,
 } from '@workspace/shared';
 import {
   bodyWeightJoinSql,
@@ -1289,7 +1290,91 @@ async function getMatchedCourses(
   }
 }
 
+/**
+ * All-time strength picture: lifetime volume, the best estimated 1RM per
+ * exercise, and the latest body weight, for structural balance and lifts as
+ * a multiple of body weight. Standard sessions only, like the strength PRs.
+ */
+async function getStrengthSummary(
+  targetUserId: string
+): Promise<StrengthSummaryResponse> {
+  const client = await getClient(targetUserId);
+  try {
+    const standardSetsSql = `
+      FROM public.exercise_entry_sets s
+      JOIN public.exercise_entries e ON s.exercise_entry_id = e.id
+      ${bodyWeightJoinSql('e')}
+      LEFT JOIN public.exercise_preset_entries epe ON epe.id = e.exercise_preset_entry_id
+      WHERE e.user_id = $1 AND (${setLoadSql('e', 's')}) > 0 AND s.reps > 0
+        AND COALESCE(epe.workout_format, 'standard') = 'standard'
+        AND COALESCE(s.set_type, '') NOT ILIKE '%warm%'`;
+    const lifetimeResult = await client.query(
+      `SELECT COALESCE(SUM((${setLoadSql('e', 's')}) * s.reps), 0) AS volume_kg,
+              COUNT(*) AS sets,
+              COALESCE(SUM(s.reps), 0) AS reps,
+              COUNT(DISTINCT e.entry_date) AS sessions,
+              MIN(e.entry_date) AS first_date
+       ${standardSetsSql}`,
+      [targetUserId]
+    );
+    // One real set per exercise (see the strength PR query for why DISTINCT ON).
+    const liftsResult = await client.query(
+      `SELECT * FROM (
+         SELECT DISTINCT ON (COALESCE(e.exercise_id::text, e.exercise_name))
+           e.exercise_id,
+           e.exercise_name,
+           (${setLoadSql('e', 's')}) * (1 + s.reps / 30.0) AS estimated_one_rm,
+           (${setLoadSql('e', 's')}) AS weight_kg,
+           s.reps,
+           e.entry_date AS achieved_on
+         ${standardSetsSql}
+         ORDER BY COALESCE(e.exercise_id::text, e.exercise_name),
+           estimated_one_rm DESC, e.entry_date ASC
+       ) best
+       ORDER BY estimated_one_rm DESC
+       LIMIT 200`,
+      [targetUserId]
+    );
+    const bodyweightResult = await client.query(
+      `SELECT weight FROM public.check_in_measurements
+       WHERE user_id = $1 AND weight > 0
+       ORDER BY entry_date DESC LIMIT 1`,
+      [targetUserId]
+    );
+    const lifetime = lifetimeResult.rows[0] ?? {};
+    const toDay = (value: unknown) =>
+      value instanceof Date
+        ? toDayString(value)
+        : value !== null && value !== undefined
+          ? String(value).slice(0, 10)
+          : null;
+    return {
+      lifetime: {
+        volumeKg: Number(lifetime.volume_kg) || 0,
+        sets: Number(lifetime.sets) || 0,
+        reps: Number(lifetime.reps) || 0,
+        sessions: Number(lifetime.sessions) || 0,
+        firstDate: toDay(lifetime.first_date),
+      },
+      bodyweightKg: bodyweightResult.rows[0]
+        ? Number(bodyweightResult.rows[0].weight)
+        : null,
+      lifts: liftsResult.rows.map((row: SqlRow) => ({
+        exerciseId: row.exercise_id ? String(row.exercise_id) : null,
+        exerciseName: String(row.exercise_name || ''),
+        estimatedOneRMKg: Number(row.estimated_one_rm) || 0,
+        weightKg: Number(row.weight_kg) || 0,
+        reps: Number(row.reps) || 0,
+        achievedAt: toDay(row.achieved_on) ?? '',
+      })),
+    };
+  } finally {
+    client.release();
+  }
+}
+
 export default {
+  getStrengthSummary,
   getExerciseStatsSummary,
   queryExerciseActivities,
   getPersonalRecordMatrix,

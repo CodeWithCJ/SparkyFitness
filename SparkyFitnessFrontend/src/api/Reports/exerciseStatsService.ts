@@ -5,6 +5,7 @@ import type {
   ExercisePRMatrixResponse,
   MatchedCoursesResponse,
   ExerciseStatsInterval,
+  StrengthSummaryResponse,
 } from '@workspace/shared';
 
 export const loadExerciseStatsSummary = async (
@@ -67,6 +68,20 @@ export const loadExercisePRs = async (
   return await apiCall(`/exercise-stats/prs?${params.toString()}`, {
     method: 'GET',
   });
+};
+
+// Older servers have no strength summary: the call fails quietly and the card
+// stays hidden.
+export const loadStrengthSummary = async (
+  userId?: string
+): Promise<StrengthSummaryResponse> => {
+  const params = new URLSearchParams();
+  if (userId) params.append('userId', userId);
+  const query = params.toString();
+  return await apiCall(
+    `/exercise-stats/strength-summary${query ? `?${query}` : ''}`,
+    { method: 'GET', suppressErrorToast: true }
+  );
 };
 
 export const loadMatchedCourses = async (
