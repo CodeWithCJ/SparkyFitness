@@ -240,6 +240,25 @@ describe('FoodScanScreen', () => {
     );
   });
 
+  it.each(['action-tag', 'container-link'] as const)(
+    'keeps %s picking after a barcode lookup instead of logging',
+    async (pickerMode) => {
+      mockLookupBarcodeV2.mockResolvedValue(existingFoodResult);
+      const screen = renderScreenWithRoute({ pickerMode, returnDepth: 2 });
+
+      fireEvent(screen.getByTestId('camera-view'), 'onBarcodeScanned', {
+        data: '012345678905',
+      });
+
+      await waitFor(() =>
+        expect(mockNavigation.replace).toHaveBeenCalledWith(
+          'FoodEntryAdd',
+          expect.objectContaining({ pickerMode, returnDepth: 2 })
+        )
+      );
+    }
+  );
+
   it('does not fire a success haptic when barcode lookup finds no match', async () => {
     mockLookupBarcodeV2.mockResolvedValue({
       source: 'remote',
@@ -546,6 +565,13 @@ describe('FoodScanScreen', () => {
 
       expect(screen.getByText('Barcode')).toBeTruthy();
       expect(screen.getByText('Label')).toBeTruthy();
+      expect(screen.queryByText('Photo')).toBeNull();
+    });
+
+    it('hides the diary-only Photo segment when picking for an NFC tag', () => {
+      const screen = renderScreenWithRoute({ pickerMode: 'action-tag' });
+
+      expect(screen.getByText('Barcode')).toBeTruthy();
       expect(screen.queryByText('Photo')).toBeNull();
     });
 

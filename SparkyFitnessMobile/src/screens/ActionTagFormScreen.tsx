@@ -1,4 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import {
+  ACTION_TAG_LABEL_MAX,
+  type TagAction,
+  type TagMealChoice,
+} from '@workspace/shared';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +17,7 @@ import StatusView from '../components/StatusView';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import Switch from '../components/ui/Switch';
 import Button from '../components/ui/Button';
+import Icon from '../components/Icon';
 import {
   useCreateActionTagMutation,
   useDeleteActionTagMutation,
@@ -20,21 +27,90 @@ import {
 import { useCancelNfcOnBlur } from '../hooks/useCancelNfcOnBlur';
 import { useNfcSupport } from '../hooks/useNfcSupport';
 import { useWaterContainersQuery } from '../hooks';
+import { useMeal } from '../hooks/useMeals';
+import { useMealTypes } from '../hooks/useMealTypes';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { getApiErrorMessage } from '../services/api/errors';
+import { ApiError, getApiErrorMessage } from '../services/api/errors';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   cancelNfcRequest,
   generateTagCode,
   writeTag,
 } from '../services/nfc/nfcService';
-import { tagActionTypeLabel } from '../services/tagActions';
+import { tagActionTypeLabel, tagMealChoiceLabel } from '../services/tagActions';
+import { consumePendingActionTagSelection } from '../services/actionTagSelection';
+import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import type { RootStackScreenProps } from '../types/navigation';
 import { parseDecimalInput } from '../utils/numericInput';
 
 type ActionTagFormScreenProps = RootStackScreenProps<'ActionTagForm'>;
 
 const MAX_DRINKS = 20;
+const AUTO_MEAL = 'auto';
+
+/** The picker value for a meal choice: `auto` or the fixed meal type's id. */
+function mealChoiceValue(choice: TagMealChoice | undefined): string {
+  return choice?.mode === 'fixed' ? choice.meal_type_id : AUTO_MEAL;
+}
+
+function mealChoiceFromValue(value: string): TagMealChoice {
+  return value === AUTO_MEAL
+    ? { mode: 'auto' }
+    : { mode: 'fixed', meal_type_id: value };
+}
+
+function isPositiveAmount(text: string): boolean {
+  const amount = parseDecimalInput(text);
+  return Number.isFinite(amount) && amount > 0;
+}
+
+/**
+ * True when the server refused the action itself, not one of its fields: an
+ * older server that only knows water tags answers that way for a food or meal
+ * tag. Any other refusal, such as a name that is too long, shows its own text.
+ */
+function isUnknownActionTypeError(error: unknown): boolean {
+  if (!(error instanceof ApiError) || error.statusCode !== 400) return false;
+  try {
+    const body = JSON.parse(error.body ?? '') as {
+      details?: { action?: { _errors?: unknown[] } };
+    };
+    return (body.details?.action?._errors?.length ?? 0) > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * What the form offers: water, or one food-or-meal choice. Food and meal stay
+ * separate action types on the server, but people pick either from the same
+ * search, as when logging.
+ */
+type FormKind = 'water' | 'item';
+
+/** The food or saved meal a food-or-meal tag logs. */
+type PickedItem =
+  | { kind: 'food'; foodId: string; variantId: string; name: string | null }
+  | { kind: 'meal'; mealId: string; name: string | null };
+
+function pickedFromAction(
+  action: TagAction | undefined,
+  name: string | null
+): PickedItem | null {
+  switch (action?.type) {
+    case 'food':
+      return {
+        kind: 'food',
+        foodId: action.food_id,
+        variantId: action.variant_id,
+        name,
+      };
+    case 'meal':
+      return { kind: 'meal', mealId: action.meal_template_id, name };
+    default:
+      return null;
+  }
+}
 
 const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
   navigation,
@@ -43,7 +119,7 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const { tagId, tagCode, presetAction } = route.params ?? {};
+  const { tagId, tagCode, presetAction, presetLabel } = route.params ?? {};
   const isEditing = tagId !== undefined;
   // A link opened by a tap already carries its code, so nothing is written.
   const needsWrite = !isEditing && tagCode === undefined;
@@ -57,16 +133,37 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
     [tags, tagId]
   );
   const { containers } = useWaterContainersQuery();
+  const { mealTypes } = useMealTypes();
 
   // The code of a new sticker is minted once, so a failed save that is retried
   // writes the same code again instead of orphaning the first sticker.
   const [newCode] = useState(() => tagCode ?? generateTagCode());
 
+  const presetWater = presetAction?.type === 'water' ? presetAction : null;
+  const presetItem =
+    presetAction?.type === 'food' || presetAction?.type === 'meal'
+      ? presetAction
+      : null;
+
+  const [kind, setKind] = useState<FormKind>(presetItem ? 'item' : 'water');
   const [label, setLabel] = useState('');
   const [containerId, setContainerId] = useState<number | null>(
-    presetAction?.container_id ?? null
+    presetWater?.container_id ?? null
   );
-  const [drinks, setDrinks] = useState(String(presetAction?.drinks ?? 1));
+  const [drinks, setDrinks] = useState(String(presetWater?.drinks ?? 1));
+  // A food-or-meal tag: what it logs and how much, in that item's own unit
+  // (the food's serving unit, or servings or grams for a meal), as picked on
+  // the same amount screen logging uses.
+  const [picked, setPicked] = useState<PickedItem | null>(() =>
+    pickedFromAction(presetItem ?? undefined, presetLabel ?? null)
+  );
+  const [amount, setAmount] = useState(
+    presetItem ? String(presetItem.quantity) : ''
+  );
+  const [unit, setUnit] = useState(presetItem?.unit ?? '');
+  const [mealChoice, setMealChoice] = useState(
+    mealChoiceValue(presetItem?.meal)
+  );
   const [askFirst, setAskFirst] = useState(false);
   const [busy, setBusy] = useState(false);
   // True while the phone is waiting to touch a tag (Android shows no sheet).
@@ -79,16 +176,73 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
   if (existing && seededId !== existing.id) {
     setSeededId(existing.id);
     setLabel(existing.label);
-    setContainerId(existing.action.container_id);
-    setDrinks(String(existing.action.drinks));
     setAskFirst(existing.ask_before_running);
+    const action = existing.action;
+    switch (action.type) {
+      case 'water':
+        setKind('water');
+        setContainerId(action.container_id);
+        setDrinks(String(action.drinks));
+        break;
+      case 'food':
+      case 'meal':
+        setKind('item');
+        // A food's own name is not stored on the tag, which is named after it
+        // unless the person renamed it; a meal's name is loaded below.
+        setPicked(
+          pickedFromAction(
+            action,
+            action.type === 'food' ? existing.label : null
+          )
+        );
+        setAmount(String(action.quantity));
+        setUnit(action.unit);
+        setMealChoice(mealChoiceValue(action.meal));
+        break;
+    }
   }
 
-  // A new tag takes its name from the chosen container until the person types one.
+  const { meal: pickedMeal } = useMeal(
+    picked?.kind === 'meal' ? picked.mealId : undefined,
+    { enabled: kind === 'item' && picked?.kind === 'meal' }
+  );
+  const pickedName = picked?.name ?? pickedMeal?.name ?? null;
+
+  // A food or meal picked through the food search and its amount screen.
+  useFocusEffect(
+    useCallback(() => {
+      const selection = consumePendingActionTagSelection();
+      if (!selection) return;
+      setKind('item');
+      setPicked(
+        selection.kind === 'food'
+          ? {
+              kind: 'food',
+              foodId: selection.foodId,
+              variantId: selection.variantId,
+              name: selection.name || null,
+            }
+          : {
+              kind: 'meal',
+              mealId: selection.mealId,
+              name: selection.name || null,
+            }
+      );
+      setAmount(String(selection.quantity));
+      setUnit(selection.unit);
+    }, [])
+  );
+
+  // A new tag takes its name from what it logs until the person types one.
   const [labelEdited, setLabelEdited] = useState(false);
   const chosenContainer = containers.find((item) => item.id === containerId);
+  const targetName = kind === 'water' ? chosenContainer?.name : pickedName;
+  // Cut to the server's limit: a meal named by a photo estimate can be a
+  // whole sentence.
   const effectiveLabel =
-    labelEdited || isEditing ? label : (chosenContainer?.name ?? label);
+    labelEdited || isEditing
+      ? label
+      : (targetName ?? label).slice(0, ACTION_TAG_LABEL_MAX);
 
   const { createActionTagAsync, isPending: isCreating } =
     useCreateActionTagMutation();
@@ -107,19 +261,60 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
         defaultValue: 'Give the tag a name',
       });
     }
-    if (containerId === null) {
-      return t('actionTags.form.errors.containerRequired', {
-        defaultValue: 'Choose a water container',
+    if (kind === 'water') {
+      if (containerId === null) {
+        return t('actionTags.form.errors.containerRequired', {
+          defaultValue: 'Choose a water container',
+        });
+      }
+      const count = parseDecimalInput(drinks);
+      if (!Number.isInteger(count) || count < 1 || count > MAX_DRINKS) {
+        return t('actionTags.form.errors.drinks', {
+          defaultValue:
+            'Drinks per tap must be a whole number from 1 to {{max}}',
+          max: MAX_DRINKS,
+        });
+      }
+      return null;
+    }
+    if (!picked || !unit) {
+      return t('actionTags.form.errors.itemRequired', {
+        defaultValue: 'Choose a food or meal',
       });
     }
-    const count = parseDecimalInput(drinks);
-    if (!Number.isInteger(count) || count < 1 || count > MAX_DRINKS) {
-      return t('actionTags.form.errors.drinks', {
-        defaultValue: 'Drinks per tap must be a whole number from 1 to {{max}}',
-        max: MAX_DRINKS,
-      });
+    return isPositiveAmount(amount)
+      ? null
+      : t('actionTags.form.errors.amount', {
+          defaultValue: 'Enter an amount greater than zero',
+        });
+  };
+
+  /** The action the form describes; call only after `validate` passed. */
+  const buildAction = (): TagAction | null => {
+    if (kind === 'water') {
+      return containerId === null
+        ? null
+        : { type: 'water', container_id: containerId, drinks: Number(drinks) };
     }
-    return null;
+    if (!picked) return null;
+    const meal = mealChoiceFromValue(mealChoice);
+    const quantity = parseDecimalInput(amount);
+    return picked.kind === 'food'
+      ? {
+          type: 'food',
+          food_id: picked.foodId,
+          variant_id: picked.variantId,
+          quantity,
+          unit,
+          meal,
+        }
+      : {
+          type: 'meal',
+          meal_template_id: picked.mealId,
+          quantity,
+          unit,
+          meal,
+        };
   };
 
   /** True once the sticker holds the link; asks before replacing other data. */
@@ -200,12 +395,8 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
       showError(problem);
       return;
     }
-    if (containerId === null) return;
-    const action = {
-      type: 'water' as const,
-      container_id: containerId,
-      drinks: Number(drinks),
-    };
+    const action = buildAction();
+    if (!action) return;
     setBusy(true);
     try {
       if (isEditing && tagId) {
@@ -232,11 +423,18 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
       });
       navigation.goBack();
     } catch (error) {
+      const serverTooOld =
+        action.type !== 'water' && isUnknownActionTypeError(error);
       showError(
         t('actionTags.form.saveFailed', {
           defaultValue: 'Could not save the tag',
         }),
-        getApiErrorMessage(error) ?? undefined
+        serverTooOld
+          ? t('actionTags.form.serverTooOld', {
+              defaultValue:
+                'Your server does not support food and meal tags yet. Update the server, then try again.',
+            })
+          : (getApiErrorMessage(error) ?? undefined)
       );
     } finally {
       setBusy(false);
@@ -370,37 +568,133 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
         <Text className="text-sm font-semibold text-text-secondary mb-1.5">
           {t('actionTags.form.action', { defaultValue: 'What should it do?' })}
         </Text>
-        <BottomSheetPicker
-          value="water"
-          options={[{ label: tagActionTypeLabel(t, 'water'), value: 'water' }]}
-          onSelect={() => undefined}
+        <BottomSheetPicker<FormKind>
+          value={kind}
+          options={[
+            { label: tagActionTypeLabel(t, 'water'), value: 'water' },
+            { label: tagActionTypeLabel(t, 'food'), value: 'item' },
+          ]}
+          onSelect={setKind}
           title={t('actionTags.form.action', {
             defaultValue: 'What should it do?',
           })}
         />
 
-        <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-5">
-          {t('actionTags.form.container', { defaultValue: 'Container' })}
-        </Text>
-        <BottomSheetPicker
-          value={containerId === null ? '' : String(containerId)}
-          options={containerOptions}
-          onSelect={(value) => setContainerId(Number(value))}
-          title={t('actionTags.form.container', { defaultValue: 'Container' })}
-          placeholder={t('actionTags.form.containerPlaceholder', {
-            defaultValue: 'Choose a container',
-          })}
-        />
+        {kind === 'water' ? (
+          <>
+            <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-5">
+              {t('actionTags.form.container', { defaultValue: 'Container' })}
+            </Text>
+            <BottomSheetPicker
+              value={containerId === null ? '' : String(containerId)}
+              options={containerOptions}
+              onSelect={(value) => setContainerId(Number(value))}
+              title={t('actionTags.form.container', {
+                defaultValue: 'Container',
+              })}
+              placeholder={t('actionTags.form.containerPlaceholder', {
+                defaultValue: 'Choose a container',
+              })}
+            />
 
-        <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-5">
-          {t('actionTags.form.drinks', { defaultValue: 'Drinks per tap' })}
-        </Text>
-        <FormInput
-          value={drinks}
-          keyboardType="number-pad"
-          placeholder="1"
-          onChangeText={setDrinks}
-        />
+            <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-5">
+              {t('actionTags.form.drinks', { defaultValue: 'Drinks per tap' })}
+            </Text>
+            <FormInput
+              value={drinks}
+              keyboardType="number-pad"
+              placeholder="1"
+              onChangeText={setDrinks}
+            />
+          </>
+        ) : null}
+
+        {kind === 'item' ? (
+          <>
+            <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-5">
+              {t('actionTags.form.foodOrMeal', {
+                defaultValue: 'Food or meal',
+              })}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                navigation.navigate('FoodSearch', { pickerMode: 'action-tag' })
+              }
+              className="flex-row items-center justify-between bg-surface rounded-xl px-4 py-3 shadow-sm"
+              style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+            >
+              <View className="flex-1 flex-row items-center gap-1.5 mr-3">
+                <Text
+                  className="text-base text-text-primary flex-shrink"
+                  numberOfLines={1}
+                >
+                  {pickedName ??
+                    t('actionTags.form.foodOrMealPlaceholder', {
+                      defaultValue: 'Choose a food or meal',
+                    })}
+                </Text>
+                {picked?.kind === 'meal' ? (
+                  <View className="px-1 py-0.5 rounded border border-border-subtle flex-shrink-0">
+                    <Text className="text-text-muted text-xs">
+                      {t('foodSearch.labels.meal', { defaultValue: 'Meal' })}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+              <Icon name="chevron-forward" size={20} color="#999" />
+            </Pressable>
+
+            {picked && unit ? (
+              <>
+                <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-5">
+                  {unit === 'serving'
+                    ? t('actionTags.form.servings', {
+                        defaultValue: 'Servings per tap',
+                      })
+                    : t('actionTags.form.amountIn', {
+                        defaultValue: 'Amount per tap ({{unit}})',
+                        unit,
+                      })}
+                </Text>
+                <FormInput
+                  value={amount}
+                  keyboardType="decimal-pad"
+                  onChangeText={setAmount}
+                />
+              </>
+            ) : null}
+          </>
+        ) : null}
+
+        {kind === 'item' ? (
+          <>
+            <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-5">
+              {t('actionTags.form.mealType', { defaultValue: 'Log to' })}
+            </Text>
+            <BottomSheetPicker
+              value={mealChoice}
+              options={[
+                {
+                  label: tagMealChoiceLabel(t, { mode: 'auto' }, mealTypes),
+                  value: AUTO_MEAL,
+                },
+                ...mealTypes.map((type) => ({
+                  label: getMealTypeDisplayLabel(type, t),
+                  value: type.id,
+                })),
+              ]}
+              onSelect={setMealChoice}
+              title={t('actionTags.form.mealType', { defaultValue: 'Log to' })}
+            />
+            <Text className="text-text-secondary text-sm mt-2">
+              {t('actionTags.form.mealTypeHint', {
+                defaultValue:
+                  'By time of day uses each meal type’s usual time, as quick logging does.',
+              })}
+            </Text>
+          </>
+        ) : null}
 
         <Text className="text-sm font-semibold text-text-secondary mb-1.5 mt-5">
           {t('actionTags.form.name', { defaultValue: 'Name' })}
@@ -410,6 +704,7 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
           placeholder={t('actionTags.form.namePlaceholder', {
             defaultValue: 'e.g. Desk bottle',
           })}
+          maxLength={ACTION_TAG_LABEL_MAX}
           onChangeText={(value) => {
             setLabelEdited(true);
             setLabel(value);

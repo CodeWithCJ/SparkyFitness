@@ -40,6 +40,8 @@ import {
   setPendingMealPlanSelection,
 } from '../services/mealPlanSelection';
 import { setPendingContainerLinkSelection } from '../services/waterContainerLinkSelection';
+import { setPendingActionTagSelection } from '../services/actionTagSelection';
+import { isFoodSelectionMode } from '../utils/foodPickerMode';
 import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { addDays, getTodayDate, getDeviceTimezone } from '../utils/dateUtils';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
@@ -214,11 +216,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const pickerMode = route.params?.pickerMode ?? 'log-entry';
   const returnDepth = route.params?.returnDepth ?? 1;
   const ingredientIndex = route.params?.ingredientIndex;
-  const isMealBuilderMode = pickerMode === 'meal-builder';
   const isMealPlanMode = pickerMode === 'meal-plan';
   const isContainerLinkMode = pickerMode === 'container-link';
-  const isSelectionMode =
-    isMealBuilderMode || isMealPlanMode || isContainerLinkMode;
+  const isActionTagMode = pickerMode === 'action-tag';
+  const isSelectionMode = isFoodSelectionMode(pickerMode);
   const mealPlanTarget = route.params?.mealPlanTarget;
   const [selectedDate, setSelectedDateState] = useState(
     initialDate ?? useDiaryDateStore.getState().selectedDate
@@ -1068,6 +1069,21 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     });
 
   const finishFoodSelection = (ingredient: MealIngredientDraft) => {
+    if (isActionTagMode) {
+      if (ingredient.food_id && ingredient.variant_id) {
+        // The amount picked here is what one tap of the tag logs.
+        setPendingActionTagSelection({
+          kind: 'food',
+          foodId: ingredient.food_id,
+          variantId: ingredient.variant_id,
+          name: ingredient.food_name ?? '',
+          quantity: ingredient.quantity,
+          unit: ingredient.unit,
+        });
+      }
+      navigation.dispatch(StackActions.pop(returnDepth));
+      return;
+    }
     if (isContainerLinkMode) {
       if (ingredient.food_id && ingredient.variant_id) {
         setPendingContainerLinkSelection({
@@ -1235,6 +1251,20 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         return;
       }
       case 'meal':
+        if (isActionTagMode) {
+          // The same quantity and unit a logged meal sends
+          // (buildFoodEntryMealPayload), so a tag logs servings or grams of
+          // the saved meal exactly as logging it by hand does.
+          setPendingActionTagSelection({
+            kind: 'meal',
+            mealId: activeItem.id,
+            name: adjustedValues?.name || activeItem.name,
+            quantity,
+            unit: displayValues.servingUnit,
+          });
+          navigation.dispatch(StackActions.pop(returnDepth));
+          return;
+        }
         if (isMealPlanMode && mealPlanTarget) {
           setPendingMealPlanSelection({
             ...(mealPlanTarget.assignmentIndex === undefined

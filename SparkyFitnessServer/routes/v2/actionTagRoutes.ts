@@ -15,7 +15,10 @@ import {
   listActionTags,
   updateActionTag,
 } from '../../models/actionTagRepository.js';
-import { scanActionTag } from '../../services/actionTagService.js';
+import {
+  actionTargetExists,
+  scanActionTag,
+} from '../../services/actionTagService.js';
 
 const router = express.Router();
 
@@ -35,6 +38,9 @@ router.use(
 const idParamSchema = z.uuid();
 
 const PG_UNIQUE_VIOLATION = '23505';
+
+const TARGET_MISSING_ERROR =
+  'The food, meal or water container this tag points at was not found';
 
 function isUniqueViolation(error: unknown): boolean {
   return (
@@ -144,13 +150,13 @@ router.post('/scan', async (req, res, next) => {
  *               label: {type: string, minLength: 1, maxLength: 120}
  *               action:
  *                 type: object
- *                 description: Discriminated on `type`; `water` takes container_id and drinks
+ *                 description: "Discriminated on `type`. `water` takes container_id and drinks; `food` takes food_id, variant_id, quantity, unit and meal; `meal` takes meal_template_id, quantity, unit and meal. The `meal` field is mode auto (time of day) or mode fixed with a meal_type_id."
  *               ask_before_running: {type: boolean}
  *     responses:
  *       201:
  *         description: The saved tag
  *       400:
- *         description: Invalid request body
+ *         description: Invalid request body, or the food, meal or container does not exist
  *       403:
  *         description: Not the owner of these tags
  *       409:
@@ -166,6 +172,9 @@ router.post('/', async (req, res, next) => {
         error: 'Invalid request body',
         details: parsed.error.format(),
       });
+    }
+    if (!(await actionTargetExists(req.userId, parsed.data.action))) {
+      return res.status(400).json({ error: TARGET_MISSING_ERROR });
     }
     const created = await createActionTag(
       req.userId,
@@ -232,6 +241,12 @@ router.patch('/:id', async (req, res, next) => {
     const id = idParamSchema.safeParse(req.params.id);
     if (!id.success) {
       return res.status(404).json({ error: 'Tag not found' });
+    }
+    if (
+      parsed.data.action &&
+      !(await actionTargetExists(req.userId, parsed.data.action))
+    ) {
+      return res.status(400).json({ error: TARGET_MISSING_ERROR });
     }
     const updated = await updateActionTag(
       req.userId,

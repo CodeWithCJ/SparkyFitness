@@ -21,15 +21,28 @@ pnpm ios
 pnpm start
 ```
 
-### Advanced iOS Runs
+### Run on a phone
+
+Each shortcut asks which connected phone (or simulator/emulator) to use.
 
 ```bash
-# Run on a physical iOS device
-npx expo run:ios --device
+# Debug build: loads JavaScript from Metro (fast refresh, dev menu).
+# The phone must reach your Mac by cable or the same Wi-Fi.
+pnpm ios:device
+pnpm android:device
 
-# Run release configuration on a physical iOS device
-npx expo run:ios --configuration Release --device
+# Release build: JavaScript is bundled into the app, runs without Metro,
+# behaves like the store version.
+pnpm ios:release
+pnpm android:release
+
+# Same Release build, but regenerates the native project first.
+# Use after changing native config (app.config.ts, plugins, .env flags such as ENABLE_NFC_LINKS).
+pnpm ios:release:clean
+pnpm android:release:clean
 ```
+
+Dev builds install as **DevSparkyFitness**, next to the store app. Tapping an NFC tag opens a dev build only when it is built with `ENABLE_NFC_LINKS=1` in `.env` and signed with a paid Apple team; otherwise use **Settings → NFC tags → Scan a tag**.
 
 ### Production Build
 
@@ -41,10 +54,11 @@ APP_VARIANT=production eas build -p ios --profile production --auto-submit
 
 ```bash
 open ios/SparkyFitness.xcworkspace
+```
 
+### Troubleshooting
 
-###Troubleshooting
-
+```bash
 # 1. Clean the cached build folders again
 rm -rf ios/build ios/Pods
 

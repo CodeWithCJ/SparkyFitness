@@ -52,6 +52,9 @@ import {
   applyDisplayValuesToFoodInfo,
 } from '../utils/foodDetails';
 import type { RootStackScreenProps } from '../types/navigation';
+import AddNfcTagRow from '../components/AddNfcTagRow';
+import { useActionTagsQuery } from '../hooks/useActionTags';
+import { useNfcSupport } from '../hooks/useNfcSupport';
 
 type FoodDetailScreenProps = RootStackScreenProps<'FoodDetail'>;
 
@@ -100,6 +103,15 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
     food.userId &&
     profile?.id === food.userId
   );
+
+  // NFC tags that log this food (#941), offered for a saved food on a phone
+  // with NFC.
+  const { supported: nfcSupported } = useNfcSupport();
+  const canAddNfcTag = isLocalFood && isConnected && nfcSupported;
+  const { tags: actionTags } = useActionTagsQuery({ enabled: canAddNfcTag });
+  const tagsForFood = actionTags.filter(
+    (tag) => tag.action.type === 'food' && tag.action.food_id === food.id
+  ).length;
 
   const queryClient = useQueryClient();
   const isPublic = !!food.sharedWithPublic;
@@ -555,6 +567,38 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
             {t('foodDetail.logFood', { defaultValue: 'Log Food' })}
           </Text>
         </Button>
+
+        {canAddNfcTag && (selectedVariantId ?? food.variantId) ? (
+          <AddNfcTagRow
+            className=""
+            onPress={() =>
+              navigation.navigate('ActionTagForm', {
+                presetAction: {
+                  type: 'food',
+                  food_id: food.id,
+                  variant_id: (selectedVariantId ?? food.variantId) as string,
+                  quantity: displayValues.servingSize,
+                  unit: displayValues.servingUnit,
+                  meal: { mode: 'auto' },
+                },
+                presetLabel: food.name,
+              })
+            }
+            subtitle={
+              tagsForFood > 0
+                ? t('actionTags.food.count', {
+                    count: tagsForFood,
+                    formattedCount: String(tagsForFood),
+                    defaultValue: '{{formattedCount}} tags log this food',
+                    defaultValue_one: '{{formattedCount}} tag logs this food',
+                    defaultValue_other: '{{formattedCount}} tags log this food',
+                  })
+                : t('actionTags.food.hint', {
+                    defaultValue: 'Tap a sticker to log this food',
+                  })
+            }
+          />
+        ) : null}
 
         {canManageFood && (
           <Button

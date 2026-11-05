@@ -16,6 +16,10 @@ import {
 import { useNfcSupport } from '../../src/hooks/useNfcSupport';
 import { useWaterContainersQuery } from '../../src/hooks';
 import { writeTag } from '../../src/services/nfc/nfcService';
+import { useFocusEffect } from '@react-navigation/native';
+import { useMeal } from '../../src/hooks/useMeals';
+import { setPendingActionTagSelection } from '../../src/services/actionTagSelection';
+import { useMealTypes } from '../../src/hooks/useMealTypes';
 import { initializeI18n } from '../../src/localization/i18n';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
@@ -29,6 +33,8 @@ jest.mock('../../src/hooks/useNfcSupport', () => ({
   useNfcSupport: jest.fn(),
 }));
 jest.mock('../../src/hooks', () => ({ useWaterContainersQuery: jest.fn() }));
+jest.mock('../../src/hooks/useMealTypes', () => ({ useMealTypes: jest.fn() }));
+jest.mock('../../src/hooks/useMeals', () => ({ useMeal: jest.fn() }));
 jest.mock('../../src/services/nfc/nfcService', () => ({
   generateTagCode: () => '0123456789abcdef0123456789abcdef',
   writeTag: jest.fn(),
@@ -80,6 +86,23 @@ beforeEach(() => {
     isError: false,
     refetch: jest.fn(),
   } as unknown as ReturnType<typeof useWaterContainersQuery>);
+  jest.mocked(useMealTypes).mockReturnValue({
+    mealTypes: [
+      { id: 'snacks-id', name: 'snacks', user_id: null, sort_order: 4 },
+    ],
+    defaultMealTypeId: null,
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: jest.fn(),
+  } as unknown as ReturnType<typeof useMealTypes>);
+  jest.mocked(useMeal).mockReturnValue({
+    meal: { id: 'meal-1', name: 'Overnight oats' },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  } as unknown as ReturnType<typeof useMeal>);
+  jest.mocked(useFocusEffect).mockImplementation(() => undefined);
   jest.mocked(useActionTagsQuery).mockReturnValue({
     tags: [],
     isLoading: false,
@@ -161,6 +184,170 @@ describe('ActionTagFormScreen', () => {
     expect(createTag).toHaveBeenCalledWith(
       expect.objectContaining({ tag_code: 'f'.repeat(32) })
     );
+  });
+
+  it('saves a food tag with the amount and meal from the food screen', async () => {
+    renderForm({
+      tagCode: 'f'.repeat(32),
+      presetAction: {
+        type: 'food',
+        food_id: 'food-1',
+        variant_id: 'variant-1',
+        quantity: 170,
+        unit: 'g',
+        meal: { mode: 'auto' },
+      },
+      presetLabel: 'Greek yogurt',
+    });
+    expect(screen.getByText('Greek yogurt')).toBeTruthy();
+    fireEvent.changeText(screen.getByDisplayValue('170'), '200');
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() => expect(createTag).toHaveBeenCalled());
+    expect(createTag).toHaveBeenCalledWith({
+      tag_code: 'f'.repeat(32),
+      label: 'Greek yogurt',
+      action: {
+        type: 'food',
+        food_id: 'food-1',
+        variant_id: 'variant-1',
+        quantity: 200,
+        unit: 'g',
+        meal: { mode: 'auto' },
+      },
+      ask_before_running: false,
+    });
+  });
+
+  it('saves a meal tag named after the meal, logging to a fixed meal type', async () => {
+    renderForm({
+      tagCode: 'f'.repeat(32),
+      presetAction: {
+        type: 'meal',
+        meal_template_id: 'meal-1',
+        quantity: 1,
+        unit: 'serving',
+        meal: { mode: 'fixed', meal_type_id: 'snacks-id' },
+      },
+    });
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() => expect(createTag).toHaveBeenCalled());
+    expect(createTag).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: 'Overnight oats',
+        action: {
+          type: 'meal',
+          meal_template_id: 'meal-1',
+          quantity: 1,
+          unit: 'serving',
+          meal: { mode: 'fixed', meal_type_id: 'snacks-id' },
+        },
+      })
+    );
+  });
+
+  it('saves the gram-based meal picked on the logging amount screen', async () => {
+    // The food search and its amount screen hand the pick back on focus.
+    jest
+      .mocked(useFocusEffect)
+      .mockImplementation((effect) => React.useEffect(effect, [effect]));
+    setPendingActionTagSelection({
+      kind: 'meal',
+      mealId: 'meal-1',
+      name: 'Creamy chicken pasta',
+      quantity: 50,
+      unit: 'g',
+    });
+    renderForm({ tagCode: 'f'.repeat(32) });
+    expect(screen.getByText('Creamy chicken pasta')).toBeTruthy();
+    expect(screen.getByText('Meal')).toBeTruthy();
+    expect(screen.getByDisplayValue('50')).toBeTruthy();
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() => expect(createTag).toHaveBeenCalled());
+    expect(createTag).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: 'Creamy chicken pasta',
+        action: {
+          type: 'meal',
+          meal_template_id: 'meal-1',
+          quantity: 50,
+          unit: 'g',
+          meal: { mode: 'auto' },
+        },
+      })
+    );
+  });
+
+  it('saves a food picked from the search', async () => {
+    jest
+      .mocked(useFocusEffect)
+      .mockImplementation((effect) => React.useEffect(effect, [effect]));
+    setPendingActionTagSelection({
+      kind: 'food',
+      foodId: 'food-2',
+      variantId: 'variant-2',
+      name: 'Banana',
+      quantity: 1,
+      unit: 'piece',
+    });
+    renderForm({ tagCode: 'f'.repeat(32) });
+    expect(screen.queryByText('Meal')).toBeNull();
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() => expect(createTag).toHaveBeenCalled());
+    expect(createTag).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: 'Banana',
+        action: {
+          type: 'food',
+          food_id: 'food-2',
+          variant_id: 'variant-2',
+          quantity: 1,
+          unit: 'piece',
+          meal: { mode: 'auto' },
+        },
+      })
+    );
+  });
+
+  it('names a new tag after a long meal name, cut to the server limit', async () => {
+    jest.mocked(useMeal).mockReturnValue({
+      meal: { id: 'meal-1', name: 'A'.repeat(200) },
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useMeal>);
+    renderForm({
+      tagCode: 'f'.repeat(32),
+      presetAction: {
+        type: 'meal',
+        meal_template_id: 'meal-1',
+        quantity: 1,
+        unit: 'serving',
+        meal: { mode: 'auto' },
+      },
+    });
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() => expect(createTag).toHaveBeenCalled());
+    expect(createTag).toHaveBeenCalledWith(
+      expect.objectContaining({ label: 'A'.repeat(120) })
+    );
+  });
+
+  it('refuses a food tag with no amount', async () => {
+    renderForm({
+      tagCode: 'f'.repeat(32),
+      presetAction: {
+        type: 'food',
+        food_id: 'food-1',
+        variant_id: 'variant-1',
+        quantity: 170,
+        unit: 'g',
+        meal: { mode: 'auto' },
+      },
+      presetLabel: 'Greek yogurt',
+    });
+    fireEvent.changeText(screen.getByDisplayValue('170'), '0');
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() => expect(createTag).not.toHaveBeenCalled());
   });
 
   it('refuses an invalid number of drinks', async () => {
