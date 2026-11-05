@@ -1,5 +1,9 @@
 import { apiCall } from '@/api/api';
 import type { WorkoutPlanTemplate } from '@/types/workout';
+import type {
+  StarterWorkoutPlanCreateRequest,
+  StarterWorkoutPlanKey,
+} from '@workspace/shared';
 
 export const getWorkoutPlanTemplates = async (): Promise<
   WorkoutPlanTemplate[]
@@ -49,4 +53,14 @@ export const getActiveWorkoutPlans = async (
   if (Array.isArray(data)) return data;
   if (data) return [data];
   return [];
+};
+
+export const createStarterWorkoutPlan = async (
+  key: StarterWorkoutPlanKey,
+  body: StarterWorkoutPlanCreateRequest
+): Promise<WorkoutPlanTemplate> => {
+  return apiCall(`/workout-plan-templates/starter/${key}`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 };

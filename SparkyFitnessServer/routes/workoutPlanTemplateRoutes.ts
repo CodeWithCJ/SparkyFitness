@@ -1,7 +1,75 @@
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import workoutPlanTemplateService from '../services/workoutPlanTemplateService.js';
+import starterWorkoutPlanService from '../services/starterWorkoutPlanService.js';
+import {
+  starterWorkoutPlanCreateRequestSchema,
+  starterWorkoutPlanKeySchema,
+} from '@workspace/shared';
 const router = express.Router();
+/**
+ * @swagger
+ * /workout-plan-templates/starter:
+ *   get:
+ *     summary: List the built-in starter plans
+ *     tags: [Fitness & Workouts]
+ *     description: Keys, session keys (rotation order) and exercise counts of the built-in starter plans. Apps show translated names for them.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: The starter plans.
+ *       401:
+ *         description: Unauthorized.
+ */
+router.get('/starter', authenticate, (_req, res) => {
+  res.status(200).json(starterWorkoutPlanService.listStarterWorkoutPlans());
+});
+/**
+ * @swagger
+ * /workout-plan-templates/starter/{key}:
+ *   post:
+ *     summary: Copy a starter plan into the user's account
+ *     tags: [Fitness & Workouts]
+ *     description: Imports the plan's exercises, creates one editable preset per session and an active sequential (rotation) plan over them. Optional plan_name and session_names (by session key) carry the user's language.
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [full_body, upper_lower, push_pull_legs, five_by_five]
+ *     responses:
+ *       201:
+ *         description: The new workout plan template.
+ *       400:
+ *         description: Unknown plan or invalid body.
+ *       401:
+ *         description: Unauthorized.
+ */
+router.post('/starter/:key', authenticate, async (req, res, next) => {
+  const key = starterWorkoutPlanKeySchema.safeParse(req.params.key);
+  const body = starterWorkoutPlanCreateRequestSchema.safeParse(req.body ?? {});
+  if (!key.success || !body.success) {
+    res.status(400).json({
+      error: 'Invalid starter plan request.',
+      details: key.success ? body.error?.flatten() : key.error.flatten(),
+    });
+    return;
+  }
+  try {
+    const plan = await starterWorkoutPlanService.createStarterWorkoutPlan(
+      req.userId,
+      key.data,
+      body.data
+    );
+    res.status(201).json(plan);
+  } catch (error) {
+    next(error);
+  }
+});
 /**
  * @swagger
  * /workout-plan-templates:

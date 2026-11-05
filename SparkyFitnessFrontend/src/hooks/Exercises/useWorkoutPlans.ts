@@ -7,7 +7,13 @@ import {
   createWorkoutPlanTemplate,
   updateWorkoutPlanTemplate,
   deleteWorkoutPlanTemplate,
+  createStarterWorkoutPlan,
 } from '@/api/Exercises/workoutPlanTemplates';
+import { exerciseKeys, presetKeys } from '@/api/keys/exercises';
+import type {
+  StarterWorkoutPlanCreateRequest,
+  StarterWorkoutPlanKey,
+} from '@workspace/shared';
 import type { WorkoutPlanTemplate } from '@/types/workout';
 
 export const workoutPlanKeys = {
@@ -155,6 +161,36 @@ export const useDeleteWorkoutPlanTemplateMutation = () => {
       errorMessage: t(
         'workoutPlansManager.deleteError',
         'Failed to delete workout plan.'
+      ),
+    },
+  });
+};
+
+/** Copy a built-in starter plan: new library exercises, presets and a plan. */
+export const useCreateStarterWorkoutPlanMutation = () => {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  return useMutation({
+    mutationFn: ({
+      key,
+      body,
+    }: {
+      key: StarterWorkoutPlanKey;
+      body: StarterWorkoutPlanCreateRequest;
+    }) => createStarterWorkoutPlan(key, body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: workoutPlanKeys.all });
+      queryClient.invalidateQueries({ queryKey: presetKeys.all });
+      queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
+    },
+    meta: {
+      successMessage: t(
+        'workoutPlansManager.starterPlans.added',
+        'Starter plan added. Its workouts are in your presets.'
+      ),
+      errorMessage: t(
+        'workoutPlansManager.starterPlans.addFailed',
+        'Could not add the starter plan.'
       ),
     },
   });
