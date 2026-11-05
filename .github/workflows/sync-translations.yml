@@ -335,10 +335,19 @@ jobs:
           ENGLISH_PR: ${{ steps.english_pr.outputs.pull-request-url }}
           ENGLISH_OP: ${{ steps.english_pr.outputs.pull-request-operation }}
           ENGLISH_NOTE: ${{ steps.english_merge.outputs.note }}
+          WEBLATE_OUTCOME: ${{ steps.weblate_pr.outcome }}
+          ENGLISH_OUTCOME: ${{ steps.english_pr.outcome }}
         run: |
+          # A step that failed or was skipped sets no operation, so say that
+          # instead of "unchanged", which would read like a clean run.
+          state() {
+            if [ -n "$1" ]; then echo "$1"
+            elif [ "$2" = "success" ]; then echo "unchanged"
+            else echo "step ${2:-not run}"; fi
+          }
           {
             echo "### Sync Translations"
             echo "- SparkyFitnessTranslations commit: ${SHA:-unknown}"
-            echo "- Translations PR here: ${WEBLATE_PR:-none} (${WEBLATE_OP:-unchanged})"
-            echo "- English PR there: ${ENGLISH_PR:-none} (${ENGLISH_OP:-unchanged})${ENGLISH_NOTE:+, $ENGLISH_NOTE}"
+            echo "- Translations PR here: ${WEBLATE_PR:-none} ($(state "$WEBLATE_OP" "$WEBLATE_OUTCOME"))"
+            echo "- English PR there: ${ENGLISH_PR:-none} ($(state "$ENGLISH_OP" "$ENGLISH_OUTCOME"))${ENGLISH_NOTE:+, $ENGLISH_NOTE}"
           } >> "$GITHUB_STEP_SUMMARY"

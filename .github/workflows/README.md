@@ -96,7 +96,7 @@ Nothing ships until a maintainer fills in the Key Highlights and publishes the d
 **Release order**: the tag is created on the release PR's merge commit, and the workflows that build the release (Docker images, Android APK, release assets, Helm chart, docs) check out that tag. Anything merged after the release PR misses the release, even if the draft is published later. Before merging it:
 
 1. In Weblate, commit the pending translations (repository maintenance), so the last day of work reaches SparkyFitnessTranslations.
-2. Run **Sync Translations** from `main` (it also runs every night), wait for it to finish, and merge its `chore(i18n): sync translations from Weblate` PR. A failure on the English PR does not block this step.
+2. Run **Sync Translations** from `main` (it also runs every night), wait for it to finish, and merge its `chore(i18n): sync translations from Weblate` PR. If the run fails before its summary links that PR, fix the cause and run it again. A failure on the English PR does not block this step.
 3. Wait for CI and Release Please on `main` to finish.
 4. Merge the release PR and wait for its Release Please run to finish, because it rewrites the draft's body. Then add the Key Highlights and publish the draft.
 
