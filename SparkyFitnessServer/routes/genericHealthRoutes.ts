@@ -196,6 +196,15 @@ const getHealthMetricSamplesHandler: RequestHandler = async (
  *                     source_bundle_id:
  *                       type: string
  *                       description: Optional source application identifier for blood_glucose.
+ *             oneOf:
+ *               - properties:
+ *                   metric: { enum: [blood_glucose] }
+ *                   samples:
+ *                     items:
+ *                       required: [t, mmol_l]
+ *               - properties:
+ *                   metric:
+ *                     enum: [heart_rate, hrv, respiration, spo2, stress, body_battery, skin_temperature]
  *     responses:
  *       200:
  *         description: Samples stored; returns days and samples written.
