@@ -2,6 +2,7 @@ import { get, type Server } from 'node:http';
 import express, {
   type ErrorRequestHandler,
   type RequestHandler,
+  type Response,
 } from 'express';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import foodCoreService from '../services/foodCoreService.js';
@@ -20,10 +21,12 @@ const { default: foodRoutes } =
     default: express.Router;
   };
 const errors: unknown[] = [];
+let waitBeforeLookup: ((response: Response) => Promise<void>) | undefined;
 const app = express();
-app.use((req, _res, next) => {
+app.use(async (req, res, next) => {
   req.userId = 'profile';
   req.authenticatedUserId = 'actor';
+  await waitBeforeLookup?.(res);
   next();
 });
 app.use('/v2/foods', foodRoutes);
@@ -40,6 +43,7 @@ describe('barcode request cancellation', () => {
   beforeEach(async () => {
     lookup.mockReset();
     errors.length = 0;
+    waitBeforeLookup = undefined;
     await new Promise<void>((resolve) => {
       server = app.listen(0, '127.0.0.1', () => resolve());
     });
@@ -78,6 +82,37 @@ describe('barcode request cancellation', () => {
     } finally {
       client.destroy();
       finish({ source: 'not_found', food: null });
+    }
+  });
+
+  it('starts with an aborted signal if the client left during upstream middleware', async () => {
+    let resume!: () => void;
+    const middlewareEntered = new Promise<Response>((resolve) => {
+      waitBeforeLookup = (response) => {
+        resolve(response);
+        return new Promise<void>((release) => {
+          resume = release;
+        });
+      };
+    });
+    lookup.mockResolvedValueOnce({ source: 'not_found', food: null });
+    const client = get(url);
+    client.on('error', () => {});
+    try {
+      const response = await middlewareEntered;
+      const disconnected = new Promise<void>((resolve) => {
+        response.once('close', resolve);
+      });
+      client.destroy();
+      await disconnected;
+      expect(response.destroyed).toBe(true);
+      resume();
+      await vi.waitFor(() => expect(lookup).toHaveBeenCalledTimes(1));
+      expect(lookup.mock.calls[0]?.[4]?.signal?.aborted).toBe(true);
+      expect(errors).toEqual([]);
+    } finally {
+      client.destroy();
+      resume?.();
     }
   });
 

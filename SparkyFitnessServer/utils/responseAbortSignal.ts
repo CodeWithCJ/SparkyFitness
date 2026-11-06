@@ -10,6 +10,8 @@ export function createResponseAbortSignal(response: ServerResponse): {
     if (!response.writableFinished) controller.abort();
   };
   response.once('close', abort);
+  // Upstream middleware may finish after the client has already left.
+  if (response.destroyed) abort();
 
   return {
     signal: controller.signal,
