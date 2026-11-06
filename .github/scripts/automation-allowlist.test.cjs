@@ -2,7 +2,13 @@ const assert = require('node:assert/strict');
 const { execFileSync } = require('node:child_process');
 const { resolve } = require('node:path');
 const { test } = require('node:test');
-const { allowedFor, outsideAllowlist } = require('./automation-allowlist.cjs');
+const {
+  allowedFor,
+  outsideAllowlist,
+  valuesWithAttributes,
+  addedLinesWithAttributes,
+} = require('./automation-allowlist.cjs');
+const { readFileSync } = require('node:fs');
 
 const root = resolve(__dirname, '../..');
 const tracked = (...specs) =>
@@ -59,29 +65,53 @@ test('code, workflows, nested and non-catalogue files are rejected', () => {
     outsideAllowlist('i18n/sync-weblate-translations', bad),
     bad
   );
-  assert.deepEqual(outsideAllowlist('nix/update-pnpm-hashes', bad), bad);
 });
 
-test('nix/ branches allow only nix/*.nix', () => {
+test('nix/ branches are not auto-merged: their workflow merges its own PR', () => {
+  assert.equal(allowedFor('nix/update-pnpm-hashes'), null);
   assert.deepEqual(
-    outsideAllowlist('nix/update-pnpm-hashes', [
-      'nix/backend.nix',
-      'nix/frontend.nix',
-    ]),
-    []
+    outsideAllowlist('nix/update-pnpm-hashes', ['nix/backend.nix']),
+    ['nix/backend.nix']
   );
-  assert.deepEqual(
-    outsideAllowlist('nix/update-pnpm-hashes', [
-      'SparkyFitnessFrontend/public/locales/de/translation.json',
-    ]),
-    ['SparkyFitnessFrontend/public/locales/de/translation.json']
+});
+
+test('no catalogue in the repo puts attributes in a tag', () => {
+  const json = catalogues.filter((p) => p.endsWith('.json'));
+  const found = json.flatMap((p) =>
+    valuesWithAttributes(readFileSync(resolve(root, p), 'utf8')).map(
+      (k) => `${p}: ${k}`
+    )
   );
+  assert.deepEqual(found, []);
+});
+
+test('values may carry tags but not attributes', () => {
+  const catalogue = JSON.stringify({
+    plain: 'Open <0>settings</0> and <strong>save</strong>',
+    nested: { link: 'Read <0 href="https://example.com">this</0>' },
+    target: '<1 target=_blank rel="opener">x</1>',
+  });
+  assert.deepEqual(valuesWithAttributes(catalogue), ['nested.link', 'target']);
+});
+
+test('diff check flags only added lines with attributes in a tag', () => {
+  const patch = [
+    '--- a/x.json',
+    '+++ b/x.json',
+    '-  "old": "<0 href=\\"a\\">gone</0>",',
+    '+  "ok": "<0>fine</0>",',
+    '+  "bad": "<0 href=\\"https://evil.example\\">x</0>"',
+  ].join('\n');
+  assert.equal(addedLinesWithAttributes(patch).length, 1);
+  assert.match(addedLinesWithAttributes(patch)[0], /evil/);
 });
 
 test('other branches have no allowlist, so every path is outside it', () => {
   assert.equal(allowedFor('feat/anything'), null);
   assert.deepEqual(
-    outsideAllowlist('umbrel/update-app-package', ['nix/backend.nix']),
-    ['nix/backend.nix']
+    outsideAllowlist('umbrel/update-app-package', [
+      'umbrel/sparkyfitness/umbrel-app.yml',
+    ]),
+    ['umbrel/sparkyfitness/umbrel-app.yml']
   );
 });

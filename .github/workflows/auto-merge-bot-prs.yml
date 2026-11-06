@@ -1,7 +1,7 @@
 name: Auto-Merge Bot PRs
 
-# Merges the translations and Nix PRs that automation opens, once their checks
-# pass. It merges with the SparkyFitness-Sync GitHub App token: main's ruleset
+# Merges the translations PR that automation opens, once its checks pass. The
+# Nix hashes and schema backup PRs merge themselves in their own workflows. It merges with the SparkyFitness-Sync GitHub App token: main's ruleset
 # requires a review, and the app is on its bypass list, while GITHUB_TOKEN is not.
 # Nothing here checks out or runs code from the PR.
 
@@ -38,11 +38,11 @@ jobs:
         github.event_name == 'workflow_dispatch' ||
         (github.event_name == 'pull_request_target' &&
           github.event.pull_request.head.repo.full_name == github.repository &&
-          (startsWith(github.event.pull_request.head.ref, 'i18n/') || startsWith(github.event.pull_request.head.ref, 'nix/'))) ||
+          startsWith(github.event.pull_request.head.ref, 'i18n/')) ||
         (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' &&
-          (startsWith(github.event.workflow_run.head_branch, 'i18n/') || startsWith(github.event.workflow_run.head_branch, 'nix/'))) ||
+          startsWith(github.event.workflow_run.head_branch, 'i18n/')) ||
         (github.event_name == 'check_suite' &&
-          (startsWith(github.event.check_suite.head_branch, 'i18n/') || startsWith(github.event.check_suite.head_branch, 'nix/')))
+          startsWith(github.event.check_suite.head_branch, 'i18n/'))
       )
     # The app secrets live in this environment, which only main can use, so a
     # workflow pushed on another branch cannot read them.
@@ -82,10 +82,10 @@ jobs:
             // Allowed branch prefixes for safe auto-merging. Pushing one of these
             // branches here needs write access; a label alone is not enough, because
             // anyone with triage access can add one and this token skips review.
-            const ALLOWED_BRANCH_PREFIXES = ['i18n/', 'nix/'];
+            const ALLOWED_BRANCH_PREFIXES = ['i18n/'];
 
             // Files each automation branch may change, shared with sync-translations.yml.
-            const { outsideAllowlist } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/automation-allowlist.cjs`);
+            const { outsideAllowlist, addedLinesWithAttributes } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/automation-allowlist.cjs`);
 
             // Helper: determine if a PR is an allowed automated PR
             function isEligible(pr) {
@@ -169,7 +169,7 @@ jobs:
 
               const headRef = pr.head?.ref || '';
               if (!isEligible(pr)) {
-                core.info(`PR #${pr.number} (${headRef}) is not an eligible translation/nix automation PR.`);
+                core.info(`PR #${pr.number} (${headRef}) is not an eligible translation automation PR.`);
                 continue;
               }
 
@@ -222,6 +222,22 @@ jobs:
                 core.warning(
                   `PR #${pr.number} changes files outside its allowlist (${outside.slice(0, 5).join(', ')}). ` +
                   'Skipping auto-merge; a maintainer must review it.'
+                );
+                continue;
+              }
+
+              // Paths are not enough: <Trans> lets attributes in a value override
+              // a link's href, target and rel. Check every line the PR adds. GitHub
+              // leaves out the patch of a very large diff, so a missing patch is
+              // treated as a finding, not a pass.
+              const unsafe = files.filter(f =>
+                f.filename.endsWith('.json') && f.status !== 'removed' &&
+                (!f.patch || addedLinesWithAttributes(f.patch).length > 0)
+              );
+              if (unsafe.length > 0) {
+                core.warning(
+                  `PR #${pr.number} adds values with attributes in a tag, or a diff too large to check ` +
+                  `(${unsafe.slice(0, 5).map(f => f.filename).join(', ')}). Skipping auto-merge; a maintainer must review it.`
                 );
                 continue;
               }
