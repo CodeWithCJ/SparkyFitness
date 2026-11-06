@@ -145,7 +145,12 @@ Config lives in `release-please-config.json`; the current version in `.release-p
 
 #### GHCR publishing
 
-The images (`sparkyfitness-frontend`, `-server`, `-garmin`) and the chart (`charts/sparkyfitness`) are pushed with `GHCR_TOKEN`, a classic personal access token with only the `write:packages` scope, held in the `release` environment. No workflow asks for `packages: write`, but that alone does not stop a workflow pushed on another branch from asking for it. **Required setup**: in each package's settings, under **Manage Actions access**, untick **Inherit access from source repository** if it is shown and give this repository no write role. Only then can `GITHUB_TOKEN` not push a package. Check it again after adding a package.
+The images (`sparkyfitness-frontend`, `-server`, `-garmin`) and the chart (`charts/sparkyfitness`) are pushed with `GHCR_TOKEN`, a classic personal access token with only the `write:packages` scope, held in the `release` environment. No workflow asks for `packages: write`, but that alone does not stop a workflow pushed on another branch from asking for it. **Required setup**, on each package's **Package settings** page (`sparkyfitness-frontend`, `-server`, `-garmin`, `-mcp`, `charts/sparkyfitness`):
+
+- **Manage Actions access**: set this repository's role to **Read**, or remove it. Only then can `GITHUB_TOKEN` not push the package.
+- **Inherited access**: untick **Inherit access from source repository**. While it is ticked, everyone with write access to this repository, including collaborators, can push the package directly with their own token, with no workflow or approval. Unticking it copies those people into **Manage access** with their roles, so then **Remove** each of them there; the list should end up empty, since the owning account needs no entry.
+
+Check both again after adding a package: a new package starts with inherited access unless the account's default package setting has it unticked.
 
 Create the token at <https://github.com/settings/tokens/new?scopes=write:packages> (that link leaves `repo` unticked; ticking `write:packages` by hand ticks `repo` too, which this token must not have). Rotate it before it expires, or the next release's pushes fail at the GHCR login.
 
