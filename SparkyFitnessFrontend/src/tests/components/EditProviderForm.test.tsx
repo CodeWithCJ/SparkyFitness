@@ -63,6 +63,54 @@ const Harness = ({ isAdminMode }: { isAdminMode: boolean }) => {
   );
 };
 
+describe('EditProviderForm Garmin service reachability', () => {
+  const garmin = (
+    reachable: boolean | null | undefined
+  ): ExternalDataProvider => ({
+    id: 'garmin-1',
+    provider_name: 'Garmin',
+    provider_type: 'garmin',
+    app_id: null,
+    app_key: null,
+    is_active: true,
+    base_url: null,
+    visibility: 'private',
+    garmin_connect_status: 'linked',
+    garmin_service_reachable: reachable,
+  });
+
+  const renderGarmin = (reachable: boolean | null | undefined) =>
+    renderWithClient(
+      <EditProviderForm
+        provider={garmin(reachable)}
+        editData={garmin(reachable)}
+        setEditData={jest.fn()}
+        onSubmit={jest.fn()}
+        onCancel={jest.fn()}
+        loading={false}
+      />
+    );
+
+  it('keeps the linked notice and adds a red notice when the service is unreachable', () => {
+    renderGarmin(false);
+
+    expect(screen.getByText('Connected to Garmin')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Garmin service unreachable'
+    );
+  });
+
+  it.each([true, null, undefined])(
+    'shows no red notice when reachability is %s',
+    (reachable) => {
+      renderGarmin(reachable);
+
+      expect(screen.getByText('Connected to Garmin')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    }
+  );
+});
+
 describe('EditProviderForm Open Food Facts credentials', () => {
   it.each([false, true])(
     'keeps contribution consent out of the provider form (admin mode: %s)',

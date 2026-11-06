@@ -1542,12 +1542,31 @@ const options = {
         GarminStatus: {
           type: 'object',
           properties: {
-            is_connected: { type: 'boolean' },
-            last_sync_at: {
+            isLinked: { type: 'boolean' },
+            lastUpdated: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              description:
+                'When the provider row last changed. Kept for older clients; use lastSyncAt.',
+            },
+            lastSyncAt: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              description: 'Last completed sync; null if it never synced.',
+            },
+            tokenExpiresAt: {
               type: 'string',
               format: 'date-time',
               nullable: true,
             },
+            serviceReachable: {
+              type: 'boolean',
+              description:
+                'Whether the Garmin microservice answered; only sent while Garmin is linked.',
+            },
+            message: { type: 'string' },
           },
         },
         WithingsStatus: {
