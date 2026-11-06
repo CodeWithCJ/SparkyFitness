@@ -208,7 +208,7 @@ When searching, ignore noisy/generated directories unless you explicitly need th
 - Better Auth caches a schema mismatch for the life of the process, so `utils/authSchemaWatch.ts` stops the server (graceful drain, exit 1) once one has lasted a minute and the restart policy starts a fresh process that checks again
 - To learn a table's current shape, read `../shared/src/schemas/database/<Table>.zod.ts` (one small Zod file per table) instead of reading `../db_schema_backup.sql` or reconstructing it from the 185 migration files
 - New migrations belong in `db/migrations/` and must use `YYYYMMDDHHMMSS_description.sql`
-- **Never manually edit `../db_schema_backup.sql`** — after merge, CI regenerates it from the migrations and opens an automated sync PR (`.github/workflows/schema-backup.yml`). Do not commit copies generated from a local database.
+- **Never manually edit `../db_schema_backup.sql`** — after merge, CI regenerates it from the migrations and opens a sync PR that merges itself (`.github/workflows/schema-backup.yml`). Do not commit copies generated from a local database.
 - If you add a new table or change user-visible access behavior, follow `../agent-docs/new-migration-checklist.md`. In short, you MUST:
   1. Add/modify the RLS policies in `db/rls_policies.sql`.
   2. Update the user-facing documentation in `../docs/src/features/family-friends-sharing.md`.

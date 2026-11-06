@@ -568,6 +568,9 @@ const EnhancedFoodSearch = ({
   // --- Local meals: searched alongside foods, guarded against stale resolves ---
 
   const mealSearchSeq = useRef(0);
+  // The results area, found by ref rather than by class name: its scroll
+  // classes only apply from a certain viewport height (see the JSX below).
+  const resultsRef = useRef<HTMLDivElement>(null);
   const handleMealSearch = useCallback(
     async (term: string) => {
       const seq = ++mealSearchSeq.current;
@@ -1308,8 +1311,11 @@ const EnhancedFoodSearch = ({
       />
     );
 
+  // Inside the food search dialog (foodSearchDialogLayout): from 37.5rem of
+  // viewport height the root and the results area may shrink, so only the
+  // results scroll; below it nothing shrinks and the dialog scrolls instead.
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col space-y-4 [@media(min-height:37.5rem)]:min-h-0">
       <div className="flex flex-col sm:flex-row flex-wrap gap-2">
         <Button
           onClick={() => setShowAddFoodDialog(true)}
@@ -1413,7 +1419,11 @@ const EnhancedFoodSearch = ({
         )}
       </div>
 
-      <div className="space-y-2 max-h-96 overflow-y-auto">
+      <div
+        ref={resultsRef}
+        data-testid="food-search-results"
+        className="space-y-2 [@media(min-height:37.5rem)]:min-h-0 [@media(min-height:37.5rem)]:overflow-y-auto"
+      >
         {/* Landing: recent + top foods and meals (local mode, empty query) */}
         {showLocalFoods && isSearchEmpty && !scannedBarcode && (
           <>
@@ -1727,15 +1737,22 @@ const EnhancedFoodSearch = ({
                             {count > r.items.length && (
                               <button
                                 type="button"
-                                onClick={(e) => {
+                                onClick={() => {
                                   setExternalResults([]);
                                   setManualProviderId(r.provider.id);
                                   // Switching to the single-provider view reuses
-                                  // the same scroll container; reset it to the top
+                                  // the same scroll position; reset it to the top
                                   // so the user isn't left stranded at the bottom.
-                                  const container =
-                                    e.currentTarget.closest('.overflow-y-auto');
-                                  if (container) container.scrollTop = 0;
+                                  // The results area scrolls on tall windows, the
+                                  // dialog on short ones: reset both (a no-op on
+                                  // whichever is not scrolling).
+                                  const results = resultsRef.current;
+                                  if (results) {
+                                    results.scrollTop = 0;
+                                    const dialog =
+                                      results.closest('[role="dialog"]');
+                                    if (dialog) dialog.scrollTop = 0;
+                                  }
                                 }}
                                 className="text-sm font-medium text-primary px-1 py-2"
                               >

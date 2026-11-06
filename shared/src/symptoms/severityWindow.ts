@@ -12,6 +12,32 @@ export interface SeverityWindowInput {
   impact_timeline?: readonly { at: string; impact: SymptomImpact }[];
 }
 
+/** The fields of a symptom entry its effect on the day is read from. */
+export type ImpactPointsInput = Pick<
+  SeverityWindowInput,
+  'started_at' | 'logged_at' | 'impact' | 'impact_timeline'
+>;
+
+/**
+ * The effect on the day over an entry, oldest first, shared by the severity
+ * charts and the symptom report. A server without impact_timeline still sends
+ * the current impact, which counts from the start, the same way a lone severity
+ * is drawn. Sorted by time: an effect changed through an edit is appended with
+ * the current time, which can come before a reading recorded for later. A time
+ * Date cannot parse keeps its place instead of breaking the sort.
+ */
+export function episodeImpactPoints(
+  entry: ImpactPointsInput
+): { at: string; impact: SymptomImpact }[] {
+  if (entry.impact_timeline && entry.impact_timeline.length > 0) {
+    return [...entry.impact_timeline].sort(
+      (a, b) => Date.parse(a.at) - Date.parse(b.at) || 0
+    );
+  }
+  if (entry.impact == null) return [];
+  return [{ at: entry.started_at ?? entry.logged_at, impact: entry.impact }];
+}
+
 /** One section of the effect-on-the-day band, in milliseconds since the epoch. */
 export interface ImpactSection {
   at: string;
@@ -61,17 +87,7 @@ export function severityChartWindow(
         : [];
   if (points.length === 0) return null;
 
-  // A server without impact_timeline still sends the current impact; show it
-  // from the start, the same way a lone severity is drawn. Sorted by time: an
-  // effect changed through an edit is appended with the current time, which
-  // can come before a reading recorded for later.
-  const impactPoints = (
-    entry.impact_timeline && entry.impact_timeline.length > 0
-      ? [...entry.impact_timeline]
-      : entry.impact != null
-        ? [{ at: startIso, impact: entry.impact }]
-        : []
-  ).sort((a, b) => time(a.at) - time(b.at));
+  const impactPoints = episodeImpactPoints(entry);
 
   const start = time(startIso);
   const lastReading = Math.max(...points.map((p) => time(p.at)));

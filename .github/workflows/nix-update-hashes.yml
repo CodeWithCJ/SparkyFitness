@@ -5,6 +5,14 @@ name: Update Nix pnpm Hashes
 # workflow recomputes them with nix/update-hashes.sh and opens a PR if anything
 # changed. Nix is a community-maintained, untested integration, so this only
 # runs when the lockfile actually moves.
+#
+# The PR merges itself: its content is computed here from main, so a review
+# adds nothing. The job that runs the Nix installer and the update script has
+# read-only access and hands the two files over as an artifact. A second job
+# opens the PR and merges it with the SparkyFitness-Sync app token, which can
+# merge past main's review rule, and runs nothing but pinned actions. Opening
+# the PR with the app token rather than GITHUB_TOKEN lets the repository keep
+# "Allow GitHub Actions to create and approve pull requests" off.
 
 on:
   push:
@@ -15,29 +23,88 @@ on:
       - ".github/workflows/nix-update-hashes.yml"
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
+# Each job asks for what it needs; the PR job uses the app token instead.
+permissions: {}
+
+# The PR job force-pushes and merges the same branch, so runs never overlap.
+concurrency:
+  group: nix-update-hashes
+  cancel-in-progress: false
 
 jobs:
   update-hashes:
     name: Recompute pnpm deps hashes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        # Pinned: it runs before the files are taken, and the PR merges itself.
+        uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
 
       - name: Run hash update script
         run: nix/update-hashes.sh
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+      # Only the files the update script rewrites. The PR job commits nothing
+      # else, and the merge checks the PR changes nothing else.
+      - name: Upload the hashes
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          name: nix-hashes
+          path: |
+            nix/backend.nix
+            nix/frontend.nix
+          if-no-files-found: error
+          retention-days: 1
+
+  pr:
+    name: Open and merge the hashes PR
+    needs: update-hashes
+    if: github.ref == 'refs/heads/main'
+    # The app secrets live in this environment, which only main can use.
+    environment: sync-app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # create-pull-request authenticates through its token input.
+          persist-credentials: false
+
+      - name: Download the hashes
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: nix-hashes
+          path: nix
+
+      - name: Create SparkyFitness-Sync token
+        id: app_token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          # The app's Client ID is not secret, so it lives here, not in a secret.
+          client-id: Iv23lizuGhwaizMxrvDT
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          # Only what opening, checking and merging the PR needs.
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Create Pull Request
+        id: pr
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6.1.0
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+          # Only the two hash files. This PR merges past main's review rule.
+          add-paths: |
+            nix/backend.nix
+            nix/frontend.nix
           commit-message: "chore(nix): update pnpm deps hashes"
           branch: nix/update-pnpm-hashes
           delete-branch: true
@@ -48,7 +115,20 @@ jobs:
 
             It reruns `nix/update-hashes.sh` to recompute the vendored pnpm dependency hashes in `nix/backend.nix` and `nix/frontend.nix` so the Nix packages keep building.
 
+            The workflow merges this pull request right after opening it. If it is still open, the merge failed: merge it by hand.
+
             > [!NOTE]
-            > The Nix integration is a community contribution and is not tested by the maintainers. Review before merging.
+            > The Nix integration is a community contribution and is not tested by the maintainers.
           labels: |
             nix
+
+      # "closed" means the hashes already match main and the PR was closed.
+      - name: Merge
+        if: steps.pr.outputs.pull-request-number != '' && steps.pr.outputs.pull-request-operation != 'closed'
+        uses: ./.github/actions/merge-automation-pr
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+          repository: ${{ github.repository }}
+          pull-request: ${{ steps.pr.outputs.pull-request-number }}
+          head-sha: ${{ steps.pr.outputs.pull-request-head-sha }}
+          allowed-files: '^nix/(backend|frontend)\.nix$'
