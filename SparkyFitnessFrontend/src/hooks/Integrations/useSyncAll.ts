@@ -78,16 +78,18 @@ export const useSyncAllMutation = () => {
               await handleManualSync();
               break;
             case 'garmin': {
+              let warning: ReturnType<typeof garminSyncWarning> = null;
               try {
-                garminWarning = garminSyncWarning(
-                  await handleManualSyncGarmin(),
-                  t
-                );
+                warning = garminSyncWarning(await handleManualSyncGarmin(), t);
               } finally {
                 // Success, partial failure or error: the status may have moved.
                 invalidateGarminStatus();
               }
-              if (garminWarning) continue;
+              // A later clean sync must not clear an earlier warning.
+              if (warning) {
+                garminWarning = warning;
+                continue;
+              }
               break;
             }
             case 'hevy':

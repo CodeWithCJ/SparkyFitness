@@ -43,4 +43,25 @@ describe('checkGarminMicroserviceHealth', () => {
 
     await expect(checkGarminMicroserviceHealth()).resolves.toBe(false);
   });
+
+  it('shares one request between concurrent checks', async () => {
+    let answer!: (value: unknown) => void;
+    get.mockReturnValue(new Promise((resolve) => (answer = resolve)));
+
+    const first = checkGarminMicroserviceHealth();
+    const second = checkGarminMicroserviceHealth();
+    answer({ status: 200 });
+
+    await expect(Promise.all([first, second])).resolves.toEqual([true, true]);
+    expect(get).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks again once the previous check has finished', async () => {
+    get.mockRejectedValueOnce(new AxiosError('', 'ECONNREFUSED'));
+    await expect(checkGarminMicroserviceHealth()).resolves.toBe(false);
+
+    get.mockResolvedValueOnce({ status: 200 });
+    await expect(checkGarminMicroserviceHealth()).resolves.toBe(true);
+    expect(get).toHaveBeenCalledTimes(2);
+  });
 });

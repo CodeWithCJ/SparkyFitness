@@ -205,6 +205,34 @@ describe('useSyncAllMutation with Garmin', () => {
     expectGarminStatusInvalidated(invalidate);
   });
 
+  it('keeps an earlier Garmin warning when a later Garmin sync is clean', async () => {
+    mockSync
+      .mockResolvedValueOnce(syncResult({ failedPhases: ['nutrition'] }))
+      .mockResolvedValueOnce(syncResult({}));
+    const { Wrapper } = setup();
+    const { result } = renderHook(() => useSyncAllMutation(), {
+      wrapper: Wrapper,
+    });
+
+    await act(() =>
+      result.current.mutateAsync([
+        garmin,
+        { ...garmin, id: 'garmin-2' } as DataProvider,
+      ])
+    );
+
+    expect(mockToast).toHaveBeenCalledTimes(2);
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Garmin sync incomplete' })
+    );
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Success',
+        description: 'Successfully synchronized 1 provider(s).',
+      })
+    );
+  });
+
   it('refreshes the Garmin status when its sync request fails', async () => {
     mockSync.mockRejectedValueOnce(new Error('network down'));
 

@@ -7,6 +7,7 @@ interface GarminSyncWarning {
   variant?: 'destructive';
 }
 
+/** The translated name of a sync phase; an unknown phase keeps its server name. */
 const phaseLabel = (phase: string, t: TFunction): string => {
   switch (phase) {
     case 'health':

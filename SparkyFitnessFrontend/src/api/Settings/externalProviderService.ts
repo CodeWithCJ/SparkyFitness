@@ -587,10 +587,7 @@ export interface GarminStatusResponse {
   isLinked: boolean;
   /** When the provider row last changed; use lastSyncAt for the last sync. */
   lastUpdated: string;
-  /**
-   * Last completed sync; null if the account never synced. Older servers do
-   * not send it, so fall back to lastUpdated when it is missing.
-   */
+  /** Last completed sync; null if the account never synced. */
   lastSyncAt?: string | null;
   tokenExpiresAt: string;
   /** Whether the Garmin microservice answered; only sent while linked. */
@@ -729,11 +726,7 @@ export const getEnrichedProviders = async (): Promise<
             enriched.garmin_connect_status = status.isLinked
               ? 'linked'
               : 'disconnected';
-            // null means never synced; undefined means an older server.
-            enriched.garmin_last_status_check =
-              status.lastSyncAt === undefined
-                ? status.lastUpdated
-                : status.lastSyncAt;
+            enriched.garmin_last_status_check = status.lastSyncAt ?? null;
             enriched.garmin_service_reachable = status.serviceReachable ?? null;
             enriched.garmin_token_expires = status.tokenExpiresAt;
             enriched.has_token = status.isLinked;

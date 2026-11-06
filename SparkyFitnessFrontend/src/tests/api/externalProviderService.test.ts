@@ -232,9 +232,9 @@ describe('getEnrichedProviders Garmin last sync', () => {
     expect(garmin.garmin_last_status_check).toBeNull();
   });
 
-  it('falls back to lastUpdated when an older server sends no lastSyncAt', async () => {
+  it('ignores lastUpdated when the server sends no lastSyncAt', async () => {
     const garmin = await enrichGarmin({});
 
-    expect(garmin.garmin_last_status_check).toBe(lastUpdated);
+    expect(garmin.garmin_last_status_check).toBeNull();
   });
 });
