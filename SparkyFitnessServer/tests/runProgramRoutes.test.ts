@@ -163,6 +163,39 @@ describe('run program routes', () => {
     );
   });
 
+  it('completes a workout of a custom program, whose id is custom:<uuid>', async () => {
+    const customId = 'custom:764a3bd5-2a01-4e0b-af30-6ecf44e48715';
+    vi.mocked(completeRunProgramWorkout).mockResolvedValue(program);
+    vi.mocked(getRunProgram).mockResolvedValue(program);
+    const res = await request(app)
+      .post('/api/v2/run-program/complete')
+      .send({ index: 1, program_id: customId, day: '2026-11-06' });
+    expect(res.status).toBe(200);
+    expect(completeRunProgramWorkout).toHaveBeenLastCalledWith(
+      'test-user-id',
+      1,
+      'test-user-id',
+      { programId: customId, day: '2026-11-06', entryId: undefined }
+    );
+  });
+
+  it('rates a workout of a custom program, whose id is custom:<uuid>', async () => {
+    const customId = 'custom:764a3bd5-2a01-4e0b-af30-6ecf44e48715';
+    vi.mocked(rateRunProgramWorkout).mockResolvedValue(program);
+    vi.mocked(getRunProgram).mockResolvedValue(program);
+    const res = await request(app)
+      .post('/api/v2/run-program/effort')
+      .send({ index: 1, rating: 7, program_id: customId });
+    expect(res.status).toBe(200);
+    expect(rateRunProgramWorkout).toHaveBeenLastCalledWith(
+      'test-user-id',
+      1,
+      7,
+      'test-user-id',
+      customId
+    );
+  });
+
   it('records which diary entry a workout was done as', async () => {
     vi.mocked(completeRunProgramWorkout).mockResolvedValue(program);
     vi.mocked(getRunProgram).mockResolvedValue(program);
