@@ -2038,6 +2038,34 @@ describe('openFoodFactsService', () => {
       expect(household!.fat).toBe(metric!.fat);
     });
 
+    it('does not add a household variant when auto-scale keeps the 100 g basis', () => {
+      // With auto-scale off the metric variant is 100 g, not the 28 g that
+      // "2 cookies" weigh, so reusing its values would log 100 g as 2 cookies.
+      const result = mapOpenFoodFactsProduct(milanoProduct, {
+        autoScale: false,
+      });
+
+      expect(result.variants).toBeUndefined();
+      expect(result.default_variant.serving_size).toBe(100);
+      expect(result.default_variant.calories).toBe(500);
+    });
+
+    it('keeps the household variant with auto-scale off when it is the 100 g serving', () => {
+      // #3402: "1 portion (100 g)" is the 100 g reference either way.
+      const product = {
+        ...milanoProduct,
+        serving_size: '1 portion (100 g)',
+        serving_quantity: 100,
+      };
+      const result = mapOpenFoodFactsProduct(product, { autoScale: false });
+      const household = result.variants?.find(
+        (v) => v.serving_unit === 'serving'
+      );
+
+      expect(household).toMatchObject({ serving_size: 1, calories: 500 });
+      expect(result.default_variant.serving_size).toBe(100);
+    });
+
     it('does not add a variants array for a plain metric serving_size', () => {
       const product = { ...milanoProduct, serving_size: '28 g' };
       const result = mapOpenFoodFactsProduct(product);

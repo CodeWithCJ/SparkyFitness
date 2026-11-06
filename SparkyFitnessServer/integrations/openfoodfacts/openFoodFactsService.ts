@@ -1365,12 +1365,14 @@ function mapOpenFoodFactsProduct(
   // If OFF states an equivalent household serving (e.g. "2 cookies (28 g)"),
   // surface it as a second, non-default variant so users can log by piece,
   // reusing the metric variant's values (same physical serving, no rescaling).
-  // Only valid when declaredServingQuantity was actually declared — otherwise
-  // metricVariant is still on the unscaled 100g basis, and reusing it would
-  // mislabel those numbers under the household unit. Skip it in that case.
+  // Only valid when metricVariant is that declared serving — with no
+  // serving_quantity, or with auto-scale off, it stays on the 100g basis, and
+  // reusing it would mislabel those numbers under the household unit (100 g
+  // logged as "2 cookies"). Skip it in that case.
   const household = parseOffHouseholdServing(product.serving_size);
   const householdVariant =
     declaredServingQuantity !== null &&
+    metricVariant.serving_size === declaredServingQuantity &&
     household.size !== null &&
     household.unit !== null &&
     !(
