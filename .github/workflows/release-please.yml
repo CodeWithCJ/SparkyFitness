@@ -16,6 +16,12 @@ name: Release Please
 # tag until published and release-please needs it to find the previous release.
 # Nothing may therefore build on a `v*` tag push: android.yml runs on
 # `release: published` for that reason.
+#
+# Because the tag lands on the release PR's merge commit and every release build
+# checks it out, merge the open translations PR (sync-translations.yml) before
+# the release PR. Translations merged after it miss the release, even if the
+# draft is published later. The pull-request-header in release-please-config.json
+# puts these steps at the top of the release PR.
 
 on:
   push:

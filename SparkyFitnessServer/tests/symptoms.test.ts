@@ -763,6 +763,53 @@ describe('Symptom Repository', () => {
     expect(update).toContain('WHEN $5::text IS NULL THEN impact');
   });
 
+  it('createSymptomEntry stores timeline times the way PostgreSQL reads them', async () => {
+    mockClient.query.mockImplementation(async (sql: string) =>
+      sql.includes('INSERT INTO symptom_entries')
+        ? { rows: [entryRow()] }
+        : { rows: [] }
+    );
+    await symptomRepository.createSymptomEntry('testUser', {
+      symptom_name_snapshot: 'Migraine',
+      started_at: '20270625',
+      severity_timeline: [{ at: '20270625', severity: 5 }],
+      impact_timeline: [{ at: '20270625', impact: 'moderate' }],
+    });
+    const insert = mockClient.query.mock.calls.find((c: unknown[]) =>
+      (c[0] as string).includes('INSERT INTO symptom_entries')
+    ) as [string, unknown[]];
+    // Both timelines go through the same timestamptz read as an appended point.
+    expect(
+      insert[0].match(/to_jsonb\(\(p->>'at'\)::timestamptz\)/g)
+    ).toHaveLength(2);
+    expect(insert[0]).not.toContain('::timeline');
+    expect(insert[1]).toContain(
+      JSON.stringify([{ at: '20270625', severity: 5 }])
+    );
+  });
+
+  it('updateSymptomEntry stores timeline times the way PostgreSQL reads them', async () => {
+    mockClient.query.mockImplementation(async (sql: string) =>
+      sql.includes('UPDATE symptom_entries')
+        ? { rows: [entryRow()] }
+        : { rows: [] }
+    );
+    await symptomRepository.updateSymptomEntry('testUser', UID, {
+      impact_timeline: [{ at: '2026-06-25 08:00', impact: 'mild' }],
+    });
+    const update = mockClient.query.mock.calls.find((c: unknown[]) =>
+      (c[0] as string).includes('UPDATE symptom_entries')
+    ) as [string, unknown[]];
+    expect(update[0]).toContain(
+      "impact_timeline = (SELECT COALESCE(jsonb_agg(jsonb_set(p, '{at}', to_jsonb((p->>'at')::timestamptz))"
+    );
+    // Points keep the order they were given in, so the last point stays the
+    // reading this update writes to the scalar columns.
+    expect(update[0]).toMatch(
+      /to_jsonb\(\(p->>'at'\)::timestamptz\)\)\s+ORDER BY n\)/
+    );
+  });
+
   it('appendSymptomSeverity passes no impact when the caller sends none', async () => {
     mockClient.query.mockImplementation(async (sql: string) =>
       sql.includes('UPDATE symptom_entries')

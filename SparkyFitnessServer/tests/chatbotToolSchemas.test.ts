@@ -344,6 +344,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'default_weight_unit',
         'default_measurement_unit',
         'default_distance_unit',
+        'default_temperature_unit',
         'water_display_unit',
       ],
       actions: [

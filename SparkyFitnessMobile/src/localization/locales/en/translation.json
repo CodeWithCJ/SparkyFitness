@@ -482,7 +482,8 @@
     "setDetail": {
       "addNote": "Add a note for this set…",
       "notesForSet": "Notes for set {{setNumber}}",
-      "notes": "Set notes"
+      "notes": "Set notes",
+      "deleteSet": "Delete set"
     },
     "setRow": {
       "changeType": "Change type for set {{setNumber}}",
@@ -535,6 +536,43 @@
       "setOf": "Set {{number}} of {{total}}",
       "warmupOf": "Warm-up {{number}} of {{total}}",
       "then": "Then {{name}}"
+    },
+    "focus": {
+      "media": {
+        "minimize": "Minimize",
+        "minimizeLabel": "Minimize {{name}} image",
+        "expandLabel": "Expand {{name}} image",
+        "expandHint": "Long press to open full screen",
+        "pause": "Pause",
+        "play": "Play",
+        "pauseLabel": "Pause {{name}} animation",
+        "playLabel": "Play {{name}} animation",
+        "openFullScreen": "View {{name}} image full screen",
+        "openFullScreenHint": "Opens the image so you can zoom in"
+      },
+      "sets": {
+        "weightHeader": "Weight ({{unit}})",
+        "weightInput": "Weight for set {{setNumber}}",
+        "repsInput": "Reps for set {{setNumber}}",
+        "effortInput": "{{metric}} for set {{setNumber}}",
+        "increaseWeight": "Increase weight for set {{setNumber}}",
+        "decreaseWeight": "Decrease weight for set {{setNumber}}",
+        "increaseReps": "Increase reps for set {{setNumber}}",
+        "decreaseReps": "Decrease reps for set {{setNumber}}"
+      },
+      "chips": {
+        "label": "Exercise {{number}} of {{total}}, {{name}}, {{status}}",
+        "done": "done",
+        "inProgress": "in progress",
+        "todo": "not started"
+      },
+      "plan": "Plan: {{sets}} × {{reps}}",
+      "lastTime": "Last time: {{sets}}",
+      "previous": "Previous",
+      "next": "Next",
+      "previousLabel": "Previous exercise, {{name}}",
+      "nextLabel": "Next exercise, {{name}}",
+      "backToCurrent": "Back to current"
     }
   },
   "addSheet": {
@@ -756,6 +794,8 @@
     "bloodGlucose": "Blood Glucose",
     "bodyFat": "Body Fat",
     "bodyTemperature": "Body Temperature",
+    "sleepingWristTemperature": "Sleeping Wrist Temperature",
+    "overnightBodyTemperature": "Overnight Body Temperature",
     "distance": "Distance",
     "exerciseSession": "Exercise Session",
     "floorsClimbed": "Floors Climbed",
@@ -1336,7 +1376,16 @@
     "warmupCalculator": "Warm-up calculator",
     "warmupCalculatorSubtitle": "The ramp, and the weights it rounds to, for warm-up sets you add to an exercise.",
     "nowCard": "Now card",
-    "nowCardSubtitle": "Pin the set to do now above the exercise list: its target in large type, the exercise photo, what comes next, and Swap to do another exercise first."
+    "nowCardSubtitle": "Pin the set to do now above the exercise list: its target in large type, the exercise photo, what comes next, and Swap to do another exercise first.",
+    "workoutView": "Workout view",
+    "workoutViewSubtitle": "List shows every exercise in one scrolling list; Focus shows one exercise at a time with a large photo card.",
+    "workoutViewGuidedSubtitle": "Guided workouts always use the list. Focus applies when guided mode is off.",
+    "workoutViewList": "List",
+    "workoutViewFocus": "Focus",
+    "focusMedia": "Exercise photo",
+    "focusMediaSubtitle": "Open the focus view with the large photo card or a small thumbnail. You can change it during the workout.",
+    "focusMediaLarge": "Large",
+    "focusMediaSmall": "Small"
   },
   "restPeriod": {
     "title": "Rest period",
@@ -4029,7 +4078,9 @@
       "selectFoodInstead": "Select a food instead of another meal.",
       "savedFoodUnitFailed": "Saved food, but not the new unit",
       "savedFoodUnitFailedDetails": "You can still add the food, then try saving that unit again.",
-      "chooseDifferentServing": "Choose a different serving."
+      "chooseDifferentServing": "Choose a different serving.",
+      "tagNeedsSavedServing": "Choose one of this food's servings",
+      "tagNeedsSavedServingDetails": "A tag logs a saved serving each time, so a serving changed here cannot be used."
     },
     "actions": {
       "adjustNutrition": "Adjust nutrition",
@@ -6065,7 +6116,10 @@
       "errors": {
         "labelRequired": "Give the tag a name",
         "containerRequired": "Choose a water container",
-        "drinks": "Drinks per tap must be a whole number from 1 to {{max}}"
+        "drinks": "Drinks per tap must be a whole number from 1 to {{max}}",
+        "amount": "Enter an amount greater than zero",
+        "itemRequired": "Choose a food or meal",
+        "invalid": "Check the amount and the name, then try again. Nothing was written to the tag."
       },
       "holdToWrite": "Hold your phone to the NFC tag",
       "written": "Tag is ready",
@@ -6093,7 +6147,14 @@
       "askFirstHint": "Shows a Log or Cancel prompt on every tap instead of logging at once.",
       "writeHint": "When you save, hold your phone to the tag to write it. On metal, such as a steel bottle, use an on-metal tag.",
       "writeAgain": "Write to a tag again",
-      "delete": "Remove this tag"
+      "delete": "Remove this tag",
+      "serverTooOld": "Your server does not support food and meal tags yet. Update the server, then try again.",
+      "amountIn": "Amount per tap ({{unit}})",
+      "servings": "Servings per tap",
+      "mealType": "Log to",
+      "mealTypeHint": "By time of day uses each meal type’s usual time, as quick logging does.",
+      "foodOrMeal": "Food or meal",
+      "foodOrMealPlaceholder": "Choose a food or meal"
     },
     "unsupportedTitle": "This phone cannot use NFC tags",
     "unsupportedSubtitle": "NFC tags need a phone with NFC.",
@@ -6117,16 +6178,33 @@
     "title": "NFC tags",
     "action": {
       "water": "{{drinks}} × {{name}}",
-      "waterMissing": "Water container no longer exists"
+      "waterMissing": "Water container no longer exists",
+      "servings_one": "{{formattedCount}} serving",
+      "servings_other": "{{formattedCount}} servings",
+      "amount": "{{quantity}} {{unit}}",
+      "food": "{{amount}} · {{meal}}",
+      "unsupported": "Update the app to use this tag"
     },
     "type": {
-      "water": "Water or drink"
+      "water": "Water or drink",
+      "foodOrMeal": "Food or meal"
     },
     "container": {
       "add": "Add NFC tag",
       "count_one": "{{formattedCount}} tag logs this container",
       "count_other": "{{formattedCount}} tags log this container",
       "hint": "Tap a sticker on this bottle to log a drink"
+    },
+    "food": {
+      "count_one": "{{formattedCount}} tag logs this food",
+      "count_other": "{{formattedCount}} tags log this food",
+      "hint": "Tap a sticker to log this food"
+    },
+    "meal": {
+      "auto": "By time of day",
+      "count_one": "{{formattedCount}} tag logs this meal",
+      "count_other": "{{formattedCount}} tags log this meal",
+      "hint": "Tap a sticker to log this meal"
     }
   },
   "waterContainers": {
@@ -6683,8 +6761,17 @@
     "lowestSpo2": "Lowest SpO2",
     "highestSpo2": "Highest SpO2",
     "restingHeartRate": "Resting heart rate",
+    "overnightHrv": "Overnight HRV",
+    "skinTemperature": "Skin temperature",
+    "skinTemperatureDeviation": "Skin temp. vs usual",
     "percentUnit": "%",
     "bpmUnit": "bpm",
+    "msUnit": "ms",
+    "celsiusUnit": "°C",
+    "fahrenheitUnit": "°F",
+    "showTrendHint": "Shows this value over the last 30 nights",
+    "trendLoadFailed": "Could not load the trend",
+    "trendNotEnoughData": "Not enough nights to show a trend yet",
     "quality": "Sleep Quality"
   },
   "foodProvenance": {
@@ -8112,6 +8199,28 @@
     "restingHrRange": "Resting HR Range",
     "heartRateRecovery1Min": "1-Min Recovery",
     "heartRateRecoveryHint": "Heart rate drop 1 minute post-exercise",
+    "restingHrTrend": "Resting HR Trend",
+    "restingHrTrendImproving": "↓ {{bpm}} bpm (Improving)",
+    "restingHrTrendElevated": "↑ {{bpm}} bpm (Elevated)",
+    "restingHrTrendStable": "Stable",
+    "restingHrTrendHint": "Later half of the readings vs the earlier half",
+    "heartRateWorkoutFallback": "Workout",
+    "heartRateDaytimeAvg": "Daytime average",
+    "heartRateSleepingAvg": "Sleeping average",
+    "heartRateSleepDip": "{{percent}}% against daytime",
+    "heartRateLowest": "Lowest",
+    "heartRateHighest": "Highest",
+    "heartRateDayTimeline": "Heart Rate Through the Day",
+    "heartRatePreviousDay": "Previous day",
+    "heartRateNextDay": "Next day",
+    "heartRateDayEmpty": "No heart rate readings for this day",
+    "heartRateLegendSleep": "Asleep",
+    "heartRateLegendWorkout": "Workout",
+    "heartRateDayFigures": "Day Figures",
+    "heartRateRangeTooltip": "{{avg}} bpm avg ({{min}}–{{max}}) · {{date}}",
+    "heartRateRangeHint": "Touch and hold a day to open it below",
+    "heartRateRangeTimeline": "Average Heart Rate by Day",
+    "heartRateRangeEmpty": "No heart rate readings in this period",
     "recordedDays": "Recorded Days",
     "daysRatio": "{{daysWithData}} of {{totalDays}} days",
     "heartRateLoadFailed": "Failed to load heart rate data",
@@ -8311,6 +8420,8 @@
       "alcoholSummary": "Alcohol summary",
       "substancesWeekly": "Week by week",
       "restingHrChart": "Resting heart rate chart",
+      "heartRateRangeTimeline": "Average heart rate by day",
+      "heartRateDayTimeline": "Heart rate through the day",
       "heartRateZones": "Intensity zones"
     },
     "hydrationSections": "Hydration report",

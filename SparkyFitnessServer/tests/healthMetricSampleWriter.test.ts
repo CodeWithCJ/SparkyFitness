@@ -16,9 +16,11 @@ const at = (time: string): string => `${DAY}T${time}.000Z`;
 
 interface StoredSample {
   t: string;
-  bpm: number;
+  bpm?: number;
   ex?: string;
   sl?: string;
+  site?: string;
+  celsius?: number;
 }
 
 const incoming = (time: string, bpm: number): FlatHealthSample => ({
@@ -106,6 +108,83 @@ describe('upsertSamplesByDay', () => {
       { t: at('09:00:00'), bpm: 105 },
       { t: at('09:01:00'), bpm: 130 },
       { t: at('12:00:00'), bpm: 70 },
+    ]);
+  });
+
+  it("keeps another site's samples inside the window and replaces its own", async () => {
+    // Fields are checked against the metric's schema, so this uses celsius.
+    // Wrist and body temperature share the provider's day row. Syncing only the
+    // wrist must not delete the body readings in the same span; a stored sample
+    // with no site predates the field and is replaced.
+    stored = [
+      { t: at('06:00:00'), celsius: 34, site: 'wrist' },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
+      { t: at('06:45:00'), celsius: 33 },
+    ];
+
+    await upsertSamplesByDay(
+      'user-1',
+      'user-1',
+      'skin_temperature',
+      'healthkit',
+      [
+        {
+          entry_date: DAY,
+          timestamp: new Date(at('06:15:00')),
+          celsius: 35,
+          site: 'wrist',
+        },
+      ],
+      {
+        mode: 'merge',
+        window: {
+          startMs: Date.parse(at('06:00:00')),
+          endMs: Date.parse(at('07:00:00')),
+        },
+        site: 'wrist',
+      }
+    );
+
+    expect(writtenSamples()).toEqual([
+      { t: at('06:15:00'), celsius: 35, site: 'wrist' },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
+    ]);
+  });
+
+  it('a write with no site replaces only untagged samples', async () => {
+    // An older app sends skin temperature without a site; it must not delete
+    // the wrist and body readings a newer one stored in the same span.
+    stored = [
+      { t: at('06:00:00'), celsius: 34, site: 'wrist' },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
+      { t: at('06:45:00'), celsius: 33 },
+    ];
+
+    await upsertSamplesByDay(
+      'user-1',
+      'user-1',
+      'skin_temperature',
+      'healthkit',
+      [
+        {
+          entry_date: DAY,
+          timestamp: new Date(at('06:15:00')),
+          celsius: 35,
+        },
+      ],
+      {
+        mode: 'merge',
+        window: {
+          startMs: Date.parse(at('06:00:00')),
+          endMs: Date.parse(at('07:00:00')),
+        },
+      }
+    );
+
+    expect(writtenSamples()).toEqual([
+      { t: at('06:00:00'), celsius: 34, site: 'wrist' },
+      { t: at('06:15:00'), celsius: 35 },
+      { t: at('06:30:00'), celsius: 36, site: 'body' },
     ]);
   });
 
@@ -357,6 +436,25 @@ describe('upsertSamplesByDay', () => {
         [day1]: [{ t: `${day1}T10:00:00.000Z`, bpm: 70 }],
         [day2]: [],
       });
+    });
+
+    it('clears every listed day when the resend carries no samples at all', async () => {
+      // The client read the window and found nothing left, for example after
+      // the readings were deleted on the device.
+      storedByDay[day1] = [{ t: `${day1}T09:00:00.000Z`, bpm: 60 }];
+      storedByDay[day2] = [{ t: `${day2}T09:00:00.000Z`, bpm: 61 }];
+
+      const written = await upsertSamplesByDay(
+        'user-1',
+        'user-1',
+        'heart_rate',
+        'xiaomi',
+        [],
+        { mode: 'merge', window, days: [day1, day2] }
+      );
+
+      expect(written).toBe(2);
+      expect(writtenByDay()).toEqual({ [day1]: [], [day2]: [] });
     });
 
     it('does not create a row for a listed day with nothing stored', async () => {

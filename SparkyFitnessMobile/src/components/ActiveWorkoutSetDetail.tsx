@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import WorkoutNotesField from './WorkoutNotesField';
 import type { WorkoutCardSet } from '../utils/workoutSession';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
@@ -7,6 +7,8 @@ import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
 interface ActiveWorkoutSetDetailProps {
   set: WorkoutCardSet;
   onCommitField: (setId: string, patch: ActiveSetPatch) => void;
+  /** Offers a Delete set button; the focus view's rows have no swipe. */
+  onDelete?: (setId: string) => void;
 }
 
 /**
@@ -17,6 +19,7 @@ interface ActiveWorkoutSetDetailProps {
 function ActiveWorkoutSetDetail({
   set,
   onCommitField,
+  onDelete,
 }: ActiveWorkoutSetDetailProps) {
   const { t } = useTranslation();
   const setId = String(set.id);
@@ -45,6 +48,19 @@ function ActiveWorkoutSetDetail({
           setNumber: set.set_number,
         })}
       />
+      {onDelete != null && (
+        <Pressable
+          onPress={() => onDelete(setId)}
+          accessibilityRole="button"
+          className="mt-1 min-h-11 items-start justify-center active:opacity-70"
+        >
+          <Text className="text-sm font-semibold text-text-danger-subtle">
+            {t('activeWorkout.setDetail.deleteSet', {
+              defaultValue: 'Delete set',
+            })}
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

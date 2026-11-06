@@ -1,30 +1,63 @@
 name: Sync Translations
 
+# Sends the English sources to SparkyFitnessTranslations, the repository Weblate
+# is connected to, and brings every other language back in a PR here. Runs every
+# night and on demand, from main only.
+#
+# The English PR there is merged by this workflow. The PR here waits for a
+# maintainer, who merges it before the release PR: the release tag is created on
+# the release PR's merge commit, so translations merged after it miss the release.
+
 on:
   workflow_dispatch:
+  schedule:
+    # Off the top of the hour, when GitHub delays or drops scheduled runs.
+    - cron: "41 21 * * *"
 
 permissions:
   contents: write
   pull-requests: write
 
+# Both PR steps force-push their branch, so runs never overlap. A newer run
+# replaces one that is still waiting, which loses nothing: each run syncs the
+# latest state.
+concurrency:
+  group: sync-translations
+  cancel-in-progress: false
+
 jobs:
   sync:
+    # main only: English from another branch would remove newer keys from
+    # Weblate, and its cleanup add-on would then delete their translations.
+    # Scheduled runs only here, because forks have no TRANSLATIONS_PAT.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' || github.repository == 'CodeWithCJ/SparkyFitness')
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Same author as create-pull-request's default for manual runs. Scheduled
+      # runs have no one behind them, so they commit as the Actions bot.
+      COMMIT_AUTHOR: ${{ github.event_name == 'workflow_dispatch' && format('{0} <{1}+{0}@users.noreply.github.com>', github.actor, github.actor_id) || 'github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>' }}
     steps:
       # 1. Checkout the main repository (SparkyFitness)
       - name: Checkout SparkyFitness
         uses: actions/checkout@v4
         with:
           path: main-repo
+          persist-credentials: false
 
       # 2. Checkout the translation repository (SparkyFitnessTranslations)
-      # Uses the user's PAT to authenticate so we can push updates back to it.
+      # It is public, so reading it needs no PAT. create-pull-request sets up its
+      # own token for each push and removes it afterwards, so no credential stays
+      # on disk while the steps below run.
       - name: Checkout SparkyFitnessTranslations
+        id: translations
         uses: actions/checkout@v4
         with:
           repository: CodeWithCJ/SparkyFitnessTranslations
-          token: ${{ secrets.TRANSLATIONS_PAT }}
           path: translation-repo
+          persist-credentials: false
 
       # 3. Synchronize files:
       # - Copy non-English translation files from translation-repo to main-repo
@@ -171,21 +204,64 @@ jobs:
       - name: Format localization files with Prettier
         run: |
           echo "=== Formatting synced files to match codebase styling ==="
-          npx prettier --write "main-repo/SparkyFitnessFrontend/public/locales/**/*.json"
-          npx prettier --write "main-repo/SparkyFitnessMobile/src/localization/locales/**/*.json"
-          npx prettier --write "main-repo/SparkyFitnessMobile/locales/*.json"
+          # The version the root package.json pins, rather than whatever npm
+          # serves as latest, so the output matches the repo's own Prettier.
+          prettier="npx --yes prettier@$(node -p "require('./main-repo/package.json').devDependencies.prettier")"
+          $prettier --write "main-repo/SparkyFitnessFrontend/public/locales/**/*.json"
+          $prettier --write "main-repo/SparkyFitnessMobile/src/localization/locales/**/*.json"
+          $prettier --write "main-repo/SparkyFitnessMobile/locales/*.json"
           # Only format the English locale here; the other languages are owned by
           # Weblate and reformatting them would drag them into the English-only PR.
-          npx prettier --write "translation-repo/locales/en/**/*.json"
-          npx prettier --write "translation-repo/mobile/src/localization/locales/en/**/*.json"
-          npx prettier --write "translation-repo/mobile/locales/en.json"
+          $prettier --write "translation-repo/locales/en/**/*.json"
+          $prettier --write "translation-repo/mobile/src/localization/locales/en/**/*.json"
+          $prettier --write "translation-repo/mobile/locales/en.json"
 
-      # 4. Create a Pull Request in the translation repository for English locales
+      # 4. Create a Pull Request in the main repository for other language files.
+      # It runs first because it is the one a release needs, and it does not use
+      # TRANSLATIONS_PAT, so an expired PAT cannot hold it back.
+      - name: Create Pull Request in SparkyFitness
+        id: weblate_pr
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: main-repo
+          author: ${{ env.COMMIT_AUTHOR }}
+          add-paths: |
+            SparkyFitnessFrontend/public/locales
+            :!SparkyFitnessFrontend/public/locales/en
+            SparkyFitnessMobile/src/localization/locales
+            :!SparkyFitnessMobile/src/localization/locales/en
+            SparkyFitnessMobile/locales
+            :!SparkyFitnessMobile/locales/en.json
+            SparkyFitnessMobile/targets/android-widget/res/values-*/widget_strings.xml
+            SparkyFitnessMobile/targets/widget/*.lproj/Localizable.strings
+            :!SparkyFitnessMobile/targets/widget/en.lproj
+          commit-message: "chore(i18n): sync non-English translations from Weblate"
+          branch: i18n/sync-weblate-translations
+          delete-branch: true
+          title: "chore(i18n): sync translations from Weblate"
+          body: |
+            This pull request was automatically created by the **Sync Translations** workflow.
+
+            It copies all non-English translation files from the [SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations) repository (connected to Weblate) to the main repository, across the web catalog and the four mobile surfaces (runtime catalog, Expo metadata, Android widget resources and iOS widget resources).
+
+            Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile; the others sync in as translation candidates and are not bundled. The widget resources are pulled for registered locales only, because Android and iOS compile whatever resource directories they find, so a candidate's widget arrives on the sync after it is registered.
+
+            Merge this pull request before the release pull request (`chore: release v...`): the release tag is created on that pull request's merge commit, so translations merged after it miss the release. Every run of the workflow rebuilds this pull request, so fix a wrong translation in Weblate, not here.
+
+            Synced from CodeWithCJ/SparkyFitnessTranslations@${{ steps.translations.outputs.commit }}.
+          labels: |
+            i18n
+            translations
+
+      # 5. Create a Pull Request in the translation repository for English locales
       - name: Create Pull Request in SparkyFitnessTranslations
+        id: english_pr
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.TRANSLATIONS_PAT }}
           path: translation-repo
+          author: ${{ env.COMMIT_AUTHOR }}
           add-paths: |
             locales/en
             mobile/src/localization/locales/en
@@ -209,32 +285,69 @@ jobs:
             | Mobile Android widgets | `mobile/targets/android-widget/res/values` |
             | Mobile iOS widgets | `mobile/targets/widget/en.lproj` |
 
-      # 5. Create a Pull Request in the main repository for other language files
-      - name: Create Pull Request in SparkyFitness
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          path: main-repo
-          add-paths: |
-            SparkyFitnessFrontend/public/locales
-            :!SparkyFitnessFrontend/public/locales/en
-            SparkyFitnessMobile/src/localization/locales
-            :!SparkyFitnessMobile/src/localization/locales/en
-            SparkyFitnessMobile/locales
-            :!SparkyFitnessMobile/locales/en.json
-            SparkyFitnessMobile/targets/android-widget/res/values-*/widget_strings.xml
-            SparkyFitnessMobile/targets/widget/*.lproj/Localizable.strings
-            :!SparkyFitnessMobile/targets/widget/en.lproj
-          commit-message: "chore(i18n): sync non-English translations from Weblate"
-          branch: i18n/sync-weblate-translations
-          delete-branch: true
-          title: "chore(i18n): sync translations from Weblate"
-          body: |
-            This pull request was automatically created by the **Sync Translations** workflow.
+            The workflow merges this pull request right after opening it, unless it deletes more than 300 lines. If it is still open, a maintainer needs to review and merge it.
 
-            It copies all non-English translation files from the [SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations) repository (connected to Weblate) to the main repository, across the web catalog and the four mobile surfaces (runtime catalog, Expo metadata, Android widget resources and iOS widget resources).
+      # 6. Merge the English pull request, so new strings reach Weblate after
+      # every run instead of only at release time. A large deletion waits for a
+      # person: once a key leaves the English file, Weblate's cleanup add-on
+      # deletes its translations in every language.
+      # A held-back or failed merge fails the run, so the PR is not forgotten.
+      - name: Merge the English pull request
+        id: english_merge
+        if: steps.english_pr.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.TRANSLATIONS_PAT }}
+          PR: ${{ steps.english_pr.outputs.pull-request-number }}
+          HEAD_SHA: ${{ steps.english_pr.outputs.pull-request-head-sha }}
+          MAX_DELETIONS: "300"
+        run: |
+          set -euo pipefail
+          repo=CodeWithCJ/SparkyFitnessTranslations
+          # Count the deletions of this exact head. The PR's own diff stats are
+          # computed after the push and can still describe the previous head.
+          deletions=$(gh api "repos/$repo/compare/main...$HEAD_SHA" --jq '[.files[].deletions] | add // 0')
+          if [ "$deletions" -gt "$MAX_DELETIONS" ]; then
+            note="held back: it deletes $deletions lines (limit $MAX_DELETIONS). Review and merge it by hand."
+            echo "note=$note" >> "$GITHUB_OUTPUT"
+            echo "::error::English PR #$PR $note"
+            exit 1
+          fi
+          # GitHub can still be working out whether a new PR is mergeable.
+          for _ in 1 2 3; do
+            if gh pr merge "$PR" --repo "$repo" --merge --delete-branch --match-head-commit "$HEAD_SHA"; then
+              echo "note=merged" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 20
+          done
+          note="could not be merged. Merge it by hand."
+          echo "note=$note" >> "$GITHUB_OUTPUT"
+          echo "::error::English PR #$PR $note"
+          exit 1
 
-            Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile; the others sync in as translation candidates and are not bundled. The widget resources are pulled for registered locales only, because Android and iOS compile whatever resource directories they find, so a candidate's widget arrives on the sync after it is registered.
-          labels: |
-            i18n
-            translations
+      # 7. Show both pull requests on the run's summary page.
+      - name: Summary
+        if: always()
+        env:
+          SHA: ${{ steps.translations.outputs.commit }}
+          WEBLATE_PR: ${{ steps.weblate_pr.outputs.pull-request-url }}
+          WEBLATE_OP: ${{ steps.weblate_pr.outputs.pull-request-operation }}
+          ENGLISH_PR: ${{ steps.english_pr.outputs.pull-request-url }}
+          ENGLISH_OP: ${{ steps.english_pr.outputs.pull-request-operation }}
+          ENGLISH_NOTE: ${{ steps.english_merge.outputs.note }}
+          WEBLATE_OUTCOME: ${{ steps.weblate_pr.outcome }}
+          ENGLISH_OUTCOME: ${{ steps.english_pr.outcome }}
+        run: |
+          # A step that failed or was skipped sets no operation, so say that
+          # instead of "unchanged", which would read like a clean run.
+          state() {
+            if [ -n "$1" ]; then echo "$1"
+            elif [ "$2" = "success" ]; then echo "unchanged"
+            else echo "step ${2:-not run}"; fi
+          }
+          {
+            echo "### Sync Translations"
+            echo "- SparkyFitnessTranslations commit: ${SHA:-unknown}"
+            echo "- Translations PR here: ${WEBLATE_PR:-none} ($(state "$WEBLATE_OP" "$WEBLATE_OUTCOME"))"
+            echo "- English PR there: ${ENGLISH_PR:-none} ($(state "$ENGLISH_OP" "$ENGLISH_OUTCOME"))${ENGLISH_NOTE:+, $ENGLISH_NOTE}"
+          } >> "$GITHUB_STEP_SUMMARY"

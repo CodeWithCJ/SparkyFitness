@@ -93,6 +93,15 @@ hasUIChanges = .tsx/.jsx/.css files in components/screens/pages/
 
 Nothing ships until a maintainer fills in the Key Highlights and publishes the draft. The `release: published` workflows below run on that publish, as before.
 
+**Release order**: the tag is created on the release PR's merge commit, and the workflows that build the release (Docker images, Android APK, release assets, Helm chart, docs) check out that tag. Anything merged after the release PR misses the release, even if the draft is published later. Before merging it:
+
+1. In Weblate, commit the pending translations (repository maintenance), so the last day of work reaches SparkyFitnessTranslations.
+2. Run **Sync Translations** from `main` (it also runs every night), wait for it to finish, and merge its `chore(i18n): sync translations from Weblate` PR if one is open. If the summary shows that the translations PR step failed, fix the cause and run it again. "Unchanged" with no PR means there is nothing to merge, and a failure on the English PR does not block this step.
+3. Wait for CI and Release Please on `main` to finish.
+4. Merge the release PR and wait for its Release Please run to finish, because it rewrites the draft's body. Then add the Key Highlights and publish the draft.
+
+The `pull-request-header` in `release-please-config.json` repeats these steps at the top of the release PR. It is missing when the release notes are too long for a PR body, because release-please then replaces the whole body with a link to them.
+
 Config lives in `release-please-config.json`; the current version in `.release-please-manifest.json`. By default it runs with `GITHUB_TOKEN`, so CI does not run on the release PR. Set a `RELEASE_PLEASE_TOKEN` secret (PAT or GitHub App token with `contents` and `pull-requests` write) to get CI on it.
 
 ---
@@ -232,7 +241,9 @@ A mobile surface missing from the translations repo is skipped with a notice, so
 
 Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile. Others sync in as translation candidates, are reported by the i18n audit as non-blocking diagnostics, and are never bundled. The widget resources are the exception to "sync in": Android compiles every `values-*` directory and the iOS widget target ships every `.lproj` folder, so those two surfaces are pulled for registered locales only and a candidate's widget arrives on the sync after it is registered.
 
-**Triggers**: Manual workflow dispatch only. Requires the `TRANSLATIONS_PAT` secret.
+The workflow merges the English PR there itself, unless it deletes more than 300 lines: once a key leaves the English file, Weblate's cleanup add-on deletes its translations in every language, so a large deletion waits for a maintainer, and the run fails until someone merges it. The PR here waits for a maintainer, who merges it before the release PR (see `release-please.yml` above). Every run rebuilds both branches, so fix a wrong translation in Weblate, not on the sync branch.
+
+**Triggers**: Every night at 21:41 UTC, and manual workflow dispatch. It runs from `main` only, and the nightly run only in `CodeWithCJ/SparkyFitness`. Requires the `TRANSLATIONS_PAT` secret for the English side. GitHub sends notifications for scheduled runs only to the user who last modified the `cron` line.
 
 ---
 
@@ -343,4 +354,4 @@ This document should be updated when:
 - Trigger conditions change
 - Validation rules change
 
-Last updated: 2026-09-30
+Last updated: 2026-11-03

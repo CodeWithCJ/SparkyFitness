@@ -1,4 +1,8 @@
-import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
+import {
+  getActiveServerConfig,
+  proxyHeadersToRecord,
+  type ServerConfig,
+} from '../storage';
 import { addLog } from '../LogService';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ApiError } from './errors';
@@ -18,7 +22,6 @@ interface ApiFetchOptions {
   body?: unknown;
   headers?: Record<string, string>;
   timeoutMs?: number;
-  signal?: AbortSignal;
   /**
    * Whether a failed response's body goes in the app log. It does by default,
    * which helps with diagnostics. Turn it off where the request carries health
@@ -27,6 +30,17 @@ interface ApiFetchOptions {
    * on the `ApiError`.
    */
   logResponseBody?: boolean;
+  /**
+   * Cancels the request, including reading the response body, which
+   * `timeoutMs` does not cover.
+   */
+  signal?: AbortSignal;
+  /**
+   * The server and credentials to send with, in place of whichever config is
+   * active when the request starts. For work that belongs to one account and
+   * must never reach another one switched to meanwhile.
+   */
+  serverConfig?: ServerConfig;
 }
 
 export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
@@ -38,11 +52,12 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
     body,
     headers: customHeaders,
     timeoutMs = DEFAULT_API_TIMEOUT_MS,
-    signal,
     logResponseBody = true,
+    signal,
+    serverConfig,
   } = options;
 
-  const config = await getActiveServerConfig();
+  const config = serverConfig ?? (await getActiveServerConfig());
   if (!config) {
     throw new Error('Server configuration not found.');
   }

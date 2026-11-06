@@ -40,7 +40,10 @@ import {
   DEFAULT_STANDARD_DRINK_GRAMS,
   DEFAULT_CAFFEINE_HALF_LIFE_HOURS,
   DEFAULT_CHART_SCALE_MODE,
+  DEFAULT_TEMPERATURE_UNIT,
+  isTemperatureUnit,
   type ChartScaleMode,
+  type TemperatureUnit,
   type UserPreferences as SharedUserPreferences,
 } from '@workspace/shared';
 
@@ -131,6 +134,8 @@ interface PreferencesContextType {
   measurementDecimalPlaces: number;
   chartScaleMode: ChartScaleMode;
   setChartScaleMode: (mode: ChartScaleMode) => void;
+  temperatureUnit: TemperatureUnit;
+  setTemperatureUnit: (unit: TemperatureUnit) => void;
   goalMode: GoalMode;
   goalModeCalculationMethod: GoalModeCalculationMethod;
   adaptiveActivitySeparate: boolean;
@@ -263,6 +268,7 @@ export interface DefaultPreferences {
   first_day_of_week: number;
   measurement_decimal_places: number;
   chart_scale_mode: ChartScaleMode;
+  default_temperature_unit?: TemperatureUnit;
   goal_mode: GoalMode;
   goal_mode_calculation_method: GoalModeCalculationMethod;
   adaptive_activity_separate?: boolean;
@@ -383,6 +389,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<number>(0);
   const [chartScaleMode, setChartScaleModeState] = useState<ChartScaleMode>(
     DEFAULT_CHART_SCALE_MODE
+  );
+  const [temperatureUnit, setTemperatureUnitState] = useState<TemperatureUnit>(
+    DEFAULT_TEMPERATURE_UNIT
   );
   const [goalMode, setGoalModeState] = useState<GoalMode>('maintain');
   const [goalModeCalculationMethod, setGoalModeCalculationMethodState] =
@@ -806,6 +815,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setChartScaleModeState(
           data.chart_scale_mode || DEFAULT_CHART_SCALE_MODE
         );
+        setTemperatureUnitState(
+          isTemperatureUnit(data.default_temperature_unit)
+            ? data.default_temperature_unit
+            : DEFAULT_TEMPERATURE_UNIT
+        );
         setGoalModeState(data.goal_mode || 'maintain');
         setGoalModeCalculationMethodState(
           data.goal_mode_calculation_method || 'manual'
@@ -916,6 +930,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         if (updates.chart_scale_mode)
           localStorage.setItem('chartScaleMode', updates.chart_scale_mode);
+        if (updates.default_temperature_unit)
+          localStorage.setItem(
+            'temperatureUnit',
+            updates.default_temperature_unit
+          );
         return;
       }
 
@@ -1015,6 +1034,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         measurement_decimal_places:
           newPrefs?.measurementDecimalPlaces ?? measurementDecimalPlaces,
         chart_scale_mode: newPrefs?.chartScaleMode ?? chartScaleMode,
+        default_temperature_unit: newPrefs?.temperatureUnit ?? temperatureUnit,
         goal_mode: newPrefs?.goalMode ?? goalMode,
         goal_mode_calculation_method:
           newPrefs?.goalModeCalculationMethod ?? goalModeCalculationMethod,
@@ -1102,6 +1122,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       firstDayOfWeek,
       measurementDecimalPlaces,
       chartScaleMode,
+      temperatureUnit,
       goalMode,
       goalModeCalculationMethod,
       adaptiveActivitySeparate,
@@ -1354,6 +1375,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           'chartScaleMode'
         ) as ChartScaleMode | null;
         if (savedChartScaleMode) setChartScaleModeState(savedChartScaleMode);
+        const savedTemperatureUnit = localStorage.getItem('temperatureUnit');
+        if (isTemperatureUnit(savedTemperatureUnit))
+          setTemperatureUnitState(savedTemperatureUnit);
       }
     }
   }, [user, loading, loadPreferences, loadNutrientDisplayPreferences]);
@@ -1402,6 +1426,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       firstDayOfWeek,
       measurementDecimalPlaces,
       chartScaleMode,
+      temperatureUnit,
       goalMode,
       goalModeCalculationMethod,
       adaptiveActivitySeparate,
@@ -1420,6 +1445,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setStandardDrinkGrams,
       setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
       setChartScaleMode: setChartScaleModeState,
+      setTemperatureUnit: setTemperatureUnitState,
       setGoalMode,
       setGoalModeCalculationMethod,
       setGoalModeCustomPercentage,
@@ -1515,6 +1541,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       firstDayOfWeek,
       measurementDecimalPlaces,
       chartScaleMode,
+      temperatureUnit,
       goalMode,
       goalModeCalculationMethod,
       adaptiveActivitySeparate,

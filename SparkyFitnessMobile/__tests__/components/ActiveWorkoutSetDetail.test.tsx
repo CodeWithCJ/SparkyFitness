@@ -185,4 +185,17 @@ describe('WorkoutNotesField unmount flush', () => {
     unmount();
     expect(onCommit).toHaveBeenCalledTimes(1);
   });
+
+  it('styles Delete set as readable danger text, not text for a solid danger fill', () => {
+    const { getByText } = render(
+      <ActiveWorkoutSetDetail
+        set={makeSet()}
+        onCommitField={jest.fn()}
+        onDelete={jest.fn()}
+      />
+    );
+    const className = getByText('Delete set').props.className as string;
+    expect(className).toContain('text-text-danger-subtle');
+    expect(className).not.toMatch(/(^|\s)text-text-danger(\s|$)/);
+  });
 });

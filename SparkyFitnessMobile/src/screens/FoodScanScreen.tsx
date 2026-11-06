@@ -64,6 +64,7 @@ import {
   markFoodPhotoIntroSeen,
 } from '../services/foodPhotoIntro';
 import { addLog } from '../services/LogService';
+import { isFoodSelectionMode } from '../utils/foodPickerMode';
 
 type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
 
@@ -148,12 +149,11 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
       return 'barcode';
     }
     const requested = lookupParams?.initialMode ?? 'barcode';
-    // Meal-builder scans never use the photo flow (it always logs to the
+    // Picker scans never use the photo flow (it always logs to the
     // diary). Coerce to barcode if a caller deep-links 'photo' here.
     if (
       requested === 'photo' &&
-      (lookupParams?.pickerMode === 'meal-builder' ||
-        lookupParams?.pickerMode === 'meal-plan')
+      isFoodSelectionMode(lookupParams?.pickerMode)
     ) {
       return 'barcode';
     }
@@ -179,9 +179,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   const pickerMode = lookupParams?.pickerMode ?? 'log-entry';
   const returnDepth = lookupParams?.returnDepth;
   const providerId = lookupParams?.providerId;
-  const isMealBuilderMode = pickerMode === 'meal-builder';
-  const isMealPlanMode = pickerMode === 'meal-plan';
-  const isSelectionMode = isMealBuilderMode || isMealPlanMode;
+  const isSelectionMode = isFoodSelectionMode(pickerMode);
   const selectionPickerMode = isSelectionMode ? pickerMode : undefined;
   const mealPlanTarget = lookupParams?.mealPlanTarget;
 
