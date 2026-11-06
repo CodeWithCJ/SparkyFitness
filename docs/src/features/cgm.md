@@ -1,4 +1,4 @@
-# Glucose readings from Apple Health
+# Glucose readings from Apple Health and Health Connect
 
 SparkyFitness can preserve timestamped blood glucose readings shared with Apple Health by Dexcom or another glucose app. Daily glucose minimum, maximum and average measurements continue to sync as before.
 
@@ -12,6 +12,10 @@ SparkyFitness can preserve timestamped blood glucose readings shared with Apple 
 The first sync imports up to 30 days within the selected sync range. Subsequent runs revisit the last two days within the selected sync range for late-arriving readings. Choose a range covering previous days to capture readings shared after midnight. Earlier daily summaries cannot reconstruct a CGM curve; timestamped readings must still be available in Apple Health to import them.
 
 This is a historical view. Dexcom controls when readings are shared with Apple Health; delays in Dexcom sharing, phone sync or SparkyFitness background execution also delay this chart. Use the Dexcom app for live readings and alarms.
+
+## Android Health Connect
+
+On Android, CGM apps that write Blood Glucose to Health Connect can supply the same timestamped timeline. Grant SparkyFitness Blood Glucose read access in Health Connect and enable **Blood Glucose** in Health Data Sync. The sync retains every reading in mmol/L and its source package when available, using the same bounded, account-scoped retry pipeline as iOS. Empty reads do not erase observations or certify missing history as imported. No new permission is required beyond the existing glucose toggle.
 
 ## Storage and sharing
 

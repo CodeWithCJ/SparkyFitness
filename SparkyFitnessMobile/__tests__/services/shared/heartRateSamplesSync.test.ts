@@ -836,4 +836,22 @@ describe('glucose readings', () => {
       expect.stringContaining('heartRateSamplesThrough:blood_glucose:')
     );
   });
+
+  it('retains Health Connect glucose origin and mmol/L without a second conversion', () => {
+    expect(
+      glucoseReadingsFromRecords([
+        {
+          time: '2026-11-03T10:00:00Z',
+          level: { inMillimolesPerLiter: 5.5 },
+          metadata: { dataOrigin: 'com.dexcom.healthconnect' },
+        },
+      ])
+    ).toEqual([
+      {
+        t: '2026-11-03T10:00:00.000Z',
+        mmol_l: 5.5,
+        source_bundle_id: 'com.dexcom.healthconnect',
+      },
+    ]);
+  });
 });

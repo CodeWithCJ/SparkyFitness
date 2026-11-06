@@ -100,7 +100,7 @@ export function heartRateReadingsFromRecords(
   return readings;
 }
 
-/** HealthKit glucose is queried in mg/dL. Keep every original reading and source. */
+/** Normalizes HealthKit/Health Connect glucose while retaining each instant and source app. */
 export function glucoseReadingsFromRecords(records: readonly unknown[]) {
   const readings: {
     t: string;
@@ -117,6 +117,7 @@ export function glucoseReadingsFromRecords(records: readonly unknown[]) {
         inMillimolesPerLiter?: unknown;
       };
       sourceBundleId?: unknown;
+      metadata?: { dataOrigin?: unknown };
     };
     const ms = toMs(rec.time) ?? toMs(rec.startTime);
     const level = rec.level;
@@ -128,11 +129,15 @@ export function glucoseReadingsFromRecords(records: readonly unknown[]) {
           : NaN;
     if (ms === null || !Number.isFinite(value) || value <= 0 || value > 100)
       continue;
+    const source =
+      typeof rec.sourceBundleId === 'string'
+        ? rec.sourceBundleId
+        : rec.metadata?.dataOrigin;
     readings.push({
       t: new Date(ms).toISOString(),
       mmol_l: value,
-      ...(typeof rec.sourceBundleId === 'string'
-        ? { source_bundle_id: rec.sourceBundleId.slice(0, 256) }
+      ...(typeof source === 'string'
+        ? { source_bundle_id: source.slice(0, 256) }
         : {}),
     });
   }
@@ -513,7 +518,7 @@ export function syncAllDayHeartRate(
   );
 }
 
-/** iOS glucose uses the same bounded, account-scoped retry and merge pipeline. */
+/** Both platforms share bounded, account-scoped glucose retries and non-destructive empty reads. */
 export function syncAllDayGlucose(
   reader: HeartRateSamplesReader,
   account: ServerConfig,

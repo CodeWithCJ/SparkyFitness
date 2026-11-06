@@ -1,8 +1,12 @@
 import { addDays, localDateTimeToUtc } from '../utils/timezone.ts';
 import { earliestEntryTime, toHourMinute } from '../utils/entryTime.ts';
-import type { ExerciseSessionResponse } from '../schemas/api/ExerciseEntries.api.zod.ts';
 import type { MedicationEntry } from '../medications/contracts.ts';
 import type { HealthMetricSamples } from '../schemas/database/HealthMetricSamples.zod.ts';
+import type { DailySummaryResponse } from '../schemas/api/DailySummary.api.zod.ts';
+import type { CustomMeasurementsResponse } from '../schemas/api/CustomMeasurements.api.zod.ts';
+import type { WaterIntakeLogEntry } from '../schemas/api/WaterIntake.api.zod.ts';
+import type { SleepEntriesResponse } from '../schemas/api/SleepEntries.api.zod.ts';
+import type { DailyHealthMetrics } from '../schemas/database/DailyHealthMetrics.zod.ts';
 
 export const GLUCOSE_CONTEXT_KINDS = [
   'meal',
@@ -26,22 +30,6 @@ export interface GlucoseContextEvent {
   unit?: string;
   source?: string;
   summary?: 'total' | 'average';
-}
-interface ContextFood {
-  id: string;
-  entry_date: string;
-  entry_time?: string | null;
-  food_name?: string | null;
-  quantity?: number;
-  serving_size?: number;
-  carbs?: number | null;
-  caffeine_mg?: number | null;
-  alcohol_g?: number | null;
-}
-interface ContextSummary {
-  foodEntries: ContextFood[];
-  exerciseSessions: ExerciseSessionResponse[];
-  waterIntake: number;
 }
 export interface GlucoseContextData {
   events: GlucoseContextEvent[];
@@ -76,50 +64,22 @@ export async function loadGlucoseContext(
   const next = addDays(day, 1);
   const [today, yesterday, sleep, medication, stress, metrics, custom, water] =
     await Promise.allSettled([
-      read<ContextSummary>(`/daily-summary?date=${day}`),
-      read<ContextSummary>(`/daily-summary?date=${previous}`),
-      read<
-        {
-          id: string;
-          entry_date: string;
-          bedtime: string;
-          wake_time: string;
-          source?: string;
-        }[]
-      >(`/sleep?startDate=${previous}&endDate=${next}`),
+      read<DailySummaryResponse>(`/daily-summary?date=${day}`),
+      read<DailySummaryResponse>(`/daily-summary?date=${previous}`),
+      read<SleepEntriesResponse[]>(
+        `/sleep?startDate=${previous}&endDate=${next}`
+      ),
       read<MedicationEntry[]>(
         `/v2/medications/entries?fromDate=${previous}&toDate=${next}`
       ),
       read<{ data: HealthMetricSamples[] }>(
         `/generic-health/samples?metric=stress&startDate=${addDays(day, -2)}&endDate=${addDays(day, 2)}`
       ),
-      read<{
-        data: {
-          entry_date: string;
-          source_provider: string;
-          avg_stress_level: number | null;
-        }[];
-      }>(`/generic-health/metrics?startDate=${day}&endDate=${day}`),
-      read<
-        {
-          id: string;
-          value: string | number;
-          entry_timestamp?: string;
-          entry_date: string;
-          source?: string;
-          custom_categories?: { name: string };
-        }[]
-      >(`/measurements/custom-entries/${day}`),
-      read<
-        {
-          id: string;
-          entry_date: string;
-          logged_at: string;
-          water_ml: number;
-          container_name?: string | null;
-          source?: string;
-        }[]
-      >(`/v2/measurements/water-intake/${day}/log`),
+      read<{ data: DailyHealthMetrics[] }>(
+        `/generic-health/metrics?startDate=${day}&endDate=${day}`
+      ),
+      read<CustomMeasurementsResponse[]>(`/measurements/custom-entries/${day}`),
+      read<WaterIntakeLogEntry[]>(`/v2/measurements/water-intake/${day}/log`),
     ]);
   const events: GlucoseContextEvent[] = [];
   const unavailable = new Set<GlucoseContextKind>();

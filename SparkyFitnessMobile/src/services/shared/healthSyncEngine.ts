@@ -29,7 +29,6 @@ import {
   FOREGROUND_TELEMETRY_BUDGET,
   type TelemetryRunContext,
 } from './telemetryBudget';
-import { Platform } from 'react-native';
 import { queryClient } from '../../hooks/queryClient';
 import {
   glucoseSamplesQueryKeyRoot,
@@ -571,7 +570,7 @@ export const runForegroundSync = async (
   }
 
   function startAllDaySamplesPhase(): void {
-    // Passive heart rate and iOS glucose readings for report timelines. Each
+    // Passive heart rate and glucose readings for report timelines. Each
     // follows its existing metric toggle and is isolated like writeback:
     // a failure is logged, never added to syncErrors, and re-sent by the next run
     // since each upload replaces its own window. One run at a time: a sync that
@@ -579,9 +578,9 @@ export const runForegroundSync = async (
     const heartRateEnabled = metricsToSync.some(
       (metric) => metric.recordType === 'HeartRate'
     );
-    const glucoseEnabled =
-      Platform.OS === 'ios' &&
-      metricsToSync.some((metric) => metric.recordType === 'BloodGlucose');
+    const glucoseEnabled = metricsToSync.some(
+      (metric) => metric.recordType === 'BloodGlucose'
+    );
     if (!heartRateEnabled && !glucoseEnabled) {
       return;
     }

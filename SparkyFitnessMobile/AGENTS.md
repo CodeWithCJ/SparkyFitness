@@ -36,7 +36,7 @@ The shipped locale registry is `src/localization/localeRegistry.json`, read thro
 
 ## Commands
 
-- Timestamped Apple Health glucose readings share the bounded/account-scoped pipeline in `services/shared/heartRateSamplesSync.ts` with heart rate, using an independent cursor. The existing Blood Glucose toggle controls both daily summaries and iOS sample uploads; samples are not downsampled.
+- Timestamped Apple Health and Health Connect glucose readings share the bounded/account-scoped pipeline in `services/shared/heartRateSamplesSync.ts` with heart rate, using an independent cursor. The existing Blood Glucose toggle controls both daily summaries and sample uploads on both platforms; samples are not downsampled.
 - Reports → Measurements includes `components/reports/MeasurementTimelineCard.tsx` for timestamped glucose and all numeric custom categories (including non-manual sources), with account-level `default_glucose_unit` (App Settings / web Preferences), native context icons, and independently selectable food, exercise, sleep, medication, stress, caffeine/alcohol and hydration context. Shared context normalization is in `shared/src/glucose/context.ts`; context reads retain each endpoint's permissions.
 
 ```bash
