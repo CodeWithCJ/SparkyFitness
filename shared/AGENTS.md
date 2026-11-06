@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-04_
 
 `@workspace/shared` is a source-first TypeScript workspace library package for schemas, constants, and timezone/day helpers consumed by SparkyFitnessServer, SparkyFitnessFrontend, and SparkyFitnessMobile.
 
@@ -15,6 +15,8 @@ _Last updated: 2026-11-03_
 `schemas/api/FoodAssistant.api.zod.ts` and `schemas/database/FoodAssistant.zod.ts` define lasting preferences, versioned tasks, unresolved ingredients and idempotent operation records. All state is owner-only; these additive contracts do not change existing chat clients.
 
 ## Structure
+
+- Mealie ingredient imports: `utils/recipeImport.ts` preserves explicit compatible quantities, bounds unresolved matching batches to twenty rows, and merges suggestions without replacing confirmed mappings in web and mobile. The API contract remains in `schemas/api/RecipeImport.api.zod.ts`.
 
 - Family diary copies: `schemas/api/FoodEntryCopy.api.zod.ts` defines reviewed/selected requests in both directions and recipient meal types. `foodEntryCopyFingerprint` remains byte-compatible with older copy-from clients; `copyFingerprintFor(version)` selects the contract for both clients and the server. New copy-to requests use `foodEntryCopyToUserFingerprint`, which also checks notes, meal identity, caffeine, water, and alcohol.
 
@@ -35,6 +37,8 @@ _Last updated: 2026-11-03_
 - Routes: `src/schemas/api/Route.api.zod.ts` (points, turn cues, bodies), `src/utils/routeGeometry.ts` (distance, climb, simplify, bounds, and the `localProjector` / `distanceToSegment` nearest-point helpers the route editor uses), `src/utils/routeGpx.ts` (dependency-free GPX read/write), `src/utils/routeGenerate.ts` (generate and follow-roads request builders, error kinds, turn counts, route style helpers, capability reading and option labels) and `src/constants/routingProviderTypes.ts` (the `valhalla` external provider type; there is no default server URL). `src/constants/weatherProviderTypes.ts` holds the `open_meteo` weather provider type and the public Open-Meteo address used only as a form placeholder. `routeOverlapFraction` / `routesAreDistinct` in `routeGeometry.ts` compare routes in bounded time.
 - `src/compare/` - compare any two tracked things: `stats.ts` (statistics), `metrics.ts` (metric catalog: kind, missing-day rule, weekly form, `rolling` for a value read over the 7 days ending on the day, and `since: false` for a metric since mode cannot answer honestly (weight trend); `offeredInMode(key, mode)` is the check for whether a metric is offered by day, week or since), `analyze.ts` (day and week-by-week analysis), `since.ts` (before vs. since a habit started: suggested start, stretches, regularity, pre-trend; its limits are exported as `SINCE_*` constants), `question.ts` (the question model web and mobile share: timing choices, spans and `compareWindow`, custom-range limits, since-start bounds, `SUGGESTED_QUESTIONS`, and the recents helpers `knownCompareQuestions` / `withRecentQuestion`, and `questionForMode`, which drops a chosen metric the mode doesn't offer), `chartData.ts` (chart data both apps draw: `pairedDots` and `displayDots`, `trendLine`, `overTimeData`, `sinceChartData`), `sinceLine.ts` (`sinceLineOptions`: the lines offered for a since answer, with the label formatter passed in so the wording stays in each app), `sinceVerdict.ts` (`sinceVerdictCase`: which since answer to give, as a text-free case with the facts its wording needs (no start, not enough with the short side and why, changed, no clear change, and whether it covers the last year); `sinceAlreadyChanging` and `sinceCoversLastYear`; the phone's and the website's `compareSinceCopy.ts` word each case). The API contract is `src/schemas/api/Compare.api.zod.ts`.
 - `src/symptoms/` - generic symptom tracking: constants and enums (scales, templates, sections, option kinds), template section resolution (`resolveSections`), built-in symptoms and pick-lists, head/body region ids for the location maps, custom-field validation, and `symptomEntryDays` (`entryDays.ts`: the days of a window an entry covers, its `entry_date` plus, for an episode, every day from its start to its end or to today in the profile timezone; the web and mobile symptom calendars use it with the list endpoint's `overlapping` flag, so an episode shows on each of its days). The API contract is `src/schemas/api/Symptoms.api.zod.ts`.
+
+- Recipe ingredient imports: `src/schemas/api/RecipeImport.api.zod.ts` defines camelCase preview/save/suggestion/source contracts. `RecipeImports.zod.ts` and `RecipeFoodMappings.zod.ts` mirror owner-only source provenance and confirmed mappings. Both clients consume these; external food selections must use existing detail/import and supply accessible local IDs before save.
 
 ## Naming Convention
 

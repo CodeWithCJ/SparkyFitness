@@ -41,6 +41,8 @@ import {
   shouldOfferAiConversion,
   userHourMinute,
   defaultMealTypeForTime,
+  getConversionFactor,
+  recipeImportInitialQuantity,
   toHourMinute,
   type AiConfidence,
   type ConfidenceTone,
@@ -97,6 +99,8 @@ interface FoodUnitSelectorProps {
   showUnitSelector?: boolean;
   initialQuantity?: number;
   initialUnit?: string;
+  /** Keep a recipe's initial amount paired with its unit; require explicit incompatible amounts. */
+  preserveInitialAmountUnit?: boolean;
   initialVariantId?: string;
   showTimeInput?: boolean;
   initialTime?: string;
@@ -117,6 +121,7 @@ const FoodUnitSelector = ({
   showUnitSelector,
   initialQuantity,
   initialUnit,
+  preserveInitialAmountUnit = false,
   initialVariantId,
   showTimeInput,
   initialTime,
@@ -566,6 +571,24 @@ const FoodUnitSelector = ({
   const displayUnit = isConverting
     ? pendingUnit.trim() || '?'
     : selectedVariant?.serving_unit || '';
+  const initialAmountFactor = initialUnit
+    ? getConversionFactor(displayUnit, initialUnit)
+    : null;
+  useEffect(() => {
+    if (!open || !preserveInitialAmountUnit || loading) return;
+    setQuantity(
+      recipeImportInitialQuantity(initialQuantity, initialUnit, displayUnit)
+    );
+  }, [
+    open,
+    preserveInitialAmountUnit,
+    loading,
+    initialQuantity,
+    initialUnit,
+    initialAmountFactor,
+    displayUnit,
+    selectedVariant?.id,
+  ]);
   const displayServing =
     quantity === undefined
       ? ''
@@ -638,6 +661,20 @@ const FoodUnitSelector = ({
                       setQuantity(newQuantity);
                     }}
                   />
+                  {preserveInitialAmountUnit &&
+                    (initialQuantity === undefined ||
+                      initialAmountFactor === null) && (
+                      <p
+                        role="status"
+                        className="text-sm text-amber-700 dark:text-amber-300"
+                      >
+                        {t(
+                          'recipeImport.explicitUnitAmount',
+                          'Enter the whole-recipe amount in {{unit}} or provide an explicit unit conversion. The source amount is not converted across incompatible units.',
+                          { unit: displayUnit }
+                        )}
+                      </p>
+                    )}
                 </div>
                 <div>
                   <Label htmlFor="unit">
@@ -1066,6 +1103,10 @@ const FoodUnitSelector = ({
                   type="submit"
                   disabled={
                     createFoodVariantMutation.isPending ||
+                    (preserveInitialAmountUnit &&
+                      (quantity === undefined ||
+                        !Number.isFinite(quantity) ||
+                        quantity <= 0)) ||
                     (!isConverting && !selectedVariant) ||
                     (isConverting &&
                       (!pendingUnit.trim() ||

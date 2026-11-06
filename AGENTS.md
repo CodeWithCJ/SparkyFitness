@@ -1,10 +1,11 @@
 # AGENTS.md
 
-*Last updated: 2026-11-05*
+_Last updated: 2026-11-05_
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
 **For AI Tools & Developers:** Start with `agent-docs/README.md` (in this repo) for quick navigation to:
+
 - `file-and-domain-reference.md` — Find any code by feature in seconds
 - `testing-patterns.md` — Concrete test examples for each layer
 - `architecture-permissions.md` — Permission types and RLS patterns
@@ -69,6 +70,10 @@ Cheap ways to learn things:
 - API request/response contract: `shared/src/schemas/api/<Name>.api.zod.ts`.
 - Definition of done: CI (`.github/workflows/ci-tests.yml`) runs `pnpm run validate` (which includes Knip unused export & dead code checks in frontend and mobile) plus the package's CI test script for each changed package. Run those locally before declaring work complete.
 
+## Recipe Ingredient Imports
+
+Mealie ingredient meals use `shared/src/schemas/api/RecipeImport.api.zod.ts` and owner-only `/api/v2/recipe-imports` routes. Preview/suggest never create foods or meals; save accepts confirmed accessible local food/variant IDs and uses authoritative nutrition. External candidates follow existing provider detail/import first. Cooked weight changes only the normal meal serving denominator. Only explicit nutrition sync writes to Mealie, after source and local snapshot checks; diary edits never write back.
+
 ## Cross-Package Rules
 
 - Barcode source comparison uses the shared `BarcodeLookup.api.zod.ts` contract and `barcodeNutritionPreview` helper. Web and mobile request alternatives on demand through `SparkyFitnessServer/services/barcodeLookupService.ts`; the initial lookup retains the existing local/default/fallback behavior.
@@ -87,7 +92,7 @@ Cheap ways to learn things:
 - Auth or API contract changes usually need a quick check in both web and mobile because they share the same backend.
 - Frontend local dev proxies `/api`, `/health-data`, and `/uploads` to the server on `3010`. The `/health-data` proxy is rewritten to `/api/health-data`, while server APIs remain rooted at `/api`.
 - Server runtime secrets are usually sourced from repo-root `.env`, commonly created from `docker/.env.example`. The server can also load secret files via `SparkyFitnessServer/utils/secretLoader.ts`.
-- Extract shared logic on the **second** duplication ("rule of two"), not the third - duplicated logic drifts as different sessions edit each copy. Extract *behavior*, not coincidental shape. See `agent-docs/anti-patterns.md`.
+- Extract shared logic on the **second** duplication ("rule of two"), not the third - duplicated logic drifts as different sessions edit each copy. Extract _behavior_, not coincidental shape. See `agent-docs/anti-patterns.md`.
 - **Strict TypeScript Typing:** Never use `any` or `// eslint-disable-next-line @typescript-eslint/no-explicit-any` when creating new functions or editing existing code. When modifying existing files, proactively update legacy `any` declarations in the touched code to reflect their proper TypeScript data types, interfaces, or schemas from `@workspace/shared`. Do NOT copy legacy `any` parameter signatures forward when refactoring or extending service/repository files.
 - **Library Deletes vs Diary Snapshots:** `exercise_entries` and `food_entries` are self-contained snapshots, not pointers (`exercise_id` and `food_id` are `ON DELETE SET NULL`). Deleting an exercise or food from the library (`mode: 'delete'`) preserves past and current diary history, cascades from presets and plan templates, cleans up future scheduled workout plan entries (`entry_date >= today`), and cleans up empty parent preset entries. Only explicit `delete_with_history` (force delete) purges diary logs for that user. If an item is referenced by other users (`otherUserReferences > 0`), the backend falls back to hiding (`is_quick_exercise` / `is_quick_food`).
 - **Comprehensive Cache Invalidation:** When mutating library items (foods, exercises, presets, meals, plans), always invalidate the entire family of dependent query keys across library search, counts, templates, and daily diary summaries (`dailySummary` / `dailyProgress` / `exerciseEntries`) in both web and mobile.
@@ -97,7 +102,6 @@ Cheap ways to learn things:
   3. `docs/src/install/environment-variables.md` (the comprehensive documentation reference).
   4. `docs/components/EnvGenerator.vue` (the interactive web `.env` generator component).
   5. `helm/chart/templates/` and `helm/chart/values.yaml` (if passed through Helm charts).
-
 
 ## Commit & PR Conventions
 

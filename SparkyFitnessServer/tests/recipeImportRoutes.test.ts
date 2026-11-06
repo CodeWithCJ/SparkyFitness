@@ -1,0 +1,92 @@
+import express from 'express';
+// @ts-expect-error No declaration file is shipped for supertest.
+import request from 'supertest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Request, Response, NextFunction } from 'express';
+const state = vi.hoisted(() => ({
+  actor: 'owner',
+  preview: vi.fn(),
+  browse: vi.fn(),
+  save: vi.fn(),
+  suggest: vi.fn(),
+  getSource: vi.fn(),
+  syncNutrition: vi.fn(),
+}));
+vi.mock('../middleware/authMiddleware.js', () => ({
+  authenticate: (req: Request, _res: Response, next: NextFunction) => {
+    req.userId = 'owner';
+    req.authenticatedUserId = state.actor;
+    next();
+  },
+}));
+vi.mock('../services/recipeImportService.js', () => ({ default: state }));
+import router from '../routes/v2/recipeImportRoutes.js';
+import { RecipeImportError } from '../services/recipeImportMath.js';
+const app = express();
+app.use(express.json());
+app.use('/api/v2/recipe-imports', router);
+beforeEach(() => {
+  vi.clearAllMocks();
+  state.actor = 'owner';
+  state.preview.mockResolvedValue({ ingredients: [] });
+});
+describe('recipe import route boundary', () => {
+  it('rejects delegates for read and write surfaces', async () => {
+    state.actor = 'delegate';
+    for (const [method, url] of [
+      ['get', '/00000000-0000-4000-a000-000000000001/source'],
+      ['post', '/mealie/preview'],
+      ['post', '/00000000-0000-4000-a000-000000000001/sync-nutrition'],
+    ] as const) {
+      const agent = request(app);
+      const response = await agent[method]('/api/v2/recipe-imports' + url).send(
+        {}
+      );
+      expect(response.status).toBe(403);
+    }
+    expect(state.preview).not.toHaveBeenCalled();
+  });
+  it('rejects invalid and extra client-provided nutrient fields', async () => {
+    const response = await request(app)
+      .post('/api/v2/recipe-imports/mealie/save')
+      .send({
+        providerId: '00000000-0000-4000-a000-000000000001',
+        recipeSlug: 'rice',
+        sourceFingerprint: 'a'.repeat(64),
+        mappings: [],
+        calories: 2400,
+      });
+    expect(response.status).toBe(400);
+    expect(state.save).not.toHaveBeenCalled();
+  });
+  it('accepts valid owner preview requests', async () => {
+    const response = await request(app)
+      .post('/api/v2/recipe-imports/mealie/preview')
+      .send({
+        providerId: '00000000-0000-4000-a000-000000000001',
+        recipeSlug: 'rice',
+      });
+    expect(response.status).toBe(200);
+    expect(response.body.ingredients).toEqual([]);
+  });
+  it('returns actionable typed domain conflicts', async () => {
+    state.preview.mockRejectedValue(
+      new RecipeImportError(
+        409,
+        'REMOTE_CHANGED',
+        'Re-preview the changed recipe.'
+      )
+    );
+    const response = await request(app)
+      .post('/api/v2/recipe-imports/mealie/preview')
+      .send({
+        providerId: '00000000-0000-4000-a000-000000000001',
+        recipeSlug: 'rice',
+      });
+    expect(response.status).toBe(409);
+    expect(response.body).toEqual({
+      error: 'Re-preview the changed recipe.',
+      code: 'REMOTE_CHANGED',
+    });
+  });
+});

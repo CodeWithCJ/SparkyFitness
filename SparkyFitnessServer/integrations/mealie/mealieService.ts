@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { log } from '../../config/logging.js';
 import {
   type AiNetworkPolicy,
@@ -67,6 +68,48 @@ function extractMealieProviderNutrients(
   }
   return out;
 }
+
+const optionalNumber = z.union([z.number(), z.string()]).nullish();
+const mealieUnitSchema = z
+  .object({
+    id: z.string().optional(),
+    name: z.string().optional(),
+    abbreviation: z.string().optional(),
+    standardUnit: z.string().nullish(),
+    standardQuantity: optionalNumber,
+  })
+  .passthrough();
+const mealieIngredientSchema = z
+  .object({
+    referenceId: z.string().optional(),
+    quantity: optionalNumber,
+    unit: mealieUnitSchema.nullish(),
+    food: z
+      .object({ id: z.string().optional(), name: z.string().optional() })
+      .passthrough()
+      .nullish(),
+    referencedRecipe: z.unknown().optional(),
+    note: z.string().nullish(),
+    display: z.string().nullish(),
+    originalText: z.string().nullish(),
+    title: z.string().nullish(),
+  })
+  .passthrough();
+export const mealieIngredientRecipeSchema = z
+  .object({
+    id: z.string().nullish(),
+    slug: z.string(),
+    name: z.string(),
+    recipeServings: optionalNumber,
+    recipeIngredient: z.array(mealieIngredientSchema).max(100),
+    nutrition: z
+      .record(z.string(), z.union([z.string(), z.number(), z.null()]))
+      .nullish(),
+  })
+  .passthrough();
+export type MealieIngredientRecipe = z.infer<
+  typeof mealieIngredientRecipeSchema
+>;
 
 class MealieService {
   accessToken?: string;
@@ -199,6 +242,95 @@ class MealieService {
       return null;
     }
   }
+
+  private async ingredientRequest(
+    slug: string,
+    init: RequestInit = {}
+  ): Promise<unknown> {
+    if (!this.accessToken) throw new Error('Mealie API key not provided.');
+    const response = await resolveFoodFetch(this.networkPolicy)(
+      this.baseUrl + '/api/recipes/' + encodeURIComponent(slug),
+      {
+        ...init,
+        signal: AbortSignal.timeout(30000),
+        headers: {
+          Authorization: 'Bearer ' + this.accessToken,
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          ...init.headers,
+        },
+      }
+    );
+    if (!response.ok)
+      throw new Error(
+        init.method === 'PATCH'
+          ? 'Mealie nutrition update failed (' + response.status + ')'
+          : 'Mealie recipe read failed (' + response.status + ')'
+      );
+    return response.json();
+  }
+  async readIngredientRecipe(slug: string): Promise<MealieIngredientRecipe> {
+    return mealieIngredientRecipeSchema.parse(
+      await this.ingredientRequest(slug)
+    );
+  }
+  async browseIngredientRecipes(search: string, page: number) {
+    if (!this.accessToken) throw new Error('Mealie API key not provided.');
+    const url = new URL(this.baseUrl + '/api/recipes');
+    url.searchParams.set('search', search);
+    url.searchParams.set('page', String(page));
+    url.searchParams.set('perPage', '10');
+    const response = await resolveFoodFetch(this.networkPolicy)(url, {
+      signal: AbortSignal.timeout(30000),
+      headers: {
+        Authorization: 'Bearer ' + this.accessToken,
+        Accept: 'application/json',
+      },
+    });
+    if (!response.ok)
+      throw new Error('Mealie recipe search failed (' + response.status + ')');
+    const data = z
+      .object({
+        items: z.array(
+          z.object({
+            id: z.string().nullish(),
+            slug: z.string(),
+            name: z.string(),
+            recipeServings: optionalNumber,
+          })
+        ),
+        total: z.number(),
+      })
+      .parse(await response.json());
+    return {
+      items: data.items.map((row) => ({
+        id: row.id ?? null,
+        slug: row.slug,
+        name: row.name,
+        recipeServings:
+          Number(row.recipeServings) > 0 ? Number(row.recipeServings) : null,
+      })),
+      pagination: {
+        page,
+        pageSize: 10,
+        totalCount: data.total,
+        hasMore: page * 10 < data.total,
+      },
+    };
+  }
+  async patchRecipeNutrition(
+    slug: string,
+    patch: Record<string, string>,
+    existing: Record<string, string | number | null>
+  ): Promise<MealieIngredientRecipe> {
+    return mealieIngredientRecipeSchema.parse(
+      await this.ingredientRequest(slug, {
+        method: 'PATCH',
+        body: JSON.stringify({ nutrition: { ...existing, ...patch } }),
+      })
+    );
+  }
+
   mapMealieRecipeToSparkyFood(mealieRecipe: MealieRecipe, userId: string) {
     log(
       'debug',

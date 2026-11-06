@@ -448,6 +448,8 @@ const androidService = require('../../src/services/healthConnectService.ts');
 
 ## Quick Routing
 
+- Mealie ingredient meals: `RecipeImportScreen`, `components/recipeImport/`, `hooks/useRecipeImport.ts`, and `services/api/recipeImportApi.ts` provide personal source browsing, reviewable mapping, cooked batch weight and explicit unchanged-source nutrition sync. The meals library opens the flow; own meal detail shows provenance. `recipeImportSelection.ts` carries the existing `FoodSearch` / `FoodEntryAdd` picker handoff, preserving compatible source amounts and requiring explicit incompatible amounts. Shared `utils/recipeImport.ts` owns matching batches and late-confirmation protection. Recipe caches live under ordinary meals/foods invalidation roots and include server/profile scope; family diary routes never expose them.
+
 - Health sync bug: start at `healthConnectService.ts` or `.ios.ts`, then `services/healthconnect/` or `services/healthkit/`, `backgroundSyncService.ts`, `autoSyncCoordinator.ts`, `useSyncHealthData.ts`, `SyncScreen.tsx`, and `healthDataApi.ts`.
 - Health writeback bug: inspect `HealthDataWriteback`, `services/writeback.ts` / `.ios.ts`, platform writeback modules, mapper files, tracking storage, app permissions, and inbound source filters.
 - Food library/edit bug: inspect `LibraryScreen`, food library/detail/form/barcode screens, `FoodForm`, unit selector, food hooks, `foodsApi`, food unit types, and `foodDetails.ts`.

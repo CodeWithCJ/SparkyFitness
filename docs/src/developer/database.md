@@ -440,3 +440,10 @@ WHERE tablename = 'table_name';
 - **ANALYZE**: Update table statistics
 - **Index maintenance**: Rebuild indexes if needed
 - **Log rotation**: Rotate and archive database logs
+
+### Recipe ingredient imports
+
+| Table | Purpose |
+| --- | --- |
+| `recipe_imports` | Owner-only Mealie source provenance, mappings, fingerprints and explicit nutrition sync status for an ordinary reusable meal. |
+| `recipe_food_mappings` | Owner-only confirmed source-food mappings reused against current source quantities. |

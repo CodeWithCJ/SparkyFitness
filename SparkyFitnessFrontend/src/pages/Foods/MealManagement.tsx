@@ -79,11 +79,17 @@ import {
   CellContext,
 } from '@tanstack/react-table';
 import { type DataTableFeatures } from '@/components/ui/dataTableFeatures';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
+import RecipeImportSourcePanel from './RecipeImportSourcePanel';
+
+const RecipeImportDialog = React.lazy(() => import('./RecipeImportDialog'));
 
 // This component is now a standalone library for managing meal templates.
 // Interactions with the meal plan calendar are handled by the calendar itself.
 const MealManagement: React.FC = () => {
   const { t } = useTranslation();
+  const { isActingOnBehalf, activeUserId } = useActiveUser();
+  const [showRecipeImport, setShowRecipeImport] = useState(false);
   const { loggingLevel } = usePreferences();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<MealFilter>('all');
@@ -597,7 +603,15 @@ const MealManagement: React.FC = () => {
           <CardTitle className="text-xl sm:text-2xl font-bold tracking-tight">
             {t('mealManagement.manageMeals', 'Meal Management')}
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            {!isActingOnBehalf && activeUserId && (
+              <Button
+                variant="outline"
+                onClick={() => setShowRecipeImport(true)}
+              >
+                {t('recipeImport.title', 'Import Mealie ingredients')}
+              </Button>
+            )}
             <Button
               variant="outline"
               size={isMobile ? 'icon' : 'default'}
@@ -708,6 +722,20 @@ const MealManagement: React.FC = () => {
         </CardContent>
       </Card>
 
+      {showRecipeImport && !isActingOnBehalf && activeUserId && (
+        <React.Suspense fallback={null}>
+          <RecipeImportDialog
+            key={activeUserId}
+            open
+            onOpenChange={setShowRecipeImport}
+            onOpenMeal={(mealId) => {
+              setShowRecipeImport(false);
+              handleEditMeal(mealId);
+            }}
+          />
+        </React.Suspense>
+      )}
+
       <BulkActionToolbar
         selectedCount={selectedCount}
         totalCount={editableMealIds.length}
@@ -768,6 +796,9 @@ const MealManagement: React.FC = () => {
                   )}
             </DialogDescription>
           </DialogHeader>
+          {editingMealId && !isActingOnBehalf && (
+            <RecipeImportSourcePanel mealId={editingMealId} />
+          )}
           <MealBuilder
             mealId={editingMealId}
             onSave={handleMealSave}
@@ -846,6 +877,10 @@ const MealManagement: React.FC = () => {
               </p>
             )}
           </div>
+
+          {viewingMeal?.id && !isActingOnBehalf && (
+            <RecipeImportSourcePanel mealId={viewingMeal.id} />
+          )}
 
           {/* After the ingredient list: the foods are what this dialog is
               opened to check, and a full recipe above them pushes them down. */}

@@ -101,7 +101,10 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const date = route.params?.date;
-  const pickerMode = route.params?.pickerMode ?? 'log-entry';
+  const recipeImportTarget = route.params?.recipeImportTarget;
+  const pickerMode =
+    route.params?.pickerMode ??
+    (recipeImportTarget ? 'meal-builder' : 'log-entry');
   const mealTypeId = route.params?.mealTypeId;
   const mealPlanTarget = route.params?.mealPlanTarget;
   const isMealBuilderMode = pickerMode === 'meal-builder';
@@ -435,6 +438,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
         item,
         date,
         pickerMode: selectionPickerMode,
+        ...(recipeImportTarget ? { recipeImportTarget } : {}),
         // basketTapReturnDepth keeps a basket alive across a single add;
         // picker modes keep their existing depth-2 return past this screen.
         returnDepth: basketTapReturnDepth,
@@ -448,11 +452,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       mealPlanTarget,
       mealTypeId,
       selectionPickerMode,
+      recipeImportTarget,
       basketTapReturnDepth,
     ]
   );
 
   const openCreateFood = useCallback(() => {
+    if (recipeImportTarget) return;
     navigation.navigate('FoodForm', {
       mode: 'create-food',
       date,
@@ -466,6 +472,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     mealPlanTarget,
     selectionPickerMode,
     basketTapReturnDepth,
+    recipeImportTarget,
   ]);
 
   const openMealAdd = useCallback(() => {
@@ -473,6 +480,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   }, [navigation]);
 
   const openFoodScan = useCallback(() => {
+    if (recipeImportTarget) return;
     navigation.navigate('FoodScan', {
       date,
       pickerMode: selectionPickerMode,
@@ -493,6 +501,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     mealTypeId,
     selectionPickerMode,
     basketTapReturnDepth,
+    recipeImportTarget,
   ]);
 
   // Only the custom-header path opens the JS menu; on the native path the
@@ -524,12 +533,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       {
         key: 'food',
         label: t('foodSearch.menu.newFood', { defaultValue: 'New Food' }),
-        icon: 'food',
+        icon: 'food' as const,
         onPress: openCreateFood,
       },
-    ];
+    ].filter(() => !recipeImportTarget);
     // MealAdd never hands a meal back, so no picker mode offers it.
-    if (!selectionPickerMode) {
+    if (!selectionPickerMode && !recipeImportTarget) {
       items.push({
         key: 'meal',
         label: t('foodSearch.menu.newMeal', { defaultValue: 'New Meal' }),
@@ -555,6 +564,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     return items;
   }, [
     selectionPickerMode,
+    recipeImportTarget,
     openCreateFood,
     openMealAdd,
     ownershipFilter,
@@ -568,14 +578,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   >(() => {
     const items: NativeStackHeaderItemMenu['menu']['items'] = [
       {
-        type: 'action',
+        type: 'action' as const,
         label: t('foodSearch.menu.newFood', { defaultValue: 'New Food' }),
-        icon: { type: 'sfSymbol', name: 'fork.knife' as never },
+        icon: { type: 'sfSymbol' as const, name: 'fork.knife' as never },
         onPress: openCreateFood,
       },
-    ];
+    ].filter(() => !recipeImportTarget);
     // MealAdd never hands a meal back, so no picker mode offers it.
-    if (!selectionPickerMode) {
+    if (!selectionPickerMode && !recipeImportTarget) {
       items.push({
         type: 'action',
         label: t('foodSearch.menu.newMeal', { defaultValue: 'New Meal' }),
@@ -602,6 +612,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     return items;
   }, [
     selectionPickerMode,
+    recipeImportTarget,
     openCreateFood,
     openMealAdd,
     ownershipFilter,
@@ -668,7 +679,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
           ? providers.find((p) => p.provider_type === item.source)?.id
           : selectedProvider);
       if (
-        (item.source === 'fatsecret' || item.source === 'yazio') &&
+        (item.source === 'fatsecret' ||
+          item.source === 'yazio' ||
+          recipeImportTarget) &&
         providerId
       ) {
         setLoadingFoodId(item.id);
@@ -710,14 +723,15 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
             }),
             text2: message,
           });
-          showFoodInfo(externalFoodItemToFoodInfo(item));
+          if (!recipeImportTarget)
+            showFoodInfo(externalFoodItemToFoodInfo(item));
         }
         setLoadingFoodId(null);
         return;
       }
       showFoodInfo(externalFoodItemToFoodInfo(item));
     },
-    [selectedProvider, providers, showFoodInfo, t]
+    [selectedProvider, providers, showFoodInfo, recipeImportTarget, t]
   );
 
   // --- Derived state ---
@@ -1225,7 +1239,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
           >
             <Icon name="close" size={20} color={textMuted} />
           </Button>
-        ) : (
+        ) : !recipeImportTarget ? (
           <Button
             variant="header"
             onPress={openFoodScan}
@@ -1237,7 +1251,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
           >
             <Icon name="scan" size={20} color={headerActionColor} />
           </Button>
-        )}
+        ) : null}
       </View>
 
       {multiSelectAvailable && (
