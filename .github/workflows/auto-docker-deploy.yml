@@ -5,6 +5,14 @@ on:
     types: [published]
   workflow_dispatch:
 
+# One run at a time, in the order they start, so an older release's run cannot
+# push `latest` after a newer one: each run checks whether its tag is the
+# newest release, and a run that started later always pushes last. A run
+# waiting for approval holds the queue until it is approved or rejected.
+concurrency:
+  group: publish-docker-images
+  cancel-in-progress: false
+
 jobs:
   push_to_registries:
     name: Push Docker image to multiple registries

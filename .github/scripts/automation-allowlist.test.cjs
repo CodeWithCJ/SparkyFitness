@@ -67,6 +67,12 @@ test('code, workflows, nested and non-catalogue files are rejected', () => {
     'SparkyFitnessMobile/targets/android-widget/res/values-v31/widget_strings.xml',
     'SparkyFitnessMobile/targets/android-widget/res/values-car/widget_strings.xml',
     'SparkyFitnessMobile/targets/android-widget/res/values-de-night/widget_strings.xml',
+    'SparkyFitnessMobile/targets/android-widget/res/values-eng/widget_strings.xml',
+    'SparkyFitnessMobile/targets/widget/en-GB.lproj/Localizable.strings',
+    'SparkyFitnessMobile/targets/widget/EN.lproj/Localizable.strings',
+    'SparkyFitnessFrontend/public/locales/en-GB/translation.json',
+    'SparkyFitnessMobile/src/localization/locales/en_US/translation.json',
+    'SparkyFitnessMobile/locales/english.json',
   ];
   assert.deepEqual(
     outsideAllowlist('i18n/sync-weblate-translations', bad),

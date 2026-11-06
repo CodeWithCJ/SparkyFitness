@@ -25,9 +25,8 @@ inputs:
   allowed-files:
     description: >-
       Extended regular expression every changed path must match, checked on
-      head-sha itself before merging. Leave empty to skip the check.
-    required: false
-    default: ""
+      head-sha itself before merging. An empty value fails the merge.
+    required: true
 
 runs:
   using: composite
@@ -48,6 +47,12 @@ runs:
           exit 1
           ;;
         esac
+        # The file check is the only content control on a merge past review, so
+        # no allowlist means no merge.
+        if [ -z "$ALLOWED" ]; then
+          echo "::error::allowed-files is empty, so PR #$PR has no content check. Review it by hand."
+          exit 1
+        fi
         # The workflow chose which files to commit, but a file staged by an
         # earlier step would still ride along, so check the files of head-sha
         # itself. The compare API returns at most 300 files: a larger diff, or a
@@ -57,15 +62,20 @@ runs:
         # Runs inside an if, where set -e is off, so every step returns 1 itself:
         # a failed call must never read as a match.
         files_match() {
-          [ -z "$ALLOWED" ] && return 0
-          local info base changed compare listed outside
+          local info base changed compare listed outside status=0
           info=$(gh pr view "$PR" --repo "$REPO" --json baseRefOid,changedFiles --jq '"\(.baseRefOid) \(.changedFiles)"') || return 1
           read -r base changed <<<"$info" || return 1
           [[ "$base" =~ ^[0-9a-f]{40}$ && "$changed" =~ ^[0-9]+$ ]] || return 1
           compare=$(gh api "repos/$REPO/compare/$base...$HEAD_SHA") || return 1
           listed=$(jq -e '.files | length' <<<"$compare") || return 1
           outside=$(jq -r '.files[] | .filename, (.previous_filename // empty)' <<<"$compare") || return 1
-          outside=$(grep -Ev -- "$ALLOWED" <<<"$outside" || true)
+          outside=$(grep -Ev -- "$ALLOWED" <<<"$outside") || status=$?
+          # grep exits 1 when every path matched and 2 on an error such as a
+          # malformed pattern: only 0 and 1 mean the check ran.
+          if [ "$status" -gt 1 ]; then
+            echo "::error::The allowed-files check could not run for PR #$PR (grep exit $status). Review it by hand."
+            exit 1
+          fi
           if [ -n "$outside" ]; then
             echo "::error::PR #$PR changes files outside its allowlist. Review it by hand:"
             echo "$outside"

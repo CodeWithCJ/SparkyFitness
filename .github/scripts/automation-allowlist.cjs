@@ -8,9 +8,11 @@
 // list means a person must review the PR. English is excluded: it comes from
 // developers' PRs, never from the sync.
 
-const LANG = '(?!en(?:[/.]|$))[A-Za-z0-9_+-]+';
+// English in any spelling (en, EN, en-GB, en_US, eng, english) is excluded: no
+// other language code starts with "en", so a case-insensitive prefix covers it.
+const LANG = '(?![Ee][Nn])[A-Za-z0-9_+-]+';
 const ANDROID_LANG =
-  '(?!(?:b\\+)?(?:en|car|hdr)(?:[-+/]|$))(?:[a-z]{2,3}(?:-r[A-Z]{2})?|b\\+[a-z]{2,3}(?:\\+[A-Za-z0-9]+)*)';
+  '(?!(?:b\\+)?[Ee][Nn]|(?:car|hdr)(?:[-+/]|$))(?:[a-z]{2,3}(?:-r[A-Z]{2})?|b\\+[a-z]{2,3}(?:\\+[A-Za-z0-9]+)*)';
 
 const ALLOWED_FILES = {
   'i18n/': [
