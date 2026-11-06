@@ -26,6 +26,16 @@ describe('dashboardLayoutService', () => {
       ).resolves.toBeNull();
     });
 
+    it('accepts the diary-timeline page key', async () => {
+      vi.mocked(dashboardLayoutRepository.getDashboardLayout).mockResolvedValue(
+        null
+      );
+
+      await expect(
+        dashboardLayoutService.getDashboardLayout('user-1', 'diary-timeline')
+      ).resolves.toBeNull();
+    });
+
     it('accepts the reports-measurements page key', async () => {
       vi.mocked(dashboardLayoutRepository.getDashboardLayout).mockResolvedValue(
         null
