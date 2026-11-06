@@ -91,7 +91,7 @@ hasUIChanges = .tsx/.jsx/.css files in components/screens/pages/
 - Re-formats the JSON version files on the release PR branch with Prettier, since release-please writes them with plain `JSON.stringify`
 - When the release PR is merged, creates a **draft** release and its tag, and replaces the body with `.github/release-preamble.md` + GitHub's generated notes (the same body `draft-release.yml` builds)
 
-Nothing ships until a maintainer fills in the Key Highlights and publishes the draft. The `release: published` workflows below run on that publish, as before.
+Nothing ships until a maintainer fills in the Key Highlights and publishes the draft. The `release: published` workflows below start on that publish, but the Docker images and the Android build wait for a maintainer to approve them in the `release` environment (Actions tab, **Review deployments**). The Helm chart, the Umbrel package PR and the release notifications follow once the Docker images are pushed. The Umbrel App Store submission also waits for approval, after its package PR is merged.
 
 **Release order**: the tag is created on the release PR's merge commit, and the workflows that build the release (Docker images, Android APK, release assets, Helm chart, docs) check out that tag. Anything merged after the release PR misses the release, even if the draft is published later. Before merging it:
 
@@ -99,6 +99,7 @@ Nothing ships until a maintainer fills in the Key Highlights and publishes the d
 2. Run **Sync Translations** from `main` (it also runs every night), wait for it to finish, and merge its `chore(i18n): sync translations from Weblate` PR if one is open. If the summary shows that the translations PR step failed, fix the cause and run it again. "Unchanged" with no PR means there is nothing to merge, and a failure on the English PR does not block this step.
 3. Wait for CI and Release Please on `main` to finish.
 4. Merge the release PR and wait for its Release Please run to finish, because it rewrites the draft's body. Then add the Key Highlights and publish the draft.
+5. In the Actions tab, approve the waiting `release` deployments of **Publish Docker Images** and **Build Android APK**. Approve only runs you started: the environment's secrets sign the app and push the images.
 
 The `pull-request-header` in `release-please-config.json` repeats these steps at the top of the release PR. It is missing when the release notes are too long for a PR body, because release-please then replaces the whole body with a link to them.
 
@@ -118,9 +119,9 @@ Config lives in `release-please-config.json`; the current version in `.release-p
 
 #### `auto-docker-deploy.yml`
 
-**Purpose**: Automatically deploy Docker images on version tag pushes
+**Purpose**: Build and push the Docker images for a release
 
-**Triggers**: Push of tags matching `v*.*.*`
+**Triggers**: Release publication, and manual workflow dispatch. Its job runs in the `release` environment, so it waits for a maintainer's approval and can only run from `main` or a `v*` tag. Only the newest release moves the `latest` tag, so approving an older release's run late does not move it back.
 
 ---
 
@@ -128,7 +129,7 @@ Config lives in `release-please-config.json`; the current version in `.release-p
 
 **Purpose**: Manual Docker deployment workflow
 
-**Triggers**: Manual workflow dispatch
+**Triggers**: Manual workflow dispatch, from `main` or a `v*` tag only. Its job runs in the `release` environment and waits for a maintainer's approval; a dispatch from any other branch fails before it can read the Docker Hub credentials.
 
 ---
 
@@ -136,7 +137,7 @@ Config lives in `release-please-config.json`; the current version in `.release-p
 
 **Purpose**: Create Helm chart releases
 
-**Triggers**: Release publication
+**Triggers**: Completion of `Publish Docker Images` for an actual `release` event, and manual workflow dispatch (pushes a `0.0.0-dev` chart). It waits for the images rather than running on `release: published`, so the chart never points at image tags that do not exist yet.
 
 ---
 
@@ -173,7 +174,7 @@ Submitting to the App Store is a separate workflow (`umbrel-app-submit.yml`) tha
 
 The initial App Store submission stays manual (see `umbrel/README.md`): `submission:` has to name a PR that doesn't exist yet, and the Umbrel team wants screenshots on it. This workflow only ever patches a package that already exists upstream, so it is a no-op until that first PR has been merged by the Umbrel team.
 
-**Requires**: the `UMBREL_APPS_TOKEN` secret (a PAT with `public_repo` scope). Without it, the step is skipped with a warning.
+**Requires**: the `UMBREL_APPS_TOKEN` secret (a PAT with `public_repo` scope) in the `release` environment, not at repository level, so the job waits for a maintainer's approval. Without it, the step is skipped with a warning.
 
 ---
 
@@ -201,7 +202,7 @@ The initial App Store submission stays manual (see `umbrel/README.md`): `submiss
 
 **Purpose**: Build the signed Android APK and AAB and attach them to the release
 
-**Triggers**: Release publication, and manual workflow dispatch. A manual dispatch only attaches the APK and AAB when run against a release tag; from a branch it builds them without uploading. Not the `v*` tag push: `release-please.yml` creates the tag with the draft, before the release is approved.
+**Triggers**: Release publication, and manual workflow dispatch. Its job runs in the `release` environment, which holds the signing keystore and Maps key, so it waits for a maintainer's approval and can only run from `main` or a `v*` tag. A manual dispatch creates or updates the `v<version>` release with the APK and AAB, so it is not a dry run. Not the `v*` tag push: `release-please.yml` creates the tag with the draft, before the release is approved.
 
 ---
 
@@ -251,9 +252,9 @@ The workflow merges the English PR there itself, unless it deletes more than 300
 
 **Purpose**: Automatically and safely merges the clean translations PR (`i18n/*`) once all CI checks pass. The Nix hashes and schema backup PRs merge themselves in their own workflows (below). If there are any merge conflicts, the PR is held untouched for manual review.
 
-It merges with the SparkyFitness-Sync GitHub App token (`SYNC_APP_PRIVATE_KEY`), because `main`'s ruleset requires a review and only the app is on its bypass list. Since that token skips review, a PR qualifies only by its branch prefix, which needs write access to push, and not by a label, which anyone with triage access can add. Every changed file must also match the allowlist in `.github/scripts/automation-allowlist.cjs` (non-English locale files only, listed with the compare API at the exact head merged), and no value in a changed catalogue, parsed as it stands at that head so JSON escapes cannot hide a tag, may put attributes in a tag (`<Trans>` lets them override a link's `href`, `target` and `rel`), so a commit pushed onto the sync branch by hand is held for review instead of merged. CI passing is not the safety gate: anyone with write access can post a commit status. The app secrets live in the `sync-app` environment, limited to `main`, so a workflow pushed on another branch cannot read them. A PR opened with `GITHUB_TOKEN` gets no CI, so nothing here merges it.
+It merges with the SparkyFitness-Sync GitHub App token (`SYNC_APP_PRIVATE_KEY`), because `main`'s ruleset requires a review and only the app is on its bypass list. Since that token skips review, a PR qualifies only by its branch prefix, which needs write access to push, and not by a label, which anyone with triage access can add. Every changed file must also match the allowlist in `.github/scripts/automation-allowlist.cjs` (non-English locale files only, listed with the compare API at the exact head merged), and no value in a changed catalogue, parsed as it stands at that head so JSON escapes cannot hide a tag, may put attributes in a tag (`<Trans>` lets them override a link's `href`, `target` and `rel`), so a commit pushed onto the sync branch by hand is held for review if it changes anything else or adds an attribute. A hand-pushed commit that only edits non-English values still merges: nothing can tell who wrote a commit, so anyone with write access is trusted with translation text. Only web catalogues are checked for attributes, since the mobile app has no `<Trans>` and shows values as plain text. CI passing is not the safety gate: anyone with write access can post a commit status. The app secrets live in the `sync-app` environment, limited to `main`, so a workflow pushed on another branch cannot read them. A PR opened with `GITHUB_TOKEN` gets no CI, so nothing here merges it.
 
-Umbrel package-update PRs (`umbrel/*`, from `umbrel-app-update.yml`) are **not** in the allowlist, deliberately: merging that PR is what triggers the App Store submission in `umbrel-app-submit.yml`, so it stays a manual review step. Add `'umbrel/'` to `ALLOWED_BRANCH_PREFIXES` only if that gate should be removed.
+Umbrel package-update PRs (`umbrel/*`, from `umbrel-app-update.yml`) are **not** auto-merged, deliberately: merging that PR is what triggers the App Store submission in `umbrel-app-submit.yml`, so it stays a manual review step. Removing that gate takes `'umbrel/'` in this workflow's `ALLOWED_BRANCH_PREFIXES` and in its job `if` (which only lets `i18n/` branches through), plus an `'umbrel/'` entry in `ALLOWED_FILES` in `automation-allowlist.cjs` listing the package files.
 
 **Triggers**: Pull requests (opened, synchronize, labeled, ready_for_review), `CI Tests` runs completed, check suites completed, and manual workflow dispatch. `check_suite` never fires for suites created by GitHub Actions, so `workflow_run` is what catches CI finishing.
 
@@ -293,9 +294,9 @@ Umbrel package-update PRs (`umbrel/*`, from `umbrel-app-update.yml`) are **not**
 
 #### `release-published-notifier.yml`
 
-**Purpose**: When a new release is published, automatically comments on all issues resolved in that release announcing that the release is now live with links to the release notes.
+**Purpose**: When a new release is out, automatically comments on all issues resolved in that release announcing that the release is now live with links to the release notes.
 
-**Triggers**: Release published (`published`)
+**Triggers**: Completion of `Publish Docker Images` for an actual `release` event, so an issue hears about the release only once its images are pushed.
 
 ---
 

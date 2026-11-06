@@ -37,8 +37,16 @@ jobs:
             const release = context.payload.release;
             if (context.eventName === 'release' && release && !release.prerelease && !release.draft) {
               core.setOutput('tag', release.tag_name);
+              // Approval can come late, so an older release's run may finish
+              // after a newer one. Only the newest release moves `latest`.
+              const { data: newest } = await github.rest.repos.getLatestRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+              });
+              core.setOutput('latest', String(newest.tag_name === release.tag_name));
               return;
             }
+            core.setOutput('latest', 'true');
             const { data: releases } = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -80,7 +88,7 @@ jobs:
             ghcr.io/${{ steps.repo.outputs.name }}-frontend
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ steps.get_latest_release.outputs.latest == 'true' }}
 
       - name: Build and push frontend
         id: push-frontend
@@ -112,7 +120,7 @@ jobs:
             ghcr.io/${{ steps.repo.outputs.name }}-server
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ steps.get_latest_release.outputs.latest == 'true' }}
 
       - name: Build and push server
         id: push-server
@@ -144,7 +152,7 @@ jobs:
             ghcr.io/${{ steps.repo.outputs.name }}-garmin
           tags: |
             type=raw,value=${{ steps.get_latest_release.outputs.tag }}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ steps.get_latest_release.outputs.latest == 'true' }}
 
       - name: Build and push Garmin Microservice
         id: push-garmin

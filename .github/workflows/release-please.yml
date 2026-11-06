@@ -8,10 +8,13 @@ name: Release Please
 # Merging the release PR is the first human gate. It creates a DRAFT release with
 # the same body draft-release.yml builds (release-preamble.md + GitHub's generated
 # notes). Publishing that draft is the second gate, and is what fires every
-# `release: published` workflow (Docker images, Helm chart, assets, notifiers).
+# `release: published` workflow (Docker images, Android, assets, docs). The
+# third gate is approving the Docker and Android jobs in the release
+# environment, which holds their secrets. The Helm chart, the Umbrel package PR
+# and the issue notifications run once the Docker images are pushed.
 #
 # The draft is created with GITHUB_TOKEN, which never triggers other workflows,
-# but the publish is done by a person, so those workflows run as they do today.
+# but the publish is done by a person, so those workflows run.
 # `force-tag-creation` pushes the tag up front, because draft releases have no
 # tag until published and release-please needs it to find the previous release.
 # Nothing may therefore build on a `v*` tag push: android.yml runs on

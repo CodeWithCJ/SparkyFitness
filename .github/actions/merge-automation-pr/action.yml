@@ -76,8 +76,12 @@ runs:
             return 1
           fi
         }
+        # gh refuses a PR that main's review rule reports as BLOCKED before it
+        # calls the API, even for a bypass actor (cli/cli#13388). --admin only
+        # skips that local check: GitHub still applies the ruleset, and lets the
+        # merge through because the app is on its bypass list.
         for attempt in 1 2 3; do
-          if files_match && gh pr merge "$PR" --repo "$REPO" "--$METHOD" --delete-branch --match-head-commit "$HEAD_SHA"; then
+          if files_match && gh pr merge "$PR" --repo "$REPO" "--$METHOD" --admin --delete-branch --match-head-commit "$HEAD_SHA"; then
             exit 0
           fi
           if [ "$attempt" -lt 3 ]; then sleep 20; fi

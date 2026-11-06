@@ -1,14 +1,24 @@
 name: Release Helm Chart
 
+# Runs after Publish Docker Images, not on release: published, because that
+# workflow waits for approval in the release environment and the chart must not
+# point at image tags that do not exist yet.
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Publish Docker Images"]
+    types: [completed]
   workflow_dispatch:
 
 jobs:
   release-chart:
     name: Package and push Helm chart
     runs-on: ubuntu-latest
+    # workflow_run fires on failure too, and for manual rebuilds of the images,
+    # which are not a new release.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'release')
     permissions:
       packages: write
       contents: read
@@ -16,15 +26,26 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # The release's tag, as the images were built from it.
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
 
       - name: Install Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
 
       - name: Get release tag
         id: release_tag
+        env:
+          # For a release run, head_branch is the release's tag.
+          RUN_TAG: ${{ github.event.workflow_run.head_branch }}
         run: |
-          if [ "${{ github.event_name }}" = "release" ]; then
-            TAG="${{ github.event.release.tag_name }}"
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            TAG="$RUN_TAG"
+            if ! [[ "$TAG" =~ ^v?[0-9]+(\.[0-9]+)+$ ]]; then
+              echo "::error::Unexpected release tag: $TAG"
+              exit 1
+            fi
           else
             TAG="0.0.0-dev"
           fi
@@ -45,7 +66,10 @@ jobs:
           echo "app_version=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+        run: echo "$GH_TOKEN" | helm registry login ghcr.io -u "$ACTOR" --password-stdin
 
       - name: Fetch chart dependencies
         run: helm dependency update helm/chart

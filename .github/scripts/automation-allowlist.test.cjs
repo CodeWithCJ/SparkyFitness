@@ -5,6 +5,7 @@ const { test } = require('node:test');
 const {
   allowedFor,
   outsideAllowlist,
+  rendersMarkup,
   valuesWithAttributes,
 } = require('./automation-allowlist.cjs');
 const { readFileSync } = require('node:fs');
@@ -59,6 +60,13 @@ test('code, workflows, nested and non-catalogue files are rejected', () => {
     'SparkyFitnessFrontend/public/locales/fr/cache/note.json',
     'SparkyFitnessMobile/targets/widget/de.lproj/Controls.swift',
     'nix/update-hashes.sh',
+    'SparkyFitnessMobile/targets/android-widget/res/values-en/widget_strings.xml',
+    'SparkyFitnessMobile/targets/android-widget/res/values-en-rGB/widget_strings.xml',
+    'SparkyFitnessMobile/targets/android-widget/res/values-b+en+US/widget_strings.xml',
+    'SparkyFitnessMobile/targets/android-widget/res/values-night/widget_strings.xml',
+    'SparkyFitnessMobile/targets/android-widget/res/values-v31/widget_strings.xml',
+    'SparkyFitnessMobile/targets/android-widget/res/values-car/widget_strings.xml',
+    'SparkyFitnessMobile/targets/android-widget/res/values-de-night/widget_strings.xml',
   ];
   assert.deepEqual(
     outsideAllowlist('i18n/sync-weblate-translations', bad),
@@ -74,8 +82,11 @@ test('nix/ branches are not auto-merged: their workflow merges its own PR', () =
   );
 });
 
-test('no catalogue in the repo puts attributes in a tag', () => {
-  const json = catalogues.filter((p) => p.endsWith('.json'));
+test('no web catalogue in the repo puts attributes in a tag', () => {
+  const json = catalogues.filter(
+    (p) => p.endsWith('.json') && rendersMarkup(p)
+  );
+  assert.ok(json.length > 20, 'expected the web catalogues to be found');
   const found = json.flatMap((p) =>
     valuesWithAttributes(readFileSync(resolve(root, p), 'utf8')).map(
       (k) => `${p}: ${k}`
@@ -91,12 +102,43 @@ test('values may carry tags but not attributes', () => {
     target: '<1 target=_blank rel="opener">x</1>',
     slash: '<0/href="https://example.com">x</0>',
     selfClosing: 'Line<br/>break and <0/> here',
+    quotedBracket: '<link ">" href="https://example.com">text</link>',
+    bareQuote: '<0 "x">text</0>',
+    percent: 'Low (<15%)',
+    minute: '<1 min',
+    lessThan: 'Under < 5 kg, or a<b',
+    closing: 'Fat</|final|> and <!-- note -->',
+    doctype: '<!x href="https://example.com">x',
+    openAtEnd: 'Read more <0 href="https://example.com"',
   });
   assert.deepEqual(valuesWithAttributes(catalogue), [
     'nested.link',
     'target',
     'slash',
+    'quotedBracket',
+    'doctype',
+    'openAtEnd',
   ]);
+});
+
+test('only web catalogues are value-checked, because mobile has no <Trans>', () => {
+  assert.ok(
+    rendersMarkup('SparkyFitnessFrontend/public/locales/de/translation.json')
+  );
+  assert.ok(
+    !rendersMarkup(
+      'SparkyFitnessMobile/src/localization/locales/de/translation.json'
+    )
+  );
+  // Skipping mobile is only safe while it renders values as plain text.
+  const withTrans = tracked('SparkyFitnessMobile/src').filter(
+    (p) =>
+      /\.[jt]sx?$/.test(p) &&
+      /<Trans\b|\bTrans\b[^\n]*from ['"]react-i18next['"]/.test(
+        readFileSync(resolve(root, p), 'utf8')
+      )
+  );
+  assert.deepEqual(withTrans, []);
 });
 
 test('JSON escapes cannot hide a tag', () => {

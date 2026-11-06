@@ -13,7 +13,8 @@ name: Draft release
 # not produce, such as four-segment hotfixes (v1.7.3.1).
 #
 # Drafts do not create the git tag (GitHub only creates the ref on publish), so
-# running this does not trigger the v* tag workflows. They run on publish, as before.
+# running this does not trigger the v* tag workflows. They run on publish, and
+# the Docker and Android jobs then wait for approval in the release environment.
 
 on:
   workflow_dispatch:
