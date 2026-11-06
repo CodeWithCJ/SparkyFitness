@@ -24,23 +24,13 @@ jobs:
       contents: read
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          # The release's tag, as the images were built from it.
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          persist-credentials: false
-
-      - name: Install Helm
-        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
-
       - name: Get release tag
         id: release_tag
         env:
           # For a release run, head_branch is the release's tag.
           RUN_TAG: ${{ github.event.workflow_run.head_branch }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
             TAG="$RUN_TAG"
             if ! [[ "$TAG" =~ ^v?[0-9]+(\.[0-9]+)+$ ]]; then
               echo "::error::Unexpected release tag: $TAG"
@@ -65,6 +55,18 @@ jobs:
           echo "chart_version=$CHART_VERSION" >> "$GITHUB_OUTPUT"
           echo "app_version=$TAG" >> "$GITHUB_OUTPUT"
 
+      # The release's tag, checked out by name once it has been validated. Only
+      # the app and admins can create v* tags (the Release tags ruleset), and
+      # the images were built from it.
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && format('refs/tags/{0}', steps.release_tag.outputs.app_version) || github.sha }}
+          persist-credentials: false
+
+      - name: Install Helm
+        uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
+
       - name: Log in to GitHub Container Registry
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -75,12 +77,14 @@ jobs:
         run: helm dependency update helm/chart
 
       - name: Package Helm chart
-        run: |
-          helm package helm/chart \
-            --version "${{ steps.release_tag.outputs.chart_version }}" \
-            --app-version "${{ steps.release_tag.outputs.app_version }}"
+        env:
+          CHART_VERSION: ${{ steps.release_tag.outputs.chart_version }}
+          APP_VERSION: ${{ steps.release_tag.outputs.app_version }}
+        run: helm package helm/chart --version "$CHART_VERSION" --app-version "$APP_VERSION"
 
       - name: Push Helm chart to GHCR
+        env:
+          CHART_VERSION: ${{ steps.release_tag.outputs.chart_version }}
         run: |
-          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          helm push sparkyfitness-${{ steps.release_tag.outputs.chart_version }}.tgz oci://ghcr.io/${OWNER_LC}/charts
+          OWNER_LC=$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')
+          helm push "sparkyfitness-${CHART_VERSION}.tgz" "oci://ghcr.io/${OWNER_LC}/charts"
