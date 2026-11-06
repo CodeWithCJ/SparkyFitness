@@ -8,7 +8,6 @@ import i18n from 'i18next';
 import * as labApi from '@/api/Labs/labResultsApi';
 import { labKeys } from '@/api/keys/labs';
 import type {
-  CreateLabMarkerBody,
   CreateLabResultBody,
   ImportLabReportBody,
   UpdateLabResultBody,
@@ -63,17 +62,6 @@ export const useLabHistory = (
       ),
     },
   });
-
-export const useCreateLabMarker = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (body: CreateLabMarkerBody) => labApi.createLabMarker(body),
-    onSuccess: () => invalidateLabs(queryClient),
-    meta: {
-      errorMessage: i18n.t('labs.saveFailed', 'Could not save the lab result'),
-    },
-  });
-};
 
 export const useSaveLabResult = () => {
   const queryClient = useQueryClient();

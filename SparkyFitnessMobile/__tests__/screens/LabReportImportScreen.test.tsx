@@ -195,4 +195,20 @@ describe('LabReportImportScreen', () => {
     expect((navigation as { goBack: jest.Mock }).goBack).not.toHaveBeenCalled();
     expect(getByText('Date of test')).toBeTruthy();
   });
+
+  it('sends the same key when a failed save is tried again', async () => {
+    importAsync.mockRejectedValueOnce(new Error('network'));
+    importAsync.mockResolvedValueOnce({ report: {}, results: [] });
+    const { getByText } = await openReview();
+
+    fireEvent.press(getByText('save-bar'));
+    await waitFor(() => expect(importAsync).toHaveBeenCalledTimes(1));
+    fireEvent.press(getByText('save-bar'));
+    await waitFor(() => expect(importAsync).toHaveBeenCalledTimes(2));
+
+    const [firstTry, retry] = importAsync.mock.calls.map(([body]) => body);
+    expect(typeof firstTry.client_request_id).toBe('string');
+    expect(firstTry.client_request_id.length).toBeGreaterThan(0);
+    expect(retry.client_request_id).toBe(firstTry.client_request_id);
+  });
 });

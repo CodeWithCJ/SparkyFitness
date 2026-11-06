@@ -497,4 +497,48 @@ describe('LabImportDialog', () => {
       )
     );
   });
+
+  it('sends one key per reviewed report, the same on a retry', async () => {
+    api.scanLabReport.mockResolvedValue(scanResponse);
+    api.importLabReport
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce({ report: {} as never, results: [result()] });
+    renderDialog();
+    pick(new File(['x'], 'r.pdf', { type: 'application/pdf' }));
+
+    const save = await screen.findByRole('button', {
+      name: /^Save \d results$/,
+    });
+    fireEvent.click(save);
+    await waitFor(() => expect(api.importLabReport).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: /^Save \d results$/ }));
+    await waitFor(() => expect(api.importLabReport).toHaveBeenCalledTimes(2));
+
+    const [firstTry, retry] = api.importLabReport.mock.calls.map(([b]) => b);
+    expect(firstTry?.client_request_id).toMatch(/^[0-9a-f-]{36}$/);
+    expect(retry?.client_request_id).toBe(firstTry?.client_request_id);
+  });
+
+  it('uses a new key for a different report', async () => {
+    api.scanLabReport.mockResolvedValue(scanResponse);
+    api.importLabReport.mockRejectedValue(new Error('network'));
+    renderDialog();
+
+    pick(new File(['a'], 'a.pdf', { type: 'application/pdf' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /^Save \d results$/ })
+    );
+    await waitFor(() => expect(api.importLabReport).toHaveBeenCalledTimes(1));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Choose a different report' })
+    );
+    pick(new File(['b'], 'b.pdf', { type: 'application/pdf' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: /^Save \d results$/ })
+    );
+    await waitFor(() => expect(api.importLabReport).toHaveBeenCalledTimes(2));
+
+    const [a, b] = api.importLabReport.mock.calls.map(([body]) => body);
+    expect(b?.client_request_id).not.toBe(a?.client_request_id);
+  });
 });

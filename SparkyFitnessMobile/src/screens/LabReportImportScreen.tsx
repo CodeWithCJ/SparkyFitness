@@ -51,6 +51,7 @@ import {
   parseLabValue,
 } from '../utils/labResults';
 import type { RootStackScreenProps } from '../types/navigation';
+import { newUuid } from '../utils/ids';
 
 type Props = RootStackScreenProps<'LabReportImport'>;
 
@@ -58,6 +59,11 @@ interface ScannedReport {
   labName: string | null;
   rows: LabImportRow[];
   date: string;
+  /**
+   * Made once per scanned report and sent with every try to save it, so a
+   * retry after a lost answer gets the saved report back, not a second copy.
+   */
+  requestId: string;
 }
 
 const todayOrEarlier = (date: string | null): string =>
@@ -148,6 +154,7 @@ const LabReportImportScreen: React.FC<Props> = ({ navigation }) => {
         labName: response.report.lab_name,
         rows,
         date: todayOrEarlier(response.report.collected_on),
+        requestId: newUuid(),
       });
     } catch {
       // The error text is shown from scan.error below.
@@ -184,6 +191,7 @@ const LabReportImportScreen: React.FC<Props> = ({ navigation }) => {
           labName: report.labName,
           date: report.date,
           values,
+          clientRequestId: report.requestId,
         })
       );
     } catch {

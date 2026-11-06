@@ -1,12 +1,10 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ApiError } from '../services/api/errors';
 import {
   deleteBuiltinMarkerResults,
   deleteLabImports,
 } from '../services/api/labReportApi';
 import {
-  createLabMarker,
   createLabResult,
   deleteLabMarker,
   deleteLabResult,
@@ -14,7 +12,6 @@ import {
   fetchLabResults,
   fetchLatestLabResults,
   type LabMarkerQuery,
-  type NewLabMarkerPayload,
 } from '../services/api/labResultsApi';
 import {
   labHistoryQueryKey,
@@ -95,25 +92,6 @@ export interface SaveLabResultInput {
   notes?: string;
 }
 
-/**
- * Creates the user's marker, or reuses the one with that name. A save that
- * created the marker but failed to store the result is retried by the person,
- * and the second attempt must not trip over the name it already made.
- */
-async function createOrFindLabMarker(payload: NewLabMarkerPayload) {
-  try {
-    return await createLabMarker(payload);
-  } catch (error) {
-    if (error instanceof ApiError && error.statusCode === 409) {
-      const existing = (await fetchLabMarkers()).find(
-        (m) => m.name.toLowerCase() === payload.name.toLowerCase()
-      );
-      if (existing) return existing;
-    }
-    throw error;
-  }
-}
-
 function invalidateLabCaches(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: labMarkersQueryKey });
   queryClient.invalidateQueries({ queryKey: labLatestQueryKey });
@@ -140,13 +118,13 @@ export function useSaveLabResult() {
       if ('markerId' in target) {
         return createLabResult({ ...base, custom_marker_id: target.markerId });
       }
-      const marker = await createOrFindLabMarker({
-        name: target.newMarkerName,
-        unit: input.unit,
-        ref_range_low: input.ref_range_low,
-        ref_range_high: input.ref_range_high,
+      // The server finds or creates the marker with the result in one
+      // transaction, so a failed save leaves no empty marker behind and a
+      // retry simply sends the same request again.
+      return createLabResult({
+        ...base,
+        custom_marker_name: target.newMarkerName,
       });
-      return createLabResult({ ...base, custom_marker_id: marker.id });
     },
     onSuccess: () => invalidateLabCaches(queryClient),
     onError: (err: Error) => {

@@ -1,6 +1,5 @@
 import { apiCall } from '@/api/api';
 import type {
-  CreateLabMarkerBody,
   CreateLabResultBody,
   DeleteLabImportsResponse,
   DeleteMarkerResultsResponse,
@@ -23,11 +22,6 @@ export interface LabHistoryQuery {
 
 export const listLabMarkers = (): Promise<LabMarkerResponse[]> =>
   apiCall('/v2/lab-results/markers', { method: 'GET' });
-
-export const createLabMarker = (
-  body: CreateLabMarkerBody
-): Promise<LabMarkerResponse> =>
-  apiCall('/v2/lab-results/markers', { method: 'POST', body });
 
 /** The newest result of every marker. */
 export const listLatestLabResults = (): Promise<LabResultResponse[]> =>

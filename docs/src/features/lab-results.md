@@ -21,7 +21,7 @@ Choose **Import from a report** and pick a PDF, or a photo or screenshot, of a l
 - A second result for the same marker in one report is blocked.
 - A unit that differs from the marker's earlier results shows a warning.
 
-The whole report is saved in one step: if it fails, nothing is stored. You need an AI provider set up under **Settings → AI**.
+The whole report is saved in one step: if it fails, nothing is stored, and trying again after a lost connection never saves the same report twice. You need an AI provider set up under **Settings → AI**.
 
 ## Deleting
 

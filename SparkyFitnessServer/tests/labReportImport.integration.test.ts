@@ -275,4 +275,155 @@ describe.runIf(RUN)('lab report imports', () => {
 
     await deleteResultsForMarkerKey(userId, 'ldl');
   });
+
+  it('returns the saved report when the same client key is sent again', async () => {
+    const key = randomUUID();
+    const body = {
+      client_request_id: key,
+      lab_name: 'Quest',
+      entry_date: '2026-09-12',
+      results: [
+        {
+          marker_key: 'hba1c',
+          value_numeric: 5.1,
+          unit: '%',
+          ref_range_low: 4.8,
+          ref_range_high: 5.6,
+        },
+        {
+          marker_name: 'Retry marker',
+          value_numeric: 7,
+          unit: 'x',
+          ref_range_low: null,
+          ref_range_high: null,
+        },
+      ],
+    };
+    const before = await reportRows();
+
+    const first = await importLabReport(userId, body);
+    const again = await importLabReport(userId, body);
+
+    expect(again.report.id).toBe(first.report.id);
+    expect(again.results.map((r) => r.id).sort()).toEqual(
+      first.results.map((r) => r.id).sort()
+    );
+    expect(await reportRows()).toBe(before + 1);
+    const linked = await db.query(
+      'SELECT count(*) FROM public.lab_results WHERE report_id = $1',
+      [first.report.id]
+    );
+    expect(Number(linked.rows[0].count)).toBe(2);
+
+    await deleteLabReports(userId, first.report.id);
+  });
+
+  it('saves two reports sent at once with the same key only once', async () => {
+    const key = randomUUID();
+    const body = {
+      client_request_id: key,
+      lab_name: 'Quest',
+      entry_date: '2026-09-12',
+      results: [
+        {
+          marker_key: 'ldl',
+          value_numeric: 100,
+          unit: 'mg/dL',
+          ref_range_low: null,
+          ref_range_high: 99,
+        },
+      ],
+    };
+
+    const [a, b] = await Promise.all([
+      importLabReport(userId, body),
+      importLabReport(userId, body),
+    ]);
+
+    expect(a.report.id).toBe(b.report.id);
+    const rows = await db.query(
+      'SELECT count(*) FROM public.lab_reports WHERE user_id = $1 AND client_request_id = $2',
+      [userId, key]
+    );
+    expect(Number(rows.rows[0].count)).toBe(1);
+
+    await deleteLabReports(userId, a.report.id);
+  });
+
+  it('keeps the same key of two users apart', async () => {
+    const key = randomUUID();
+    const body = {
+      client_request_id: key,
+      lab_name: null,
+      entry_date: '2026-09-12',
+      results: [
+        {
+          marker_key: 'hba1c',
+          value_numeric: 5,
+          unit: '%',
+          ref_range_low: null,
+          ref_range_high: null,
+        },
+      ],
+    };
+
+    const mine = await importLabReport(userId, body);
+    const theirs = await importLabReport(otherUserId, body);
+
+    expect(theirs.report.id).not.toBe(mine.report.id);
+    expect(theirs.report.user_id).toBe(otherUserId);
+
+    await deleteLabReports(userId, mine.report.id);
+    await deleteLabReports(otherUserId, theirs.report.id);
+  });
+
+  it('creates a new marker with its first result in one step', async () => {
+    const saved = await createLabResult(userId, {
+      custom_marker_name: 'Zonulin',
+      entry_date: '2026-09-12',
+      value_numeric: 40,
+      unit: 'ng/mL',
+      ref_range_low: null,
+      ref_range_high: 107,
+      source: 'manual',
+    });
+
+    const marker = (await listLabMarkers(userId)).find(
+      (m) => m.name === 'Zonulin'
+    );
+    expect(marker).toMatchObject({ unit: 'ng/mL', ref_range_high: 107 });
+    expect(saved?.custom_marker_id).toBe(marker?.id);
+
+    // The same name in another case reuses the marker.
+    const second = await createLabResult(userId, {
+      custom_marker_name: 'ZONULIN',
+      entry_date: '2026-10-01',
+      value_numeric: 35,
+      unit: 'ng/mL',
+      source: 'manual',
+    });
+    expect(second?.custom_marker_id).toBe(marker?.id);
+
+    await db.query('DELETE FROM public.lab_markers WHERE id = $1', [
+      marker?.id,
+    ]);
+  });
+
+  it('leaves no marker behind when the result with a new name is rejected', async () => {
+    await expect(
+      createLabResult(userId, {
+        // The marker itself is valid; the result fails its own check (no
+        // value at all), after the marker was created in the transaction.
+        custom_marker_name: 'Never saved',
+        entry_date: '2026-09-12',
+        value_numeric: null,
+        value_text: null,
+        unit: 'x',
+        source: 'manual',
+      })
+    ).rejects.toMatchObject({ code: '23514' });
+
+    const markers = await listLabMarkers(userId);
+    expect(markers.some((m) => m.name === 'Never saved')).toBe(false);
+  });
 });

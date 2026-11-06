@@ -401,7 +401,7 @@ router.get('/entries/:id', async (req, res, next) => {
  *             $ref: '#/components/schemas/LabResultInput'
  *     responses:
  *       201:
- *         description: The new result
+ *         description: The new result. With custom_marker_name, the marker is found or created in the same transaction.
  *         content:
  *           application/json:
  *             schema:
@@ -560,7 +560,7 @@ router.delete('/entries/:id', async (req, res, next) => {
  *             $ref: '#/components/schemas/ImportLabReportInput'
  *     responses:
  *       201:
- *         description: The saved report and its results
+ *         description: The saved report and its results. With a client_request_id this user already used, the report that key saved, unchanged.
  *         content:
  *           application/json:
  *             schema:

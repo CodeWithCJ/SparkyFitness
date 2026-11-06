@@ -24,6 +24,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { generateClientId } from '@/utils/generateClientId';
 import { toast } from '@/hooks/use-toast';
 import {
   useImportLabReport,
@@ -39,6 +40,9 @@ import {
   labReportMimeType,
   readFileAsBase64,
 } from './labFormat';
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface LabImportDialogProps {
   open: boolean;
@@ -70,6 +74,9 @@ const LabImportDialog = ({
   const [labName, setLabName] = useState('');
   const [date, setDate] = useState(todayInZone(timezone));
   const [fileError, setFileError] = useState<string | null>(null);
+
+  // One key per reviewed report, sent with every try to save it.
+  const [requestId, setRequestId] = useState<string | null>(null);
 
   const reset = () => {
     selection.current += 1;
@@ -136,6 +143,11 @@ const LabImportDialog = ({
         sex
       );
       setRows(planned);
+      // randomUUID needs HTTPS; generateClientId falls back to
+      // getRandomValues, so a plain-HTTP self-host gets a key too. Without any
+      // crypto it is not a UUID, and the import is sent without a key.
+      const key = generateClientId();
+      setRequestId(UUID_PATTERN.test(key) ? key : null);
       setIncluded(
         Object.fromEntries(planned.map((r) => [r.key, r.blocked === null]))
       );
@@ -181,6 +193,7 @@ const LabImportDialog = ({
       labName: labName.trim() || null,
       date,
       values: parsed as Record<string, number>,
+      clientRequestId: requestId ?? undefined,
     });
     const id = selection.current;
     try {

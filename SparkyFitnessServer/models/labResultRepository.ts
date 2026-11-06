@@ -236,6 +236,48 @@ export async function getLabResultById(
   }
 }
 
+type QueryClient = Awaited<ReturnType<typeof getClient>>;
+
+/**
+ * The id of the user's marker with this name (any case), creating it with the
+ * given unit and range when there is none. Two saves racing to create the same
+ * name both end up with the one marker the unique index allowed.
+ */
+async function findOrCreateMarker(
+  client: QueryClient,
+  userId: string,
+  marker: {
+    name: string;
+    unit: string;
+    ref_range_low: number | null;
+    ref_range_high: number | null;
+  },
+  actor: string
+): Promise<string> {
+  const created = await client.query(
+    `INSERT INTO lab_markers (
+      user_id, name, unit, ref_range_low, ref_range_high,
+      created_by_user_id, updated_by_user_id
+    ) VALUES ($1, $2, $3, $4, $5, $6, $6)
+    ON CONFLICT (user_id, lower(name)) DO NOTHING
+    RETURNING id`,
+    [
+      userId,
+      marker.name,
+      marker.unit,
+      marker.ref_range_low,
+      marker.ref_range_high,
+      actor,
+    ]
+  );
+  if (created.rows[0]) return String(created.rows[0].id);
+  const found = await client.query(
+    'SELECT id FROM lab_markers WHERE user_id = $1 AND lower(name) = lower($2)',
+    [userId, marker.name]
+  );
+  return String(found.rows[0].id);
+}
+
 /**
  * Null when `custom_marker_id` is not one of this user's markers, so a result
  * can never point at another person's marker.
@@ -246,13 +288,32 @@ export async function createLabResult(
   authenticatedUserId?: string
 ): Promise<LabResultResponse | null> {
   const client = await getClient(userId, authenticatedUserId);
+  const actor = authenticatedUserId ?? userId;
   try {
-    if (data.custom_marker_id) {
+    await client.query('BEGIN');
+    let customMarkerId = data.custom_marker_id ?? null;
+    if (customMarkerId) {
       const owned = await client.query(
         'SELECT 1 FROM lab_markers WHERE id = $1 AND user_id = $2',
-        [data.custom_marker_id, userId]
+        [customMarkerId, userId]
       );
-      if (owned.rowCount === 0) return null;
+      if (owned.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return null;
+      }
+    } else if (data.custom_marker_name) {
+      // Created with the result, so a failed save leaves no empty marker.
+      customMarkerId = await findOrCreateMarker(
+        client,
+        userId,
+        {
+          name: data.custom_marker_name,
+          unit: data.unit,
+          ref_range_low: data.ref_range_low ?? null,
+          ref_range_high: data.ref_range_high ?? null,
+        },
+        actor
+      );
     }
     const result = await client.query(
       `INSERT INTO lab_results (
@@ -268,7 +329,7 @@ export async function createLabResult(
       [
         userId,
         data.marker_key ?? null,
-        data.custom_marker_id ?? null,
+        customMarkerId,
         data.entry_date,
         data.value_numeric ?? null,
         data.value_text ?? null,
@@ -278,10 +339,14 @@ export async function createLabResult(
         data.lab_name ?? null,
         data.notes ?? null,
         data.source,
-        authenticatedUserId ?? userId,
+        actor,
       ]
     );
+    await client.query('COMMIT');
     return mapRowToResult(result.rows[0]);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally {
     client.release();
   }
@@ -338,6 +403,39 @@ export async function deleteLabResult(
   }
 }
 
+function mapRowToReport(
+  row: Record<string, unknown>
+): ImportLabReportResponse['report'] {
+  return {
+    id: String(row.id),
+    user_id: String(row.user_id),
+    lab_name: toStringOrNull(row.lab_name),
+    collected_on: toStringOrNull(row.collected_on)?.split('T')[0] ?? null,
+    created_at: toIso(row.created_at),
+  };
+}
+
+/** The report a client key already saved, with its results. */
+async function loadImportedReport(
+  client: QueryClient,
+  userId: string,
+  clientRequestId: string
+): Promise<ImportLabReportResponse> {
+  const report = await client.query(
+    'SELECT * FROM lab_reports WHERE user_id = $1 AND client_request_id = $2',
+    [userId, clientRequestId]
+  );
+  const row = report.rows[0];
+  const results = await client.query(
+    'SELECT * FROM lab_results WHERE report_id = $1 ORDER BY created_at, id',
+    [row.id]
+  );
+  return {
+    report: mapRowToReport(row),
+    results: results.rows.map(mapRowToResult),
+  };
+}
+
 const RESULT_COLUMNS = `user_id, marker_key, custom_marker_id, entry_date,
   value_numeric, unit, ref_range_low, ref_range_high, lab_name, source,
   report_id, created_by_user_id, updated_by_user_id`;
@@ -358,11 +456,31 @@ export async function importLabReport(
     await client.query('BEGIN');
     const report = await client.query(
       `INSERT INTO lab_reports (
-        user_id, lab_name, collected_on, created_by_user_id, updated_by_user_id
-      ) VALUES ($1, $2, $3, $4, $4)
+        user_id, lab_name, collected_on, client_request_id,
+        created_by_user_id, updated_by_user_id
+      ) VALUES ($1, $2, $3, $4, $5, $5)
+      ON CONFLICT (user_id, client_request_id)
+        WHERE client_request_id IS NOT NULL
+        DO NOTHING
       RETURNING *`,
-      [userId, data.lab_name ?? null, data.entry_date, actor]
+      [
+        userId,
+        data.lab_name ?? null,
+        data.entry_date,
+        data.client_request_id ?? null,
+        actor,
+      ]
     );
+    if (!report.rows[0]) {
+      // This key already saved a report: a retry whose first answer was lost.
+      // Return that report rather than saving every result a second time.
+      await client.query('ROLLBACK');
+      return await loadImportedReport(
+        client,
+        userId,
+        data.client_request_id as string
+      );
+    }
     const reportId = String(report.rows[0].id);
 
     const markerIds = new Map<string, string>();
@@ -373,30 +491,17 @@ export async function importLabReport(
         const nameKey = item.marker_name.toLowerCase();
         customMarkerId = markerIds.get(nameKey) ?? null;
         if (!customMarkerId) {
-          const found = await client.query(
-            'SELECT id FROM lab_markers WHERE user_id = $1 AND lower(name) = lower($2)',
-            [userId, item.marker_name]
+          customMarkerId = await findOrCreateMarker(
+            client,
+            userId,
+            {
+              name: item.marker_name,
+              unit: item.unit,
+              ref_range_low: item.ref_range_low ?? null,
+              ref_range_high: item.ref_range_high ?? null,
+            },
+            actor
           );
-          if (found.rows[0]) {
-            customMarkerId = String(found.rows[0].id);
-          } else {
-            const created = await client.query(
-              `INSERT INTO lab_markers (
-                user_id, name, unit, ref_range_low, ref_range_high,
-                created_by_user_id, updated_by_user_id
-              ) VALUES ($1, $2, $3, $4, $5, $6, $6)
-              RETURNING id`,
-              [
-                userId,
-                item.marker_name,
-                item.unit,
-                item.ref_range_low ?? null,
-                item.ref_range_high ?? null,
-                actor,
-              ]
-            );
-            customMarkerId = String(created.rows[0].id);
-          }
           markerIds.set(nameKey, customMarkerId);
         }
       }
@@ -422,17 +527,7 @@ export async function importLabReport(
     }
     await client.query('COMMIT');
 
-    const row = report.rows[0];
-    return {
-      report: {
-        id: reportId,
-        user_id: String(row.user_id),
-        lab_name: toStringOrNull(row.lab_name),
-        collected_on: toStringOrNull(row.collected_on)?.split('T')[0] ?? null,
-        created_at: toIso(row.created_at),
-      },
-      results,
-    };
+    return { report: mapRowToReport(report.rows[0]), results };
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;

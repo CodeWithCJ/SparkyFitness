@@ -4,16 +4,11 @@ import { apiFetch } from './apiClient';
 /** Which marker a result belongs to: a built-in key or a custom marker id. */
 export type LabMarkerQuery = { markerKey: string } | { markerId: string };
 
-export interface NewLabMarkerPayload {
-  name: string;
-  unit: string;
-  ref_range_low: number | null;
-  ref_range_high: number | null;
-}
-
 export interface NewLabResultPayload {
   marker_key?: string;
   custom_marker_id?: string;
+  /** One of the user's own markers by name, created with the result if new. */
+  custom_marker_name?: string;
   entry_date: string;
   value_numeric: number;
   unit: string;
@@ -52,17 +47,6 @@ export const fetchLabResults = (
     operation: 'fetch lab results',
   });
 };
-
-export const createLabMarker = (
-  body: NewLabMarkerPayload
-): Promise<LabMarkerResponse> =>
-  apiFetch<LabMarkerResponse>({
-    endpoint: '/api/v2/lab-results/markers',
-    serviceName: SERVICE,
-    operation: 'create lab marker',
-    method: 'POST',
-    body,
-  });
 
 export const createLabResult = (
   body: NewLabResultPayload
