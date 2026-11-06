@@ -92,7 +92,7 @@ jobs:
             const ALLOWED_BRANCH_PREFIXES = ['i18n/'];
 
             // Files each automation branch may change, shared with sync-translations.yml.
-            const { outsideAllowlist, rendersMarkup, valuesWithAttributes } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/automation-allowlist.cjs`);
+            const { englishPathFor, newLinks, outsideAllowlist, rendersMarkup, valuesWithAttributes } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/automation-allowlist.cjs`);
 
             // Helper: determine if a PR is an allowed automated PR
             function isEligible(pr) {
@@ -254,6 +254,72 @@ jobs:
                   `PR #${pr.number} has values with attributes in a tag, or a catalogue that could not be checked ` +
                   `(${unsafe.slice(0, 5).map(f => f.filename).join(', ')}). Skipping auto-merge; a maintainer must review it.`
                 );
+                continue;
+              }
+
+              // Links: a translated value may repeat the links of its English text
+              // or keep the ones it has on main, but a new link, web address or
+              // email waits for a maintainer, who merges the PR by hand. Every
+              // catalogue is checked, mobile included, since a link shown as text
+              // can still send users somewhere. A file that cannot be read or
+              // parsed counts as a finding.
+              const readAt = async (path, ref) => {
+                try {
+                  const { data } = await github.rest.repos.getContent({ owner, repo, path, ref });
+                  return data.encoding === 'base64' && typeof data.content === 'string'
+                    ? Buffer.from(data.content, 'base64').toString('utf8')
+                    : null;
+                } catch (err) {
+                  if (err.status === 404) return null;
+                  throw err;
+                }
+              };
+              const linkFindings = [];
+              for (const f of files) {
+                if (f.status === 'removed') continue;
+                try {
+                  const head = await readAt(f.filename, headSha);
+                  if (head === null) throw new Error('unreadable at head');
+                  const base = await readAt(f.previous_filename || f.filename, pr.base.sha);
+                  const english = await readAt(englishPathFor(f.filename), headSha);
+                  for (const finding of newLinks(f.filename, head, base, english))
+                    linkFindings.push(`${f.filename} ${finding}`);
+                } catch (err) {
+                  linkFindings.push(`${f.filename}: could not be checked (${err.message})`);
+                }
+              }
+              if (linkFindings.length > 0) {
+                core.warning(
+                  `PR #${pr.number} adds ${linkFindings.length} link(s) to translations. ` +
+                  'Skipping auto-merge; a maintainer must review it.'
+                );
+                // One comment per PR, updated in place, so a held PR is not buried
+                // in repeats. Links go in code spans, without backticks or line breaks, so
+                // none of them renders as a clickable link.
+                const MARKER = '<!-- auto-merge-new-links -->';
+                const shown = linkFindings.slice(0, 50).map(x => `- \`${x.replace(/`/g, "'").replace(/[\r\n]+/g, ' ')}\``);
+                if (linkFindings.length > 50) shown.push(`- … and ${linkFindings.length - 50} more`);
+                const body = [
+                  MARKER,
+                  '### Held for review: new links in translations',
+                  '',
+                  `These values at \`${headSha.slice(0, 7)}\` add a link, web address or email that neither their English text nor the version on \`main\` has. Translations merge without review, so this PR waits for a maintainer. Check each one, then merge by hand.`,
+                  '',
+                  ...shown,
+                ].join('\n');
+                try {
+                  const comments = await github.paginate(github.rest.issues.listComments, {
+                    owner, repo, issue_number: pr.number, per_page: 100,
+                  });
+                  const mine = comments.find(c => c.user?.type === 'Bot' && (c.body || '').startsWith(MARKER));
+                  if (!mine) {
+                    await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+                  } else if (mine.body !== body) {
+                    await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+                  }
+                } catch (err) {
+                  core.warning(`PR #${pr.number}: could not post the link report (${err.message}).`);
+                }
                 continue;
               }
 

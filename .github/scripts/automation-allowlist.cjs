@@ -97,6 +97,110 @@ const valuesWithAttributes = (json) => {
   return found;
 };
 
+// Links. A translation may repeat the links its English text has, or keep the
+// ones it already had on main, but a new link, web address or email holds the
+// PR for a maintainer: translated text reaches main without review, and a link
+// is how a translation could send users somewhere else.
+const COUNTRY_TLDS =
+  'ac ad ae af ag ai al am ao aq ar as at au aw ax az ba bb bd be bf bg bh bi bj bm bn bo br bs bt bw by bz ca cc cd cf cg ch ci ck cl cm cn co cr cu cv cw cx cy cz de dj dk dm do dz ec ee eg er es et eu fi fj fk fm fo fr ga gd ge gf gg gh gi gl gm gn gp gq gr gs gt gu gw gy hk hm hn hr ht hu id ie il im in io iq ir is it je jm jo jp ke kg kh ki km kn kp kr kw ky kz la lb lc li lk lr ls lt lu lv ly ma mc md me mg mh mk ml mm mn mo mp mq mr ms mt mu mv mw mx my mz na nc ne nf ng ni nl no np nr nu nz om pa pe pf pg ph pk pl pm pn pr ps pt pw py qa re ro rs ru rw sa sb sc sd se sg sh si sk sl sm sn so sr ss st su sv sx sy sz tc td tf tg th tj tk tl tm tn to tr tt tv tw tz ua ug uk us uy uz va vc ve vg vi vn vu wf ws ye yt za zm zw';
+const GENERIC_TLDS =
+  'com net org info biz edu gov mil int app dev page site online store shop xyz top club live link click io ai gg ly me tv cc ws so to pro mobi name tech cloud fun icu vip win bet art blog news email zip mov';
+const TLDS = `${GENERIC_TLDS} ${COUNTRY_TLDS}`.split(' ').join('|');
+const LINK = new RegExp(
+  [
+    // A scheme: https://, http://, ftp://, mailto:, javascript:, data:, tel:
+    String.raw`\b(?:https?|ftp):\/\/[^\s<>"'\x60]+`,
+    String.raw`\b(?:mailto|javascript|data|tel):[^\s<>"'\x60]+`,
+    // Protocol-relative //host and www.host
+    String.raw`(?:^|[\s(])\/\/[A-Za-z0-9][^\s<>"'\x60]*`,
+    String.raw`\bwww\.[^\s<>"'\x60]+`,
+    // A bare host with a real top-level domain: example.com, bit.ly/x
+    String.raw`\b(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+(?:${TLDS})\b(?:\/[^\s<>"'\x60]*)?`,
+    // An email address
+    String.raw`\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b`,
+  ].join('|'),
+  'gi'
+);
+
+/** The links in a piece of text, lower-cased and without trailing punctuation. */
+const linksIn = (text) =>
+  new Set(
+    (String(text || '').match(LINK) || []).map((l) =>
+      l
+        .trim()
+        .replace(/[.,;:!?)\]}'"]+$/, '')
+        .toLowerCase()
+    )
+  );
+
+/** Translated strings by key: JSON values, Android <string>s or .strings pairs. */
+const entriesOf = (path, text) => {
+  const out = new Map();
+  if (text === null || text === undefined) return out;
+  if (path.endsWith('.json')) {
+    const walk = (value, key) => {
+      if (typeof value === 'string') out.set(key, value);
+      else if (value && typeof value === 'object')
+        for (const [k, v] of Object.entries(value))
+          walk(v, key ? `${key}.${k}` : k);
+    };
+    walk(JSON.parse(text), '');
+  } else if (path.endsWith('.xml')) {
+    const re = /<(string|item)\b([^>]*)>([\s\S]*?)<\/\1>/g;
+    let i = 0;
+    for (let m = re.exec(text); m; m = re.exec(text)) {
+      const name = /\bname="([^"]*)"/.exec(m[2]);
+      out.set(name ? name[1] : `#${i++}`, m[3]);
+    }
+  } else {
+    const re = /"((?:\\.|[^"\\])*)"\s*=\s*"((?:\\.|[^"\\])*)"\s*;/g;
+    for (let m = re.exec(text); m; m = re.exec(text)) out.set(m[1], m[2]);
+  }
+  return out;
+};
+
+/** The English catalogue a translated catalogue is translated from. */
+const englishPathFor = (path) =>
+  path
+    .replace(
+      /^(SparkyFitnessFrontend\/public\/locales|SparkyFitnessMobile\/src\/localization\/locales)\/[^/]+\//,
+      '$1/en/'
+    )
+    .replace(
+      /^SparkyFitnessMobile\/locales\/[^/]+\.json$/,
+      'SparkyFitnessMobile/locales/en.json'
+    )
+    .replace(/\/res\/values-[^/]+\//, '/res/values/')
+    .replace(/\/[^/]+\.lproj\//, '/en.lproj/');
+
+/**
+ * Links a translated catalogue adds: in a value at `head`, but neither in the
+ * English value with the same key nor in the translated value on main. A head
+ * that cannot be parsed throws; a missing or unparsable base or English counts
+ * as having no links, which only holds more.
+ */
+const newLinks = (path, headText, baseText, englishText) => {
+  const safe = (text, p) => {
+    try {
+      return entriesOf(p, text);
+    } catch {
+      return new Map();
+    }
+  };
+  const base = safe(baseText, path);
+  const english = safe(englishText, englishPathFor(path));
+  const found = [];
+  for (const [key, value] of entriesOf(path, headText)) {
+    const known = new Set([
+      ...linksIn(base.get(key)),
+      ...linksIn(english.get(key)),
+    ]);
+    for (const link of linksIn(value))
+      if (!known.has(link)) found.push(`${key}: ${link}`);
+  }
+  return found;
+};
+
 /** The allowlist for a branch, or null when the branch is not an automation branch. */
 const allowedFor = (branch) => {
   const prefix = Object.keys(ALLOWED_FILES).find((p) =>
@@ -117,6 +221,9 @@ const outsideAllowlist = (branch, paths) => {
 module.exports = {
   ALLOWED_FILES,
   allowedFor,
+  englishPathFor,
+  linksIn,
+  newLinks,
   outsideAllowlist,
   rendersMarkup,
   valuesWithAttributes,

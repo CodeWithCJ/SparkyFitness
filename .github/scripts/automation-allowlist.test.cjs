@@ -4,6 +4,9 @@ const { resolve } = require('node:path');
 const { test } = require('node:test');
 const {
   allowedFor,
+  englishPathFor,
+  linksIn,
+  newLinks,
   outsideAllowlist,
   rendersMarkup,
   valuesWithAttributes,
@@ -162,4 +165,111 @@ test('other branches have no allowlist, so every path is outside it', () => {
     ]),
     ['umbrel/sparkyfitness/umbrel-app.yml']
   );
+});
+
+test('links are found, abbreviations and file names are not', () => {
+  const has = (t) => [...linksIn(t)];
+  assert.deepEqual(has('Visit https://evil.com/x now.'), [
+    'https://evil.com/x',
+  ]);
+  assert.deepEqual(has('Read bit.ly/abc, or mail a@b.io'), [
+    'bit.ly/abc',
+    'a@b.io',
+  ]);
+  assert.deepEqual(has('www.foo.org and //evil.net/p'), [
+    'www.foo.org',
+    '//evil.net/p',
+  ]);
+  assert.deepEqual(has('javascript:alert(1)').length, 1);
+  for (const t of [
+    't.ex. 5 kg',
+    'f.eks. og p.ex.',
+    '2x.png',
+    'Node.js',
+    'z.B. 3',
+    'dr.chen',
+    'settings.json',
+  ])
+    assert.deepEqual(has(t), [], t);
+});
+
+test('a translation may repeat English links or keep its own, not add new ones', () => {
+  const path = 'SparkyFitnessFrontend/public/locales/de/translation.json';
+  const english = JSON.stringify({
+    a: 'See https://sparkyfitness.com',
+    b: 'Plain',
+  });
+  const base = JSON.stringify({
+    a: 'Siehe https://sparkyfitness.com',
+    c: 'http://deine-instanz.com',
+  });
+  const head = JSON.stringify({
+    a: 'Siehe https://sparkyfitness.com',
+    b: 'Mehr auf evil.example.com/login',
+    c: 'http://deine-instanz.com',
+    d: 'Schreib an help@evil.io',
+  });
+  assert.deepEqual(newLinks(path, head, base, english), [
+    'b: evil.example.com/login',
+    'd: help@evil.io',
+  ]);
+  // A link only counts as known under its own key.
+  assert.deepEqual(
+    newLinks(
+      path,
+      JSON.stringify({ b: 'https://sparkyfitness.com' }),
+      base,
+      english
+    ),
+    ['b: https://sparkyfitness.com']
+  );
+  assert.throws(() => newLinks(path, '{not json', base, english));
+});
+
+test('widget strings and .strings files are checked by key too', () => {
+  const xml = (v) =>
+    `<resources xmlns:android="http://schemas.android.com/apk/res/android"><string name="t">${v}</string></resources>`;
+  const xmlPath =
+    'SparkyFitnessMobile/targets/android-widget/res/values-de/widget_strings.xml';
+  assert.deepEqual(
+    newLinks(xmlPath, xml('Hallo'), xml('Hallo'), xml('Hello')),
+    []
+  );
+  assert.deepEqual(
+    newLinks(xmlPath, xml('Mehr: evil.com'), xml('Hallo'), xml('Hello')),
+    ['t: evil.com']
+  );
+  const strings = (v) => `"widget.title" = "${v}";\n`;
+  const sPath =
+    'SparkyFitnessMobile/targets/widget/de.lproj/Localizable.strings';
+  assert.deepEqual(
+    newLinks(
+      sPath,
+      strings('Gehe zu www.evil.org'),
+      strings('Hallo'),
+      strings('Hi')
+    ),
+    ['widget.title: www.evil.org']
+  );
+});
+
+test('every catalogue maps to its English source, and today none adds a link', () => {
+  for (const p of catalogues.filter((p) => !isEnglish(p)))
+    assert.equal(
+      tracked(englishPathFor(p)).length,
+      1,
+      `${p} -> ${englishPathFor(p)}`
+    );
+  const found = catalogues
+    .filter((p) => !isEnglish(p))
+    .flatMap((p) => {
+      const text = readFileSync(resolve(root, p), 'utf8');
+      return newLinks(
+        p,
+        text,
+        text,
+        readFileSync(resolve(root, englishPathFor(p)), 'utf8')
+      );
+    });
+  assert.deepEqual(found, []);
 });
