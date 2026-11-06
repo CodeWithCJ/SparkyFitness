@@ -5,6 +5,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 import i18n from 'i18next';
+import { HttpApiError } from '@/api/api';
 import * as labApi from '@/api/Labs/labResultsApi';
 import { labKeys } from '@/api/keys/labs';
 import type {
@@ -144,6 +145,14 @@ export const useScanLabReport = () =>
     // report it is still showing.
     meta: { silentError: true },
   });
+
+/**
+ * Whether a failed save may still have been stored: a network error, a timeout
+ * or a server error can come after the server committed. A 4xx answer means
+ * the request was refused and nothing was saved.
+ */
+export const saveMayHaveLanded = (error: unknown): boolean =>
+  !(error instanceof HttpApiError && error.status >= 400 && error.status < 500);
 
 export const useImportLabReport = () => {
   const queryClient = useQueryClient();

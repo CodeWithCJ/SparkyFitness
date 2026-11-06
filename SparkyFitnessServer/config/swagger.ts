@@ -106,13 +106,6 @@ const options = {
               format: 'uuid',
               nullable: true,
             },
-            custom_marker_name: {
-              type: 'string',
-              nullable: true,
-              maxLength: 120,
-              description:
-                "One of the user's own markers by name: reused when one has that name (any case), otherwise created with this result's unit and range, in the same transaction as the result.",
-            },
             entry_date: { type: 'string', format: 'date' },
             value_numeric: { type: 'number', nullable: true },
             value_text: { type: 'string', nullable: true },
@@ -170,6 +163,13 @@ const options = {
               type: 'string',
               format: 'uuid',
               nullable: true,
+            },
+            custom_marker_name: {
+              type: 'string',
+              nullable: true,
+              maxLength: 120,
+              description:
+                "One of the user's own markers by name: reused when one has that name (any case), otherwise created with this result's unit and range, in the same transaction as the result.",
             },
             entry_date: { type: 'string', format: 'date' },
             value_numeric: { type: 'number', nullable: true },

@@ -10245,7 +10245,8 @@
       "tooLarge": "That file is too large to read (limit 14 MB).",
       "nothingFound": "No results were found in that report.",
       "readFailed": "Could not open that file.",
-      "photoTooLarge": "That photo is too large to read (limit 6 MB). Try a smaller photo or a screenshot."
+      "photoTooLarge": "That photo is too large to read (limit 6 MB). Try a smaller photo or a screenshot.",
+      "lockedAfterFailedSave": "Saving did not finish, so this review is locked: Save again sends exactly the same report, and it is stored only once. To change values, choose the report again."
     },
     "moreActions": "More actions",
     "deleteMarker": "Delete marker and all results",

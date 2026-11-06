@@ -6,7 +6,8 @@ import {
   waitFor,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { buildLabMarkers } from '@workspace/shared';
+import { buildLabMarkers, importLabReportBodySchema } from '@workspace/shared';
+import { HttpApiError } from '@/api/api';
 import * as labApi from '@/api/Labs/labResultsApi';
 import { toast } from '@/hooks/use-toast';
 import LabImportDialog from '@/pages/Labs/LabImportDialog';
@@ -515,7 +516,9 @@ describe('LabImportDialog', () => {
     await waitFor(() => expect(api.importLabReport).toHaveBeenCalledTimes(2));
 
     const [firstTry, retry] = api.importLabReport.mock.calls.map(([b]) => b);
-    expect(firstTry?.client_request_id).toMatch(/^[0-9a-f-]{36}$/);
+    // The key passes the server's own request schema (a valid UUID).
+    expect(importLabReportBodySchema.safeParse(firstTry).success).toBe(true);
+    expect(firstTry?.client_request_id).toEqual(expect.any(String));
     expect(retry?.client_request_id).toBe(firstTry?.client_request_id);
   });
 
@@ -540,5 +543,53 @@ describe('LabImportDialog', () => {
 
     const [a, b] = api.importLabReport.mock.calls.map(([body]) => body);
     expect(b?.client_request_id).not.toBe(a?.client_request_id);
+  });
+
+  it('locks the review after a save that may have been stored', async () => {
+    api.scanLabReport.mockResolvedValue(scanResponse);
+    api.importLabReport.mockRejectedValueOnce(new Error('network'));
+    renderDialog();
+    pick(new File(['x'], 'r.pdf', { type: 'application/pdf' }));
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: /^Save \d results$/ })
+    );
+
+    expect(
+      await screen.findByText(/this review is locked/)
+    ).toBeInTheDocument();
+    expect(first(screen.getAllByLabelText('Result for HbA1c'))).toBeDisabled();
+    expect(screen.getByLabelText('Lab')).toBeDisabled();
+    expect(screen.getByLabelText('Date of test')).toBeDisabled();
+    // Save stays available, to retry with exactly the same report.
+    expect(
+      screen.getByRole('button', { name: /^Save \d results$/ })
+    ).toBeEnabled();
+
+    // Choosing the report again starts an editable review.
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Choose a different report' })
+    );
+    pick(new File(['y'], 'r.pdf', { type: 'application/pdf' }));
+    expect(
+      first(await screen.findAllByLabelText('Result for HbA1c'))
+    ).toBeEnabled();
+  });
+
+  it('keeps the review editable when the server refused the save', async () => {
+    api.scanLabReport.mockResolvedValue(scanResponse);
+    api.importLabReport.mockRejectedValueOnce(
+      new HttpApiError('Invalid request body', 400)
+    );
+    renderDialog();
+    pick(new File(['x'], 'r.pdf', { type: 'application/pdf' }));
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: /^Save \d results$/ })
+    );
+    await waitFor(() => expect(api.importLabReport).toHaveBeenCalledTimes(1));
+
+    expect(screen.queryByText(/this review is locked/)).not.toBeInTheDocument();
+    expect(first(screen.getAllByLabelText('Result for HbA1c'))).toBeEnabled();
   });
 });

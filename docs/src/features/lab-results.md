@@ -21,7 +21,7 @@ Choose **Import from a report** and pick a PDF, or a photo or screenshot, of a l
 - A second result for the same marker in one report is blocked.
 - A unit that differs from the marker's earlier results shows a warning.
 
-The whole report is saved in one step: if it fails, nothing is stored, and trying again after a lost connection never saves the same report twice. You need an AI provider set up under **Settings → AI**.
+The whole report is saved in one step: if it fails, nothing is stored. If the connection drops while saving, the review is locked and **Save** again sends exactly the same report, which is stored only once. Choosing or scanning the report again starts a new import, so a report that did save the first time would then be saved twice; check the list before importing it again. You need an AI provider set up under **Settings → AI**.
 
 ## Deleting
 

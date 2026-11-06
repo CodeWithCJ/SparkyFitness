@@ -560,7 +560,7 @@ router.delete('/entries/:id', async (req, res, next) => {
  *             $ref: '#/components/schemas/ImportLabReportInput'
  *     responses:
  *       201:
- *         description: The saved report and its results. With a client_request_id this user already used, the report that key saved, unchanged.
+ *         description: The saved report and its results. With a client_request_id this user already used, the report that key saved and its results as they are now (a result edited or deleted since shows that way); nothing is saved again.
  *         content:
  *           application/json:
  *             schema:

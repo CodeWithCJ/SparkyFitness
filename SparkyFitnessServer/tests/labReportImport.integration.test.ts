@@ -409,6 +409,30 @@ describe.runIf(RUN)('lab report imports', () => {
     ]);
   });
 
+  it('saves two results racing to create the same new marker, on one marker', async () => {
+    const save = (value: number) =>
+      createLabResult(userId, {
+        custom_marker_name: 'Race marker',
+        entry_date: '2026-09-12',
+        value_numeric: value,
+        unit: 'x',
+        source: 'manual',
+      });
+
+    const [a, b] = await Promise.all([save(1), save(2)]);
+
+    expect(a?.custom_marker_id).toBeTruthy();
+    expect(b?.custom_marker_id).toBe(a?.custom_marker_id);
+    const markers = (await listLabMarkers(userId)).filter(
+      (m) => m.name === 'Race marker'
+    );
+    expect(markers).toHaveLength(1);
+
+    await db.query('DELETE FROM public.lab_markers WHERE id = $1', [
+      a?.custom_marker_id,
+    ]);
+  });
+
   it('leaves no marker behind when the result with a new name is rejected', async () => {
     await expect(
       createLabResult(userId, {

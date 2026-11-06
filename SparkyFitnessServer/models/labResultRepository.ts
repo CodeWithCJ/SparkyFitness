@@ -254,28 +254,33 @@ async function findOrCreateMarker(
   },
   actor: string
 ): Promise<string> {
-  const created = await client.query(
-    `INSERT INTO lab_markers (
-      user_id, name, unit, ref_range_low, ref_range_high,
-      created_by_user_id, updated_by_user_id
-    ) VALUES ($1, $2, $3, $4, $5, $6, $6)
-    ON CONFLICT (user_id, lower(name)) DO NOTHING
-    RETURNING id`,
-    [
-      userId,
-      marker.name,
-      marker.unit,
-      marker.ref_range_low,
-      marker.ref_range_high,
-      actor,
-    ]
-  );
-  if (created.rows[0]) return String(created.rows[0].id);
-  const found = await client.query(
-    'SELECT id FROM lab_markers WHERE user_id = $1 AND lower(name) = lower($2)',
-    [userId, marker.name]
-  );
-  return String(found.rows[0].id);
+  // A marker found by name can be deleted by another request before it is
+  // read back; the next round then creates it, so a few rounds always settle.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const created = await client.query(
+      `INSERT INTO lab_markers (
+        user_id, name, unit, ref_range_low, ref_range_high,
+        created_by_user_id, updated_by_user_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $6)
+      ON CONFLICT (user_id, lower(name)) DO NOTHING
+      RETURNING id`,
+      [
+        userId,
+        marker.name,
+        marker.unit,
+        marker.ref_range_low,
+        marker.ref_range_high,
+        actor,
+      ]
+    );
+    if (created.rows[0]) return String(created.rows[0].id);
+    const found = await client.query(
+      'SELECT id FROM lab_markers WHERE user_id = $1 AND lower(name) = lower($2)',
+      [userId, marker.name]
+    );
+    if (found.rows[0]) return String(found.rows[0].id);
+  }
+  throw new Error(`Could not find or create the lab marker "${marker.name}"`);
 }
 
 /**

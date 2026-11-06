@@ -5,6 +5,7 @@ import {
   useSaveLabResult,
 } from '../../src/hooks/useLabResults';
 import {
+  createLabMarker,
   createLabResult,
   deleteLabMarker,
 } from '../../src/services/api/labResultsApi';
@@ -12,9 +13,11 @@ import {
   deleteBuiltinMarkerResults,
   deleteLabImports,
 } from '../../src/services/api/labReportApi';
+import { ApiError } from '../../src/services/api/errors';
 import { createQueryWrapper, createTestQueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/labResultsApi', () => ({
+  createLabMarker: jest.fn(),
   createLabResult: jest.fn(),
   deleteLabMarker: jest.fn(),
   deleteLabResult: jest.fn(),
@@ -97,6 +100,48 @@ describe('useSaveLabResult', () => {
     expect(jest.mocked(createLabResult).mock.calls[0]?.[0]).not.toHaveProperty(
       'custom_marker_id'
     );
+  });
+  it('falls back to creating the marker first on an older server', async () => {
+    jest
+      .mocked(createLabResult)
+      .mockRejectedValueOnce(
+        new ApiError(
+          'Server error: 400',
+          400,
+          '{"error":"Invalid request body","details":{"marker_key":{"_errors":["Provide exactly one of marker_key or custom_marker_id"]}}}'
+        )
+      )
+      .mockResolvedValueOnce({ id: 'r-1' } as never);
+    jest.mocked(createLabMarker).mockResolvedValue({ id: 'm-9' } as never);
+    const { result } = renderSave();
+
+    result.current.mutate({ ...base, target: { newMarkerName: 'ApoB' } });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(createLabMarker).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'ApoB', unit: '%' })
+    );
+    expect(jest.mocked(createLabResult).mock.calls[1]?.[0]).toMatchObject({
+      custom_marker_id: 'm-9',
+    });
+  });
+
+  it('does not fall back on an ordinary refusal from a current server', async () => {
+    jest
+      .mocked(createLabResult)
+      .mockRejectedValue(
+        new ApiError(
+          'Server error: 400',
+          400,
+          '{"error":"Invalid request body","details":{"ref_range_low":{"_errors":["ref_range_low must not exceed ref_range_high"]}}}'
+        )
+      );
+    const { result } = renderSave();
+
+    result.current.mutate({ ...base, target: { newMarkerName: 'ApoB' } });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(createLabMarker).not.toHaveBeenCalled();
   });
 });
 

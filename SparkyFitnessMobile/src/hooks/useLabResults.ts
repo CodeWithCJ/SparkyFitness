@@ -1,10 +1,12 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ApiError } from '../services/api/errors';
 import {
   deleteBuiltinMarkerResults,
   deleteLabImports,
 } from '../services/api/labReportApi';
 import {
+  createLabMarker,
   createLabResult,
   deleteLabMarker,
   deleteLabResult,
@@ -12,6 +14,8 @@ import {
   fetchLabResults,
   fetchLatestLabResults,
   type LabMarkerQuery,
+  type NewLabMarkerPayload,
+  type NewLabResultPayload,
 } from '../services/api/labResultsApi';
 import {
   labHistoryQueryKey,
@@ -92,6 +96,64 @@ export interface SaveLabResultInput {
   notes?: string;
 }
 
+/**
+ * The 400 a server older than `custom_marker_name` gives: it drops the unknown
+ * field and then finds no marker named in the body. A current server's
+ * message also names `custom_marker_name`, so it never matches this.
+ */
+const OLD_SERVER_MARKER_MESSAGE =
+  'Provide exactly one of marker_key or custom_marker_id';
+
+const isOlderServerMarkerError = (error: unknown): boolean =>
+  error instanceof ApiError &&
+  error.statusCode === 400 &&
+  (error.body ?? '').includes(OLD_SERVER_MARKER_MESSAGE) &&
+  !(error.body ?? '').includes('custom_marker_name');
+
+/**
+ * Creates the user's marker, or reuses the one with that name (a retry after
+ * a failed result save finds the name it already made). Older servers only.
+ */
+async function createOrFindLabMarker(payload: NewLabMarkerPayload) {
+  try {
+    return await createLabMarker(payload);
+  } catch (error) {
+    if (error instanceof ApiError && error.statusCode === 409) {
+      const existing = (await fetchLabMarkers()).find(
+        (m) => m.name.toLowerCase() === payload.name.toLowerCase()
+      );
+      if (existing) return existing;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Saves a result for a new marker name. A current server creates the marker
+ * with the result in one transaction; an older one is sent the marker first,
+ * then the result, as before.
+ */
+async function createLabResultForNewMarker(
+  base: Omit<
+    NewLabResultPayload,
+    'marker_key' | 'custom_marker_id' | 'custom_marker_name'
+  >,
+  name: string
+) {
+  try {
+    return await createLabResult({ ...base, custom_marker_name: name });
+  } catch (error) {
+    if (!isOlderServerMarkerError(error)) throw error;
+    const marker = await createOrFindLabMarker({
+      name,
+      unit: base.unit,
+      ref_range_low: base.ref_range_low,
+      ref_range_high: base.ref_range_high,
+    });
+    return createLabResult({ ...base, custom_marker_id: marker.id });
+  }
+}
+
 function invalidateLabCaches(queryClient: ReturnType<typeof useQueryClient>) {
   queryClient.invalidateQueries({ queryKey: labMarkersQueryKey });
   queryClient.invalidateQueries({ queryKey: labLatestQueryKey });
@@ -121,10 +183,7 @@ export function useSaveLabResult() {
       // The server finds or creates the marker with the result in one
       // transaction, so a failed save leaves no empty marker behind and a
       // retry simply sends the same request again.
-      return createLabResult({
-        ...base,
-        custom_marker_name: target.newMarkerName,
-      });
+      return createLabResultForNewMarker(base, target.newMarkerName);
     },
     onSuccess: () => invalidateLabCaches(queryClient),
     onError: (err: Error) => {
