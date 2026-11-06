@@ -264,6 +264,9 @@ jobs:
           # The app's Client ID is not secret, so it lives here, not in a secret.
           client-id: Iv23lizuGhwaizMxrvDT
           private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          # Only what opening and merging the two PRs needs.
+          permission-contents: write
+          permission-pull-requests: write
           owner: CodeWithCJ
           repositories: |
             SparkyFitness

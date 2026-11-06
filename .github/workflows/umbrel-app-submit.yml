@@ -45,6 +45,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Nothing here pushes with git, so no token stays in .git/config.
+          persist-credentials: false
 
       - name: Set up Node
         uses: actions/setup-node@v4

@@ -22,6 +22,9 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v4
+        with:
+          # Nothing here pushes with git, so no token stays in .git/config.
+          persist-credentials: false
 
       - name: Get latest release tag
         id: get_latest_release
@@ -49,13 +52,13 @@ jobs:
           result-encoding: string
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -66,11 +69,11 @@ jobs:
         run: echo "name=${GITHUB_REPOSITORY,,}" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
       - name: Metadata frontend
         id: meta-frontend
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: |
             ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness
@@ -81,7 +84,7 @@ jobs:
 
       - name: Build and push frontend
         id: push-frontend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: docker/Dockerfile.frontend
@@ -102,7 +105,7 @@ jobs:
 
       - name: Metadata server
         id: meta-server
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: |
             ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness_server
@@ -113,7 +116,7 @@ jobs:
 
       - name: Build and push server
         id: push-server
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           file: docker/Dockerfile.backend
@@ -134,7 +137,7 @@ jobs:
 
       - name: Metadata Garmin Microservice
         id: meta-garmin
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
         with:
           images: |
             ${{ secrets.DOCKER_USERNAME || 'codewithcj' }}/sparkyfitness_garmin
@@ -145,7 +148,7 @@ jobs:
 
       - name: Build and push Garmin Microservice
         id: push-garmin
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: SparkyFitnessGarmin
           file: docker/Dockerfile.garmin_microservice
