@@ -10,7 +10,6 @@ import {
   CALORIE_CALCULATION_CONSTANTS,
   instantHourMinute,
   instantToDay,
-  entryCaloriesCounted,
   resolveExerciseCalories,
   computeSparkyfitnessBurned,
   computeCaloriesRemaining,
@@ -24,6 +23,12 @@ import {
   isAdaptiveEarnBackSuppressed,
   isAdaptiveActivitySeparated,
 } from '@workspace/shared';
+import {
+  sumExerciseCalorieStats,
+  type ExerciseCalorieEntry,
+  type ExerciseCalorieStats,
+} from '../utils/exerciseCalorieStats.js';
+export type { ExerciseCalorieStats } from '../utils/exerciseCalorieStats.js';
 
 /**
  * The one implementation of "what is this day's calorie balance".
@@ -66,12 +71,6 @@ export interface CalorieBalanceMeasurements {
   height?: string | number | null;
   body_fat_percentage?: string | number | null;
   bmr?: string | number | null;
-}
-
-export interface ExerciseCalorieStats {
-  activeCalories: number;
-  otherCalories: number;
-  activitySteps: number;
 }
 
 export interface FoodEntryCalorieLike {
@@ -141,9 +140,6 @@ export function resolveBmrInputs(
 
 /** Below this the day is too young to extrapolate from without wild swings (~72 min). */
 const MIN_DAY_FRACTION = CALORIE_CALCULATION_CONSTANTS.MIN_DAY_FRACTION;
-
-/** A synced device summary logs under this exercise name. */
-const ACTIVE_CALORIES_EXERCISE_NAME = 'Active Calories';
 
 /**
  * How much of `date` has elapsed, for the tdee/smart end-of-day projection.
@@ -229,28 +225,20 @@ export function resolveDeviceProjectionSnapshot({
 export function extractExerciseStats(
   sessions: readonly ExerciseSessionResponse[]
 ): ExerciseCalorieStats {
-  let activeCalories = 0;
-  let otherCalories = 0;
-  let activitySteps = 0;
-
+  const entries: ExerciseCalorieEntry[] = [];
   for (const session of sessions) {
     if (session.type === 'individual') {
-      const cal = entryCaloriesCounted(session);
-      if (session.name === ACTIVE_CALORIES_EXERCISE_NAME) {
-        activeCalories += cal;
-      } else {
-        otherCalories += cal;
-      }
-      activitySteps += session.steps || 0;
+      entries.push({ ...session, exercise_name: session.name });
     } else {
       for (const exercise of session.exercises) {
-        otherCalories += entryCaloriesCounted(exercise);
-        activitySteps += exercise.steps || 0;
+        entries.push({
+          ...exercise,
+          exercise_preset_entry_id: session.id ?? 'preset',
+        });
       }
     }
   }
-
-  return { activeCalories, otherCalories, activitySteps };
+  return sumExerciseCalorieStats(entries);
 }
 
 /**

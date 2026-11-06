@@ -144,6 +144,8 @@ function _buildExerciseEntryWithSnapshot(
     calories_burned: (entryData.calories_burned as number) ?? 0,
     entry_date: _dateToString(entryData.entry_date),
     entry_time: (entryData.entry_time as string) ?? null,
+    record_timezone: (entryData.record_timezone as string) ?? null,
+    calorie_link_id: (entryData.calorie_link_id as string) ?? null,
     notes: (entryData.notes as string) ?? null,
     distance: (entryData.distance as number) ?? null,
     avg_heart_rate: (entryData.avg_heart_rate as number) ?? null,

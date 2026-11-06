@@ -60,6 +60,8 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 
 ## Source Map
 
+- Calorie workout inputs: `utils/exerciseCalorieStats.ts` is the one summation rule for `calorieBalanceService.extractExerciseStats` and `models/exerciseEntry.getDailyExerciseCalorieSplitRange`. It reconciles only clearly matching cross-source endurance imports for calories and workout steps, preserving all stored entries and explicit overrides/links. The history response must retain `record_timezone` and `calorie_link_id` for this rule.
+
 - Family diary copies: `foodEntryRoutes.ts` exposes actor-scoped reviewed and selected copies in both directions. `foodEntryService.ts` checks the real actor's copy grant; `models/foodEntry.ts` rechecks reviewed rows and writes the whole copy atomically. `GET /meal-types/family/:familyUserId` reads recipient meal types under the same copy permission without switching profiles. Existing web `/copy-to-user` stays context-scoped.
 
 - Barcode lookup retains the local/default/fallback behavior in `foodCoreService.ts`. `services/barcodeLookupService.ts` collects accessible source matches on demand; `routes/v2/barcodeRoutes.ts` exposes the read-only alternatives endpoint. Source comparison does not persist routing settings or preferences.
