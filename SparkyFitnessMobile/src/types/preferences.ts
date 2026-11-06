@@ -2,6 +2,7 @@ import type {
   CalorieSafetyFloorMode,
   GoalMode,
   GoalModeCalculationMethod,
+  TemperatureUnit,
 } from '@workspace/shared';
 
 export interface UserPreferences {
@@ -20,6 +21,9 @@ export interface UserPreferences {
 
   default_weight_unit?: 'kg' | 'lbs' | 'st_lbs';
   default_distance_unit?: 'km' | 'miles';
+  /** Unit temperatures are shown in; stored temperatures stay in °C. Absent
+   *  from servers older than the setting. */
+  default_temperature_unit?: TemperatureUnit;
   default_measurement_unit?: 'cm' | 'inches' | 'ft_in';
   date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | string;
   energy_unit?: 'kcal' | 'kJ';

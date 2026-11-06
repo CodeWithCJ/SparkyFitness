@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { restingHeartRateTrendDelta } from '@workspace/shared';
 import {
   fetchCustomCategories,
   fetchCustomMeasurementsRange,
@@ -104,6 +105,8 @@ export interface HeartRateReportData {
   maxRestingHr: number | null;
   previousAverageRestingHr: number | null;
   restingHrChange: number | null;
+  /** Later half of the window minus the earlier half, bpm; null under 4 days */
+  restingHrTrendDelta: number | null;
   avgRecovery1Min: number | null;
   daysWithData: number;
   totalDaysInWindow: number;
@@ -170,6 +173,8 @@ export function useHeartRateReport({ window }: { window: ReportWindow }) {
         ? averageRestingHr - previousAverageRestingHr
         : null;
 
+    const restingHrTrendDelta = restingHeartRateTrendDelta(hrValues);
+
     return {
       days: currentPoints,
       averageRestingHr,
@@ -177,6 +182,7 @@ export function useHeartRateReport({ window }: { window: ReportWindow }) {
       maxRestingHr,
       previousAverageRestingHr,
       restingHrChange,
+      restingHrTrendDelta,
       avgRecovery1Min: currentQuery.data.avgRecovery1Min,
       daysWithData: currentPoints.length,
       totalDaysInWindow: days,

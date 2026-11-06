@@ -23,7 +23,7 @@ import {
   WeightUnit,
   MeasurementUnit,
 } from '@/contexts/PreferencesContext';
-import type { ChartScaleMode } from '@workspace/shared';
+import type { ChartScaleMode, TemperatureUnit } from '@workspace/shared';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -48,6 +48,8 @@ export const PreferenceSettings = () => {
     setTimeFormat,
     chartScaleMode,
     setChartScaleMode,
+    temperatureUnit,
+    setTemperatureUnit,
     itemDisplayLimit,
     setItemDisplayLimit, // Add itemDisplayLimit and setItemDisplayLimit
     autoScaleOpenFoodFactsImports,
@@ -99,6 +101,7 @@ export const PreferenceSettings = () => {
         firstDayOfWeek,
         measurementDecimalPlaces,
         chartScaleMode,
+        temperatureUnit,
         timezone,
         loggingLevel: localLoggingLevel,
         standardDrinkGrams,
@@ -301,6 +304,29 @@ export const PreferenceSettings = () => {
                 </SelectItem>
                 <SelectItem value="miles">
                   {t('settings.preferences.miles', 'Miles (miles)')}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="temperature_unit">
+              {t('settings.preferences.temperatureUnit', 'Temperature Unit')}
+            </Label>
+            <Select
+              value={temperatureUnit}
+              onValueChange={(value) =>
+                setTemperatureUnit(value as TemperatureUnit)
+              }
+            >
+              <SelectTrigger id="temperature_unit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="celsius">
+                  {t('settings.preferences.celsius', 'Celsius (°C)')}
+                </SelectItem>
+                <SelectItem value="fahrenheit">
+                  {t('settings.preferences.fahrenheit', 'Fahrenheit (°F)')}
                 </SelectItem>
               </SelectContent>
             </Select>

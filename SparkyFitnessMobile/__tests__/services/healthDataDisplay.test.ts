@@ -435,6 +435,14 @@ describe('fetchHealthDisplayData', () => {
       expect(await displayFor('Stress')).toBe('5 rekordów');
     });
 
+    it('shows the latest overnight body temperature, not a record count', async () => {
+      mockReadHealthRecords.mockResolvedValue([
+        { value: 36.2, date: '2026-06-01', timestamp: '2026-06-01T07:00:00Z' },
+        { value: 36.45, date: '2026-06-02', timestamp: '2026-06-02T07:00:00Z' },
+      ]);
+      expect(await displayFor('OvernightBodyTemperature')).toBe('36.5°C');
+    });
+
     it('formats zero-valued temperature, mass, height and glucose records', async () => {
       mockReadHealthRecords.mockResolvedValue([
         { time: '2026-06-01T00:00:00Z', temperature: { inCelsius: 0 } },

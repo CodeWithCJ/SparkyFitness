@@ -147,6 +147,8 @@ const getHealthMetricSamplesHandler: RequestHandler = async (
  *       requires `window` and replaces only this source's stored samples
  *       inside it; `replace` overwrites every day the samples touch. Stored
  *       samples linked to a workout or sleep session are kept in both modes.
+ *       In `merge` mode `samples` may be empty, which clears this source's
+ *       samples inside `window` (for a window that has no readings left).
  *       See docs/src/developer/api-reference.md for the field of each metric.
  *     security:
  *       - cookieAuth: []

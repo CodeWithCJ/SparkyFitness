@@ -12,6 +12,7 @@ import {
   sentenceText,
   statsLine,
   verdictCopy,
+  yesNoWording,
 } from '../../src/utils/compareCopy';
 
 const t = ((key: string, options: Record<string, unknown>) =>
@@ -722,5 +723,63 @@ describe('compareValueText', () => {
     expect(compareValueText('bedtime', 255)).toMatch(/^10:15\sPM$/);
     expect(compareValueText('bedtime', 390)).toMatch(/^12:30\sAM$/);
     expect(compareValueText('bedtime', -30)).toMatch(/^5:30\sPM$/);
+  });
+});
+
+describe('metric names in a language that capitalizes nouns', () => {
+  // German labels and the German question, as translated on Weblate.
+  const GERMAN: Record<string, string> = {
+    'compareReport.metrics.mood': 'Stimmung',
+    'compareReport.metrics.steps': 'Schritte',
+    'compareReport.metrics.meditated': 'Meditiert',
+    'compareReport.yesNo.onDays': 'An Tagen, an denen du {{yes}} hast',
+  };
+  // The German string where the test has one, else the app's own (English)
+  // catalog. Not via `defaultValue`: i18next prefers the English fallback.
+  const german = ((key: string, options: Record<string, unknown>) => {
+    const template = GERMAN[key];
+    if (template === undefined) return i18n.t(key, options);
+    return template.replace(/\{\{(\w+)\}\}/g, (_match, name: string) =>
+      String(options[name])
+    );
+  }) as never;
+
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  test('German keeps the capital of a noun in the middle of a sentence', async () => {
+    await i18n.changeLanguage('de');
+    const text = sentenceText(
+      { a: 'mood', b: 'steps', choice: 'sameDay' },
+      german
+    );
+    expect(text).toContain('Stimmung');
+    expect(text).toContain('Schritte');
+  });
+
+  test('German still lowers a yes/no label, which is a verb', async () => {
+    await i18n.changeLanguage('de');
+    const wording = yesNoWording(
+      { a: 'meditated', b: 'mood', choice: 'sameDay' },
+      'meditated',
+      german
+    );
+    expect(wording.when).toBe('An Tagen, an denen du meditiert hast');
+  });
+
+  test('German lowers a label that is not translated yet, as English needs', async () => {
+    await i18n.changeLanguage('de');
+    const english = ((key: string, options: Record<string, unknown>) =>
+      i18n.t(key, { ...options, lng: 'en' })) as never;
+    expect(
+      sentenceText({ a: 'mood', b: 'steps', choice: 'sameDay' }, english)
+    ).toBe('Does mood go with steps the same day?');
+  });
+
+  test('English still lowers a noun in the middle of a sentence', () => {
+    expect(sentenceText({ a: 'mood', b: 'steps', choice: 'sameDay' }, t)).toBe(
+      'Does mood go with steps the same day?'
+    );
   });
 });

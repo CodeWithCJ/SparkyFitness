@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TEMPERATURE_UNITS } from '@workspace/shared';
 
 const getProfileSchema = z
   .object({
@@ -50,6 +51,10 @@ const updatePreferencesSchema = z
       .enum(['km', 'miles'])
       .optional()
       .describe('Default unit for distance'),
+    default_temperature_unit: z
+      .enum(TEMPERATURE_UNITS)
+      .optional()
+      .describe('Unit for temperatures (celsius or fahrenheit)'),
     water_display_unit: z
       .enum(['ml', 'oz'])
       .optional()
@@ -111,6 +116,10 @@ export const manageProfileInput = z.object({
     .enum(['km', 'miles'])
     .optional()
     .describe('update_preferences: default distance unit'),
+  default_temperature_unit: z
+    .enum(TEMPERATURE_UNITS)
+    .optional()
+    .describe('update_preferences: temperature unit (celsius or fahrenheit)'),
   water_display_unit: z
     .enum(['ml', 'oz'])
     .optional()

@@ -46,8 +46,11 @@ const RESERVED_SOURCE_KEYS = new Set(
 // `ex`/`sl` links the stored shape allows are not accepted from clients.
 const NO_LINKS = { ex: true, sl: true } as const;
 
+// Empty only in merge mode (checked below): a merge with no samples clears
+// the source's readings inside `window`, for a window the client read and
+// found empty, such as after readings were deleted on the device.
 const samplesOf = <T extends z.ZodType>(sample: T) =>
-  z.array(sample).min(1).max(HEALTH_METRIC_SAMPLES_WRITE_MAX_SAMPLES);
+  z.array(sample).max(HEALTH_METRIC_SAMPLES_WRITE_MAX_SAMPLES);
 
 const writeWindowSchema = z
   .object({
@@ -133,6 +136,14 @@ export const healthMetricSamplesWriteBodySchema = z
       .strict(),
   ])
   .superRefine((body, ctx) => {
+    if (body.samples.length === 0 && body.mode !== 'merge') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['samples'],
+        message: 'samples may be empty only in merge mode',
+      });
+      return;
+    }
     if (!body.window) {
       // Without a window a merge only appends, so sending the same range
       // again would store every reading twice.

@@ -16,6 +16,7 @@ import {
 import { COMPARE_METRIC_LABELS } from '../constants/compareMetrics';
 import type { Translator } from '../constants/reports';
 import { formatLocalizedNumber } from '../localization';
+import { getAppLanguageCode } from '../localization/i18n';
 import { formatTimeLabel } from './entryTimeDisplay';
 
 function lowerFirst(text: string): string {
@@ -30,9 +31,24 @@ function isYesNo(key: CompareMetricKey): boolean {
   return COMPARE_METRICS[key].kind === 'binary';
 }
 
-/** The label in lower case, for the middle of a sentence. */
+/** Languages that capitalize every noun, also in the middle of a sentence. */
+const NOUN_CAPITALIZING_LANGUAGES = new Set(['de']);
+
+/**
+ * The label for the middle of a sentence: in lower case, except a translated
+ * noun in a language that capitalizes nouns ("Stimmung" in German). A label
+ * still in English (not translated yet) is lowered, as the English sentence
+ * around it needs. A yes/no label is a verb ("Meditated", "Meditiert"), so it
+ * is lowered in every language.
+ */
 function plainLabel(key: CompareMetricKey, t: Translator): string {
-  return lowerFirst(COMPARE_METRIC_LABELS[key](t));
+  const label = COMPARE_METRIC_LABELS[key](t);
+  const english = COMPARE_METRIC_LABELS[key]((_key, o) => o.defaultValue);
+  const keepCapital =
+    !isYesNo(key) &&
+    label !== english &&
+    NOUN_CAPITALIZING_LANGUAGES.has(getAppLanguageCode());
+  return keepCapital ? label : lowerFirst(label);
 }
 
 /**
