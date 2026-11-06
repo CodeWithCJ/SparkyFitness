@@ -47,13 +47,6 @@ const valuesWithAttributes = (json) => {
   return found;
 };
 
-/** Lines a unified diff adds that put attributes in a tag. */
-const addedLinesWithAttributes = (patch) =>
-  (patch || '')
-    .split('\n')
-    .filter((l) => l.startsWith('+') && !l.startsWith('+++'))
-    .filter((l) => TAG_WITH_ATTRIBUTES.test(l));
-
 /** The allowlist for a branch, or null when the branch is not an automation branch. */
 const allowedFor = (branch) => {
   const prefix = Object.keys(ALLOWED_FILES).find((p) =>
@@ -76,7 +69,6 @@ module.exports = {
   allowedFor,
   outsideAllowlist,
   valuesWithAttributes,
-  addedLinesWithAttributes,
 };
 
 // CLI for shell steps. `<branch>` reads paths on stdin, one per line, and prints

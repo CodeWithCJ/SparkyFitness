@@ -85,7 +85,7 @@ jobs:
             const ALLOWED_BRANCH_PREFIXES = ['i18n/'];
 
             // Files each automation branch may change, shared with sync-translations.yml.
-            const { outsideAllowlist, addedLinesWithAttributes } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/automation-allowlist.cjs`);
+            const { outsideAllowlist, valuesWithAttributes } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/automation-allowlist.cjs`);
 
             // Helper: determine if a PR is an allowed automated PR
             function isEligible(pr) {
@@ -227,16 +227,24 @@ jobs:
               }
 
               // Paths are not enough: <Trans> lets attributes in a value override
-              // a link's href, target and rel. Check every line the PR adds. GitHub
-              // leaves out the patch of a very large diff, so a missing patch is
-              // treated as a finding, not a pass.
-              const unsafe = files.filter(f =>
-                f.filename.endsWith('.json') && f.status !== 'removed' &&
-                (!f.patch || addedLinesWithAttributes(f.patch).length > 0)
-              );
+              // a link's href, target and rel. Parse each changed catalogue as it
+              // stands at headSha, since JSON escapes such as \u003c hide a tag
+              // from the raw diff. A file that cannot be read or parsed counts as
+              // a finding, not a pass.
+              const unsafe = [];
+              for (const f of files) {
+                if (!f.filename.endsWith('.json') || f.status === 'removed') continue;
+                try {
+                  const { data } = await github.rest.repos.getContent({ owner, repo, path: f.filename, ref: headSha });
+                  const text = data.encoding === 'base64' && data.content ? Buffer.from(data.content, 'base64').toString('utf8') : null;
+                  if (text === null || valuesWithAttributes(text).length > 0) unsafe.push(f);
+                } catch (err) {
+                  unsafe.push(f);
+                }
+              }
               if (unsafe.length > 0) {
                 core.warning(
-                  `PR #${pr.number} adds values with attributes in a tag, or a diff too large to check ` +
+                  `PR #${pr.number} has values with attributes in a tag, or a catalogue that could not be checked ` +
                   `(${unsafe.slice(0, 5).map(f => f.filename).join(', ')}). Skipping auto-merge; a maintainer must review it.`
                 );
                 continue;

@@ -6,7 +6,6 @@ const {
   allowedFor,
   outsideAllowlist,
   valuesWithAttributes,
-  addedLinesWithAttributes,
 } = require('./automation-allowlist.cjs');
 const { readFileSync } = require('node:fs');
 
@@ -100,16 +99,11 @@ test('values may carry tags but not attributes', () => {
   ]);
 });
 
-test('diff check flags only added lines with attributes in a tag', () => {
-  const patch = [
-    '--- a/x.json',
-    '+++ b/x.json',
-    '-  "old": "<0 href=\\"a\\">gone</0>",',
-    '+  "ok": "<0>fine</0>",',
-    '+  "bad": "<0 href=\\"https://evil.example\\">x</0>"',
-  ].join('\n');
-  assert.equal(addedLinesWithAttributes(patch).length, 1);
-  assert.match(addedLinesWithAttributes(patch)[0], /evil/);
+test('JSON escapes cannot hide a tag', () => {
+  const raw =
+    '{"k": "\\u003c0 href=\\"https://example.com\\"\\u003ex\\u003c/0\\u003e"}';
+  assert.ok(!raw.includes('<'), 'the raw text has no literal tag');
+  assert.deepEqual(valuesWithAttributes(raw), ['k']);
 });
 
 test('other branches have no allowlist, so every path is outside it', () => {
