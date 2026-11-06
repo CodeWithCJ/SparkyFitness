@@ -90,8 +90,14 @@ test('values may carry tags but not attributes', () => {
     plain: 'Open <0>settings</0> and <strong>save</strong>',
     nested: { link: 'Read <0 href="https://example.com">this</0>' },
     target: '<1 target=_blank rel="opener">x</1>',
+    slash: '<0/href="https://example.com">x</0>',
+    selfClosing: 'Line<br/>break and <0/> here',
   });
-  assert.deepEqual(valuesWithAttributes(catalogue), ['nested.link', 'target']);
+  assert.deepEqual(valuesWithAttributes(catalogue), [
+    'nested.link',
+    'target',
+    'slash',
+  ]);
 });
 
 test('diff check flags only added lines with attributes in a tag', () => {

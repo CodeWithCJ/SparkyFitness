@@ -29,7 +29,8 @@ const ALLOWED_FILES = {
 // react-i18next's <Trans> renders a value as markup, and attributes written in
 // a value override the props of the component the tag maps to (href, target,
 // rel). Values may carry tags such as <0>...</0> or <strong>, never attributes.
-const TAG_WITH_ATTRIBUTES = /<[A-Za-z0-9_-]+\s+[^>]*=/;
+// Whitespace or a slash may separate a tag name from what follows.
+const TAG_WITH_ATTRIBUTES = /<[A-Za-z0-9_-]+[\s/][^>]*=/;
 
 /** Dotted keys of the string values in a JSON catalogue that put attributes in a tag. */
 const valuesWithAttributes = (json) => {
