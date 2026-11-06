@@ -37,4 +37,11 @@
     <string name="widget_water_status_failed">Nie udało się zapisać wody</string>
     <string name="widget_water_status_nothing_to_remove">Brak zapisanego tutak napoju do usunięcia</string>
     <string name="widget_preview_water_amount">1 250 / 2 000 ml</string>
+    <string name="widget_open_diary">Otwórz dziennik</string>
+    <string name="widget_open_fasting">Otwórz post</string>
+    <string name="widget_kcal_eaten">Zjedzone %1$s kcal</string>
+    <string name="widget_goal">Cel</string>
+    <string name="widget_food">Produkty</string>
+    <string name="widget_burned">Spalone</string>
+    <string name="widget_amount_of_goal">%1$s / %2$s</string>
 </resources>

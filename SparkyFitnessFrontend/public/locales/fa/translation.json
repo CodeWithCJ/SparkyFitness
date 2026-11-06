@@ -1,0 +1,8 @@
+{
+  "mealBuilder": {
+    "mealName": "نام وعدهٔ غذایی",
+    "totalServings": "تعداد وعده‌ها",
+    "unit": "واحد",
+    "foodsInMeal": "غذاهای این وعده"
+  }
+}
