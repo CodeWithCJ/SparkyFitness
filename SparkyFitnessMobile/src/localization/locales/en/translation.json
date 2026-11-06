@@ -119,7 +119,7 @@
   "settings": {
     "glucoseUnit": {
       "title": "Glucose unit",
-      "subtitle": "Used for glucose reports on all your devices.",
+      "subtitle": "For glucose charts.",
       "saveFailed": "Could not save glucose unit.",
       "loadFailed": "Could not load preference. Tap to retry."
     },

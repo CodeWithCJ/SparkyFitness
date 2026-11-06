@@ -57,8 +57,9 @@ export default function GlucoseUnitSetting() {
     <SettingsRow
       title={title}
       subtitle={t('settings.glucoseUnit.subtitle', {
-        defaultValue: 'Used for glucose reports on all your devices.',
+        defaultValue: 'For glucose charts.',
       })}
+      subtitleNumberOfLines={0}
       rightAccessory={
         isLoading || mutation.isPending ? (
           <ActivityIndicator />
