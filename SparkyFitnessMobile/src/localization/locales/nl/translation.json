@@ -547,9 +547,6 @@
   },
   "dashboard": {
     "chooseDate": "Kies dashboarddatum",
-    "noServerConfigured": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om uw dagelijkse samenvatting te bekijken.",
-    "goToSettings": "Ga naar Instellingen",
     "loadingSummary": "Samenvatting laden...",
     "loadFailed": "Laden van samenvatting mislukt",
     "checkConnection": "Controleer uw verbinding en probeer het opnieuw.",
@@ -924,9 +921,6 @@
     "medications": "Medicijnen",
     "medication": "Medicijn",
     "library": {
-      "noServerConfigured": "Geen server geconfigureerd",
-      "configureServer": "Configureer uw serververbinding in Instellingen om uw bibliotheek te bekijken.",
-      "goToSettings": "Ga naar Instellingen",
       "loading": "Bibliotheek laden...",
       "title": "Bibliotheek",
       "create": "Aanmaken",
@@ -1392,9 +1386,6 @@
   },
   "diary": {
     "chooseDate": "Kies dagboekdatum",
-    "noServer": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om uw dagboek te bekijken.",
-    "goToSettings": "Ga naar Instellingen",
     "loading": "Dagboek laden...",
     "loadFailed": "Laden van dagboek mislukt",
     "checkConnection": "Controleer uw verbinding en probeer het opnieuw.",
@@ -3163,8 +3154,6 @@
     "makePrivate": "Privé maken",
     "shareWithPublic": "Delen met publiek",
     "editMeal": "Maaltijd bewerken",
-    "noServer": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om maaltijddetails te bekijken.",
     "loading": "Maaltijd laden...",
     "loadFailed": "Laden van maaltijd mislukt",
     "perServing": "Per portie",
@@ -3649,8 +3638,6 @@
     "makePrivate": "Privé maken",
     "sharePublic": "Delen met publiek",
     "editFood": "Voedingsmiddel bewerken",
-    "noServer": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om voedingsdetails te bekijken.",
     "serving": "Portie",
     "selectServing": "Selecteer Portie",
     "servingOptions": "Portieopties",
@@ -4076,8 +4063,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "Geen server geconfigureerd",
-      "noServerHint": "Configureer uw serververbinding in Instellingen om maaltijdvoedingswaarde te bekijken.",
       "loading": "Maaltijd laden…",
       "loadFailed": "Laden van maaltijd mislukt",
       "noFoods": "Geen {{meal}}-voedingsmiddelen",
@@ -4400,9 +4385,6 @@
   "exerciseLibrary": {
     "title": "Oefeningen",
     "search": "Oefeningen zoeken...",
-    "noServer": "Geen server geconfigureerd",
-    "configure": "Configureer uw serververbinding in Instellingen om uw oefeningbibliotheek te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Oefeningen laden...",
     "failed": "Laden van oefeningen mislukt",
     "retry": "Opnieuw proberen",
@@ -4418,9 +4400,6 @@
   "foodLibrary": {
     "title": "Voedingsmiddelen",
     "search": "Voeding zoeken...",
-    "noServer": "Geen server geconfigureerd",
-    "configure": "Configureer uw serververbinding in Instellingen om uw voedingsbibliotheek te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Voedingsmiddelen laden...",
     "failed": "Laden van voedingsmiddelen mislukt",
     "retry": "Opnieuw proberen",
@@ -4435,9 +4414,6 @@
   "mealLibrary": {
     "title": "Maaltijden",
     "search": "Maaltijden zoeken...",
-    "noServer": "Geen server geconfigureerd",
-    "configure": "Configureer uw serververbinding in Instellingen om uw maaltijdbibliotheek te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Maaltijden laden...",
     "failed": "Laden van maaltijden mislukt",
     "searchFailed": "Zoeken naar maaltijden mislukt",
@@ -4452,9 +4428,7 @@
   "presetLibrary": {
     "title": "Trainingsvoorinstellingen",
     "search": "Trainingsvoorinstellingen zoeken...",
-    "noServer": "Geen server geconfigureerd",
     "configure": "Configureer uw serververbinding in Instellingen om uw trainingsvoorinstellingen te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Trainingsvoorinstellingen laden...",
     "failed": "Laden van trainingsvoorinstellingen mislukt",
     "retry": "Opnieuw proberen",
@@ -5204,9 +5178,6 @@
       "dayCycle_other": "{{count}}-daagse cyclus"
     }
   },
-  "workoutPresetLibrary": {
-    "configure": "Configureer uw serververbinding in Instellingen om uw trainingsvoorinstellingen te bekijken."
-  },
   "time": {
     "hoursShort": "u",
     "minutesShort": "m"
@@ -5280,9 +5251,6 @@
     "deleteMessage": "{{name}} verwijderen? Toekomstige dagboekregistraties die door dit plan zijn gegenereerd, worden verwijderd.",
     "deleteFailed": "Verwijderen van maaltijdplan mislukt",
     "deleteSuccess": "Maaltijdplan verwijderd",
-    "noServer": "Geen server geconfigureerd",
-    "noServerSubtitle": "Configureer uw serververbinding om maaltijdplannen te beheren.",
-    "goToSettings": "Ga naar Instellingen",
     "loading": "Maaltijdplannen laden...",
     "loadFailed": "Laden van maaltijdplannen mislukt",
     "loadFailedSubtitle": "Controleer uw verbinding en probeer het opnieuw.",
@@ -5816,9 +5784,6 @@
     "loading": "Watercontainers laden...",
     "loadFailed": "Watercontainers konden niet worden geladen",
     "loadFailedSubtitle": "Controleer uw verbinding en probeer het opnieuw.",
-    "noServer": "Geen server geconfigureerd",
-    "noServerSubtitle": "Configureer uw serververbinding om watercontainers te beheren.",
-    "goToSettings": "Naar Instellingen",
     "emptyTitle": "Nog geen watercontainers",
     "emptySubtitle": "Voeg een fles of glas toe om hydratatie bij te houden -- eventueel gekoppeld aan een voedingsmiddel zodat één tik beide registreert.",
     "linkedTo": "Gekoppeld aan {{food}}",
