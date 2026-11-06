@@ -48,12 +48,17 @@ jobs:
     # workflow pushed on another branch cannot read them.
     environment: sync-app
     runs-on: ubuntu-latest
+    # GITHUB_TOKEN only checks out the allowlist and reads workflow runs, for
+    # the CI Tests check below. The app token does the rest.
+    permissions:
+      actions: read
+      contents: read
 
     steps:
       # The default branch's copy of the allowlist, never the PR's: on every
       # trigger here the checkout is main, and no PR code is checked out.
       - name: Checkout the allowlist
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           sparse-checkout: .github/scripts
           persist-credentials: false
@@ -72,7 +77,9 @@ jobs:
           permission-statuses: read
 
       - name: Check and Merge Clean Automation PRs
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7.1.0
+        env:
+          ACTIONS_READ_TOKEN: ${{ github.token }}
         with:
           github-token: ${{ steps.app_token.outputs.token }}
           script: |
@@ -250,7 +257,46 @@ jobs:
                 continue;
               }
 
-              // 4. Verify CI check runs and commit status
+              // 4. Require a finished, passing CI Tests run for headSha. main has
+              // no required status checks and the app skips review, so this is
+              // the CI gate. Listing check runs alone is not enough: the test jobs
+              // only appear once Detect Changes finishes, and a run in that gap
+              // would see every listed check green. Every path the i18n/ allowlist
+              // permits is in CI Tests' paths filter, so the run always exists.
+              // The app token cannot read workflow runs, so this one call uses
+              // GITHUB_TOKEN. A failed call skips the merge, never allows it.
+              let ciRuns;
+              try {
+                const res = await fetch(
+                  `${process.env.GITHUB_API_URL}/repos/${owner}/${repo}/actions/runs` +
+                    `?head_sha=${headSha}&event=pull_request&per_page=100`,
+                  {
+                    headers: {
+                      accept: 'application/vnd.github+json',
+                      authorization: `Bearer ${process.env.ACTIONS_READ_TOKEN}`,
+                      'x-github-api-version': '2022-11-28',
+                    },
+                  }
+                );
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                ciRuns = await res.json();
+              } catch (err) {
+                core.warning(`PR #${pr.number}: could not list CI Tests runs (${err.message}). Skipping auto-merge.`);
+                continue;
+              }
+              const ci = (ciRuns.workflow_runs || [])
+                .filter(r => r.name === 'CI Tests' && r.path === '.github/workflows/ci-tests.yml')
+                .sort((a, b) => b.id - a.id)[0];
+              if (!ci || ci.status !== 'completed') {
+                core.info(`PR #${pr.number}: CI Tests has not finished for ${headSha}. Waiting.`);
+                continue;
+              }
+              if (ci.conclusion !== 'success') {
+                core.warning(`PR #${pr.number}: CI Tests concluded ${ci.conclusion}. Skipping auto-merge.`);
+                continue;
+              }
+
+              // 5. Verify the other check runs and commit status
 
               const checkRunsRes = await github.rest.checks.listForRef({
                 owner,
@@ -311,7 +357,7 @@ jobs:
                 continue;
               }
 
-              // 5. Merge the clean PR
+              // 6. Merge the clean PR
               try {
                 core.info(`All checks passed and no conflicts found. Auto-merging PR #${pr.number} (${headRef})...`);
                 await github.rest.pulls.merge({
