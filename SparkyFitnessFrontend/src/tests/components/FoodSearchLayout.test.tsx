@@ -230,10 +230,15 @@ describe('food search dialog layout (#2126)', () => {
 
     mockPrefs.allProvidersDefault = true;
     try {
+      // The real dialog, so the test also covers the ancestry that
+      // results.closest('[role="dialog"]') relies on.
       renderWithClient(
-        <div role="dialog">
-          <FoodSearch onFoodSelect={jest.fn()} hideMealTab />
-        </div>
+        <FoodSearchDialog
+          open
+          onOpenChange={jest.fn()}
+          onFoodSelect={jest.fn()}
+          hideMealTab
+        />
       );
 
       fireEvent.change(screen.getByPlaceholderText('Search for foods...'), {
