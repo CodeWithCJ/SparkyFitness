@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-06_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -164,6 +164,8 @@ npx expo prebuild --clean
 
 ## Native Patches
 
+- `expo-camera@57.0.6` is patched via `../patches/expo-camera@57.0.6.patch` and `patchedDependencies` in `pnpm-workspace.yaml` ([#3394](https://github.com/CodeWithCJ/SparkyFitness/pull/3394)). Android pause/cleanup unbind only that view's CameraX use cases; a late old-view teardown otherwise closes the replacement camera and leaves a black preview.
+- `package.json` includes `expo-camera` in `expo.autolinking.android.buildFromSource` so the precompiled module cannot bypass the patched Kotlin. A native rebuild is required. Remove the camera patch, its `patchedDependencies` entry, and that module's `buildFromSource` entry once an upgraded release scopes pause/cleanup to its own use cases; verify repeated camera restarts and background return with optical scans.
 - `react-native-health-connect` is declared as `^4.1.3`; the installed build is patched from the repo root via `patchedDependencies` in `pnpm-workspace.yaml`.
 - Patch file: `../patches/react-native-health-connect@4.1.3.patch`, one hunk. `PermissionUtils.mapPermissionResult` maps `ExerciseRoute` and `BackgroundAccessPermission` back to JS but not `ReadHealthDataHistory`, even though `parsePermissions` accepts it on the request path. Since `requestPermission` also resolves through `mapPermissionResult`, a granted history permission can never be observed, so `ensureHistoryReadPermission` always returns false and Import Full History believes it is capped at 30 days. Reported upstream as matinzd/react-native-health-connect#276; drop the patch if that lands.
 - The older 3.5.3 patch also forced `getTimeRangeFilterLocal` in `getAggregateGroupByPeriodRequest` (DST / local-day grouping) and made `ExerciseRouteResultType` string-valued. Both are gone: 4.1.3 uses the local filter at all 21 sites, and upstream is fixing the route enum in #274 by typing the read path as a string literal union instead — a better fix than ours, so `routeNeedsConsent` keeps accepting both forms and depends on neither declaration.

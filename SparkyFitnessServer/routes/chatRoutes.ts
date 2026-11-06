@@ -8,6 +8,7 @@ import type { FoodOptionsErrorCategory } from '../services/chatService.js';
 import { transcribeVoiceAudio } from '../services/voiceTranscriptionService.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
 import { resolveIsAdmin } from '../utils/adminCheck.js';
+import { createResponseAbortSignal } from '../utils/responseAbortSignal.js';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
   resolveAiNetworkPolicy,
@@ -119,11 +120,7 @@ router.post(
       return res.status(400).json({ error: 'Unsupported audio format.' });
     }
 
-    const controller = new AbortController();
-    const abort = () => {
-      if (!res.writableFinished) controller.abort();
-    };
-    res.once('close', abort);
+    const { signal, cleanup } = createResponseAbortSignal(res);
     try {
       const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
       const result = await transcribeVoiceAudio({
@@ -133,13 +130,13 @@ router.post(
         // AI credentials belong to the actor, never to a switched family member.
         userId: req.authenticatedUserId,
         isAdmin,
-        signal: controller.signal,
+        signal,
       });
       return res.status(200).json(result);
     } catch (error) {
       next(error);
     } finally {
-      res.removeListener('close', abort);
+      cleanup();
     }
   }
 );
