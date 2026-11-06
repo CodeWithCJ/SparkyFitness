@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 
 import MeasurementsReportScreen from '../../src/screens/MeasurementsReportScreen';
 import {
@@ -11,10 +11,22 @@ import { buildMeasurementsReport } from '../../src/utils/measurementsReport';
 import type { CheckInMeasurementRange } from '../../src/types/measurements';
 
 jest.mock('../../src/components/reports/MeasurementTimelineCard', () => {
-  const { View } = require('react-native');
+  const { useState } = jest.requireActual<typeof import('react')>('react');
+  const { Pressable, Text } =
+    jest.requireActual<typeof import('react-native')>('react-native');
   return {
     __esModule: true,
-    default: () => <View testID="measurement-timeline" />,
+    default: function MockMeasurementTimelineCard() {
+      const [selection, setSelection] = useState('default timeline state');
+      return (
+        <Pressable
+          testID="measurement-timeline"
+          onPress={() => setSelection('selected day, zoom and layers')}
+        >
+          <Text>{selection}</Text>
+        </Pressable>
+      );
+    },
   };
 });
 const mockUseMeasurementsReport = jest.fn();
@@ -122,6 +134,34 @@ describe('MeasurementsReportScreen', () => {
       isError: false,
     });
   });
+
+  it.each(['loading', 'error'] as const)(
+    'preserves timeline selections through %s, loaded and empty states',
+    (state) => {
+      mockUseMeasurementsReport.mockReturnValue({
+        report: undefined,
+        isLoading: state === 'loading',
+        isError: state === 'error',
+      });
+      const screen = renderScreen();
+      fireEvent.press(screen.getByTestId('measurement-timeline'));
+
+      for (const nextReport of [
+        report,
+        buildMeasurementsReport([], '2026-10-01', 5),
+        undefined,
+        report,
+      ]) {
+        mockUseMeasurementsReport.mockReturnValue({
+          report: nextReport,
+          isLoading: nextReport === undefined,
+          isError: false,
+        });
+        screen.rerender(<MeasurementsReportScreen />);
+        expect(screen.getByText('selected day, zoom and layers')).toBeTruthy();
+      }
+    }
+  );
 
   it('shows the key figures with changes, the charts and the summary cards', () => {
     const { getByTestId, getAllByText } = renderScreen();

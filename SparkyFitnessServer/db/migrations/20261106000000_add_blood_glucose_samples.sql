@@ -15,3 +15,7 @@ ALTER TABLE user_preferences
 ALTER TABLE user_preferences
     ADD CONSTRAINT chk_user_preferences_glucose_unit
     CHECK (default_glucose_unit IN ('mmol/L', 'mg/dL'));
+
+-- Bound timestamp-based custom CGM reads to one user's readings.
+CREATE INDEX IF NOT EXISTS idx_custom_measurements_user_timestamp
+    ON custom_measurements (user_id, entry_timestamp);

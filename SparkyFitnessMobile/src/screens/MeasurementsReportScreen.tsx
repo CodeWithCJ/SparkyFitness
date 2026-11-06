@@ -342,6 +342,12 @@ const MeasurementsReportScreen: React.FC<
 
   return (
     <ReportScreenLayout header={header} {...rangeProps}>
+      {isSectionShown('measurements.timeline') && (
+        <MeasurementTimelineCard
+          startDate={reportWindow.startDate}
+          endDate={reportWindow.endDate}
+        />
+      )}
       {!hasAnything ? (
         <StatusView
           icon="chart-bar"
@@ -403,12 +409,6 @@ const MeasurementsReportScreen: React.FC<
             />
           ) : null}
         </>
-      )}
-      {isSectionShown('measurements.timeline') && (
-        <MeasurementTimelineCard
-          startDate={reportWindow.startDate}
-          endDate={reportWindow.endDate}
-        />
       )}
     </ReportScreenLayout>
   );
