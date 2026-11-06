@@ -1,3 +1,4 @@
+import { BLOOD_GLUCOSE_MG_DL_PER_MMOL_L } from '@workspace/shared';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { HealthMetricSamplesWriteBody } from '@workspace/shared';
@@ -97,6 +98,46 @@ export function heartRateReadingsFromRecords(
     }
   }
   return readings;
+}
+
+/** HealthKit glucose is queried in mg/dL. Keep every original reading and source. */
+export function glucoseReadingsFromRecords(records: readonly unknown[]) {
+  const readings: {
+    t: string;
+    mmol_l: number;
+    source_bundle_id?: string;
+  }[] = [];
+  for (const record of records) {
+    if (!record || typeof record !== 'object') continue;
+    const rec = record as {
+      time?: unknown;
+      startTime?: unknown;
+      level?: {
+        inMilligramsPerDeciliter?: unknown;
+        inMillimolesPerLiter?: unknown;
+      };
+      sourceBundleId?: unknown;
+    };
+    const ms = toMs(rec.time) ?? toMs(rec.startTime);
+    const level = rec.level;
+    const value =
+      typeof level?.inMillimolesPerLiter === 'number'
+        ? level.inMillimolesPerLiter
+        : typeof level?.inMilligramsPerDeciliter === 'number'
+          ? level.inMilligramsPerDeciliter / BLOOD_GLUCOSE_MG_DL_PER_MMOL_L
+          : NaN;
+    if (ms === null || !Number.isFinite(value) || value <= 0 || value > 100)
+      continue;
+    readings.push({
+      t: new Date(ms).toISOString(),
+      mmol_l: value,
+      ...(typeof rec.sourceBundleId === 'string'
+        ? { source_bundle_id: rec.sourceBundleId.slice(0, 256) }
+        : {}),
+    });
+  }
+  // Native reads are newest first; retain exact times (no glucose averaging).
+  return readings.sort((a, b) => Date.parse(a.t) - Date.parse(b.t));
 }
 
 /**
@@ -210,13 +251,14 @@ const readCoverage = async (key: string): Promise<HeartRateCoverage | null> => {
 const writeCoverage = async (
   config: ServerConfig,
   key: string,
-  coverage: HeartRateCoverage
+  coverage: HeartRateCoverage,
+  cursorPrefix = CURSOR_KEY_PREFIX
 ): Promise<void> => {
   try {
     await AsyncStorage.setItem(key, JSON.stringify(coverage));
     // One record per server config: drop those of the config's earlier
     // accounts (another sign-in, a renewed session) so they do not pile up.
-    const configPrefix = `${CURSOR_KEY_PREFIX}:${config.id}`;
+    const configPrefix = `${cursorPrefix}:${config.id}`;
     const stale = (await AsyncStorage.getAllKeys()).filter(
       (k) =>
         k !== key && (k === configPrefix || k.startsWith(`${configPrefix}:`))
@@ -295,7 +337,7 @@ export interface HeartRateSamplesResult {
  * different account is active. So no reading ever goes to another account,
  * however an account change lines up with the run.
  */
-export async function syncAllDayHeartRate(
+async function syncAllDaySamples(
   reader: HeartRateSamplesReader,
   account: ServerConfig,
   start: Date,
@@ -303,9 +345,12 @@ export async function syncAllDayHeartRate(
   telemetry: TelemetryRunContext,
   logTag: string,
   stepTimeoutMs: number = STEP_TIMEOUT_MS,
-  clearEmptyWindows: boolean = CLEARS_EMPTY_WINDOWS
+  clearEmptyWindows: boolean = CLEARS_EMPTY_WINDOWS,
+  metric: 'heart_rate' | 'blood_glucose' = 'heart_rate'
 ): Promise<HeartRateSamplesResult> {
+  const readingName = metric === 'heart_rate' ? 'heart rate' : 'glucose';
   let samplesUploaded = 0;
+  let skippedEmptyGlucoseWindow = false;
   let error: string | undefined;
   const accountId = heartRateAccountId(account);
   const accountChanged = async (): Promise<boolean> => {
@@ -318,10 +363,17 @@ export async function syncAllDayHeartRate(
     }
   };
   const stopForAccountChange = () => {
-    error = 'Account changed; all-day heart rate upload stopped';
+    error = `Account changed; all-day ${readingName} upload stopped`;
     addLog(`${logTag} ${error}`, 'INFO');
   };
-  const key = coverageKey(accountId);
+  const cursorPrefix =
+    metric === 'heart_rate'
+      ? CURSOR_KEY_PREFIX
+      : `${CURSOR_KEY_PREFIX}:blood_glucose`;
+  const key =
+    metric === 'heart_rate'
+      ? coverageKey(accountId)
+      : `${cursorPrefix}:${accountId}`;
   const plan = heartRateSyncPlan(start, end, await readCoverage(key));
   for (const window of heartRateWindows(plan.start, end)) {
     if (await accountChanged()) {
@@ -330,14 +382,19 @@ export async function syncAllDayHeartRate(
     }
     try {
       const read = await withTimeout(
-        reader.readRaw('HeartRate', window.start, window.end, telemetry),
+        reader.readRaw(
+          metric === 'heart_rate' ? 'HeartRate' : 'BloodGlucose',
+          window.start,
+          window.end,
+          telemetry
+        ),
         stepTimeoutMs,
-        'All-day heart rate read'
+        `All-day ${readingName} read`
       );
       if (read.error) {
         error = read.error;
         addLog(
-          `${logTag} All-day heart rate read failed, window not uploaded: ${read.error}`,
+          `${logTag} All-day ${readingName} read failed, window not uploaded: ${read.error}`,
           'WARNING'
         );
         continue;
@@ -346,26 +403,43 @@ export async function syncAllDayHeartRate(
       // and the server rejects the whole write for one such sample.
       const startMs = window.start.getTime();
       const endMs = window.end.getTime();
-      const samples = downsampleHeartRate(
-        heartRateReadingsFromRecords(read.records).filter(({ t }) => {
-          const ms = new Date(t).getTime();
-          return ms >= startMs && ms <= endMs;
-        }),
-        window.start
-      );
-      const clearing = samples.length === 0;
-      if (clearing && !clearEmptyWindows) continue;
-      const body: HealthMetricSamplesWriteBody = {
-        metric: 'heart_rate',
+      const inWindow = ({ t }: { t: string }) => {
+        const ms = Date.parse(t);
+        return ms >= startMs && ms <= endMs;
+      };
+      const common = {
         source: PASSIVE_HEART_RATE_SOURCE,
         device_name: Platform.OS === 'ios' ? 'Apple Health' : 'Health Connect',
-        mode: 'merge',
+        mode: 'merge' as const,
         window: {
           start: window.start.toISOString(),
           end: window.end.toISOString(),
         },
-        samples: samples.map(({ t, bpm }) => ({ t, bpm })),
       };
+      const body: HealthMetricSamplesWriteBody =
+        metric === 'blood_glucose'
+          ? {
+              ...common,
+              metric,
+              samples: glucoseReadingsFromRecords(read.records).filter(
+                inWindow
+              ),
+            }
+          : {
+              ...common,
+              metric,
+              samples: downsampleHeartRate(
+                heartRateReadingsFromRecords(read.records).filter(inWindow),
+                window.start
+              ),
+            };
+      const clearing = body.samples.length === 0;
+      if (clearing && !clearEmptyWindows) {
+        // HealthKit hides denied access as an empty read. Do not certify this
+        // glucose window as imported: granting access later must retry history.
+        if (metric === 'blood_glucose') skippedEmptyGlucoseWindow = true;
+        continue;
+      }
       // apiFetch's own timeout stops at the response headers; this bounds the
       // body read too, and aborts the request when it fires, so a stalled
       // response neither holds the phase open nor keeps its connection.
@@ -379,7 +453,7 @@ export async function syncAllDayHeartRate(
         await withTimeout(
           postHealthMetricSamples(body, upload.signal, account),
           stepTimeoutMs,
-          'All-day heart rate upload'
+          `All-day ${readingName} upload`
         );
       } catch (e) {
         upload.abort();
@@ -388,14 +462,14 @@ export async function syncAllDayHeartRate(
         // should hold back coverage and make every sync read the whole range.
         if (clearing && e instanceof ApiError && e.statusCode === 400) {
           addLog(
-            `${logTag} Server cannot clear an emptied heart rate week; skipped`,
+            `${logTag} Server cannot clear an emptied ${readingName} week; skipped`,
             'DEBUG'
           );
           continue;
         }
         throw e;
       }
-      samplesUploaded += samples.length;
+      samplesUploaded += body.samples.length;
     } catch (e) {
       // An ApiError's message quotes the response body, which can echo the
       // readings, and the app log can be shared in a diagnostic report.
@@ -405,9 +479,58 @@ export async function syncAllDayHeartRate(
           : e instanceof Error
             ? e.message
             : String(e);
-      addLog(`${logTag} All-day heart rate upload failed: ${error}`, 'WARNING');
+      addLog(
+        `${logTag} All-day ${readingName} upload failed: ${error}`,
+        'WARNING'
+      );
     }
   }
-  if (!error) await writeCoverage(account, key, plan.coverage);
+  if (!error && !skippedEmptyGlucoseWindow)
+    await writeCoverage(account, key, plan.coverage, cursorPrefix);
   return { samplesUploaded, error };
+}
+
+/** Retains the existing heart-rate sync contract and cursor. */
+export function syncAllDayHeartRate(
+  reader: HeartRateSamplesReader,
+  account: ServerConfig,
+  start: Date,
+  end: Date,
+  telemetry: TelemetryRunContext,
+  logTag: string,
+  stepTimeoutMs: number = STEP_TIMEOUT_MS,
+  clearEmptyWindows: boolean = CLEARS_EMPTY_WINDOWS
+): Promise<HeartRateSamplesResult> {
+  return syncAllDaySamples(
+    reader,
+    account,
+    start,
+    end,
+    telemetry,
+    logTag,
+    stepTimeoutMs,
+    clearEmptyWindows
+  );
+}
+
+/** iOS glucose uses the same bounded, account-scoped retry and merge pipeline. */
+export function syncAllDayGlucose(
+  reader: HeartRateSamplesReader,
+  account: ServerConfig,
+  start: Date,
+  end: Date,
+  telemetry: TelemetryRunContext,
+  logTag: string
+): Promise<HeartRateSamplesResult> {
+  return syncAllDaySamples(
+    reader,
+    account,
+    start,
+    end,
+    telemetry,
+    logTag,
+    STEP_TIMEOUT_MS,
+    false,
+    'blood_glucose'
+  );
 }

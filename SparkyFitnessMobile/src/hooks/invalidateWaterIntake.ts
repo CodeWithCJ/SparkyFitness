@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import {
+  glucoseContextQueryKeyRoot,
   caffeineActiveQueryKey,
   dailySummaryQueryKey,
   waterIntakeLogQueryKey,
@@ -13,6 +14,7 @@ export function invalidateWaterIntakeQueries(
   queryClient: QueryClient,
   date: string
 ): void {
+  void queryClient.invalidateQueries({ queryKey: glucoseContextQueryKeyRoot });
   queryClient.invalidateQueries({ queryKey: dailySummaryQueryKey(date) });
   // The itemized log backs hydration reminders and the watch's log view.
   queryClient.invalidateQueries({ queryKey: waterIntakeLogQueryKey(date) });

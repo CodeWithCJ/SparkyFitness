@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-05_
+_Last updated: 2026-11-06_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -59,6 +59,8 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 - For targeted test runs, prefer `pnpm exec vitest run tests/<name>.test.ts`
 
 ## Source Map
+
+- Glucose / CGM uses the existing generic health samples API and `health_metric_samples` RLS. `blood_glucose` samples store `mmol_l` plus optional source bundle attribution; `user_preferences.default_glucose_unit` is a validated display-only preference shared by mobile and web; setup and deployment notes are in `docs/src/features/cgm.md`.
 
 - Family diary copies: `foodEntryRoutes.ts` exposes actor-scoped reviewed and selected copies in both directions. `foodEntryService.ts` checks the real actor's copy grant; `models/foodEntry.ts` rechecks reviewed rows and writes the whole copy atomically. `GET /meal-types/family/:familyUserId` reads recipient meal types under the same copy permission without switching profiles. Existing web `/copy-to-user` stays context-scoped.
 

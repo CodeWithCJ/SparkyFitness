@@ -29,7 +29,13 @@ import {
   FOREGROUND_TELEMETRY_BUDGET,
   type TelemetryRunContext,
 } from './telemetryBudget';
-import { syncAllDayHeartRate } from './heartRateSamplesSync';
+import { Platform } from 'react-native';
+import { queryClient } from '../../hooks/queryClient';
+import {
+  glucoseSamplesQueryKeyRoot,
+  glucoseContextQueryKeyRoot,
+} from '../../hooks/queryKeys';
+import { syncAllDayHeartRate, syncAllDayGlucose } from './heartRateSamplesSync';
 import { getActiveServerConfig, type ServerConfig } from '../storage';
 import {
   alignToLocalDayStart,
@@ -520,7 +526,7 @@ export const runForegroundSync = async (
   // Started after the main upload and not awaited: this best-effort phase
   // (several window reads, each with its own timeout) must neither delay the
   // upload nor keep the sync pending past the sync-on-open watchdog.
-  startAllDayHeartRatePhase();
+  startAllDaySamplesPhase();
   return result;
 
   async function uploadInbound(): Promise<SyncResult> {
@@ -564,32 +570,60 @@ export const runForegroundSync = async (
     return { success: true, message: opts.emptyMessage, syncErrors };
   }
 
-  function startAllDayHeartRatePhase(): void {
-    // All-day heart rate readings for the Heart Rate report's day timeline. Rides
-    // on the Heart Rate toggle (no new permission) and is isolated like writeback:
+  function startAllDaySamplesPhase(): void {
+    // Passive heart rate and iOS glucose readings for report timelines. Each
+    // follows its existing metric toggle and is isolated like writeback:
     // a failure is logged, never added to syncErrors, and re-sent by the next run
     // since each upload replaces its own window. One run at a time: a sync that
     // finds the previous phase still going queues its own to start after it.
-    if (!metricsToSync.some((metric) => metric.recordType === 'HeartRate')) {
+    const heartRateEnabled = metricsToSync.some(
+      (metric) => metric.recordType === 'HeartRate'
+    );
+    const glucoseEnabled =
+      Platform.OS === 'ios' &&
+      metricsToSync.some((metric) => metric.recordType === 'BloodGlucose');
+    if (!heartRateEnabled && !glucoseEnabled) {
       return;
     }
     if (!account) return;
     if (allDayHeartRateInFlight) {
       addLog(
-        `${opts.logTag} All-day heart rate queued behind the last sync's upload`,
+        `${opts.logTag} All-day readings queued behind the last sync's upload`,
         'DEBUG'
       );
     }
     runAllDayHeartRatePhase(async () => {
       try {
-        const heartRate = await syncAllDayHeartRate(
-          provider,
-          account,
-          windows.aggregatedStart,
-          windows.end,
-          telemetry,
-          opts.logTag
-        );
+        const heartRate = heartRateEnabled
+          ? await syncAllDayHeartRate(
+              provider,
+              account,
+              windows.aggregatedStart,
+              windows.end,
+              telemetry,
+              opts.logTag
+            )
+          : { samplesUploaded: 0 };
+        if (glucoseEnabled) {
+          const glucose = await syncAllDayGlucose(
+            provider,
+            account,
+            windows.aggregatedStart,
+            windows.end,
+            telemetry,
+            opts.logTag
+          );
+          if (glucose.samplesUploaded > 0) {
+            // This phase finishes after the main sync's cache refresh. Refresh
+            // again so an already-open chart does not keep an empty first read.
+            void queryClient.invalidateQueries({
+              queryKey: glucoseSamplesQueryKeyRoot,
+            });
+            void queryClient.invalidateQueries({
+              queryKey: glucoseContextQueryKeyRoot,
+            });
+          }
+        }
         if (heartRate.samplesUploaded > 0) {
           addLog(
             `${opts.logTag} Uploaded ${heartRate.samplesUploaded} all-day heart rate readings`,
@@ -599,7 +633,7 @@ export const runForegroundSync = async (
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         addLog(
-          `${opts.logTag} All-day heart rate phase failed: ${message}`,
+          `${opts.logTag} All-day readings phase failed: ${message}`,
           'ERROR'
         );
       }

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-05_
+_Last updated: 2026-11-06_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -35,6 +35,9 @@ Feature developers do not need to know or translate Polish or any future languag
 The shipped locale registry is `src/localization/localeRegistry.json`, read through the typed accessors in `src/localization/localeRegistry.ts`. Adding a catalog to Weblate does not ship it. Shipping requires explicit registry enablement plus native/platform support verification. RN catalogs and native resources are separate surfaces (Expo metadata, Android widget resources, and iOS widget/Live Activity `.lproj` resources), each its own Weblate component and each synced by `.github/workflows/sync-translations.yml`. Only the `en` side of any surface is edited by hand; the i18n audit blocks on registered locales and reports unregistered ones without failing. The workflow pulls the widget resources for registered locales only, because Android and iOS compile whatever resource directories are present and there is no build-time registry check for them.
 
 ## Commands
+
+- Timestamped Apple Health glucose readings share the bounded/account-scoped pipeline in `services/shared/heartRateSamplesSync.ts` with heart rate, using an independent cursor. The existing Blood Glucose toggle controls both daily summaries and iOS sample uploads; samples are not downsampled.
+- Reports → Measurements includes `components/reports/MeasurementTimelineCard.tsx` for timestamped glucose and all numeric custom categories (including non-manual sources), with account-level `default_glucose_unit` (App Settings / web Preferences), native context icons, and independently selectable food, exercise, sleep, medication, stress, caffeine/alcohol and hydration context. Shared context normalization is in `shared/src/glucose/context.ts`; context reads retain each endpoint's permissions.
 
 ```bash
 pnpm start

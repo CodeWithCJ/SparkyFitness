@@ -338,3 +338,24 @@ export * from './utils/barcodeNutrition.ts';
 export * from './utils/runGoals.ts';
 export * from './utils/workoutEmojis.ts';
 export * from './utils/temperatureUnit.ts';
+
+export {
+  BLOOD_GLUCOSE_MG_DL_PER_MMOL_L,
+  GLUCOSE_UNITS,
+  DEFAULT_GLUCOSE_UNIT,
+  isGlucoseUnit,
+  type GlucoseUnit,
+} from './constants/bloodGlucose.ts';
+
+export {
+  measurementDayPoints,
+  type MeasurementReading,
+} from './utils/measurementTimeline.ts';
+export {
+  GLUCOSE_CONTEXT_KINDS,
+  loadGlucoseContext,
+  glucoseContextForDay,
+  type GlucoseContextKind,
+  type GlucoseContextEvent,
+  type GlucoseContextData,
+} from './glucose/context.ts';

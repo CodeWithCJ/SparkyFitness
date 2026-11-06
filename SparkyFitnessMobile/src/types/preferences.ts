@@ -3,6 +3,7 @@ import type {
   GoalMode,
   GoalModeCalculationMethod,
   TemperatureUnit,
+  GlucoseUnit,
 } from '@workspace/shared';
 
 export interface UserPreferences {
@@ -23,6 +24,7 @@ export interface UserPreferences {
   default_distance_unit?: 'km' | 'miles';
   /** Unit temperatures are shown in; stored temperatures stay in °C. Absent
    *  from servers older than the setting. */
+  default_glucose_unit?: GlucoseUnit;
   default_temperature_unit?: TemperatureUnit;
   default_measurement_unit?: 'cm' | 'inches' | 'ft_in';
   date_format?: 'MM/DD/YYYY' | 'DD/MM/YYYY' | 'YYYY-MM-DD' | string;

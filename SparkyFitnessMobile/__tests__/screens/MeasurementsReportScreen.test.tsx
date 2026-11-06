@@ -10,6 +10,13 @@ import { initializeI18n } from '../../src/localization/i18n';
 import { buildMeasurementsReport } from '../../src/utils/measurementsReport';
 import type { CheckInMeasurementRange } from '../../src/types/measurements';
 
+jest.mock('../../src/components/reports/MeasurementTimelineCard', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: () => <View testID="measurement-timeline" />,
+  };
+});
 const mockUseMeasurementsReport = jest.fn();
 jest.mock('../../src/components/DateRangeSheet', () => {
   const React = require('react');
@@ -152,8 +159,9 @@ describe('MeasurementsReportScreen', () => {
       isError: false,
     });
 
-    const { getByText } = renderScreen();
+    const { getByText, getByTestId } = renderScreen();
+    expect(getByTestId('measurement-timeline')).toBeTruthy();
 
-    expect(getByText('No measurements in this period')).toBeTruthy();
+    expect(getByText('No body measurements in this period')).toBeTruthy();
   });
 });

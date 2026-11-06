@@ -8,6 +8,8 @@ import {
   heartRateSyncPlan,
   heartRateWindows,
   syncAllDayHeartRate,
+  syncAllDayGlucose,
+  glucoseReadingsFromRecords,
 } from '../../../src/services/shared/heartRateSamplesSync';
 import { createTelemetryRunContext } from '../../../src/services/shared/telemetryBudget';
 import { ApiError } from '../../../src/services/api/errors';
@@ -665,5 +667,173 @@ describe('heartRateAccountId', () => {
     );
     expect(heartRateAccountId(ACCOUNT).startsWith('server-1:')).toBe(true);
     expect(heartRateAccountId(ACCOUNT)).not.toContain('token-a');
+  });
+});
+
+describe('glucose readings', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await AsyncStorage.clear();
+    getActiveServerConfig.mockResolvedValue(ACCOUNT);
+    postHealthMetricSamples.mockResolvedValue({});
+  });
+
+  it('does not clear existing glucose readings after an empty iOS read', async () => {
+    const reader = { readRaw: jest.fn().mockResolvedValue({ records: [] }) };
+    await syncAllDayGlucose(
+      reader,
+      ACCOUNT,
+      new Date('2026-11-03T00:00:00Z'),
+      new Date('2026-11-04T00:00:00Z'),
+      createTelemetryRunContext(),
+      '[test]'
+    );
+    expect(postHealthMetricSamples).not.toHaveBeenCalled();
+    expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('retries older glucose history when access becomes available after empty reads', async () => {
+    const stored = new Map<string, string>();
+    const getItem = jest.mocked(AsyncStorage.getItem);
+    const setItem = jest.mocked(AsyncStorage.setItem);
+    const originalGet = getItem.getMockImplementation();
+    const originalSet = setItem.getMockImplementation();
+    getItem.mockImplementation(async (key) => stored.get(key) ?? null);
+    setItem.mockImplementation(async (key, value) => {
+      stored.set(key, value);
+    });
+    const start = new Date('2026-10-05T00:00:00Z');
+    const end = new Date('2026-11-04T00:00:00Z');
+    const historical = {
+      time: '2026-10-15T10:00:00Z',
+      level: { inMillimolesPerLiter: 5 },
+    };
+    const reader = { readRaw: jest.fn().mockResolvedValue({ records: [] }) };
+    try {
+      await syncAllDayGlucose(
+        reader,
+        ACCOUNT,
+        start,
+        end,
+        createTelemetryRunContext(),
+        '[test]'
+      );
+      reader.readRaw.mockClear();
+      reader.readRaw.mockImplementation(
+        async (_type: string, from: Date, through: Date) => ({
+          records:
+            Date.parse(historical.time) >= from.getTime() &&
+            Date.parse(historical.time) <= through.getTime()
+              ? [historical]
+              : [],
+        })
+      );
+      await syncAllDayGlucose(
+        reader,
+        ACCOUNT,
+        start,
+        end,
+        createTelemetryRunContext(),
+        '[test]'
+      );
+      expect(reader.readRaw.mock.calls[0]?.[1]).toEqual(start);
+      expect(postHealthMetricSamples).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metric: 'blood_glucose',
+          samples: [{ t: '2026-10-15T10:00:00.000Z', mmol_l: 5 }],
+        }),
+        expect.anything(),
+        ACCOUNT
+      );
+    } finally {
+      if (originalGet) getItem.mockImplementation(originalGet);
+      if (originalSet) setItem.mockImplementation(originalSet);
+    }
+  });
+
+  it('never uploads a partially failed glucose read or advances its cursor', async () => {
+    const reader = {
+      readRaw: jest.fn().mockResolvedValue({
+        records: [
+          {
+            time: '2026-11-03T10:00:00Z',
+            level: { inMillimolesPerLiter: 5 },
+          },
+        ],
+        error: 'read failed',
+      }),
+    };
+    const result = await syncAllDayGlucose(
+      reader,
+      ACCOUNT,
+      new Date('2026-11-03T00:00:00Z'),
+      new Date('2026-11-04T00:00:00Z'),
+      createTelemetryRunContext(),
+      '[test]'
+    );
+    expect(result.error).toBe('read failed');
+    expect(postHealthMetricSamples).not.toHaveBeenCalled();
+    expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  it('converts mg/dL, retains timestamps and source, sorts, and drops malformed readings', () => {
+    expect(
+      glucoseReadingsFromRecords([
+        { time: '2026-11-03T10:05:00Z', level: { inMillimolesPerLiter: 6 } },
+        {
+          time: '2026-11-03T10:00:00Z',
+          level: { inMilligramsPerDeciliter: 90.09 },
+          sourceBundleId: 'com.dexcom.example',
+        },
+        { time: 'bad', level: { inMillimolesPerLiter: 5 } },
+        { time: '2026-11-03T10:00:00Z', level: { inMillimolesPerLiter: NaN } },
+        null,
+      ])
+    ).toEqual([
+      {
+        t: '2026-11-03T10:00:00.000Z',
+        mmol_l: 5,
+        source_bundle_id: 'com.dexcom.example',
+      },
+      { t: '2026-11-03T10:05:00.000Z', mmol_l: 6 },
+    ]);
+  });
+
+  it('uploads glucose without downsampling, with a separate cursor from heart rate', async () => {
+    jest.mocked(AsyncStorage.getItem).mockResolvedValue(null);
+    getActiveServerConfig.mockResolvedValue(ACCOUNT);
+    postHealthMetricSamples.mockClear();
+    const reader = {
+      readRaw: jest.fn().mockResolvedValue({
+        records: [
+          { time: '2026-11-03T10:00:01Z', level: { inMillimolesPerLiter: 5 } },
+          { time: '2026-11-03T10:00:02Z', level: { inMillimolesPerLiter: 6 } },
+        ],
+      }),
+    };
+    const result = await syncAllDayGlucose(
+      reader,
+      ACCOUNT,
+      new Date('2026-11-03T00:00:00Z'),
+      new Date('2026-11-04T00:00:00Z'),
+      createTelemetryRunContext(),
+      '[test]'
+    );
+    expect(result.samplesUploaded).toBe(2);
+    expect(reader.readRaw.mock.calls[0]?.[0]).toBe('BloodGlucose');
+    expect(postHealthMetricSamples).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metric: 'blood_glucose',
+        samples: [
+          { t: '2026-11-03T10:00:01.000Z', mmol_l: 5 },
+          { t: '2026-11-03T10:00:02.000Z', mmol_l: 6 },
+        ],
+      }),
+      expect.anything(),
+      ACCOUNT
+    );
+    expect(AsyncStorage.getItem).toHaveBeenCalledWith(
+      expect.stringContaining('heartRateSamplesThrough:blood_glucose:')
+    );
   });
 });

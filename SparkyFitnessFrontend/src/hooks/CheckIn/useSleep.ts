@@ -29,6 +29,7 @@ export const useSaveSleepEntryMutation = () => {
   return useMutation({
     mutationFn: saveSleepEntry,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
       queryClient.invalidateQueries({ queryKey: sleepKeys.all });
     },
     meta: {
@@ -51,6 +52,7 @@ export const useUpdateSleepEntryMutation = () => {
     mutationFn: ({ id, data }: { id: string; data: Partial<SleepEntry> }) =>
       updateSleepEntry(id, data),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
       queryClient.invalidateQueries({ queryKey: sleepKeys.all });
     },
     meta: {
@@ -72,6 +74,7 @@ export const useDeleteSleepEntryMutation = () => {
   return useMutation({
     mutationFn: deleteSleepEntry,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
       queryClient.invalidateQueries({ queryKey: sleepKeys.all });
     },
     meta: {

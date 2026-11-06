@@ -128,6 +128,7 @@ export default defineConfig({
             { text: 'Medications & Supplements', link: '/features/medications' },
             { text: 'NFC Tags', link: '/features/nfc-tags' },
             { text: 'Reports', link: '/features/reports' },
+            { text: 'Glucose / CGM', link: '/features/cgm' },
             { text: 'Goals', link: '/features/goals' },
             { text: 'Family & Friends Sharing', link: '/features/family-friends-sharing' },
             { text: 'Searching', link: '/features/searching' },

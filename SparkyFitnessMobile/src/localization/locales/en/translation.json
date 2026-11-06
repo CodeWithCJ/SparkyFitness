@@ -117,6 +117,12 @@
     "builtIn": "Built-in"
   },
   "settings": {
+    "glucoseUnit": {
+      "title": "Glucose unit",
+      "subtitle": "Used for glucose reports on all your devices.",
+      "saveFailed": "Could not save glucose unit.",
+      "loadFailed": "Could not load preference. Tap to retry."
+    },
     "app": "App Settings",
     "language": {
       "title": "Language",
@@ -9917,5 +9923,48 @@
     "loadFailedSubtitle": "Check your connection and try again.",
     "emptyTitle": "No drinks logged",
     "emptySubtitle": "Drinks you log with the water buttons, a drink preset, the watch or a synced app show up here."
+  },
+  "measurementTimeline": {
+    "glucose": "Blood glucose (CGM)",
+    "title": "Measurement timeline",
+    "category": "Measurement",
+    "previous": "Previous day",
+    "next": "Next day",
+    "source": "Source",
+    "unit": "Unit",
+    "error": "Could not load measurement readings.",
+    "loading": "Loading readings…",
+    "empty": "No timestamped readings for this day. Choose a custom category to view imported/API readings, or sync Blood Glucose from Apple Health.",
+    "meals": "Logged foods · meal markers",
+    "foodError": "Could not load logged foods.",
+    "food": "Food",
+    "noTime": "Time not recorded",
+    "note": "These are recorded events, not proven causes. Exercise end times use logged duration. Untimed entries and daily totals are not placed on the curve. Use your sensor app for live readings and alarms.",
+    "layerMeal": "Food",
+    "layerExercise": "Exercise",
+    "layerSleep": "Sleep",
+    "layerMedication": "Medications",
+    "layerStress": "Stress",
+    "layerCaffeine": "Caffeine",
+    "layerAlcohol": "Alcohol",
+    "layerHydration": "Hydration",
+    "context": "Recorded context · display layers",
+    "contextLoading": "Loading recorded context…",
+    "contextError": "Could not load recorded context.",
+    "carbs": "Carbs",
+    "unavailable": "Some context is unavailable: {{layers}}",
+    "dailyTotal": "Daily total",
+    "dailyAverage": "Daily average",
+    "noBodyMeasurements": "No body measurements in this period",
+    "options": "Chart options",
+    "resetZoom": "Reset zoom",
+    "explore": "Zoom & pan",
+    "inspect": "Inspect readings",
+    "inspectHint": "Hold a reading to inspect its value.",
+    "zoomHint": "Pinch to zoom · drag horizontally to pan",
+    "layerOptions": "Context layers",
+    "events": "Event details",
+    "eventsInView": "Events in view",
+    "noEventsInView": "No timed events in this window."
   }
 }

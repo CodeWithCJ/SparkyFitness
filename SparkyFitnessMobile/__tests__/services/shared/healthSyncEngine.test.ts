@@ -1,3 +1,5 @@
+import { queryClient } from '../../../src/hooks/queryClient';
+import { glucoseSamplesQueryKeyRoot } from '../../../src/hooks/queryKeys';
 import {
   allDayHeartRateSettled,
   collectHealthData,
@@ -676,6 +678,58 @@ describe('runForegroundSync', () => {
     await allDayHeartRateSettled();
     jest.clearAllMocks();
     writeback.runWriteback.mockResolvedValue(undefined);
+  });
+
+  test('uploads iOS glucose samples without heart rate and refreshes an open chart afterwards', async () => {
+    const measuredAt = new Date();
+    measuredAt.setHours(0, 0, 0, 0);
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+    const provider = fakeProvider({
+      readMinMaxAvgByDay: jest.fn().mockResolvedValue({ records: [] }),
+      readRaw: jest.fn().mockResolvedValue({
+        records: [
+          {
+            time: measuredAt.toISOString(),
+            level: { inMillimolesPerLiter: 5 },
+          },
+        ],
+      }),
+    });
+    const { Platform } = jest.requireActual(
+      'react-native'
+    ) as typeof import('react-native');
+    const previous = Platform.OS;
+    Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+    try {
+      await runForegroundSync(
+        provider,
+        'today',
+        { isBloodGlucoseSyncEnabled: true },
+        opts
+      );
+      await allDayHeartRateSettled();
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: glucoseSamplesQueryKeyRoot,
+      });
+      expect(provider.readRaw).toHaveBeenCalledWith(
+        'BloodGlucose',
+        expect.any(Date),
+        expect.any(Date),
+        expect.anything()
+      );
+      expect(provider.readRaw).not.toHaveBeenCalledWith(
+        'HeartRate',
+        expect.anything(),
+        expect.anything(),
+        expect.anything()
+      );
+    } finally {
+      invalidate.mockRestore();
+      Object.defineProperty(Platform, 'OS', {
+        value: previous,
+        configurable: true,
+      });
+    }
   });
 
   test('returns the pinned empty message when no metrics are enabled', async () => {

@@ -163,7 +163,7 @@ const getHealthMetricSamplesHandler: RequestHandler = async (
  *             properties:
  *               metric:
  *                 type: string
- *                 enum: [heart_rate, hrv, respiration, spo2, stress, body_battery, skin_temperature]
+ *                 enum: [heart_rate, hrv, respiration, spo2, stress, body_battery, skin_temperature, blood_glucose]
  *               source:
  *                 type: string
  *                 maxLength: 64

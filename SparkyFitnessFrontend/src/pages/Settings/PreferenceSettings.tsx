@@ -17,7 +17,7 @@ import { Switch } from '@/components/ui/switch';
 import { Save, Settings as SettingsIcon } from 'lucide-react';
 import { AccordionTrigger, AccordionContent } from '@/components/ui/accordion'; // Import Accordion components
 import { useTranslation } from 'react-i18next';
-import { STANDARD_DRINK_PRESETS } from '@workspace/shared';
+import { type GlucoseUnit, STANDARD_DRINK_PRESETS } from '@workspace/shared';
 import {
   usePreferences,
   WeightUnit,
@@ -48,6 +48,8 @@ export const PreferenceSettings = () => {
     setTimeFormat,
     chartScaleMode,
     setChartScaleMode,
+    glucoseUnit,
+    setGlucoseUnit,
     temperatureUnit,
     setTemperatureUnit,
     itemDisplayLimit,
@@ -102,6 +104,7 @@ export const PreferenceSettings = () => {
         measurementDecimalPlaces,
         chartScaleMode,
         temperatureUnit,
+        glucoseUnit,
         timezone,
         loggingLevel: localLoggingLevel,
         standardDrinkGrams,
@@ -305,6 +308,23 @@ export const PreferenceSettings = () => {
                 <SelectItem value="miles">
                   {t('settings.preferences.miles', 'Miles (miles)')}
                 </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="glucose_unit">
+              {t('settings.preferences.glucoseUnit', 'Glucose Unit')}
+            </Label>
+            <Select
+              value={glucoseUnit}
+              onValueChange={(value) => setGlucoseUnit(value as GlucoseUnit)}
+            >
+              <SelectTrigger id="glucose_unit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mmol/L">mmol/L</SelectItem>
+                <SelectItem value="mg/dL">mg/dL</SelectItem>
               </SelectContent>
             </Select>
           </div>

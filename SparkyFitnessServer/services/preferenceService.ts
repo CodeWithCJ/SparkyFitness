@@ -11,6 +11,8 @@ import {
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   CHART_SCALE_MODES,
   TEMPERATURE_UNITS,
+  DEFAULT_GLUCOSE_UNIT,
+  isGlucoseUnit,
   DEFAULT_TEMPERATURE_UNIT,
   DEFAULT_CHART_SCALE_MODE,
   type UserPreferencesMutator,
@@ -225,6 +227,19 @@ function assertValidTemperatureUnit(
     );
   }
 }
+function assertValidGlucoseUnit(
+  preferenceData: Pick<UserPreferencesMutator, 'default_glucose_unit'>
+) {
+  if (
+    preferenceData.default_glucose_unit !== undefined &&
+    !isGlucoseUnit(preferenceData.default_glucose_unit)
+  ) {
+    throw Object.assign(
+      new Error('Invalid default_glucose_unit. Must be mmol/L or mg/dL.'),
+      { status: 400 }
+    );
+  }
+}
 function getDefaultPreferences() {
   return {
     voice_input_enabled: true,
@@ -240,6 +255,7 @@ function getDefaultPreferences() {
     calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
     chart_scale_mode: DEFAULT_CHART_SCALE_MODE,
     default_temperature_unit: DEFAULT_TEMPERATURE_UNIT,
+    default_glucose_unit: DEFAULT_GLUCOSE_UNIT,
     goal_mode_weekly_change_kg: 0,
   };
 }
@@ -256,6 +272,7 @@ async function updateUserPreferences(
     await validateCalorieSafetyFloor(preferenceData);
     await validateChartScaleMode(preferenceData);
     assertValidTemperatureUnit(preferenceData);
+    assertValidGlucoseUnit(preferenceData);
     const updatedPreferences = await preferenceRepository.updateUserPreferences(
       targetUserId,
       preferenceData
@@ -378,6 +395,7 @@ async function upsertUserPreferences(
     await validateCalorieSafetyFloor(preferenceData);
     await validateChartScaleMode(preferenceData);
     assertValidTemperatureUnit(preferenceData);
+    assertValidGlucoseUnit(preferenceData);
     // Provide a default for calorie_goal_adjustment_mode if it's not present
     if (!preferenceData.calorie_goal_adjustment_mode) {
       preferenceData.calorie_goal_adjustment_mode = 'dynamic';
