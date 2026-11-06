@@ -10,6 +10,8 @@ import {
   MAX_CALORIE_SAFETY_FLOOR,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   CHART_SCALE_MODES,
+  TEMPERATURE_UNITS,
+  DEFAULT_TEMPERATURE_UNIT,
   DEFAULT_CHART_SCALE_MODE,
   type UserPreferencesMutator,
   userPreferencesMutatorSchema,
@@ -206,6 +208,23 @@ async function validateChartScaleMode(
     );
   }
 }
+function assertValidTemperatureUnit(
+  preferenceData: Pick<UserPreferencesMutator, 'default_temperature_unit'>
+) {
+  if (
+    preferenceData.default_temperature_unit !== undefined &&
+    !(TEMPERATURE_UNITS as readonly string[]).includes(
+      preferenceData.default_temperature_unit
+    )
+  ) {
+    throw Object.assign(
+      new Error(
+        `Invalid default_temperature_unit: '${preferenceData.default_temperature_unit}'. Must be one of: ${TEMPERATURE_UNITS.join(', ')}.`
+      ),
+      { status: 400 }
+    );
+  }
+}
 function getDefaultPreferences() {
   return {
     voice_input_enabled: true,
@@ -220,6 +239,7 @@ function getDefaultPreferences() {
     calorie_safety_floor_mode: 'standard',
     calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
     chart_scale_mode: DEFAULT_CHART_SCALE_MODE,
+    default_temperature_unit: DEFAULT_TEMPERATURE_UNIT,
     goal_mode_weekly_change_kg: 0,
   };
 }
@@ -235,6 +255,7 @@ async function updateUserPreferences(
     await validateGoalMode(preferenceData);
     await validateCalorieSafetyFloor(preferenceData);
     await validateChartScaleMode(preferenceData);
+    assertValidTemperatureUnit(preferenceData);
     const updatedPreferences = await preferenceRepository.updateUserPreferences(
       targetUserId,
       preferenceData
@@ -356,6 +377,7 @@ async function upsertUserPreferences(
     await validateGoalMode(preferenceData);
     await validateCalorieSafetyFloor(preferenceData);
     await validateChartScaleMode(preferenceData);
+    assertValidTemperatureUnit(preferenceData);
     // Provide a default for calorie_goal_adjustment_mode if it's not present
     if (!preferenceData.calorie_goal_adjustment_mode) {
       preferenceData.calorie_goal_adjustment_mode = 'dynamic';

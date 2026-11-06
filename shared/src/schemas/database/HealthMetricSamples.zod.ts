@@ -65,7 +65,21 @@ export const stressSampleSchema = baseSampleSchema.extend({
 export const bodyBatterySampleSchema = baseSampleSchema.extend({
   level: z.number(),
 });
+/**
+ * Where a skin temperature was taken. Apple's sleeping wrist temperature and an
+ * overnight Body Temperature mean both arrive from `healthkit`, so a baseline
+ * built per source has to keep them apart. Older samples have none.
+ */
+export const SKIN_TEMPERATURE_SITES = ['wrist', 'body'] as const;
+export type SkinTemperatureSite = (typeof SKIN_TEMPERATURE_SITES)[number];
+export const isSkinTemperatureSite = (
+  value: unknown
+): value is SkinTemperatureSite =>
+  typeof value === 'string' &&
+  (SKIN_TEMPERATURE_SITES as readonly string[]).includes(value);
+
 export const skinTemperatureSampleSchema = baseSampleSchema.extend({
+  site: z.enum(SKIN_TEMPERATURE_SITES).optional(),
   celsius: z.number().optional(),
   temperature_celsius: z.number().optional(),
   deviation_celsius: z.number().optional(),

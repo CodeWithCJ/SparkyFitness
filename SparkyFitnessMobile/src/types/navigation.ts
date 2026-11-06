@@ -55,7 +55,10 @@ export type FoodPickerMode =
   | 'library'
   // #2115: pick a food+variant to link a water container to, without
   // logging a diary entry. See services/waterContainerLinkSelection.ts.
-  | 'container-link';
+  | 'container-link'
+  // #941: pick a food or a saved meal, with its amount, for an NFC tag,
+  // without logging a diary entry. See services/actionTagSelection.ts.
+  | 'action-tag';
 
 /** The routes the guided check-in walks through, in order. */
 export type GuidedCheckInStep =
@@ -148,9 +151,15 @@ export type RootStackParamList = {
   WaterLog: { date: string };
   // NFC tags (#941): the list, the setup form and the screen a tag link opens.
   ActionTags: undefined;
-  /** `tagId` edits a saved tag; `tagCode` saves a tapped tag the account does not know; `presetAction` pre-fills a new one. */
+  /** `tagId` edits a saved tag; `tagCode` saves a tapped tag the account does not know; `presetAction` pre-fills a new one, named `presetLabel` (the food's name, which a food action does not carry). */
   ActionTagForm:
-    { tagId?: string; tagCode?: string; presetAction?: TagAction } | undefined;
+    | {
+        tagId?: string;
+        tagCode?: string;
+        presetAction?: TagAction;
+        presetLabel?: string;
+      }
+    | undefined;
   ActionTagScan: { code: string };
   ExercisesLibrary: undefined;
   WorkoutPresetsLibrary: undefined;

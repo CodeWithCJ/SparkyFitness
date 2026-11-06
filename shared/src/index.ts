@@ -287,6 +287,8 @@ export * from './utils/paceZones.ts';
 export * from './utils/racePaceZones.ts';
 export * from './utils/heartRateTargets.ts';
 export * from './utils/heartRateZones.ts';
+export * from './utils/restingHeartRateTrend.ts';
+export * from './utils/heartRateTimeline.ts';
 export * from './utils/zone2Guidance.ts';
 export * from './utils/runPrograms.ts';
 export * from './utils/runProgramSchedule.ts';
@@ -341,3 +343,4 @@ export * from './schemas/database/RecipeImports.zod.ts';
 export * from './schemas/database/RecipeFoodMappings.zod.ts';
 
 export * from './utils/recipeImport.ts';
+export * from './utils/temperatureUnit.ts';

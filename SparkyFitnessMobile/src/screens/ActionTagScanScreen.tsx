@@ -79,7 +79,7 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
               onPress: () => {
                 Toast.hide();
                 if (!tag) return;
-                undoTagAction(tag.action, date)
+                undoTagAction(tag.action, date, result.logged)
                   .then(() =>
                     refreshAfterTagAction(queryClient, tag.action, date)
                   )

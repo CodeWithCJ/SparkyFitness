@@ -39,8 +39,12 @@ export const fetchWithTimeout = async (
   const timer = setTimeout(cancel, timeoutMs);
 
   try {
+    // The caller's signal stays wired to the request after the headers arrive,
+    // so aborting it also cancels a body read that stalls; the timeout itself
+    // still covers only the wait for the response.
     return await fetch(url, { ...requestOptions, signal: controller.signal });
   } catch (error) {
+    signal?.removeEventListener('abort', cancel);
     if (
       error instanceof Error &&
       error.name === 'AbortError' &&
@@ -51,7 +55,6 @@ export const fetchWithTimeout = async (
     throw error;
   } finally {
     clearTimeout(timer);
-    signal?.removeEventListener('abort', cancel);
   }
 };
 

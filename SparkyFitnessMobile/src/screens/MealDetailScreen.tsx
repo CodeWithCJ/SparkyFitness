@@ -29,6 +29,9 @@ import { mealToFoodInfo } from '../types/foodInfo';
 import type { FoodDisplayValues } from '../utils/foodDetails';
 import type { Meal, MealFood } from '../types/meals';
 import type { RootStackScreenProps } from '../types/navigation';
+import AddNfcTagRow from '../components/AddNfcTagRow';
+import { useActionTagsQuery } from '../hooks/useActionTags';
+import { useNfcSupport } from '../hooks/useNfcSupport';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatLocalizedNumber } from '../localization';
@@ -147,6 +150,15 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
   });
 
   const canManageMeal = !!(isConnected && meal && profile?.id === meal.user_id);
+
+  // NFC tags that log this meal (#941), offered on a phone with NFC.
+  const { supported: nfcSupported } = useNfcSupport();
+  const canAddNfcTag = isConnected && nfcSupported;
+  const { tags: actionTags } = useActionTagsQuery({ enabled: canAddNfcTag });
+  const tagsForMeal = actionTags.filter(
+    (tag) =>
+      tag.action.type === 'meal' && tag.action.meal_template_id === mealId
+  ).length;
 
   const isPublic = !!meal?.is_public;
   const { updateMeal, isPending: isSharePending } = useUpdateMeal({
@@ -512,6 +524,36 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
             key={recipeScope}
             mealId={mealId}
             scope={recipeScope}
+          />
+        ) : null}
+
+        {canAddNfcTag ? (
+          <AddNfcTagRow
+            className=""
+            onPress={() =>
+              navigation.navigate('ActionTagForm', {
+                presetAction: {
+                  type: 'meal',
+                  meal_template_id: meal.id,
+                  quantity: meal.serving_size || 1,
+                  unit: meal.serving_unit || 'serving',
+                  meal: { mode: 'auto' },
+                },
+              })
+            }
+            subtitle={
+              tagsForMeal > 0
+                ? t('actionTags.meal.count', {
+                    count: tagsForMeal,
+                    formattedCount: formatLocalizedNumber(tagsForMeal),
+                    defaultValue: '{{formattedCount}} tags log this meal',
+                    defaultValue_one: '{{formattedCount}} tag logs this meal',
+                    defaultValue_other: '{{formattedCount}} tags log this meal',
+                  })
+                : t('actionTags.meal.hint', {
+                    defaultValue: 'Tap a sticker to log this meal',
+                  })
+            }
           />
         ) : null}
 

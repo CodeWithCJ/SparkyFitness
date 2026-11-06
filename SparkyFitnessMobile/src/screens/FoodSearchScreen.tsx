@@ -76,6 +76,7 @@ import {
 import type { NativeStackHeaderItemMenu } from '@react-navigation/native-stack';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { ALL_PROVIDERS_VALUE } from '../constants/foodProviders';
+import { isFoodSelectionMode } from '../utils/foodPickerMode';
 
 type FoodSearchScreenProps = RootStackScreenProps<'FoodSearch'>;
 
@@ -101,16 +102,15 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   const { t } = useTranslation();
   const date = route.params?.date;
   const recipeImportTarget = route.params?.recipeImportTarget;
-  const pickerMode = route.params?.pickerMode ?? 'log-entry';
+  const pickerMode =
+    route.params?.pickerMode ??
+    (recipeImportTarget ? 'meal-builder' : 'log-entry');
   const mealTypeId = route.params?.mealTypeId;
   const mealPlanTarget = route.params?.mealPlanTarget;
   const isMealBuilderMode = pickerMode === 'meal-builder';
-  const isMealPlanMode = pickerMode === 'meal-plan';
-  const isContainerLinkMode = pickerMode === 'container-link';
-  const selectionPickerMode =
-    isMealBuilderMode || isMealPlanMode || isContainerLinkMode
-      ? pickerMode
-      : undefined;
+  const selectionPickerMode = isFoodSelectionMode(pickerMode)
+    ? pickerMode
+    : undefined;
   const insets = useSafeAreaInsets();
   const [accentColor, textMuted, textSecondary, favoriteGold] = useCSSVariable([
     '--color-accent-primary',
@@ -537,7 +537,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
         onPress: openCreateFood,
       },
     ].filter(() => !recipeImportTarget);
-    if (!isMealBuilderMode && !isMealPlanMode && !recipeImportTarget) {
+    // MealAdd never hands a meal back, so no picker mode offers it.
+    if (!selectionPickerMode && !recipeImportTarget) {
       items.push({
         key: 'meal',
         label: t('foodSearch.menu.newMeal', { defaultValue: 'New Meal' }),
@@ -562,8 +563,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     }
     return items;
   }, [
-    isMealBuilderMode,
-    isMealPlanMode,
+    selectionPickerMode,
     recipeImportTarget,
     openCreateFood,
     openMealAdd,
@@ -584,7 +584,8 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
         onPress: openCreateFood,
       },
     ].filter(() => !recipeImportTarget);
-    if (!isMealBuilderMode && !isMealPlanMode && !recipeImportTarget) {
+    // MealAdd never hands a meal back, so no picker mode offers it.
+    if (!selectionPickerMode && !recipeImportTarget) {
       items.push({
         type: 'action',
         label: t('foodSearch.menu.newMeal', { defaultValue: 'New Meal' }),
@@ -610,8 +611,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     });
     return items;
   }, [
-    isMealBuilderMode,
-    isMealPlanMode,
+    selectionPickerMode,
     recipeImportTarget,
     openCreateFood,
     openMealAdd,

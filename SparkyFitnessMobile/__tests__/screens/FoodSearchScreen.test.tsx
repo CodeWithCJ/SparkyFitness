@@ -19,6 +19,8 @@ import {
   useServerConnection,
   useTopMeals,
 } from '../../src/hooks';
+import { useNativeIOSHeadersActive } from '../../src/services/nativeTabBarPreference';
+import type { RootStackScreenProps } from '../../src/types/navigation';
 import type { Meal } from '../../src/types/meals';
 import type { FoodItem } from '../../src/types/foods';
 import {
@@ -30,6 +32,13 @@ import {
   findHeaderMenuAction,
   pressHeaderMenuAction,
 } from './helpers/nativeHeaderTestUtils';
+
+jest.mock('../../src/services/nativeTabBarPreference', () => ({
+  ...jest.requireActual<
+    typeof import('../../src/services/nativeTabBarPreference')
+  >('../../src/services/nativeTabBarPreference'),
+  useNativeIOSHeadersActive: jest.fn(() => true),
+}));
 
 jest.mock('../../src/hooks', () => ({
   useExternalFoodSearch: jest.fn(),
@@ -210,6 +219,7 @@ describe('FoodSearchScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(useNativeIOSHeadersActive).mockReturnValue(true);
     __resetAppPreferencesStoreForTests();
     mockUseServerConnection.mockReturnValue({ isConnected: true } as any);
     mockUsePreferences.mockReturnValue({ preferences: {} } as any);
@@ -274,7 +284,7 @@ describe('FoodSearchScreen', () => {
 
   // Type a query so the screen enters search mode and renders the result sections.
   function renderSearching(
-    routeOverride: typeof route = route,
+    routeOverride: RootStackScreenProps<'FoodSearch'>['route'] = route,
     term = 'chicken'
   ) {
     const screen = render(
@@ -664,6 +674,89 @@ describe('FoodSearchScreen', () => {
       );
     });
   });
+
+  describe.each([true, false])(
+    'selection actions with native header %s',
+    (nativeHeader) => {
+      it.each([
+        { pickerMode: undefined, recipe: false, newFood: true, newMeal: true },
+        {
+          pickerMode: 'meal-builder',
+          recipe: false,
+          newFood: true,
+          newMeal: false,
+        },
+        {
+          pickerMode: 'meal-plan',
+          recipe: false,
+          newFood: true,
+          newMeal: false,
+        },
+        {
+          pickerMode: 'container-link',
+          recipe: false,
+          newFood: true,
+          newMeal: false,
+        },
+        {
+          pickerMode: 'action-tag',
+          recipe: false,
+          newFood: true,
+          newMeal: false,
+        },
+        {
+          pickerMode: 'meal-builder',
+          recipe: true,
+          newFood: false,
+          newMeal: false,
+        },
+        { pickerMode: undefined, recipe: true, newFood: false, newMeal: false },
+      ] as const)(
+        'offers only actions that return to the caller: %j',
+        ({ pickerMode, recipe, newFood, newMeal }) => {
+          jest.mocked(useNativeIOSHeadersActive).mockReturnValue(nativeHeader);
+          const target = {
+            draftKey: 'recipe-draft',
+            ingredientId: 'chicken',
+            quantity: 200,
+            unit: 'g',
+          };
+          mockUseFoodSearch.mockReturnValue({
+            searchResults: [buildFood()],
+            isSearching: false,
+            isSearchActive: true,
+            isSearchError: false,
+          } as ReturnType<typeof useFoodSearch>);
+          const screen = renderSearching({
+            ...route,
+            params: {
+              pickerMode,
+              ...(recipe ? { recipeImportTarget: target } : {}),
+            },
+          });
+          if (!nativeHeader)
+            fireEvent.press(screen.getByLabelText('More options'));
+          const offered = (label: string) =>
+            nativeHeader
+              ? !!findHeaderMenuAction(navigation, label)
+              : !!screen.queryByText(label);
+          expect(offered('New Food')).toBe(newFood);
+          expect(offered('New Meal')).toBe(newMeal);
+          if (recipe) {
+            fireEvent.press(screen.getByText('Grilled Chicken'));
+            expect(navigation.navigate).toHaveBeenCalledWith(
+              'FoodEntryAdd',
+              expect.objectContaining({
+                recipeImportTarget: target,
+                pickerMode: 'meal-builder',
+                returnDepth: 2,
+              })
+            );
+          }
+        }
+      );
+    }
+  );
 
   it('persists an ownership filter chosen from the native overflow menu', () => {
     renderSearching();

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import i18n from 'i18next';
 import {
   COMPARE_METRIC_KEYS,
   type CompareQuestion,
@@ -1701,6 +1702,60 @@ describe('en/translation.json', () => {
     expect(mismatches).toEqual([]);
     expect(leaf('compareReport.loadFailed')).toBe(
       "Couldn't load this comparison"
+    );
+  });
+});
+
+describe('metric names in a language that capitalizes nouns', () => {
+  // German labels and the German question, as translated on Weblate.
+  const GERMAN: Record<string, string> = {
+    'compareReport.metrics.mood': 'Stimmung',
+    'compareReport.metrics.steps': 'Schritte',
+    'compareReport.metrics.meditated': 'Meditiert',
+    'compareReport.yesNo.onDays': 'An Tagen, an denen du {{yes}} hast',
+  };
+  const german: Translator = (key, options) =>
+    translateForTest(key, {
+      ...options,
+      defaultValue: GERMAN[key] ?? options.defaultValue,
+    });
+  const english = i18n.language;
+
+  afterEach(() => {
+    i18n.language = english;
+  });
+
+  test('German keeps the capital of a noun in the middle of a sentence', () => {
+    i18n.language = 'de-DE';
+    const text = sentenceText(
+      { a: 'mood', b: 'steps', choice: 'sameDay' },
+      german
+    );
+    expect(text).toContain('Stimmung');
+    expect(text).toContain('Schritte');
+  });
+
+  test('German still lowers a yes/no label, which is a verb', () => {
+    i18n.language = 'de';
+    const wording = yesNoWording(
+      { a: 'meditated', b: 'mood', choice: 'sameDay' },
+      'meditated',
+      german
+    );
+    expect(wording.when).toBe('An Tagen, an denen du meditiert hast');
+  });
+
+  test('German lowers a label that is not translated yet, as English needs', () => {
+    i18n.language = 'de';
+    expect(sentenceText({ a: 'mood', b: 'steps', choice: 'sameDay' }, t)).toBe(
+      'Does mood go with steps the same day?'
+    );
+  });
+
+  test('English still lowers a noun in the middle of a sentence', () => {
+    i18n.language = 'en';
+    expect(sentenceText({ a: 'mood', b: 'steps', choice: 'sameDay' }, t)).toBe(
+      'Does mood go with steps the same day?'
     );
   });
 });

@@ -41,6 +41,8 @@ import {
   setPendingMealPlanSelection,
 } from '../services/mealPlanSelection';
 import { setPendingContainerLinkSelection } from '../services/waterContainerLinkSelection';
+import { setPendingActionTagSelection } from '../services/actionTagSelection';
+import { isFoodSelectionMode } from '../utils/foodPickerMode';
 import { CreateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { addDays, getTodayDate, getDeviceTimezone } from '../utils/dateUtils';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
@@ -77,6 +79,11 @@ import CalendarSheet, {
 import DateSelectRow from '../components/DateSelectRow';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import type { FoodFormData } from '../components/FoodForm';
+import {
+  FOOD_VARIANT_FIELDS,
+  buildFormValuesFromVariant,
+  hasFoodFormChanges,
+} from './foodForm/persistence';
 import type { Meal, MealIngredientDraft } from '../types/meals';
 import type {
   EquivalentUnit,
@@ -106,6 +113,7 @@ import {
   formatQuantityUnitLabel,
   formatServingSizeDisplay,
   formatVariantLabel,
+  nutritionMatches,
   formatVariantServingLabel,
   resolveFoodDisplayValues,
   resolveLocalPickerVariantId,
@@ -220,11 +228,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const returnDepth = route.params?.returnDepth ?? 1;
   const ingredientIndex = route.params?.ingredientIndex;
   const recipeImportTarget = route.params?.recipeImportTarget;
-  const isMealBuilderMode = pickerMode === 'meal-builder';
   const isMealPlanMode = pickerMode === 'meal-plan';
   const isContainerLinkMode = pickerMode === 'container-link';
+  const isActionTagMode = pickerMode === 'action-tag';
   const isSelectionMode =
-    isMealBuilderMode || isMealPlanMode || isContainerLinkMode;
+    isFoodSelectionMode(pickerMode) || !!recipeImportTarget;
   const mealPlanTarget = route.params?.mealPlanTarget;
   const [selectedDate, setSelectedDateState] = useState(
     initialDate ?? useDiaryDateStore.getState().selectedDate
@@ -1126,9 +1134,99 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       values: displayValues,
     });
 
+  /**
+   * A tag logs one of the food's saved servings on every tap, never this
+   * screen's one-off changes. A unit picked here that the food does not have
+   * yet is saved as a serving first, as an online food's unit is; a serving
+   * edited to another unit cannot be kept, so the person picks a saved one.
+   */
+  const pickLocalFoodForActionTag = async (variantId: string) => {
+    let tagVariantId = variantId;
+    let tagUnit = displayValues.servingUnit;
+    const saved = variants?.find((variant) => variant.id === variantId);
+    const isAdjusted =
+      !!adjustedValues || adjustedCustomNutrients !== undefined;
+    // Nutrition adjusted here without saving it for future use: each tap would
+    // log the saved serving's values, not the ones shown. Custom nutrients come
+    // back from the adjust screen apart from the form values.
+    const adjustedAwayFrom = (variant: FoodUnitVariant) =>
+      (!!adjustedValues &&
+        hasFoodFormChanges(
+          buildFormValuesFromVariant(variant),
+          adjustedValues,
+          FOOD_VARIANT_FIELDS
+        )) ||
+      (adjustedCustomNutrients !== undefined &&
+        !nutritionMatches(
+          { custom_nutrients: variant.custom_nutrients },
+          { custom_nutrients: adjustedCustomNutrients }
+        ));
+    const isSavedServing = saved
+      ? toNonEmptyString(saved.serving_unit, 'serving').trim().toLowerCase() ===
+          tagUnit.trim().toLowerCase() && !adjustedAwayFrom(saved)
+      : // Servings not loaded: the item's own serving, unless one was picked
+        // or its nutrition was adjusted (nothing to compare it with).
+        !pendingVariantToPersist && !isAdjusted;
+    if (!isSavedServing) {
+      if (!pendingVariantToPersist) {
+        Toast.show({
+          type: 'error',
+          text1: t('foodEntryAdd.errors.tagNeedsSavedServing', {
+            defaultValue: "Choose one of this food's servings",
+          }),
+          text2: t('foodEntryAdd.errors.tagNeedsSavedServingDetails', {
+            defaultValue:
+              'A tag logs a saved serving each time, so a serving changed here cannot be used.',
+          }),
+        });
+        return;
+      }
+      const created = await createVariant(
+        buildCreateFoodVariantPayload(activeItem.id, {
+          ...pendingVariantToPersist,
+          custom_nutrients: selectedCustomNutrients ?? null,
+        })
+      );
+      // Left while the serving was saving: handing the pick back now would pop
+      // whatever screen is on top and leave a stale pick for the next tag.
+      if (!navigation.isFocused()) return;
+      tagVariantId = toNonEmptyString(created.id, '');
+      tagUnit = toNonEmptyString(created.serving_unit, tagUnit);
+      if (!tagVariantId) {
+        throw new Error('Server did not return a created variant ID');
+      }
+    }
+    finishFoodSelection(
+      buildMealIngredientDraft({
+        foodId: activeItem.id,
+        variantId: tagVariantId,
+        quantity,
+        unit: tagUnit,
+        foodName: adjustedValues?.name || activeItem.name,
+        brand: adjustedValues?.brand ?? activeItem.brand,
+        values: displayValues,
+      })
+    );
+  };
+
   const finishFoodSelection = (ingredient: MealIngredientDraft) => {
     if (recipeImportTarget) {
       setPendingRecipeImportSelection(recipeImportTarget, ingredient);
+      navigation.dispatch(StackActions.pop(returnDepth));
+      return;
+    }
+    if (isActionTagMode) {
+      if (ingredient.food_id && ingredient.variant_id) {
+        // The amount picked here is what one tap of the tag logs.
+        setPendingActionTagSelection({
+          kind: 'food',
+          foodId: ingredient.food_id,
+          variantId: ingredient.variant_id,
+          name: ingredient.food_name ?? '',
+          quantity: ingredient.quantity,
+          unit: ingredient.unit,
+        });
+      }
       navigation.dispatch(StackActions.pop(returnDepth));
       return;
     }
@@ -1198,6 +1296,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
           const variantId = selectedVariantId ?? activeItem.variantId;
           if (!variantId) {
             throw new Error('Missing variant ID for local food');
+          }
+
+          if (isActionTagMode) {
+            await pickLocalFoodForActionTag(variantId);
+            return;
           }
 
           finishFoodSelection(
@@ -1299,6 +1402,20 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         return;
       }
       case 'meal':
+        if (isActionTagMode) {
+          // The same quantity and unit a logged meal sends
+          // (buildFoodEntryMealPayload), so a tag logs servings or grams of
+          // the saved meal exactly as logging it by hand does.
+          setPendingActionTagSelection({
+            kind: 'meal',
+            mealId: activeItem.id,
+            name: adjustedValues?.name || activeItem.name,
+            quantity,
+            unit: displayValues.servingUnit,
+          });
+          navigation.dispatch(StackActions.pop(returnDepth));
+          return;
+        }
         if (isMealPlanMode && mealPlanTarget) {
           setPendingMealPlanSelection({
             ...(mealPlanTarget.assignmentIndex === undefined
