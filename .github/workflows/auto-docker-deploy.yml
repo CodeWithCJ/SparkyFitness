@@ -28,6 +28,14 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
+            // A release run builds that release's tag, so name the images after it.
+            // Looking up the newest release instead would mislabel a run approved
+            // after a later release was published.
+            const release = context.payload.release;
+            if (context.eventName === 'release' && release && !release.prerelease && !release.draft) {
+              core.setOutput('tag', release.tag_name);
+              return;
+            }
             const { data: releases } = await github.rest.repos.listReleases({
               owner: context.repo.owner,
               repo: context.repo.repo,

@@ -43,16 +43,23 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
+        # Pinned: it runs before the commit is taken, and the commit merges itself.
+        uses: DeterminateSystems/nix-installer-action@3138316df39ed29be04236d7ffc686fa525866aa # v23
 
       - name: Run hash update script
         run: nix/update-hashes.sh
 
       - name: Create Pull Request
         id: pr
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6.1.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          # Only the files the update script rewrites. The merge job merges this
+          # PR past main's review rule, so nothing else in the workspace may ride
+          # along.
+          add-paths: |
+            nix/backend.nix
+            nix/frontend.nix
           commit-message: "chore(nix): update pnpm deps hashes"
           branch: nix/update-pnpm-hashes
           delete-branch: true

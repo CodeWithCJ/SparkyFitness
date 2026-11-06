@@ -175,24 +175,6 @@ jobs:
 
               core.info(`Evaluating eligible automation PR #${pr.number} (${headRef})...`);
 
-              const allowed = ALLOWED_FILES[ALLOWED_BRANCH_PREFIXES.find(prefix => headRef.startsWith(prefix))];
-              const files = await github.paginate(github.rest.pulls.listFiles, {
-                owner,
-                repo,
-                pull_number: pr.number,
-                per_page: 100,
-              });
-              const outside = files
-                .flatMap(f => [f.filename, f.previous_filename])
-                .filter(name => name && !allowed.some(re => re.test(name)));
-              if (outside.length > 0) {
-                core.warning(
-                  `PR #${pr.number} changes files outside its allowlist (${outside.slice(0, 5).join(', ')}). ` +
-                  'Skipping auto-merge; a maintainer must review it.'
-                );
-                continue;
-              }
-
               // 2. Check mergeability & conflicts
               // If GitHub is currently calculating mergeability (null), wait briefly and retry once
               if (pr.mergeable === null) {
@@ -214,8 +196,39 @@ jobs:
                 continue;
               }
 
-              // 3. Verify CI check runs and commit status
+              // 3. Check the files of this exact head, after the mergeability retry
+              // above may have fetched a newer one. The merge below is pinned to
+              // headSha, so a push after this point makes it fail, not slip through.
               const headSha = pr.head.sha;
+              const allowed = ALLOWED_FILES[ALLOWED_BRANCH_PREFIXES.find(prefix => headRef.startsWith(prefix))];
+              const files = await github.paginate(github.rest.pulls.listFiles, {
+                owner,
+                repo,
+                pull_number: pr.number,
+                per_page: 100,
+              });
+              // The files endpoint stops at 3,000 entries, and a listing taken after
+              // a newer push describes that push. Either way the count no longer
+              // matches the head read above, so nothing unlisted can be merged.
+              if (files.length !== pr.changed_files) {
+                core.warning(
+                  `PR #${pr.number} reports ${pr.changed_files} changed files but ${files.length} were listed. ` +
+                  'Skipping auto-merge; a maintainer must review it.'
+                );
+                continue;
+              }
+              const outside = files
+                .flatMap(f => [f.filename, f.previous_filename])
+                .filter(name => name && !allowed.some(re => re.test(name)));
+              if (outside.length > 0) {
+                core.warning(
+                  `PR #${pr.number} changes files outside its allowlist (${outside.slice(0, 5).join(', ')}). ` +
+                  'Skipping auto-merge; a maintainer must review it.'
+                );
+                continue;
+              }
+
+              // 4. Verify CI check runs and commit status
 
               const checkRunsRes = await github.rest.checks.listForRef({
                 owner,
@@ -268,7 +281,7 @@ jobs:
                 continue;
               }
 
-              // 4. Merge the clean PR
+              // 5. Merge the clean PR
               try {
                 core.info(`All checks passed and no conflicts found. Auto-merging PR #${pr.number} (${headRef})...`);
                 await github.rest.pulls.merge({
