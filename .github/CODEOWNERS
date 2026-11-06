@@ -12,24 +12,20 @@
 /announcement.md                 @CodeWithCJ
 
 # ---------------------------------------------------------------------------
-# Repository governance
+# Repository governance, GitHub Actions and automation
+# Everything under .github/: workflows, the composite actions and scripts that
+# decide which automation PRs merge without review (merge-automation-pr,
+# automation-allowlist.cjs), the PR template and this file.
 # ---------------------------------------------------------------------------
 
-/.github/CODEOWNERS              @CodeWithCJ
-/.github/pull_request_template.md @CodeWithCJ
-/.github/FUNDING.yml             @CodeWithCJ
-
-# ---------------------------------------------------------------------------
-# GitHub Actions & Workflows
-# ---------------------------------------------------------------------------
-
-/.github/workflows/              @CodeWithCJ
+/.github/                        @CodeWithCJ
 
 # ---------------------------------------------------------------------------
 # Release configuration
 # ---------------------------------------------------------------------------
 
-/.github/release.yml             @CodeWithCJ
+/release-please-config.json      @CodeWithCJ
+/.release-please-manifest.json   @CodeWithCJ
 
 # ---------------------------------------------------------------------------
 # Tag site (tag.sparkyfitness.com)
