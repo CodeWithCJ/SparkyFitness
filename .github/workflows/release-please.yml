@@ -8,14 +8,18 @@ name: Release Please
 # Merging the release PR is the first human gate. It creates a DRAFT release with
 # the same body draft-release.yml builds (release-preamble.md + GitHub's generated
 # notes). Publishing that draft is the second gate, and is what fires every
-# `release: published` workflow (Docker images, Helm chart, assets, notifiers).
+# `release: published` workflow (Docker images, Android, assets, docs). The
+# third gate is approving the Docker and Android jobs in the release
+# environment, which holds their secrets. The Helm chart, the Umbrel package PR
+# and the issue notifications run once the Docker images are pushed.
 #
-# The draft is created with GITHUB_TOKEN, which never triggers other workflows,
-# but the publish is done by a person, so those workflows run as they do today.
+# release-please runs with the SparkyFitness-Sync app token, the only actor
+# besides admins that the `Release tags` ruleset lets create v* tags. A draft
+# fires no release event, so nothing ships until a person publishes it.
 # `force-tag-creation` pushes the tag up front, because draft releases have no
 # tag until published and release-please needs it to find the previous release.
 # Nothing may therefore build on a `v*` tag push: android.yml runs on
-# `release: published` for that reason.
+# `release: published` for that reason, and no workflow listens for tag pushes.
 #
 # Because the tag lands on the release PR's merge commit and every release build
 # checks it out, merge the open translations PR (sync-translations.yml) before
@@ -28,12 +32,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# issues: write is required by release-please to create and apply its
-# `autorelease: pending` / `autorelease: tagged` labels.
+# release-please runs with the SparkyFitness-Sync app token, so GITHUB_TOKEN
+# only reads here. The draft-release-notes job asks for what it needs itself.
 permissions:
-  contents: write
-  pull-requests: write
-  issues: write
+  contents: read
 
 concurrency:
   group: release-please
@@ -43,36 +45,54 @@ jobs:
   release-please:
     name: Release PR / draft release
     runs-on: ubuntu-latest
+    # The app key lives in this environment, which only main can use. The app
+    # is the only actor besides admins that may create v* tags, so a workflow
+    # pushed on another branch cannot mint a release tag with GITHUB_TOKEN.
+    environment: sync-app
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
 
     steps:
+      - name: Create SparkyFitness-Sync token
+        id: app_token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          # The app's Client ID is not secret, so it lives here, not in a secret.
+          client-id: Iv23lizuGhwaizMxrvDT
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          # Commits, the tag and the draft release need contents; the release PR
+          # and its `autorelease:` labels need pull-requests.
+          permission-contents: write
+          permission-pull-requests: write
+
       - name: Run release-please
         id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
-          # Optional PAT or App token. With GITHUB_TOKEN (the fallback) CI does not
-          # run on the release PR, since GitHub never triggers workflows for it.
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          # The app token, unlike GITHUB_TOKEN, makes CI run on the release PR.
+          token: ${{ steps.app_token.outputs.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
       # release-please rewrites JSON with plain JSON.stringify, which expands the
       # single-element plugin arrays in app.json that Prettier keeps inline, so the
       # release PR would fail `pnpm run validate`. Same problem set-version.js solves.
+      # No token on disk while pnpm and Prettier run: the push step below gets
+      # it on its own.
       - name: Check out release PR branch
         if: ${{ steps.release.outputs.prs_created == 'true' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
       - name: Install pnpm
         if: ${{ steps.release.outputs.prs_created == 'true' }}
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
       - name: Format version files
+        id: format
         if: ${{ steps.release.outputs.prs_created == 'true' }}
         run: |
           set -euo pipefail
@@ -91,17 +111,27 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -am "chore: format version files"
-          git push
+          echo "commit=true" >> "$GITHUB_OUTPUT"
+
+      - name: Push formatted version files
+        if: ${{ steps.format.outputs.commit == 'true' }}
+        env:
+          TOKEN: ${{ steps.app_token.outputs.token }}
+          BRANCH: ${{ fromJSON(steps.release.outputs.pr).headBranchName }}
+        run: git push "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:refs/heads/${BRANCH}"
 
   draft-release-notes:
     name: Build draft release notes
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
+    # Editing the draft release body.
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
 
