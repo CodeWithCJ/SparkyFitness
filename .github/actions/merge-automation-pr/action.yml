@@ -22,6 +22,12 @@ inputs:
     description: merge, squash or rebase.
     required: false
     default: squash
+  allowed-files:
+    description: >-
+      Extended regular expression every changed path must match, checked on
+      head-sha itself before merging. Leave empty to skip the check.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -34,6 +40,7 @@ runs:
         PR: ${{ inputs.pull-request }}
         HEAD_SHA: ${{ inputs.head-sha }}
         METHOD: ${{ inputs.method }}
+        ALLOWED: ${{ inputs.allowed-files }}
       run: |
         set -euo pipefail
         case "$METHOD" in merge | squash | rebase) ;; *)
@@ -41,8 +48,36 @@ runs:
           exit 1
           ;;
         esac
+        # The workflow chose which files to commit, but a file staged by an
+        # earlier step would still ride along, so check the files of head-sha
+        # itself. The compare API returns at most 300 files: a larger diff, or a
+        # head that moved since, does not match the PR's count and is refused.
+        # Right after a push GitHub can still report the previous count, so a
+        # mismatch is retried like the merge; a disallowed file fails at once.
+        # Runs inside an if, where set -e is off, so every step returns 1 itself:
+        # a failed call must never read as a match.
+        files_match() {
+          [ -z "$ALLOWED" ] && return 0
+          local info base changed compare listed outside
+          info=$(gh pr view "$PR" --repo "$REPO" --json baseRefOid,changedFiles --jq '"\(.baseRefOid) \(.changedFiles)"') || return 1
+          read -r base changed <<<"$info" || return 1
+          [[ "$base" =~ ^[0-9a-f]{40}$ && "$changed" =~ ^[0-9]+$ ]] || return 1
+          compare=$(gh api "repos/$REPO/compare/$base...$HEAD_SHA") || return 1
+          listed=$(jq -e '.files | length' <<<"$compare") || return 1
+          outside=$(jq -r '.files[] | .filename, (.previous_filename // empty)' <<<"$compare") || return 1
+          outside=$(grep -Ev -- "$ALLOWED" <<<"$outside" || true)
+          if [ -n "$outside" ]; then
+            echo "::error::PR #$PR changes files outside its allowlist. Review it by hand:"
+            echo "$outside"
+            exit 1
+          fi
+          if [ "$listed" != "$changed" ]; then
+            echo "PR #$PR reports $changed changed files but $listed are listed at $HEAD_SHA."
+            return 1
+          fi
+        }
         for attempt in 1 2 3; do
-          if gh pr merge "$PR" --repo "$REPO" "--$METHOD" --delete-branch --match-head-commit "$HEAD_SHA"; then
+          if files_match && gh pr merge "$PR" --repo "$REPO" "--$METHOD" --delete-branch --match-head-commit "$HEAD_SHA"; then
             exit 0
           fi
           if [ "$attempt" -lt 3 ]; then sleep 20; fi

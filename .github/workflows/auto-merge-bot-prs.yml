@@ -50,6 +50,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # The default branch's copy of the allowlist, never the PR's: on every
+      # trigger here the checkout is main, and no PR code is checked out.
+      - name: Checkout the allowlist
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
       - name: Create SparkyFitness-Sync token
         id: app_token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -71,21 +79,8 @@ jobs:
             // anyone with triage access can add one and this token skips review.
             const ALLOWED_BRANCH_PREFIXES = ['i18n/', 'nix/'];
 
-            // Files each automation branch may change. Anyone with write access can
-            // push to these branches, so without this a commit added to the sync
-            // branch would be merged with no review. English is excluded: it comes
-            // from developers' PRs, never from the sync.
-            const LANG = '(?!en(?:[/.]|$))[A-Za-z0-9_+-]+';
-            const ALLOWED_FILES = {
-              'i18n/': [
-                new RegExp(`^SparkyFitnessFrontend/public/locales/${LANG}/[A-Za-z0-9_-]+\\.json$`),
-                new RegExp(`^SparkyFitnessMobile/src/localization/locales/${LANG}/[A-Za-z0-9_-]+\\.json$`),
-                new RegExp(`^SparkyFitnessMobile/locales/${LANG}\\.json$`),
-                new RegExp(`^SparkyFitnessMobile/targets/android-widget/res/values-[A-Za-z0-9_+-]+/widget_strings\\.xml$`),
-                new RegExp(`^SparkyFitnessMobile/targets/widget/${LANG}\\.lproj/Localizable\\.strings$`),
-              ],
-              'nix/': [/^nix\/[A-Za-z0-9_-]+\.nix$/],
-            };
+            // Files each automation branch may change, shared with sync-translations.yml.
+            const { outsideAllowlist } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/automation-allowlist.cjs`);
 
             // Helper: determine if a PR is an allowed automated PR
             function isEligible(pr) {
@@ -200,16 +195,16 @@ jobs:
               // above may have fetched a newer one. The merge below is pinned to
               // headSha, so a push after this point makes it fail, not slip through.
               const headSha = pr.head.sha;
-              const allowed = ALLOWED_FILES[ALLOWED_BRANCH_PREFIXES.find(prefix => headRef.startsWith(prefix))];
-              const files = await github.paginate(github.rest.pulls.listFiles, {
+              // List the files of headSha itself, not the PR's current head, so a
+              // push and restore around this call cannot swap in another listing.
+              // The compare API returns at most 300 files; a larger PR no longer
+              // matches its changed_files count and is left for a maintainer.
+              const { data: comparison } = await github.rest.repos.compareCommitsWithBasehead({
                 owner,
                 repo,
-                pull_number: pr.number,
-                per_page: 100,
+                basehead: `${pr.base.sha}...${headSha}`,
               });
-              // The files endpoint stops at 3,000 entries, and a listing taken after
-              // a newer push describes that push. Either way the count no longer
-              // matches the head read above, so nothing unlisted can be merged.
+              const files = comparison.files || [];
               if (files.length !== pr.changed_files) {
                 core.warning(
                   `PR #${pr.number} reports ${pr.changed_files} changed files but ${files.length} were listed. ` +
@@ -217,9 +212,7 @@ jobs:
                 );
                 continue;
               }
-              const outside = files
-                .flatMap(f => [f.filename, f.previous_filename])
-                .filter(name => name && !allowed.some(re => re.test(name)));
+              const outside = outsideAllowlist(headRef, files.flatMap(f => [f.filename, f.previous_filename]));
               if (outside.length > 0) {
                 core.warning(
                   `PR #${pr.number} changes files outside its allowlist (${outside.slice(0, 5).join(', ')}). ` +

@@ -172,3 +172,4 @@ jobs:
           repository: ${{ github.repository }}
           pull-request: ${{ needs.regenerate.outputs.pr }}
           head-sha: ${{ needs.regenerate.outputs.head-sha }}
+          allowed-files: '^db_schema_backup\.sql$'

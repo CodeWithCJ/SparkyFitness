@@ -109,3 +109,4 @@ jobs:
           repository: ${{ github.repository }}
           pull-request: ${{ needs.update-hashes.outputs.pr }}
           head-sha: ${{ needs.update-hashes.outputs.head-sha }}
+          allowed-files: '^nix/(backend|frontend)\.nix$'
