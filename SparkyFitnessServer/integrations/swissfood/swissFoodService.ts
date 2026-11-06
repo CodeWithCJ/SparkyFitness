@@ -3,6 +3,7 @@ import {
   createGuardedFetch,
   PUBLIC_ONLY_AI_NETWORK_POLICY,
 } from '../../utils/outboundUrlPolicy.js';
+import { mapStandardNutrientsByCode } from '../../utils/standardNutrientCodes.js';
 
 // The base URL is configurable per provider; route outbound requests through
 // the shared public-host guard.
@@ -70,8 +71,6 @@ const STANDARD_NUTRIENT_CODES = {
   alcohol_g: ['ALC'],
 } as const;
 
-type StandardNutrientField = keyof typeof STANDARD_NUTRIENT_CODES;
-
 export function mapSwissFood(food: SwissFoodDetail) {
   if (!food) {
     throw new Error('Food detail is required for mapping');
@@ -93,19 +92,12 @@ export function mapSwissFood(food: SwissFoodDetail) {
     }
   }
 
-  // Value for each standard column, plus which component label filled it, so
-  // the client can badge that field in whatever language the labels came in.
-  const standard = {} as Record<StandardNutrientField, number>;
-  const providerNutrientStandard: Record<string, string> = {};
-  for (const [field, codes] of Object.entries(STANDARD_NUTRIENT_CODES) as [
-    StandardNutrientField,
-    readonly string[],
-  ][]) {
-    const code = codes.find((c) => nutrients[c] !== undefined);
-    standard[field] = code ? (nutrients[code] ?? 0) : 0;
-    const label = code ? labelsByCode[code] : undefined;
-    if (label) providerNutrientStandard[label] = field;
-  }
+  const { values: standard, providerNutrientStandard } =
+    mapStandardNutrientsByCode(
+      STANDARD_NUTRIENT_CODES,
+      nutrients,
+      labelsByCode
+    );
 
   // Mappings per 100g edible portion. The Swiss Food Composition Database has
   // no field indicating a liquid basis (its per-value `unit.code` is the

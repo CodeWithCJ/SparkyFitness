@@ -44,7 +44,8 @@ export interface FoodVariant {
   provider_nutrient_units?: Record<string, string>;
   // Standard nutrient id per provider field (same label keys as
   // provider_nutrients), when the provider maps fields by nutrient code
-  // (Swiss Food). Import-only; used to badge fields a standard column captures.
+  // (Swiss Food, Livsmedelsverket). Import-only; used to badge fields a
+  // standard column captures.
   provider_nutrient_standard?: Record<string, string>;
   source?: 'manual' | 'ai_estimate' | 'imported';
   ai_confidence?: 'high' | 'medium' | 'low' | null;

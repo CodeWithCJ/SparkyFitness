@@ -3,6 +3,7 @@ import {
   createGuardedFetch,
   PUBLIC_ONLY_AI_NETWORK_POLICY,
 } from '../../utils/outboundUrlPolicy.js';
+import { mapStandardNutrientsByCode } from '../../utils/standardNutrientCodes.js';
 
 const guardedFetch = createGuardedFetch(PUBLIC_ONLY_AI_NETWORK_POLICY);
 
@@ -134,8 +135,6 @@ const STANDARD_NUTRIENT_CODES = {
   alcohol_g: ['ALC'],
 } as const;
 
-type StandardNutrientField = keyof typeof STANDARD_NUTRIENT_CODES;
-
 export function mapLivsmedelsverketFood(
   food: LivsmedelsverketFoodDetailRaw
 ): LivsmedelsverketMappedFood {
@@ -178,19 +177,12 @@ export function mapLivsmedelsverketFood(
     }
   }
 
-  // Value for each standard column, plus which nutrient label filled it, so
-  // the client can badge that field in whichever language the labels came in.
-  const standard = {} as Record<StandardNutrientField, number>;
-  const providerNutrientStandard: Record<string, string> = {};
-  for (const [field, codes] of Object.entries(STANDARD_NUTRIENT_CODES) as [
-    StandardNutrientField,
-    readonly string[],
-  ][]) {
-    const code = codes.find((c) => nutrientsByEuroFir[c] !== undefined);
-    standard[field] = code ? (nutrientsByEuroFir[code] ?? 0) : 0;
-    const label = code ? labelsByEuroFir[code] : undefined;
-    if (label) providerNutrientStandard[label] = field;
-  }
+  const { values: standard, providerNutrientStandard } =
+    mapStandardNutrientsByCode(
+      STANDARD_NUTRIENT_CODES,
+      nutrientsByEuroFir,
+      labelsByEuroFir
+    );
 
   // Fallback calories calculation if not provided explicitly
   const protein = Math.round(standard.protein * 10) / 10;
