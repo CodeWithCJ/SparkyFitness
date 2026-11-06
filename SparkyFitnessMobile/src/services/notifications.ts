@@ -119,6 +119,8 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
       options: { opensAppToForeground: false },
     },
   ]);
+  // Expo dispatches background action tasks only on Android. On iOS, bring
+  // the app forward so its response listener can finish saving the dose.
   await Notifications.setNotificationCategoryAsync(
     MEDICATION_REMINDER_GROUP_CATEGORY,
     [
@@ -128,7 +130,7 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
           'notifications.actions.logAllAsTaken',
           'Log all as taken'
         ),
-        options: { opensAppToForeground: false },
+        options: { opensAppToForeground: Platform.OS === 'ios' },
       },
       {
         identifier: MEDICATION_SKIP_ACTION,
@@ -136,12 +138,12 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
           'notifications.actions.skipAll',
           'Skip all'
         ),
-        options: { opensAppToForeground: false },
+        options: { opensAppToForeground: Platform.OS === 'ios' },
       },
       {
         identifier: MEDICATION_SNOOZE_ACTION,
         buttonTitle: remindInTitle,
-        options: { opensAppToForeground: false },
+        options: { opensAppToForeground: Platform.OS === 'ios' },
       },
     ]
   );
@@ -154,17 +156,17 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
           'notifications.actions.logAsTaken',
           'Log as taken'
         ),
-        options: { opensAppToForeground: false },
+        options: { opensAppToForeground: Platform.OS === 'ios' },
       },
       {
         identifier: MEDICATION_SKIP_ACTION,
         buttonTitle: notificationCopy('notifications.actions.skip', 'Skip'),
-        options: { opensAppToForeground: false },
+        options: { opensAppToForeground: Platform.OS === 'ios' },
       },
       {
         identifier: MEDICATION_SNOOZE_ACTION,
         buttonTitle: remindInTitle,
-        options: { opensAppToForeground: false },
+        options: { opensAppToForeground: Platform.OS === 'ios' },
       },
     ]
   );

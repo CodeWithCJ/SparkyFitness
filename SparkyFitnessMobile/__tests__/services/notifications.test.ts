@@ -224,6 +224,31 @@ describe('notifications service', () => {
       ]);
     });
 
+    it.each(['ios', 'android'] as const)(
+      'uses a reliable execution path for medication actions on %s',
+      async (platform) => {
+        Object.defineProperty(Platform, 'OS', {
+          get: () => platform,
+          configurable: true,
+        });
+        await registerLocalizedNotificationPresentation();
+        for (const category of [
+          'medication-reminder',
+          'medication-reminder-group',
+        ]) {
+          const actions = mockSetCategory.mock.calls.find(
+            ([identifier]) => identifier === category
+          )?.[1];
+          expect(actions).toHaveLength(3);
+          for (const action of actions ?? []) {
+            expect(action.options?.opensAppToForeground).toBe(
+              platform === 'ios'
+            );
+          }
+        }
+      }
+    );
+
     it('does not create an Android channel on iOS', async () => {
       await initNotifications();
       expect(mockSetChannel).not.toHaveBeenCalled();

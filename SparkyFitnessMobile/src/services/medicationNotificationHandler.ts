@@ -629,7 +629,17 @@ export async function processMedicationNotificationResponse(
   });
 
   inFlightActions.set(dedupeKey, actionPromise);
-  return actionPromise;
+  const succeeded = await actionPromise;
+  const last = succeeded ? Notifications.getLastNotificationResponse() : null;
+  // Consume only this successful action; another feature may have a newer response.
+  if (
+    last?.actionIdentifier === actionId &&
+    last.notification.request.identifier === notificationId &&
+    last.notification.date === response.notification.date
+  ) {
+    Notifications.clearLastNotificationResponse();
+  }
+  return succeeded;
 }
 
 async function handleSnoozeNotificationAction(
@@ -795,6 +805,10 @@ export function initMedicationNotificationActions(): void {
   addNotificationResponseListener((response) => {
     void processMedicationNotificationResponse(response);
   });
+
+  // Recover cold-launch actions received before the listener was installed.
+  const last = Notifications.getLastNotificationResponse();
+  if (last) void processMedicationNotificationResponse(last);
 }
 
 async function clearMatchingReminders(
