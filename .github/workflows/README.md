@@ -145,7 +145,7 @@ Config lives in `release-please-config.json`; the current version in `.release-p
 
 #### GHCR publishing
 
-The images (`sparkyfitness-frontend`, `-server`, `-garmin`) and the chart (`charts/sparkyfitness`) are pushed with `GHCR_TOKEN`, a classic personal access token with only the `write:packages` scope, held in the `release` environment. No workflow asks for `packages: write`, and each package's **Manage Actions access** gives this repository no write role, so `GITHUB_TOKEN` cannot push a package even from a workflow pushed on another branch.
+The images (`sparkyfitness-frontend`, `-server`, `-garmin`) and the chart (`charts/sparkyfitness`) are pushed with `GHCR_TOKEN`, a classic personal access token with only the `write:packages` scope, held in the `release` environment. No workflow asks for `packages: write`, but that alone does not stop a workflow pushed on another branch from asking for it. **Required setup**: in each package's settings, under **Manage Actions access**, untick **Inherit access from source repository** if it is shown and give this repository no write role. Only then can `GITHUB_TOKEN` not push a package. Check it again after adding a package.
 
 Create the token at <https://github.com/settings/tokens/new?scopes=write:packages> (that link leaves `repo` unticked; ticking `write:packages` by hand ticks `repo` too, which this token must not have). Rotate it before it expires, or the next release's pushes fail at the GHCR login.
 
