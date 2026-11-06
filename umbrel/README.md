@@ -151,7 +151,7 @@ Either failure stops the corresponding job before anything reaches upstream.
 
 | What | Why |
 | --- | --- |
-| `UMBREL_APPS_TOKEN` secret in the `release` environment | A PAT with `public_repo` scope. A repository-level secret is not read: the submit job runs in the `release` environment and waits for a maintainer's approval. Without it the submit workflow's step is skipped with a warning; the in-repo PR still lands regardless. |
+| `UMBREL_APPS_TOKEN` secret in the `release` environment | A PAT with `public_repo` scope. The submit job runs in the `release` environment and waits for a maintainer's approval. Delete any repository-level copy: a workflow pushed on any branch can read repository secrets. Without it the submit workflow's step is skipped with a warning; the in-repo PR still lands regardless. |
 | A fork of `getumbrel/umbrel-apps` | Created automatically on first run by `gh repo fork`, with a short poll for the fork to become available before pushing to it. |
 | Auto-merge for `umbrel/` | Optional, and left out deliberately, since merging that PR is the review gate before the store submission. It would take `umbrel/` in `ALLOWED_BRANCH_PREFIXES` and the job `if` of `auto-merge-bot-prs.yml`, and an `umbrel/` allowlist in `.github/scripts/automation-allowlist.cjs`. |
 

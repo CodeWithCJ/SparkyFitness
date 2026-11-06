@@ -121,7 +121,7 @@ Config lives in `release-please-config.json`; the current version in `.release-p
 
 **Purpose**: Build and push the Docker images for a release
 
-**Triggers**: Release publication, and manual workflow dispatch. Its job runs in the `release` environment, so it waits for a maintainer's approval and can only run from `main` or a `v*` tag. Only the newest release moves the `latest` tag, so approving an older release's run late does not move it back.
+**Triggers**: Release publication, and manual workflow dispatch. Its job runs in the `release` environment, so it waits for a maintainer's approval and can only run from `main` or a `v*` tag. A run from a tag names the images after that tag. Only the newest release moves the `latest` tag, so approving an older release's run late, or dispatching an older tag, does not move it back.
 
 ---
 
@@ -174,7 +174,7 @@ Submitting to the App Store is a separate workflow (`umbrel-app-submit.yml`) tha
 
 The initial App Store submission stays manual (see `umbrel/README.md`): `submission:` has to name a PR that doesn't exist yet, and the Umbrel team wants screenshots on it. This workflow only ever patches a package that already exists upstream, so it is a no-op until that first PR has been merged by the Umbrel team.
 
-**Requires**: the `UMBREL_APPS_TOKEN` secret (a PAT with `public_repo` scope) in the `release` environment, not at repository level, so the job waits for a maintainer's approval. Without it, the step is skipped with a warning.
+**Requires**: the `UMBREL_APPS_TOKEN` secret (a PAT with `public_repo` scope) in the `release` environment, so the job waits for a maintainer's approval. Do not keep a repository-level copy: a workflow pushed on any branch can read repository secrets. Without it, the step is skipped with a warning.
 
 ---
 

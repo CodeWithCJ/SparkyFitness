@@ -31,19 +31,25 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            // A release run builds that release's tag, so name the images after it.
-            // Looking up the newest release instead would mislabel a run approved
-            // after a later release was published.
+            // A release run, or a dispatch from a v* tag, builds that tag, so name
+            // the images after it. Looking up the newest release instead would put
+            // an older tag's code under a newer release's name.
             const release = context.payload.release;
-            if (context.eventName === 'release' && release && !release.prerelease && !release.draft) {
-              core.setOutput('tag', release.tag_name);
-              // Approval can come late, so an older release's run may finish
-              // after a newer one. Only the newest release moves `latest`.
+            const builtTag =
+              context.eventName === 'release' && release && !release.prerelease && !release.draft
+                ? release.tag_name
+                : context.eventName === 'workflow_dispatch' && context.ref.startsWith('refs/tags/')
+                  ? context.ref.slice('refs/tags/'.length)
+                  : null;
+            if (builtTag) {
+              core.setOutput('tag', builtTag);
+              // Approval can come late, and an older tag can be dispatched by
+              // hand, so only the newest release moves `latest`.
               const { data: newest } = await github.rest.repos.getLatestRelease({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
               });
-              core.setOutput('latest', String(newest.tag_name === release.tag_name));
+              core.setOutput('latest', String(newest.tag_name === builtTag));
               return;
             }
             core.setOutput('latest', 'true');

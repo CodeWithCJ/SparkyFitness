@@ -25,7 +25,7 @@ keytool -genkey -v -keystore android/app/my-release-key.keystore -alias my-key-a
 GitHub needs your key and passwords to sign the app.
 
 1.  Go to your GitHub Repo -> **Settings** -> **Environments** -> **release** (create it if it does not exist, limited to `main` and `v*` tags, with yourself as a required reviewer).
-2.  Add these 4 secrets as environment secrets there, not as repository secrets: `android.yml` runs in the `release` environment and does not read repository secrets of these names.
+2.  Add these 4 secrets as environment secrets there. If they also exist as repository secrets, delete those copies once a release build has signed with the environment ones: a job without the environment still reads repository secrets, so a workflow pushed on any branch could read them.
 
 | Secret Name              | Value                                    |
 | :----------------------- | :--------------------------------------- |
