@@ -41,6 +41,7 @@ export const useDiaryInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
     queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
     queryClient.invalidateQueries({ queryKey: presetKeys.all });
@@ -78,6 +79,7 @@ export const useFoodEntryInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
     queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
     queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
@@ -118,6 +120,7 @@ export const useDailyProgressInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({
       queryKey: dailyProgressKeys.all,
     });
@@ -128,6 +131,7 @@ export const useExerciseInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
     queryClient.invalidateQueries({ queryKey: presetKeys.all });
     queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });

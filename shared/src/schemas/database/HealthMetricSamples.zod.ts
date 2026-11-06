@@ -2,17 +2,8 @@ import { z } from 'zod';
 
 export const healthMetricSamplesIdSchema = z.string();
 
-// Kept in sync BY HAND with the chk_health_metric_samples_metric CHECK
-// constraint added in
-// db/migrations/20260730000000_create_generic_health_and_workout_tables.sql.
-// Both must govern the same six values, deliberately, at two different layers:
-//   - the DB CHECK constraint is the backstop, guarding against bad data from
-//     ANY writer (a future migration, a script, a bug that bypasses this schema);
-//   - this enum is the app-boundary guard, giving a typed union and a clean
-//     validation error before a bad value ever reaches SQL.
-// Adding a 7th metric means editing BOTH. There is no single source of truth
-// generating one from the other — if you add automation for that, remove this
-// comment and point it at the generator instead.
+// Keep this enum in sync with chk_health_metric_samples_metric. New metrics
+// require both a migration and a per-metric sample schema below.
 export const healthMetricSchema = z.enum([
   'heart_rate',
   'hrv',
@@ -21,6 +12,7 @@ export const healthMetricSchema = z.enum([
   'stress',
   'body_battery',
   'skin_temperature',
+  'blood_glucose',
 ]);
 export type HealthMetric = z.infer<typeof healthMetricSchema>;
 
@@ -41,6 +33,12 @@ const baseSampleSchema = z.object({
   t: z.iso.datetime({ offset: true }),
   ex: z.string().optional(),
   sl: z.string().optional(),
+});
+
+/** Canonical glucose unit is mmol/L; source identifies the app/device writer. */
+export const bloodGlucoseSampleSchema = baseSampleSchema.extend({
+  mmol_l: z.number().positive().max(100),
+  source_bundle_id: z.string().max(256).optional(),
 });
 
 export const heartRateSampleSchema = baseSampleSchema.extend({
@@ -109,6 +107,11 @@ const rowBase = {
 export const healthMetricSamplesSchema = z.discriminatedUnion('metric', [
   z.object({
     ...rowBase,
+    metric: z.literal('blood_glucose'),
+    samples: z.array(bloodGlucoseSampleSchema),
+  }),
+  z.object({
+    ...rowBase,
     metric: z.literal('heart_rate'),
     samples: z.array(heartRateSampleSchema),
   }),
@@ -158,6 +161,11 @@ const rowBaseInitializer = {
 export const healthMetricSamplesInitializerSchema = z.discriminatedUnion(
   'metric',
   [
+    z.object({
+      ...rowBaseInitializer,
+      metric: z.literal('blood_glucose'),
+      samples: z.array(bloodGlucoseSampleSchema),
+    }),
     z.object({
       ...rowBaseInitializer,
       metric: z.literal('heart_rate'),

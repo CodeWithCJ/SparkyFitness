@@ -96,6 +96,8 @@ const ICON_MAP = {
 
   // Food
   food: { sf: 'fork.knife', ion: 'restaurant' },
+  coffee: { sf: 'cup.and.saucer', ion: 'cafe-outline' },
+  wine: { sf: 'wineglass', ion: 'wine-outline' },
 
   // Meals
   meal: { sf: 'square.stack.3d.up.fill', ion: 'layers' },

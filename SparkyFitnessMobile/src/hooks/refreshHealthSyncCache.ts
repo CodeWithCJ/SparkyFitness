@@ -1,6 +1,9 @@
 import type { QueryClient } from '@tanstack/react-query';
 import {
   exerciseHistoryResetQueryKey,
+  glucoseSamplesQueryKeyRoot,
+  glucoseContextQueryKeyRoot,
+  customMeasurementsRootQueryKey,
   skinTemperatureQueryKeyRoot,
   sleepDayQueryKeyRoot,
   sleepRangeQueryKeyRoot,
@@ -17,6 +20,11 @@ const measurementsRangeQueryFamily = ['measurementsRange'] as const;
 const exerciseHistoryQueryFamily = ['exerciseHistory'] as const;
 
 export function refreshHealthSyncCache(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: glucoseContextQueryKeyRoot });
+  void queryClient.invalidateQueries({ queryKey: glucoseSamplesQueryKeyRoot });
+  void queryClient.invalidateQueries({
+    queryKey: customMeasurementsRootQueryKey,
+  });
   void queryClient.invalidateQueries({ queryKey: dailySummaryQueryFamily });
   void queryClient.invalidateQueries({ queryKey: ['goalsRange'] });
   void queryClient.invalidateQueries({ queryKey: measurementsQueryFamily });
