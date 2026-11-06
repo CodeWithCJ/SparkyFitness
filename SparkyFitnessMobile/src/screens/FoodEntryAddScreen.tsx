@@ -74,6 +74,11 @@ import CalendarSheet, {
 import DateSelectRow from '../components/DateSelectRow';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import type { FoodFormData } from '../components/FoodForm';
+import {
+  FOOD_VARIANT_FIELDS,
+  buildFormValuesFromVariant,
+  hasFoodFormChanges,
+} from './foodForm/persistence';
 import type { Meal, MealIngredientDraft } from '../types/meals';
 import type {
   EquivalentUnit,
@@ -1080,9 +1085,20 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     const saved = variants?.find((variant) => variant.id === variantId);
     const isSavedServing = saved
       ? toNonEmptyString(saved.serving_unit, 'serving').trim().toLowerCase() ===
-        tagUnit.trim().toLowerCase()
-      : // Servings not loaded: the item's own serving, unless one was picked.
-        !pendingVariantToPersist;
+          tagUnit.trim().toLowerCase() &&
+        // Nutrition adjusted here without saving it for future use: each tap
+        // would log the saved serving's values, not the ones shown.
+        !(
+          adjustedValues &&
+          hasFoodFormChanges(
+            buildFormValuesFromVariant(saved),
+            adjustedValues,
+            FOOD_VARIANT_FIELDS
+          )
+        )
+      : // Servings not loaded: the item's own serving, unless one was picked
+        // or its nutrition was adjusted (nothing to compare it with).
+        !pendingVariantToPersist && !adjustedValues;
     if (!isSavedServing) {
       if (!pendingVariantToPersist) {
         Toast.show({

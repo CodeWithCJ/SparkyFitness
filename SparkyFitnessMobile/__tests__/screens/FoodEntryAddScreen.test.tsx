@@ -1840,6 +1840,70 @@ describe('FoodEntryAddScreen', () => {
       expect(consumePendingActionTagSelection()).toBeNull();
     });
 
+    // The saved cup serving with its nutrition adjusted to `calories`.
+    const pickAdjustedServingForTag = async (calories: string) => {
+      consumePendingActionTagSelection();
+      const screen = renderScreen({
+        item: baseLocalItem,
+        pickerMode: 'action-tag',
+        returnDepth: 2,
+        adjustedValues: {
+          ...draftAdjustedValues,
+          servingSize: '1',
+          servingUnit: 'cup',
+          calories,
+          protein: '15',
+          carbs: '6',
+          fat: '0',
+          caffeineMg: '',
+          waterMl: '',
+          alcoholG: '',
+        },
+      });
+
+      await waitFor(() => {
+        expect(navigation.setParams).toHaveBeenCalledWith(
+          expect.objectContaining({ adjustedValues: undefined })
+        );
+      });
+
+      fireEvent.press(screen.getByText('Add Food'));
+    };
+
+    it('refuses an NFC tag pick whose saved serving had its nutrition changed here', async () => {
+      await pickAdjustedServingForTag('150');
+
+      await waitFor(() =>
+        expect(mockToast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1: "Choose one of this food's servings",
+          })
+        )
+      );
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(mockCreateVariant).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    it('hands the saved serving to the NFC tag form when adjusted nutrition was saved to it', async () => {
+      await pickAdjustedServingForTag('100');
+
+      await waitFor(() =>
+        expect(navigation.dispatch).toHaveBeenCalledWith({
+          type: 'POP',
+          payload: { count: 2 },
+        })
+      );
+      expect(consumePendingActionTagSelection()).toEqual(
+        expect.objectContaining({
+          kind: 'food',
+          variantId: 'variant-1',
+          unit: 'cup',
+        })
+      );
+    });
+
     it('preserves real selectedVariantId for local foods when draft is returned', async () => {
       // Regression: draft branch was calling setSelectedVariantId(draftId) for
       // local foods, poisoning save payloads with a non-persisted variant ID.
