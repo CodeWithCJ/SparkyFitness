@@ -8,6 +8,14 @@ import type { MealType } from '../types/mealTypes';
 import Icon from './Icon';
 import { MEAL_CONFIG } from '../constants/meals';
 import SwipeableFoodRow from './SwipeableFoodRow';
+import SegmentedControl from './SegmentedControl';
+import { usePreferences } from '../hooks/usePreferences';
+import {
+  useAppPreferencesStore,
+  type DiaryViewMode,
+} from '../stores/appPreferencesStore';
+import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import { buildTimelineGroups, hourSlotTime } from '../utils/diaryTimeline';
 import {
   calculateEntryNutrition,
   calculateMealNutrition,
@@ -25,6 +33,8 @@ interface FoodSummaryProps {
   goals?: DailyGoals;
   calorieGoal?: number;
   onAddFood?: () => void;
+  /** Timeline quick add at an hour slot (HH:MM). */
+  onAddFoodAt?: (time: string) => void;
   onAdjustServing?: (entry: FoodEntry) => void;
   onPressMealType?: (
     mealTypeId: string | null,
@@ -148,17 +158,118 @@ const MealSection: React.FC<MealSectionProps> = ({
   );
 };
 
+interface FoodTimelineProps {
+  foodEntries: FoodEntry[];
+  mealTypes: MealType[];
+  onAddFoodAt?: (time: string) => void;
+  onAdjustServing?: (entry: FoodEntry) => void;
+}
+
+const FoodTimeline: React.FC<FoodTimelineProps> = ({
+  foodEntries,
+  mealTypes,
+  onAddFoodAt,
+  onAdjustServing,
+}) => {
+  const { t } = useTranslation();
+  const { preferences } = usePreferences();
+  const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+  const groups = React.useMemo(
+    () => buildTimelineGroups(foodEntries, mealTypes),
+    [foodEntries, mealTypes]
+  );
+
+  return (
+    <View className="bg-surface rounded-xl p-4 overflow-hidden shadow-sm gap-3">
+      {groups.map((group) => {
+        const slot = group.hour === null ? null : hourSlotTime(group.hour);
+        const label = slot
+          ? (formatTimeLabel(slot, preferences?.time_format) ?? slot)
+          : t('diary.timeline.noTime', { defaultValue: 'No time' });
+        return (
+          <View key={slot ?? 'untimed'}>
+            <View className="flex-row items-center mb-1">
+              <Text className="text-xs font-semibold uppercase text-text-muted flex-1">
+                {label}
+              </Text>
+              {slot && onAddFoodAt && (
+                <Pressable
+                  onPress={() => onAddFoodAt(slot)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('diary.timeline.addAt', {
+                    defaultValue: 'Add food at {{time}}',
+                    time: label,
+                  })}
+                >
+                  <Icon name="add" size={18} color={accentPrimary} />
+                </Pressable>
+              )}
+            </View>
+            <View className="border-l border-border-subtle pl-3">
+              {group.items.map(({ entry }, index) => (
+                <SwipeableFoodRow
+                  key={entry.id || index}
+                  entry={entry}
+                  nutrition={calculateEntryNutrition(entry)}
+                  onAdjustServing={onAdjustServing}
+                />
+              ))}
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+};
+
 const FoodSummary: React.FC<FoodSummaryProps> = ({
   foodEntries,
   mealTypes,
   goals,
   calorieGoal,
   onAddFood,
+  onAddFoodAt,
   onAdjustServing,
   onPressMealType,
 }) => {
+  const { t } = useTranslation();
+  const viewMode = useAppPreferencesStore((s) => s.diaryViewMode);
+  const setViewMode = useAppPreferencesStore((s) => s.setDiaryViewMode);
+
   if (foodEntries.length === 0) {
     return <EmptyState onAddFood={onAddFood} />;
+  }
+
+  const viewToggle = (
+    <SegmentedControl<DiaryViewMode>
+      segments={[
+        {
+          key: 'meals',
+          label: t('diary.view.meals', { defaultValue: 'Meals' }),
+        },
+        {
+          key: 'timeline',
+          label: t('diary.view.timeline', { defaultValue: 'Timeline' }),
+        },
+      ]}
+      activeKey={viewMode}
+      onSelect={setViewMode}
+    />
+  );
+
+  if (viewMode === 'timeline') {
+    return (
+      <View className="gap-2 mb-2">
+        {viewToggle}
+        <FoodTimeline
+          foodEntries={foodEntries}
+          mealTypes={mealTypes}
+          onAddFoodAt={onAddFoodAt}
+          onAdjustServing={onAdjustServing}
+        />
+      </View>
+    );
   }
 
   // groupFoodEntriesByMealType only creates groups that have entries, so the
@@ -171,6 +282,7 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
 
   return (
     <View className="gap-2 mb-2">
+      {viewToggle}
       {groups.map((group) => (
         <MealSection
           key={
