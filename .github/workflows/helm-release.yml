@@ -19,8 +19,12 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'release')
+    # GHCR_TOKEN lives in this environment, which only main and v* tags can use
+    # and which waits for a maintainer's approval, so a dispatch from another
+    # branch cannot push a chart.
+    environment: release
+    # Pushes to GHCR with GHCR_TOKEN, not GITHUB_TOKEN.
     permissions:
-      packages: write
       contents: read
 
     steps:
@@ -69,9 +73,10 @@ jobs:
 
       - name: Log in to GitHub Container Registry
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ACTOR: ${{ github.actor }}
-        run: echo "$GH_TOKEN" | helm registry login ghcr.io -u "$ACTOR" --password-stdin
+          # A classic PAT with only write:packages. The chart package gives this
+          # repository's Actions no write access, so GITHUB_TOKEN cannot push it.
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: echo "$GHCR_TOKEN" | helm registry login ghcr.io -u "$GITHUB_REPOSITORY_OWNER" --password-stdin
 
       - name: Fetch chart dependencies
         run: helm dependency update helm/chart

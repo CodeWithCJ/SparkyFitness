@@ -91,7 +91,7 @@ hasUIChanges = .tsx/.jsx/.css files in components/screens/pages/
 - Re-formats the JSON version files on the release PR branch with Prettier, since release-please writes them with plain `JSON.stringify`
 - When the release PR is merged, creates a **draft** release and its tag, and replaces the body with `.github/release-preamble.md` + GitHub's generated notes (the same body `draft-release.yml` builds)
 
-Nothing ships until a maintainer fills in the Key Highlights and publishes the draft. The `release: published` workflows below start on that publish, but the Docker images and the Android build wait for a maintainer to approve them in the `release` environment (Actions tab, **Review deployments**). The Helm chart, the Umbrel package PR and the release notifications follow once the Docker images are pushed. The Umbrel App Store submission also waits for approval, after its package PR is merged.
+Nothing ships until a maintainer fills in the Key Highlights and publishes the draft. The `release: published` workflows below start on that publish, but the Docker images and the Android build wait for a maintainer to approve them in the `release` environment (Actions tab, **Review deployments**). The Helm chart, the Umbrel package PR and the release notifications follow once the Docker images are pushed; the Helm chart waits for a second approval in the same environment. The Umbrel App Store submission also waits for approval, after its package PR is merged.
 
 **Release order**: the tag is created on the release PR's merge commit, and the workflows that build the release (Docker images, Android APK, release assets, Helm chart, docs) check out that tag. Anything merged after the release PR misses the release, even if the draft is published later. Before merging it:
 
@@ -123,13 +123,15 @@ Config lives in `release-please-config.json`; the current version in `.release-p
 
 **Triggers**: Release publication, and manual workflow dispatch. Its job runs in the `release` environment, so it waits for a maintainer's approval and can only run from `main` or a `v*` tag. A run from a tag names the images after that tag. Only the newest release moves the `latest` tag, so approving an older release's run late, or dispatching an older tag, does not move it back.
 
+**Requires**: `DOCKER_USERNAME`, `DOCKER_PASSWORD` and `GHCR_TOKEN` in the `release` environment. See [GHCR publishing](#ghcr-publishing).
+
 ---
 
 #### `manual-docker-deploy.yml`
 
 **Purpose**: Manual Docker deployment workflow
 
-**Triggers**: Manual workflow dispatch, from `main` or a `v*` tag only. Its job runs in the `release` environment and waits for a maintainer's approval; a dispatch from any other branch fails before it can read the Docker Hub credentials.
+**Triggers**: Manual workflow dispatch, from `main` or a `v*` tag only. Its job runs in the `release` environment and waits for a maintainer's approval; a dispatch from any other branch fails before it can read the Docker Hub or GHCR credentials.
 
 ---
 
@@ -137,7 +139,20 @@ Config lives in `release-please-config.json`; the current version in `.release-p
 
 **Purpose**: Create Helm chart releases
 
-**Triggers**: Completion of `Publish Docker Images` for an actual `release` event, and manual workflow dispatch (pushes a `0.0.0-dev` chart). It waits for the images rather than running on `release: published`, so the chart never points at image tags that do not exist yet.
+**Triggers**: Completion of `Publish Docker Images` for an actual `release` event, and manual workflow dispatch (pushes a `0.0.0-dev` chart). It waits for the images rather than running on `release: published`, so the chart never points at image tags that do not exist yet. Its job runs in the `release` environment, so it waits for a maintainer's approval and a dispatch from a branch other than `main` cannot push a chart.
+
+**Requires**: `GHCR_TOKEN` in the `release` environment. See [GHCR publishing](#ghcr-publishing).
+
+#### GHCR publishing
+
+The images (`sparkyfitness-frontend`, `-server`, `-garmin`) and the chart (`charts/sparkyfitness`) are pushed with `GHCR_TOKEN`, a classic personal access token with only the `write:packages` scope, held in the `release` environment. No workflow asks for `packages: write`, but that alone does not stop a workflow pushed on another branch from asking for it. **Required setup**, on each package's **Package settings** page (`sparkyfitness-frontend`, `-server`, `-garmin`, `-mcp`, `charts/sparkyfitness`):
+
+- **Manage Actions access**: set this repository's role to **Read**, or remove it. Only then can `GITHUB_TOKEN` not push the package.
+- **Inherited access**: untick **Inherit access from source repository**. While it is ticked, everyone with write access to this repository, including collaborators, can push the package directly with their own token, with no workflow or approval. Unticking it copies those people into **Manage access** with their roles, so then **Remove** each of them there; the list should end up empty, since the owning account needs no entry.
+
+Check both again after adding a package: a new package starts with inherited access unless the account's default package setting has it unticked.
+
+Create the token at <https://github.com/settings/tokens/new?scopes=write:packages> (that link leaves `repo` unticked; ticking `write:packages` by hand ticks `repo` too, which this token must not have). Rotate it before it expires, or the next release's pushes fail at the GHCR login.
 
 ---
 
@@ -230,13 +245,13 @@ The initial App Store submission stays manual (see `umbrel/README.md`): `submiss
 
 Five Weblate components. The mobile app has four because its surfaces use different formats and placeholder rules (`{{value}}`, `%1$s`, `%@`), so Weblate translates each native file directly and no format conversion sits in between:
 
-| Component | In the translations repo | In this repo |
-| --- | --- | --- |
-| Web | `locales/` | `SparkyFitnessFrontend/public/locales/` |
-| Mobile runtime | `mobile/src/localization/locales/` | `SparkyFitnessMobile/src/localization/locales/` |
-| Mobile Expo metadata | `mobile/locales/` | `SparkyFitnessMobile/locales/` |
+| Component              | In the translations repo             | In this repo                                      |
+| ---------------------- | ------------------------------------ | ------------------------------------------------- |
+| Web                    | `locales/`                           | `SparkyFitnessFrontend/public/locales/`           |
+| Mobile runtime         | `mobile/src/localization/locales/`   | `SparkyFitnessMobile/src/localization/locales/`   |
+| Mobile Expo metadata   | `mobile/locales/`                    | `SparkyFitnessMobile/locales/`                    |
 | Mobile Android widgets | `mobile/targets/android-widget/res/` | `SparkyFitnessMobile/targets/android-widget/res/` |
-| Mobile iOS widgets | `mobile/targets/widget/` | `SparkyFitnessMobile/targets/widget/` |
+| Mobile iOS widgets     | `mobile/targets/widget/`             | `SparkyFitnessMobile/targets/widget/`             |
 
 A mobile surface missing from the translations repo is skipped with a notice, so the workflow is safe to run before all the components exist; the push side seeds each English source on the first run. `pr-validation.yml` rejects a human PR that edits any non-`en` translation file.
 

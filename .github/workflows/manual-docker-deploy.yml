@@ -21,12 +21,13 @@ jobs:
   push_to_registries:
     name: Push Docker image to multiple registries
     runs-on: ubuntu-latest
-    # Docker Hub credentials live in this environment, which only main and v*
-    # tags can use and which waits for a maintainer's approval. Run this from
-    # main: a run from another branch cannot reach the credentials.
+    # The Docker Hub and GHCR credentials live in this environment, which only
+    # main and v* tags can use and which waits for a maintainer's approval. Run
+    # this from main: a run from another branch cannot reach the credentials.
     environment: release
+    # Pushes to GHCR with GHCR_TOKEN, not GITHUB_TOKEN. The attestations are
+    # pushed with the same login.
     permissions:
-      packages: write
       contents: read
       attestations: write
       id-token: write
@@ -44,12 +45,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # GHCR_TOKEN (a classic PAT with only write:packages) lives in the release
+      # environment. The packages give this repository's Actions no write
+      # access, so GITHUB_TOKEN cannot push them from a branch workflow.
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
