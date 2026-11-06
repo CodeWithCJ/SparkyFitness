@@ -15,6 +15,10 @@ import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import { createUploadMiddleware } from '../middleware/uploadMiddleware.js';
 import {
+  entryImageUrlFor,
+  removeUnusedEntryImage,
+} from '../services/exerciseEntryImageService.js';
+import {
   demoGuard,
   demoUploadGuard,
 } from '../middleware/demoGuardMiddleware.js';
@@ -66,6 +70,29 @@ const exerciseEntryStorage = multer.diskStorage({
   },
 });
 const upload = createUploadMiddleware(exerciseEntryStorage);
+/**
+ * multer has stored the image before the handler runs, so a request that is
+ * refused or fails would otherwise leave a file no entry points at.
+ */
+const discardUploadOnFailure = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  const uploadedPath = (req as express.Request & { file?: { path?: string } })
+    .file?.path;
+  if (uploadedPath) {
+    res.once('finish', () => {
+      if (res.statusCode < 400) return;
+      // An entry saved before a later step failed still points at the file,
+      // and removeUnusedEntryImage keeps it.
+      const imageUrl = entryImageUrlFor(uploadedPath);
+      if (imageUrl) void removeUnusedEntryImage(imageUrl);
+      else fs.promises.unlink(uploadedPath).catch(() => {});
+    });
+  }
+  next();
+};
 // Apply diary permission check to all exercise entry routes
 router.use(checkPermissionMiddleware('diary'));
 /**
@@ -300,6 +327,7 @@ router.post(
   authenticate,
   demoUploadGuard,
   upload.single('image'),
+  discardUploadOnFailure,
   async (req, res, next) => {
     try {
       let entryData;
@@ -363,13 +391,13 @@ router.post(
           .status(400)
           .json({ error: 'Exercise ID must be a valid UUID.' });
       }
-      let imageUrl = entryData.image_url || null;
+      // Only the server's own upload sets the image: the stored path is later
+      // deleted from disk, so it must never come from the request body.
+      let imageUrl = null;
       // @ts-expect-error TS(2339): Property 'file' does not exist on type 'Request<{}... Remove this comment to see the full error message
       if (req.file) {
-        // Construct the URL path for the image
-        const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
         // @ts-expect-error TS(2339): Property 'file' does not exist on type 'Request<{}... Remove this comment to see the full error message
-        imageUrl = `/uploads/exercise_entries/${today}/${req.file.filename}`;
+        imageUrl = entryImageUrlFor(req.file.path);
       }
 
       const targetUserId = req.body.user_id || req.userId;
@@ -539,7 +567,6 @@ router.post('/from-plan', authenticate, async (req, res, next) => {
           reps: exerciseData.reps,
           weight: exerciseData.weight,
           workout_plan_assignment_id,
-          image_url: exerciseData.image_url,
         }
       );
       loggedEntries.push(newEntry);
@@ -748,6 +775,7 @@ router.put(
   authenticate,
   demoUploadGuard,
   upload.single('image'),
+  discardUploadOnFailure,
   async (req, res, next) => {
     const { id } = req.params;
     let updateData;
@@ -833,11 +861,14 @@ router.put(
         .status(400)
         .json({ error: 'Exercise ID must be a valid UUID.' });
     }
+    // A client may clear the image with null, but only the server's own
+    // upload sets one, since the replaced path is deleted from disk. A string
+    // sent back unchanged is ignored like any other.
+    if (updateData.image_url !== null) delete updateData.image_url;
     // @ts-expect-error TS(2339): Property 'file' does not exist on type 'Request<{ ... Remove this comment to see the full error message
     if (req.file) {
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       // @ts-expect-error TS(2339): Property 'file' does not exist on type 'Request<{ ... Remove this comment to see the full error message
-      updateData.image_url = `/uploads/exercise_entries/${today}/${req.file.filename}`;
+      updateData.image_url = entryImageUrlFor(req.file.path);
     }
     // Add new fields to updateData
     updateData.distance = distance;

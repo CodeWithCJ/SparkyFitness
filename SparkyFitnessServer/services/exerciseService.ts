@@ -15,8 +15,6 @@ import nutritionixService from '../integrations/nutritionix/nutritionixService.j
 import { downloadImage } from '../utils/imageDownloader.js';
 import calorieCalculationService from './CalorieCalculationService.js';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
 import { normalizeToStringArray } from '../utils/exerciseJsonFields.js';
 import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
@@ -42,9 +40,8 @@ import {
   equipmentNameMap,
 } from '../integrations/wger/wgerNameMapping.js';
 import { ExternalProviderType } from '../types/externalProvider.js';
+import { removeUnusedEntryImage } from './exerciseEntryImageService.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 async function getExercisesWithPagination(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -505,20 +502,6 @@ async function updateExerciseEntry(
     if (!existingEntry) {
       throw new Error('Exercise entry not found.');
     }
-    // If a new image is being uploaded or the image is being cleared, delete the old one
-    if (
-      (updateData.image_url || updateData.image_url === null) &&
-      existingEntry.image_url
-    ) {
-      const relativePath = existingEntry.image_url.startsWith('/')
-        ? existingEntry.image_url.substring(1)
-        : existingEntry.image_url;
-      const oldImagePath = path.join(__dirname, '..', relativePath);
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
-        log('info', `Deleted old exercise entry image: ${oldImagePath}`);
-      }
-    }
     // If calories_burned is not provided, calculate it using the calorieCalculationService
     // An edit that changes the sets usually omits exercise_id (the entry keeps
     // its library link), so fall back to the stored one or adding a set never
@@ -555,7 +538,11 @@ async function updateExerciseEntry(
     // model reads it under the entry's lock, not from the read above: a watch
     // upload or another edit committed in between would be overwritten with
     // the values read here.
+    // The image the entry held under the lock, which a new or cleared image
+    // replaces once the update has committed.
+    let replacedImageUrl: unknown;
     const resolveUpdate = (existingEntry: Record<string, unknown>) => {
+      replacedImageUrl = existingEntry.image_url;
       let caloriesBurned = updateData.calories_burned;
       // The estimate is for the exercise read above; if another edit has
       // since moved the entry to a different one, keep the stored calories.
@@ -632,6 +619,12 @@ async function updateExerciseEntry(
     );
     if (!updatedEntry) {
       throw new Error('Exercise entry not found or not authorized to update.');
+    }
+    if (
+      (updateData.image_url || updateData.image_url === null) &&
+      replacedImageUrl !== updateData.image_url
+    ) {
+      await removeUnusedEntryImage(replacedImageUrl);
     }
     // Handle activity details updates
     if (updateData.activity_details !== undefined) {
@@ -741,18 +734,11 @@ async function deleteExerciseEntry(authenticatedUserId: any, id: any) {
     if (!entry) {
       throw new Error('Exercise entry not found.'); // Should not happen if entryOwnerId was found
     }
-    // If an image is associated with the entry, delete it from the filesystem
-    if (entry.image_url) {
-      const imagePath = path.join(__dirname, '..', entry.image_url);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-        log('info', `Deleted exercise entry image: ${imagePath}`);
-      }
-    }
     const success = await exerciseEntryDb.deleteExerciseEntry(id, entryOwnerId);
     if (!success) {
       throw new Error('Exercise entry not found or not authorized to delete.');
     }
+    await removeUnusedEntryImage(entry.image_url);
     return { message: 'Exercise entry deleted successfully.' };
   } catch (error) {
     log(

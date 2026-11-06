@@ -3,7 +3,7 @@ import {
   earliestEntryTime,
   type ExerciseEntryHrZonesInitializer,
 } from '@workspace/shared';
-import { getClient } from '../db/poolManager.js';
+import { getClient, getSystemClient } from '../db/poolManager.js';
 import type { PoolClient } from 'pg';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
@@ -1367,6 +1367,39 @@ async function getExerciseEntryOwnerId(id: any, userId: any) {
   }
 }
 
+/**
+ * Whether any diary entry or workout preset exercise, of any user, still
+ * points at this image. Read without row-level security so a file only
+ * another user's row references is never taken for unused. A failed check
+ * counts as referenced: a stray file on disk is better than a lost photo.
+ */
+async function isExerciseImageReferenced(imageUrl: string): Promise<boolean> {
+  try {
+    const client = await getSystemClient();
+    try {
+      const result = await client.query(
+        // Case-insensitive, so a differently cased spelling of the same file
+        // on a case-insensitive filesystem still counts as a reference.
+        `SELECT 1 FROM exercise_entries WHERE lower(image_url) = lower($1)
+         UNION ALL
+         SELECT 1 FROM workout_preset_exercises WHERE lower(image_url) = lower($1)
+         LIMIT 1`,
+        [imageUrl]
+      );
+      return result.rows.length > 0;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    log(
+      'warn',
+      'Could not check references to an exercise image; keeping it',
+      error
+    );
+    return true;
+  }
+}
+
 async function updateExerciseEntry(
   id: string,
   userId: string,
@@ -2456,6 +2489,7 @@ export { createExerciseEntry };
 export { getExerciseEntryById };
 export { getExerciseEntryOwnerId };
 export { updateExerciseEntry };
+export { isExerciseImageReferenced };
 export { updateExerciseEntryTelemetryOnly };
 export { _updateExerciseEntryTelemetryOnlyWithClient };
 export { updateExerciseEntriesDateByPresetEntryIdWithClient };
@@ -2490,6 +2524,7 @@ export default {
   getExerciseEntryById,
   getExerciseEntryOwnerId,
   updateExerciseEntry,
+  isExerciseImageReferenced,
   updateExerciseEntryTelemetryOnly,
   _updateExerciseEntryTelemetryOnlyWithClient,
   applyWatchTelemetryAtomically,
