@@ -263,9 +263,15 @@ jobs:
               // catalogue is checked, mobile included, since a link shown as text
               // can still send users somewhere. A file that cannot be read or
               // parsed counts as a finding.
+              // A symlink at a catalogue path either comes back as type "symlink"
+              // or, when it points at another file here, as that file under its
+              // own path: only a regular file at exactly this path is read.
               const readAt = async (path, ref) => {
                 try {
                   const { data } = await github.rest.repos.getContent({ owner, repo, path, ref });
+                  if (Array.isArray(data) || data.type !== 'file' || data.path !== path) {
+                    throw new Error(`not a regular file (${Array.isArray(data) ? 'directory' : data.type})`);
+                  }
                   return data.encoding === 'base64' && typeof data.content === 'string'
                     ? Buffer.from(data.content, 'base64').toString('utf8')
                     : null;

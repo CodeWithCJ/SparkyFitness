@@ -273,3 +273,74 @@ test('every catalogue maps to its English source, and today none adds a link', (
     });
   assert.deepEqual(found, []);
 });
+
+test('links in any scheme, unlisted or non-ASCII domains are found', () => {
+  const has = (t) => [...linksIn(t)];
+  assert.deepEqual(has('Go to example.world/login'), ['example.world/login']);
+  assert.deepEqual(has('Text sms:+15551234567'), ['sms:+15551234567']);
+  assert.deepEqual(has('sftp://evil.host/x'), ['sftp://evil.host/x']);
+  assert.deepEqual(has('myapp://open/item'), ['myapp://open/item']);
+  assert.deepEqual(has('пример.рф/вход'), ['пример.рф/вход']);
+  for (const t of ['dr.chen', 'ee.uu', 'Speichern. Fertig', 'i.e.', 'U.S.A.'])
+    assert.deepEqual(has(t), [], t);
+});
+
+test('encoded links in widget files are decoded before the check', () => {
+  const xml = (v) => `<resources><string name="t">${v}</string></resources>`;
+  const p =
+    'SparkyFitnessMobile/targets/android-widget/res/values-de/widget_strings.xml';
+  assert.deepEqual(
+    newLinks(
+      p,
+      xml('https&#x3A;&#x2F;&#x2F;example&#x2E;com'),
+      xml('Hallo'),
+      xml('Hi')
+    ),
+    ['t: https://example.com']
+  );
+  assert.deepEqual(
+    newLinks(p, xml('https\\u003a//evil\\u002ecom'), xml('Hallo'), xml('Hi')),
+    ['t: https://evil.com']
+  );
+  const strings = (v) => `"t" = "${v}";\n`;
+  const s = 'SparkyFitnessMobile/targets/widget/de.lproj/Localizable.strings';
+  assert.deepEqual(
+    newLinks(
+      s,
+      strings('https\\U003A//evil.com'),
+      strings('Hallo'),
+      strings('Hi')
+    ),
+    ['t: https://evil.com']
+  );
+});
+
+test('a malformed, partial or symlinked catalogue throws instead of passing', () => {
+  const s = 'SparkyFitnessMobile/targets/widget/de.lproj/Localizable.strings';
+  const x =
+    'SparkyFitnessMobile/targets/android-widget/res/values-de/widget_strings.xml';
+  assert.throws(() => newLinks(s, '"t" = "go evil.com"\n', null, null));
+  assert.throws(() => newLinks(s, '"a" = "ok";\n"b" = "evil.com"', null, null));
+  assert.throws(() => newLinks(s, '../../../../package.json', null, null));
+  assert.throws(() => newLinks(x, '../../../../package.json', null, null));
+  assert.throws(() =>
+    newLinks(
+      x,
+      '<resources><string name="t">a</string><string name="u">evil.com</resources>',
+      null,
+      null
+    )
+  );
+});
+
+test('hidden characters and wide dots cannot disguise a link, CJK sentences are not links', () => {
+  const has = (t) => [...linksIn(t)];
+  assert.deepEqual(has('evil​.com/login'), ['evil.com/login']);
+  assert.deepEqual(has('evil。com/login'), ['evil.com/login']);
+  assert.deepEqual(has('evil．com'), ['evil.com']);
+  assert.deepEqual(has('https：//evil.com'), ['https://evil.com']);
+  assert.deepEqual(has('请访问evil。com'), ['evil.com']);
+  assert.deepEqual(has('登录已过期。请打开'), []);
+  assert.deepEqual(has('由AI驱动。全面记录您的饮食'), []);
+  assert.deepEqual(has('家族のために。AI搭載。食事'), []);
+});

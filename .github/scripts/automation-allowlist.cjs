@@ -106,26 +106,54 @@ const COUNTRY_TLDS =
 const GENERIC_TLDS =
   'com net org info biz edu gov mil int app dev page site online store shop xyz top club live link click io ai gg ly me tv cc ws so to pro mobi name tech cloud fun icu vip win bet art blog news email zip mov';
 const TLDS = `${GENERIC_TLDS} ${COUNTRY_TLDS}`.split(' ').join('|');
+// Schemes that need no "//": mail, phone and messaging, app stores and deep
+// links, script and data URLs.
+const BARE_SCHEMES =
+  'mailto|tel|callto|sms|smsto|mms|facetime|facetime-audio|sip|sips|skype|whatsapp|tg|viber|geo|maps|market|intent|itms|itms-apps|itms-services|magnet|irc|ircs|xmpp|bitcoin|ethereum|javascript|vbscript|data|blob|file';
+// File names such as settings.json or export.csv are not addresses. .zip and
+// .mov are real top-level domains, so the listed-domain branch still finds them.
+const FILE_EXTENSIONS =
+  'json|jsonl|csv|tsv|txt|pdf|png|jpe?g|gif|svg|webp|heic|xml|ya?ml|md|html?|css|tsx?|jsx?|mjs|cjs|py|sql|log|apk|aab|ipa|gpx|fit|tcx|kml|ics|vcf|xlsx?|docx?|db|sqlite|tgz|gz|tar|bak|env|ini|conf|toml|lock|swift|kt|java|strings';
 const LINK = new RegExp(
   [
-    // A scheme: https://, http://, ftp://, mailto:, javascript:, data:, tel:
-    String.raw`\b(?:https?|ftp):\/\/[^\s<>"'\x60]+`,
-    String.raw`\b(?:mailto|javascript|data|tel):[^\s<>"'\x60]+`,
+    // Any scheme with "//": https://, sftp://, myapp://
+    String.raw`\b[a-z][a-z0-9+.-]{1,31}:\/\/[^\s<>"'\x60]+`,
+    String.raw`\b(?:${BARE_SCHEMES}):[^\s<>"'\x60]+`,
     // Protocol-relative //host and www.host
-    String.raw`(?:^|[\s(])\/\/[A-Za-z0-9][^\s<>"'\x60]*`,
+    String.raw`(?:^|[\s(])\/\/[\p{L}\p{N}][^\s<>"'\x60]*`,
     String.raw`\bwww\.[^\s<>"'\x60]+`,
-    // A bare host with a real top-level domain: example.com, bit.ly/x
+    // A bare host with a listed top-level domain: example.com, bit.ly/x
     String.raw`\b(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+(?:${TLDS})\b(?:\/[^\s<>"'\x60]*)?`,
+    // A bare host with any other top-level domain, ASCII (3+ letters, such as
+    // example.world) or not (пример.рф). The name before it must have 3+
+    // characters, which keeps abbreviations such as f.eks or dr.chen out.
+    String.raw`(?<![\p{L}\p{N}._%+@-])(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\.)*[\p{L}\p{N}][\p{L}\p{N}-]+[\p{L}\p{N}]\.(?!(?:${FILE_EXTENSIONS})(?![\p{L}\p{N}]))(?:[a-z]{3,24}|(?=\P{ASCII})\p{L}{2,24})(?![\p{L}\p{N}])(?:\/[^\s<>"'\x60]*)?`,
     // An email address
     String.raw`\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b`,
   ].join('|'),
-  'gi'
+  'giu'
 );
 
 /** The links in a piece of text, lower-cased and without trailing punctuation. */
+// Text as a reader sees and would type it: compatibility forms folded
+// (full-width letters, ． and ：), invisible format characters such as
+// zero-width spaces removed, and ideographic full stops read as dots.
+const normalize = (text) =>
+  String(text || '')
+    .normalize('NFKC')
+    .replace(/\p{Cf}/gu, '')
+    // Chinese, Japanese and Korean run sentences together around 。 and ．,
+    // which would read as host names. Blank those scripts out first, so only
+    // a Latin, Cyrillic or other address written among them is matched.
+    .replace(
+      /[\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}\p{sc=Hangul}\p{sc=Bopomofo}]/gu,
+      ' '
+    )
+    .replace(/[\u3002\uff61]/g, '.');
+
 const linksIn = (text) =>
   new Set(
-    (String(text || '').match(LINK) || []).map((l) =>
+    (normalize(text).match(LINK) || []).map((l) =>
       l
         .trim()
         .replace(/[.,;:!?)\]}'"]+$/, '')
@@ -133,7 +161,39 @@ const linksIn = (text) =>
     )
   );
 
-/** Translated strings by key: JSON values, Android <string>s or .strings pairs. */
+// Android decodes character references and \u escapes when it compiles string
+// resources, and Apple decodes \U and \u in .strings, so a link written as
+// https&#x3A;//... or https\u003a//... is checked as the text the app shows.
+const fromCode = (hex, dec) => {
+  const code = hex !== undefined ? parseInt(hex, 16) : parseInt(dec, 10);
+  return Number.isFinite(code) && code <= 0x10ffff
+    ? String.fromCodePoint(code)
+    : '';
+};
+const decodeXml = (v) =>
+  v
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/&#x([0-9a-f]+);|&#([0-9]+);/gi, (_, h, d) => fromCode(h, d))
+    .replace(
+      /&(lt|gt|amp|quot|apos);/g,
+      (_, n) => ({ lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" })[n]
+    )
+    .replace(/\\u([0-9a-f]{4})/gi, (_, h) => fromCode(h))
+    .replace(/\\(.)/g, '$1');
+const decodeStrings = (v) =>
+  v
+    .replace(/\\[Uu]([0-9a-fA-F]{4})/g, (_, h) => fromCode(h))
+    .replace(/\\(.)/g, '$1');
+
+// A whole .strings file: entries, comments and whitespace, nothing else.
+const STRINGS_TOKEN =
+  /\s+|\/\*[\s\S]*?\*\/|\/\/[^\n]*|"((?:\\.|[^"\\])*)"\s*=\s*"((?:\\.|[^"\\])*)"\s*;/y;
+
+/**
+ * Translated strings by key: JSON values, Android <string>s or .strings pairs.
+ * Throws when the text is not a whole catalogue of that kind, so a malformed or
+ * partly readable file can never hide a value from the checks.
+ */
 const entriesOf = (path, text) => {
   const out = new Map();
   if (text === null || text === undefined) return out;
@@ -146,15 +206,26 @@ const entriesOf = (path, text) => {
     };
     walk(JSON.parse(text), '');
   } else if (path.endsWith('.xml')) {
+    if (!/<resources\b[\s\S]*<\/resources>\s*$/.test(text))
+      throw new Error('not an Android resources file');
     const re = /<(string|item)\b([^>]*)>([\s\S]*?)<\/\1>/g;
     let i = 0;
+    let parsed = 0;
     for (let m = re.exec(text); m; m = re.exec(text)) {
       const name = /\bname="([^"]*)"/.exec(m[2]);
-      out.set(name ? name[1] : `#${i++}`, m[3]);
+      out.set(name ? name[1] : `#${i++}`, decodeXml(m[3]));
+      parsed++;
     }
+    if (parsed !== (text.match(/<(?:string|item)\b/g) || []).length)
+      throw new Error('a <string> or <item> could not be read');
   } else {
-    const re = /"((?:\\.|[^"\\])*)"\s*=\s*"((?:\\.|[^"\\])*)"\s*;/g;
-    for (let m = re.exec(text); m; m = re.exec(text)) out.set(m[1], m[2]);
+    STRINGS_TOKEN.lastIndex = 0;
+    while (STRINGS_TOKEN.lastIndex < text.length) {
+      const at = STRINGS_TOKEN.lastIndex;
+      const m = STRINGS_TOKEN.exec(text);
+      if (!m) throw new Error(`unreadable .strings text at offset ${at}`);
+      if (m[1] !== undefined) out.set(decodeStrings(m[1]), decodeStrings(m[2]));
+    }
   }
   return out;
 };
