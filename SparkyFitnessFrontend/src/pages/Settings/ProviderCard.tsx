@@ -542,6 +542,10 @@ export const ProviderCard = ({
   };
 
   const config = getProviderConfig();
+  // The Garmin status check reports null when the account has never synced.
+  const garminNeverSynced =
+    provider.provider_type === 'garmin' &&
+    provider.garmin_last_status_check === null;
 
   return (
     <div className="space-y-3">
@@ -981,27 +985,47 @@ export const ProviderCard = ({
           );
         })()}
 
-        {config?.hasToken && (config.lastSync || config.tokenExpires) && (
-          <div className="text-sm text-muted-foreground">
-            {config.lastSync && (
-              <span>
-                {t('settings.providerCard.lastSync2', 'Last Sync: {{value}}', {
-                  value: new Date(config.lastSync).toLocaleString(),
-                })}
-              </span>
-            )}
-            {config.lastSync && config.tokenExpires && <span> | </span>}
-            {config.tokenExpires && (
-              <span>
-                {t(
-                  'settings.providerCard.tokenExpires2',
-                  'Token Expires: {{value}}',
-                  { value: new Date(config.tokenExpires).toLocaleString() }
-                )}
-              </span>
-            )}
-          </div>
-        )}
+        {config?.hasToken &&
+          (config.lastSync || config.tokenExpires || garminNeverSynced) && (
+            <div className="text-sm text-muted-foreground">
+              {config.lastSync && (
+                <span>
+                  {t(
+                    'settings.providerCard.lastSync2',
+                    'Last Sync: {{value}}',
+                    {
+                      value: new Date(config.lastSync).toLocaleString(),
+                    }
+                  )}
+                </span>
+              )}
+              {!config.lastSync && garminNeverSynced && (
+                <span>
+                  {t('settings.providerCard.neverSynced', 'Last Sync: never')}
+                </span>
+              )}
+              {config.lastSync && config.tokenExpires && <span> | </span>}
+              {config.tokenExpires && (
+                <span>
+                  {t(
+                    'settings.providerCard.tokenExpires2',
+                    'Token Expires: {{value}}',
+                    { value: new Date(config.tokenExpires).toLocaleString() }
+                  )}
+                </span>
+              )}
+            </div>
+          )}
+
+        {provider.provider_type === 'garmin' &&
+          provider.garmin_service_reachable === false && (
+            <p className="text-sm text-destructive">
+              {t(
+                'settings.providerCard.garminServiceUnreachable',
+                'Garmin service unreachable. Syncing is not possible.'
+              )}
+            </p>
+          )}
 
         {provider.provider_type === 'intervals' && (
           <p className="text-xs text-muted-foreground mt-2">

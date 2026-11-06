@@ -675,6 +675,27 @@ async function fetchGarminNutritionDiary(
   return aggregatedResult;
 }
 
+const GARMIN_HEALTH_CHECK_TIMEOUT_MS = 3000;
+
+/**
+ * Whether the Garmin microservice answers its root route. Never throws: any
+ * failure, including a timeout, reads as unreachable.
+ */
+async function checkGarminMicroserviceHealth(): Promise<boolean> {
+  try {
+    await axios.get(`${GARMIN_MICROSERVICE_URL}/`, {
+      timeout: GARMIN_HEALTH_CHECK_TIMEOUT_MS,
+    });
+    return true;
+  } catch (error: unknown) {
+    log(
+      'warn',
+      `Garmin microservice health check failed: ${formatGarminMicroserviceError(error).detail}`
+    );
+    return false;
+  }
+}
+
 export {
   garminLogin,
   garminResumeLogin,
@@ -687,6 +708,7 @@ export {
   fetchGarminActivitiesAndWorkouts,
   fetchGarminNutritionDiary,
   formatGarminMicroserviceError,
+  checkGarminMicroserviceHealth,
 };
 
 export default {
@@ -701,4 +723,5 @@ export default {
   fetchGarminActivitiesAndWorkouts,
   fetchGarminNutritionDiary,
   formatGarminMicroserviceError,
+  checkGarminMicroserviceHealth,
 };

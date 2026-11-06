@@ -21,6 +21,21 @@ import { goalKeys } from '@/api/keys/goals';
 import { reportKeys } from '@/api/keys/reports';
 import { fastingKeys } from '@/api/keys/fasting';
 import { runProgramKeys } from '@/api/keys/runPrograms';
+import { externalProviderKeys } from '@/api/keys/settings';
+import { garminKeys } from '@/api/keys/integrations';
+
+/**
+ * After a Garmin sync: the provider list carries the Garmin status (last sync,
+ * whether the Garmin service answered), and so does useGarminStatus.
+ */
+export const useGarminStatusInvalidation = () => {
+  const queryClient = useQueryClient();
+
+  return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: externalProviderKeys.lists() });
+    queryClient.invalidateQueries({ queryKey: garminKeys.status });
+  }, [queryClient]);
+};
 
 export const useDiaryInvalidation = () => {
   const queryClient = useQueryClient();
