@@ -8,9 +8,14 @@ name: Schema Backup
 #
 # Why this shape: fork PRs can't receive pushes from GITHUB_TOKEN, so the
 # regeneration runs after merge on main instead of updating the PR branch; and
-# main's ruleset requires changes to arrive via reviewed pull request, so the
-# result is proposed as a PR rather than pushed directly. Use workflow_dispatch
-# to force a regeneration (e.g. after changing this workflow).
+# main's ruleset requires changes to arrive via pull request, so the result is
+# proposed as a PR rather than pushed directly. Use workflow_dispatch to force a
+# regeneration (e.g. after changing this workflow).
+#
+# The PR merges itself: the file is derived from migrations already on main, so
+# a review adds nothing. The merge runs in its own job with the
+# SparkyFitness-Sync app token, which can merge past main's review rule; the job
+# that runs pnpm install never sees that token.
 
 on:
   push:
@@ -40,6 +45,10 @@ jobs:
   regenerate:
     name: Regenerate db_schema_backup.sql
     runs-on: ubuntu-latest
+    outputs:
+      pr: ${{ steps.pr.outputs.pull-request-number }}
+      head-sha: ${{ steps.pr.outputs.pull-request-head-sha }}
+      operation: ${{ steps.pr.outputs.pull-request-operation }}
 
     services:
       postgres:
@@ -114,6 +123,7 @@ jobs:
       # migration merges update the same open sync PR instead of stacking new
       # ones.
       - name: Open sync PR if changed
+        id: pr
         uses: peter-evans/create-pull-request@v7
         with:
           add-paths: db_schema_backup.sql
@@ -124,7 +134,41 @@ jobs:
             Automated schema backup regeneration
             (`.github/workflows/schema-backup.yml`): every migration was
             applied to an empty PostgreSQL 18.3 database and the schema was
-            dumped with `pg_dump --schema-only --no-owner`. Review the diff
-            and merge to keep `db_schema_backup.sql` aligned with the
-            migrations.
+            dumped with `pg_dump --schema-only --no-owner`. The workflow
+            merges it right after opening it; if it is still open, the merge
+            failed, so merge it by hand to keep `db_schema_backup.sql` aligned
+            with the migrations.
           delete-branch: true
+
+  merge:
+    name: Merge the schema backup PR
+    needs: regenerate
+    # "closed" means the dump already matches main and the PR was closed.
+    if: needs.regenerate.outputs.pr != '' && needs.regenerate.outputs.operation != 'closed' && github.ref == 'refs/heads/main'
+    # The app secrets live in this environment, which only main can use.
+    environment: sync-app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout the merge action
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
+      - name: Create SparkyFitness-Sync token
+        id: app_token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          # The app's Client ID is not secret, so it lives here, not in a secret.
+          client-id: Iv23lizuGhwaizMxrvDT
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+
+      - name: Merge
+        uses: ./.github/actions/merge-automation-pr
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+          repository: ${{ github.repository }}
+          pull-request: ${{ needs.regenerate.outputs.pr }}
+          head-sha: ${{ needs.regenerate.outputs.head-sha }}

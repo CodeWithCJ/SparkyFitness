@@ -12,6 +12,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # The signing keystore, its passwords and the Maps key live in this
+    # environment, which only main and v* tags can use and which waits for a
+    # maintainer's approval, so a workflow pushed on another branch or tag
+    # cannot read them.
+    environment: release
     permissions:
       contents: write
     env:

@@ -1,0 +1,51 @@
+name: Merge an automation PR
+description: >-
+  Merges a pull request that a workflow just opened, pinned to the head commit
+  it opened it at, so a commit pushed onto the branch afterwards is never merged
+  with it. Retries while GitHub is still working out whether a new PR is
+  mergeable, and fails the step if it never merges, so the PR is not forgotten.
+
+inputs:
+  token:
+    description: Token allowed to merge, here the SparkyFitness-Sync app token.
+    required: true
+  repository:
+    description: owner/name of the repository the pull request is in.
+    required: true
+  pull-request:
+    description: Pull request number.
+    required: true
+  head-sha:
+    description: Head commit the pull request must still be at.
+    required: true
+  method:
+    description: merge, squash or rebase.
+    required: false
+    default: squash
+
+runs:
+  using: composite
+  steps:
+    - name: Merge
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ inputs.repository }}
+        PR: ${{ inputs.pull-request }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        METHOD: ${{ inputs.method }}
+      run: |
+        set -euo pipefail
+        case "$METHOD" in merge | squash | rebase) ;; *)
+          echo "::error::Unknown merge method: $METHOD"
+          exit 1
+          ;;
+        esac
+        for attempt in 1 2 3; do
+          if gh pr merge "$PR" --repo "$REPO" "--$METHOD" --delete-branch --match-head-commit "$HEAD_SHA"; then
+            exit 0
+          fi
+          if [ "$attempt" -lt 3 ]; then sleep 20; fi
+        done
+        echo "::error::PR #$PR in $REPO could not be merged. Merge it by hand."
+        exit 1

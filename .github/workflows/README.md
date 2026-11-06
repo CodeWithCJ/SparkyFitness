@@ -241,9 +241,9 @@ A mobile surface missing from the translations repo is skipped with a notice, so
 
 Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile. Others sync in as translation candidates, are reported by the i18n audit as non-blocking diagnostics, and are never bundled. The widget resources are the exception to "sync in": Android compiles every `values-*` directory and the iOS widget target ships every `.lproj` folder, so those two surfaces are pulled for registered locales only and a candidate's widget arrives on the sync after it is registered.
 
-The workflow merges the English PR there itself, unless it deletes more than 300 lines: once a key leaves the English file, Weblate's cleanup add-on deletes its translations in every language, so a large deletion waits for a maintainer, and the run fails until someone merges it. The PR here waits for a maintainer, who merges it before the release PR (see `release-please.yml` above). Every run rebuilds both branches, so fix a wrong translation in Weblate, not on the sync branch.
+The workflow merges the English PR there itself, unless it deletes more than 300 lines: once a key leaves the English file, Weblate's cleanup add-on deletes its translations in every language, so a large deletion waits for a maintainer, and the run fails until someone merges it. The PR here is opened as the SparkyFitness-Sync GitHub App, so CI runs on it and `auto-merge-bot-prs.yml` merges it once CI passes. If it is still open when the release PR is ready, merge it first (see `release-please.yml` above). Every run rebuilds both branches, so fix a wrong translation in Weblate, not on the sync branch.
 
-**Triggers**: Every night at 21:41 UTC, and manual workflow dispatch. It runs from `main` only, and the nightly run only in `CodeWithCJ/SparkyFitness`. Requires the `TRANSLATIONS_PAT` secret for the English side. GitHub sends notifications for scheduled runs only to the user who last modified the `cron` line.
+**Triggers**: Every night at 21:41 UTC, and manual workflow dispatch. It runs from `main` only, and the nightly run only in `CodeWithCJ/SparkyFitness`. Requires the `SYNC_APP_PRIVATE_KEY` secret (in the `sync-app` environment) of the SparkyFitness-Sync GitHub App, whose Client ID is written in the workflows, which is installed on both repositories (Contents and Pull requests write, Checks and Commit statuses read) and is on the bypass list of `main`'s ruleset. GitHub sends notifications for scheduled runs only to the user who last modified the `cron` line.
 
 ---
 
@@ -251,11 +251,19 @@ The workflow merges the English PR there itself, unless it deletes more than 300
 
 **Purpose**: Automatically and safely merges clean automated PRs for Translations (`i18n/*`) and Nix hashes (`nix/*`) once all CI checks pass. If there are any merge conflicts, the PR is held untouched for manual review.
 
-Umbrel package-update PRs (`umbrel/*`, from `umbrel-app-update.yml`) are **not** in the allowlist, deliberately: merging that PR is what triggers the App Store submission in `umbrel-app-submit.yml`, so it stays a manual review step. Add `'umbrel/'` to `ALLOWED_BRANCH_PREFIXES` and `'umbrel'` to `ALLOWED_LABELS` only if that gate should be removed.
+It merges with the SparkyFitness-Sync GitHub App token (`SYNC_APP_PRIVATE_KEY`), because `main`'s ruleset requires a review and only the app is on its bypass list. Since that token skips review, a PR qualifies only by its branch prefix, which needs write access to push, and not by a label, which anyone with triage access can add. Every changed file must also match the branch's allowlist (`ALLOWED_FILES`: non-English locale files for `i18n/`, `nix/*.nix` for `nix/`), so a commit pushed onto the sync branch by hand is held for review instead of merged. The app secrets live in the `sync-app` environment, limited to `main`, so a workflow pushed on another branch cannot read them. A PR opened with `GITHUB_TOKEN` gets no CI, so nothing here merges it. The Nix hashes PR is one of those; `nix-update-hashes.yml` merges it itself.
 
-Umbrel package PRs (`umbrel/*`) are **not** in the allowlist. Add `'umbrel/'` to `ALLOWED_BRANCH_PREFIXES` and `'umbrel'` to `ALLOWED_LABELS` if those should merge themselves too.
+Umbrel package-update PRs (`umbrel/*`, from `umbrel-app-update.yml`) are **not** in the allowlist, deliberately: merging that PR is what triggers the App Store submission in `umbrel-app-submit.yml`, so it stays a manual review step. Add `'umbrel/'` to `ALLOWED_BRANCH_PREFIXES` only if that gate should be removed.
 
-**Triggers**: Pull requests (opened, synchronize, labeled, ready_for_review), Check suites completed, and manual workflow dispatch
+**Triggers**: Pull requests (opened, synchronize, labeled, ready_for_review), `CI Tests` runs completed, check suites completed, and manual workflow dispatch. `check_suite` never fires for suites created by GitHub Actions, so `workflow_run` is what catches CI finishing.
+
+---
+
+#### `nix-update-hashes.yml` and `schema-backup.yml`
+
+**Purpose**: Regenerate a derived file on `main` and open a PR with it: the pnpm dependency hashes in `nix/backend.nix` and `nix/frontend.nix` after a lockfile change, and `db_schema_backup.sql` after a migration change. Each PR merges itself right away, because its content is computed from `main` and a review adds nothing. The merge is a separate `merge` job in the `sync-app` environment that calls `.github/actions/merge-automation-pr` with the SparkyFitness-Sync app token, pinned to the head commit the workflow pushed. The job that runs the Nix installer or `pnpm install` never sees that token. If the merge fails, the run fails and the PR stays open for a maintainer.
+
+**Triggers**: Pushes to `main` that touch `pnpm-lock.yaml` (Nix) or the migrations and schema tooling (schema backup), and manual workflow dispatch
 
 ---
 
@@ -354,4 +362,4 @@ This document should be updated when:
 - Trigger conditions change
 - Validation rules change
 
-Last updated: 2026-11-03
+Last updated: 2026-11-05

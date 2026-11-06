@@ -350,7 +350,7 @@ Example: `20240315103000_add_exercise_tracking.sql`
 
 2. **Write the migration SQL** — see the migration checklist in the repo's agent-docs folder (for developers and AI tools)
 
-3. **`db_schema_backup.sql` updates itself** — after merge, CI regenerates it from the migrations and opens an automated sync PR; never edit it by hand
+3. **`db_schema_backup.sql` updates itself** — after merge, CI regenerates it from the migrations and opens a sync PR that merges itself; never edit it by hand
 
 4. **Apply RLS policies** (startup applies `db/rls_policies.sql` again whenever the file or the policies in the database changed; it records what it applied in `system.rls_policy_state`)
 
