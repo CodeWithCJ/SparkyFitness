@@ -24,6 +24,9 @@ patchedDependencies:
   '@bacons/apple-targets@4.0.7':
     hash: 70bad47148fa08de18f055300ad7be730dac10a17de1153dd4c4924238cab1ef
     path: patches/@bacons__apple-targets@4.0.7.patch
+  expo-camera@57.0.6:
+    hash: db36e88db3337e6db970a437170dde6c6be1d6311d3ecfc91f93e63b255c10fa
+    path: patches/expo-camera@57.0.6.patch
   expo-modules-core@57.0.24:
     hash: dcc0c1a244cd8191578c090a9339570cf35fa149159d7401c2b275339744375d
     path: patches/expo-modules-core@57.0.24.patch
@@ -444,7 +447,7 @@ importers:
         version: 57.0.22(expo@57.0.31)
       expo-camera:
         specifier: ~57.0.5
-        version: 57.0.6(@types/emscripten@1.41.5)(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
+        version: 57.0.6(patch_hash=db36e88db3337e6db970a437170dde6c6be1d6311d3ecfc91f93e63b255c10fa)(@types/emscripten@1.41.5)(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)
       expo-constants:
         specifier: ~57.0.19
         version: 57.0.22(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))
@@ -20491,7 +20494,7 @@ snapshots:
       resolve-from: 5.0.0
       semver: 7.8.5
 
-  expo-camera@57.0.6(@types/emscripten@1.41.5)(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3):
+  expo-camera@57.0.6(patch_hash=db36e88db3337e6db970a437170dde6c6be1d6311d3ecfc91f93e63b255c10fa)(@types/emscripten@1.41.5)(expo@57.0.31)(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3):
     dependencies:
       barcode-detector: 3.2.3(@types/emscripten@1.41.5)
       expo: 57.0.31(@babel/core@7.29.0)(@expo/dom-webview@57.0.1)(expo-widgets@57.0.27)(react-native-worklets@0.13.1(@babel/core@7.29.0)(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.0)(@react-native/jest-preset@0.86.3(@babel/core@7.29.0)(react@19.2.3))(@react-native/metro-config@0.86.3(@babel/core@7.29.0))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3)(typescript@6.0.3)
