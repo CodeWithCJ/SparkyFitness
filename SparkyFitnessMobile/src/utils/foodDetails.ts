@@ -417,6 +417,39 @@ function findMetricEquivalent(
   return equivalents?.find((eq) => isMetricUnit(eq.serving_unit));
 }
 
+function normalizeServingText(text: string): string {
+  return formatServingDescription(text).toLowerCase();
+}
+
+/**
+ * Whether a description should be shown in place of the serving's own size
+ * and unit. The provider mappers fill in `${size} ${unit}` when a provider
+ * sends no description (Open Food Facts' "1 portion (100 g)" arrives as
+ * "1 serving"); that text says nothing more, and showing it would drop the
+ * metric equivalent and the localized unit (#3402).
+ *
+ * The structured label adds the metric weight of the grouped equivalent, so a
+ * restated description is only dropped when that weight is this serving's
+ * own. Groups are matched on nutrition, and a food with no calories may have
+ * grouped unrelated servings (a bottle and 100 ml of water). Beside the
+ * quantity (`perUnit`) the label names one unit, so it must be the whole
+ * serving: "oz (85 g)" for a 3 oz serving would say one ounce weighs 85 g.
+ */
+function describesServing(
+  values: Pick<FoodDisplayValues, 'servingUnit' | 'servingDescription'> &
+    Partial<Pick<FoodDisplayValues, 'servingSize' | 'calories'>>,
+  { perUnit = false }: { perUnit?: boolean } = {}
+): boolean {
+  const description = values.servingDescription;
+  if (!description || !hasMeaningfulDescription(description)) return false;
+  if (values.servingSize === undefined) return true;
+  const restatesSize =
+    normalizeServingText(description) ===
+    normalizeServingText(`${values.servingSize} ${values.servingUnit}`);
+  if (!restatesSize || !values.calories) return true;
+  return perUnit && values.servingSize !== 1;
+}
+
 export function formatVariantServingLabel(
   values: Pick<
     FoodDisplayValues,
@@ -424,7 +457,7 @@ export function formatVariantServingLabel(
   >,
   equivalents?: EquivalentUnit[]
 ): string {
-  if (hasMeaningfulDescription(values.servingDescription)) {
+  if (describesServing(values)) {
     return formatServingDescription(values.servingDescription ?? '');
   }
 
@@ -449,10 +482,11 @@ export function formatVariantServingLabel(
  * the redundant serving count, but retains a known metric equivalent.
  */
 export function formatQuantityUnitLabel(
-  values: Pick<FoodDisplayValues, 'servingUnit' | 'servingDescription'>,
+  values: Pick<FoodDisplayValues, 'servingUnit' | 'servingDescription'> &
+    Partial<Pick<FoodDisplayValues, 'servingSize' | 'calories'>>,
   equivalents?: EquivalentUnit[]
 ): string {
-  if (hasMeaningfulDescription(values.servingDescription)) {
+  if (describesServing(values, { perUnit: true })) {
     return formatServingDescription(values.servingDescription ?? '');
   }
 

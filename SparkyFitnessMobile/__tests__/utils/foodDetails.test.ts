@@ -537,6 +537,116 @@ describe('buildExternalVariantOptions', () => {
     ]);
     expect(options[0].id).toBe('ext-0');
   });
+
+  // #3402: Open Food Facts "1 portion (100 g)" arrives as a 100 g default plus
+  // a 1 serving variant with the same values, and the mappers fill in
+  // "1 serving" as its description. That filled-in text only restates the
+  // size and unit, so it must not hide the metric weight.
+  test('shows the metric weight of a serving whose description only restates it', () => {
+    const offPortion = {
+      calories: 125,
+      protein: 9.5,
+      carbs: 6.9,
+      fat: 7,
+    };
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        ...offPortion,
+        serving_size: 1,
+        serving_unit: 'serving',
+        serving_description: '1 serving',
+      }),
+      makeExternalVariant({
+        ...offPortion,
+        serving_size: 100,
+        serving_unit: 'g',
+        serving_description: '100 g',
+      }),
+    ]);
+
+    expect(options).toHaveLength(1);
+    expect(options[0]).toMatchObject({
+      id: 'ext-0',
+      label: '1 serving (100 g) (125 cal)',
+      quantityUnitLabel: 'serving (100 g)',
+      perServingLabel: '1 serving (100 g)',
+    });
+  });
+
+  test('keeps the count beside the quantity for a serving of several units', () => {
+    // FatSecret "3 oz" = 85 g: the 85 g is the whole serving, so "oz (85 g)"
+    // beside the quantity would say one ounce weighs 85 g.
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        serving_size: 3,
+        serving_unit: 'oz',
+        serving_description: '3 oz',
+        calories: 140,
+      }),
+      makeExternalVariant({
+        serving_size: 85,
+        serving_unit: 'g',
+        serving_description: '85 g',
+        calories: 140,
+      }),
+    ]);
+
+    expect(options[0]).toMatchObject({
+      label: '3 oz (85 g) (140 cal)',
+      quantityUnitLabel: '3 oz',
+    });
+  });
+
+  test('does not borrow a weight for servings that only match on zero nutrition', () => {
+    // Water: every serving matches on nutrition, so the group says nothing
+    // about which weight belongs to which serving.
+    const water = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        ...water,
+        serving_size: 1,
+        serving_unit: 'bottle',
+        serving_description: '1 bottle',
+      }),
+      makeExternalVariant({
+        ...water,
+        serving_size: 100,
+        serving_unit: 'ml',
+        serving_description: '100 ml',
+      }),
+      makeExternalVariant({
+        ...water,
+        serving_size: 500,
+        serving_unit: 'ml',
+        serving_description: '500 ml',
+      }),
+    ]);
+
+    expect(options[0]).toMatchObject({
+      label: '1 bottle (0 cal)',
+      quantityUnitLabel: '1 bottle',
+    });
+  });
+
+  test('keeps a provider description that says more than the size and unit', () => {
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        serving_size: 1,
+        serving_unit: 'cup',
+        serving_description: '1 cup, chopped',
+      }),
+      makeExternalVariant({
+        serving_size: 150,
+        serving_unit: 'g',
+        serving_description: '150 g',
+      }),
+    ]);
+
+    expect(options[0]).toMatchObject({
+      label: '1 cup, chopped (95 cal)',
+      quantityUnitLabel: '1 cup, chopped',
+    });
+  });
 });
 
 describe('resolveFoodDisplayValues', () => {
