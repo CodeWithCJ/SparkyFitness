@@ -61,7 +61,12 @@ const clockInstant = (
     : undefined;
 };
 
-/** Reads existing permission-gated endpoints independently; a missing layer cannot erase the others. */
+/**
+ * Reads permission-gated context independently so one failed source cannot erase others.
+ * Raw stress buckets include two neighboring dates on either side because timezone
+ * offsets can differ by 26 hours after import. Daily summaries retain date semantics.
+ * Partial stress failures are returned separately from the successful observations.
+ */
 export async function loadGlucoseContext(
   read: <T>(path: string) => Promise<T>,
   day: string,
@@ -86,7 +91,7 @@ export async function loadGlucoseContext(
         `/v2/medications/entries?fromDate=${previous}&toDate=${next}`
       ),
       read<{ data: HealthMetricSamples[] }>(
-        `/generic-health/samples?metric=stress&startDate=${day}&endDate=${day}`
+        `/generic-health/samples?metric=stress&startDate=${addDays(day, -2)}&endDate=${addDays(day, 2)}`
       ),
       read<{
         data: {
@@ -301,15 +306,18 @@ export async function loadGlucoseContext(
         });
     }
   if (
-    stress.status === 'rejected' &&
-    metrics.status === 'rejected' &&
+    stress.status === 'rejected' ||
+    metrics.status === 'rejected' ||
     custom.status === 'rejected'
   )
     unavailable.add('stress');
   return { events, unavailable: [...unavailable] };
 }
 
-/** Clips spans to the visible day while preserving original start/end for details. */
+/**
+ * Clips spans against the actual local-day UTC interval, including 23/25-hour days.
+ * Preserves original start/end instants for details and sorts untimed totals last.
+ */
 export function glucoseContextForDay(
   data: GlucoseContextData,
   day: string,
@@ -347,5 +355,13 @@ export function glucoseContextForDay(
         : null;
       return [{ ...event, minutes, endMinutes }];
     })
-    .sort((a, b) => (a.minutes ?? 1441) - (b.minutes ?? 1441));
+    .sort((a, b) =>
+      a.minutes === null
+        ? b.minutes === null
+          ? 0
+          : 1
+        : b.minutes === null
+          ? -1
+          : a.minutes - b.minutes
+    );
 }

@@ -141,11 +141,13 @@ describe('MeasurementsReportScreen', () => {
         'measurements.weightChart',
         'measurements.stepsChart',
         'measurements.tape',
+        'measurements.timeline',
       ],
     });
 
     const { queryByTestId, getByTestId } = renderScreen();
 
+    expect(queryByTestId('measurement-timeline')).toBeNull();
     expect(queryByTestId('weight-chart')).toBeNull();
     expect(queryByTestId('steps-chart')).toBeNull();
     expect(queryByTestId('measurements-waist')).toBeNull();
@@ -165,3 +167,21 @@ describe('MeasurementsReportScreen', () => {
     expect(getByText('No body measurements in this period')).toBeTruthy();
   });
 });
+
+it.each(['loading', 'error'] as const)(
+  'does not mount a hidden timeline in the %s branch',
+  async (state) => {
+    __resetAppPreferencesStoreForTests();
+    await initializeI18n('en');
+    useAppPreferencesStore.setState({
+      hiddenReportSections: ['measurements.timeline'],
+    });
+    mockUseMeasurementsReport.mockReturnValue({
+      report: undefined,
+      isLoading: state === 'loading',
+      isError: state === 'error',
+    });
+    const { queryByTestId } = render(<MeasurementsReportScreen />);
+    expect(queryByTestId('measurement-timeline')).toBeNull();
+  }
+);

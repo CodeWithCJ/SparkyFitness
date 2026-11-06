@@ -23,6 +23,14 @@ const zone = 'America/New_York';
 test('captures all requested context and scales food nutrient snapshots by consumed quantity', async () => {
   const data = await loadGlucoseContext(
     readWith({
+      '/v2/measurements/water-intake/2026-11-04/log': [
+        {
+          id: 'glass',
+          entry_date: day,
+          logged_at: '2026-11-04T15:30:00Z',
+          water_ml: 250,
+        },
+      ],
       '/daily-summary?date=2026-11-04': {
         foodEntries: [
           {
@@ -79,7 +87,7 @@ test('captures all requested context and scales food nutrient snapshots by consu
           taken_at: '2026-11-04T14:00:00Z',
         },
       ],
-      '/generic-health/samples?metric=stress&startDate=2026-11-04&endDate=2026-11-04':
+      '/generic-health/samples?metric=stress&startDate=2026-11-02&endDate=2026-11-06':
         {
           data: [
             {
@@ -117,6 +125,11 @@ test('captures all requested context and scales food nutrient snapshots by consu
     false
   );
   const events = glucoseContextForDay(data, day, zone);
+  expect(events.find((event) => event.id === 'drink:glass')).toMatchObject({
+    start: '2026-11-04T15:30:00Z',
+    minutes: 630,
+    value: 250,
+  });
   expect(events.find((event) => event.kind === 'exercise')).toMatchObject({
     start: '2026-11-04T04:30:00.000Z',
     end: '2026-11-04T06:00:00.000Z',
@@ -127,7 +140,11 @@ test('captures all requested context and scales food nutrient snapshots by consu
     minutes: 0,
     endMinutes: 360,
   });
-  expect(events.find((event) => event.kind === 'hydration')).toMatchObject({
+  expect(
+    events.find(
+      (event) => event.kind === 'hydration' && event.summary === 'total'
+    )
+  ).toMatchObject({
     minutes: null,
     value: 750,
   });
@@ -190,4 +207,69 @@ test('keeps an exercise span accurate through a daylight-saving clock change', (
     'Europe/Berlin'
   )[0]!;
   expect(item.endMinutes! - item.minutes!).toBe(120);
+});
+
+test('reads stress from neighboring stored buckets and filters by the current timezone day', async () => {
+  const read = jest.fn(
+    readWith({
+      '/generic-health/samples?metric=stress&startDate=2026-10-31&endDate=2026-11-04':
+        {
+          data: [
+            {
+              metric: 'stress',
+              entry_date: '2026-11-04',
+              source_provider: 'watch',
+              samples: [
+                { t: '2026-11-03T10:30:00Z', level: 35 },
+                { t: '2026-11-04T10:30:00Z', level: 40 },
+              ],
+            },
+          ],
+        },
+    })
+  );
+  const data = await loadGlucoseContext(read, '2026-11-02', 'Etc/GMT+12');
+  const events = glucoseContextForDay(data, '2026-11-02', 'Etc/GMT+12');
+  expect(events.filter((event) => event.kind === 'stress')).toHaveLength(1);
+  expect(events[0]).toMatchObject({
+    start: '2026-11-03T10:30:00Z',
+    minutes: 1350,
+    value: 35,
+  });
+});
+
+test('reports partial stress failures while retaining successful observations', async () => {
+  const data = await loadGlucoseContext(
+    readWith({
+      '/generic-health/samples?metric=stress&startDate=2026-11-02&endDate=2026-11-06':
+        new Error('403'),
+      '/generic-health/metrics?startDate=2026-11-04&endDate=2026-11-04': {
+        data: [{ avg_stress_level: 35, source_provider: 'watch' }],
+      },
+    }),
+    day,
+    zone
+  );
+  expect(data.unavailable).toContain('stress');
+  expect(data.events.find((event) => event.kind === 'stress')).toMatchObject({
+    value: 35,
+  });
+});
+
+test('sorts late observations before untimed totals on a 25-hour day', () => {
+  const data = {
+    unavailable: [],
+    events: [
+      { id: 'total', kind: 'hydration' as const, day: '2026-11-01' },
+      {
+        id: 'late',
+        kind: 'meal' as const,
+        day: '2026-11-01',
+        start: '2026-11-02T04:30:00Z',
+      },
+    ],
+  };
+  const events = glucoseContextForDay(data, '2026-11-01', 'America/New_York');
+  expect(events.map((event) => event.id)).toEqual(['late', 'total']);
+  expect(events[0]?.minutes).toBe(1470);
 });

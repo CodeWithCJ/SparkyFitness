@@ -5,6 +5,7 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 
 const readContext = <T>(path: string) =>
   apiCall<T>(path, { suppressErrorToast: true });
+/** Caches account/day context separately from diary queries; mutations invalidate the full key family. */
 export function useGlucoseContext(
   day: string,
   timezone: string,

@@ -14,6 +14,7 @@ import { useServerConnection } from '../hooks/useServerConnection';
 import { preferencesQueryKey } from '../hooks/queryKeys';
 import { updatePreferences } from '../services/api/preferencesApi';
 
+/** Saves the account display unit; failed writes leave the last loaded preference visible. */
 export default function GlucoseUnitSetting() {
   const { t } = useTranslation();
   const { isConnected } = useServerConnection();

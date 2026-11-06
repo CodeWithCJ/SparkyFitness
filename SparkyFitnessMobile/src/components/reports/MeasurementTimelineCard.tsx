@@ -63,6 +63,7 @@ const CONTEXT_COLOR_VARS = [
   '--color-hydration',
 ];
 
+/** Projects source-separated observations and context into one timezone-aware, zoomable local day. */
 export default function MeasurementTimelineCard({
   startDate,
   endDate,
@@ -319,7 +320,6 @@ export default function MeasurementTimelineCard({
       </View>
       {controlsOpen && (
         <View>
-          {' '}
           <BottomSheetPicker
             value={categoryId}
             options={categoryOptions}
@@ -408,7 +408,7 @@ export default function MeasurementTimelineCard({
           </Text>
         </Pressable>
       </View>
-      {categories.isError || readings.isError ? (
+      {readings.isError || (!rawGlucose && categories.isError) ? (
         <Text accessibilityRole="alert" className="text-text-secondary my-3">
           {t('measurementTimeline.error', {
             defaultValue: 'Could not load measurement readings.',

@@ -46,7 +46,12 @@ jest.mock('recharts', () => ({
   ReferenceLine: ({ x }: { x: number }) => (
     <span data-testid="meal-marker" data-time={x} />
   ),
-  Line: () => null,
+  Line: ({ connectNulls }: { connectNulls?: boolean }) => (
+    <span
+      data-testid="glucose-line"
+      data-connect-nulls={String(connectNulls)}
+    />
+  ),
   XAxis: ({ domain }: { domain: number[] }) => (
     <span data-testid="time-window">{JSON.stringify(domain)}</span>
   ),
@@ -81,8 +86,8 @@ it('plots actual instants, leaves sensor gaps, and converts display units', () =
   );
   expect(query).toHaveBeenCalledWith(
     'blood_glucose',
-    '2026-11-02',
-    '2026-11-04'
+    '2026-11-01',
+    '2026-11-05'
   );
   const points = () =>
     JSON.parse(screen.getByTestId('points').textContent || '[]') as Array<{
@@ -90,6 +95,9 @@ it('plots actual instants, leaves sensor gaps, and converts display units', () =
       value: number | null;
     }>;
   expect(points().map((p) => p.value)).toEqual([5, 6, null, 7]);
+  expect(
+    screen.getByTestId('glucose-line').getAttribute('data-connect-nulls')
+  ).toBe('false');
   jest
     .mocked(usePreferences)
     .mockReturnValueOnce({ ...usePreferences(), glucoseUnit: 'mg/dL' });
@@ -295,5 +303,30 @@ it('finds a local-day reading stored in an adjacent bucket after a timezone chan
   render(<GlucoseCard startDate="2026-11-03" endDate="2026-11-03" />);
   expect(JSON.parse(screen.getByTestId('points').textContent || '[]')).toEqual([
     { time: Date.parse('2026-11-04T01:00:00Z'), value: 6 },
+  ]);
+});
+
+it('keeps an observation imported two stored dates away in the current account day', () => {
+  jest
+    .mocked(usePreferences)
+    .mockReturnValueOnce({ ...usePreferences(), timezone: 'Etc/GMT+12' });
+  query.mockReturnValue(
+    result([
+      {
+        metric: 'blood_glucose',
+        entry_date: '2026-11-04',
+        source_provider: 'watch',
+        samples: [{ t: '2026-11-03T10:30:00Z', mmol_l: 5 }],
+      },
+    ])
+  );
+  render(<GlucoseCard startDate="2026-11-02" endDate="2026-11-02" />);
+  expect(query).toHaveBeenCalledWith(
+    'blood_glucose',
+    '2026-10-31',
+    '2026-11-04'
+  );
+  expect(JSON.parse(screen.getByTestId('points').textContent || '[]')).toEqual([
+    { time: Date.parse('2026-11-03T10:30:00Z'), value: 5 },
   ]);
 });

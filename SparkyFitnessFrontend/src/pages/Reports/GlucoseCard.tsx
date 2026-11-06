@@ -89,6 +89,7 @@ interface GlucoseCardProps {
   endDate: string;
 }
 
+/** Charts observed sensor instants and independently available context in the account timezone. */
 export default function GlucoseCard({ startDate, endDate }: GlucoseCardProps) {
   const { t, i18n } = useTranslation();
   const { formatDateInUserTimezone, formatTime, timezone, glucoseUnit } =
@@ -104,8 +105,8 @@ export default function GlucoseCard({ startDate, endDate }: GlucoseCardProps) {
     isError,
   } = useHealthMetricSamples(
     'blood_glucose',
-    addDays(day, -1),
-    addDays(day, 1)
+    addDays(day, -2),
+    addDays(day, 2)
   );
   // Stored buckets retain the timezone used at import. Select actual local-day
   // instants from neighboring buckets so a later timezone change loses no data.
@@ -251,7 +252,7 @@ export default function GlucoseCard({ startDate, endDate }: GlucoseCardProps) {
     return result;
   }, [dayData, source, unit]);
   const labelTime = (time: number) =>
-    `${formatDateInUserTimezone(new Date(time), 'MMM d')} ${formatTime(new Date(time).toISOString())}`;
+    `${formatDateInUserTimezone(new Date(time), 'MMM d', { asInstant: true })} ${formatTime(new Date(time), { asInstant: true })}`;
   return (
     <Card>
       <CardHeader>
@@ -350,8 +351,8 @@ export default function GlucoseCard({ startDate, endDate }: GlucoseCardProps) {
             {t('reports.glucose.resetZoom', 'Reset zoom')}
           </Button>
           <span>
-            {formatTime(new Date(from).toISOString())} –{' '}
-            {formatTime(new Date(to).toISOString())}
+            {formatTime(new Date(from), { asInstant: true })} –{' '}
+            {formatTime(new Date(to), { asInstant: true })}
           </span>
         </div>
         {isError ? (
@@ -394,7 +395,7 @@ export default function GlucoseCard({ startDate, endDate }: GlucoseCardProps) {
                   )}
                   tickFormatter={(value: number) =>
                     startDate === endDate
-                      ? formatTime(new Date(value).toISOString())
+                      ? formatTime(new Date(value), { asInstant: true })
                       : labelTime(value)
                   }
                 />

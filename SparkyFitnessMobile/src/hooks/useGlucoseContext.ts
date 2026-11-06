@@ -11,6 +11,7 @@ const readContext = <T>(path: string) =>
     operation: 'fetch recorded context',
     logResponseBody: false,
   });
+/** Refreshes independent context sources on focus without hiding successful layers on partial failure. */
 export function useGlucoseContext(
   day: string,
   timezone: string,

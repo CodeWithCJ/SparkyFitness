@@ -227,6 +227,7 @@ function assertValidTemperatureUnit(
     );
   }
 }
+/** Rejects unsupported display units before persistence, while allowing omitted partial updates. */
 function assertValidGlucoseUnit(
   preferenceData: Pick<UserPreferencesMutator, 'default_glucose_unit'>
 ) {

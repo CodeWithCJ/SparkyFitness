@@ -25,16 +25,22 @@ jest.mock('../../src/components/BottomSheetPicker', () => {
   const { Pressable, Text } = require('react-native');
   return ({
     options,
+    value,
     onSelect,
   }: {
+    value: string;
     options: { value: string; label: string }[];
     onSelect: (value: string) => void;
-  }) =>
-    options.map((option) => (
+  }) => [
+    <Text key="selected" testID="selected-unit">
+      {value}
+    </Text>,
+    ...options.map((option) => (
       <Pressable key={option.value} onPress={() => onSelect(option.value)}>
         <Text>{option.label}</Text>
       </Pressable>
-    ));
+    )),
+  ];
 });
 beforeAll(() => initializeI18n());
 beforeEach(() => {
@@ -85,6 +91,6 @@ test('reports save failures without changing the displayed account preference', 
       })
     )
   );
-  expect(screen.getByText('mmol/L')).toBeTruthy();
+  expect(screen.getByTestId('selected-unit').props.children).toBe('mmol/L');
   client.clear();
 });

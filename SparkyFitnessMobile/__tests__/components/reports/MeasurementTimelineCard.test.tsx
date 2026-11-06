@@ -233,14 +233,27 @@ test('updates visible event cards after a native zoom or pan settles', () => {
   render(
     <MeasurementTimelineCard startDate="2026-11-02" endDate="2026-11-03" />
   );
-  const react = jest.mocked(useAnimatedReaction).mock.calls.at(-1)![1];
+  const [prepare, react] = jest.mocked(useAnimatedReaction).mock.calls.at(-1)!;
+  const state = screen.getByTestId('measurement-chart').props
+    .transformState as {
+    panActive: { value: boolean };
+    zoomActive: { value: boolean };
+    matrix: { value: number[] };
+  };
+  state.panActive.value = false;
+  state.zoomActive.value = false;
   // Plot bounds are 0..144: this transform shows 12:00..18:00.
-  act(() => react({ scaleX: 4, translateX: -288 } as never, null));
+  state.matrix.value = [4, 0, 0, -288];
+  act(() => react(prepare(), null));
   expect(screen.getByText('No timed events in this window.')).toBeTruthy();
   expect(screen.queryByText(/Oatmeal/)).toBeNull();
   expect(screen.queryByText(/10:05.*6 mmol/)).toBeNull();
   // 09:00..15:00 contains the meal and workout again.
-  act(() => react({ scaleX: 4, translateX: -216 } as never, null));
+  state.matrix.value = [4, 0, 0, -216];
+  state.panActive.value = true;
+  expect(prepare()).toBeNull();
+  state.panActive.value = false;
+  act(() => react(prepare(), null));
   expect(screen.getByTestId('mobile-events-in-view')).toBeTruthy();
   expect(screen.getByText(/Oatmeal/)).toBeTruthy();
   expect(screen.getByText(/10:00.*10:30/)).toBeTruthy();
@@ -260,4 +273,16 @@ test('uses the account glucose unit and leaves custom-category units unchanged',
   fireEvent.press(screen.getByLabelText('Measurement: CGM import'));
   // Custom numeric values already use the unit declared by their category.
   expect(screen.getByText(/6 mg\/dL/)).toBeTruthy();
+});
+
+test('keeps raw glucose visible when custom category metadata fails', () => {
+  timeline.mockReturnValue({
+    categories: { data: [], isError: true },
+    readings: { data: readings, isLoading: false, isError: false },
+  } as unknown as ReturnType<typeof useMeasurementTimeline>);
+  render(
+    <MeasurementTimelineCard startDate="2026-11-02" endDate="2026-11-03" />
+  );
+  expect(screen.getByTestId('measurement-chart')).toBeTruthy();
+  expect(screen.queryByText('Could not load measurement readings.')).toBeNull();
 });

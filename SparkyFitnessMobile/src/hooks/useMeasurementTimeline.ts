@@ -10,15 +10,20 @@ import { useRefetchOnFocus } from './useRefetchOnFocus';
 import { addDays } from '../utils/dateUtils';
 import type { MeasurementReading } from '@workspace/shared';
 
+/**
+ * Loads source-preserving observations, selecting timestamp-day custom reads and
+ * wide glucose buckets. The card projects actual instants into the account day.
+ */
 export function useMeasurementTimeline(categoryId: string, day: string) {
   const categories = useCustomCategories();
   const raw = categoryId === 'blood_glucose';
   const custom = useCustomMeasurementsByDate(day, {
     enabled: !raw && !!categoryId,
+    byTimestamp: true,
   });
   const glucose = useQuery({
     queryKey: [...glucoseSamplesQueryKeyRoot, day],
-    queryFn: () => fetchGlucoseSamples(addDays(day, -1), addDays(day, 1)),
+    queryFn: () => fetchGlucoseSamples(addDays(day, -2), addDays(day, 2)),
     enabled: raw,
   });
   const data = useMemo<MeasurementReading[]>(() => {
@@ -34,7 +39,7 @@ export function useMeasurementTimeline(categoryId: string, day: string) {
             }))
           : []
       );
-    // The day endpoint preserves source and timestamp, unlike the legacy range endpoint.
+    // The opt-in timestamp day ignores imported bucket dates and retains source attribution.
     return (custom.data ?? [])
       .filter(
         (entry) =>

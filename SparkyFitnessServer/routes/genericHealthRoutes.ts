@@ -149,6 +149,8 @@ const getHealthMetricSamplesHandler: RequestHandler = async (
  *       samples linked to a workout or sleep session are kept in both modes.
  *       In `merge` mode `samples` may be empty, which clears this source's
  *       samples inside `window` (for a window that has no readings left).
+ *       For metric blood_glucose, every sample requires t and mmol_l (mmol/L,
+ *       greater than zero and at most 100); source_bundle_id is optional.
  *       See docs/src/developer/api-reference.md for the field of each metric.
  *     security:
  *       - cookieAuth: []
@@ -185,6 +187,15 @@ const getHealthMetricSamplesHandler: RequestHandler = async (
  *                   required: [t]
  *                   properties:
  *                     t: { type: string, format: date-time }
+ *                     mmol_l:
+ *                       type: number
+ *                       minimum: 0
+ *                       exclusiveMinimum: true
+ *                       maximum: 100
+ *                       description: Required for blood_glucose only; concentration in mmol/L.
+ *                     source_bundle_id:
+ *                       type: string
+ *                       description: Optional source application identifier for blood_glucose.
  *     responses:
  *       200:
  *         description: Samples stored; returns days and samples written.

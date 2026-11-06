@@ -81,6 +81,7 @@ async function setOpenFoodFactsContributionPreferences(
   }
 }
 
+/** Applies partial account preferences; omitted units are preserved atomically by COALESCE. */
 async function updateUserPreferences(
   userId: string,
   preferenceData: UserPreferencesMutator
@@ -272,6 +273,7 @@ async function bootstrapUserTimezoneIfUnset(userId: any, timezone: any) {
     client.release();
   }
 }
+/** Creates defaults for new accounts and preserves omitted preference fields on conflict. */
 async function upsertUserPreferences(
   preferenceData: UserPreferencesInitializer
 ) {

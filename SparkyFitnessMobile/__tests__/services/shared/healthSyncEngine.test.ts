@@ -717,6 +717,18 @@ describe('runForegroundSync', () => {
         expect.any(Date),
         expect.anything()
       );
+      const { postHealthMetricSamples } =
+        require('../../../src/services/api/healthSamplesApi') as {
+          postHealthMetricSamples: jest.Mock;
+        };
+      expect(postHealthMetricSamples).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metric: 'blood_glucose',
+          samples: [{ t: measuredAt.toISOString(), mmol_l: 5 }],
+        }),
+        expect.anything(),
+        expect.objectContaining({ id: 'server-1' })
+      );
       expect(provider.readRaw).not.toHaveBeenCalledWith(
         'HeartRate',
         expect.anything(),

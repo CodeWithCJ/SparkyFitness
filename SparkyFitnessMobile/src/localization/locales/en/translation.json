@@ -8420,7 +8420,8 @@
       "restingHrChart": "Resting heart rate chart",
       "heartRateRangeTimeline": "Average heart rate by day",
       "heartRateDayTimeline": "Heart rate through the day",
-      "heartRateZones": "Intensity zones"
+      "heartRateZones": "Intensity zones",
+      "measurementTimeline": "Measurement timeline"
     },
     "hydrationSections": "Hydration report",
     "measurementsSections": "Measurements report",

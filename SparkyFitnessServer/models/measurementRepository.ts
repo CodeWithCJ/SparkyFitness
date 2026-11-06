@@ -1,4 +1,5 @@
 import type { PoolClient } from 'pg';
+import type { CustomMeasurementsResponse } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 import foodRepository from './foodMisc.js';
@@ -2270,6 +2271,33 @@ async function getWaterTotalsByDateRange(
   }
 }
 
+/** Reads observed instants in one half-open local-day window, retaining source metadata. */
+async function getCustomMeasurementTimelineEntries(
+  userId: string,
+  authenticatedUserId: string,
+  start: Date,
+  end: Date
+): Promise<CustomMeasurementsResponse[]> {
+  const client: PoolClient = await getClient(userId, authenticatedUserId);
+  try {
+    const result = await client.query<CustomMeasurementsResponse>(
+      `SELECT cm.*, json_build_object(
+         'name', cc.name, 'display_name', cc.display_name,
+         'measurement_type', cc.measurement_type, 'frequency', cc.frequency,
+         'data_type', cc.data_type
+       ) AS custom_categories
+       FROM custom_measurements cm
+       JOIN custom_categories cc ON cm.category_id = cc.id
+       WHERE cm.user_id = $1 AND cm.entry_timestamp >= $2 AND cm.entry_timestamp < $3
+       ORDER BY cm.entry_timestamp, cm.id`,
+      [userId, start, end]
+    );
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
 export default {
   upsertStepData,
   upsertWaterData,
@@ -2301,6 +2329,7 @@ export default {
   deleteCustomCategory,
   getCustomMeasurementEntries,
   getCustomMeasurementEntriesByDate,
+  getCustomMeasurementTimelineEntries,
   getCustomMeasurementEntriesByDateRange,
   getLatestManualCustomEntriesOnOrBeforeDate,
   getCheckInMeasurementsByDateRange,

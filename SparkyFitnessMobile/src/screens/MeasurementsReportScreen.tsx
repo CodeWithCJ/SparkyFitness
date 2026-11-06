@@ -78,10 +78,12 @@ const MeasurementsReportScreen: React.FC<
   if (isLoading || isError) {
     return (
       <ReportScreenLayout header={header} {...rangeProps}>
-        <MeasurementTimelineCard
-          startDate={reportWindow.startDate}
-          endDate={reportWindow.endDate}
-        />
+        {isSectionShown('measurements.timeline') && (
+          <MeasurementTimelineCard
+            startDate={reportWindow.startDate}
+            endDate={reportWindow.endDate}
+          />
+        )}
         <StatusView
           loading={isLoading}
           icon="chart-bar"
@@ -402,10 +404,12 @@ const MeasurementsReportScreen: React.FC<
           ) : null}
         </>
       )}
-      <MeasurementTimelineCard
-        startDate={reportWindow.startDate}
-        endDate={reportWindow.endDate}
-      />
+      {isSectionShown('measurements.timeline') && (
+        <MeasurementTimelineCard
+          startDate={reportWindow.startDate}
+          endDate={reportWindow.endDate}
+        />
+      )}
     </ReportScreenLayout>
   );
 };
