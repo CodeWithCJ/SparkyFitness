@@ -1738,7 +1738,9 @@ describe('FoodEntryAddScreen', () => {
     };
 
     // A local food switched to oz, an unsaved unit, picked for an NFC tag.
-    const pickConvertedUnitForTag = async () => {
+    const pickConvertedUnitForTag = async (
+      extraParams: Record<string, unknown> = {}
+    ) => {
       consumePendingActionTagSelection();
       mockCreateVariant.mockResolvedValue({
         id: 'variant-oz-new',
@@ -1786,13 +1788,16 @@ describe('FoodEntryAddScreen', () => {
             fat: 4,
           },
         },
+        ...extraParams,
       });
 
       await waitFor(() => {
-        expect(navigation.setParams).toHaveBeenCalledWith({
-          adjustedValues: undefined,
-          adjustedUnitSelection: undefined,
-        });
+        expect(navigation.setParams).toHaveBeenCalledWith(
+          expect.objectContaining({
+            adjustedValues: undefined,
+            adjustedUnitSelection: undefined,
+          })
+        );
       });
 
       fireEvent.press(screen.getByText('Add Food'));
@@ -1841,7 +1846,10 @@ describe('FoodEntryAddScreen', () => {
     });
 
     // The saved cup serving with its nutrition adjusted to `calories`.
-    const pickAdjustedServingForTag = async (calories: string) => {
+    const pickAdjustedServingForTag = async (
+      calories: string,
+      extraParams: Record<string, unknown> = {}
+    ) => {
       consumePendingActionTagSelection();
       const screen = renderScreen({
         item: baseLocalItem,
@@ -1859,6 +1867,7 @@ describe('FoodEntryAddScreen', () => {
           waterMl: '',
           alcoholG: '',
         },
+        ...extraParams,
       });
 
       await waitFor(() => {
@@ -1884,6 +1893,34 @@ describe('FoodEntryAddScreen', () => {
       expect(navigation.dispatch).not.toHaveBeenCalled();
       expect(mockCreateVariant).not.toHaveBeenCalled();
       expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    it('refuses an NFC tag pick whose saved serving had only a custom nutrient changed here', async () => {
+      await pickAdjustedServingForTag('100', {
+        adjustedCustomNutrients: { omega3: 2 },
+      });
+
+      await waitFor(() =>
+        expect(mockToast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1: "Choose one of this food's servings",
+          })
+        )
+      );
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    it('saves adjusted custom nutrients on the serving made for an NFC tag', async () => {
+      await pickConvertedUnitForTag({ adjustedCustomNutrients: { omega3: 2 } });
+
+      expect(mockCreateVariant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serving_unit: 'oz',
+          custom_nutrients: { omega3: 2 },
+        })
+      );
     });
 
     it('hands the saved serving to the NFC tag form when adjusted nutrition was saved to it', async () => {

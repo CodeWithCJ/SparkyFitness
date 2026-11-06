@@ -108,6 +108,7 @@ import {
   formatQuantityUnitLabel,
   formatServingSizeDisplay,
   formatVariantLabel,
+  nutritionMatches,
   formatVariantServingLabel,
   resolveFoodDisplayValues,
   resolveLocalPickerVariantId,
@@ -1083,22 +1084,29 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     let tagVariantId = variantId;
     let tagUnit = displayValues.servingUnit;
     const saved = variants?.find((variant) => variant.id === variantId);
+    const isAdjusted =
+      !!adjustedValues || adjustedCustomNutrients !== undefined;
+    // Nutrition adjusted here without saving it for future use: each tap would
+    // log the saved serving's values, not the ones shown. Custom nutrients come
+    // back from the adjust screen apart from the form values.
+    const adjustedAwayFrom = (variant: FoodUnitVariant) =>
+      (!!adjustedValues &&
+        hasFoodFormChanges(
+          buildFormValuesFromVariant(variant),
+          adjustedValues,
+          FOOD_VARIANT_FIELDS
+        )) ||
+      (adjustedCustomNutrients !== undefined &&
+        !nutritionMatches(
+          { custom_nutrients: variant.custom_nutrients },
+          { custom_nutrients: adjustedCustomNutrients }
+        ));
     const isSavedServing = saved
       ? toNonEmptyString(saved.serving_unit, 'serving').trim().toLowerCase() ===
-          tagUnit.trim().toLowerCase() &&
-        // Nutrition adjusted here without saving it for future use: each tap
-        // would log the saved serving's values, not the ones shown.
-        !(
-          adjustedValues &&
-          hasFoodFormChanges(
-            buildFormValuesFromVariant(saved),
-            adjustedValues,
-            FOOD_VARIANT_FIELDS
-          )
-        )
+          tagUnit.trim().toLowerCase() && !adjustedAwayFrom(saved)
       : // Servings not loaded: the item's own serving, unless one was picked
         // or its nutrition was adjusted (nothing to compare it with).
-        !pendingVariantToPersist && !adjustedValues;
+        !pendingVariantToPersist && !isAdjusted;
     if (!isSavedServing) {
       if (!pendingVariantToPersist) {
         Toast.show({
@@ -1114,7 +1122,10 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         return;
       }
       const created = await createVariant(
-        buildCreateFoodVariantPayload(activeItem.id, pendingVariantToPersist)
+        buildCreateFoodVariantPayload(activeItem.id, {
+          ...pendingVariantToPersist,
+          custom_nutrients: selectedCustomNutrients ?? null,
+        })
       );
       // Left while the serving was saving: handing the pick back now would pop
       // whatever screen is on top and leave a stale pick for the next tag.
