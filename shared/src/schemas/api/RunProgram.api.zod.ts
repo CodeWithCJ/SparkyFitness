@@ -206,7 +206,7 @@ export type UpsertRunProgramBody = z.infer<typeof upsertRunProgramBodySchema>;
 export const completeRunProgramWorkoutBodySchema = z.object({
   index: z.number().int().min(0).max(1000),
   /** The program the workout belonged to; ignored if the person has switched since. */
-  program_id: z.string().min(1).max(40).optional(),
+  program_id: z.string().min(1).max(50).optional(),
   /** The person's local day, recorded as the last day a workout was done. */
   day: runDayStringSchema.optional(),
   /** The diary exercise entry the workout was done as, so it can be shown as part of the program. */
@@ -221,7 +221,7 @@ export const rateRunProgramWorkoutBodySchema = z.object({
   index: z.number().int().min(0).max(1000),
   rating: z.number().int().min(1).max(10),
   /** The program the workout belonged to; ignored if the person has switched since. */
-  program_id: z.string().min(1).max(40).optional(),
+  program_id: z.string().min(1).max(50).optional(),
 });
 export type RateRunProgramWorkoutBody = z.infer<
   typeof rateRunProgramWorkoutBodySchema
