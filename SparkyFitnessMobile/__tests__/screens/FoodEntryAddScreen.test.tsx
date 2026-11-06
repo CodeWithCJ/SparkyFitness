@@ -49,6 +49,7 @@ const mockNavigation = {
   setParams: jest.fn(),
   dispatch: jest.fn(),
   setOptions: jest.fn(),
+  isFocused: jest.fn(() => true),
 } as any;
 
 jest.mock('@react-navigation/native', () => {
@@ -1735,6 +1736,210 @@ describe('FoodEntryAddScreen', () => {
       vitaminA: '',
       vitaminC: '',
     };
+
+    // A local food switched to oz, an unsaved unit, picked for an NFC tag.
+    const pickConvertedUnitForTag = async (
+      extraParams: Record<string, unknown> = {}
+    ) => {
+      consumePendingActionTagSelection();
+      mockCreateVariant.mockResolvedValue({
+        id: 'variant-oz-new',
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'oz',
+        calories: 120,
+        protein: 10,
+        carbs: 8,
+        fat: 4,
+      });
+      const screen = renderScreen({
+        item: baseLocalItem,
+        pickerMode: 'action-tag',
+        returnDepth: 2,
+        adjustedValues: {
+          name: 'Greek Yogurt',
+          brand: 'Sparky',
+          servingSize: '1',
+          servingUnit: 'oz',
+          calories: '120',
+          protein: '10',
+          carbs: '8',
+          fat: '4',
+          fiber: '',
+          saturatedFat: '',
+          sodium: '',
+          sugars: '',
+          transFat: '',
+          potassium: '',
+          calcium: '',
+          iron: '',
+          cholesterol: '',
+          vitaminA: '',
+          vitaminC: '',
+        },
+        adjustedUnitSelection: {
+          kind: 'draft',
+          variant: {
+            serving_size: 1,
+            serving_unit: 'oz',
+            calories: 120,
+            protein: 10,
+            carbs: 8,
+            fat: 4,
+          },
+        },
+        ...extraParams,
+      });
+
+      await waitFor(() => {
+        expect(navigation.setParams).toHaveBeenCalledWith(
+          expect.objectContaining({
+            adjustedValues: undefined,
+            adjustedUnitSelection: undefined,
+          })
+        );
+      });
+
+      fireEvent.press(screen.getByText('Add Food'));
+      await waitFor(() => expect(mockCreateVariant).toHaveBeenCalledTimes(1));
+    };
+
+    it('saves a converted unit as a serving before handing a local food to the NFC tag form', async () => {
+      await pickConvertedUnitForTag();
+
+      await waitFor(() =>
+        expect(navigation.dispatch).toHaveBeenCalledWith({
+          type: 'POP',
+          payload: { count: 2 },
+        })
+      );
+      expect(mockCreateVariant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          food_id: 'food-1',
+          serving_size: 1,
+          serving_unit: 'oz',
+          calories: 120,
+          protein: 10,
+          carbs: 8,
+          fat: 4,
+        })
+      );
+      expect(consumePendingActionTagSelection()).toEqual(
+        expect.objectContaining({
+          kind: 'food',
+          foodId: 'food-1',
+          variantId: 'variant-oz-new',
+          unit: 'oz',
+        })
+      );
+      expect(mockAddEntry).not.toHaveBeenCalled();
+    });
+
+    it('drops the NFC tag pick when the screen was left while the serving saved', async () => {
+      navigation.isFocused.mockReturnValueOnce(false);
+
+      await pickConvertedUnitForTag();
+
+      await waitFor(() => expect(navigation.isFocused).toHaveBeenCalled());
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    // The saved cup serving with its nutrition adjusted to `calories`.
+    const pickAdjustedServingForTag = async (
+      calories: string,
+      extraParams: Record<string, unknown> = {}
+    ) => {
+      consumePendingActionTagSelection();
+      const screen = renderScreen({
+        item: baseLocalItem,
+        pickerMode: 'action-tag',
+        returnDepth: 2,
+        adjustedValues: {
+          ...draftAdjustedValues,
+          servingSize: '1',
+          servingUnit: 'cup',
+          calories,
+          protein: '15',
+          carbs: '6',
+          fat: '0',
+          caffeineMg: '',
+          waterMl: '',
+          alcoholG: '',
+        },
+        ...extraParams,
+      });
+
+      await waitFor(() => {
+        expect(navigation.setParams).toHaveBeenCalledWith(
+          expect.objectContaining({ adjustedValues: undefined })
+        );
+      });
+
+      fireEvent.press(screen.getByText('Add Food'));
+    };
+
+    it('refuses an NFC tag pick whose saved serving had its nutrition changed here', async () => {
+      await pickAdjustedServingForTag('150');
+
+      await waitFor(() =>
+        expect(mockToast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1: "Choose one of this food's servings",
+          })
+        )
+      );
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(mockCreateVariant).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    it('refuses an NFC tag pick whose saved serving had only a custom nutrient changed here', async () => {
+      await pickAdjustedServingForTag('100', {
+        adjustedCustomNutrients: { omega3: 2 },
+      });
+
+      await waitFor(() =>
+        expect(mockToast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            text1: "Choose one of this food's servings",
+          })
+        )
+      );
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingActionTagSelection()).toBeNull();
+    });
+
+    it('saves adjusted custom nutrients on the serving made for an NFC tag', async () => {
+      await pickConvertedUnitForTag({ adjustedCustomNutrients: { omega3: 2 } });
+
+      expect(mockCreateVariant).toHaveBeenCalledWith(
+        expect.objectContaining({
+          serving_unit: 'oz',
+          custom_nutrients: { omega3: 2 },
+        })
+      );
+    });
+
+    it('hands the saved serving to the NFC tag form when adjusted nutrition was saved to it', async () => {
+      await pickAdjustedServingForTag('100');
+
+      await waitFor(() =>
+        expect(navigation.dispatch).toHaveBeenCalledWith({
+          type: 'POP',
+          payload: { count: 2 },
+        })
+      );
+      expect(consumePendingActionTagSelection()).toEqual(
+        expect.objectContaining({
+          kind: 'food',
+          variantId: 'variant-1',
+          unit: 'cup',
+        })
+      );
+    });
 
     it('preserves real selectedVariantId for local foods when draft is returned', async () => {
       // Regression: draft branch was calling setSelectedVariantId(draftId) for

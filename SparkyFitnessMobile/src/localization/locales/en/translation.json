@@ -4070,7 +4070,9 @@
       "selectFoodInstead": "Select a food instead of another meal.",
       "savedFoodUnitFailed": "Saved food, but not the new unit",
       "savedFoodUnitFailedDetails": "You can still add the food, then try saving that unit again.",
-      "chooseDifferentServing": "Choose a different serving."
+      "chooseDifferentServing": "Choose a different serving.",
+      "tagNeedsSavedServing": "Choose one of this food's servings",
+      "tagNeedsSavedServingDetails": "A tag logs a saved serving each time, so a serving changed here cannot be used."
     },
     "actions": {
       "adjustNutrition": "Adjust nutrition",
