@@ -2011,6 +2011,32 @@ async function getRecentSessionsForExercise(
 ): Promise<RecentSessionRow[]> {
   const client = await getClient(userId);
   try {
+    // Preset scoping must not leave a brand-new preset with an empty history
+    // card: when the preset itself has no qualifying sessions yet, fall back to
+    // the exercise's global recent sessions so the in-progress view still has
+    // something to compare against (issue: presetId-scoped stats returned []
+    // for a fresh preset while lastSet/global stats were populated).
+    const scopedOrGlobalPresetId =
+      presetId !== null &&
+      (
+        await client.query(
+          `SELECT 1
+             FROM exercise_entries ee
+             JOIN exercise_preset_entries epe ON epe.id = ee.exercise_preset_entry_id
+            WHERE ee.user_id = $1
+              AND ee.exercise_id = $2
+              AND epe.workout_preset_id = $3
+              AND EXISTS (
+                SELECT 1 FROM exercise_entry_sets ees
+                 WHERE ees.exercise_entry_id = ee.id
+                   AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL OR ees.duration IS NOT NULL OR ees.distance IS NOT NULL)
+              )
+            LIMIT 1`,
+          [userId, exerciseId, presetId]
+        )
+      ).rowCount
+        ? presetId
+        : null;
     const result = await client.query(
       `SELECT
          ee.entry_date::TEXT AS entry_date,
@@ -2041,7 +2067,7 @@ async function getRecentSessionsForExercise(
          )
        ORDER BY ee.entry_date DESC, ee.created_at DESC, ee.id DESC
        LIMIT $4`,
-      [userId, exerciseId, excludePresetEntryId, limit, presetId]
+      [userId, exerciseId, excludePresetEntryId, limit, scopedOrGlobalPresetId]
     );
     return result.rows;
   } finally {

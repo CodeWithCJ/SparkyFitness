@@ -490,7 +490,10 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
     expect(scoped.map((s) => Number(s.sets?.[0]?.weight))).toEqual([120, 100]);
   });
 
-  it('returns no recent sessions for a preset that was never performed', async () => {
+  it('falls back to global recent sessions for a preset that was never performed', async () => {
+    // Preset B has no history at all — without the fallback this returned []
+    // and left the in-progress card with no baseline. Now it degrades to the
+    // exercise's global recent sessions, identical to omitting presetId.
     const scoped = await exerciseEntryDb.getRecentSessionsForExercise(
       U,
       E6,
@@ -498,7 +501,14 @@ describe.runIf(RUN)('exercise stats SQL (warmup + session exclusion)', () => {
       undefined,
       presetBId
     );
-    expect(scoped).toEqual([]);
+    expect(scoped.map((s) => s.entry_date)).toEqual([
+      '2026-07-07',
+      '2026-07-05',
+      '2026-07-01',
+    ]);
+    expect(scoped.map((s) => Number(s.sets?.[0]?.weight))).toEqual([
+      200, 120, 100,
+    ]);
   });
 
   it('is unaffected by presetId scoping when presetId is omitted', async () => {
