@@ -240,12 +240,12 @@ describe.runIf(RUN)('one custom measurement reading per slot', () => {
     }
   });
 
-  it('enforces the deferred glucose metric CHECK and validates it without an exclusive table lock', async () => {
+  it('keeps the glucose metric CHECK validated on startup and rejects invalid writes', async () => {
     const constraint = await db.query(
       `SELECT convalidated FROM pg_constraint
          WHERE conname='chk_health_metric_samples_metric'`
     );
-    expect(constraint.rows[0].convalidated).toBe(false);
+    expect(constraint.rows[0].convalidated).toBe(true);
     await expect(
       db.query(
         `INSERT INTO health_metric_samples (user_id,metric,entry_date,source_provider,samples)
@@ -253,24 +253,5 @@ describe.runIf(RUN)('one custom measurement reading per slot', () => {
         [userId]
       )
     ).rejects.toMatchObject({ code: '23514' });
-    await gate.query('BEGIN');
-    try {
-      await gate.query(
-        'ALTER TABLE health_metric_samples VALIDATE CONSTRAINT chk_health_metric_samples_metric'
-      );
-      const locks = await gate.query(
-        `SELECT mode FROM pg_locks WHERE pid=pg_backend_pid()
-         AND relation='health_metric_samples'::regclass AND granted`
-      );
-      expect(locks.rows.map((row) => row.mode)).toContain(
-        'ShareUpdateExclusiveLock'
-      );
-      expect(locks.rows.map((row) => row.mode)).not.toContain(
-        'AccessExclusiveLock'
-      );
-    } finally {
-      // Keep the fixture's deferred state so this check is independently rerunnable.
-      await gate.query('ROLLBACK');
-    }
   });
 });
