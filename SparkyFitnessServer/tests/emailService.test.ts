@@ -1,4 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import fs from 'fs';
+import path from 'path';
 import type { Transporter } from 'nodemailer';
 import {
   getEmailTransportConfig,
@@ -8,6 +10,73 @@ import {
   setTransporter,
   resetTransporter,
 } from '../services/emailService.js';
+import {
+  clearEmailCatalogCache,
+  getEmailTemplate,
+  normalizeEmailLanguage,
+  resolveEmailLanguage,
+} from '../services/emailTranslations.js';
+import { getUserPreferences } from '../models/preferenceRepository.js';
+import { findUserIdByEmail } from '../models/userRepository.js';
+
+vi.mock('../models/preferenceRepository.js', () => ({
+  getUserPreferences: vi.fn(),
+}));
+vi.mock('../models/userRepository.js', () => ({
+  findUserIdByEmail: vi.fn(),
+}));
+
+// A German catalog that exists only for these tests. Non-English locale files
+// come from Weblate and are never committed by hand.
+const germanCatalog = {
+  email: {
+    passwordReset: {
+      subject: 'SparkyFitness: Passwort zurücksetzen',
+      bodyHtml:
+        '<p>Passwort zurücksetzen:</p><p><a href="{{resetUrl}}">{{resetUrl}}</a></p>',
+      bodyText: 'Passwort zurücksetzen:\n\n{{resetUrl}}',
+    },
+    mfaCode: {
+      subject: 'Dein SparkyFitness-Code',
+      bodyHtml: '<p>Dein Code:</p><h3>{{code}}</h3>',
+      // bodyText left out on purpose: falls back to English on its own
+    },
+  },
+};
+
+function mockLocaleFiles(files: Record<string, unknown>) {
+  const realExists = fs.existsSync;
+  const realRead = fs.readFileSync;
+  const find = (file: fs.PathLike | number) =>
+    Object.entries(files).find(([language]) =>
+      String(file).endsWith(path.join('locales', language, 'translation.json'))
+    );
+  vi.spyOn(fs, 'existsSync').mockImplementation((file) =>
+    find(file as fs.PathLike) ? true : realExists(file)
+  );
+  vi.spyOn(fs, 'readFileSync').mockImplementation(((
+    file: fs.PathOrFileDescriptor,
+    options?: unknown
+  ) => {
+    const hit = find(file as fs.PathLike);
+    if (hit) return JSON.stringify(hit[1]);
+    return realRead(file, options as BufferEncoding);
+  }) as typeof fs.readFileSync);
+}
+
+function configuredTransporter() {
+  const sendMailMock = vi.fn().mockResolvedValue({ messageId: '123' });
+  setTransporter({
+    options: {
+      host: 'smtp.example.com',
+      port: 587,
+      secure: false,
+      auth: { user: 'test@example.com', pass: 'secret' },
+    },
+    sendMail: sendMailMock,
+  } as unknown as Transporter);
+  return sendMailMock;
+}
 
 describe('emailService', () => {
   describe('getEmailTransportConfig', () => {
@@ -219,6 +288,158 @@ describe('emailService', () => {
       await expect(
         sendMagicLinkEmail('user@example.com', 'https://example.com/magic')
       ).rejects.toThrow('Failed to send magic link email: Connection timeout');
+    });
+  });
+
+  describe('localized emails', () => {
+    beforeEach(() => {
+      vi.restoreAllMocks();
+      vi.mocked(getUserPreferences).mockReset();
+      vi.mocked(findUserIdByEmail).mockReset();
+      clearEmailCatalogCache();
+      mockLocaleFiles({ de: germanCatalog });
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      clearEmailCatalogCache();
+    });
+
+    it('sends the password reset email in the requested language', async () => {
+      const sendMailMock = configuredTransporter();
+
+      await sendPasswordResetEmail(
+        'user@example.com',
+        'https://example.com/reset?token=xyz',
+        'de'
+      );
+
+      const mail = sendMailMock.mock.calls[0][0];
+      expect(mail.subject).toBe('SparkyFitness: Passwort zurücksetzen');
+      expect(mail.html).toContain(
+        '<a href="https://example.com/reset?token=xyz">'
+      );
+      expect(mail.text).toBe(
+        'Passwort zurücksetzen:\n\nhttps://example.com/reset?token=xyz'
+      );
+    });
+
+    it('keeps the English texts when no language is given', async () => {
+      const sendMailMock = configuredTransporter();
+
+      await sendMagicLinkEmail('user@example.com', 'https://example.com/magic');
+
+      const mail = sendMailMock.mock.calls[0][0];
+      expect(mail.subject).toBe('Your SparkyFitness Login Link');
+      expect(mail.html).toContain(
+        'This link will expire in 15 minutes and can only be used once.'
+      );
+      expect(mail.text).toContain('https://example.com/magic');
+    });
+
+    it('falls back to English per string when a translation is missing', async () => {
+      const sendMailMock = configuredTransporter();
+
+      await sendEmailMfaCode('user@example.com', '654321', 'de');
+
+      const mail = sendMailMock.mock.calls[0][0];
+      expect(mail.subject).toBe('Dein SparkyFitness-Code');
+      expect(mail.html).toContain('<h3>654321</h3>');
+      expect(mail.text).toContain('Your Multi-Factor Authentication code is:');
+      expect(mail.text).toContain('654321');
+    });
+
+    it('falls back to English when the language has no catalog', () => {
+      const template = getEmailTemplate('magicLink', 'fr', {
+        magicLinkUrl: 'https://example.com/m',
+      });
+      expect(template.subject).toBe('Your SparkyFitness Login Link');
+      expect(template.bodyHtml).toContain('https://example.com/m');
+    });
+
+    it('writes the localized text to the console when SMTP is not configured', async () => {
+      resetTransporter({});
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const sent = await sendPasswordResetEmail(
+        'user@example.com',
+        'https://example.com/reset',
+        'de'
+      );
+
+      expect(sent).toBe(false);
+      const output = consoleSpy.mock.calls.map((c) => String(c[0])).join('\n');
+      expect(output).toContain('Subject: SparkyFitness: Passwort zurücksetzen');
+      expect(output).toContain('https://example.com/reset');
+    });
+
+    it('never turns an unexpected language value into a file path', () => {
+      const existsSpy = vi.spyOn(fs, 'existsSync');
+
+      for (const value of [
+        '../../etc',
+        'de/../../x',
+        '',
+        '   ',
+        null,
+        undefined,
+      ]) {
+        expect(normalizeEmailLanguage(value)).toBe('en');
+      }
+      getEmailTemplate('passwordReset', '../../etc', { resetUrl: 'u' });
+
+      expect(
+        existsSpy.mock.calls.some(([file]) => String(file).includes('etc'))
+      ).toBe(false);
+    });
+
+    it('accepts language tags with a region or script', () => {
+      expect(normalizeEmailLanguage('pt-BR')).toBe('pt-BR');
+      expect(normalizeEmailLanguage('zh-Hans')).toBe('zh-Hans');
+    });
+
+    it('reads the language from the user preferences', async () => {
+      vi.mocked(getUserPreferences).mockResolvedValue({ language: 'de' });
+
+      await expect(resolveEmailLanguage({ userId: 'user-1' })).resolves.toBe(
+        'de'
+      );
+      expect(getUserPreferences).toHaveBeenCalledWith('user-1');
+    });
+
+    it('looks the user up by email for the magic link', async () => {
+      vi.mocked(findUserIdByEmail).mockResolvedValue({ id: 'user-2' });
+      vi.mocked(getUserPreferences).mockResolvedValue({ language: 'de' });
+
+      await expect(
+        resolveEmailLanguage({ email: 'user@example.com' })
+      ).resolves.toBe('de');
+      expect(getUserPreferences).toHaveBeenCalledWith('user-2');
+    });
+
+    it('uses English for an unknown email address', async () => {
+      vi.mocked(findUserIdByEmail).mockResolvedValue(undefined);
+
+      await expect(
+        resolveEmailLanguage({ email: 'nobody@example.com' })
+      ).resolves.toBe('en');
+      expect(getUserPreferences).not.toHaveBeenCalled();
+    });
+
+    it('uses English when the user has no language set', async () => {
+      vi.mocked(getUserPreferences).mockResolvedValue(undefined);
+
+      await expect(resolveEmailLanguage({ userId: 'user-3' })).resolves.toBe(
+        'en'
+      );
+    });
+
+    it('uses English when the lookup fails', async () => {
+      vi.mocked(getUserPreferences).mockRejectedValue(new Error('db down'));
+
+      await expect(resolveEmailLanguage({ userId: 'user-4' })).resolves.toBe(
+        'en'
+      );
     });
   });
 });
