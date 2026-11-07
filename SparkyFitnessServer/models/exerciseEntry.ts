@@ -328,30 +328,42 @@ export const EXERCISE_ENTRY_TELEMETRY_COLUMNS = [
   'calories_applied',
 ] as const;
 
-// The telemetry columns that are integer or smallint in exercise_entries.
-// Health platforms report counts and durations as doubles (HealthKit sums
-// swimming stroke samples to values like 120.99894867182387), and Postgres
-// rejects a fractional value for an integer column, which fails the whole
-// sync batch.
-export const EXERCISE_ENTRY_INTEGER_TELEMETRY_COLUMNS: ReadonlySet<string> =
-  new Set([
-    'heart_rate_recovery_1min',
-    'stroke_count',
-    'moving_time_seconds',
-    'elapsed_time_seconds',
-    'work_time_seconds',
-    'workout_effort',
-  ]);
+const INT4_MAX = 2147483647;
 
+// The telemetry columns that are integer or smallint in exercise_entries, with
+// the range Postgres accepts for each. Health platforms report counts and
+// durations as doubles (HealthKit sums swimming stroke samples to values like
+// 120.99894867182387), and Postgres rejects a fractional or out-of-range value,
+// which fails the whole sync batch.
+export const EXERCISE_ENTRY_INTEGER_TELEMETRY_RANGES: ReadonlyMap<
+  string,
+  readonly [number, number]
+> = new Map([
+  ['heart_rate_recovery_1min', [-INT4_MAX - 1, INT4_MAX]],
+  ['stroke_count', [-INT4_MAX - 1, INT4_MAX]],
+  ['moving_time_seconds', [-INT4_MAX - 1, INT4_MAX]],
+  ['elapsed_time_seconds', [-INT4_MAX - 1, INT4_MAX]],
+  ['work_time_seconds', [-INT4_MAX - 1, INT4_MAX]],
+  // chk_exercise_entries_workout_effort
+  ['workout_effort', [1, 10]],
+]);
+
+/**
+ * Returns the value to bind for one telemetry column. Integer columns get the
+ * value rounded, and a value the column can't hold becomes null: telemetry is
+ * optional, and one bad reading shouldn't cost the whole sync batch. Other
+ * columns pass through unchanged, and undefined becomes null.
+ */
 export function telemetryValueFor(column: string, value: unknown): unknown {
   if (value === undefined) return null;
-  if (!EXERCISE_ENTRY_INTEGER_TELEMETRY_COLUMNS.has(column)) return value;
+  const range = EXERCISE_ENTRY_INTEGER_TELEMETRY_RANGES.get(column);
+  if (!range) return value;
   // pg hands numeric columns back as strings, so a merged update can carry one.
   const numeric =
     typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
-  return typeof numeric === 'number' && Number.isFinite(numeric)
-    ? Math.round(numeric)
-    : value;
+  if (typeof numeric !== 'number' || !Number.isFinite(numeric)) return value;
+  const rounded = Math.round(numeric);
+  return rounded >= range[0] && rounded <= range[1] ? rounded : null;
 }
 
 function telemetryValuesFrom(

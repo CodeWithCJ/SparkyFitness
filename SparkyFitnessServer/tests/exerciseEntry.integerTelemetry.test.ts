@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import exerciseEntryDb, {
-  EXERCISE_ENTRY_INTEGER_TELEMETRY_COLUMNS,
+  EXERCISE_ENTRY_INTEGER_TELEMETRY_RANGES,
   EXERCISE_ENTRY_TELEMETRY_COLUMNS,
   telemetryValueFor,
 } from '../models/exerciseEntry.js';
@@ -34,8 +34,12 @@ describe('integer telemetry columns', () => {
     const expected = EXERCISE_ENTRY_TELEMETRY_COLUMNS.filter((c) =>
       integerColumns.includes(c)
     );
-    expect([...EXERCISE_ENTRY_INTEGER_TELEMETRY_COLUMNS].sort()).toEqual(
+    expect([...EXERCISE_ENTRY_INTEGER_TELEMETRY_RANGES.keys()].sort()).toEqual(
       [...expected].sort()
+    );
+    // workout_effort's range mirrors this check constraint.
+    expect(schema).toMatch(
+      /chk_exercise_entries_workout_effort CHECK .*\(workout_effort >= 1\) AND \(workout_effort <= 10\)/
     );
   });
 
@@ -48,6 +52,13 @@ describe('integer telemetry columns', () => {
     // Number('') is 0; an empty string must not become a zero stroke count.
     expect(telemetryValueFor('stroke_count', '')).toBe('');
     expect(telemetryValueFor('gear_name', 'bike')).toBe('bike');
+  });
+
+  it('drops values the column cannot hold instead of failing the write', () => {
+    expect(telemetryValueFor('moving_time_seconds', 3e9)).toBeNull();
+    expect(telemetryValueFor('workout_effort', 10.5)).toBeNull();
+    expect(telemetryValueFor('workout_effort', 0.4)).toBeNull();
+    expect(telemetryValueFor('workout_effort', 9.6)).toBe(10);
   });
 });
 
