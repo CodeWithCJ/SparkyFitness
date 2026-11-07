@@ -129,13 +129,16 @@ test("server email templates must be plain text without HTML tags", () => {
     expiry: "This link will expire in {{expiresInMinutes}} minutes.",
     comparison:
       "Thresholds: x<y and duration < 5 minutes and x<y and z> and x<y and z=1>.",
+    comparisonTime: "x<time and y>0",
   });
   assert.deepEqual(serverValuesWithTags(valid), []);
 
   const invalid = JSON.stringify({
     link: '<a href="https://evil.com">Reset</a>',
     tag: "<p>Hello</p>",
+    legacyTag: "<font color=red>Font</font>",
     customTag: "<custom-element>Custom</custom-element>",
+    customUnderscore: "<my-widget_name>Warning</my-widget_name>",
     bareAttr: "<custom-element active>",
     booleanAttr: "<input disabled>",
     compactSelfClosing: "Line<br/>break",
@@ -152,7 +155,9 @@ test("server email templates must be plain text without HTML tags", () => {
   assert.deepEqual(serverValuesWithTags(invalid), [
     "link",
     "tag",
+    "legacyTag",
     "customTag",
+    "customUnderscore",
     "bareAttr",
     "booleanAttr",
     "compactSelfClosing",
