@@ -11,6 +11,7 @@ on:
       - ".github/scripts/pr-validation.test.cjs"
       - ".github/scripts/automation-allowlist.cjs"
       - ".github/scripts/automation-allowlist.test.cjs"
+      - "SparkyFitnessServer/locales/en/**"
       - ".github/workflows/pr-validation.yml"
       - ".github/workflows/pr-validation-tests.yml"
   push:
@@ -23,6 +24,7 @@ on:
       - ".github/scripts/pr-validation.test.cjs"
       - ".github/scripts/automation-allowlist.cjs"
       - ".github/scripts/automation-allowlist.test.cjs"
+      - "SparkyFitnessServer/locales/en/**"
       - ".github/workflows/pr-validation.yml"
       - ".github/workflows/pr-validation-tests.yml"
 

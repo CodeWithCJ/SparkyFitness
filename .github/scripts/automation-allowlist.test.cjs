@@ -127,6 +127,7 @@ test("server email templates must be plain text without HTML tags", () => {
     mfa: "Your code is {{code}}.",
     magic: "Please click on the link to log in.",
     expiry: "This link will expire in {{expiresInMinutes}} minutes.",
+    comparison: "Thresholds: x<y and duration < 5 minutes.",
   });
   assert.deepEqual(serverValuesWithTags(valid), []);
 
@@ -136,6 +137,10 @@ test("server email templates must be plain text without HTML tags", () => {
     script: "<script>alert(1)</script>",
     img: '<img src="https://tracker.com">',
     comment: "<!-- comment -->",
+    email: {
+      reset: '<a href="https://evil.com">Nested reset</a>',
+      safe: "Safe text",
+    },
     validText: "Regular text without tags",
   });
   assert.deepEqual(serverValuesWithTags(invalid), [
@@ -144,7 +149,42 @@ test("server email templates must be plain text without HTML tags", () => {
     "script",
     "img",
     "comment",
+    "email.reset",
   ]);
+
+  // CLI test: passing a server catalogue with tags through --values exits 1 and prints the offending key
+  const tempTestFile = resolve(
+    root,
+    "SparkyFitnessServer/locales/__test_cli_tags.json",
+  );
+  try {
+    const { writeFileSync, unlinkSync } = require("node:fs");
+    writeFileSync(tempTestFile, invalid, "utf8");
+    assert.throws(
+      () =>
+        execFileSync(
+          process.execPath,
+          [
+            resolve(__dirname, "automation-allowlist.cjs"),
+            "--values",
+            "SparkyFitnessServer/locales/__test_cli_tags.json",
+          ],
+          { cwd: root, encoding: "utf8" },
+        ),
+      (err) => {
+        assert.equal(err.status, 1);
+        assert.match(
+          err.stdout,
+          /SparkyFitnessServer\/locales\/__test_cli_tags\.json: email\.reset/,
+        );
+        return true;
+      },
+    );
+  } finally {
+    try {
+      require("node:fs").unlinkSync(tempTestFile);
+    } catch {}
+  }
 });
 
 test("values may carry tags but not attributes", () => {

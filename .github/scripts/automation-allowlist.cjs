@@ -104,7 +104,10 @@ const isServerCatalogue = (path) => /^SparkyFitnessServer\//.test(path || "");
 
 // Server email translations are 100% plain text. The HTML skeleton and link tags
 // are built in server code, so server translation strings must contain no HTML tags.
-const TAG_IN_SERVER = /<[a-zA-Z/!]/;
+// Matches opening, closing, or self-closing tags, declarations and comments, but not
+// plain text comparison operators (e.g. x < y or x<y without a closing tag delimiter).
+const TAG_IN_SERVER =
+  /<(?:\/?[a-zA-Z][a-zA-Z0-9]*|!--|![a-zA-Z]+)(?:\s+[^>]*)?>/i;
 
 /** Dotted keys of string values in a server JSON catalogue that contain HTML tags. */
 const serverValuesWithTags = (json) => {

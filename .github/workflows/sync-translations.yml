@@ -270,6 +270,7 @@ jobs:
             echo "::error::Translation values put attributes in a tag or HTML in server catalogues:"; echo "$found"
             exit 1
           fi
+          node .github/scripts/automation-allowlist.cjs --values SparkyFitnessServer/locales/en/translation.json
 
       # 3.5 Format the updated localization files with Prettier
       - name: Format localization files with Prettier

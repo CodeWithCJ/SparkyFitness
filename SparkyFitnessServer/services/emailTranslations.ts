@@ -106,6 +106,9 @@ export function clearEmailCatalogCache(): void {
   catalogCache.clear();
 }
 
+/**
+ * Normalizes an email language code, falling back to 'en' if invalid or unset.
+ */
 export function normalizeEmailLanguage(
   language: string | null | undefined
 ): string {
@@ -116,6 +119,9 @@ export function normalizeEmailLanguage(
   return trimmed;
 }
 
+/**
+ * Escapes HTML special characters (&, <, >, ", ') to prevent injection.
+ */
 export function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -125,12 +131,18 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Replaces {{placeholder}} tokens in text with provided values.
+ */
 function interpolate(text: string, values: Record<string, string>): string {
   return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, name: string) =>
     Object.prototype.hasOwnProperty.call(values, name) ? values[name] : match
   );
 }
 
+/**
+ * Builds HTML and text versions of the password reset email.
+ */
 function buildPasswordReset(
   pick: (field: keyof PasswordResetStrings) => string,
   values: Record<string, string>
@@ -167,6 +179,9 @@ function buildPasswordReset(
   };
 }
 
+/**
+ * Builds HTML and text versions of the MFA verification code email.
+ */
 function buildMfaCode(
   pick: (field: keyof MfaCodeStrings) => string,
   values: Record<string, string>
@@ -192,6 +207,9 @@ function buildMfaCode(
   };
 }
 
+/**
+ * Builds HTML and text versions of the passwordless magic link email.
+ */
 function buildMagicLink(
   pick: (field: keyof MagicLinkStrings) => string,
   values: Record<string, string>
