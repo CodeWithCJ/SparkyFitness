@@ -2050,6 +2050,103 @@ describe('openFoodFactsService', () => {
       expect(result.default_variant.calories).toBe(500);
     });
 
+    it('reads a serving_quantity sent as text', () => {
+      const scaled = mapOpenFoodFactsProduct({
+        ...milanoProduct,
+        serving_quantity: '28',
+      });
+      expect(scaled.default_variant.serving_size).toBe(28);
+      expect(scaled.variants).toHaveLength(2);
+
+      // "100" is the 100 g basis auto-scale off keeps, so the portion stays.
+      const unscaled = mapOpenFoodFactsProduct(
+        {
+          ...milanoProduct,
+          serving_size: '1 portion (100 g)',
+          serving_quantity: '100',
+        },
+        { autoScale: false }
+      );
+      expect(
+        unscaled.variants?.find((v) => v.serving_unit === 'serving')
+      ).toMatchObject({ serving_size: 1, calories: 500 });
+    });
+
+    it('skips the household variant when its stated weight is not serving_quantity', () => {
+      // "2 cookies (28 g)" against a serving_quantity of 100: the 100 g
+      // values must not be offered as 2 cookies, and nothing says which of
+      // the two weights is right.
+      const result = mapOpenFoodFactsProduct({
+        ...milanoProduct,
+        serving_quantity: 100,
+      });
+
+      expect(result.variants).toBeUndefined();
+      expect(result.default_variant.serving_size).toBe(100);
+    });
+
+    it('allows a stated weight within 5% of serving_quantity', () => {
+      expect(
+        mapOpenFoodFactsProduct({ ...milanoProduct, serving_quantity: 29 })
+          .variants
+      ).toHaveLength(2);
+      expect(
+        mapOpenFoodFactsProduct({ ...milanoProduct, serving_quantity: 30 })
+          .variants
+      ).toBeUndefined();
+    });
+
+    it('does not compare a stated weight in grams with a serving in millilitres', () => {
+      // Honey: a tablespoon is 15 ml and weighs 21 g.
+      const result = mapOpenFoodFactsProduct({
+        ...milanoProduct,
+        serving_size: '1 tbsp (21 g)',
+        serving_quantity: 15,
+        serving_quantity_unit: 'ml',
+      });
+
+      expect(
+        result.variants?.find((v) => v.serving_unit === 'tbsp')
+      ).toMatchObject({ serving_size: 1 });
+    });
+
+    it('compares a stated weight in another metric unit with the serving', () => {
+      const bottle = {
+        ...milanoProduct,
+        serving_size: '1 bottle (0.5 l)',
+        serving_quantity: 500,
+        serving_quantity_unit: 'ml',
+      };
+      const can = { ...bottle, serving_size: '1 can (33 cl)' };
+
+      expect(
+        mapOpenFoodFactsProduct(bottle).variants?.find(
+          (v) => v.serving_unit === 'bottle'
+        )
+      ).toMatchObject({ serving_size: 1 });
+      expect(
+        mapOpenFoodFactsProduct({ ...bottle, serving_quantity: 330 }).variants
+      ).toBeUndefined();
+      expect(
+        mapOpenFoodFactsProduct({ ...can, serving_quantity: 330 }).variants
+      ).toHaveLength(2);
+      expect(mapOpenFoodFactsProduct(can).variants).toBeUndefined();
+    });
+
+    it('trusts serving_quantity when the stated weight is in another unit', () => {
+      // OFF reads 16.9 fl oz as 500 ml; there is nothing to compare it with.
+      const result = mapOpenFoodFactsProduct({
+        ...milanoProduct,
+        serving_size: '1 bottle (16.9 fl oz)',
+        serving_quantity: 500,
+        serving_quantity_unit: 'ml',
+      });
+
+      expect(
+        result.variants?.find((v) => v.serving_unit === 'bottle')
+      ).toMatchObject({ serving_size: 1 });
+    });
+
     it('keeps the household variant with auto-scale off when it is the 100 g serving', () => {
       // #3402: "1 portion (100 g)" is the 100 g reference either way.
       const product = {

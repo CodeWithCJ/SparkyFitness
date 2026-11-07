@@ -124,7 +124,8 @@ interface OffProduct {
   brands?: string;
   code?: string;
   serving_size?: string;
-  serving_quantity?: number;
+  // OFF sometimes sends it as text ("28"); read it with parseOffNumber.
+  serving_quantity?: number | string;
   serving_quantity_unit?: string;
   product_quantity_unit?: string;
   nutriments?: Record<string, unknown>;
@@ -960,9 +961,42 @@ function isOffLiquid(product: OffProduct): boolean {
 // duplicate the metric default (e.g. "28 g (28 g)").
 const METRIC_SERVING_UNITS = new Set(['g', 'ml', 'kg', 'l', 'oz']);
 
+interface StatedWeight {
+  amount: number;
+  unit: 'g' | 'ml';
+}
+
 interface HouseholdServing {
   size: number | null;
   unit: string | null;
+  // The weight its parentheses state, in g or ml; null when they state none
+  // or state it in another unit ("16.9 fl oz").
+  weight: StatedWeight | null;
+}
+
+const STATED_WEIGHT_UNITS: Record<
+  string,
+  { unit: 'g' | 'ml'; factor: number }
+> = {
+  mg: { unit: 'g', factor: 0.001 },
+  g: { unit: 'g', factor: 1 },
+  gr: { unit: 'g', factor: 1 },
+  kg: { unit: 'g', factor: 1000 },
+  ml: { unit: 'ml', factor: 1 },
+  cl: { unit: 'ml', factor: 10 },
+  dl: { unit: 'ml', factor: 100 },
+  l: { unit: 'ml', factor: 1000 },
+};
+
+function parseOffStatedWeight(text: string): StatedWeight | null {
+  const match = text.match(/^\s*(\d+(?:[.,]\d+)?)\s*([a-z]+)\s*$/i);
+  if (!match) return null;
+  const metric = STATED_WEIGHT_UNITS[normalizeServingUnit(match[2])];
+  if (!metric) return null;
+  return {
+    amount: parseFloat(match[1].replace(',', '.')) * metric.factor,
+    unit: metric.unit,
+  };
 }
 
 // Extracts a household serving (e.g. "2 cookies") from OFF's free-text
@@ -972,11 +1006,12 @@ interface HouseholdServing {
 function parseOffHouseholdServing(
   servingSize: string | undefined
 ): HouseholdServing {
-  if (typeof servingSize !== 'string') return { size: null, unit: null };
+  const none = { size: null, unit: null, weight: null };
+  if (typeof servingSize !== 'string') return none;
   const match = servingSize.match(
-    /^\s*([\d.,]+)\s+([^\d(][^(]*?)\s*\([^)]*\)\s*$/
+    /^\s*([\d.,]+)\s+([^\d(][^(]*?)\s*\(([^)]*)\)\s*$/
   );
-  if (!match) return { size: null, unit: null };
+  if (!match) return none;
   const size = parseFloat(match[1].replace(',', '.'));
   const unit = normalizeServingUnit(match[2]);
   if (
@@ -985,9 +1020,28 @@ function parseOffHouseholdServing(
     !unit ||
     METRIC_SERVING_UNITS.has(unit)
   ) {
-    return { size: null, unit: null };
+    return none;
   }
-  return { size, unit };
+  return { size, unit, weight: parseOffStatedWeight(match[3]) };
+}
+
+// The household serving reuses the values of serving_quantity, so a weight in
+// its own parentheses that is more than 5% away from it ("2 cookies (28 g)"
+// with serving_quantity 100) leaves no way to tell which is right; the margin
+// allows for a label rounding the weight it states. Grams are not compared
+// with millilitres (a tablespoon of honey is 15 ml and weighs 21 g), and a
+// weight the parser does not read, such as fl oz, is not compared either:
+// serving_quantity, which OFF derives from this same text, stands.
+function contradictsDeclaredServing(
+  weight: StatedWeight | null,
+  declaredServingQuantity: number,
+  servingUnit: string
+): boolean {
+  if (!weight || weight.unit !== servingUnit) return false;
+  return (
+    Math.abs(weight.amount - declaredServingQuantity) >
+    declaredServingQuantity * 0.05
+  );
 }
 
 // OpenFoodFacts stores every nutrient's `*_100g` value in grams but exposes the
@@ -1180,9 +1234,10 @@ function mapOpenFoodFactsProduct(
   { autoScale = true, language = 'en' } = {}
 ) {
   const nutriments = product.nutriments || {};
+  const statedServingQuantity = parseOffNumber(product.serving_quantity);
   const declaredServingQuantity =
-    product.serving_quantity && product.serving_quantity > 0
-      ? product.serving_quantity
+    statedServingQuantity !== null && statedServingQuantity > 0
+      ? statedServingQuantity
       : null;
   const servingQuantity = declaredServingQuantity ?? 100;
   const servingSize = autoScale ? servingQuantity : 100;
@@ -1368,13 +1423,19 @@ function mapOpenFoodFactsProduct(
   // Only valid when metricVariant is that declared serving — with no
   // serving_quantity, or with auto-scale off, it stays on the 100g basis, and
   // reusing it would mislabel those numbers under the household unit (100 g
-  // logged as "2 cookies"). Skip it in that case.
+  // logged as "2 cookies"). Skip it in that case, and when its own stated
+  // weight is not that serving.
   const household = parseOffHouseholdServing(product.serving_size);
   const householdVariant =
     declaredServingQuantity !== null &&
     metricVariant.serving_size === declaredServingQuantity &&
     household.size !== null &&
     household.unit !== null &&
+    !contradictsDeclaredServing(
+      household.weight,
+      declaredServingQuantity,
+      metricVariant.serving_unit
+    ) &&
     !(
       household.size === metricVariant.serving_size &&
       household.unit === metricVariant.serving_unit
