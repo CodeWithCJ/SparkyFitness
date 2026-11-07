@@ -838,6 +838,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
         caffeine_mg: scaledPreciseUpdates.caffeineMg,
         water_ml: scaledPreciseUpdates.waterMl,
         alcohol_g: scaledPreciseUpdates.alcoholG,
+        // Same anchor and ratio as above, so the screen keeps the food's
+        // custom nutrients instead of clearing them for this draft.
+        custom_nutrients: scaleCompatibleDraftVariant(
+          anchor,
+          result.estimatedAmount
+        ).custom_nutrients,
         source: 'ai_estimate',
         ai_confidence: result.confidence,
       };
