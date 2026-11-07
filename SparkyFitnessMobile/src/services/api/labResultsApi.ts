@@ -14,6 +14,8 @@ export interface NewLabMarkerPayload {
 export interface NewLabResultPayload {
   marker_key?: string;
   custom_marker_id?: string;
+  /** One of the user's own markers by name, created with the result if new. */
+  custom_marker_name?: string;
   entry_date: string;
   value_numeric: number;
   unit: string;
@@ -53,6 +55,7 @@ export const fetchLabResults = (
   });
 };
 
+/** Only for servers older than `custom_marker_name` on `POST /entries`. */
 export const createLabMarker = (
   body: NewLabMarkerPayload
 ): Promise<LabMarkerResponse> =>

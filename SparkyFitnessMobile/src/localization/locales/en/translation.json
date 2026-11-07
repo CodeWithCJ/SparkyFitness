@@ -9892,7 +9892,9 @@
       "saveFailed": "Could not save the report. Nothing was saved.",
       "warning": {
         "unit": "Your earlier results use {{earlierUnit}}, but this report uses {{reportUnit}}. Units are not converted."
-      }
+      },
+      "saveUnconfirmed": "Could not confirm the report was saved. Save again: it is stored only once.",
+      "lockedAfterFailedSave": "Saving did not finish, so this review is locked: Save again sends exactly the same report, and it is stored only once. To change values, choose the report again."
     },
     "moreActions": "More actions",
     "deleteMarker": "Delete marker and all results",

@@ -246,10 +246,9 @@ describe('Labs page', () => {
     expect(screen.queryByTestId('lab-marker-chart')).not.toBeInTheDocument();
   });
 
-  it('reuses a new marker created before a failed save instead of creating it twice', async () => {
+  it('creates a new marker with its result in one request, and retries the same request', async () => {
     api.listLatestLabResults.mockResolvedValue([]);
     api.listLabMarkers.mockResolvedValue([]);
-    api.createLabMarker.mockResolvedValue(customMarker({ name: 'Zzz Marker' }));
     api.createLabResult
       .mockRejectedValueOnce(new Error('boom'))
       .mockResolvedValueOnce(result());
@@ -271,13 +270,12 @@ describe('Labs page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(api.createLabResult).toHaveBeenCalledTimes(2));
 
-    expect(api.createLabMarker).toHaveBeenCalledTimes(1);
-    expect(first(api.createLabResult.mock.calls)[0]).toMatchObject({
-      custom_marker_id: customMarker().id,
-    });
-    expect(api.createLabResult.mock.calls[1]?.[0]).toMatchObject({
-      custom_marker_id: customMarker().id,
-    });
+    // The marker is named in the result request; there is no separate
+    // marker request that could leave an empty marker behind.
+    for (const [body] of api.createLabResult.mock.calls) {
+      expect(body).toMatchObject({ custom_marker_name: 'Zzz Marker' });
+      expect(body).not.toHaveProperty('custom_marker_id');
+    }
   });
 
   it('drops the saved range when only the unit of a saved result is changed', async () => {

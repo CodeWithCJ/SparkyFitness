@@ -7,6 +7,7 @@ import {
   useScanLabReport,
 } from '../../src/hooks/useLabReportImport';
 import { pickLabReportPdf } from '../../src/services/labReportPicker';
+import { ApiError } from '../../src/services/api/errors';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -178,8 +179,8 @@ describe('LabReportImportScreen', () => {
     expect(keys).toEqual(['ldl']);
   });
 
-  it('keeps the review on screen and says nothing was saved when the save fails', async () => {
-    importAsync.mockRejectedValue(new Error('boom'));
+  it('keeps the review on screen and says nothing was saved when the server refuses it', async () => {
+    importAsync.mockRejectedValue(new ApiError('bad', 400, 'Invalid'));
     const { getByText } = await openReview();
 
     fireEvent.press(getByText('save-bar'));
@@ -194,5 +195,68 @@ describe('LabReportImportScreen', () => {
     );
     expect((navigation as { goBack: jest.Mock }).goBack).not.toHaveBeenCalled();
     expect(getByText('Date of test')).toBeTruthy();
+  });
+
+  it('sends the same key when a failed save is tried again', async () => {
+    importAsync.mockRejectedValueOnce(new Error('network'));
+    importAsync.mockResolvedValueOnce({ report: {}, results: [] });
+    const { getByText } = await openReview();
+
+    fireEvent.press(getByText('save-bar'));
+    await waitFor(() => expect(importAsync).toHaveBeenCalledTimes(1));
+    fireEvent.press(getByText('save-bar'));
+    await waitFor(() => expect(importAsync).toHaveBeenCalledTimes(2));
+
+    const [firstTry, retry] = importAsync.mock.calls.map(([body]) => body);
+    expect(typeof firstTry.client_request_id).toBe('string');
+    expect(firstTry.client_request_id.length).toBeGreaterThan(0);
+    expect(retry.client_request_id).toBe(firstTry.client_request_id);
+  });
+
+  it('uses a new key for a report chosen again after a failed save', async () => {
+    importAsync.mockRejectedValue(new Error('network'));
+    const utils = await openReview();
+
+    fireEvent.press(utils.getByText('save-bar'));
+    await waitFor(() => expect(importAsync).toHaveBeenCalledTimes(1));
+    fireEvent.press(utils.getByText('Choose a different report'));
+    fireEvent.press(utils.getByText('Choose a PDF'));
+    await waitFor(() => expect(utils.getByText('Date of test')).toBeTruthy());
+    fireEvent.press(utils.getByText('save-bar'));
+    await waitFor(() => expect(importAsync).toHaveBeenCalledTimes(2));
+
+    const [first, second] = importAsync.mock.calls.map(([body]) => body);
+    expect(second.client_request_id).not.toBe(first.client_request_id);
+  });
+
+  it('locks the review after a save that may have been stored', async () => {
+    importAsync.mockRejectedValue(new Error('network'));
+    const { getByText, getByLabelText, findByText } = await openReview();
+
+    fireEvent.press(getByText('save-bar'));
+
+    expect(await findByText(/this review is locked/)).toBeTruthy();
+    expect(getByLabelText('Result for LDL Cholesterol').props.editable).toBe(
+      false
+    );
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1:
+          'Could not confirm the report was saved. Save again: it is stored only once.',
+      })
+    );
+  });
+
+  it('keeps the review editable when the server refused the save', async () => {
+    importAsync.mockRejectedValue(new ApiError('bad', 400, 'Invalid'));
+    const { getByText, getByLabelText, queryByText } = await openReview();
+
+    fireEvent.press(getByText('save-bar'));
+    await waitFor(() => expect(importAsync).toHaveBeenCalledTimes(1));
+
+    expect(queryByText(/this review is locked/)).toBeNull();
+    expect(getByLabelText('Result for LDL Cholesterol').props.editable).toBe(
+      true
+    );
   });
 });
