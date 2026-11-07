@@ -592,4 +592,37 @@ describe('LabImportDialog', () => {
     expect(screen.queryByText(/this review is locked/)).not.toBeInTheDocument();
     expect(first(screen.getAllByLabelText('Result for HbA1c'))).toBeEnabled();
   });
+
+  it('blocks a retry when no key could be made for the report', async () => {
+    const realCrypto = globalThis.crypto;
+    Object.defineProperty(globalThis, 'crypto', {
+      value: undefined,
+      configurable: true,
+    });
+    try {
+      api.scanLabReport.mockResolvedValue(scanResponse);
+      api.importLabReport.mockRejectedValueOnce(new Error('network'));
+      renderDialog();
+      pick(new File(['x'], 'r.pdf', { type: 'application/pdf' }));
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: /^Save \d results$/ })
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        /check your lab results/
+      );
+      expect(first(api.importLabReport.mock.calls)[0]).not.toHaveProperty(
+        'client_request_id'
+      );
+      expect(
+        screen.getByRole('button', { name: /^Save \d results$/ })
+      ).toBeDisabled();
+    } finally {
+      Object.defineProperty(globalThis, 'crypto', {
+        value: realCrypto,
+        configurable: true,
+      });
+    }
+  });
 });

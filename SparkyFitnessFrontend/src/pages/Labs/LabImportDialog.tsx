@@ -305,11 +305,19 @@ const LabImportDialog = ({
               </div>
             </div>
 
-            {locked && (
+            {locked && requestId && (
               <p role="status" className="text-sm text-muted-foreground">
                 {t(
                   'labs.import.lockedAfterFailedSave',
                   'Saving did not finish, so this review is locked: Save again sends exactly the same report, and it is stored only once. To change values, choose the report again.'
+                )}
+              </p>
+            )}
+            {locked && !requestId && (
+              <p role="alert" className="text-sm text-destructive">
+                {t(
+                  'labs.import.unconfirmedNoKey',
+                  'Saving did not finish, and this browser cannot mark the report so that saving again stores it once. Close this window and check your lab results: if the report is not there, import it again.'
                 )}
               </p>
             )}
@@ -411,6 +419,8 @@ const LabImportDialog = ({
               onClick={() => void save()}
               disabled={
                 chosen.length === 0 ||
+                // Without a key a retry could store the report twice.
+                (locked && !requestId) ||
                 invalid ||
                 badDate ||
                 future ||
