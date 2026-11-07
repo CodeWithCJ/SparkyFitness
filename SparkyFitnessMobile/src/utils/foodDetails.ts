@@ -421,6 +421,22 @@ function normalizeServingText(text: string): string {
   return formatServingDescription(text).toLowerCase();
 }
 
+/** Whether a description states only this size and unit ("1.0 serving"). */
+function restatesServing(
+  description: string,
+  servingSize: number,
+  servingUnit: string | null | undefined
+): boolean {
+  const match = normalizeServingText(description).match(
+    /^(\d+(?:[.,]\d+)?)\s*(.+)$/
+  );
+  return (
+    !!match &&
+    Number(match[1].replace(',', '.')) === coerceNumber(servingSize) &&
+    match[2] === normalizeServingText(servingUnit ?? '')
+  );
+}
+
 /**
  * Whether a description should be shown in place of the serving's own size
  * and unit. The provider mappers fill in `${size} ${unit}` when a provider
@@ -428,25 +444,21 @@ function normalizeServingText(text: string): string {
  * "1 serving"); that text says nothing more, and showing it would drop the
  * metric equivalent and the localized unit (#3402).
  *
- * The structured label adds the metric weight of the grouped equivalent, so a
- * restated description is only dropped when that weight is this serving's
- * own. Groups are matched on nutrition, and a food with no calories may have
- * grouped unrelated servings (a bottle and 100 ml of water). Beside the
- * quantity (`perUnit`) the label names one unit, so it must be the whole
- * serving: "oz (85 g)" for a 3 oz serving would say one ounce weighs 85 g.
+ * Beside the quantity (`perUnit`) the label names one unit, so a metric
+ * equivalent there must be the whole serving: "oz (85 g)" for a 3 oz serving
+ * would say one ounce weighs 85 g, so that serving keeps its description.
  */
 function describesServing(
   values: Pick<FoodDisplayValues, 'servingUnit' | 'servingDescription'> &
-    Partial<Pick<FoodDisplayValues, 'servingSize' | 'calories'>>,
+    Partial<Pick<FoodDisplayValues, 'servingSize'>>,
   { perUnit = false }: { perUnit?: boolean } = {}
 ): boolean {
   const description = values.servingDescription;
   if (!description || !hasMeaningfulDescription(description)) return false;
   if (values.servingSize === undefined) return true;
-  const restatesSize =
-    normalizeServingText(description) ===
-    normalizeServingText(`${values.servingSize} ${values.servingUnit}`);
-  if (!restatesSize || !values.calories) return true;
+  if (!restatesServing(description, values.servingSize, values.servingUnit)) {
+    return true;
+  }
   return perUnit && values.servingSize !== 1;
 }
 
@@ -483,7 +495,7 @@ export function formatVariantServingLabel(
  */
 export function formatQuantityUnitLabel(
   values: Pick<FoodDisplayValues, 'servingUnit' | 'servingDescription'> &
-    Partial<Pick<FoodDisplayValues, 'servingSize' | 'calories'>>,
+    Partial<Pick<FoodDisplayValues, 'servingSize'>>,
   equivalents?: EquivalentUnit[]
 ): string {
   if (describesServing(values, { perUnit: true })) {
@@ -610,11 +622,14 @@ export function buildExternalVariantOptions(
         servingDescription,
         calories: base.calories,
       };
+      const weights = groupedWeightBelongsToServing(base, equivalents)
+        ? equivalents
+        : undefined;
       return {
         id: base.id,
-        label: formatVariantLabel(values, equivalents),
-        quantityUnitLabel: formatQuantityUnitLabel(values, equivalents),
-        perServingLabel: formatVariantServingLabel(values, equivalents),
+        label: formatVariantLabel(values, weights),
+        quantityUnitLabel: formatQuantityUnitLabel(values, weights),
+        perServingLabel: formatVariantServingLabel(values, weights),
         servingDescription,
         servingSize: base.serving_size,
         servingUnit: base.serving_unit,
@@ -789,6 +804,32 @@ function coerceNumber(value: unknown): number {
   if (value == null || value === '') return 0;
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Whether the metric weight grouped with a provider serving is that
+ * serving's own. Servings are grouped on equal nutrition, which every amount
+ * of an all-zero food shares. A provider that states a serving's weight sends
+ * it with the same values, so a weight such as 1.2 g for one almond holds
+ * whenever the values are not all zero. Values can also match the 100 g or
+ * 100 ml reference by rounding, since providers scale each portion from it: a
+ * 125 ml glass of a drink with 1 kcal and 1 mg of sodium per 100 ml rounds to
+ * the same values. That weight needs a value of 10 or more, which rounding to
+ * whole units can only make match an amount up to about 10% away.
+ */
+function groupedWeightBelongsToServing(
+  variant: NutritionLike,
+  equivalents: EquivalentUnit[]
+): boolean {
+  const weight = findMetricEquivalent(equivalents);
+  if (!weight) return true;
+  const values = [
+    ...FOOD_VARIANT_NUTRIENT_FIELDS.map((field) => variant[field]),
+    ...Object.values(variant.custom_nutrients ?? {}),
+  ].map((value) => Math.abs(coerceNumber(value)));
+  return isReferenceServing(weight.serving_size, weight.serving_unit)
+    ? values.some((value) => value >= 10)
+    : values.some((value) => value > 0);
 }
 
 export function nutritionMatches(a: NutritionLike, b: NutritionLike): boolean {
