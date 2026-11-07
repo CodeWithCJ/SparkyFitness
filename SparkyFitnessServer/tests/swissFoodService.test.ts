@@ -56,6 +56,11 @@ describe('swissFoodService - mapSwissFood', () => {
           component: { code: 'NA', name: 'Sodium' },
           unit: { code: 'mg' },
         },
+        {
+          value: 90.6,
+          component: { code: 'WATER', name: 'Water' },
+          unit: { code: 'g' },
+        },
       ],
     };
 
@@ -76,6 +81,116 @@ describe('swissFoodService - mapSwissFood', () => {
     expect(result.default_variant.saturated_fat).toBe(0.3);
     expect(result.default_variant.sugars).toBe(4);
     expect(result.default_variant.sodium).toBe(57);
+    expect(result.default_variant.water_ml).toBe(90.6);
+  });
+
+  it('should map alcohol from the ALC component', () => {
+    const mockDetail: SwissFoodDetail = {
+      id: 350100,
+      name: 'Beer',
+      foodid: 600,
+      values: [
+        {
+          value: 3.9,
+          component: { code: 'ALC', name: 'Alcohol' },
+          unit: { code: 'g' },
+        },
+      ],
+    };
+
+    const result = mapSwissFood(mockDetail);
+
+    expect(result.default_variant.alcohol_g).toBe(3.9);
+  });
+
+  it('should list the standard field behind each label, whatever the language', () => {
+    const mockDetail: SwissFoodDetail = {
+      id: 350031,
+      name: 'Buttermilch',
+      foodid: 529,
+      values: [
+        {
+          value: 34,
+          component: { code: 'ENERCC', name: 'Energie, Kalorien' },
+          unit: { code: 'kcal' },
+        },
+        {
+          value: 90.6,
+          component: { code: 'WATER', name: 'Wasser' },
+          unit: { code: 'g' },
+        },
+        {
+          value: 9,
+          component: { code: 'VITARAE', name: 'Vitamin A RAE' },
+          unit: { code: 'µg' },
+        },
+        {
+          value: 10,
+          component: { code: 'VITARE', name: 'Vitamin A RE' },
+          unit: { code: 'µg' },
+        },
+        {
+          value: 8,
+          component: { code: 'RETOL', name: 'Retinol' },
+          unit: { code: 'µg' },
+        },
+        {
+          value: 0.1,
+          component: { code: 'NACL', name: 'Salz (NaCl)' },
+          unit: { code: 'g' },
+        },
+      ],
+    };
+
+    const result = mapSwissFood(mockDetail);
+
+    // Only the component each standard column was filled from: RE and retinol
+    // are not what vitamin_a holds, and salt has no standard column.
+    expect(result.default_variant.provider_nutrient_standard).toEqual({
+      'Energie, Kalorien': 'calories',
+      Wasser: 'water_ml',
+      'Vitamin A RAE': 'vitamin_a',
+    });
+  });
+
+  it('should use 0 for a standard field the food has no value for', () => {
+    const mockDetail: SwissFoodDetail = {
+      id: 350200,
+      name: 'Water, still',
+      foodid: 700,
+      values: [
+        {
+          value: 99.9,
+          component: { code: 'WATER', name: 'Water' },
+          unit: { code: 'g' },
+        },
+        {
+          // Listed by the API, but without a number.
+          value: null as unknown as number,
+          component: { code: 'SUGAR', name: 'Sugars' },
+          unit: { code: 'g' },
+        },
+        {
+          // Only the fallback code for vitamin A is present.
+          value: 2,
+          component: { code: 'VITARE', name: 'Vitamin A RE' },
+          unit: { code: 'µg' },
+        },
+      ],
+    };
+
+    const result = mapSwissFood(mockDetail);
+
+    // ALC is missing entirely: 0, and no label to badge.
+    expect(result.default_variant.alcohol_g).toBe(0);
+    // SUGAR is listed without a value: 0, still badged as the sugars field.
+    expect(result.default_variant.sugars).toBe(0);
+    expect(result.default_variant.vitamin_a).toBe(2);
+    expect(result.default_variant.provider_nutrient_standard).toEqual({
+      Water: 'water_ml',
+      Sugars: 'sugars',
+      'Vitamin A RE': 'vitamin_a',
+    });
   });
 
   it('should handle empty or missing values gracefully', () => {

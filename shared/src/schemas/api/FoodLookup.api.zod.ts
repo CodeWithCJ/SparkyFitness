@@ -44,6 +44,12 @@ export const FoodVariantSchema = z.object({
   // providers that report units (USDA, OFF). Used to prefill a custom
   // nutrient's unit. Import-only; never persisted.
   provider_nutrient_units: z.record(z.string(), z.string()).optional(),
+  // Standard nutrient id per provider field (same label keys as
+  // provider_nutrients), for providers that map fields by nutrient code.
+  // Labels can come back in the user's language, so this lets the client flag
+  // a field as already captured by a standard column without matching its
+  // text. Import-only; never persisted.
+  provider_nutrient_standard: z.record(z.string(), z.string()).optional(),
   source: z.enum(['manual', 'ai_estimate', 'imported']).optional(),
   ai_confidence: z.enum(['high', 'medium', 'low']).nullable().optional(),
   allergens: z.array(z.string()).nullable().optional(),
