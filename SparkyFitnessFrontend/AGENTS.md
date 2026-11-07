@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-03_
+_Last updated: 2026-11-06_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -86,6 +86,7 @@ When searching, ignore `node_modules/`, `dist/`, and every locale except `public
 - To learn a database table's shape, read `../shared/src/schemas/database/<Table>.zod.ts` - do not read `../db_schema_backup.sql` or the migrations.
 - Auth flows go through `src/lib/auth-client.ts` and `useAuth`; acting-user (family access) state lives in `ActiveUserContext` and affects most data hooks.
 - New UI should reuse `src/components/ui/` primitives and existing shared components before adding new ones.
+- Energy is stored in kcal everywhere. Show it with `usePreferences()` `convertEnergy` / `getEnergyUnitString` (never a hardcoded "kcal"), and bind an energy input with `shownEnergyInput` / `kcalFromEnergyInput` (`utils/energyInput.ts`) so form state stays kcal and only an edited value changes. Compare formatting takes the unit as `compareValueText(key, value, timeFormat, energyUnit)`.
 - Food and meal quantity fields use `NumericInput` with `allowExpressions` for basic arithmetic. `utils/evaluateArithmetic.ts` parses numbers, parentheses, and `+ - * /` without executing code; invalid expressions block form submission. Other numeric fields retain their existing behavior.
 - Time entry uses `TimeInput` (`'HH:mm'`) and `DateTimeInput` (`'YYYY-MM-DDTHH:mm'`) from `src/components/ui/TimeInput.tsx`, never native `<input type="time">` or `type="datetime-local"`: browsers pick 12h/24h from their language and ignore the user's `timeFormat` preference. Both take the native string formats, so call sites keep their state as-is; name them with `aria-labelledby` (an external `<Label htmlFor>` cannot target a multi-part field).
 - **Cache Invalidation on Library Mutations:** When mutating foods, exercises, presets, or plans, use the domain invalidation hooks from `src/hooks/useInvalidateKeys.ts` (`useExerciseInvalidation`, `useFoodInvalidation`, `useMealInvalidation`, `useDiaryInvalidation`) to invalidate the entire family of dependent query keys including search, presets, templates, and diary daily progress.

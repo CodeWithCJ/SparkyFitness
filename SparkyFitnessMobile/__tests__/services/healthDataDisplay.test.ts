@@ -124,16 +124,20 @@ describe('fetchHealthDisplayData', () => {
 
     it('formats active calories as a localized total', async () => {
       mockActiveCals.mockResolvedValue([{ value: 300 }, { value: 200 }]);
-      expect(await displayFor('ActiveCaloriesBurned')).toBe(
-        formatLocalizedNumber(500)
-      );
+      expect(await displayFor('ActiveCaloriesBurned')).toBe('500 kcal');
+    });
+
+    it('shows active calories as whole kJ for a kJ account', async () => {
+      // Device totals carry fractions; the preview shows a whole number.
+      mockActiveCals.mockResolvedValue([{ value: 300.25 }, { value: 200.5 }]);
+      setMetric('ActiveCaloriesBurned');
+      const result = await fetchHealthDisplayData(TIME_RANGE, 'kJ');
+      expect(result.metric).toBe('2,095 kJ');
     });
 
     it('formats total calories as a localized total', async () => {
       mockTotalCals.mockResolvedValue([{ value: 1500 }, { value: 500 }]);
-      expect(await displayFor('TotalCaloriesBurned')).toBe(
-        formatLocalizedNumber(2000)
-      );
+      expect(await displayFor('TotalCaloriesBurned')).toBe('2,000 kcal');
     });
 
     it('converts distance from metres to kilometres', async () => {
@@ -168,6 +172,14 @@ describe('fetchHealthDisplayData', () => {
       mockBasalEnergy.mockResolvedValue([{ value: 1500 }, { value: 1600 }]);
       expect(await displayFor('BasalMetabolicRate')).toBe('1,550 kcal');
       expect(mockReadHealthRecords).not.toHaveBeenCalled();
+    });
+
+    it('shows resting energy in kJ for a kJ account', async () => {
+      mockBasalEnergy.mockResolvedValue([{ value: 1500 }, { value: 1600 }]);
+      setMetric('BasalMetabolicRate');
+      const result = await fetchHealthDisplayData(TIME_RANGE, 'kJ');
+      // 1,550 kcal x 4.184
+      expect(result.metric).toBe('6,485 kJ');
     });
 
     it('falls back to raw records and averages bucketed BMR when no aggregate exists', async () => {

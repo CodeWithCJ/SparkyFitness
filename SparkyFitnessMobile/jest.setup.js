@@ -945,3 +945,12 @@ jest.mock('react-native-nfc-manager', () => ({
     },
   },
 }));
+
+// Energy unit: components read the account's kcal/kJ setting through
+// `useEnergyUnit`, which needs a QueryClient. Most component tests render
+// without one, so the unit defaults to kcal here. A test that needs kJ sets
+// `jest.mocked(useEnergyUnit).mockReturnValue('kJ')`; the hook's own test uses
+// `jest.requireActual`.
+jest.mock('./src/hooks/useEnergyUnit', () => ({
+  useEnergyUnit: jest.fn(() => 'kcal'),
+}));

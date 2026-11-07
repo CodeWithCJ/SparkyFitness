@@ -48,9 +48,9 @@ struct ClassicGoalSummaryView: View {
     /// supporting numbers stay out of its way.
     private var headlineRow: some View {
         HStack(spacing: 2) {
-            statBlock(value: nutrition?.caloriesConsumed, label: String(localized: "watch.goals.eaten", defaultValue: "Eaten"))
+            statBlock(value: nutrition.map { store.context.energyFromKcal($0.caloriesConsumed) }, label: String(localized: "watch.goals.eaten", defaultValue: "Eaten"))
             calorieRing
-            statBlock(value: nutrition?.caloriesBurned, label: String(localized: "watch.goals.burned", defaultValue: "Burned"))
+            statBlock(value: nutrition.map { store.context.energyFromKcal($0.caloriesBurned) }, label: String(localized: "watch.goals.burned", defaultValue: "Burned"))
         }
     }
 
@@ -93,14 +93,19 @@ struct ClassicGoalSummaryView: View {
     /// it, so the sign does the work the word can't.
     private var calorieValueText: String {
         guard let nutrition else { return "–" }
-        return whole(nutrition.caloriesRemaining)
+        return whole(store.context.energyFromKcal(nutrition.caloriesRemaining))
     }
 
     private var calorieCaption: String {
-        guard let nutrition, nutrition.caloriesRemaining < 0 else {
-            return String(localized: "watch.goals.kcalLeftClassic", defaultValue: "Kcal left")
+        let over = (nutrition?.caloriesRemaining ?? 0) < 0
+        if store.context.usesKilojoules {
+            return over
+                ? String(localized: "watch.goals.kjOverClassic", defaultValue: "kJ over")
+                : String(localized: "watch.goals.kjLeftClassic", defaultValue: "kJ left")
         }
-        return String(localized: "watch.goals.kcalOverClassic", defaultValue: "Kcal over")
+        return over
+            ? String(localized: "watch.goals.kcalOverClassic", defaultValue: "Kcal over")
+            : String(localized: "watch.goals.kcalLeftClassic", defaultValue: "Kcal left")
     }
 
     /// Unsigned here even though the visible number is signed: "minus 254
@@ -108,7 +113,12 @@ struct ClassicGoalSummaryView: View {
     /// already say which side of the goal the wearer is on.
     private var calorieAccessibilityLabel: String {
         guard let nutrition else { return String(localized: "watch.goals.caloriesNotSynced", defaultValue: "Calories not synced yet") }
-        let amount = whole(abs(nutrition.caloriesRemaining))
+        let amount = whole(store.context.energyFromKcal(abs(nutrition.caloriesRemaining)))
+        if store.context.usesKilojoules {
+            return nutrition.caloriesRemaining < 0
+                ? String(localized: "watch.goals.kilojoulesOverGoal", defaultValue: "\(amount) kilojoules over goal")
+                : String(localized: "watch.goals.kilojoulesLeft", defaultValue: "\(amount) kilojoules left")
+        }
         return nutrition.caloriesRemaining < 0
             ? String(localized: "watch.goals.caloriesOverGoal", defaultValue: "\(amount) calories over goal")
             : String(localized: "watch.goals.caloriesLeft", defaultValue: "\(amount) calories left")

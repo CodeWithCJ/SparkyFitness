@@ -13,6 +13,7 @@ import BottomSheetPicker from '../BottomSheetPicker';
 import CalendarSheet, { type CalendarSheetRef } from '../CalendarSheet';
 import { compareValueText, metricName } from '../../utils/compareCopy';
 import { formatDateWithYear } from '../../utils/dayLabel';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 
 interface CompareSinceRowsProps {
   /** The latest answer for this habit and outcome, kept while a new start or line loads. */
@@ -70,6 +71,7 @@ const CompareSinceRows: React.FC<CompareSinceRowsProps> = ({
   onLineChange,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const calendarRef = useRef<CalendarSheetRef>(null);
   const bounds = sinceStartBounds(today);
   const result = response?.result;
@@ -130,14 +132,14 @@ const CompareSinceRows: React.FC<CompareSinceRowsProps> = ({
             options={sinceLineOptions(
               outcome,
               shownLine,
-              (v) => compareValueText(outcome, v),
+              (v) => compareValueText(outcome, v, energyUnit),
               result
             )}
             title={lineTitle}
             onSelect={onLineChange}
             renderTrigger={({ onPress }) => (
               <Chip
-                label={compareValueText(outcome, shownLine)}
+                label={compareValueText(outcome, shownLine, energyUnit)}
                 filled
                 onPress={onPress}
                 title={lineTitle}

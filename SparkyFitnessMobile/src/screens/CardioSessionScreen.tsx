@@ -33,6 +33,7 @@ import ProgramWorkoutBadge from '../components/recording/ProgramWorkoutBadge';
 import FitnessTestBadge from '../components/recording/FitnessTestBadge';
 import ShoePickerCard from '../components/ShoePickerCard';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 type CardioSessionScreenProps = RootStackScreenProps<'CardioSession'>;
 
@@ -81,7 +82,14 @@ const CardioSessionScreen: React.FC<CardioSessionScreenProps> = ({
 
   const detail = useCardioSessionDetail(session.id, session.entryDate);
   const temperatureUnit = useTemperatureUnit();
-  const stats = sessionStats(t, session, distanceUnit, temperatureUnit);
+  const energyUnit = useEnergyUnit();
+  const stats = sessionStats(
+    t,
+    session,
+    distanceUnit,
+    temperatureUnit,
+    energyUnit
+  );
   const exportGpx = async () => {
     try {
       await shareRouteAsGpx({

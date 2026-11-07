@@ -12,14 +12,15 @@ import {
   MEASURED_BMR_MAX_RATIO_OF_FORMULA,
   type CalorieSafetyFloorMode,
 } from '../constants/calorieConstants.ts';
+import { KJ_PER_KCAL, type EnergyUnit } from './energyUnit.ts';
 
 export function convertEnergyValue(
   value: number,
-  fromUnit: 'kcal' | 'kJ',
-  toUnit: 'kcal' | 'kJ'
+  fromUnit: EnergyUnit,
+  toUnit: EnergyUnit
 ): number {
   if (fromUnit === toUnit) return value;
-  return fromUnit === 'kcal' ? value * 4.184 : value / 4.184;
+  return fromUnit === 'kcal' ? value * KJ_PER_KCAL : value / KJ_PER_KCAL;
 }
 
 export type CalorieGoalAdjustmentMode =

@@ -55,7 +55,7 @@ export function CompareSinceControls({
   onLineChange,
 }: CompareSinceControlsProps) {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, timeFormat } = usePreferences();
+  const { formatDateInUserTimezone, timeFormat, energyUnit } = usePreferences();
   const bounds = sinceStartBounds(today);
   const result = response?.result;
 
@@ -136,18 +136,18 @@ export function CompareSinceControls({
             onValueChange={(value) => onLineChange(Number(value))}
           >
             <SelectTrigger
-              aria-label={`${lineTitle}: ${compareValueText(outcome, shownLine, timeFormat)}`}
+              aria-label={`${lineTitle}: ${compareValueText(outcome, shownLine, timeFormat, energyUnit)}`}
               className="h-8 w-auto gap-2 font-semibold text-primary"
             >
               <SelectValue>
-                {compareValueText(outcome, shownLine, timeFormat)}
+                {compareValueText(outcome, shownLine, timeFormat, energyUnit)}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {sinceLineOptions(
                 outcome,
                 shownLine,
-                (v) => compareValueText(outcome, v, timeFormat),
+                (v) => compareValueText(outcome, v, timeFormat, energyUnit),
                 result
               ).map((option) => (
                 <SelectItem key={option.value} value={String(option.value)}>

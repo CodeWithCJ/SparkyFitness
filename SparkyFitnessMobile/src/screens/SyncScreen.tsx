@@ -100,6 +100,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 import { fetchHealthDisplayData } from '../services/healthDataDisplay';
 import { metricsCoveredByGrant } from '../utils/healthPermissionGrants';
 import { shareHealthDiagnosticReport } from '../services/healthDiagnosticService';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 type SyncScreenProps = RootStackScreenProps<'Sync'>;
 
@@ -110,6 +111,7 @@ interface TimeRangeOption {
 
 const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const { preferences } = usePreferences();
   const appLocale = useAppLocale();
   const dateLocale = appLocale;
@@ -276,7 +278,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     // spinner before the fetch resolves and clears it below.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoadingHealthData(true);
-    fetchHealthDisplayData(selectedTimeRange).then((data) => {
+    fetchHealthDisplayData(selectedTimeRange, energyUnit).then((data) => {
       if (!cancelled) {
         setHealthData(data);
         setIsLoadingHealthData(false);
@@ -290,6 +292,7 @@ const SyncScreen: React.FC<SyncScreenProps> = ({ navigation }) => {
     selectedTimeRange,
     healthDataRefreshKey,
     appLocale,
+    energyUnit,
   ]);
 
   const handleToggleBackgroundSync = async (

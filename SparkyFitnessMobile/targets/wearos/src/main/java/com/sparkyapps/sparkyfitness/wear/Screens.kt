@@ -138,6 +138,7 @@ fun Modifier.wearRotaryStepper(
 @Composable
 fun GoalsSummaryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
   val nutrition by store.nutrition.collectAsState()
+  val watchContext by store.watchContext.collectAsState()
   val listState = rememberScalingLazyListState()
 
   ScalingLazyColumn(
@@ -165,8 +166,9 @@ fun GoalsSummaryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
         EmptyStateCard("Open SparkyFitness on your phone to sync today's nutrition goals.")
       }
     } else {
-      val consumedInt = snap.caloriesConsumed.roundToInt()
-      val remainingInt = snap.caloriesRemaining.roundToInt()
+      val energy = EnergyDisplay.of(watchContext)
+      val consumedInt = energy.whole(snap.caloriesConsumed)
+      val remainingInt = energy.whole(snap.caloriesRemaining)
       val goalInt = max(1, consumedInt + remainingInt)
       val progress = (snap.calorieProgress.toFloat()).coerceIn(0f, 1f)
       item {
@@ -190,7 +192,7 @@ fun GoalsSummaryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
                 color = Color.White
               )
               Text(
-                text = "/ $goalInt kcal",
+                text = "/ $goalInt ${energy.unit}",
                 fontSize = 10.sp,
                 color = SparkyColors.Muted
               )
@@ -198,7 +200,7 @@ fun GoalsSummaryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
           }
           Spacer(Modifier.height(6.dp))
           Text(
-            text = if (remainingInt >= 0) "$remainingInt kcal left" else "${abs(remainingInt)} kcal over",
+            text = if (remainingInt >= 0) "$remainingInt ${energy.unit} left" else "${abs(remainingInt)} ${energy.unit} over",
             fontSize = 11.sp,
             color = if (remainingInt >= 0) SparkyColors.Muted else SparkyColors.Amber
           )

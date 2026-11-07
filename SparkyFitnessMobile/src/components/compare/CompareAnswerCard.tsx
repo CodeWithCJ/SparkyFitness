@@ -12,6 +12,7 @@ import { useAppLocale } from '../../localization/i18n';
 import { addDays, formatShortDate, getTodayDate } from '../../utils/dateUtils';
 
 import { statsLine, verdictCopy } from '../../utils/compareCopy';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 
 interface CompareAnswerCardProps {
   response: CompareResponse;
@@ -25,6 +26,7 @@ const CompareAnswerCard: React.FC<CompareAnswerCardProps> = ({
   span,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const locale = useAppLocale();
   const { headline, detail } = verdictCopy(response, question, span, t);
   const { result } = response;
@@ -35,7 +37,13 @@ const CompareAnswerCard: React.FC<CompareAnswerCardProps> = ({
       : yesKey === question.a
         ? question.b
         : question.a;
-  const stats = statsLine(result, timingOf(question.choice).mode, t, outcome);
+  const stats = statsLine(
+    result,
+    timingOf(question.choice).mode,
+    t,
+    outcome,
+    energyUnit
+  );
 
   const today = getTodayDate();
   const isWeekMode = timingOf(question.choice).mode === 'week';
