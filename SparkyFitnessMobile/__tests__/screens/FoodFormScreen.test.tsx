@@ -1440,6 +1440,75 @@ describe('FoodFormScreen', () => {
     }
   );
 
+  it('updates equivalent units with the saved custom nutrients when overwriting in adjust mode', async () => {
+    const grams: FoodVariantDetail = {
+      id: 'grams',
+      food_id: 'food-1',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 200,
+      protein: 10,
+      carbs: 20,
+      fat: 5,
+      custom_nutrients: { Zinc: 3 },
+    };
+    const slice: FoodVariantDetail = {
+      ...grams,
+      id: 'slice',
+      serving_size: 1,
+      serving_unit: 'slice',
+    };
+    mockUseFoodVariants.mockReturnValue({
+      variants: [grams, slice],
+      isLoading: false,
+      isError: false,
+    });
+    jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((title, _message, buttons) => {
+        const list = (buttons ?? []) as {
+          text?: string;
+          onPress?: () => void;
+        }[];
+        const label =
+          title === 'Save nutrition' ? 'Update existing' : "Don't Update";
+        list.find((b) => b.text === label)?.onPress?.();
+      });
+    const screen = renderScreen({
+      mode: 'adjust-entry-nutrition',
+      foodId: 'food-1',
+      variantId: 'grams',
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+      initialValues: { ...mockSubmittedFoodFormData },
+      // Only the custom nutrient differs from the stored variant.
+      customNutrients: { Zinc: 5 },
+      availableUnitVariants: [grams, slice],
+      selectedUnitSelection: { kind: 'existing', variant: grams },
+    });
+    fireEvent(
+      screen.getByLabelText('Save nutrition for future use'),
+      'valueChange',
+      true
+    );
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(updateFoodVariant).toHaveBeenCalledWith(
+        'slice',
+        expect.objectContaining({
+          serving_size: 1,
+          serving_unit: 'slice',
+          custom_nutrients: { Zinc: 5 },
+        })
+      )
+    );
+    expect(updateFoodVariant).toHaveBeenCalledWith(
+      'grams',
+      expect.objectContaining({ custom_nutrients: { Zinc: 5 } })
+    );
+  });
+
   it('creates draft equivalent units once, on the new variant, when saving as new', async () => {
     const grams: FoodVariantDetail = {
       id: 'grams',

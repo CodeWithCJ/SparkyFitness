@@ -115,6 +115,7 @@ function buildUpdatedFoodInfo(
   };
 }
 
+/** Food form mode that edits a saved food, its variants, equivalents and custom nutrients. */
 export function EditFoodMode({
   params,
   navigation,

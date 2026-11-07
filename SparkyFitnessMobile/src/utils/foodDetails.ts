@@ -751,6 +751,7 @@ type NutritionLike = Partial<
   custom_nutrients?: Record<string, string | number> | null;
 };
 
+/** Reads a stored nutrient value as a number; blank or invalid values count as 0. */
 function coerceNumber(value: unknown): number {
   if (value == null || value === '') return 0;
   const n = Number(value);
@@ -771,6 +772,7 @@ export function customNutrientsMatch(
   return true;
 }
 
+/** True when two variants hold the same nutrient and custom-nutrient amounts. */
 export function nutritionMatches(a: NutritionLike, b: NutritionLike): boolean {
   for (const field of FOOD_VARIANT_NUTRIENT_FIELDS) {
     if (coerceNumber(a[field]) !== coerceNumber(b[field])) return false;

@@ -62,6 +62,7 @@ type AdjustNutritionParams = Extract<
   { mode: 'adjust-entry-nutrition' }
 >;
 
+/** Food form mode that adjusts a diary entry's nutrition and can save it back to the food. */
 export function AdjustNutritionMode({
   params,
   navigation,
@@ -295,6 +296,10 @@ export function AdjustNutritionMode({
       // "Save as new" creates but stays undefined when the variant was brand-new.
       const variantIdBeforeToggle = nextVariantId;
       let equivDiffVariantId = nextVariantId;
+      // Set when the user overwrites the selected variant's nutrition. Its
+      // equivalents must take the same values, or groupEquivalentVariants
+      // would split them from it.
+      let overwroteVariantNutrition = false;
 
       if (updateFoodToggle && canUpdateVariant) {
         try {
@@ -393,6 +398,7 @@ export function AdjustNutritionMode({
                 `${formatServingSizeForDisplay(existingSelection.variant.serving_size)} ${localizeFoodUnit(existingSelection.variant.serving_unit, t)}`
               );
               if (choice === 'cancel') return;
+              overwroteVariantNutrition = choice === 'overwrite';
               if (choice === 'new') {
                 try {
                   const createdVariant = await createVariant(
@@ -543,7 +549,8 @@ export function AdjustNutritionMode({
             equivDiffVariantId &&
             equivDiffVariantId === variantIdBeforeToggle &&
             variants &&
-            equivalentsDiffer(equivalentDraft, equivalentBaseline)
+            (overwroteVariantNutrition ||
+              equivalentsDiffer(equivalentDraft, equivalentBaseline))
           ) {
             const activeSnapshot = variants.find(
               (v) => v.id === equivDiffVariantId

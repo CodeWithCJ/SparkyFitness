@@ -601,6 +601,7 @@ async function getFoodVariantById(
   }
 }
 
+/** Updates a variant the user owns, including its custom nutrient amounts. */
 async function updateFoodVariant(
   authenticatedUserId: string,
   variantId: string,

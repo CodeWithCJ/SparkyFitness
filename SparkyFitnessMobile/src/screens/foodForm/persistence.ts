@@ -338,6 +338,7 @@ function updateFoodVariantCache(
   );
 }
 
+/** Builds a variant from the form values, carrying the given custom nutrients (else the base variant's). */
 export function buildVariantFromFormData(
   data: FoodFormData,
   selection?: FoodUnitSelectionResult | null,
@@ -441,6 +442,7 @@ export function buildFormValuesFromVariant(
   };
 }
 
+/** Saves changed food metadata and variant nutrition, including custom nutrients, and refreshes the cache. */
 export async function persistFoodEdits({
   queryClient,
   foodId,
