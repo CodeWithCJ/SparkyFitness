@@ -7,6 +7,13 @@ import {
   getEmailTemplate,
 } from './emailTranslations.js';
 
+// Lifetimes the mails tell the user about, the values the texts named before
+// they moved into the catalog. The magic link one matches
+// magicLink({ expiresIn: 900 }) in auth.ts.
+const PASSWORD_RESET_EXPIRES_IN_HOURS = 1;
+const MFA_CODE_EXPIRES_IN_MINUTES = 5;
+const MAGIC_LINK_EXPIRES_IN_MINUTES = 15;
+
 export interface EmailTransportConfig {
   host?: string;
   port?: number;
@@ -109,7 +116,10 @@ async function sendPasswordResetEmail(
   resetUrl: string,
   language: string = DEFAULT_EMAIL_LANGUAGE
 ): Promise<boolean> {
-  const template = getEmailTemplate('passwordReset', language, { resetUrl });
+  const template = getEmailTemplate('passwordReset', language, {
+    resetUrl,
+    expiresInHours: String(PASSWORD_RESET_EXPIRES_IN_HOURS),
+  });
   log(
     'info',
     `Attempting to send password reset email to ${toEmail} with URL: ${resetUrl}`
@@ -174,7 +184,10 @@ async function sendEmailMfaCode(
   code: string,
   language: string = DEFAULT_EMAIL_LANGUAGE
 ): Promise<boolean> {
-  const template = getEmailTemplate('mfaCode', language, { code });
+  const template = getEmailTemplate('mfaCode', language, {
+    code,
+    expiresInMinutes: String(MFA_CODE_EXPIRES_IN_MINUTES),
+  });
   log('info', `Attempting to send email MFA code to ${toEmail}`);
   log('debug', `Email Transporter Config: ${getTransporterDebugInfo()}`);
 
@@ -239,7 +252,10 @@ async function sendMagicLinkEmail(
   magicLinkUrl: string,
   language: string = DEFAULT_EMAIL_LANGUAGE
 ): Promise<boolean> {
-  const template = getEmailTemplate('magicLink', language, { magicLinkUrl });
+  const template = getEmailTemplate('magicLink', language, {
+    magicLinkUrl,
+    expiresInMinutes: String(MAGIC_LINK_EXPIRES_IN_MINUTES),
+  });
   log(
     'info',
     `Attempting to send magic link email to ${toEmail} with URL: ${magicLinkUrl}`

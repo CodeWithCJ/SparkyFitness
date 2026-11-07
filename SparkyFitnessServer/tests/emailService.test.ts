@@ -375,6 +375,7 @@ describe('emailService', () => {
 
     it('never turns an unexpected language value into a file path', () => {
       const existsSpy = vi.spyOn(fs, 'existsSync');
+      existsSpy.mockClear();
 
       for (const value of [
         '../../etc',
@@ -385,12 +386,10 @@ describe('emailService', () => {
         undefined,
       ]) {
         expect(normalizeEmailLanguage(value)).toBe('en');
+        getEmailTemplate('passwordReset', value, { resetUrl: 'u' });
       }
-      getEmailTemplate('passwordReset', '../../etc', { resetUrl: 'u' });
 
-      expect(
-        existsSpy.mock.calls.some(([file]) => String(file).includes('etc'))
-      ).toBe(false);
+      expect(existsSpy).not.toHaveBeenCalled();
     });
 
     it('accepts language tags with a region or script', () => {
@@ -420,10 +419,77 @@ describe('emailService', () => {
     it('uses English for an unknown email address', async () => {
       vi.mocked(findUserIdByEmail).mockResolvedValue(undefined);
 
+      vi.mocked(getUserPreferences).mockResolvedValue({ language: 'de' });
+
       await expect(
         resolveEmailLanguage({ email: 'nobody@example.com' })
       ).resolves.toBe('en');
-      expect(getUserPreferences).not.toHaveBeenCalled();
+      // Same queries as for a known address, so timing does not reveal
+      // whether the address has an account.
+      expect(getUserPreferences).toHaveBeenCalledTimes(1);
+      expect(getUserPreferences).toHaveBeenCalledWith(
+        '00000000-0000-0000-0000-000000000000'
+      );
+    });
+
+    it('loads a catalog that appears after a failed lookup', () => {
+      vi.restoreAllMocks();
+      mockLocaleFiles({});
+      expect(
+        getEmailTemplate('passwordReset', 'de', { resetUrl: 'u' }).subject
+      ).toBe('SparkyFitness Password Reset');
+
+      vi.restoreAllMocks();
+      mockLocaleFiles({ de: germanCatalog });
+      expect(
+        getEmailTemplate('passwordReset', 'de', { resetUrl: 'u' }).subject
+      ).toBe('SparkyFitness: Passwort zurücksetzen');
+    });
+
+    it('escapes values in the HTML body only', () => {
+      const url = 'https://example.com/a&b?x="1"<y>';
+      const template = getEmailTemplate('passwordReset', 'en', {
+        resetUrl: url,
+      });
+
+      expect(template.bodyHtml).toContain(
+        'href="https://example.com/a&amp;b?x=&quot;1&quot;&lt;y&gt;"'
+      );
+      expect(template.bodyHtml).not.toContain(url);
+      expect(template.bodyText).toContain(url);
+    });
+
+    it('fills in the expiry times and keeps the English wording', () => {
+      expect(
+        getEmailTemplate('passwordReset', 'en', {
+          resetUrl: 'u',
+          expiresInHours: '1',
+        }).bodyText
+      ).toContain('This link will expire in 1 hour.');
+      expect(
+        getEmailTemplate('mfaCode', 'en', {
+          code: '1',
+          expiresInMinutes: '5',
+        }).bodyHtml
+      ).toContain('<p>This code is valid for 5 minutes.</p>');
+    });
+
+    it('sends the expiry times the mails used before', async () => {
+      const sendMailMock = configuredTransporter();
+
+      await sendPasswordResetEmail('user@example.com', 'https://e.x/r');
+      await sendEmailMfaCode('user@example.com', '123456');
+      await sendMagicLinkEmail('user@example.com', 'https://e.x/m');
+
+      const texts = sendMailMock.mock.calls.map(([mail]) => mail.text);
+      expect(texts[0]).toContain('This link will expire in 1 hour.');
+      expect(texts[1]).toContain('This code is valid for 5 minutes.');
+      expect(texts[2]).toContain(
+        'This link will expire in 15 minutes and can only be used once.'
+      );
+      for (const text of texts) {
+        expect(text).not.toMatch(/\{\{/);
+      }
     });
 
     it('uses English when the user has no language set', async () => {

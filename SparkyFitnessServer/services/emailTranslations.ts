@@ -29,15 +29,21 @@ const LOCALES_DIR = path.join(__dirname, '..', 'locales');
 // file path.
 const LANGUAGE_TAG = /^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
 
+// Looked up for an address without an account, so a known and an unknown
+// address cost the same number of queries (no timing hint on which exists).
+const NO_ACCOUNT_USER_ID = '00000000-0000-0000-0000-000000000000';
+
 const englishEmails: EmailCatalog = enCatalog.email;
-const catalogCache = new Map<string, EmailCatalog | null>();
+// Only catalogs that loaded are kept, so a file that appears later is used.
+const catalogCache = new Map<string, EmailCatalog>();
 
 function loadEmailCatalog(language: string): EmailCatalog | null {
   if (language === DEFAULT_EMAIL_LANGUAGE) {
     return englishEmails;
   }
-  if (catalogCache.has(language)) {
-    return catalogCache.get(language) ?? null;
+  const cached = catalogCache.get(language);
+  if (cached) {
+    return cached;
   }
 
   let catalog: EmailCatalog | null = null;
@@ -56,7 +62,9 @@ function loadEmailCatalog(language: string): EmailCatalog | null {
       error
     );
   }
-  catalogCache.set(language, catalog);
+  if (catalog) {
+    catalogCache.set(language, catalog);
+  }
   return catalog;
 }
 
@@ -75,16 +83,31 @@ export function normalizeEmailLanguage(
   return trimmed;
 }
 
-function interpolate(text: string, values: Record<string, string>): string {
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function interpolate(
+  text: string,
+  values: Record<string, string>,
+  escape: (value: string) => string = (value) => value
+): string {
   return text.replace(/\{\{\s*(\w+)\s*\}\}/g, (match, name: string) =>
-    Object.prototype.hasOwnProperty.call(values, name) ? values[name] : match
+    Object.prototype.hasOwnProperty.call(values, name)
+      ? escape(values[name])
+      : match
   );
 }
 
 /**
  * Returns subject and bodies of an email in the requested language. Each
  * string falls back to English on its own when the language has no file or
- * the file lacks that string.
+ * the file lacks that string. Values are HTML-escaped in `bodyHtml` only.
  */
 export function getEmailTemplate(
   key: EmailTemplateKey,
@@ -95,17 +118,21 @@ export function getEmailTemplate(
   const localized = loadEmailCatalog(normalized)?.[key];
   const english = englishEmails[key] as EmailTemplate;
 
-  const pick = (field: keyof EmailTemplate): string => {
+  const pick = (
+    field: keyof EmailTemplate,
+    escape?: (value: string) => string
+  ): string => {
     const text = localized?.[field];
     return interpolate(
       typeof text === 'string' && text.trim() !== '' ? text : english[field],
-      values
+      values,
+      escape
     );
   };
 
   return {
     subject: pick('subject'),
-    bodyHtml: pick('bodyHtml'),
+    bodyHtml: pick('bodyHtml', escapeHtml),
     bodyText: pick('bodyText'),
   };
 }
@@ -121,15 +148,19 @@ export async function resolveEmailLanguage(recipient: {
 }): Promise<string> {
   try {
     let userId = recipient.userId ?? null;
+    let hasAccount = Boolean(userId);
     if (!userId && recipient.email) {
       const user = await findUserIdByEmail(recipient.email);
-      userId = user?.id ?? null;
+      hasAccount = Boolean(user?.id);
+      userId = user?.id ?? NO_ACCOUNT_USER_ID;
     }
     if (!userId) {
       return DEFAULT_EMAIL_LANGUAGE;
     }
     const preferences = await getUserPreferences(userId);
-    return normalizeEmailLanguage(preferences?.language);
+    return hasAccount
+      ? normalizeEmailLanguage(preferences?.language)
+      : DEFAULT_EMAIL_LANGUAGE;
   } catch (error: unknown) {
     log('warn', 'Could not look up the email language, using English.', error);
     return DEFAULT_EMAIL_LANGUAGE;
