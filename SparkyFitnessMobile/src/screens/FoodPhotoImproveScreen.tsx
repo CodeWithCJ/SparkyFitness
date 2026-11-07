@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Modal,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { File } from 'expo-file-system';
@@ -21,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCSSVariable } from 'uniwind';
+import ActionSheet, { type ActionSheetRef } from '../components/ActionSheet';
 import Button from '../components/ui/Button';
 import FormInput from '../components/FormInput';
 import Icon from '../components/Icon';
@@ -131,7 +131,11 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   // `photo` is a required nav param, but guard against a restored/deep-linked
   // route that arrives without it so the thumbnail map can't hit undefined.
   const [images, setImages] = useState<StagedImage[]>(photo ? [photo] : []);
-  const [sheetVisible, setSheetVisible] = useState(false);
+  const sheetRef = useRef<ActionSheetRef>(null);
+  // The source picked in the sheet. The picker is launched from the sheet's
+  // onDismiss, never while the sheet is still closing: iOS will not present the
+  // photo picker over a sheet that is being dismissed, so it never appeared.
+  const pendingSourceRef = useRef<'camera' | 'library' | null>(null);
   const pickerLock = useRef(false);
 
   const [totalWeight, setTotalWeight] = useState<string>(
@@ -209,7 +213,6 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const addFromCamera = async () => {
-    setSheetVisible(false);
     if (pickerLock.current) return;
     pickerLock.current = true;
     try {
@@ -256,7 +259,6 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const addFromLibrary = async () => {
-    setSheetVisible(false);
     if (pickerLock.current) return;
     pickerLock.current = true;
     try {
@@ -291,6 +293,19 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
     } finally {
       pickerLock.current = false;
     }
+  };
+
+  const selectSource = (source: 'camera' | 'library') => {
+    if (pendingSourceRef.current || pickerLock.current) return;
+    pendingSourceRef.current = source;
+    sheetRef.current?.dismiss();
+  };
+
+  const handleSheetDismiss = () => {
+    const source = pendingSourceRef.current;
+    pendingSourceRef.current = null;
+    if (source === 'camera') void addFromCamera();
+    if (source === 'library') void addFromLibrary();
   };
 
   const trimmedDescription = description.trim();
@@ -602,7 +617,7 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
             ))}
             {!isPending && !atImageCap ? (
               <Pressable
-                onPress={() => setSheetVisible(true)}
+                onPress={() => sheetRef.current?.present()}
                 accessibilityLabel={t('foodPhotoImprove.addAnotherImage', {
                   defaultValue: 'Add another image',
                 })}
@@ -750,67 +765,33 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
         </View>
       </KeyboardStickyView>
 
-      <Modal
-        visible={sheetVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSheetVisible(false)}
-      >
-        <Pressable
-          className="flex-1 justify-end bg-black/50"
-          onPress={() => setSheetVisible(false)}
-          accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
-        >
-          <Pressable
-            // Tap-absorbing wrapper only; hide it from screen readers so they
-            // focus the real buttons inside instead of an empty container button.
-            accessible={false}
-            className="bg-surface rounded-t-2xl px-4 pt-3"
-            style={{ paddingBottom: Math.max(insets.bottom, 16) }}
-            // Absorb the tap so it doesn't fall through to the backdrop. RN
-            // press events have no stopPropagation(); a nested Pressable with a
-            // no-op onPress already prevents the backdrop's onPress from firing.
-            onPress={() => {}}
-          >
-            <View className="items-center mb-3">
-              <View className="h-1 w-10 rounded-full bg-border-subtle" />
-            </View>
-            <Text className="text-text-primary text-base font-semibold mb-2 px-1">
-              {t('foodPhotoImprove.addAnotherImage', {
-                defaultValue: 'Add another image',
-              })}
-            </Text>
-            <Button
-              variant="outline"
-              className="flex-row items-center justify-start gap-3 mb-2"
-              onPress={() => {
-                void addFromCamera();
-              }}
-            >
-              <Icon name="camera" size={22} color={accentPrimary} />
-              <Text className="text-text-primary text-base">
-                {t('foodPhotoImprove.takePhoto', {
-                  defaultValue: 'Take photo',
-                })}
-              </Text>
-            </Button>
-            <Button
-              variant="outline"
-              className="flex-row items-center justify-start gap-3"
-              onPress={() => {
-                void addFromLibrary();
-              }}
-            >
-              <Icon name="photo-library" size={22} color={accentPrimary} />
-              <Text className="text-text-primary text-base">
-                {t('foodPhotoImprove.chooseFromLibrary', {
-                  defaultValue: 'Choose from library',
-                })}
-              </Text>
-            </Button>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <ActionSheet
+        ref={sheetRef}
+        title={t('foodPhotoImprove.addAnotherImage', {
+          defaultValue: 'Add another image',
+        })}
+        items={[
+          {
+            key: 'camera',
+            icon: 'camera',
+            label: t('foodPhotoImprove.takePhoto', {
+              defaultValue: 'Take photo',
+            }),
+            dismissOnPress: false,
+            onPress: () => selectSource('camera'),
+          },
+          {
+            key: 'library',
+            icon: 'photo-library',
+            label: t('foodPhotoImprove.chooseFromLibrary', {
+              defaultValue: 'Choose from library',
+            }),
+            dismissOnPress: false,
+            onPress: () => selectSource('library'),
+          },
+        ]}
+        onDismiss={handleSheetDismiss}
+      />
     </View>
   );
 };
