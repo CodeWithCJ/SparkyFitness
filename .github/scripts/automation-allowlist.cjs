@@ -200,8 +200,26 @@ const entriesOf = (path, text) => {
   const out = new Map();
   if (text === null || text === undefined) return out;
   if (path.endsWith(".json")) {
+    const decodeReferences = (v) =>
+      v
+        .replace(/&#x([0-9a-f]+);/gi, (_, h) => fromCode(h))
+        .replace(/&#([0-9]+);/g, (_, d) => fromCode(undefined, d))
+        .replace(
+          /&(lt|gt|amp|quot|apos|colon|sol|period);/g,
+          (_, n) =>
+            ({
+              lt: "<",
+              gt: ">",
+              amp: "&",
+              quot: '"',
+              apos: "'",
+              colon: ":",
+              sol: "/",
+              period: ".",
+            })[n],
+        );
     const walk = (value, key) => {
-      if (typeof value === "string") out.set(key, value);
+      if (typeof value === "string") out.set(key, decodeReferences(value));
       else if (value && typeof value === "object")
         for (const [k, v] of Object.entries(value))
           walk(v, key ? `${key}.${k}` : k);

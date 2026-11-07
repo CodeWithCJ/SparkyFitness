@@ -287,7 +287,7 @@ test("links in any scheme, unlisted or non-ASCII domains are found", () => {
     assert.deepEqual(has(t), [], t);
 });
 
-test("encoded links in widget files are decoded before the check", () => {
+test("encoded links in widget and JSON files are decoded before the check", () => {
   const xml = (v) => `<resources><string name="t">${v}</string></resources>`;
   const p =
     "SparkyFitnessMobile/targets/android-widget/res/values-de/widget_strings.xml";
@@ -314,6 +314,28 @@ test("encoded links in widget files are decoded before the check", () => {
       strings("Hi"),
     ),
     ["t: https://evil.com"],
+  );
+  const json = (v) => JSON.stringify({ email: { test: v } });
+  const j = "SparkyFitnessServer/locales/de/translation.json";
+  assert.deepEqual(
+    newLinks(
+      j,
+      json(
+        '<a href="&#104;&#116;&#116;&#112;&#115;&#58;&#47;&#47;evil&#46;com">',
+      ),
+      json("Hallo"),
+      json("Hello"),
+    ),
+    ["email.test: https://evil.com"],
+  );
+  assert.deepEqual(
+    newLinks(
+      j,
+      json('<a href="https&colon;&sol;&sol;phish&period;org">'),
+      json("Hallo"),
+      json("Hello"),
+    ),
+    ["email.test: https://phish.org"],
   );
 });
 

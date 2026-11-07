@@ -420,7 +420,7 @@ jobs:
           pull-request: ${{ steps.english_pr.outputs.pull-request-number }}
           head-sha: ${{ steps.english_pr.outputs.pull-request-head-sha }}
           method: merge
-          allowed-files: '^(locales/en/|mobile/src/localization/locales/en/|mobile/locales/en\.json$|mobile/targets/android-widget/res/values/|mobile/targets/widget/en\.lproj/)'
+          allowed-files: '^(locales/en/|server/locales/en/|mobile/src/localization/locales/en/|mobile/locales/en\.json$|mobile/targets/android-widget/res/values/|mobile/targets/widget/en\.lproj/)'
 
       # 7. Show both pull requests on the run's summary page.
       - name: Summary
