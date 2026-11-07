@@ -135,6 +135,7 @@ test("server email templates must be plain text without HTML tags", () => {
     link: '<a href="https://evil.com">Reset</a>',
     tag: "<p>Hello</p>",
     customTag: "<custom-element>Custom</custom-element>",
+    booleanAttr: "<input disabled>",
     compactSelfClosing: "Line<br/>break",
     compactComment: "<!--comment-->",
     script: "<script>alert(1)</script>",
@@ -150,6 +151,7 @@ test("server email templates must be plain text without HTML tags", () => {
     "link",
     "tag",
     "customTag",
+    "booleanAttr",
     "compactSelfClosing",
     "compactComment",
     "script",
@@ -164,7 +166,7 @@ test("server email templates must be plain text without HTML tags", () => {
     resolve(root, "SparkyFitnessServer/.tmp-allowlist-test-"),
   );
   const tempTestFile = join(tempDir, "catalogue.json");
-  const relPath = relative(root, tempTestFile);
+  const relPath = relative(root, tempTestFile).replace(/\\/g, "/");
   try {
     writeFileSync(tempTestFile, invalid, "utf8");
     assert.throws(

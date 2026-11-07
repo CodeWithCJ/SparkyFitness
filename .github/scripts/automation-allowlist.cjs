@@ -104,10 +104,10 @@ const isServerCatalogue = (path) => /^SparkyFitnessServer\//.test(path || "");
 
 // Server email translations are 100% plain text. The HTML skeleton and link tags
 // are built in server code, so server translation strings must contain no HTML tags.
-// Matches opening, closing, or self-closing tags (including hyphenated custom elements),
-// declarations and comments, but not plain text comparisons (e.g. x < y or x<y and z>).
+// Matches opening, closing, or self-closing tags (including boolean attributes and hyphenated
+// custom elements), declarations and comments, but not plain text comparisons (e.g. x < y or x<y and z>).
 const TAG_IN_SERVER =
-  /<!--[\s\S]*?-->|<![a-zA-Z]+(?:\s+[^>]*)?>|<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s*\/?>|\s+[^>]*=[^>]*>)/i;
+  /<!--[\s\S]*?-->|<![a-zA-Z]+(?:\s+[^>]*)?>|<\/?[a-zA-Z][a-zA-Z0-9-]*(?:\s*\/?>|\s+[^>]*(?:=|\b(?:disabled|checked|readonly|required|autofocus|multiple|selected|hidden|open|defer|async|novalidate|autoplay|controls|loop|muted)\b)[^>]*>)/i;
 
 /** Dotted keys of string values in a server JSON catalogue that contain HTML tags. */
 const serverValuesWithTags = (json) => {
