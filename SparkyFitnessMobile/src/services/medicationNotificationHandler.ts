@@ -563,6 +563,11 @@ export async function flushPendingMedicationNotificationActions(): Promise<boole
   return anySucceeded;
 }
 
+/**
+ * Handle Taken, Skip or Snooze, sharing concurrent work for the same dose.
+ * Clear only the matching saved response after success; ignore unrelated actions.
+ * @returns True for successful or unrelated responses, false for invalid data or failed actions.
+ */
 export async function processMedicationNotificationResponse(
   response: Notifications.NotificationResponse
 ): Promise<boolean> {
@@ -784,6 +789,10 @@ TaskManager.defineTask<Notifications.NotificationTaskPayload>(
   }
 );
 
+/**
+ * Register the task and live listener once, then recover an action received
+ * before startup subscribed to notification responses.
+ */
 export function initMedicationNotificationActions(): void {
   if (initialized) return;
   initialized = true;

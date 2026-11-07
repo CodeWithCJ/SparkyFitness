@@ -60,9 +60,9 @@ let initialized = false;
 let hasShownDeniedToast = false;
 
 /**
- * Idempotent Android channel setup. Exposed separately because reminder
- * scheduling can run from a background task, where `initNotifications`
- * (invoked from App startup) may not have run in the current JS context.
+ * Refresh localized Android channels and notification action categories.
+ * Medication actions open the app on iOS and keep background handling on Android.
+ * Safe to call again at startup or after a language change.
  */
 export async function registerLocalizedNotificationPresentation(): Promise<void> {
   if (Platform.OS === 'android') {
