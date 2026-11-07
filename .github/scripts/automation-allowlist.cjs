@@ -10,27 +10,29 @@
 
 // English in any spelling (en, EN, en-GB, en_US, eng, english) is excluded: no
 // other language code starts with "en", so a case-insensitive prefix covers it.
-const LANG = '(?![Ee][Nn])[A-Za-z0-9_+-]+';
+const LANG = "(?![Ee][Nn])[A-Za-z0-9_+-]+";
 const ANDROID_LANG =
-  '(?!(?:b\\+)?[Ee][Nn]|(?:car|hdr)(?:[-+/]|$))(?:[a-z]{2,3}(?:-r[A-Z]{2})?|b\\+[a-z]{2,3}(?:\\+[A-Za-z0-9]+)*)';
+  "(?!(?:b\\+)?[Ee][Nn]|(?:car|hdr)(?:[-+/]|$))(?:[a-z]{2,3}(?:-r[A-Z]{2})?|b\\+[a-z]{2,3}(?:\\+[A-Za-z0-9]+)*)";
 
 const ALLOWED_FILES = {
-  'i18n/': [
+  "i18n/": [
     new RegExp(
-      `^SparkyFitnessFrontend/public/locales/${LANG}/[A-Za-z0-9_-]+\\.json$`
+      `^SparkyFitnessFrontend/public/locales/${LANG}/[A-Za-z0-9_-]+\\.json$`,
     ),
     new RegExp(
-      `^SparkyFitnessMobile/src/localization/locales/${LANG}/[A-Za-z0-9_-]+\\.json$`
+      `^SparkyFitnessMobile/src/localization/locales/${LANG}/[A-Za-z0-9_-]+\\.json$`,
     ),
     new RegExp(`^SparkyFitnessMobile/locales/${LANG}\\.json$`),
+    new RegExp(`^SparkyFitnessServer/locales/${LANG}/[A-Za-z0-9_-]+\\.json$`),
+    new RegExp(`^SparkyFitnessServer/locales/${LANG}/[A-Za-z0-9_-]+\\.json$`),
     // Android language qualifiers only (de, pt-rBR, b+yue+Hant), never English
     // and never another qualifier such as night, v31, car or hdr, which would
     // override the English strings in res/values.
     new RegExp(
-      `^SparkyFitnessMobile/targets/android-widget/res/values-${ANDROID_LANG}/widget_strings\\.xml$`
+      `^SparkyFitnessMobile/targets/android-widget/res/values-${ANDROID_LANG}/widget_strings\\.xml$`,
     ),
     new RegExp(
-      `^SparkyFitnessMobile/targets/widget/${LANG}\\.lproj/Localizable\\.strings$`
+      `^SparkyFitnessMobile/targets/widget/${LANG}\\.lproj/Localizable\\.strings$`,
     ),
   ],
 };
@@ -54,7 +56,7 @@ const TAG_WITH_ATTRIBUTES = /<[A-Za-z0-9_-]+[\s/][^>]*=/;
 
 const readsAttribute = (tag) => {
   const name = tag.match(TAG_NAME);
-  if (name && name[1].startsWith('!--')) return false; // a comment
+  if (name && name[1].startsWith("!--")) return false; // a comment
   const attr = new RegExp(ATTR);
   for (let m = attr.exec(tag); m !== null; m = attr.exec(tag)) {
     if (m[0].trim() && (m[1] || m[2])) return true;
@@ -67,7 +69,7 @@ const readsAttribute = (tag) => {
 const hasAttributes = (value) => {
   if (TAG_WITH_ATTRIBUTES.test(value)) return true;
   const html = `<0>${value}</0>`;
-  for (let i = html.indexOf('<'); i !== -1; i = html.indexOf('<', i + 1)) {
+  for (let i = html.indexOf("<"); i !== -1; i = html.indexOf("<", i + 1)) {
     TAG_AT.lastIndex = i;
     const tag = TAG_AT.exec(html);
     if (tag && readsAttribute(tag[0])) return true;
@@ -80,20 +82,20 @@ const hasAttributes = (value) => {
 // value such as "(<60 bpm), reflecting" is harmless though the parser would
 // read it as a tag.
 /** Whether a catalogue's values can reach <Trans>, so must be checked. */
-const rendersMarkup = (path) => /^SparkyFitnessFrontend\//.test(path || '');
+const rendersMarkup = (path) => /^SparkyFitnessFrontend\//.test(path || "");
 
 /** Dotted keys of the string values in a JSON catalogue that put attributes in a tag. */
 const valuesWithAttributes = (json) => {
   const found = [];
   const walk = (value, key) => {
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       if (hasAttributes(value)) found.push(key);
-    } else if (value && typeof value === 'object') {
+    } else if (value && typeof value === "object") {
       for (const [k, v] of Object.entries(value))
         walk(v, key ? `${key}.${k}` : k);
     }
   };
-  walk(JSON.parse(json), '');
+  walk(JSON.parse(json), "");
   return found;
 };
 
@@ -102,18 +104,18 @@ const valuesWithAttributes = (json) => {
 // PR for a maintainer: translated text reaches main without review, and a link
 // is how a translation could send users somewhere else.
 const COUNTRY_TLDS =
-  'ac ad ae af ag ai al am ao aq ar as at au aw ax az ba bb bd be bf bg bh bi bj bm bn bo br bs bt bw by bz ca cc cd cf cg ch ci ck cl cm cn co cr cu cv cw cx cy cz de dj dk dm do dz ec ee eg er es et eu fi fj fk fm fo fr ga gd ge gf gg gh gi gl gm gn gp gq gr gs gt gu gw gy hk hm hn hr ht hu id ie il im in io iq ir is it je jm jo jp ke kg kh ki km kn kp kr kw ky kz la lb lc li lk lr ls lt lu lv ly ma mc md me mg mh mk ml mm mn mo mp mq mr ms mt mu mv mw mx my mz na nc ne nf ng ni nl no np nr nu nz om pa pe pf pg ph pk pl pm pn pr ps pt pw py qa re ro rs ru rw sa sb sc sd se sg sh si sk sl sm sn so sr ss st su sv sx sy sz tc td tf tg th tj tk tl tm tn to tr tt tv tw tz ua ug uk us uy uz va vc ve vg vi vn vu wf ws ye yt za zm zw';
+  "ac ad ae af ag ai al am ao aq ar as at au aw ax az ba bb bd be bf bg bh bi bj bm bn bo br bs bt bw by bz ca cc cd cf cg ch ci ck cl cm cn co cr cu cv cw cx cy cz de dj dk dm do dz ec ee eg er es et eu fi fj fk fm fo fr ga gd ge gf gg gh gi gl gm gn gp gq gr gs gt gu gw gy hk hm hn hr ht hu id ie il im in io iq ir is it je jm jo jp ke kg kh ki km kn kp kr kw ky kz la lb lc li lk lr ls lt lu lv ly ma mc md me mg mh mk ml mm mn mo mp mq mr ms mt mu mv mw mx my mz na nc ne nf ng ni nl no np nr nu nz om pa pe pf pg ph pk pl pm pn pr ps pt pw py qa re ro rs ru rw sa sb sc sd se sg sh si sk sl sm sn so sr ss st su sv sx sy sz tc td tf tg th tj tk tl tm tn to tr tt tv tw tz ua ug uk us uy uz va vc ve vg vi vn vu wf ws ye yt za zm zw";
 const GENERIC_TLDS =
-  'com net org info biz edu gov mil int app dev page site online store shop xyz top club live link click io ai gg ly me tv cc ws so to pro mobi name tech cloud fun icu vip win bet art blog news email zip mov';
-const TLDS = `${GENERIC_TLDS} ${COUNTRY_TLDS}`.split(' ').join('|');
+  "com net org info biz edu gov mil int app dev page site online store shop xyz top club live link click io ai gg ly me tv cc ws so to pro mobi name tech cloud fun icu vip win bet art blog news email zip mov";
+const TLDS = `${GENERIC_TLDS} ${COUNTRY_TLDS}`.split(" ").join("|");
 // Schemes that need no "//": mail, phone and messaging, app stores and deep
 // links, script and data URLs.
 const BARE_SCHEMES =
-  'mailto|tel|callto|sms|smsto|mms|facetime|facetime-audio|sip|sips|skype|whatsapp|tg|viber|geo|maps|market|intent|itms|itms-apps|itms-services|magnet|irc|ircs|xmpp|bitcoin|ethereum|javascript|vbscript|data|blob|file';
+  "mailto|tel|callto|sms|smsto|mms|facetime|facetime-audio|sip|sips|skype|whatsapp|tg|viber|geo|maps|market|intent|itms|itms-apps|itms-services|magnet|irc|ircs|xmpp|bitcoin|ethereum|javascript|vbscript|data|blob|file";
 // File names such as settings.json or export.csv are not addresses. .zip and
 // .mov are real top-level domains, so the listed-domain branch still finds them.
 const FILE_EXTENSIONS =
-  'json|jsonl|csv|tsv|txt|pdf|png|jpe?g|gif|svg|webp|heic|xml|ya?ml|md|html?|css|tsx?|jsx?|mjs|cjs|py|sql|log|apk|aab|ipa|gpx|fit|tcx|kml|ics|vcf|xlsx?|docx?|db|sqlite|tgz|gz|tar|bak|env|ini|conf|toml|lock|swift|kt|java|strings';
+  "json|jsonl|csv|tsv|txt|pdf|png|jpe?g|gif|svg|webp|heic|xml|ya?ml|md|html?|css|tsx?|jsx?|mjs|cjs|py|sql|log|apk|aab|ipa|gpx|fit|tcx|kml|ics|vcf|xlsx?|docx?|db|sqlite|tgz|gz|tar|bak|env|ini|conf|toml|lock|swift|kt|java|strings";
 const LINK = new RegExp(
   [
     // Any scheme with "//": https://, sftp://, myapp://
@@ -130,8 +132,8 @@ const LINK = new RegExp(
     String.raw`(?<![\p{L}\p{N}._%+@-])(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\.)*[\p{L}\p{N}][\p{L}\p{N}-]+[\p{L}\p{N}]\.(?!(?:${FILE_EXTENSIONS})(?![\p{L}\p{N}]))(?:[a-z]{3,24}|(?=\P{ASCII})\p{L}{2,24})(?![\p{L}\p{N}])(?:\/[^\s<>"'\x60]*)?`,
     // An email address
     String.raw`\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b`,
-  ].join('|'),
-  'giu'
+  ].join("|"),
+  "giu",
 );
 
 /** The links in a piece of text, lower-cased and without trailing punctuation. */
@@ -139,26 +141,26 @@ const LINK = new RegExp(
 // (full-width letters, ． and ：), invisible format characters such as
 // zero-width spaces removed, and ideographic full stops read as dots.
 const normalize = (text) =>
-  String(text || '')
-    .normalize('NFKC')
-    .replace(/\p{Cf}/gu, '')
+  String(text || "")
+    .normalize("NFKC")
+    .replace(/\p{Cf}/gu, "")
     // Chinese, Japanese and Korean run sentences together around 。 and ．,
     // which would read as host names. Blank those scripts out first, so only
     // a Latin, Cyrillic or other address written among them is matched.
     .replace(
       /[\p{sc=Han}\p{sc=Hiragana}\p{sc=Katakana}\p{sc=Hangul}\p{sc=Bopomofo}]/gu,
-      ' '
+      " ",
     )
-    .replace(/[\u3002\uff61]/g, '.');
+    .replace(/[\u3002\uff61]/g, ".");
 
 const linksIn = (text) =>
   new Set(
     (normalize(text).match(LINK) || []).map((l) =>
       l
         .trim()
-        .replace(/[.,;:!?)\]}'"]+$/, '')
-        .toLowerCase()
-    )
+        .replace(/[.,;:!?)\]}'"]+$/, "")
+        .toLowerCase(),
+    ),
   );
 
 // Android decodes character references and \u escapes when it compiles string
@@ -168,22 +170,22 @@ const fromCode = (hex, dec) => {
   const code = hex !== undefined ? parseInt(hex, 16) : parseInt(dec, 10);
   return Number.isFinite(code) && code <= 0x10ffff
     ? String.fromCodePoint(code)
-    : '';
+    : "";
 };
 const decodeXml = (v) =>
   v
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/&#x([0-9a-f]+);|&#([0-9]+);/gi, (_, h, d) => fromCode(h, d))
     .replace(
       /&(lt|gt|amp|quot|apos);/g,
-      (_, n) => ({ lt: '<', gt: '>', amp: '&', quot: '"', apos: "'" })[n]
+      (_, n) => ({ lt: "<", gt: ">", amp: "&", quot: '"', apos: "'" })[n],
     )
     .replace(/\\u([0-9a-f]{4})/gi, (_, h) => fromCode(h))
-    .replace(/\\(.)/g, '$1');
+    .replace(/\\(.)/g, "$1");
 const decodeStrings = (v) =>
   v
     .replace(/\\[Uu]([0-9a-fA-F]{4})/g, (_, h) => fromCode(h))
-    .replace(/\\(.)/g, '$1');
+    .replace(/\\(.)/g, "$1");
 
 // A whole .strings file: entries, comments and whitespace, nothing else.
 const STRINGS_TOKEN =
@@ -197,17 +199,17 @@ const STRINGS_TOKEN =
 const entriesOf = (path, text) => {
   const out = new Map();
   if (text === null || text === undefined) return out;
-  if (path.endsWith('.json')) {
+  if (path.endsWith(".json")) {
     const walk = (value, key) => {
-      if (typeof value === 'string') out.set(key, value);
-      else if (value && typeof value === 'object')
+      if (typeof value === "string") out.set(key, value);
+      else if (value && typeof value === "object")
         for (const [k, v] of Object.entries(value))
           walk(v, key ? `${key}.${k}` : k);
     };
-    walk(JSON.parse(text), '');
-  } else if (path.endsWith('.xml')) {
+    walk(JSON.parse(text), "");
+  } else if (path.endsWith(".xml")) {
     if (!/<resources\b[\s\S]*<\/resources>\s*$/.test(text))
-      throw new Error('not an Android resources file');
+      throw new Error("not an Android resources file");
     const re = /<(string|item)\b([^>]*)>([\s\S]*?)<\/\1>/g;
     let i = 0;
     let parsed = 0;
@@ -217,7 +219,7 @@ const entriesOf = (path, text) => {
       parsed++;
     }
     if (parsed !== (text.match(/<(?:string|item)\b/g) || []).length)
-      throw new Error('a <string> or <item> could not be read');
+      throw new Error("a <string> or <item> could not be read");
   } else {
     STRINGS_TOKEN.lastIndex = 0;
     while (STRINGS_TOKEN.lastIndex < text.length) {
@@ -234,15 +236,15 @@ const entriesOf = (path, text) => {
 const englishPathFor = (path) =>
   path
     .replace(
-      /^(SparkyFitnessFrontend\/public\/locales|SparkyFitnessMobile\/src\/localization\/locales)\/[^/]+\//,
-      '$1/en/'
+      /^(SparkyFitnessFrontend\/public\/locales|SparkyFitnessMobile\/src\/localization\/locales|SparkyFitnessServer\/locales)\/[^/]+\//,
+      "$1/en/",
     )
     .replace(
       /^SparkyFitnessMobile\/locales\/[^/]+\.json$/,
-      'SparkyFitnessMobile/locales/en.json'
+      "SparkyFitnessMobile/locales/en.json",
     )
-    .replace(/\/res\/values-[^/]+\//, '/res/values/')
-    .replace(/\/[^/]+\.lproj\//, '/en.lproj/');
+    .replace(/\/res\/values-[^/]+\//, "/res/values/")
+    .replace(/\/[^/]+\.lproj\//, "/en.lproj/");
 
 /**
  * Links a translated catalogue adds: in a value at `head`, but neither in the
@@ -275,7 +277,7 @@ const newLinks = (path, headText, baseText, englishText) => {
 /** The allowlist for a branch, or null when the branch is not an automation branch. */
 const allowedFor = (branch) => {
   const prefix = Object.keys(ALLOWED_FILES).find((p) =>
-    (branch || '').startsWith(p)
+    (branch || "").startsWith(p),
   );
   return prefix ? ALLOWED_FILES[prefix] : null;
 };
@@ -304,26 +306,26 @@ module.exports = {
 // the ones the branch may not change. `--values <file>...` prints the keys of
 // web catalogues, given as repo-relative paths, that put attributes in a tag.
 // Either exits 1 on any finding.
-if (require.main === module && process.argv[2] === '--values') {
-  const fs = require('node:fs');
+if (require.main === module && process.argv[2] === "--values") {
+  const fs = require("node:fs");
   const found = process.argv
     .slice(3)
     .filter(rendersMarkup)
     .flatMap((file) =>
-      valuesWithAttributes(fs.readFileSync(file, 'utf8')).map(
-        (key) => `${file}: ${key}`
-      )
+      valuesWithAttributes(fs.readFileSync(file, "utf8")).map(
+        (key) => `${file}: ${key}`,
+      ),
     );
   if (found.length > 0) {
-    console.log(found.join('\n'));
+    console.log(found.join("\n"));
     process.exit(1);
   }
 } else if (require.main === module) {
   const branch = process.argv[2];
-  const paths = require('node:fs').readFileSync(0, 'utf8').split('\n');
+  const paths = require("node:fs").readFileSync(0, "utf8").split("\n");
   const outside = outsideAllowlist(branch, paths);
   if (outside.length > 0) {
-    console.log(outside.join('\n'));
+    console.log(outside.join("\n"));
     process.exit(1);
   }
 }

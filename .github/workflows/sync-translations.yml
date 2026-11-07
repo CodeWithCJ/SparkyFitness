@@ -210,6 +210,34 @@ jobs:
           cp "$MOBILE/locales/en.json" "$MIRROR/locales/"
           echo "Copied English mobile sources successfully."
 
+          echo "=== Copying non-English server translations from translation repo to main repo ==="
+          SERVER=main-repo/SparkyFitnessServer
+          SERVER_MIRROR=translation-repo/server
+          if [ -d "$SERVER_MIRROR/locales" ]; then
+            mkdir -p "$SERVER/locales"
+            for dir in "$SERVER_MIRROR"/locales/*; do
+              if [ -d "$dir" ] && [ "$(basename "$dir")" != "en" ]; then
+                locale=$(basename "$dir")
+                echo "Updating server $locale..."
+                rm -rf "$SERVER/locales/$locale"
+                cp -r "$dir" "$SERVER/locales/"
+              fi
+            done
+          else
+            echo "  $SERVER_MIRROR/locales not in the translations repo yet; skipping."
+          fi
+
+          echo "=== Copying English server sources from main repo to translation repo ==="
+          mkdir -p "$SERVER_MIRROR/locales"
+          if [ -d "$SERVER/locales/en" ]; then
+            rm -rf "$SERVER_MIRROR/locales/en"
+            cp -r "$SERVER/locales/en" "$SERVER_MIRROR/locales/"
+            echo "Copied English server sources successfully."
+          else
+            echo "Error: English server locale (en) folder not found in main-repo!"
+            exit 1
+          fi
+
       # 3.4 The copies above reproduce whole directories from the translations
       # repository, which this workflow does not control. Keep anything but
       # catalogue files out of the tree before any tool reads it: a stray file
@@ -219,7 +247,7 @@ jobs:
         working-directory: main-repo
         run: |
           set -euo pipefail
-          paths="SparkyFitnessFrontend/public/locales SparkyFitnessMobile/src/localization/locales SparkyFitnessMobile/locales SparkyFitnessMobile/targets/android-widget/res SparkyFitnessMobile/targets/widget"
+          paths="SparkyFitnessFrontend/public/locales SparkyFitnessMobile/src/localization/locales SparkyFitnessMobile/locales SparkyFitnessMobile/targets/android-widget/res SparkyFitnessMobile/targets/widget SparkyFitnessServer/locales"
           links=$(find $paths -type l)
           if [ -n "$links" ]; then
             echo "::error::Symbolic links came from the translations repository:"; echo "$links"
@@ -256,11 +284,13 @@ jobs:
           $prettier --write "main-repo/SparkyFitnessFrontend/public/locales/**/*.json"
           $prettier --write "main-repo/SparkyFitnessMobile/src/localization/locales/**/*.json"
           $prettier --write "main-repo/SparkyFitnessMobile/locales/*.json"
+          $prettier --write "main-repo/SparkyFitnessServer/locales/**/*.json"
           # Only format the English locale here; the other languages are owned by
           # Weblate and reformatting them would drag them into the English-only PR.
           $prettier --write "translation-repo/locales/en/**/*.json"
           $prettier --write "translation-repo/mobile/src/localization/locales/en/**/*.json"
           $prettier --write "translation-repo/mobile/locales/en.json"
+          $prettier --write "translation-repo/server/locales/en/**/*.json"
 
       # One installation token for both repositories, revoked when the job ends.
       # Created only now, after every step that reads files from the translations
@@ -299,6 +329,8 @@ jobs:
             SparkyFitnessMobile/targets/android-widget/res/values-*/widget_strings.xml
             SparkyFitnessMobile/targets/widget/*.lproj/Localizable.strings
             :!SparkyFitnessMobile/targets/widget/en.lproj
+            SparkyFitnessServer/locales
+            :!SparkyFitnessServer/locales/en
           commit-message: "chore(i18n): sync non-English translations from Weblate"
           branch: i18n/sync-weblate-translations
           delete-branch: true
@@ -306,7 +338,7 @@ jobs:
           body: |
             This pull request was automatically created by the **Sync Translations** workflow.
 
-            It copies all non-English translation files from the [SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations) repository (connected to Weblate) to the main repository, across the web catalog and the four mobile surfaces (runtime catalog, Expo metadata, Android widget resources and iOS widget resources).
+            It copies all non-English translation files from the [SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations) repository (connected to Weblate) to the main repository, across the web catalog, server email templates, and the four mobile surfaces (runtime catalog, Expo metadata, Android widget resources and iOS widget resources).
 
             Only locales listed in `SparkyFitnessMobile/src/localization/localeRegistry.json` are shipped on mobile; the others sync in as translation candidates and are not bundled. The widget resources are pulled for registered locales only, because Android and iOS compile whatever resource directories they find, so a candidate's widget arrives on the sync after it is registered.
 
@@ -327,6 +359,7 @@ jobs:
           author: ${{ env.COMMIT_AUTHOR }}
           add-paths: |
             locales/en
+            server/locales/en
             mobile/src/localization/locales/en
             mobile/locales/en.json
             mobile/targets/android-widget/res/values
@@ -343,6 +376,7 @@ jobs:
             | Component | Path |
             | --- | --- |
             | Web | `locales/en` |
+            | Server | `server/locales/en` |
             | Mobile runtime | `mobile/src/localization/locales/en` |
             | Mobile Expo metadata | `mobile/locales/en.json` |
             | Mobile Android widgets | `mobile/targets/android-widget/res/values` |

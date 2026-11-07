@@ -243,11 +243,12 @@ The initial App Store submission stays manual (see `umbrel/README.md`): `submiss
 
 **Purpose**: Bidirectional sync with [SparkyFitnessTranslations](https://github.com/CodeWithCJ/SparkyFitnessTranslations), the repository Weblate is connected to. Pushes the English sources out and pulls every other language back, opening one PR on each side (`i18n/update-english-locales` there, `i18n/sync-weblate-translations` here).
 
-Five Weblate components. The mobile app has four because its surfaces use different formats and placeholder rules (`{{value}}`, `%1$s`, `%@`), so Weblate translates each native file directly and no format conversion sits in between:
+Six Weblate components. The mobile app has four because its surfaces use different formats and placeholder rules (`{{value}}`, `%1$s`, `%@`), so Weblate translates each native file directly and no format conversion sits in between:
 
 | Component              | In the translations repo             | In this repo                                      |
 | ---------------------- | ------------------------------------ | ------------------------------------------------- |
 | Web                    | `locales/`                           | `SparkyFitnessFrontend/public/locales/`           |
+| Server                 | `server/locales/`                    | `SparkyFitnessServer/locales/`                    |
 | Mobile runtime         | `mobile/src/localization/locales/`   | `SparkyFitnessMobile/src/localization/locales/`   |
 | Mobile Expo metadata   | `mobile/locales/`                    | `SparkyFitnessMobile/locales/`                    |
 | Mobile Android widgets | `mobile/targets/android-widget/res/` | `SparkyFitnessMobile/targets/android-widget/res/` |
