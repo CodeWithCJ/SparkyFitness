@@ -127,7 +127,8 @@ test("server email templates must be plain text without HTML tags", () => {
     mfa: "Your code is {{code}}.",
     magic: "Please click on the link to log in.",
     expiry: "This link will expire in {{expiresInMinutes}} minutes.",
-    comparison: "Thresholds: x<y and duration < 5 minutes and x<y and z>.",
+    comparison:
+      "Thresholds: x<y and duration < 5 minutes and x<y and z> and x<y and z=1>.",
   });
   assert.deepEqual(serverValuesWithTags(valid), []);
 
@@ -135,6 +136,7 @@ test("server email templates must be plain text without HTML tags", () => {
     link: '<a href="https://evil.com">Reset</a>',
     tag: "<p>Hello</p>",
     customTag: "<custom-element>Custom</custom-element>",
+    bareAttr: "<custom-element active>",
     booleanAttr: "<input disabled>",
     compactSelfClosing: "Line<br/>break",
     compactComment: "<!--comment-->",
@@ -151,6 +153,7 @@ test("server email templates must be plain text without HTML tags", () => {
     "link",
     "tag",
     "customTag",
+    "bareAttr",
     "booleanAttr",
     "compactSelfClosing",
     "compactComment",
