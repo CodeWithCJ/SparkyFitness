@@ -3110,7 +3110,7 @@ CREATE TABLE public.health_metric_samples (
     samples jsonb DEFAULT '[]'::jsonb NOT NULL,
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now(),
-    CONSTRAINT chk_health_metric_samples_metric CHECK ((metric = ANY (ARRAY['heart_rate'::text, 'hrv'::text, 'respiration'::text, 'spo2'::text, 'stress'::text, 'body_battery'::text, 'skin_temperature'::text])))
+    CONSTRAINT chk_health_metric_samples_metric CHECK ((metric = ANY (ARRAY['heart_rate'::text, 'hrv'::text, 'respiration'::text, 'spo2'::text, 'stress'::text, 'body_battery'::text, 'skin_temperature'::text, 'blood_glucose'::text])))
 );
 
 
@@ -5174,7 +5174,9 @@ CREATE TABLE public.user_preferences (
     hr_zone_display_count smallint DEFAULT 5 NOT NULL,
     use_move_ring_active_calories boolean DEFAULT false NOT NULL,
     default_temperature_unit text DEFAULT 'celsius'::text NOT NULL,
+    default_glucose_unit text DEFAULT 'mmol/L'::text NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
+    CONSTRAINT chk_user_preferences_glucose_unit CHECK ((default_glucose_unit = ANY (ARRAY['mmol/L'::text, 'mg/dL'::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_caffeine_half_life_range CHECK (((caffeine_half_life_hours >= 2.0) AND (caffeine_half_life_hours <= 8.0))),
     CONSTRAINT user_preferences_calorie_safety_floor_mode_check CHECK ((calorie_safety_floor_mode = ANY (ARRAY['standard'::text, 'custom'::text, 'disabled'::text]))),
@@ -7817,6 +7819,13 @@ CREATE INDEX idx_custom_measurements_date ON public.custom_measurements USING bt
 --
 
 CREATE INDEX idx_custom_measurements_user_id ON public.custom_measurements USING btree (user_id);
+
+
+--
+-- Name: idx_custom_measurements_user_timestamp; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_custom_measurements_user_timestamp ON public.custom_measurements USING btree (user_id, entry_timestamp);
 
 
 --
