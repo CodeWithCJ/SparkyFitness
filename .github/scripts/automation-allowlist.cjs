@@ -202,8 +202,8 @@ const entriesOf = (path, text) => {
   if (path.endsWith(".json")) {
     const decodeReferences = (v) =>
       v
-        .replace(/&#x([0-9a-f]+);/gi, (_, h) => fromCode(h))
-        .replace(/&#([0-9]+);/g, (_, d) => fromCode(undefined, d))
+        .replace(/&#x([0-9a-f]+);?/gi, (_, h) => fromCode(h))
+        .replace(/&#([0-9]+);?/g, (_, d) => fromCode(undefined, d))
         .replace(
           /&(lt|gt|amp|quot|apos|colon|sol|period);/g,
           (_, n) =>

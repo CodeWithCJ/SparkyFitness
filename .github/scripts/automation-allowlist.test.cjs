@@ -331,6 +331,24 @@ test("encoded links in widget and JSON files are decoded before the check", () =
   assert.deepEqual(
     newLinks(
       j,
+      json('<a href="https&#58//evil&#46com">{{resetUrl}}</a>'),
+      json("Hallo"),
+      json("Hello"),
+    ),
+    ["email.test: https://evil.com"],
+  );
+  assert.deepEqual(
+    newLinks(
+      j,
+      json('<a href="https&#x3a//evil&#46com">{{resetUrl}}</a>'),
+      json("Hallo"),
+      json("Hello"),
+    ),
+    ["email.test: https://evil.com"],
+  );
+  assert.deepEqual(
+    newLinks(
+      j,
       json('<a href="https&colon;&sol;&sol;phish&period;org">'),
       json("Hallo"),
       json("Hello"),
