@@ -51,12 +51,15 @@ export const WIDGET_KEY_HYDRATION = 'hydration';
 export const WIDGET_KEY_SUMMARY = 'summary';
 export const NUTRIENT_WIDGET_PREFIX = 'nutrient:';
 
+/** Prefix a nutrient key with the widget namespace. */
 export const nutrientWidgetKey = (key: string): string =>
   `${NUTRIENT_WIDGET_PREFIX}${key}`;
 
+/** Check if a widget key corresponds to an individual nutrient chart. */
 export const isNutrientWidgetKey = (key: string): boolean =>
   key.startsWith(NUTRIENT_WIDGET_PREFIX);
 
+/** Extract the base nutrient key from a prefixed widget key. */
 export const nutrientKeyFromWidgetKey = (key: string): string =>
   key.startsWith(NUTRIENT_WIDGET_PREFIX)
     ? key.slice(NUTRIENT_WIDGET_PREFIX.length)
@@ -392,11 +395,6 @@ export function useNutritionChartWidgets({
 
   const syncMethod = useMemo(() => createTimeSyncMethod(), []);
 
-  const rawKcalByDate = useMemo(
-    () => new Map(nutritionData.map((d) => [d.date, d.calories])),
-    [nutritionData]
-  );
-
   const prepareChartData = useMemo(
     () =>
       (data: NutritionData[], chartKey: string): NutritionData[] => {
@@ -413,13 +411,9 @@ export function useNutritionChartWidgets({
 
         if (goalsIsMap || chartKey === 'calories') {
           result = result.map((point) => {
-            const rawKcal = rawKcalByDate.get(point.date);
             const rawGoal =
               chartKey === 'calories'
-                ? (effectiveCalorieGoal(
-                    calorieBalanceByDate?.[point.date],
-                    rawKcal
-                  ) ??
+                ? (effectiveCalorieGoal(calorieBalanceByDate?.[point.date]) ??
                   storedGoals?.[point.date]?.[chartKey as keyof ExpandedGoals])
                 : storedGoals?.[point.date]?.[chartKey as keyof ExpandedGoals];
 
@@ -436,14 +430,7 @@ export function useNutritionChartWidgets({
 
         return prepareTimeChartData(result, chartScaleMode);
       },
-    [
-      goals,
-      calorieBalanceByDate,
-      rawKcalByDate,
-      chartScaleMode,
-      convertEnergy,
-      energyUnit,
-    ]
+    [goals, calorieBalanceByDate, chartScaleMode, convertEnergy, energyUnit]
   );
 
   const getYAxisDomain = useMemo(

@@ -381,6 +381,10 @@ const WidgetGridInner = ({
   );
 };
 
+/**
+ * Customizable dashboard widget grid with responsive layouts, show/hide toggles,
+ * fullscreen maximizing, and persisted layout configuration per pageKey.
+ */
 export default function WidgetGrid({
   pageKey,
   widgets,
