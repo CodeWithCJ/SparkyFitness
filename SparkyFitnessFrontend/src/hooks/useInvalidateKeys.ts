@@ -21,11 +21,27 @@ import { goalKeys } from '@/api/keys/goals';
 import { reportKeys } from '@/api/keys/reports';
 import { fastingKeys } from '@/api/keys/fasting';
 import { runProgramKeys } from '@/api/keys/runPrograms';
+import { externalProviderKeys } from '@/api/keys/settings';
+import { garminKeys } from '@/api/keys/integrations';
+
+/**
+ * After a Garmin sync: the provider list carries the Garmin status (last sync,
+ * whether the Garmin service answered), and so does useGarminStatus.
+ */
+export const useGarminStatusInvalidation = () => {
+  const queryClient = useQueryClient();
+
+  return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: externalProviderKeys.lists() });
+    queryClient.invalidateQueries({ queryKey: garminKeys.status });
+  }, [queryClient]);
+};
 
 export const useDiaryInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({ queryKey: exerciseEntryKeys.all });
     queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
     queryClient.invalidateQueries({ queryKey: presetKeys.all });
@@ -63,6 +79,7 @@ export const useFoodEntryInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({ queryKey: foodEntryMealKeys.all });
     queryClient.invalidateQueries({ queryKey: foodEntryKeys.all });
     queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
@@ -103,6 +120,7 @@ export const useDailyProgressInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({
       queryKey: dailyProgressKeys.all,
     });
@@ -113,6 +131,7 @@ export const useExerciseInvalidation = () => {
   const queryClient = useQueryClient();
 
   return useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
     queryClient.invalidateQueries({ queryKey: exerciseKeys.all });
     queryClient.invalidateQueries({ queryKey: presetKeys.all });
     queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });

@@ -122,7 +122,12 @@
       "ai": "KI",
       "fasting": "Fasten",
       "goals": "Ziele",
-      "reports": "Berichte"
+      "reports": "Berichte",
+      "addMenu": "Schnellaktionen",
+      "wearOs": "Wear OS",
+      "customMeasurements": "Eigene Messwerte",
+      "heartRateZones": "Herzfrequenzzonen",
+      "heartRateZonesSubtitle": "Maximal- und Ruhepuls, Zonenmethode"
     },
     "theme": {
       "title": "Darstellung",
@@ -576,6 +581,117 @@
         "right_hip": "Rechte Hüfte",
         "unknown": "Unbekannt"
       }
+    },
+    "adherence": {
+      "screenTitle": "Einnahmetreue",
+      "openTitle": "Einnahmetreue & Protokoll",
+      "openSubtitle": "Checkliste, Serien, Monatskalender und Dosisverlauf",
+      "openA11y": "Übersicht der Einnahmetreue und Dosisprotokoll öffnen",
+      "title": "Übersicht Einnahmetreue",
+      "loading": "Einnahmetreue wird geladen …",
+      "loadFailed": "Einnahmetreue konnte nicht geladen werden.",
+      "noMedications": "Füge ein Medikament hinzu, um deine Einnahmetreue zu verfolgen.",
+      "dosesToday": "Dosen heute",
+      "doses": "Dosen",
+      "windowAdherence_one": "Einnahmetreue {{count}} Tag",
+      "windowAdherence_other": "Einnahmetreue {{count}} Tage",
+      "perfectDays_one": "Perfekte Tage ({{count}} T.)",
+      "perfectDays_other": "Perfekte Tage ({{count}} T.)",
+      "ringA11y_one": "{{pct}} Prozent Einnahmetreue über {{count}} Tag",
+      "ringA11y_other": "{{pct}} Prozent Einnahmetreue über {{count}} Tage",
+      "ringLabel_one": "{{count}} Tag",
+      "ringLabel_other": "{{count}} Tage",
+      "lastDays_one": "Letzter {{count}} Tag",
+      "lastDays_other": "Letzte {{count}} Tage",
+      "streak_one": "{{count}} Tag in Folge",
+      "streak_other": "{{count}} Tage in Folge",
+      "barPrn_one": "{{date}}: {{count}} Dosis bei Bedarf",
+      "barPrn_other": "{{date}}: {{count}} Dosen bei Bedarf",
+      "barNone": "{{date}}: keine Dosen",
+      "barTaken": "{{date}}: {{taken}} von {{due}} eingenommen",
+      "viewingDate": "Ansicht: {{date}}",
+      "backToToday": "Zurück zu heute"
+    },
+    "checklist": {
+      "titleToday": "Checkliste für heute",
+      "title": "Medikamenten-Checkliste",
+      "noneToday": "Keine geplanten Dosen für heute.",
+      "noneDay": "Keine geplanten Dosen für diesen Tag.",
+      "loggedToday_one": "{{completed}} von {{count}} Dosis heute erfasst.",
+      "loggedToday_other": "{{completed}} von {{count}} Dosen heute erfasst.",
+      "loggedDay_one": "{{completed}} von {{count}} Dosis für diesen Tag erfasst.",
+      "loggedDay_other": "{{completed}} von {{count}} Dosen für diesen Tag erfasst."
+    },
+    "today": {
+      "dueToday": "Heute fällig",
+      "asNeeded": "Bei Bedarf",
+      "medicationsTitle": "Heutige Medikamente",
+      "medicationsTitleDay": "Medikamente",
+      "supplementsTitle": "Heutige Supplements",
+      "supplementsTitleDay": "Supplements",
+      "dueDay": "Fällig",
+      "noMedicationDoses": "Heute keine geplanten Dosen. Erfasse Medikamente bei Bedarf unten.",
+      "noSupplementDoses": "Heute keine geplanten Dosen. Erfasse Supplements bei Bedarf unten.",
+      "noMedicationDosesDay": "An diesem Tag keine geplanten Dosen. Erfasse Medikamente bei Bedarf unten.",
+      "noSupplementDosesDay": "An diesem Tag keine geplanten Dosen. Erfasse Supplements bei Bedarf unten.",
+      "noPrnMedications": "Keine Bedarfs- oder ungeplanten Medikamente eingerichtet.",
+      "noPrnSupplements": "Keine Bedarfs- oder ungeplanten Supplements eingerichtet.",
+      "loggedActivity": "Heute erfasst",
+      "loggedActivityDescription": "Alles, was du an diesem Tag eingenommen oder übersprungen hast.",
+      "loadingHistory": "Verlauf wird geladen …",
+      "prnTaken": "Bei Bedarf",
+      "snoozed": "Verschoben"
+    },
+    "calendar": {
+      "title": "Medikamenten-Protokollkalender",
+      "titleAll": "Protokollkalender",
+      "titleSupplements": "Supplement-Protokollkalender",
+      "empty": "Füge ein Medikament hinzu, um hier seinen Protokollkalender zu sehen.",
+      "filterTitle": "Anzeigen",
+      "allEntries": "Alle",
+      "allMedications": "Alle Medikamente",
+      "allSupplements": "Alle Supplements",
+      "monthTotal_one": "{{count}} Dosis im {{month}} erfasst",
+      "monthTotal_other": "{{count}} Dosen im {{month}} erfasst",
+      "previousMonth": "Vorheriger Monat",
+      "nextMonth": "Nächster Monat",
+      "allTaken": "Alle Dosen eingenommen",
+      "partialTaken": "Teilweise eingenommen",
+      "mostlySkipped": "Meist übersprungen",
+      "allSkipped": "Alle Dosen übersprungen",
+      "snoozedOnly": "Nur verschoben",
+      "sideEffect": "Symptom als Nebenwirkung",
+      "generalSymptom": "Allgemeines Symptom",
+      "tooltipTaken_one": "{{count}} eingenommen",
+      "tooltipTaken_other": "{{count}} eingenommen",
+      "tooltipPrn_one": "{{count}} bei Bedarf",
+      "tooltipPrn_other": "{{count}} bei Bedarf",
+      "tooltipSkipped_one": "{{count}} übersprungen",
+      "tooltipSkipped_other": "{{count}} übersprungen",
+      "tooltipSnoozed_one": "{{count}} verschoben",
+      "tooltipSnoozed_other": "{{count}} verschoben",
+      "tooltipSymptoms": "Symptome: {{names}}"
+    },
+    "dayLog": {
+      "titleDay": "Erfasst am {{date}}",
+      "empty": "Für diesen Tag nichts erfasst.",
+      "unknownMedication": "Medikament",
+      "editA11y": "{{name}} bearbeiten",
+      "deleteA11y": "{{name}} löschen",
+      "deleteTitle": "Eintrag löschen",
+      "deleteMessage": "Diese erfasste Dosis von {{name}} löschen?",
+      "deleted": "Eintrag für {{name}} gelöscht",
+      "deleteFailed": "Eintrag für {{name}} konnte nicht gelöscht werden"
+    },
+    "entryEdit": {
+      "title": "Erfasste Dosis bearbeiten",
+      "takenAt": "Eingenommen um",
+      "setTime": "Uhrzeit festlegen",
+      "status": "Status",
+      "noSite": "Keine Stelle",
+      "saved": "Dosis aktualisiert",
+      "saveFailed": "Speichern fehlgeschlagen: {{error}}",
+      "site": "Injektionsstelle"
     }
   },
   "mealBuilder": {
@@ -691,7 +807,8 @@
     "environmentalAudioExposure": "Umgebungslärm-Belastung",
     "headphoneAudioExposure": "Kopfhörer-Lärmbelastung",
     "unknown": "Gesundheitswert",
-    "bodyWaterMass": "Körperwassermasse"
+    "bodyWaterMass": "Körperwassermasse",
+    "mindfulness": "Achtsamkeit"
   },
   "familyDiary": {
     "title": "Familientagebücher",
@@ -751,7 +868,21 @@
     "chooseDate": "Datum auswählen",
     "chooseDateHint": "Öffnet die Datumsauswahl",
     "goToToday": "Zu heute",
-    "goToTodayHint": "Kehrt zu heute zurück"
+    "goToTodayHint": "Kehrt zu heute zurück",
+    "copyTo": "Wird zu {{name}} kopiert",
+    "copyToFamily": "Zur Familie kopieren",
+    "copyMealOptions": "Mahlzeit kopieren",
+    "chooseCopyRecipient": "Empfänger wählen",
+    "noCopyRecipients": "Keine Familienmitglieder mit Kopierberechtigung",
+    "copySourceFailed": "Die Quellmahlzeit konnte nicht geladen werden",
+    "copySourceEmpty": "Keine Lebensmitteleinträge in dieser Mahlzeit",
+    "copyToMember": "Zu {{name}} kopieren",
+    "copyToFamilySuccess": "Ins Familientagebuch kopiert",
+    "copyOwnStale": "Deine Quellmahlzeit hat sich geändert",
+    "copyOwnStaleGuidance": "Deine aktuelle Mahlzeit wird zur Durchsicht geöffnet.",
+    "copyServerUpdateRequired": "Server-Update erforderlich",
+    "copyServerUpdateGuidance": "Aktualisiere deinen SparkyFitness-Server, um Lebensmittel zu Familienmitgliedern zu kopieren.",
+    "copyMealTypesFailed": "Die Zielmahlzeiten konnten nicht geladen werden. Bitte versuche es erneut."
   },
   "notifications": {
     "title": "Benachrichtigungen",
@@ -760,7 +891,8 @@
       "workoutTimer": "Trainings-Timer",
       "fasting": "Fasten",
       "hydration": "Flüssigkeits-Erinnerungen",
-      "ongoingWorkout": "Laufendes Training"
+      "ongoingWorkout": "Laufendes Training",
+      "moodCheckin": "Stimmungs-Check-ins"
     },
     "actions": {
       "completeSet": "Satz abschließen",
@@ -799,6 +931,10 @@
     "fastingPreEnd": {
       "title": "Fastenziel bald erreicht",
       "body": "Dein Fasten erreicht in {{minutes}} Minuten sein Ziel."
+    },
+    "moodCheckin": {
+      "title": "Wie fühlst du dich?",
+      "body": "Mach einen kurzen Check-in: Stimmung, Energie und Fokus."
     }
   },
   "activeWorkout": {
@@ -981,7 +1117,16 @@
       "rampPlaceholder": "Aus ({{unit}})",
       "rampHint": "Jeder Arbeitssatz nach dem ersten wird im selben Training um diesen Betrag schwerer (oder leichter) vorausgefüllt. Aufwärm- und Dropsätze werden übersprungen."
     },
-    "failedToDeleteWorkout": "Verworfene Trainingseinheit konnte nicht aus dem Tagebuch gelöscht werden."
+    "failedToDeleteWorkout": "Verworfene Trainingseinheit konnte nicht aus dem Tagebuch gelöscht werden.",
+    "now": {
+      "label": "Jetzt",
+      "upNext": "Als Nächstes",
+      "swap": "Tauschen",
+      "swapLabel": "{{name}} tauschen",
+      "setOf": "Satz {{number}} von {{total}}",
+      "warmupOf": "Aufwärmsatz {{number}} von {{total}}",
+      "then": "Dann {{name}}"
+    }
   },
   "addSheet": {
     "food": "Lebensmittel",
@@ -1004,7 +1149,18 @@
     "mindfulness": "Achtsamkeit",
     "mood": "Stimmung",
     "recordActivity": "Aktivität aufzeichnen",
-    "recordActivityHint": "Zeichne einen Spaziergang, Lauf oder eine Radfahrt mit GPS auf"
+    "recordActivityHint": "Zeichne einen Spaziergang, Lauf oder eine Radfahrt mit GPS auf",
+    "title": "Schnellaktionen",
+    "scanShort": "Scannen",
+    "measureShort": "Messen",
+    "symptomsHealth": "Symptome & Gesundheit",
+    "syncHealthShort": "Gesundheit sync.",
+    "photosHint": "Visuell",
+    "symptomsHint": "Erfassen",
+    "moodHint": "Befinden erfassen",
+    "mindfulnessHint": "Atmung, Ruhe",
+    "checkIn": "Täglicher Check-in",
+    "checkInHint": "Gewohnheiten"
   },
   "screens": {
     "foods": "Lebensmittel",
@@ -1059,9 +1215,6 @@
     "medications": "Medikamente",
     "medication": "Medikament",
     "library": {
-      "noServerConfigured": "Kein Server konfiguriert",
-      "configureServer": "Richte deine Serververbindung in den Einstellungen ein, um deine Bibliothek zu sehen.",
-      "goToSettings": "Zu den Einstellungen",
       "loading": "Bibliothek wird geladen...",
       "title": "Bibliothek",
       "create": "Erstellen",
@@ -1143,7 +1296,17 @@
     "runProgramNew": "Neuer Plan",
     "runProgramRace": "Wettkampf planen",
     "routes": "Routen",
-    "routeDraw": "Route zeichnen"
+    "routeDraw": "Route zeichnen",
+    "addMenuSettings": "Schnellaktionen",
+    "wearOsSettings": "Wear OS",
+    "heartRateReport": "Herzfrequenz",
+    "watchRunLiveJumpRope": "Seilspringen auf deiner Uhr",
+    "fitnessTest": "Fitnesstests",
+    "fitnessTestResult": "Fitnesstest",
+    "heartRateZonesSettings": "Herzfrequenzzonen",
+    "routeEdit": "Route bearbeiten",
+    "routeGenerate": "Route erstellen",
+    "compareReport": "Vergleichen"
   },
   "healthCategories": {
     "Common": "Allgemein",
@@ -1275,9 +1438,6 @@
   },
   "dashboard": {
     "chooseDate": "Dashboard-Datum auswählen",
-    "noServerConfigured": "Kein Server konfiguriert",
-    "configureServer": "Richte deine Serververbindung in den Einstellungen ein, um deine Tagesübersicht zu sehen.",
-    "goToSettings": "Zu den Einstellungen",
     "loadingSummary": "Zusammenfassung wird geladen …",
     "loadFailed": "Die Zusammenfassung konnte nicht geladen werden",
     "checkConnection": "Bitte überprüfe deine Verbindung und versuche es erneut.",
@@ -1333,7 +1493,8 @@
       "title": "Berechtigung erforderlich",
       "backgroundAccess": "Für die Hintergrundsynchronisierung ist die Berechtigung für den Hintergrundzugriff erforderlich. Bitte erteile die Berechtigung in den Health-Connect-Einstellungen.",
       "allTitle": "Berechtigungen erforderlich",
-      "allMessage": "Einige Berechtigungen wurden nicht erteilt. Aktiviere alle erforderlichen Gesundheitsberechtigungen in den {{settings}}, um alle Daten zu synchronisieren."
+      "allMessage": "Einige Berechtigungen wurden nicht erteilt. Aktiviere alle erforderlichen Gesundheitsberechtigungen in den {{settings}}, um alle Daten zu synchronisieren.",
+      "writebackMessage": "Alle Messwerte werden synchronisiert. Um deine Daten zurückzuschreiben, erteile die fehlenden Berechtigungen in {{settings}}."
     },
     "permissionError": {
       "title": "Berechtigungsfehler",
@@ -1419,7 +1580,7 @@
     "modeLabel": "Kalorienmodus",
     "adjustmentMode": "Anpassungsmodus",
     "modeDescription": "Legt fest, wie sich dein tägliches Kalorienziel anhand der Aktivität anpasst.",
-    "deviceProjectionDescription": "Die heutigen Gesamtkalorien aus Health Connect werden auf Mitternacht hochgerechnet; abgeschlossene Tage verwenden den aufgezeichneten Gesamtwert. Der Zielmodus wird auf diesen TDEE angewendet, mit BMR + aktiven Kalorien als Ersatz.",
+    "deviceProjectionDescription": "Die heutigen Gesamtkalorien des Geräts (Health Connect, Garmin oder Polar) werden auf Mitternacht hochgerechnet; abgeschlossene Tage verwenden den aufgezeichneten Gesamtwert. Der Zielmodus wird auf diesen TDEE angewendet, mit BMR + aktiven Kalorien als Ersatz.",
     "deviceProjectionFallback": "Wird nur für den Ersatz aus BMR + aktiven Kalorien verwendet, wenn kein Geräte-Gesamtwert verfügbar ist.",
     "exerciseCaloriesApplied": "Angerechnete Trainingskalorien",
     "exerciseCaloriesDescription": "Wie viel deiner Trainingskalorien wieder zu deinem Tagesziel hinzugerechnet wird.",
@@ -1457,19 +1618,22 @@
       "activityWithBmr": "Aktivität + Grundumsatz",
       "activityOnly": "Nur Aktivität (Training + Schritte)",
       "eatenBurned": "Gegessen − Verbrannt",
-      "projectedTotal": "Health-Connect-Gesamtkalorien (BMR + aktive Kalorien als Ersatz)",
+      "projectedTotal": "Gesamtkalorien des Geräts (BMR + aktive Kalorien als Ersatz)",
       "dynamic": "Ziel − Nettoenergie",
       "percentageWithBmr": "Ziel − Gegessen + BMR + {{percentage}}% des Trainings",
       "percentage": "Ziel − Gegessen + {{percentage}}% des Trainings",
       "tdee": "Hochgerechneter TDEE × Zielmodus − Gegessen",
       "adaptive": "Ziel − Gegessen",
-      "fixed": "Ziel − Gegessen"
+      "fixed": "Ziel − Gegessen",
+      "dynamicActivitySeparated": "Ziel − Gegessen + Aktivität",
+      "tdeeWeekly": "Hochgerechneter TDEE + Anpassung Wochenziel − Gegessen"
     },
     "notes": {
       "dynamic": "Das Ziel wächst mit deiner Bewegung",
       "tdee": "Die Hochrechnung nähert sich um Mitternacht dem Geräte-Gesamtwert an",
       "adaptive": "Ziel = Adaptiver TDEE",
-      "fixed": "Aktivität ändert dein Budget nicht"
+      "fixed": "Aktivität ändert dein Budget nicht",
+      "adaptiveWeekly": "Ziel = Adaptiver TDEE + Anpassung Wochenziel"
     },
     "externalFormula": "Formel",
     "goalMode": {
@@ -1487,7 +1651,8 @@
       "methodAdaptive": "Adaptiv",
       "methodManual": "Manuell",
       "customPercentage": "Eigener Prozentsatz",
-      "customPercentageDescription": "Positive Werte erhöhen die Kalorienzahl, negative erzeugen ein Defizit. Begrenzt auf ±40%."
+      "customPercentageDescription": "Positive Werte erhöhen die Kalorienzahl, negative erzeugen ein Defizit. Begrenzt auf ±40%.",
+      "weekly": "Wöchentliche Gewichtsänderung"
     },
     "safetyFloor": {
       "title": "Sicherheitsuntergrenze",
@@ -1502,7 +1667,31 @@
     "useExternalBmr": "Gemessenen BMR aus Check-ins und synchronisierten Geräten verwenden",
     "useExternalBmrHint": "Standardmäßig aus — deine gewählte Formel wird immer verwendet, bis du dies aktivierst. Wenn aktiviert, ersetzt ein bei einem Check-in erfasster oder von einer smarten Waage bzw. einem Gesundheitsanbieter synchronisierter BMR an diesem Tag die Formel, sofern er für dich physiologisch plausibel ist.",
     "useExternalBmrIosNote": "Die Ruheenergie von Apple Health enthält bereits leichte Alltagsaktivität; erwäge daher, das Aktivitätsniveau auf Keines (×1,0) zu setzen, um sie nicht doppelt zu zählen.",
-    "adaptiveEarnBack": "Adaptive Ziele enthalten Aktivität bereits. Verbleibende Kalorien = Ziel minus Gegessen. Die Anrechnung von Training gilt nur für manuelle Ziele."
+    "adaptiveEarnBack": "Adaptive Ziele enthalten Aktivität bereits. Verbleibende Kalorien = Ziel minus Gegessen. Die Anrechnung von Training gilt nur für manuelle Ziele.",
+    "adaptiveActivitySeparate": "Aktivitätskalorien separat zählen",
+    "adaptiveActivitySeparateHint": "Lernt einen Ausgangswert ohne bisherige Aktivität und rechnet die heutigen Schritte und Trainings einmal an, ohne den Grundumsatz erneut hinzuzufügen. Dafür braucht es einen lückenlosen Verlauf von Ernährung, Gewicht, Schritten und Trainings. Bis genug Verlauf vorhanden ist, gilt BMR × dein Aktivitätsfaktor ohne Training.",
+    "adaptiveActivitySeparateReporting": "Der Grundumsatz bleibt in „Verbrannt“ und „Nettoenergie“, wenn „Ruhekalorien einbeziehen“ aktiv ist. Nur Schritte und Trainings werden deinem verbleibenden Kalorienbudget hinzugerechnet.",
+    "weeklyGoal": {
+      "description": "Wähle, wie viel du pro Woche ab- oder zunehmen willst, oder halte dein Gewicht.",
+      "direction": "Gewichtsziel",
+      "maintain": "Gewicht halten",
+      "lose": "Abnehmen",
+      "gain": "Zunehmen",
+      "rate": "Gewichtsänderung pro Woche",
+      "amount": "Wöchentliche Gewichtsänderung",
+      "amountHint": "Gib einen positiven Wert ein. Die Richtung bestimmt dein gewähltes Gewichtsziel.",
+      "unit": "Einheit für die Wochenrate",
+      "kilograms": "kg",
+      "grams": "g",
+      "pounds": "lb",
+      "stonePounds": "st / lb",
+      "stones": "st",
+      "poundsAmount": "Wöchentliche Gewichtsänderung in Pfund",
+      "poundsHint": "Gib die restlichen Pfund ein, von 0 bis unter 14.",
+      "invalidRate": "Gib einen Wert über 0 und bis {{max}} kg pro Woche ein.",
+      "dailyAdjustment": "Geschätzte tägliche Anpassung: {{sign}}{{amount}} {{unit}}",
+      "estimateHint": "Dein Wochenziel wird in eine tägliche Kalorienanpassung umgerechnet. Das ist eine Schätzung; deine Sicherheitsuntergrenze kann die Abnahme begrenzen."
+    }
   },
   "dashboardSettings": {
     "updateFailed": "Einstellung konnte nicht aktualisiert werden.",
@@ -1612,7 +1801,14 @@
     "consolidateReminders": "Erinnerungen zusammenfassen",
     "consolidateRemindersSubtitle": "Fasst Medikamente, die zur selben Zeit geplant sind, in einer einzigen Benachrichtigung zusammen.",
     "medicationSnoozeInterval": "Erinnern in",
-    "snoozeMinutesOption": "{{minutes}} min"
+    "snoozeMinutesOption": "{{minutes}} min",
+    "moodCheckins": "Stimmungs-Check-ins",
+    "moodCheckinReminders": "Check-in-Erinnerungen",
+    "moodCheckinRemindersSubtitle": "Ein täglicher Anstoß, dein Befinden zu erfassen",
+    "moodCheckinReminderTime": "Erinnerung {{number}}",
+    "moodCheckinReminderTimeAccessibility": "Erinnerung {{number}}, {{time}}",
+    "moodCheckinAddReminder": "Erinnerung hinzufügen",
+    "moodCheckinRemoveReminder": "Erinnerung {{number}} entfernen"
   },
   "workoutSettings": {
     "title": "Trainingseinstellungen",
@@ -1636,7 +1832,9 @@
     "duckMusicSubtitle": "Senkt die Musik anderer Apps kurz ab, während ein Trainingssignal oder eine gesprochene Ansage abgespielt wird.",
     "duckMusicAccessibility": "Musik bei Ansagen leiser stellen",
     "warmupCalculator": "Aufwärmrechner",
-    "warmupCalculatorSubtitle": "Die Steigerung und die Gewichte, auf die gerundet wird, für Aufwärmsätze, die du einer Übung hinzufügst."
+    "warmupCalculatorSubtitle": "Die Steigerung und die Gewichte, auf die gerundet wird, für Aufwärmsätze, die du einer Übung hinzufügst.",
+    "nowCard": "Jetzt-Karte",
+    "nowCardSubtitle": "Heftet den aktuellen Satz über die Übungsliste: Ziel in großer Schrift, Übungsfoto, was als Nächstes kommt, und „Tauschen“, um zuerst eine andere Übung zu machen."
   },
   "restPeriod": {
     "title": "Pausenzeit",
@@ -1649,9 +1847,6 @@
   },
   "diary": {
     "chooseDate": "Tagebuch-Datum auswählen",
-    "noServer": "Kein Server konfiguriert",
-    "configureServer": "Richte deine Serververbindung in den Einstellungen ein, um dein Tagebuch zu sehen.",
-    "goToSettings": "Zu den Einstellungen",
     "loading": "Tagebuch wird geladen …",
     "loadFailed": "Das Tagebuch konnte nicht geladen werden",
     "checkConnection": "Bitte überprüfe deine Verbindung und versuche es erneut.",
@@ -1716,7 +1911,8 @@
       "notPaired": "Keine Watch gekoppelt",
       "unsupported": "Auf dieser Plattform nicht unterstützt",
       "reachable": "Watch-App jetzt erreichbar",
-      "notReachable": "Watch-App nicht im Vordergrund"
+      "notReachable": "Watch-App nicht im Vordergrund",
+      "wearOsTitle": "Wear OS"
     },
     "auth": {
       "title": "Authentifizierung",
@@ -2098,7 +2294,12 @@
     "bodyweightBannerNoWeight": "Körpergewichtsübung: zählt dein Körpergewicht plus das eingegebene Gewicht. Verwende ein Minuszeichen für Unterstützung. Protokolliere ein Körpergewicht, damit das Volumen berechnet werden kann.",
     "modalityWeightDistance": "Gewicht & Distanz (Tragen)",
     "modalityWeightDuration": "Gewicht & Dauer (Halten mit Gewicht)",
-    "addWarmups": "Aufwärmsätze hinzufügen"
+    "addWarmups": "Aufwärmsätze hinzufügen",
+    "replaceWithOther": "Durch andere Übung ersetzen …",
+    "doAnotherFirst": "Zuerst eine andere Übung …",
+    "swapTitle": "{{name}} tauschen",
+    "doNowSets_one": "Jetzt · {{count}} Satz",
+    "doNowSets_other": "Jetzt · {{count}} Sätze"
   },
   "cycleCard": {
     "mode": {
@@ -2812,7 +3013,7 @@
     "title": "Zusammenfassung",
     "projectedTdee": "Prognostizierter TDEE: {{value}} kcal",
     "goalModeTarget": "Zielmodus-Vorgabe: {{value}} kcal",
-    "healthConnectProjectionSource": "Health-Connect-Gesamtkalorien",
+    "healthConnectProjectionSource": "Gesamtkalorien des Geräts",
     "fallbackProjectionSource": "BMR + aktive Kalorien (Ersatz)",
     "legacyProjectionSource": "Geräteprognose",
     "collapse": "Diesen Abschnitt einklappen",
@@ -2897,7 +3098,13 @@
       "add": "+ Portion hinzufügen",
       "saveFailed": "Nicht alle Portionen konnten gespeichert werden. Versuche es erneut."
     },
-    "scanNutritionLabel": "Nährwertetikett scannen"
+    "scanNutritionLabel": "Nährwertetikett scannen",
+    "saltG": "Salz (g)",
+    "sodiumEntryUnit": "Natrium eingeben als",
+    "sodiumShort": "Natrium",
+    "saltShort": "Salz",
+    "sodiumOption": "Natrium (mg)",
+    "saltOption": "Salz (g)"
   },
   "exerciseHistory": {
     "noSetData": "Keine Satzdaten",
@@ -3080,13 +3287,45 @@
       "caloriesInValue": "1,540",
       "caloriesOutValue": "255",
       "eightAm": "8:00",
-      "eyebrow": "iOS 26"
+      "eyebrow": "iOS 26",
+      "zoneTwoBase": "Zone-2-Grundlage",
+      "weekThree": "Woche 3",
+      "easyRun": "Lockerer Lauf • 40 min",
+      "zoneTwoRange": "125–142 bpm",
+      "riverLoop": "Flussrunde",
+      "routeDistance": "5,2 km",
+      "routeClimb": "48 m Anstieg",
+      "followRoads": "Folgt Straßen",
+      "checkIn": "Check-in",
+      "stepTwoOfThree": "Schritt 2 von 3",
+      "checkInStepName": "Messwerte",
+      "saveContinue": "Speichern & weiter",
+      "plates": "Scheiben",
+      "plateTarget": "100 kg",
+      "plateBar": "Stange 20 kg",
+      "platesPerSide": "20 + 20 pro Seite",
+      "heartRate": "Herzfrequenz",
+      "zoneTwo": "Zone 2",
+      "maxResting": "Max 185 • Ruhe 52",
+      "customZones": "Eigene",
+      "compare": "Vergleichen",
+      "thirtyDays": "30 Tage",
+      "sleepVsMood": "Schlaf vs. Stimmung",
+      "moodHigher": "Stimmung ist besser",
+      "watchApp": "Uhr-App",
+      "caloriesLeftBadge": "1.515 übrig",
+      "waterMeds": "Wasser • Medikamente",
+      "fastingSteps": "Fasten • Schritte",
+      "weeklyGoal": "Wochenziel",
+      "weeklyRate": "−0,5 kg",
+      "dailyTarget": "Tagesziel",
+      "dailyAdjustment": "≈ −550 kcal"
     },
     "features": {
       "medications": {
         "eyebrow": "MEDIKAMENTE",
         "headline": "Behalte deine Medikamente im Blick",
-        "body": "Füge deine Medikamente hinzu, lege Dosierungspläne fest und erfasse jede Dosis vom Dashboard aus, mit optionalen Erinnerungen.",
+        "body": "Füge deine Medikamente hinzu, lege Dosierungspläne fest, erfasse jede Dosis vom Dashboard aus mit optionalen Erinnerungen und behalte die Einnahmetreue mit Kalender und Dosisprotokoll im Blick.",
         "cta": "Medikamente einrichten"
       },
       "cycle": {
@@ -3121,6 +3360,54 @@
         "headline": "Mahlzeit knipsen, Makros erfassen",
         "body": "Schätze die Nährwerte aus einem Foto, wenn du wenig Zeit hast.",
         "cta": "Ausprobieren"
+      },
+      "running": {
+        "eyebrow": "LAUFEN",
+        "headline": "Trainiere mit Laufprogrammen",
+        "body": "Folge einem Zone-2-Grundlagenplan mit Herzfrequenz-Führung, setz dir ein Wochendistanz-Ziel mit Wettkampf-Countdown, mach einen geführten Fitnesstest für deine Tempi und sieh dir nach jedem Lauf die Zwischenzeiten an.",
+        "cta": "Laufprogramme öffnen"
+      },
+      "routes": {
+        "eyebrow": "ROUTEN",
+        "headline": "Routen planen und folgen",
+        "body": "Zeichne Routen auf einer Satellitenkarte, lass sie Straßen folgen, erstelle Rundkurse mit fester Distanz und folge einer gespeicherten Route auf deiner Apple Watch.",
+        "cta": "Routen öffnen"
+      },
+      "checkIn": {
+        "eyebrow": "GEFÜHRTER CHECK-IN",
+        "headline": "Check-in in einem Durchgang",
+        "body": "Erfasse Stimmung, Messwerte und ein Fortschrittsfoto in drei schnellen Schritten. Schalte es in den Tagebuch-Einstellungen ein.",
+        "cta": "Tagebuch-Einstellungen öffnen"
+      },
+      "strength": {
+        "eyebrow": "KRAFT-WERKZEUGE",
+        "headline": "Klügeres Krafttraining",
+        "body": "Hefte den aktuellen Satz oben an, tausche Übungen mit einem Tipp, behalte deine Sätze beim Ersetzen einer Übung und belade die Stange mit dem Scheibenrechner.",
+        "cta": "Trainingseinstellungen öffnen"
+      },
+      "heartRate": {
+        "eyebrow": "HERZFREQUENZ",
+        "headline": "Herzfrequenzzonen nach deinen Vorgaben",
+        "body": "Leg deinen eigenen Maximal- und Ruhepuls sowie die Zonenmethode fest und tauch dann in ausführliche Herzfrequenz-Berichte ein.",
+        "cta": "Zoneneinstellungen öffnen"
+      },
+      "reports": {
+        "eyebrow": "BERICHTE & VERGLEICH",
+        "headline": "Sieh, wie deine Gewohnheiten zusammenhängen",
+        "body": "Sieh dir Berichte zu Ernährung, Trinken, Schlaf, Stimmung und Messwerten an und finde mit „Vergleichen“ heraus, ob eine Gewohnheit mit einer anderen zusammenhängt – oder ob sich etwas verändert hat, seit du eine neue Gewohnheit begonnen hast.",
+        "cta": "Berichte öffnen"
+      },
+      "watch": {
+        "eyebrow": "APPLE WATCH & WEAR OS",
+        "headline": "Dein Tag am Handgelenk",
+        "body": "Die Uhr-App gibt es jetzt für Apple Watch und Wear OS. Sieh deine Ziele, erfasse Wasser, Gewicht, Fasten und Medikamente und starte Trainings, die in deinem Tagebuch landen – mit Anstrengungsbewertung, Seilspringen und Routenführung auf der Apple Watch. Wähle deine Seiten in den Uhr-Einstellungen.",
+        "cta": "Uhr-Einstellungen öffnen"
+      },
+      "weeklyGoal": {
+        "eyebrow": "GEWICHTSZIELE",
+        "headline": "Wöchentliches Gewichtsziel festlegen",
+        "body": "Wähle, wie viel Gewicht du pro Woche ab- oder zunehmen willst, und Sparky berechnet dein tägliches Kalorienziel.",
+        "cta": "Kalorien-Einstellungen öffnen"
       }
     }
   },
@@ -3406,9 +3693,6 @@
     "deleteMessage": "{{name}} löschen? Künftige von diesem Plan erzeugte Tagebucheinträge werden entfernt.",
     "deleteFailed": "Mahlzeitenplan konnte nicht gelöscht werden",
     "deleteSuccess": "Mahlzeitenplan gelöscht",
-    "noServer": "Kein Server konfiguriert",
-    "noServerSubtitle": "Richte deine Serververbindung ein, um Mahlzeitenpläne zu verwalten.",
-    "goToSettings": "Zu den Einstellungen",
     "loading": "Mahlzeitenpläne werden geladen …",
     "loadFailed": "Mahlzeitenpläne konnten nicht geladen werden",
     "loadFailedSubtitle": "Prüfe deine Verbindung und versuche es erneut.",
@@ -3506,8 +3790,6 @@
     "makePrivate": "Privat machen",
     "shareWithPublic": "Öffentlich teilen",
     "editMeal": "Mahlzeit bearbeiten",
-    "noServer": "Kein Server konfiguriert",
-    "configureServer": "Richte deine Serververbindung in den Einstellungen ein, um Mahlzeitendetails zu sehen.",
     "loading": "Mahlzeit wird geladen …",
     "loadFailed": "Mahlzeit konnte nicht geladen werden",
     "perServing": "Pro Portion",
@@ -3803,7 +4085,8 @@
       "volume": "Volumen",
       "calories": "Kalorien",
       "avgHeartRate": "Ø HF",
-      "maxHeartRate": "Max. HF"
+      "maxHeartRate": "Max. HF",
+      "effort": "Anstrengung"
     },
     "errors": {
       "needsExercise": "Das Training braucht eine Übung",
@@ -3844,7 +4127,9 @@
       "distance": "Entfernung",
       "avgHeartRate": "Durchschn. Herzfrequenz",
       "steps": "Schritte",
-      "pace": "Tempo"
+      "pace": "Tempo",
+      "caloriesCounted": "In der Tagessumme gezählt",
+      "effort": "Anstrengung"
     },
     "labels": {
       "sets": "Sätze",
@@ -4003,8 +4288,6 @@
     "makePrivate": "Privat machen",
     "sharePublic": "Öffentlich teilen",
     "editFood": "Lebensmittel bearbeiten",
-    "noServer": "Kein Server konfiguriert",
-    "configureServer": "Richte deine Serververbindung in den Einstellungen ein, um Lebensmitteldetails zu sehen.",
     "serving": "Portion",
     "selectServing": "Portion auswählen",
     "servingOptions": "Portionsoptionen",
@@ -4201,6 +4484,16 @@
       "aiErrorMessage": "Prüfe den ausgewählten Sprachanbieter und versuch es erneut.",
       "noSpeechTitle": "Keine Sprache erkannt",
       "noSpeechMessage": "Versuch es erneut und sprich näher am Mikrofon."
+    },
+    "attachments": {
+      "addPhoto": "Foto hinzufügen",
+      "takePhoto": "Foto aufnehmen",
+      "chooseFromLibrary": "Aus Mediathek wählen",
+      "removePhoto": "Foto entfernen",
+      "previewPhoto": "Fotovorschau",
+      "cameraPermission": "Kamerazugriff nötig",
+      "cameraPermissionBody": "Erlaube den Kamerazugriff, um ein Foto hinzuzufügen.",
+      "addFailed": "Foto konnte nicht hinzugefügt werden"
     }
   },
   "foodImagePicker": {
@@ -4441,8 +4734,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "Kein Server konfiguriert",
-      "noServerHint": "Richte deine Serververbindung in den Einstellungen ein, um die Mahlzeiten-Nährwerte zu sehen.",
       "loading": "Mahlzeit wird geladen …",
       "loadFailed": "Mahlzeit konnte nicht geladen werden",
       "noFoods": "Keine Lebensmittel für {{meal}}",
@@ -4780,15 +5071,21 @@
     "vo2max": {
       "title": "VO2max",
       "loadFailed": "VO2max-Daten konnten nicht geladen werden",
-      "empty": "Keine VO2max-Daten für diesen Zeitraum"
+      "empty": "Keine VO2max-Daten für diesen Zeitraum",
+      "estimateTitle": "VO2max (geschätzt)",
+      "estimateNote": "Geschätzt aus deinen erfassten Läufen. Keine Messung; ein synchronisierter Wert ersetzt sie."
+    },
+    "heartRate": {
+      "title": "Ruheherzfrequenz",
+      "avgLabel": "Ø",
+      "rangeLabel": "SPANNE",
+      "loadFailed": "Herzfrequenzdaten konnten nicht geladen werden",
+      "empty": "Keine Herzfrequenzdaten für diesen Zeitraum"
     }
   },
   "exerciseLibrary": {
     "title": "Übungen",
     "search": "Übungen suchen …",
-    "noServer": "Kein Server konfiguriert",
-    "configure": "Richte deine Serververbindung in den Einstellungen ein, um deine Übungsbibliothek zu sehen.",
-    "go": "Zu den Einstellungen",
     "loading": "Übungen werden geladen …",
     "failed": "Übungen konnten nicht geladen werden",
     "retry": "Erneut versuchen",
@@ -4804,9 +5101,6 @@
   "foodLibrary": {
     "title": "Lebensmittel",
     "search": "Lebensmittel suchen …",
-    "noServer": "Kein Server konfiguriert",
-    "configure": "Richte deine Serververbindung in den Einstellungen ein, um deine Lebensmittelbibliothek zu sehen.",
-    "go": "Zu den Einstellungen",
     "loading": "Lebensmittel werden geladen …",
     "failed": "Lebensmittel konnten nicht geladen werden",
     "retry": "Erneut versuchen",
@@ -4821,9 +5115,6 @@
   "mealLibrary": {
     "title": "Mahlzeiten",
     "search": "Mahlzeiten suchen …",
-    "noServer": "Kein Server konfiguriert",
-    "configure": "Richte deine Serververbindung in den Einstellungen ein, um deine Mahlzeitenbibliothek zu sehen.",
-    "go": "Zu den Einstellungen",
     "loading": "Mahlzeiten werden geladen …",
     "failed": "Mahlzeiten konnten nicht geladen werden",
     "searchFailed": "Mahlzeitensuche fehlgeschlagen",
@@ -4838,9 +5129,7 @@
   "presetLibrary": {
     "title": "Trainingsvorlagen",
     "search": "Trainingsvorlagen suchen …",
-    "noServer": "Kein Server konfiguriert",
     "configure": "Richte deine Serververbindung in den Einstellungen ein, um deine Trainingsvorlagen zu sehen.",
-    "go": "Zu den Einstellungen",
     "loading": "Trainingsvorlagen werden geladen …",
     "failed": "Trainingsvorlagen konnten nicht geladen werden",
     "retry": "Erneut versuchen",
@@ -5139,7 +5428,8 @@
       "h1": "-1 h",
       "h3": "-3 h",
       "started": "Begonnen",
-      "episode": "Episode"
+      "episode": "Episode",
+      "d1": "-1 T"
     },
     "name": "Symptomname",
     "nameRequired": "Bitte gib einen Namen für das Symptom ein.",
@@ -5348,7 +5638,11 @@
     "episode": {
       "ongoing": "andauernd",
       "peak": "Max. {{n}}"
-    }
+    },
+    "startDate": "Datum",
+    "startDateA11y": "Startdatum, {{date}}",
+    "startTime": "Uhrzeit",
+    "startTimeA11y": "Startzeit, {{time}}"
   },
   "waterIntake": {
     "updateFailed": "Fehler",
@@ -5367,9 +5661,6 @@
     "loading": "Wasserbehälter werden geladen …",
     "loadFailed": "Wasserbehälter konnten nicht geladen werden",
     "loadFailedSubtitle": "Prüfe deine Verbindung und versuche es erneut.",
-    "noServer": "Kein Server konfiguriert",
-    "noServerSubtitle": "Richte deine Serververbindung ein, um Wasserbehälter zu verwalten.",
-    "goToSettings": "Zu den Einstellungen",
     "emptyTitle": "Noch keine Wasserbehälter",
     "emptySubtitle": "Füge eine Flasche oder ein Glas hinzu, um die Flüssigkeitszufuhr zu verfolgen — optional mit einem Lebensmittel verknüpft, sodass ein Tippen beides erfasst.",
     "linkedTo": "Verknüpft mit {{food}}",
@@ -5833,9 +6124,6 @@
       "dayCycle_other": "{{count}}-Tage-Zyklus"
     }
   },
-  "workoutPresetLibrary": {
-    "configure": "Richte deine Serververbindung in den Einstellungen ein, um deine Trainingsvorlagen zu sehen."
-  },
   "time": {
     "hoursShort": "h",
     "minutesShort": "min"
@@ -6031,7 +6319,8 @@
     "rangeSection": "Wiedergabe",
     "rangeA11y": "Wähle, wie weit zurück abgespielt wird",
     "deltaBadge": "Δ {{value}}",
-    "frameCountRanged": "{{current}} von {{total}} · {{range}}"
+    "frameCountRanged": "{{current}} von {{total}} · {{range}}",
+    "historyDescriptionCappedCheckIn": "Deine {{limit}} neuesten, das neueste zuerst."
   },
   "caffeine": {
     "title": "Aktives Koffein",
@@ -6046,7 +6335,8 @@
     "estimatedTimes": "Einige Einnahmezeiten wurden geschätzt",
     "legendCurve": "Aktives Koffein",
     "legendThreshold": "Grenzwert {{threshold}} mg",
-    "unitMg": "mg"
+    "unitMg": "mg",
+    "tomorrow": "Morgen"
   },
   "foodEntryMultiAdd": {
     "title": "Überprüfung",
@@ -6381,7 +6671,17 @@
     "setInputKeypad": "Ziffernblock",
     "setInputCrown": "Digital Crown",
     "rpeTitle": "Nach jedem Satz nach der Anstrengung (RPE) fragen",
-    "rpeSubtitle": "Nachdem du auf der Watch einen Satz erfasst hast, drehe die Digital Crown, um von 1 bis 10 zu wählen, wie anstrengend er war, und tippe dann auf „Speichern“ – oder auf „Überspringen“."
+    "rpeSubtitle": "Nachdem du auf der Watch einen Satz erfasst hast, drehe die Digital Crown, um von 1 bis 10 zu wählen, wie anstrengend er war, und tippe dann auf „Speichern“ – oder auf „Überspringen“.",
+    "rpeSubtitleWearOs": "Nachdem du auf der Uhr einen Satz erfasst hast, dreh die Krone oder tippe auf +/−, um von 5 bis 10 zu wählen, wie anstrengend er war, und tippe dann auf „Speichern“ – oder auf „Überspringen“.",
+    "layoutTitle": "Layout",
+    "setScreenMetricsTitle": "Messwerte auf dem Satzbildschirm",
+    "setScreenMetricsSubtitle": "Verstrichene Zeit, Herzfrequenz und Kalorien. Aus verschiebt sie auf eine eigene Seite nach dem Satzbildschirm (nach „Als Nächstes“, wenn diese Seite aktiv ist).",
+    "upNextTitle": "Seite „Als Nächstes“",
+    "upNextSubtitle": "Eine Seite, einmal nach oben gewischt vom Satzbildschirm, mit der nächsten Übung, ihrem Ziel und einer Tauschen-Schaltfläche, um zuerst eine andere Übung zu machen.",
+    "largerTextTitle": "Größere Schrift auf der Uhr",
+    "largerTextSubtitle": "Größere Schrift und die neueren Layouts auf der ganzen Uhr: Ziele, Wasser, Training, Fasten, Schritte und mehr. Aus behält den ursprünglichen Look.",
+    "classicWorkoutTitle": "Ursprüngliche Trainingsseite",
+    "classicWorkoutSubtitle": "Behalte den ursprünglichen Trainingsbildschirm, während überall sonst größere Schrift aktiv ist. Ist größere Schrift aus, nutzt das Training ihn immer."
   },
   "exerciseStatistics": {
     "title": "Übungsstatistiken",
@@ -6497,7 +6797,12 @@
       "perMile": "/mi",
       "exportGpx": "GPX exportieren",
       "exportGpxFailed": "Die Route konnte nicht exportiert werden",
-      "shareImage": "Als Bild teilen"
+      "shareImage": "Als Bild teilen",
+      "weather": "Wetter",
+      "degreesC": "{{value}}°C",
+      "degreesF": "{{value}}°F",
+      "splits": "Zwischenzeiten",
+      "effort": "Anstrengung"
     },
     "consistency": {
       "title": "Trainingskonstanz",
@@ -6551,7 +6856,61 @@
       "range": "{{fast}} – {{slow}} {{unit}}",
       "fromEffort": "Basiert auf deinem besten Lauf der letzten Zeit. Das Schwellentempo liegt bei etwa {{pace}} {{unit}}.",
       "fromTypical_one": "Geschätzt aus {{formattedCount}} Lauf der letzten Zeit, daher weniger genau. Ein harter Lauf über 3 km oder mehr macht die Werte genauer.",
-      "fromTypical_other": "Geschätzt aus deinen letzten {{formattedCount}} Läufen, daher weniger genau. Ein harter Lauf über 3 km oder mehr macht die Werte genauer."
+      "fromTypical_other": "Geschätzt aus deinen letzten {{formattedCount}} Läufen, daher weniger genau. Ein harter Lauf über 3 km oder mehr macht die Werte genauer.",
+      "fromTest": "Festgelegt durch deinen letzten Fitnesstest. Das Schwellentempo liegt bei etwa {{pace}} {{unit}}."
+    },
+    "runningForm": {
+      "title": "Laufstil",
+      "subtitle": "Schritte pro Minute und Schrittlänge deiner Läufe",
+      "average": "Ø {{value}}",
+      "change": "{{value}} ggü. früheren Läufen",
+      "hint": "Ein Laufbandlauf zählt, sobald seine Schritte gemessen wurden."
+    },
+    "runEstimates": {
+      "title": "Laufschätzungen",
+      "subtitle": "Geschätzt aus Tempo, Herzfrequenz, Gewicht und Höhenmetern. Keine Messung, rechne also mit einigen Prozent Abweichung.",
+      "loadFailed": "Deine Laufschätzungen konnten nicht geladen werden.",
+      "about": "≈ {{value}}",
+      "vo2Unit": "VO₂ max (ml/kg/min)",
+      "vo2Basis_one": "Aus {{count}} Lauf der letzten 6 Wochen",
+      "vo2Basis_other": "Aus {{count}} Läufen der letzten 6 Wochen",
+      "watts": "≈ {{value}} W",
+      "powerUnit": "Laufleistung ({{perKg}} W/kg)",
+      "powerBasis_one": "Durchschnitt aus {{count}} Lauf der letzten 4 Wochen",
+      "powerBasis_other": "Durchschnitt aus {{count}} Läufen der letzten 4 Wochen"
+    },
+    "fitness": {
+      "level": {
+        "high": "Bereit für eine harte Einheit.",
+        "moderate": "Gut für eine normale Einheit, aber nicht für deine härteste.",
+        "low": "Nicht erholt. Ein lockerer Tag oder Ruhe ist die bessere Wahl.",
+        "noData": "Noch zu wenig Daten. Protokolliere Trainings und Schlaf, um deine Trainingsbereitschaft zu sehen."
+      },
+      "form": {
+        "fresh": "Frisch: Dein jüngstes Training ist leicht im Vergleich zu dem, was du aufgebaut hast.",
+        "tired": "Müde: Dein jüngstes Training ist schwer im Vergleich zu dem, was du aufgebaut hast.",
+        "neutral": "Ausgeglichen: Dein jüngstes Training passt zu dem, was du aufgebaut hast.",
+        "learning": "Dein Normalwert wird noch ermittelt. Protokolliere weiter."
+      },
+      "factor": {
+        "form": "Trainingsform",
+        "sleep": "Schlaf",
+        "restingHeartRate": "Ruheherzfrequenz",
+        "hrv": "HRV"
+      },
+      "vital": {
+        "hrv": "{{current}} ms gegenüber üblich {{baseline}} ms",
+        "hrvNights": "{{current}} ms gegenüber üblich {{baseline}} ms (Median aus {{count}} Nächten)",
+        "restingHeartRate": "{{current}} bpm gegenüber üblich {{baseline}} bpm",
+        "restingHeartRateNights": "{{current}} bpm gegenüber üblich {{baseline}} bpm (Median aus {{count}} Nächten)"
+      },
+      "loadFailed": "Deine Trainingsbereitschaft konnte nicht geladen werden.",
+      "outOf": "Bereitschaft von 100",
+      "fitness": "Fitness",
+      "fatigue": "Ermüdung",
+      "formLabel": "Form",
+      "title": "Bereitschaft und Form",
+      "subtitle": "Wie bereit du heute bist, aus Trainingsform, Schlaf und Ruheherzfrequenz."
     }
   },
   "aiSettings": {
@@ -6719,9 +7078,6 @@
     "dateRange": "{{start}} – {{end}}",
     "starting": "Ab {{date}}",
     "deleteNamed": "{{name}} löschen",
-    "noServer": "Kein Server konfiguriert",
-    "noServerSubtitle": "Richte deine Serververbindung ein, um Trainingspläne zu verwalten.",
-    "goToSettings": "Zu den Einstellungen",
     "loading": "Trainingspläne werden geladen …",
     "loadFailed": "Trainingspläne konnten nicht geladen werden",
     "emptyTitle": "Noch keine Trainingspläne",
@@ -6796,7 +7152,10 @@
       "loggedA11y": "Stimmung am {{date}}: {{mood}}",
       "log": "+ Erfassen",
       "trend7d": "7-Tage-Trend"
-    }
+    },
+    "reminderOfferTitle": "Täglich erinnern?",
+    "reminderOfferBody": "Lass dich jeden Abend an deinen Check-in erinnern. Uhrzeit ändern oder weitere hinzufügen kannst du unter Einstellungen → App-Einstellungen → Benachrichtigungen.",
+    "reminderOfferAccept": "Erinnere mich"
   },
   "customNutrients": {
     "title": "Eigene Nährstoffe",
@@ -6843,7 +7202,8 @@
   },
   "equipmentHub": {
     "title": "Ausrüstung",
-    "shoesSubtitle": "Laufschuhe und ihre Laufleistung"
+    "shoesSubtitle": "Laufschuhe und ihre Laufleistung",
+    "platesSubtitle": "Deine Stangen und Hantelscheiben für den Scheibenrechner"
   },
   "fastingSettings": {
     "title": "Fasten-Einstellungen",
@@ -6971,7 +7331,8 @@
     "activity": {
       "walk": "Gehen",
       "run": "Laufen",
-      "ride": "Radfahren"
+      "ride": "Radfahren",
+      "jumpRope": "Seilspringen"
     },
     "permission": {
       "denied": "SparkyFitness braucht Zugriff auf deinen Standort, um deine Route aufzuzeichnen. Du kannst ihn in den Einstellungen erlauben.",
@@ -7110,7 +7471,9 @@
       "increase": "{{label}} erhöhen",
       "complete": "Intervalle abgeschlossen",
       "round": "Runde {{round}} von {{rounds}}",
-      "next": "Als Nächstes: {{name}} {{time}}"
+      "next": "Als Nächstes: {{name}} {{time}}",
+      "brisk": "Zügig",
+      "zone2": "Zone-2-Lauf"
     },
     "program": {
       "title": "Trainingsprogramm",
@@ -7133,7 +7496,9 @@
         "tenKToHalf": "Von 10 km zum Halbmarathon",
         "fasterHalf": "Schnellerer Halbmarathon",
         "beginnerMarathon": "Marathon für Einsteiger",
-        "advancedMarathon": "Marathon für Fortgeschrittene"
+        "advancedMarathon": "Marathon für Fortgeschrittene",
+        "zone2Base": "Zone-2-Grundlage",
+        "zone2Base4": "Zone-2-Grundlage (4 Läufe pro Woche)"
       },
       "beginner5kDescription": "5 km für Einsteiger: neun Wochen, drei Läufe pro Woche. Du wechselst zwischen Laufen und Gehen und steigerst dich auf 30 Minuten Laufen.",
       "workoutLabel": "{{name}} · Woche {{week}}, Lauf {{run}}",
@@ -7198,11 +7563,11 @@
       "advancedMarathonDescription": "Marathon für Fortgeschrittene: sechzehn Wochen, fünf Läufe pro Woche, mit Intervall- oder Tempodauerläufen und langen Läufen, die sich bis auf drei Stunden steigern. Für erfahrene Läufer.",
       "halfMarathon4Description": "Halbmarathon: zwölf Wochen, vier Läufe pro Woche, mit langen Läufen bis zu etwa zwei Stunden. Für alle, die 30 Minuten entspannt laufen.",
       "tenKToHalf4Description": "Von 10 km zum Halbmarathon: zehn Wochen, vier Läufe pro Woche, mit langen Läufen bis zu etwa zwei Stunden. Für alle, die 10 km laufen können.",
-      "beginnerMarathon4Description": "Marathon für Einsteiger: achtzehn Wochen, vier Läufe pro Woche, mit langen Läufen bis zu 2⅔ Stunden und Tapering. Für alle, die 10 km laufen können.",
-      "fasterHalf4Description": "Schnellerer Halbmarathon: zehn Wochen, vier Läufe pro Woche, mit einer Intervalleinheit, lockeren Läufen und einem langen Lauf mit Tempoanteilen. Für alle, die schon einen Halbmarathon gelaufen sind.",
+      "beginnerMarathon4Description": "Marathon für Einsteiger: achtzehn Wochen, vier Läufe pro Woche, mit langen Läufen bis zu 2½ Stunden und Tapering. Für alle, die 10 km laufen können.",
+      "fasterHalf4Description": "Schnellerer Halbmarathon: zehn Wochen, vier Läufe pro Woche, mit einer Intervalleinheit, lockeren Läufen und einem langen Lauf. Für alle, die schon einen Halbmarathon gelaufen sind.",
       "marathonDescription": "Marathon: sechzehn Wochen, vier Läufe pro Woche, mit langen Läufen bis zu etwa 2¾ Stunden und Tapering. Für alle, die schon regelmäßig laufen.",
       "outlineWalk": "Woche 1: Trainings mit {{weekOne}} Minuten. Steigert sich auf {{peak}} Minuten zügiges Gehen.",
-      "outline": "Woche 1: Trainings mit {{weekOne}} Minuten. Steigert sich auf {{peak}} Minuten Laufen.",
+      "outline": "Woche 1: Trainings mit {{weekOne}} Minuten. Steigert sich auf {{peak}} Minuten Belastung.",
       "minutes": "{{minutes}} min",
       "workoutsDone": "{{done}} von {{total}} Trainings",
       "optionLabel": "{{name}} · {{weeks}} Wochen, {{runs}} Trainings pro Woche",
@@ -7212,7 +7577,10 @@
       "switchMessage": "Du beginnst das neue Programm in Woche 1. Dein Stand im aktuellen Programm wird nicht übernommen.",
       "switchConfirm": "Wechseln",
       "startDayPast": "Gestartet am {{date}}. Dein nächstes Training ist ab heute geplant.",
-      "customWorkoutLabel": "{{name}} · {{workout}}"
+      "customWorkoutLabel": "{{name}} · {{workout}}",
+      "zone2BaseDescription": "Zone-2-Grundlage: zehn Wochen, drei lockere Läufe pro Woche in deiner Zone-2-Herzfrequenz (oder nach Sprechtest). Du sammelst Zeit in der Zone, mit einem langen Lauf von bis zu 70 Minuten. Für alle, die 30 Minuten laufen können.",
+      "zone2Base4Description": "Zone-2-Grundlage: zehn Wochen, vier lockere Läufe pro Woche in deiner Zone-2-Herzfrequenz (oder nach Sprechtest). Du sammelst Zeit in der Zone, mit einem langen Lauf von bis zu 70 Minuten. Für alle, die 30 Minuten laufen können.",
+      "goalUseRaceDay": "Wettkampftag übernehmen ({{date}})"
     },
     "watch": {
       "title": "Aufzeichnen mit",
@@ -7232,7 +7600,8 @@
       "outdoorWalk": "Gehen draußen",
       "indoorWalk": "Gehen drinnen",
       "outdoorRide": "Radfahren draußen",
-      "indoorRide": "Radfahren drinnen"
+      "indoorRide": "Radfahren drinnen",
+      "jumpRope": "Seilspringen"
     },
     "gps": {
       "good": "GPS gut",
@@ -7271,7 +7640,8 @@
       "easyTitle": "Herzfrequenz: lockere Abschnitte",
       "easyDescription": "Warnt dich, wenn deine Herzfrequenz in einem lockeren Abschnitt außerhalb dieses Bereichs liegt.",
       "warmTitle": "Herzfrequenz: Auf- und Abwärmen",
-      "warmDescription": "Warnt dich, wenn deine Herzfrequenz beim Auf- oder Abwärmen außerhalb dieses Bereichs liegt."
+      "warmDescription": "Warnt dich, wenn deine Herzfrequenz beim Auf- oder Abwärmen außerhalb dieses Bereichs liegt.",
+      "wearOsDescription": "Braucht deine Wear-OS-Uhr. Vibriert – und sagt es bei eingeschalteten Sprachansagen an –, wenn deine Herzfrequenz außerhalb dieses Bereichs bleibt."
     },
     "suggestedRanges": {
       "title": "Vorgeschlagene Bereiche",
@@ -7284,7 +7654,35 @@
       "tempo": "Tempodauerlauf {{range}}",
       "marathonPace": "Marathontempo {{range}}",
       "strides": "Steigerungsläufe {{range}}",
-      "paceSourceRace": "Basierend auf deinem letzten Wettkampf: {{race}}."
+      "paceSourceRace": "Basierend auf deinem letzten Wettkampf: {{race}}.",
+      "paceSourceTest": "Basierend auf deinem {{test}} vom {{date}}.",
+      "heartRateSourceUser": "Aus deiner maximalen Herzfrequenz von {{max}} bpm.",
+      "heartRateSourceReserve": "Aus deinen Zonen nach Herzfrequenzreserve, mit einem Maximum von {{max}} bpm.",
+      "heartRateSourceCustom": "Aus deinen eigenen Herzfrequenzzonen."
+    },
+    "route": {
+      "title": "Route",
+      "none": "Keine Route",
+      "watchHint": "Deine Uhr zeigt die Linie und vibriert an jeder Abzweigung."
+    },
+    "splitsTable": {
+      "km": "km",
+      "mi": "mi",
+      "pace": "Tempo",
+      "elev": "Höhe",
+      "hr": "HF"
+    },
+    "zone2": {
+      "target": "Zone 2: {{min}}–{{max}} bpm",
+      "targetSpoken": "Zone 2, {{min}} bis {{max}} Schläge pro Minute",
+      "inside": "In Zone 2. Halte diese Anstrengung.",
+      "above": "Über Zone 2. Nimm Tempo raus oder geh, bis sich deine Herzfrequenz beruhigt.",
+      "below": "Unter Zone 2. Du kannst etwas zulegen.",
+      "waiting": "Warte auf einen Herzfrequenzwert …",
+      "talkTest": "Zone 2: so locker, dass du in ganzen Sätzen sprechen kannst. Schaffst du nur ein paar Worte, mach langsamer.",
+      "noRange": "Trag dein Geburtsdatum im Profil ein, um einen Herzfrequenzbereich für Zone 2 zu sehen. Bis dahin hilft der Sprechtest.",
+      "zoneCheck": "Zonen-Check: Lauf diese Einheit auf einer flachen, bekannten Strecke mit derselben Anstrengung wie beim letzten Mal und notier dir Tempo und wie leicht es sich anfühlte. Bist du bei gleicher Herzfrequenz schneller, wächst deine aerobe Fitness.",
+      "driftNote": "Bei einem langen Lauf steigt die Herzfrequenz um ein paar Schläge, deshalb wird die Obergrenze nach 20 Minuten etwas großzügiger."
     }
   },
   "goals": {
@@ -7459,7 +7857,30 @@
     "measurementsSubtitle": "Gewicht, Körperzusammensetzung, Körpermaße und Schritte",
     "insights": "Was auffiel",
     "substances": "Koffein und Alkohol",
-    "substancesSubtitle": "Koffein pro Tag, Alkoholmengen und Wochenverlauf"
+    "substancesSubtitle": "Koffein pro Tag, Alkoholmengen und Wochenverlauf",
+    "compare": "Vergleichen",
+    "compareSubtitle": "Wie sich zwei Werte gemeinsam entwickeln",
+    "heartRate": "Herzfrequenz",
+    "heartRateSubtitle": "Ruhepuls-Verlauf und Zonenverteilung",
+    "details": "Berichtsdetails ansehen",
+    "heartRateChangeVsPrevious": "{{change}} bpm ggü. Vorzeitraum",
+    "averageRestingHr": "Durchschnittlicher Ruhepuls",
+    "restingHrRange": "Ruhepuls-Bereich",
+    "heartRateRecovery1Min": "1-Min-Erholung",
+    "heartRateRecoveryHint": "Abfall der Herzfrequenz 1 Minute nach dem Training",
+    "recordedDays": "Erfasste Tage",
+    "daysRatio": "{{daysWithData}} von {{totalDays}} Tagen",
+    "heartRateLoadFailed": "Herzfrequenzdaten konnten nicht geladen werden",
+    "heartRateEmpty": "Keine Herzfrequenzdaten für diesen Zeitraum",
+    "restingHeartRateTrend": "Ruhepuls-Verlauf",
+    "heartRateZones": "Herzfrequenzzonen",
+    "zoneSource": "Deine Zonen: {{method}}, maximale Herzfrequenz {{max}} bpm ({{source}}).",
+    "zoneSourceDefault": "Typische Zonen (% von max. 190 bpm), bis deine eigenen Zonen geladen sind.",
+    "zoneSettingsLink": "Einstellungen für Herzfrequenzzonen",
+    "heartRateSummary": "Herzfrequenz-Übersicht",
+    "heartRateInsights": "Einblicke zum Ruhepuls",
+    "insightAthletic": "Dein durchschnittlicher Ruhepuls liegt im sportlichen Bereich (<60 bpm) und zeigt ein leistungsfähiges Herz-Kreislauf-System.",
+    "insightNormal": "Bei gesunden Erwachsenen liegt der Ruhepuls meist zwischen 60 und 100 bpm. Niedrigere Werte deuten in der Regel auf eine bessere Ausdauerfitness hin."
   },
   "nutritionReport": {
     "title": "Ernährung",
@@ -7644,7 +8065,9 @@
       "caffeineSummary": "Koffein-Übersicht",
       "alcoholChart": "Alkohol-Diagramm",
       "alcoholSummary": "Alkohol-Übersicht",
-      "substancesWeekly": "Woche für Woche"
+      "substancesWeekly": "Woche für Woche",
+      "restingHrChart": "Ruhepuls-Diagramm",
+      "heartRateZones": "Intensitätszonen"
     },
     "hydrationSections": "Trinkbericht",
     "measurementsSections": "Messwerte-Bericht",
@@ -7652,7 +8075,8 @@
     "nutrientsDescription": "Wähle die Vitamine, Mineralstoffe und anderen Nährstoffe, deren Durchschnitt der Ernährungsbericht unter „Deine Nährstoffe“ zeigt, und ziehe sie, um die Reihenfolge festzulegen. Eigene Nährstoffe sind enthalten.",
     "nutrientReorderHint": "Ändert die Position dieses Nährstoffs im Bericht",
     "substancesSections": "Bericht zu Koffein und Alkohol",
-    "exerciseSections": "Trainingsbericht"
+    "exerciseSections": "Trainingsbericht",
+    "heartRateSections": "Herzfrequenz-Bericht"
   },
   "hydrationReport": {
     "title": "Flüssigkeitszufuhr",
@@ -7782,7 +8206,9 @@
     "saveDistance": "Aktualisieren",
     "distanceInvalid": "Gib die Distanz vom Gerät ein.",
     "distanceFailed": "Die Distanz konnte nicht gespeichert werden.",
-    "heartRate": "Herzfrequenz"
+    "heartRate": "Herzfrequenz",
+    "jumpRopeSaved": "Seilspringen gespeichert",
+    "watchJumpRopeSaved": "Seilspringen von deiner Uhr gespeichert"
   },
   "runPrograms": {
     "startWhenTitle": "{{name}} starten",
@@ -7802,19 +8228,21 @@
         "walkFit": "In den Wochen 1 bis 4 wechseln sich Abschnitte zügigen Gehens (3 bis 8 Minuten) mit 2 Minuten lockerem Gehen ab. Die Wochen 5 und 6 haben zwei längere zügige Abschnitte von 12 und 15 Minuten. Die Wochen 7 und 8 bestehen aus durchgehendem zügigem Gehen von 20 bis 30 Minuten.",
         "halfMarathon": "Jede Woche hat einen lockeren Lauf, einen mittleren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 50 auf 115 Minuten, jede vierte Woche ist leichter, und die letzte Woche vor dem Wettkampftag ist kurz.",
         "marathon": "Die meisten Wochen haben zwei lockere Läufe, einen mittleren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 70 Minuten auf 2½ Stunden, jede vierte Woche ist leichter, und in den letzten zwei Wochen wird vor dem Wettkampftag reduziert.",
-        "halfMarathon4": "Jede Woche hat zwei lockere Läufe, einen mittleren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 60 auf 125 Minuten, jede vierte Woche ist leichter, und in den letzten zwei Wochen wird vor dem Wettkampftag reduziert. Die letzte Woche hat drei kürzere Läufe.",
-        "tenKToHalf4": "Jede Woche hat zwei kurze Läufe, einen mittleren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 75 auf 125 Minuten, Woche 4 ist leichter, und in den letzten drei Wochen wird vor dem Wettkampftag reduziert. Die letzte Woche hat drei kürzere Läufe.",
-        "fasterHalf4": "Jede Woche hat eine Schnelligkeitseinheit, zwei lockere Läufe und einen langen Lauf. Der lange Lauf steigert sich von 80 auf 120 Minuten, Woche 4 ist leichter, und in den letzten drei Wochen wird vor dem Wettkampftag reduziert. Die letzte Woche hat drei kürzere Läufe.",
-        "beginnerMarathon4": "Jede Woche hat zwei kurze Läufe, einen mittleren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 80 Minuten auf 2 Stunden 40 Minuten, jede vierte Woche ist leichter, und in den letzten drei Wochen wird vor dem Wettkampftag reduziert. Die letzte Woche hat drei kürzere Läufe.",
+        "halfMarathon4": "Jede Woche hat zwei lockere Läufe, einen mittleren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 50 auf 115 Minuten, jede vierte Woche ist leichter, und in den letzten zwei Wochen wird vor dem Wettkampftag reduziert. Die letzte Woche hat drei kürzere Läufe.",
+        "tenKToHalf4": "Jede Woche hat zwei kurze Läufe, einen mittleren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 65 auf 115 Minuten, die Wochen 4 und 8 sind leichter, und in den letzten zwei Wochen wird vor dem Wettkampftag reduziert. Die letzte Woche hat drei kürzere Läufe.",
+        "fasterHalf4": "Jede Woche hat eine Schnelligkeitseinheit, zwei lockere Läufe und einen langen Lauf. Der lange Lauf steigert sich von 70 auf 110 Minuten. In den Wochen 6 und 8 ersetzen Tempoläufe von 25 und 30 Minuten die Schnelligkeitseinheit, Woche 4 ist leichter, und in den letzten drei Wochen wird vor dem Wettkampftag reduziert. Die letzte Woche hat drei kürzere Läufe.",
+        "beginnerMarathon4": "Jede Woche hat zwei kurze Läufe, einen mittleren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 70 Minuten auf 2½ Stunden, jede vierte Woche ist leichter, und in den letzten drei Wochen wird vor dem Wettkampftag reduziert. Die letzte Woche hat drei kürzere Läufe.",
         "walk10k": "Jede Woche hat zwei Gehtrainings mit zügigen Abschnitten und kurzen lockeren Pausen sowie einen langen zügigen Gang. Der lange Gang wächst von 40 auf 105 Minuten, die Wochen 4 und 8 sind leichter, und die letzte Woche endet mit den 10 km Gehen.",
         "returnToRunning": "In den Wochen 1 bis 3 wechseln sich kurze Läufe mit Gehen ab, von 1-Minuten- bis zu 5-Minuten-Läufen. Woche 4 hat drei Lauf-Geh-Einheiten mit Läufen von 6, 10 und 12 Minuten, insgesamt 18, 20 und 22 Minuten Laufen.",
         "gentle5k": "Jede Woche wiederholt eine Lauf-Geh-Einheit dreimal. Die Läufe wachsen bis Woche 8 von 30 Sekunden auf 5 Minuten, dann auf zwei 10-Minuten-Läufe, einen 15- und einen 10-Minuten-Lauf und schließlich auf durchgehende Läufe von 25 und 30 Minuten.",
-        "beginner10k": "Die Wochen 1 bis 6 folgen dem 5-km-Einsteigeraufbau von kurzen Läufen und Gehpausen bis zum durchgehenden Laufen. Die Wochen 7 bis 12 haben drei Läufe pro Woche, wobei der lange Lauf von 30 auf 60 Minuten wächst.",
-        "faster10k": "Jede Woche hat eine Schnelligkeitseinheit (schnelle und lockere Wiederholungen), einen lockeren Lauf und einen längeren Lauf. In den Wochen 5 bis 7 ist der längere Lauf ein Tempolauf von 20, 25 und dann 30 Minuten, und die letzte Woche ist leichter.",
+        "beginner10k": "Die Wochen 1 bis 6 folgen dem 5-km-Einsteigeraufbau von kurzen Läufen und Gehpausen bis zum durchgehenden Laufen. Die Wochen 7 bis 12 haben drei Läufe pro Woche. Der lange Lauf wächst von 30 auf 60 Minuten, Woche 10 ist leichter.",
+        "faster10k": "Jede Woche hat eine Schnelligkeitseinheit (schnelle Wiederholungen oder Hügel), einen lockeren Lauf und einen längeren Lauf. Woche 4 ist leichter. In den Wochen 5 bis 7 ist der längere Lauf ein Tempolauf von 20, 25 und dann 30 Minuten, und die letzte Woche ist leichter.",
         "tenKToHalf": "Jede Woche hat einen kurzen Lauf, einen mittleren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 65 auf 115 Minuten, die Wochen 4 und 8 sind leichter, und in den letzten zwei Wochen wird vor dem Wettkampftag reduziert.",
         "fasterHalf": "Jede Woche hat eine Schnelligkeitseinheit, einen lockeren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 70 auf 110 Minuten, in den Wochen 6 und 8 ersetzen Tempoläufe von 25 und 30 Minuten die Schnelligkeitseinheit, und in den letzten zwei Wochen wird reduziert.",
         "beginnerMarathon": "Jede Woche hat einen kurzen Lauf, einen mittleren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 70 Minuten auf 2½ Stunden, jede vierte Woche ist leichter, und in den letzten drei Wochen wird vor dem Wettkampftag reduziert.",
-        "advancedMarathon": "Die meisten Wochen haben zwei lockere Läufe, eine Schnelligkeits- oder Tempoeinheit, einen mittleren Lauf und einen langen Lauf. Der lange Lauf steigert sich von 90 Minuten auf drei Stunden, jede vierte Woche ist leichter, und in den letzten zwei Wochen wird vor dem Wettkampftag reduziert."
+        "advancedMarathon": "Die meisten Wochen haben zwei lockere Läufe, eine Schnelligkeits-, Hügel- oder Tempoeinheit, einen mittleren Lauf und einen langen Lauf. Die meisten lockeren Läufe enden ab Woche 3 mit Steigerungsläufen. Ab Woche 9 enthält der lange Lauf einen Abschnitt im Marathontempo, außer in den leichteren Wochen. Der lange Lauf steigert sich von 90 Minuten auf drei Stunden, jede vierte Woche ist leichter, und in den letzten zwei Wochen wird vor dem Wettkampftag reduziert.",
+        "zone2Base": "Jede Woche hat einen kurzen, einen mittleren und einen langen Lauf, alle locker und in Zone 2. Die Zeit in der Zone wächst von 100 auf 155 Minuten pro Woche, der lange Lauf von 40 auf 70 Minuten, und die Wochen 4 und 8 sind leichter. In den Wochen 6, 7 und 9 endet der kurze Lauf mit vier entspannten Steigerungsläufen. Der mittlere Lauf der Wochen 4, 8 und 10 ist ein Zonen-Check.",
+        "zone2Base4": "Jede Woche hat zwei kurze Läufe, einen mittleren und einen langen Lauf, alle locker und in Zone 2. Die Zeit in der Zone wächst von 130 auf 190 Minuten pro Woche, der lange Lauf von 40 auf 70 Minuten, und die Wochen 4 und 8 sind leichter. In den Wochen 6, 7 und 9 endet der erste Lauf mit vier entspannten Steigerungsläufen. Der mittlere Lauf der Wochen 4, 8 und 10 ist ein Zonen-Check."
       },
       "rest": {
         "title": "Ruhetage",
@@ -7824,7 +8252,8 @@
         "returnToRunning": "Lass ein oder zwei Tage zwischen den Läufen, zum Beispiel Montag, Donnerstag und Samstag, und halte jeden Lauf locker, sodass du dich dabei unterhalten kannst. An den übrigen Tagen ruh dich aus, geh oder fahr locker Rad. Wenn etwas im Verlauf stärker schmerzt, geh zur vorherigen Woche zurück.",
         "fourRun": "Bei vier Läufen pro Woche nimm mindestens einen vollen Ruhetag und lauf nie mehr als zwei Tage am Stück. Halte den Tag vor dem langen Lauf locker oder frei und ruh dich am Tag danach aus oder mach Ausgleichstraining. Nutze die übrigen Tage für Ruhe, Gehen oder gelenkschonendes Ausgleichstraining.",
         "advanced": "Bei fünf Läufen pro Woche nimm zwei Ruhe- oder Ausgleichstrainingstage und lauf nicht mehr als zwei Tage am Stück. Halte zwischen Tempo- bzw. Schnelligkeitseinheit und langem Lauf mindestens zwei Tage Abstand, halte die Tage davor und danach locker und ruh dich in den leichteren Wochen mehr aus.",
-        "longDistance": "Halte den Tag vor dem langen Lauf locker oder frei und nimm am Tag danach einen Ruhetag. Verteile die übrigen Läufe so, dass keine zwei harten Tage aufeinanderfolgen, und nutze freie Tage für Ruhe, Gehen oder gelenkschonendes Ausgleichstraining."
+        "longDistance": "Halte den Tag vor dem langen Lauf locker oder frei und nimm am Tag danach einen Ruhetag. Verteile die übrigen Läufe so, dass keine zwei harten Tage aufeinanderfolgen, und nutze freie Tage für Ruhe, Gehen oder gelenkschonendes Ausgleichstraining.",
+        "zone2Base": "Leg nach Möglichkeit einen Ruhetag zwischen die Läufe und den langen Lauf ein bis zwei Tage nach einem Ruhetag. Lockere Läufe summieren sich schnell: Fühlst du dich schlapp, mach lieber frei, statt härter zu laufen. An den übrigen Tagen ruhst du oder machst Ausgleichstraining."
       },
       "title": "So funktionieren die Pläne",
       "workout": {
@@ -7850,6 +8279,11 @@
       "pace": {
         "title": "Tempobereiche",
         "body": "Gib unter „Dein Wettkampftempo“ eine aktuelle Wettkampfzeit ein, dann kann die Aufzeichnungsansicht für jede Art von Abschnitt einen Tempobereich vorschlagen. Das sind Schätzungen: Hitze, Steigungen oder eine müde Woche verändern sie. Nutze sie als Orientierung und richte dich nach der Anstrengung, wenn beides nicht übereinstimmt."
+      },
+      "zone2": {
+        "title": "Zone-2-Läufe",
+        "body": "Zone 2 ist lockeres aerobes Laufen: etwa 60 bis 70 Prozent deiner maximalen Herzfrequenz. Zone-2-Läufe richten sich nach einem Herzfrequenzbereich, nicht nach dem Tempo, denn dasselbe Tempo ist an einem heißen Tag oder in einer müden Woche härter. Der Aufzeichnungsbildschirm zeigt den Bereich und sagt dir, wenn du darüber oder darunter liegst. Hast du keinen Herzfrequenzwert, nutze den Sprechtest: Du solltest in ganzen Sätzen sprechen können. Bei einem langen Lauf steigt die Herzfrequenz etwas an, deshalb wird die Obergrenze nach 20 Minuten großzügiger. Atmest du locker, sind ein paar Schläge darüber in Ordnung; fühlt es sich härter an, mach langsamer oder geh. Der Bereich stammt aus deinen eigenen Einstellungen für Herzfrequenzzonen; hast du kein Maximum festgelegt, ist er aus deinem Alter geschätzt und kann um zehn Schläge oder mehr danebenliegen. Fühlt es sich zu leicht oder zu hart an, verlass dich auf den Sprechtest.",
+        "check": "Die Wochen 4, 8 und 10 haben jeweils einen Zonen-Check: den mittleren Lauf. Lauf ihn auf derselben flachen, bekannten Strecke mit derselben Herzfrequenz oder Anstrengung und vergleich dein Tempo mit dem letzten Mal. Bist du bei gleicher Anstrengung schneller, wächst deine Grundlage. Bist du langsamer, erzwing nichts: Schlaf, Hitze und Stress zeigen sich hier."
       }
     },
     "start": "Programm starten",
@@ -8055,7 +8489,89 @@
       "tooShort": "Das ist weniger Zeit, als wir empfehlen: mindestens {{min}} Wochen für diese Distanz. Wähle einen späteren Wettkampftag.",
       "tooFewDays": "Wähle mindestens zwei Lauftage.",
       "create": "Plan erstellen und starten",
-      "open": "Wettkampf planen"
+      "open": "Wettkampf planen",
+      "useTest": "Aus meinem letzten Test planen",
+      "useTestDescription": "Nutzt deinen {{test}} vom {{date}} für dein Niveau und dein Wettkampftempo.",
+      "fromTest": "Einstiegsniveau: {{level}}. Wettkampftempo etwa {{pace}}.",
+      "estimateFromTest": "Der Wettkampftag ist mit etwa {{minutes}} Minuten geplant, im Tempo, das dein Fitnesstest nahelegt; du kannst es danach im Plan ändern."
+    },
+    "goals": {
+      "title": "Laufziele",
+      "intro": "Leg eine Wochendistanz als Ziel fest und einen Wettkampf, auf den du hinzählst.",
+      "set": "Ziel festlegen",
+      "edit": "Bearbeiten",
+      "none": "Keins",
+      "unit": {
+        "km": "km",
+        "miles": "mi"
+      },
+      "weeklyLabel": "Wochendistanz ({{unit}})",
+      "weeklyProgress": "{{done}} von {{target}} {{unit}} diese Woche",
+      "weeklyReached": "Wochenziel erreicht",
+      "weeklyNeeded_one": "Heute noch {{amount}} {{unit}}, um es zu schaffen ({{count}} Tag übrig)",
+      "weeklyNeeded_other": "Etwa {{amount}} {{unit}} pro Tag, um es zu schaffen ({{count}} Tage übrig)",
+      "raceNameLabel": "Name des Wettkampfs",
+      "raceDefaultName": "Wettkampftag",
+      "raceDistanceLabel": "Wettkampfdistanz ({{unit}})",
+      "raceDateLabel": "Wettkampftag",
+      "pickDate": "Datum wählen",
+      "clearRace": "Wettkampf entfernen",
+      "raceToday": "Heute ist Wettkampftag",
+      "raceIn_one": "Noch {{count}} Tag",
+      "raceIn_other": "Noch {{count}} Tage",
+      "racePast_one": "Vor {{count}} Tag",
+      "racePast_other": "Vor {{count}} Tagen",
+      "errors": {
+        "distance": "Gib eine Distanz über null ein oder lass das Feld leer.",
+        "raceDay": "Wähle den Wettkampftag oder lösche Name und Distanz des Wettkampfs.",
+        "save": "Deine Ziele konnten nicht gespeichert werden. Bitte versuch es erneut."
+      }
+    },
+    "realign": {
+      "title": "Plan neu ausrichten",
+      "titleMore": "Du hast Zeit übrig",
+      "titleTight": "Dein Zieldatum ist zu knapp",
+      "titleForced": "Trotzdem fortfahren",
+      "intro": "Du hast etwas Zeit verpasst. Beim Neuausrichten wird der Rest deines Plans so umgebaut, dass du trotzdem an deinem Zieldatum fertig wirst – lange Läufe, Reduzierungsphase und Abschlusstraining bleiben erhalten.",
+      "introMore": "Bis zu deinem Ziel hast du mehr Tage als Trainings. Wiederholst du einige Grundlagenwochen, wird dein Aufbau gleichmäßiger und endet trotzdem an deinem Zieldatum.",
+      "introForced": "Dabei fallen so viele Trainings weg, wie nötig sind, um an deinem Zieldatum zu enden. Das ist viel, der Aufbau wird also dünner als geplant. Reduzierungsphase und Abschlusstraining bleiben trotzdem erhalten.",
+      "what": "Woche {{week}}, Lauf {{run}} · {{minutes}} min",
+      "before_one": "Jetzt: noch {{count}} Training, Ende am {{date}}.",
+      "before_other": "Jetzt: noch {{count}} Trainings, Ende am {{date}}.",
+      "after_one": "Danach: {{count}} Training, Ende am {{date}}.",
+      "after_other": "Danach: {{count}} Trainings, Ende am {{date}}.",
+      "changes": "Was sich ändert",
+      "changesMore": "Was hinzukommt",
+      "change": {
+        "droppedRepeat": "{{what}} streichen: wiederholt einen anderen Lauf dieser Woche",
+        "droppedShortest": "{{what}} streichen: kürzester Lauf dieser Woche",
+        "merged": "{{what}} in die nächste Woche einbauen: eine leichtere Woche wird damit zusammengelegt",
+        "added": "{{what}} noch einmal als zusätzliche Grundlagenwoche",
+        "repeated": "{{what}} wiederholen"
+      },
+      "eased_one": "Du warst {{days}} Tage weg, deshalb wird das Laufen für {{count}} Training um {{percent}} % reduziert.",
+      "eased_other": "Du warst {{days}} Tage weg, deshalb wird das Laufen für die nächsten {{count}} Trainings um {{percent}} % reduziert.",
+      "kept": "Reduzierungsphase und Abschlusstraining bleiben genau so, wie sie sind.",
+      "spare_one": "{{count}} Trainingstag vor deinem Ziel bleibt leer: Es wird nur begrenzt viel auf einmal hinzugefügt.",
+      "spare_other": "{{count}} Trainingstage vor deinem Ziel bleiben leer: Es wird nur begrenzt viel auf einmal hinzugefügt.",
+      "accept": "Plan neu ausrichten",
+      "notNow": "Nicht jetzt",
+      "back": "Zurück",
+      "done": "Dein Plan wurde neu ausgerichtet",
+      "error": "Dein Plan konnte nicht neu ausgerichtet werden",
+      "tight_one": "Vor deinem Zieldatum ist nur noch {{count}} Trainingstag übrig, aber {{left}} Trainings stehen noch aus.",
+      "tight_other": "Vor deinem Zieldatum sind nur noch {{count}} Trainingstage übrig, aber {{left}} Trainings stehen noch aus.",
+      "reason": {
+        "noTimeLeft": "Vor deinem Zieldatum ist kein Trainingstag mehr übrig.",
+        "taperDoesNotFit": "Für Reduzierungsphase und Abschlusstraining ist kein Platz mehr.",
+        "tooMuchToDrop": "Damit alles passt, müsste ein großer Teil deines Aufbaus wegfallen.",
+        "tooFewWeeks_one": "{{count}} Woche ist für diesen Wettkampf ein zu kurzer Aufbau.",
+        "tooFewWeeks_other": "{{count}} Wochen sind für diesen Wettkampf ein zu kurzer Aufbau."
+      },
+      "choose": "Nichts ändert sich, bis du wählst:",
+      "later": "Ziel auf {{date}} verschieben",
+      "lower": "Stattdessen {{distance}} planen",
+      "continue": "Trotzdem fortfahren"
     }
   },
   "speechVoice": {
@@ -8105,7 +8621,8 @@
     "indoorNote": "Drinnen ist die Distanz eine Schätzung der Watch. Du kannst sie am Ende auf den Wert des Laufbands korrigieren.",
     "starting": "Wird auf deiner Watch gestartet …",
     "startingHint": "Heb dein Handgelenk und öffne SparkyFitness, falls es nicht von selbst startet. Das Training beginnt, sobald die Watch die Anfrage erhält.",
-    "controlFailed": "Deine Watch ist nicht erreichbar"
+    "controlFailed": "Deine Watch ist nicht erreichbar",
+    "jumpingRope": "Seilspringen auf deiner Uhr"
   },
   "trainingLoadCard": {
     "loadFailed": "Deine Trainingsbelastung konnte nicht geladen werden.",
@@ -8120,7 +8637,11 @@
     "spike": "Ein großer Sprung: Nimm Tempo raus",
     "takeRest": "Mach einen Ruhetag oder eine lockere Einheit.",
     "ready": "Du bist erholt und bereit.",
-    "explain": "Addiert, wie lange und wie hart deine Trainings waren. „Üblich“ ist dein 4-Wochen-Durchschnitt. Die Balken zeigen die letzten 4 Wochen; grün ist diese Woche."
+    "explain": "Addiert, wie lange und wie hart deine Trainings waren. „Üblich“ ist dein 4-Wochen-Durchschnitt. Die Balken zeigen die letzten 4 Wochen; grün ist diese Woche.",
+    "readiness": "Bereitschaft {{score}}",
+    "readinessHigh": "bereit für eine harte Einheit",
+    "readinessModerate": "gut für eine normale Einheit",
+    "readinessLow": "heute locker angehen"
   },
   "paceReference": {
     "title": "Dein Wettkampftempo",
@@ -8143,7 +8664,11 @@
     "save": "Speichern",
     "clear": "Löschen",
     "watch": "Auch auf meiner Apple Watch verwenden",
-    "watchHint": "Richtet das auf der Watch angebotene Programmtraining an diesen Bereichen aus. Nur für Läufe."
+    "watchHint": "Richtet das auf der Watch angebotene Programmtraining an diesen Bereichen aus. Nur für Läufe.",
+    "wearOs": "Auch auf meiner Wear-OS-Uhr verwenden",
+    "testNote": "Du hast einen Fitnesstest, daher legt dein neuester Test deine Tempos fest, solange er gespeichert ist. Diese Wettkampfzeit wird wieder verwendet, wenn du deine Tests löschst.",
+    "collapsedTest": "Dein Fitnesstest legt deine Tempos fest",
+    "collapsedEmpty": "Gib eine aktuelle Wettkampfzeit ein, um deine Tempos festzulegen"
   },
   "allergens": {
     "trace": "Spuren: {{name}}",
@@ -8223,6 +8748,749 @@
     "saveAsRouteFailed": "Route konnte nicht gespeichert werden",
     "fileTooLarge": "Die Datei ist zu groß",
     "fileTooLargeHint": "Eine Routendatei darf bis zu 10 MB groß sein.",
-    "drawLimit": "Mehr Punkte kann eine Route hier nicht haben. Mach einige rückgängig oder speichere diese Route."
+    "drawLimit": "Mehr Punkte kann eine Route hier nicht haben. Mach einige rückgängig oder speichere diese Route.",
+    "watch": {
+      "title": "Ohne Handy laufen",
+      "hint": "Speichere eine Kopie auf deiner Uhr und starte sie dort unter Cardio – das Handy kann zu Hause bleiben.",
+      "start": "Auf der Uhr starten",
+      "send": "An Uhr senden",
+      "sendAgain": "Erneut senden",
+      "remove": "Von der Uhr entfernen",
+      "sent": "An deine Uhr gesendet",
+      "pending": "Gesendet. Warte auf Bestätigung der Uhr.",
+      "onWatch": "Auf deiner Uhr",
+      "outdated": "Veraltet, erneut senden",
+      "full": "Deine Uhr ist voll. Entferne eine Route von ihr und sende diese dann erneut.",
+      "sendFailed": "Route konnte nicht an deine Uhr gesendet werden",
+      "removeFailed": "Route konnte nicht von deiner Uhr entfernt werden",
+      "startFailed": "Start auf deiner Uhr fehlgeschlagen",
+      "startTitle": "Auf deiner Uhr starten",
+      "startMessage": "Deine Uhr folgt der Route und vibriert an jeder Abzweigung."
+    },
+    "generateRoute": "Rundkurs oder Hin und zurück erstellen",
+    "generateUnavailable": "Zum Erstellen von Routen ist ein Routing-Anbieter nötig. Füge in der Web-App unter Einstellungen > Externe Anbieter einen hinzu. Eine Route auf der Karte zeichnen kannst du trotzdem.",
+    "generate": "Erstellen",
+    "regenerate": "Andere Richtung versuchen",
+    "distanceLabel": "Distanz",
+    "distanceRange": "Wähle zwischen {{min}} und {{max}} {{unit}}.",
+    "startFrom": "Start an der grünen Nadel. Tippe auf die Karte, um sie zu verschieben.",
+    "startUnknown": "Warte auf deinen Standort. Oder tippe auf die Karte, um einen Start zu wählen.",
+    "useMyLocation": "Mein Standort",
+    "turnCount_one": "{{count}} Abzweigung",
+    "turnCount_other": "{{count}} Abzweigungen",
+    "style": {
+      "title": "Routenstil",
+      "surface": "Untergrund",
+      "hills": "Hügel",
+      "any": "Egal",
+      "trails": "Trails",
+      "roads": "Straßen",
+      "flat": "Flacher",
+      "hilly": "Hügeliger",
+      "avoidSteps": "Treppen meiden",
+      "avoidBusyRoads": "Stark befahrene Straßen meiden"
+    },
+    "option": {
+      "title": "Option {{n}}",
+      "flatter": "Flacher",
+      "moreTrail": "Mehr Trail",
+      "shorter": "Kürzer"
+    },
+    "followRoads": "Straßen folgen",
+    "followRoadsNeedsProvider": "Dafür ist ein Routing-Anbieter nötig. Füge in der Web-App unter Einstellungen > Externe Anbieter einen hinzu.",
+    "followRoadsUnrouted": "Abschnitte ohne Straßenverlauf werden gerade angezeigt. Versuch es erneut oder schalte „Straßen folgen“ aus, um sie gerade zu speichern.",
+    "editorPointLimit": "Eine Route hat höchstens {{max}} Punkte. Lösche einen Punkt, um einen neuen hinzuzufügen.",
+    "followBefore": "Davor Straßen folgen",
+    "followAfter": "Danach Straßen folgen",
+    "straightBefore": "Davor gerade",
+    "straightAfter": "Danach gerade",
+    "deletePoint": "Punkt löschen",
+    "editLine": "Route auf der Karte bearbeiten",
+    "mapSatellite": "Satellit",
+    "mapStandard": "Karte",
+    "mapUnavailable": "In dieser Version lassen sich Routen nicht auf einer Karte zeichnen.",
+    "redo": "Wiederholen",
+    "findingRoute": "Route wird gesucht",
+    "turns": "Abzweigungen",
+    "showFewerTurns": "Weniger anzeigen",
+    "showAllTurns_one": "{{count}} Abzweigung anzeigen",
+    "showAllTurns_other": "Alle {{count}} Abzweigungen anzeigen",
+    "activity": {
+      "run": "Laufen",
+      "walk": "Gehen",
+      "ride": "Radfahren",
+      "hike": "Wandern"
+    },
+    "shape": {
+      "loop": "Rundkurs",
+      "outAndBack": "Hin und zurück"
+    },
+    "generateError": {
+      "noRoute": "Dort wurde keine Route gefunden. Versuch einen anderen Ort oder eine andere Distanz.",
+      "rateLimited": "Zu viele Routenanfragen. Warte ein paar Minuten und versuch es erneut.",
+      "engineError": "Beim Routing-Dienst ist ein Problem aufgetreten. Versuch es gleich noch einmal.",
+      "timeout": "Der Routing-Dienst hat zu lange gebraucht. Versuch es erneut.",
+      "notConfigured": "Es ist kein Routing-Anbieter eingerichtet. Füge in der Web-App unter Einstellungen > Externe Anbieter einen hinzu.",
+      "invalid": "Für diese Punkte lässt sich keine Route berechnen.",
+      "unknown": "Route konnte nicht erstellt werden."
+    },
+    "cue": {
+      "depart": "Start",
+      "straight": "Geradeaus weiter",
+      "slight_left": "Leicht links",
+      "left": "Links abbiegen",
+      "sharp_left": "Scharf links",
+      "slight_right": "Leicht rechts",
+      "right": "Rechts abbiegen",
+      "sharp_right": "Scharf rechts",
+      "uturn": "Wenden",
+      "arrive": "Ziel erreicht"
+    },
+    "goBack": "Zurück",
+    "followRoadsTooMany": "„Straßen folgen“ geht mit höchstens {{max}} Punkten. Mach Punkte rückgängig oder schalte „Straßen folgen“ zum Speichern aus."
+  },
+  "compareReport": {
+    "screen": {
+      "retry": "Erneut versuchen",
+      "tooOld": "Vergleichen braucht einen neueren SparkyFitness-Server. Aktualisiere deinen Server, um es zu nutzen.",
+      "loadFailed": "Dieser Vergleich konnte nicht geladen werden."
+    },
+    "groups": {
+      "feelings": "Befinden",
+      "sleep": "Schlaf",
+      "meditation": "Meditation",
+      "food": "Ernährung",
+      "training": "Training",
+      "body": "Körper"
+    },
+    "metrics": {
+      "mood": "Stimmung",
+      "energy": "Energie",
+      "focus": "Konzentration",
+      "timeAsleep": "Schlafdauer",
+      "sleepScore": "Schlafwert",
+      "overnightHrv": "Nacht-HRV",
+      "restingHeartRate": "Ruheherzfrequenz",
+      "bedtime": "Schlafenszeit",
+      "bedtimeConsistency": "Regelmäßigkeit der Schlafenszeit",
+      "meditationMinutes": "Meditationsminuten",
+      "meditationSessions7d": "Meditationssitzungen (7 Tage)",
+      "meditated": "Meditiert",
+      "calories": "Kalorien",
+      "protein": "Eiweiß",
+      "carbs": "Kohlenhydrate",
+      "fat": "Fett",
+      "caffeine": "Koffein",
+      "alcohol": "Alkohol",
+      "workoutMinutes": "Trainingsminuten",
+      "cardioMinutes": "Cardio-Minuten",
+      "strengthVolume": "Kraftvolumen",
+      "trainingLoad": "Trainingsbelastung",
+      "weightTrend": "Gewichtstrend",
+      "steps": "Schritte"
+    },
+    "metricNouns": {
+      "meditated": "Meditation"
+    },
+    "phrase": {
+      "lastNights": "{{metric}} der letzten Nacht",
+      "daysYou": "die Anzahl der Tage mit „{{verb}}“",
+      "your": "dein Wert für {{metric}}",
+      "yourWhen": "dein Wert für {{metric}} {{timing}}"
+    },
+    "timing": {
+      "sameDay": "am selben Tag",
+      "thatDay": "an diesem Tag",
+      "nextDay": "am Folgetag",
+      "dayAfterYouWoke": "am Tag nach dem Aufwachen",
+      "thatNight": "in dieser Nacht",
+      "dayBefore": "am Vortag",
+      "nightBefore": "in der Nacht davor",
+      "twoNightsBefore": "zwei Nächte davor",
+      "sameNight": "in derselben Nacht",
+      "nextNight": "in der Folgenacht",
+      "sameWeek": "in derselben Woche",
+      "nextWeek": "in der Folgewoche"
+    },
+    "yesNo": {
+      "onDays": "An Tagen, an denen du {{yes}} hast",
+      "dayAfter": "Am Tag, nachdem du {{yes}} hast",
+      "dayBefore": "Am Tag, bevor du {{yes}} hast",
+      "nightAfter": "In der Nacht, nachdem du {{yes}} hast",
+      "nightBefore": "In der Nacht, bevor du {{yes}} hast",
+      "twoNightsBefore": "Zwei Nächte, bevor du {{yes}} hast"
+    },
+    "verdict": {
+      "question": "Hängen {{a}} und {{b}} {{timing}} zusammen?",
+      "days_one": "{{count}} Tag",
+      "days_other": "{{count}} Tage",
+      "weeks_one": "{{count}} Woche",
+      "weeks_other": "{{count}} Wochen",
+      "strength": {
+        "weak": "schwach",
+        "moderate": "mäßig",
+        "strong": "stark"
+      },
+      "linkedHeadline": "Ja, ein {{strength}} ausgeprägter Zusammenhang",
+      "linkedPositive": "Wenn dein Wert für {{a}} {{aDirection}} war, war {{b}} {{timing}} ebenfalls {{bDirection}}.",
+      "linkedNegative": "Wenn dein Wert für {{a}} {{aDirection}} war, war {{b}} {{timing}} {{bDirection}}.",
+      "noLinkHeadline": "Kein klarer Zusammenhang",
+      "noLinkDetail": "Über diese {{n}} haben sie sich nicht stärker gemeinsam bewegt, als Zufall erklären würde.",
+      "longerSpan": "Mit einem längeren Zeitraum ist ein schwacher Zusammenhang leichter zu erkennen.",
+      "differenceHeadline": "Ja, ein Unterschied",
+      "differenceHigher": "{{when}}, war {{outcome}} höher als {{others}}.",
+      "differenceLower": "{{when}}, war {{outcome}} niedriger als {{others}}.",
+      "differenceLater": "{{when}}, war {{outcome}} später als {{others}}.",
+      "differenceEarlier": "{{when}}, war {{outcome}} früher als {{others}}.",
+      "noDifferenceHeadline": "Kein klarer Unterschied",
+      "noDifferenceDetail": "Über diese {{n}} hat sich dein Wert für {{outcome}} zwischen den beiden Arten von Tagen nicht genug unterschieden, um Zufall auszuschließen.",
+      "tooFewHeadline": "Noch nicht genug Tage",
+      "tooFewHeadlineWeeks": "Noch nicht genug Wochen",
+      "tooFewDetail": "Du hast {{n}}; für eine Antwort braucht es {{needed}}.",
+      "logDays_one": "Erfasse {{weaker}} an {{count}} weiteren Tag oder wähle einen längeren Zeitraum.",
+      "logDays_other": "Erfasse {{weaker}} an {{count}} weiteren Tagen oder wähle einen längeren Zeitraum.",
+      "logWeeks_one": "Erfasse {{weaker}} {{count}} weitere Woche lang oder wähle einen längeren Zeitraum.",
+      "logWeeks_other": "Erfasse {{weaker}} {{count}} weitere Wochen lang oder wähle einen längeren Zeitraum.",
+      "needsHistory": "Jeder Tag wird mit deinen vorherigen zwei Wochen verglichen, daher braucht ein Tag zuerst eine Woche Vorlauf.",
+      "fewYesHeadline": "Noch nicht genug Tage, an denen du {{yes}} hast",
+      "fewYesDetail": "Du hast {{n}}; für eine Antwort braucht es {{needed}}. Probier einen längeren Zeitraum.",
+      "fewNoHeadline": "Noch nicht genug Tage ohne {{yesNoun}}",
+      "fewNoDetail": "Du hast hier an fast jedem Tag {{yes}}, daher gibt es nichts zum Vergleichen. Probier einen längeren Zeitraum.",
+      "noVariationHeadline": "Noch nichts zu vergleichen",
+      "noVariationDetail": "{{metric}}: in diesem Zeitraum jedes Mal derselbe Wert, daher gibt es nichts zum Vergleichen.",
+      "noVariationGeneric": "Einer der beiden Werte hat sich in diesem Zeitraum nicht verändert.",
+      "longerSpanDifference": "Mit einem längeren Zeitraum ist ein kleiner Unterschied leichter zu erkennen."
+    },
+    "howSure": {
+      "differenceHigher": "{{diff}} höher als {{others}} (jeweils an deinem eigenen Normalwert gemessen)",
+      "differenceLower": "{{diff}} niedriger als {{others}} (jeweils an deinem eigenen Normalwert gemessen)",
+      "differenceLater": "{{diff}} min später als {{others}} (jeweils an deinem eigenen Normalwert gemessen)",
+      "differenceEarlier": "{{diff}} min früher als {{others}} (jeweils an deinem eigenen Normalwert gemessen)",
+      "differenceSame": "Etwa gleich wie {{others}} (jeweils an deinem eigenen Normalwert gemessen)"
+    },
+    "since": {
+      "question": "Seit ich regelmäßig mit {{habit}} angefangen habe, hat sich der Wert für {{outcome}} verändert?",
+      "changedHeadline": "Ja, es hat sich verändert",
+      "changedDetail": "Seit {{start}} lag dein Wert für {{outcome}} im Schnitt bei {{since}}, vorher bei {{before}} ({{diff}}).",
+      "changedDetailLastYear": "Im letzten Jahr lag dein Wert für {{outcome}} im Schnitt bei {{since}}, im Jahr vor deinem Start bei {{before}} ({{diff}}).",
+      "noChangeHeadline": "Keine klare Veränderung",
+      "noChangeDetail": "Seit {{start}} lag dein Wert für {{outcome}} im Schnitt bei {{since}}, vorher bei {{before}} – nicht unterschiedlich genug, um Zufall auszuschließen.",
+      "noChangeDetailLastYear": "Im letzten Jahr lag dein Wert für {{outcome}} im Schnitt bei {{since}}, im Jahr vor deinem Start bei {{before}} – nicht unterschiedlich genug, um Zufall auszuschließen.",
+      "minutesLater": "{{minutes}} min später",
+      "minutesEarlier": "{{minutes}} min früher",
+      "fewBeforeHeadline": "Noch nicht genug Daten vor {{start}}",
+      "fewSinceHeadline": "Noch nicht genug Daten seit {{start}}",
+      "fewValuesDetail": "Du hast {{n}} mit einem Wert für {{outcome}}; für eine Antwort braucht es {{needed}}.",
+      "shortSinceDetail": "Seitdem sind {{days}} vergangen; für eine Antwort braucht es {{needed}}.",
+      "shortBeforeDetail": "Deine Daten für {{outcome}} beginnen {{days}} davor; für eine Antwort braucht es {{needed}}.",
+      "noStartHeadline": "Wähle den Tag, an dem du angefangen hast",
+      "noStartDetail": "Dann vergleicht das deinen Wert für {{outcome}} vor und seit diesem Tag.",
+      "regularity_one": "Du bist seitdem in {{weeksKept}} von {{count}} Woche drangeblieben.",
+      "regularity_other": "Du bist seitdem in {{weeksKept}} von {{count}} Wochen drangeblieben.",
+      "alreadyRising": "⚠ {{metric}}: schon vor deinem Start gestiegen.",
+      "alreadyFalling": "⚠ {{metric}}: schon vor deinem Start gesunken.",
+      "alreadyLater": "⚠ {{metric}}: schon vor deinem Start später geworden.",
+      "alreadyEarlier": "⚠ {{metric}}: schon vor deinem Start früher geworden.",
+      "caveat": "Über Monate kann sich viel ändern; das zeigt eine Veränderung seit deinem Start, nicht, dass {{habit}} sie verursacht hat.",
+      "startLabel": "Seit",
+      "startTitle": "Startdatum",
+      "suggested": "(vorgeschlagen)",
+      "pickDate": "Datum wählen",
+      "lineLabel": "Linie: {{metric}} ≥",
+      "lineTitle": "{{metric}} mindestens",
+      "chartBefore": "Vorher",
+      "chartSince": "Seitdem",
+      "chartLine": "Linie {{line}}",
+      "chartLabel": "{{metric}} im Zeitverlauf, vor und seit {{start}}",
+      "typicalRange": "Meist zwischen {{low}} und {{high}} (vorher: {{beforeLow}}–{{beforeHigh}}).",
+      "aboveLine": "An {{since}} der Tage bei oder über {{line}} (vorher: {{before}})."
+    },
+    "stats": {
+      "pTiny": "p < 0,001",
+      "p": "p {{p}}",
+      "correlation": "r {{r}} · 95%-Bereich {{low}} bis {{high}} · {{p}} · {{n}}",
+      "difference": "Unterschied {{diff}} · 95%-Bereich {{low}} bis {{high}} · {{p}} · {{n}}",
+      "differenceMinutes": "Unterschied {{diff}} min · 95%-Bereich {{low}} bis {{high}} min · {{p}} · {{n}}"
+    },
+    "direction": {
+      "higher": "höher als üblich",
+      "lower": "niedriger als üblich",
+      "later": "später als üblich",
+      "earlier": "früher als üblich"
+    },
+    "logged": {
+      "weight": "Gewicht",
+      "sleep": "Schlaf",
+      "workouts": "Trainings",
+      "meditation": "Meditation"
+    },
+    "answer": {
+      "throughYesterday": "Bis gestern",
+      "throughLastWeek": "Bis letzte Woche",
+      "throughDate": "Bis {{date}}"
+    },
+    "chart": {
+      "eachDay": "Jeder Tag als Punkt",
+      "eachWeek": "Jede Woche als Punkt",
+      "overTime": "Im Zeitverlauf",
+      "axis": "{{metric}} im Vergleich zu deinem Normalwert",
+      "axisYesNo": "{{metric}} (ja oder nein)",
+      "axisDaysYou": "Tage, an denen du {{verb}} hast, im Vergleich zu deinem Normalwert",
+      "range": "{{metric}} {{min}}–{{max}}",
+      "noDots": "Noch keine Tage mit beidem",
+      "noDotsWeeks": "Noch keine Wochen mit beidem",
+      "noOverTime": "In diesem Zeitraum nichts erfasst",
+      "dotsLabel": "Jeder Punkt kombiniert {{a}} und {{b}}",
+      "overTimeLabel": "{{a}} und {{b}} im Zeitverlauf, jeweils auf den eigenen Wertebereich skaliert"
+    },
+    "bars": {
+      "yesDays": "An Tagen, an denen du {{yes}} hast",
+      "noDays": "An Tagen ohne {{yesNoun}}",
+      "otherDays": "An anderen Tagen",
+      "otherNights": "In anderen Nächten",
+      "meanAndDays_one": "{{mean}} · {{count}} Tag",
+      "meanAndDays_other": "{{mean}} · {{count}} Tage",
+      "meanAndNights_one": "{{mean}} · {{count}} Nacht",
+      "meanAndNights_other": "{{mean}} · {{count}} Nächte"
+    },
+    "checks": {
+      "ownNormal": "✓ Mit deinem eigenen Normalwert verglichen",
+      "notProof": "Ein Zusammenhang, kein Beweis für eine Ursache",
+      "seemsFirst": "Vermutlich zeitlich zuerst: {{metric}}",
+      "comesFirst": "Zeitlich zuerst: {{metric}}",
+      "otherWay": "Der Zusammenhang ist umgekehrt stärker",
+      "cantTell": "Unklar, was zuerst kommt",
+      "weekendHolds": "Gilt auch unter Berücksichtigung von Wochenenden",
+      "weekendMay": "Das könnte am Unterschied zwischen Werktagen und Wochenende liegen"
+    },
+    "sentence": {
+      "something": "etwas",
+      "sometime": "irgendwann",
+      "does": "Hängen",
+      "goWith": "und",
+      "questionMark": "zusammen?",
+      "firstTitle": "Erster Wert",
+      "secondTitle": "Zweiter Wert",
+      "timingTitle": "Wann",
+      "dayByDay": "Tag für Tag",
+      "weekByWeek": "Woche für Woche",
+      "sameDay": "Am selben Tag",
+      "nextDay": "Am Folgetag",
+      "dayBefore": "Am Vortag",
+      "sameWeek": "In derselben Woche",
+      "nextWeek": "In der Folgewoche",
+      "since": "Seit",
+      "iStarted": "ich regelmäßig mit",
+      "regularlyHas": "angefangen habe, hat sich der Wert für",
+      "changed": "verändert?",
+      "sinceHabit": "Seit Beginn einer Gewohnheit",
+      "beforeVsSince": "Vorher vs. seitdem"
+    },
+    "span": {
+      "30d": "30 Tage",
+      "60d": "60 Tage",
+      "90d": "90 Tage",
+      "6m": "6 Monate",
+      "1y": "1 Jahr"
+    },
+    "start": {
+      "suggestions": "Probier eine davon",
+      "recent": "Deine letzten Fragen"
+    },
+    "title": "Vergleichen"
+  },
+  "plates": {
+    "title": "Scheiben & Stangen",
+    "calculatorTitle": "Scheibenrechner",
+    "enterWeight": "Gib zuerst ein Gewicht für den Satz ein.",
+    "collarsWeight": "Verschlüsse {{weight}} {{unit}}",
+    "loadSummary": "{{perSide}} {{unit}} pro Seite · {{total}} {{unit}} gesamt",
+    "cannotLoad": "Mit deinen Scheiben lassen sich nicht genau {{weight}} {{unit}} auflegen.",
+    "nearestBelow": "Nächster Wert darunter: {{weight}} {{unit}}",
+    "nearestAbove": "Nächster Wert darüber: {{weight}} {{unit}}",
+    "shortBy": "{{diff}} {{unit}} unter dem Ziel",
+    "overBy": "{{diff}} {{unit}} über dem Ziel",
+    "nothingBelow": "Das Ziel ist leichter als die leere Stange samt Verschlüssen.",
+    "nothingAbove": "Das Ziel ist schwerer, als du mit deinen Scheiben auflegen kannst.",
+    "tooLarge": "Dieser Bestand ist zu groß für die Suche. Entferne einige Scheiben oder Paare.",
+    "barKind": {
+      "barbell": "Langhantel",
+      "womens": "Frauenstange",
+      "ez": "SZ-Stange",
+      "trap": "Trap Bar",
+      "other": "Andere Stange"
+    },
+    "useKgPlates": "kg-Scheiben verwenden",
+    "useLbPlates": "lb-Scheiben verwenden",
+    "presetHint": "Startet mit dem Standardsatz; du kannst ihn unten anpassen.",
+    "platesHeading": "Scheiben ({{unit}})",
+    "barsHeading": "Stangen ({{unit}})",
+    "plateWeight": "Gewicht",
+    "addPlate": "Scheibe hinzufügen",
+    "removePlate": "Scheibe {{weight}} entfernen",
+    "barName": "Name",
+    "addBar": "Stange hinzufügen",
+    "removeBar": "Stange {{name}} entfernen",
+    "collarsCount": "Verschlüsse mitzählen",
+    "collarWeight": "Gewicht eines Verschlusses ({{unit}})",
+    "resetToStandard": "Auf Standard zurücksetzen",
+    "invalid": "Prüfe Gewichte und Paare: Gewichte haben höchstens 3 Nachkommastellen, jede Scheibengröße kommt nur einmal vor, und Paare sind ganze Zahlen bis 20.",
+    "dismiss": "Scheibenrechner schließen",
+    "startFrom": "Ausgangspunkt",
+    "fewerPairs": "Weniger Paare zu {{weight}}",
+    "morePairs": "Mehr Paare zu {{weight}}",
+    "pairsCount_one": "{{count}} Paar",
+    "pairsCount_other": "{{count}} Paare",
+    "pairsShort_one": "{{count}} P.",
+    "pairsShort_other": "{{count}} P.",
+    "barWeightLabel": "Stangengewicht",
+    "collarsHint": "Rechnet das Gewicht der Verschlüsse zu jeder Beladung hinzu.",
+    "saveFailed": "Scheiben und Stangen konnten nicht gespeichert werden",
+    "resetTitle": "Auf Standard zurücksetzen?",
+    "resetDescription": "Deine gespeicherten Scheiben und Stangen werden entfernt, und der Standardsatz wird wieder verwendet.",
+    "resetFailed": "Scheiben und Stangen konnten nicht zurückgesetzt werden",
+    "loadFailed": "Deine Hantelscheiben und Stangen konnten nicht geladen werden.",
+    "graphicLabel": "{{perSide}} {{unit}} pro Seite auf einer {{bar}}-{{unit}}-Stange",
+    "graphicNotExact": "Mit deinen Scheiben lassen sich nicht genau {{weight}} {{unit}} zusammenstellen.",
+    "graphicNearest": "Scheiben: nächster Wert {{weight}} {{unit}}",
+    "graphicBelowBar": "Scheiben: leichter als die Stange",
+    "targetWeight": "Zielgewicht: {{weight}} {{unit}}",
+    "availableEquipment": "Verfügbare Ausrüstung",
+    "manage": "Verwalten",
+    "platesUnit": "Scheiben ({{unit}})",
+    "barUnit": "Stange ({{unit}})",
+    "calculatorShort": "Rechner",
+    "barCard": "Stange {{number}}: {{name}}",
+    "removeBarShort": "Entfernen",
+    "barWeightUnit": "Gewicht ({{unit}})"
+  },
+  "barcodeSources": {
+    "currentSource": "Quelle: {{name}}",
+    "local": "Deine Lebensmittel",
+    "external": "Online-Anbieter",
+    "fallback": "Open Food Facts als Ersatz",
+    "otherSources": "Weitere Quellen",
+    "empty": "Keine weiteren Quellen verfügbar",
+    "error": "Barcode-Quellen konnten nicht geladen werden. Bitte versuch es erneut.",
+    "comparison": "Vergleiche die angegebene Menge jedes Treffers. Gramm und Milliliter sind unterschiedliche Bezugsgrößen.",
+    "retry": "Quellen konnten nicht geladen werden. Tippe für neuen Versuch.",
+    "providerError": "Quelle nicht verfügbar",
+    "noMatch": "Kein Treffer",
+    "basis": "Pro {{size}} {{unit}}",
+    "macros": "{{calories}} kcal · Eiweiß {{protein}} g · Kohlenhydrate {{carbs}} g · Fett {{fat}} g",
+    "unknown": "—"
+  },
+  "addMenuSettings": {
+    "reorder": "{{name}} verschieben",
+    "reorderHint": "Ändert die Position dieser Zeile in den Schnellaktionen",
+    "reset": "Auf Standard zurücksetzen",
+    "cardsTitle": "Kacheln",
+    "cardsDescription": "Die vier Kacheln oben in den Schnellaktionen. Tippe auf eine, um festzulegen, was dort erscheint. Wählst du etwas, das schon belegt ist, tauschen die beiden die Plätze.",
+    "rowsTitle": "Liste",
+    "rowsDescription": "Zeilen unter den Kacheln. Zum Verschieben eine Zeile am Griff ziehen. Schalte eine Zeile aus, um sie auszublenden.",
+    "previewTitle": "Vorschau",
+    "previewDescription": "So sehen die Schnellaktionen mit deiner Auswahl aus.",
+    "lineNumber": "Zeile {{number}}",
+    "needsCycle": "Ausgeblendet: Zyklus-Tracking ist aus",
+    "showAs": "Anzeigen als",
+    "showAsValue": "Anzeigen als {{style}}",
+    "styleList": "Liste",
+    "stylePair": "Paar",
+    "styleButton": "Button",
+    "pairsTitle": "Paare",
+    "pairsDescription": "Zu zweit pro Zeile, unter der Liste. Ein einzelnes nimmt die ganze Zeile ein.",
+    "buttonsTitle": "Buttons",
+    "buttonsDescription": "Nebeneinander am unteren Rand des Menüs.",
+    "chooseCard": "Kachel wählen",
+    "slotLabel": "Kachel {{number}}: {{name}}",
+    "slotHint": "Öffnet eine Liste, um festzulegen, was hier erscheint"
+  },
+  "calorieLink": {
+    "action": "Synchronisiertes Training verknüpfen",
+    "linked": "Mit synchronisiertem Training verknüpft",
+    "title": "Synchronisiertes Training verknüpfen",
+    "description": "Hat auch eine Uhr oder Gesundheits-App diese Einheit aufgezeichnet, verknüpfe beide, damit die Kalorien nur einmal zählen. Beide Schätzungen bleiben erhalten.",
+    "loading": "Suche synchronisierte Trainings...",
+    "loadError": "Synchronisierte Trainings konnten nicht geladen werden.",
+    "none": "Keine synchronisierten Trainings für diesen Tag gefunden.",
+    "workoutFallback": "Training",
+    "minutes": "{{value}} min",
+    "calories": "{{value}} kcal",
+    "sameSession": "Gleiche Einheit",
+    "sameTime": "Zeitlich überlappend",
+    "countHeading": "In der Tagessumme zählen",
+    "sparkyfitness": "Dieses Training ({{value}})",
+    "synced": "Das synchronisierte Training ({{value}})",
+    "higher": "Der höhere Wert ({{value}})",
+    "lower": "Der niedrigere Wert ({{value}})",
+    "average": "Der Durchschnitt ({{value}})",
+    "custom": "Eigener Gesamtwert",
+    "customLabel": "Gesamtwert für die Einheit (kcal)",
+    "link": "Trainings verknüpfen",
+    "unlink": "Verknüpfung lösen",
+    "linkError": "Trainings konnten nicht verknüpft werden.",
+    "unlinkError": "Verknüpfung der Trainings konnte nicht gelöst werden."
+  },
+  "guidedCheckIn": {
+    "stepOfTotal": "Check-in: Schritt {{step}} von {{total}}",
+    "skip": "Überspringen",
+    "skipA11y": "Diesen Schritt überspringen",
+    "saveAndContinue": "Speichern & weiter",
+    "finish": "Fertig",
+    "done": "Check-in abgeschlossen",
+    "skipUnsavedTitle": "Diesen Schritt überspringen?",
+    "skipUnsavedMessage": "Deine Änderungen in diesem Schritt werden nicht gespeichert.",
+    "backA11y": "Zurück zum vorherigen Schritt",
+    "backUnsavedTitle": "Einen Schritt zurück?",
+    "resumeTitle": "Check-in fortsetzen?",
+    "resumeMessage": "Du hast bei Schritt {{step}} von {{total}} aufgehört.",
+    "startOver": "Neu beginnen"
+  },
+  "customCategories": {
+    "title": "Eigene Messwerte",
+    "add": "Kategorie hinzufügen",
+    "loading": "Eigene Messwerte werden geladen...",
+    "loadFailed": "Eigene Messwerte konnten nicht geladen werden",
+    "loadFailedSubtitle": "Prüfe deine Verbindung und versuch es erneut.",
+    "emptyTitle": "Noch keine eigenen Kategorien",
+    "emptySubtitle": "Füge eine Kategorie wie Blutzucker hinzu, um eigene Messwerte zu erfassen.",
+    "editNamed": "{{name}} bearbeiten",
+    "deleteNamed": "{{name}} löschen",
+    "deleteTitle": "Kategorie löschen",
+    "deleteMessage": "{{name}} löschen? Darunter erfasste Messwerte sind dann nicht mehr verfügbar.",
+    "deleteSuccess": "Kategorie gelöscht",
+    "deleteFailed": "Kategorie konnte nicht gelöscht werden"
+  },
+  "customCategoryEdit": {
+    "createTitle": "Kategorie hinzufügen",
+    "editTitle": "Kategorie bearbeiten",
+    "loading": "Kategorie wird geladen...",
+    "name": "Name",
+    "namePlaceholder": "z. B. Blutzucker",
+    "nameHelp": "Interne Kennung für die Synchronisierung",
+    "displayName": "Anzeigename (optional)",
+    "displayNamePlaceholder": "z. B. Blutzucker morgens",
+    "displayNameHelp": "Optionaler eigener Name, der in der App angezeigt wird",
+    "measurementType": "Messeinheit",
+    "measurementTypePlaceholder": "z. B. mg/dL",
+    "unitPrecisionNote": "Mit Standardeinheiten (z. B. kcal, mmHg, bpm) wird die Diagrammgenauigkeit automatisch optimiert.",
+    "dataType": "Datentyp",
+    "dataTypeNumeric": "Zahl",
+    "dataTypeText": "Text",
+    "frequency": "Häufigkeit",
+    "frequencyAll": "Alle (unbegrenzt viele Einträge)",
+    "frequencyDaily": "Täglich (einer pro Tag)",
+    "frequencyHourly": "Stündlich (einer pro Stunde)",
+    "frequencyAllShort": "Unbegrenzt",
+    "frequencyDailyShort": "Täglich",
+    "frequencyHourlyShort": "Stündlich",
+    "errors": {
+      "title": "Formular prüfen",
+      "required": "Name und Messeinheit sind erforderlich."
+    },
+    "saveSuccess": "Kategorie gespeichert",
+    "saveFailed": "Kategorie konnte nicht gespeichert werden"
+  },
+  "fitnessTest": {
+    "cue": {
+      "complete": "Test abgeschlossen. Werde langsamer und beende den Lauf."
+    },
+    "retest": {
+      "dueTitle": "Zeit für einen neuen Test",
+      "overdueTitle": "Deine Tempos sind womöglich veraltet",
+      "body_one": "Dein letzter Fitnesstest ist {{formattedCount}} Woche her. Ein neuer Test aktualisiert deine Trainingstempos und zeigt, wie sich deine Fitness verändert hat.",
+      "body_other": "Dein letzter Fitnesstest ist {{formattedCount}} Wochen her. Ein neuer Test aktualisiert deine Trainingstempos und zeigt, wie sich deine Fitness verändert hat.",
+      "action": "Erneut testen",
+      "later": "Später",
+      "sameTreadmill": "Du hast zuletzt auf dem Laufband getestet, daher startet auch der neue Test auf dem Laufband.",
+      "sameOutdoor": "Du hast zuletzt draußen getestet, daher startet auch der neue Test draußen."
+    },
+    "badge": {
+      "title": "Fitnesstest",
+      "line": "{{test}}: {{result}}"
+    },
+    "live": {
+      "complete": "Test abgeschlossen. Werde langsamer und tippe auf „Beenden“.",
+      "5k": "Lauf gleichmäßig und hart. Noch {{remaining}} {{unit}} bis 5 km.",
+      "cooper": "Lauf so weit wie möglich. Noch {{time}}.",
+      "30minLast20": "Halte dieses Tempo: Die letzten 20 Minuten bestimmen deine Schwelle. Noch {{time}}.",
+      "30minFirst10": "Finde ein hartes, gleichmäßiges Tempo. Die letzten 20 Minuten beginnen in {{time}}.",
+      "5kIndoor": "Lauf gleichmäßig und hart. Tippe auf „Beenden“, wenn dein Laufband 5 km erreicht. Zeit {{time}}.",
+      "30minFirst10Indoor": "Finde ein hartes, gleichmäßiges Tempo. Notiere bei 10:00, in {{time}}, die Distanz auf deinem Laufband."
+    },
+    "finished": {
+      "threshold": "Schwellentempo {{pace}}, etwa {{time}} für 5 km. Beim Speichern werden deine Trainingstempos festgelegt.",
+      "incomplete": "Der Test wurde vor dem Ziel beendet. Er wird als normaler Lauf gespeichert, deine Tempos bleiben unverändert.",
+      "adjusted": "Angepasst an {{incline}} % Steigung: {{raw}} zählt als {{adjusted}}.",
+      "needDistance": "Gib die Distanz vom Laufband ein, um den Test zu speichern. Bis dahin wird er als normaler Lauf gespeichert.",
+      "badSplit": "Die Distanz bei 10:00 muss größer als null und kleiner als die Gesamtdistanz sein.",
+      "badTime": "Gib deine Zeit für 5 km in Minuten und Sekunden ein, z. B. 24:30."
+    },
+    "paces": {
+      "tempo": "Tempolauf {{range}}",
+      "marathon": "Marathontempo {{range}}",
+      "stride": "Steigerungen {{range}}"
+    },
+    "panel": {
+      "emptyTitle": "Finde deine Trainingstempos",
+      "emptyBody": "Mach einen geführten Fitnesstest: ein 5-km-Zeitlauf, ein 30-Minuten-Lauf mit voller Kraft oder ein 12-Minuten-Cooper-Test. Das Ergebnis legt deine Trainingstempos fest und kann einen Plan starten.",
+      "take": "Fitnesstest machen",
+      "title": "Dein Fitnesstest",
+      "latest": "{{test}} am {{date}}: {{result}}",
+      "paces": "Schwellentempo {{pace}}, etwa {{time}} für 5 km. Deine Trainingstempos richten sich nach diesem Test.",
+      "startProgram": "{{program}} aus meinem Test starten",
+      "planRace": "Wettkampf planen",
+      "open": "Tests und Tempos",
+      "compactHint": "Mach einen geführten Fitnesstest"
+    },
+    "steps": {
+      "warmUp": "Wärm dich 10 bis 15 Minuten mit lockerem Laufen auf, komm dann hierher zurück und starte.",
+      "flat": "Wähle eine flache, freie Strecke und nimm dein Handy mit. Pausen werden nicht gezählt.",
+      "5k": "Lauf 5 km so schnell, wie du gleichmäßig halten kannst. Deine Zeit für 5 km ist das Ergebnis; lauf danach locker aus.",
+      "30min": "Lauf 30 Minuten so hart, wie du gleichmäßig halten kannst. Dein Schwellentempo ist das Durchschnittstempo der letzten 20 Minuten, also starte nicht zu schnell.",
+      "cooper": "Lauf in 12 Minuten so weit wie möglich. Die erreichte Distanz ist das Ergebnis."
+    },
+    "setup": {
+      "voiceDescription": "Gibt eine Ansage, wenn der Test abgeschlossen ist.",
+      "start": "Test starten",
+      "outdoor": "Draußen (GPS)",
+      "indoor": "Laufband",
+      "indoorNote": "Auf dem Laufband wird nichts per GPS erfasst. Der Test wird gestoppt, und am Ende gibst du die Distanz und die Steigung vom Laufband ein. Er wird als Indoor-Lauf gespeichert und als Fitnesstest markiert.",
+      "outdoorNote": "Draußen wird der Test mit dem GPS deines Handys als Lauf aufgezeichnet und in der Aktivität als Fitnesstest markiert.",
+      "sameAsLast": "Vorgeschlagen, weil dein letzter Test genauso war."
+    },
+    "delete": {
+      "title": "Diesen Test löschen?",
+      "message": "Die Aktivität bleibt in deinem Tagebuch. Deine Trainingstempos richten sich nach deinem neuesten verbleibenden Test.",
+      "confirm": "Löschen",
+      "error": "Der Test konnte nicht gelöscht werden",
+      "action": "Diesen Test löschen"
+    },
+    "result": {
+      "missing": "Dieser Test ist nicht mehr gespeichert.",
+      "when": "{{date}} · {{test}}",
+      "derived": "Schwellentempo {{pace}}. Über 5 km sind das etwa {{time}}.",
+      "changeTitle": "Seit deinem Test am {{date}}",
+      "changeThreshold": "Schwellentempo: {{change}}.",
+      "pacesTitle": "Deine Trainingstempos",
+      "pacesBody": "Sie bestimmen jetzt deine Tempozonen und die vorgeschlagenen Bereiche für Pläne und Wettkämpfe.",
+      "plan": "Plan aus diesem Test starten",
+      "5k": "5 km in {{time}}",
+      "cooperMiles": "{{distance}} mi in 12 Minuten",
+      "cooperMeters": "{{distance}} m in 12 Minuten",
+      "30min": "{{pace}} in den letzten 20 Minuten"
+    },
+    "describe": {
+      "5k": "Lauf 5 km so schnell, wie du gleichmäßig halten kannst. Deine Zeit legt deine Tempos fest.",
+      "30min": "Lauf 30 Minuten mit voller Kraft. Dein Schwellentempo ist das Durchschnittstempo der letzten 20 Minuten.",
+      "cooper": "Lauf in 12 Minuten so weit wie möglich. Deine Distanz wird in eine 5-km-Zeit umgerechnet."
+    },
+    "intro": "Ein Fitnesstest ist ein harter, gemessener Lauf. Er wird mit dem GPS deines Handys aufgezeichnet, und das Ergebnis legt deine Trainingstempos für lockere Läufe, Tempoläufe, Intervalle und Wettkampfpläne fest.",
+    "choose": "Diesen Test starten",
+    "history": {
+      "title": "Deine Tests",
+      "empty": "Noch keine Tests. Deine Ergebnisse und die daraus ermittelten Tempos erscheinen hier.",
+      "rowTitle": "{{date}} · {{test}}",
+      "paces": "Schwelle {{threshold}} · Locker {{easy}}",
+      "limit": "Deine letzten {{limit}} Tests werden angezeigt."
+    },
+    "type": {
+      "5k": "5-km-Zeitlauf",
+      "30min": "30-Minuten-Lauf mit voller Kraft",
+      "cooper": "12-Minuten-Cooper-Test"
+    },
+    "pacePerUnit": "{{pace}}/{{unit}}",
+    "perMile": "mi",
+    "perKm": "km",
+    "paceRange": "{{fast}}–{{slow}}/{{unit}}",
+    "change": {
+      "same": "unverändert",
+      "faster": "{{seconds}} s/{{unit}} schneller",
+      "slower": "{{seconds}} s/{{unit}} langsamer"
+    },
+    "indoor": {
+      "timeTitle": "Zeit für 5 km",
+      "timeHint": "Deine gestoppte Zeit ist eingetragen. Ändere sie, wenn dein Laufband bei 5 km eine andere Zeit angezeigt hat.",
+      "splitTitle": "Distanz bei 10:00",
+      "splitHint": "Die Distanz, die dein Laufband nach 10 Minuten angezeigt hat. Die letzten 20 Minuten bestimmen dein Schwellentempo. Leer lassen, um ein gleichmäßiges Tempo anzunehmen.",
+      "cooperHint": "Gib oben im Feld „Distanz“ ein, was dein Laufband nach 12 Minuten angezeigt hat.",
+      "inclineTitle": "Steigung",
+      "inclineHint": "Ein Laufband bei 0 % unterschätzt die Anstrengung im Freien; 1 % entspricht etwa flachem Laufen draußen. Gib die Steigung ein, mit der du gelaufen bist.",
+      "inclineInvalid": "Gib eine Steigung von 0 bis 15 ein.",
+      "adjustTitle": "Steigung ausgleichen",
+      "adjustDescription": "Rechnet deine Leistung auf eine flache Strecke im Freien um, anhand des Laufaufwands pro Prozent Steigung. Bei 1 % ändert sich nichts. Ausschalten, um die Werte unverändert zu verwenden."
+    },
+    "lastSurface": "Dein letzter Test war auf: {{surface}}. Ein neuer Test startet genauso; du kannst es vor dem Start ändern.",
+    "surface": {
+      "indoor": "Laufband",
+      "outdoor": "Draußen",
+      "inclineAdjusted": "Laufband, {{incline}} % Steigung, ausgeglichen",
+      "inclineNotAdjusted": "Laufband, {{incline}} % Steigung, nicht ausgeglichen"
+    }
+  },
+  "heartRateZones": {
+    "title": "Herzfrequenzzonen",
+    "description": "Deine Zonen bestimmen, wie die Zeit in jeder Herzfrequenzzone bei neuen Trainings gezählt wird, wie die Trainingsbelastung bewertet wird und welche Bereiche für Läufe vorgeschlagen werden.",
+    "yourZones": "Deine Zonen",
+    "maxHrSummary": "Maximale Herzfrequenz {{max}} bpm. {{source}}.",
+    "zoneRange": "{{lower}}–{{upper}} bpm",
+    "zoneRangeOpen": "{{lower}}+ bpm",
+    "tier": {
+      "light": "Leicht",
+      "moderate": "Mittel",
+      "vigorous": "Intensiv",
+      "peak": "Maximal"
+    },
+    "display": {
+      "title": "Anzeigen",
+      "five": "5 Zonen",
+      "four": "4 Stufen",
+      "hint": "Die vier Stufen sind Leicht (Zonen 1 und 2), Mittel (Zone 3), Intensiv (Zone 4) und Maximal (Zone 5). Nur die Anzeige ändert sich: Die Zonen werden weiterhin als fünf berechnet und gespeichert."
+    },
+    "fellBack": "Deine gewählte Methode braucht mehr Angaben, daher werden die Zonen in % der maximalen Herzfrequenz angezeigt.",
+    "maxHr": "Maximale Herzfrequenz (bpm)",
+    "maxHrHint": "Leer lassen, um sie aus deinem Geburtsdatum zu berechnen.",
+    "restingHr": "Ruheherzfrequenz (bpm)",
+    "customFloors": "Wo jede Zone beginnt (bpm)",
+    "floorLabel": "Zone {{zone}} beginnt bei (bpm)",
+    "historyNote": "Änderungen gelten für Trainings, die du ab jetzt aufzeichnest oder synchronisierst. Die gespeicherte Zeit in Zonen früherer Trainings wird nicht neu berechnet.",
+    "reset": "Auf Standard zurücksetzen",
+    "saved": "Herzfrequenzzonen gespeichert",
+    "loadFailed": "Deine Zonen konnten nicht geladen werden. Tippe, um es erneut zu versuchen.",
+    "method": {
+      "title": "Wie die Zonen berechnet werden",
+      "percentMax": "% der maximalen Herzfrequenz",
+      "heartRateReserve": "Herzfrequenzreserve",
+      "custom": "Eigene Zonen",
+      "percentMaxHint": "Die Zonen beginnen bei 50, 60, 70, 80 und 90 % deiner maximalen Herzfrequenz.",
+      "heartRateReserveHint": "Die Zonen liegen bei 50, 60, 70, 80 und 90 % des Abstands zwischen Ruhe- und maximaler Herzfrequenz (Karvonen). Braucht eine Ruheherzfrequenz.",
+      "customHint": "Lege fest, bei wie viel bpm jede Zone beginnt. Zeit unterhalb von Zone 1 wird nicht gezählt."
+    },
+    "source": {
+      "user": "Von dir festgelegt",
+      "age": "Aus deinem Geburtsdatum",
+      "observed": "Aus der höchsten Herzfrequenz im Training",
+      "fallback": "Ein typischer Wert; gib dein Geburtsdatum ein oder lege einen eigenen Wert fest"
+    },
+    "chart": {
+      "method": "Zonen: {{method}}. Änderungen an deinen Zoneneinstellungen ändern frühere Trainings nicht.",
+      "mixed": "Die Zonen wurden mit mehr als einer Methode ermittelt. Änderungen an deinen Zoneneinstellungen ändern frühere Trainings nicht.",
+      "device": "Zonen von deiner Uhr oder deinem Gerät festgelegt"
+    },
+    "appleImport": "Zonen aus Apple Health übernehmen",
+    "appleReading": "Apple Health wird gelesen …",
+    "appleImported": "Zonen aus Apple Health übernommen. Speichere, um sie zu behalten.",
+    "appleHint": "Übernimmt die Zonen aus Apple Health als eigene Zonen. Deine maximale Herzfrequenz bleibt unverändert, eine leere Ruheherzfrequenz wird ebenfalls ausgefüllt. Speichere, um sie zu behalten.",
+    "appleFailed": "Apple Health hat keine fünf Herzfrequenzzonen geteilt. Prüfe, ob der Health-Zugriff erlaubt ist, und versuche es erneut.",
+    "errors": {
+      "maxRange": "Die maximale Herzfrequenz muss zwischen {{min}} und {{max}} bpm liegen.",
+      "restingRange": "Die Ruheherzfrequenz muss zwischen {{min}} und {{max}} bpm liegen.",
+      "needsResting": "Zonen nach Herzfrequenzreserve brauchen eine Ruheherzfrequenz.",
+      "customFloors": "Jede Zone muss über der vorherigen beginnen, zwischen 30 und 250 bpm.",
+      "saveFailed": "Speichern fehlgeschlagen. Prüfe die Werte und versuche es erneut."
+    }
+  },
+  "workoutEffort": {
+    "value": "{{rating}}/10"
   }
 }

@@ -46,6 +46,7 @@ import {
   getAutoCalculateFamily,
   type AlgorithmBundle,
   type UserNutrientData,
+  normalizeEnergyUnit,
 } from '@workspace/shared';
 import type { DailyGoals, GoalPreset } from '../types/goals';
 import {
@@ -62,6 +63,8 @@ import {
   volumeFromMl,
   volumeToMl,
 } from '../utils/unitConversions';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import EnergyFormInput from '../components/EnergyFormInput';
 
 type GoalsScreenProps = RootStackScreenProps<'Goals'>;
 
@@ -131,6 +134,12 @@ const ALL_FIELDS: GoalField[] = [
   ...OTHER_NUTRIENT_FIELDS,
   ...OTHER_FIELDS,
 ];
+
+/** Goal fields kept in kcal in the drafts and shown in the account's unit. */
+const ENERGY_FIELDS: ReadonlySet<GoalField> = new Set([
+  'calories',
+  'target_exercise_calories_burned',
+]);
 
 const toDrafts = (
   goals: DailyGoals,
@@ -269,6 +278,7 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
     !isPresetMode && preferences?.calorie_goal_adjustment_mode === 'adaptive';
   const adjustedCalories = useAdjustedCalorieGoal(date, isAdaptive);
   const waterUnit = preferences?.water_display_unit ?? 'ml';
+  const energyUnit = normalizeEnergyUnit(preferences?.energy_unit);
   const { profile } = useProfile();
   const { latestMeasurements } = useLatestMeasurementsOnOrBefore({ date });
   const [base, setBase] = useState(goals);
@@ -392,17 +402,25 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
       ])
     ) as Record<NutrientGoalField, string>),
     calories: isAdaptive
-      ? t('goals.fields.baselineCalories', {
-          defaultValue: 'Baseline calories (kcal)',
+      ? t('goals.fields.baselineCaloriesWithUnit', {
+          defaultValue: 'Baseline calories ({{unit}})',
+          unit: energyUnitLabel(energyUnit, t),
         })
-      : nutrientLabel('calories'),
+      : t('goals.fields.calories', {
+          defaultValue: 'Calories ({{unit}})',
+          unit: energyUnitLabel(energyUnit, t),
+        }),
     water_goal_ml: t('goals.fields.water', {
       defaultValue: 'Water ({{unit}})',
       unit: WATER_UNIT_LABELS[waterUnit] ?? waterUnit,
     }),
-    target_exercise_calories_burned: t('goals.fields.exerciseCalories', {
-      defaultValue: 'Exercise calories (kcal)',
-    }),
+    target_exercise_calories_burned: t(
+      'goals.fields.exerciseCaloriesWithUnit',
+      {
+        defaultValue: 'Exercise calories ({{unit}})',
+        unit: energyUnitLabel(energyUnit, t),
+      }
+    ),
     target_exercise_duration_minutes: t('goals.fields.exerciseMinutes', {
       defaultValue: 'Exercise duration (min)',
     }),
@@ -789,15 +807,27 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
         <Text className="text-sm font-medium text-text-primary">
           {labels[field]}
         </Text>
-        <FormInput
-          value={drafts[field]}
-          onChangeText={(text) =>
-            setDrafts((prev) => ({ ...prev, [field]: text }))
-          }
-          keyboardType="decimal-pad"
-          accessibilityLabel={labels[field]}
-          testID={`goal-input-${field}`}
-        />
+        {ENERGY_FIELDS.has(field) ? (
+          <EnergyFormInput
+            kcalValue={drafts[field]}
+            onChangeKcal={(text) =>
+              setDrafts((prev) => ({ ...prev, [field]: text }))
+            }
+            keyboardType="decimal-pad"
+            accessibilityLabel={labels[field]}
+            testID={`goal-input-${field}`}
+          />
+        ) : (
+          <FormInput
+            value={drafts[field]}
+            onChangeText={(text) =>
+              setDrafts((prev) => ({ ...prev, [field]: text }))
+            }
+            keyboardType="decimal-pad"
+            accessibilityLabel={labels[field]}
+            testID={`goal-input-${field}`}
+          />
+        )}
         {userData &&
           getAutoCalculateFamily(field) !== null &&
           renderCalculate(field as NutrientGoalField)}
@@ -860,10 +890,11 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
       {isAdaptive && (
         <Text className="text-sm text-text-secondary">
           {adjustedCalories !== undefined
-            ? t('goals.adaptiveNoteToday', {
+            ? t('goals.adaptiveNoteTodayWithUnit', {
                 defaultValue:
-                  'Adaptive mode is on, so your calorie goal changes daily. Today it is {{calories}} kcal. The baseline below sets how far above or below your estimated maintenance you aim to be; it is not a fixed daily target.',
-                calories: Math.round(adjustedCalories),
+                  'Adaptive mode is on, so your calorie goal changes daily. Today it is {{calories}} {{unit}}. The baseline below sets how far above or below your estimated maintenance you aim to be; it is not a fixed daily target.',
+                calories: roundedEnergy(adjustedCalories, energyUnit),
+                unit: energyUnitLabel(energyUnit, t),
               })
             : t('goals.adaptiveNote', {
                 defaultValue:

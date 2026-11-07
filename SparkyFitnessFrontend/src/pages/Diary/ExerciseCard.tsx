@@ -1045,7 +1045,6 @@ const ExerciseCard = ({
           onSaveSuccess={handleLogSuccess} // Use the new handler
           initialSets={currentExerciseToLog?.sets || []}
           energyUnit={energyUnit}
-          convertEnergy={convertEnergy}
           getEnergyUnitString={getEnergyUnitString}
         />
       </CardContent>

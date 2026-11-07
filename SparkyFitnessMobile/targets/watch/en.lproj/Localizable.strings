@@ -34,6 +34,7 @@
 "watch.unit.perKm" = "/km";
 "watch.unit.perMi" = "/mi";
 "watch.unit.kcal" = "kcal";
+"watch.unit.kj" = "kJ";
 "watch.unit.bpm" = "bpm";
 "watch.run.paused" = "Paused";
 "watch.run.autoPaused" = "Auto-paused";
@@ -208,6 +209,7 @@
 "watch.workout.setOf" = "Set %lld of %lld";
 "watch.workout.bpm" = "BPM";
 "watch.workout.kcal" = "KCAL";
+"watch.workout.kj" = "KJ";
 "watch.workout.setsDone" = "%lld of %lld sets";
 "watch.workout.rest" = "Rest";
 "watch.workout.upNext" = "Up next: %@";
@@ -242,6 +244,10 @@
 "watch.goals.burned" = "Burned";
 "watch.goals.kcalLeftClassic" = "Kcal left";
 "watch.goals.kcalOverClassic" = "Kcal over";
+"watch.goals.kjLeft" = "kJ left";
+"watch.goals.kjOver" = "kJ over";
+"watch.goals.kjLeftClassic" = "kJ left";
+"watch.goals.kjOverClassic" = "kJ over";
 "watch.water.ofGoal" = "%lld%% of %@";
 "watch.fasting.startPreset" = "Start %@";
 "watch.steps.waiting" = "Waiting for your iPhone";
@@ -249,6 +255,8 @@
 "watch.goals.caloriesNotSynced" = "Calories not synced yet";
 "watch.goals.caloriesOverGoal" = "%@ calories over goal";
 "watch.goals.caloriesLeft" = "%@ calories left";
+"watch.goals.kilojoulesOverGoal" = "%@ kilojoules over goal";
+"watch.goals.kilojoulesLeft" = "%@ kilojoules left";
 "watch.goals.protein" = "Protein";
 "watch.goals.carbs" = "Carbs";
 "watch.goals.fat" = "Fat";

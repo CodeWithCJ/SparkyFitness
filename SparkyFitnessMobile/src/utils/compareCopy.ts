@@ -12,6 +12,7 @@ import {
   type CompareTimingChoice,
   isSleepMetric,
   timingOf,
+  EnergyUnit,
 } from '@workspace/shared';
 import { COMPARE_METRIC_LABELS } from '../constants/compareMetrics';
 import type { Translator } from '../constants/reports';
@@ -469,7 +470,8 @@ function differenceSentence(
 export function yesNoDifferenceText(
   q: CompareQuestion,
   binary: NonNullable<CompareResult['binary']>,
-  t: Translator
+  t: Translator,
+  energyUnit: EnergyUnit = 'kcal'
 ): string {
   const outcomeKey = binary.yesKey === q.a ? q.b : q.a;
   const others = lowerFirst(yesNoWording(q, binary.yesKey, t).noLabel);
@@ -498,7 +500,9 @@ export function yesNoDifferenceText(
           others,
         });
   }
-  const shown = Math.abs(compareDisplayValue(outcomeKey, binary.diff));
+  const shown = Math.abs(
+    compareDisplayValue(outcomeKey, binary.diff, energyUnit)
+  );
   if (Math.round(shown * 10) === 0) return same();
   const diff = formatLocalizedNumber(shown, {
     minimumFractionDigits: 1,
@@ -792,10 +796,11 @@ function num(value: number, digits: number): string {
 export function compareAmountText(
   key: CompareMetricKey,
   value: number,
-  signed = false
+  signed = false,
+  energyUnit: EnergyUnit = 'kcal'
 ): string {
   const digits = compareDigits(key);
-  return formatLocalizedNumber(compareDisplayValue(key, value), {
+  return formatLocalizedNumber(compareDisplayValue(key, value, energyUnit), {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
     ...(signed ? { signDisplay: 'exceptZero' as const } : {}),
@@ -806,12 +811,16 @@ export function compareAmountText(
  * A metric's raw value as the person reads it: bedtime (minutes after 18:00)
  * as a clock time in the app locale, everything else as `compareAmountText`.
  */
-export function compareValueText(key: CompareMetricKey, value: number): string {
+export function compareValueText(
+  key: CompareMetricKey,
+  value: number,
+  energyUnit: EnergyUnit = 'kcal'
+): string {
   if (key === 'bedtime') {
     const clock = bedtimeClock(value);
     return formatTimeLabel(clock) ?? clock;
   }
-  return compareAmountText(key, value);
+  return compareAmountText(key, value, false, energyUnit);
 }
 
 /** "p 0.012", or "p < 0.001" when it is that small. */
@@ -832,7 +841,8 @@ export function statsLine(
   result: CompareResult,
   mode: CompareMode,
   t: Translator,
-  outcome?: CompareMetricKey
+  outcome?: CompareMetricKey,
+  energyUnit: EnergyUnit = 'kcal'
 ): string | null {
   if (
     result.status !== 'ok' ||
@@ -859,7 +869,7 @@ export function statsLine(
       });
     }
     const scale = (v: number) =>
-      outcome ? compareDisplayValue(outcome, v) : v;
+      outcome ? compareDisplayValue(outcome, v, energyUnit) : v;
     return t('compareReport.stats.difference', {
       defaultValue:
         'difference {{diff}} · 95% range {{low}} to {{high}} · {{p}} · {{n}}',

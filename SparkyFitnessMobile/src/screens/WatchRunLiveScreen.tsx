@@ -24,6 +24,9 @@ import {
   paceSecondsPerUnit,
 } from '../utils/gpsRecording';
 import type { RootStackScreenProps } from '../types/navigation';
+import { energyUnitLabel } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyFromKcal } from '@workspace/shared';
 
 type Props = RootStackScreenProps<'WatchRunLive'>;
 
@@ -46,6 +49,7 @@ const SWITCH_ACTIONS: Record<
 
 const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const insets = useSafeAreaInsets();
   const { preferences } = usePreferences();
   const run = useWatchRunLive();
@@ -283,9 +287,13 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
                 />
               ) : null}
               <Stat
-                label={t('watchRunLive.calories', { defaultValue: 'Calories' })}
-                value={number(run.energyKcal, 0)}
-                unit={t('watchRunLive.kcal', { defaultValue: 'kcal' })}
+                label={
+                  energyUnit === 'kJ'
+                    ? t('common.energy', { defaultValue: 'Energy' })
+                    : t('watchRunLive.calories', { defaultValue: 'Calories' })
+                }
+                value={number(energyFromKcal(run.energyKcal, energyUnit), 0)}
+                unit={energyUnitLabel(energyUnit, t)}
               />
               {run.lapCount > 0 && run.kind !== 'jumpRope' ? (
                 <Stat

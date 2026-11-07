@@ -24,8 +24,8 @@ keytool -genkey -v -keystore android/app/my-release-key.keystore -alias my-key-a
 
 GitHub needs your key and passwords to sign the app.
 
-1.  Go to your GitHub Repo -> **Settings** -> **Secrets and variables** -> **Actions**.
-2.  Add these 4 secrets:
+1.  Go to your GitHub Repo -> **Settings** -> **Environments** -> **release** (create it if it does not exist, limited to `main` and `v*` tags, with yourself as a required reviewer).
+2.  Add these 4 secrets as environment secrets there. If they also exist as repository secrets, delete those copies once a release build has signed with the environment ones: a job without the environment still reads repository secrets, so a workflow pushed on any branch could read them.
 
 | Secret Name              | Value                                    |
 | :----------------------- | :--------------------------------------- |
@@ -46,7 +46,7 @@ GitHub needs your key and passwords to sign the app.
 
 1.  Check in your code (`git push`).
 2.  Create a **Release** in GitHub (tag starting with `v`, e.g., `v1.0.0`) OR just push if your workflow is set to run on push.
-3.  GitHub Actions will build the APK/AAB and attach it to the Release, along with `wearos-release.apk` for the Wear OS app.
+3.  Approve the waiting `release` deployment in the Actions tab. GitHub Actions then builds the APK/AAB and attaches it to the Release, along with `wearos-release.apk` for the Wear OS app.
 
 Running the workflow by hand also creates or updates the `v<version>` release, so it is not a dry run.
 

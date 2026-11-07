@@ -1672,5 +1672,17 @@
       "backupCount_one": "{{count}} biztonsági mentés",
       "backupCount_other": "{{count}} biztonsági mentés"
     }
+  },
+  "barcodeLookup": {
+    "protein": "Fehérje: {{value}} g",
+    "carbs": "Szénhidrát: {{value}} g",
+    "fat": "Zsír: {{value}} g",
+    "sourceFailed": "Ez a forrás nem elérhető.",
+    "sourceNotFound": "Nincsenek termékek ebben a forrásban.",
+    "notFound": "Nem található termék. Ellenőrizz más forrásokat vagy adj hozzá ételt manuálisan.",
+    "otherSources": "Egyéb források",
+    "loading": "Egyéb források ellenőrzése…",
+    "alternativesFailed": "Az egyéb forrásokat nem lehetett betölteni.",
+    "noAlternatives": "Nincs egyéb elérhető forrás."
   }
 }

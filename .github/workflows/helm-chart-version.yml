@@ -5,31 +5,63 @@ name: Update Helm Chart Version
 # from source drift to an old image. After each release this opens a PR that
 # writes the same version into Chart.yaml, converted the same way, and into the
 # pinned chart version in the Flux example on the Kubernetes docs page.
+#
+# Runs after Publish Docker Images, like helm-release.yml, so the chart never
+# names images that do not exist yet. That also makes it run on main, where the
+# sync-app environment lets it open the PR with the SparkyFitness-Sync app token
+# rather than GITHUB_TOKEN, so the repository can keep "Allow GitHub Actions to
+# create and approve pull requests" off. A maintainer still reviews the PR.
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Publish Docker Images"]
+    types: [completed]
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   update-chart-version:
     name: Sync Chart.yaml with the release
-    # Pre-releases never move the chart.
-    if: ${{ !github.event.release.prerelease }}
+    # workflow_run fires on failure too, and for manual rebuilds of the images,
+    # which are not a new release.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'release'
+    # The app secrets live in this environment, which only main can use.
+    environment: sync-app
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: main
+          # create-pull-request authenticates through its token input.
+          persist-credentials: false
+
+      - name: Find the release
+        id: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # For a release run, head_branch is the release's tag.
+          TAG: ${{ github.event.workflow_run.head_branch }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$TAG" =~ ^v?[0-9]+(\.[0-9]+)+$ ]]; then
+            echo "::error::Unexpected release tag: $TAG"
+            exit 1
+          fi
+          # Pre-releases never move the chart.
+          prerelease=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isPrerelease --jq .isPrerelease)
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
       - name: Write the release version into Chart.yaml and the Flux example
+        id: write
+        if: steps.release.outputs.prerelease == 'false'
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ steps.release.outputs.tag }}
         run: |
           RAW_VERSION="${TAG#v}"
           if [[ "$RAW_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\.(.+)$ ]]; then
@@ -43,6 +75,7 @@ jobs:
             echo "Release $CHART_VERSION is older than $CURRENT on main; nothing to do."
             exit 0
           fi
+          echo "update=true" >> "$GITHUB_OUTPUT"
           sed -i -E \
             -e "s/^version: .*/version: ${CHART_VERSION}/" \
             -e "s/^appVersion: .*/appVersion: \"${TAG}\"/" \
@@ -54,16 +87,32 @@ jobs:
           sed -i -E "s/^(    tag: )[^ ]+( # the release to run)/\1${CHART_VERSION}\2/" "$file"
           git diff -- helm/chart/Chart.yaml docs/src/install/kubernetes.md
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+      - name: Create SparkyFitness-Sync token
+        id: app_token
+        if: steps.write.outputs.update == 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "chore(helm): update chart version to ${{ github.event.release.tag_name }}"
+          # The app's Client ID is not secret, so it lives here, not in a secret.
+          client-id: Iv23lizuGhwaizMxrvDT
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          # Opening the PR, nothing more.
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Create Pull Request
+        if: steps.write.outputs.update == 'true'
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6.1.0
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+          add-paths: |
+            helm/chart/Chart.yaml
+            docs/src/install/kubernetes.md
+          commit-message: "chore(helm): update chart version to ${{ steps.release.outputs.tag }}"
           branch: helm/update-chart-version
           delete-branch: true
           base: main
-          title: "chore(helm): update chart version to ${{ github.event.release.tag_name }}"
+          title: "chore(helm): update chart version to ${{ steps.release.outputs.tag }}"
           body: |
-            This pull request was automatically created by the **Update Helm Chart Version** workflow after release `${{ github.event.release.tag_name }}` was published.
+            This pull request was automatically created by the **Update Helm Chart Version** workflow after release `${{ steps.release.outputs.tag }}` was published and its Docker images were pushed.
 
             It sets `version` and `appVersion` in `helm/chart/Chart.yaml` to match the chart that was just published, so installs from source use the current release image, and updates the pinned chart version in the Flux example on the Kubernetes docs page.

@@ -40,7 +40,7 @@ you edit an en/ source
  PR "chore(i18n): sync translations from Weblate"  ──►  merged before the release PR  ──►  shipped
 ```
 
-[`SparkyFitnessTranslations`](https://github.com/CodeWithCJ/SparkyFitnessTranslations) is the repository Weblate is connected to. The workflow runs every night and on demand, from `main`, and opens or updates one pull request on each side. It merges the English one there itself, unless it deletes more than 300 lines; then the run fails until a maintainer merges it. A maintainer merges the one here before each release pull request, because the release tag is created on that pull request's merge commit. Translators never open a pull request here, and you never open one there.
+[`SparkyFitnessTranslations`](https://github.com/CodeWithCJ/SparkyFitnessTranslations) is the repository Weblate is connected to. The workflow runs every night and on demand, from `main`, and opens or updates one pull request on each side. It merges the English one there itself, unless it deletes more than 300 lines; then the run fails until a maintainer merges it. The one here gets CI and merges itself once CI passes; if it is still open when a release pull request is ready, a maintainer merges it first, because the release tag is created on that pull request's merge commit. Translators never open a pull request here, and you never open one there.
 
 ## Adding a language
 

@@ -101,7 +101,7 @@ class CalorieWidget : GlanceAppWidget() {
             progress = 0f
         } else {
             remainingText = widgetContext.getString(
-                R.string.widget_kcal_left,
+                energyLeftRes(snapshot.isKj),
                 formatInt(widgetContext, snapshot.remaining),
             )
             progress = snapshot.progress.coerceIn(0.0, 1.0).toFloat()
@@ -322,10 +322,26 @@ class CalorieWidget : GlanceAppWidget() {
         val lastUpdated: Long,
         /** Null when there is no goal or the snapshot predates these figures. */
         val figures: CalorieFigures?,
+        /** The figures above are already in kJ (the account's energy unit). */
+        val isKj: Boolean = false,
     )
 
     companion object {
         val SNAPSHOT_STATE_KEY = stringPreferencesKey(CalorieWidgetReceiver.PREFS_KEY_SNAPSHOT)
+
+        /**
+         * Whether the phone sent the snapshot for a kJ account. Snapshot numbers
+         * are always kcal; a snapshot from an older app has no unit and is kcal.
+         */
+        internal fun isKjSnapshot(obj: JSONObject): Boolean =
+            obj.optString("energyUnit", "kcal") == "kJ"
+
+        /** A kcal value from a snapshot, in the account's unit. */
+        internal fun energyFromKcal(kcal: Double, isKj: Boolean): Double =
+            if (isKj) kcal * 4.184 else kcal
+
+        internal fun energyLeftRes(isKj: Boolean): Int =
+            if (isKj) R.string.widget_kj_left else R.string.widget_kcal_left
 
         /** Also used by the Calories left Quick Settings tile, so both show the same figure. */
         internal fun formatInt(context: Context, value: Double): String {
@@ -349,11 +365,12 @@ class CalorieWidget : GlanceAppWidget() {
                 val obj = JSONObject(json)
                 val date = obj.optString("date", "")
                 if (!isSnapshotToday(date)) return null
-                val goal = obj.optDouble("goal", 0.0)
-                val remaining = obj.optDouble("remaining", 0.0)
+                val isKj = isKjSnapshot(obj)
+                val goal = energyFromKcal(obj.optDouble("goal", 0.0), isKj)
+                val remaining = energyFromKcal(obj.optDouble("remaining", 0.0), isKj)
                 // Optional: a snapshot stored by an older app has neither.
-                val food = obj.optionalDouble("food")
-                val burned = obj.optionalDouble("burned")
+                val food = obj.optionalDouble("food")?.let { energyFromKcal(it, isKj) }
+                val burned = obj.optionalDouble("burned")?.let { energyFromKcal(it, isKj) }
                 CalorieSnapshot(
                     date = date,
                     remaining = remaining,
@@ -365,6 +382,7 @@ class CalorieWidget : GlanceAppWidget() {
                     } else {
                         null
                     },
+                    isKj = isKj,
                 )
             } catch (e: Exception) {
                 null

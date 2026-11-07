@@ -3,7 +3,7 @@ import {
   earliestEntryTime,
   type ExerciseEntryHrZonesInitializer,
 } from '@workspace/shared';
-import { getClient } from '../db/poolManager.js';
+import { getClient, getSystemClient } from '../db/poolManager.js';
 import type { PoolClient } from 'pg';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
@@ -1367,6 +1367,39 @@ async function getExerciseEntryOwnerId(id: any, userId: any) {
   }
 }
 
+/**
+ * Whether any diary entry or workout preset exercise, of any user, still
+ * points at this image. Read without row-level security so a file only
+ * another user's row references is never taken for unused. A failed check
+ * counts as referenced: a stray file on disk is better than a lost photo.
+ */
+async function isExerciseImageReferenced(imageUrl: string): Promise<boolean> {
+  try {
+    const client = await getSystemClient();
+    try {
+      const result = await client.query(
+        // Case-insensitive, so a differently cased spelling of the same file
+        // on a case-insensitive filesystem still counts as a reference.
+        `SELECT 1 FROM exercise_entries WHERE lower(image_url) = lower($1)
+         UNION ALL
+         SELECT 1 FROM workout_preset_exercises WHERE lower(image_url) = lower($1)
+         LIMIT 1`,
+        [imageUrl]
+      );
+      return result.rows.length > 0;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    log(
+      'warn',
+      'Could not check references to an exercise image; keeping it',
+      error
+    );
+    return true;
+  }
+}
+
 async function updateExerciseEntry(
   id: string,
   userId: string,
@@ -2011,8 +2044,40 @@ async function getRecentSessionsForExercise(
 ): Promise<RecentSessionRow[]> {
   const client = await getClient(userId);
   try {
+    // Preset scoping must not leave a brand-new preset with an empty history
+    // card: when the preset itself has no qualifying sessions yet, fall back to
+    // the exercise's global recent sessions so the in-progress view still has
+    // something to compare against (issue: presetId-scoped stats returned []
+    // for a fresh preset while lastSet/global stats were populated).
+    //
+    // The scope decision runs in the SAME statement as the select (via a CTE)
+    // so a preset session committing concurrently cannot race the probe: the
+    // probe and the main query read a single snapshot. The probe applies the
+    // same excludePresetEntryId exclusion as the main query, so today's
+    // in-progress session cannot keep preset scoping active when it is the
+    // preset's only qualifying history.
     const result = await client.query(
-      `SELECT
+      `WITH scoped_preset AS (
+         SELECT CASE
+           WHEN $5::integer IS NULL THEN NULL
+           WHEN EXISTS (
+             SELECT 1
+               FROM exercise_entries ee
+               JOIN exercise_preset_entries epe ON epe.id = ee.exercise_preset_entry_id
+              WHERE ee.user_id = $1
+                AND ee.exercise_id = $2
+                AND epe.workout_preset_id = $5::integer
+                AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3::uuid)
+                AND EXISTS (
+                  SELECT 1 FROM exercise_entry_sets ees
+                   WHERE ees.exercise_entry_id = ee.id
+                     AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL OR ees.duration IS NOT NULL OR ees.distance IS NOT NULL)
+                )
+           ) THEN $5::integer
+           ELSE NULL
+         END AS preset_id
+       )
+       SELECT
          ee.entry_date::TEXT AS entry_date,
          (SELECT json_agg(set_data ORDER BY set_data.set_number, set_data.id)
             FROM (
@@ -2023,15 +2088,17 @@ async function getRecentSessionsForExercise(
             ) AS set_data
          ) AS sets
        FROM exercise_entries ee
+       CROSS JOIN scoped_preset sp
        WHERE ee.user_id = $1
          AND ee.exercise_id = $2
-         AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3)
+         AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3::uuid)
          AND (
            $5::integer IS NULL
+           OR sp.preset_id IS NULL
            OR EXISTS (
              SELECT 1 FROM exercise_preset_entries epe
               WHERE epe.id = ee.exercise_preset_entry_id
-                AND epe.workout_preset_id = $5
+                AND epe.workout_preset_id = sp.preset_id
            )
          )
          AND EXISTS (
@@ -2456,6 +2523,7 @@ export { createExerciseEntry };
 export { getExerciseEntryById };
 export { getExerciseEntryOwnerId };
 export { updateExerciseEntry };
+export { isExerciseImageReferenced };
 export { updateExerciseEntryTelemetryOnly };
 export { _updateExerciseEntryTelemetryOnlyWithClient };
 export { updateExerciseEntriesDateByPresetEntryIdWithClient };
@@ -2490,6 +2558,7 @@ export default {
   getExerciseEntryById,
   getExerciseEntryOwnerId,
   updateExerciseEntry,
+  isExerciseImageReferenced,
   updateExerciseEntryTelemetryOnly,
   _updateExerciseEntryTelemetryOnlyWithClient,
   applyWatchTelemetryAtomically,

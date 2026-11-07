@@ -26,8 +26,9 @@ nix build .#sparkyfitness-garmin
 > **Updating dependency hashes:** the `pnpmDeps.hash` values in `backend.nix`
 > and `frontend.nix` pin the offline pnpm store and must be refreshed whenever
 > `pnpm-lock.yaml` (or a package's dependency set) changes. A stale hash shows
-> up as a `hash mismatch` build failure. Run the helper script to recompute
-> both automatically:
+> up as a `hash mismatch` build failure. On `main`, the Update Nix pnpm Hashes
+> workflow does this after every lockfile change and merges the result itself.
+> To recompute both on a branch, run the helper script:
 >
 > ```bash
 > nix/update-hashes.sh

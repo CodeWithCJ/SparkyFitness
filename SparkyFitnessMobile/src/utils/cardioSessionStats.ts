@@ -3,8 +3,10 @@ import {
   convertTemperature,
   type ExerciseActivityQueryItem,
   type TemperatureUnit,
+  EnergyUnit,
 } from '@workspace/shared';
 import { formatLocalizedNumber } from '../localization';
+import { energyUnitLabel, formatEnergyNumber } from './energyUnit';
 
 const FEET_PER_METER = 3.28084;
 
@@ -100,7 +102,8 @@ export function sessionStats(
   t: TFunction,
   session: ExerciseActivityQueryItem,
   distanceUnit: 'km' | 'miles',
-  temperatureUnit: TemperatureUnit
+  temperatureUnit: TemperatureUnit,
+  energyUnit: EnergyUnit = 'kcal'
 ): Stat[] {
   const stats: Stat[] = [];
   if (session.distanceFormatted != null && session.distanceFormatted > 0) {
@@ -223,12 +226,16 @@ export function sessionStats(
   if (session.caloriesBurned > 0) {
     stats.push({
       key: 'calories',
-      label: t('exerciseStatistics.cardio.caloriesLabel', {
-        defaultValue: 'Calories',
-      }),
-      value: t('exerciseStatistics.cardio.calories', {
-        defaultValue: '{{value}} Cal',
-        value: formatLocalizedNumber(Math.round(session.caloriesBurned)),
+      label:
+        energyUnit === 'kJ'
+          ? t('common.energy', { defaultValue: 'Energy' })
+          : t('exerciseStatistics.cardio.caloriesLabel', {
+              defaultValue: 'Calories',
+            }),
+      value: t('exerciseStatistics.cardio.caloriesWithUnit', {
+        defaultValue: '{{value}} {{unit}}',
+        value: formatEnergyNumber(session.caloriesBurned, energyUnit),
+        unit: energyUnitLabel(energyUnit, t),
       }),
     });
   }

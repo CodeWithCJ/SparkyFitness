@@ -15,6 +15,7 @@ vi.mock('../services/measurementService.js', () => ({
     getCheckInMeasurements: vi.fn(),
     getLatestCheckInMeasurementsOnOrBeforeDate: vi.fn(),
     getCustomMeasurementEntriesByDate: vi.fn(),
+    getCustomMeasurementTimelineEntries: vi.fn(),
     getLatestManualCustomEntriesOnOrBeforeDate: vi.fn(),
     getCheckInMeasurementsByDateRange: vi.fn(),
     getCustomMeasurementsByDateRange: vi.fn(),
@@ -422,6 +423,32 @@ describe('Measurement Routes - GET /api/measurements/custom-entries/:date', () =
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual([]);
+  });
+
+  it('opts into timestamp-day reads without changing the legacy route', async () => {
+    vi.mocked(
+      measurementService.getCustomMeasurementTimelineEntries
+    ).mockResolvedValue([]);
+    const res = await request(app).get(
+      '/api/measurements/custom-entries/2026-11-03?byTimestamp=true'
+    );
+    expect(res.statusCode).toBe(200);
+    expect(
+      measurementService.getCustomMeasurementTimelineEntries
+    ).toHaveBeenCalledWith('test-user-id', 'test-user-id', '2026-11-03');
+    expect(
+      measurementService.getCustomMeasurementEntriesByDate
+    ).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid timestamp-day modes before reaching either service', async () => {
+    const res = await request(app).get(
+      '/api/measurements/custom-entries/2026-11-03?byTimestamp=invalid'
+    );
+    expect(res.statusCode).toBe(400);
+    expect(
+      measurementService.getCustomMeasurementTimelineEntries
+    ).not.toHaveBeenCalled();
   });
 
   it('rejects a malformed date with 400 before reaching the service', async () => {

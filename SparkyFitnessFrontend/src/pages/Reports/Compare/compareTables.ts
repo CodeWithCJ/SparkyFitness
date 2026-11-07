@@ -12,6 +12,7 @@ import {
   type CompareResult,
   type CompareTimingChoice,
 } from '@workspace/shared';
+import type { EnergyUnit } from '@workspace/shared';
 
 export interface CompareDayRow {
   aKey: string;
@@ -81,11 +82,15 @@ const DAY_CHOICES: readonly CompareTimingChoice[] = [
 ];
 const WEEK_CHOICES: readonly CompareTimingChoice[] = ['sameWeek', 'nextWeek'];
 
-function strengthOf(q: CompareQuestion, result: CompareResult): number | null {
+function strengthOf(
+  q: CompareQuestion,
+  result: CompareResult,
+  energyUnit: EnergyUnit
+): number | null {
   if (result.method === 'difference') {
     if (!result.binary) return null;
     const outcome = result.binary.yesKey === q.a ? q.b : q.a;
-    return compareDisplayValue(outcome, result.binary.diff);
+    return compareDisplayValue(outcome, result.binary.diff, energyUnit);
   }
   return result.r ?? null;
 }
@@ -98,7 +103,8 @@ export function timingRows(
     data?: CompareResponse;
     isLoading: boolean;
     isError: boolean;
-  }[]
+  }[],
+  energyUnit: EnergyUnit = 'kcal'
 ): CompareTimingRow[] {
   const chosen = timingOf(q.choice);
   if (chosen.mode === 'since') return [];
@@ -123,7 +129,7 @@ export function timingRows(
     return {
       ...base,
       status: 'ok',
-      strength: strengthOf(q, result),
+      strength: strengthOf(q, result, energyUnit),
       method: result.method ?? null,
       linked: result.linked ?? false,
     };

@@ -166,17 +166,32 @@ export const handleDisconnectGarmin = async () => {
   }
 };
 
+/**
+ * A manual Garmin sync answers 200 even when phases failed; `failedPhases`
+ * names them and `serviceUnreachable` says the Garmin microservice was down.
+ */
+export interface GarminManualSyncResponse {
+  health: Record<string, unknown> | null;
+  activities: Record<string, unknown> | null;
+  nutrition: Record<string, unknown> | null;
+  failedPhases: string[];
+  serviceUnreachable: boolean;
+}
+
 export const handleManualSyncGarmin = async (
   startDate?: string,
   endDate?: string,
   mock?: SyncMockOptions
-) => {
+): Promise<GarminManualSyncResponse> => {
   try {
     // Call the simplified sync endpoint.
-    await apiCall(`/integrations/garmin/sync`, {
-      method: 'POST',
-      body: JSON.stringify({ startDate, endDate, ...mock }),
-    });
+    return await apiCall<GarminManualSyncResponse>(
+      `/integrations/garmin/sync`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ startDate, endDate, ...mock }),
+      }
+    );
   } catch (error: unknown) {
     console.error('Error initiating manual Garmin sync:', error);
     throw error;
@@ -570,8 +585,13 @@ const fetchBaseProviders = async (): Promise<ExternalDataProvider[]> => {
 
 export interface GarminStatusResponse {
   isLinked: boolean;
+  /** When the provider row last changed; use lastSyncAt for the last sync. */
   lastUpdated: string;
+  /** Last completed sync; null if the account never synced. */
+  lastSyncAt?: string | null;
   tokenExpiresAt: string;
+  /** Whether the Garmin microservice answered; only sent while linked. */
+  serviceReachable?: boolean;
 }
 
 export const fetchGarminStatus = async (): Promise<GarminStatusResponse> => {
@@ -706,7 +726,8 @@ export const getEnrichedProviders = async (): Promise<
             enriched.garmin_connect_status = status.isLinked
               ? 'linked'
               : 'disconnected';
-            enriched.garmin_last_status_check = status.lastUpdated;
+            enriched.garmin_last_status_check = status.lastSyncAt ?? null;
+            enriched.garmin_service_reachable = status.serviceReachable ?? null;
             enriched.garmin_token_expires = status.tokenExpiresAt;
             enriched.has_token = status.isLinked;
             break;
@@ -793,6 +814,7 @@ export const getEnrichedProviders = async (): Promise<
         if (provider.provider_type === 'garmin') {
           enriched.garmin_connect_status = 'disconnected';
           enriched.garmin_last_status_check = null;
+          enriched.garmin_service_reachable = null;
           enriched.garmin_token_expires = null;
           enriched.has_token = false;
         }

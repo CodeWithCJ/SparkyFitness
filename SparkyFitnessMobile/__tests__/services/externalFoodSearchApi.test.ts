@@ -2326,6 +2326,27 @@ describe('externalFoodSearchApi', () => {
     });
 
     describe('lookupBarcodeV2', () => {
+      test('forwards cancellation to the barcode request', async () => {
+        const controller = new AbortController();
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockImplementation((_url: string, options: RequestInit) => {
+          controller.abort();
+          if (options.signal?.aborted) {
+            return Promise.reject(
+              Object.assign(new Error('Cancelled'), { name: 'AbortError' })
+            );
+          }
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ source: 'not_found', food: null }),
+          });
+        });
+
+        await expect(
+          lookupBarcodeV2('1234567890', undefined, controller.signal)
+        ).rejects.toMatchObject({ name: 'AbortError' });
+      });
+
       test('calls correct v2 endpoint', async () => {
         mockGetActiveServerConfig.mockResolvedValue(testConfig);
         mockFetch.mockResolvedValue({

@@ -59,7 +59,9 @@ data class NutritionTileModel(
   val remainingKcal: Int,
   val burnedKcal: Int,
   val calorieProgress: Float,
-  val macros: List<TileMacroRow>
+  val macros: List<TileMacroRow>,
+  /** Unit of the `*Kcal` figures above, already converted for display. */
+  val energyUnit: String = "kcal"
 )
 
 data class TileStageBadge(
@@ -146,7 +148,10 @@ object TileModels {
   /**
    * Builds the display model for the Nutrition tile from today's [NutritionSnapshot].
    */
-  fun buildNutritionTileModel(nutrition: NutritionSnapshot?): NutritionTileModel {
+  fun buildNutritionTileModel(
+    nutrition: NutritionSnapshot?,
+    energy: EnergyDisplay = EnergyDisplay.KCAL
+  ): NutritionTileModel {
     if (nutrition == null || !nutrition.isToday) {
       return NutritionTileModel(
         hasData = false,
@@ -158,10 +163,10 @@ object TileModels {
         macros = emptyList()
       )
     }
-    val consumed = nutrition.caloriesConsumed.roundToInt()
-    val remaining = nutrition.caloriesRemaining.roundToInt()
-    val burned = nutrition.caloriesBurned.roundToInt()
-    val goal = max(0, (nutrition.caloriesConsumed + nutrition.caloriesRemaining).roundToInt())
+    val consumed = energy.whole(nutrition.caloriesConsumed)
+    val remaining = energy.whole(nutrition.caloriesRemaining)
+    val burned = energy.whole(nutrition.caloriesBurned)
+    val goal = max(0, energy.whole(nutrition.caloriesConsumed + nutrition.caloriesRemaining))
     val progress = nutrition.calorieProgress.toFloat().coerceIn(0f, 1f)
 
     val sourceRows = nutrition.rows?.takeIf { it.isNotEmpty() } ?: listOf(
@@ -215,7 +220,8 @@ object TileModels {
       remainingKcal = remaining,
       burnedKcal = burned,
       calorieProgress = progress,
-      macros = macros
+      macros = macros,
+      energyUnit = energy.unit
     )
   }
 
@@ -365,7 +371,8 @@ object TileModels {
     exercise: ExerciseSummarySnapshot?,
     scheduledWorkouts: List<ScheduledWorkout>,
     steps: StepsSnapshot?,
-    stepGoal: Int
+    stepGoal: Int,
+    energy: EnergyDisplay = EnergyDisplay.KCAL
   ): ExerciseTileModel {
     val validExercise = exercise?.takeIf { it.isToday }
     val validSteps = steps?.takeIf { it.isToday }
@@ -387,12 +394,15 @@ object TileModels {
     }
 
     val headlineText = if (validExercise != null) {
-      val calorieText = if (caloriesGoal > 0) "$calories/$caloriesGoal kcal" else "$calories kcal"
+      val shownCalories = energy.whole(calories.toDouble())
+      val shownGoal = energy.whole(caloriesGoal.toDouble())
+      val calorieText =
+        if (caloriesGoal > 0) "$shownCalories/$shownGoal ${energy.unit}" else "$shownCalories ${energy.unit}"
       "${minutes}m · $calorieText"
     } else if (validSteps != null) {
       "${validSteps.count} steps"
     } else {
-      "0m · 0 kcal"
+      "0m · 0 ${energy.unit}"
     }
 
     val subtitleParts = mutableListOf<String>()
@@ -413,7 +423,7 @@ object TileModels {
       rows.add(
         TileExerciseItemRow(
           title = session.name.take(15),
-          subtitle = "${session.durationMinutes}m · ${session.calories} kcal",
+          subtitle = "${session.durationMinutes}m · ${energy.whole(session.calories.toDouble())} ${energy.unit}",
           badgeColorArgb = 0xFF4ADE80.toInt()
         )
       )
@@ -790,7 +800,10 @@ class NutritionTileService : BaseSparkyTileService() {
    * Builds the ProtoLayout content column for the Nutrition tile.
    */
   override fun buildContentLayout(session: WearSessionManager): LayoutElement {
-    val model = TileModels.buildNutritionTileModel(session.checkInStore.nutrition.value)
+    val model = TileModels.buildNutritionTileModel(
+      session.checkInStore.nutrition.value,
+      EnergyDisplay.of(session.checkInStore.watchContext.value)
+    )
     val col = Column.Builder()
       .setWidth(expand())
       .setHorizontalAlignment(LayoutElementBuilders.HORIZONTAL_ALIGN_CENTER)
@@ -807,7 +820,7 @@ class NutritionTileService : BaseSparkyTileService() {
     if (!model.hasData) {
       col.addContent(
         tileText(
-          value = "— / — kcal",
+          value = "— / — ${EnergyDisplay.of(session.checkInStore.watchContext.value).unit}",
           sizeSp = 15f,
           colorArgb = 0xFFFFFFFF.toInt(),
           bold = true
@@ -833,9 +846,9 @@ class NutritionTileService : BaseSparkyTileService() {
     }
 
     val calHeadline = if (model.goalKcal > 0) {
-      "${model.consumedKcal} / ${model.goalKcal} kcal"
+      "${model.consumedKcal} / ${model.goalKcal} ${model.energyUnit}"
     } else {
-      "${model.consumedKcal} kcal"
+      "${model.consumedKcal} ${model.energyUnit}"
     }
     col.addContent(
       tileText(
@@ -1083,7 +1096,8 @@ class ExerciseTileService : BaseSparkyTileService() {
       exercise = store.exerciseSummary.value,
       scheduledWorkouts = store.scheduledWorkouts.value,
       steps = store.steps.value,
-      stepGoal = store.stepGoal.value
+      stepGoal = store.stepGoal.value,
+      energy = EnergyDisplay.of(store.watchContext.value)
     )
     val col = Column.Builder()
       .setWidth(expand())

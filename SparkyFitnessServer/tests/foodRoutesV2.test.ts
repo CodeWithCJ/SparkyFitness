@@ -137,7 +137,7 @@ describe('GET /v2/foods/barcode/:barcode', () => {
       'user-123',
       undefined,
       'user-123',
-      { includeProviderMetadata: true }
+      { includeProviderMetadata: true, signal: expect.any(AbortSignal) }
     );
   });
   it('returns a local barcode hit when optional fields are null', async () => {

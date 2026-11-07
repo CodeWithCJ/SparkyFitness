@@ -538,7 +538,7 @@ async function getExternalDataProviderByUserIdAndProviderName(
       `SELECT
         edp.id, edp.provider_name, edp.provider_type, edp.user_id, edp.sync_frequency, edp.encrypted_app_id, edp.app_id_iv, edp.app_id_tag,
         edp.encrypted_app_key, edp.app_key_iv, edp.app_key_tag,
-        edp.token_expires_at, edp.external_user_id, edp.is_active, edp.base_url, edp.updated_at,
+        edp.token_expires_at, edp.external_user_id, edp.is_active, edp.base_url, edp.updated_at, edp.last_sync_at,
         edp.encrypted_garth_dump, edp.garth_dump_iv, edp.garth_dump_tag,
         ept.is_strictly_private, ept.categories, ept.required_fields, ept.field_labels, ept.supports_barcode
       FROM external_data_providers edp
@@ -616,6 +616,7 @@ async function getExternalDataProviderByUserIdAndProviderName(
       external_user_id: data.external_user_id,
       garth_dump: decryptedGarthDump,
       updated_at: data.updated_at, // Include updated_at
+      last_sync_at: (data.last_sync_at ?? null) as Date | null,
       is_strictly_private: !!data.is_strictly_private,
       categories: data.categories,
       required_fields: data.required_fields,

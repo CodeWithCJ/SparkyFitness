@@ -422,6 +422,131 @@
         "right_hip": "Hanche droite",
         "unknown": "Inconnu"
       }
+    },
+    "adherence": {
+      "screenTitle": "Observance",
+      "openTitle": "Observance et historique",
+      "openSubtitle": "Liste du jour, séries, calendrier mensuel et historique des prises",
+      "openA11y": "Ouvrir la synthèse de l'observance et l'historique des prises",
+      "title": "Synthèse de l'observance",
+      "loading": "Chargement de l'observance…",
+      "loadFailed": "Échec du chargement de l'observance.",
+      "noMedications": "Ajoutez un médicament pour commencer à suivre l'observance.",
+      "dosesToday": "Prises du jour",
+      "doses": "Prises",
+      "windowAdherence_one": "Observance sur {{count}} jour",
+      "windowAdherence_many": "Observance sur {{count}} jours",
+      "windowAdherence_other": "Observance sur {{count}} jours",
+      "perfectDays_one": "Jours parfaits ({{count}} j)",
+      "perfectDays_many": "Jours parfaits ({{count}} j)",
+      "perfectDays_other": "Jours parfaits ({{count}} j)",
+      "ringA11y_one": "{{pct}} pour cent d'observance sur {{count}} jour",
+      "ringA11y_many": "{{pct}} pour cent d'observance sur {{count}} jours",
+      "ringA11y_other": "{{pct}} pour cent d'observance sur {{count}} jours",
+      "ringLabel_one": "{{count}} j",
+      "ringLabel_many": "{{count}} j",
+      "ringLabel_other": "{{count}} j",
+      "lastDays_one": "{{count}} dernier jour",
+      "lastDays_many": "{{count}} derniers jours",
+      "lastDays_other": "{{count}} derniers jours",
+      "streak_one": "Série de {{count}} jour",
+      "streak_many": "Série de {{count}} jours",
+      "streak_other": "Série de {{count}} jours",
+      "barPrn_one": "{{date}} : {{count}} prise au besoin",
+      "barPrn_many": "{{date}} : {{count}} prises au besoin",
+      "barPrn_other": "{{date}} : {{count}} prises au besoin",
+      "barNone": "{{date}} : aucune prise",
+      "barTaken": "{{date}} : {{taken}} sur {{due}} prises",
+      "viewingDate": "Affichage du {{date}}",
+      "backToToday": "Revenir à aujourd'hui"
+    },
+    "checklist": {
+      "titleToday": "Liste du jour",
+      "title": "Liste des médicaments",
+      "noneToday": "Aucune prise programmée aujourd'hui.",
+      "noneDay": "Aucune prise programmée ce jour-là.",
+      "loggedToday_one": "{{completed}} prise sur {{count}} notée aujourd'hui.",
+      "loggedToday_many": "{{completed}} prises sur {{count}} notées aujourd'hui.",
+      "loggedToday_other": "{{completed}} prises sur {{count}} notées aujourd'hui.",
+      "loggedDay_one": "{{completed}} prise sur {{count}} notée ce jour-là.",
+      "loggedDay_many": "{{completed}} prises sur {{count}} notées ce jour-là.",
+      "loggedDay_other": "{{completed}} prises sur {{count}} notées ce jour-là."
+    },
+    "today": {
+      "dueToday": "Prévu aujourd'hui",
+      "asNeeded": "Au besoin",
+      "medicationsTitle": "Médicaments du jour",
+      "medicationsTitleDay": "Médicaments",
+      "supplementsTitle": "Compléments du jour",
+      "supplementsTitleDay": "Compléments",
+      "dueDay": "Prévu",
+      "noMedicationDoses": "Aucune prise programmée aujourd'hui. Notez ci-dessous tout médicament pris au besoin.",
+      "noSupplementDoses": "Aucune prise programmée aujourd'hui. Notez ci-dessous tout complément pris au besoin.",
+      "noMedicationDosesDay": "Aucune prise programmée ce jour-là. Notez ci-dessous tout médicament pris au besoin.",
+      "noSupplementDosesDay": "Aucune prise programmée ce jour-là. Notez ci-dessous tout complément pris au besoin.",
+      "noPrnMedications": "Aucun médicament au besoin ou non programmé n'est configuré.",
+      "noPrnSupplements": "Aucun complément au besoin ou non programmé n'est configuré.",
+      "loggedActivity": "Noté ce jour-là",
+      "loggedActivityDescription": "Tout ce que vous avez pris ou sauté à cette date.",
+      "loadingHistory": "Chargement de l'historique…",
+      "prnTaken": "Au besoin",
+      "snoozed": "Reporté"
+    },
+    "calendar": {
+      "title": "Calendrier des prises",
+      "titleAll": "Calendrier des prises",
+      "titleSupplements": "Calendrier des compléments",
+      "empty": "Ajoutez un médicament pour voir son calendrier des prises ici.",
+      "filterTitle": "Afficher",
+      "allEntries": "Tout",
+      "allMedications": "Tous les médicaments",
+      "allSupplements": "Tous les compléments",
+      "monthTotal_one": "{{count}} prise notée en {{month}}",
+      "monthTotal_many": "{{count}} prises notées en {{month}}",
+      "monthTotal_other": "{{count}} prises notées en {{month}}",
+      "previousMonth": "Mois précédent",
+      "nextMonth": "Mois suivant",
+      "allTaken": "Toutes les prises faites",
+      "partialTaken": "Prises partielles",
+      "mostlySkipped": "Surtout sautées",
+      "allSkipped": "Toutes les prises sautées",
+      "snoozedOnly": "Reportées uniquement",
+      "sideEffect": "Effet secondaire",
+      "generalSymptom": "Symptôme général",
+      "tooltipTaken_one": "{{count}} prise",
+      "tooltipTaken_many": "{{count}} prises",
+      "tooltipTaken_other": "{{count}} prises",
+      "tooltipPrn_one": "{{count}} au besoin",
+      "tooltipPrn_many": "{{count}} au besoin",
+      "tooltipPrn_other": "{{count}} au besoin",
+      "tooltipSkipped_one": "{{count}} sautée",
+      "tooltipSkipped_many": "{{count}} sautées",
+      "tooltipSkipped_other": "{{count}} sautées",
+      "tooltipSnoozed_one": "{{count}} reportée",
+      "tooltipSnoozed_many": "{{count}} reportées",
+      "tooltipSnoozed_other": "{{count}} reportées",
+      "tooltipSymptoms": "Symptômes : {{names}}"
+    },
+    "dayLog": {
+      "titleDay": "Noté le {{date}}",
+      "empty": "Rien de noté ce jour-là.",
+      "unknownMedication": "Médicament",
+      "editA11y": "Modifier {{name}}",
+      "deleteA11y": "Supprimer {{name}}",
+      "deleteTitle": "Supprimer l'entrée",
+      "deleteMessage": "Supprimer cette prise notée de {{name}} ?",
+      "deleted": "Entrée {{name}} supprimée",
+      "deleteFailed": "Échec de la suppression de l'entrée {{name}}"
+    },
+    "entryEdit": {
+      "title": "Modifier la prise notée",
+      "takenAt": "Pris à",
+      "setTime": "Définir l'heure",
+      "status": "Statut",
+      "noSite": "Aucun site",
+      "saved": "Prise mise à jour",
+      "saveFailed": "Échec de l'enregistrement : {{error}}",
+      "site": "Site d'injection"
     }
   },
   "common": {
@@ -546,7 +671,12 @@
       "ai": "IA",
       "fasting": "Jeûne",
       "goals": "Objectifs",
-      "reports": "Rapports"
+      "reports": "Rapports",
+      "addMenu": "Actions rapides",
+      "wearOs": "Wear OS",
+      "customMeasurements": "Mesures personnalisées",
+      "heartRateZones": "Zones de fréquence cardiaque",
+      "heartRateZonesSubtitle": "FC max et au repos, méthode de calcul"
     },
     "theme": {
       "title": "Thème",
@@ -648,7 +778,21 @@
     "chooseDate": "Choisir une date",
     "chooseDateHint": "Ouvre le sélecteur de date",
     "goToToday": "Aller à aujourd'hui",
-    "goToTodayHint": "Retour à aujourd'hui"
+    "goToTodayHint": "Retour à aujourd'hui",
+    "copyTo": "Copie vers {{name}}",
+    "copyToFamily": "Copier vers la famille",
+    "copyMealOptions": "Copier le repas",
+    "chooseCopyRecipient": "Choisir le destinataire",
+    "noCopyRecipients": "Aucun membre de la famille avec l'accès en copie",
+    "copySourceFailed": "Impossible de charger le repas d'origine",
+    "copySourceEmpty": "Aucun aliment dans ce repas",
+    "copyToMember": "Copier vers {{name}}",
+    "copyToFamilySuccess": "Copié dans le journal familial",
+    "copyOwnStale": "Votre repas d'origine a changé",
+    "copyOwnStaleGuidance": "La version à jour de votre repas s'ouvre pour vérification.",
+    "copyServerUpdateRequired": "Mise à jour du serveur requise",
+    "copyServerUpdateGuidance": "Mettez à jour votre serveur SparkyFitness pour copier des aliments vers les membres de votre famille.",
+    "copyMealTypesFailed": "Impossible de charger les repas de destination. Veuillez réessayer."
   },
   "notifications": {
     "title": "Notifications",
@@ -657,7 +801,8 @@
       "workoutTimer": "Minuteur d'entraînement",
       "fasting": "Jeûne",
       "hydration": "Rappels d'hydratation",
-      "ongoingWorkout": "Séance en cours"
+      "ongoingWorkout": "Séance en cours",
+      "moodCheckin": "Saisies d'humeur"
     },
     "actions": {
       "completeSet": "Terminer la série",
@@ -697,6 +842,10 @@
     "fastingPreEnd": {
       "title": "Objectif de jeûne bientôt atteint",
       "body": "Votre jeûne atteindra son objectif dans {{minutes}} minutes."
+    },
+    "moodCheckin": {
+      "title": "Comment vous sentez-vous ?",
+      "body": "Faites une saisie rapide : humeur, énergie et concentration."
     }
   },
   "activeWorkout": {
@@ -882,7 +1031,16 @@
       "rampHint": "Chaque série de travail après la première est préremplie avec cette charge en plus (ou en moins) dans la même séance. Les séries d'échauffement et les drop sets sont ignorés."
     },
     "nextSet": "Série suivante",
-    "failedToDeleteWorkout": "Échec de la suppression de la séance abandonnée du journal."
+    "failedToDeleteWorkout": "Échec de la suppression de la séance abandonnée du journal.",
+    "now": {
+      "label": "Maintenant",
+      "upNext": "À suivre",
+      "swap": "Échanger",
+      "swapLabel": "Échanger {{name}}",
+      "setOf": "Série {{number}} sur {{total}}",
+      "warmupOf": "Échauffement {{number}} sur {{total}}",
+      "then": "Puis {{name}}"
+    }
   },
   "foodEntryAdd": {
     "errors": {
@@ -1053,7 +1211,8 @@
     "rangeSheetTitle": "Lire une période",
     "rangeSheetAction": "Lire cette période",
     "rangeSection": "Lecture",
-    "rangeA11y": "Choisir jusqu'où remonter"
+    "rangeA11y": "Choisir jusqu'où remonter",
+    "historyDescriptionCappedCheckIn": "Vos {{limit}} plus récentes, de la plus récente à la plus ancienne."
   },
   "healthTrendsSettings": {
     "moveDown": "Descendre",
@@ -1071,9 +1230,6 @@
       "exercises": "Exercices",
       "workoutPresets": "Modèles de séance",
       "medications": "Médicaments",
-      "noServerConfigured": "Aucun serveur configuré",
-      "configureServer": "Configurez votre connexion au serveur dans les paramètres pour afficher votre bibliothèque.",
-      "goToSettings": "Ouvrir les paramètres",
       "loading": "Chargement de la bibliothèque...",
       "title": "Bibliothèque",
       "create": "Créer",
@@ -1201,7 +1357,17 @@
     "runProgramNew": "Nouveau plan",
     "runProgramRace": "Préparer une course",
     "routes": "Parcours",
-    "routeDraw": "Tracer un parcours"
+    "routeDraw": "Tracer un parcours",
+    "addMenuSettings": "Actions rapides",
+    "wearOsSettings": "Wear OS",
+    "heartRateReport": "Fréquence cardiaque",
+    "watchRunLiveJumpRope": "Corde à sauter sur votre montre",
+    "fitnessTest": "Tests de forme",
+    "fitnessTestResult": "Test de forme",
+    "heartRateZonesSettings": "Zones de fréquence cardiaque",
+    "routeEdit": "Modifier le parcours",
+    "routeGenerate": "Générer un parcours",
+    "compareReport": "Comparer"
   },
   "healthMetrics": {
     "steps": "Pas",
@@ -1264,7 +1430,8 @@
     "appleExerciseTime": "Temps d'exercice Apple",
     "appleStandTime": "Temps passé debout (Apple)",
     "unknown": "Indicateur de santé",
-    "bodyWaterMass": "Masse hydrique"
+    "bodyWaterMass": "Masse hydrique",
+    "mindfulness": "Pleine conscience"
   },
   "healthCategories": {
     "Common": "Courants",
@@ -1458,9 +1625,6 @@
     "deleteMessage": "Supprimer {{name}} ? Les futures entrées du journal générées par ce menu seront supprimées.",
     "deleteFailed": "Échec de la suppression du menu",
     "deleteSuccess": "Menu supprimé",
-    "noServer": "Aucun serveur configuré",
-    "noServerSubtitle": "Configurez la connexion au serveur pour gérer vos menus.",
-    "goToSettings": "Ouvrir les paramètres",
     "loading": "Chargement des menus…",
     "loadFailed": "Échec du chargement des menus",
     "loadFailedSubtitle": "Vérifiez votre connexion et réessayez.",
@@ -1735,7 +1899,7 @@
     "modeLabel": "Mode calories",
     "adjustmentMode": "Mode d'ajustement",
     "modeDescription": "Définit comment votre objectif calorique quotidien s'ajuste selon votre activité.",
-    "deviceProjectionDescription": "Les calories totales Health Connect du jour sont projetées jusqu'à minuit ; les jours terminés utilisent le total enregistré. Le mode d'objectif s'applique à ce TDEE, avec BMR + calories actives en repli.",
+    "deviceProjectionDescription": "Les calories totales de l'appareil du jour (Health Connect, Garmin ou Polar) sont projetées jusqu'à minuit ; les jours terminés utilisent le total enregistré. Le mode d'objectif s'applique à ce TDEE, avec BMR + calories actives en repli.",
     "deviceProjectionFallback": "Utilisé uniquement pour le repli BMR + calories actives quand le total de l'appareil est indisponible.",
     "exerciseCaloriesApplied": "Calories d'exercice ajoutées",
     "exerciseCaloriesDescription": "Part de vos calories d'exercice rajoutée à votre objectif quotidien.",
@@ -1773,19 +1937,22 @@
       "activityWithBmr": "Activité + BMR",
       "activityOnly": "Activité seule (exercice + pas)",
       "eatenBurned": "Consommé − Dépensé",
-      "projectedTotal": "Calories totales Health Connect (repli : BMR + calories actives)",
+      "projectedTotal": "Calories totales de l'appareil (repli : BMR + calories actives)",
       "dynamic": "Objectif − Énergie nette",
       "percentageWithBmr": "Objectif − Consommé + BMR + {{percentage}} % de l'exercice",
       "percentage": "Objectif − Consommé + {{percentage}} % de l'exercice",
       "tdee": "TDEE projeté × mode d'objectif − Consommé",
       "adaptive": "Objectif − Consommé",
-      "fixed": "Objectif − Consommé"
+      "fixed": "Objectif − Consommé",
+      "dynamicActivitySeparated": "Objectif − Consommé + Activité",
+      "tdeeWeekly": "TDEE projeté + ajustement hebdomadaire − Consommé"
     },
     "notes": {
       "dynamic": "L'objectif croît avec l'activité",
       "tdee": "La projection rejoint le total de l'appareil à minuit",
       "adaptive": "Objectif = TDEE adaptatif",
-      "fixed": "L'activité ne modifie pas votre budget"
+      "fixed": "L'activité ne modifie pas votre budget",
+      "adaptiveWeekly": "Objectif = TDEE adaptatif + ajustement hebdomadaire"
     },
     "externalFormula": "formule",
     "goalMode": {
@@ -1803,7 +1970,8 @@
       "methodAdaptive": "Adaptatif",
       "methodManual": "Manuel",
       "customPercentage": "Pourcentage personnalisé",
-      "customPercentageDescription": "Positif : ajoute des calories ; négatif : crée un déficit. Limité à ±40 %."
+      "customPercentageDescription": "Positif : ajoute des calories ; négatif : crée un déficit. Limité à ±40 %.",
+      "weekly": "Variation de poids hebdomadaire"
     },
     "safetyFloor": {
       "title": "Plancher de sécurité",
@@ -1818,7 +1986,31 @@
     "useExternalBmr": "Utiliser le BMR mesuré des enregistrements et des appareils synchronisés",
     "useExternalBmrHint": "Désactivé par défaut : votre formule est toujours utilisée tant que vous n'activez pas cette option. Une fois activée, un BMR saisi lors d'un enregistrement ou synchronisé depuis une balance connectée ou une application santé remplace la formule pour ce jour-là, s'il est physiologiquement plausible pour vous.",
     "useExternalBmrIosNote": "L'énergie au repos d'Apple Health inclut déjà l'activité quotidienne légère : envisagez de régler le niveau d'activité sur Aucun (×1,0) pour ne pas la compter deux fois.",
-    "adaptiveEarnBack": "Les objectifs adaptatifs incluent déjà l'activité. Les calories restantes correspondent à l'objectif moins ce qui a été consommé. La récupération des calories d'exercice ne s'applique qu'aux objectifs manuels."
+    "adaptiveEarnBack": "Les objectifs adaptatifs incluent déjà l'activité. Les calories restantes correspondent à l'objectif moins ce qui a été consommé. La récupération des calories d'exercice ne s'applique qu'aux objectifs manuels.",
+    "adaptiveActivitySeparate": "Compter les calories d'activité séparément",
+    "adaptiveActivitySeparateHint": "Apprend une base qui exclut l'activité passée et crédite une seule fois les pas et les séances du jour, sans rajouter le BMR. Il faut un historique régulier d'alimentation, de poids, de pas et de séances. Tant que l'historique est insuffisant, BMR × votre coefficient d'activité hors séances est utilisé.",
+    "adaptiveActivitySeparateReporting": "Le BMR reste inclus dans « Dépensé » et « Énergie nette » quand « Inclure les calories au repos » est activé. Seuls les pas et les séances s'ajoutent à vos calories restantes.",
+    "weeklyGoal": {
+      "description": "Choisissez combien de poids perdre ou prendre chaque semaine, ou gardez un poids stable.",
+      "direction": "Objectif de poids",
+      "maintain": "Poids stable",
+      "lose": "Perdre du poids",
+      "gain": "Prendre du poids",
+      "rate": "Variation par semaine",
+      "amount": "Variation de poids par semaine",
+      "amountHint": "Saisissez une valeur positive. L'objectif de poids choisi en fixe le sens.",
+      "unit": "Unité du rythme hebdomadaire",
+      "kilograms": "kg",
+      "grams": "g",
+      "pounds": "lb",
+      "stonePounds": "st / lb",
+      "stones": "st",
+      "poundsAmount": "Livres de variation par semaine",
+      "poundsHint": "Saisissez les livres restantes, de 0 à moins de 14.",
+      "invalidRate": "Saisissez un rythme supérieur à 0 et d'au plus {{max}} kg par semaine.",
+      "dailyAdjustment": "Ajustement quotidien estimé : {{sign}}{{amount}} {{unit}}",
+      "estimateHint": "Votre objectif hebdomadaire est converti en ajustement calorique quotidien. C'est une estimation ; votre plancher de sécurité configuré peut limiter la perte de poids."
+    }
   },
   "pregnancy": {
     "babyDev": {
@@ -2585,7 +2777,13 @@
     "bodyweightBannerNoWeight": "Exercice au poids du corps : compte votre poids plus la charge saisie. Utilisez un signe moins pour une assistance. Enregistrez un poids pour que le volume puisse être calculé.",
     "modalityWeightDistance": "Charge et distance (portés)",
     "modalityWeightDuration": "Charge et durée (maintiens chargés)",
-    "addWarmups": "Ajouter l'échauffement"
+    "addWarmups": "Ajouter l'échauffement",
+    "replaceWithOther": "Remplacer par un autre exercice…",
+    "doAnotherFirst": "Faire d'abord un autre exercice…",
+    "swapTitle": "Échanger {{name}}",
+    "doNowSets_one": "À faire maintenant · {{count}} série",
+    "doNowSets_many": "À faire maintenant · {{count}} séries",
+    "doNowSets_other": "À faire maintenant · {{count}} séries"
   },
   "auth": {
     "frontendUrl": "URL du frontend",
@@ -2703,8 +2901,6 @@
     "makePrivate": "Rendre privé",
     "shareWithPublic": "Partager publiquement",
     "editMeal": "Modifier le repas",
-    "noServer": "Aucun serveur configuré",
-    "configureServer": "Configurez la connexion au serveur dans les paramètres pour voir le détail du repas.",
     "loading": "Chargement du repas…",
     "loadFailed": "Échec du chargement du repas",
     "perServing": "Par portion",
@@ -2747,9 +2943,6 @@
   "mealLibrary": {
     "title": "Repas",
     "search": "Rechercher des repas…",
-    "noServer": "Aucun serveur configuré",
-    "configure": "Configurez la connexion au serveur dans les paramètres pour voir votre bibliothèque de repas.",
-    "go": "Ouvrir les paramètres",
     "loading": "Chargement des repas…",
     "failed": "Échec du chargement des repas",
     "searchFailed": "Échec de la recherche de repas",
@@ -3096,7 +3289,8 @@
       "notPaired": "Aucune montre jumelée",
       "unsupported": "Non pris en charge sur cette plateforme",
       "reachable": "Appli montre joignable",
-      "notReachable": "Appli montre pas au premier plan"
+      "notReachable": "Appli montre pas au premier plan",
+      "wearOsTitle": "Wear OS"
     },
     "auth": {
       "title": "Auth",
@@ -3310,7 +3504,8 @@
       "h1": "-1 h",
       "h3": "-3 h",
       "started": "Début",
-      "episode": "Épisode"
+      "episode": "Épisode",
+      "d1": "-1 j"
     },
     "name": "Nom du symptôme",
     "nameRequired": "Veuillez saisir un nom pour le symptôme.",
@@ -3521,7 +3716,11 @@
     "episode": {
       "ongoing": "en cours",
       "peak": "pic {{n}}"
-    }
+    },
+    "startDate": "Date",
+    "startDateA11y": "Date de début, {{date}}",
+    "startTime": "Heure",
+    "startTimeA11y": "Heure de début, {{time}}"
   },
   "medicalDisclaimer": {
     "text": "Pour le suivi et l'information générale uniquement, pas un avis médical. Parlez de vos questions de santé à un professionnel de santé."
@@ -3680,7 +3879,16 @@
     "vo2max": {
       "title": "VO2 max",
       "loadFailed": "Échec du chargement des données de VO2 max",
-      "empty": "Aucune donnée de VO2 max sur cette période"
+      "empty": "Aucune donnée de VO2 max sur cette période",
+      "estimateTitle": "VO2 max (estimée)",
+      "estimateNote": "Estimée à partir de vos sorties enregistrées. Ce n'est pas une mesure ; une valeur synchronisée la remplace."
+    },
+    "heartRate": {
+      "title": "FC au repos",
+      "avgLabel": "MOY",
+      "rangeLabel": "PLAGE",
+      "loadFailed": "Échec du chargement des données de fréquence cardiaque",
+      "empty": "Aucune donnée de fréquence cardiaque sur cette période"
     }
   },
   "ranges": {
@@ -3820,7 +4028,13 @@
       "add": "+ Ajouter une portion",
       "saveFailed": "Impossible d'enregistrer toutes les portions. Réessayez."
     },
-    "scanNutritionLabel": "Scanner l'étiquette nutritionnelle"
+    "scanNutritionLabel": "Scanner l'étiquette nutritionnelle",
+    "saltG": "Sel (g)",
+    "sodiumEntryUnit": "Saisir le sodium en",
+    "sodiumShort": "sodium",
+    "saltShort": "sel",
+    "sodiumOption": "Sodium (mg)",
+    "saltOption": "Sel (g)"
   },
   "nutrients": {
     "calories": "Calories",
@@ -3895,9 +4109,6 @@
     "loading": "Chargement des contenants…",
     "loadFailed": "Échec du chargement des contenants",
     "loadFailedSubtitle": "Vérifiez votre connexion et réessayez.",
-    "noServer": "Aucun serveur configuré",
-    "noServerSubtitle": "Configurez la connexion au serveur pour gérer vos contenants d'eau.",
-    "goToSettings": "Ouvrir les paramètres",
     "emptyTitle": "Aucun contenant d'eau",
     "emptySubtitle": "Ajoutez une bouteille ou un verre pour suivre votre hydratation — éventuellement lié à un aliment pour tout enregistrer d'un seul appui.",
     "linkedTo": "Lié à {{food}}",
@@ -4021,7 +4232,8 @@
       "title": "Autorisation requise",
       "backgroundAccess": "L'accès en arrière-plan est requis pour la synchro en arrière-plan. Accordez-le dans les réglages de Health Connect.",
       "allTitle": "Autorisations requises",
-      "allMessage": "Certaines autorisations n'ont pas été accordées. Activez toutes les autorisations santé requises dans les {{settings}} pour tout synchroniser."
+      "allMessage": "Certaines autorisations n'ont pas été accordées. Activez toutes les autorisations santé requises dans les {{settings}} pour tout synchroniser.",
+      "writebackMessage": "Toutes les mesures seront synchronisées. Pour réécrire vos données, accordez les autorisations manquantes dans {{settings}}."
     },
     "permissionError": {
       "title": "Erreur d'autorisation",
@@ -4911,8 +5123,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "Aucun serveur configuré",
-      "noServerHint": "Configurez la connexion au serveur dans les paramètres pour voir les valeurs nutritionnelles du repas.",
       "loading": "Chargement du repas…",
       "loadFailed": "Échec du chargement du repas",
       "noFoods": "Aucun aliment ({{meal}})",
@@ -4964,7 +5174,9 @@
     "duckMusicSubtitle": "Baisse brièvement la musique des autres apps pendant un bip ou une annonce vocale de séance.",
     "duckMusicAccessibility": "Baisser la musique pendant les signaux",
     "warmupCalculator": "Calculateur d'échauffement",
-    "warmupCalculatorSubtitle": "La progression, et les charges arrondies, des séries d'échauffement ajoutées à un exercice."
+    "warmupCalculatorSubtitle": "La progression, et les charges arrondies, des séries d'échauffement ajoutées à un exercice.",
+    "nowCard": "Carte « Maintenant »",
+    "nowCardSubtitle": "Épingle la série à faire au-dessus de la liste d'exercices : sa cible en grand, la photo de l'exercice, la suite, et Échanger pour faire d'abord un autre exercice."
   },
   "exerciseSummary": {
     "tapToAdd": "Touchez pour ajouter un exercice",
@@ -5003,7 +5215,8 @@
       "volume": "Volume",
       "calories": "Calories",
       "avgHeartRate": "FC moy",
-      "maxHeartRate": "FC max"
+      "maxHeartRate": "FC max",
+      "effort": "Effort"
     },
     "errors": {
       "needsExercise": "La séance doit contenir un exercice",
@@ -5044,7 +5257,9 @@
       "distance": "Distance",
       "avgHeartRate": "FC moy",
       "steps": "Pas",
-      "pace": "Allure"
+      "pace": "Allure",
+      "caloriesCounted": "Compté dans le total du jour",
+      "effort": "Effort"
     },
     "labels": {
       "sets": "Séries",
@@ -5138,9 +5353,6 @@
   "exerciseLibrary": {
     "title": "Exercices",
     "search": "Rechercher des exercices…",
-    "noServer": "Aucun serveur configuré",
-    "configure": "Configurez la connexion au serveur dans Paramètres pour voir votre bibliothèque d'exercices.",
-    "go": "Ouvrir les paramètres",
     "loading": "Chargement des exercices…",
     "failed": "Échec du chargement des exercices",
     "retry": "Réessayer",
@@ -5156,9 +5368,7 @@
   "presetLibrary": {
     "title": "Modèles de séance",
     "search": "Rechercher des modèles…",
-    "noServer": "Aucun serveur configuré",
     "configure": "Configurez la connexion au serveur dans Paramètres pour voir vos modèles de séance.",
-    "go": "Ouvrir les paramètres",
     "loading": "Chargement des modèles…",
     "failed": "Échec du chargement des modèles de séance",
     "retry": "Réessayer",
@@ -5214,9 +5424,6 @@
     "drag": "Glisser pour réorganiser",
     "title": "Réorganiser les exercices",
     "doneHint": "Terminer la réorganisation"
-  },
-  "workoutPresetLibrary": {
-    "configure": "Configurez la connexion au serveur dans Paramètres pour voir vos modèles de séance."
   },
   "exerciseImage": {
     "playAnimation": "Lire l'animation de l'exercice",
@@ -5293,8 +5500,6 @@
     "makePrivate": "Rendre privé",
     "sharePublic": "Partager publiquement",
     "editFood": "Modifier l'aliment",
-    "noServer": "Aucun serveur configuré",
-    "configureServer": "Configurez la connexion au serveur dans les Paramètres pour voir le détail des aliments.",
     "serving": "Portion",
     "selectServing": "Choisir la portion",
     "servingOptions": "Options de portion",
@@ -5349,9 +5554,6 @@
   "foodLibrary": {
     "title": "Aliments",
     "search": "Rechercher un aliment…",
-    "noServer": "Aucun serveur configuré",
-    "configure": "Configurez la connexion au serveur dans les Paramètres pour voir votre bibliothèque d'aliments.",
-    "go": "Ouvrir les paramètres",
     "loading": "Chargement des aliments…",
     "failed": "Échec du chargement des aliments",
     "retry": "Réessayer",
@@ -5477,7 +5679,8 @@
     "estimatedTimes": "Certaines heures de prise sont estimées",
     "legendCurve": "Caféine active",
     "legendThreshold": "Seuil de {{threshold}} mg",
-    "unitMg": "mg"
+    "unitMg": "mg",
+    "tomorrow": "Demain"
   },
   "whatsNewPage": {
     "title": "Nouveautés",
@@ -5504,13 +5707,45 @@
       "caloriesInValue": "1 540",
       "caloriesOutValue": "255",
       "eightAm": "8:00",
-      "eyebrow": "iOS 26"
+      "eyebrow": "iOS 26",
+      "zoneTwoBase": "Base en zone 2",
+      "weekThree": "Semaine 3",
+      "easyRun": "Footing • 40 min",
+      "zoneTwoRange": "125–142 bpm",
+      "riverLoop": "Boucle du fleuve",
+      "routeDistance": "5,2 km",
+      "routeClimb": "48 m de D+",
+      "followRoads": "Suit les routes",
+      "checkIn": "Enregistrement",
+      "stepTwoOfThree": "Étape 2 sur 3",
+      "checkInStepName": "Mesures",
+      "saveContinue": "Enregistrer et continuer",
+      "plates": "Disques",
+      "plateTarget": "100 kg",
+      "plateBar": "Barre 20 kg",
+      "platesPerSide": "20 + 20 par côté",
+      "heartRate": "FC",
+      "zoneTwo": "Zone 2",
+      "maxResting": "Max 185 • Repos 52",
+      "customZones": "Perso",
+      "compare": "Comparer",
+      "thirtyDays": "30 jours",
+      "sleepVsMood": "Sommeil vs humeur",
+      "moodHigher": "Humeur plus haute",
+      "watchApp": "App montre",
+      "caloriesLeftBadge": "1 515 restantes",
+      "waterMeds": "Eau • Médicaments",
+      "fastingSteps": "Jeûne • Pas",
+      "weeklyGoal": "Objectif hebdo",
+      "weeklyRate": "−0,5 kg",
+      "dailyTarget": "Objectif du jour",
+      "dailyAdjustment": "≈ −550 kcal"
     },
     "features": {
       "medications": {
         "eyebrow": "MÉDICAMENTS",
         "headline": "Suivez vos médicaments",
-        "body": "Ajoutez vos médicaments, planifiez les prises et notez chaque dose depuis le tableau de bord, avec rappels en option.",
+        "body": "Ajoutez vos médicaments, planifiez les prises, notez chaque dose depuis le tableau de bord avec rappels en option, et suivez votre observance grâce au calendrier et à l'historique des prises.",
         "cta": "Configurer"
       },
       "cycle": {
@@ -5545,6 +5780,54 @@
         "headline": "Une photo, et les macros sont notées",
         "body": "Estimez les valeurs nutritionnelles à partir d'une photo quand vous êtes pressé.",
         "cta": "Essayer"
+      },
+      "running": {
+        "eyebrow": "COURSE À PIED",
+        "headline": "Entraînez-vous avec des programmes de course",
+        "body": "Suivez un programme de base en zone 2 guidé par la fréquence cardiaque, fixez un objectif de distance hebdomadaire et un compte à rebours avant votre course, passez un test de forme guidé pour définir vos allures, et analysez vos temps intermédiaires après chaque sortie.",
+        "cta": "Ouvrir les programmes de course"
+      },
+      "routes": {
+        "eyebrow": "PARCOURS",
+        "headline": "Planifiez et suivez des parcours",
+        "body": "Tracez des parcours sur une carte satellite, calez-les sur les routes, générez des boucles d'une distance donnée et suivez un parcours enregistré sur votre Apple Watch.",
+        "cta": "Ouvrir les parcours"
+      },
+      "checkIn": {
+        "eyebrow": "ENREGISTREMENT GUIDÉ",
+        "headline": "Tout noter en un seul parcours",
+        "body": "Notez votre humeur, vos mesures et une photo de progression en trois étapes rapides. Activez-le dans les paramètres du journal.",
+        "cta": "Ouvrir les paramètres du journal"
+      },
+      "strength": {
+        "eyebrow": "OUTILS MUSCU",
+        "headline": "Des séances de muscu plus intelligentes",
+        "body": "Épinglez la série en cours, remplacez un exercice d'un geste, gardez vos séries en changeant d'exercice, et chargez la barre avec le calculateur de disques.",
+        "cta": "Ouvrir les paramètres de séance"
+      },
+      "heartRate": {
+        "eyebrow": "FRÉQUENCE CARDIAQUE",
+        "headline": "Vos zones cardiaques, à votre façon",
+        "body": "Définissez votre FC max, votre FC au repos et votre méthode de calcul des zones, puis explorez des rapports détaillés de fréquence cardiaque.",
+        "cta": "Ouvrir les paramètres des zones"
+      },
+      "reports": {
+        "eyebrow": "RAPPORTS ET COMPARAISONS",
+        "headline": "Voyez comment vos habitudes sont liées",
+        "body": "Parcourez les rapports de nutrition, d'hydratation, de sommeil, d'humeur et de mensurations, puis utilisez Comparer pour voir si une habitude va de pair avec une autre, ou si quelque chose a changé depuis que vous avez commencé une nouvelle habitude.",
+        "cta": "Ouvrir les rapports"
+      },
+      "watch": {
+        "eyebrow": "APPLE WATCH ET WEAR OS",
+        "headline": "Votre journée à votre poignet",
+        "body": "L'app montre arrive sur Apple Watch et Wear OS. Consultez vos objectifs, notez votre eau, votre poids, votre jeûne et vos médicaments, et faites des séances enregistrées dans votre journal, avec notes d'effort, corde à sauter et suivi de parcours sur Apple Watch. Choisissez vos pages dans les paramètres de la montre.",
+        "cta": "Ouvrir les paramètres de la montre"
+      },
+      "weeklyGoal": {
+        "eyebrow": "OBJECTIFS DE POIDS",
+        "headline": "Fixez un objectif de poids hebdomadaire",
+        "body": "Choisissez combien de poids vous voulez perdre ou prendre chaque semaine, et Sparky calcule votre objectif calorique quotidien.",
+        "cta": "Ouvrir les paramètres caloriques"
       }
     }
   },
@@ -5639,7 +5922,18 @@
     "mindfulness": "Pleine conscience",
     "mood": "Humeur",
     "recordActivity": "Enregistrer une activité",
-    "recordActivityHint": "Suivez une marche, une course ou une sortie vélo au GPS"
+    "recordActivityHint": "Suivez une marche, une course ou une sortie vélo au GPS",
+    "title": "Actions rapides",
+    "scanShort": "Scanner",
+    "measureShort": "Mesurer",
+    "symptomsHealth": "Symptômes et santé",
+    "syncHealthShort": "Synchro santé",
+    "photosHint": "Visuel",
+    "symptomsHint": "Noter",
+    "moodHint": "Votre état",
+    "mindfulnessHint": "Respiration, zen",
+    "checkIn": "Enregistrement quotidien",
+    "checkInHint": "Habitudes"
   },
   "diarySettings": {
     "updateFailed": "Échec de la mise à jour du paramètre.",
@@ -5656,9 +5950,6 @@
   },
   "diary": {
     "chooseDate": "Choisir la date du journal",
-    "noServer": "Aucun serveur configuré",
-    "configureServer": "Configurez la connexion au serveur dans les paramètres pour voir votre journal.",
-    "goToSettings": "Ouvrir les paramètres",
     "loading": "Chargement du journal…",
     "loadFailed": "Échec du chargement du journal",
     "checkConnection": "Vérifiez votre connexion et réessayez.",
@@ -5689,7 +5980,7 @@
     "title": "Résumé",
     "projectedTdee": "TDEE projeté : {{value}} kcal",
     "goalModeTarget": "Objectif (mode) : {{value}} kcal",
-    "healthConnectProjectionSource": "Calories totales Health Connect",
+    "healthConnectProjectionSource": "Calories totales de l'appareil",
     "fallbackProjectionSource": "Repli : BMR + calories actives",
     "legacyProjectionSource": "Projection de l'appareil",
     "collapse": "Réduire cette section",
@@ -5800,9 +6091,6 @@
   },
   "dashboard": {
     "chooseDate": "Choisir la date du tableau de bord",
-    "noServerConfigured": "Aucun serveur configuré",
-    "configureServer": "Configurez votre connexion au serveur dans les paramètres pour voir votre résumé du jour.",
-    "goToSettings": "Ouvrir les paramètres",
     "loadingSummary": "Chargement du résumé…",
     "loadFailed": "Échec du chargement du résumé",
     "checkConnection": "Vérifiez votre connexion et réessayez.",
@@ -5922,6 +6210,16 @@
       "aiErrorMessage": "Vérifiez le fournisseur vocal choisi et réessayez.",
       "noSpeechTitle": "Aucune voix détectée",
       "noSpeechMessage": "Réessayez en parlant plus près du micro."
+    },
+    "attachments": {
+      "addPhoto": "Ajouter une photo",
+      "takePhoto": "Prendre une photo",
+      "chooseFromLibrary": "Choisir dans la galerie",
+      "removePhoto": "Retirer la photo",
+      "previewPhoto": "Aperçu de la photo",
+      "cameraPermission": "Accès à l'appareil photo requis",
+      "cameraPermissionBody": "Autorisez l'accès à l'appareil photo pour ajouter une photo.",
+      "addFailed": "Impossible d'ajouter la photo"
     }
   },
   "notificationSettings": {
@@ -5958,7 +6256,14 @@
     "consolidateReminders": "Regrouper les rappels",
     "consolidateRemindersSubtitle": "Regroupe en une seule notification les médicaments prévus à la même heure.",
     "medicationSnoozeInterval": "Rappel dans",
-    "snoozeMinutesOption": "{{minutes}} min"
+    "snoozeMinutesOption": "{{minutes}} min",
+    "moodCheckins": "Saisies d'humeur",
+    "moodCheckinReminders": "Rappels de saisie",
+    "moodCheckinRemindersSubtitle": "Un petit rappel quotidien pour noter votre ressenti",
+    "moodCheckinReminderTime": "Rappel {{number}}",
+    "moodCheckinReminderTimeAccessibility": "Rappel {{number}}, {{time}}",
+    "moodCheckinAddReminder": "Ajouter un rappel",
+    "moodCheckinRemoveReminder": "Supprimer le rappel {{number}}"
   },
   "serverSettingsUi": {
     "activeServerChanged": "Serveur actif modifié",
@@ -6427,7 +6732,12 @@
       "perMile": "/mi",
       "exportGpx": "Exporter en GPX",
       "exportGpxFailed": "Impossible d'exporter le tracé",
-      "shareImage": "Partager en image"
+      "shareImage": "Partager en image",
+      "weather": "Météo",
+      "degreesC": "{{value}} °C",
+      "degreesF": "{{value}} °F",
+      "splits": "Temps intermédiaires",
+      "effort": "Effort"
     },
     "consistency": {
       "title": "Régularité de l'entraînement",
@@ -6486,7 +6796,63 @@
       "fromEffort": "Calculées d'après votre meilleure sortie récente. L'allure seuil est d'environ {{pace}} {{unit}}.",
       "fromTypical_one": "Estimées d'après votre dernière sortie ({{formattedCount}}), donc moins précises. Une sortie intense de 3 km ou plus les affinera.",
       "fromTypical_many": "Estimées d'après vos {{formattedCount}} dernières sorties, donc moins précises. Une sortie intense de 3 km ou plus les affinera.",
-      "fromTypical_other": "Estimées d'après vos {{formattedCount}} dernières sorties, donc moins précises. Une sortie intense de 3 km ou plus les affinera."
+      "fromTypical_other": "Estimées d'après vos {{formattedCount}} dernières sorties, donc moins précises. Une sortie intense de 3 km ou plus les affinera.",
+      "fromTest": "Définies par votre dernier test de forme. Allure seuil d'environ {{pace}} {{unit}}."
+    },
+    "runningForm": {
+      "title": "Foulée",
+      "subtitle": "Pas par minute et longueur de foulée sur vos courses",
+      "average": "Moyenne {{value}}",
+      "change": "{{value}} vs courses précédentes",
+      "hint": "Une course sur tapis compte dès que ses pas ont été mesurés."
+    },
+    "runEstimates": {
+      "title": "Estimations de course",
+      "subtitle": "Estimées d'après votre allure, votre fréquence cardiaque, votre poids et le dénivelé. Ce n'est pas une mesure : comptez plusieurs pour cent d'écart.",
+      "loadFailed": "Impossible de charger vos estimations de course.",
+      "about": "≈ {{value}}",
+      "vo2Unit": "VO₂ max (ml/kg/min)",
+      "vo2Basis_one": "D'après {{count}} course ces 6 dernières semaines",
+      "vo2Basis_many": "D'après {{count}} courses ces 6 dernières semaines",
+      "vo2Basis_other": "D'après {{count}} courses ces 6 dernières semaines",
+      "watts": "≈ {{value}} W",
+      "powerUnit": "Puissance de course ({{perKg}} W/kg)",
+      "powerBasis_one": "Moyenne de {{count}} course ces 4 dernières semaines",
+      "powerBasis_many": "Moyenne de {{count}} courses ces 4 dernières semaines",
+      "powerBasis_other": "Moyenne de {{count}} courses ces 4 dernières semaines"
+    },
+    "fitness": {
+      "level": {
+        "high": "Prêt pour une séance difficile.",
+        "moderate": "Bien pour une séance normale, mais pas la plus dure.",
+        "low": "Pas récupéré. Une journée facile ou du repos est le meilleur choix.",
+        "noData": "Pas encore assez de données. Enregistrez séances et sommeil pour voir votre disposition."
+      },
+      "form": {
+        "fresh": "Frais : l'entraînement récent est léger par rapport à ce que vous avez construit.",
+        "tired": "Fatigué : l'entraînement récent est lourd par rapport à ce que vous avez construit.",
+        "neutral": "Équilibré : l'entraînement récent correspond à ce que vous avez construit.",
+        "learning": "Apprentissage de votre normale en cours. Continuez à enregistrer."
+      },
+      "factor": {
+        "form": "Forme d'entraînement",
+        "sleep": "Sommeil",
+        "restingHeartRate": "FC au repos",
+        "hrv": "VFC"
+      },
+      "vital": {
+        "hrv": "{{current}} ms contre {{baseline}} ms habituellement",
+        "hrvNights": "{{current}} ms contre {{baseline}} ms habituellement (médiane de {{count}} nuits)",
+        "restingHeartRate": "{{current}} bpm contre {{baseline}} bpm habituellement",
+        "restingHeartRateNights": "{{current}} bpm contre {{baseline}} bpm habituellement (médiane de {{count}} nuits)"
+      },
+      "loadFailed": "Impossible de charger votre disposition.",
+      "outOf": "disposition sur 100",
+      "fitness": "Condition",
+      "fatigue": "Fatigue",
+      "formLabel": "Forme",
+      "title": "Disposition et forme",
+      "subtitle": "Votre disposition du jour, d'après la forme d'entraînement, le sommeil et la FC au repos."
     }
   },
   "muscles": {
@@ -6673,7 +7039,17 @@
     "setInputKeypad": "Clavier",
     "setInputCrown": "Digital Crown",
     "rpeTitle": "Demander l'effort (RPE) après chaque série",
-    "rpeSubtitle": "Après avoir validé une série sur la montre, tournez la Digital Crown pour indiquer sa difficulté, de 1 à 10, puis touchez Enregistrer, ou Passer."
+    "rpeSubtitle": "Après avoir validé une série sur la montre, tournez la Digital Crown pour indiquer sa difficulté, de 1 à 10, puis touchez Enregistrer, ou Passer.",
+    "rpeSubtitleWearOs": "Après avoir validé une série sur la montre, tournez la couronne ou touchez +/− pour indiquer l'effort, de 5 à 10, puis touchez Enregistrer ou Passer.",
+    "layoutTitle": "Mise en page",
+    "setScreenMetricsTitle": "Mesures sur l'écran de série",
+    "setScreenMetricsSubtitle": "Temps écoulé, fréquence cardiaque et calories. Désactivé, elles passent sur leur propre page après l'écran de série (après « À suivre », si cette page est activée).",
+    "upNextTitle": "Page « À suivre »",
+    "upNextSubtitle": "Une page, accessible en balayant vers le haut depuis l'écran de série, avec l'exercice suivant, son objectif et un bouton Remplacer pour faire d'abord un autre exercice.",
+    "largerTextTitle": "Texte plus grand sur la montre",
+    "largerTextSubtitle": "Caractères plus grands et nouvelles mises en page sur toute la montre : Objectifs, Eau, la séance, Jeûne, Pas, etc. Désactivé, l'apparence d'origine est conservée.",
+    "classicWorkoutTitle": "Page de séance d'origine",
+    "classicWorkoutSubtitle": "Conserve l'écran de séance d'origine quand le texte plus grand est activé partout ailleurs. Sans texte plus grand, la séance l'utilise toujours."
   },
   "aiSettings": {
     "server": {
@@ -6794,7 +7170,9 @@
     "saveDistance": "Mettre à jour",
     "distanceInvalid": "Saisissez la distance affichée par la machine.",
     "distanceFailed": "Impossible d'enregistrer la distance.",
-    "heartRate": "Fréquence cardiaque"
+    "heartRate": "Fréquence cardiaque",
+    "jumpRopeSaved": "Corde à sauter enregistrée",
+    "watchJumpRopeSaved": "Corde à sauter de votre montre enregistrée"
   },
   "personalRecords": {
     "group": {
@@ -6832,7 +7210,8 @@
     "indoorNote": "En intérieur, la distance est une estimation de la montre. Vous pourrez la corriger avec le chiffre du tapis à la fin.",
     "starting": "Démarrage sur votre montre…",
     "startingHint": "Levez le poignet et ouvrez SparkyFitness si la séance ne démarre pas d'elle-même. Elle démarre dès que la montre reçoit la demande.",
-    "controlFailed": "Impossible de joindre votre montre"
+    "controlFailed": "Impossible de joindre votre montre",
+    "jumpingRope": "Corde à sauter sur votre montre"
   },
   "trainingLoadCard": {
     "loadFailed": "Impossible de charger votre charge d'entraînement.",
@@ -6847,7 +7226,11 @@
     "spike": "Forte hausse : levez le pied",
     "takeRest": "Prenez un jour de repos ou faites une séance facile.",
     "ready": "Vous êtes reposé et prêt.",
-    "explain": "Cumule la durée et l'intensité de vos séances. « Habituel » correspond à votre moyenne sur 4 semaines. Les barres montrent les 4 dernières semaines ; la verte correspond à cette semaine."
+    "explain": "Cumule la durée et l'intensité de vos séances. « Habituel » correspond à votre moyenne sur 4 semaines. Les barres montrent les 4 dernières semaines ; la verte correspond à cette semaine.",
+    "readiness": "Disposition {{score}}",
+    "readinessHigh": "prêt pour une séance difficile",
+    "readinessModerate": "bien pour une séance normale",
+    "readinessLow": "doucement aujourd'hui"
   },
   "routes": {
     "addTitle": "Ajouter un parcours",
@@ -6878,7 +7261,108 @@
     "saveAsRouteFailed": "Impossible d'enregistrer le parcours",
     "fileTooLarge": "Ce fichier est trop volumineux",
     "fileTooLargeHint": "Un fichier de parcours peut faire jusqu'à 10 Mo.",
-    "drawLimit": "C'est le nombre maximal de points pour un parcours. Annulez-en quelques-uns ou enregistrez celui-ci."
+    "drawLimit": "C'est le nombre maximal de points pour un parcours. Annulez-en quelques-uns ou enregistrez celui-ci.",
+    "watch": {
+      "title": "Courir sans votre téléphone",
+      "hint": "Gardez une copie sur votre montre, puis lancez-la depuis Cardio sur la montre, en laissant le téléphone.",
+      "start": "Lancer sur la montre",
+      "send": "Envoyer à la montre",
+      "sendAgain": "Renvoyer",
+      "remove": "Retirer de la montre",
+      "sent": "Envoyé à votre montre",
+      "pending": "Envoyé. En attente de confirmation de votre montre.",
+      "onWatch": "Sur votre montre",
+      "outdated": "Obsolète, à renvoyer",
+      "full": "Votre montre est pleine. Retirez-en un parcours, puis renvoyez celui-ci.",
+      "sendFailed": "Impossible d'envoyer le parcours à votre montre",
+      "removeFailed": "Impossible de retirer le parcours de votre montre",
+      "startFailed": "Impossible de lancer sur votre montre",
+      "startTitle": "Lancer sur votre montre",
+      "startMessage": "Votre montre suit le parcours et vibre à chaque virage."
+    },
+    "generateRoute": "Générer une boucle ou un aller-retour",
+    "generateUnavailable": "La génération de parcours nécessite un fournisseur de routage. Ajoutez-en un dans Paramètres > Fournisseurs de données externes de l'application web. Vous pouvez toujours tracer un parcours sur une carte.",
+    "generate": "Générer",
+    "regenerate": "Essayer une autre direction",
+    "distanceLabel": "Distance",
+    "distanceRange": "Choisissez entre {{min}} et {{max}} {{unit}}.",
+    "startFrom": "Départ à l'épingle verte. Touchez la carte pour la déplacer.",
+    "startUnknown": "En attente de votre position. Ou touchez la carte pour choisir un départ.",
+    "useMyLocation": "Ma position",
+    "turnCount_one": "{{count}} virage",
+    "turnCount_many": "{{count}} virages",
+    "turnCount_other": "{{count}} virages",
+    "style": {
+      "title": "Style de parcours",
+      "surface": "Revêtement",
+      "hills": "Dénivelé",
+      "any": "Indifférent",
+      "trails": "Sentiers",
+      "roads": "Routes",
+      "flat": "Plus plat",
+      "hilly": "Plus vallonné",
+      "avoidSteps": "Éviter les escaliers",
+      "avoidBusyRoads": "Éviter les routes fréquentées"
+    },
+    "option": {
+      "title": "Option {{n}}",
+      "flatter": "Plus plat",
+      "moreTrail": "Plus de sentiers",
+      "shorter": "Plus court"
+    },
+    "followRoads": "Suivre les routes",
+    "followRoadsNeedsProvider": "Un fournisseur de routage est nécessaire. Ajoutez-en un dans Paramètres > Fournisseurs de données externes de l'application web.",
+    "followRoadsUnrouted": "Les tronçons sans tracé de route s'affichent en ligne droite. Réessayez, ou désactivez « Suivre les routes » pour les enregistrer en ligne droite.",
+    "editorPointLimit": "Un parcours compte au maximum {{max}} points. Supprimez un point pour en ajouter un autre.",
+    "followBefore": "Suivre les routes avant",
+    "followAfter": "Suivre les routes après",
+    "straightBefore": "Ligne droite avant",
+    "straightAfter": "Ligne droite après",
+    "deletePoint": "Supprimer le point",
+    "editLine": "Modifier le parcours sur la carte",
+    "mapSatellite": "Satellite",
+    "mapStandard": "Carte",
+    "mapUnavailable": "Les parcours ne peuvent pas être tracés sur une carte dans cette version.",
+    "redo": "Rétablir",
+    "findingRoute": "Recherche d'un itinéraire",
+    "turns": "Virages",
+    "showFewerTurns": "Afficher moins",
+    "showAllTurns_one": "Afficher {{count}} virage",
+    "showAllTurns_many": "Afficher les {{count}} virages",
+    "showAllTurns_other": "Afficher les {{count}} virages",
+    "activity": {
+      "run": "Course",
+      "walk": "Marche",
+      "ride": "Vélo",
+      "hike": "Randonnée"
+    },
+    "shape": {
+      "loop": "Boucle",
+      "outAndBack": "Aller-retour"
+    },
+    "generateError": {
+      "noRoute": "Aucun parcours trouvé à cet endroit. Essayez un autre lieu ou une autre distance.",
+      "rateLimited": "Trop de demandes de parcours. Attendez quelques minutes et réessayez.",
+      "engineError": "Le service de routage a rencontré un problème. Réessayez dans un instant.",
+      "timeout": "Le service de routage a mis trop de temps à répondre. Réessayez.",
+      "notConfigured": "Aucun fournisseur de routage n'est configuré. Ajoutez-en un dans Paramètres > Fournisseurs de données externes de l'application web.",
+      "invalid": "Impossible de calculer un itinéraire entre ces points.",
+      "unknown": "Impossible de générer un parcours."
+    },
+    "cue": {
+      "depart": "Départ",
+      "straight": "Continuer tout droit",
+      "slight_left": "Légèrement à gauche",
+      "left": "Tourner à gauche",
+      "sharp_left": "Virage serré à gauche",
+      "slight_right": "Légèrement à droite",
+      "right": "Tourner à droite",
+      "sharp_right": "Virage serré à droite",
+      "uturn": "Faire demi-tour",
+      "arrive": "Arrivée"
+    },
+    "goBack": "Retour",
+    "followRoadsTooMany": "« Suivre les routes » est limité à {{max}} points. Annulez des points ou désactivez cette option pour enregistrer."
   },
   "voiceSettings": {
     "title": "Saisie vocale",
@@ -6916,7 +7400,30 @@
     "measurementsSubtitle": "Poids, composition corporelle, mensurations et pas",
     "insights": "Points marquants",
     "substances": "Caféine et alcool",
-    "substancesSubtitle": "Caféine et alcool quotidiens, semaine par semaine"
+    "substancesSubtitle": "Caféine et alcool quotidiens, semaine par semaine",
+    "compare": "Comparer",
+    "compareSubtitle": "Comment deux éléments évoluent ensemble",
+    "heartRate": "Fréquence cardiaque",
+    "heartRateSubtitle": "Tendances de la FC au repos et répartition par zones",
+    "details": "Voir le détail du rapport",
+    "heartRateChangeVsPrevious": "{{change}} bpm vs période précédente",
+    "averageRestingHr": "FC moyenne au repos",
+    "restingHrRange": "Plage de FC au repos",
+    "heartRateRecovery1Min": "Récupération à 1 min",
+    "heartRateRecoveryHint": "Baisse de la FC 1 minute après l'effort",
+    "recordedDays": "Jours enregistrés",
+    "daysRatio": "{{daysWithData}} jours sur {{totalDays}}",
+    "heartRateLoadFailed": "Échec du chargement des données de fréquence cardiaque",
+    "heartRateEmpty": "Aucune donnée de fréquence cardiaque enregistrée sur cette période",
+    "restingHeartRateTrend": "Tendance de la FC au repos",
+    "heartRateZones": "Zones de fréquence cardiaque",
+    "zoneSource": "Vos zones : {{method}}, FC max {{max}} bpm ({{source}}).",
+    "zoneSourceDefault": "Zones types (en % d'une FC max de 190 bpm) en attendant le chargement de vos zones.",
+    "zoneSettingsLink": "Paramètres des zones de fréquence cardiaque",
+    "heartRateSummary": "Synthèse de la fréquence cardiaque",
+    "heartRateInsights": "Analyse de la FC au repos",
+    "insightAthletic": "Votre FC moyenne au repos se situe dans la plage des sportifs (<60 bpm), signe d'une bonne efficacité cardiovasculaire.",
+    "insightNormal": "Chez un adulte en bonne santé, la FC au repos se situe généralement entre 60 et 100 bpm. Une fréquence plus basse reflète en général une meilleure condition cardiovasculaire."
   },
   "sleepAnalytics": {
     "title": "Analyse du sommeil",
@@ -7029,7 +7536,9 @@
       "caffeineSummary": "Résumé de la caféine",
       "alcoholChart": "Graphique de l'alcool",
       "alcoholSummary": "Résumé de l'alcool",
-      "substancesWeekly": "Semaine par semaine"
+      "substancesWeekly": "Semaine par semaine",
+      "restingHrChart": "Graphique de la FC au repos",
+      "heartRateZones": "Zones d'intensité"
     },
     "hydrationSections": "Rapport d'hydratation",
     "measurementsSections": "Rapport des mesures",
@@ -7037,7 +7546,8 @@
     "nutrientsDescription": "Choisissez les vitamines, minéraux et autres nutriments dont le rapport nutrition calcule la moyenne dans Vos nutriments, et faites-les glisser pour les ordonner. Les nutriments personnalisés sont inclus.",
     "nutrientReorderHint": "Change la position de ce nutriment dans le rapport",
     "substancesSections": "Rapport caféine et alcool",
-    "exerciseSections": "Rapport d'exercice"
+    "exerciseSections": "Rapport d'exercice",
+    "heartRateSections": "Rapport de fréquence cardiaque"
   },
   "mood": {
     "logTitle": "Humeur",
@@ -7107,7 +7617,10 @@
       "loggedA11y": "Humeur du {{date}} : {{mood}}",
       "log": "+ Noter",
       "trend7d": "Tendance 7 j"
-    }
+    },
+    "reminderOfferTitle": "Me le rappeler chaque jour ?",
+    "reminderOfferBody": "Recevez un rappel chaque soir pour faire votre saisie d'humeur. Vous pouvez changer l'heure ou en ajouter d'autres dans Paramètres → Paramètres de l'application → Notifications.",
+    "reminderOfferAccept": "Me le rappeler"
   },
   "fastingSettings": {
     "title": "Paramètres du jeûne",
@@ -7484,9 +7997,6 @@
     "dateRange": "{{start}} – {{end}}",
     "starting": "À partir du {{date}}",
     "deleteNamed": "Supprimer {{name}}",
-    "noServer": "Aucun serveur configuré",
-    "noServerSubtitle": "Configurez la connexion au serveur pour gérer vos plans d'entraînement.",
-    "goToSettings": "Ouvrir les paramètres",
     "loading": "Chargement des plans…",
     "loadFailed": "Échec du chargement des plans",
     "emptyTitle": "Aucun plan pour l'instant",
@@ -7497,7 +8007,8 @@
   },
   "equipmentHub": {
     "title": "Équipement",
-    "shoesSubtitle": "Chaussures de course et leur kilométrage"
+    "shoesSubtitle": "Chaussures de course et leur kilométrage",
+    "platesSubtitle": "Vos barres et disques, pour le calculateur de disques"
   },
   "warmupSettings": {
     "title": "Calculateur d'échauffement",
@@ -7537,19 +8048,21 @@
         "walkFit": "Les semaines 1 à 4 alternent des passages de marche rapide (3 à 8 minutes) et 2 minutes de marche tranquille. Les semaines 5 et 6 comptent deux passages rapides plus longs de 12 et 15 minutes. Les semaines 7 et 8 sont des marches rapides continues de 20 à 30 minutes.",
         "halfMarathon": "Chaque semaine compte un footing, une sortie moyenne et une sortie longue. La sortie longue passe de 50 à 115 minutes, une semaine sur quatre est allégée, et la dernière semaine est courte avant la course.",
         "marathon": "La plupart des semaines comptent deux footings, une sortie moyenne et une sortie longue. La sortie longue passe de 70 minutes à 2 h 45, une semaine sur quatre est allégée, et les deux dernières semaines sont un affûtage avant la course.",
-        "halfMarathon4": "Chaque semaine compte deux footings, une sortie moyenne et une sortie longue. La sortie longue passe de 60 à 125 minutes, une semaine sur quatre est allégée, et les deux dernières semaines sont un affûtage avant la course. La dernière semaine compte trois sorties plus courtes.",
-        "tenKToHalf4": "Chaque semaine compte deux sorties courtes, une sortie moyenne et une sortie longue. La sortie longue passe de 75 à 125 minutes, la semaine 4 est allégée, et les trois dernières semaines sont un affûtage avant la course. La dernière semaine compte trois sorties plus courtes.",
-        "fasterHalf4": "Chaque semaine compte une séance de vitesse, deux footings et une sortie longue. La sortie longue passe de 80 à 120 minutes, la semaine 4 est allégée, et les trois dernières semaines sont un affûtage avant la course. La dernière semaine compte trois sorties plus courtes.",
-        "beginnerMarathon4": "Chaque semaine compte deux sorties courtes, une sortie moyenne et une sortie longue. La sortie longue passe de 80 minutes à 2 h 40, une semaine sur quatre est allégée, et les trois dernières semaines sont un affûtage avant la course. La dernière semaine compte trois sorties plus courtes.",
+        "halfMarathon4": "Chaque semaine compte deux footings, une sortie moyenne et une sortie longue. La sortie longue passe de 50 à 115 minutes, une semaine sur quatre est allégée, et les deux dernières semaines sont un affûtage avant la course. La dernière semaine compte trois sorties plus courtes.",
+        "tenKToHalf4": "Chaque semaine compte deux sorties courtes, une sortie moyenne et une sortie longue. La sortie longue passe de 65 à 115 minutes, les semaines 4 et 8 sont allégées, et les deux dernières semaines sont un affûtage avant la course. La dernière semaine compte trois sorties plus courtes.",
+        "fasterHalf4": "Chaque semaine compte une séance de vitesse, deux footings et une sortie longue. La sortie longue passe de 70 à 110 minutes. Des sorties au seuil de 25 et 30 minutes remplacent la séance de vitesse en semaines 6 et 8, la semaine 4 est allégée, et les trois dernières semaines sont un affûtage avant la course. La dernière semaine compte trois sorties plus courtes.",
+        "beginnerMarathon4": "Chaque semaine compte deux sorties courtes, une sortie moyenne et une sortie longue. La sortie longue passe de 70 minutes à 2 h 30, une semaine sur quatre est allégée, et les trois dernières semaines sont un affûtage avant la course. La dernière semaine compte trois sorties plus courtes.",
         "walk10k": "Chaque semaine compte deux marches alternant marche rapide et courtes pauses tranquilles, et une longue marche rapide. La longue marche passe de 40 à 105 minutes, les semaines 4 et 8 sont allégées, et la dernière semaine se termine par la marche de 10 km.",
         "returnToRunning": "Les semaines 1 à 3 alternent courtes courses et marche, de courses de 1 minute à des courses de 5 minutes. La semaine 4 compte trois séances course/marche avec des courses de 6, 10 et 12 minutes, soit 18, 20 et 22 minutes de course au total.",
         "gentle5k": "Chaque semaine répète trois fois la même séance course/marche. Les courses passent de 30 secondes à 5 minutes en semaine 8, puis à deux courses de 10 minutes, une de 15 et une de 10 minutes, et enfin des courses continues de 25 et 30 minutes.",
-        "beginner10k": "Les semaines 1 à 6 reprennent la progression du 5 km débutant, des courtes courses alternées avec la marche jusqu'à la course continue. Les semaines 7 à 12 comptent trois sorties, avec une sortie longue qui passe de 30 à 60 minutes.",
-        "faster10k": "Chaque semaine compte une séance de vitesse (fractions rapides et lentes), un footing et une sortie plus longue. Des semaines 5 à 7, la sortie plus longue devient une sortie au seuil de 20, 25 puis 30 minutes, et la dernière semaine est allégée.",
+        "beginner10k": "Les semaines 1 à 6 reprennent la progression du 5 km débutant, des courtes courses alternées avec la marche jusqu'à la course continue. Les semaines 7 à 12 comptent trois sorties. La sortie longue passe de 30 à 60 minutes, et la semaine 10 est allégée.",
+        "faster10k": "Chaque semaine compte une séance de vitesse (fractions rapides ou côtes), un footing et une sortie plus longue. La semaine 4 est allégée. Des semaines 5 à 7, la sortie plus longue devient une sortie au seuil de 20, 25 puis 30 minutes, et la dernière semaine est allégée.",
         "tenKToHalf": "Chaque semaine compte une sortie courte, une sortie moyenne et une sortie longue. La sortie longue passe de 65 à 115 minutes, les semaines 4 et 8 sont allégées, et les deux dernières semaines sont un affûtage avant la course.",
         "fasterHalf": "Chaque semaine compte une séance de vitesse, un footing et une sortie longue. La sortie longue passe de 70 à 110 minutes, des sorties au seuil de 25 et 30 minutes remplacent la séance de vitesse les semaines 6 et 8, et les deux dernières semaines sont un affûtage.",
         "beginnerMarathon": "Chaque semaine compte une sortie courte, une sortie moyenne et une sortie longue. La sortie longue passe de 70 minutes à 2 h 30, une semaine sur quatre est allégée, et les trois dernières semaines sont un affûtage avant la course.",
-        "advancedMarathon": "La plupart des semaines comptent deux footings, une séance de vitesse ou au seuil, une sortie moyenne et une sortie longue. La sortie longue passe de 90 minutes à trois heures, une semaine sur quatre est allégée, et les deux dernières semaines sont un affûtage avant la course."
+        "advancedMarathon": "La plupart des semaines comptent deux footings, une séance de vitesse, de côtes ou au seuil, une sortie moyenne et une sortie longue. À partir de la semaine 3, la plupart des footings se terminent par des lignes droites. Dès la semaine 9, la sortie longue inclut un bloc à l'allure marathon, sauf pendant les semaines allégées. La sortie longue passe de 90 minutes à trois heures, une semaine sur quatre est allégée, et les deux dernières semaines sont un affûtage avant la course.",
+        "zone2Base": "Chaque semaine comprend une sortie courte, une sortie moyenne et une sortie longue, toutes faciles et maintenues en zone 2. Le temps dans la zone passe de 100 à 155 minutes par semaine, la sortie longue de 40 à 70 minutes, et les semaines 4 et 8 sont allégées. Les semaines 6, 7 et 9 terminent la sortie courte par quatre lignes droites relâchées. La sortie moyenne des semaines 4, 8 et 10 sert de contrôle de zone.",
+        "zone2Base4": "Chaque semaine comprend deux sorties courtes, une sortie moyenne et une sortie longue, toutes faciles et maintenues en zone 2. Le temps dans la zone passe de 130 à 190 minutes par semaine, la sortie longue de 40 à 70 minutes, et les semaines 4 et 8 sont allégées. Les semaines 6, 7 et 9 terminent la première sortie par quatre lignes droites relâchées. La sortie moyenne des semaines 4, 8 et 10 sert de contrôle de zone."
       },
       "rest": {
         "title": "Jours de repos",
@@ -7559,7 +8072,8 @@
         "returnToRunning": "Laissez un ou deux jours entre les sorties, par exemple lundi, jeudi et samedi, et gardez chaque sortie facile, à une allure où vous pouvez parler. Les autres jours, reposez-vous, marchez ou pédalez tranquillement. Si une douleur augmente au fil des séances, revenez à la semaine précédente.",
         "fourRun": "Avec quatre sorties par semaine, prenez au moins un jour de repos complet et ne courez jamais plus de deux jours de suite. Gardez la veille de la sortie longue facile ou libre, et reposez-vous ou faites une autre activité le lendemain. Les autres jours, repos, marche ou activité à faible impact.",
         "advanced": "Avec cinq sorties par semaine, prenez deux jours de repos ou d'activité croisée et évitez plus de deux sorties de suite. Espacez d'au moins deux jours la séance de vitesse ou au seuil et la sortie longue, gardez les jours qui les entourent faciles, et reposez-vous davantage les semaines allégées.",
-        "longDistance": "Gardez la veille de la sortie longue facile ou libre, et prenez un jour de repos le lendemain. Espacez les autres sorties pour ne jamais enchaîner deux jours difficiles, et utilisez les jours libres pour le repos, la marche ou une activité à faible impact."
+        "longDistance": "Gardez la veille de la sortie longue facile ou libre, et prenez un jour de repos le lendemain. Espacez les autres sorties pour ne jamais enchaîner deux jours difficiles, et utilisez les jours libres pour le repos, la marche ou une activité à faible impact.",
+        "zone2Base": "Gardez un jour de repos entre les sorties quand c'est possible, et placez la sortie longue un ou deux jours après un jour de repos. Les footings s'accumulent vite : si vous manquez d'énergie, prenez la journée plutôt que de courir plus fort. Reposez-vous ou pratiquez un autre sport les autres jours."
       },
       "title": "Comment fonctionnent les plans",
       "workout": {
@@ -7585,6 +8099,11 @@
       "pace": {
         "title": "Plages d'allure",
         "body": "Saisissez un temps de course récent dans « Votre allure de course » et l'écran Enregistrer pourra proposer une plage d'allure pour chaque type de fraction. Ce sont des estimations : la chaleur, les côtes ou une semaine de fatigue les modifient, servez-vous-en comme repère et fiez-vous à l'effort en cas de désaccord."
+      },
+      "zone2": {
+        "title": "Sorties en zone 2",
+        "body": "La zone 2, c'est de la course aérobie facile : environ 60 à 70 % de votre fréquence cardiaque maximale. Les sorties en zone 2 se règlent sur une plage de fréquence cardiaque, pas sur une allure, car la même allure est plus dure par forte chaleur ou pendant une semaine de fatigue. L'écran d'enregistrement affiche la plage et vous prévient quand vous êtes au-dessus ou en dessous. Sans mesure de fréquence cardiaque, utilisez le test de la parole : vous devez pouvoir parler en phrases complètes. La fréquence cardiaque dérive un peu à la hausse sur une sortie longue, donc le haut de la plage s'assouplit après 20 minutes. Si votre respiration reste facile, quelques battements de plus ne posent pas de problème ; si l'effort devient plus dur, ralentissez ou marchez. La plage vient de vos propres réglages de zones cardiaques ; si vous n'avez pas défini de maximum, c'est une estimation d'après votre âge, qui peut se tromper de dix battements ou plus dans un sens ou dans l'autre. Si c'est trop facile ou trop dur, fiez-vous au test de la parole.",
+        "check": "Les semaines 4, 8 et 10 comprennent chacune un contrôle de zone : la sortie moyenne. Faites-la sur le même parcours plat et connu, à la même fréquence cardiaque ou au même effort, et comparez votre allure avec la dernière fois. Si elle est plus rapide pour le même effort, votre base progresse. Si vous êtes plus lent, ne forcez pas : le sommeil, la chaleur et le stress se voient ici."
       }
     },
     "start": "Lancer le programme",
@@ -7803,7 +8322,98 @@
       "tooShort": "C'est moins que ce que nous conseillons : au moins {{min}} semaines pour cette distance. Choisissez un jour de course plus tard.",
       "tooFewDays": "Choisissez au moins deux jours de course.",
       "create": "Créer et lancer le plan",
-      "open": "Préparer une course"
+      "open": "Préparer une course",
+      "useTest": "Planifier d'après mon dernier test",
+      "useTestDescription": "Utilise votre {{test}} ({{date}}) pour définir votre niveau et votre allure le jour de la course.",
+      "fromTest": "Niveau de départ : {{level}}. Allure de course d'environ {{pace}}.",
+      "estimateFromTest": "Le jour de la course est prévu sur environ {{minutes}} minutes, à l'allure indiquée par votre test de forme ; vous pourrez la modifier ensuite dans le plan."
+    },
+    "goals": {
+      "title": "Objectifs de course",
+      "intro": "Fixez une distance hebdomadaire à viser et une course pour le compte à rebours.",
+      "set": "Définir un objectif",
+      "edit": "Modifier",
+      "none": "Aucun",
+      "unit": {
+        "km": "km",
+        "miles": "mi"
+      },
+      "weeklyLabel": "Distance hebdomadaire ({{unit}})",
+      "weeklyProgress": "{{done}} sur {{target}} {{unit}} cette semaine",
+      "weeklyReached": "Objectif hebdomadaire atteint",
+      "weeklyNeeded_one": "{{amount}} {{unit}} aujourd'hui pour l'atteindre ({{count}} jour restant)",
+      "weeklyNeeded_many": "Environ {{amount}} {{unit}} par jour pour l'atteindre ({{count}} jours restants)",
+      "weeklyNeeded_other": "Environ {{amount}} {{unit}} par jour pour l'atteindre ({{count}} jours restants)",
+      "raceNameLabel": "Nom de la course",
+      "raceDefaultName": "Jour de la course",
+      "raceDistanceLabel": "Distance de la course ({{unit}})",
+      "raceDateLabel": "Jour de la course",
+      "pickDate": "Choisir une date",
+      "clearRace": "Retirer la course",
+      "raceToday": "C'est le jour de la course",
+      "raceIn_one": "Encore {{count}} jour",
+      "raceIn_many": "Encore {{count}} jours",
+      "raceIn_other": "Encore {{count}} jours",
+      "racePast_one": "Il y a {{count}} jour",
+      "racePast_many": "Il y a {{count}} jours",
+      "racePast_other": "Il y a {{count}} jours",
+      "errors": {
+        "distance": "Saisissez une distance supérieure à zéro, ou laissez le champ vide.",
+        "raceDay": "Choisissez le jour de la course, ou effacez le nom et la distance de la course.",
+        "save": "Impossible d'enregistrer vos objectifs. Veuillez réessayer."
+      }
+    },
+    "realign": {
+      "title": "Réaligner votre plan",
+      "titleMore": "Vous avez du temps en plus",
+      "titleTight": "Votre date d'objectif est trop proche",
+      "titleForced": "Continuer quand même",
+      "intro": "Vous avez pris du retard. Le réalignement reconstruit la suite de votre plan pour que vous terminiez toujours à votre date d'objectif, en gardant vos sorties longues, l'affûtage et la séance finale.",
+      "introMore": "Il vous reste plus de jours avant votre objectif que de séances. Répéter quelques semaines de base donne une progression plus régulière, et le plan se termine toujours à votre date d'objectif.",
+      "introForced": "Cela supprime autant de séances qu'il le faut pour finir à votre date d'objectif. C'est beaucoup à sauter, donc la préparation sera plus légère que prévu. L'affûtage et la séance finale sont conservés.",
+      "what": "semaine {{week}}, sortie {{run}} · {{minutes}} min",
+      "before_one": "Actuellement : {{count}} séance restante (fin : {{date}}).",
+      "before_many": "Actuellement : {{count}} séances restantes (fin : {{date}}).",
+      "before_other": "Actuellement : {{count}} séances restantes (fin : {{date}}).",
+      "after_one": "Après : {{count}} séance (fin : {{date}}).",
+      "after_many": "Après : {{count}} séances (fin : {{date}}).",
+      "after_other": "Après : {{count}} séances (fin : {{date}}).",
+      "changes": "Ce qui change",
+      "changesMore": "Ce qui est ajouté",
+      "change": {
+        "droppedRepeat": "Supprimer {{what}} : elle répète une autre sortie de la semaine",
+        "droppedShortest": "Supprimer {{what}} : la sortie la plus courte de la semaine",
+        "merged": "Fusionner {{what}} avec la semaine suivante : une semaine allégée s'y ajoute",
+        "added": "Refaire {{what}}, comme semaine de base supplémentaire",
+        "repeated": "Répéter {{what}}"
+      },
+      "eased_one": "Vous avez été absent {{days}} jours : la course est allégée de {{percent}} % sur {{count}} séance à venir.",
+      "eased_many": "Vous avez été absent {{days}} jours : la course est allégée de {{percent}} % sur vos {{count}} prochaines séances.",
+      "eased_other": "Vous avez été absent {{days}} jours : la course est allégée de {{percent}} % sur vos {{count}} prochaines séances.",
+      "kept": "L'affûtage et la séance finale restent exactement tels quels.",
+      "spare_one": "{{count}} jour de séance avant votre objectif reste vide : on n'ajoute qu'une quantité limitée à la fois.",
+      "spare_many": "{{count}} jours de séance avant votre objectif restent vides : on n'ajoute qu'une quantité limitée à la fois.",
+      "spare_other": "{{count}} jours de séance avant votre objectif restent vides : on n'ajoute qu'une quantité limitée à la fois.",
+      "accept": "Réaligner le plan",
+      "notNow": "Pas maintenant",
+      "back": "Retour",
+      "done": "Votre plan a été réaligné",
+      "error": "Impossible de réaligner votre plan",
+      "tight_one": "Il ne reste que {{count}} jour de séance avant votre date d'objectif, et {{left}} séances restent à faire.",
+      "tight_many": "Il ne reste que {{count}} jours de séance avant votre date d'objectif, et {{left}} séances restent à faire.",
+      "tight_other": "Il ne reste que {{count}} jours de séance avant votre date d'objectif, et {{left}} séances restent à faire.",
+      "reason": {
+        "noTimeLeft": "Il ne reste aucun jour de séance avant votre date d'objectif.",
+        "taperDoesNotFit": "Il n'y a plus de place pour l'affûtage et la séance finale.",
+        "tooMuchToDrop": "Tout faire tenir obligerait à supprimer une grande partie de votre préparation.",
+        "tooFewWeeks_one": "{{count}} semaine, c'est une préparation trop courte pour cette course.",
+        "tooFewWeeks_many": "{{count}} semaines, c'est une préparation trop courte pour cette course.",
+        "tooFewWeeks_other": "{{count}} semaines, c'est une préparation trop courte pour cette course."
+      },
+      "choose": "Rien ne change tant que vous n'avez pas choisi :",
+      "later": "Reporter mon objectif : {{date}}",
+      "lower": "Prévoir plutôt : {{distance}}",
+      "continue": "Continuer quand même"
     }
   },
   "paceReference": {
@@ -7827,7 +8437,11 @@
     "save": "Enregistrer",
     "clear": "Effacer",
     "watch": "Utiliser aussi sur mon Apple Watch",
-    "watchHint": "Cale la séance du programme proposée sur la montre sur ces plages. Course uniquement."
+    "watchHint": "Cale la séance du programme proposée sur la montre sur ces plages. Course uniquement.",
+    "wearOs": "Utiliser aussi sur ma montre Wear OS",
+    "testNote": "Vous avez un test de forme : c'est votre dernier test qui fixe vos allures tant qu'il est enregistré. Ce temps de course sera de nouveau utilisé si vous supprimez vos tests.",
+    "collapsedTest": "Votre test de forme fixe vos allures",
+    "collapsedEmpty": "Ajoutez un temps de course récent pour fixer vos allures"
   },
   "speechVoice": {
     "automatic": "Automatique (meilleure installée)",
@@ -8060,7 +8674,8 @@
     "activity": {
       "walk": "Marche",
       "run": "Course",
-      "ride": "Vélo"
+      "ride": "Vélo",
+      "jumpRope": "Corde à sauter"
     },
     "permission": {
       "denied": "SparkyFitness a besoin d'accéder à votre position pour enregistrer votre parcours. Vous pouvez l'autoriser dans les paramètres.",
@@ -8205,7 +8820,9 @@
       "increase": "Augmenter : {{label}}",
       "complete": "Fractionné terminé",
       "round": "Série {{round}} sur {{rounds}}",
-      "next": "Ensuite : {{name}} {{time}}"
+      "next": "Ensuite : {{name}} {{time}}",
+      "brisk": "Soutenu",
+      "zone2": "Course en zone 2"
     },
     "program": {
       "title": "Programme d'entraînement",
@@ -8228,7 +8845,9 @@
         "tenKToHalf": "Du 10 km au semi-marathon",
         "fasterHalf": "Semi-marathon plus vite",
         "beginnerMarathon": "Marathon débutant",
-        "advancedMarathon": "Marathon confirmé"
+        "advancedMarathon": "Marathon confirmé",
+        "zone2Base": "Base en zone 2",
+        "zone2Base4": "Base en zone 2 (4 sorties par semaine)"
       },
       "beginner5kDescription": "5 km débutant : neuf semaines, trois sorties par semaine. Vous alternez course et marche, jusqu'à 30 minutes de course.",
       "workoutLabel": "{{name}} · Semaine {{week}}, sortie {{run}}",
@@ -8293,11 +8912,11 @@
       "advancedMarathonDescription": "Marathon avancé : seize semaines, cinq sorties par semaine, avec du travail de vitesse ou au seuil et des sorties longues jusqu'à trois heures. Pour coureurs expérimentés.",
       "halfMarathon4Description": "Semi-marathon : douze semaines, quatre sorties par semaine, avec des sorties longues jusqu'à environ deux heures. Quand vous courez 30 minutes sans difficulté.",
       "tenKToHalf4Description": "Du 10 km au semi-marathon : dix semaines, quatre sorties par semaine, avec des sorties longues jusqu'à environ deux heures. Quand vous courez déjà 10 km.",
-      "beginnerMarathon4Description": "Marathon débutant : dix-huit semaines, quatre sorties par semaine, avec des sorties longues jusqu'à 2 h 40 et un affûtage. Quand vous courez déjà 10 km.",
-      "fasterHalf4Description": "Semi-marathon plus vite : dix semaines, quatre sorties par semaine, avec une séance de vitesse, des footings et une sortie longue avec du travail au seuil. Quand vous avez déjà couru un semi-marathon.",
+      "beginnerMarathon4Description": "Marathon débutant : dix-huit semaines, quatre sorties par semaine, avec des sorties longues jusqu'à 2 h 30 et un affûtage. Quand vous courez déjà 10 km.",
+      "fasterHalf4Description": "Semi-marathon plus vite : dix semaines, quatre sorties par semaine, avec une séance de vitesse, des footings et une sortie longue. Quand vous avez déjà couru un semi-marathon.",
       "marathonDescription": "Marathon : seize semaines, quatre sorties par semaine, avec des sorties longues jusqu'à environ 2 h 45 et un affûtage. Pour celles et ceux qui courent déjà régulièrement.",
       "outlineWalk": "Semaine 1 : séances de {{weekOne}} minutes. Jusqu'à {{peak}} minutes de marche rapide.",
-      "outline": "Semaine 1 : séances de {{weekOne}} minutes. Jusqu'à {{peak}} minutes de course.",
+      "outline": "Semaine 1 : séances de {{weekOne}} minutes. Jusqu'à {{peak}} minutes d'effort.",
       "minutes": "{{minutes}} min",
       "workoutsDone": "{{done}} séances sur {{total}}",
       "optionLabel": "{{name}} · {{weeks}} semaines, {{runs}} séances par semaine",
@@ -8307,7 +8926,10 @@
       "switchMessage": "Vous commencerez le nouveau programme à la semaine 1. Votre progression dans le programme actuel n'est pas conservée.",
       "switchConfirm": "Changer",
       "startDayPast": "Commencé le {{date}}. Votre prochaine séance est planifiée à partir d'aujourd'hui.",
-      "customWorkoutLabel": "{{name}} · {{workout}}"
+      "customWorkoutLabel": "{{name}} · {{workout}}",
+      "zone2BaseDescription": "Base en zone 2 : dix semaines, trois footings par semaine maintenus dans votre zone 2 de fréquence cardiaque (ou au test de la parole), pour accumuler du temps dans la zone avec une sortie longue jusqu'à 70 minutes. Si vous pouvez déjà courir 30 minutes.",
+      "zone2Base4Description": "Base en zone 2 : dix semaines, quatre footings par semaine maintenus dans votre zone 2 de fréquence cardiaque (ou au test de la parole), pour accumuler du temps dans la zone avec une sortie longue jusqu'à 70 minutes. Si vous pouvez déjà courir 30 minutes.",
+      "goalUseRaceDay": "Utiliser le jour de la course ({{date}})"
     },
     "watch": {
       "title": "Enregistrer avec",
@@ -8327,7 +8949,8 @@
       "outdoorWalk": "Marche en extérieur",
       "indoorWalk": "Marche en intérieur",
       "outdoorRide": "Vélo en extérieur",
-      "indoorRide": "Vélo en intérieur"
+      "indoorRide": "Vélo en intérieur",
+      "jumpRope": "Corde à sauter"
     },
     "gps": {
       "good": "GPS bon",
@@ -8366,7 +8989,8 @@
       "easyTitle": "FC des passages faciles",
       "easyDescription": "Vous alerte quand votre fréquence cardiaque sur un passage facile sort de cette plage.",
       "warmTitle": "FC d'échauffement et de retour au calme",
-      "warmDescription": "Vous alerte quand votre fréquence cardiaque pendant l'échauffement ou le retour au calme sort de cette plage."
+      "warmDescription": "Vous alerte quand votre fréquence cardiaque pendant l'échauffement ou le retour au calme sort de cette plage.",
+      "wearOsDescription": "Nécessite votre montre Wear OS. Elle vibre, et parle si les annonces vocales sont activées, quand votre fréquence cardiaque reste hors de cette plage."
     },
     "suggestedRanges": {
       "title": "Plages suggérées",
@@ -8380,7 +9004,689 @@
       "tempo": "seuil {{range}}",
       "marathonPace": "allure marathon {{range}}",
       "strides": "lignes droites {{range}}",
-      "paceSourceRace": "D'après votre course récente : {{race}}."
+      "paceSourceRace": "D'après votre course récente : {{race}}.",
+      "paceSourceTest": "D'après votre {{test}} ({{date}}).",
+      "heartRateSourceUser": "D'après votre fréquence cardiaque maximale de {{max}} bpm.",
+      "heartRateSourceReserve": "D'après vos zones de réserve cardiaque, avec un maximum de {{max}} bpm.",
+      "heartRateSourceCustom": "D'après vos zones de fréquence cardiaque personnalisées."
+    },
+    "route": {
+      "title": "Parcours",
+      "none": "Aucun parcours",
+      "watchHint": "Votre montre affiche le tracé et vibre à chaque virage."
+    },
+    "splitsTable": {
+      "km": "km",
+      "mi": "mi",
+      "pace": "Allure",
+      "elev": "Dén",
+      "hr": "FC"
+    },
+    "zone2": {
+      "target": "Zone 2 : {{min}}–{{max}} bpm",
+      "targetSpoken": "Zone 2, de {{min}} à {{max}} battements par minute",
+      "inside": "En zone 2. Gardez cet effort.",
+      "above": "Au-dessus de la zone 2. Ralentissez, ou marchez jusqu'à ce que votre fréquence cardiaque redescende.",
+      "below": "Sous la zone 2. Vous pouvez accélérer un peu.",
+      "waiting": "En attente d'une mesure de fréquence cardiaque…",
+      "talkTest": "Zone 2 : restez assez à l'aise pour parler en phrases complètes. Si vous ne pouvez dire que quelques mots, ralentissez.",
+      "noRange": "Ajoutez votre date de naissance dans votre profil pour voir une plage de fréquence cardiaque en zone 2. En attendant, fiez-vous au test de la parole.",
+      "zoneCheck": "Contrôle de zone : faites cette sortie sur un parcours plat et connu, au même effort que la dernière fois, et notez votre allure et votre aisance. Si la même fréquence cardiaque donne maintenant une allure plus rapide, votre endurance progresse.",
+      "driftNote": "La fréquence cardiaque dérive de quelques battements sur une sortie longue : le haut de la plage s'assouplit donc un peu après 20 minutes."
     }
+  },
+  "plates": {
+    "title": "Disques et barres",
+    "calculatorTitle": "Calculateur de disques",
+    "enterWeight": "Saisissez d'abord un poids pour la série.",
+    "collarsWeight": "stop-disques {{weight}} {{unit}}",
+    "loadSummary": "{{perSide}} {{unit}} par côté · {{total}} {{unit}} au total",
+    "cannotLoad": "Vos disques ne permettent pas d'obtenir exactement {{weight}} {{unit}}.",
+    "nearestBelow": "Le plus proche en dessous : {{weight}} {{unit}}",
+    "nearestAbove": "Le plus proche au-dessus : {{weight}} {{unit}}",
+    "shortBy": "{{diff}} {{unit}} sous la cible",
+    "overBy": "{{diff}} {{unit}} au-dessus de la cible",
+    "nothingBelow": "La cible est plus légère que la barre à vide, stop-disques compris.",
+    "nothingAbove": "La cible est plus lourde que ce que vos disques peuvent charger.",
+    "tooLarge": "Cet inventaire est trop grand pour être calculé. Retirez quelques disques ou paires.",
+    "barKind": {
+      "barbell": "Barre olympique",
+      "womens": "Barre femme",
+      "ez": "Barre EZ",
+      "trap": "Trap bar",
+      "other": "Autre barre"
+    },
+    "useKgPlates": "Disques en kg",
+    "useLbPlates": "Disques en lb",
+    "presetHint": "Part du jeu standard ; vous pouvez le modifier ci-dessous.",
+    "platesHeading": "Disques ({{unit}})",
+    "barsHeading": "Barres ({{unit}})",
+    "plateWeight": "Poids",
+    "addPlate": "Ajouter un disque",
+    "removePlate": "Retirer le disque de {{weight}}",
+    "barName": "Nom",
+    "addBar": "Ajouter une barre",
+    "removeBar": "Retirer la barre {{name}}",
+    "collarsCount": "Compter les stop-disques",
+    "collarWeight": "Poids d'un stop-disque ({{unit}})",
+    "resetToStandard": "Revenir au jeu standard",
+    "invalid": "Vérifiez les poids et les paires : 3 décimales maximum, chaque taille de disque une seule fois, et des paires en nombre entier jusqu'à 20.",
+    "dismiss": "Fermer le calculateur de disques",
+    "startFrom": "Partir de",
+    "fewerPairs": "Moins de paires de {{weight}}",
+    "morePairs": "Plus de paires de {{weight}}",
+    "pairsCount_one": "{{count}} paire",
+    "pairsCount_many": "{{count}} paires",
+    "pairsCount_other": "{{count}} paires",
+    "pairsShort_one": "{{count}} p",
+    "pairsShort_many": "{{count}} p",
+    "pairsShort_other": "{{count}} p",
+    "barWeightLabel": "Poids de la barre",
+    "collarsHint": "Ajoute le poids des stop-disques à chaque charge.",
+    "saveFailed": "Échec de l'enregistrement des disques et barres",
+    "resetTitle": "Revenir au jeu standard ?",
+    "resetDescription": "Vos disques et barres enregistrés sont supprimés et le jeu standard est de nouveau utilisé.",
+    "resetFailed": "Échec de la réinitialisation des disques et barres",
+    "loadFailed": "Impossible de charger vos disques et barres.",
+    "graphicLabel": "{{perSide}} {{unit}} par côté sur une barre de {{bar}} {{unit}}",
+    "graphicNotExact": "Vos disques ne permettent pas d'obtenir exactement {{weight}} {{unit}}.",
+    "graphicNearest": "Disques : au plus proche {{weight}} {{unit}}",
+    "graphicBelowBar": "Disques : plus léger que la barre",
+    "targetWeight": "Poids cible : {{weight}} {{unit}}",
+    "availableEquipment": "Matériel disponible",
+    "manage": "Gérer",
+    "platesUnit": "Disques ({{unit}})",
+    "barUnit": "Barre ({{unit}})",
+    "calculatorShort": "Calculateur",
+    "barCard": "Barre {{number}} : {{name}}",
+    "removeBarShort": "Retirer",
+    "barWeightUnit": "Poids ({{unit}})"
+  },
+  "workoutEffort": {
+    "value": "{{rating}}/10"
+  },
+  "calorieLink": {
+    "action": "Lier une séance synchronisée",
+    "linked": "Liée à une séance synchronisée",
+    "title": "Lier une séance synchronisée",
+    "description": "Si une montre ou une app santé a aussi enregistré cette séance, liez les deux pour que ses calories ne comptent qu'une fois. Les deux estimations sont conservées.",
+    "loading": "Recherche des séances synchronisées…",
+    "loadError": "Impossible de charger les séances synchronisées.",
+    "none": "Aucune séance synchronisée trouvée pour ce jour.",
+    "workoutFallback": "Séance",
+    "minutes": "{{value}} min",
+    "calories": "{{value}} kcal",
+    "sameSession": "Même séance",
+    "sameTime": "Se chevauchent dans le temps",
+    "countHeading": "À compter dans le total du jour",
+    "sparkyfitness": "Cette séance ({{value}})",
+    "synced": "La séance synchronisée ({{value}})",
+    "higher": "La plus élevée des deux ({{value}})",
+    "lower": "La plus faible des deux ({{value}})",
+    "average": "La moyenne ({{value}})",
+    "custom": "Un total personnalisé",
+    "customLabel": "Total de la séance (kcal)",
+    "link": "Lier les séances",
+    "unlink": "Dissocier",
+    "linkError": "Échec de la liaison des séances.",
+    "unlinkError": "Échec de la dissociation des séances."
+  },
+  "guidedCheckIn": {
+    "stepOfTotal": "Enregistrement : étape {{step}} sur {{total}}",
+    "skip": "Passer",
+    "skipA11y": "Passer cette étape",
+    "saveAndContinue": "Enregistrer et continuer",
+    "finish": "Terminer",
+    "done": "Enregistrement terminé",
+    "skipUnsavedTitle": "Passer cette étape ?",
+    "skipUnsavedMessage": "Vos modifications de cette étape ne seront pas enregistrées.",
+    "backA11y": "Revenir à l'étape précédente",
+    "backUnsavedTitle": "Revenir d'une étape ?",
+    "resumeTitle": "Reprendre votre enregistrement ?",
+    "resumeMessage": "Vous vous êtes arrêté à l'étape {{step}} sur {{total}}.",
+    "startOver": "Recommencer"
+  },
+  "fitnessTest": {
+    "cue": {
+      "complete": "Test terminé. Ralentissez et terminez."
+    },
+    "retest": {
+      "dueTitle": "C'est l'heure d'un nouveau test",
+      "overdueTitle": "Vos allures ne sont peut-être plus à jour",
+      "body_one": "Votre dernier test de forme date de {{formattedCount}} semaine. Un nouveau test met à jour vos allures d'entraînement et montre l'évolution de votre forme.",
+      "body_many": "Votre dernier test de forme date de {{formattedCount}} semaines. Un nouveau test met à jour vos allures d'entraînement et montre l'évolution de votre forme.",
+      "body_other": "Votre dernier test de forme date de {{formattedCount}} semaines. Un nouveau test met à jour vos allures d'entraînement et montre l'évolution de votre forme.",
+      "action": "Refaire le test",
+      "later": "Plus tard",
+      "sameTreadmill": "Votre dernier test était sur tapis, le nouveau commence donc aussi sur tapis.",
+      "sameOutdoor": "Votre dernier test était en extérieur, le nouveau commence donc aussi en extérieur."
+    },
+    "badge": {
+      "title": "Test de forme",
+      "line": "{{test}} : {{result}}"
+    },
+    "live": {
+      "complete": "Test terminé. Ralentissez et touchez Terminer.",
+      "5k": "Courez à fond, à allure régulière. Encore {{remaining}} {{unit}} avant les 5 km.",
+      "cooper": "Parcourez la plus grande distance possible. Encore {{time}}.",
+      "30minLast20": "Tenez cette allure : les 20 dernières minutes fixent votre seuil. Encore {{time}}.",
+      "30minFirst10": "Installez-vous dans un effort dur et régulier. Les 20 dernières minutes commencent dans {{time}}.",
+      "5kIndoor": "Courez à fond, à allure régulière. Touchez Terminer quand votre tapis atteint 5 km. Temps {{time}}.",
+      "30minFirst10Indoor": "Installez-vous dans un effort dur et régulier. À 10:00, dans {{time}}, notez la distance affichée par votre tapis."
+    },
+    "finished": {
+      "threshold": "Allure seuil {{pace}}, environ {{time}} sur 5 km. Enregistrer fixe vos allures d'entraînement.",
+      "incomplete": "Le test a été arrêté avant son terme : il sera enregistré comme une sortie normale et vos allures ne changent pas.",
+      "adjusted": "Ajusté pour une pente de {{incline}} % : {{raw}} équivaut à {{adjusted}}.",
+      "needDistance": "Saisissez la distance affichée par votre tapis pour enregistrer le test. D'ici là, il sera enregistré comme une sortie normale.",
+      "badSplit": "La distance à 10:00 doit être supérieure à zéro et inférieure au total.",
+      "badTime": "Saisissez votre temps sur 5 km en minutes et secondes, par ex. 24:30."
+    },
+    "paces": {
+      "tempo": "Tempo {{range}}",
+      "marathon": "Allure marathon {{range}}",
+      "stride": "Lignes droites {{range}}"
+    },
+    "panel": {
+      "emptyTitle": "Trouvez vos allures d'entraînement",
+      "emptyBody": "Faites un test de forme guidé : un contre-la-montre de 5 km, une course de 30 minutes à fond ou un test de Cooper de 12 minutes. Le résultat fixe vos allures d'entraînement et peut lancer un plan.",
+      "take": "Faire un test de forme",
+      "title": "Votre test de forme",
+      "latest": "{{test}} le {{date}} : {{result}}",
+      "paces": "Allure seuil {{pace}}, environ {{time}} sur 5 km. Vos allures d'entraînement suivent ce test.",
+      "startProgram": "Lancer {{program}} d'après mon test",
+      "planRace": "Préparer une course",
+      "open": "Tests et allures",
+      "compactHint": "Faire un test de forme guidé"
+    },
+    "steps": {
+      "warmUp": "Échauffez-vous 10 à 15 minutes en courant facilement, puis revenez ici et lancez le test.",
+      "flat": "Choisissez un parcours plat et dégagé, et gardez votre téléphone sur vous. Les pauses ne sont pas comptées.",
+      "5k": "Courez 5 km aussi vite que vous pouvez tenir de façon régulière. Votre temps sur 5 km est le résultat ; continuez ensuite pour récupérer.",
+      "30min": "Courez aussi fort que vous pouvez tenir de façon régulière pendant 30 minutes. Votre allure seuil est l'allure moyenne des 20 dernières minutes : ne partez pas trop vite.",
+      "cooper": "Parcourez la plus grande distance possible en 12 minutes. La distance atteinte est le résultat."
+    },
+    "setup": {
+      "voiceDescription": "Annonce vocale à la fin du test.",
+      "start": "Lancer le test",
+      "outdoor": "Extérieur (GPS)",
+      "indoor": "Tapis",
+      "indoorNote": "Sur tapis, rien n'est suivi par GPS. Le test est chronométré et, à la fin, vous saisissez la distance et la pente affichées par votre tapis. Il est enregistré comme une sortie en intérieur et marqué comme test de forme.",
+      "outdoorNote": "En extérieur, le test est enregistré avec le GPS de votre téléphone, comme une sortie, et marqué comme test de forme sur l'activité.",
+      "sameAsLast": "Proposé parce que votre dernier test était le même."
+    },
+    "delete": {
+      "title": "Supprimer ce test ?",
+      "message": "L'activité reste dans votre journal. Vos allures d'entraînement suivent votre test le plus récent restant.",
+      "confirm": "Supprimer",
+      "error": "Impossible de supprimer le test",
+      "action": "Supprimer ce test"
+    },
+    "result": {
+      "missing": "Ce test n'est plus enregistré.",
+      "when": "{{date}} · {{test}}",
+      "derived": "Allure seuil {{pace}}. Sur 5 km, cela donne environ {{time}}.",
+      "changeTitle": "Depuis votre test du {{date}}",
+      "changeThreshold": "Allure seuil : {{change}}.",
+      "pacesTitle": "Vos allures d'entraînement",
+      "pacesBody": "Elles fixent maintenant vos zones d'allure et les plages proposées pour les plans et les courses.",
+      "plan": "Lancer un plan d'après ce test",
+      "5k": "5 km en {{time}}",
+      "cooperMiles": "{{distance}} mi en 12 minutes",
+      "cooperMeters": "{{distance}} m en 12 minutes",
+      "30min": "{{pace}} sur les 20 dernières minutes"
+    },
+    "describe": {
+      "5k": "Courez 5 km aussi vite que vous pouvez tenir de façon régulière. Votre temps fixe vos allures.",
+      "30min": "Courez 30 minutes à fond. Votre allure seuil est l'allure moyenne des 20 dernières minutes.",
+      "cooper": "Parcourez la plus grande distance possible en 12 minutes. Votre distance est convertie en temps sur 5 km."
+    },
+    "intro": "Un test de forme est une sortie dure et mesurée. Il est enregistré avec le GPS de votre téléphone, et le résultat fixe vos allures d'entraînement pour les footings, le tempo, le fractionné et les plans de course.",
+    "choose": "Lancer ce test",
+    "history": {
+      "title": "Vos tests",
+      "empty": "Aucun test pour l'instant. Vos résultats et les allures qu'ils ont donnés apparaîtront ici.",
+      "rowTitle": "{{date}} · {{test}}",
+      "paces": "Seuil {{threshold}} · Facile {{easy}}",
+      "limit": "Affichage de vos {{limit}} derniers tests."
+    },
+    "type": {
+      "5k": "Contre-la-montre 5 km",
+      "30min": "Course de 30 minutes à fond",
+      "cooper": "Test de Cooper (12 minutes)"
+    },
+    "pacePerUnit": "{{pace}}/{{unit}}",
+    "perMile": "mi",
+    "perKm": "km",
+    "paceRange": "{{fast}}–{{slow}}/{{unit}}",
+    "change": {
+      "same": "aucun changement",
+      "faster": "{{seconds}} s/{{unit}} plus rapide",
+      "slower": "{{seconds}} s/{{unit}} plus lent"
+    },
+    "indoor": {
+      "timeTitle": "Temps sur 5 km",
+      "timeHint": "Votre temps chronométré est prérempli. Modifiez-le si votre tapis affichait un autre temps à 5 km.",
+      "splitTitle": "Distance à 10:00",
+      "splitHint": "La distance affichée par votre tapis après 10 minutes. Les 20 dernières minutes fixent votre allure seuil. Laissez vide pour supposer une allure régulière.",
+      "cooperHint": "Saisissez la distance affichée par votre tapis après 12 minutes dans le champ Distance ci-dessus.",
+      "inclineTitle": "Pente",
+      "inclineHint": "Un tapis à 0 % sous-estime l'effort en extérieur ; 1 % équivaut à peu près à courir sur du plat dehors. Saisissez la pente utilisée.",
+      "inclineInvalid": "Saisissez une pente de 0 à 15.",
+      "adjustTitle": "Ajuster selon la pente",
+      "adjustDescription": "Compte votre effort comme sur un parcours plat en extérieur, d'après le coût de course de chaque pour cent de pente. À 1 %, rien ne change. Désactivez pour garder les valeurs telles quelles."
+    },
+    "lastSurface": "Votre dernier test était : {{surface}}. Un nouveau test commence de la même façon, modifiable avant le départ.",
+    "surface": {
+      "indoor": "Tapis",
+      "outdoor": "Extérieur",
+      "inclineAdjusted": "Tapis, pente {{incline}} %, ajusté",
+      "inclineNotAdjusted": "Tapis, pente {{incline}} %, non ajusté"
+    }
+  },
+  "heartRateZones": {
+    "title": "Zones de fréquence cardiaque",
+    "description": "Vos zones déterminent le temps compté dans chaque zone pour les nouvelles séances, l'évaluation de la charge d'entraînement et les plages proposées pour les sorties.",
+    "yourZones": "Vos zones",
+    "maxHrSummary": "FC max {{max}} bpm. {{source}}.",
+    "zoneRange": "{{lower}}–{{upper}} bpm",
+    "zoneRangeOpen": "{{lower}}+ bpm",
+    "tier": {
+      "light": "Légère",
+      "moderate": "Modérée",
+      "vigorous": "Intense",
+      "peak": "Maximale"
+    },
+    "display": {
+      "title": "Afficher",
+      "five": "5 zones",
+      "four": "4 niveaux",
+      "hint": "Les quatre niveaux sont Légère (zones 1 et 2), Modérée (zone 3), Intense (zone 4) et Maximale (zone 5). Seul l'affichage change : les zones restent calculées et enregistrées sur cinq."
+    },
+    "fellBack": "La méthode choisie demande plus d'informations : les zones sont donc affichées en % de la FC max.",
+    "maxHr": "FC max (bpm)",
+    "maxHrHint": "Laissez vide pour la calculer à partir de votre date de naissance.",
+    "restingHr": "FC au repos (bpm)",
+    "customFloors": "Début de chaque zone (bpm)",
+    "floorLabel": "Début de la zone {{zone}} (bpm)",
+    "historyNote": "Les changements s'appliquent aux séances enregistrées ou synchronisées à partir de maintenant. Le temps passé par zone déjà enregistré pour les séances passées n'est pas recalculé.",
+    "reset": "Réinitialiser par défaut",
+    "saved": "Zones de fréquence cardiaque enregistrées",
+    "loadFailed": "Impossible de charger vos zones. Touchez pour réessayer.",
+    "method": {
+      "title": "Calcul des zones",
+      "percentMax": "% de la FC max",
+      "heartRateReserve": "Réserve cardiaque",
+      "custom": "Zones personnalisées",
+      "percentMaxHint": "Les zones commencent à 50, 60, 70, 80 et 90 % de votre FC max.",
+      "heartRateReserveHint": "Les zones correspondent à 50, 60, 70, 80 et 90 % de l'écart entre votre FC au repos et votre FC max (Karvonen). Nécessite une FC au repos.",
+      "customHint": "Indiquez les bpm où commence chaque zone. Le temps sous la zone 1 n'est pas compté."
+    },
+    "source": {
+      "user": "Définie par vous",
+      "age": "D'après votre date de naissance",
+      "observed": "D'après la FC la plus haute de la séance",
+      "fallback": "Valeur type ; ajoutez votre date de naissance ou indiquez la vôtre"
+    },
+    "chart": {
+      "method": "Zones : {{method}}. Modifier vos zones ne change pas les séances passées.",
+      "mixed": "Les zones ont été calculées avec plusieurs méthodes. Modifier vos zones ne change pas les séances passées.",
+      "device": "Zones définies par votre montre ou votre appareil"
+    },
+    "appleImport": "Utiliser les zones d'Apple Health",
+    "appleReading": "Lecture d'Apple Health…",
+    "appleImported": "Zones d'Apple Health remplies. Enregistrez pour les garder.",
+    "appleHint": "Remplit les zones à partir d'Apple Health, en zones personnalisées. Votre FC max ne change pas, et une FC au repos vide est aussi remplie. Enregistrez pour les garder.",
+    "appleFailed": "Apple Health n'a pas partagé cinq zones de fréquence cardiaque. Vérifiez que l'accès à Santé est autorisé, puis réessayez.",
+    "errors": {
+      "maxRange": "La FC max doit être comprise entre {{min}} et {{max}} bpm.",
+      "restingRange": "La FC au repos doit être comprise entre {{min}} et {{max}} bpm.",
+      "needsResting": "Les zones de réserve cardiaque nécessitent une FC au repos.",
+      "customFloors": "Chaque zone doit commencer au-dessus de la précédente, entre 30 et 250 bpm.",
+      "saveFailed": "Impossible d'enregistrer. Vérifiez les valeurs et réessayez."
+    }
+  },
+  "barcodeSources": {
+    "currentSource": "Source : {{name}}",
+    "local": "Vos aliments",
+    "external": "Fournisseur en ligne",
+    "fallback": "Secours Open Food Facts",
+    "otherSources": "Autres sources",
+    "empty": "Aucune autre source disponible",
+    "error": "Impossible de charger les sources du code-barres. Veuillez réessayer.",
+    "comparison": "Comparez la quantité indiquée pour chaque résultat. Les grammes et les millilitres sont des bases différentes.",
+    "retry": "Impossible de charger les sources. Touchez pour réessayer.",
+    "providerError": "Source indisponible",
+    "noMatch": "Aucun résultat",
+    "basis": "Pour {{size}} {{unit}}",
+    "macros": "{{calories}} kcal · Protéines {{protein}} g · Glucides {{carbs}} g · Lipides {{fat}} g",
+    "unknown": "—"
+  },
+  "addMenuSettings": {
+    "reorder": "Réorganiser {{name}}",
+    "reorderHint": "Change la place de cette ligne dans les Actions rapides",
+    "reset": "Rétablir par défaut",
+    "cardsTitle": "Tuiles",
+    "cardsDescription": "Les quatre tuiles en haut des Actions rapides. Touchez-en une pour choisir son contenu. Choisir un élément déjà placé échange les deux.",
+    "rowsTitle": "Liste",
+    "rowsDescription": "Les lignes sous les tuiles. Faites glisser une ligne par sa poignée pour la déplacer. Désactivez une ligne pour la masquer.",
+    "previewTitle": "Aperçu",
+    "previewDescription": "L'aspect des Actions rapides avec vos choix.",
+    "lineNumber": "Ligne {{number}}",
+    "needsCycle": "Non affiché : le suivi du cycle est désactivé",
+    "showAs": "Afficher en",
+    "showAsValue": "Afficher en {{style}}",
+    "styleList": "Liste",
+    "stylePair": "Paire",
+    "styleButton": "Bouton",
+    "pairsTitle": "Paires",
+    "pairsDescription": "Affichées par deux sur une ligne, sous la liste. Un élément seul occupe toute la ligne.",
+    "buttonsTitle": "Boutons",
+    "buttonsDescription": "Affichés côte à côte en bas du panneau.",
+    "chooseCard": "Choisir une tuile",
+    "slotLabel": "Tuile {{number}} : {{name}}",
+    "slotHint": "Ouvre une liste pour choisir ce qui va ici"
+  },
+  "customCategories": {
+    "title": "Mesures personnalisées",
+    "add": "Ajouter une catégorie",
+    "loading": "Chargement des mesures personnalisées…",
+    "loadFailed": "Échec du chargement des mesures personnalisées",
+    "loadFailedSubtitle": "Vérifiez votre connexion et réessayez.",
+    "emptyTitle": "Aucune catégorie personnalisée",
+    "emptySubtitle": "Ajoutez une catégorie, par exemple la glycémie, pour suivre vos propres mesures.",
+    "editNamed": "Modifier {{name}}",
+    "deleteNamed": "Supprimer {{name}}",
+    "deleteTitle": "Supprimer la catégorie",
+    "deleteMessage": "Supprimer {{name}} ? Les mesures enregistrées dans cette catégorie ne seront plus disponibles.",
+    "deleteSuccess": "Catégorie supprimée",
+    "deleteFailed": "Échec de la suppression de la catégorie"
+  },
+  "customCategoryEdit": {
+    "createTitle": "Ajouter une catégorie",
+    "editTitle": "Modifier la catégorie",
+    "loading": "Chargement de la catégorie…",
+    "name": "Nom",
+    "namePlaceholder": "ex. Glycémie",
+    "nameHelp": "Identifiant interne utilisé pour la synchronisation",
+    "displayName": "Nom affiché (facultatif)",
+    "displayNamePlaceholder": "ex. Glycémie du matin",
+    "displayNameHelp": "Nom personnalisé facultatif affiché dans l'application",
+    "measurementType": "Unité de mesure",
+    "measurementTypePlaceholder": "ex. mg/dL",
+    "unitPrecisionNote": "Les unités standard (kcal, mmHg, bpm…) ajustent automatiquement la précision des graphiques.",
+    "dataType": "Type de donnée",
+    "dataTypeNumeric": "Numérique",
+    "dataTypeText": "Texte",
+    "frequency": "Fréquence",
+    "frequencyAll": "Toutes (entrées illimitées)",
+    "frequencyDaily": "Quotidienne (une par jour)",
+    "frequencyHourly": "Horaire (une par heure)",
+    "frequencyAllShort": "Illimitée",
+    "frequencyDailyShort": "Quotidienne",
+    "frequencyHourlyShort": "Horaire",
+    "errors": {
+      "title": "Vérifiez le formulaire",
+      "required": "Le nom et l'unité de mesure sont obligatoires."
+    },
+    "saveSuccess": "Catégorie enregistrée",
+    "saveFailed": "Échec de l'enregistrement de la catégorie"
+  },
+  "compareReport": {
+    "screen": {
+      "retry": "Réessayer",
+      "tooOld": "La comparaison nécessite un serveur SparkyFitness plus récent. Mettez à jour votre serveur pour l'utiliser.",
+      "loadFailed": "Impossible de charger cette comparaison."
+    },
+    "groups": {
+      "feelings": "Ressenti",
+      "sleep": "Sommeil",
+      "meditation": "Méditation",
+      "food": "Alimentation",
+      "training": "Entraînement",
+      "body": "Corps"
+    },
+    "metrics": {
+      "mood": "Humeur",
+      "energy": "Énergie",
+      "focus": "Concentration",
+      "timeAsleep": "Temps de sommeil",
+      "sleepScore": "Score de sommeil",
+      "overnightHrv": "Variabilité cardiaque nocturne (VFC)",
+      "restingHeartRate": "Fréquence cardiaque au repos",
+      "bedtime": "Heure du coucher",
+      "bedtimeConsistency": "Régularité du coucher",
+      "meditationMinutes": "Durée de méditation",
+      "meditationSessions7d": "Nombre de séances de méditation (7 jours)",
+      "meditated": "Méditation",
+      "calories": "Apport calorique",
+      "protein": "Apport en protéines",
+      "carbs": "Apport en glucides",
+      "fat": "Apport en lipides",
+      "caffeine": "Caféine",
+      "alcohol": "Alcool",
+      "workoutMinutes": "Durée d'entraînement",
+      "cardioMinutes": "Durée de cardio",
+      "strengthVolume": "Volume de musculation",
+      "trainingLoad": "Charge d'entraînement",
+      "weightTrend": "Tendance du poids",
+      "steps": "Nombre de pas"
+    },
+    "metricNouns": {
+      "meditated": "méditation"
+    },
+    "phrase": {
+      "lastNights": "{{metric}} de la nuit précédente",
+      "daysYou": "nombre de jours avec {{verb}}",
+      "your": "{{metric}}",
+      "yourWhen": "{{metric}} {{timing}}"
+    },
+    "timing": {
+      "sameDay": "le jour même",
+      "thatDay": "ce jour-là",
+      "nextDay": "le lendemain",
+      "dayAfterYouWoke": "le lendemain du réveil",
+      "thatNight": "cette nuit-là",
+      "dayBefore": "la veille",
+      "nightBefore": "la nuit précédente",
+      "twoNightsBefore": "deux nuits avant",
+      "sameNight": "la même nuit",
+      "nextNight": "la nuit suivante",
+      "sameWeek": "la même semaine",
+      "nextWeek": "la semaine suivante"
+    },
+    "yesNo": {
+      "onDays": "Les jours avec {{yes}}",
+      "dayAfter": "Le lendemain des jours avec {{yes}}",
+      "dayBefore": "La veille des jours avec {{yes}}",
+      "nightAfter": "La nuit suivant les jours avec {{yes}}",
+      "nightBefore": "La nuit précédant les jours avec {{yes}}",
+      "twoNightsBefore": "Deux nuits avant les jours avec {{yes}}"
+    },
+    "verdict": {
+      "question": "Y a-t-il un lien entre votre {{a}} et votre {{b}} {{timing}} ?",
+      "days_one": "{{count}} jour",
+      "days_many": "{{count}} jours",
+      "days_other": "{{count}} jours",
+      "weeks_one": "{{count}} semaine",
+      "weeks_many": "{{count}} semaines",
+      "weeks_other": "{{count}} semaines",
+      "strength": {
+        "weak": "faible",
+        "moderate": "modéré",
+        "strong": "fort"
+      },
+      "linkedHeadline": "Oui, un lien {{strength}}",
+      "linkedPositive": "Quand votre {{a}} était {{aDirection}}, votre {{b}} {{timing}} était aussi {{bDirection}}.",
+      "linkedNegative": "Quand votre {{a}} était {{aDirection}}, votre {{b}} {{timing}} était {{bDirection}}.",
+      "noLinkHeadline": "Pas de lien net",
+      "noLinkDetail": "Sur ces {{n}}, leurs variations n'ont pas évolué ensemble plus que le hasard ne l'expliquerait.",
+      "longerSpan": "Une période plus longue aide à repérer un lien faible.",
+      "differenceHeadline": "Oui, une différence",
+      "differenceHigher": "{{when}}, la valeur de votre {{outcome}} était plus élevée que les {{others}}.",
+      "differenceLower": "{{when}}, la valeur de votre {{outcome}} était plus basse que les {{others}}.",
+      "differenceLater": "{{when}}, votre {{outcome}} était plus tardive que les {{others}}.",
+      "differenceEarlier": "{{when}}, votre {{outcome}} était plus précoce que les {{others}}.",
+      "noDifferenceHeadline": "Pas de différence nette",
+      "noDifferenceDetail": "Sur ces {{n}}, votre {{outcome}} n'a pas assez différé entre les deux types de jours pour exclure le hasard.",
+      "tooFewHeadline": "Pas encore assez de jours",
+      "tooFewHeadlineWeeks": "Pas encore assez de semaines",
+      "tooFewDetail": "Vous en avez {{n}} ; il en faut {{needed}} pour répondre.",
+      "logDays_one": "Saisissez « {{weaker}} » sur {{count}} jour de plus, ou choisissez une période plus longue.",
+      "logDays_many": "Saisissez « {{weaker}} » sur {{count}} jours de plus, ou choisissez une période plus longue.",
+      "logDays_other": "Saisissez « {{weaker}} » sur {{count}} jours de plus, ou choisissez une période plus longue.",
+      "logWeeks_one": "Saisissez « {{weaker}} » pendant {{count}} semaine de plus, ou choisissez une période plus longue.",
+      "logWeeks_many": "Saisissez « {{weaker}} » pendant {{count}} semaines de plus, ou choisissez une période plus longue.",
+      "logWeeks_other": "Saisissez « {{weaker}} » pendant {{count}} semaines de plus, ou choisissez une période plus longue.",
+      "needsHistory": "Chaque jour est comparé à vos deux semaines précédentes : un jour a donc d'abord besoin d'une semaine d'historique.",
+      "fewYesHeadline": "Pas encore assez de jours avec {{yes}}",
+      "fewYesDetail": "Vous en avez {{n}} ; il en faut {{needed}} pour répondre. Essayez une période plus longue.",
+      "fewNoHeadline": "Pas encore assez de jours sans {{yesNoun}}",
+      "fewNoDetail": "Presque tous les jours de cette période sont des jours avec {{yes}} : il n'y a rien à comparer. Essayez une période plus longue.",
+      "noVariationHeadline": "Rien à comparer pour le moment",
+      "noVariationDetail": "« {{metric}} » n'a pas varié sur cette période : il n'y a donc rien à comparer.",
+      "noVariationGeneric": "L'une des deux mesures n'a pas varié sur cette période.",
+      "longerSpanDifference": "Une période plus longue aide à repérer une petite différence."
+    },
+    "howSure": {
+      "differenceHigher": "{{diff}} de plus que les {{others}} (chacun comparé à votre propre normale)",
+      "differenceLower": "{{diff}} de moins que les {{others}} (chacun comparé à votre propre normale)",
+      "differenceLater": "{{diff}} min plus tard que les {{others}} (chacun comparé à votre propre normale)",
+      "differenceEarlier": "{{diff}} min plus tôt que les {{others}} (chacun comparé à votre propre normale)",
+      "differenceSame": "À peu près pareil que les {{others}} (chacun comparé à votre propre normale)"
+    },
+    "since": {
+      "question": "Depuis que j'ai commencé « {{habit}} » régulièrement, y a-t-il un changement dans votre {{outcome}} ?",
+      "changedHeadline": "Oui, il y a eu un changement",
+      "changedDetail": "Depuis le {{start}}, votre {{outcome}} était en moyenne de {{since}}, contre {{before}} avant ({{diff}}).",
+      "changedDetailLastYear": "Sur la dernière année, votre {{outcome}} était en moyenne de {{since}}, contre {{before}} l'année précédant votre début ({{diff}}).",
+      "noChangeHeadline": "Pas de changement net",
+      "noChangeDetail": "Depuis le {{start}}, votre {{outcome}} était en moyenne de {{since}}, contre {{before}} avant : pas assez différent pour exclure le hasard.",
+      "noChangeDetailLastYear": "Sur la dernière année, votre {{outcome}} était en moyenne de {{since}}, contre {{before}} l'année précédant votre début : pas assez différent pour exclure le hasard.",
+      "minutesLater": "{{minutes}} min plus tard",
+      "minutesEarlier": "{{minutes}} min plus tôt",
+      "fewBeforeHeadline": "Pas encore assez de données avant le {{start}}",
+      "fewSinceHeadline": "Pas encore assez de données depuis le {{start}}",
+      "fewValuesDetail": "Vous avez {{n}} de données pour votre {{outcome}} ; il en faut {{needed}} pour répondre.",
+      "shortSinceDetail": "Cela fait {{days}} depuis ; il en faut {{needed}} pour répondre.",
+      "shortBeforeDetail": "Vos données « {{outcome}} » commencent {{days}} avant cette date ; il en faut {{needed}} pour répondre.",
+      "noStartHeadline": "Choisissez le jour où vous avez commencé",
+      "noStartDetail": "La comparaison portera alors sur votre {{outcome}} avant et depuis ce jour.",
+      "regularity_one": "Habitude tenue pendant {{weeksKept}} semaine sur {{count}} depuis.",
+      "regularity_many": "Habitude tenue pendant {{weeksKept}} des {{count}} semaines écoulées depuis.",
+      "regularity_other": "Habitude tenue pendant {{weeksKept}} des {{count}} semaines écoulées depuis.",
+      "alreadyRising": "⚠ « {{metric}} » était déjà en hausse avant votre début.",
+      "alreadyFalling": "⚠ « {{metric}} » était déjà en baisse avant votre début.",
+      "alreadyLater": "⚠ « {{metric}} » se décalait déjà plus tard avant votre début.",
+      "alreadyEarlier": "⚠ « {{metric}} » se décalait déjà plus tôt avant votre début.",
+      "caveat": "Beaucoup de choses peuvent changer en quelques mois : ceci montre un changement depuis votre début, pas que « {{habit}} » en soit la cause.",
+      "startLabel": "Depuis",
+      "startTitle": "Date de début",
+      "suggested": "(suggérée)",
+      "pickDate": "Choisir une date",
+      "lineLabel": "Seuil : {{metric}} ≥",
+      "lineTitle": "{{metric}} à partir de",
+      "chartBefore": "Avant",
+      "chartSince": "Depuis",
+      "chartLine": "Seuil {{line}}",
+      "chartLabel": "{{metric}} au fil du temps, avant et depuis le {{start}}",
+      "typicalRange": "Habituellement entre {{low}} et {{high}} (avant : {{beforeLow}}–{{beforeHigh}}).",
+      "aboveLine": "À partir de {{line}} sur {{since}} des jours (avant : {{before}})."
+    },
+    "stats": {
+      "pTiny": "p < 0.001",
+      "p": "p {{p}}",
+      "correlation": "r {{r}} · intervalle à 95 % {{low}} à {{high}} · {{p}} · {{n}}",
+      "difference": "différence {{diff}} · intervalle à 95 % {{low}} à {{high}} · {{p}} · {{n}}",
+      "differenceMinutes": "différence {{diff}} min · intervalle à 95 % {{low}} à {{high}} min · {{p}} · {{n}}"
+    },
+    "direction": {
+      "higher": "au-dessus de la normale",
+      "lower": "en dessous de la normale",
+      "later": "plus tard que d'habitude",
+      "earlier": "plus tôt que d'habitude"
+    },
+    "logged": {
+      "weight": "poids",
+      "sleep": "sommeil",
+      "workouts": "séances",
+      "meditation": "méditation"
+    },
+    "answer": {
+      "throughYesterday": "Jusqu'à hier",
+      "throughLastWeek": "Jusqu'à la semaine dernière",
+      "throughDate": "Jusqu'au {{date}}"
+    },
+    "chart": {
+      "eachDay": "Un point par jour",
+      "eachWeek": "Un point par semaine",
+      "overTime": "Au fil du temps",
+      "axis": "{{metric}} par rapport à votre normale",
+      "axisYesNo": "{{metric}} (oui ou non)",
+      "axisDaysYou": "Jours avec {{verb}} par rapport à votre normale",
+      "range": "{{metric}} {{min}}–{{max}}",
+      "noDots": "Pas encore de jour avec les deux",
+      "noDotsWeeks": "Pas encore de semaine avec les deux",
+      "noOverTime": "Rien d'enregistré sur cette période",
+      "dotsLabel": "Chaque point associe {{a}} et {{b}}",
+      "overTimeLabel": "{{a}} et {{b}} au fil du temps, chacun à sa propre échelle"
+    },
+    "bars": {
+      "yesDays": "Jours avec {{yes}}",
+      "noDays": "Jours sans {{yesNoun}}",
+      "otherDays": "Autres jours",
+      "otherNights": "Autres nuits",
+      "meanAndDays_one": "{{mean}} · {{count}} jour",
+      "meanAndDays_many": "{{mean}} · {{count}} jours",
+      "meanAndDays_other": "{{mean}} · {{count}} jours",
+      "meanAndNights_one": "{{mean}} · {{count}} nuit",
+      "meanAndNights_many": "{{mean}} · {{count}} nuits",
+      "meanAndNights_other": "{{mean}} · {{count}} nuits"
+    },
+    "checks": {
+      "ownNormal": "✓ Comparé à votre propre normale",
+      "notProof": "Un lien, pas la preuve d'une cause",
+      "seemsFirst": "« {{metric}} » semble venir en premier",
+      "comesFirst": "« {{metric}} » vient en premier",
+      "otherWay": "Le lien est plus fort dans l'autre sens",
+      "cantTell": "Impossible de dire lequel vient en premier",
+      "weekendHolds": "Se vérifie encore en tenant compte des week-ends",
+      "weekendMay": "Il peut s'agir d'un effet semaine / week-end"
+    },
+    "sentence": {
+      "something": "quelque chose",
+      "sometime": "un moment",
+      "does": "Lien entre",
+      "goWith": "et",
+      "questionMark": "?",
+      "firstTitle": "Premier élément",
+      "secondTitle": "Second élément",
+      "timingTitle": "Quand",
+      "dayByDay": "Jour par jour",
+      "weekByWeek": "Semaine par semaine",
+      "sameDay": "Le jour même",
+      "nextDay": "Le lendemain",
+      "dayBefore": "La veille",
+      "sameWeek": "La même semaine",
+      "nextWeek": "La semaine suivante",
+      "since": "Depuis que",
+      "iStarted": "j'ai commencé",
+      "regularlyHas": "régulièrement, est-ce que",
+      "changed": "a changé ?",
+      "sinceHabit": "Depuis le début d'une habitude",
+      "beforeVsSince": "Avant / depuis"
+    },
+    "span": {
+      "30d": "30 jours",
+      "60d": "60 jours",
+      "90d": "90 jours",
+      "6m": "6 mois",
+      "1y": "1 an"
+    },
+    "start": {
+      "suggestions": "Essayez l'une de ces questions",
+      "recent": "Vos questions récentes"
+    },
+    "title": "Comparer"
   }
 }

@@ -4,6 +4,16 @@ This page explains how to manage preference settings in **SparkyFitness**.
 
 ---
 
+## Energy unit (kcal or kJ)
+
+Choose whether energy is shown in **kilocalories (kcal)** or **kilojoules (kJ)**. Change it on the web under **Settings > Profile & Account**, or in the mobile app under **Settings > Calorie Settings > Energy Unit**. It is one setting for your account, so a change on one device shows on the other.
+
+The unit applies everywhere energy appears: the diary and dashboard, foods and meals, workouts, goals, reports, the AI assistant, and on mobile the home screen widgets, Apple Watch and Wear OS apps. Fields where you type energy, such as a custom food's calories, a workout's calories burned, the fasting calorie threshold and BMR, take the value in your unit.
+
+SparkyFitness always stores energy in kcal and converts it for display (1 kcal = 4.184 kJ), so switching back and forth never changes your logged data.
+
+---
+
 ## Autoscaling OpenFoodFacts
 
 The **Auto-scale OpenFoodFacts imports** option scales measurements and nutrition values from OpenFoodFacts to their **serving size**.

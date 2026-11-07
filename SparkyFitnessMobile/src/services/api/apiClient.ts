@@ -130,6 +130,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
 
     return await response.json();
   } catch (error) {
+    if (signal?.aborted) throw error;
     // An ApiError's message embeds the response body, so with body logging off
     // only its status is logged.
     const message =

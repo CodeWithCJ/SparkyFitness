@@ -205,6 +205,11 @@ export interface WatchContextPayload {
    */
   distanceUnit?: 'km' | 'miles' | null;
   /**
+   * The phone's energy unit. Every energy number in the context stays in
+   * kcal; the watch shows it in kJ when this is `kJ`. Missing reads as `kcal`.
+   */
+  energyUnit?: 'kcal' | 'kJ' | null;
+  /**
    * The phone's Settings → Haptics switch. The watch plays button haptics
    * and the rest-end buzz only while this is on. Missing reads as on.
    */

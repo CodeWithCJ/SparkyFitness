@@ -187,6 +187,7 @@ describe('useWidgetSync', () => {
       goal: 2000,
       remaining: 460,
       progress: 0.77,
+      energyUnit: 'kcal',
       lastUpdated: expect.any(Number),
     });
   });

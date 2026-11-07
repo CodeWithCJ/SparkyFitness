@@ -47,7 +47,10 @@ export interface ExternalDataProvider {
   sync_frequency?: 'hourly' | 'daily' | 'manual';
   has_token?: boolean;
   garmin_connect_status?: 'linked' | 'connected' | 'disconnected';
+  /** The last completed Garmin sync; null means it never synced. */
   garmin_last_status_check?: string | null;
+  /** false when the Garmin microservice did not answer the status check. */
+  garmin_service_reachable?: boolean | null;
   garmin_token_expires?: string | null;
   withings_last_sync_at?: string | null;
   withings_token_expires?: string | null;

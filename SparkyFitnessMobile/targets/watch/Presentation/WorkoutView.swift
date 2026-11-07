@@ -146,7 +146,7 @@ private struct WorkoutSummaryView: View {
                     row(String(localized: "watch.summary.maxHr", defaultValue: "Max HR"), "\(Int(max.rounded())) bpm")
                 }
                 if let kcal = summary.activeEnergyKcal, kcal > 0 {
-                    row(String(localized: "watch.summary.active", defaultValue: "Active"), "\(Int(kcal.rounded())) kcal")
+                    row(String(localized: "watch.summary.active", defaultValue: "Active"), "\(Int(checkIn.context.energyFromKcal(kcal).rounded())) \(checkIn.context.energyUnitLabel)")
                 }
                 WorkoutEffortPicker { score, done in
                     session.rateWorkoutEffort(score, sessionId: summary.sessionId, completion: done)
@@ -1015,7 +1015,9 @@ private struct SetScreenMetricsLine: View {
         // One Text, so a 40 mm screen shrinks the line as a whole rather than
         // cutting off the calories.
         let bpm = store.latestBpm.map { "\(Int($0.rounded()))" } ?? "--"
-        let kcal = store.activeEnergyKcal.map { "\(Int($0))" } ?? "--"
+        let kcal = store.activeEnergyKcal.map {
+            "\(Int(CheckInStore.shared.context.energyFromKcal($0)))"
+        } ?? "--"
         (Text(WorkoutMetricsPage.elapsed(store.elapsedSeconds)).foregroundStyle(.yellow)
             + Text(" ")
             + Text(Image(systemName: "heart.fill")).foregroundStyle(.red)
@@ -1053,8 +1055,12 @@ struct WorkoutMetricsPage: View {
                 tint: .red
             )
             reading(
-                store.activeEnergyKcal.map { "\(Int($0))" },
-                unit: String(localized: "watch.workout.kcal", defaultValue: "KCAL"),
+                store.activeEnergyKcal.map {
+                    "\(Int(CheckInStore.shared.context.energyFromKcal($0)))"
+                },
+                unit: CheckInStore.shared.context.usesKilojoules
+                    ? String(localized: "watch.workout.kj", defaultValue: "KJ")
+                    : String(localized: "watch.workout.kcal", defaultValue: "KCAL"),
                 systemImage: "flame.fill",
                 tint: .orange
             )

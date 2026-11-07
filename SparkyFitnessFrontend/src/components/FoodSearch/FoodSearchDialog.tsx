@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import type { Food } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import EnhancedFoodSearch from './FoodSearch';
+import { FOOD_SEARCH_DIALOG_CONTENT_CLASS } from './foodSearchDialogLayout';
 
 interface FoodSearchDialogProps {
   open: boolean;
@@ -34,7 +35,7 @@ const FoodSearchDialog = ({
   const { t } = useTranslation();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className={FOOD_SEARCH_DIALOG_CONTENT_CLASS}>
         <DialogHeader>
           <DialogTitle>{t('foodSearchDialog.title', title)}</DialogTitle>
           <DialogDescription>

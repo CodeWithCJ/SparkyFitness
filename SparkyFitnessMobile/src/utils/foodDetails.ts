@@ -800,6 +800,7 @@ type NutritionLike = Partial<
   custom_nutrients?: Record<string, string | number> | null;
 };
 
+/** Reads a stored nutrient value as a number; blank or invalid values count as 0. */
 function coerceNumber(value: unknown): number {
   if (value == null || value === '') return 0;
   const n = Number(value);
@@ -832,17 +833,26 @@ function groupedWeightBelongsToServing(
     : values.some((value) => value > 0);
 }
 
-export function nutritionMatches(a: NutritionLike, b: NutritionLike): boolean {
-  for (const field of FOOD_VARIANT_NUTRIENT_FIELDS) {
-    if (coerceNumber(a[field]) !== coerceNumber(b[field])) return false;
-  }
-  const ac = a.custom_nutrients ?? {};
-  const bc = b.custom_nutrients ?? {};
+/** True when two custom-nutrient maps hold the same amounts (a missing key counts as 0). */
+export function customNutrientsMatch(
+  a: Record<string, string | number> | null | undefined,
+  b: Record<string, string | number> | null | undefined
+): boolean {
+  const ac = a ?? {};
+  const bc = b ?? {};
   const keys = new Set([...Object.keys(ac), ...Object.keys(bc)]);
   for (const key of keys) {
     if (coerceNumber(ac[key]) !== coerceNumber(bc[key])) return false;
   }
   return true;
+}
+
+/** True when two variants hold the same nutrient and custom-nutrient amounts. */
+export function nutritionMatches(a: NutritionLike, b: NutritionLike): boolean {
+  for (const field of FOOD_VARIANT_NUTRIENT_FIELDS) {
+    if (coerceNumber(a[field]) !== coerceNumber(b[field])) return false;
+  }
+  return customNutrientsMatch(a.custom_nutrients, b.custom_nutrients);
 }
 
 export function toEquivalentUnit(variant: FoodVariantDetail): EquivalentUnit {

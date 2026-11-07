@@ -24,6 +24,7 @@ import ExerciseReportsDashboard from '@/pages/Reports/ExerciseReportsDashboard';
 import SleepReport from '@/pages/Reports/SleepReport';
 import BodyBatteryCard from '@/pages/Reports/BodyBatteryCard';
 import RespirationCard from '@/pages/Reports/RespirationCard';
+import GlucoseCard from '@/pages/Reports/GlucoseCard';
 import HeartRateAnalyticsCard from '@/pages/Reports/HeartRateAnalyticsCard';
 
 import StressChart from '@/pages/Reports/StressChart';
@@ -242,6 +243,9 @@ const Reports = () => {
       case 'measurements':
         return (
           <div className="space-y-6">
+            <ChartErrorBoundary>
+              <GlucoseCard startDate={startDate} endDate={endDate} />
+            </ChartErrorBoundary>
             <ChartErrorBoundary>
               <WidgetGrid
                 pageKey="reports-measurements"

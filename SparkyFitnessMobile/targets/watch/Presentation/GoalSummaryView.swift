@@ -45,7 +45,7 @@ struct GoalSummaryView: View {
     private var headlineRow: some View {
         VStack(spacing: 4) {
             calorieRing
-            Text(String(localized: "watch.goals.eatenBurned", defaultValue: "\(nutrition.map { whole($0.caloriesConsumed) } ?? "–") eaten · \(nutrition.map { whole($0.caloriesBurned) } ?? "–") burned"))
+            Text(String(localized: "watch.goals.eatenBurned", defaultValue: "\(nutrition.map { whole(store.context.energyFromKcal($0.caloriesConsumed)) } ?? "–") eaten · \(nutrition.map { whole(store.context.energyFromKcal($0.caloriesBurned)) } ?? "–") burned"))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
@@ -93,14 +93,19 @@ struct GoalSummaryView: View {
     /// it, so the sign does the work the word can't.
     private var calorieValueText: String {
         guard let nutrition else { return "–" }
-        return whole(nutrition.caloriesRemaining)
+        return whole(store.context.energyFromKcal(nutrition.caloriesRemaining))
     }
 
     private var calorieCaption: String {
-        guard let nutrition, nutrition.caloriesRemaining < 0 else {
-            return String(localized: "watch.goals.kcalLeft", defaultValue: "kcal left")
+        let over = (nutrition?.caloriesRemaining ?? 0) < 0
+        if store.context.usesKilojoules {
+            return over
+                ? String(localized: "watch.goals.kjOver", defaultValue: "kJ over")
+                : String(localized: "watch.goals.kjLeft", defaultValue: "kJ left")
         }
-        return String(localized: "watch.goals.kcalOver", defaultValue: "kcal over")
+        return over
+            ? String(localized: "watch.goals.kcalOver", defaultValue: "kcal over")
+            : String(localized: "watch.goals.kcalLeft", defaultValue: "kcal left")
     }
 
     /// Unsigned here even though the visible number is signed: "minus 254
@@ -108,7 +113,12 @@ struct GoalSummaryView: View {
     /// already say which side of the goal the wearer is on.
     private var calorieAccessibilityLabel: String {
         guard let nutrition else { return String(localized: "watch.goals.caloriesNotSynced", defaultValue: "Calories not synced yet") }
-        let amount = whole(abs(nutrition.caloriesRemaining))
+        let amount = whole(store.context.energyFromKcal(abs(nutrition.caloriesRemaining)))
+        if store.context.usesKilojoules {
+            return nutrition.caloriesRemaining < 0
+                ? String(localized: "watch.goals.kilojoulesOverGoal", defaultValue: "\(amount) kilojoules over goal")
+                : String(localized: "watch.goals.kilojoulesLeft", defaultValue: "\(amount) kilojoules left")
+        }
         return nutrition.caloriesRemaining < 0
             ? String(localized: "watch.goals.caloriesOverGoal", defaultValue: "\(amount) calories over goal")
             : String(localized: "watch.goals.caloriesLeft", defaultValue: "\(amount) calories left")

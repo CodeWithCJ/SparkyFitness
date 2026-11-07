@@ -35,6 +35,8 @@ jest.mock('@/contexts/PreferencesContext', () => ({
           ? value / KM_PER_MILE
           : value * KM_PER_MILE,
     timezone: 'UTC',
+    energyUnit: 'kcal',
+    getEnergyUnitString: (unit: string) => unit,
   }),
 }));
 

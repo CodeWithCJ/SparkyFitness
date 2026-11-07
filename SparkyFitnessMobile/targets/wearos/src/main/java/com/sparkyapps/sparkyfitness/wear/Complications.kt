@@ -102,21 +102,25 @@ class EnergyGoalComplicationService : SuspendingComplicationDataSourceService() 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
     val store = WearSessionManager.getInstance(applicationContext).checkInStore
     val nutrition = store.nutrition.value
-    val consumed = (nutrition?.caloriesConsumed ?: 0.0).toFloat()
-    val goal = max(1.0, (nutrition?.caloriesConsumed ?: 0.0) + (nutrition?.caloriesRemaining ?: 2000.0)).toFloat()
+    val energy = EnergyDisplay.of(store.watchContext.value)
+    val consumed = energy.value(nutrition?.caloriesConsumed ?: 0.0).toFloat()
+    val goal = energy.value(
+      max(1.0, (nutrition?.caloriesConsumed ?: 0.0) + (nutrition?.caloriesRemaining ?: 2000.0))
+    ).toFloat()
     val tap = ComplicationUpdater.tapPendingIntent(applicationContext, WatchPage.GOALS)
-    return buildData(request.complicationType, consumed, goal, tap)
+    return buildData(request.complicationType, consumed, goal, tap, energy.unit)
   }
 
   private fun buildData(
     type: ComplicationType,
     consumed: Float,
     goal: Float,
-    tap: PendingIntent?
+    tap: PendingIntent?,
+    energyUnit: String = "kcal"
   ): ComplicationData? {
     val pct = ((consumed / max(1f, goal)) * 100f).toInt()
     val text = PlainComplicationText.Builder("${consumed.toInt()}").build()
-    val desc = PlainComplicationText.Builder("Energy: ${consumed.toInt()} / ${goal.toInt()} kcal ($pct%)").build()
+    val desc = PlainComplicationText.Builder("Energy: ${consumed.toInt()} / ${goal.toInt()} $energyUnit ($pct%)").build()
     val image = ComplicationUpdater.monoIcon(this, R.drawable.ic_complication_calories)
 
     return when (type) {

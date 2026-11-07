@@ -74,6 +74,9 @@ import {
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel } from '../utils/energyUnit';
+import { useEnergyInputText } from '../hooks/useEnergyInputText';
 
 export type { FoodFormData };
 
@@ -174,6 +177,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
   onCustomNutrientsChange,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   // A caller may reuse the canonical English SAVE_LABEL marker for the footer
   // submit button; localize it so it follows the active app language.
   const resolvedSubmitLabel =
@@ -510,6 +514,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
     });
   };
 
+  // The calories field shows and accepts the account's energy unit; the form
+  // itself keeps kcal, like every variant and scan it is filled from.
+  const caloriesInput = useEnergyInputText(form.calories, (value) =>
+    update('calories', value)
+  );
+
   useEffect(() => {
     if (form.servingSize || form.servingUnit) {
       onServingChange?.(form.servingSize, form.servingUnit);
@@ -838,6 +848,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
         caffeine_mg: scaledPreciseUpdates.caffeineMg,
         water_ml: scaledPreciseUpdates.waterMl,
         alcohol_g: scaledPreciseUpdates.alcoholG,
+        // Same anchor and ratio as above, so the screen keeps the food's
+        // custom nutrients instead of clearing them for this draft.
+        custom_nutrients: scaleCompatibleDraftVariant(
+          anchor,
+          result.estimatedAmount
+        ).custom_nutrients,
         source: 'ai_estimate',
         ai_confidence: result.confidence,
       };
@@ -1352,16 +1368,17 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
           <View className="gap-1.5 mt-1.5">
             <Text className="text-text-primary text-sm font-bold">
-              {t('foodForm.caloriesRequired', {
-                defaultValue: 'Calories (kcal) *',
+              {t('foodForm.caloriesRequiredWithUnit', {
+                defaultValue: 'Calories ({{unit}}) *',
+                unit: energyUnitLabel(energyUnit, t),
               })}
             </Text>
             <FormInput
               ref={fieldRefs.calories}
               placeholder="0"
-              value={form.calories}
+              value={caloriesInput.text}
               onChangeText={(v) => {
-                if (DECIMAL_INPUT_REGEX.test(v)) update('calories', v);
+                if (DECIMAL_INPUT_REGEX.test(v)) caloriesInput.onChangeText(v);
               }}
               keyboardType="decimal-pad"
             />

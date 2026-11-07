@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-05_
+_Last updated: 2026-11-06_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -25,6 +25,7 @@ This is the package guide for `SparkyFitnessMobile/`. Work from this directory f
 - The app talks to the backend under `/api`; health uploads go to `POST /api/health-data`.
 - Global `fetch` is Expo's WinterCG `expo/fetch`, so React Native's `{uri, name, type}` FormData file parts throw "Unsupported FormDataPart implementation". Append an `expo-file-system` `File` (it implements Blob) for multipart uploads; see `pregnancyPhotosApi.ts`.
 - Server-stored distance/weight units are metric. UI conversion belongs in mobile helpers such as `unitConversions.ts`.
+- Energy is stored and sent in kcal everywhere; the account's `energy_unit` (kcal or kJ, picked on the web or in Calorie Settings) only changes display and entry. Read it with `useEnergyUnit()` (Jest mocks it to `'kcal'` in `jest.setup.js`), show values with `roundedEnergy` / `formatEnergyNumber` / `energyUnitLabel` (`utils/energyUnit.ts`), and enter energy with `EnergyFormInput` (`kcalValue` / `onChangeKcal`), or `useEnergyInputText` for another input element, so form state stays kcal and only an edited value is converted. Never hold energy drafts in the display unit: the unit can arrive after the screen mounts. Widget and watch payloads stay kcal and carry `energyUnit`; the Swift, Kotlin and Wear OS code converts at display. When a translated string gains a `{{unit}}` placeholder, rename its key so existing translations go stale instead of failing the i18n audit.
 
 ## Localization contract
 
@@ -35,6 +36,9 @@ Feature developers do not need to know or translate Polish or any future languag
 The shipped locale registry is `src/localization/localeRegistry.json`, read through the typed accessors in `src/localization/localeRegistry.ts`. Adding a catalog to Weblate does not ship it. Shipping requires explicit registry enablement plus native/platform support verification. RN catalogs and native resources are separate surfaces (Expo metadata, Android widget resources, and iOS widget/Live Activity `.lproj` resources), each its own Weblate component and each synced by `.github/workflows/sync-translations.yml`. Only the `en` side of any surface is edited by hand; the i18n audit blocks on registered locales and reports unregistered ones without failing. The workflow pulls the widget resources for registered locales only, because Android and iOS compile whatever resource directories are present and there is no build-time registry check for them.
 
 ## Commands
+
+- Timestamped Apple Health and Health Connect glucose readings share the bounded/account-scoped pipeline in `services/shared/heartRateSamplesSync.ts` with heart rate, using an independent cursor. The existing Blood Glucose toggle controls both daily summaries and sample uploads on both platforms; samples are not downsampled.
+- Reports → Measurements includes `components/reports/MeasurementTimelineCard.tsx` for timestamped glucose and all numeric custom categories (including non-manual sources), with account-level `default_glucose_unit` (App Settings / web Preferences), native context icons, and independently selectable food, exercise, sleep, medication, stress, caffeine/alcohol and hydration context. Shared context normalization is in `shared/src/glucose/context.ts`; context reads retain each endpoint's permissions.
 
 ```bash
 pnpm start
@@ -167,6 +171,8 @@ npx expo prebuild --clean
 
 ## Native Patches
 
+- `expo-camera@57.0.6` is patched via `../patches/expo-camera@57.0.6.patch` and `patchedDependencies` in `pnpm-workspace.yaml` ([#3394](https://github.com/CodeWithCJ/SparkyFitness/pull/3394)). Android pause/cleanup unbind only that view's CameraX use cases; a late old-view teardown otherwise closes the replacement camera and leaves a black preview.
+- `package.json` includes `expo-camera` in `expo.autolinking.android.buildFromSource` so the precompiled module cannot bypass the patched Kotlin. A native rebuild is required. Remove the camera patch, its `patchedDependencies` entry, and that module's `buildFromSource` entry once an upgraded release scopes pause/cleanup to its own use cases; verify repeated camera restarts and background return with optical scans.
 - `react-native-health-connect` is declared as `^4.1.3`; the installed build is patched from the repo root via `patchedDependencies` in `pnpm-workspace.yaml`.
 - Patch file: `../patches/react-native-health-connect@4.1.3.patch`, one hunk. `PermissionUtils.mapPermissionResult` maps `ExerciseRoute` and `BackgroundAccessPermission` back to JS but not `ReadHealthDataHistory`, even though `parsePermissions` accepts it on the request path. Since `requestPermission` also resolves through `mapPermissionResult`, a granted history permission can never be observed, so `ensureHistoryReadPermission` always returns false and Import Full History believes it is capped at 30 days. Reported upstream as matinzd/react-native-health-connect#276; drop the patch if that lands.
 - The older 3.5.3 patch also forced `getTimeRangeFilterLocal` in `getAggregateGroupByPeriodRequest` (DST / local-day grouping) and made `ExerciseRouteResultType` string-valued. Both are gone: 4.1.3 uses the local filter at all 21 sites, and upstream is fixing the route enum in #274 by typing the read path as a string literal union instead — a better fix than ours, so `routeNeedsConsent` keeps accepting both forms and depends on neither declaration.
