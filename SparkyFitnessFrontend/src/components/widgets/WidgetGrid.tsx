@@ -388,7 +388,7 @@ export default function WidgetGrid({
   defaultHidden,
   toolbarContainer,
 }: WidgetGridProps) {
-  const { reset } = useDashboardLayout(pageKey);
+  const { saved, reset } = useDashboardLayout(pageKey);
   const { t } = useTranslation();
   const [resetKey, setResetKey] = useState(0);
 
@@ -400,6 +400,15 @@ export default function WidgetGrid({
   const handleResetLayout = () => {
     reset({ onSuccess: () => setResetKey((prev) => prev + 1) });
   };
+
+  const fallbackHiddenSet = useMemo(
+    () => new Set(saved?.hidden ?? defaultHidden ?? []),
+    [saved?.hidden, defaultHidden]
+  );
+  const fallbackWidgets = useMemo(
+    () => widgets.filter((w) => !fallbackHiddenSet.has(w.key)),
+    [widgets, fallbackHiddenSet]
+  );
 
   return (
     <GridErrorBoundary
@@ -421,7 +430,7 @@ export default function WidgetGrid({
               {t('diary.widgets.resetLayout', 'Reset layout')}
             </Button>
           </div>
-          {widgets.map((w) => (
+          {fallbackWidgets.map((w) => (
             <div key={w.key}>{w.render()}</div>
           ))}
         </div>

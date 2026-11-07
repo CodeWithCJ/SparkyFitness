@@ -370,10 +370,19 @@ export function useNutritionChartWidgets({
       showNetCarbs
     );
     if (energyUnit === 'kcal') return dataWithNetCarbs;
-    return dataWithNetCarbs.map((d) => ({
-      ...d,
-      calories: Math.round(convertEnergy(d.calories, 'kcal', energyUnit)),
-    }));
+    return dataWithNetCarbs.map((d) => {
+      const suppCalories = d['supplement_calories'];
+      const updated: NutritionData = {
+        ...d,
+        calories: Math.round(convertEnergy(d.calories, 'kcal', energyUnit)),
+      };
+      if (typeof suppCalories === 'number') {
+        updated['supplement_calories'] = Math.round(
+          convertEnergy(suppCalories, 'kcal', energyUnit)
+        );
+      }
+      return updated;
+    });
   }, [nutritionData, showNetCarbs, energyUnit, convertEnergy]);
 
   const formatDateForChart = useMemo(
@@ -401,10 +410,7 @@ export function useNutritionChartWidgets({
           result = result.map((point) => {
             const rawGoal =
               chartKey === 'calories'
-                ? (effectiveCalorieGoal(
-                    calorieBalanceByDate?.[point.date],
-                    point.calories
-                  ) ??
+                ? (effectiveCalorieGoal(calorieBalanceByDate?.[point.date]) ??
                   storedGoals?.[point.date]?.[chartKey as keyof ExpandedGoals])
                 : storedGoals?.[point.date]?.[chartKey as keyof ExpandedGoals];
 

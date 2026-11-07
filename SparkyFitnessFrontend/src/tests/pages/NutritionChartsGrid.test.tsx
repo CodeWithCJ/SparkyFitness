@@ -1,13 +1,68 @@
+import { renderHook, render, screen } from '@testing-library/react';
 import {
   generateReportsNutrientsDefaultLayouts,
   isNutrientWidgetKey,
   nutrientKeyFromWidgetKey,
   nutrientWidgetKey,
+  useNutritionChartWidgets,
   WIDGET_KEY_ALCOHOL,
   WIDGET_KEY_HYDRATION,
   WIDGET_KEY_SUMMARY,
 } from '@/pages/Reports/NutritionChartsGrid';
 import { GRID_COLS } from '@/utils/dashboardLayout';
+import type { NutritionData } from '@/types/reports';
+import type { DailyCalorieBalanceRow } from '@workspace/shared';
+
+const mockPreferences = {
+  formatDateInUserTimezone: (d: unknown) => String(d),
+  energyUnit: 'kJ',
+  convertEnergy: (val: number, from: string, to: string) =>
+    from === 'kcal' && to === 'kJ' ? Math.round(val * 4.184) : val,
+  showNetCarbs: false,
+  chartScaleMode: 'day' as const,
+};
+
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: () => ({
+    t: (_k: string, d?: string, vars?: Record<string, unknown>) => {
+      let str = d || _k;
+      if (vars) {
+        Object.entries(vars).forEach(([k, v]) => {
+          str = str.replace(`{{${k}}}`, String(v));
+        });
+      }
+      return str;
+    },
+  }),
+}));
+
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => mockPreferences,
+}));
+
+jest.mock('@/pages/Reports/WeeklyAlcoholCard', () => ({
+  WeeklyAlcoholCard: () => null,
+}));
+
+jest.mock('@/pages/Reports/HydrationTrendChart', () => () => null);
+jest.mock('@/pages/Reports/NutritionPeriodSummary', () => () => null);
+
+jest.mock('@/components/ZoomableChart', () => ({
+  __esModule: true,
+  default: ({
+    children,
+  }: {
+    children: (isMax: boolean, zoom: number) => React.ReactNode;
+  }) => children(false, 1),
+}));
+
+// ResizeObserver mock for ResponsiveContainer
+global.ResizeObserver = class ResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
 
 describe('NutritionChartsGrid helpers', () => {
   it('creates prefixed nutrient widget keys', () => {
@@ -140,5 +195,56 @@ describe('generateReportsNutrientsDefaultLayouts', () => {
     expect(layouts.md).toEqual([]);
     expect(layouts.sm).toEqual([]);
     expect(layouts.xs).toEqual([]);
+  });
+});
+
+describe('useNutritionChartWidgets kJ calculations', () => {
+  it('correctly calculates kJ calorie goal (6,276 kJ) and 10% supplement share', () => {
+    // 1,000 kcal eaten, 100 kcal from supplements, 500 kcal remaining
+    const nutritionData: NutritionData[] = [
+      {
+        date: '2026-11-01',
+        calories: 1000,
+        supplement_calories: 100,
+        carbs: 0,
+        fat: 0,
+        protein: 0,
+      } as unknown as NutritionData,
+    ];
+
+    const calorieBalanceByDate: Record<string, DailyCalorieBalanceRow> = {
+      '2026-11-01': {
+        entry_date: '2026-11-01',
+        eaten: 1000,
+        remaining: 500,
+        burned: 0,
+        net: 1000,
+        exercise_adjusted_goal: 1500,
+        raw_goal: 1500,
+      } as unknown as DailyCalorieBalanceRow,
+    };
+
+    const { result } = renderHook(() =>
+      useNutritionChartWidgets({
+        startDate: '2026-11-01',
+        endDate: '2026-11-01',
+        userId: 'user-1',
+        nutritionData,
+        calorieBalanceByDate,
+      })
+    );
+
+    const caloriesWidget = result.current.find(
+      (w) => w.key === 'nutrient:calories'
+    );
+    expect(caloriesWidget).toBeDefined();
+
+    render(caloriesWidget!.render());
+
+    // 1,000 kcal = 4,184 kJ average
+    expect(screen.getByText('Avg: 4184 kJ')).toBeTruthy();
+
+    // 100 kcal supplements / 1,000 kcal eaten = 10% from supplements
+    expect(screen.getByText('10% from supplements')).toBeTruthy();
   });
 });
