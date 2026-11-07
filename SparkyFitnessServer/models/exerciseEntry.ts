@@ -328,12 +328,38 @@ export const EXERCISE_ENTRY_TELEMETRY_COLUMNS = [
   'calories_applied',
 ] as const;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function telemetryValuesFrom(source: any): unknown[] {
-  return EXERCISE_ENTRY_TELEMETRY_COLUMNS.map((column) => {
-    const value = source?.[column];
-    return value === undefined ? null : value;
-  });
+// The telemetry columns that are integer or smallint in exercise_entries.
+// Health platforms report counts and durations as doubles (HealthKit sums
+// swimming stroke samples to values like 120.99894867182387), and Postgres
+// rejects a fractional value for an integer column, which fails the whole
+// sync batch.
+export const EXERCISE_ENTRY_INTEGER_TELEMETRY_COLUMNS: ReadonlySet<string> =
+  new Set([
+    'heart_rate_recovery_1min',
+    'stroke_count',
+    'moving_time_seconds',
+    'elapsed_time_seconds',
+    'work_time_seconds',
+    'workout_effort',
+  ]);
+
+export function telemetryValueFor(column: string, value: unknown): unknown {
+  if (value === undefined) return null;
+  if (!EXERCISE_ENTRY_INTEGER_TELEMETRY_COLUMNS.has(column)) return value;
+  // pg hands numeric columns back as strings, so a merged update can carry one.
+  const numeric =
+    typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
+  return typeof numeric === 'number' && Number.isFinite(numeric)
+    ? Math.round(numeric)
+    : value;
+}
+
+function telemetryValuesFrom(
+  source: Record<string, unknown> | null | undefined
+): unknown[] {
+  return EXERCISE_ENTRY_TELEMETRY_COLUMNS.map((column) =>
+    telemetryValueFor(column, source?.[column])
+  );
 }
 
 /**
@@ -375,7 +401,13 @@ async function _updateExerciseEntryTelemetryOnlyWithClient(
   await client.query(
     `UPDATE exercise_entries SET ${setClause}, updated_at = now()
      WHERE id = $${columns.length + 1} AND user_id = $${columns.length + 2}`,
-    [...columns.map((column) => telemetryFields[column]), id, userId]
+    [
+      ...columns.map((column) =>
+        telemetryValueFor(column, telemetryFields[column])
+      ),
+      id,
+      userId,
+    ]
   );
 }
 
