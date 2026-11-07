@@ -233,9 +233,13 @@ export const ProviderNutrientViewer = ({
                 : providerStandard
                   ? (providerStandard[label] ?? null)
                   : getStandardNutrientId(label);
-              const standardMeta = standardId
-                ? CENTRAL_NUTRIENT_CONFIG[standardId]
-                : undefined;
+              // Own keys only: the config is a plain object, so an id named
+              // like an Object.prototype member (e.g. "toString") would find an
+              // inherited method instead of falling back to showing the raw id.
+              const standardMeta =
+                standardId && Object.hasOwn(CENTRAL_NUTRIENT_CONFIG, standardId)
+                  ? CENTRAL_NUTRIENT_CONFIG[standardId]
+                  : undefined;
               const standardLabel = standardMeta
                 ? t(standardMeta.label, standardMeta.defaultLabel)
                 : standardId;

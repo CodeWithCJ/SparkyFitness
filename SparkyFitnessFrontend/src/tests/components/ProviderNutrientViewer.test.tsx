@@ -124,4 +124,15 @@ describe('ProviderNutrientViewer', () => {
       'Standard: unknown_nutrient'
     );
   });
+
+  it('treats an id named like an Object.prototype member as unknown', () => {
+    renderOpen(
+      swissFood({
+        provider_nutrients: { Spurenelement: 1 },
+        provider_nutrient_standard: { Spurenelement: 'toString' },
+      })
+    );
+
+    expect(rowFor('Spurenelement')).toHaveTextContent('Standard: toString');
+  });
 });
