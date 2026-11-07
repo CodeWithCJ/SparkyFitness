@@ -87,6 +87,8 @@ import {
   FOOD_PROVIDER_TYPES,
   getProviderDisplayName,
 } from '@/utils/foodProviderLabels';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 
 const FoodDatabaseManager = () => {
   const { t } = useTranslation();
@@ -150,6 +152,8 @@ const FoodDatabaseManager = () => {
     deleteFood,
     mealTypes,
   } = useFoodDatabaseManager();
+  // Foods are stored in kcal; the calories column follows the energy unit.
+  const { energyUnit, convertEnergy } = usePreferences();
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
@@ -366,7 +370,11 @@ const FoodDatabaseManager = () => {
             <div className="flex flex-col text-center">
               <span>{t(meta.label, meta.defaultLabel)}</span>
               <span className="text-[10px] font-normal text-muted-foreground">
-                ({meta.unit})
+                (
+                {nutrient === 'calories'
+                  ? getEnergyUnitString(energyUnit)
+                  : meta.unit}
+                )
               </span>
             </div>
           ),
@@ -383,11 +391,19 @@ const FoodDatabaseManager = () => {
           cell: (info: CellContext<DataTableFeatures, Food, unknown>) => (
             <div className="text-center">
               <span className={`font-medium ${meta.color}`}>
-                {formatNutrientValue(
-                  nutrient,
-                  info.getValue() as number,
-                  customNutrients
-                )}
+                {nutrient === 'calories'
+                  ? Math.round(
+                      convertEnergy(
+                        info.getValue() as number,
+                        'kcal',
+                        energyUnit
+                      )
+                    )
+                  : formatNutrientValue(
+                      nutrient,
+                      info.getValue() as number,
+                      customNutrients
+                    )}
               </span>
             </div>
           ),
@@ -516,6 +532,8 @@ const FoodDatabaseManager = () => {
     ],
     [
       visibleNutrients,
+      energyUnit,
+      convertEnergy,
       t,
       canEdit,
       handleEdit,

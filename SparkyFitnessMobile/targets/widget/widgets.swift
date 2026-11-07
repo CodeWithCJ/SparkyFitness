@@ -8,6 +8,8 @@ struct CalorieSnapshot {
     let remaining: Double
     let progress: Double
     let lastUpdated: Date?
+    /// Unit the numbers above are in (already converted from the kcal snapshot).
+    var energyUnit: WidgetEnergyUnit = .kcal
 
     static let empty = CalorieSnapshot(food: 0, burned: 0, goal: 0, remaining: 0, progress: 0, lastUpdated: nil)
 
@@ -22,6 +24,7 @@ private struct CalorieSnapshotPayload: Decodable {
     let remaining: Double?
     let progress: Double?
     let lastUpdated: Double?
+    let energyUnit: String?
 }
 
 func loadCalorieSnapshot() -> CalorieSnapshot {
@@ -44,15 +47,17 @@ private func fallbackProgress(goal: Double, remaining: Double) -> Double {
 }
 
 private func snapshot(from payload: CalorieSnapshotPayload) -> CalorieSnapshot {
+    let unit = WidgetEnergyUnit(payload.energyUnit)
     let goal = payload.goal ?? 0
     let remaining = payload.remaining ?? 0
     return CalorieSnapshot(
-        food: payload.food ?? 0,
-        burned: payload.burned ?? 0,
-        goal: goal,
-        remaining: remaining,
+        food: unit.fromKcal(payload.food ?? 0),
+        burned: unit.fromKcal(payload.burned ?? 0),
+        goal: unit.fromKcal(goal),
+        remaining: unit.fromKcal(remaining),
         progress: payload.progress ?? fallbackProgress(goal: goal, remaining: remaining),
-        lastUpdated: payload.lastUpdated.map { Date(timeIntervalSince1970: $0) }
+        lastUpdated: payload.lastUpdated.map { Date(timeIntervalSince1970: $0) },
+        energyUnit: unit
     )
 }
 
@@ -127,7 +132,7 @@ private struct RingWithLabel: View {
                         .font(.system(size: numberFontSize, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
-                    Text(localizedWidgetString("widget.kcal_left"))
+                    Text(energyLeftLabel(snapshot.energyUnit))
                         .font(.system(size: numberFontSize * 0.58))
                         .foregroundStyle(.secondary)
                 }
@@ -135,7 +140,7 @@ private struct RingWithLabel: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(
                     String(
-                        format: localizedWidgetString("widget.a11y.kcal_left"),
+                        format: energyLeftA11yFormat(snapshot.energyUnit),
                         remainingText
                     )
                 )
@@ -220,7 +225,7 @@ struct widgetEntryView: View {
 
     private var lockCircular: some View {
         Gauge(value: entry.snapshot.progress) {
-            Text(localizedWidgetString("widget.kcal"))
+            Text(energyUnitLabel(entry.snapshot.energyUnit))
         } currentValueLabel: {
             Text(lockRemaining)
                 .minimumScaleFactor(0.5)
@@ -230,7 +235,7 @@ struct widgetEntryView: View {
 
     private var lockRectangular: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text("\(lockRemaining) \(localizedWidgetString("widget.kcal_left"))")
+            Text("\(lockRemaining) \(energyLeftLabel(entry.snapshot.energyUnit))")
                 .font(.headline)
                 .minimumScaleFactor(0.7)
             ProgressView(value: entry.snapshot.progress)
@@ -240,7 +245,7 @@ struct widgetEntryView: View {
     }
 
     private var lockInline: some View {
-        Text("\(lockRemaining) \(localizedWidgetString("widget.kcal_left"))")
+        Text("\(lockRemaining) \(energyLeftLabel(entry.snapshot.energyUnit))")
     }
 
     private var smallBody: some View {

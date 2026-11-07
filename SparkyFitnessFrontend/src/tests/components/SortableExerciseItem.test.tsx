@@ -18,7 +18,11 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ distanceUnit: 'km' }),
+  usePreferences: () => ({
+    distanceUnit: 'km',
+    energyUnit: 'kcal',
+    getEnergyUnitString: (unit: string) => unit,
+  }),
 }));
 
 // Only rendered for non-cardio exercises, and its import chain initializes i18n.

@@ -24,6 +24,7 @@ import {
   useDeleteExerciseEntry,
   useDeleteWorkout,
 } from '../hooks/useExerciseMutations';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 interface SwipeableExerciseRowProps {
   session: ExerciseSessionResponse;
@@ -43,6 +44,7 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
   distanceUnit = 'km',
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const swipeableRef = useRef<SwipeableMethods | null>(null);
   const invalidateCacheRef = useRef<() => void>(() => {});
   const { collapse, handleLayout, animatedStyle } = useRowCollapse(() =>
@@ -104,7 +106,8 @@ const SwipeableExerciseRow: React.FC<SwipeableExerciseRowProps> = ({
     calories,
     t,
     weightUnit,
-    distanceUnit
+    distanceUnit,
+    energyUnit
   );
 
   const handleLongPress = () => {

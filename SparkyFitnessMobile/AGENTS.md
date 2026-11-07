@@ -25,6 +25,7 @@ This is the package guide for `SparkyFitnessMobile/`. Work from this directory f
 - The app talks to the backend under `/api`; health uploads go to `POST /api/health-data`.
 - Global `fetch` is Expo's WinterCG `expo/fetch`, so React Native's `{uri, name, type}` FormData file parts throw "Unsupported FormDataPart implementation". Append an `expo-file-system` `File` (it implements Blob) for multipart uploads; see `pregnancyPhotosApi.ts`.
 - Server-stored distance/weight units are metric. UI conversion belongs in mobile helpers such as `unitConversions.ts`.
+- Energy is stored and sent in kcal everywhere; the account's `energy_unit` (kcal or kJ, picked on the web or in Calorie Settings) only changes display and entry. Read it with `useEnergyUnit()` (Jest mocks it to `'kcal'` in `jest.setup.js`), show values with `roundedEnergy` / `formatEnergyNumber` / `energyUnitLabel` (`utils/energyUnit.ts`), and enter energy with `EnergyFormInput` (`kcalValue` / `onChangeKcal`), or `useEnergyInputText` for another input element, so form state stays kcal and only an edited value is converted. Never hold energy drafts in the display unit: the unit can arrive after the screen mounts. Widget and watch payloads stay kcal and carry `energyUnit`; the Swift, Kotlin and Wear OS code converts at display. When a translated string gains a `{{unit}}` placeholder, rename its key so existing translations go stale instead of failing the i18n audit.
 
 ## Localization contract
 

@@ -47,7 +47,7 @@ const modeOf = (question: Partial<CompareQuestion>): CompareMode =>
 
 export const CompareReport = () => {
   const { t } = useTranslation();
-  const { timezone } = usePreferences();
+  const { timezone, energyUnit } = usePreferences();
   const { isActingOnBehalf } = useActiveUser();
   // The same id the queries are keyed by; recents are kept per account.
   const userId = useAuth().user?.activeUserId;
@@ -134,20 +134,24 @@ export const CompareReport = () => {
 
   const rows =
     askable && !isSince
-      ? timingRows(askable, [
-          {
-            timing: timingOf(askable.choice).timing,
-            data: answer.data,
-            isLoading: answer.isLoading,
-            isError: answer.isError,
-          },
-          ...timings.map(({ timing, query: result }) => ({
-            timing,
-            data: result.data,
-            isLoading: result.isLoading,
-            isError: result.isError,
-          })),
-        ])
+      ? timingRows(
+          askable,
+          [
+            {
+              timing: timingOf(askable.choice).timing,
+              data: answer.data,
+              isLoading: answer.isLoading,
+              isError: answer.isError,
+            },
+            ...timings.map(({ timing, query: result }) => ({
+              timing,
+              data: result.data,
+              isLoading: result.isLoading,
+              isError: result.isError,
+            })),
+          ],
+          energyUnit
+        )
       : [];
 
   return (
@@ -228,7 +232,7 @@ export const CompareReport = () => {
                 span={span}
               />
               <CompareHowSure
-                lines={howSureLines(response.result, askable, t)}
+                lines={howSureLines(response.result, askable, t, energyUnit)}
               />
               <CompareChecks response={response} question={askable} />
             </div>

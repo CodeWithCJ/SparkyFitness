@@ -137,7 +137,7 @@ private struct WorkoutSummaryView: View {
                     row("Max HR", "\(Int(max.rounded())) bpm")
                 }
                 if let kcal = summary.activeEnergyKcal, kcal > 0 {
-                    row("Active", "\(Int(kcal.rounded())) kcal")
+                    row("Active", "\(Int(checkIn.context.energyFromKcal(kcal).rounded())) \(checkIn.context.energyUnitLabel)")
                 }
                 WorkoutEffortPicker { score, done in
                     session.rateWorkoutEffort(score, sessionId: summary.sessionId, completion: done)
@@ -900,7 +900,10 @@ private struct MetricsStrip: View {
                                 .layoutPriority(1)
                         }
                         if let kcal = store.activeEnergyKcal {
-                            Self.metric("\(Int(kcal))", systemImage: "flame.fill")
+                            Self.metric(
+                                "\(Int(CheckInStore.shared.context.energyFromKcal(kcal)))",
+                                systemImage: "flame.fill"
+                            )
                                 .foregroundStyle(.orange)
                                 .fixedSize()
                         }

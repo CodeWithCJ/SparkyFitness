@@ -421,7 +421,11 @@ private fun ActiveWorkoutView(
   }
 
   if (phase == WorkoutSessionStore.Phase.COMPLETED && summary != null) {
-    WorkoutSummaryView(summary = summary!!, onDone = { workoutStore.dismissSummary() })
+    WorkoutSummaryView(
+      summary = summary!!,
+      onDone = { workoutStore.dismissSummary() },
+      energy = EnergyDisplay.of(watchCtx)
+    )
     return
   }
 
@@ -498,7 +502,8 @@ private fun ActiveWorkoutView(
       elapsedSeconds = elapsedSec,
       heartRate = heartRate,
       calories = calories,
-      onFinish = { workoutStore.finishWorkout(notifyPhone = true) }
+      onFinish = { workoutStore.finishWorkout(notifyPhone = true) },
+      energy = EnergyDisplay.of(watchCtx)
     )
     return
   }
@@ -843,7 +848,8 @@ private fun CardioWorkoutView(
   elapsedSeconds: Int,
   heartRate: Double?,
   calories: Double,
-  onFinish: () -> Unit
+  onFinish: () -> Unit,
+  energy: EnergyDisplay = EnergyDisplay.KCAL
 ) {
   Column(
     modifier = Modifier
@@ -863,7 +869,7 @@ private fun CardioWorkoutView(
         color = SparkyColors.Rose
       )
       Text(
-        text = "${calories.toInt()} kcal",
+        text = "${energy.value(calories).toInt()} ${energy.unit}",
         fontSize = 12.sp,
         color = SparkyColors.Amber
       )
@@ -1037,7 +1043,8 @@ private fun WorkoutOptionsSheet(
 @Composable
 private fun WorkoutSummaryView(
   summary: WorkoutSummary,
-  onDone: () -> Unit
+  onDone: () -> Unit,
+  energy: EnergyDisplay = EnergyDisplay.KCAL
 ) {
   Column(
     modifier = Modifier
@@ -1058,7 +1065,7 @@ private fun WorkoutSummaryView(
     if (summary.averageBpm != null || summary.activeEnergyKcal != null) {
       val parts = mutableListOf<String>()
       summary.averageBpm?.let { parts.add("♥ ${it.toInt()} avg") }
-      summary.activeEnergyKcal?.let { parts.add("${it.toInt()} kcal") }
+      summary.activeEnergyKcal?.let { parts.add("${energy.value(it).toInt()} ${energy.unit}") }
       Text(parts.joinToString(" • "), fontSize = 11.sp, color = SparkyColors.Amber)
     }
     Spacer(Modifier.height(10.dp))

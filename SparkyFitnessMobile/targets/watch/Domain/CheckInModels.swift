@@ -492,6 +492,10 @@ struct WatchContext: Codable, Equatable {
     /// The phone's distance unit (`km` or `miles`). Decides whether a weighted
     /// carry's distance is shown in metres or yards. Nil reads as metres.
     var distanceUnit: String? = nil
+    /// The phone's energy unit (`kcal` or `kJ`). Every energy number the phone
+    /// and HealthKit hand the watch is kcal; this only says how to show it.
+    /// Nil (a context from an older phone app) reads as kcal.
+    var energyUnit: String? = nil
     /// The phone's Settings → Apple Watch → Double-tap switch. Defaulted so the
     /// existing initializer calls need not pass it; nil reads as on.
     var doubleTapEnabled: Bool? = nil
@@ -765,4 +769,21 @@ enum SetInputStyle: String {
     case keypad
     /// The Digital Crown, turned in plate steps (Hevy-style).
     case crown
+}
+
+extension WatchContext {
+    /// True when the phone shows energy in kilojoules.
+    var usesKilojoules: Bool { energyUnit == "kJ" }
+
+    /// A kcal value in the phone's energy unit.
+    func energyFromKcal(_ kcal: Double) -> Double {
+        usesKilojoules ? kcal * 4.184 : kcal
+    }
+
+    /// The short unit label for energy numbers ("kcal" or "kJ").
+    var energyUnitLabel: String {
+        usesKilojoules
+            ? String(localized: "watch.unit.kj", defaultValue: "kJ")
+            : String(localized: "watch.unit.kcal", defaultValue: "kcal")
+    }
 }

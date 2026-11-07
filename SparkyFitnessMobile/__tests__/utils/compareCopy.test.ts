@@ -703,6 +703,13 @@ describe('compareAmountText', () => {
   test('bedtime is a span of whole minutes, not a clock time', () => {
     expect(compareAmountText('bedtime', -30.4, true)).toBe('-30');
   });
+
+  test('calories follow the energy unit; other metrics do not', () => {
+    expect(compareAmountText('calories', 2000)).toBe('2,000');
+    expect(compareAmountText('calories', 2000, false, 'kJ')).toBe('8,368');
+    expect(compareValueText('calories', 100, 'kJ')).toBe('418');
+    expect(compareAmountText('steps', 2000, false, 'kJ')).toBe('2,000');
+  });
 });
 
 describe('compareValueText', () => {

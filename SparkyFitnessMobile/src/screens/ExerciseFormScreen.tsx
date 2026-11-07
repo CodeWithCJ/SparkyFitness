@@ -30,6 +30,9 @@ import type {
   CreateExercisePayload,
   UpdateExercisePayload,
 } from '../services/api/exerciseApi';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel } from '../utils/energyUnit';
+import { useEnergyInputText } from '../hooks/useEnergyInputText';
 
 const CATEGORY_OPTIONS = [
   { value: 'general' },
@@ -166,6 +169,12 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
   showCategory,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
+  // The form keeps kcal per hour; the field shows and takes the account's unit.
+  const caloriesPerHourInput = useEnergyInputText(
+    state.caloriesPerHourText,
+    (text) => setState((prev) => ({ ...prev, caloriesPerHourText: text }))
+  );
   const textMuted = useCSSVariable('--color-text-muted') as string;
   const [showAdvanced, setShowAdvanced] = useState(() =>
     hasAdvancedContent(state)
@@ -297,14 +306,17 @@ const ExerciseFormBody: React.FC<ExerciseFormBodyProps> = ({
 
       <View className="gap-1.5">
         <Text className="text-text-secondary text-sm font-medium">
-          {t('workout.caloriesPerHour', { defaultValue: 'Calories per Hour' })}
+          {t('workout.caloriesPerHourWithUnit', {
+            defaultValue: 'Calories per Hour ({{unit}})',
+            unit: energyUnitLabel(energyUnit, t),
+          })}
         </Text>
         <FormInput
           placeholder="0"
-          value={state.caloriesPerHourText}
+          value={caloriesPerHourInput.text}
           onChangeText={(v) => {
             if (DECIMAL_INPUT_REGEX.test(v)) {
-              setState((prev) => ({ ...prev, caloriesPerHourText: v }));
+              caloriesPerHourInput.onChangeText(v);
             }
           }}
           keyboardType="decimal-pad"

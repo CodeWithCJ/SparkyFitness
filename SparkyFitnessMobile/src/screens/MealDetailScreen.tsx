@@ -33,6 +33,8 @@ import { useNfcSupport } from '../hooks/useNfcSupport';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatLocalizedNumber } from '../localization';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 type MealDetailScreenProps = RootStackScreenProps<'MealDetail'>;
 
@@ -126,6 +128,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
   route,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const { mealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -394,7 +397,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
           </View>
           {meal.foods.map((food, index) => {
             const scale = ingredientScale(food);
-            const calories = Math.round(food.calories * scale);
+            const calories = roundedEnergy(food.calories * scale, energyUnit);
             const protein = Math.round(food.protein * scale);
             const carbs = Math.round(food.carbs * scale);
             const fat = Math.round(food.fat * scale);
@@ -445,8 +448,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
                 </View>
                 <View className="items-end">
                   <Text className="text-text-primary text-base font-semibold">
-                    {calories}{' '}
-                    {t('mealDetail.calories', { defaultValue: 'cal' })}
+                    {calories} {energyUnitLabel(energyUnit, t)}
                   </Text>
                   <Text className="text-text-muted text-sm mt-1">
                     {food.quantity} {food.unit}

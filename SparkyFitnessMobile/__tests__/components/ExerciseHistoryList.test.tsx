@@ -318,7 +318,7 @@ describe('ExerciseHistoryList', () => {
 
     const screen = renderList();
 
-    expect(screen.getByText('30 min · 200 cal')).toBeTruthy();
+    expect(screen.getByText('30 min · 200 kcal')).toBeTruthy();
   });
 
   it('shows an empty state when there are no sessions', () => {

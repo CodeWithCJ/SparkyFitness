@@ -16,6 +16,7 @@ import {
 } from '@workspace/shared';
 import { formatTimeOfDayString } from '@/utils/timeFormatters';
 import { COMPARE_METRIC_LABELS } from './compareMetricLabels';
+import type { EnergyUnit } from '@workspace/shared';
 
 // The Compare wording, the website's copy of the phone's
 // `SparkyFitnessMobile/src/utils/compareCopy.ts` for day and week questions:
@@ -775,9 +776,14 @@ export function compareShownAmountText(
 export function compareAmountText(
   key: CompareMetricKey,
   value: number,
-  signed = false
+  signed = false,
+  energyUnit: EnergyUnit = 'kcal'
 ): string {
-  return compareShownAmountText(key, compareDisplayValue(key, value), signed);
+  return compareShownAmountText(
+    key,
+    compareDisplayValue(key, value, energyUnit),
+    signed
+  );
 }
 
 /**
@@ -789,7 +795,8 @@ export function compareAmountText(
 export function compareValueText(
   key: CompareMetricKey,
   value: number,
-  timeFormat?: string
+  timeFormat?: string,
+  energyUnit: EnergyUnit = 'kcal'
 ): string {
   if (key === 'bedtime') {
     const clock = bedtimeClock(value);
@@ -807,7 +814,7 @@ export function compareValueText(
       minute: '2-digit',
     }).format(date);
   }
-  return compareAmountText(key, value);
+  return compareAmountText(key, value, false, energyUnit);
 }
 
 /** "p = 0.012", or "p < 0.001" when it is that small. */
@@ -921,11 +928,12 @@ function usedText(
 function differenceText(
   q: CompareQuestion,
   binary: NonNullable<CompareResult['binary']>,
-  t: Translator
+  t: Translator,
+  energyUnit: EnergyUnit
 ): string {
   const outcome = binary.yesKey === q.a ? q.b : q.a;
   const others = lowerFirst(yesNoWording(q, binary.yesKey, t).noLabel);
-  const shown = compareDisplayValue(outcome, binary.diff);
+  const shown = compareDisplayValue(outcome, binary.diff, energyUnit);
   // Rounds to zero at the precision shown: "0.0 higher" would mislead.
   if (Math.abs(shown) < 0.5 / 10 ** compareDigits(outcome)) {
     return t('compareReport.howSure.differenceSame', {
@@ -935,7 +943,12 @@ function differenceText(
     });
   }
   // The direction word carries the sign, so the amount is shown without one.
-  const diff = compareAmountText(outcome, Math.abs(binary.diff));
+  const diff = compareAmountText(
+    outcome,
+    Math.abs(binary.diff),
+    false,
+    energyUnit
+  );
   // A bedtime difference is a span of minutes, later or earlier.
   if (outcome === 'bedtime') {
     return shown > 0
@@ -975,7 +988,8 @@ function differenceText(
 export function howSureLines(
   result: CompareResult,
   q: CompareQuestion,
-  t: Translator
+  t: Translator,
+  energyUnit: EnergyUnit = 'kcal'
 ): { label: string; value: string }[] {
   const { p, low, high } = result;
   if (
@@ -995,15 +1009,15 @@ export function howSureLines(
   if (result.method === 'difference' && result.binary) {
     const outcome = result.binary.yesKey === q.a ? q.b : q.a;
     const range = {
-      low: compareAmountText(outcome, low),
-      high: compareAmountText(outcome, high),
+      low: compareAmountText(outcome, low, false, energyUnit),
+      high: compareAmountText(outcome, high, false, energyUnit),
     };
     lines.push(
       {
         label: t('compareReport.howSure.difference', {
           defaultValue: 'Difference',
         }),
-        value: differenceText(q, result.binary, t),
+        value: differenceText(q, result.binary, t, energyUnit),
       },
       {
         label: likelyBetween,

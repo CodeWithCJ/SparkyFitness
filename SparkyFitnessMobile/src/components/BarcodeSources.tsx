@@ -22,6 +22,9 @@ import {
   type BarcodeLookupContext,
 } from '../utils/barcodeFoods';
 import type { FoodInfoItem } from '../types/foodInfo';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel } from '../utils/energyUnit';
+import { energyFromKcal } from '@workspace/shared';
 
 interface Props {
   context: BarcodeLookupContext;
@@ -31,6 +34,7 @@ interface Props {
 
 export default function BarcodeSources({ context, disabled, onSelect }: Props) {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
@@ -252,10 +256,15 @@ export default function BarcodeSources({ context, disabled, onSelect }: Props) {
                           })}
                         </Text>
                         <Text className="text-sm text-text-primary">
-                          {t('barcodeSources.macros', {
+                          {t('barcodeSources.macrosWithUnit', {
                             defaultValue:
-                              '{{calories}} kcal · Protein {{protein}} g · Carbs {{carbs}} g · Fat {{fat}} g',
-                            calories: number(preview.calories),
+                              '{{calories}} {{unit}} · Protein {{protein}} g · Carbs {{carbs}} g · Fat {{fat}} g',
+                            calories: number(
+                              preview.calories == null
+                                ? null
+                                : energyFromKcal(preview.calories, energyUnit)
+                            ),
+                            unit: energyUnitLabel(energyUnit, t),
                             protein: number(preview.protein),
                             carbs: number(preview.carbs),
                             fat: number(preview.fat),
