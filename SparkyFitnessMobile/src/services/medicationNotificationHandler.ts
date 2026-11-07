@@ -602,12 +602,9 @@ export async function processMedicationNotificationResponse(
     : actionDedupeId({ key: baseKey, entryDate, doses, userId });
 
   const existingPromise = inFlightActions.get(dedupeKey);
-  if (existingPromise) {
-    return existingPromise;
-  }
-
-  const actionPromise = (
-    isSnooze
+  const actionPromise =
+    existingPromise ??
+    (isSnooze
       ? handleSnoozeNotificationAction(
           content,
           data,
@@ -624,11 +621,11 @@ export async function processMedicationNotificationResponse(
           baseKey,
           userId
         )
-  ).finally(() => {
-    inFlightActions.delete(dedupeKey);
-  });
+    ).finally(() => {
+      inFlightActions.delete(dedupeKey);
+    });
 
-  inFlightActions.set(dedupeKey, actionPromise);
+  if (!existingPromise) inFlightActions.set(dedupeKey, actionPromise);
   const succeeded = await actionPromise;
   const last = succeeded ? Notifications.getLastNotificationResponse() : null;
   // Consume only this successful action; another feature may have a newer response.

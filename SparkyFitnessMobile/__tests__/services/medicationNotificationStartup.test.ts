@@ -5,16 +5,20 @@ const mockClearLast = jest.fn();
 const mockAddListener = jest.fn();
 const mockCreateEntry = jest.fn();
 const mockListEntries = jest.fn();
+const mockSchedule = jest.fn();
 
 jest.mock('expo-notifications', () => ({
   getLastNotificationResponse: mockGetLast,
   clearLastNotificationResponse: mockClearLast,
   registerTaskAsync: jest.fn(async () => null),
+  scheduleNotificationAsync: mockSchedule,
+  SchedulableTriggerInputTypes: { DATE: 'date' },
   getAllScheduledNotificationsAsync: jest.fn(async () => []),
   getPresentedNotificationsAsync: jest.fn(async () => []),
 }));
 jest.mock('../../src/services/notifications', () => ({
   addNotificationResponseListener: mockAddListener,
+  ensureMedicationReminderChannel: jest.fn(async () => undefined),
   dismissDeliveredNotification: jest.fn(async () => undefined),
   MEDICATION_TAKEN_ACTION: 'medication-taken',
   MEDICATION_SKIP_ACTION: 'medication-skip',
@@ -58,6 +62,7 @@ describe('medication notification launch recovery', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetLast.mockReturnValue(null);
+    mockClearLast.mockImplementation(() => mockGetLast.mockReturnValue(null));
     mockListEntries.mockResolvedValue([]);
     mockCreateEntry.mockResolvedValue({ id: 'entry-1' });
     jest.isolateModules(() => {
@@ -102,6 +107,42 @@ describe('medication notification launch recovery', () => {
     listener(saved);
     await settle();
     expect(mockCreateEntry).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears the newer response when two repeat snoozes share one operation', async () => {
+    let finishScheduling!: (id: string) => void;
+    mockSchedule.mockReturnValue(
+      new Promise<string>((resolve) => {
+        finishScheduling = resolve;
+      })
+    );
+    initialize();
+    const listener = mockAddListener.mock.calls[0][0] as (
+      value: NotificationResponse
+    ) => void;
+    const first = response('medication-snooze');
+    const second = {
+      ...first,
+      notification: {
+        ...first.notification,
+        date: first.notification.date + 1,
+        request: {
+          ...first.notification.request,
+          identifier: 'repeat-reminder',
+        },
+      },
+    };
+    mockGetLast.mockReturnValue(second);
+    listener(first);
+    listener(second);
+    await settle();
+    expect(mockSchedule).toHaveBeenCalledTimes(1);
+
+    finishScheduling('snoozed-reminder');
+    await settle();
+    expect(mockSchedule).toHaveBeenCalledTimes(1);
+    expect(mockClearLast).toHaveBeenCalledTimes(1);
+    expect(mockGetLast()).toBeNull();
   });
 
   it('does not consume unrelated launch responses', async () => {
