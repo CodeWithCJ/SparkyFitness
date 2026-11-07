@@ -24,6 +24,7 @@ import {
   useLabHistory,
   useLabMarkers,
 } from '../hooks/useLabResults';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel } from '../utils/dateUtils';
 import {
   effectiveLabRange,
@@ -46,6 +47,7 @@ const LabResultDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { marker: markerId, name } = route.params;
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const { markers } = useLabMarkers();
   const marker = markers.find((m) => m.id === markerId);
@@ -177,7 +179,10 @@ const LabResultDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1 bg-background"
@@ -314,7 +319,7 @@ const LabResultDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           </>
         )}
       </ScrollView>
-    </>
+    </View>
   );
 };
 
