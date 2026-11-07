@@ -6,6 +6,8 @@
     <string name="sparky_macro_widget_description">Today\'s protein, carbs, and fat with quick add shortcuts</string>
     <string name="widget_kcal_left">%1$s kcal left</string>
     <string name="widget_kcal_left_empty">- kcal left</string>
+    <string name="widget_kj_left">%1$s kJ left</string>
+    <string name="widget_kj_left_empty">- kJ left</string>
     <string name="widget_grams">%1$s g</string>
     <string name="widget_protein">Protein</string>
     <string name="widget_carbs">Carbs</string>
@@ -15,6 +17,7 @@
     <string name="widget_open_diary">Open diary</string>
     <string name="widget_open_fasting">Open fasting</string>
     <string name="widget_kcal_eaten">%1$s kcal eaten</string>
+    <string name="widget_kj_eaten">%1$s kJ eaten</string>
     <string name="widget_goal">Goal</string>
     <string name="widget_food">Food</string>
     <string name="widget_burned">Burned</string>

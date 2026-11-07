@@ -6,6 +6,7 @@ import {
   sinceAlreadyChanging,
   sinceVerdictCase,
   type SinceVerdictCase,
+  EnergyUnit,
 } from '@workspace/shared';
 import type { Translator } from '../constants/reports';
 import { formatLocalizedNumber } from '../localization';
@@ -56,28 +57,36 @@ function percentText(share: number, signed = false): string {
 }
 
 /** An average as the person reads it; a yes/no outcome's is the share of days it was yes. */
-function averageText(key: CompareMetricKey, value: number): string {
-  return isYesNo(key) ? percentText(value) : compareValueText(key, value);
+function averageText(
+  key: CompareMetricKey,
+  value: number,
+  energyUnit: EnergyUnit
+): string {
+  return isYesNo(key)
+    ? percentText(value)
+    : compareValueText(key, value, energyUnit);
 }
 
 /** A difference, or one end of its range: a share for yes/no, else an amount (bedtime in minutes). */
 function differenceText(
   key: CompareMetricKey,
   value: number,
-  signed: boolean
+  signed: boolean,
+  energyUnit: EnergyUnit
 ): string {
   return isYesNo(key)
     ? percentText(value, signed)
-    : compareAmountText(key, value, signed);
+    : compareAmountText(key, value, signed, energyUnit);
 }
 
 /** The change after the averages: bedtime later or earlier, anything else with its sign. */
 function changeText(
   key: CompareMetricKey,
   diff: number,
-  t: Translator
+  t: Translator,
+  energyUnit: EnergyUnit
 ): string {
-  if (key !== 'bedtime') return differenceText(key, diff, true);
+  if (key !== 'bedtime') return differenceText(key, diff, true, energyUnit);
   const minutes = compareAmountText(key, Math.abs(diff));
   return diff >= 0
     ? t('compareReport.since.minutesLater', {
@@ -158,7 +167,8 @@ function notEnoughCopy(
 
 export function sinceVerdictCopy(
   response: CompareSinceResponse,
-  t: Translator
+  t: Translator,
+  energyUnit: EnergyUnit = 'kcal'
 ): { headline: string; detail: string } {
   const key = response.outcome.key;
   const { outcome } = sinceParts(responseKeys(response), t);
@@ -186,9 +196,9 @@ export function sinceVerdictCopy(
     const change = {
       start,
       outcome,
-      since: averageText(key, verdict.since),
-      before: averageText(key, verdict.before),
-      diff: changeText(key, verdict.diff, t),
+      since: averageText(key, verdict.since, energyUnit),
+      before: averageText(key, verdict.before, energyUnit),
+      diff: changeText(key, verdict.diff, t, energyUnit),
     };
     return {
       headline: t('compareReport.since.changedHeadline', {
@@ -212,8 +222,8 @@ export function sinceVerdictCopy(
     const averages = {
       start,
       outcome,
-      since: averageText(key, verdict.averages.since),
-      before: averageText(key, verdict.averages.before),
+      since: averageText(key, verdict.averages.since, energyUnit),
+      before: averageText(key, verdict.averages.before, energyUnit),
     };
     detail = verdict.lastYear
       ? t('compareReport.since.noChangeDetailLastYear', {
@@ -281,7 +291,8 @@ function alreadyChangingText(
 
 function statsText(
   response: CompareSinceResponse,
-  t: Translator
+  t: Translator,
+  energyUnit: EnergyUnit
 ): string | null {
   const { result } = response;
   const key = response.outcome.key;
@@ -302,9 +313,9 @@ function statsText(
     return t('compareReport.stats.differenceMinutes', {
       defaultValue:
         'difference {{diff}} min · 95% range {{low}} to {{high}} min · {{p}} · {{n}}',
-      diff: compareAmountText(key, diff, true),
-      low: compareAmountText(key, low),
-      high: compareAmountText(key, high),
+      diff: compareAmountText(key, diff, true, energyUnit),
+      low: compareAmountText(key, low, false, energyUnit),
+      high: compareAmountText(key, high, false, energyUnit),
       p: pValueText(p, t),
       n,
     });
@@ -312,9 +323,9 @@ function statsText(
   return t('compareReport.stats.difference', {
     defaultValue:
       'difference {{diff}} · 95% range {{low}} to {{high}} · {{p}} · {{n}}',
-    diff: differenceText(key, diff, true),
-    low: differenceText(key, low, false),
-    high: differenceText(key, high, false),
+    diff: differenceText(key, diff, true, energyUnit),
+    low: differenceText(key, low, false, energyUnit),
+    high: differenceText(key, high, false, energyUnit),
     p: pValueText(p, t),
     n,
   });
@@ -327,7 +338,8 @@ function statsText(
  */
 export function sinceDetails(
   response: CompareSinceResponse,
-  t: Translator
+  t: Translator,
+  energyUnit: EnergyUnit = 'kcal'
 ): SinceDetails {
   const { result } = response;
   if (result.status !== 'ok') {
@@ -353,10 +365,10 @@ export function sinceDetails(
       ? t('compareReport.since.typicalRange', {
           defaultValue:
             'Usually between {{low}} and {{high}} (before: {{beforeLow}}–{{beforeHigh}}).',
-          low: compareValueText(key, since.p10),
-          high: compareValueText(key, since.p90),
-          beforeLow: compareValueText(key, before.p10),
-          beforeHigh: compareValueText(key, before.p90),
+          low: compareValueText(key, since.p10, energyUnit),
+          high: compareValueText(key, since.p90, energyUnit),
+          beforeLow: compareValueText(key, before.p10, energyUnit),
+          beforeHigh: compareValueText(key, before.p90, energyUnit),
         })
       : null;
 
@@ -367,7 +379,7 @@ export function sinceDetails(
       ? t('compareReport.since.aboveLine', {
           defaultValue:
             'At or above {{line}} on {{since}} of days (before: {{before}}).',
-          line: compareValueText(key, result.line),
+          line: compareValueText(key, result.line, energyUnit),
           since: percentText(since.shareAtOrAbove),
           before: percentText(before.shareAtOrAbove),
         })
@@ -387,7 +399,7 @@ export function sinceDetails(
         : null,
     alreadyChanging:
       changing === null ? null : alreadyChangingText(key, changing === 'up', t),
-    stats: statsText(response, t),
+    stats: statsText(response, t, energyUnit),
   };
 }
 

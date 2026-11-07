@@ -14,6 +14,8 @@ import { isAuthorizationNotDeterminedError } from '../utils/healthErrors';
 import type { HealthDataDisplayState } from '../types/healthRecords';
 import type { TimeRange } from './storage';
 import i18n, { formatLocalizedNumber } from '../localization/i18n';
+import type { EnergyUnit } from '@workspace/shared';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 
 const t = (key: string, options: Record<string, unknown> = {}): string => {
   // i18n-audit-ignore-next-line dynamic-i18n-key -- wrapper accepts only the closed healthDataDisplay key map below
@@ -21,7 +23,7 @@ const t = (key: string, options: Record<string, unknown> = {}): string => {
   if (value !== key) return value;
   const templates: Record<string, string> = {
     'healthDataDisplay.distance': '{{value}} km',
-    'healthDataDisplay.kcal': '{{value}} kcal',
+    'healthDataDisplay.energy': '{{value}} {{unit}}',
     'healthDataDisplay.bpm': '{{value}} bpm',
     'healthDataDisplay.kg': '{{value}} kg',
     'healthDataDisplay.percent': '{{value}}%',
@@ -277,31 +279,40 @@ function formatMassInKg(records: unknown[]): string {
 
 // --- Aggregated formatters: fetch their own data and return a formatted string ---
 
+/** A kcal amount in the account's energy unit, with its label. */
+function energyText(kcal: number, energyUnit: EnergyUnit): string {
+  return t('healthDataDisplay.energy', {
+    defaultValue: '{{value}} {{unit}}',
+    value: number(roundedEnergy(kcal, energyUnit)),
+    unit: energyUnitLabel(energyUnit, i18n.t),
+  });
+}
+
 function makeAggregatedFormatter(
   fetchFn: (start: Date, end: Date) => Promise<{ value: number }[]>,
-  format: (total: number) => string
-): (start: Date, end: Date) => Promise<string> {
-  return async (start, end) => {
+  format: (total: number, energyUnit: EnergyUnit) => string
+): (start: Date, end: Date, energyUnit: EnergyUnit) => Promise<string> {
+  return async (start, end, energyUnit) => {
     const records = await fetchFn(start, end);
     const total = records.reduce((sum, r) => sum + r.value, 0);
-    return format(total);
+    return format(total, energyUnit);
   };
 }
 
 const AGGREGATED_FORMATTERS: Record<
   string,
-  (start: Date, end: Date) => Promise<string>
+  (start: Date, end: Date, energyUnit: EnergyUnit) => Promise<string>
 > = {
   Steps: makeAggregatedFormatter(getAggregatedStepsByDate, (value) =>
     number(value)
   ),
   ActiveCaloriesBurned: makeAggregatedFormatter(
     getAggregatedActiveCaloriesByDate,
-    (value) => number(value)
+    (value, energyUnit) => energyText(value, energyUnit)
   ),
   TotalCaloriesBurned: makeAggregatedFormatter(
     getAggregatedTotalCaloriesByDate,
-    (value) => number(value)
+    (value, energyUnit) => energyText(value, energyUnit)
   ),
   Distance: makeAggregatedFormatter(getAggregatedDistanceByDate, (value) =>
     t('healthDataDisplay.distance', {
@@ -316,17 +327,14 @@ const AGGREGATED_FORMATTERS: Record<
     getAggregatedFloorsClimbedByDate,
     (value) => number(Math.round(value))
   ),
-  BasalMetabolicRate: async (start, end) => {
+  BasalMetabolicRate: async (start, end, energyUnit) => {
     // iOS: use aggregated resting energy; Android: fall back to raw HC records
     const aggregated = await getAggregatedBasalEnergyByDate(start, end);
     if (aggregated.length > 0) {
       const avg =
         aggregated.reduce((sum: number, r) => sum + r.value, 0) /
         aggregated.length;
-      return t('healthDataDisplay.kcal', {
-        defaultValue: '{{value}} kcal',
-        value: number(Math.round(avg)),
-      });
+      return energyText(avg, energyUnit);
     }
     const rawRecords = (await readHealthRecords(
       'BasalMetabolicRate',
@@ -347,16 +355,16 @@ const AGGREGATED_FORMATTERS: Record<
     const dailyAvgs = Object.values(dailyBMRs).map((d) => d.sum / d.count);
     if (dailyAvgs.length === 0) return NO_DATA_DISPLAY;
     const avg = dailyAvgs.reduce((sum, v) => sum + v, 0) / dailyAvgs.length;
-    return t('healthDataDisplay.kcal', {
-      defaultValue: '{{value}} kcal',
-      value: number(Math.round(avg)),
-    });
+    return energyText(avg, energyUnit);
   },
 };
 
 // --- Raw record formatters: receive already-fetched records, return a formatted string ---
 
-const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
+const RAW_FORMATTERS: Record<
+  string,
+  (records: unknown[], energyUnit: EnergyUnit) => string
+> = {
   HeartRate: (records) => {
     const bpmValues = (records as { samples?: { beatsPerMinute: number }[] }[])
       .flatMap((r) => r.samples ?? [])
@@ -712,16 +720,13 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
         });
   },
 
-  Nutrition: (records) => {
+  Nutrition: (records, energyUnit) => {
     const totalNutrition = (
       records as { energy?: { inCalories: number } }[]
     ).reduce((sum, record) => sum + (record.energy?.inCalories || 0), 0);
     return totalNutrition === 0
       ? NO_DATA_DISPLAY
-      : t('healthDataDisplay.kcal', {
-          defaultValue: '{{value}} kcal',
-          value: number(Math.round(totalNutrition / 1000)),
-        });
+      : energyText(totalNutrition / 1000, energyUnit);
   },
 
   Workout: (records) =>
@@ -738,7 +743,8 @@ const RAW_FORMATTERS: Record<string, (records: unknown[]) => string> = {
  * Returns a map of metric ID to formatted string (e.g., "5,432" for steps, "72 bpm" for heart rate).
  */
 export async function fetchHealthDisplayData(
-  timeRange: TimeRange
+  timeRange: TimeRange,
+  energyUnit: EnergyUnit = 'kcal'
 ): Promise<HealthDataDisplayState> {
   const endDate = new Date();
   const startDate = getSyncStartDate(timeRange);
@@ -748,7 +754,11 @@ export async function fetchHealthDisplayData(
     try {
       const aggregatedFormatter = AGGREGATED_FORMATTERS[metric.recordType];
       if (aggregatedFormatter) {
-        result[metric.id] = await aggregatedFormatter(startDate, endDate);
+        result[metric.id] = await aggregatedFormatter(
+          startDate,
+          endDate,
+          energyUnit
+        );
         continue;
       }
 
@@ -764,7 +774,7 @@ export async function fetchHealthDisplayData(
 
       const rawFormatter = RAW_FORMATTERS[metric.recordType];
       result[metric.id] = rawFormatter
-        ? rawFormatter(records)
+        ? rawFormatter(records, energyUnit)
         : unit(
             'healthDataDisplay.records',
             records.length,

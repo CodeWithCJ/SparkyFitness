@@ -192,7 +192,7 @@ describe('CardioSessionScreen', () => {
     expect(screen.getByText('Elevation gain')).toBeTruthy();
     expect(screen.getByText('182 m')).toBeTruthy();
     expect(screen.getByText('157 bpm')).toBeTruthy();
-    expect(screen.getByText('219 Cal')).toBeTruthy();
+    expect(screen.getByText('219 kcal')).toBeTruthy();
   });
 
   it('shows elevation in feet when the distance unit is miles', () => {

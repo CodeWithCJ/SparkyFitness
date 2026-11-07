@@ -75,6 +75,8 @@ import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
 import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 
 type ExerciseDetailScreenProps = RootStackScreenProps<'ExerciseDetail'>;
 
@@ -132,6 +134,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   route,
 }) => {
   const { t, i18n: translationI18n } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
@@ -847,10 +850,13 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
                   ) : null}
                   {exercise.calories_per_hour > 0 ? (
                     <StatTile
-                      label={t('exerciseDetail.caloriesPerHour', {
-                        defaultValue: 'Cal / hour',
+                      label={t('exerciseDetail.caloriesPerHourWithUnit', {
+                        defaultValue: '{{unit}} / hour',
+                        unit: energyUnitLabel(energyUnit, t),
                       })}
-                      value={String(exercise.calories_per_hour)}
+                      value={String(
+                        roundedEnergy(exercise.calories_per_hour, energyUnit)
+                      )}
                     />
                   ) : null}
                 </View>

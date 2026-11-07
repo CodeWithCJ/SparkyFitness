@@ -106,11 +106,14 @@ import { buildExerciseReplaceContext } from '../utils/exerciseReplace';
 import WorkoutFeedbackCard from '../components/WorkoutFeedbackCard';
 import HeartRateZones from '../components/exerciseStats/HeartRateZones';
 import { useWorkoutHeartRateZones } from '../hooks/useWorkoutHeartRateZones';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { formatEnergy, formatEnergyNumber } from '../utils/energyUnit';
 
 type Props = RootStackScreenProps<'WorkoutDetail'>;
 
 const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t, i18n: translationI18n } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
@@ -736,10 +739,14 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     }
     if (totalCalories > 0) {
       summaryItems.push({
-        value: formatLocalizedNumber(Math.round(totalCalories)),
-        label: t('workoutDetail.summary.calories', {
-          defaultValue: 'Calories',
-        }),
+        value:
+          energyUnit === 'kJ'
+            ? formatEnergy(totalCalories, energyUnit, t)
+            : formatEnergyNumber(totalCalories, energyUnit),
+        label:
+          energyUnit === 'kJ'
+            ? t('workoutDetail.summary.energy', { defaultValue: 'Energy' })
+            : t('workoutDetail.summary.calories', { defaultValue: 'Calories' }),
         icon: { name: 'flame', color: activeEnergyColor },
       });
     }

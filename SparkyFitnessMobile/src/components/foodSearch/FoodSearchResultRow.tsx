@@ -22,6 +22,8 @@ import type { ExternalFoodItem } from '../../types/externalFoods';
 import type { ExternalProvider } from '../../types/externalProviders';
 import type { ResultRow } from './types';
 import type { OwnershipFilter } from '../../utils/shareStatus';
+import { energyUnitLabel, roundedEnergy } from '../../utils/energyUnit';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 
 interface OnlineResultRowProps {
   item: ExternalFoodItem;
@@ -43,6 +45,7 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const getImageSource = useFoodImageSourceContext();
   const openLightbox = useOpenLightbox();
   const image = externalFoodImage(item);
@@ -114,8 +117,8 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
           ) : (
             <>
               <Text className="text-text-primary text-base font-semibold">
-                {Math.round(item.calories)}{' '}
-                {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
+                {roundedEnergy(item.calories, energyUnit)}{' '}
+                {energyUnitLabel(energyUnit, t)}
               </Text>
               <Text className="text-text-secondary text-xs">
                 {item.serving_description

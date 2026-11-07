@@ -48,6 +48,8 @@ import {
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
   calculateAge,
+  energyFromKcal,
+  normalizeEnergyUnit,
 } from '@workspace/shared';
 import {
   EMPTY_FORM,
@@ -96,6 +98,8 @@ import {
   useSaveCustomMeasurement,
   useDeleteCustomMeasurement,
 } from '../hooks/useCustomMeasurements';
+import { energyUnitLabel } from '../utils/energyUnit';
+import EnergyFormInput from '../components/EnergyFormInput';
 
 type Props = RootStackScreenProps<'MeasurementsAdd'>;
 
@@ -261,6 +265,16 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   // Height supports a third "feet + inches" mode that renders as two inputs.
   const heightMode: 'cm' | 'inches' | 'ft_in' =
     preferences?.default_measurement_unit ?? 'cm';
+  // BMR is stored in kcal and typed in the account's energy unit.
+  const energyUnit = normalizeEnergyUnit(preferences?.energy_unit);
+  // The form keeps kcal; only the range in the message is in the user's unit,
+  // rounded inward so a value typed at either end is accepted.
+  const bmrMinShown = Math.ceil(
+    energyFromKcal(MIN_MEASURED_BMR_KCAL, energyUnit)
+  );
+  const bmrMaxShown = Math.floor(
+    energyFromKcal(MAX_MEASURED_BMR_KCAL, energyUnit)
+  );
 
   // Stable identity so the derivation memos below do not recompute per render.
   const units: MeasurementUnitModes = useMemo(
@@ -987,11 +1001,17 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
         evaluateField('bmr', fieldLabel('bmr', 'BMR'), {
           min: MIN_MEASURED_BMR_KCAL,
           max: MAX_MEASURED_BMR_KCAL,
-          minMessage: t('measurements.validation.bmrRange', {
-            defaultValue: 'BMR must be between 600 and 6000 kcal.',
+          minMessage: t('measurements.validation.bmrRangeWithUnit', {
+            defaultValue: 'BMR must be between {{min}} and {{max}} {{unit}}.',
+            min: bmrMinShown,
+            max: bmrMaxShown,
+            unit: energyUnitLabel(energyUnit, t),
           }),
-          maxMessage: t('measurements.validation.bmrRange', {
-            defaultValue: 'BMR must be between 600 and 6000 kcal.',
+          maxMessage: t('measurements.validation.bmrRangeWithUnit', {
+            defaultValue: 'BMR must be between {{min}} and {{max}} {{unit}}.',
+            min: bmrMinShown,
+            max: bmrMaxShown,
+            unit: energyUnitLabel(energyUnit, t),
           }),
         }),
         (v) => v
@@ -1211,6 +1231,9 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     weightMode,
     bodyUnit,
     heightMode,
+    energyUnit,
+    bmrMinShown,
+    bmrMaxShown,
     upsertMutation,
     saveCustomMutation,
     deleteCustomMutation,
@@ -1875,13 +1898,14 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
             <View className="mb-4">
               {renderFieldLabel(
                 'bmr',
-                t('measurements.fields.bmrWithUnit', {
-                  defaultValue: 'BMR (kcal)',
+                t('measurements.fields.bmrWithUnitInUnit', {
+                  defaultValue: 'BMR ({{unit}})',
+                  unit: energyUnitLabel(energyUnit, t),
                 })
               )}
-              <FormInput
-                value={form.bmr}
-                onChangeText={(v) => updateField('bmr', v)}
+              <EnergyFormInput
+                kcalValue={form.bmr}
+                onChangeKcal={(v) => updateField('bmr', v)}
                 keyboardType="decimal-pad"
                 placeholder={standardPlaceholder('bmr', '0')}
                 accessibilityLabel={t('measurements.fields.bmr', {

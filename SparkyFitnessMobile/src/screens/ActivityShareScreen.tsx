@@ -30,6 +30,7 @@ import ActivityShareCard, {
   type ActivityShareTemplate,
 } from '../components/activityShare/ActivityShareCard';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 type ActivityShareScreenProps = RootStackScreenProps<'ActivityShare'>;
 
@@ -102,7 +103,14 @@ const ActivityShareScreen: React.FC<ActivityShareScreenProps> = ({ route }) => {
   const routeQuery = useWorkoutRoute(session.id);
   const points = routeQuery.data?.points ?? [];
   const temperatureUnit = useTemperatureUnit();
-  const stats = sessionStats(t, session, distanceUnit, temperatureUnit);
+  const energyUnit = useEnergyUnit();
+  const stats = sessionStats(
+    t,
+    session,
+    distanceUnit,
+    temperatureUnit,
+    energyUnit
+  );
 
   const [year, month, day] = session.entryDate
     .slice(0, 10)

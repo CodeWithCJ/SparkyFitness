@@ -30,6 +30,7 @@ jest.mock('../../src/services/api/dailySummaryApi', () => ({
 
 jest.mock('../../src/services/api/preferencesApi', () => ({
   ensureTimezoneBootstrapped: jest.fn(),
+  fetchPreferences: jest.fn(() => Promise.resolve({ energy_unit: 'kcal' })),
 }));
 
 jest.mock('../../src/services/CalorieWidgetBridge', () => ({

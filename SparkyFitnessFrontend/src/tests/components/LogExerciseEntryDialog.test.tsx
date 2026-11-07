@@ -70,7 +70,6 @@ const renderDialog = (exercise: ExerciseToLog = strengthExercise) =>
       selectedDate="2026-10-16"
       onSaveSuccess={jest.fn()}
       energyUnit="kcal"
-      convertEnergy={(value) => value}
       getEnergyUnitString={(unit) => unit}
     />
   );

@@ -36,6 +36,8 @@ import {
 import { resolveExerciseImageSrc } from '@/utils/exercises';
 import { TagInput } from '@/components/ui/TagInput';
 import { localizeMuscle, localizeEquipment } from '@/utils/exerciseTaxonomy';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 
 interface EditExerciseDialogProps {
   form: ReturnType<typeof useEditExerciseForm>;
@@ -43,6 +45,7 @@ interface EditExerciseDialogProps {
 
 export default function EditExerciseDialog({ form }: EditExerciseDialogProps) {
   const { t } = useTranslation();
+  const { energyUnit, getEnergyUnitString } = usePreferences();
   const isDuplicate = form.dialogMode === 'duplicate';
 
   return (
@@ -150,16 +153,27 @@ export default function EditExerciseDialog({ form }: EditExerciseDialogProps) {
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-calories" className="text-right">
                 {t(
-                  'exercise.addExerciseDialog.caloriesPerHourLabel',
-                  'Calories/Hour'
+                  'exercise.addExerciseDialog.caloriesPerHourWithUnit',
+                  'Calories/Hour ({{unit}})',
+                  { unit: getEnergyUnitString(energyUnit) }
                 )}
               </Label>
               <Input
                 id="edit-calories"
                 type="number"
-                value={form.editExerciseCalories.toString()}
+                value={shownEnergyInput(
+                  form.editExerciseCalories,
+                  energyUnit
+                ).toString()}
                 onChange={(e) =>
-                  form.setEditExerciseCalories(Number(e.target.value))
+                  form.setEditExerciseCalories(
+                    Number(
+                      kcalFromEnergyInput(
+                        e.target.value === '' ? '' : Number(e.target.value),
+                        energyUnit
+                      )
+                    )
+                  )
                 }
                 className="col-span-3"
               />

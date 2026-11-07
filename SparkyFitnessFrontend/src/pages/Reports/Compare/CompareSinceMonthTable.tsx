@@ -23,7 +23,7 @@ export const CompareSinceMonthTable = ({
   response,
 }: CompareSinceMonthTableProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, timeFormat } = usePreferences();
+  const { formatDateInUserTimezone, timeFormat, energyUnit } = usePreferences();
   const [sorting, setSorting] = useState<SortingState>([
     { id: 'month', desc: false },
   ]);
@@ -51,11 +51,11 @@ export const CompareSinceMonthTable = ({
           defaultValue_other: '{{count}} days',
         });
         return row.habitTotal !== null
-          ? `${days} · ${compareAmountText(habitKey, row.habitTotal)}`
+          ? `${days} · ${compareAmountText(habitKey, row.habitTotal, false, energyUnit)}`
           : days;
       }
       return row.habitMean !== null
-        ? compareValueText(habitKey, row.habitMean, timeFormat)
+        ? compareValueText(habitKey, row.habitMean, timeFormat, energyUnit)
         : '—';
     };
 
@@ -95,7 +95,7 @@ export const CompareSinceMonthTable = ({
           if (mean === null) return '—';
           return yesNoOutcome
             ? percentText(mean)
-            : compareValueText(outcomeKey, mean, timeFormat);
+            : compareValueText(outcomeKey, mean, timeFormat, energyUnit);
         },
       },
     ];
@@ -104,7 +104,12 @@ export const CompareSinceMonthTable = ({
         id: 'line',
         header: t('compareReport.since.months.atOrAbove', {
           defaultValue: 'At or above {{line}}',
-          line: compareValueText(outcomeKey, response.result.line, timeFormat),
+          line: compareValueText(
+            outcomeKey,
+            response.result.line,
+            timeFormat,
+            energyUnit
+          ),
         }),
         accessorFn: (row) => nullLast(row.shareAtOrAbove),
         cell: ({ row }) =>
@@ -121,7 +126,7 @@ export const CompareSinceMonthTable = ({
       accessorFn: (row) => row.valueDays,
     });
     return columns;
-  }, [response, t, formatDateInUserTimezone, timeFormat]);
+  }, [response, t, formatDateInUserTimezone, timeFormat, energyUnit]);
 
   return (
     <Card>

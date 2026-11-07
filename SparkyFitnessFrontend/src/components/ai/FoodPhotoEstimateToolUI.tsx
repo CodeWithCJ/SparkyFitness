@@ -125,7 +125,8 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
   EstimateToolResult | string
 > = ({ args, result, status }) => {
   const { t } = useTranslation();
-  const { timezone } = usePreferences();
+  const { timezone, energyUnit, convertEnergy, getEnergyUnitString } =
+    usePreferences();
   const { data: allMealTypes = [] } = useMealTypes();
   const mealTypes = useMemo(
     () => allMealTypes.filter((mealType) => mealType.is_visible !== false),
@@ -516,7 +517,10 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
                 {t('foodPhoto.columns.calories', { defaultValue: 'Calories' })}
               </div>
               <div className="text-sm font-bold text-foreground">
-                {Math.round(totals.calories_kcal)} kcal
+                {Math.round(
+                  convertEnergy(totals.calories_kcal, 'kcal', energyUnit)
+                )}{' '}
+                {getEnergyUnitString(energyUnit)}
               </div>
             </div>
             <div>
@@ -601,10 +605,17 @@ export const FoodPhotoEstimateToolUI: ToolCallMessagePartComponent<
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
                         {t(
-                          'foodPhoto.kcalPGCG',
-                          '{{calories_kcal}} kcal · P: {{protein_g}}g · C: {{carbs_g}}g · F: {{fat_g}}g',
+                          'foodPhoto.energyPGCG',
+                          '{{calories_kcal}} {{unit}} · P: {{protein_g}}g · C: {{carbs_g}}g · F: {{fat_g}}g',
                           {
-                            calories_kcal: Math.round(row.macros.calories_kcal),
+                            calories_kcal: Math.round(
+                              convertEnergy(
+                                row.macros.calories_kcal,
+                                'kcal',
+                                energyUnit
+                              )
+                            ),
+                            unit: getEnergyUnitString(energyUnit),
                             protein_g:
                               Math.round(row.macros.protein_g * 10) / 10,
                             carbs_g: Math.round(row.macros.carbs_g * 10) / 10,

@@ -10,12 +10,14 @@ import Toast from 'react-native-toast-message';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
+import SegmentedControl from '../components/SegmentedControl';
 import WeeklyWeightGoalFields from '../components/WeeklyWeightGoalFields';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import Switch from '../components/ui/Switch';
 import { usePreferences } from '../hooks/usePreferences';
 import { useDailySummary } from '../hooks/useDailySummary';
 import { getTodayDate } from '../utils/dateUtils';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 import { updatePreferences } from '../services/api/preferencesApi';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -27,11 +29,13 @@ import {
   MAX_CALORIE_SAFETY_FLOOR,
   MAX_GOAL_MODE_PERCENTAGE,
   MIN_CALORIE_SAFETY_FLOOR,
-  convertEnergyValue,
+  energyToKcal,
   isAdaptiveEarnBackSuppressed,
+  normalizeEnergyUnit,
   isAdaptiveActivitySeparated,
   todayInZone,
   type CalorieSafetyFloorMode,
+  type EnergyUnit,
   type GoalMode,
   type GoalModeCalculationMethod,
 } from '@workspace/shared';
@@ -57,15 +61,12 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
     calorieSafetyFloorMode: prefs?.calorie_safety_floor_mode ?? 'standard',
     calorieSafetyFloorValue:
       prefs?.calorie_safety_floor_value ?? DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
-    energyUnit: prefs?.energy_unit ?? 'kcal',
+    energyUnit: normalizeEnergyUnit(prefs?.energy_unit),
   };
 }
 
-const displayEnergy = (kcal: number, unit: 'kcal' | 'kJ') =>
-  Math.round(convertEnergyValue(kcal, 'kcal', unit));
-
-const toKcal = (value: number, unit: 'kcal' | 'kJ') =>
-  Math.round(convertEnergyValue(value, unit, 'kcal'));
+const toKcal = (value: number, unit: EnergyUnit) =>
+  Math.round(energyToKcal(value, unit));
 
 const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   const { t } = useTranslation();
@@ -253,7 +254,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   );
   const [safetyFloorText, setSafetyFloorText] = useState(() =>
     String(
-      displayEnergy(normalized.calorieSafetyFloorValue, normalized.energyUnit)
+      roundedEnergy(normalized.calorieSafetyFloorValue, normalized.energyUnit)
     )
   );
 
@@ -282,7 +283,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     setSyncedSafetyFloor(safetyFloorSyncKey);
     setSafetyFloorText(
       String(
-        displayEnergy(normalized.calorieSafetyFloorValue, normalized.energyUnit)
+        roundedEnergy(normalized.calorieSafetyFloorValue, normalized.energyUnit)
       )
     );
   }
@@ -322,6 +323,14 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
       queryClient.invalidateQueries({ queryKey: preferencesQueryKey });
     },
   });
+
+  const handleEnergyUnitChange = useCallback(
+    (value: EnergyUnit) => {
+      if (value === normalized.energyUnit) return;
+      mutation.mutate({ energy_unit: value });
+    },
+    [mutation, normalized.energyUnit]
+  );
 
   const handleModeChange = useCallback(
     (value: string) => {
@@ -395,7 +404,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     if (trimmedValue === '') {
       setSafetyFloorText(
         String(
-          displayEnergy(
+          roundedEnergy(
             normalized.calorieSafetyFloorValue,
             normalized.energyUnit
           )
@@ -411,7 +420,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
       MIN_CALORIE_SAFETY_FLOOR,
       Math.min(MAX_CALORIE_SAFETY_FLOOR, kcal)
     );
-    setSafetyFloorText(String(displayEnergy(clamped, normalized.energyUnit)));
+    setSafetyFloorText(String(roundedEnergy(clamped, normalized.energyUnit)));
     if (clamped !== normalized.calorieSafetyFloorValue) {
       mutation.mutate({ calorie_safety_floor_value: clamped });
     }
@@ -584,6 +593,39 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           usesNativeHeader ? 'automatic' : 'never'
         }
       >
+        {/* Energy unit */}
+        <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
+          <Text className="text-base font-semibold text-text-primary mb-3">
+            {t('calorieSettings.energyUnitLabel', {
+              defaultValue: 'Energy Unit',
+            })}
+          </Text>
+          <SegmentedControl
+            segments={[
+              {
+                key: 'kcal',
+                label: t('calorieSettings.energyUnitKcal', {
+                  defaultValue: 'Calories (kcal)',
+                }),
+              },
+              {
+                key: 'kJ',
+                label: t('calorieSettings.energyUnitKj', {
+                  defaultValue: 'Kilojoules (kJ)',
+                }),
+              },
+            ]}
+            activeKey={normalized.energyUnit}
+            onSelect={handleEnergyUnitChange}
+          />
+          <Text className="text-text-secondary text-sm mt-3">
+            {t('calorieSettings.energyUnitDescription', {
+              defaultValue:
+                'How energy is shown and entered across the app, widgets and watch. Also changes the web app.',
+            })}
+          </Text>
+        </View>
+
         {/* Mode */}
         <View className="bg-surface rounded-xl p-3 mb-4 shadow-sm">
           <View className="flex-row items-center justify-between">
@@ -757,9 +799,11 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
               </Text>
               {normalized.mode === 'adaptive' && (
                 <Text className="text-text-secondary text-sm mt-3">
-                  {t('calorieSettings.adaptiveFallback', {
+                  {t('calorieSettings.adaptiveFallbackWithUnit', {
                     defaultValue:
-                      'The fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier.',
+                      'The fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±{{amount}} {{unit}} of BMR × this multiplier.',
+                    amount: roundedEnergy(500, normalized.energyUnit),
+                    unit: energyUnitLabel(normalized.energyUnit, t),
                   })}
                 </Text>
               )}
