@@ -99,6 +99,28 @@ const valuesWithAttributes = (json) => {
   return found;
 };
 
+/** Whether a catalogue is a server email template catalogue. */
+const isServerCatalogue = (path) => /^SparkyFitnessServer\//.test(path || "");
+
+// Server email translations are 100% plain text. The HTML skeleton and link tags
+// are built in server code, so server translation strings must contain no HTML tags.
+const TAG_IN_SERVER = /<[a-zA-Z/!]/;
+
+/** Dotted keys of string values in a server JSON catalogue that contain HTML tags. */
+const serverValuesWithTags = (json) => {
+  const found = [];
+  const walk = (value, key) => {
+    if (typeof value === "string") {
+      if (TAG_IN_SERVER.test(value)) found.push(key);
+    } else if (value && typeof value === "object") {
+      for (const [k, v] of Object.entries(value))
+        walk(v, key ? `${key}.${k}` : k);
+    }
+  };
+  walk(JSON.parse(json), "");
+  return found;
+};
+
 // Links. A translation may repeat the links its English text has, or keep the
 // ones it already had on main, but a new link, web address or email holds the
 // PR for a maintainer: translated text reaches main without review, and a link
@@ -323,27 +345,34 @@ module.exports = {
   ALLOWED_FILES,
   allowedFor,
   englishPathFor,
+  isServerCatalogue,
   linksIn,
   newLinks,
   outsideAllowlist,
   rendersMarkup,
+  serverValuesWithTags,
   valuesWithAttributes,
 };
 
 // CLI for shell steps. `<branch>` reads paths on stdin, one per line, and prints
 // the ones the branch may not change. `--values <file>...` prints the keys of
-// web catalogues, given as repo-relative paths, that put attributes in a tag.
+// catalogues, given as repo-relative paths, that put attributes in a tag or HTML tags in server catalogues.
 // Either exits 1 on any finding.
 if (require.main === module && process.argv[2] === "--values") {
   const fs = require("node:fs");
   const found = process.argv
     .slice(3)
-    .filter(rendersMarkup)
-    .flatMap((file) =>
-      valuesWithAttributes(fs.readFileSync(file, "utf8")).map(
-        (key) => `${file}: ${key}`,
-      ),
-    );
+    .filter((file) => rendersMarkup(file) || isServerCatalogue(file))
+    .flatMap((file) => {
+      const text = fs.readFileSync(file, "utf8");
+      if (rendersMarkup(file)) {
+        return valuesWithAttributes(text).map((key) => `${file}: ${key}`);
+      }
+      if (isServerCatalogue(file)) {
+        return serverValuesWithTags(text).map((key) => `${file}: ${key}`);
+      }
+      return [];
+    });
   if (found.length > 0) {
     console.log(found.join("\n"));
     process.exit(1);

@@ -5,10 +5,12 @@ const { test } = require("node:test");
 const {
   allowedFor,
   englishPathFor,
+  isServerCatalogue,
   linksIn,
   newLinks,
   outsideAllowlist,
   rendersMarkup,
+  serverValuesWithTags,
   valuesWithAttributes,
 } = require("./automation-allowlist.cjs");
 const { readFileSync } = require("node:fs");
@@ -104,6 +106,45 @@ test("no web catalogue in the repo puts attributes in a tag", () => {
     ),
   );
   assert.deepEqual(found, []);
+});
+
+test("no server email catalogue in the repo contains HTML tags", () => {
+  const json = catalogues.filter(
+    (p) => p.endsWith(".json") && isServerCatalogue(p),
+  );
+  assert.ok(json.length > 0, "expected server catalogues to be found");
+  const found = json.flatMap((p) =>
+    serverValuesWithTags(readFileSync(resolve(root, p), "utf8")).map(
+      (k) => `${p}: ${k}`,
+    ),
+  );
+  assert.deepEqual(found, []);
+});
+
+test("server email templates must be plain text without HTML tags", () => {
+  const valid = JSON.stringify({
+    reset: "You have requested a password reset for your account.",
+    mfa: "Your code is {{code}}.",
+    magic: "Please click on the link to log in.",
+    expiry: "This link will expire in {{expiresInMinutes}} minutes.",
+  });
+  assert.deepEqual(serverValuesWithTags(valid), []);
+
+  const invalid = JSON.stringify({
+    link: '<a href="https://evil.com">Reset</a>',
+    tag: "<p>Hello</p>",
+    script: "<script>alert(1)</script>",
+    img: '<img src="https://tracker.com">',
+    comment: "<!-- comment -->",
+    validText: "Regular text without tags",
+  });
+  assert.deepEqual(serverValuesWithTags(invalid), [
+    "link",
+    "tag",
+    "script",
+    "img",
+    "comment",
+  ]);
 });
 
 test("values may carry tags but not attributes", () => {

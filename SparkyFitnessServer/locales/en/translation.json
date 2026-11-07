@@ -2,18 +2,23 @@
   "email": {
     "passwordReset": {
       "subject": "SparkyFitness Password Reset",
-      "bodyHtml": "<p>You have requested a password reset for your SparkyFitness account.</p><p>Please click on the following link to reset your password:</p><p><a href=\"{{resetUrl}}\">{{resetUrl}}</a></p><p>This link will expire in {{expiresInHours}} hour.</p><p>If you did not request a password reset, please ignore this email.</p>",
-      "bodyText": "You have requested a password reset for your SparkyFitness account.\nPlease click on the following link to reset your password:\n\n{{resetUrl}}\n\nThis link will expire in {{expiresInHours}} hour.\nIf you did not request a password reset, please ignore this email."
+      "intro": "You have requested a password reset for your SparkyFitness account.",
+      "actionPrompt": "Please click on the following link to reset your password:",
+      "expiry": "This link will expire in {{expiresInHours}} hour.",
+      "ignoreNotice": "If you did not request a password reset, please ignore this email."
     },
     "mfaCode": {
       "subject": "Your SparkyFitness MFA Code",
-      "bodyHtml": "<p>Your Multi-Factor Authentication code is:</p><h3>{{code}}</h3><p>This code is valid for {{expiresInMinutes}} minutes.</p><p>If you did not request this code, please ignore this email.</p>",
-      "bodyText": "Your Multi-Factor Authentication code is:\n\n{{code}}\n\nThis code is valid for {{expiresInMinutes}} minutes.\nIf you did not request this code, please ignore this email."
+      "intro": "Your Multi-Factor Authentication code is:",
+      "expiry": "This code is valid for {{expiresInMinutes}} minutes.",
+      "ignoreNotice": "If you did not request this code, please ignore this email."
     },
     "magicLink": {
       "subject": "Your SparkyFitness Login Link",
-      "bodyHtml": "<p>You have requested a passwordless login to your SparkyFitness account.</p><p>Please click on the following link to log in:</p><p><a href=\"{{magicLinkUrl}}\">{{magicLinkUrl}}</a></p><p>This link will expire in {{expiresInMinutes}} minutes and can only be used once.</p><p>If you did not request this, please ignore this email.</p>",
-      "bodyText": "You have requested a passwordless login to your SparkyFitness account.\nPlease click on the following link to log in:\n\n{{magicLinkUrl}}\n\nThis link will expire in {{expiresInMinutes}} minutes and can only be used once.\nIf you did not request this, please ignore this email."
+      "intro": "You have requested a passwordless login to your SparkyFitness account.",
+      "actionPrompt": "Please click on the following link to log in:",
+      "expiry": "This link will expire in {{expiresInMinutes}} minutes and can only be used once.",
+      "ignoreNotice": "If you did not request this, please ignore this email."
     }
   }
 }
