@@ -3,9 +3,17 @@ import '@testing-library/jest-dom';
 import { ProviderNutrientViewer } from '@/components/FoodSearch/ProviderNutrientViewer';
 import type { Food, FoodVariant } from '@/types/food';
 
-jest.mock('react-i18next', () =>
-  jest.requireActual('@/tests/mocks/reactI18next')
-);
+// Keys set here translate to their value; every other key falls back to the
+// English default, as in the shared mock.
+let mockTranslations: Record<string, string> = {};
+jest.mock('react-i18next', () => {
+  const actual = jest.requireActual<
+    typeof import('@/tests/mocks/reactI18next')
+  >('@/tests/mocks/reactI18next');
+  const t: typeof actual.translateForTest = (key, ...rest) =>
+    mockTranslations[key] ?? actual.translateForTest(key, ...rest);
+  return { ...actual, useTranslation: () => ({ t, i18n: { language: 'de' } }) };
+});
 jest.mock('@/hooks/Foods/useCustomNutrients', () => ({
   useCustomNutrients: () => ({ data: [] }),
   useUpdateCustomNutrientMutation: () => ({ mutateAsync: jest.fn() }),
@@ -43,6 +51,10 @@ const renderOpen = (food: Food) => {
 const rowFor = (label: string) => screen.getByText(label).closest('div.flex');
 
 describe('ProviderNutrientViewer', () => {
+  afterEach(() => {
+    mockTranslations = {};
+  });
+
   it('badges a field from the provider map, even when its label matches no alias', () => {
     renderOpen(
       swissFood({
@@ -79,5 +91,37 @@ describe('ProviderNutrientViewer', () => {
 
     expect(rowFor('Calcium')).toHaveTextContent('Standard: Calcium');
     expect(rowFor('Wasser')).toHaveTextContent('Add as alias');
+  });
+
+  it('shows the standard nutrient name in the selected language', () => {
+    mockTranslations = {
+      'nutrition.calories': 'Kalorien',
+      'nutrition.waterContent': 'Wassergehalt',
+    };
+    renderOpen(
+      swissFood({
+        provider_nutrients: { 'Energie, Kalorien': 34, Wasser: 90.6 },
+        provider_nutrient_standard: {
+          'Energie, Kalorien': 'calories',
+          Wasser: 'water_ml',
+        },
+      })
+    );
+
+    expect(rowFor('Energie, Kalorien')).toHaveTextContent('Standard: Kalorien');
+    expect(rowFor('Wasser')).toHaveTextContent('Standard: Wassergehalt');
+  });
+
+  it('shows the raw id for a standard nutrient it has no name for', () => {
+    renderOpen(
+      swissFood({
+        provider_nutrients: { Spurenelement: 1 },
+        provider_nutrient_standard: { Spurenelement: 'unknown_nutrient' },
+      })
+    );
+
+    expect(rowFor('Spurenelement')).toHaveTextContent(
+      'Standard: unknown_nutrient'
+    );
   });
 });
