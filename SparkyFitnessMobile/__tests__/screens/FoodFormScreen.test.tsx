@@ -1376,6 +1376,229 @@ describe('FoodFormScreen', () => {
     }
   );
 
+  it.each(['edit-food', 'adjust-entry-nutrition'] as const)(
+    'clears custom nutrients when a converted unit comes from a variant without them (%s)',
+    async (mode) => {
+      const cup: FoodVariantDetail = {
+        id: 'cup',
+        food_id: 'food-1',
+        serving_size: 1,
+        serving_unit: 'cup',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+        custom_nutrients: { Zinc: 3 },
+      };
+      mockUseFoodVariants.mockReturnValue({
+        variants: [cup],
+        isLoading: false,
+        isError: false,
+      });
+      const screen = renderScreen({
+        mode,
+        foodId: 'food-1',
+        variantId: 'cup',
+        returnKey: 'FoodDetail-key',
+        initialValues: { ...mockSubmittedFoodFormData },
+        customNutrients: { Zinc: 3 },
+        availableUnitVariants: [cup],
+        selectedUnitSelection: { kind: 'existing', variant: cup },
+        item: {
+          id: 'food-1',
+          name: 'Custom Meal Food',
+          source: 'local',
+          servingSize: 1,
+          servingUnit: 'cup',
+          calories: 200,
+          protein: 10,
+          carbs: 20,
+          fat: 5,
+          originalItem: {},
+        },
+      });
+      expect(mockFoodForm).toHaveBeenLastCalledWith(
+        expect.objectContaining({ customNutrients: { Zinc: 3 } })
+      );
+      // Converted from a gram variant that has no custom nutrients.
+      mockUnitSelectionResult = {
+        kind: 'draft',
+        variant: {
+          ...cup,
+          id: undefined,
+          serving_size: 1,
+          serving_unit: 'oz',
+          custom_nutrients: {},
+        },
+      };
+      await act(async () => {
+        fireEvent.press(screen.getByText('Select Converted Unit'));
+      });
+      expect(mockFoodForm).toHaveBeenLastCalledWith(
+        expect.objectContaining({ customNutrients: {} })
+      );
+    }
+  );
+
+  it('updates equivalent units with the saved custom nutrients when overwriting in adjust mode', async () => {
+    const grams: FoodVariantDetail = {
+      id: 'grams',
+      food_id: 'food-1',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 200,
+      protein: 10,
+      carbs: 20,
+      fat: 5,
+      custom_nutrients: { Zinc: 3 },
+    };
+    const slice: FoodVariantDetail = {
+      ...grams,
+      id: 'slice',
+      serving_size: 1,
+      serving_unit: 'slice',
+    };
+    mockUseFoodVariants.mockReturnValue({
+      variants: [grams, slice],
+      isLoading: false,
+      isError: false,
+    });
+    jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((title, _message, buttons) => {
+        const list = (buttons ?? []) as {
+          text?: string;
+          onPress?: () => void;
+        }[];
+        const label =
+          title === 'Save nutrition' ? 'Update existing' : "Don't Update";
+        list.find((b) => b.text === label)?.onPress?.();
+      });
+    const screen = renderScreen({
+      mode: 'adjust-entry-nutrition',
+      foodId: 'food-1',
+      variantId: 'grams',
+      returnTo: 'FoodEntryAdd',
+      returnKey: 'FoodEntryAdd-key',
+      initialValues: { ...mockSubmittedFoodFormData },
+      // Only the custom nutrient differs from the stored variant.
+      customNutrients: { Zinc: 5 },
+      availableUnitVariants: [grams, slice],
+      selectedUnitSelection: { kind: 'existing', variant: grams },
+    });
+    fireEvent(
+      screen.getByLabelText('Save nutrition for future use'),
+      'valueChange',
+      true
+    );
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(updateFoodVariant).toHaveBeenCalledWith(
+        'slice',
+        expect.objectContaining({
+          serving_size: 1,
+          serving_unit: 'slice',
+          custom_nutrients: { Zinc: 5 },
+        })
+      )
+    );
+    expect(updateFoodVariant).toHaveBeenCalledWith(
+      'grams',
+      expect.objectContaining({ custom_nutrients: { Zinc: 5 } })
+    );
+  });
+
+  it('creates draft equivalent units once, on the new variant, when saving as new', async () => {
+    const grams: FoodVariantDetail = {
+      id: 'grams',
+      food_id: 'food-1',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 200,
+      protein: 10,
+      carbs: 20,
+      fat: 5,
+    };
+    mockUseFoodVariants.mockReturnValue({
+      variants: [grams],
+      isLoading: false,
+      isError: false,
+    });
+    jest.mocked(fetchFoodVariants).mockResolvedValue([grams]);
+    mockCreateVariant.mockResolvedValue({
+      ...grams,
+      id: 'grams-new',
+      calories: 240,
+    });
+    jest
+      .mocked(createFoodVariant)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({ ...grams, id: 'sibling' });
+    jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((title, _message, buttons) => {
+        const list = (buttons ?? []) as {
+          text?: string;
+          onPress?: () => void;
+        }[];
+        const label =
+          title === 'Save nutrition'
+            ? 'Save as new'
+            : title === 'Update past entries?'
+              ? "Don't Update"
+              : undefined;
+        (label
+          ? list.find((b) => b.text === label)
+          : list.find((b) => b.text && b.text !== 'Cancel')
+        )?.onPress?.();
+      });
+    const initialValues = { ...mockSubmittedFoodFormData };
+    mockSubmittedFoodFormData = { ...initialValues, calories: '240' };
+    mockEquivalentDraft = [
+      { serving_size: 1, serving_unit: 'serving' },
+      { serving_size: 2, serving_unit: 'slice' },
+    ];
+    const screen = renderScreen({
+      mode: 'edit-food',
+      foodId: 'food-1',
+      variantId: 'grams',
+      returnKey: 'FoodDetail-key',
+      initialValues,
+      customNutrients: null,
+      item: {
+        id: 'food-1',
+        name: 'Custom Meal Food',
+        source: 'local',
+        servingSize: 100,
+        servingUnit: 'g',
+        calories: 200,
+        protein: 10,
+        carbs: 20,
+        fat: 5,
+        originalItem: {},
+      },
+    });
+    fireEvent.press(screen.getByText('Apply Equivalent Fixture'));
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() =>
+      expect(mockToast.show).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'error',
+          text1: 'Some equivalent units could not be saved',
+        })
+      )
+    );
+    expect(mockCreateVariant).toHaveBeenCalledTimes(1);
+    expect(createFoodVariant).toHaveBeenCalledTimes(2);
+    expect(createFoodVariant).toHaveBeenCalledWith(
+      expect.objectContaining({ food_id: 'food-1', serving_unit: 'slice' })
+    );
+    expect(mockToast.show).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text1: 'Could not update food' })
+    );
+  });
+
   it('waits for named portions before leaving and retries using the same created food', async () => {
     let rows: FoodVariantDetail[] = [
       {
@@ -2428,7 +2651,8 @@ describe('FoodFormScreen', () => {
                 serving_unit: 'oz',
               }),
             },
-            adjustedCustomNutrients: null,
+            // The picked unit's variant has no custom nutrients, so none carry over.
+            adjustedCustomNutrients: {},
           },
         },
         source: 'FoodEntryAdd-key',
@@ -2632,7 +2856,7 @@ describe('FoodFormScreen', () => {
         water_ml: 0,
         alcohol_g: 0,
         glycemic_index: undefined,
-        custom_nutrients: undefined,
+        custom_nutrients: {},
         source: undefined,
         ai_confidence: undefined,
       });
@@ -2650,7 +2874,7 @@ describe('FoodFormScreen', () => {
                 serving_unit: 'cup',
               }),
             },
-            adjustedCustomNutrients: null,
+            adjustedCustomNutrients: {},
           },
         },
         source: 'FoodEntryAdd-key',
