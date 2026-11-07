@@ -317,7 +317,7 @@ const LabImportDialog = ({
               <p role="alert" className="text-sm text-destructive">
                 {t(
                   'labs.import.unconfirmedNoKey',
-                  'Saving did not finish, and this browser cannot mark the report so that saving again stores it once. Close this window and check your lab results: if the report is not there, import it again.'
+                  'Saving did not finish, and this browser cannot mark the report so that saving again stores it once. The report may still be saving. Close this window and check your lab results in a few minutes before importing anything again, so it is not saved twice.'
                 )}
               </p>
             )}

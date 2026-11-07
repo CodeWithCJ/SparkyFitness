@@ -10247,7 +10247,7 @@
       "readFailed": "Could not open that file.",
       "photoTooLarge": "That photo is too large to read (limit 6 MB). Try a smaller photo or a screenshot.",
       "lockedAfterFailedSave": "Saving did not finish, so this review is locked: Save again sends exactly the same report, and it is stored only once. To change values, choose the report again.",
-      "unconfirmedNoKey": "Saving did not finish, and this browser cannot mark the report so that saving again stores it once. Close this window and check your lab results: if the report is not there, import it again."
+      "unconfirmedNoKey": "Saving did not finish, and this browser cannot mark the report so that saving again stores it once. The report may still be saving. Close this window and check your lab results in a few minutes before importing anything again, so it is not saved twice."
     },
     "moreActions": "More actions",
     "deleteMarker": "Delete marker and all results",
