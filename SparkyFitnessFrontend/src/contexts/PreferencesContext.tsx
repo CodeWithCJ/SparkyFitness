@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useCallback,
+  useRef,
 } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { debug, info, error } from '@/utils/logging';
@@ -42,6 +43,9 @@ import {
   DEFAULT_CHART_SCALE_MODE,
   DEFAULT_TEMPERATURE_UNIT,
   isTemperatureUnit,
+  isGlucoseUnit,
+  DEFAULT_GLUCOSE_UNIT,
+  type GlucoseUnit,
   type ChartScaleMode,
   type TemperatureUnit,
   type UserPreferences as SharedUserPreferences,
@@ -134,6 +138,8 @@ interface PreferencesContextType {
   measurementDecimalPlaces: number;
   chartScaleMode: ChartScaleMode;
   setChartScaleMode: (mode: ChartScaleMode) => void;
+  glucoseUnit: GlucoseUnit;
+  setGlucoseUnit: (unit: GlucoseUnit) => void;
   temperatureUnit: TemperatureUnit;
   setTemperatureUnit: (unit: TemperatureUnit) => void;
   goalMode: GoalMode;
@@ -216,8 +222,15 @@ interface PreferencesContextType {
   ) => number;
   getEnergyUnitString: (unit: EnergyUnit) => string;
   formatDate: (date: string | Date) => string;
-  formatDateInUserTimezone: (date: string | Date, formatStr?: string) => string;
-  formatTime: (date: string | Date) => string;
+  formatDateInUserTimezone: (
+    date: string | Date,
+    formatStr?: string,
+    options?: { asInstant?: boolean }
+  ) => string;
+  formatTime: (
+    date: string | Date,
+    options?: { asInstant?: boolean }
+  ) => string;
   getDateRelationToToday: (date: string | Date) => string;
   parseDateInUserTimezone: (dateString: string) => Date;
   loadPreferences: () => Promise<void>;
@@ -268,6 +281,7 @@ export interface DefaultPreferences {
   first_day_of_week: number;
   measurement_decimal_places: number;
   chart_scale_mode: ChartScaleMode;
+  default_glucose_unit?: GlucoseUnit;
   default_temperature_unit?: TemperatureUnit;
   goal_mode: GoalMode;
   goal_mode_calculation_method: GoalModeCalculationMethod;
@@ -390,6 +404,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [chartScaleMode, setChartScaleModeState] = useState<ChartScaleMode>(
     DEFAULT_CHART_SCALE_MODE
   );
+  const [glucoseUnit, setGlucoseUnitState] =
+    useState<GlucoseUnit>(DEFAULT_GLUCOSE_UNIT);
+  // Only explicit unit edits may overwrite a preference saved by another session.
+  const loadedGlucoseUnit = useRef<GlucoseUnit>(DEFAULT_GLUCOSE_UNIT);
   const [temperatureUnit, setTemperatureUnitState] = useState<TemperatureUnit>(
     DEFAULT_TEMPERATURE_UNIT
   );
@@ -569,11 +587,20 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     date.getSeconds() === 0 &&
     date.getMilliseconds() === 0;
 
+  /** Sensor instants opt out of calendar-picker heuristics, including local-midnight Dates. */
   const formatDateInUserTimezone = useCallback(
-    (date: string | Date, formatStr?: string) => {
+    (
+      date: string | Date,
+      formatStr?: string,
+      options?: { asInstant?: boolean }
+    ) => {
       let dateToFormat: Date;
 
-      if (typeof date === 'string') {
+      if (options?.asInstant) {
+        dateToFormat = toUserTimezone(
+          typeof date === 'string' ? parseISO(date) : date
+        );
+      } else if (typeof date === 'string') {
         if (isLiteralDateString(date)) {
           // Literal date string — treat as a calendar date, no TZ projection
           dateToFormat = parseLiteralDate(date) ?? new Date();
@@ -615,8 +642,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const formatTime = useCallback(
-    (date: string | Date) => {
-      return formatDateInUserTimezone(date, normalizeTimeFormat(timeFormat));
+    (date: string | Date, options?: { asInstant?: boolean }) => {
+      return formatDateInUserTimezone(
+        date,
+        normalizeTimeFormat(timeFormat),
+        options
+      );
     },
     [formatDateInUserTimezone, timeFormat]
   );
@@ -815,6 +846,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setChartScaleModeState(
           data.chart_scale_mode || DEFAULT_CHART_SCALE_MODE
         );
+        loadedGlucoseUnit.current = isGlucoseUnit(data.default_glucose_unit)
+          ? data.default_glucose_unit
+          : DEFAULT_GLUCOSE_UNIT;
+        setGlucoseUnitState(loadedGlucoseUnit.current);
         setTemperatureUnitState(
           isTemperatureUnit(data.default_temperature_unit)
             ? data.default_temperature_unit
@@ -930,6 +965,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         }
         if (updates.chart_scale_mode)
           localStorage.setItem('chartScaleMode', updates.chart_scale_mode);
+        if (updates.default_glucose_unit)
+          localStorage.setItem('glucoseUnit', updates.default_glucose_unit);
         if (updates.default_temperature_unit)
           localStorage.setItem(
             'temperatureUnit',
@@ -961,6 +998,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     [user, loggingLevel, upsertUserPreferences]
   );
 
+  /** Save edited units only; unrelated form saves must not overwrite another session's unit. */
   const saveAllPreferences = useCallback(
     async (newPrefs?: Partial<PreferencesContextType>) => {
       info(
@@ -1035,6 +1073,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.measurementDecimalPlaces ?? measurementDecimalPlaces,
         chart_scale_mode: newPrefs?.chartScaleMode ?? chartScaleMode,
         default_temperature_unit: newPrefs?.temperatureUnit ?? temperatureUnit,
+        ...((newPrefs?.glucoseUnit ?? glucoseUnit) !== loadedGlucoseUnit.current
+          ? { default_glucose_unit: newPrefs?.glucoseUnit ?? glucoseUnit }
+          : {}),
         goal_mode: newPrefs?.goalMode ?? goalMode,
         goal_mode_calculation_method:
           newPrefs?.goalModeCalculationMethod ?? goalModeCalculationMethod,
@@ -1123,6 +1164,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       measurementDecimalPlaces,
       chartScaleMode,
       temperatureUnit,
+      glucoseUnit,
       goalMode,
       goalModeCalculationMethod,
       adaptiveActivitySeparate,
@@ -1375,6 +1417,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           'chartScaleMode'
         ) as ChartScaleMode | null;
         if (savedChartScaleMode) setChartScaleModeState(savedChartScaleMode);
+        const savedGlucoseUnit = localStorage.getItem('glucoseUnit');
+        if (isGlucoseUnit(savedGlucoseUnit))
+          setGlucoseUnitState(savedGlucoseUnit);
         const savedTemperatureUnit = localStorage.getItem('temperatureUnit');
         if (isTemperatureUnit(savedTemperatureUnit))
           setTemperatureUnitState(savedTemperatureUnit);
@@ -1427,6 +1472,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       measurementDecimalPlaces,
       chartScaleMode,
       temperatureUnit,
+      glucoseUnit,
       goalMode,
       goalModeCalculationMethod,
       adaptiveActivitySeparate,
@@ -1446,6 +1492,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
       setChartScaleMode: setChartScaleModeState,
       setTemperatureUnit: setTemperatureUnitState,
+      setGlucoseUnit: setGlucoseUnitState,
       setGoalMode,
       setGoalModeCalculationMethod,
       setGoalModeCustomPercentage,
@@ -1542,6 +1589,7 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       measurementDecimalPlaces,
       chartScaleMode,
       temperatureUnit,
+      glucoseUnit,
       goalMode,
       goalModeCalculationMethod,
       adaptiveActivitySeparate,

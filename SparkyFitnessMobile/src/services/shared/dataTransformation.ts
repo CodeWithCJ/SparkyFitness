@@ -23,7 +23,7 @@ import { toLocalDateString } from '../../utils/dateUtils';
 // mg/dL per mmol/L for blood glucose (molar mass of glucose ≈ 180.18 g/mol). Shared by
 // both platforms' glucose transformers and the HealthKit day-statistics read so every
 // path converts identically.
-export const BLOOD_GLUCOSE_MG_DL_PER_MMOL_L = 18.018;
+export { BLOOD_GLUCOSE_MG_DL_PER_MMOL_L } from '@workspace/shared';
 
 // HC stores every nutrient as Mass (grams), but Sparky's food columns expect a
 // specific unit per nutrient — matching how OpenFoodFacts/Garmin populate them:

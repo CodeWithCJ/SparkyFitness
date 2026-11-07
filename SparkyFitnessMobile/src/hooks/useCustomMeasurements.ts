@@ -90,11 +90,16 @@ export function useDeleteCustomCategory() {
 
 export function useCustomMeasurementsByDate(
   date: string,
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean; byTimestamp?: boolean }
 ) {
   return useQuery({
-    queryKey: customMeasurementsByDateQueryKey(date),
-    queryFn: () => fetchCustomMeasurementsByDate(date),
+    queryKey: options?.byTimestamp
+      ? [...customMeasurementsByDateQueryKey(date), 'timestamp']
+      : customMeasurementsByDateQueryKey(date),
+    queryFn: () =>
+      options?.byTimestamp
+        ? fetchCustomMeasurementsByDate(date, true)
+        : fetchCustomMeasurementsByDate(date),
     enabled: !!date && (options?.enabled ?? true),
     staleTime: 1000 * 60 * 1,
   });
