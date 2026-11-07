@@ -392,6 +392,11 @@ export function useNutritionChartWidgets({
 
   const syncMethod = useMemo(() => createTimeSyncMethod(), []);
 
+  const rawKcalByDate = useMemo(
+    () => new Map(nutritionData.map((d) => [d.date, d.calories])),
+    [nutritionData]
+  );
+
   const prepareChartData = useMemo(
     () =>
       (data: NutritionData[], chartKey: string): NutritionData[] => {
@@ -408,9 +413,13 @@ export function useNutritionChartWidgets({
 
         if (goalsIsMap || chartKey === 'calories') {
           result = result.map((point) => {
+            const rawKcal = rawKcalByDate.get(point.date);
             const rawGoal =
               chartKey === 'calories'
-                ? (effectiveCalorieGoal(calorieBalanceByDate?.[point.date]) ??
+                ? (effectiveCalorieGoal(
+                    calorieBalanceByDate?.[point.date],
+                    rawKcal
+                  ) ??
                   storedGoals?.[point.date]?.[chartKey as keyof ExpandedGoals])
                 : storedGoals?.[point.date]?.[chartKey as keyof ExpandedGoals];
 
@@ -427,7 +436,14 @@ export function useNutritionChartWidgets({
 
         return prepareTimeChartData(result, chartScaleMode);
       },
-    [goals, calorieBalanceByDate, chartScaleMode, convertEnergy, energyUnit]
+    [
+      goals,
+      calorieBalanceByDate,
+      rawKcalByDate,
+      chartScaleMode,
+      convertEnergy,
+      energyUnit,
+    ]
   );
 
   const getYAxisDomain = useMemo(
