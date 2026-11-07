@@ -47,6 +47,8 @@ interface WidgetGridProps {
   widgets: Widget[];
   /** Builds the default layout for the current widget set (page-specific sizing). */
   generateDefaultLayouts: (widgetKeys: string[]) => DashboardLayouts;
+  /** Widget keys to treat as hidden when no saved layout row exists yet. */
+  defaultHidden?: string[];
   /** Optional container to render the toolbar controls inside via portal */
   toolbarContainer?: HTMLElement | null;
 }
@@ -86,6 +88,7 @@ const WidgetGridInner = ({
   pageKey,
   widgets,
   generateDefaultLayouts,
+  defaultHidden,
   toolbarContainer,
 }: WidgetGridProps) => {
   const { t } = useTranslation();
@@ -118,7 +121,10 @@ const WidgetGridInner = ({
     [widgetKeys, generateDefaultLayouts]
   );
 
-  const hidden = useMemo(() => saved?.hidden ?? EMPTY_HIDDEN, [saved]);
+  const hidden = useMemo(
+    () => saved?.hidden ?? defaultHidden ?? EMPTY_HIDDEN,
+    [saved, defaultHidden]
+  );
 
   const [layouts, setLayouts] = useState<DashboardLayouts>(() =>
     reconcileLayouts(saved?.layout, widgetKeys, defaults)
@@ -379,6 +385,7 @@ export default function WidgetGrid({
   pageKey,
   widgets,
   generateDefaultLayouts,
+  defaultHidden,
   toolbarContainer,
 }: WidgetGridProps) {
   const { reset } = useDashboardLayout(pageKey);
@@ -424,6 +431,7 @@ export default function WidgetGrid({
         pageKey={pageKey}
         widgets={widgets}
         generateDefaultLayouts={generateDefaultLayouts}
+        defaultHidden={defaultHidden}
         toolbarContainer={toolbarContainer}
       />
     </GridErrorBoundary>

@@ -78,11 +78,6 @@ const viewGroups = [
     key: 'settings.nutrientDisplay.groups.reportTabular',
     name: 'Report (Tabular)',
   },
-  {
-    id: 'report_chart',
-    key: 'settings.nutrientDisplay.groups.reportChart',
-    name: 'Report (Chart)',
-  },
 ];
 
 interface NutrientPreference {
