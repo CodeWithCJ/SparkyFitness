@@ -3195,7 +3195,8 @@ CREATE TABLE public.lab_reports (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by_user_id uuid,
-    updated_by_user_id uuid
+    updated_by_user_id uuid,
+    client_request_id uuid
 );
 
 
@@ -3204,6 +3205,13 @@ CREATE TABLE public.lab_reports (
 --
 
 COMMENT ON TABLE public.lab_reports IS 'One imported lab report (a PDF or photo read into results). The report itself is not stored, only which results came from it.';
+
+
+--
+-- Name: COLUMN lab_reports.client_request_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.lab_reports.client_request_id IS 'Key the client sent with the import, so a retried save returns this report instead of saving it again. NULL for imports without one.';
 
 
 --
@@ -8131,6 +8139,13 @@ CREATE INDEX idx_injection_entries_user_id ON public.injection_entries USING btr
 --
 
 CREATE UNIQUE INDEX idx_lab_markers_user_name ON public.lab_markers USING btree (user_id, lower(name));
+
+
+--
+-- Name: idx_lab_reports_user_client_request; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_lab_reports_user_client_request ON public.lab_reports USING btree (user_id, client_request_id) WHERE (client_request_id IS NOT NULL);
 
 
 --
