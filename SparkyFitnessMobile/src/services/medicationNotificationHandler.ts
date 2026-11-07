@@ -563,6 +563,11 @@ export async function flushPendingMedicationNotificationActions(): Promise<boole
   return anySucceeded;
 }
 
+/**
+ * Handle Taken, Skip or Snooze, sharing concurrent work for the same dose.
+ * Clear only the matching saved response after success; ignore unrelated actions.
+ * @returns True for successful or unrelated responses, false for invalid data or failed actions.
+ */
 export async function processMedicationNotificationResponse(
   response: Notifications.NotificationResponse
 ): Promise<boolean> {
@@ -602,12 +607,9 @@ export async function processMedicationNotificationResponse(
     : actionDedupeId({ key: baseKey, entryDate, doses, userId });
 
   const existingPromise = inFlightActions.get(dedupeKey);
-  if (existingPromise) {
-    return existingPromise;
-  }
-
-  const actionPromise = (
-    isSnooze
+  const actionPromise =
+    existingPromise ??
+    (isSnooze
       ? handleSnoozeNotificationAction(
           content,
           data,
@@ -624,12 +626,22 @@ export async function processMedicationNotificationResponse(
           baseKey,
           userId
         )
-  ).finally(() => {
-    inFlightActions.delete(dedupeKey);
-  });
+    ).finally(() => {
+      inFlightActions.delete(dedupeKey);
+    });
 
-  inFlightActions.set(dedupeKey, actionPromise);
-  return actionPromise;
+  if (!existingPromise) inFlightActions.set(dedupeKey, actionPromise);
+  const succeeded = await actionPromise;
+  const last = succeeded ? Notifications.getLastNotificationResponse() : null;
+  // Consume only this successful action; another feature may have a newer response.
+  if (
+    last?.actionIdentifier === actionId &&
+    last.notification.request.identifier === notificationId &&
+    last.notification.date === response.notification.date
+  ) {
+    Notifications.clearLastNotificationResponse();
+  }
+  return succeeded;
 }
 
 async function handleSnoozeNotificationAction(
@@ -777,6 +789,10 @@ TaskManager.defineTask<Notifications.NotificationTaskPayload>(
   }
 );
 
+/**
+ * Register the task and live listener once, then recover an action received
+ * before startup subscribed to notification responses.
+ */
 export function initMedicationNotificationActions(): void {
   if (initialized) return;
   initialized = true;
@@ -795,6 +811,10 @@ export function initMedicationNotificationActions(): void {
   addNotificationResponseListener((response) => {
     void processMedicationNotificationResponse(response);
   });
+
+  // Recover cold-launch actions received before the listener was installed.
+  const last = Notifications.getLastNotificationResponse();
+  if (last) void processMedicationNotificationResponse(last);
 }
 
 async function clearMatchingReminders(
