@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
-const { resolve } = require("node:path");
+const { join, relative, resolve } = require("node:path");
 const { test } = require("node:test");
 const {
   allowedFor,
@@ -127,13 +127,16 @@ test("server email templates must be plain text without HTML tags", () => {
     mfa: "Your code is {{code}}.",
     magic: "Please click on the link to log in.",
     expiry: "This link will expire in {{expiresInMinutes}} minutes.",
-    comparison: "Thresholds: x<y and duration < 5 minutes.",
+    comparison: "Thresholds: x<y and duration < 5 minutes and x<y and z>.",
   });
   assert.deepEqual(serverValuesWithTags(valid), []);
 
   const invalid = JSON.stringify({
     link: '<a href="https://evil.com">Reset</a>',
     tag: "<p>Hello</p>",
+    customTag: "<custom-element>Custom</custom-element>",
+    compactSelfClosing: "Line<br/>break",
+    compactComment: "<!--comment-->",
     script: "<script>alert(1)</script>",
     img: '<img src="https://tracker.com">',
     comment: "<!-- comment -->",
@@ -146,6 +149,9 @@ test("server email templates must be plain text without HTML tags", () => {
   assert.deepEqual(serverValuesWithTags(invalid), [
     "link",
     "tag",
+    "customTag",
+    "compactSelfClosing",
+    "compactComment",
     "script",
     "img",
     "comment",
@@ -153,37 +159,29 @@ test("server email templates must be plain text without HTML tags", () => {
   ]);
 
   // CLI test: passing a server catalogue with tags through --values exits 1 and prints the offending key
-  const tempTestFile = resolve(
-    root,
-    "SparkyFitnessServer/locales/__test_cli_tags.json",
+  const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+  const tempDir = mkdtempSync(
+    resolve(root, "SparkyFitnessServer/.tmp-allowlist-test-"),
   );
+  const tempTestFile = join(tempDir, "catalogue.json");
+  const relPath = relative(root, tempTestFile);
   try {
-    const { writeFileSync, unlinkSync } = require("node:fs");
     writeFileSync(tempTestFile, invalid, "utf8");
     assert.throws(
       () =>
         execFileSync(
           process.execPath,
-          [
-            resolve(__dirname, "automation-allowlist.cjs"),
-            "--values",
-            "SparkyFitnessServer/locales/__test_cli_tags.json",
-          ],
+          [resolve(__dirname, "automation-allowlist.cjs"), "--values", relPath],
           { cwd: root, encoding: "utf8" },
         ),
       (err) => {
         assert.equal(err.status, 1);
-        assert.match(
-          err.stdout,
-          /SparkyFitnessServer\/locales\/__test_cli_tags\.json: email\.reset/,
-        );
+        assert.match(err.stdout, new RegExp(`${relPath}: email\\.reset`));
         return true;
       },
     );
   } finally {
-    try {
-      require("node:fs").unlinkSync(tempTestFile);
-    } catch {}
+    rmSync(tempDir, { recursive: true, force: true });
   }
 });
 

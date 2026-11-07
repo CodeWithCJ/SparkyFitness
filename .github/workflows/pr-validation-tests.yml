@@ -3,30 +3,8 @@ name: PR Validation Tests
 on:
   pull_request:
     branches: [main]
-    paths:
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - ".github/scripts/pr-policy.cjs"
-      - ".github/scripts/pr-validation.test.cjs"
-      - ".github/scripts/automation-allowlist.cjs"
-      - ".github/scripts/automation-allowlist.test.cjs"
-      - "SparkyFitnessServer/locales/en/**"
-      - ".github/workflows/pr-validation.yml"
-      - ".github/workflows/pr-validation-tests.yml"
   push:
     branches: [main]
-    paths:
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - ".github/scripts/pr-policy.cjs"
-      - ".github/scripts/pr-validation.test.cjs"
-      - ".github/scripts/automation-allowlist.cjs"
-      - ".github/scripts/automation-allowlist.test.cjs"
-      - "SparkyFitnessServer/locales/en/**"
-      - ".github/workflows/pr-validation.yml"
-      - ".github/workflows/pr-validation-tests.yml"
 
 permissions:
   contents: read
