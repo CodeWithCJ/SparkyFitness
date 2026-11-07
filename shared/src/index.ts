@@ -176,6 +176,7 @@ export * from './utils/calendar.ts';
 export * from './utils/entryTime.ts';
 export * from './utils/hydrationExample.ts';
 export * from './utils/calorieCalculations.ts';
+export * from './utils/energyUnit.ts';
 export * from './utils/sleepSameNight.ts';
 export * from './utils/calorieRuleDefaults.ts';
 export * from './utils/exerciseCalorieLink.ts';

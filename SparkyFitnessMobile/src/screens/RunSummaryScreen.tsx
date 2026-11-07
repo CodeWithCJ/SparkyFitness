@@ -47,6 +47,8 @@ import {
 } from '../utils/gpsRecording';
 import type { RootStackScreenProps } from '../types/navigation';
 import { learnWatchIndoorScale } from '../services/watchIndoorScale';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 type Props = RootStackScreenProps<'RunSummary'>;
 
@@ -59,6 +61,7 @@ const FEET_PER_METER = 3.28084;
  */
 const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const insets = useSafeAreaInsets();
   const summary = route.params;
   const miles = summary.distanceUnit === 'miles';
@@ -299,9 +302,15 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           summary.activeEnergyKcal != null &&
           summary.activeEnergyKcal > 0 ? (
             <Stat
-              label={t('watchRunLive.calories', { defaultValue: 'Calories' })}
-              value={String(Math.round(summary.activeEnergyKcal))}
-              unit={t('watchRunLive.kcal', { defaultValue: 'kcal' })}
+              label={
+                energyUnit === 'kJ'
+                  ? t('common.energy', { defaultValue: 'Energy' })
+                  : t('watchRunLive.calories', { defaultValue: 'Calories' })
+              }
+              value={String(
+                roundedEnergy(summary.activeEnergyKcal, energyUnit)
+              )}
+              unit={energyUnitLabel(energyUnit, t)}
             />
           ) : null}
         </View>

@@ -30,6 +30,7 @@ import { TOOLTIP_STYLE } from './compareChartTheme';
 import { compareShownAmountText, dotsAxisCaption } from './compareCopy';
 import { COMPARE_METRIC_LABELS } from './compareMetricLabels';
 import { hasDeviation } from './compareTables';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 interface CompareDotsChartProps {
   response: CompareResponse;
@@ -50,10 +51,15 @@ export const CompareDotsChart = ({
   question,
 }: CompareDotsChartProps) => {
   const { t } = useTranslation();
+  const { energyUnit } = usePreferences();
   const { mode, timing } = timingOf(question.choice);
 
   const { dots, trend } = useMemo(() => {
-    const paired = displayDots(pairedDots(response, mode, timing), question);
+    const paired = displayDots(
+      pairedDots(response, mode, timing),
+      question,
+      energyUnit
+    );
     // A fitted line reads as a finding, so it is drawn only for a real link.
     const line = response.result.linked === true ? trendLine(paired) : null;
     if (!line || paired.length === 0) return { dots: paired, trend: null };
@@ -67,7 +73,7 @@ export const CompareDotsChart = ({
         { x: hi, y: line.slope * hi + line.intercept },
       ] as const,
     };
-  }, [response, question, mode, timing]);
+  }, [response, question, mode, timing, energyUnit]);
 
   const yesNoByDay =
     mode === 'day' &&

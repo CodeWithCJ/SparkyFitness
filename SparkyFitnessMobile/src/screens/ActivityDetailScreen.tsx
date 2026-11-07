@@ -62,7 +62,11 @@ import type { ExerciseEntrySetResponse } from '@workspace/shared';
 import {
   canEditGroupedWorkout,
   isAppLoggedWorkoutSource,
+  energyFromKcal,
 } from '@workspace/shared';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel } from '../utils/energyUnit';
+import { useEnergyInputText } from '../hooks/useEnergyInputText';
 
 type Props = RootStackScreenProps<'ActivityDetail'>;
 
@@ -181,6 +185,14 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     setNotes,
     populate,
   } = useActivityForm({ isEditMode: true, skipDraftLoad: true });
+  // The form keeps kcal; both calorie fields show and take the account's unit.
+  const energyUnit = useEnergyUnit();
+  const energyLabel = energyUnitLabel(energyUnit, t);
+  const caloriesInput = useEnergyInputText(formState.calories, setCalories);
+  const caloriesAppliedInput = useEnergyInputText(
+    formState.caloriesApplied ?? '',
+    setCaloriesApplied
+  );
   const submission = getActivityDraftSubmission(formState, distanceUnit);
 
   const startEditing = () => {
@@ -415,28 +427,31 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     if (isEditing || calories > 0) {
       stats.push({
         value: isEditing
-          ? formState.calories || '-'
+          ? caloriesInput.text || '-'
           : calories > 0
-            ? formatLocalizedNumber(calories, { maximumFractionDigits: 1 })
+            ? formatLocalizedNumber(energyFromKcal(calories, energyUnit), {
+                maximumFractionDigits: 1,
+              })
             : '-',
         label: t('activityDetail.stats.calories', { defaultValue: 'Calories' }),
         editKey: 'calories',
-        editSuffix: 'cal',
+        editSuffix: energyLabel,
         keyboardType: 'decimal-pad',
       });
     }
     if (isEditing || session.calories_applied != null) {
       stats.push({
         value: isEditing
-          ? formState.caloriesApplied || '-'
-          : formatLocalizedNumber(session.calories_applied ?? 0, {
-              maximumFractionDigits: 1,
-            }),
+          ? caloriesAppliedInput.text || '-'
+          : formatLocalizedNumber(
+              energyFromKcal(session.calories_applied ?? 0, energyUnit),
+              { maximumFractionDigits: 1 }
+            ),
         label: t('activityDetail.stats.caloriesCounted', {
           defaultValue: 'Counted in daily total',
         }),
         editKey: 'caloriesApplied',
-        editSuffix: 'cal',
+        editSuffix: energyLabel,
         keyboardType: 'decimal-pad',
       });
     }
@@ -504,9 +519,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       case 'duration':
         return formState.duration;
       case 'calories':
-        return formState.calories;
+        return caloriesInput.text;
       case 'caloriesApplied':
-        return formState.caloriesApplied ?? '';
+        return caloriesAppliedInput.text;
       case 'distance':
         return formState.distance;
       case 'avgHeartRate':
@@ -525,10 +540,10 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         setDuration(value);
         break;
       case 'calories':
-        setCalories(value);
+        caloriesInput.onChangeText(value);
         break;
       case 'caloriesApplied':
-        setCaloriesApplied(value);
+        caloriesAppliedInput.onChangeText(value);
         break;
       case 'distance':
         setDistance(value);

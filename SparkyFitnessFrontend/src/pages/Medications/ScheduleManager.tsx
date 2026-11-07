@@ -233,15 +233,29 @@ export default function ScheduleManager({ med }: { med: MedicationDetail }) {
                   <p className="text-xs text-muted-foreground">
                     {doseScaling.calories != null
                       ? t(
-                          'medications.schedule.supplementDoseScalingCalories',
-                          'Each log counts {{dose}} servings: {{dose}} x {{perDose}} kcal = {{total}} kcal.',
+                          'medications.schedule.supplementDoseScalingEnergy',
+                          'Each log counts {{dose}} servings: {{dose}} x {{perDose}} {{unit}} = {{total}} {{unit}}.',
                           {
                             dose: doseScaling.dose,
-                            perDose: doseScaling.calories,
+                            perDose:
+                              Math.round(
+                                preferencesContext.convertEnergy(
+                                  doseScaling.calories,
+                                  'kcal',
+                                  preferencesContext.energyUnit
+                                ) * 100
+                              ) / 100,
                             total:
                               Math.round(
-                                doseScaling.calories * doseScaling.dose * 100
+                                preferencesContext.convertEnergy(
+                                  doseScaling.calories * doseScaling.dose,
+                                  'kcal',
+                                  preferencesContext.energyUnit
+                                ) * 100
                               ) / 100,
+                            unit: preferencesContext.getEnergyUnitString(
+                              preferencesContext.energyUnit
+                            ),
                           }
                         )
                       : t(

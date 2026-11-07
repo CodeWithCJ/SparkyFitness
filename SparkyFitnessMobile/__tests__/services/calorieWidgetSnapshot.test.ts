@@ -12,6 +12,23 @@ const summaryWith = (
   }) as DailySummary;
 
 describe('buildCalorieWidgetSnapshot', () => {
+  it('keeps the figures in kcal and tells the widget to show kJ', () => {
+    // The widget converts for display, so the numbers it is sent never change
+    // with the unit and an older widget build still reads them as kcal.
+    expect(
+      buildCalorieWidgetSnapshot(
+        summaryWith({
+          eaten: 1500,
+          burned: 300,
+          goal: 2000,
+          remaining: 800,
+          progress: 65.2,
+        }),
+        'kJ'
+      )
+    ).toMatchObject({ food: 1500, remaining: 800, energyUnit: 'kJ' });
+  });
+
   it('takes every figure from the calorie balance the Dashboard shows', () => {
     // Exercise credit mode: the base goal is 2000 and 300 kcal burned are
     // added back, so 800 are left. The flat caloriesConsumed/Burned fields
@@ -33,6 +50,7 @@ describe('buildCalorieWidgetSnapshot', () => {
       goal: 2000,
       remaining: 800,
       progress: 0.652,
+      energyUnit: 'kcal',
     });
   });
 

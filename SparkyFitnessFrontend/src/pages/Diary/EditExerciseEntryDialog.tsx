@@ -88,6 +88,7 @@ import {
   toHourMinute,
   userHourMinute,
 } from '@workspace/shared';
+import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 interface EditExerciseEntryDialogProps {
   entry: ExerciseEntry;
   open: boolean;
@@ -280,8 +281,18 @@ const EditExerciseEntryDialog = ({
   onSave,
 }: EditExerciseEntryDialogProps) => {
   const { t } = useTranslation();
-  const { loggingLevel, weightUnit, distanceUnit, convertDistance, timezone } =
-    usePreferences();
+  const {
+    loggingLevel,
+    weightUnit,
+    distanceUnit,
+    convertDistance,
+    timezone,
+    energyUnit,
+    getEnergyUnitString,
+  } = usePreferences();
+  // Energy fields keep kcal in state and show the account's unit
+  // (`shownEnergyInput` / `kcalFromEnergyInput`).
+  const energyLabel = getEnergyUnitString(energyUnit);
 
   const modality = resolveExerciseModality(
     entry.exercise_snapshot?.modality,
@@ -1176,18 +1187,22 @@ const EditExerciseEntryDialog = ({
                 <div className="space-y-1.5">
                   <Label htmlFor="calories-burned" className="text-sm">
                     {t(
-                      'exercise.editExerciseEntryDialog.caloriesBurnedOptionalLabel',
-                      'Calories burned (optional)'
+                      'exercise.editExerciseEntryDialog.caloriesBurnedOptionalWithUnit',
+                      'Calories burned ({{unit}}, optional)',
+                      { unit: energyLabel }
                     )}
                   </Label>
                   <div className="relative">
                     <Input
                       id="calories-burned"
                       type="number"
-                      value={caloriesBurnedInput}
+                      value={shownEnergyInput(caloriesBurnedInput, energyUnit)}
                       onChange={(e) =>
                         setCaloriesBurnedInput(
-                          e.target.value === '' ? '' : Number(e.target.value)
+                          kcalFromEnergyInput(
+                            e.target.value === '' ? '' : Number(e.target.value),
+                            energyUnit
+                          )
                         )
                       }
                       placeholder={t(
@@ -1217,8 +1232,9 @@ const EditExerciseEntryDialog = ({
               <div className="space-y-1.5">
                 <Label htmlFor="calories-applied" className="text-sm">
                   {t(
-                    'exercise.editExerciseEntryDialog.caloriesAppliedLabel',
-                    'Calories counted in daily total (optional)'
+                    'exercise.editExerciseEntryDialog.caloriesAppliedWithUnit',
+                    'Calories counted in daily total ({{unit}}, optional)',
+                    { unit: energyLabel }
                   )}
                 </Label>
                 <div className="relative">
@@ -1226,11 +1242,14 @@ const EditExerciseEntryDialog = ({
                     id="calories-applied"
                     type="number"
                     min={0}
-                    value={caloriesAppliedInput}
+                    value={shownEnergyInput(caloriesAppliedInput, energyUnit)}
                     disabled={Boolean(entry.calorie_link_id)}
                     onChange={(e) =>
                       setCaloriesAppliedInput(
-                        e.target.value === '' ? '' : Number(e.target.value)
+                        kcalFromEnergyInput(
+                          e.target.value === '' ? '' : Number(e.target.value),
+                          energyUnit
+                        )
                       )
                     }
                     placeholder={t(
@@ -1888,16 +1907,25 @@ const EditExerciseEntryDialog = ({
                     <div>
                       <Label className="text-xs">
                         {t(
-                          'diary.editExerciseEntryDialog.activeCaloriesKcal',
-                          'Active Calories (kcal)'
+                          'diary.editExerciseEntryDialog.activeCaloriesWithUnit',
+                          'Active Calories ({{unit}})',
+                          { unit: energyLabel }
                         )}
                       </Label>
                       <Input
                         type="number"
-                        value={activeCaloriesInput}
+                        value={shownEnergyInput(
+                          activeCaloriesInput,
+                          energyUnit
+                        )}
                         onChange={(e) =>
                           setActiveCaloriesInput(
-                            e.target.value === '' ? '' : Number(e.target.value)
+                            kcalFromEnergyInput(
+                              e.target.value === ''
+                                ? ''
+                                : Number(e.target.value),
+                              energyUnit
+                            )
                           )
                         }
                         placeholder="e.g. 350"
@@ -1907,16 +1935,25 @@ const EditExerciseEntryDialog = ({
                     <div>
                       <Label className="text-xs">
                         {t(
-                          'diary.editExerciseEntryDialog.restingCaloriesKcal',
-                          'Resting Calories (kcal)'
+                          'diary.editExerciseEntryDialog.restingCaloriesWithUnit',
+                          'Resting Calories ({{unit}})',
+                          { unit: energyLabel }
                         )}
                       </Label>
                       <Input
                         type="number"
-                        value={restingCaloriesInput}
+                        value={shownEnergyInput(
+                          restingCaloriesInput,
+                          energyUnit
+                        )}
                         onChange={(e) =>
                           setRestingCaloriesInput(
-                            e.target.value === '' ? '' : Number(e.target.value)
+                            kcalFromEnergyInput(
+                              e.target.value === ''
+                                ? ''
+                                : Number(e.target.value),
+                              energyUnit
+                            )
                           )
                         }
                         placeholder="e.g. 45"

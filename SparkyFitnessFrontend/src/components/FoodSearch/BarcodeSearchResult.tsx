@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useBarcodeSearchResult } from '@/hooks/Foods/useBarcodeSearchResult';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 interface BarcodeSearchResultProps {
   barcode: string;
@@ -30,6 +31,7 @@ const displayNumber = (value: number | null) =>
 
 function SourceSummary({ candidate }: { candidate: BarcodeCandidate }) {
   const { t } = useTranslation();
+  const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
   const food = candidate.food;
   const preview = food ? barcodeNutritionPreview(food) : null;
   return (
@@ -55,7 +57,14 @@ function SourceSummary({ candidate }: { candidate: BarcodeCandidate }) {
             })}
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-            <span>{displayNumber(preview.calories)} kcal</span>
+            <span>
+              {preview.calories === null
+                ? '—'
+                : Math.round(
+                    convertEnergy(preview.calories, 'kcal', energyUnit)
+                  ).toLocaleString()}{' '}
+              {getEnergyUnitString(energyUnit)}
+            </span>
             <span>
               {t('barcodeLookup.protein', 'Protein: {{value}} g', {
                 value: displayNumber(preview.protein),

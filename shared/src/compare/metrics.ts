@@ -1,3 +1,4 @@
+import { energyFromKcal, type EnergyUnit } from '../utils/energyUnit.ts';
 // The metrics Compare can pair, and how each one is measured. Apps translate the keys.
 
 export type CompareMetricKind = 'continuous' | 'ordinal' | 'binary';
@@ -132,12 +133,21 @@ export function isSleepMetric(key: CompareMetricKey): boolean {
   return COMPARE_METRICS[key].group === 'sleep';
 }
 
-/** Mood is stored 10-100 and shown 1-10; every other metric shows as stored. */
+/**
+ * Mood is stored 10-100 and shown 1-10; calories are stored in kcal and shown
+ * in the person's energy unit (kcal unless one is passed); every other metric
+ * shows as stored.
+ */
 export function compareDisplayValue(
   key: CompareMetricKey,
-  value: number
+  value: number,
+  energyUnit: EnergyUnit = 'kcal'
 ): number {
-  return key === 'mood' ? value / 10 : value;
+  if (key === 'mood') return value / 10;
+  if (COMPARE_METRICS[key].unit === 'kcal') {
+    return energyFromKcal(value, energyUnit);
+  }
+  return value;
 }
 
 /** Units whose values are counts or whole minutes, shown without decimals. */

@@ -9,6 +9,14 @@ import type {
   BarcodeLookupResponse,
 } from '@workspace/shared';
 
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({
+    energyUnit: 'kcal',
+    convertEnergy: (value: number) => value,
+    getEnergyUnitString: (unit: string) => unit,
+  }),
+}));
+
 jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
 );
