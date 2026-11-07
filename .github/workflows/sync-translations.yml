@@ -262,11 +262,12 @@ jobs:
             exit 1
           fi
           # <Trans> lets attributes in a value override a link's href, target and
-          # rel, so values may carry tags but never attributes.
+          # rel, so web values may carry tags but never attributes. Server catalogues
+          # may only carry safe email tags with strictly permitted placeholders.
           changed_json=$(git status --porcelain --untracked-files=all -- $paths \
             | grep -v '^ D' | sed -E 's/^.{3}//; s/^.* -> //' | grep '\.json$' || true)
           if [ -n "$changed_json" ] && ! found=$(xargs node .github/scripts/automation-allowlist.cjs --values <<<"$changed_json"); then
-            echo "::error::Translation values put attributes in a tag:"; echo "$found"
+            echo "::error::Translation values put attributes in a tag or unsafe email markup:"; echo "$found"
             exit 1
           fi
 

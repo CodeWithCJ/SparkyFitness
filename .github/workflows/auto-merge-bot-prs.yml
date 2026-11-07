@@ -92,7 +92,7 @@ jobs:
             const ALLOWED_BRANCH_PREFIXES = ['i18n/'];
 
             // Files each automation branch may change, shared with sync-translations.yml.
-            const { englishPathFor, newLinks, outsideAllowlist, rendersMarkup, valuesWithAttributes } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/automation-allowlist.cjs`);
+            const { englishPathFor, isServerCatalogue, newLinks, outsideAllowlist, rendersMarkup, unsafeServerValues, valuesWithAttributes } = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/automation-allowlist.cjs`);
 
             // Helper: determine if a PR is an allowed automated PR
             function isEligible(pr) {
@@ -233,25 +233,29 @@ jobs:
                 continue;
               }
 
-              // Paths are not enough: <Trans> lets attributes in a value override
-              // a link's href, target and rel. Parse each changed web catalogue as it
-              // stands at headSha, since JSON escapes such as \u003c hide a tag
-              // from the raw diff. A file that cannot be read or parsed counts as
-              // a finding, not a pass.
+              // Paths are not enough: check that web catalogues contain no attributes in tags,
+              // and server catalogues contain only safe email tags with strictly permitted placeholders.
+              // A file that cannot be read or parsed counts as a finding, not a pass.
               const unsafe = [];
               for (const f of files) {
-                if (!f.filename.endsWith('.json') || !rendersMarkup(f.filename) || f.status === 'removed') continue;
+                if (!f.filename.endsWith('.json') || f.status === 'removed') continue;
+                if (!rendersMarkup(f.filename) && !isServerCatalogue(f.filename)) continue;
                 try {
                   const { data } = await github.rest.repos.getContent({ owner, repo, path: f.filename, ref: headSha });
                   const text = data.encoding === 'base64' && data.content ? Buffer.from(data.content, 'base64').toString('utf8') : null;
-                  if (text === null || valuesWithAttributes(text).length > 0) unsafe.push(f);
+                  if (text === null) {
+                    unsafe.push(f);
+                    continue;
+                  }
+                  if (rendersMarkup(f.filename) && valuesWithAttributes(text).length > 0) unsafe.push(f);
+                  if (isServerCatalogue(f.filename) && unsafeServerValues(text).length > 0) unsafe.push(f);
                 } catch (err) {
                   unsafe.push(f);
                 }
               }
               if (unsafe.length > 0) {
                 core.warning(
-                  `PR #${pr.number} has values with attributes in a tag, or a catalogue that could not be checked ` +
+                  `PR #${pr.number} has values with attributes or unsafe email markup, or a catalogue that could not be checked ` +
                   `(${unsafe.slice(0, 5).map(f => f.filename).join(', ')}). Skipping auto-merge; a maintainer must review it.`
                 );
                 continue;

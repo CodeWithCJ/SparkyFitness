@@ -99,6 +99,71 @@ const valuesWithAttributes = (json) => {
   return found;
 };
 
+/** Whether a catalogue is a server email template catalogue. */
+const isServerCatalogue = (path) => /^SparkyFitnessServer\//.test(path || "");
+
+const ALLOWED_EMAIL_TAGS = new Set(["p", "h3", "a", "strong", "em", "br"]);
+const ALLOWED_EMAIL_HREF = new Set(["{{resetUrl}}", "{{magicLinkUrl}}"]);
+
+/**
+ * Validates that an HTML email translation value contains only safe formatting
+ * tags and no custom attributes or URLs. The only allowed attribute in the
+ * entire email catalogue is href="{{resetUrl}}" or href="{{magicLinkUrl}}".
+ */
+const hasUnsafeEmailMarkup = (value) => {
+  const html = `<0>${value}</0>`;
+  for (let i = html.indexOf("<"); i !== -1; i = html.indexOf("<", i + 1)) {
+    TAG_AT.lastIndex = i;
+    const match = TAG_AT.exec(html);
+    if (!match) {
+      if (/<[a-zA-Z]/.test(html.slice(i, i + 10))) return true;
+      continue;
+    }
+    const tag = match[0];
+    const nameMatch = tag.match(TAG_NAME);
+    if (!nameMatch) continue;
+    const rawName = nameMatch[1];
+    if (rawName === "0") continue; // our wrapper
+    const isClosing = rawName.startsWith("/");
+    const tagName = rawName.replace(/^\//, "").toLowerCase();
+    if (!ALLOWED_EMAIL_TAGS.has(tagName)) {
+      return true; // Disallowed tag (e.g. script, img, style, iframe, form)
+    }
+    const attrRegex = new RegExp(ATTR);
+    let attrMatch;
+    while ((attrMatch = attrRegex.exec(tag)) !== null) {
+      if (!attrMatch[0].trim()) continue;
+      if (isClosing || tagName !== "a") {
+        return true; // No attributes allowed on closing tags or non-a tags
+      }
+      if (!attrMatch[2] || attrMatch[2].toLowerCase() !== "href") {
+        return true; // Only href is permitted on <a>
+      }
+      const rawVal = attrMatch[3] || "";
+      const attrVal = rawVal.replace(/^["']|["']$/g, "").trim();
+      if (!ALLOWED_EMAIL_HREF.has(attrVal)) {
+        return true; // href must strictly equal {{resetUrl}} or {{magicLinkUrl}}
+      }
+    }
+  }
+  return false;
+};
+
+/** Dotted keys of string values in a server JSON catalogue that contain unsafe tags or attributes. */
+const unsafeServerValues = (json) => {
+  const found = [];
+  const walk = (value, key) => {
+    if (typeof value === "string") {
+      if (hasUnsafeEmailMarkup(value)) found.push(key);
+    } else if (value && typeof value === "object") {
+      for (const [k, v] of Object.entries(value))
+        walk(v, key ? `${key}.${k}` : k);
+    }
+  };
+  walk(JSON.parse(json), "");
+  return found;
+};
+
 // Links. A translation may repeat the links its English text has, or keep the
 // ones it already had on main, but a new link, web address or email holds the
 // PR for a maintainer: translated text reaches main without review, and a link
@@ -323,27 +388,34 @@ module.exports = {
   ALLOWED_FILES,
   allowedFor,
   englishPathFor,
+  isServerCatalogue,
   linksIn,
   newLinks,
   outsideAllowlist,
   rendersMarkup,
+  unsafeServerValues,
   valuesWithAttributes,
 };
 
 // CLI for shell steps. `<branch>` reads paths on stdin, one per line, and prints
 // the ones the branch may not change. `--values <file>...` prints the keys of
-// web catalogues, given as repo-relative paths, that put attributes in a tag.
+// catalogues, given as repo-relative paths, that put attributes in a tag or unsafe email markup.
 // Either exits 1 on any finding.
 if (require.main === module && process.argv[2] === "--values") {
   const fs = require("node:fs");
   const found = process.argv
     .slice(3)
-    .filter(rendersMarkup)
-    .flatMap((file) =>
-      valuesWithAttributes(fs.readFileSync(file, "utf8")).map(
-        (key) => `${file}: ${key}`,
-      ),
-    );
+    .filter((file) => rendersMarkup(file) || isServerCatalogue(file))
+    .flatMap((file) => {
+      const text = fs.readFileSync(file, "utf8");
+      if (rendersMarkup(file)) {
+        return valuesWithAttributes(text).map((key) => `${file}: ${key}`);
+      }
+      if (isServerCatalogue(file)) {
+        return unsafeServerValues(text).map((key) => `${file}: ${key}`);
+      }
+      return [];
+    });
   if (found.length > 0) {
     console.log(found.join("\n"));
     process.exit(1);

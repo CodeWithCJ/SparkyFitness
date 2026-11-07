@@ -5,10 +5,12 @@ const { test } = require("node:test");
 const {
   allowedFor,
   englishPathFor,
+  isServerCatalogue,
   linksIn,
   newLinks,
   outsideAllowlist,
   rendersMarkup,
+  unsafeServerValues,
   valuesWithAttributes,
 } = require("./automation-allowlist.cjs");
 const { readFileSync } = require("node:fs");
@@ -104,6 +106,54 @@ test("no web catalogue in the repo puts attributes in a tag", () => {
     ),
   );
   assert.deepEqual(found, []);
+});
+
+test("no server email catalogue in the repo has unsafe tags or attributes", () => {
+  const json = catalogues.filter(
+    (p) => p.endsWith(".json") && isServerCatalogue(p),
+  );
+  assert.ok(json.length > 0, "expected server catalogues to be found");
+  const found = json.flatMap((p) =>
+    unsafeServerValues(readFileSync(resolve(root, p), "utf8")).map(
+      (k) => `${p}: ${k}`,
+    ),
+  );
+  assert.deepEqual(found, []);
+});
+
+test("server email templates only allow safe formatting tags and exact placeholders in href", () => {
+  const valid = JSON.stringify({
+    reset: '<p>Reset: <a href="{{resetUrl}}">{{resetUrl}}</a></p>',
+    magic: '<p>Login: <a href="{{magicLinkUrl}}">{{magicLinkUrl}}</a></p>',
+    mfa: "<p>Code:</p><h3>{{code}}</h3>",
+    styling: "<p><strong>Important:</strong> Line<br/>break</p>",
+    text: "Plain text with no tags",
+  });
+  assert.deepEqual(unsafeServerValues(valid), []);
+
+  const invalid = JSON.stringify({
+    phishingLink: '<p><a href="https://evil.com">Reset</a></p>',
+    encodedPhishing:
+      '<p><a href="&#104;&#116;&#116;&#112;&#115;&#58;&#47;&#47;evil&#46;com">Reset</a></p>',
+    styleAttr: '<p style="display:none">Hidden</p>',
+    scriptTag: "<script>alert(1)</script>",
+    imgTag: '<img src="https://tracker.com/pixel.png">',
+    formTag: '<form action="https://evil.com"><input type="submit"/></form>',
+    targetAttr: '<a href="{{resetUrl}}" target="_blank">Reset</a>',
+    onclickAttr: '<a href="{{resetUrl}}" onclick="alert(1)">Reset</a>',
+    extraStyleOnA: '<a href="{{resetUrl}}" style="color:red">Reset</a>',
+  });
+  assert.deepEqual(unsafeServerValues(invalid), [
+    "phishingLink",
+    "encodedPhishing",
+    "styleAttr",
+    "scriptTag",
+    "imgTag",
+    "formTag",
+    "targetAttr",
+    "onclickAttr",
+    "extraStyleOnA",
+  ]);
 });
 
 test("values may carry tags but not attributes", () => {
