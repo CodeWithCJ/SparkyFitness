@@ -205,7 +205,7 @@ const entriesOf = (path, text) => {
         .replace(/&#x([0-9a-f]+);?/gi, (_, h) => fromCode(h))
         .replace(/&#([0-9]+);?/g, (_, d) => fromCode(undefined, d))
         .replace(
-          /&(lt|gt|amp|quot|apos|colon|sol|period);/g,
+          /&(lt|gt|amp|quot|apos|colon|sol|period|Tab|NewLine);?/gi,
           (_, n) =>
             ({
               lt: "<",
@@ -216,7 +216,17 @@ const entriesOf = (path, text) => {
               colon: ":",
               sol: "/",
               period: ".",
-            })[n],
+              tab: "\t",
+              newline: "\n",
+            })[n.toLowerCase()],
+        )
+        .replace(
+          /\b(href|src|action)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi,
+          (m, attr, dbl, sgl, bare) => {
+            const val =
+              dbl !== undefined ? dbl : sgl !== undefined ? sgl : bare;
+            return `${attr}="${val.replace(/[\t\n\r]/g, "").trim()}"`;
+          },
         );
     const walk = (value, key) => {
       if (typeof value === "string") out.set(key, decodeReferences(value));

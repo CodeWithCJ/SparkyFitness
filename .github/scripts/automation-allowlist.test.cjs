@@ -355,6 +355,33 @@ test("encoded links in widget and JSON files are decoded before the check", () =
     ),
     ["email.test: https://phish.org"],
   );
+  assert.deepEqual(
+    newLinks(
+      j,
+      json('<a href="https&Tab;://ev&Tab;il&Tab;.com">{{resetUrl}}</a>'),
+      json("Hallo"),
+      json("Hello"),
+    ),
+    ["email.test: https://evil.com"],
+  );
+  assert.deepEqual(
+    newLinks(
+      j,
+      json('<a href="https&NewLine;://evil.com">{{resetUrl}}</a>'),
+      json("Hallo"),
+      json("Hello"),
+    ),
+    ["email.test: https://evil.com"],
+  );
+  assert.deepEqual(
+    newLinks(
+      j,
+      json('<a href="https\t://evil.com">{{resetUrl}}</a>'),
+      json("Hallo"),
+      json("Hello"),
+    ),
+    ["email.test: https://evil.com"],
+  );
 });
 
 test("a malformed, partial or symlinked catalogue throws instead of passing", () => {
