@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-04_
+_Last updated: 2026-11-06_
 
 SparkyFitness Frontend is the React web app for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessFrontend/`.
 
@@ -102,6 +102,8 @@ When searching, ignore `node_modules/`, `dist/`, and every locale except `public
 ## Quick Routing
 
 - Import Mealie ingredients from the Meals library action in `MealManagement.tsx`. Original ingredient amounts are whole-recipe totals; optional finished cooked grams only define normal meal serving size. AI candidates require explicit review and local food/variant IDs. Saving creates an ordinary meal; source sync has independent pending/error/success state and must preserve a successful local save. Private recipe data and operations stay disabled while acting on behalf.
+
+- Glucose / CGM: `pages/Reports/GlucoseCard.tsx` under Reports → Measurements reads `blood_glucose` samples, separates source streams, uses the account `default_glucose_unit` (Preferences → Glucose Unit) for mmol/L or mg/dL display and leaves gaps over 15 minutes. `hooks/Reports/useGlucoseContext.ts` adds independently selectable day context; exercise and sleep show start/end spans. Setup: `docs/src/features/cgm.md`.
 
 - Barcode source comparison: `components/FoodSearch/BarcodeSearchResult.tsx`, `hooks/Foods/useBarcodeSearchResult.ts`, and `api/Foods/foodService.ts` use the shared barcode API contracts. Normal scans keep the selected/default provider behavior. Local hits remain visible and Other sources loads alternatives on request. Provider credentials belong to the signed-in account; lookup and alternatives cache keys also include the active profile for local matches. Comparison nutrition uses shared `barcodeNutritionPreview`; import retains the selected source's identity and original portions.
 

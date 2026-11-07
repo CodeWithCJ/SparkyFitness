@@ -448,9 +448,6 @@
     "medications": "Farmaci",
     "medication": "Farmaco",
     "library": {
-      "noServerConfigured": "Nessun server configurato",
-      "configureServer": "Configura la connessione al server nelle Impostazioni per visualizzare la tua libreria.",
-      "goToSettings": "Vai alle Impostazioni",
       "loading": "Caricamento libreria...",
       "title": "Libreria",
       "create": "Crea",
@@ -675,9 +672,6 @@
   },
   "dashboard": {
     "chooseDate": "Scegli la data della dashboard",
-    "noServerConfigured": "Nessun server configurato",
-    "configureServer": "Configura la connessione al server nelle Impostazioni per visualizzare il riepilogo giornaliero.",
-    "goToSettings": "Vai alle Impostazioni",
     "loadingSummary": "Caricamento riepilogo...",
     "loadFailed": "Caricamento riepilogo non riuscito",
     "checkConnection": "Controlla la tua connessione e riprova.",
@@ -993,9 +987,6 @@
   },
   "diary": {
     "chooseDate": "Scegli la data del diario",
-    "noServer": "Nessun server configurato",
-    "configureServer": "Configura la connessione al tuo server nelle Impostazioni per visualizzare il tuo diario.",
-    "goToSettings": "Vai alle Impostazioni",
     "loading": "Caricamento diario...",
     "loadFailed": "Impossibile caricare il diario",
     "checkConnection": "Controlla la tua connessione e riprova.",
@@ -1117,7 +1108,7 @@
       "doseOverride": "Sovrascrittura dose ({{unit}})",
       "doseOverridePlain": "Sovrascrittura dose",
       "withMealTitle": "Con pasto",
-      "withMeal": "Con pasto",
+      "withMeal": "Durante il pasto",
       "startDate": "Data di inizio",
       "startDateRequired": "Data di inizio *",
       "setStartDate": "Imposta data di inizio",
@@ -1228,6 +1219,15 @@
     "inactiveCount_other": "Inattivi ({{count}})",
     "mealRelation": {
       "awayFromMeals": "Lontano dai pasti"
+    },
+    "today": {
+      "loggedActivity": "Registrate oggi",
+      "loggedActivityDescription": "Tutte le dosi assunte o saltate in questa data.",
+      "loadingHistory": "caricamento cronologia…"
+    },
+    "calendar": {
+      "allTaken": "Tutte le dosi assunte",
+      "sideEffect": "Sintomo da effetto-collaterale"
     }
   },
   "scheduleSummary": {
@@ -2957,9 +2957,6 @@
     "deleteMessage": "Elimina {{name}}? Le voci future del diario generate da questo piano saranno rimosse.",
     "deleteFailed": "Impossibile eliminare il piano pasto",
     "deleteSuccess": "Piano pasto eliminato",
-    "noServer": "Nessun server configurato",
-    "noServerSubtitle": "Configura la connessione al server per gestire i piani pasto.",
-    "goToSettings": "Vai alle impostazioni",
     "loading": "Caricamento piani pasto...",
     "loadFailed": "Impossibile caricare i piani pasto",
     "loadFailedSubtitle": "Verifica la tua connessione e riprova.",
@@ -3057,8 +3054,6 @@
     "makePrivate": "Rendi privato",
     "shareWithPublic": "Condividi con il pubblico",
     "editMeal": "Modifica pasto",
-    "noServer": "Nessun server configurato",
-    "configureServer": "Configura la connessione al server nelle Impostazioni per visualizzare i dettagli del pasto.",
     "loading": "Caricamento pasto in corso...",
     "loadFailed": "Impossibile caricare il pasto",
     "perServing": "Per porzione",
@@ -3513,8 +3508,6 @@
     "makePrivate": "Rendi privato",
     "sharePublic": "Condividi con il pubblico",
     "editFood": "Modifica alimento",
-    "noServer": "Nessun server configurato",
-    "configureServer": "Configura la connessione al server nelle Impostazioni per visualizzare i dettagli dell'alimento.",
     "serving": "Porzione",
     "selectServing": "Seleziona porzione",
     "servingOptions": "Opzioni porzione",
@@ -3690,7 +3683,10 @@
       "goals": "Obiettivi",
       "lookedUp": "Cercato {{name}}"
     },
-    "typing": "Sparky sta scrivendo"
+    "typing": "Sparky sta scrivendo",
+    "voice": {
+      "stop": "Interrompi la dettatura"
+    }
   },
   "foodImagePicker": {
     "photos": "Foto",
@@ -3933,8 +3929,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "Nessun server configurato",
-      "noServerHint": "Configura la connessione al server nelle Impostazioni per visualizzare i valori nutrizionali dei pasti.",
       "loading": "Caricamento pasto…",
       "loadFailed": "Impossibile caricare il pasto",
       "noFoods": "Nessun alimento per {{meal}}",
@@ -4267,9 +4261,6 @@
   "exerciseLibrary": {
     "title": "Esercizi",
     "search": "Cerca esercizi...",
-    "noServer": "Nessun server configurato",
-    "configure": "Configura la connessione al server nelle Impostazioni per visualizzare la tua libreria di esercizi.",
-    "go": "Vai alle Impostazioni",
     "loading": "Caricamento esercizi in corso...",
     "failed": "Impossibile caricare gli esercizi",
     "retry": "Riprova",
@@ -4285,9 +4276,6 @@
   "foodLibrary": {
     "title": "Alimenti",
     "search": "Cerca alimenti...",
-    "noServer": "Nessun server configurato",
-    "configure": "Configura la connessione al server nelle Impostazioni per visualizzare la tua libreria di alimenti.",
-    "go": "Vai alle Impostazioni",
     "loading": "Caricamento alimenti in corso...",
     "failed": "Impossibile caricare gli alimenti",
     "retry": "Riprova",
@@ -4302,9 +4290,6 @@
   "mealLibrary": {
     "title": "Pasti",
     "search": "Cerca pasti...",
-    "noServer": "Nessun server configurato",
-    "configure": "Configura la connessione al server nelle Impostazioni per visualizzare la tua libreria di pasti.",
-    "go": "Vai alle Impostazioni",
     "loading": "Caricamento pasti in corso...",
     "failed": "Impossibile caricare i pasti",
     "searchFailed": "Impossibile cercare i pasti",
@@ -4319,9 +4304,7 @@
   "presetLibrary": {
     "title": "Modelli allenamento",
     "search": "Cerca modelli di allenamento...",
-    "noServer": "Nessun server configurato",
     "configure": "Configura la connessione al server nelle Impostazioni per visualizzare i tuoi modelli di allenamento.",
-    "go": "Vai alle Impostazioni",
     "loading": "Caricamento modelli di allenamento in corso...",
     "failed": "Impossibile caricare i modelli di allenamento",
     "retry": "Riprova",
@@ -4542,9 +4525,6 @@
     "loading": "Caricamento contenitori d'acqua in corso...",
     "loadFailed": "Impossibile caricare i contenitori d'acqua",
     "loadFailedSubtitle": "Controlla la tua connessione e riprova.",
-    "noServer": "Nessun server configurato",
-    "noServerSubtitle": "Configura la connessione al server per gestire i contenitori d'acqua.",
-    "goToSettings": "Vai alle Impostazioni",
     "emptyTitle": "Nessun contenitore d'acqua",
     "emptySubtitle": "Aggiungi una bottiglia o un bicchiere per tracciare l'idratazione. Puoi anche collegarlo a un alimento per registrarli entrambi con un solo tocco.",
     "linkedTo": "Collegato a {{food}}",
@@ -4998,9 +4978,6 @@
       "dayCycle_many": "Ciclo di {{count}} giorni",
       "dayCycle_other": "Ciclo di {{count}} giorni"
     }
-  },
-  "workoutPresetLibrary": {
-    "configure": "Configura la connessione al server nelle Impostazioni per visualizzare i tuoi preset di allenamento."
   },
   "time": {
     "hoursShort": "h",

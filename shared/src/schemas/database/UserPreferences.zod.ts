@@ -8,6 +8,7 @@ import {
 import { CHART_SCALE_MODES } from '../../constants/chartConstants.ts';
 import { MAX_GOAL_MODE_WEEKLY_CHANGE_KG } from '../../utils/calorieCalculations.ts';
 import { HR_ZONE_METHODS } from '../../utils/heartRateZones.ts';
+import { GLUCOSE_UNITS } from '../../constants/bloodGlucose.ts';
 import { TEMPERATURE_UNITS } from '../../utils/temperatureUnit.ts';
 
 export const SUPPORTED_TIME_FORMATS = ['HH:mm', 'h:mm A', 'h:mm a'] as const;
@@ -45,6 +46,7 @@ export const userPreferencesSchema = z.object({
   show_net_carbs: z.boolean(),
   food_search_all_providers_default: z.boolean(),
   default_distance_unit: z.string(),
+  default_glucose_unit: z.enum(GLUCOSE_UNITS).optional(),
   default_temperature_unit: z.enum(TEMPERATURE_UNITS),
   language: z.string().nullable(),
   calorie_goal_adjustment_mode: z.string().nullable(),
@@ -133,6 +135,7 @@ export const userPreferencesInitializerSchema = z.object({
   show_net_carbs: z.boolean().optional(),
   food_search_all_providers_default: z.boolean().optional(),
   default_distance_unit: z.string().optional(),
+  default_glucose_unit: z.enum(GLUCOSE_UNITS).optional(),
   default_temperature_unit: z.enum(TEMPERATURE_UNITS).optional(),
   language: z.string().optional().nullable(),
   calorie_goal_adjustment_mode: z.string().optional().nullable(),
@@ -231,6 +234,7 @@ export const userPreferencesMutatorSchema = z.object({
   show_net_carbs: z.boolean().optional(),
   food_search_all_providers_default: z.boolean().optional(),
   default_distance_unit: z.string().optional(),
+  default_glucose_unit: z.enum(GLUCOSE_UNITS).optional(),
   default_temperature_unit: z.enum(TEMPERATURE_UNITS).optional(),
   language: z.string().optional().nullable(),
   calorie_goal_adjustment_mode: z.string().optional().nullable(),

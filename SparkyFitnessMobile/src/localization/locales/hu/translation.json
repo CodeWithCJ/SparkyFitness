@@ -520,9 +520,6 @@
     "manageSymptoms": "A tünetek kezelése",
     "symptomDefinition": "A tünetek részletei",
     "library": {
-      "noServerConfigured": "Nincs beállított szerver",
-      "configureServer": "A könyvtár megtekintéséhez állítsd be a szerverkapcsolatot a Beállítások menüpontban.",
-      "goToSettings": "Ugrás a Beállítások menübe",
       "loading": "Könyvtár betöltése...",
       "title": "Könyvtár",
       "create": "Létrehozás",
@@ -752,9 +749,6 @@
   },
   "dashboard": {
     "chooseDate": "Válasszon vezérlőpult dátumot",
-    "noServerConfigured": "Nincs beállított szerver",
-    "configureServer": "A napi összefoglaló megtekintéséhez állítsd be a szerverkapcsolatot a Beállítások menüpontban.",
-    "goToSettings": "Ugrás a Beállításokhoz",
     "loadingSummary": "Összefoglaló betöltése...",
     "loadFailed": "Az összefoglaló betöltése nem sikerült",
     "checkConnection": "Kérjük, ellenőrizze az internetkapcsolatát, majd próbálja meg újra.",

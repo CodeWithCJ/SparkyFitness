@@ -550,9 +550,6 @@
     "manageSymptoms": "Belirtileri Yönet",
     "symptomDefinition": "Belirti Ayrıntıları",
     "library": {
-      "noServerConfigured": "Sunucu yapılandırılmadı",
-      "configureServer": "Kütüphanenizi görmek için Ayarlar'dan sunucu bağlantınızı yapılandırın.",
-      "goToSettings": "Ayarlara Git",
       "loading": "Kütüphane yükleniyor...",
       "title": "Kütüphane",
       "create": "Oluştur",
@@ -782,9 +779,6 @@
   },
   "dashboard": {
     "chooseDate": "Pano tarihini seç",
-    "noServerConfigured": "Sunucu yapılandırılmadı",
-    "configureServer": "Günlük özetinizi görmek için Ayarlar'dan sunucu bağlantınızı yapılandırın.",
-    "goToSettings": "Ayarlara Git",
     "loadingSummary": "Özet yükleniyor...",
     "loadFailed": "Özet yüklenemedi",
     "checkConnection": "Lütfen bağlantınızı kontrol edip tekrar deneyin.",
@@ -1146,9 +1140,6 @@
   },
   "diary": {
     "chooseDate": "Günlük tarihini seç",
-    "noServer": "Sunucu yapılandırılmadı",
-    "configureServer": "Günlüğünüzü görmek için Ayarlar'dan sunucu bağlantınızı yapılandırın.",
-    "goToSettings": "Ayarlara Git",
     "loading": "Günlük yükleniyor...",
     "loadFailed": "Günlük yüklenemedi",
     "checkConnection": "Lütfen bağlantınızı kontrol edip tekrar deneyin.",
@@ -3188,9 +3179,6 @@
     "deleteMessage": "{{name}} silinsin mi? Bu planın oluşturduğu gelecek günlük kayıtları kaldırılacak.",
     "deleteFailed": "Öğün planı silinemedi",
     "deleteSuccess": "Öğün planı silindi",
-    "noServer": "Sunucu yapılandırılmadı",
-    "noServerSubtitle": "Öğün planlarını yönetmek için sunucu bağlantınızı yapılandırın.",
-    "goToSettings": "Ayarlara Git",
     "loading": "Öğün planları yükleniyor...",
     "loadFailed": "Öğün planları yüklenemedi",
     "loadFailedSubtitle": "Bağlantınızı kontrol edip tekrar deneyin.",
@@ -3288,8 +3276,6 @@
     "makePrivate": "Özel yap",
     "shareWithPublic": "Herkesle paylaşın",
     "editMeal": "Öğünü düzenle",
-    "noServer": "Sunucu yapılandırılmadı",
-    "configureServer": "Öğün ayrıntılarını görmek için Ayarlar'dan sunucu bağlantınızı yapılandırın.",
     "loading": "Öğün yükleniyor...",
     "loadFailed": "Öğün yüklenemedi",
     "perServing": "Porsiyon başına",
@@ -3814,8 +3800,6 @@
     "makePrivate": "Özel yap",
     "sharePublic": "Herkesle paylaşın",
     "editFood": "Yiyecekleri düzenle",
-    "noServer": "Sunucu yapılandırılmadı",
-    "configureServer": "Besin ayrıntılarını görmek için Ayarlar'dan sunucu bağlantınızı yapılandırın.",
     "serving": "Porsiyon",
     "selectServing": "Porsiyon Seç",
     "servingOptions": "Porsiyon seçenekleri",
@@ -4260,8 +4244,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "Sunucu yapılandırılmadı",
-      "noServerHint": "Öğün besin değerlerini görmek için Ayarlar'dan sunucu bağlantınızı yapılandırın.",
       "loading": "Öğün yükleniyor…",
       "loadFailed": "Öğün yüklenemedi",
       "noFoods": "{{meal}} besini yok",
@@ -4584,9 +4566,6 @@
   "exerciseLibrary": {
     "title": "Egzersizler",
     "search": "Arama egzersizleri...",
-    "noServer": "Sunucu yapılandırılmadı",
-    "configure": "Egzersiz kütüphanenizi görmek için Ayarlar'dan sunucu bağlantınızı yapılandırın.",
-    "go": "Ayarlara Git",
     "loading": "Egzersizler yükleniyor...",
     "failed": "Egzersizler yüklenemedi",
     "retry": "Tekrar dene",
@@ -4602,9 +4581,6 @@
   "foodLibrary": {
     "title": "Gıdalar",
     "search": "Yiyecekleri ara...",
-    "noServer": "Sunucu yapılandırılmadı",
-    "configure": "Besin kütüphanenizi görmek için Ayarlar'dan sunucu bağlantınızı yapılandırın.",
-    "go": "Ayarlara Git",
     "loading": "Yiyecekler yükleniyor...",
     "failed": "Besinler yüklenemedi",
     "retry": "Tekrar dene",
@@ -4619,9 +4595,6 @@
   "mealLibrary": {
     "title": "Yemekler",
     "search": "Yemek ara...",
-    "noServer": "Sunucu yapılandırılmadı",
-    "configure": "Öğün kütüphanenizi görmek için Ayarlar'dan sunucu bağlantınızı yapılandırın.",
-    "go": "Ayarlara Git",
     "loading": "Öğünler yükleniyor...",
     "failed": "Öğünler yüklenemedi",
     "searchFailed": "Öğün araması yapılamadı",
@@ -4636,9 +4609,7 @@
   "presetLibrary": {
     "title": "Antrenman hazır ayarları",
     "search": "Antrenman hazır ayarı ara...",
-    "noServer": "Sunucu yapılandırılmadı",
     "configure": "Antrenman hazır ayarlarınızı görmek için Ayarlar'dan sunucu bağlantınızı yapılandırın.",
-    "go": "Ayarlara Git",
     "loading": "Antrenman hazır ayarları yükleniyor...",
     "failed": "Antrenman hazır ayarları yüklenemedi",
     "retry": "Tekrar dene",
@@ -4998,9 +4969,6 @@
     "loading": "Su kapları yükleniyor...",
     "loadFailed": "Su kapları yüklenemedi",
     "loadFailedSubtitle": "Bağlantınızı kontrol edip tekrar deneyin.",
-    "noServer": "Sunucu yapılandırılmadı",
-    "noServerSubtitle": "Su kaplarını yönetmek için sunucu bağlantınızı yapılandırın.",
-    "goToSettings": "Ayarlara Git",
     "emptyTitle": "Henüz su kabı yok",
     "emptySubtitle": "Sıvı alımını takip etmek için bir şişe veya bardak ekleyin -- isteğe bağlı olarak bir besine bağlarsanız tek dokunuş ikisini birden kaydeder.",
     "linkedTo": "{{food}} besinine bağlı",
@@ -5452,9 +5420,6 @@
       "dayCycle_one": "{{count}} günlük döngü",
       "dayCycle_other": "{{count}} günlük döngü"
     }
-  },
-  "workoutPresetLibrary": {
-    "configure": "Antrenman hazır ayarlarınızı görmek için Ayarlar'dan sunucu bağlantınızı yapılandırın."
   },
   "time": {
     "hoursShort": "sa",

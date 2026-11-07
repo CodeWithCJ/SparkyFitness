@@ -554,9 +554,6 @@
     "manageSymptoms": "Spravovat příznaky",
     "symptomDefinition": "Podrobnosti příznaku",
     "library": {
-      "noServerConfigured": "Není nastaven žádný server",
-      "configureServer": "Nastavte připojení k serveru v Nastavení, abyste viděli svou knihovnu.",
-      "goToSettings": "Přejít do nastavení",
       "loading": "Načítání knihovny...",
       "title": "Knihovna",
       "create": "Vytvořit",
@@ -786,9 +783,6 @@
   },
   "dashboard": {
     "chooseDate": "Vybrat datum nástěnky",
-    "noServerConfigured": "Není nastaven žádný server",
-    "configureServer": "Nastavte připojení k serveru v Nastavení, abyste viděli denní souhrn.",
-    "goToSettings": "Přejít do nastavení",
     "loadingSummary": "Načítání souhrnu...",
     "loadFailed": "Souhrn se nepodařilo načíst",
     "checkConnection": "Zkontrolujte připojení a zkuste to znovu.",
@@ -1153,9 +1147,6 @@
   },
   "diary": {
     "chooseDate": "Vybrat datum deníku",
-    "noServer": "Není nastaven žádný server",
-    "configureServer": "Nastavte připojení k serveru v Nastavení, abyste viděli svůj deník.",
-    "goToSettings": "Přejít do nastavení",
     "loading": "Načítání deníku...",
     "loadFailed": "Deník se nepodařilo načíst",
     "checkConnection": "Zkontrolujte připojení a zkuste to znovu.",
@@ -3231,9 +3222,6 @@
     "deleteMessage": "Smazat {{name}}? Budoucí záznamy deníku vytvořené tímto jídelníčkem budou odstraněny.",
     "deleteFailed": "Jídelníček se nepodařilo smazat",
     "deleteSuccess": "Jídelníček smazán",
-    "noServer": "Není nastaven žádný server",
-    "noServerSubtitle": "Pro správu jídelníčků nastavte připojení k serveru.",
-    "goToSettings": "Přejít do nastavení",
     "loading": "Načítání jídelníčků...",
     "loadFailed": "Jídelníčky se nepodařilo načíst",
     "loadFailedSubtitle": "Zkontrolujte připojení a zkuste to znovu.",
@@ -3331,8 +3319,6 @@
     "makePrivate": "Nastavit jako soukromé",
     "shareWithPublic": "Zveřejnit",
     "editMeal": "Upravit jídlo",
-    "noServer": "Není nastaven žádný server",
-    "configureServer": "Nastavte připojení k serveru v Nastavení, abyste viděli podrobnosti jídla.",
     "loading": "Načítání jídla...",
     "loadFailed": "Jídlo se nepodařilo načíst",
     "perServing": "Na porci",
@@ -3874,8 +3860,6 @@
     "makePrivate": "Nastavit jako soukromé",
     "sharePublic": "Sdílet veřejně",
     "editFood": "Upravit potravinu",
-    "noServer": "Není nastaven žádný server",
-    "configureServer": "Nastavte připojení k serveru v Nastavení, abyste viděli podrobnosti potraviny.",
     "serving": "Porce",
     "selectServing": "Vybrat porci",
     "servingOptions": "Možnosti porcí",
@@ -4325,8 +4309,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "Není nastaven žádný server",
-      "noServerHint": "Nastavte připojení k serveru v Nastavení, abyste viděli výživu jídla.",
       "loading": "Načítání jídla…",
       "loadFailed": "Jídlo se nepodařilo načíst",
       "noFoods": "Žádné potraviny: {{meal}}",
@@ -4671,9 +4653,6 @@
   "exerciseLibrary": {
     "title": "Cviky",
     "search": "Hledat cviky…",
-    "noServer": "Není nastaven žádný server",
-    "configure": "Nastavte připojení k serveru v Nastavení, abyste viděli svou knihovnu cviků.",
-    "go": "Přejít do Nastavení",
     "loading": "Načítání cvičení...",
     "failed": "Cvičení se nepodařilo načíst",
     "retry": "Zkusit znovu",
@@ -4689,9 +4668,6 @@
   "foodLibrary": {
     "title": "Potraviny",
     "search": "Hledat potraviny...",
-    "noServer": "Není nastaven žádný server",
-    "configure": "Nastavte připojení k serveru v Nastavení, abyste viděli svou knihovnu potravin.",
-    "go": "Přejít do Nastavení",
     "loading": "Načítání potravin...",
     "failed": "Potraviny se nepodařilo načíst",
     "retry": "Zkusit znovu",
@@ -4706,9 +4682,6 @@
   "mealLibrary": {
     "title": "Jídla",
     "search": "Hledat jídla...",
-    "noServer": "Není nastaven žádný server",
-    "configure": "Nastavte připojení k serveru v Nastavení, abyste viděli svou knihovnu jídel.",
-    "go": "Přejít do Nastavení",
     "loading": "Načítání jídel...",
     "failed": "Jídla se nepodařilo načíst",
     "searchFailed": "Jídla se nepodařilo vyhledat",
@@ -4723,9 +4696,7 @@
   "presetLibrary": {
     "title": "Předvolby tréninků",
     "search": "Hledat předvolby tréninků...",
-    "noServer": "Není nastaven žádný server",
     "configure": "Nastavte připojení k serveru v Nastavení, abyste viděli své předvolby tréninků.",
-    "go": "Přejít do Nastavení",
     "loading": "Načítání předvoleb tréninků...",
     "failed": "Předvolby tréninků se nepodařilo načíst",
     "retry": "Zkusit znovu",
@@ -5089,9 +5060,6 @@
     "loading": "Načítání nádob na vodu...",
     "loadFailed": "Nádoby na vodu se nepodařilo načíst",
     "loadFailedSubtitle": "Zkontrolujte připojení a zkuste to znovu.",
-    "noServer": "Není nastaven žádný server",
-    "noServerSubtitle": "Nastavte připojení k serveru, abyste mohli spravovat nádoby na vodu.",
-    "goToSettings": "Přejít do Nastavení",
     "emptyTitle": "Zatím žádné nádoby na vodu",
     "emptySubtitle": "Přidejte láhev nebo sklenici ke sledování hydratace – volitelně propojenou s potravinou, aby jedno klepnutí zaznamenalo obojí.",
     "linkedTo": "Propojeno s: {{food}}",
@@ -5546,9 +5514,6 @@
       "dayCycle_other": "{{count}}denní cyklus"
     }
   },
-  "workoutPresetLibrary": {
-    "configure": "Nastavte připojení k serveru v Nastavení, abyste viděli své předvolby tréninků."
-  },
   "time": {
     "hoursShort": "h",
     "minutesShort": "min"
@@ -5574,7 +5539,7 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} km",
-    "kcal": "{{hodnota}} kcal",
+    "kcal": "{{value}} kcal",
     "bpm": "{{value}} tepů/min",
     "kg": "{{value}} kg",
     "percent": "{{value}} %",

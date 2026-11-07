@@ -1302,9 +1302,6 @@
     "medications": "藥物",
     "medication": "藥物",
     "library": {
-      "noServerConfigured": "未設定伺服器",
-      "configureServer": "去設定度設定您嘅伺服器連線，先可以睇您嘅資料庫.",
-      "goToSettings": "去設定",
       "loading": "載入資料庫中…",
       "title": "資料庫",
       "create": "建立",
@@ -1518,9 +1515,6 @@
   },
   "dashboard": {
     "chooseDate": "揀儀表板日期",
-    "noServerConfigured": "未設定伺服器",
-    "configureServer": "去設定度設定您嘅伺服器連線，先可以睇您嘅每日摘要.",
-    "goToSettings": "去設定",
     "loadingSummary": "載入摘要中…",
     "loadFailed": "載入摘要失敗",
     "checkConnection": "請檢查您嘅網絡連線，然後再試一次.",
@@ -1889,9 +1883,6 @@
   },
   "diary": {
     "chooseDate": "揀日記日期",
-    "noServer": "未設定伺服器",
-    "configureServer": "去設定度設定您嘅伺服器連線，先可以睇您嘅日記.",
-    "goToSettings": "去設定",
     "loading": "載入日記中…",
     "loadFailed": "載入日記失敗",
     "checkConnection": "請檢查您嘅網絡連線，然後再試一次.",
@@ -3359,9 +3350,6 @@
     "deleteMessage": "刪除 {{name}}？呢個計劃生成嘅未來日記紀錄都會被移除.",
     "deleteFailed": "刪除餐膳計劃失敗",
     "deleteSuccess": "餐膳計劃已刪除",
-    "noServer": "未設定伺服器",
-    "noServerSubtitle": "設定您嘅伺服器連線先可以管理餐膳計劃.",
-    "goToSettings": "去設定",
     "loading": "載入餐膳計劃中…",
     "loadFailed": "載入餐膳計劃失敗",
     "loadFailedSubtitle": "檢查您嘅連線再試一次.",
@@ -3459,8 +3447,6 @@
     "makePrivate": "設為私人",
     "shareWithPublic": "公開分享",
     "editMeal": "編輯餐膳",
-    "noServer": "未設定伺服器",
-    "configureServer": "喺設定度設定您嘅伺服器連線，先睇到餐膳詳情.",
     "loading": "載入餐膳中…",
     "loadFailed": "載入餐膳失敗",
     "perServing": "每份",
@@ -3941,8 +3927,6 @@
     "makePrivate": "設為私人",
     "sharePublic": "公開分享",
     "editFood": "編輯食材",
-    "noServer": "未設定伺服器",
-    "configureServer": "喺設定度設定您嘅伺服器連線，先睇到食材詳情.",
     "serving": "份量",
     "selectServing": "揀份量",
     "servingOptions": "份量選項",
@@ -4374,8 +4358,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "未設定伺服器",
-      "noServerHint": "喺設定度設定您嘅伺服器連線，先睇到餐膳營養.",
       "loading": "載入餐膳中…",
       "loadFailed": "載入餐膳失敗",
       "noFoods": "冇 {{meal}} 嘅食材",
@@ -4697,9 +4679,6 @@
   "exerciseLibrary": {
     "title": "動作",
     "search": "搜尋動作…",
-    "noServer": "未設定伺服器",
-    "configure": "喺設定度設定您嘅伺服器連線，先睇到您嘅動作庫.",
-    "go": "去設定",
     "loading": "載入動作中…",
     "failed": "載入動作失敗",
     "retry": "重試",
@@ -4715,9 +4694,6 @@
   "foodLibrary": {
     "title": "食材",
     "search": "搜尋食材…",
-    "noServer": "未設定伺服器",
-    "configure": "喺設定度設定您嘅伺服器連線，先睇到您嘅食材庫.",
-    "go": "去設定",
     "loading": "載入食材中…",
     "failed": "載入食材失敗",
     "retry": "重試",
@@ -4732,9 +4708,6 @@
   "mealLibrary": {
     "title": "餐膳",
     "search": "搜尋餐膳…",
-    "noServer": "未設定伺服器",
-    "configure": "喺設定度設定您嘅伺服器連線，先睇到您嘅餐膳庫.",
-    "go": "去設定",
     "loading": "載入餐膳中…",
     "failed": "載入餐膳失敗",
     "searchFailed": "搜尋餐膳失敗",
@@ -4749,9 +4722,7 @@
   "presetLibrary": {
     "title": "訓練預設",
     "search": "搜尋訓練預設…",
-    "noServer": "未設定伺服器",
     "configure": "喺設定度設定您嘅伺服器連線，先睇到您嘅訓練預設.",
-    "go": "去設定",
     "loading": "載入訓練預設中…",
     "failed": "載入訓練預設失敗",
     "retry": "重試",
@@ -5660,9 +5631,6 @@
       "dayCycle_other": "{{count}} 日週期"
     }
   },
-  "workoutPresetLibrary": {
-    "configure": "喺設定度設定您嘅伺服器連線，先睇到您嘅訓練預設."
-  },
   "time": {
     "hoursShort": "小時",
     "minutesShort": "分鐘"
@@ -5862,9 +5830,6 @@
     "loading": "載入緊水容器…",
     "loadFailed": "載入唔到水容器",
     "loadFailedSubtitle": "檢查吓您個連線，再試多次.",
-    "noServer": "未設定伺服器",
-    "noServerSubtitle": "設定您嘅伺服器連線，先可以管理水容器.",
-    "goToSettings": "去設定",
     "emptyTitle": "仲未有水容器",
     "emptySubtitle": "加水樽或者水杯嚟追蹤水份——可以揀連結食材，咁撳一下兩樣都記錄到.",
     "linkedTo": "已連結 {{food}}",
@@ -6571,9 +6536,6 @@
     "dateRange": "{{start}} – {{end}}",
     "starting": "{{date}} 開始",
     "deleteNamed": "刪除 {{name}}",
-    "noServer": "未設定伺服器",
-    "noServerSubtitle": "設定您嘅伺服器連線嚟管理訓練計劃.",
-    "goToSettings": "去設定",
     "loading": "載入緊訓練計劃…",
     "loadFailed": "載入唔到訓練計劃",
     "emptyTitle": "未有訓練計劃",

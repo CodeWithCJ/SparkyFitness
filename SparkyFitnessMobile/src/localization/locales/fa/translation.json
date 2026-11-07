@@ -1,0 +1,170 @@
+{
+  "screens": {
+    "addFood": "افزودن غذا",
+    "newFood": "غذای جدید",
+    "editFood": "ویرایش غذا",
+    "scanFood": "اسکن غذا",
+    "newActivity": "فعالیت جدید"
+  },
+  "foodForm": {
+    "foodName": "نام غذا",
+    "caloriesRequired": "کالری (kcal) *",
+    "servingSize": "اندازهٔ هر وعده",
+    "servingUnit": "واحد اندازه‌گیری"
+  },
+  "dashboard": {
+    "addWater": "افزودن آب",
+    "removeWater": "کاهش آب"
+  },
+  "waterContainerEdit": {
+    "volume": "حجم",
+    "unit": "واحد",
+    "primary": "ظرف پیش‌فرض"
+  },
+  "activityAdd": {
+    "fields": {
+      "duration": "مدت‌زمان (دقیقه)",
+      "distance": "مسافت ({{unit}})",
+      "calories": "کالری",
+      "avgHeartRate": "میانگین ضربان قلب (bpm)",
+      "notes": "یادداشت‌ها",
+      "activity": "فعالیت",
+      "notesPlaceholder": "یادداشت اختیاری..."
+    },
+    "actions": {
+      "selectActivity": "انتخاب فعالیت"
+    },
+    "labels": {
+      "autoCalculated": "محاسبه‌شده به‌صورت خودکار"
+    },
+    "accessibility": {
+      "editActivityName": "ویرایش نام فعالیت",
+      "selectExercise": "انتخاب تمرین"
+    },
+    "errors": {
+      "saveFailed": "ذخیرهٔ فعالیت انجام نشد"
+    }
+  },
+  "foodEntryAdd": {
+    "actions": {
+      "adjustNutrition": "تنظیم ارزش غذایی",
+      "saveFood": "ذخیره غذا",
+      "useYesterday": "استفاده از دیروز",
+      "useToday": "استفاده از امروز",
+      "now": "اکنون",
+      "clear": "پاک کردن",
+      "addMeal": "افزودن وعده",
+      "removeFavorite": "حذف از علاقه‌مندی‌ها",
+      "addFavorite": "افزودن به علاقه‌مندی‌ها"
+    },
+    "labels": {
+      "perServing": "در هر وعده",
+      "time": "زمان",
+      "none": "هیچ‌کدام",
+      "meal": "وعده غذایی",
+      "aboutThisFood": "درباره این غذا",
+      "entryNotes": "یادداشت این وعده",
+      "entryNotesPlaceholder": "نکته‌ای درباره این نوبت مصرف غذا"
+    },
+    "pickers": {
+      "selectServing": "انتخاب اندازهٔ وعده",
+      "selectMeal": "انتخاب وعدهٔ غذایی"
+    }
+  },
+  "foodSearch": {
+    "menu": {
+      "newMeal": "وعدهٔ غذایی جدید",
+      "show": "نمایش",
+      "allProviders": "همهٔ منابع"
+    },
+    "accessibility": {
+      "moreFiltered": "گزینه‌های بیشتر، فیلترشده بر اساس {{filter}}",
+      "moreOptions": "گزینه‌های بیشتر",
+      "clearSearch": "پاک کردن جستجو",
+      "searchingFoods": "در حال جستجوی غذاهای ذخیره‌شده",
+      "searchingFoodsMeals": "در حال جستجوی غذاها و وعده‌های ذخیره‌شده",
+      "providerError": "{{provider}} بارگیری نشد؛ برای تلاش دوباره ضربه بزنید",
+      "providerNoResults": "از {{provider}} نتیجه‌ای یافت نشد",
+      "favorite": "مورد علاقه",
+      "viewPhoto": "مشاهده تصویر",
+      "verifiedFood": "غذای تأییدشده"
+    },
+    "sections": {
+      "favorites": "علاقه‌مندی‌ها",
+      "recentlyLogged": "موارد ثبت‌شدهٔ اخیر",
+      "yourFoods": "غذاهای شما",
+      "yourMeals": "وعده‌های شما",
+      "topMatches": "مرتبط‌ترین نتایج",
+      "onlineResults": "نتایج آنلاین"
+    },
+    "search": {
+      "placeholder": "جستجوی غذاها..."
+    }
+  },
+  "waterIntake": {
+    "updateMessage": "به‌روزرسانی میزان آب مصرفی انجام نشد. لطفاً دوباره تلاش کنید.",
+    "noPrimary": "ظرف اصلی تعیین نشده است",
+    "noContainers": "ظرف آبی وجود ندارد",
+    "multipleNoPrimaryMobile": "چند ظرف آب دارید، اما هیچ‌کدام به‌عنوان ظرف اصلی مشخص نشده است. برای انتخاب، ضربه بزنید.",
+    "configureMobile": "برای شروع ثبت آب مصرفی، یک ظرف آب اضافه کنید.",
+    "defaultContainer": "پیش‌فرض"
+  },
+  "mealBuilder": {
+    "linkedMeal": "وعدهٔ غذایی مرتبط",
+    "linkedMealWebEdit": "این مادهٔ اولیه از نوع وعدهٔ غذایی را در نسخهٔ وب برنامه ویرایش کنید.",
+    "editTitle": "ویرایش وعدهٔ غذایی",
+    "createTitle": "ایجاد وعدهٔ غذایی",
+    "loading": "در حال بارگذاری وعدهٔ غذایی...",
+    "loadErrorTitle": "بارگذاری وعدهٔ غذایی ناموفق بود",
+    "mealName": "نام وعدهٔ غذایی",
+    "mealNamePlaceholder": "مثلاً کاسهٔ مرغ و برنج",
+    "descriptionOptional": "توضیحات (اختیاری)",
+    "descriptionPlaceholder": "یادداشت‌هایی دربارهٔ این وعده",
+    "totalServings": "تعداد وعده‌ها",
+    "totalAmount": "مقدار کل ({{unit}}) *",
+    "unit": "واحد",
+    "selectUnit": "انتخاب واحد",
+    "servingSize": "اندازهٔ هر وعده ({{unit}}) *",
+    "servingUnit": "وعده",
+    "foodsInMeal": "غذاهای این وعده",
+    "ingredient": "مادهٔ اولیه",
+    "removeIngredient": "حذف {{name}}",
+    "editIngredient": "ویرایش {{name}}",
+    "addFood": "افزودن غذا",
+    "mealTotal": "مجموع ارزش غذایی",
+    "perServing": "در هر وعده",
+    "errors": {
+      "missingNameTitle": "نام وعدهٔ غذایی وارد نشده است",
+      "missingNameMessage": "لطفاً برای وعدهٔ غذایی خود نامی وارد کنید.",
+      "invalidServingSizeTitle": "اندازهٔ هر وعده معتبر نیست",
+      "invalidServingSizeMessage": "اندازهٔ پیش‌فرض هر وعده باید بیشتر از صفر باشد.",
+      "invalidTotalServingsTitle": "تعداد کل وعده‌ها معتبر نیست",
+      "invalidTotalServingsMessage": "تعداد کل وعده‌ها باید بیشتر از صفر باشد.",
+      "invalidTotalAmountTitle": "مقدار کل معتبر نیست",
+      "invalidTotalAmountMessage": "مقدار کل باید بیشتر از صفر باشد.",
+      "noIngredientsTitle": "هنوز مادهٔ اولیه‌ای اضافه نشده است",
+      "noIngredientsMessage": "برای ذخیرهٔ این وعده، دست‌کم یک غذا اضافه کنید.",
+      "missingIngredientTitle": "اطلاعات مادهٔ اولیه ناقص است",
+      "missingIngredientMessage": "یکی از غذاهای انتخاب‌شده، گزینهٔ اندازهٔ وعده ندارد. لطفاً آن را دوباره اضافه کنید."
+    },
+    "units": {
+      "serving": "وعده",
+      "g": "گرم",
+      "ml": "میلی‌لیتر",
+      "oz": "اونس",
+      "cup": "پیمانه",
+      "tbsp": "قاشق غذاخوری",
+      "tsp": "قاشق چای‌خوری",
+      "piece": "عدد"
+    },
+    "unitPickerLabel": "واحد، {{unit}}",
+    "notes": "یادداشت‌ها (اختیاری)",
+    "notesPlaceholder": "مثلاً دستور تهیه یا روش آماده‌سازی"
+  },
+  "nutrition": {
+    "protein": "پروتئین",
+    "carbs": "کربوهیدرات",
+    "fat": "چربی",
+    "calories": "کالری"
+  }
+}

@@ -142,6 +142,10 @@ const SECTION_LABELS: Record<
     t('reportsSettings.sections.hydrationWeekdays', {
       defaultValue: 'Average by weekday',
     }),
+  'measurements.timeline': (t) =>
+    t('reportsSettings.sections.measurementTimeline', {
+      defaultValue: 'Measurement timeline',
+    }),
   'measurements.insights': (t) =>
     t('reportsSettings.sections.insights', { defaultValue: 'What stood out' }),
   'measurements.overview': (t) =>

@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import {
+  glucoseContextQueryKeyRoot,
   caffeineActiveQueryKey,
   caffeineActiveRootQueryKey,
   dailySummaryQueryKey,
@@ -16,6 +17,7 @@ export function invalidateFoodCache(
   queryClient: QueryClient,
   entryDate?: string
 ) {
+  void queryClient.invalidateQueries({ queryKey: glucoseContextQueryKeyRoot });
   if (entryDate) {
     void queryClient.invalidateQueries({
       queryKey: familyCopySourceQueryKey(entryDate),

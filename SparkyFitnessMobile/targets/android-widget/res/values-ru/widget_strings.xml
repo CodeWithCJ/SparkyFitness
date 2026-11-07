@@ -37,4 +37,11 @@
     <string name="widget_water_status_failed">Не удалось записать данные об употреблении воды</string>
     <string name="widget_water_status_nothing_to_remove">Здесь нет данных о напитках, которые можно было бы удалить</string>
     <string name="widget_preview_water_amount">1250 / 2000 мл</string>
+    <string name="widget_goal">Цель</string>
+    <string name="widget_burned">Сожжено</string>
+    <string name="widget_open_diary">Открыть дневник</string>
+    <string name="widget_open_fasting">Открыть раздел голодания</string>
+    <string name="widget_kcal_eaten">Съедено %1$s ккал</string>
+    <string name="widget_food">Питание</string>
+    <string name="widget_amount_of_goal">%1$s / %2$s</string>
 </resources>
