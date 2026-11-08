@@ -54,6 +54,7 @@ export const BrushingTimerModal: React.FC<BrushingTimerModalProps> = ({
   const [textPrimary] = useCSSVariable(['--color-text-primary']) as [string];
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
   const startedAtRef = useRef<Date | null>(null);
   // Milliseconds counted before the current run of the clock (pauses split runs).
   const bankedMsRef = useRef(0);
@@ -120,6 +121,7 @@ export const BrushingTimerModal: React.FC<BrushingTimerModalProps> = ({
   const reset = useCallback(() => {
     stopOutsideApp();
     setRunning(false);
+    setIsSaving(false);
     setElapsed(0);
     startedAtRef.current = null;
     bankedMsRef.current = 0;
@@ -153,6 +155,7 @@ export const BrushingTimerModal: React.FC<BrushingTimerModalProps> = ({
   }, [running, targetSeconds, currentMs, syncOutsideApp]);
 
   const toggle = () => {
+    if (isSaving) return;
     if (running) {
       bankedMsRef.current = currentMs();
       runStartMsRef.current = null;
@@ -176,16 +179,21 @@ export const BrushingTimerModal: React.FC<BrushingTimerModalProps> = ({
     runStartMsRef.current = null;
     setRunning(false);
     stopOutsideApp();
+    setIsSaving(true);
     return saveOnce(
       () => onSave(startedAt, seconds),
       () => {
+        setIsSaving(false);
         reset();
         onClose();
       }
-    );
+    ).finally(() => {
+      setIsSaving(false);
+    });
   };
 
   const handleClose = () => {
+    if (isSaving) return;
     reset();
     onClose();
   };
@@ -274,8 +282,13 @@ export const BrushingTimerModal: React.FC<BrushingTimerModalProps> = ({
         <View className="flex-row gap-3 mt-4">
           <TouchableOpacity
             onPress={toggle}
+            disabled={isSaving}
             className={`flex-1 py-4 rounded-2xl items-center ${
-              running ? 'bg-amber-600' : 'bg-sky-600'
+              isSaving
+                ? 'bg-slate-400 opacity-60'
+                : running
+                  ? 'bg-amber-600'
+                  : 'bg-sky-600'
             }`}
             accessibilityRole="button"
           >
@@ -290,11 +303,16 @@ export const BrushingTimerModal: React.FC<BrushingTimerModalProps> = ({
           {elapsed > 0 && (
             <TouchableOpacity
               onPress={handleDone}
-              className="flex-1 bg-emerald-600 py-4 rounded-2xl items-center"
+              disabled={isSaving}
+              className={`flex-1 bg-emerald-600 py-4 rounded-2xl items-center ${
+                isSaving ? 'opacity-60' : ''
+              }`}
               accessibilityRole="button"
             >
               <Text className="text-white font-bold text-base">
-                {t('oralCare.timer.save', { defaultValue: 'Save' })}
+                {isSaving
+                  ? t('common.saving', { defaultValue: 'Saving…' })
+                  : t('oralCare.timer.save', { defaultValue: 'Save' })}
               </Text>
             </TouchableOpacity>
           )}

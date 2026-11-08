@@ -985,7 +985,9 @@ Actions:
               const endDate = args.end_date || todayInZone(tz);
               const startDate = args.start_date || addDays(endDate, -6);
               if (startDate > endDate) {
-                return 'start_date must not be after end_date.';
+                return ERRORS.VALIDATION(
+                  'start_date must not be after end_date.'
+                );
               }
               const clampedStart =
                 addDays(startDate, oralCareService.MAX_HISTORY_DAYS - 1) <

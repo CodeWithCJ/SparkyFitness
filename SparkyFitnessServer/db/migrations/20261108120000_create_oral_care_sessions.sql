@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS public.oral_care_sessions (
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    created_by_user_id UUID REFERENCES public."user"(id),
-    updated_by_user_id UUID REFERENCES public."user"(id),
+    created_by_user_id UUID REFERENCES public."user"(id) ON DELETE SET NULL,
+    updated_by_user_id UUID REFERENCES public."user"(id) ON DELETE SET NULL,
     CONSTRAINT chk_oral_care_sessions_care_type CHECK (
         care_type IN ('brushing', 'flossing', 'mouthwash', 'tongue_cleaning', 'other')
     ),

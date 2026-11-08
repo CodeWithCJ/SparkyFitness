@@ -67,4 +67,20 @@ describe('OralCareReport', () => {
     render(<OralCareReport startDate="2020-01-01" endDate="2026-11-08" />);
     expect(mockUseHistory).toHaveBeenCalledWith('2025-11-08', '2026-11-08');
   });
+
+  it('renders error state and retries on failure', () => {
+    const mockRefetch = jest.fn();
+    mockUseHistory.mockReturnValue({
+      isLoading: false,
+      isError: true,
+      data: undefined,
+      refetch: mockRefetch,
+    });
+    render(<OralCareReport startDate="2026-11-07" endDate="2026-11-08" />);
+    expect(
+      screen.getByText('Failed to load oral care report.')
+    ).toBeInTheDocument();
+    screen.getByRole('button', { name: /retry/i }).click();
+    expect(mockRefetch).toHaveBeenCalled();
+  });
 });

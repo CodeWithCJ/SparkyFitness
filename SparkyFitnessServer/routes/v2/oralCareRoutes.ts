@@ -37,6 +37,7 @@ function constraintMessage(error: unknown): string | null {
     code?: unknown;
     constraint?: unknown;
   };
+  if (code === '22P02') return 'Invalid session ID';
   if (code !== '23514' || typeof constraint !== 'string') return null;
   return CONSTRAINT_MESSAGES[constraint] ?? null;
 }
@@ -273,6 +274,8 @@ router.delete('/entries/:id', async (req, res, next) => {
     }
     res.json({ success: true });
   } catch (error) {
+    const message = constraintMessage(error);
+    if (message) return res.status(400).json({ error: message });
     next(error);
   }
 });

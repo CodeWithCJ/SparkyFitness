@@ -102,7 +102,9 @@ export default function OralCareLogScreen({ navigation, route }: Props) {
     (parseInt(minutes, 10) || 0) * 60 + (parseInt(seconds, 10) || 0);
   const labelMissing = careType === 'other' && customLabel.trim() === '';
   const durationTooLong = durationSeconds > MAX_DURATION_SECONDS;
-  const canSave = !labelMissing && !durationTooLong && !isSubmitting;
+  const notesTooLong = notes.length > 2000;
+  const canSave =
+    !labelMissing && !durationTooLong && !notesTooLong && !isSubmitting;
 
   const closeIfStillOpen = () => {
     if (navigation.isFocused()) navigation.goBack();
@@ -363,6 +365,7 @@ export default function OralCareLogScreen({ navigation, route }: Props) {
         <FormInput
           value={notes}
           onChangeText={setNotes}
+          maxLength={2000}
           multiline
           numberOfLines={3}
           accessibilityLabel={t('oralCare.log.notesA11y', {

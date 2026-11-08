@@ -148,7 +148,12 @@ export const OralCareSection = ({ selectedDate }: OralCareSectionProps) => {
   const { timezone, formatTime } = usePreferences();
   const { isActingOnBehalf } = useActiveUser();
 
-  const { data: summary, isLoading } = useOralCareDaySummary(selectedDate);
+  const {
+    data: summary,
+    isLoading,
+    isError,
+    refetch,
+  } = useOralCareDaySummary(selectedDate);
   const { data: history } = useOralCareHistory(
     addDays(selectedDate, -29),
     selectedDate
@@ -442,6 +447,18 @@ export const OralCareSection = ({ selectedDate }: OralCareSectionProps) => {
             <div className="py-8 text-center text-muted-foreground text-sm">
               {t('oralCare.loading', 'Loading oral care...')}
             </div>
+          ) : isError ? (
+            <div className="py-8 text-center space-y-2">
+              <p className="text-sm text-destructive">
+                {t(
+                  'oralCare.loadError',
+                  'Failed to load oral care for this day.'
+                )}
+              </p>
+              <Button variant="outline" size="sm" onClick={() => refetch()}>
+                {t('common.retry', 'Retry')}
+              </Button>
+            </div>
           ) : !summary || summary.sessions.length === 0 ? (
             <div className="py-10 text-center border border-dashed rounded-xl border-border/60">
               <CalendarCheck className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
@@ -664,6 +681,7 @@ export const OralCareSection = ({ selectedDate }: OralCareSectionProps) => {
                 <Textarea
                   id="oral-care-notes"
                   rows={2}
+                  maxLength={2000}
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 />
@@ -793,13 +811,6 @@ export const OralCareSection = ({ selectedDate }: OralCareSectionProps) => {
             <AlertDialogCancel>
               {t('common.cancel', 'Cancel')}
             </AlertDialogCancel>
-            <BrushingTimerDialog
-              open={timerOpen}
-              targetSeconds={settings?.target_seconds ?? 120}
-              onOpenChange={setTimerOpen}
-              onSave={saveTimerBrush}
-            />
-
             <AlertDialogAction
               onClick={() => {
                 if (toDelete) deleteSession.mutate(toDelete);
@@ -811,6 +822,13 @@ export const OralCareSection = ({ selectedDate }: OralCareSectionProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BrushingTimerDialog
+        open={timerOpen}
+        targetSeconds={settings?.target_seconds ?? 120}
+        onOpenChange={setTimerOpen}
+        onSave={saveTimerBrush}
+      />
     </div>
   );
 };

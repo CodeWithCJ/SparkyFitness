@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { addDays, summarizeOralCareRange } from '@workspace/shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useOralCareHistory } from '@/hooks/CheckIn/useOralCare';
 
@@ -37,7 +38,10 @@ const OralCareReport = ({ startDate, endDate }: OralCareReportProps) => {
   const { formatDateInUserTimezone } = usePreferences();
 
   const from = clampStart(startDate, endDate);
-  const { data, isLoading } = useOralCareHistory(from, endDate);
+  const { data, isLoading, isError, refetch } = useOralCareHistory(
+    from,
+    endDate
+  );
 
   const chartData = useMemo(
     () =>
@@ -53,10 +57,23 @@ const OralCareReport = ({ startDate, endDate }: OralCareReportProps) => {
     [data?.days]
   );
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <div className="text-sm text-muted-foreground">
         {t('oralCare.report.loading', 'Loading oral care...')}
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="flex flex-col items-start gap-2 py-4">
+        <p className="text-sm text-destructive">
+          {t('oralCare.report.loadError', 'Failed to load oral care report.')}
+        </p>
+        <Button variant="outline" size="sm" onClick={() => refetch()}>
+          {t('common.retry', 'Retry')}
+        </Button>
       </div>
     );
   }
