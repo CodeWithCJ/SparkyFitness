@@ -219,7 +219,10 @@ export function CreateFoodMode({
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>(
     params.mealTypeId
   );
-  const effectiveMealId = selectedMealId ?? defaultMealTypeId;
+  const effectiveMealId =
+    selectedMealId && mealTypes.some((mt) => mt.id === selectedMealId)
+      ? selectedMealId
+      : defaultMealTypeId;
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
   const [entryTime, setEntryTime] = useState(params.entryTime ?? '');

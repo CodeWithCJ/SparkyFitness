@@ -2462,6 +2462,47 @@ describe('FoodFormScreen', () => {
     });
   });
 
+  it('falls back to defaultMealTypeId if passed mealTypeId is not in visible mealTypes', async () => {
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [
+        {
+          id: 'meal-1',
+          name: 'Breakfast',
+          default_time: '08:00',
+          user_id: null,
+          is_visible: true,
+          created_at: '',
+          updated_at: '',
+          display_order: 1,
+        },
+      ],
+      defaultMealTypeId: 'meal-1',
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      mealTypeId: 'hidden-meal',
+      date: '2026-04-23',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            meal_type_id: 'meal-1',
+            entry_time: '08:00',
+          }),
+        })
+      );
+    });
+  });
+
   it('clears entry time when Clear is pressed', async () => {
     const screen = renderScreen({
       mode: 'create-food',
