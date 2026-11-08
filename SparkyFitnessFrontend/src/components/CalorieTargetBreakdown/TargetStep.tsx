@@ -9,6 +9,7 @@ import {
   getGoalModeAdjustment,
 } from '@workspace/shared';
 import { getTargetFallbackNotice } from './targetFallbackNotice';
+import { targetStepTag } from './stepLabels';
 import type { CalorieTargetBreakdownProps } from './types';
 
 interface TargetStepProps extends Pick<
@@ -23,10 +24,13 @@ interface TargetStepProps extends Pick<
   | 'rawManualGoal'
   | 'adjustedManualGoal'
   | 'activityMultiplier'
+  | 'calorieCycling'
 > {
   isAdaptiveMethod: boolean;
   activitySeparated: boolean;
   displayBmrVal: number;
+  /** Leave out the heading when a breakdown row header already shows it. */
+  headless?: boolean;
 }
 
 export const TargetStep = ({
@@ -43,6 +47,8 @@ export const TargetStep = ({
   isAdaptiveMethod,
   activitySeparated,
   displayBmrVal,
+  calorieCycling,
+  headless = false,
 }: TargetStepProps) => {
   const { t, i18n } = useTranslation();
   const { energyUnit, convertEnergy, weightUnit = 'kg' } = usePreferences();
@@ -80,6 +86,11 @@ export const TargetStep = ({
   const absoluteSafetyFloor = previewResult.absoluteFloorValue;
   const recommendedSafetyFloor = previewResult.recommendedSafetyFloor;
   const effectiveSafetyFloor = previewResult.effectiveSafetyFloor;
+  // The day's target as shown: a cycled day is warned about on its own number.
+  const shownTarget =
+    calorieCycling?.status === 'active'
+      ? calorieCycling.target
+      : previewResult.finalTarget;
 
   // A manual 0% is neither a deficit nor a surplus, so it gets no sign at all:
   // signing it renders "Deficit (-0%) = -0 kcal", which reads as an error.
@@ -97,30 +108,24 @@ export const TargetStep = ({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between font-medium text-foreground">
-        <span>
-          {t('diary.calculateExplanation.goalCalculationTitle', {
-            defaultValue: '{{step}}. Daily Calorie Goal calculation',
-            step: isAdaptiveMethod ? '4' : '3',
-          })}
-        </span>
-        <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
-          {isAdaptiveMethod
-            ? previewResult.insufficientHistory
-              ? t(
-                  'diary.calculateExplanation.fallbackEstimateUnavailable',
-                  'Fallback Estimate (Adaptive TDEE unavailable)'
-                )
-              : t('diary.calculateExplanation.adaptiveTdee', 'Adaptive TDEE')
-            : t('diary.calculateExplanation.calculationMethod', {
-                defaultValue: '{{method}} Method',
-                method: t(
-                  `diary.calculateExplanation.methods.${goalModeCalculationMethod}`,
-                  goalModeCalculationMethod
-                ),
-              })}
-        </span>
-      </div>
+      {!headless && (
+        <div className="flex items-center justify-between font-medium text-foreground">
+          <span>
+            {t('diary.calculateExplanation.goalCalculationTitle', {
+              defaultValue: '{{step}}. Daily Calorie Goal calculation',
+              step: isAdaptiveMethod ? '4' : '3',
+            })}
+          </span>
+          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
+            {targetStepTag(
+              t,
+              previewResult,
+              isAdaptiveMethod,
+              goalModeCalculationMethod
+            )}
+          </span>
+        </div>
+      )}
       <div className="text-muted-foreground text-sm bg-muted/40 p-1.5 rounded border border-border/60 space-y-1 text-left">
         <div>
           <span className="font-medium">{baselineLabel}:</span>{' '}
@@ -335,7 +340,7 @@ export const TargetStep = ({
             )}
           </div>
         )}
-        {previewResult.finalTarget < recommendedSafetyFloor && (
+        {shownTarget < recommendedSafetyFloor && (
           <div className="text-sm text-red-600 dark:text-red-400 font-medium mt-0.5">
             {t(
               'settings.calorieBreakdown.belowRecommendedFloor',
@@ -369,6 +374,59 @@ export const TargetStep = ({
               </span>
             </div>
           )}
+        {calorieCycling?.status === 'active' &&
+          calorieCycling.dayType !== 'even' && (
+            <div
+              className="flex justify-between items-center gap-2"
+              data-testid="calorie-cycling-step"
+            >
+              <span>
+                {calorieCycling.dayType === 'high'
+                  ? t(
+                      'diary.calorieCycling.stepHigh',
+                      'Calorie cycling (high day):'
+                    )
+                  : t(
+                      'diary.calorieCycling.stepLow',
+                      'Calorie cycling (low day):'
+                    )}
+                {calorieCycling.clampedToFloor && (
+                  <span className="block text-muted-foreground">
+                    {t(
+                      'diary.calorieCycling.stepFloor',
+                      'Held at your safety floor; the other days give up the difference.'
+                    )}
+                  </span>
+                )}
+              </span>
+              <span className="font-medium whitespace-nowrap">
+                {calorieCycling.delta > 0 ? '+' : '−'}
+                {Math.round(
+                  convertEnergy(
+                    Math.abs(calorieCycling.delta),
+                    'kcal',
+                    energyUnit
+                  )
+                )}{' '}
+                {getEnergyUnitString(energyUnit)}
+              </span>
+            </div>
+          )}
+        {calorieCycling &&
+          (calorieCycling.status === 'paused_earn_back' ||
+            calorieCycling.status === 'paused_weekly_plan') && (
+            <p className="text-muted-foreground">
+              {calorieCycling.status === 'paused_weekly_plan'
+                ? t(
+                    'diary.calorieCycling.pausedWeeklyPlan',
+                    'Calorie cycling is paused today: a weekly goal plan sets this day.'
+                  )
+                : t(
+                    'diary.calorieCycling.pausedEarnBack',
+                    'Calorie cycling is paused: exercise calories are added back to your goal.'
+                  )}
+            </p>
+          )}
         <div className="pt-1 border-t border-border/60 font-bold text-foreground mt-1 flex justify-between items-center text-sm">
           <span>
             {t(
@@ -377,9 +435,7 @@ export const TargetStep = ({
             )}
           </span>
           <span className="text-primary text-sm font-semibold">
-            {Math.round(
-              convertEnergy(previewResult.finalTarget, 'kcal', energyUnit)
-            )}{' '}
+            {Math.round(convertEnergy(shownTarget, 'kcal', energyUnit))}{' '}
             {getEnergyUnitString(energyUnit)}
           </span>
         </div>

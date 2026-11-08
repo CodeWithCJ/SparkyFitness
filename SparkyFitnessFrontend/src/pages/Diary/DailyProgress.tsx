@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import {
@@ -311,6 +312,22 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
 
   const daysOfCalorieLogs = adaptiveTdeeData?.daysOfData ?? 0;
 
+  // "High day +250" / "Low day −180" when calorie cycling moved this day (#2327).
+  const cycling = summaryData?.calorieCycling;
+  const cyclingAmount =
+    cycling?.status === 'active' && cycling.delta !== 0
+      ? Math.round(convertEnergy(Math.abs(cycling.delta), 'kcal', energyUnit))
+      : 0;
+  const cyclingLabel = !cyclingAmount
+    ? null
+    : cycling?.dayType === 'high'
+      ? t('diary.calorieCycling.highDay', 'High day +{{amount}}', {
+          amount: cyclingAmount,
+        })
+      : t('diary.calorieCycling.lowDay', 'Low day −{{amount}}', {
+          amount: cyclingAmount,
+        });
+
   const getTargetFallbackNotice = () => {
     const fallbackVal = Math.round(
       convertEnergy(bmr * activityMultiplier, 'kcal', energyUnit)
@@ -517,6 +534,15 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
                   { energyUnitString: getEnergyUnitString(energyUnit) }
                 )}
               </div>
+              {cyclingLabel && (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 whitespace-nowrap"
+                  data-testid="calorie-cycling-badge"
+                >
+                  {cyclingLabel}
+                </Badge>
+              )}
             </div>
           </div>
 
@@ -833,6 +859,7 @@ const DailyProgress = ({ selectedDate }: { selectedDate: string }) => {
               adjustedManualGoal={adjustedManualGoal}
               activityMultiplier={activityMultiplier}
               bmrSource={bmrSource}
+              calorieCycling={summaryData?.calorieCycling}
             />
           </div>
         </div>

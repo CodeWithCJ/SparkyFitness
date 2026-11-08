@@ -14,6 +14,33 @@ beforeEach(() => {
   } as unknown as Awaited<ReturnType<typeof getClient>>);
 });
 
+describe('calorie cycling preference persistence', () => {
+  it('writes both settings on update and upsert, keeping them when omitted', async () => {
+    const offsets = [0, 15, 0, 15, 0, 15, 0];
+    await preferenceRepository.updateUserPreferences('user-1', {
+      calorie_cycling_mode: 'training_rest',
+      calorie_cycling_offsets: offsets,
+    });
+    await preferenceRepository.upsertUserPreferences({
+      user_id: 'user-1',
+      calorie_cycling_mode: 'training_rest',
+      calorie_cycling_offsets: offsets,
+    });
+    await preferenceRepository.updateUserPreferences('user-1', {});
+    const [update, upsert, omitted] = query.mock.calls;
+    for (const [sql, params] of [update, upsert]) {
+      expect(sql).toContain('calorie_cycling_mode = COALESCE($63,');
+      expect(sql).toContain(
+        'calorie_cycling_offsets = COALESCE($64::smallint[],'
+      );
+      expect(params[62]).toBe('training_rest');
+      expect(params[63]).toEqual(offsets);
+    }
+    expect(omitted[1][62]).toBeUndefined();
+    expect(omitted[1][63]).toBeUndefined();
+  });
+});
+
 describe('exercise macro preference persistence', () => {
   it.each([true, false, undefined])(
     'preserves %s on update/upsert',

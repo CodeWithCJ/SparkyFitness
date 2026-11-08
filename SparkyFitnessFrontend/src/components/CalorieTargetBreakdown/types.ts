@@ -1,4 +1,4 @@
-import type { CalorieTargetResult } from '@workspace/shared';
+import type { CalorieCyclingDay, CalorieTargetResult } from '@workspace/shared';
 
 export interface AdaptiveTdeeData {
   tdee?: number;
@@ -31,6 +31,8 @@ export interface CalorieTargetBreakdownProps {
   title?: string;
   /** Render as a modal popup instead of an inline expander (for height-locked widgets). */
   asDialog?: boolean;
+  /** Start the inline expander open, showing the numbered steps. */
+  defaultOpen?: boolean;
   previewResult: CalorieTargetResult;
   adaptiveTdeeData: AdaptiveTdeeData | null | undefined;
   bmrAlgorithm: string;
@@ -53,4 +55,6 @@ export interface CalorieTargetBreakdownProps {
   activityMultiplier: number;
   bmrSource?: string;
   adaptiveActivitySeparate?: boolean;
+  /** How calorie cycling set this day's goal (#2327), from the daily summary. */
+  calorieCycling?: CalorieCyclingDay;
 }

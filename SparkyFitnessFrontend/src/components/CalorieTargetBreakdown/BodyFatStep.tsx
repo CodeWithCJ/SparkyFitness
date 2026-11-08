@@ -1,27 +1,24 @@
 import { useTranslation } from 'react-i18next';
-import {
-  getBmrAlgorithmLabel,
-  getBodyFatAlgorithmLabel,
-} from '@/utils/calculationLabels';
+import { getBmrAlgorithmLabel } from '@/utils/calculationLabels';
 import { getBodyFatMathText, type BodyFatMathInputs } from './bodyFatMath';
+import { bodyFatStepTag } from './stepLabels';
 import type { CalorieTargetBreakdownProps } from './types';
 
 interface BodyFatStepProps extends BodyFatMathInputs {
   bmrAlgorithm: string;
   displayBodyFat: NonNullable<CalorieTargetBreakdownProps['displayBodyFat']>;
+  /** Leave out the heading when a breakdown row header already shows it. */
+  headless?: boolean;
 }
 
 export const BodyFatStep = ({
   bmrAlgorithm,
   displayBodyFat,
+  headless = false,
   ...mathInputs
 }: BodyFatStepProps) => {
   const { t } = useTranslation();
   const bmrAlgorithmLabel = getBmrAlgorithmLabel(t, bmrAlgorithm);
-  const bodyFatAlgorithmLabel = getBodyFatAlgorithmLabel(
-    t,
-    mathInputs.bodyFatAlgorithm
-  );
 
   // Only the lean-mass formulas consume body fat; for the others section 2 is purely
   // informational and should not read like an input to the target.
@@ -35,17 +32,19 @@ export const BodyFatStep = ({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between font-medium text-foreground">
-        <span>
-          {t(
-            'diary.calculateExplanation.bodyFatTitle',
-            '2. Body Fat Percentage'
-          )}
-        </span>
-        <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
-          {bodyFatAlgorithmLabel}
-        </span>
-      </div>
+      {!headless && (
+        <div className="flex items-center justify-between font-medium text-foreground">
+          <span>
+            {t(
+              'diary.calculateExplanation.bodyFatTitle',
+              '2. Body Fat Percentage'
+            )}
+          </span>
+          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
+            {bodyFatStepTag(t, mathInputs.bodyFatAlgorithm)}
+          </span>
+        </div>
+      )}
       <pre className="text-muted-foreground font-sans whitespace-pre-line text-sm bg-muted/40 p-1.5 rounded border border-border/60">
         {getBodyFatMathText(t, mathInputs)}
       </pre>
