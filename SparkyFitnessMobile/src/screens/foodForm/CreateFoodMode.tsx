@@ -215,14 +215,21 @@ export function CreateFoodMode({
   );
   const calendarRef = useRef<CalendarSheetRef>(null);
   const timeSheetRef = useRef<TimeSheetRef>(null);
-  const { mealTypes, defaultMealTypeId } = useMealTypes();
+  const {
+    mealTypes,
+    defaultMealTypeId,
+    isLoading: isMealTypesLoading,
+  } = useMealTypes();
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>(
     params.mealTypeId
   );
   const effectiveMealId =
-    selectedMealId && mealTypes.some((mt) => mt.id === selectedMealId)
+    selectedMealId &&
+    (isMealTypesLoading || mealTypes.some((mt) => mt.id === selectedMealId))
       ? selectedMealId
-      : defaultMealTypeId;
+      : isMealTypesLoading
+        ? undefined
+        : (defaultMealTypeId ?? undefined);
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
   const [entryTime, setEntryTime] = useState(params.entryTime ?? '');
@@ -851,6 +858,9 @@ export function CreateFoodMode({
           defaultValue: 'Amount must be greater than zero.',
         }),
       });
+      return;
+    }
+    if (isMealTypesLoading) {
       return;
     }
     if (!effectiveMealId) {

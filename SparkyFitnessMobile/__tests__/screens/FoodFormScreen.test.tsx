@@ -2445,7 +2445,7 @@ describe('FoodFormScreen', () => {
     const screen = renderScreen({
       mode: 'create-food',
       mealTypeId: 'meal-2',
-      date: '2026-04-23',
+      date: '2000-01-01',
     });
 
     fireEvent.press(screen.getByText('Add Food'));
@@ -2486,7 +2486,7 @@ describe('FoodFormScreen', () => {
     const screen = renderScreen({
       mode: 'create-food',
       mealTypeId: 'hidden-meal',
-      date: '2026-04-23',
+      date: '2000-01-01',
     });
 
     fireEvent.press(screen.getByText('Add Food'));
@@ -2503,11 +2503,37 @@ describe('FoodFormScreen', () => {
     });
   });
 
+  it('preserves route-provided mealTypeId and waits while meal types are loading', async () => {
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [],
+      defaultMealTypeId: null,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      mealTypeId: 'meal-2',
+      date: '2000-01-01',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(mockToast.show).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        text1: 'No meal type',
+      })
+    );
+    expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
   it('clears entry time when Clear is pressed', async () => {
     const screen = renderScreen({
       mode: 'create-food',
       entryTime: '14:30',
-      date: '2026-04-23',
+      date: '2000-01-01',
     });
 
     expect(screen.getByText('Clear')).toBeTruthy();
@@ -2528,7 +2554,8 @@ describe('FoodFormScreen', () => {
   it('sets entry time to now when Now is pressed', async () => {
     const screen = renderScreen({
       mode: 'create-food',
-      date: '2026-04-23',
+      entryTime: '08:00',
+      date: '2000-01-01',
     });
 
     fireEvent.press(screen.getByText('Now'));
