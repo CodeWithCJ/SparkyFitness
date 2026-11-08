@@ -2557,6 +2557,47 @@ describe('FoodFormScreen', () => {
     expect(mockAddEntry).not.toHaveBeenCalled();
   });
 
+  it('allows save when background meal-types refetch errors but cached meal exists', async () => {
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [
+        {
+          id: 'meal-1',
+          name: 'Breakfast',
+          default_time: '08:00',
+          user_id: null,
+          is_visible: true,
+          created_at: '',
+          updated_at: '',
+          display_order: 1,
+        },
+      ],
+      defaultMealTypeId: 'meal-1',
+      isLoading: false,
+      isError: true,
+      error: new Error('Background refetch error'),
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      mealTypeId: 'meal-1',
+      date: '2000-01-01',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            meal_type_id: 'meal-1',
+            entry_time: '08:00',
+          }),
+        })
+      );
+    });
+  });
+
   it('clears entry time when Clear is pressed', async () => {
     const screen = renderScreen({
       mode: 'create-food',

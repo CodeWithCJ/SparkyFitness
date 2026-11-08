@@ -886,7 +886,7 @@ export function CreateFoodMode({
       });
       return;
     }
-    if (isMealTypesError) {
+    if (isMealTypesError && !effectiveMealId) {
       Toast.show({
         type: 'error',
         text1: t('common.error', { defaultValue: 'Error' }),
