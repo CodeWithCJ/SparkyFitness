@@ -232,7 +232,8 @@ const STATUS_BAR_INSET_LAYOUTS = {
 } as const;
 
 function padsTopWithSafeAreaInset(source: string): boolean {
-  return /paddingTop:[^,}\n]*\binsets\.top\b/.test(source);
+  // The value may wrap over several lines once Prettier breaks it up.
+  return /paddingTop:[^,}]*\binsets\.top\b/.test(source);
 }
 
 /**
