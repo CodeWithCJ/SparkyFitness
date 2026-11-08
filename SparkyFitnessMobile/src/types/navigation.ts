@@ -304,6 +304,8 @@ export type RootStackParamList = {
         pendingScannedBarcode?: string;
         scannedBarcodeNonce?: number;
         mealPlanTarget?: MealPlanPickerTarget;
+        mealTypeId?: string;
+        entryTime?: string;
       }
     | {
         mode: 'adjust-entry-nutrition';

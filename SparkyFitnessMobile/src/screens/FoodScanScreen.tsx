@@ -293,6 +293,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   > => ({
     mode: 'create-food',
     date,
+    mealTypeId: mealTypeId ?? undefined,
     pickerMode: selectionPickerMode,
     returnDepth,
     mealPlanTarget,

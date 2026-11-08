@@ -53,6 +53,7 @@ import IntervalSetup, {
 } from '../components/recording/IntervalSetup';
 import RouteMap from '../components/exerciseStats/RouteMap';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useIndoorDistanceEstimate } from '../hooks/useIndoorDistanceEstimate';
 import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
 import { usePreferences } from '../hooks/usePreferences';
@@ -267,6 +268,7 @@ function recordingTitle(
 const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const { updateMutation: updateShoe } = useShoeMutations();
   const { preferences } = usePreferences();
@@ -587,7 +589,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     : fitnessTestParam
       ? fitnessTestName(t, fitnessTestParam)
       : t('screens.recordActivity', { defaultValue: 'Record Activity' });
-  useScreenHeader({
+  const header = useScreenHeader({
     title: liveTitle,
     nativeTitle: liveTitle,
     left: { kind: 'back' },
@@ -2234,12 +2236,21 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   })();
 
   return (
-    <ScrollView
+    <View
       className="flex-1 bg-background"
-      contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
-      {body}
-    </ScrollView>
+      {header}
+      <ScrollView
+        className="flex-1 bg-background"
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: insets.bottom + 24,
+        }}
+      >
+        {body}
+      </ScrollView>
+    </View>
   );
 };
 

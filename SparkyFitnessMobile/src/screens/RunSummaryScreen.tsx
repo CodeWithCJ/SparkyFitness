@@ -23,6 +23,7 @@ import {
   setExerciseEntryStrideLength,
 } from '../services/api/exerciseApi';
 import { addLog } from '../services/LogService';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   rateProgramWorkout,
   setProgramPosition,
@@ -63,6 +64,7 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const energyUnit = useEnergyUnit();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const summary = route.params;
   const miles = summary.distanceUnit === 'miles';
   const unitMeters = miles ? METERS_PER_MILE : METERS_PER_KM;
@@ -258,7 +260,10 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
   const fastestLabel = t('recordActivity.fastest', { defaultValue: 'Fastest' });
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1 bg-background"
@@ -617,7 +622,7 @@ const RunSummaryScreen: React.FC<Props> = ({ navigation, route }) => {
           {t('runSummary.done', { defaultValue: 'Done' })}
         </Button>
       </ScrollView>
-    </>
+    </View>
   );
 };
 

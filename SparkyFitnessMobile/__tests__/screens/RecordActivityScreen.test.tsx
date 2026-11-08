@@ -1,5 +1,6 @@
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, StyleSheet, Text } from 'react-native';
+import type { ReactTestInstance } from 'react-test-renderer';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
@@ -23,6 +24,7 @@ import {
   type RecordingSnapshot,
 } from '../../src/services/gpsRecordingService';
 import { useWatchConnectivity } from '../../src/hooks/useWatchConnectivity';
+import { useScreenHeader } from '../../src/hooks/useScreenHeader';
 import { startRunOnWatch } from '../../src/services/watchRunControl';
 import { useRunProgram } from '../../src/services/runProgramService';
 import { programStatus } from '@workspace/shared';
@@ -124,8 +126,14 @@ jest.mock('../../src/hooks/useScreenHeader', () => ({
 jest.mock('../../src/utils/routeMapSupport', () => ({
   canShowRouteMap: () => false,
 }));
+const mockInsets = { top: 0, bottom: 0, left: 0, right: 0 };
 jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+  useSafeAreaInsets: () => mockInsets,
+}));
+const mockUsesNativeHeader = jest.fn(() => false);
+jest.mock('../../src/services/nativeTabBarPreference', () => ({
+  ...jest.requireActual('../../src/services/nativeTabBarPreference'),
+  useNativeIOSHeadersActive: () => mockUsesNativeHeader(),
 }));
 jest.mock('uniwind', () => ({
   useCSSVariable: (keys: string | string[]) =>
@@ -196,6 +204,47 @@ const renderScreen = async () => {
 describe('RecordActivityScreen', () => {
   beforeAll(async () => {
     await initializeI18n('en');
+  });
+
+  /** The top padding of the nearest element above `node` that sets one. */
+  const paddingTopAbove = (node: ReactTestInstance): unknown => {
+    for (let current = node.parent; current; current = current.parent) {
+      const style = StyleSheet.flatten(current.props.style) as
+        { paddingTop?: unknown } | undefined;
+      if (style?.paddingTop !== undefined) return style.paddingTop;
+    }
+    return undefined;
+  };
+
+  it('renders its header below the status bar on the custom-header path', async () => {
+    // On Android (and iOS 26+ with Liquid Glass off) the hook returns a bar
+    // the screen has to render inside a root padded with the top inset.
+    state(null);
+    jest
+      .mocked(useScreenHeader)
+      .mockReturnValue(<Text testID="screen-header-bar">Record Activity</Text>);
+    try {
+      // Two insets, so a fixed padding that happens to match one cannot pass.
+      for (const top of [24, 48]) {
+        mockInsets.top = top;
+        const custom = await renderScreen();
+        expect(paddingTopAbove(custom.getByTestId('screen-header-bar'))).toBe(
+          top
+        );
+        custom.unmount();
+      }
+
+      // With the native header the stack owns the top area: no extra inset.
+      mockUsesNativeHeader.mockReturnValue(true);
+      const native = await renderScreen();
+      expect(
+        paddingTopAbove(native.getByTestId('screen-header-bar'))
+      ).toBeUndefined();
+    } finally {
+      mockInsets.top = 0;
+      mockUsesNativeHeader.mockReturnValue(false);
+      jest.mocked(useScreenHeader).mockReturnValue(null);
+    }
   });
   beforeEach(() => {
     jest.clearAllMocks();
