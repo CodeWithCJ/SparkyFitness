@@ -3765,6 +3765,8 @@
     "protocol": "Protocol",
     "started": "Started",
     "endFast": "End Fast",
+    "logMealToEnd": "Log Meal to End Fast",
+    "autoFastEndsWithMeal": "Your fast is auto-calculated from meals and will end when you log food.",
     "protocolWithGoal": "{{protocol}} · {{hours}}h fast",
     "noActiveFast": "No active fast",
     "startDescription": "Start a fast to track your fasting window and metabolic stages.",

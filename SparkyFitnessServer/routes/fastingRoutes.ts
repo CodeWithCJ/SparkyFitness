@@ -188,8 +188,7 @@ router.post('/start', async (req, res) => {
  *             properties:
  *               id:
  *                 type: string
- *                 format: uuid
- *                 description: The ID of the fast to end.
+ *                 description: The ID of the fast to end (UUID or auto-* identifier).
  *               start_time:
  *                 type: string
  *                 format: date-time
@@ -241,17 +240,21 @@ router.post('/end', async (req, res) => {
     }
   }
   try {
-    if (id === 'auto-current') {
+    const isAutoFast = id === 'auto-current' || id.startsWith('auto-');
+    if (isAutoFast) {
       const tz = await loadUserTimezone(userId);
       const activeAuto = await fastingAutoCalculationService.getCurrentAutoFast(
         userId,
         tz
       );
-      if (!activeAuto) {
+      if (!activeAuto && !start_time) {
         return res.status(404).json({ error: 'Fast not found' });
       }
 
-      const startUsed = start_time || activeAuto.start_time;
+      const startUsed = start_time || activeAuto?.start_time;
+      if (!startUsed) {
+        return res.status(400).json({ error: 'Start time is required' });
+      }
       if (new Date(startUsed) > new Date(end_time)) {
         return res
           .status(400)
@@ -264,8 +267,8 @@ router.post('/end', async (req, res) => {
           (new Date(end_time).getTime() - new Date(startUsed).getTime()) / 60000
         )
       );
-      const targetEnd = activeAuto.target_end_time || null;
-      const fastingType = activeAuto.fasting_type || '16:8';
+      const targetEnd = activeAuto?.target_end_time || null;
+      const fastingType = activeAuto?.fasting_type || '16:8';
 
       const completed = await fastingRepository.createCompletedFast(
         userId,
