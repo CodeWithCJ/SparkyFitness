@@ -6,6 +6,7 @@ import Button from '../components/ui/Button';
 import { useRefetchOnFocus } from '../hooks/useRefetchOnFocus';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { usePersonalRecords } from '../hooks/usePersonalRecords';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDayLabel } from '../utils/dayLabel';
 import {
   distanceStandardLabel,
@@ -23,6 +24,7 @@ type Props = RootStackScreenProps<'PersonalRecords'>;
 const PersonalRecordsScreen: React.FC<Props> = () => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const { records, isLoading, isError, refetch } = usePersonalRecords();
   useRefetchOnFocus(refetch, true);
   const header = useScreenHeader({
@@ -32,7 +34,10 @@ const PersonalRecordsScreen: React.FC<Props> = () => {
   const groups = groupPersonalRecords(records);
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1 bg-background"
@@ -102,7 +107,7 @@ const PersonalRecordsScreen: React.FC<Props> = () => {
           ))
         )}
       </ScrollView>
-    </>
+    </View>
   );
 };
 

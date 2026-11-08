@@ -84,6 +84,18 @@ function readMobileFile(relativePath: string): string {
   return fs.readFileSync(path.join(mobileRoot, relativePath), 'utf8');
 }
 
+/**
+ * Every screen file, including the ones in subfolders (the food form modes in
+ * src/screens/foodForm render their own header).
+ */
+function listAllScreenFiles(): string[] {
+  return fs
+    .readdirSync(path.join(mobileRoot, 'src/screens'), { recursive: true })
+    .map(String)
+    .filter((fileName) => fileName.endsWith('.tsx'))
+    .map((fileName) => `src/screens/${fileName.split(path.sep).join('/')}`);
+}
+
 function extractTypeKeys(source: string, typeName: string): string[] {
   const match = source.match(
     new RegExp(`export type ${typeName} = \\{([\\s\\S]*?)^\\};`, 'm')
@@ -207,6 +219,39 @@ function usesScreenHeaderAbstraction(source: string): boolean {
     // JSX usage only: importing footer chrome (e.g. FooterSaveBar) from the
     // FormScreenChrome module does not give a screen a header.
     /<FormScreenChrome\b/.test(source)
+  );
+}
+
+/**
+ * Layouts that render a useScreenHeader bar for the screen and reserve the
+ * status-bar inset above it themselves.
+ */
+const STATUS_BAR_INSET_LAYOUTS = {
+  FormScreenChrome: 'src/components/FormScreenChrome.tsx',
+  ReportScreenLayout: 'src/components/reports/ReportScreenLayout.tsx',
+} as const;
+
+function padsTopWithSafeAreaInset(source: string): boolean {
+  // A comment that mentions paddingTop is not a style.
+  const code = source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
+  // The value may wrap over several lines once Prettier breaks it up, but it
+  // ends at the next `,`, `;` or `}`, so insets.top has to be part of it.
+  return /paddingTop:[^,;}]*\binsets\.top\b/.test(code);
+}
+
+/**
+ * On the custom-header path (Android always, iOS 26+ with Liquid Glass off)
+ * the bar useScreenHeader returns is drawn by the screen, and the app runs
+ * edge to edge, so the screen has to keep it below the status bar: either its
+ * root pads the top with the safe-area inset, or it renders the bar through a
+ * layout that does.
+ */
+function reservesStatusBarInset(source: string): boolean {
+  return (
+    padsTopWithSafeAreaInset(source) ||
+    Object.keys(STATUS_BAR_INSET_LAYOUTS).some((layout) =>
+      new RegExp(`<${layout}\\b`).test(source)
+    )
   );
 }
 
@@ -362,6 +407,7 @@ function failNativeHeaderContract(message: string): never {
       '- Root-stack screens with a screen-owned React header must hide that React header on iOS because the native stack header owns the iOS chrome.',
       '- Declare screen headers with useScreenHeader(...) (src/hooks/useScreenHeader.tsx). It renders the custom bar on the fallback path, mirrors the same descriptor into unstable_header*Items on the native path, and returns null on native so the two never coexist.',
       '- A screen on useScreenHeader must not keep hand-rolled header code: no unstable_header*Items blocks, renderHeader()/renderHeaderBar() functions, or {/* Header */} custom bars alongside the hook.',
+      "- A screen on useScreenHeader must render the bar the hook returns and keep it below the status bar: wrap every return path that renders it in a root padded with insets.top, style={usesNativeHeader ? undefined : { paddingTop: insets.top }} on pushed screens (RoutesScreen) and style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined} on presentation: 'modal' routes, or render it through FormScreenChrome or ReportScreenLayout. The app is edge to edge on Android, so a bare fragment puts the title and buttons under the clock and battery icons.",
       '- Screens intentionally off the hook (e.g. FoodSearchScreen with its anchored + menu) must mirror custom actions with unstable_headerLeftItems or unstable_headerRightItems themselves and gate the custom bar on useNativeIOSHeadersActive().',
       '- When adding a new root-stack screen that is intentionally presented above Tabs instead of inside native tabs mode, add it to NATIVE_TABS_ROUTE_EXCLUSIONS with a short reason.',
     ].join('\n')
@@ -667,6 +713,76 @@ describe('native header navigation contract', () => {
     if (offenders.length > 0) {
       failNativeHeaderContract(
         `Screens using useScreenHeader/FormScreenChrome still contain hand-rolled header code (stray custom bar or unstable_header*Items block): ${formatList(offenders)}.`
+      );
+    }
+  });
+
+  it('renders the bar useScreenHeader returns instead of discarding it', () => {
+    // The hook only mirrors the descriptor into the native header; on the
+    // custom path it returns the bar, so a bare `useScreenHeader({...})`
+    // statement leaves Android without a title or back button.
+    const offenders = listAllScreenFiles().filter((relativePath) =>
+      /^\s*useScreenHeader\(/m.test(readMobileFile(relativePath))
+    );
+
+    if (offenders.length > 0) {
+      failNativeHeaderContract(
+        `Screens calling useScreenHeader without rendering the bar it returns (no header on Android): ${formatList(offenders)}.`
+      );
+    }
+  });
+
+  it('reads insets.top only as part of a paddingTop value', () => {
+    expect(
+      padsTopWithSafeAreaInset(
+        'style={usesNativeHeader ? undefined : { paddingTop: insets.top }}'
+      )
+    ).toBe(true);
+    // Prettier wraps a long value over several lines.
+    expect(
+      padsTopWithSafeAreaInset(
+        'style={{\n  paddingTop: usesNativeHeader\n    ? undefined\n    : insets.top,\n}}'
+      )
+    ).toBe(true);
+    // Another property, a later statement or a comment does not count.
+    expect(
+      padsTopWithSafeAreaInset(
+        'style={{ paddingTop: 16, marginTop: insets.top }}'
+      )
+    ).toBe(false);
+    expect(
+      padsTopWithSafeAreaInset(
+        'interface Layout {\n  paddingTop: number;\n  offset: typeof insets.top;\n}'
+      )
+    ).toBe(false);
+    expect(
+      padsTopWithSafeAreaInset(
+        '// paddingTop: set by the layout\nconst offset = insets.top;'
+      )
+    ).toBe(false);
+  });
+
+  it('keeps custom header bars below the Android status bar', () => {
+    const layoutsWithoutInset = Object.entries(STATUS_BAR_INSET_LAYOUTS)
+      .filter(
+        ([, relativePath]) =>
+          !padsTopWithSafeAreaInset(readMobileFile(relativePath))
+      )
+      .map(([layout]) => layout);
+    const offenders = listAllScreenFiles().filter((relativePath) => {
+      const source = readMobileFile(relativePath);
+      return (
+        usesScreenHeaderAbstraction(source) && !reservesStatusBarInset(source)
+      );
+    });
+
+    if (layoutsWithoutInset.length > 0 || offenders.length > 0) {
+      failNativeHeaderContract(
+        [
+          'Custom header bars can draw under the Android status bar.',
+          `Header layouts that no longer pad the top with the safe-area inset: ${formatList(layoutsWithoutInset)}.`,
+          `Screens on useScreenHeader that neither pad their root with insets.top on the custom-header path nor render through ${Object.keys(STATUS_BAR_INSET_LAYOUTS).join(' or ')}: ${formatList(offenders)}.`,
+        ].join('\n')
       );
     }
   });
