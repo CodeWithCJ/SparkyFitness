@@ -74,7 +74,7 @@ export function useCalorieCyclingForDay(
     offsets,
     floor: cycling?.floor ?? null,
     serverTarget:
-      cycling?.status === 'active'
+      cycling?.status === 'active' && !caloriesEdited
         ? { target: cycling.target, delta: cycling.delta }
         : null,
   };

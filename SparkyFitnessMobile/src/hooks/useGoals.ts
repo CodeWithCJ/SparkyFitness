@@ -51,7 +51,12 @@ export function useAdjustedDailyGoal(date: string, enabled: boolean) {
     queryFn: () => fetchGoalsRange(date, date, true),
     enabled,
   });
-  return query.data?.[date];
+  return {
+    adjustedGoal: query.data?.[date],
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+  };
 }
 
 export function useSaveGoalsMutation() {

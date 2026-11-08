@@ -8216,7 +8216,9 @@
         "sunday": "Sunday"
       }
     },
-    "cyclingNoteTodayWithUnit": "Calorie cycling is on, so the calories below are your base target and each day is higher or lower. Today it is {{calories}} {{unit}}."
+    "cyclingNoteTodayWithUnit": "Calorie cycling is on, so the calories below are your base target and each day is higher or lower. Today it is {{calories}} {{unit}}.",
+    "cyclingPausedWeeklyPlan": "Calorie cycling is paused today by an active weekly goal plan. The calories below set today’s plan target directly.",
+    "adjustedGoalFailed": "Could not load today’s adjusted goal target."
   },
   "reports": {
     "title": "Reports",

@@ -292,9 +292,15 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
       goal_mode_calculation_method: preferences?.goal_mode_calculation_method,
       adaptive_activity_separate: preferences?.adaptive_activity_separate,
     });
-  const adjustedGoal = useAdjustedDailyGoal(date, !isPresetMode);
+  const {
+    adjustedGoal,
+    isLoading: isAdjustedLoading,
+    isError: isAdjustedError,
+    refetch: refetchAdjusted,
+  } = useAdjustedDailyGoal(date, !isPresetMode);
   const adjustedCalories = adjustedGoal?.calories;
   const cyclingDay = adjustedGoal?.calorie_cycling;
+  const cyclingPausedByPlan = cyclingDay?.status === 'paused_weekly_plan';
   const cyclingActiveOnDay =
     cyclingDay !== undefined ? cyclingDay.status === 'active' : isCycling;
   const waterUnit = preferences?.water_display_unit ?? 'ml';
@@ -348,17 +354,24 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
   const savedCalories = Number(goals.calories);
   // Meal shares follow the day's goal. Adaptive replaces the typed number;
   // cycling recalculates from the typed base using the day's rules and floor.
+  // Wait for the adjusted-goal query (cycling status and safety floor) before calculating amounts.
   const mealPreviewCalories = isAdaptive
-    ? (adjustedCalories ?? typedCalories)
-    : cyclingActiveOnDay && cyclingOffsets
-      ? typedCalories === savedCalories && adjustedCalories !== undefined
-        ? adjustedCalories
-        : cycleDayTarget({
-            baseTarget: typedCalories,
-            offsets: cyclingOffsets,
-            weekday: dayOfWeek(date),
-            floor: cyclingDay?.floor ?? null,
-          }).target
+    ? isAdjustedLoading || (isAdjustedError && adjustedGoal === undefined)
+      ? 0
+      : (adjustedCalories ?? typedCalories)
+    : isCycling
+      ? isAdjustedLoading || (isAdjustedError && adjustedGoal === undefined)
+        ? 0
+        : cyclingActiveOnDay && cyclingOffsets
+          ? typedCalories === savedCalories && adjustedCalories !== undefined
+            ? adjustedCalories
+            : cycleDayTarget({
+                baseTarget: typedCalories,
+                offsets: cyclingOffsets,
+                weekday: dayOfWeek(date),
+                floor: cyclingDay?.floor ?? null,
+              }).target
+          : typedCalories
       : typedCalories;
   const userData: UserNutrientData | null = useMemo(() => {
     if (profile?.gender !== 'male' && profile?.gender !== 'female') return null;
@@ -438,7 +451,7 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
       ])
     ) as Record<NutrientGoalField, string>),
     calories:
-      isAdaptive || isCycling
+      isAdaptive || (isCycling && !cyclingPausedByPlan)
         ? t('goals.fields.baselineCaloriesWithUnit', {
             defaultValue: 'Baseline calories ({{unit}})',
             unit: energyUnitLabel(energyUnit, t),
@@ -939,16 +952,27 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
               })}
         </Text>
       )}
-      {isCycling && !isAdaptive && adjustedCalories !== undefined && (
+      {isCycling && !isAdaptive && cyclingPausedByPlan && (
         <Text className="text-sm text-text-secondary">
-          {t('goals.cyclingNoteTodayWithUnit', {
+          {t('goals.cyclingPausedWeeklyPlan', {
             defaultValue:
-              'Calorie cycling is on, so the calories below are your base target and each day is higher or lower. Today it is {{calories}} {{unit}}.',
-            calories: roundedEnergy(adjustedCalories, energyUnit),
-            unit: energyUnitLabel(energyUnit, t),
+              'Calorie cycling is paused today by an active weekly goal plan. The calories below set today’s plan target directly.',
           })}
         </Text>
       )}
+      {isCycling &&
+        !isAdaptive &&
+        !cyclingPausedByPlan &&
+        adjustedCalories !== undefined && (
+          <Text className="text-sm text-text-secondary">
+            {t('goals.cyclingNoteTodayWithUnit', {
+              defaultValue:
+                'Calorie cycling is on, so the calories below are your base target and each day is higher or lower. Today it is {{calories}} {{unit}}.',
+              calories: roundedEnergy(adjustedCalories, energyUnit),
+              unit: energyUnitLabel(energyUnit, t),
+            })}
+          </Text>
+        )}
       {Object.keys(directionDrafts).length > 0 && (
         <>
           <Text className="text-sm text-text-secondary">
@@ -1027,6 +1051,23 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
       {renderFields(OTHER_FIELDS)}
       {sectionTitle(
         t('goals.sections.meals', { defaultValue: 'Meal calorie distribution' })
+      )}
+      {(isCycling || isAdaptive) && isAdjustedError && (
+        <View className="flex-row items-center justify-between rounded-lg bg-red-50 p-3 dark:bg-red-950/30">
+          <Text className="flex-1 text-sm text-red-600 dark:text-red-400">
+            {t('goals.adjustedGoalFailed', {
+              defaultValue: 'Could not load today’s adjusted goal target.',
+            })}
+          </Text>
+          <Button
+            variant="secondary"
+            onPress={() => void refetchAdjusted()}
+            className="ml-2 py-1 px-3"
+            textClassName="text-xs"
+          >
+            {t('common.retry', { defaultValue: 'Retry' })}
+          </Button>
+        </View>
       )}
       <MealDistributionEditor
         meals={meals}

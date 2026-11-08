@@ -172,6 +172,15 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
   const [lastCustomOffsets, setLastCustomOffsets] = useState<number[] | null>(
     null
   );
+  const [lastSeenOffsets, setLastSeenOffsets] = useState(offsets);
+  if (lastSeenOffsets !== offsets) {
+    setLastSeenOffsets(offsets);
+    // If newer saved offsets arrive while not in training_rest, discard the
+    // cached pattern so it does not overwrite them.
+    if (mode !== 'training_rest') {
+      setLastCustomOffsets(null);
+    }
+  }
   const weekdayNames = localizedWeekdayLabels(t);
   // A stored first day outside 0-6 would drop a weekday from the chart.
   const weekStart =

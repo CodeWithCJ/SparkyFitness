@@ -73,9 +73,9 @@ interface CalorieCyclingChartProps {
  * the rest of the bar only selects, so the screen still scrolls. In Training
  * vs rest the day under a bar switches it.
  */
-// Baseline offset captured when a bar drag begins, so draft re-renders during
-// the gesture do not compound translation over an already-moved draft value.
-const dragSession = { startOffset: 0 };
+// Baseline offsets captured per day when a drag begins, so multi-touch Android
+// drags stay independent and draft re-renders do not compound translation.
+const dragBaselines = new Map<number, number>();
 
 const CalorieCyclingChart: React.FC<CalorieCyclingChartProps> = ({
   mode,
@@ -114,19 +114,20 @@ const CalorieCyclingChart: React.FC<CalorieCyclingChartProps> = ({
   const floorShown = floor !== null && floor > low && floor < high;
 
   const handleGesture = (day: number) => {
-    // The offsets here follow the draft while dragging, so the start is
-    // captured once per gesture; reading it from props would add the
-    // cumulative translation onto an already moved value.
-    const valueAt = (translationY: number) =>
-      clampCyclingOffset(
-        dragSession.startOffset +
-          (-translationY / plotHeight) * DRAG_RANGE_POINTS
+    // The offsets here follow the draft while dragging, so each day's start
+    // is captured per gesture; reading it from props would add the cumulative
+    // translation onto an already moved value.
+    const valueAt = (translationY: number) => {
+      const baseline = dragBaselines.get(day) ?? offsets[day] ?? 0;
+      return clampCyclingOffset(
+        baseline + (-translationY / plotHeight) * DRAG_RANGE_POINTS
       );
+    };
     return Gesture.Pan()
       .runOnJS(true)
       .activeOffsetY([-3, 3])
       .onStart(() => {
-        dragSession.startOffset = offsets[day] ?? 0;
+        dragBaselines.set(day, offsets[day] ?? 0);
         onSelectDay(day);
         setDraggingDay(day);
       })
@@ -140,10 +141,13 @@ const CalorieCyclingChart: React.FC<CalorieCyclingChartProps> = ({
         }
       })
       .onEnd((event) => {
+        const baseline = dragBaselines.get(day) ?? offsets[day] ?? 0;
         const value = valueAt(event.translationY);
-        if (value !== dragSession.startOffset) onCommitOffset(day, value);
+        if (value !== baseline) onCommitOffset(day, value);
+        dragBaselines.delete(day);
       })
       .onFinalize(() => {
+        dragBaselines.delete(day);
         setDraggingDay(null);
         onDraftOffsets(null);
       });

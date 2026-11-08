@@ -2155,6 +2155,7 @@ const CalculationSettings = () => {
 
           {/* Warning callouts */}
           {showSafetyCallouts &&
+            bmr > 0 &&
             safetyCheckTarget < previewResult.rmr &&
             safetyCheckTarget >= previewResult.absoluteFloorValue && (
               <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex gap-3 text-sm text-amber-800 dark:text-amber-300">
