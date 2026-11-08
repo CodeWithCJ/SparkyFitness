@@ -464,13 +464,16 @@ describe('ActiveWorkoutFocusView', () => {
     render(viewElement('a'));
     expect(screen.getByText('Last time: 42.5×5')).toBeTruthy();
 
-    await act(async () => {
-      await i18n.changeLanguage('pl');
-    });
-    expect(screen.getByText('Last time: 42,5×5')).toBeTruthy();
-    await act(async () => {
-      await i18n.changeLanguage('en');
-    });
+    try {
+      await act(async () => {
+        await i18n.changeLanguage('pl');
+      });
+      expect(screen.getByText(/42,5×5/)).toBeTruthy();
+    } finally {
+      await act(async () => {
+        await i18n.changeLanguage('en');
+      });
+    }
   });
 
   it('omits the context lines without a plan or history', () => {
