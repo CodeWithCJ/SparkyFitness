@@ -1,6 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import * as ts from 'typescript';
+import {
+  checkHeaderInsets,
+  STATUS_BAR_INSET_LAYOUTS,
+} from '../helpers/headerInsetCheck';
 
 const mobileRoot = path.resolve(__dirname, '../..');
 
@@ -221,335 +224,6 @@ function usesScreenHeaderAbstraction(source: string): boolean {
     // FormScreenChrome module does not give a screen a header.
     /<FormScreenChrome\b/.test(source)
   );
-}
-
-/**
- * Layouts that render a useScreenHeader bar for the screen and reserve the
- * status-bar inset above it themselves.
- */
-const STATUS_BAR_INSET_LAYOUTS = {
-  FormScreenChrome: 'src/components/FormScreenChrome.tsx',
-  ReportScreenLayout: 'src/components/reports/ReportScreenLayout.tsx',
-} as const;
-const STATUS_BAR_INSET_LAYOUT_TAGS = new Set<string>(
-  Object.keys(STATUS_BAR_INSET_LAYOUTS)
-);
-
-interface HeaderSourceContext {
-  /** Names holding the bar: `const header = useScreenHeader(...)`. */
-  headerNames: Set<string>;
-  /** Names holding `useNativeIOSHeadersActive()`. */
-  nativeHeaderNames: Set<string>;
-  /** Every `const name = <expression>` in the file, to follow style variables. */
-  constants: Map<string, ts.Expression>;
-}
-
-/** How a style pads the top: on the custom-header path, always, under a condition the check cannot read, on the native path only, or not at all. */
-type TopPadding = 'custom' | 'always' | 'unknown' | 'native' | 'none';
-
-/** Where a rendered bar ends up. */
-type RenderedHeader = 'padded' | 'nativeOnly' | 'missing' | 'reversed';
-
-function unwrapExpression(expression: ts.Expression): ts.Expression {
-  let current = expression;
-  while (ts.isParenthesizedExpression(current) || ts.isAsExpression(current)) {
-    current = current.expression;
-  }
-  return current;
-}
-
-function collectHeaderContext(
-  sourceFile: ts.SourceFile,
-  extraHeaderNames: readonly string[]
-): HeaderSourceContext {
-  const context: HeaderSourceContext = {
-    headerNames: new Set(extraHeaderNames),
-    nativeHeaderNames: new Set(),
-    constants: new Map(),
-  };
-  const visit = (node: ts.Node): void => {
-    if (
-      ts.isVariableDeclaration(node) &&
-      ts.isIdentifier(node.name) &&
-      node.initializer
-    ) {
-      context.constants.set(node.name.text, node.initializer);
-      const initializer = unwrapExpression(node.initializer);
-      if (
-        ts.isCallExpression(initializer) &&
-        ts.isIdentifier(initializer.expression)
-      ) {
-        if (initializer.expression.text === 'useScreenHeader') {
-          context.headerNames.add(node.name.text);
-        } else if (
-          initializer.expression.text === 'useNativeIOSHeadersActive'
-        ) {
-          context.nativeHeaderNames.add(node.name.text);
-        }
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  return context;
-}
-
-/**
- * Whether a branch of `condition` runs on the custom-header path (true), on the
- * native one (false), or cannot be told from the condition (null). Understands
- * the native-header flag and `Platform.OS` comparisons, negated or not.
- */
-function isCustomHeaderBranch(
-  condition: ts.Expression,
-  inTrueBranch: boolean,
-  context: HeaderSourceContext
-): boolean | null {
-  let current = unwrapExpression(condition);
-  let negated = false;
-  if (
-    ts.isPrefixUnaryExpression(current) &&
-    current.operator === ts.SyntaxKind.ExclamationToken
-  ) {
-    negated = true;
-    current = unwrapExpression(current.operand);
-  }
-  let trueIsCustom: boolean | null = null;
-  if (ts.isIdentifier(current) && context.nativeHeaderNames.has(current.text)) {
-    trueIsCustom = false;
-  }
-  const platform = current
-    .getText()
-    .replace(/\s+/g, ' ')
-    .match(/^Platform\.OS (===|!==) '(ios|android)'$/);
-  if (platform) {
-    trueIsCustom = (platform[1] === '===') === (platform[2] === 'android');
-  }
-  if (trueIsCustom === null) return null;
-  if (negated) trueIsCustom = !trueIsCustom;
-  return inTrueBranch ? trueIsCustom : !trueIsCustom;
-}
-
-const TOP_PADDING_RANK: Record<TopPadding, number> = {
-  none: 0,
-  always: 1,
-  unknown: 2,
-  native: 3,
-  custom: 4,
-};
-
-/** How a `style` value pads the top with `insets.top`, following style variables. */
-function topPaddingOf(
-  expression: ts.Expression,
-  context: HeaderSourceContext,
-  followed: Set<string> = new Set()
-): TopPadding {
-  const style = unwrapExpression(expression);
-  if (ts.isIdentifier(style)) {
-    const value = context.constants.get(style.text);
-    if (!value || followed.has(style.text)) return 'none';
-    followed.add(style.text);
-    return topPaddingOf(value, context, followed);
-  }
-  let best: TopPadding = 'none';
-  const visit = (node: ts.Node): void => {
-    if (
-      ts.isPropertyAccessExpression(node) &&
-      node.getText().replace(/\s+/g, '') === 'insets.top'
-    ) {
-      let inPaddingTop = false;
-      let padding: TopPadding = 'always';
-      let conditionFound = false;
-      for (
-        let child: ts.Node = node, parent = node.parent;
-        parent && child !== style;
-        child = parent, parent = parent.parent
-      ) {
-        if (
-          ts.isPropertyAssignment(parent) &&
-          parent.name.getText() === 'paddingTop'
-        ) {
-          inPaddingTop = true;
-        }
-        if (
-          !conditionFound &&
-          ts.isConditionalExpression(parent) &&
-          child !== parent.condition
-        ) {
-          conditionFound = true;
-          const custom = isCustomHeaderBranch(
-            parent.condition,
-            child === parent.whenTrue,
-            context
-          );
-          padding = custom === null ? 'unknown' : custom ? 'custom' : 'native';
-        }
-      }
-      if (inPaddingTop && TOP_PADDING_RANK[padding] > TOP_PADDING_RANK[best]) {
-        best = padding;
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(style);
-  return best;
-}
-
-/**
- * Where a rendered bar (or a JSX value holding one) ends up: inside a JSX
- * element that pads the top on the custom-header path, only on the native
- * path (where the hook returns null), or without the inset.
- */
-function renderedHeaderOf(
-  node: ts.Node,
-  context: HeaderSourceContext,
-  followed: Set<string>
-): RenderedHeader {
-  let padding: TopPadding | null = null;
-  for (
-    let child: ts.Node = node, parent = node.parent;
-    parent;
-    child = parent, parent = parent.parent
-  ) {
-    if (
-      ts.isConditionalExpression(parent) &&
-      child !== parent.condition &&
-      isCustomHeaderBranch(
-        parent.condition,
-        child === parent.whenTrue,
-        context
-      ) === false
-    ) {
-      return 'nativeOnly';
-    }
-    if (
-      ts.isIfStatement(parent) &&
-      child !== parent.expression &&
-      isCustomHeaderBranch(
-        parent.expression,
-        child === parent.thenStatement,
-        context
-      ) === false
-    ) {
-      return 'nativeOnly';
-    }
-    if (
-      ts.isBinaryExpression(parent) &&
-      parent.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken &&
-      child === parent.right &&
-      isCustomHeaderBranch(parent.left, true, context) === false
-    ) {
-      return 'nativeOnly';
-    }
-    if (
-      padding === null &&
-      (ts.isJsxElement(parent) || ts.isJsxSelfClosingElement(parent))
-    ) {
-      const opening = ts.isJsxElement(parent) ? parent.openingElement : parent;
-      if (STATUS_BAR_INSET_LAYOUT_TAGS.has(opening.tagName.getText())) {
-        padding = 'custom';
-      } else {
-        const style = opening.attributes.properties.find(
-          (attribute): attribute is ts.JsxAttribute =>
-            ts.isJsxAttribute(attribute) && attribute.name.getText() === 'style'
-        );
-        const value =
-          style?.initializer && ts.isJsxExpression(style.initializer)
-            ? style.initializer.expression
-            : undefined;
-        const found = value ? topPaddingOf(value, context) : 'none';
-        if (found !== 'none') padding = found;
-      }
-    }
-    // A JSX value kept in a variable: judge every place the variable is used.
-    if (
-      padding === null &&
-      ts.isVariableDeclaration(parent) &&
-      child === parent.initializer &&
-      ts.isIdentifier(parent.name)
-    ) {
-      const declaration = parent.name;
-      if (followed.has(declaration.text)) return 'padded';
-      followed.add(declaration.text);
-      let scope: ts.Node = parent;
-      while (!ts.isFunctionLike(scope) && !ts.isSourceFile(scope)) {
-        scope = scope.parent;
-      }
-      const uses: RenderedHeader[] = [];
-      const findUses = (candidate: ts.Node): void => {
-        if (
-          ts.isIdentifier(candidate) &&
-          candidate !== declaration &&
-          candidate.text === declaration.text
-        ) {
-          uses.push(renderedHeaderOf(candidate, context, followed));
-        }
-        ts.forEachChild(candidate, findUses);
-      };
-      findUses(scope);
-      return (
-        uses.find((use) => use === 'missing' || use === 'reversed') ?? 'padded'
-      );
-    }
-    if (ts.isFunctionLike(parent)) break;
-  }
-  if (padding === null || padding === 'none') return 'missing';
-  return padding === 'native' ? 'reversed' : 'padded';
-}
-
-/**
- * On the custom-header path (Android always, iOS 26+ with Liquid Glass off)
- * the bar useScreenHeader returns is drawn by the screen, and the app runs
- * edge to edge, so every place a screen renders it has to keep it below the
- * status bar: inside a JSX element whose style pads the top with insets.top on
- * that path (not on the native one), or inside a layout that does. Returns how
- * many places render the bar and the ones that do not keep it below.
- */
-function headerRendersWithoutInset(
-  relativePath: string,
-  extraHeaderNames: readonly string[] = []
-): { renders: number; problems: string[] } {
-  const sourceFile = ts.createSourceFile(
-    relativePath,
-    readMobileFile(relativePath),
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TSX
-  );
-  const context = collectHeaderContext(sourceFile, extraHeaderNames);
-  const problems: string[] = [];
-  let renders = 0;
-  const visit = (node: ts.Node): void => {
-    if (
-      ts.isJsxExpression(node) &&
-      node.expression &&
-      ts.isIdentifier(node.expression) &&
-      context.headerNames.has(node.expression.text)
-    ) {
-      renders += 1;
-      const line =
-        sourceFile.getLineAndCharacterOfPosition(node.getStart()).line + 1;
-      if (ts.isJsxAttribute(node.parent)) {
-        const tag = node.parent.parent.parent.tagName.getText();
-        if (!STATUS_BAR_INSET_LAYOUT_TAGS.has(tag)) {
-          problems.push(
-            `${relativePath}:${line} (passed to <${tag}>, which does not reserve the inset)`
-          );
-        }
-      } else {
-        const rendered = renderedHeaderOf(node, context, new Set());
-        if (rendered === 'missing') {
-          problems.push(`${relativePath}:${line} (no insets.top padding)`);
-        } else if (rendered === 'reversed') {
-          problems.push(
-            `${relativePath}:${line} (padding applied on the native-header path instead of the custom one)`
-          );
-        }
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
-  return { renders, problems };
 }
 
 function hasHandRolledHeaderMarker(source: string): boolean {
@@ -1030,11 +704,31 @@ describe('native header navigation contract', () => {
   });
 
   it('keeps custom header bars below the Android status bar', () => {
+    // How each place a bar is rendered is judged is described (and tested
+    // with fixtures) in __tests__/helpers/headerInsetCheck.ts.
+    const describeProblems = (
+      relativePath: string,
+      headerPropNames?: string[]
+    ): { renders: number; problems: string[] } => {
+      const { renders, problems } = checkHeaderInsets(
+        relativePath,
+        readMobileFile(relativePath),
+        { headerPropNames }
+      );
+      return {
+        renders,
+        problems: problems.map(({ line, message }) =>
+          line === null
+            ? `${relativePath} (${message})`
+            : `${relativePath}:${line} (${message})`
+        ),
+      };
+    };
     // The layouts render the bar they get as the `header` prop (and
     // FormScreenChrome its own), so `header` is the bar there too.
     const layoutProblems = Object.values(STATUS_BAR_INSET_LAYOUTS).flatMap(
       (relativePath) => {
-        const { renders, problems } = headerRendersWithoutInset(relativePath, [
+        const { renders, problems } = describeProblems(relativePath, [
           'header',
         ]);
         return renders > 0
@@ -1046,9 +740,7 @@ describe('native header navigation contract', () => {
       .filter((relativePath) =>
         /\buseScreenHeader\(/.test(readMobileFile(relativePath))
       )
-      .flatMap(
-        (relativePath) => headerRendersWithoutInset(relativePath).problems
-      );
+      .flatMap((relativePath) => describeProblems(relativePath).problems);
 
     if (layoutProblems.length > 0 || screenProblems.length > 0) {
       failNativeHeaderContract(
