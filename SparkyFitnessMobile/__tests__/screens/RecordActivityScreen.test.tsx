@@ -220,14 +220,19 @@ describe('RecordActivityScreen', () => {
     // On Android (and iOS 26+ with Liquid Glass off) the hook returns a bar
     // the screen has to render inside a root padded with the top inset.
     state(null);
-    mockInsets.top = 24;
     jest
       .mocked(useScreenHeader)
       .mockReturnValue(<Text testID="screen-header-bar">Record Activity</Text>);
     try {
-      const custom = await renderScreen();
-      expect(paddingTopAbove(custom.getByTestId('screen-header-bar'))).toBe(24);
-      custom.unmount();
+      // Two insets, so a fixed padding that happens to match one cannot pass.
+      for (const top of [24, 48]) {
+        mockInsets.top = top;
+        const custom = await renderScreen();
+        expect(paddingTopAbove(custom.getByTestId('screen-header-bar'))).toBe(
+          top
+        );
+        custom.unmount();
+      }
 
       // With the native header the stack owns the top area: no extra inset.
       mockUsesNativeHeader.mockReturnValue(true);

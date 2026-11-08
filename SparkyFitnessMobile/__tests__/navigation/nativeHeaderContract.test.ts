@@ -232,8 +232,11 @@ const STATUS_BAR_INSET_LAYOUTS = {
 } as const;
 
 function padsTopWithSafeAreaInset(source: string): boolean {
-  // The value may wrap over several lines once Prettier breaks it up.
-  return /paddingTop:[^,}]*\binsets\.top\b/.test(source);
+  // A comment that mentions paddingTop is not a style.
+  const code = source.replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, '');
+  // The value may wrap over several lines once Prettier breaks it up, but it
+  // ends at the next `,`, `;` or `}`, so insets.top has to be part of it.
+  return /paddingTop:[^,;}]*\binsets\.top\b/.test(code);
 }
 
 /**
@@ -727,6 +730,36 @@ describe('native header navigation contract', () => {
         `Screens calling useScreenHeader without rendering the bar it returns (no header on Android): ${formatList(offenders)}.`
       );
     }
+  });
+
+  it('reads insets.top only as part of a paddingTop value', () => {
+    expect(
+      padsTopWithSafeAreaInset(
+        'style={usesNativeHeader ? undefined : { paddingTop: insets.top }}'
+      )
+    ).toBe(true);
+    // Prettier wraps a long value over several lines.
+    expect(
+      padsTopWithSafeAreaInset(
+        'style={{\n  paddingTop: usesNativeHeader\n    ? undefined\n    : insets.top,\n}}'
+      )
+    ).toBe(true);
+    // Another property, a later statement or a comment does not count.
+    expect(
+      padsTopWithSafeAreaInset(
+        'style={{ paddingTop: 16, marginTop: insets.top }}'
+      )
+    ).toBe(false);
+    expect(
+      padsTopWithSafeAreaInset(
+        'interface Layout {\n  paddingTop: number;\n  offset: typeof insets.top;\n}'
+      )
+    ).toBe(false);
+    expect(
+      padsTopWithSafeAreaInset(
+        '// paddingTop: set by the layout\nconst offset = insets.top;'
+      )
+    ).toBe(false);
   });
 
   it('keeps custom header bars below the Android status bar', () => {
