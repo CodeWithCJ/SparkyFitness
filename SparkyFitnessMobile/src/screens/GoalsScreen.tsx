@@ -355,12 +355,13 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
   // Meal shares follow the day's goal. Adaptive replaces the typed number;
   // cycling recalculates from the typed base using the day's rules and floor.
   // Wait for the adjusted-goal query (cycling status and safety floor) before calculating amounts.
+  // On error, hide the amounts until retry succeeds to avoid presenting stale cached targets.
   const mealPreviewCalories = isAdaptive
-    ? isAdjustedLoading || (isAdjustedError && adjustedGoal === undefined)
+    ? isAdjustedLoading || isAdjustedError
       ? 0
       : (adjustedCalories ?? typedCalories)
     : isCycling
-      ? isAdjustedLoading || (isAdjustedError && adjustedGoal === undefined)
+      ? isAdjustedLoading || isAdjustedError
         ? 0
         : cyclingActiveOnDay && cyclingOffsets
           ? typedCalories === savedCalories && adjustedCalories !== undefined
@@ -939,7 +940,7 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
       )}
       {isAdaptive && (
         <Text className="text-sm text-text-secondary">
-          {adjustedCalories !== undefined
+          {adjustedCalories !== undefined && !isAdjustedError
             ? t('goals.adaptiveNoteTodayWithUnit', {
                 defaultValue:
                   'Adaptive mode is on, so your calorie goal changes daily. Today it is {{calories}} {{unit}}. The baseline below sets how far above or below your estimated maintenance you aim to be; it is not a fixed daily target.',
@@ -963,7 +964,8 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
       {isCycling &&
         !isAdaptive &&
         !cyclingPausedByPlan &&
-        adjustedCalories !== undefined && (
+        adjustedCalories !== undefined &&
+        !isAdjustedError && (
           <Text className="text-sm text-text-secondary">
             {t('goals.cyclingNoteTodayWithUnit', {
               defaultValue:

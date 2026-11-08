@@ -26,6 +26,13 @@ import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
 const DEFAULT_TRAINING_DAYS = [1, 3, 5];
 const DEFAULT_TRAINING_PERCENT = 15;
 
+function areOffsetsEqual(a: number[] | null, b: number[] | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  return a.every((val, i) => val === b[i]);
+}
+
 interface CalorieCyclingCardProps {
   mode: CalorieCyclingMode;
   offsets: number[];
@@ -173,7 +180,7 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
     null
   );
   const [lastSeenOffsets, setLastSeenOffsets] = useState(offsets);
-  if (lastSeenOffsets !== offsets) {
+  if (!areOffsetsEqual(lastSeenOffsets, offsets)) {
     setLastSeenOffsets(offsets);
     // If newer saved offsets arrive while not in training_rest, discard the
     // cached pattern so it does not overwrite them.

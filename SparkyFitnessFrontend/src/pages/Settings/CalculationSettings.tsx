@@ -563,6 +563,16 @@ const CalculationSettings = () => {
     : 30;
 
   const activityMultiplier = ACTIVITY_MULTIPLIERS[activityLevel] || 1.2;
+  const hasValidRmr = Boolean(
+    (measuredBmr != null && measuredBmr > 0) ||
+    (weightKg != null &&
+      weightKg > 0 &&
+      (bmrAlgorithm === 'Katch-McArdle' || bmrAlgorithm === 'Cunningham'
+        ? bodyFat != null && bodyFat > 0
+        : bmrAlgorithm === 'Oxford'
+          ? true
+          : heightCm != null && heightCm > 0))
+  );
   const rawManualGoal = goalsData?.calories ?? 2000;
   const staticTdee = Math.round(bmr * activityMultiplier);
   const activitySeparated = isAdaptiveActivitySeparated(
@@ -2155,7 +2165,7 @@ const CalculationSettings = () => {
 
           {/* Warning callouts */}
           {showSafetyCallouts &&
-            bmr > 0 &&
+            hasValidRmr &&
             safetyCheckTarget < previewResult.rmr &&
             safetyCheckTarget >= previewResult.absoluteFloorValue && (
               <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex gap-3 text-sm text-amber-800 dark:text-amber-300">
