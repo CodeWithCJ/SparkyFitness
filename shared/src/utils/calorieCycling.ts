@@ -208,16 +208,26 @@ export function calorieCyclingDayType(delta: number): CalorieCyclingDayType {
 }
 
 /**
- * Carbs take the whole calorie change of a cycled day (4 kcal per gram), so
- * protein and fat stay the same every day. Never below zero.
+ * Moves a cycled day's macros with its calories (4 kcal per gram of carbs,
+ * 9 per gram of fat). Carbs take the change and protein never moves; only a
+ * low day bigger than all of the day's carbs takes the rest from fat, so the
+ * macros never add up to more than the day's calories. Never below zero.
  */
-export function applyCalorieCyclingCarbDelta(
-  carbsGrams: number,
+export function applyCalorieCyclingMacroDelta(
+  macros: { carbs: number; fat: number },
   deltaKcal: number
-): number {
-  const carbs = Number(carbsGrams);
-  if (!Number.isFinite(carbs)) return carbs;
-  return Math.max(0, Math.round((carbs + deltaKcal / 4) * 10) / 10);
+): { carbs: number; fat: number } {
+  const carbs = Number(macros.carbs);
+  const fat = Number(macros.fat);
+  const round = (value: number) => Math.round(value * 10) / 10;
+  if (!Number.isFinite(carbs)) return { carbs, fat };
+  const carbsAfter = carbs + deltaKcal / 4;
+  if (carbsAfter >= 0 || !Number.isFinite(fat)) {
+    return { carbs: Math.max(0, round(carbsAfter)), fat };
+  }
+  // The part of a low day carbs could not cover, in kcal, comes off fat.
+  const uncoveredKcal = -carbsAfter * 4;
+  return { carbs: 0, fat: Math.max(0, round(fat - uncoveredKcal / 9)) };
 }
 
 /** The stored pattern for training vs rest: training days +pct, rest days 0. */

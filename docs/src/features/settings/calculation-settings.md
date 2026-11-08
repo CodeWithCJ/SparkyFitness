@@ -77,7 +77,7 @@ Uses height, weight, and age to estimate body fat:
 
 ## 3. Daily Calorie Goal Adjustment
 
-This setting determines **how physical activity changes your calorie budget** throughout the day:
+This setting determines **how physical activity changes your calorie budget** throughout the day. On the web each option is a card; the full explanation of the one you pick, and any settings that belong to it (the earn-back percentage, activity level, Device Projection options), appear under the cards.
 
 - **Adaptive TDEE:** Dynamically computes your metabolic expenditure by correlating your actual weight changes with your historical calorie intake over the last 28 completed days. _(Best for high-precision tracking)._ The window ends the day before the date you are viewing, so food or a weigh-in logged today counts from tomorrow and your target does not move while you eat. Viewing a past day shows the estimate as it stood then.
   - **Expenditure (Adaptive TDEE):** On the Diary page, "Expenditure" represents your calculated Total Daily Energy Expenditure (TDEE). This is the baseline number from which your deficit/surplus is subtracted.
@@ -229,14 +229,24 @@ Calorie cycling gives you more calories on training days and fewer on rest days,
 Turn it on under **Calorie cycling** in Calculation Settings on the web, or the **Calorie Cycling** card in Calories & BMR on the mobile app:
 
 - **Off:** the same target every day.
-- **Training vs rest:** pick your training days (1 to 6) and how much extra they get, for example +15%.
-- **Custom days:** set each weekday from −40% to +40%.
+- **Training / rest:** choose your training days (1 to 6) and how much extra they get, for example +15%.
+- **Custom:** set each weekday from −40% to +40%.
 
-The percentages you choose are balanced so the week still adds up. With Mon, Wed and Fri at +15% and a 2,600 kcal target, training days get about 2,810 kcal and rest days about 2,440 kcal; the seven days still total 18,200 kcal. A preview shows each day and the week before you save.
+The percentages you choose are balanced so the week still adds up. With Mon, Wed and Fri at +15% and a 2,600 kcal target, training days get about 2,810 kcal and rest days about 2,440 kcal; the seven days still total 18,200 kcal.
 
-- **Only carbs change.** Protein and fat stay the same every day; carbs take the extra or missing calories (4 kcal per gram).
+The week is shown as a bar chart: one bar per day, with a dashed line at your daily target and a dotted line at your safety floor. Green bars get more than your target, amber bars less, and today is marked with a dot.
+
+- **Tap a bar** to see that day. Tapping never changes it.
+- **Training / rest:** tap the icon under a day (a dumbbell or a moon) to switch it between training and rest. On the phone, tap the day name.
+- **Custom:** drag a bar up or down on the web, or drag the handle on top of a bar on the phone. On the web, the arrow keys also move the selected day by 1% (Shift for 5%).
+- **Fine-tune the selected day** below the chart with **−** and **+** (1% at a time) or by typing a value. In Training / rest, this is where you switch the day and set the training-day boost.
+- **The day card** shows the selected day's target, whether it is a training or rest day, and the change against your daily target. On the web, the Live Preview below follows the selected day too.
+
+The week total under the chart shows the seven days against your daily target × 7. On the phone each change is saved as you make it (a drag when you let go); on the web, press **Save Preferences**.
+
+- **Carbs take the change.** Protein stays the same every day and carbs take the extra or missing calories (4 kcal per gram). Only a low day bigger than all of that day's carbs takes the rest from fat, so your macros never add up to more than the day's calories.
 - **The safety floor still applies.** A rest day is never set below your [safety floor](#_5-metabolic-safety-floors). If one would be, it is held at the floor and the difference comes off the other days, so the week still matches.
-- **Each day follows that day's target.** When your target moves, for example as Adaptive TDEE updates, each day is worked out from it, so over a week the total can differ from 7 × one day's target by a few calories.
+- **Each day follows that day's target.** Every day is worked out from its own target. While your target stays the same, the week totals your target × 7 (give or take a few calories of rounding). When your target moves during the week, for example as Adaptive TDEE updates, the week follows those targets instead, so it can differ from 7 × any single day's target by more than that.
 - **Skipping a training day changes nothing.** Targets come from the weekday, not from logged workouts. If you miss Monday's session you can still eat Monday's amount and the week balances out, or move the session and adjust yourself.
 - **Weekly goal plans come first.** On a day an active [weekly goal plan](/features/goals#goal-presets-and-weekly-plans) sets, that plan's preset is used and cycling is paused.
 - **Past days keep their targets.** A change applies from today, like every other calculation setting.

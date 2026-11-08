@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CALORIE_CYCLING_MAX_OFFSET,
@@ -6,13 +7,19 @@ import {
   trainingRestOffsets,
   type CalorieCyclingMode,
 } from '@workspace/shared';
+import { Minus, Plus } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { NumericInput } from '@/components/NumericInput';
-import { isCalorieCyclingPatternUseful } from '@/utils/calorieCycling';
+import { CalorieCyclingChart } from '@/components/CalorieCyclingChart';
+import { cn } from '@/lib/utils';
+import {
+  changeColorClass,
+  isCalorieCyclingPatternUseful,
+  signedAmount,
+} from '@/utils/calorieCycling';
 
 const WEEKDAYS = [
   { key: 'sunday', name: 'Sunday' },
@@ -27,6 +34,88 @@ const WEEKDAYS = [
 /** Mon, Wed and Fri at +15%: a starting point when training vs rest is first picked. */
 const DEFAULT_TRAINING_DAYS = [1, 3, 5];
 const DEFAULT_TRAINING_PERCENT = 15;
+
+const CYCLING_MODE_OPTIONS: {
+  mode: CalorieCyclingMode;
+  key: string;
+  label: string;
+}[] = [
+  { mode: 'off', key: 'settings.calorieCycling.modeOffShort', label: 'Off' },
+  {
+    mode: 'training_rest',
+    key: 'settings.calorieCycling.modeTrainingRestShort',
+    label: 'Training / rest',
+  },
+  {
+    mode: 'custom',
+    key: 'settings.calorieCycling.modeCustomShort',
+    label: 'Custom',
+  },
+];
+
+/** A whole-percent value with − and + buttons and a box to type it. */
+const PercentStepper = ({
+  id,
+  label,
+  value,
+  min,
+  onChange,
+  decreaseLabel,
+  increaseLabel,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  min: number;
+  onChange: (value: number) => void;
+  decreaseLabel: string;
+  increaseLabel: string;
+}) => (
+  <div className="flex flex-wrap items-center justify-between gap-2">
+    <Label htmlFor={id} className="text-sm font-semibold">
+      {label}
+    </Label>
+    <div className="flex items-center gap-1.5">
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-9 w-9"
+        aria-label={decreaseLabel}
+        disabled={value <= min}
+        onClick={() => onChange(Math.max(min, value - 1))}
+      >
+        <Minus className="h-4 w-4" />
+      </Button>
+      <div className="w-20">
+        <NumericInput
+          id={id}
+          value={value}
+          decimals={0}
+          onValueChange={(next) =>
+            onChange(
+              Math.max(min, Math.min(CALORIE_CYCLING_MAX_OFFSET, next ?? 0))
+            )
+          }
+        />
+      </div>
+      <span className="text-sm text-muted-foreground">%</span>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="h-9 w-9"
+        aria-label={increaseLabel}
+        disabled={value >= CALORIE_CYCLING_MAX_OFFSET}
+        onClick={() =>
+          onChange(Math.min(CALORIE_CYCLING_MAX_OFFSET, value + 1))
+        }
+      >
+        <Plus className="h-4 w-4" />
+      </Button>
+    </div>
+  </div>
+);
 
 const isCyclingMode = (value: string): value is CalorieCyclingMode =>
   value === 'off' || value === 'training_rest' || value === 'custom';
@@ -44,6 +133,11 @@ interface CalorieCyclingSettingsProps {
   /** The safety floor the server will respect, in kcal, or null when disabled. */
   floor: number | null;
   firstDayOfWeek: number;
+  /** Today's weekday in the user's zone, 0 = Sunday. */
+  todayWeekday: number;
+  /** The day the chart, the day card and the Live Preview show. */
+  selectedDay: number;
+  onSelectDay: (day: number) => void;
   convertEnergy: (
     value: number,
     from: 'kcal' | 'kJ',
@@ -62,23 +156,39 @@ export const CalorieCyclingSettings = ({
   baseTarget,
   floor,
   firstDayOfWeek,
+  todayWeekday,
+  selectedDay,
+  onSelectDay,
   convertEnergy,
   energyUnit,
   energyUnitString,
 }: CalorieCyclingSettingsProps) => {
-  const { t } = useTranslation();
-  const weekOrder = Array.from(
-    { length: 7 },
-    (_, i) => (firstDayOfWeek + i) % 7
-  );
-  const dayName = (day: number) => {
+  const { t, i18n } = useTranslation();
+  // A stored first day outside 0-6 would drop a weekday from the chart.
+  const weekStart =
+    Number.isInteger(firstDayOfWeek) &&
+    firstDayOfWeek >= 0 &&
+    firstDayOfWeek <= 6
+      ? firstDayOfWeek
+      : 0;
+  const weekOrder = Array.from({ length: 7 }, (_, i) => (weekStart + i) % 7);
+  const dayName = (day: number, width: 'long' | 'short' = 'long') => {
     const weekday = WEEKDAYS[day] ?? WEEKDAYS[0];
+    if (width === 'short') {
+      // 2023-01-01 was a Sunday, so day 0..6 maps onto Sunday..Saturday.
+      return new Date(2023, 0, 1 + day).toLocaleDateString(i18n.language, {
+        weekday: 'short',
+      });
+    }
     return t(`common.${weekday.key}`, weekday.name);
   };
   const shown = (kcal: number) =>
     Math.round(convertEnergy(kcal, 'kcal', energyUnit)).toLocaleString();
 
   const { trainingDays, percent } = trainingRestFromOffsets(offsets);
+  const [lastCustomOffsets, setLastCustomOffsets] = useState<number[] | null>(
+    null
+  );
   const useful = isCalorieCyclingPatternUseful(mode, offsets);
   const week = cycleWeekTargets({
     baseTarget,
@@ -92,61 +202,29 @@ export const CalorieCyclingSettings = ({
     floor !== null && baseTarget > 0 && baseTarget <= floor;
   const showResults =
     available && mode !== 'off' && useful && baseTarget > 0 && !atOrBelowFloor;
-
-  /** A day's cycled target and change, shown beside the control that sets it. */
-  const dayResult = (day: number, align: 'start' | 'end') => {
-    const cycled = week[day];
-    if (!showResults || !cycled) return null;
-    const sign = cycled.delta > 0 ? '+' : cycled.delta < 0 ? '−' : '±';
-    // What the day actually gets against the base, after balancing the week.
-    const effectivePercent = Math.round(
-      (Math.abs(cycled.delta) / baseTarget) * 100
-    );
-    return (
-      <span
-        className={`flex flex-col text-sm leading-tight ${
-          align === 'end' ? 'items-end' : 'items-center'
-        }`}
-        data-testid={`calorie-cycling-result-${day}`}
-      >
-        <span className="font-medium tabular-nums">
-          {shown(cycled.target)} {energyUnitString}
-        </span>
-        <span
-          className={`text-xs tabular-nums ${
-            cycled.delta > 0
-              ? 'text-green-600 dark:text-green-400'
-              : cycled.delta < 0
-                ? 'text-amber-600 dark:text-amber-400'
-                : 'text-muted-foreground'
-          }`}
-        >
-          {t(
-            'settings.calorieCycling.dayChange',
-            '{{sign}}{{amount}} {{unit}} ({{sign}}{{percent}}%)',
-            {
-              sign,
-              amount: shown(Math.abs(cycled.delta)),
-              unit: energyUnitString,
-              percent: effectivePercent,
-            }
-          )}
-          {cycled.clampedToFloor && (
-            <Badge variant="secondary" className="ml-1 px-1 py-0 text-[10px]">
-              {t('settings.calorieCycling.atFloor', 'Safety floor')}
-            </Badge>
-          )}
-        </span>
-      </span>
-    );
-  };
+  // The chart stays up whenever a pattern is being edited, even when it
+  // changes nothing yet (no training days) or the target sits on the floor,
+  // so the days can still be switched and the flat week explains itself.
+  const showChart = available && mode !== 'off' && baseTarget > 0;
+  const selectedCycled = week[selectedDay];
+  const selectedIsTraining =
+    mode === 'training_rest'
+      ? trainingDays.includes(selectedDay)
+      : (selectedCycled?.delta ?? 0) > 0;
 
   const changeMode = (value: string) => {
     if (!isCyclingMode(value)) return;
     if (value === 'training_rest') {
+      // Training / rest overwrites the offsets; keep a custom pattern so
+      // switching back to Custom restores it.
+      if (mode === 'custom') setLastCustomOffsets(offsets);
       const days = trainingDays.length ? trainingDays : DEFAULT_TRAINING_DAYS;
       const pct = percent > 0 ? percent : DEFAULT_TRAINING_PERCENT;
       onChange({ mode: value, offsets: trainingRestOffsets(days, pct) });
+      return;
+    }
+    if (value === 'custom' && mode !== 'custom' && lastCustomOffsets) {
+      onChange({ mode: value, offsets: lastCustomOffsets });
       return;
     }
     if (value === 'custom' && offsets.every((offset) => offset === 0)) {
@@ -172,8 +250,15 @@ export const CalorieCyclingSettings = ({
     });
   };
 
+  // At least 1%: a zero boost would store seven zeros and lose the days.
   const setTrainingPercent = (value: number) =>
-    onChange({ mode, offsets: trainingRestOffsets(trainingDays, value) });
+    onChange({
+      mode,
+      offsets: trainingRestOffsets(
+        trainingDays,
+        Math.max(1, Math.min(CALORIE_CYCLING_MAX_OFFSET, Math.round(value)))
+      ),
+    });
 
   const setDayOffset = (day: number, value: number) => {
     const clamped = Math.max(
@@ -219,138 +304,211 @@ export const CalorieCyclingSettings = ({
         </p>
       )}
 
-      <RadioGroup
-        value={mode}
-        onValueChange={changeMode}
-        disabled={!available}
-        className="flex flex-col space-y-2"
+      <div
+        role="radiogroup"
+        aria-label={t('settings.calorieCycling.title', 'Calorie cycling')}
+        className="inline-grid grid-cols-3 rounded-full bg-muted p-1 text-sm"
       >
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="off" id="calorie-cycling-off" />
-          <Label htmlFor="calorie-cycling-off" className="cursor-pointer">
-            {t(
+        {CYCLING_MODE_OPTIONS.map((option) => (
+          <button
+            key={option.mode}
+            type="button"
+            role="radio"
+            aria-checked={mode === option.mode}
+            disabled={!available}
+            onClick={() => changeMode(option.mode)}
+            className={cn(
+              'whitespace-nowrap rounded-full px-4 py-1.5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+              mode === option.mode
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {t(option.key, option.label)}
+          </button>
+        ))}
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {mode === 'off'
+          ? t(
               'settings.calorieCycling.modeOff',
               'Off: the same target every day'
-            )}
-          </Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="training_rest" id="calorie-cycling-training" />
-          <Label htmlFor="calorie-cycling-training" className="cursor-pointer">
-            {t(
-              'settings.calorieCycling.modeTrainingRest',
-              'Training vs rest: more on the days you train'
-            )}
-          </Label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <RadioGroupItem value="custom" id="calorie-cycling-custom" />
-          <Label htmlFor="calorie-cycling-custom" className="cursor-pointer">
-            {t(
-              'settings.calorieCycling.modeCustom',
-              'Custom: a percentage for each day'
-            )}
-          </Label>
-        </div>
-      </RadioGroup>
+            )
+          : mode === 'training_rest'
+            ? t(
+                'settings.calorieCycling.modeTrainingRest',
+                'Training vs rest: more on the days you train'
+              )
+            : t(
+                'settings.calorieCycling.modeCustom',
+                'Custom: a percentage for each day'
+              )}
+      </p>
 
-      {showResults && (
-        <p className="text-sm" data-testid="calorie-cycling-base">
-          {t(
-            'settings.calorieCycling.baseLine',
-            "Today's target before cycling: {{target}} {{unit}}. Your percentages are balanced against each other, so a day only gets more if it is above the week's average and less if it is below it. The amount and % beside each day are what that day actually gets.",
-            { target: shown(baseTarget), unit: energyUnitString }
-          )}
-        </p>
+      {showChart && (
+        <CalorieCyclingChart
+          mode={mode}
+          week={week}
+          offsets={offsets}
+          trainingDays={trainingDays}
+          weekOrder={weekOrder}
+          baseTarget={baseTarget}
+          floor={floor}
+          selectedDay={selectedDay}
+          todayWeekday={todayWeekday}
+          onSelectDay={onSelectDay}
+          onToggleTraining={toggleTrainingDay}
+          onSetOffset={setDayOffset}
+          dayName={dayName}
+          shown={shown}
+        />
       )}
 
-      {available && mode === 'training_rest' && (
-        <div className="space-y-3">
-          <p className="text-sm font-medium">
-            {t('settings.calorieCycling.trainingDays', 'Training days')}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {weekOrder.map((day) => (
-              <div key={day} className="flex flex-col items-center gap-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={trainingDays.includes(day) ? 'default' : 'outline'}
-                  aria-pressed={trainingDays.includes(day)}
-                  onClick={() => toggleTrainingDay(day)}
-                >
-                  {dayName(day)}
-                </Button>
-                {dayResult(day, 'start')}
-              </div>
-            ))}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="calorie-cycling-percent">
-              {t(
-                'settings.calorieCycling.trainingPercent',
-                'Extra on training days (before balancing the week)'
-              )}
-            </Label>
-            <div className="flex items-center gap-3">
-              <Slider
-                min={0}
-                max={CALORIE_CYCLING_MAX_OFFSET}
-                step={1}
-                value={[percent]}
-                onValueChange={([value]) => setTrainingPercent(value ?? 0)}
-                className="max-w-xs"
-                aria-label={t(
-                  'settings.calorieCycling.trainingPercent',
-                  'Extra on training days (before balancing the week)'
+      {showChart && selectedCycled && (
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,18rem)]">
+          <div className="space-y-4 rounded-xl border border-border bg-muted/50 p-4 dark:bg-muted/30">
+            {mode === 'custom' ? (
+              <PercentStepper
+                id="calorie-cycling-day-percent"
+                label={t(
+                  'settings.calorieCycling.dayPercent',
+                  '{{day}}: percentage before balancing the week',
+                  { day: dayName(selectedDay) }
+                )}
+                value={offsets[selectedDay] ?? 0}
+                min={-CALORIE_CYCLING_MAX_OFFSET}
+                onChange={(value) => setDayOffset(selectedDay, value)}
+                decreaseLabel={t(
+                  'settings.calorieCycling.decrease',
+                  'Lower by 1%'
+                )}
+                increaseLabel={t(
+                  'settings.calorieCycling.increase',
+                  'Raise by 1%'
                 )}
               />
-              <div className="w-24 shrink-0">
-                <NumericInput
-                  id="calorie-cycling-percent"
-                  value={percent}
-                  decimals={0}
-                  onValueChange={(value) => setTrainingPercent(value ?? 0)}
-                />
-              </div>
-              <span className="text-sm text-muted-foreground">%</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {available && mode === 'custom' && (
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">
-            {t(
-              'settings.calorieCycling.customHint',
-              'Set each day from -40% to +40%.'
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-semibold">
+                    {dayName(selectedDay)}
+                  </span>
+                  <div
+                    role="radiogroup"
+                    aria-label={dayName(selectedDay)}
+                    className="inline-grid grid-cols-2 rounded-full bg-background p-1 text-xs"
+                  >
+                    {[true, false].map((training) => {
+                      const checked =
+                        trainingDays.includes(selectedDay) === training;
+                      return (
+                        <button
+                          key={String(training)}
+                          type="button"
+                          role="radio"
+                          aria-checked={checked}
+                          onClick={() => {
+                            if (!checked) toggleTrainingDay(selectedDay);
+                          }}
+                          className={cn(
+                            'rounded-full px-3 py-1 font-semibold',
+                            checked
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          {training
+                            ? t(
+                                'settings.calorieCycling.trainingDay',
+                                'Training'
+                              )
+                            : t('settings.calorieCycling.restDay', 'Rest')}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <PercentStepper
+                    id="calorie-cycling-percent"
+                    label={t(
+                      'settings.calorieCycling.trainingPercent',
+                      'Extra on training days (before balancing the week)'
+                    )}
+                    value={percent}
+                    min={1}
+                    onChange={setTrainingPercent}
+                    decreaseLabel={t(
+                      'settings.calorieCycling.decrease',
+                      'Lower by 1%'
+                    )}
+                    increaseLabel={t(
+                      'settings.calorieCycling.increase',
+                      'Raise by 1%'
+                    )}
+                  />
+                  <Slider
+                    min={1}
+                    max={CALORIE_CYCLING_MAX_OFFSET}
+                    step={1}
+                    value={[Math.max(1, percent)]}
+                    onValueChange={([value]) => setTrainingPercent(value ?? 1)}
+                    aria-label={t(
+                      'settings.calorieCycling.trainingPercent',
+                      'Extra on training days (before balancing the week)'
+                    )}
+                  />
+                </div>
+              </>
             )}
-          </p>
-          {weekOrder.map((day) => (
-            <div key={day} className="flex items-center gap-3">
-              <span className="w-28 text-sm">{dayName(day)}</span>
-              <Slider
-                min={-CALORIE_CYCLING_MAX_OFFSET}
-                max={CALORIE_CYCLING_MAX_OFFSET}
-                step={1}
-                value={[offsets[day] ?? 0]}
-                onValueChange={([value]) => setDayOffset(day, value ?? 0)}
-                className="max-w-xs"
-                aria-label={dayName(day)}
-              />
-              <div className="w-24 shrink-0">
-                <NumericInput
-                  value={offsets[day] ?? 0}
-                  decimals={0}
-                  aria-label={dayName(day)}
-                  onValueChange={(value) => setDayOffset(day, value ?? 0)}
-                />
-              </div>
-              <span className="text-sm text-muted-foreground">%</span>
-              <div className="w-32 shrink-0">{dayResult(day, 'end')}</div>
-            </div>
-          ))}
+          </div>
+
+          <div
+            className="rounded-xl border border-border bg-muted/50 p-4 dark:bg-muted/30"
+            data-testid="calorie-cycling-day-card"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {selectedDay === todayWeekday
+                ? t('settings.calorieCycling.today', 'Today')
+                : dayName(selectedDay)}
+              {' · '}
+              {selectedIsTraining
+                ? t('settings.calorieCycling.trainingDay', 'Training')
+                : t('settings.calorieCycling.restDay', 'Rest')}
+            </p>
+            <p className="mt-1 text-3xl font-bold tabular-nums text-primary">
+              {shown(selectedCycled.target)}{' '}
+              <span className="text-base font-medium text-muted-foreground">
+                {energyUnitString}
+              </span>
+            </p>
+            <p
+              className={cn('text-sm', changeColorClass(selectedCycled.delta))}
+            >
+              {t(
+                'settings.calorieCycling.vsTarget',
+                '{{change}} {{unit}} ({{percent}}) vs your daily target',
+                {
+                  change: signedAmount(
+                    selectedCycled.delta,
+                    shown(Math.abs(selectedCycled.delta))
+                  ),
+                  unit: energyUnitString,
+                  percent: signedAmount(
+                    selectedCycled.delta,
+                    `${Math.round(
+                      (Math.abs(selectedCycled.delta) / baseTarget) * 100
+                    )}%`
+                  ),
+                }
+              )}
+            </p>
+            {selectedCycled.clampedToFloor && (
+              <Badge variant="secondary" className="mt-2">
+                {t('settings.calorieCycling.atFloor', 'Safety floor')}
+              </Badge>
+            )}
+          </div>
         </div>
       )}
 
@@ -402,7 +560,7 @@ export const CalorieCyclingSettings = ({
           <p className="text-xs text-muted-foreground">
             {t(
               'settings.calorieCycling.previewNote',
-              "Based on today's target. When your target changes, for example as adaptive expenditure updates, each day follows it. Carbs take the change; protein and fat stay the same."
+              "Based on today's target. When your target changes, for example as adaptive expenditure updates, each day follows it. Carbs take the change and protein stays the same."
             )}
           </p>
         </div>

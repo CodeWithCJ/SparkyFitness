@@ -9,6 +9,7 @@ import {
   getGoalModeAdjustment,
 } from '@workspace/shared';
 import { getTargetFallbackNotice } from './targetFallbackNotice';
+import { targetStepTag } from './stepLabels';
 import type { CalorieTargetBreakdownProps } from './types';
 
 interface TargetStepProps extends Pick<
@@ -28,6 +29,8 @@ interface TargetStepProps extends Pick<
   isAdaptiveMethod: boolean;
   activitySeparated: boolean;
   displayBmrVal: number;
+  /** Leave out the heading when a breakdown row header already shows it. */
+  headless?: boolean;
 }
 
 export const TargetStep = ({
@@ -45,6 +48,7 @@ export const TargetStep = ({
   activitySeparated,
   displayBmrVal,
   calorieCycling,
+  headless = false,
 }: TargetStepProps) => {
   const { t, i18n } = useTranslation();
   const { energyUnit, convertEnergy, weightUnit = 'kg' } = usePreferences();
@@ -82,6 +86,11 @@ export const TargetStep = ({
   const absoluteSafetyFloor = previewResult.absoluteFloorValue;
   const recommendedSafetyFloor = previewResult.recommendedSafetyFloor;
   const effectiveSafetyFloor = previewResult.effectiveSafetyFloor;
+  // The day's target as shown: a cycled day is warned about on its own number.
+  const shownTarget =
+    calorieCycling?.status === 'active'
+      ? calorieCycling.target
+      : previewResult.finalTarget;
 
   // A manual 0% is neither a deficit nor a surplus, so it gets no sign at all:
   // signing it renders "Deficit (-0%) = -0 kcal", which reads as an error.
@@ -99,30 +108,24 @@ export const TargetStep = ({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between font-medium text-foreground">
-        <span>
-          {t('diary.calculateExplanation.goalCalculationTitle', {
-            defaultValue: '{{step}}. Daily Calorie Goal calculation',
-            step: isAdaptiveMethod ? '4' : '3',
-          })}
-        </span>
-        <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
-          {isAdaptiveMethod
-            ? previewResult.insufficientHistory
-              ? t(
-                  'diary.calculateExplanation.fallbackEstimateUnavailable',
-                  'Fallback Estimate (Adaptive TDEE unavailable)'
-                )
-              : t('diary.calculateExplanation.adaptiveTdee', 'Adaptive TDEE')
-            : t('diary.calculateExplanation.calculationMethod', {
-                defaultValue: '{{method}} Method',
-                method: t(
-                  `diary.calculateExplanation.methods.${goalModeCalculationMethod}`,
-                  goalModeCalculationMethod
-                ),
-              })}
-        </span>
-      </div>
+      {!headless && (
+        <div className="flex items-center justify-between font-medium text-foreground">
+          <span>
+            {t('diary.calculateExplanation.goalCalculationTitle', {
+              defaultValue: '{{step}}. Daily Calorie Goal calculation',
+              step: isAdaptiveMethod ? '4' : '3',
+            })}
+          </span>
+          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
+            {targetStepTag(
+              t,
+              previewResult,
+              isAdaptiveMethod,
+              goalModeCalculationMethod
+            )}
+          </span>
+        </div>
+      )}
       <div className="text-muted-foreground text-sm bg-muted/40 p-1.5 rounded border border-border/60 space-y-1 text-left">
         <div>
           <span className="font-medium">{baselineLabel}:</span>{' '}
@@ -337,7 +340,7 @@ export const TargetStep = ({
             )}
           </div>
         )}
-        {previewResult.finalTarget < recommendedSafetyFloor && (
+        {shownTarget < recommendedSafetyFloor && (
           <div className="text-sm text-red-600 dark:text-red-400 font-medium mt-0.5">
             {t(
               'settings.calorieBreakdown.belowRecommendedFloor',
@@ -432,15 +435,7 @@ export const TargetStep = ({
             )}
           </span>
           <span className="text-primary text-sm font-semibold">
-            {Math.round(
-              convertEnergy(
-                calorieCycling?.status === 'active'
-                  ? calorieCycling.target
-                  : previewResult.finalTarget,
-                'kcal',
-                energyUnit
-              )
-            )}{' '}
+            {Math.round(convertEnergy(shownTarget, 'kcal', energyUnit))}{' '}
             {getEnergyUnitString(energyUnit)}
           </span>
         </div>

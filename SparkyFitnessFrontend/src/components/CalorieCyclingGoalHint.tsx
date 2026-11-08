@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { cycleDayTarget } from '@workspace/shared';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useCalorieCyclingActive } from '@/hooks/Goals/useCalorieCyclingActive';
+import type { CalorieCyclingForDay } from '@/hooks/Goals/useCalorieCyclingActive';
 
 /** 0 = Sunday, for a 'YYYY-MM-DD' calendar day. */
 function weekdayOf(day: string): number {
@@ -11,31 +11,41 @@ function weekdayOf(day: string): number {
 
 /**
  * Under a goal form's calorie field: the typed calories are the base target,
- * and what calorie cycling makes of them on `day`. Renders nothing when
- * cycling is off. The safety floor is left out, so the number is "about".
+ * and what calorie cycling makes of them on `day` (respecting that day's
+ * safety floor). Warns instead when saving the edit would pause cycling.
  */
 export const CalorieCyclingGoalHint = ({
   calories,
   day,
+  cycling,
 }: {
   calories: number;
   day: string;
+  cycling: CalorieCyclingForDay;
 }) => {
   const { t } = useTranslation();
-  const {
-    calorieCyclingOffsets,
-    convertEnergy,
-    energyUnit,
-    getEnergyUnitString,
-  } = usePreferences();
-  const active = useCalorieCyclingActive();
-  if (!active || !(calories > 0)) return null;
+  const { convertEnergy, energyUnit, getEnergyUnitString } = usePreferences();
+
+  if (cycling.pausedBySave) {
+    return (
+      <p
+        className="text-xs text-muted-foreground"
+        data-testid="calorie-cycling-goal-hint"
+      >
+        {t(
+          'goals.calorieCycling.hintPausedBySave',
+          'Saving this calorie goal switches to a manual goal, which adds exercise calories back and pauses calorie cycling.'
+        )}
+      </p>
+    );
+  }
+  if (!cycling.active || !(calories > 0)) return null;
 
   const cycled = cycleDayTarget({
     baseTarget: calories,
-    offsets: calorieCyclingOffsets,
+    offsets: cycling.offsets,
     weekday: weekdayOf(day),
-    floor: null,
+    floor: cycling.floor,
   });
   const amount = Math.round(convertEnergy(cycled.target, 'kcal', energyUnit));
   const unit = getEnergyUnitString(energyUnit);

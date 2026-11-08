@@ -16,12 +16,20 @@ function renderCard(props: Partial<Props> = {}) {
       baseTarget={2000}
       floor={1500}
       firstDayOfWeek={1}
+      todayWeekday={1}
       energyUnit="kcal"
       {...props}
     />
   );
   return { ...utils, onSave };
 }
+
+const training = {
+  mode: 'training_rest' as const,
+  offsets: [0, 15, 0, 15, 0, 15, 0],
+  baseTarget: 2600,
+  floor: 1500,
+};
 
 describe('CalorieCyclingCard', () => {
   it('explains why it is unavailable while exercise calories are added back', () => {
@@ -32,53 +40,33 @@ describe('CalorieCyclingCard', () => {
 
   it('starts training vs rest on Mon, Wed and Fri at +15%', () => {
     const { getByText, onSave } = renderCard();
-    fireEvent.press(getByText('Training vs rest'));
+    fireEvent.press(getByText('Training / rest'));
     expect(onSave).toHaveBeenCalledWith({
       mode: 'training_rest',
       offsets: [0, 15, 0, 15, 0, 15, 0],
     });
   });
 
-  it('shows each day result under its control, coloured by direction', () => {
-    const { getByTestId } = renderCard({
-      mode: 'training_rest',
-      offsets: [0, 15, 0, 15, 0, 15, 0],
-      baseTarget: 2600,
-      floor: 1500,
-    });
+  it('draws each day from the shared week maths and shows today in the day card', () => {
+    const { getByTestId } = renderCard(training);
     // Mon, Wed, Fri at +15% on 2,600: about 2,809 and 2,443 on rest days.
-    expect(getByTestId('calorie-cycling-result-1')).toHaveTextContent(
-      '2,809+209'
+    expect(getByTestId('calorie-cycling-bar-1').props.accessibilityLabel).toBe(
+      'Monday: 2,809, +209'
     );
-    expect(getByTestId('calorie-cycling-result-2')).toHaveTextContent(
-      '2,443−157'
+    expect(getByTestId('calorie-cycling-bar-2').props.accessibilityLabel).toBe(
+      'Tuesday: 2,443, −157'
     );
-    expect(getByTestId('calorie-cycling-base')).toHaveTextContent(
-      /Today's target before cycling: 2,600 kcal\./
+    expect(getByTestId('calorie-cycling-day-card')).toHaveTextContent(
+      'Today · Training2,809 kcal+209 kcal (+8%) vs your daily target'
     );
     expect(getByTestId('calorie-cycling-week-total')).toHaveTextContent(
       'Week: 18,199 of 18,200 kcal (your daily target 2,600 × 7)'
     );
   });
 
-  it('shows the kcal and % change beside each custom day', () => {
-    const { getByTestId } = renderCard({
-      mode: 'custom',
-      offsets: [0, 15, 0, 15, 0, 15, 0],
-      baseTarget: 2600,
-      floor: 1500,
-    });
-    expect(getByTestId('calorie-cycling-result-1')).toHaveTextContent(
-      '2,809 kcal+209 kcal (+8%)'
-    );
-  });
-
-  it('toggles a training day and steps the percentage', () => {
-    const { getByTestId, onSave } = renderCard({
-      mode: 'training_rest',
-      offsets: [0, 15, 0, 15, 0, 15, 0],
-    });
-    fireEvent.press(getByTestId('calorie-cycling-day-6'));
+  it('switches a day from the icon under it and steps the boost by 1%', () => {
+    const { getByTestId, onSave } = renderCard(training);
+    fireEvent.press(getByTestId('calorie-cycling-toggle-6'));
     expect(onSave).toHaveBeenLastCalledWith({
       mode: 'training_rest',
       offsets: [0, 15, 0, 15, 0, 15, 15],
@@ -86,31 +74,66 @@ describe('CalorieCyclingCard', () => {
     fireEvent.press(getByTestId('calorie-cycling-percent-up'));
     expect(onSave).toHaveBeenLastCalledWith({
       mode: 'training_rest',
-      offsets: [0, 20, 0, 20, 0, 20, 0],
+      offsets: [0, 16, 0, 16, 0, 16, 0],
     });
   });
 
-  it('warns instead of previewing when no day is a training day', () => {
-    const { getByText, queryByTestId } = renderCard({
-      mode: 'training_rest',
+  it('sets the selected custom day with the stepper and a typed value', () => {
+    const { getByTestId, onSave } = renderCard({
+      ...training,
+      mode: 'custom',
+    });
+    fireEvent.press(getByTestId('calorie-cycling-day-percent-down'));
+    expect(onSave).toHaveBeenLastCalledWith({
+      mode: 'custom',
+      offsets: [0, 14, 0, 15, 0, 15, 0],
+    });
+    const input = getByTestId('calorie-cycling-day-percent-input');
+    fireEvent.changeText(input, '-22');
+    fireEvent(input, 'endEditing');
+    expect(onSave).toHaveBeenLastCalledWith({
+      mode: 'custom',
+      offsets: [0, -22, 0, 15, 0, 15, 0],
+    });
+  });
+
+  it('nudges a custom bar from its accessibility actions', () => {
+    const { getByTestId, onSave } = renderCard({
+      ...training,
+      mode: 'custom',
+    });
+    fireEvent(getByTestId('calorie-cycling-bar-3'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    expect(onSave).toHaveBeenLastCalledWith({
+      mode: 'custom',
+      offsets: [0, 15, 0, 16, 0, 15, 0],
+    });
+  });
+
+  it('warns and shows no week total when no day is a training day', () => {
+    const { getByText, queryByTestId, getByTestId } = renderCard({
+      ...training,
       offsets: [0, 0, 0, 0, 0, 0, 0],
     });
     expect(getByText(/Choose between 1 and 6 training days/)).toBeTruthy();
-    expect(queryByTestId('calorie-cycling-preview')).toBeNull();
+    expect(queryByTestId('calorie-cycling-week-total')).toBeNull();
+    // The chart stays so a day can still be switched to training.
+    expect(getByTestId('calorie-cycling-toggle-1')).toBeTruthy();
   });
 });
 
 describe('CalorieCyclingCard at the safety floor', () => {
-  it('explains a flat week when the target is at or below the floor', () => {
+  it('keeps the chart and explains a flat week', () => {
     const { getByTestId, queryByTestId } = renderCard({
-      mode: 'training_rest',
-      offsets: [0, 15, 0, 15, 0, 15, 0],
+      ...training,
       baseTarget: 1630,
       floor: 1700,
     });
     expect(getByTestId('calorie-cycling-at-floor')).toHaveTextContent(
       /1,630 kcal\) is at or below your safety floor \(1,700 kcal/
     );
-    expect(queryByTestId('calorie-cycling-preview')).toBeNull();
+    expect(getByTestId('calorie-cycling-chart')).toBeTruthy();
+    expect(queryByTestId('calorie-cycling-week-total')).toBeNull();
   });
 });

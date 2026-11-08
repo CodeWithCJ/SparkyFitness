@@ -1537,7 +1537,7 @@ const options = {
               minItems: 7,
               maxItems: 7,
               description:
-                'One raw percentage per weekday, index 0 = Sunday. The server scales the pattern so the week totals the daily goal x 7, keeps every day at or above the safety floor, and moves only carbs.',
+                'One raw percentage per weekday, index 0 = Sunday. The server scales the pattern so the week totals the daily goal x 7 while that goal is steady, keeps cycled days at or above the safety floor, and moves carbs (fat only once a low day uses up all of its carbs). When the daily goal is already at or below the safety floor (or the floor is disabled and the pattern is even), every day stays at the daily goal.',
             },
             chart_scale_mode: {
               type: 'string',

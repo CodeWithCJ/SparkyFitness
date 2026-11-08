@@ -31,6 +31,8 @@ export interface CalorieTargetBreakdownProps {
   title?: string;
   /** Render as a modal popup instead of an inline expander (for height-locked widgets). */
   asDialog?: boolean;
+  /** Start the inline expander open, showing the numbered steps. */
+  defaultOpen?: boolean;
   previewResult: CalorieTargetResult;
   adaptiveTdeeData: AdaptiveTdeeData | null | undefined;
   bmrAlgorithm: string;

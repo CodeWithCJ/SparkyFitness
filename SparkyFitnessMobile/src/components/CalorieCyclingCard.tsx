@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   CALORIE_CYCLING_MAX_OFFSET,
@@ -10,13 +10,19 @@ import {
   type EnergyUnit,
 } from '@workspace/shared';
 import SegmentedControl from './SegmentedControl';
+import FormInput from './FormInput';
+import Icon from './Icon';
+import CalorieCyclingChart, {
+  clampCyclingOffset,
+  formatCyclingPercent,
+  signedCyclingAmount,
+} from './CalorieCyclingChart';
 import { localizedWeekdayLabels } from '../utils/medicationScheduleLocalization';
 import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
 
 /** Mon, Wed and Fri at +15%: where training vs rest starts. */
 const DEFAULT_TRAINING_DAYS = [1, 3, 5];
 const DEFAULT_TRAINING_PERCENT = 15;
-const STEP = 5;
 
 interface CalorieCyclingCardProps {
   mode: CalorieCyclingMode;
@@ -30,16 +36,13 @@ interface CalorieCyclingCardProps {
   baseTarget: number;
   floor: number | null;
   firstDayOfWeek: number;
+  /** Today's weekday in the profile zone, 0 = Sunday. */
+  todayWeekday: number;
   energyUnit: EnergyUnit;
 }
 
-const clampOffset = (value: number) =>
-  Math.max(
-    -CALORIE_CYCLING_MAX_OFFSET,
-    Math.min(CALORIE_CYCLING_MAX_OFFSET, value)
-  );
-
-const Stepper = ({
+/** A whole percentage with − and + buttons and a box to type it. */
+const PercentField = ({
   value,
   min,
   onChange,
@@ -51,36 +54,67 @@ const Stepper = ({
   onChange: (value: number) => void;
   label: string;
   testID: string;
-}) => (
-  <View className="flex-row items-center">
-    <Pressable
-      onPress={() => onChange(Math.max(min, value - STEP))}
-      accessibilityRole="button"
-      accessibilityLabel={`${label} −${STEP}%`}
-      className="w-9 h-9 rounded-full bg-raised items-center justify-center"
-      testID={`${testID}-down`}
-    >
-      <Text className="text-text-primary text-lg">−</Text>
-    </Pressable>
-    <Text
-      className="w-14 text-center text-text-primary font-semibold"
-      testID={`${testID}-value`}
-    >
-      {value > 0 ? `+${value}` : value}%
-    </Text>
-    <Pressable
-      onPress={() =>
-        onChange(Math.min(CALORIE_CYCLING_MAX_OFFSET, value + STEP))
-      }
-      accessibilityRole="button"
-      accessibilityLabel={`${label} +${STEP}%`}
-      className="w-9 h-9 rounded-full bg-raised items-center justify-center"
-      testID={`${testID}-up`}
-    >
-      <Text className="text-text-primary text-lg">+</Text>
-    </Pressable>
-  </View>
-);
+}) => {
+  const { t } = useTranslation();
+  const [text, setText] = useState(String(value));
+  const [synced, setSynced] = useState(value);
+  if (synced !== value) {
+    setSynced(value);
+    setText(String(value));
+  }
+  const commit = (next: number) =>
+    onChange(Math.max(min, clampCyclingOffset(next)));
+  return (
+    <View className="flex-row items-center">
+      <Pressable
+        onPress={() => commit(value - 1)}
+        disabled={value <= min}
+        accessibilityRole="button"
+        accessibilityLabel={t('calorieSettings.cycling.decrease', {
+          defaultValue: 'Lower by 1%',
+        })}
+        className="w-9 h-9 rounded-full bg-raised items-center justify-center"
+        style={{ opacity: value <= min ? 0.4 : 1 }}
+        testID={`${testID}-down`}
+      >
+        <Icon name="remove" size={16} />
+      </Pressable>
+      <View className="w-16 mx-1.5">
+        <FormInput
+          value={text}
+          onChangeText={setText}
+          onEndEditing={() => {
+            const parsed = Number.parseInt(text, 10);
+            if (Number.isFinite(parsed)) commit(parsed);
+            else setText(String(value));
+          }}
+          keyboardType={
+            Platform.OS === 'ios' ? 'numbers-and-punctuation' : 'numeric'
+          }
+          returnKeyType="done"
+          maxLength={3}
+          textAlign="center"
+          accessibilityLabel={label}
+          testID={`${testID}-input`}
+        />
+      </View>
+      <Text className="text-text-secondary text-sm mr-1.5">%</Text>
+      <Pressable
+        onPress={() => commit(value + 1)}
+        disabled={value >= CALORIE_CYCLING_MAX_OFFSET}
+        accessibilityRole="button"
+        accessibilityLabel={t('calorieSettings.cycling.increase', {
+          defaultValue: 'Raise by 1%',
+        })}
+        className="w-9 h-9 rounded-full bg-raised items-center justify-center"
+        style={{ opacity: value >= CALORIE_CYCLING_MAX_OFFSET ? 0.4 : 1 }}
+        testID={`${testID}-up`}
+      >
+        <Icon name="add" size={16} />
+      </Pressable>
+    </View>
+  );
+};
 
 const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
   mode,
@@ -91,19 +125,32 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
   baseTarget,
   floor,
   firstDayOfWeek,
+  todayWeekday,
   energyUnit,
 }) => {
   const { t } = useTranslation();
-  const weekdayNames = localizedWeekdayLabels(t);
-  const weekOrder = Array.from(
-    { length: 7 },
-    (_, i) => (firstDayOfWeek + i) % 7
+  const [selectedDay, setSelectedDay] = useState(todayWeekday);
+  // Offsets while a bar is being dragged; saved once the finger lifts.
+  const [draftOffsets, setDraftOffsets] = useState<number[] | null>(null);
+  const shownOffsets = draftOffsets ?? offsets;
+  // The last custom pattern this visit, so Custom days can bring it back.
+  const [lastCustomOffsets, setLastCustomOffsets] = useState<number[] | null>(
+    null
   );
+  const weekdayNames = localizedWeekdayLabels(t);
+  // A stored first day outside 0-6 would drop a weekday from the chart.
+  const weekStart =
+    Number.isInteger(firstDayOfWeek) &&
+    firstDayOfWeek >= 0 &&
+    firstDayOfWeek <= 6
+      ? firstDayOfWeek
+      : 0;
+  const weekOrder = Array.from({ length: 7 }, (_, i) => (weekStart + i) % 7);
   const { trainingDays, percent } = trainingRestFromOffsets(offsets);
   const unit = energyUnitLabel(energyUnit, t);
   const week = cycleWeekTargets({
     baseTarget,
-    offsets: mode === 'off' ? null : offsets,
+    offsets: mode === 'off' ? null : shownOffsets,
     floor,
   });
   const weekTotal = week.reduce((sum, day) => sum + day.target, 0);
@@ -121,40 +168,77 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
 
   const showResults =
     mode !== 'off' && useful && baseTarget > 0 && !atOrBelowFloor;
-  const changeClass = (delta: number) =>
-    delta > 0
-      ? 'text-text-success'
-      : delta < 0
-        ? 'text-text-warning'
-        : 'text-text-secondary';
-  const signOf = (delta: number) => (delta > 0 ? '+' : delta < 0 ? '−' : '±');
-
-  /** A day's cycled change, with its share of the base, beside its control. */
-  const changeText = (day: number) => {
-    const cycled = week[day];
-    if (!cycled) return '';
-    return t('calorieSettings.cycling.dayChangeWithUnit', {
-      defaultValue: '{{sign}}{{amount}} {{unit}} ({{sign}}{{percent}}%)',
-      sign: signOf(cycled.delta),
-      amount: formatEnergyNumber(Math.abs(cycled.delta), energyUnit),
-      unit,
-      percent: Math.round((Math.abs(cycled.delta) / baseTarget) * 100),
+  // The chart stays up while a pattern is edited, even when it changes
+  // nothing yet or the target sits on the floor, so days can still be set.
+  const showChart = mode !== 'off' && baseTarget > 0;
+  const selectedCycled = week[selectedDay];
+  const selectedIsTraining =
+    mode === 'training_rest'
+      ? trainingDays.includes(selectedDay)
+      : (selectedCycled?.delta ?? 0) > 0;
+  const setDayOffset = (day: number, value: number) =>
+    onSave({
+      mode,
+      offsets: offsets.map((offset, index) =>
+        index === day ? clampCyclingOffset(value) : offset
+      ),
     });
-  };
 
-  const selectMode = (next: CalorieCyclingMode) => {
-    if (next === mode) return;
+  const applyMode = (next: CalorieCyclingMode) => {
     if (next === 'off') {
       onSave({ mode: next, offsets });
       return;
     }
+    if (next === 'custom' && lastCustomOffsets) {
+      onSave({ mode: next, offsets: lastCustomOffsets });
+      return;
+    }
     if (next === 'training_rest' || offsets.every((o) => o === 0)) {
+      if (mode === 'custom') setLastCustomOffsets(offsets);
       const days = trainingDays.length ? trainingDays : DEFAULT_TRAINING_DAYS;
       const pct = percent > 0 ? percent : DEFAULT_TRAINING_PERCENT;
       onSave({ mode: next, offsets: trainingRestOffsets(days, pct) });
       return;
     }
     onSave({ mode: next, offsets });
+  };
+
+  const selectMode = (next: CalorieCyclingMode) => {
+    if (next === mode) return;
+    // Training / rest rewrites the offsets; a custom pattern it can't express
+    // would be lost once this screen closes, so ask first.
+    const replacesCustom =
+      mode === 'custom' &&
+      next === 'training_rest' &&
+      trainingRestOffsets(trainingDays, percent).some(
+        (offset, index) => offset !== offsets[index]
+      );
+    if (!replacesCustom) {
+      applyMode(next);
+      return;
+    }
+    Alert.alert(
+      t('calorieSettings.cycling.replaceCustomTitle', {
+        defaultValue: 'Replace your custom days?',
+      }),
+      t('calorieSettings.cycling.replaceCustomMessage', {
+        defaultValue:
+          'Training / rest sets every day from the training days and one percentage, so your custom percentages are replaced.',
+      }),
+      [
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+        {
+          text: t('calorieSettings.cycling.replaceCustomConfirm', {
+            defaultValue: 'Replace',
+          }),
+          style: 'destructive',
+          onPress: () => applyMode(next),
+        },
+      ]
+    );
   };
 
   const toggleTrainingDay = (day: number) => {
@@ -203,14 +287,14 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
               },
               {
                 key: 'training_rest',
-                label: t('calorieSettings.cycling.trainingRest', {
-                  defaultValue: 'Training vs rest',
+                label: t('calorieSettings.cycling.trainingRestShort', {
+                  defaultValue: 'Training / rest',
                 }),
               },
               {
                 key: 'custom',
-                label: t('calorieSettings.cycling.customDays', {
-                  defaultValue: 'Custom days',
+                label: t('calorieSettings.cycling.customShort', {
+                  defaultValue: 'Custom',
                 }),
               },
             ]}
@@ -227,150 +311,173 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
             </Text>
           )}
 
-          {showResults && (
-            <Text
-              className="text-text-secondary text-sm mt-3"
-              testID="calorie-cycling-base"
-            >
-              {t('calorieSettings.cycling.baseLineWithUnit', {
-                defaultValue:
-                  "Today's target before cycling: {{target}} {{unit}}. Your percentages are balanced against each other, so a day only gets more if it is above the week's average. The change under each day is what that day actually gets.",
-                target: formatEnergyNumber(baseTarget, energyUnit),
-                unit,
-              })}
-            </Text>
+          {showChart && (
+            <CalorieCyclingChart
+              mode={mode}
+              week={week}
+              offsets={shownOffsets}
+              trainingDays={trainingDays}
+              weekOrder={weekOrder}
+              baseTarget={baseTarget}
+              floor={floor}
+              selectedDay={selectedDay}
+              todayWeekday={todayWeekday}
+              energyUnit={energyUnit}
+              dayName={(day) => weekdayNames[day] ?? ''}
+              onSelectDay={setSelectedDay}
+              onToggleTraining={toggleTrainingDay}
+              onDraftOffsets={setDraftOffsets}
+              onCommitOffset={setDayOffset}
+            />
           )}
 
-          {mode === 'training_rest' && (
-            <View className="mt-4">
-              <Text className="text-sm font-semibold text-text-primary mb-2">
-                {t('calorieSettings.cycling.trainingDays', {
-                  defaultValue: 'Training days',
-                })}
-              </Text>
-              <View className="flex-row flex-wrap">
-                {weekOrder.map((day) => {
-                  const selected = trainingDays.includes(day);
-                  const name = weekdayNames[day] ?? '';
-                  const cycled = showResults ? week[day] : undefined;
-                  return (
-                    <View key={day} className="items-center mr-1 mb-1 w-11">
-                      <Pressable
-                        onPress={() => toggleTrainingDay(day)}
-                        accessibilityRole="button"
-                        accessibilityLabel={name}
-                        accessibilityState={{ selected }}
-                        className={`w-10 h-10 rounded-full items-center justify-center ${
-                          selected ? 'bg-accent-primary' : 'bg-raised'
-                        }`}
-                        testID={`calorie-cycling-day-${day}`}
-                      >
-                        <Text
-                          className={
-                            selected ? 'text-white' : 'text-text-primary'
+          {showChart && selectedCycled && (
+            <View className="mt-4 rounded-xl bg-raised p-3">
+              {mode === 'custom' ? (
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-sm font-semibold text-text-primary flex-1 mr-2">
+                    {weekdayNames[selectedDay]}
+                  </Text>
+                  <PercentField
+                    value={offsets[selectedDay] ?? 0}
+                    min={-CALORIE_CYCLING_MAX_OFFSET}
+                    label={t('calorieSettings.cycling.dayPercent', {
+                      defaultValue:
+                        '{{day}}: percentage before balancing the week',
+                      day: weekdayNames[selectedDay] ?? '',
+                    })}
+                    onChange={(value) => setDayOffset(selectedDay, value)}
+                    testID="calorie-cycling-day-percent"
+                  />
+                </View>
+              ) : (
+                <>
+                  <View className="flex-row items-center justify-between">
+                    <Text className="text-sm font-semibold text-text-primary flex-1 mr-2">
+                      {weekdayNames[selectedDay]}
+                    </Text>
+                    <View className="w-44">
+                      <SegmentedControl
+                        segments={[
+                          {
+                            key: 'training',
+                            label: t('calorieSettings.cycling.trainingDay', {
+                              defaultValue: 'Training',
+                            }),
+                          },
+                          {
+                            key: 'rest',
+                            label: t('calorieSettings.cycling.restDay', {
+                              defaultValue: 'Rest',
+                            }),
+                          },
+                        ]}
+                        activeKey={selectedIsTraining ? 'training' : 'rest'}
+                        onSelect={(key) => {
+                          if ((key === 'training') !== selectedIsTraining) {
+                            toggleTrainingDay(selectedDay);
                           }
-                        >
-                          {name.slice(0, 1)}
-                        </Text>
-                      </Pressable>
-                      {cycled && (
-                        <View
-                          className="items-center mt-1"
-                          testID={`calorie-cycling-result-${day}`}
-                        >
-                          <Text className="text-xs font-semibold text-text-primary">
-                            {formatEnergyNumber(cycled.target, energyUnit)}
-                          </Text>
-                          <Text
-                            className={`text-[10px] ${changeClass(cycled.delta)}`}
-                          >
-                            {signOf(cycled.delta)}
-                            {formatEnergyNumber(
-                              Math.abs(cycled.delta),
-                              energyUnit
-                            )}
-                          </Text>
-                        </View>
-                      )}
+                        }}
+                      />
                     </View>
-                  );
-                })}
-              </View>
-              <View className="flex-row items-center justify-between mt-3">
-                <Text className="text-sm text-text-primary flex-1 mr-2">
-                  {t('calorieSettings.cycling.trainingPercent', {
-                    defaultValue: 'Extra on training days',
-                  })}
-                </Text>
-                <Stepper
-                  value={percent}
-                  min={0}
-                  label={t('calorieSettings.cycling.trainingPercent', {
-                    defaultValue: 'Extra on training days',
-                  })}
-                  onChange={(value) =>
-                    onSave({
-                      mode,
-                      offsets: trainingRestOffsets(trainingDays, value),
-                    })
-                  }
-                  testID="calorie-cycling-percent"
-                />
-              </View>
+                  </View>
+                  <View className="flex-row items-center justify-between mt-3">
+                    <Text className="text-sm text-text-primary flex-1 mr-2">
+                      {t('calorieSettings.cycling.trainingPercent', {
+                        defaultValue: 'Extra on training days',
+                      })}
+                    </Text>
+                    <PercentField
+                      value={percent}
+                      min={1}
+                      label={t('calorieSettings.cycling.trainingPercent', {
+                        defaultValue: 'Extra on training days',
+                      })}
+                      onChange={(value) =>
+                        onSave({
+                          mode,
+                          // At least 1%, or the training days would be lost.
+                          offsets: trainingRestOffsets(
+                            trainingDays,
+                            Math.max(1, value)
+                          ),
+                        })
+                      }
+                      testID="calorie-cycling-percent"
+                    />
+                  </View>
+                </>
+              )}
             </View>
           )}
 
-          {mode === 'custom' && (
-            <View className="mt-4">
-              {weekOrder.map((day) => (
-                <View
-                  key={day}
-                  className="flex-row items-center justify-between py-1"
-                >
-                  <View className="flex-1 mr-2">
-                    <Text className="text-sm text-text-primary">
-                      {weekdayNames[day]}
-                    </Text>
-                    {showResults && week[day] && (
-                      <View testID={`calorie-cycling-result-${day}`}>
-                        <Text className="text-xs font-semibold text-text-primary">
-                          {formatEnergyNumber(week[day].target, energyUnit)}{' '}
-                          {unit}
-                          {week[day].clampedToFloor
-                            ? ` · ${t('calorieSettings.cycling.atFloor', {
-                                defaultValue: 'safety floor',
-                              })}`
-                            : ''}
-                        </Text>
-                        <Text
-                          className={`text-xs ${changeClass(week[day].delta)}`}
-                        >
-                          {changeText(day)}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                  <Stepper
-                    value={offsets[day] ?? 0}
-                    min={-CALORIE_CYCLING_MAX_OFFSET}
-                    label={weekdayNames[day] ?? ''}
-                    onChange={(value) =>
-                      onSave({
-                        mode,
-                        offsets: offsets.map((offset, index) =>
-                          index === day ? clampOffset(value) : offset
-                        ),
-                      })
-                    }
-                    testID={`calorie-cycling-custom-${day}`}
-                  />
-                </View>
-              ))}
+          {showChart && selectedCycled && (
+            <View
+              className="mt-3 rounded-xl bg-raised p-4"
+              testID="calorie-cycling-day-card"
+            >
+              <Text className="text-text-secondary text-xs font-semibold uppercase">
+                {selectedDay === todayWeekday
+                  ? t('calorieSettings.cycling.today', {
+                      defaultValue: 'Today',
+                    })
+                  : weekdayNames[selectedDay]}
+                {' · '}
+                {selectedIsTraining
+                  ? t('calorieSettings.cycling.trainingDay', {
+                      defaultValue: 'Training',
+                    })
+                  : t('calorieSettings.cycling.restDay', {
+                      defaultValue: 'Rest',
+                    })}
+              </Text>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                className="text-accent-primary text-3xl font-bold mt-1"
+              >
+                {formatEnergyNumber(selectedCycled.target, energyUnit)}{' '}
+                <Text className="text-base font-medium text-text-secondary">
+                  {unit}
+                </Text>
+              </Text>
+              <Text
+                className={`text-sm ${
+                  selectedCycled.delta > 0
+                    ? 'text-text-success'
+                    : selectedCycled.delta < 0
+                      ? 'text-text-warning'
+                      : 'text-text-secondary'
+                }`}
+              >
+                {t('calorieSettings.cycling.vsTargetWithUnit', {
+                  defaultValue:
+                    '{{change}} {{unit}} ({{percent}}) vs your daily target',
+                  change: signedCyclingAmount(
+                    selectedCycled.delta,
+                    formatEnergyNumber(
+                      Math.abs(selectedCycled.delta),
+                      energyUnit
+                    )
+                  ),
+                  unit,
+                  percent: formatCyclingPercent(
+                    Math.round((selectedCycled.delta / baseTarget) * 100)
+                  ),
+                })}
+              </Text>
+              {selectedCycled.clampedToFloor && (
+                <Text className="text-text-danger-subtle text-xs font-semibold mt-1">
+                  {t('calorieSettings.cycling.atFloor', {
+                    defaultValue: 'safety floor',
+                  })}
+                </Text>
+              )}
             </View>
           )}
 
           {mode !== 'off' && !useful && (
-            <Text className="text-sm mt-3" style={{ color: '#dc2626' }}>
+            <Text className="text-sm mt-3 text-text-danger-subtle">
               {mode === 'training_rest'
                 ? t('calorieSettings.cycling.needTrainingDays', {
                     defaultValue:
@@ -416,7 +523,7 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
               <Text className="text-text-secondary text-xs mt-1">
                 {t('calorieSettings.cycling.previewNote', {
                   defaultValue:
-                    "Based on today's target. Carbs take the change; protein and fat stay the same.",
+                    "Based on today's target. Carbs take the change and protein stays the same.",
                 })}
               </Text>
             </View>

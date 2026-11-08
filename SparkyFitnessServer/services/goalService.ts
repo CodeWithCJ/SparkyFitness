@@ -28,7 +28,7 @@ import {
   isCalorieCyclingAvailable,
   cycleDayTarget,
   calorieCyclingDayType,
-  applyCalorieCyclingCarbDelta,
+  applyCalorieCyclingMacroDelta,
   getClinicalCalorieMinimum,
   getRecommendedCalorieSafetyFloor,
   type CalorieCyclingDay,
@@ -616,10 +616,15 @@ async function getUserGoalsForRange(
       cyclingDeltaKcal !== 0 &&
       Number.isFinite(Number(processedGoals.carbs))
     ) {
-      processedGoals.carbs = applyCalorieCyclingCarbDelta(
-        Number(processedGoals.carbs),
+      const cycledMacros = applyCalorieCyclingMacroDelta(
+        {
+          carbs: Number(processedGoals.carbs),
+          fat: Number(processedGoals.fat),
+        },
         cyclingDeltaKcal
       );
+      processedGoals.carbs = cycledMacros.carbs;
+      processedGoals.fat = cycledMacros.fat;
     }
 
     // Adjust water goal by exercise water loss if preference is enabled

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { goalKeys } from '@/api/keys/goals';
-import { dailyProgressKeys } from '@/api/keys/diary';
+import { dailyProgressKeys, waterIntakeKeys } from '@/api/keys/diary';
 import { reportKeys } from '@/api/keys/reports';
 import type { QueryClient } from '@tanstack/react-query';
 
@@ -179,6 +179,7 @@ const invalidateResolvedGoals = (
     queryClient.invalidateQueries({ queryKey: goalKeys.daily.all() }),
     queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all }),
     queryClient.invalidateQueries({ queryKey: reportKeys.all }),
+    queryClient.invalidateQueries({ queryKey: waterIntakeKeys.all }),
   ]);
 
 // --- WEEKLY GOAL PLANS ---

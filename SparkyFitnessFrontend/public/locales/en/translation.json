@@ -2567,7 +2567,17 @@
       "tdeeGoal": "Device Projection",
       "tdeeActivityHint": "Activity level is only used by the BMR + active calories fallback when a device total is unavailable.",
       "tdeeGoalDescription": "Uses device total calories (Health Connect, Garmin or Polar) when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.",
-      "title": "Daily Calorie Goal Adjustment"
+      "title": "Daily Calorie Goal Adjustment",
+      "cardAdaptive": "Adaptive",
+      "cardAdaptiveSummary": "Learns from your intake and weight trend",
+      "cardDynamic": "Dynamic",
+      "cardDynamicSummary": "Adds your daily activity to your goal",
+      "cardFixed": "Fixed",
+      "cardFixedSummary": "The same target whatever you do",
+      "cardPercentage": "Percentage earn-back",
+      "cardPercentageSummary": "Adds back part of your exercise calories",
+      "cardDevice": "Device projection",
+      "cardDeviceSummary": "Projects your device's total burn to midnight"
     },
     "dataImport": {
       "checkin": {
@@ -3214,18 +3224,33 @@
       "modeOff": "Off: the same target every day",
       "modeTrainingRest": "Training vs rest: more on the days you train",
       "modeCustom": "Custom: a percentage for each day",
-      "trainingDays": "Training days",
       "trainingPercent": "Extra on training days (before balancing the week)",
-      "customHint": "Set each day from -40% to +40%.",
       "needTrainingDays": "Choose between 1 and 6 training days and a percentage above 0, or every day stays the same.",
       "needDifferentDays": "Give at least two days different percentages, or every day stays the same.",
       "atFloor": "Safety floor",
-      "previewNote": "Based on today's target. When your target changes, for example as adaptive expenditure updates, each day follows it. Carbs take the change; protein and fat stay the same.",
+      "previewNote": "Based on today's target. When your target changes, for example as adaptive expenditure updates, each day follows it. Carbs take the change and protein stays the same.",
       "baseAtFloor": "Your daily target ({{target}} {{unit}}) is at or below your safety floor ({{floor}} {{unit}}), so no day can go lower and every day stays the same. Cycling starts working once your target is above the floor, or with a lower custom floor.",
-      "dayChange": "{{sign}}{{amount}} {{unit}} ({{sign}}{{percent}}%)",
-      "baseLine": "Today's target before cycling: {{target}} {{unit}}. Your percentages are balanced against each other, so a day only gets more if it is above the week's average and less if it is below it. The amount and % beside each day are what that day actually gets.",
       "previewStep": "Calorie cycling ({{day}}):",
-      "weekTotalWithBase": "Week: {{total}} of {{budget}} {{unit}} (your daily target {{target}} × 7)"
+      "weekTotalWithBase": "Week: {{total}} of {{budget}} {{unit}} (your daily target {{target}} × 7)",
+      "dayPercent": "{{day}}: percentage before balancing the week",
+      "decrease": "Lower by 1%",
+      "increase": "Raise by 1%",
+      "trainingDay": "Training",
+      "restDay": "Rest",
+      "today": "Today",
+      "vsTarget": "{{change}} {{unit}} ({{percent}}) vs your daily target",
+      "modeOffShort": "Off",
+      "modeTrainingRestShort": "Training / rest",
+      "modeCustomShort": "Custom",
+      "chartTarget": "Daily target {{value}}",
+      "chartFloor": "Safety floor {{value}}",
+      "chartBarLabel": "{{day}}: {{target}}, {{change}}",
+      "atFloorShort": "floor",
+      "markRest": "Make {{day}} a rest day",
+      "markTraining": "Make {{day}} a training day",
+      "chartHintTraining": "Tap a bar to see that day. Tap the icon under a day to switch it between training and rest.",
+      "chartHintCustom": "Tap a bar to see that day, or drag it up or down. Fine-tune the selected day below.",
+      "previewTargetForDay": "Daily Calorie Target ({{day}}):"
     }
   },
   "admin": {
@@ -3604,7 +3629,8 @@
       "baseCalories": "Base calories ({{energyUnitString}})",
       "hintHigh": "Calorie cycling is on, so this is your base target. This day becomes about {{amount}} {{unit}} (high day).",
       "hintLow": "Calorie cycling is on, so this is your base target. This day becomes about {{amount}} {{unit}} (low day).",
-      "hintEven": "Calorie cycling is on, so this is your base target. This day stays the same."
+      "hintEven": "Calorie cycling is on, so this is your base target. This day stays the same.",
+      "hintPausedBySave": "Saving this calorie goal switches to a manual goal, which adds exercise calories back and pauses calorie cycling."
     }
   },
   "common": {
@@ -3866,7 +3892,11 @@
       "adaptiveManualCalorieGoal": "Adaptive Manual Calorie Goal = {{energy}} {{energyUnitString}}",
       "manualDailyCalorieGoal": "Manual Daily Calorie Goal = {{energy}} {{energyUnitString}}",
       "rmrFloor2": "RMR Floor: {{displayBmrVal}} {{energyUnitString}}",
-      "clinicalAbsoluteFloor": "Clinical Absolute Floor: {{energy}} {{energyUnitString}}"
+      "clinicalAbsoluteFloor": "Clinical Absolute Floor: {{energy}} {{energyUnitString}}",
+      "stepBmr": "Resting metabolism (BMR)",
+      "stepBodyFat": "Body fat percentage",
+      "stepAdaptive": "Adaptive TDEE (expenditure)",
+      "stepGoal": "Daily calorie goal"
     },
     "copyAllError": "Failed to copy entire day.",
     "copyAllFromYesterday": "Copy all from yesterday",

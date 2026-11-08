@@ -74,6 +74,8 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
   };
 }
 
+const CALORIE_SETTINGS_MUTATION_KEY = ['calorie-settings'] as const;
+
 const toKcal = (value: number, unit: EnergyUnit) =>
   Math.round(energyToKcal(value, unit));
 
@@ -248,15 +250,18 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     normalized.goalModeCalculationMethod,
     normalized.adaptiveActivitySeparate
   );
+  const todayDay = preferences?.timezone
+    ? todayInZone(preferences.timezone)
+    : getTodayDate();
+  // A calendar day string read as local noon, so the weekday never shifts.
+  const todayWeekday = new Date(`${todayDay}T12:00:00`).getDay();
   const calorieCyclingAvailable = isCalorieCyclingAvailable({
     calorie_goal_adjustment_mode: normalized.mode,
     goal_mode_calculation_method: normalized.goalModeCalculationMethod,
     adaptive_activity_separate: normalized.adaptiveActivitySeparate,
   });
   const { summary } = useDailySummary({
-    date: preferences?.timezone
-      ? todayInZone(preferences.timezone)
-      : getTodayDate(),
+    date: todayDay,
     enabled:
       adaptiveEarnBackConfigured ||
       (calorieCyclingAvailable && normalized.calorieCyclingMode !== 'off'),
@@ -305,6 +310,7 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
   }
 
   const mutation = useMutation({
+    mutationKey: CALORIE_SETTINGS_MUTATION_KEY,
     scope: { id: 'calorie-settings' },
     mutationFn: (data: Partial<UserPreferences>) => updatePreferences(data),
     onMutate: async (data) => {
@@ -336,6 +342,14 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
       queryClient.invalidateQueries({ queryKey: ['nutritionTrends'] });
     },
     onSettled: () => {
+      // Quick taps queue several saves; refetching after an earlier one would
+      // overwrite the later optimistic values, so refetch once the last ends.
+      if (
+        queryClient.isMutating({ mutationKey: CALORIE_SETTINGS_MUTATION_KEY }) >
+        1
+      ) {
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: preferencesQueryKey });
     },
   });
@@ -1046,11 +1060,12 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             pausedByWeeklyPlan={
               summary?.calorieCycling?.status === 'paused_weekly_plan'
             }
-            baseTarget={
-              summary?.calorieCycling?.baseTarget ?? summary?.calorieGoal ?? 0
-            }
+            // Only a cycling-aware summary carries the base and floor the
+            // server cycles from; until it arrives the chart stays hidden.
+            baseTarget={summary?.calorieCycling?.baseTarget ?? 0}
             floor={summary?.calorieCycling?.floor ?? null}
             firstDayOfWeek={normalized.firstDayOfWeek}
+            todayWeekday={todayWeekday}
             energyUnit={normalized.energyUnit}
           />
         </Animated.View>

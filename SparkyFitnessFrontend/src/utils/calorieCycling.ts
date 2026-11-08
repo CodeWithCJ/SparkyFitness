@@ -19,3 +19,15 @@ export function isCalorieCyclingPatternUseful(
   }
   return offsets.some((offset) => offset !== offsets[0]);
 }
+
+/** Text colour for a day's change: green for more, amber for less. */
+export const changeColorClass = (delta: number) =>
+  delta > 0
+    ? 'text-green-600 dark:text-green-400'
+    : delta < 0
+      ? 'text-amber-600 dark:text-amber-400'
+      : 'text-muted-foreground';
+
+/** "+97", "−33" or "±0", with the amount already formatted. */
+export const signedAmount = (delta: number, amount: string) =>
+  `${delta > 0 ? '+' : delta < 0 ? '−' : '±'}${amount}`;

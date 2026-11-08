@@ -23,7 +23,7 @@ import { useNutrientAutoCalculate } from '@/hooks/Goals/useNutrientAutoCalculate
 import { NutrientAutoCalculate } from './NutrientAutoCalculate';
 import { AutoCalculateToolbar } from './AutoCalculateToolbar';
 import { CalorieCyclingGoalHint } from '@/components/CalorieCyclingGoalHint';
-import { useCalorieCyclingActive } from '@/hooks/Goals/useCalorieCyclingActive';
+import { useCalorieCyclingForDay } from '@/hooks/Goals/useCalorieCyclingActive';
 
 const calculateGrams = (
   calories: number,
@@ -58,7 +58,6 @@ export const DailyGoals = ({
     saveAllPreferences,
   } = usePreferences();
   const { t } = useTranslation();
-  const calorieCyclingActive = useCalorieCyclingActive();
   const { user } = useAuth();
   const { data: customNutrients } = useCustomNutrients();
   const { data: mealTypes = [] } = useMealTypes();
@@ -88,6 +87,10 @@ export const DailyGoals = ({
   });
 
   const [initialCalories] = useState(goals.calories);
+  const calorieCycling = useCalorieCyclingForDay(
+    today,
+    goals.calories !== initialCalories
+  );
 
   const [macroInputType, setMacroInputType] = useState<'grams' | 'percentages'>(
     goals.protein_percentage !== null ? 'percentages' : 'grams'
@@ -208,7 +211,7 @@ export const DailyGoals = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
             <div className="space-y-1.5">
               <Label htmlFor="calories">
-                {calorieCyclingActive
+                {calorieCycling.active
                   ? t(
                       'goals.calorieCycling.baseCalories',
                       'Base calories ({{energyUnitString}})',
@@ -232,7 +235,11 @@ export const DailyGoals = ({
                   }))
                 }
               />
-              <CalorieCyclingGoalHint calories={goals.calories} day={today} />
+              <CalorieCyclingGoalHint
+                calories={goals.calories}
+                day={today}
+                cycling={calorieCycling}
+              />
             </div>
             <div className="space-y-1.5">
               <Label>{t('goals.goalsSettings.macrosBy', 'Macros By')}</Label>

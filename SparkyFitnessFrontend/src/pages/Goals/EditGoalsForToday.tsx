@@ -43,7 +43,7 @@ import { NutrientAutoCalculate } from '@/pages/Goals/NutrientAutoCalculate';
 import { AutoCalculateToolbar } from '@/pages/Goals/AutoCalculateToolbar';
 import { useTranslation } from 'react-i18next';
 import { CalorieCyclingGoalHint } from '@/components/CalorieCyclingGoalHint';
-import { useCalorieCyclingActive } from '@/hooks/Goals/useCalorieCyclingActive';
+import { useCalorieCyclingForDay } from '@/hooks/Goals/useCalorieCyclingActive';
 
 interface EditGoalsProps {
   selectedDate: string;
@@ -89,7 +89,6 @@ const EditGoalsForm = ({
     nutrientDisplayPreferences,
   } = usePreferences();
   const { t } = useTranslation();
-  const calorieCyclingActive = useCalorieCyclingActive();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
 
@@ -99,6 +98,10 @@ const EditGoalsForm = ({
   });
   // Baseline captured at mount; initialData can change on refetch while open.
   const [initialCalories] = useState(goals.calories);
+  const calorieCycling = useCalorieCyclingForDay(
+    selectedDate,
+    goals.calories !== initialCalories
+  );
 
   const {
     algorithms,
@@ -238,7 +241,7 @@ const EditGoalsForm = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
         <div className="space-y-1.5">
           <Label>
-            {calorieCyclingActive
+            {calorieCycling.active
               ? t(
                   'goals.calorieCycling.baseCalories',
                   'Base calories ({{energyUnitString}})',
@@ -266,6 +269,7 @@ const EditGoalsForm = ({
           <CalorieCyclingGoalHint
             calories={goals.calories}
             day={selectedDate}
+            cycling={calorieCycling}
           />
         </div>
         <div className="space-y-1.5">

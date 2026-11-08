@@ -139,6 +139,31 @@ beforeEach(() => {
   mockWeeklyGoalPlans = [];
 });
 
+describe('daily calorie goal adjustment cards', () => {
+  it('explains the chosen mode in full and keeps its own controls', () => {
+    render(<CalculationSettings />);
+    expect(screen.getByRole('radio', { name: /Dynamic/ })).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
+    expect(screen.getByTestId('adjustment-mode-description')).toHaveTextContent(
+      /^Dynamic Goal: Your calorie goal will dynamically adjust/
+    );
+
+    fireEvent.click(
+      screen.getByRole('radio', { name: /Percentage earn-back/ })
+    );
+    expect(screen.getByTestId('adjustment-mode-description')).toHaveTextContent(
+      /^Percentage Earn-Back: Only earn back a set percentage/
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: /Device projection/ }));
+    expect(
+      screen.getByText('Allow the fallback projection to lower the target')
+    ).toBeInTheDocument();
+  });
+});
+
 describe('calorie cycling', () => {
   it('is disabled while exercise calories are added back', () => {
     mockMethod = 'manual';
@@ -147,17 +172,17 @@ describe('calorie cycling', () => {
       screen.getByText(/Not available while exercise calories are added back/)
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('radio', { name: /Training vs rest/ })
+      screen.getByRole('radio', { name: 'Training / rest' })
     ).toBeDisabled();
   });
 
   it('previews a training week that adds up and saves the pattern', async () => {
     mockMode = 'fixed';
     render(<CalculationSettings />);
-    fireEvent.click(screen.getByRole('radio', { name: /Training vs rest/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Training / rest' }));
 
     // Mon, Wed and Fri start as training days at +15%.
-    expect(screen.getByRole('button', { name: 'Monday' })).toHaveAttribute(
+    expect(screen.getByTestId('calorie-cycling-toggle-1')).toHaveAttribute(
       'aria-pressed',
       'true'
     );
@@ -165,11 +190,21 @@ describe('calorie cycling', () => {
     expect(preview.getByTestId('calorie-cycling-week-total')).toHaveTextContent(
       /^Week: [\d,]+ of [\d,]+ kcal \(your daily target [\d,]+ × 7\)$/
     );
-    expect(preview.getByTestId('calorie-cycling-result-1')).toBeInTheDocument();
+    expect(preview.getByTestId('calorie-cycling-day-card')).toBeInTheDocument();
     // Every day differs from the base under this pattern, so the live preview
-    // adds a cycling step for today, whichever weekday the test runs on.
+    // adds a cycling step for the shown day (today until one is picked).
     expect(screen.getByTestId('calorie-cycling-today')).toHaveTextContent(
       /^Calorie cycling \(\w+\): [+−]\d+ kcal$/
+    );
+
+    // Picking Wednesday on the chart moves the preview to Wednesday, a
+    // training day, without changing the pattern.
+    fireEvent.click(screen.getByTestId('calorie-cycling-bar-3'));
+    expect(screen.getByTestId('calorie-cycling-today')).toHaveTextContent(
+      /^Calorie cycling \(Wednesday\): \+\d+ kcal$/
+    );
+    expect(screen.getByTestId('calorie-cycling-day-card')).toHaveTextContent(
+      /Wednesday · Training|Today · Training/
     );
 
     fireEvent.click(screen.getByRole('button', { name: /Save Preferences/ }));
@@ -188,7 +223,7 @@ describe('calorie cycling', () => {
     mockCyclingMode = 'training_rest';
     mockCyclingOffsets = [0, 15, 0, 0, 0, 0, 0];
     render(<CalculationSettings />);
-    fireEvent.click(screen.getByRole('button', { name: 'Monday' }));
+    fireEvent.click(screen.getByTestId('calorie-cycling-toggle-1'));
 
     expect(
       screen.getByText(/Choose between 1 and 6 training days/)
@@ -396,7 +431,7 @@ it('shows the summary error, not a crash, when an older server sends no calorie 
 it('uses full-day TDEE for an unsaved move away from Dynamic while preserving the opt-in', async () => {
   mockSeparate = true;
   render(<CalculationSettings />);
-  fireEvent.click(screen.getByRole('radio', { name: /Percentage Earn-Back:/ }));
+  fireEvent.click(screen.getByRole('radio', { name: /Percentage earn-back/ }));
 
   for (const label of screen.getAllByText('Adaptive TDEE (Expenditure):')) {
     expect(label.parentElement).toHaveTextContent('2800 kcal');

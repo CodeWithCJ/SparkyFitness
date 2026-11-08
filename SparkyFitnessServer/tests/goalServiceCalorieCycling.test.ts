@@ -11,7 +11,7 @@ import calorieRuleHistoryRepository from '../models/calorieRuleHistoryRepository
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import { getAdaptiveActivityCalories } from '../services/adaptiveActivityService.js';
 import {
-  applyCalorieCyclingCarbDelta,
+  applyCalorieCyclingMacroDelta,
   cycleWeekTargets,
   trainingRestOffsets,
 } from '@workspace/shared';
@@ -147,7 +147,9 @@ describe('calorie cycling in the daily goal', () => {
     expect(delta).toBeGreaterThan(0);
     expect(goals[monday].protein).toBe(150);
     expect(goals[monday].fat).toBeCloseTo(400 / 9);
-    expect(goals[monday].carbs).toBe(applyCalorieCyclingCarbDelta(250, delta));
+    expect(goals[monday].carbs).toBe(
+      applyCalorieCyclingMacroDelta({ carbs: 250, fat: 400 / 9 }, delta).carbs
+    );
     expect(goals[tuesday].carbs).toBeLessThan(250);
   });
 
@@ -162,7 +164,9 @@ describe('calorie cycling in the daily goal', () => {
     const delta = goals[monday].calorie_cycling?.delta ?? 0;
 
     expect(goals[monday].protein).toBe(150);
-    expect(goals[monday].carbs).toBe(applyCalorieCyclingCarbDelta(250, delta));
+    expect(goals[monday].carbs).toBe(
+      applyCalorieCyclingMacroDelta({ carbs: 250, fat: 400 / 9 }, delta).carbs
+    );
   });
 
   it('holds rest days at the safety floor and takes the rest from training days', async () => {

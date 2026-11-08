@@ -16,11 +16,20 @@ import { AdjustmentModeNote } from './AdjustmentModeNote';
 import { BmrStep } from './BmrStep';
 import { BodyFatStep } from './BodyFatStep';
 import { TargetStep } from './TargetStep';
+import { BreakdownSection } from './BreakdownSection';
+import {
+  adaptiveStepTag,
+  bmrStepTag,
+  bodyFatStepTag,
+  targetStepTag,
+} from './stepLabels';
+import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import type { CalorieTargetBreakdownProps } from './types';
 
 export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   title,
   asDialog = false,
+  defaultOpen = false,
   previewResult,
   adaptiveTdeeData,
   bmrAlgorithm,
@@ -65,64 +74,128 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
       "How today's target is calculated"
     );
 
+  const energy = (kcal: number) =>
+    `${Math.round(convertEnergy(kcal, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`;
+  const finalTarget =
+    calorieCycling?.status === 'active'
+      ? calorieCycling.target
+      : previewResult.finalTarget;
+  const goalStep = isAdaptiveMethod ? 4 : 3;
+
   const body = (
-    <div className="mt-3 space-y-4 pl-1 text-xs text-muted-foreground leading-relaxed border-l border-border/60 ml-1.5 text-left font-sans">
-      <BmrStep
-        bmrAlgorithm={bmrAlgorithm}
-        bmrSource={bmrSource}
-        displayWeight={displayWeight}
-        displayHeight={displayHeight}
-        displayAge={displayAge}
-        displayGender={displayGender}
-        displayBodyFat={displayBodyFat}
-        displayBmrVal={displayBmrVal}
-      />
-      <BodyFatStep
-        bmrAlgorithm={bmrAlgorithm}
-        bodyFatAlgorithm={bodyFatAlgorithm}
-        displayWeight={displayWeight}
-        displayHeight={displayHeight}
-        displayAge={displayAge}
-        displayGender={displayGender}
-        displayBodyFat={displayBodyFat}
-        displayWaist={displayWaist}
-        displayNeck={displayNeck}
-        displayHips={displayHips}
-      />
+    <div className="mt-2 space-y-2 text-left text-xs leading-relaxed text-muted-foreground font-sans">
       <AdjustmentModeNote
         calorieGoalAdjustmentMode={calorieGoalAdjustmentMode}
       />
-      {isAdaptiveMethod && (
-        <AdaptiveTdeeStep
-          previewResult={previewResult}
-          adaptiveTdeeData={adaptiveTdeeData}
-          activityMultiplier={activityMultiplier}
-          activitySeparated={activitySeparated}
-          displayBmrVal={displayBmrVal}
-        />
-      )}
-      <TargetStep
-        previewResult={previewResult}
-        adaptiveTdeeData={adaptiveTdeeData}
-        goalMode={goalMode}
-        goalModeCalculationMethod={goalModeCalculationMethod}
-        goalModeCustomPercentage={goalModeCustomPercentage}
-        goalModeWeeklyChangeKg={goalModeWeeklyChangeKg}
-        calorieGoalAdjustmentMode={calorieGoalAdjustmentMode}
-        rawManualGoal={rawManualGoal}
-        adjustedManualGoal={adjustedManualGoal}
-        activityMultiplier={activityMultiplier}
-        isAdaptiveMethod={isAdaptiveMethod}
-        activitySeparated={activitySeparated}
-        displayBmrVal={displayBmrVal}
-        calorieCycling={calorieCycling}
-      />
+      <div>
+        <BreakdownSection
+          step={1}
+          testId="breakdown-step-bmr"
+          title={t(
+            'diary.calculateExplanation.stepBmr',
+            'Resting metabolism (BMR)'
+          )}
+          tag={bmrStepTag(t, bmrAlgorithm, bmrSource)}
+          value={energy(previewResult.rmr)}
+        >
+          <BmrStep
+            headless
+            bmrAlgorithm={bmrAlgorithm}
+            bmrSource={bmrSource}
+            displayWeight={displayWeight}
+            displayHeight={displayHeight}
+            displayAge={displayAge}
+            displayGender={displayGender}
+            displayBodyFat={displayBodyFat}
+            displayBmrVal={displayBmrVal}
+          />
+        </BreakdownSection>
+        <BreakdownSection
+          step={2}
+          testId="breakdown-step-body-fat"
+          title={t(
+            'diary.calculateExplanation.stepBodyFat',
+            'Body fat percentage'
+          )}
+          tag={bodyFatStepTag(t, bodyFatAlgorithm)}
+          value={
+            displayBodyFat > 0
+              ? `${displayBodyFat.toFixed(1)}%`
+              : t('diary.calculateExplanation.noMeasurement', 'No measurement')
+          }
+        >
+          <BodyFatStep
+            headless
+            bmrAlgorithm={bmrAlgorithm}
+            bodyFatAlgorithm={bodyFatAlgorithm}
+            displayWeight={displayWeight}
+            displayHeight={displayHeight}
+            displayAge={displayAge}
+            displayGender={displayGender}
+            displayBodyFat={displayBodyFat}
+            displayWaist={displayWaist}
+            displayNeck={displayNeck}
+            displayHips={displayHips}
+          />
+        </BreakdownSection>
+        {isAdaptiveMethod && (
+          <BreakdownSection
+            step={3}
+            testId="breakdown-step-adaptive"
+            title={t(
+              'diary.calculateExplanation.stepAdaptive',
+              'Adaptive TDEE (expenditure)'
+            )}
+            tag={adaptiveStepTag(t, previewResult)}
+            value={energy(previewResult.baselineTdee)}
+          >
+            <AdaptiveTdeeStep
+              headless
+              previewResult={previewResult}
+              adaptiveTdeeData={adaptiveTdeeData}
+              activityMultiplier={activityMultiplier}
+              activitySeparated={activitySeparated}
+              displayBmrVal={displayBmrVal}
+            />
+          </BreakdownSection>
+        )}
+        <BreakdownSection
+          step={goalStep}
+          testId="breakdown-step-goal"
+          title={t('diary.calculateExplanation.stepGoal', 'Daily calorie goal')}
+          tag={targetStepTag(
+            t,
+            previewResult,
+            isAdaptiveMethod,
+            goalModeCalculationMethod
+          )}
+          value={energy(finalTarget)}
+        >
+          <TargetStep
+            headless
+            previewResult={previewResult}
+            adaptiveTdeeData={adaptiveTdeeData}
+            goalMode={goalMode}
+            goalModeCalculationMethod={goalModeCalculationMethod}
+            goalModeCustomPercentage={goalModeCustomPercentage}
+            goalModeWeeklyChangeKg={goalModeWeeklyChangeKg}
+            calorieGoalAdjustmentMode={calorieGoalAdjustmentMode}
+            rawManualGoal={rawManualGoal}
+            adjustedManualGoal={adjustedManualGoal}
+            activityMultiplier={activityMultiplier}
+            isAdaptiveMethod={isAdaptiveMethod}
+            activitySeparated={activitySeparated}
+            displayBmrVal={displayBmrVal}
+            calorieCycling={calorieCycling}
+          />
+        </BreakdownSection>
+      </div>
     </div>
   );
 
   if (!asDialog) {
     return (
-      <details className="group">
+      <details className="group" open={defaultOpen}>
         <summary className="flex items-center justify-between cursor-pointer py-1 text-sm text-muted-foreground hover:text-foreground transition-colors font-semibold">
           <span className="flex items-center gap-1.5 font-sans">
             <Calculator className="w-3.5 h-3.5 text-muted-foreground" />

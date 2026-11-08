@@ -342,6 +342,19 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
   // withheld rather than guessing a silently wrong recommendation.
   const calcCalories = parseDraft(drafts.calories);
   const calcFat = parseDraft(drafts.fat);
+  const typedCalories = Number.isFinite(calcCalories) ? calcCalories : 0;
+  const savedCalories = Number(goals.calories);
+  // Meal shares follow the day's goal. Adaptive replaces the typed number;
+  // cycling scales it, so an unsaved base edit moves the preview by the same
+  // ratio the server applied to the saved base today.
+  const mealPreviewCalories =
+    adjustedCalories === undefined
+      ? typedCalories
+      : isAdaptive
+        ? adjustedCalories
+        : isCycling && savedCalories > 0
+          ? Math.round((typedCalories * adjustedCalories) / savedCalories)
+          : typedCalories;
   const userData: UserNutrientData | null = useMemo(() => {
     if (profile?.gender !== 'male' && profile?.gender !== 'female') return null;
     const activity = ACTIVITY_LEVELS.find(
@@ -1014,13 +1027,7 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
         meals={meals}
         values={mealDrafts}
         onChange={setMealDrafts}
-        totalCalories={
-          isAdaptive && adjustedCalories !== undefined
-            ? adjustedCalories
-            : Number.isFinite(calcCalories)
-              ? calcCalories
-              : 0
-        }
+        totalCalories={mealPreviewCalories}
       />
       {!isPresetMode && (
         <>
