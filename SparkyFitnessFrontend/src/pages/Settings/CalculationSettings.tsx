@@ -87,7 +87,18 @@ import {
   isAdaptiveActivitySeparated,
   ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   ENERGY_DENSITY_KCAL_PER_KG,
+  getClinicalCalorieMinimum,
+  getRecommendedCalorieSafetyFloor,
+  isCalorieCyclingAvailable,
+  CALORIE_CYCLING_DEFAULT_OFFSETS,
+  calorieCyclingPattern,
+  cycleDayTarget,
+  weeklyGoalPlanInForce,
+  type CalorieCyclingMode,
 } from '@workspace/shared';
+import { CalorieCyclingSettings } from '@/components/CalorieCyclingSettings';
+import { isCalorieCyclingPatternUseful } from '@/utils/calorieCycling';
+import { useWeeklyGoalPlans } from '@/hooks/Goals/useGoals';
 
 /**
  * This screen offers radio items for five of the six adjustment modes. `smart` has no
@@ -140,6 +151,9 @@ const CalculationSettings = () => {
     goalModeWeeklyChangeKg: contextGoalModeWeeklyChangeKg,
     calorieSafetyFloorMode: contextCalorieSafetyFloorMode,
     calorieSafetyFloorValue: contextCalorieSafetyFloorValue,
+    calorieCyclingMode: contextCalorieCyclingMode,
+    calorieCyclingOffsets: contextCalorieCyclingOffsets,
+    firstDayOfWeek,
     weightUnit,
     timezone,
     convertWeight,
@@ -179,6 +193,28 @@ const CalculationSettings = () => {
     contextGoalModeWeeklyChangeKg ?? 0
   );
   const [weeklyRateValid, setWeeklyRateValid] = useState(true);
+  // An older server or a partial preference load may not have these yet.
+  const savedCalorieCyclingMode: CalorieCyclingMode =
+    contextCalorieCyclingMode ?? 'off';
+  const savedCalorieCyclingOffsets =
+    contextCalorieCyclingOffsets ?? CALORIE_CYCLING_DEFAULT_OFFSETS;
+  const [calorieCycling, setCalorieCycling] = useState<{
+    mode: CalorieCyclingMode;
+    offsets: number[];
+  }>({
+    mode: savedCalorieCyclingMode,
+    offsets: [...savedCalorieCyclingOffsets],
+  });
+  useEffect(() => {
+    setCalorieCycling({
+      mode: savedCalorieCyclingMode,
+      offsets: [...savedCalorieCyclingOffsets],
+    });
+  }, [savedCalorieCyclingMode, savedCalorieCyclingOffsets]);
+  const calorieCyclingValid = isCalorieCyclingPatternUseful(
+    calorieCycling.mode,
+    calorieCycling.offsets
+  );
   // Mirrors the input's raw text so a partially typed '-' survives keystrokes.
   const [customPercentageInput, setCustomPercentageInput] = useState<string>(
     String(contextGoalModeCustomPercentage ?? 0)
@@ -354,6 +390,7 @@ const CalculationSettings = () => {
 
   const handleSave = async () => {
     if (goalMode === 'weekly' && !weeklyRateValid) return;
+    if (!calorieCyclingValid) return;
     setIsSaving(true);
     try {
       await saveAllPreferences({
@@ -380,6 +417,8 @@ const CalculationSettings = () => {
         goalModeWeeklyChangeKg,
         calorieSafetyFloorMode,
         calorieSafetyFloorValue,
+        calorieCyclingMode: calorieCycling.mode,
+        calorieCyclingOffsets: calorieCycling.offsets,
       });
       invalidateDiary();
       invalidateDailyProgress();
@@ -438,6 +477,7 @@ const CalculationSettings = () => {
   const todayStr = todayInZone(timezone || 'UTC');
   const { data: adaptiveTdeeData } = useAdaptiveTdee(todayStr);
   const { data: goalsData } = useDiaryGoals(todayStr, false);
+  const { data: weeklyGoalPlans } = useWeeklyGoalPlans();
 
   const { user } = useAuth();
   const { data: userProfile } = useProfileQuery(user?.id);
@@ -547,6 +587,47 @@ const CalculationSettings = () => {
   // target also exposes a ceiling under manual calculation, but percentage options
   // only use that floor with the adaptive method.
   const deficitCeilingPercent = previewResult.maxFeasibleDeficitPercent;
+
+  // Calorie cycling (#2327): the same base and floor the server cycles from,
+  // and what today gets with the pattern on screen.
+  const cyclingAvailable = isCalorieCyclingAvailable({
+    calorie_goal_adjustment_mode: calorieGoalAdjustmentMode,
+    goal_mode_calculation_method: goalModeCalculationMethod,
+    adaptive_activity_separate: adaptiveActivitySeparate,
+  });
+  const cyclingBaseTarget = bmr > 0 ? previewResult.finalTarget : rawManualGoal;
+  const cyclingFloor =
+    previewResult.effectiveSafetyFloor ??
+    resolveCalorieSafetyFloor(
+      calorieSafetyFloorMode,
+      calorieSafetyFloorValue,
+      bmr > 0
+        ? getRecommendedCalorieSafetyFloor(bmr, gender)
+        : getClinicalCalorieMinimum(gender)
+    );
+  const todayWeekday = new Date(`${todayStr}T12:00:00`).getDay();
+  const todayCycled =
+    cyclingAvailable &&
+    calorieCyclingValid &&
+    calorieCyclingPattern({
+      calorie_cycling_mode: calorieCycling.mode,
+      calorie_cycling_offsets: calorieCycling.offsets,
+    }) !== null &&
+    !weeklyGoalPlanInForce(weeklyGoalPlans ?? [], todayStr)
+      ? cycleDayTarget({
+          baseTarget: cyclingBaseTarget,
+          offsets: calorieCycling.offsets,
+          weekday: todayWeekday,
+          floor: cyclingFloor,
+        })
+      : null;
+  // Only a day cycling actually moves gets a step in the preview.
+  const cyclingToday =
+    todayCycled && todayCycled.delta !== 0 ? todayCycled : null;
+  const todayWeekdayName = new Date(`${todayStr}T12:00:00`).toLocaleDateString(
+    undefined,
+    { weekday: 'long' }
+  );
   const isGoalModeUnreachable = (mode: GoalMode) =>
     goalModeCalculationMethod === 'adaptive' &&
     deficitCeilingPercent != null &&
@@ -1674,6 +1755,22 @@ const CalculationSettings = () => {
           </p>
         </div>
 
+        <CalorieCyclingSettings
+          mode={calorieCycling.mode}
+          offsets={calorieCycling.offsets}
+          onChange={setCalorieCycling}
+          available={cyclingAvailable}
+          pausedByWeeklyPlan={Boolean(
+            weeklyGoalPlanInForce(weeklyGoalPlans ?? [], todayStr)
+          )}
+          baseTarget={cyclingBaseTarget}
+          floor={cyclingFloor}
+          firstDayOfWeek={firstDayOfWeek ?? 0}
+          convertEnergy={convertEnergy}
+          energyUnit={energyUnit}
+          energyUnitString={getEnergyUnitString(energyUnit)}
+        />
+
         {/* Live Preview & Diagnostics Callouts */}
         <div className="space-y-3">
           {/* Live Preview Panel */}
@@ -1750,6 +1847,37 @@ const CalculationSettings = () => {
                     ` (${Math.abs(Math.round(deficitPct * 100))}%)`}
                 </span>
               </div>
+              {cyclingToday && (
+                <>
+                  <div className="hidden md:block text-muted-foreground">→</div>
+                  <div data-testid="calorie-cycling-today">
+                    <span className="text-muted-foreground">
+                      {t(
+                        'settings.calorieCycling.previewStep',
+                        'Calorie cycling ({{day}}):',
+                        { day: todayWeekdayName }
+                      )}
+                    </span>{' '}
+                    <span
+                      className={`font-semibold ${
+                        cyclingToday.delta > 0
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-amber-600 dark:text-amber-400'
+                      }`}
+                    >
+                      {cyclingToday.delta > 0 ? '+' : '−'}
+                      {Math.round(
+                        convertEnergy(
+                          Math.abs(cyclingToday.delta),
+                          'kcal',
+                          energyUnit
+                        )
+                      )}{' '}
+                      {getEnergyUnitString(energyUnit)}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="hidden md:block text-muted-foreground">→</div>
               <div>
                 <span className="text-muted-foreground">
@@ -1760,7 +1888,11 @@ const CalculationSettings = () => {
                 </span>{' '}
                 <span className="font-bold text-base text-primary">
                   {Math.round(
-                    convertEnergy(previewResult.finalTarget, 'kcal', energyUnit)
+                    convertEnergy(
+                      cyclingToday?.target ?? previewResult.finalTarget,
+                      'kcal',
+                      energyUnit
+                    )
                   )}{' '}
                   {getEnergyUnitString(energyUnit)}
                 </span>
@@ -1866,6 +1998,19 @@ const CalculationSettings = () => {
                 adjustedManualGoal={currentGoalBase}
                 activityMultiplier={activityMultiplier}
                 bmrSource={measuredBmr != null ? 'measured' : undefined}
+                calorieCycling={
+                  cyclingToday
+                    ? {
+                        status: 'active',
+                        baseTarget: Math.round(cyclingBaseTarget),
+                        target: cyclingToday.target,
+                        delta: cyclingToday.delta,
+                        dayType: cyclingToday.delta > 0 ? 'high' : 'low',
+                        floor: cyclingFloor,
+                        clampedToFloor: cyclingToday.clampedToFloor,
+                      }
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -2329,7 +2474,11 @@ const CalculationSettings = () => {
 
       <Button
         onClick={handleSave}
-        disabled={isSaving || (goalMode === 'weekly' && !weeklyRateValid)}
+        disabled={
+          isSaving ||
+          (goalMode === 'weekly' && !weeklyRateValid) ||
+          !calorieCyclingValid
+        }
       >
         <Save className="h-4 w-4 mr-2" />
         {isSaving

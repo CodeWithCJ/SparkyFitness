@@ -204,6 +204,8 @@ describe('dailySummaryService', () => {
       use_external_bmr: false,
       include_bmr_in_net_calories: false,
       adjust_macros_with_exercise: false,
+      calorie_cycling_mode: 'off',
+      calorie_cycling_offsets: [0, 0, 0, 0, 0, 0, 0],
     };
     vi.mocked(
       calorieRuleHistoryRepository.getCalorieRuleHistory
@@ -674,6 +676,57 @@ describe('dailySummaryService', () => {
         fat: 67,
         water_goal_ml: 2800,
       });
+    });
+  });
+
+  describe('calorieCycling', () => {
+    test('passes the day of calorie cycling through, and leaves it out when off', async () => {
+      const cycling = {
+        status: 'active',
+        baseTarget: 2000,
+        target: 2161,
+        delta: 161,
+        dayType: 'high',
+        floor: 1500,
+        clampedToFloor: false,
+      };
+      vi.mocked(goalService.getUserGoals).mockImplementation(
+        (_userId, _date, _endDate, adjust) =>
+          Promise.resolve(
+            adjust
+              ? {
+                  calories: 2161,
+                  protein: 150,
+                  carbs: 240,
+                  fat: 67,
+                  calorie_cycling: cycling,
+                }
+              : { calories: 2000, protein: 150, carbs: 200, fat: 67 }
+          )
+      );
+
+      const result = await getDailySummary({
+        actorUserId,
+        targetUserId,
+        date,
+        includeCheckin: true,
+      });
+      expect(result.calorieCycling).toEqual(cycling);
+      expect(result.adjustedGoals?.calories).toBe(2161);
+
+      vi.mocked(goalService.getUserGoals).mockResolvedValue({
+        calories: 2000,
+        protein: 150,
+        carbs: 200,
+        fat: 67,
+      });
+      const off = await getDailySummary({
+        actorUserId,
+        targetUserId,
+        date,
+        includeCheckin: true,
+      });
+      expect(off).not.toHaveProperty('calorieCycling');
     });
   });
 });

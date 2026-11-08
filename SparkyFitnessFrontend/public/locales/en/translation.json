@@ -3205,6 +3205,27 @@
         "needsResting": "Heart rate reserve zones need a resting heart rate.",
         "customFloors": "Each zone must start above the one before it, from 30 to 250 bpm."
       }
+    },
+    "calorieCycling": {
+      "title": "Calorie cycling",
+      "description": "Eat more on training days and less on rest days. Your weekly total stays the same: your daily target x 7.",
+      "unavailable": "Not available while exercise calories are added back to your goal: your target already rises on the days you log a workout. Choose Adaptive or Fixed, or use full-day adaptive targets, to cycle calories.",
+      "pausedByWeeklyPlan": "A weekly goal plan is active, so calorie cycling is paused on the days the plan sets.",
+      "modeOff": "Off: the same target every day",
+      "modeTrainingRest": "Training vs rest: more on the days you train",
+      "modeCustom": "Custom: a percentage for each day",
+      "trainingDays": "Training days",
+      "trainingPercent": "Extra on training days (before balancing the week)",
+      "customHint": "Set each day from -40% to +40%.",
+      "needTrainingDays": "Choose between 1 and 6 training days and a percentage above 0, or every day stays the same.",
+      "needDifferentDays": "Give at least two days different percentages, or every day stays the same.",
+      "atFloor": "Safety floor",
+      "previewNote": "Based on today's target. When your target changes, for example as adaptive expenditure updates, each day follows it. Carbs take the change; protein and fat stay the same.",
+      "baseAtFloor": "Your daily target ({{target}} {{unit}}) is at or below your safety floor ({{floor}} {{unit}}), so no day can go lower and every day stays the same. Cycling starts working once your target is above the floor, or with a lower custom floor.",
+      "dayChange": "{{sign}}{{amount}} {{unit}} ({{sign}}{{percent}}%)",
+      "baseLine": "Today's target before cycling: {{target}} {{unit}}. Your percentages are balanced against each other, so a day only gets more if it is above the week's average and less if it is below it. The amount and % beside each day are what that day actually gets.",
+      "previewStep": "Calorie cycling ({{day}}):",
+      "weekTotalWithBase": "Week: {{total}} of {{budget}} {{unit}} (your daily target {{target}} × 7)"
     }
   },
   "admin": {
@@ -3578,7 +3599,13 @@
     "saveAndStart": "Save & Start Plan",
     "saveAsPreset": "Save Preset & Start 6-Month Cascading Goal",
     "savePresetDescription": "Give your goal preset a name. This will save your current configuration for future use and apply it as your plan starting today.",
-    "startCascadingPlan": "Start 6-Month Cascading Plan"
+    "startCascadingPlan": "Start 6-Month Cascading Plan",
+    "calorieCycling": {
+      "baseCalories": "Base calories ({{energyUnitString}})",
+      "hintHigh": "Calorie cycling is on, so this is your base target. This day becomes about {{amount}} {{unit}} (high day).",
+      "hintLow": "Calorie cycling is on, so this is your base target. This day becomes about {{amount}} {{unit}} (low day).",
+      "hintEven": "Calorie cycling is on, so this is your base target. This day stays the same."
+    }
   },
   "common": {
     "today": "Today",
@@ -4026,6 +4053,15 @@
     "exerciseEntryDisplay": {
       "wger": "Wger",
       "freeDB": "Free DB"
+    },
+    "calorieCycling": {
+      "highDay": "High day +{{amount}}",
+      "lowDay": "Low day −{{amount}}",
+      "stepHigh": "Calorie cycling (high day):",
+      "stepLow": "Calorie cycling (low day):",
+      "stepFloor": "Held at your safety floor; the other days give up the difference.",
+      "pausedWeeklyPlan": "Calorie cycling is paused today: a weekly goal plan sets this day.",
+      "pausedEarnBack": "Calorie cycling is paused: exercise calories are added back to your goal."
     }
   },
   "nutrientGoalDirection": {

@@ -43,6 +43,7 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
   activityMultiplier,
   bmrSource,
   adaptiveActivitySeparate = false,
+  calorieCycling,
 }) => {
   const { t } = useTranslation();
   const { energyUnit, convertEnergy } = usePreferences();
@@ -114,6 +115,7 @@ export const CalorieTargetBreakdown: React.FC<CalorieTargetBreakdownProps> = ({
         isAdaptiveMethod={isAdaptiveMethod}
         activitySeparated={activitySeparated}
         displayBmrVal={displayBmrVal}
+        calorieCycling={calorieCycling}
       />
     </div>
   );

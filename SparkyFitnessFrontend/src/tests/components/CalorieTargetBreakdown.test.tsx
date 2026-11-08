@@ -629,3 +629,51 @@ describe('CalorieTargetBreakdown adaptive checklist', () => {
     expect(screen.queryByText(/Met \(3\/7/)).not.toBeInTheDocument();
   });
 });
+
+describe('CalorieTargetBreakdown calorie cycling', () => {
+  it('adds the cycling step and ends on the cycled target', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        calorieCycling={{
+          status: 'active',
+          baseTarget: 2194,
+          target: 1994,
+          delta: -200,
+          dayType: 'low',
+          floor: 1800,
+          clampedToFloor: false,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('calorie-cycling-step')).toHaveTextContent(
+      'Calorie cycling (low day):−200'
+    );
+    expect(
+      screen.getByText(/Final Energy Budget Target/).parentElement
+    ).toHaveTextContent('1994');
+  });
+
+  it('says why cycling is paused', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        calorieCycling={{
+          status: 'paused_weekly_plan',
+          baseTarget: 2194,
+          target: 2194,
+          delta: 0,
+          dayType: 'even',
+          floor: 1800,
+          clampedToFloor: false,
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText(/a weekly goal plan sets this day/)
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('calorie-cycling-step')).toBeNull();
+  });
+});

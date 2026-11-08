@@ -43,7 +43,9 @@ import {
   VitaminCalculationAlgorithm,
   calculateAge,
   calculateSingleNutrientAutoValue,
+  calorieCyclingPattern,
   getAutoCalculateFamily,
+  isCalorieCyclingAvailable,
   type AlgorithmBundle,
   type UserNutrientData,
   normalizeEnergyUnit,
@@ -276,7 +278,23 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
   const { preferences } = usePreferences();
   const isAdaptive =
     !isPresetMode && preferences?.calorie_goal_adjustment_mode === 'adaptive';
-  const adjustedCalories = useAdjustedCalorieGoal(date, isAdaptive);
+  // Calorie cycling (#2327) makes the typed calories a base the day's goal is
+  // worked out from, the same as adaptive mode.
+  const isCycling =
+    !isPresetMode &&
+    calorieCyclingPattern({
+      calorie_cycling_mode: preferences?.calorie_cycling_mode,
+      calorie_cycling_offsets: preferences?.calorie_cycling_offsets,
+    }) !== null &&
+    isCalorieCyclingAvailable({
+      calorie_goal_adjustment_mode: preferences?.calorie_goal_adjustment_mode,
+      goal_mode_calculation_method: preferences?.goal_mode_calculation_method,
+      adaptive_activity_separate: preferences?.adaptive_activity_separate,
+    });
+  const adjustedCalories = useAdjustedCalorieGoal(
+    date,
+    isAdaptive || isCycling
+  );
   const waterUnit = preferences?.water_display_unit ?? 'ml';
   const energyUnit = normalizeEnergyUnit(preferences?.energy_unit);
   const { profile } = useProfile();
@@ -401,15 +419,16 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
         nutrientLabel(field),
       ])
     ) as Record<NutrientGoalField, string>),
-    calories: isAdaptive
-      ? t('goals.fields.baselineCaloriesWithUnit', {
-          defaultValue: 'Baseline calories ({{unit}})',
-          unit: energyUnitLabel(energyUnit, t),
-        })
-      : t('goals.fields.calories', {
-          defaultValue: 'Calories ({{unit}})',
-          unit: energyUnitLabel(energyUnit, t),
-        }),
+    calories:
+      isAdaptive || isCycling
+        ? t('goals.fields.baselineCaloriesWithUnit', {
+            defaultValue: 'Baseline calories ({{unit}})',
+            unit: energyUnitLabel(energyUnit, t),
+          })
+        : t('goals.fields.calories', {
+            defaultValue: 'Calories ({{unit}})',
+            unit: energyUnitLabel(energyUnit, t),
+          }),
     water_goal_ml: t('goals.fields.water', {
       defaultValue: 'Water ({{unit}})',
       unit: WATER_UNIT_LABELS[waterUnit] ?? waterUnit,
@@ -900,6 +919,16 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
                 defaultValue:
                   'Adaptive mode is on, so your calorie goal changes daily. The baseline below sets how far above or below your estimated maintenance you aim to be; it is not a fixed daily target.',
               })}
+        </Text>
+      )}
+      {isCycling && !isAdaptive && adjustedCalories !== undefined && (
+        <Text className="text-sm text-text-secondary">
+          {t('goals.cyclingNoteTodayWithUnit', {
+            defaultValue:
+              'Calorie cycling is on, so the calories below are your base target and each day is higher or lower. Today it is {{calories}} {{unit}}.',
+            calories: roundedEnergy(adjustedCalories, energyUnit),
+            unit: energyUnitLabel(energyUnit, t),
+          })}
         </Text>
       )}
       {Object.keys(directionDrafts).length > 0 && (

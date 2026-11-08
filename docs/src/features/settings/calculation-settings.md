@@ -95,6 +95,9 @@ This setting determines **how physical activity changes your calorie budget** th
 - **Device Projection:** Uses the cumulative **Total Calories** value (resting plus active energy) synced from Health Connect, Garmin or Polar. When more than one of them has a total for the same day, one is used, never a sum, in this order: Health Connect, Garmin, Polar. Apple Health totals are not used yet. For the current day, it projects that value from its dedicated source capture time to midnight and treats the result as your live TDEE; completed days use the recorded total without extrapolation. Goal Mode is then applied directly: for example, a projected TDEE of 2,400 kcal becomes 2,400 kcal at Maintain, 2,160 kcal at Body Recomposition (-10%), or 2,640 kcal at Lean Bulk (+10%). On Android, enable **Total Calories** in the app's Health Connect sync settings; Garmin and Polar send it with their daily summary. To use Garmin's figure while the phone also syncs, turn off Total Calories in the phone's sync settings; days the phone already synced keep its figure. When that value is unavailable, too early, or implausible for a complete daily total, SparkyFitness falls back to BMR plus projected active calories.
 
 > [!NOTE]
+> [Calorie cycling](#calorie-cycling) works only with **Adaptive TDEE**, **Fixed Goal**, or Dynamic / Percentage Earn-Back with Adaptive full-day targets. The other modes already raise your budget on the days you log exercise, so cycling on top would count your training twice.
+
+> [!NOTE]
 > If you use [Nutrient Goal Direction](/features/goals)'s **Target range** for calories, note that Adaptive, Dynamic, Percentage Earn-Back, and Device Projection all recalculate your calorie goal value regularly — a manually entered target band won't move with it. Target range for calories works best paired with **Fixed Goal**.
 
 ---
@@ -219,6 +222,27 @@ BMR on the iPhone app; the setting is saved to your account.
 - **It applies to days synced after the change.** Earlier days keep what they had
   until they sync again.
 
+### Calorie cycling
+
+Calorie cycling gives you more calories on training days and fewer on rest days, while your **weekly total stays the same**: your daily target × 7. It sits on top of everything above, so the days keep following your Adaptive TDEE and Goal Mode. It is **off by default**.
+
+Turn it on under **Calorie cycling** in Calculation Settings on the web, or the **Calorie Cycling** card in Calories & BMR on the mobile app:
+
+- **Off:** the same target every day.
+- **Training vs rest:** pick your training days (1 to 6) and how much extra they get, for example +15%.
+- **Custom days:** set each weekday from −40% to +40%.
+
+The percentages you choose are balanced so the week still adds up. With Mon, Wed and Fri at +15% and a 2,600 kcal target, training days get about 2,810 kcal and rest days about 2,440 kcal; the seven days still total 18,200 kcal. A preview shows each day and the week before you save.
+
+- **Only carbs change.** Protein and fat stay the same every day; carbs take the extra or missing calories (4 kcal per gram).
+- **The safety floor still applies.** A rest day is never set below your [safety floor](#_5-metabolic-safety-floors). If one would be, it is held at the floor and the difference comes off the other days, so the week still matches.
+- **Each day follows that day's target.** When your target moves, for example as Adaptive TDEE updates, each day is worked out from it, so over a week the total can differ from 7 × one day's target by a few calories.
+- **Skipping a training day changes nothing.** Targets come from the weekday, not from logged workouts. If you miss Monday's session you can still eat Monday's amount and the week balances out, or move the session and adjust yourself.
+- **Weekly goal plans come first.** On a day an active [weekly goal plan](/features/goals#goal-presets-and-weekly-plans) sets, that plan's preset is used and cycling is paused.
+- **Past days keep their targets.** A change applies from today, like every other calculation setting.
+
+In the Diary the calorie goal shows **High day +210** or **Low day −160**, and the target breakdown includes the cycling step. When cycling is on, the calorie field on the Goals page is your **base** calories: the target before cycling.
+
 ---
 
 ## 5. Metabolic Safety Floors
@@ -235,6 +259,8 @@ SparkyFitness shows two recommended safety limits for calorie goals:
 > - **Custom minimum:** Replaces the Standard floor with a calorie value you choose. This can be below or above the recommended limits; those recommendations and health warnings remain visible.
 > - **Disabled:** Does not automatically raise Adaptive or Weekly weight change targets. The calculated target is used as-is, while recommended limits and health warnings remain visible.
 > - Under the **Manual** method, percentage-based targets are **not automatically raised**, but a prominent warning banner is displayed warning you that your budget is in an unsafe range. **Weekly weight change** targets use the configured floor with either calculation method.
+
+With [calorie cycling](#calorie-cycling) on, the floor also applies to each cycled day under either method: a low day is held at the floor and the other days give up the difference. A disabled floor does not hold cycled days.
 
 Under the Adaptive method the floor applies whenever the calculated target falls below it. That is almost always a deficit, but a surplus can trip it too: if your entire maintenance sits below the clinical minimum, even a gain goal is raised to that minimum.
 

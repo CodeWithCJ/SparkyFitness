@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import '@testing-library/jest-dom';
 import CalculationSettings from '@/pages/Settings/CalculationSettings';
 import DailyProgress from '@/pages/Diary/DailyProgress';
@@ -12,6 +18,9 @@ let mockMode = 'dynamic';
 let mockMethod = 'adaptive';
 let mockSeparate = false;
 let mockExerciseMacros = false;
+let mockCyclingMode = 'off';
+let mockCyclingOffsets = [0, 0, 0, 0, 0, 0, 0];
+let mockCalorieCycling: unknown = undefined;
 const defaultCalorieInputs: CalorieInputs = {
   rules: CALORIE_RULE_DEFAULTS,
   age: 36,
@@ -37,6 +46,9 @@ jest.mock('@/contexts/PreferencesContext', () => ({
     goalModeCalculationMethod: mockMethod,
     adaptiveActivitySeparate: mockSeparate,
     adjustMacrosWithExercise: mockExerciseMacros,
+    calorieCyclingMode: mockCyclingMode,
+    calorieCyclingOffsets: mockCyclingOffsets,
+    firstDayOfWeek: 1,
     activityLevel: 'not_much',
     weightUnit: 'kg',
     timezone: 'UTC',
@@ -94,6 +106,7 @@ jest.mock('@/hooks/Diary/useDailyProgress', () => ({
         exerciseSource: 'none',
       },
       calorieInputs: mockCalorieInputs,
+      calorieCycling: mockCalorieCycling,
     },
     isLoading: false,
     isError: false,
@@ -104,6 +117,10 @@ jest.mock('@/hooks/Settings/useNutrientGoalPreferences', () => ({
 }));
 jest.mock('@/hooks/Diary/useFoodEntries', () => ({
   useDiaryGoals: () => ({ data: { calories: 2000 } }),
+}));
+let mockWeeklyGoalPlans: unknown[] = [];
+jest.mock('@/hooks/Goals/useGoals', () => ({
+  useWeeklyGoalPlans: () => ({ data: mockWeeklyGoalPlans }),
 }));
 jest.mock('@/hooks/CheckIn/useCheckIn', () => ({
   useMostRecentMeasurement: () => ({ data: undefined }),
@@ -116,6 +133,109 @@ beforeEach(() => {
   mockSeparate = false;
   mockCalorieInputs = defaultCalorieInputs;
   mockExerciseMacros = false;
+  mockCyclingMode = 'off';
+  mockCyclingOffsets = [0, 0, 0, 0, 0, 0, 0];
+  mockCalorieCycling = undefined;
+  mockWeeklyGoalPlans = [];
+});
+
+describe('calorie cycling', () => {
+  it('is disabled while exercise calories are added back', () => {
+    mockMethod = 'manual';
+    render(<CalculationSettings />);
+    expect(
+      screen.getByText(/Not available while exercise calories are added back/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', { name: /Training vs rest/ })
+    ).toBeDisabled();
+  });
+
+  it('previews a training week that adds up and saves the pattern', async () => {
+    mockMode = 'fixed';
+    render(<CalculationSettings />);
+    fireEvent.click(screen.getByRole('radio', { name: /Training vs rest/ }));
+
+    // Mon, Wed and Fri start as training days at +15%.
+    expect(screen.getByRole('button', { name: 'Monday' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    const preview = within(screen.getByTestId('calorie-cycling-settings'));
+    expect(preview.getByTestId('calorie-cycling-week-total')).toHaveTextContent(
+      /^Week: [\d,]+ of [\d,]+ kcal \(your daily target [\d,]+ × 7\)$/
+    );
+    expect(preview.getByTestId('calorie-cycling-result-1')).toBeInTheDocument();
+    // Every day differs from the base under this pattern, so the live preview
+    // adds a cycling step for today, whichever weekday the test runs on.
+    expect(screen.getByTestId('calorie-cycling-today')).toHaveTextContent(
+      /^Calorie cycling \(\w+\): [+−]\d+ kcal$/
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Save Preferences/ }));
+    await waitFor(() =>
+      expect(mockSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          calorieCyclingMode: 'training_rest',
+          calorieCyclingOffsets: [0, 15, 0, 15, 0, 15, 0],
+        })
+      )
+    );
+  });
+
+  it('blocks saving a training pattern with no training days', () => {
+    mockMode = 'fixed';
+    mockCyclingMode = 'training_rest';
+    mockCyclingOffsets = [0, 15, 0, 0, 0, 0, 0];
+    render(<CalculationSettings />);
+    fireEvent.click(screen.getByRole('button', { name: 'Monday' }));
+
+    expect(
+      screen.getByText(/Choose between 1 and 6 training days/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Save Preferences/ })
+    ).toBeDisabled();
+  });
+
+  it('says cycling is paused while a weekly goal plan is in force', () => {
+    mockMode = 'fixed';
+    mockCyclingMode = 'training_rest';
+    mockCyclingOffsets = [0, 15, 0, 15, 0, 15, 0];
+    mockWeeklyGoalPlans = [
+      {
+        id: 'plan',
+        plan_name: 'Plan',
+        is_active: true,
+        start_date: '2020-01-01',
+        end_date: null,
+      },
+    ];
+    render(<CalculationSettings />);
+    expect(
+      screen.getByText(/A weekly goal plan is active/)
+    ).toBeInTheDocument();
+  });
+
+  it('labels a high day in the Diary', () => {
+    mockCalorieCycling = {
+      status: 'active',
+      baseTarget: 2000,
+      target: 2300,
+      delta: 300,
+      dayType: 'high',
+      floor: 1500,
+      clampedToFloor: false,
+    };
+    render(
+      <MemoryRouter>
+        <DailyProgress selectedDate="2026-10-19" />
+      </MemoryRouter>
+    );
+    expect(screen.getByTestId('calorie-cycling-badge')).toHaveTextContent(
+      'High day +300'
+    );
+  });
 });
 
 it('keeps exercise macro adjustment off by default and saves the explicit choice', async () => {

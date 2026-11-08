@@ -6,3 +6,7 @@ SparkyFitness allows you to set and track your daily calorie goals, providing in
 
 Calorie goals can be configured under the goals section:
 ![image](https://github.com/user-attachments/assets/284200c2-60cd-4eb0-981a-9be52b7d240f)
+
+## Training and rest days
+
+With [calorie cycling](/features/settings/calculation-settings#calorie-cycling) on, the goal changes by weekday: the Diary shows **High day +210** or **Low day −160** next to it, and **How today's target is calculated** includes the cycling step. Carbs take the change; protein and fat stay the same.

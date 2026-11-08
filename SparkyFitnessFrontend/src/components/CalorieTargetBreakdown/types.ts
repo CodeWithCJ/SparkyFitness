@@ -1,4 +1,4 @@
-import type { CalorieTargetResult } from '@workspace/shared';
+import type { CalorieCyclingDay, CalorieTargetResult } from '@workspace/shared';
 
 export interface AdaptiveTdeeData {
   tdee?: number;
@@ -53,4 +53,6 @@ export interface CalorieTargetBreakdownProps {
   activityMultiplier: number;
   bmrSource?: string;
   adaptiveActivitySeparate?: boolean;
+  /** How calorie cycling set this day's goal (#2327), from the daily summary. */
+  calorieCycling?: CalorieCyclingDay;
 }

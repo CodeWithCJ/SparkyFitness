@@ -12,6 +12,7 @@ import BottomSheetPicker from '../components/BottomSheetPicker';
 import FormInput from '../components/FormInput';
 import SegmentedControl from '../components/SegmentedControl';
 import WeeklyWeightGoalFields from '../components/WeeklyWeightGoalFields';
+import CalorieCyclingCard from '../components/CalorieCyclingCard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import Switch from '../components/ui/Switch';
 import { usePreferences } from '../hooks/usePreferences';
@@ -34,6 +35,9 @@ import {
   normalizeEnergyUnit,
   isAdaptiveActivitySeparated,
   todayInZone,
+  CALORIE_CYCLING_DEFAULT_OFFSETS,
+  isCalorieCyclingAvailable,
+  parseCalorieCyclingOffsets,
   type CalorieSafetyFloorMode,
   type EnergyUnit,
   type GoalMode,
@@ -61,6 +65,11 @@ function normalizePreferences(prefs: UserPreferences | undefined) {
     calorieSafetyFloorMode: prefs?.calorie_safety_floor_mode ?? 'standard',
     calorieSafetyFloorValue:
       prefs?.calorie_safety_floor_value ?? DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+    calorieCyclingMode: prefs?.calorie_cycling_mode ?? 'off',
+    calorieCyclingOffsets: parseCalorieCyclingOffsets(
+      prefs?.calorie_cycling_offsets
+    ) ?? [...CALORIE_CYCLING_DEFAULT_OFFSETS],
+    firstDayOfWeek: prefs?.first_day_of_week ?? 0,
     energyUnit: normalizeEnergyUnit(prefs?.energy_unit),
   };
 }
@@ -239,11 +248,18 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     normalized.goalModeCalculationMethod,
     normalized.adaptiveActivitySeparate
   );
+  const calorieCyclingAvailable = isCalorieCyclingAvailable({
+    calorie_goal_adjustment_mode: normalized.mode,
+    goal_mode_calculation_method: normalized.goalModeCalculationMethod,
+    adaptive_activity_separate: normalized.adaptiveActivitySeparate,
+  });
   const { summary } = useDailySummary({
     date: preferences?.timezone
       ? todayInZone(preferences.timezone)
       : getTodayDate(),
-    enabled: adaptiveEarnBackConfigured,
+    enabled:
+      adaptiveEarnBackConfigured ||
+      (calorieCyclingAvailable && normalized.calorieCyclingMode !== 'off'),
   });
 
   const [percentageText, setPercentageText] = useState(() =>
@@ -1011,6 +1027,32 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
                       'Stops automatic target clamping. Health warnings remain visible.',
                   })}
           </Text>
+        </Animated.View>
+
+        <Animated.View
+          className="bg-surface rounded-xl p-4 mb-4 shadow-sm"
+          layout={optionsLayout}
+        >
+          <CalorieCyclingCard
+            mode={normalized.calorieCyclingMode}
+            offsets={normalized.calorieCyclingOffsets}
+            onSave={({ mode, offsets }) =>
+              mutation.mutate({
+                calorie_cycling_mode: mode,
+                calorie_cycling_offsets: offsets,
+              })
+            }
+            available={calorieCyclingAvailable}
+            pausedByWeeklyPlan={
+              summary?.calorieCycling?.status === 'paused_weekly_plan'
+            }
+            baseTarget={
+              summary?.calorieCycling?.baseTarget ?? summary?.calorieGoal ?? 0
+            }
+            floor={summary?.calorieCycling?.floor ?? null}
+            firstDayOfWeek={normalized.firstDayOfWeek}
+            energyUnit={normalized.energyUnit}
+          />
         </Animated.View>
 
         {/* Calculation Pipeline */}

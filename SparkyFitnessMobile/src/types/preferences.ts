@@ -1,4 +1,5 @@
 import type {
+  CalorieCyclingMode,
   CalorieSafetyFloorMode,
   GoalMode,
   GoalModeCalculationMethod,
@@ -48,6 +49,10 @@ export interface UserPreferences {
   goal_mode_calculation_method?: GoalModeCalculationMethod;
   adaptive_activity_separate?: boolean;
   adjust_macros_with_exercise?: boolean;
+  /** Calorie cycling (#2327): off, training vs rest, or a custom weekday pattern. */
+  calorie_cycling_mode?: CalorieCyclingMode;
+  /** One whole percentage per weekday, index 0 = Sunday, -40 to 40. */
+  calorie_cycling_offsets?: number[];
   goal_mode_custom_percentage?: number;
   /** Signed kilograms per week: negative for loss, positive for gain. */
   goal_mode_weekly_change_kg?: number;

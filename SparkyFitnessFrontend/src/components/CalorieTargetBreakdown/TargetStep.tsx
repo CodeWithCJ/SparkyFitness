@@ -23,6 +23,7 @@ interface TargetStepProps extends Pick<
   | 'rawManualGoal'
   | 'adjustedManualGoal'
   | 'activityMultiplier'
+  | 'calorieCycling'
 > {
   isAdaptiveMethod: boolean;
   activitySeparated: boolean;
@@ -43,6 +44,7 @@ export const TargetStep = ({
   isAdaptiveMethod,
   activitySeparated,
   displayBmrVal,
+  calorieCycling,
 }: TargetStepProps) => {
   const { t, i18n } = useTranslation();
   const { energyUnit, convertEnergy, weightUnit = 'kg' } = usePreferences();
@@ -369,6 +371,59 @@ export const TargetStep = ({
               </span>
             </div>
           )}
+        {calorieCycling?.status === 'active' &&
+          calorieCycling.dayType !== 'even' && (
+            <div
+              className="flex justify-between items-center gap-2"
+              data-testid="calorie-cycling-step"
+            >
+              <span>
+                {calorieCycling.dayType === 'high'
+                  ? t(
+                      'diary.calorieCycling.stepHigh',
+                      'Calorie cycling (high day):'
+                    )
+                  : t(
+                      'diary.calorieCycling.stepLow',
+                      'Calorie cycling (low day):'
+                    )}
+                {calorieCycling.clampedToFloor && (
+                  <span className="block text-muted-foreground">
+                    {t(
+                      'diary.calorieCycling.stepFloor',
+                      'Held at your safety floor; the other days give up the difference.'
+                    )}
+                  </span>
+                )}
+              </span>
+              <span className="font-medium whitespace-nowrap">
+                {calorieCycling.delta > 0 ? '+' : '−'}
+                {Math.round(
+                  convertEnergy(
+                    Math.abs(calorieCycling.delta),
+                    'kcal',
+                    energyUnit
+                  )
+                )}{' '}
+                {getEnergyUnitString(energyUnit)}
+              </span>
+            </div>
+          )}
+        {calorieCycling &&
+          (calorieCycling.status === 'paused_earn_back' ||
+            calorieCycling.status === 'paused_weekly_plan') && (
+            <p className="text-muted-foreground">
+              {calorieCycling.status === 'paused_weekly_plan'
+                ? t(
+                    'diary.calorieCycling.pausedWeeklyPlan',
+                    'Calorie cycling is paused today: a weekly goal plan sets this day.'
+                  )
+                : t(
+                    'diary.calorieCycling.pausedEarnBack',
+                    'Calorie cycling is paused: exercise calories are added back to your goal.'
+                  )}
+            </p>
+          )}
         <div className="pt-1 border-t border-border/60 font-bold text-foreground mt-1 flex justify-between items-center text-sm">
           <span>
             {t(
@@ -378,7 +433,13 @@ export const TargetStep = ({
           </span>
           <span className="text-primary text-sm font-semibold">
             {Math.round(
-              convertEnergy(previewResult.finalTarget, 'kcal', energyUnit)
+              convertEnergy(
+                calorieCycling?.status === 'active'
+                  ? calorieCycling.target
+                  : previewResult.finalTarget,
+                'kcal',
+                energyUnit
+              )
             )}{' '}
             {getEnergyUnitString(energyUnit)}
           </span>

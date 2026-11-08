@@ -42,6 +42,8 @@ import { useNutrientAutoCalculate } from '@/hooks/Goals/useNutrientAutoCalculate
 import { NutrientAutoCalculate } from '@/pages/Goals/NutrientAutoCalculate';
 import { AutoCalculateToolbar } from '@/pages/Goals/AutoCalculateToolbar';
 import { useTranslation } from 'react-i18next';
+import { CalorieCyclingGoalHint } from '@/components/CalorieCyclingGoalHint';
+import { useCalorieCyclingActive } from '@/hooks/Goals/useCalorieCyclingActive';
 
 interface EditGoalsProps {
   selectedDate: string;
@@ -65,6 +67,7 @@ const calculateGrams = (
  */
 const EditGoalsForm = ({
   initialData,
+  selectedDate,
   onSave,
   isSaving,
   customNutrients,
@@ -86,6 +89,7 @@ const EditGoalsForm = ({
     nutrientDisplayPreferences,
   } = usePreferences();
   const { t } = useTranslation();
+  const calorieCyclingActive = useCalorieCyclingActive();
   const isMobile = useIsMobile();
   const platform = isMobile ? 'mobile' : 'desktop';
 
@@ -234,11 +238,17 @@ const EditGoalsForm = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
         <div className="space-y-1.5">
           <Label>
-            {t(
-              'goals.goalsSettings.calories2',
-              'Calories ({{energyUnitString}})',
-              { energyUnitString: getEnergyUnitString(energyUnit) }
-            )}
+            {calorieCyclingActive
+              ? t(
+                  'goals.calorieCycling.baseCalories',
+                  'Base calories ({{energyUnitString}})',
+                  { energyUnitString: getEnergyUnitString(energyUnit) }
+                )
+              : t(
+                  'goals.goalsSettings.calories2',
+                  'Calories ({{energyUnitString}})',
+                  { energyUnitString: getEnergyUnitString(energyUnit) }
+                )}
           </Label>
           <NumericInput
             id="calories"
@@ -252,6 +262,10 @@ const EditGoalsForm = ({
                 calories: convertEnergy(val ?? 0, energyUnit, 'kcal'),
               }))
             }
+          />
+          <CalorieCyclingGoalHint
+            calories={goals.calories}
+            day={selectedDate}
           />
         </div>
         <div className="space-y-1.5">

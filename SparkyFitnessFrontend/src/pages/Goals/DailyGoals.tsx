@@ -22,6 +22,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useNutrientAutoCalculate } from '@/hooks/Goals/useNutrientAutoCalculate';
 import { NutrientAutoCalculate } from './NutrientAutoCalculate';
 import { AutoCalculateToolbar } from './AutoCalculateToolbar';
+import { CalorieCyclingGoalHint } from '@/components/CalorieCyclingGoalHint';
+import { useCalorieCyclingActive } from '@/hooks/Goals/useCalorieCyclingActive';
 
 const calculateGrams = (
   calories: number,
@@ -56,6 +58,7 @@ export const DailyGoals = ({
     saveAllPreferences,
   } = usePreferences();
   const { t } = useTranslation();
+  const calorieCyclingActive = useCalorieCyclingActive();
   const { user } = useAuth();
   const { data: customNutrients } = useCustomNutrients();
   const { data: mealTypes = [] } = useMealTypes();
@@ -205,10 +208,16 @@ export const DailyGoals = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
             <div className="space-y-1.5">
               <Label htmlFor="calories">
-                {t(
-                  'nutrition.calories',
-                  `Calories (${getEnergyUnitString(energyUnit)})`
-                )}
+                {calorieCyclingActive
+                  ? t(
+                      'goals.calorieCycling.baseCalories',
+                      'Base calories ({{energyUnitString}})',
+                      { energyUnitString: getEnergyUnitString(energyUnit) }
+                    )
+                  : t(
+                      'nutrition.calories',
+                      `Calories (${getEnergyUnitString(energyUnit)})`
+                    )}
               </Label>
               <NumericInput
                 id="calories"
@@ -223,6 +232,7 @@ export const DailyGoals = ({
                   }))
                 }
               />
+              <CalorieCyclingGoalHint calories={goals.calories} day={today} />
             </div>
             <div className="space-y-1.5">
               <Label>{t('goals.goalsSettings.macrosBy', 'Macros By')}</Label>

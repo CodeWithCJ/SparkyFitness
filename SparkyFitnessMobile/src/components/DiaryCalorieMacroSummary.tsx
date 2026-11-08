@@ -204,6 +204,26 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
 
   const { eaten, goal, remaining, progress } = summary.calorieBalance;
   const projection = summary.calorieBalance.tdeeProjection;
+  // "High day +250 kcal" when calorie cycling moved today's goal (#2327).
+  const cycling = summary.calorieCycling;
+  const cyclingAmount =
+    cycling?.status === 'active' && cycling.delta !== 0
+      ? formatEnergyNumber(Math.abs(cycling.delta), energyUnit)
+      : null;
+  const cyclingUnit = energyUnitLabel(energyUnit, t);
+  const cyclingLabel = !cyclingAmount
+    ? null
+    : (cycling?.delta ?? 0) > 0
+      ? t('diarySummary.cycling.highDay', {
+          defaultValue: 'High day +{{amount}} {{unit}}',
+          amount: cyclingAmount,
+          unit: cyclingUnit,
+        })
+      : t('diarySummary.cycling.lowDay', {
+          defaultValue: 'Low day −{{amount}} {{unit}}',
+          amount: cyclingAmount,
+          unit: cyclingUnit,
+        });
 
   const handleToggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -260,9 +280,19 @@ const DiaryCalorieMacroSummary: React.FC<DiaryCalorieMacroSummaryProps> = ({
         }
       >
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-md font-bold text-text-secondary">
-            {t('diarySummary.title', { defaultValue: 'Summary' })}
-          </Text>
+          <View className="flex-row items-center">
+            <Text className="text-md font-bold text-text-secondary">
+              {t('diarySummary.title', { defaultValue: 'Summary' })}
+            </Text>
+            {cyclingLabel && (
+              <Text
+                className="ml-2 text-xs font-semibold text-accent-primary"
+                testID="calorie-cycling-label"
+              >
+                {cyclingLabel}
+              </Text>
+            )}
+          </View>
           <Animated.View style={chevronStyle}>
             <Icon name="chevron-down" size={20} color={textSecondary} />
           </Animated.View>

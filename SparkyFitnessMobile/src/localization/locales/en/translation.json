@@ -1243,7 +1243,26 @@
     "energyUnitLabel": "Energy Unit",
     "energyUnitKcal": "Calories (kcal)",
     "energyUnitKj": "Kilojoules (kJ)",
-    "energyUnitDescription": "How energy is shown and entered across the app, widgets and watch. Also changes the web app."
+    "energyUnitDescription": "How energy is shown and entered across the app, widgets and watch. Also changes the web app.",
+    "cycling": {
+      "title": "Calorie Cycling",
+      "description": "Eat more on training days and less on rest days. Your weekly total stays the same: your daily target x 7.",
+      "unavailable": "Not available while exercise calories are added back to your goal: your target already rises on the days you log a workout. Choose Adaptive or Fixed, or use full-day adaptive targets, to cycle calories.",
+      "off": "Off",
+      "trainingRest": "Training vs rest",
+      "customDays": "Custom days",
+      "pausedByWeeklyPlan": "A weekly goal plan is active, so calorie cycling is paused on the days the plan sets.",
+      "trainingDays": "Training days",
+      "trainingPercent": "Extra on training days",
+      "needTrainingDays": "Choose between 1 and 6 training days and a percentage above 0, or every day stays the same.",
+      "needDifferentDays": "Give at least two days different percentages, or every day stays the same.",
+      "atFloor": "safety floor",
+      "previewNote": "Based on today's target. Carbs take the change; protein and fat stay the same.",
+      "baseAtFloorWithUnit": "Your daily target ({{target}} {{unit}}) is at or below your safety floor ({{floor}} {{unit}}), so no day can go lower and every day stays the same. Cycling starts working once your target is above the floor, or with a lower custom floor.",
+      "dayChangeWithUnit": "{{sign}}{{amount}} {{unit}} ({{sign}}{{percent}}%)",
+      "baseLineWithUnit": "Today's target before cycling: {{target}} {{unit}}. Your percentages are balanced against each other, so a day only gets more if it is above the week's average. The change under each day is what that day actually gets.",
+      "weekTotalWithBase": "Week: {{total}} of {{budget}} {{unit}} (your daily target {{target}} × 7)"
+    }
   },
   "dashboardSettings": {
     "updateFailed": "Failed to update setting.",
@@ -3160,7 +3179,11 @@
     "fallbackProjectionSource": "BMR + active calories fallback",
     "legacyProjectionSource": "Device projection",
     "collapse": "Collapse this section",
-    "expand": "Expand this section"
+    "expand": "Expand this section",
+    "cycling": {
+      "highDay": "High day +{{amount}} {{unit}}",
+      "lowDay": "Low day −{{amount}} {{unit}}"
+    }
   },
   "dateRange": {
     "removeTitle": "Select a date range to remove",
@@ -8176,7 +8199,8 @@
         "saturday": "Saturday",
         "sunday": "Sunday"
       }
-    }
+    },
+    "cyclingNoteTodayWithUnit": "Calorie cycling is on, so the calories below are your base target and each day is higher or lower. Today it is {{calories}} {{unit}}."
   },
   "reports": {
     "title": "Reports",
