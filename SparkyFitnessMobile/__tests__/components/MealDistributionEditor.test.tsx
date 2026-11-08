@@ -22,6 +22,19 @@ describe('MealDistributionEditor', () => {
     expect(getByTestId('meal-total').props.children).toContain('must be 100');
   });
 
+  it('hides energy amounts when totalCalories is 0', () => {
+    const { getByText, queryByText } = render(
+      <MealDistributionEditor
+        meals={meals}
+        values={{ breakfast: 50, lunch: 25, dinner: 0 }}
+        onChange={jest.fn()}
+        totalCalories={0}
+      />
+    );
+    expect(getByText('Breakfast')).toBeTruthy();
+    expect(queryByText(/kcal/)).toBeNull();
+  });
+
   it('distributes the remainder evenly across unlocked meals', () => {
     const onChange = jest.fn();
     const { getByTestId } = render(

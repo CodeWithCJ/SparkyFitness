@@ -496,13 +496,14 @@ describe('CalorieSettingsScreen', () => {
   });
 
   it('offers standard, custom, and disabled safety floor modes', () => {
-    const { getByText } = render(
+    const { getByText, getAllByText } = render(
       <CalorieSettingsScreen navigation={navigation} route={route} />
     );
 
     expect(getByText('Safety Floor')).toBeTruthy();
     expect(getByText('Standard')).toBeTruthy();
-    expect(getByText('Custom')).toBeTruthy();
+    // The calorie cycling mode control also has a "Custom" choice.
+    expect(getAllByText('Custom')).toHaveLength(2);
     expect(getByText('Disabled')).toBeTruthy();
   });
 

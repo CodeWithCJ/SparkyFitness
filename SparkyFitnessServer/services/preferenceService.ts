@@ -15,6 +15,7 @@ import {
   isGlucoseUnit,
   DEFAULT_TEMPERATURE_UNIT,
   DEFAULT_CHART_SCALE_MODE,
+  CALORIE_CYCLING_DEFAULT_OFFSETS,
   type UserPreferencesMutator,
   userPreferencesMutatorSchema,
 } from '@workspace/shared';
@@ -62,6 +63,40 @@ function validateActivityPreferences(
       {
         status: 400,
       }
+    );
+  }
+}
+/** Calorie cycling (#2327): a known mode and 7 whole weekday percentages within range. */
+function validateCalorieCycling(
+  preferences: Pick<
+    UserPreferencesMutator,
+    'calorie_cycling_mode' | 'calorie_cycling_offsets'
+  >
+): void {
+  if (
+    preferences.calorie_cycling_mode !== undefined &&
+    !userPreferencesMutatorSchema.shape.calorie_cycling_mode.safeParse(
+      preferences.calorie_cycling_mode
+    ).success
+  ) {
+    throw Object.assign(
+      new Error(
+        `Invalid calorie_cycling_mode: '${String(preferences.calorie_cycling_mode)}'`
+      ),
+      { status: 400 }
+    );
+  }
+  if (
+    preferences.calorie_cycling_offsets !== undefined &&
+    !userPreferencesMutatorSchema.shape.calorie_cycling_offsets.safeParse(
+      preferences.calorie_cycling_offsets
+    ).success
+  ) {
+    throw Object.assign(
+      new Error(
+        'calorie_cycling_offsets must be 7 whole percentages between -40 and 40.'
+      ),
+      { status: 400 }
     );
   }
 }
@@ -258,6 +293,8 @@ function getDefaultPreferences() {
     default_temperature_unit: DEFAULT_TEMPERATURE_UNIT,
     default_glucose_unit: DEFAULT_GLUCOSE_UNIT,
     goal_mode_weekly_change_kg: 0,
+    calorie_cycling_mode: 'off',
+    calorie_cycling_offsets: [...CALORIE_CYCLING_DEFAULT_OFFSETS],
   };
 }
 async function updateUserPreferences(
@@ -271,6 +308,7 @@ async function updateUserPreferences(
     await validateTimeFormat(preferenceData);
     await validateGoalMode(preferenceData);
     await validateCalorieSafetyFloor(preferenceData);
+    validateCalorieCycling(preferenceData);
     await validateChartScaleMode(preferenceData);
     assertValidTemperatureUnit(preferenceData);
     assertValidGlucoseUnit(preferenceData);
@@ -394,6 +432,7 @@ async function upsertUserPreferences(
     await validateTimeFormat(preferenceData);
     await validateGoalMode(preferenceData);
     await validateCalorieSafetyFloor(preferenceData);
+    validateCalorieCycling(preferenceData);
     await validateChartScaleMode(preferenceData);
     assertValidTemperatureUnit(preferenceData);
     assertValidGlucoseUnit(preferenceData);

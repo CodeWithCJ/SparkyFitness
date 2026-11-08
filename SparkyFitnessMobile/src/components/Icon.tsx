@@ -159,6 +159,9 @@ const ICON_MAP = {
   'diary-settings': { sf: 'book', ion: 'book-outline' },
   'measurements-settings': { sf: 'ruler', ion: 'speedometer-outline' },
   'workout-settings': { sf: 'dumbbell', ion: 'barbell-outline' },
+  // Calorie cycling: a training day and a rest day.
+  'cycling-training': { sf: 'dumbbell', ion: 'barbell-outline' },
+  'cycling-rest': { sf: 'moon', ion: 'moon-outline' },
   'watch-settings': { sf: 'applewatch', ion: 'watch-outline' },
   'app-settings': { sf: 'slider.horizontal.3', ion: 'options-outline' },
   logs: { sf: 'doc.plaintext', ion: 'document-text-outline' },

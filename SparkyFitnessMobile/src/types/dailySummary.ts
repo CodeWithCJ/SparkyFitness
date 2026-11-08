@@ -1,6 +1,7 @@
 import type {
   ExerciseSessionResponse,
   CalorieBalance,
+  CalorieCyclingDay,
   SupplementTotals,
 } from '@workspace/shared';
 import type { FoodEntry } from './foodEntries';
@@ -14,6 +15,8 @@ export interface MacroSummary {
 export interface DailySummary {
   date: string;
   calorieGoal: number;
+  /** How calorie cycling (#2327) set this day's goal; absent when off. */
+  calorieCycling?: CalorieCyclingDay;
   caloriesConsumed: number;
   caloriesBurned: number;
   activeCalories: number; // From "Active Calories" exercises (watch/tracker)

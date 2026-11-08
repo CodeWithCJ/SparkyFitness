@@ -90,6 +90,30 @@ describe('DiaryCalorieMacroSummary', () => {
     expect(getByText(/1,256/)).toBeTruthy();
   });
 
+  it('labels a calorie cycling high day, and nothing when cycling is off', () => {
+    useAppPreferencesStore.setState({ diarySummaryVisible: true });
+    const high = renderWidget({
+      summary: buildSummary({
+        calorieCycling: {
+          status: 'active',
+          baseTarget: 2000,
+          target: 2250,
+          delta: 250,
+          dayType: 'high',
+          floor: 1500,
+          clampedToFloor: false,
+        },
+      }),
+    });
+    expect(high.getByTestId('calorie-cycling-label')).toHaveTextContent(
+      'High day +250 kcal'
+    );
+    high.unmount();
+
+    const off = renderWidget();
+    expect(off.queryByTestId('calorie-cycling-label')).toBeNull();
+  });
+
   it('renders nothing when diarySummaryVisible is off', () => {
     useAppPreferencesStore.setState({ diarySummaryVisible: false });
     const { toJSON } = renderWidget();

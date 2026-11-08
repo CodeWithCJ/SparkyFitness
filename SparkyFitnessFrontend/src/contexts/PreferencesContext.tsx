@@ -45,6 +45,9 @@ import {
   isTemperatureUnit,
   isGlucoseUnit,
   DEFAULT_GLUCOSE_UNIT,
+  CALORIE_CYCLING_DEFAULT_OFFSETS,
+  parseCalorieCyclingOffsets,
+  type CalorieCyclingMode,
   type GlucoseUnit,
   type ChartScaleMode,
   type TemperatureUnit,
@@ -146,6 +149,8 @@ interface PreferencesContextType {
   goalModeCalculationMethod: GoalModeCalculationMethod;
   adaptiveActivitySeparate: boolean;
   adjustMacrosWithExercise: boolean;
+  calorieCyclingMode: CalorieCyclingMode;
+  calorieCyclingOffsets: number[];
   goalModeCustomPercentage: number;
   goalModeWeeklyChangeKg: number;
   calorieSafetyFloorMode: CalorieSafetyFloorMode;
@@ -287,6 +292,8 @@ export interface DefaultPreferences {
   goal_mode_calculation_method: GoalModeCalculationMethod;
   adaptive_activity_separate?: boolean;
   adjust_macros_with_exercise?: boolean;
+  calorie_cycling_mode?: CalorieCyclingMode;
+  calorie_cycling_offsets?: number[];
   goal_mode_custom_percentage: number;
   goal_mode_weekly_change_kg: number;
   calorie_safety_floor_mode: SharedUserPreferences['calorie_safety_floor_mode'];
@@ -416,6 +423,11 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
     useState<GoalModeCalculationMethod>('manual');
   const [adjustMacrosWithExercise, setAdjustMacrosWithExerciseState] =
     useState(false);
+  const [calorieCyclingMode, setCalorieCyclingModeState] =
+    useState<CalorieCyclingMode>('off');
+  const [calorieCyclingOffsets, setCalorieCyclingOffsetsState] = useState<
+    number[]
+  >([...CALORIE_CYCLING_DEFAULT_OFFSETS]);
   const [adaptiveActivitySeparate, setAdaptiveActivitySeparateState] =
     useState(false);
   const [goalModeCustomPercentage, setGoalModeCustomPercentageState] =
@@ -862,6 +874,12 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         setAdjustMacrosWithExerciseState(
           data.adjust_macros_with_exercise ?? false
         );
+        setCalorieCyclingModeState(data.calorie_cycling_mode ?? 'off');
+        setCalorieCyclingOffsetsState(
+          parseCalorieCyclingOffsets(data.calorie_cycling_offsets) ?? [
+            ...CALORIE_CYCLING_DEFAULT_OFFSETS,
+          ]
+        );
         setAdaptiveActivitySeparateState(
           data.adaptive_activity_separate ?? false
         );
@@ -1083,6 +1101,10 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           newPrefs?.adaptiveActivitySeparate ?? adaptiveActivitySeparate,
         adjust_macros_with_exercise:
           newPrefs?.adjustMacrosWithExercise ?? adjustMacrosWithExercise,
+        calorie_cycling_mode:
+          newPrefs?.calorieCyclingMode ?? calorieCyclingMode,
+        calorie_cycling_offsets:
+          newPrefs?.calorieCyclingOffsets ?? calorieCyclingOffsets,
         goal_mode_custom_percentage:
           newPrefs?.goalModeCustomPercentage ?? goalModeCustomPercentage,
         goal_mode_weekly_change_kg:
@@ -1169,6 +1191,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCalculationMethod,
       adaptiveActivitySeparate,
       adjustMacrosWithExercise,
+      calorieCyclingMode,
+      calorieCyclingOffsets,
       goalModeCustomPercentage,
       goalModeWeeklyChangeKg,
       calorieSafetyFloorMode,
@@ -1477,6 +1501,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCalculationMethod,
       adaptiveActivitySeparate,
       adjustMacrosWithExercise,
+      calorieCyclingMode,
+      calorieCyclingOffsets,
       goalModeCustomPercentage,
       goalModeWeeklyChangeKg,
       calorieSafetyFloorMode,
@@ -1594,6 +1620,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       goalModeCalculationMethod,
       adaptiveActivitySeparate,
       adjustMacrosWithExercise,
+      calorieCyclingMode,
+      calorieCyclingOffsets,
       goalModeCustomPercentage,
       goalModeWeeklyChangeKg,
       calorieSafetyFloorMode,

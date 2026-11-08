@@ -8,13 +8,13 @@ This page explains how BMR formulas, body fat algorithms, daily energy adjustmen
 
 Your Basal Metabolic Rate (BMR) represents the energy your body requires to perform basic life-sustaining functions at rest. SparkyFitness supports multiple clinical formulas to estimate BMR:
 
-| Algorithm                       | Required Inputs             | Best For                          | Formula                                                                                          |
-| :------------------------------ | :-------------------------- | :-------------------------------- | :--------------------------------------------------------------------------------------------- |
-| **Mifflin-St Jeor** _(Default)_ | Age, Gender, Height, Weight | General population                | Male: `10W + 6.25H - 5A + 5`<br>Female: `10W + 6.25H - 5A - 161`                               |
-| **Revised Harris-Benedict**     | Age, Gender, Height, Weight | Historical comparison             | Male: `13.397W + 4.799H - 5.677A + 88.362`<br>Female: `9.247W + 3.098H - 4.33A + 447.593`      |
-| **Katch-McArdle**               | Weight, Body Fat %          | Individuals with tracked body fat | `370 + 21.6 × LBM`<br>_(LBM = Lean Body Mass)_                                                 |
-| **Cunningham**                  | Weight, Body Fat %          | Highly athletic/muscular builds   | `500 + 22 × LBM`                                                                               |
-| **Oxford**                      | Weight, Gender              | Varied age groups & demographics  | Male: `14.2W + 593`<br>Female: `10.9W + 677`                                                   |
+| Algorithm                       | Required Inputs             | Best For                          | Formula                                                                                   |
+| :------------------------------ | :-------------------------- | :-------------------------------- | :---------------------------------------------------------------------------------------- |
+| **Mifflin-St Jeor** _(Default)_ | Age, Gender, Height, Weight | General population                | Male: `10W + 6.25H - 5A + 5`<br>Female: `10W + 6.25H - 5A - 161`                          |
+| **Revised Harris-Benedict**     | Age, Gender, Height, Weight | Historical comparison             | Male: `13.397W + 4.799H - 5.677A + 88.362`<br>Female: `9.247W + 3.098H - 4.33A + 447.593` |
+| **Katch-McArdle**               | Weight, Body Fat %          | Individuals with tracked body fat | `370 + 21.6 × LBM`<br>_(LBM = Lean Body Mass)_                                            |
+| **Cunningham**                  | Weight, Body Fat %          | Highly athletic/muscular builds   | `500 + 22 × LBM`                                                                          |
+| **Oxford**                      | Weight, Gender              | Varied age groups & demographics  | Male: `14.2W + 593`<br>Female: `10.9W + 677`                                              |
 
 _Note: Weight (`W`) is in kg, Height (`H`) is in cm, and Age (`A`) is in years._
 
@@ -33,7 +33,7 @@ is always used.
   sync off restores the formula the next day — you do not have to delete anything.
 - **Implausible readings are ignored.** A value must fall between 600 and 6,000
   kcal. When your profile is complete enough to produce a formula estimate, it must
-  *also* land within 60–160% of that estimate; if it is not — for example when
+  _also_ land within 60–160% of that estimate; if it is not — for example when
   height or date of birth is missing — the absolute bounds decide on their own. A
   partial-day figure or a mis-mapped metric is discarded and the formula is used
   instead. The second check matters because a value can look reasonable on its own
@@ -42,7 +42,7 @@ is always used.
   BMR as a running daily total rather than a rate, so a sync partway through the
   day hands back part of the day's figure. Only completed days are accepted.
 - **It also sets your safety floor.** The Standard Adaptive Safety Floor uses the
-  higher of your RMR and the clinical minimum, and your measured BMR *is* that RMR
+  higher of your RMR and the clinical minimum, and your measured BMR _is_ that RMR
   when one is available. So a measured value that differs from the formula moves
   the floor under your calorie goal, not just the estimate above it.
 
@@ -77,7 +77,7 @@ Uses height, weight, and age to estimate body fat:
 
 ## 3. Daily Calorie Goal Adjustment
 
-This setting determines **how physical activity changes your calorie budget** throughout the day:
+This setting determines **how physical activity changes your calorie budget** throughout the day. On the web each option is a card; the full explanation of the one you pick, and any settings that belong to it (the earn-back percentage, activity level, Device Projection options), appear under the cards.
 
 - **Adaptive TDEE:** Dynamically computes your metabolic expenditure by correlating your actual weight changes with your historical calorie intake over the last 28 completed days. _(Best for high-precision tracking)._ The window ends the day before the date you are viewing, so food or a weigh-in logged today counts from tomorrow and your target does not move while you eat. Viewing a past day shows the estimate as it stood then.
   - **Expenditure (Adaptive TDEE):** On the Diary page, "Expenditure" represents your calculated Total Daily Energy Expenditure (TDEE). This is the baseline number from which your deficit/surplus is subtracted.
@@ -93,6 +93,9 @@ This setting determines **how physical activity changes your calorie budget** th
 - **Fixed Goal:** Your calorie target remains completely static, ignoring daily exercise.
 - **Percentage Earn-Back:** Adds back a custom percentage (e.g., 50%) of active calories burned to create a buffer against device calorie over-estimations.
 - **Device Projection:** Uses the cumulative **Total Calories** value (resting plus active energy) synced from Health Connect, Garmin or Polar. When more than one of them has a total for the same day, one is used, never a sum, in this order: Health Connect, Garmin, Polar. Apple Health totals are not used yet. For the current day, it projects that value from its dedicated source capture time to midnight and treats the result as your live TDEE; completed days use the recorded total without extrapolation. Goal Mode is then applied directly: for example, a projected TDEE of 2,400 kcal becomes 2,400 kcal at Maintain, 2,160 kcal at Body Recomposition (-10%), or 2,640 kcal at Lean Bulk (+10%). On Android, enable **Total Calories** in the app's Health Connect sync settings; Garmin and Polar send it with their daily summary. To use Garmin's figure while the phone also syncs, turn off Total Calories in the phone's sync settings; days the phone already synced keep its figure. When that value is unavailable, too early, or implausible for a complete daily total, SparkyFitness falls back to BMR plus projected active calories.
+
+> [!NOTE]
+> [Calorie cycling](#calorie-cycling) works only with **Adaptive TDEE**, **Fixed Goal**, or Dynamic / Percentage Earn-Back with Adaptive full-day targets. The other modes already raise your budget on the days you log exercise, so cycling on top would count your training twice.
 
 > [!NOTE]
 > If you use [Nutrient Goal Direction](/features/goals)'s **Target range** for calories, note that Adaptive, Dynamic, Percentage Earn-Back, and Device Projection all recalculate your calorie goal value regularly — a manually entered target band won't move with it. Target range for calories works best paired with **Fixed Goal**.
@@ -145,15 +148,15 @@ This choice works with Adaptive Goal, Dynamic Goal, Fixed Goal, Percentage Earn-
 
 The existing presets and custom percentage remain available. **Positive adds calories, negative cuts them.** Switching back to them restores percentage-based behavior; the saved weekly amount is ignored until Weekly weight change is selected again.
 
-| Goal Mode              | Adjustment            | Target Purpose                                     |
-| :--------------------- | :-------------------- | :------------------------------------------------ |
-| **Maintain**           | 0%                    | Weight maintenance                                 |
-| **Body Recomposition** | -10%                  | Gain muscle while losing fat simultaneously        |
-| **Cut**                | -15%                  | Steady fat loss                                    |
-| **High Cut**           | -20%                  | Aggressive fat loss                               |
-| **Lean Bulk**          | +10%                  | Muscle gain with minimal fat gain                  |
-| **Bulk**               | +20%                  | Faster weight gain                                 |
-| **Manual**             | Custom (-40% – 40%)   | Personalized rate; enter -15 to cut, +15 to gain   |
+| Goal Mode              | Adjustment          | Target Purpose                                   |
+| :--------------------- | :------------------ | :----------------------------------------------- |
+| **Maintain**           | 0%                  | Weight maintenance                               |
+| **Body Recomposition** | -10%                | Gain muscle while losing fat simultaneously      |
+| **Cut**                | -15%                | Steady fat loss                                  |
+| **High Cut**           | -20%                | Aggressive fat loss                              |
+| **Lean Bulk**          | +10%                | Muscle gain with minimal fat gain                |
+| **Bulk**               | +20%                | Faster weight gain                               |
+| **Manual**             | Custom (-40% – 40%) | Personalized rate; enter -15 to cut, +15 to gain |
 
 ### Rate of Change Guidance
 
@@ -219,6 +222,37 @@ BMR on the iPhone app; the setting is saved to your account.
 - **It applies to days synced after the change.** Earlier days keep what they had
   until they sync again.
 
+### Calorie cycling
+
+Calorie cycling gives you more calories on training days and fewer on rest days, while your **weekly total stays the same**: your daily target × 7. It sits on top of everything above, so the days keep following your Adaptive TDEE and Goal Mode. It is **off by default**.
+
+Turn it on under **Calorie cycling** in Calculation Settings on the web, or the **Calorie Cycling** card in Calories & BMR on the mobile app:
+
+- **Off:** the same target every day.
+- **Training / rest:** choose your training days (1 to 6) and how much extra they get, for example +15%.
+- **Custom:** set each weekday from −40% to +40%.
+
+The percentages you choose are balanced so the week still adds up. With Mon, Wed and Fri at +15% and a 2,600 kcal target, training days get about 2,810 kcal and rest days about 2,440 kcal; the seven days still total 18,200 kcal.
+
+The week is shown as a bar chart: one bar per day, with a dashed line at your daily target and a dotted line at your safety floor. Green bars get more than your target, amber bars less, and today is marked with a dot.
+
+- **Tap a bar** to see that day. Tapping never changes it.
+- **Training / rest:** tap the icon under a day (a dumbbell or a moon) to switch it between training and rest. On the phone, tap the day name.
+- **Custom:** drag a bar up or down on the web, or drag the handle on top of a bar on the phone. On the web, the arrow keys also move the selected day by 1% (Shift for 5%).
+- **Fine-tune the selected day** below the chart with **−** and **+** (1% at a time) or by typing a value. In Training / rest, this is where you switch the day and set the training-day boost.
+- **The day card** shows the selected day's target, whether it is a training or rest day, and the change against your daily target. On the web, the Live Preview below follows the selected day too.
+
+The week total under the chart shows the seven days against your daily target × 7. On the phone each change is saved as you make it (a drag when you let go); on the web, press **Save Preferences**.
+
+- **Carbs take the change.** Protein normally stays the same and carbs take the extra or missing calories (4 kcal per gram). Only a low day bigger than all of that day's carbs takes the rest from fat, and only beyond fat from protein (for instance if the safety floor is disabled with an extreme protein split), so your macros never add up to more than the day's calories (assuming your baseline macros matched your daily target).
+- **The safety floor still applies.** A rest day is never set below your [safety floor](#_5-metabolic-safety-floors). If one would be, it is held at the floor and the difference comes off the other days, so the week still matches.
+- **Each day follows that day's target.** Every day is worked out from its own target. While your target stays the same and your cycling pattern does not change midweek, the week totals your target × 7 (give or take a few calories of rounding). When your target moves during the week (for example as Adaptive TDEE updates), cycling is enabled/adjusted midweek, the safety floor moves, or an active weekly plan overrides specific days, the week can differ from 7 × today's target.
+- **Skipping a training day changes nothing.** Targets come from the weekday, not from logged workouts. If you miss Monday's session you can still eat Monday's amount and the week balances out, or move the session and adjust yourself.
+- **Weekly goal plans come first.** On a day an active [weekly goal plan](/features/goals#goal-presets-and-weekly-plans) sets, that plan's preset is used and cycling is paused.
+- **Past days keep their targets.** A change applies from today, like every other calculation setting.
+
+In the Diary the calorie goal shows **High day +210** or **Low day −160**, and the target breakdown includes the cycling step. When cycling is on, the calorie field on the Goals page is your **base** calories: the target before cycling.
+
 ---
 
 ## 5. Metabolic Safety Floors
@@ -235,6 +269,8 @@ SparkyFitness shows two recommended safety limits for calorie goals:
 > - **Custom minimum:** Replaces the Standard floor with a calorie value you choose. This can be below or above the recommended limits; those recommendations and health warnings remain visible.
 > - **Disabled:** Does not automatically raise Adaptive or Weekly weight change targets. The calculated target is used as-is, while recommended limits and health warnings remain visible.
 > - Under the **Manual** method, percentage-based targets are **not automatically raised**, but a prominent warning banner is displayed warning you that your budget is in an unsafe range. **Weekly weight change** targets use the configured floor with either calculation method.
+
+With [calorie cycling](#calorie-cycling) on, the floor also applies to each cycled day under either method: a low day is held at the floor and the other days give up the difference. A disabled floor does not hold cycled days.
 
 Under the Adaptive method the floor applies whenever the calculated target falls below it. That is almost always a deficit, but a surplus can trip it too: if your entire maintenance sits below the clinical minimum, even a gain goal is raised to that minimum.
 

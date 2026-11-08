@@ -2567,7 +2567,17 @@
       "tdeeGoal": "Device Projection",
       "tdeeActivityHint": "Activity level is only used by the BMR + active calories fallback when a device total is unavailable.",
       "tdeeGoalDescription": "Uses device total calories (Health Connect, Garmin or Polar) when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.",
-      "title": "Daily Calorie Goal Adjustment"
+      "title": "Daily Calorie Goal Adjustment",
+      "cardAdaptive": "Adaptive",
+      "cardAdaptiveSummary": "Learns from your intake and weight trend",
+      "cardDynamic": "Dynamic",
+      "cardDynamicSummary": "Adds your daily activity to your goal",
+      "cardFixed": "Fixed",
+      "cardFixedSummary": "The same target whatever you do",
+      "cardPercentage": "Percentage earn-back",
+      "cardPercentageSummary": "Adds back part of your exercise calories",
+      "cardDevice": "Device projection",
+      "cardDeviceSummary": "Projects your device's total burn to midnight"
     },
     "dataImport": {
       "checkin": {
@@ -3205,6 +3215,42 @@
         "needsResting": "Heart rate reserve zones need a resting heart rate.",
         "customFloors": "Each zone must start above the one before it, from 30 to 250 bpm."
       }
+    },
+    "calorieCycling": {
+      "title": "Calorie cycling",
+      "description": "Eat more on training days and less on rest days. Your weekly total stays the same: your daily target x 7.",
+      "unavailable": "Not available while exercise calories are added back to your goal: your target already rises on the days you log a workout. Choose Adaptive or Fixed, or use full-day adaptive targets, to cycle calories.",
+      "pausedByWeeklyPlan": "A weekly goal plan is active, so calorie cycling is paused on the days the plan sets.",
+      "modeOff": "Off: the same target every day",
+      "modeTrainingRest": "Training vs rest: more on the days you train",
+      "modeCustom": "Custom: a percentage for each day",
+      "trainingPercent": "Extra on training days (before balancing the week)",
+      "needTrainingDays": "Choose between 1 and 6 training days and a percentage above 0, or every day stays the same.",
+      "needDifferentDays": "Give at least two days different percentages, or every day stays the same.",
+      "atFloor": "Safety floor",
+      "previewNote": "Based on today's target. When your target changes, for example as adaptive expenditure updates, each day follows it. Carbs take the change and protein stays the same.",
+      "baseAtFloor": "Your daily target ({{target}} {{unit}}) is at or below your safety floor ({{floor}} {{unit}}), so no day can go lower and every day stays the same. Cycling starts working once your target is above the floor, or with a lower custom floor.",
+      "previewStep": "Calorie cycling ({{day}}):",
+      "weekTotalWithBase": "Week: {{total}} of {{budget}} {{unit}} (your daily target {{target}} × 7)",
+      "dayPercent": "{{day}}: percentage before balancing the week",
+      "decrease": "Lower by 1%",
+      "increase": "Raise by 1%",
+      "trainingDay": "Training",
+      "restDay": "Rest",
+      "today": "Today",
+      "vsTarget": "{{change}} {{unit}} ({{percent}}) vs your daily target",
+      "modeOffShort": "Off",
+      "modeTrainingRestShort": "Training / rest",
+      "modeCustomShort": "Custom",
+      "chartTarget": "Daily target {{value}}",
+      "chartFloor": "Safety floor {{value}}",
+      "chartBarLabel": "{{day}}: {{target}}, {{change}}",
+      "atFloorShort": "floor",
+      "markRest": "Make {{day}} a rest day",
+      "markTraining": "Make {{day}} a training day",
+      "chartHintTraining": "Tap a bar to see that day. Tap the icon under a day to switch it between training and rest.",
+      "chartHintCustom": "Tap a bar to see that day, or drag it up or down. Fine-tune the selected day below.",
+      "previewTargetForDay": "Daily Calorie Target ({{day}}):"
     }
   },
   "admin": {
@@ -3578,7 +3624,16 @@
     "saveAndStart": "Save & Start Plan",
     "saveAsPreset": "Save Preset & Start 6-Month Cascading Goal",
     "savePresetDescription": "Give your goal preset a name. This will save your current configuration for future use and apply it as your plan starting today.",
-    "startCascadingPlan": "Start 6-Month Cascading Plan"
+    "startCascadingPlan": "Start 6-Month Cascading Plan",
+    "calorieCycling": {
+      "baseCalories": "Base calories ({{energyUnitString}})",
+      "hintHigh": "Calorie cycling is on, so this is your base target. This day becomes about {{amount}} {{unit}} (high day).",
+      "hintLow": "Calorie cycling is on, so this is your base target. This day becomes about {{amount}} {{unit}} (low day).",
+      "hintEven": "Calorie cycling is on, so this is your base target. This day stays the same.",
+      "hintAdaptiveHigh": "Calorie cycling is on. With your adaptive target this day is about {{amount}} {{unit}} (high day).",
+      "hintAdaptiveLow": "Calorie cycling is on. With your adaptive target this day is about {{amount}} {{unit}} (low day).",
+      "hintPausedBySave": "Saving this calorie goal switches to a manual goal, which adds exercise calories back and pauses calorie cycling."
+    }
   },
   "common": {
     "today": "Today",
@@ -3839,7 +3894,11 @@
       "adaptiveManualCalorieGoal": "Adaptive Manual Calorie Goal = {{energy}} {{energyUnitString}}",
       "manualDailyCalorieGoal": "Manual Daily Calorie Goal = {{energy}} {{energyUnitString}}",
       "rmrFloor2": "RMR Floor: {{displayBmrVal}} {{energyUnitString}}",
-      "clinicalAbsoluteFloor": "Clinical Absolute Floor: {{energy}} {{energyUnitString}}"
+      "clinicalAbsoluteFloor": "Clinical Absolute Floor: {{energy}} {{energyUnitString}}",
+      "stepBmr": "Resting metabolism (BMR)",
+      "stepBodyFat": "Body fat percentage",
+      "stepAdaptive": "Adaptive TDEE (expenditure)",
+      "stepGoal": "Daily calorie goal"
     },
     "copyAllError": "Failed to copy entire day.",
     "copyAllFromYesterday": "Copy all from yesterday",
@@ -4026,6 +4085,15 @@
     "exerciseEntryDisplay": {
       "wger": "Wger",
       "freeDB": "Free DB"
+    },
+    "calorieCycling": {
+      "highDay": "High day +{{amount}}",
+      "lowDay": "Low day −{{amount}}",
+      "stepHigh": "Calorie cycling (high day):",
+      "stepLow": "Calorie cycling (low day):",
+      "stepFloor": "Held at your safety floor; the other days give up the difference.",
+      "pausedWeeklyPlan": "Calorie cycling is paused today: a weekly goal plan sets this day.",
+      "pausedEarnBack": "Calorie cycling is paused: exercise calories are added back to your goal."
     }
   },
   "nutrientGoalDirection": {

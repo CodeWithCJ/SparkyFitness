@@ -63,6 +63,8 @@ const before: CalorieRules = {
   use_external_bmr: false,
   include_bmr_in_net_calories: false,
   adjust_macros_with_exercise: false,
+  calorie_cycling_mode: 'off',
+  calorie_cycling_offsets: [0, 0, 0, 0, 0, 0, 0],
 };
 
 // Typed by field, so a new calorie rule cannot be added without a value here.
@@ -82,6 +84,8 @@ const changed: Record<CalorieRuleField, CalorieRules[CalorieRuleField]> = {
   use_external_bmr: true,
   include_bmr_in_net_calories: true,
   adjust_macros_with_exercise: true,
+  calorie_cycling_mode: 'custom',
+  calorie_cycling_offsets: [-10, 10, -10, 10, -10, 10, 0],
 };
 
 describe.runIf(RUN)('calorie rule history', () => {

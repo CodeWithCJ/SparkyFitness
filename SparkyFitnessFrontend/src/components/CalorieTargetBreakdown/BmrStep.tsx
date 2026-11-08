@@ -3,16 +3,20 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { getEnergyUnitString } from '@/utils/nutritionCalculations';
 import { getBmrAlgorithmLabel } from '@/utils/calculationLabels';
 import { getBmrMathText, type BmrMathInputs } from './bmrMath';
+import { bmrStepTag } from './stepLabels';
 import type { CalorieTargetBreakdownProps } from './types';
 
 interface BmrStepProps extends BmrMathInputs {
   bmrSource: CalorieTargetBreakdownProps['bmrSource'];
   displayBmrVal: number;
+  /** Leave out the heading when a breakdown row header already shows it. */
+  headless?: boolean;
 }
 
 export const BmrStep = ({
   bmrSource,
   displayBmrVal,
+  headless = false,
   ...mathInputs
 }: BmrStepProps) => {
   const { t } = useTranslation();
@@ -22,19 +26,19 @@ export const BmrStep = ({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between font-medium text-foreground">
-        <span>
-          {t(
-            'diary.calculateExplanation.bmrTitle',
-            '1. Basal Metabolic Rate (BMR)'
-          )}
-        </span>
-        <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
-          {isMeasuredBmr
-            ? t('diary.calculateExplanation.bmrMeasured', 'Measured')
-            : bmrAlgorithmLabel}
-        </span>
-      </div>
+      {!headless && (
+        <div className="flex items-center justify-between font-medium text-foreground">
+          <span>
+            {t(
+              'diary.calculateExplanation.bmrTitle',
+              '1. Basal Metabolic Rate (BMR)'
+            )}
+          </span>
+          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
+            {bmrStepTag(t, mathInputs.bmrAlgorithm, bmrSource)}
+          </span>
+        </div>
+      )}
       {isMeasuredBmr ? (
         <div className="text-muted-foreground text-sm bg-muted/40 p-1.5 rounded border border-border/60 space-y-1">
           <div>

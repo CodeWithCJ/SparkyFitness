@@ -3,6 +3,8 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
+  CALORIE_CYCLING_MAX_OFFSET,
+  CALORIE_CYCLING_MODES,
   CHART_SCALE_MODES,
   MAX_CALORIE_SAFETY_FLOOR,
   MIN_CALORIE_SAFETY_FLOOR,
@@ -1517,6 +1519,25 @@ const options = {
               maximum: MAX_CALORIE_SAFETY_FLOOR,
               description:
                 'Custom calorie safety floor in kcal/day. Used when calorie_safety_floor_mode is custom.',
+            },
+            calorie_cycling_mode: {
+              type: 'string',
+              enum: [...CALORIE_CYCLING_MODES],
+              default: 'off',
+              description:
+                'Calorie cycling (#2327): off keeps the same calorie goal every day; training_rest and custom spread the weekly budget over the weekdays with calorie_cycling_offsets. Applies only while exercise calories are not added back (fixed, adaptive, or adaptive full-day targets) and pauses on days a weekly goal plan sets.',
+            },
+            calorie_cycling_offsets: {
+              type: 'array',
+              items: {
+                type: 'integer',
+                minimum: -CALORIE_CYCLING_MAX_OFFSET,
+                maximum: CALORIE_CYCLING_MAX_OFFSET,
+              },
+              minItems: 7,
+              maxItems: 7,
+              description:
+                'One raw percentage per weekday, index 0 = Sunday. The server scales the pattern so the week totals the daily goal x 7 while that goal is steady, keeps cycled days at or above the safety floor, and moves carbs (fat only once a low day uses up all of its carbs). When the daily goal is already at or below the safety floor (or the floor is disabled and the pattern is even), every day stays at the daily goal.',
             },
             chart_scale_mode: {
               type: 'string',

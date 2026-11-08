@@ -10,6 +10,7 @@ import { AdaptiveActivityNotes } from './AdaptiveActivityNotes';
 import { AdaptiveFallbackChecklist } from './AdaptiveFallbackChecklist';
 import type { AdaptiveTdeeData } from './types';
 import { useTrendUnits } from './useTrendUnits';
+import { adaptiveStepTag } from './stepLabels';
 
 interface AdaptiveTdeeStepProps {
   previewResult: CalorieTargetResult;
@@ -17,6 +18,8 @@ interface AdaptiveTdeeStepProps {
   activityMultiplier: number;
   activitySeparated: boolean;
   displayBmrVal: number;
+  /** Leave out the heading when a breakdown row header already shows it. */
+  headless?: boolean;
 }
 
 export const AdaptiveTdeeStep = ({
@@ -25,6 +28,7 @@ export const AdaptiveTdeeStep = ({
   activityMultiplier,
   activitySeparated,
   displayBmrVal,
+  headless = false,
 }: AdaptiveTdeeStepProps) => {
   const { t } = useTranslation();
   const {
@@ -37,22 +41,19 @@ export const AdaptiveTdeeStep = ({
 
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between font-medium text-foreground">
-        <span>
-          {t(
-            'diary.calculateExplanation.adaptiveTitle',
-            '3. Adaptive TDEE (Expenditure)'
-          )}
-        </span>
-        <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
-          {previewResult.insufficientHistory
-            ? t(
-                'diary.calculateExplanation.fallbackEstimate',
-                'Fallback Estimate'
-              )
-            : t('diary.calculateExplanation.adaptiveTdee', 'Adaptive TDEE')}
-        </span>
-      </div>
+      {!headless && (
+        <div className="flex items-center justify-between font-medium text-foreground">
+          <span>
+            {t(
+              'diary.calculateExplanation.adaptiveTitle',
+              '3. Adaptive TDEE (Expenditure)'
+            )}
+          </span>
+          <span className="px-1.5 py-0.5 bg-muted dark:bg-muted/40 rounded text-sm">
+            {adaptiveStepTag(t, previewResult)}
+          </span>
+        </div>
+      )}
       <div className="text-muted-foreground text-sm bg-muted/40 p-1.5 rounded border border-border/60 space-y-1 text-left">
         <div className="font-semibold text-foreground">
           {t('settings.breakdown.adaptiveFormula', {

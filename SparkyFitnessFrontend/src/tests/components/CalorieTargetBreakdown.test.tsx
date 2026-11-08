@@ -629,3 +629,98 @@ describe('CalorieTargetBreakdown adaptive checklist', () => {
     expect(screen.queryByText(/Met \(3\/7/)).not.toBeInTheDocument();
   });
 });
+
+describe('CalorieTargetBreakdown numbered steps', () => {
+  it('starts open when asked, and closed otherwise', () => {
+    const { container, rerender } = render(
+      <CalorieTargetBreakdown {...defaultProps} defaultOpen />
+    );
+    expect(container.querySelector('details')).toHaveAttribute('open');
+    rerender(<CalorieTargetBreakdown {...defaultProps} />);
+    expect(container.querySelector('details')).not.toHaveAttribute('open');
+  });
+
+  it('shows each step as a row with its tag and result, working inside', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        goalModeCalculationMethod="manual"
+      />
+    );
+
+    expect(screen.queryByTestId('breakdown-step-adaptive')).toBeNull();
+    expect(screen.getByTestId('breakdown-step-bmr')).toHaveTextContent(
+      /^1Resting metabolism \(BMR\)Localized Mifflin1800 kcal/
+    );
+    expect(screen.getByTestId('breakdown-step-goal')).toHaveTextContent(
+      /^3Daily calorie goal.*2194 kcal/
+    );
+    // The full working is still there, inside the row.
+    expect(
+      screen.getByText(/Resting Metabolism \(RMR\/BMR\):/)
+    ).toBeInTheDocument();
+  });
+
+  it('numbers the goal step 4 when adaptive TDEE is a step', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        goalModeCalculationMethod="adaptive"
+      />
+    );
+    expect(screen.getByTestId('breakdown-step-adaptive')).toHaveTextContent(
+      /^3Adaptive TDEE \(expenditure\)Adaptive TDEE2194 kcal/
+    );
+    expect(screen.getByTestId('breakdown-step-goal')).toHaveTextContent(
+      /^4Daily calorie goal/
+    );
+  });
+});
+
+describe('CalorieTargetBreakdown calorie cycling', () => {
+  it('adds the cycling step and ends on the cycled target', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        calorieCycling={{
+          status: 'active',
+          baseTarget: 2194,
+          target: 1994,
+          delta: -200,
+          dayType: 'low',
+          floor: 1800,
+          clampedToFloor: false,
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('calorie-cycling-step')).toHaveTextContent(
+      'Calorie cycling (low day):−200'
+    );
+    expect(
+      screen.getByText(/Final Energy Budget Target/).parentElement
+    ).toHaveTextContent('1994');
+  });
+
+  it('says why cycling is paused', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        calorieCycling={{
+          status: 'paused_weekly_plan',
+          baseTarget: 2194,
+          target: 2194,
+          delta: 0,
+          dayType: 'even',
+          floor: 1800,
+          clampedToFloor: false,
+        }}
+      />
+    );
+
+    expect(
+      screen.getByText(/a weekly goal plan sets this day/)
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('calorie-cycling-step')).toBeNull();
+  });
+});
