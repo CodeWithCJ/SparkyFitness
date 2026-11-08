@@ -289,6 +289,26 @@ describe('Fasting Routes', () => {
       expect(fastingRepository.getFastingById).not.toHaveBeenCalled();
     });
 
+    it('rejects ending an eating window as a fast', async () => {
+      const res = await request(app).post('/fasting/end').send({
+        id: 'auto-eating-window-2026-07-18T00:00:00.000Z',
+        end_time: endTime,
+      });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('Cannot end an eating window');
+    });
+
+    it('rejects a non-string fast id', async () => {
+      const res = await request(app).post('/fasting/end').send({
+        id: 12345,
+        end_time: endTime,
+      });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('Valid fast id is required');
+    });
+
     it('rejects a mood that is not a number before ending anything', async () => {
       const res = await request(app)
         .post('/fasting/end')

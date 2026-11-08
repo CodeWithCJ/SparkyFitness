@@ -224,7 +224,8 @@ router.post('/start', async (req, res) => {
 // End an active fast
 router.post('/end', async (req, res) => {
   const userId = req.userId;
-  const { id, start_time, end_time, mood } = req.body; // mood: { value, notes }
+  const { id, start_time, end_time, target_end_time, fasting_type, mood } =
+    req.body; // mood: { value, notes }
   if (!id || !end_time) {
     return res.status(400).json({ error: 'Fast ID and end time are required' });
   }
@@ -240,6 +241,14 @@ router.post('/end', async (req, res) => {
     }
   }
   try {
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ error: 'Valid fast id is required' });
+    }
+    if (id.startsWith('auto-eating-window-')) {
+      return res
+        .status(400)
+        .json({ error: 'Cannot end an eating window as a fast' });
+    }
     const isAutoFast = id === 'auto-current' || id.startsWith('auto-');
     if (isAutoFast) {
       const tz = await loadUserTimezone(userId);
@@ -267,8 +276,8 @@ router.post('/end', async (req, res) => {
           (new Date(end_time).getTime() - new Date(startUsed).getTime()) / 60000
         )
       );
-      const targetEnd = activeAuto?.target_end_time || null;
-      const fastingType = activeAuto?.fasting_type || '16:8';
+      const targetEnd = target_end_time || activeAuto?.target_end_time || null;
+      const fastingType = fasting_type || activeAuto?.fasting_type || '16:8';
 
       const completed = await fastingRepository.createCompletedFast(
         userId,
@@ -286,7 +295,14 @@ router.post('/end', async (req, res) => {
         mood?.notes,
         end_time
       );
-      return res.json(completed);
+      const resultFast =
+        completed ||
+        (await fastingRepository.findFastNearStartTime(
+          userId,
+          new Date(startUsed),
+          60
+        ));
+      return res.json(resultFast);
     }
 
     const fast = await fastingRepository.getFastingById(id, userId);

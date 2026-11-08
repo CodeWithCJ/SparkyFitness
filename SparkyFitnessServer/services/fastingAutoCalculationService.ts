@@ -285,8 +285,9 @@ export async function getCurrentAutoFast(
           0,
           Math.floor((eatingWindowEnd.getTime() - now.getTime()) / 60000)
         );
-        const elapsedMinutes = Math.floor(
-          (now.getTime() - fastEndTime.getTime()) / 60000
+        const elapsedMinutes = Math.max(
+          0,
+          Math.floor((now.getTime() - fastEndTime.getTime()) / 60000)
         );
 
         return {
@@ -356,8 +357,9 @@ export async function getCurrentAutoFast(
         0,
         Math.floor((eatingWindowEnd.getTime() - now.getTime()) / 60000)
       );
-      const elapsedMinutes = Math.floor(
-        (now.getTime() - fastEndTime.getTime()) / 60000
+      const elapsedMinutes = Math.max(
+        0,
+        Math.floor((now.getTime() - fastEndTime.getTime()) / 60000)
       );
 
       return {
