@@ -1235,27 +1235,32 @@ DECLARE
 BEGIN
   IF TG_OP = 'INSERT' THEN
     -- Recreated preferences must replace the latest recorded settings. An
-    -- initially enabled macro option also needs an off baseline for past days.
-    IF NOT NEW.adjust_macros_with_exercise AND NOT EXISTS (
-      SELECT 1 FROM public.user_calorie_rule_history WHERE user_id = NEW.user_id
-    ) THEN
+    -- initially enabled opt-in also needs an off baseline for past days.
+    IF NOT NEW.adjust_macros_with_exercise
+       AND NEW.calorie_cycling_mode = 'off'
+       AND NOT EXISTS (
+         SELECT 1 FROM public.user_calorie_rule_history WHERE user_id = NEW.user_id
+       ) THEN
       RETURN NULL;
     END IF;
     prior_preferences := NEW;
     prior_preferences.adjust_macros_with_exercise := FALSE;
+    prior_preferences.calorie_cycling_mode := 'off';
+    prior_preferences.calorie_cycling_offsets := '{0,0,0,0,0,0,0}';
   ELSE
     prior_preferences := OLD;
   END IF;
 
   -- Keep the rules before the first change. Even an initially enabled opt-in
-  -- starts today; it must not enable macro credit for earlier diary dates.
+  -- starts today; it must not change targets for earlier diary dates.
   INSERT INTO public.user_calorie_rule_history (
       user_id, effective_date,
       goal_mode, goal_mode_calculation_method, goal_mode_custom_percentage,
       goal_mode_weekly_change_kg, calorie_goal_adjustment_mode, exercise_calorie_percentage,
       tdee_allow_negative_adjustment, calorie_safety_floor_mode,
       calorie_safety_floor_value, adaptive_activity_separate, bmr_algorithm,
-      activity_level, use_external_bmr, include_bmr_in_net_calories, adjust_macros_with_exercise
+      activity_level, use_external_bmr, include_bmr_in_net_calories, adjust_macros_with_exercise,
+      calorie_cycling_mode, calorie_cycling_offsets
     )
     SELECT
       prior_preferences.user_id, '-infinity',
@@ -1263,7 +1268,8 @@ BEGIN
       prior_preferences.goal_mode_weekly_change_kg, prior_preferences.calorie_goal_adjustment_mode, prior_preferences.exercise_calorie_percentage,
       prior_preferences.tdee_allow_negative_adjustment, prior_preferences.calorie_safety_floor_mode,
       prior_preferences.calorie_safety_floor_value, prior_preferences.adaptive_activity_separate, prior_preferences.bmr_algorithm,
-      prior_preferences.activity_level, prior_preferences.use_external_bmr, prior_preferences.include_bmr_in_net_calories, prior_preferences.adjust_macros_with_exercise
+      prior_preferences.activity_level, prior_preferences.use_external_bmr, prior_preferences.include_bmr_in_net_calories, prior_preferences.adjust_macros_with_exercise,
+      prior_preferences.calorie_cycling_mode, prior_preferences.calorie_cycling_offsets
     WHERE NOT EXISTS (
       SELECT 1 FROM public.user_calorie_rule_history WHERE user_id = prior_preferences.user_id
     );
@@ -1284,7 +1290,8 @@ BEGIN
     goal_mode_weekly_change_kg, calorie_goal_adjustment_mode, exercise_calorie_percentage,
     tdee_allow_negative_adjustment, calorie_safety_floor_mode,
     calorie_safety_floor_value, adaptive_activity_separate, bmr_algorithm,
-    activity_level, use_external_bmr, include_bmr_in_net_calories, adjust_macros_with_exercise
+    activity_level, use_external_bmr, include_bmr_in_net_calories, adjust_macros_with_exercise,
+    calorie_cycling_mode, calorie_cycling_offsets
   )
   VALUES (
     NEW.user_id, (now() AT TIME ZONE zone)::date,
@@ -1292,7 +1299,8 @@ BEGIN
     NEW.goal_mode_weekly_change_kg, NEW.calorie_goal_adjustment_mode, NEW.exercise_calorie_percentage,
     NEW.tdee_allow_negative_adjustment, NEW.calorie_safety_floor_mode,
     NEW.calorie_safety_floor_value, NEW.adaptive_activity_separate, NEW.bmr_algorithm,
-    NEW.activity_level, NEW.use_external_bmr, NEW.include_bmr_in_net_calories, NEW.adjust_macros_with_exercise
+    NEW.activity_level, NEW.use_external_bmr, NEW.include_bmr_in_net_calories, NEW.adjust_macros_with_exercise,
+    NEW.calorie_cycling_mode, NEW.calorie_cycling_offsets
   )
   ON CONFLICT (user_id, effective_date) DO UPDATE SET
     goal_mode = EXCLUDED.goal_mode,
@@ -1310,6 +1318,8 @@ BEGIN
     use_external_bmr = EXCLUDED.use_external_bmr,
     include_bmr_in_net_calories = EXCLUDED.include_bmr_in_net_calories,
     adjust_macros_with_exercise = EXCLUDED.adjust_macros_with_exercise,
+    calorie_cycling_mode = EXCLUDED.calorie_cycling_mode,
+    calorie_cycling_offsets = EXCLUDED.calorie_cycling_offsets,
     updated_at = now();
 
   RETURN NULL;
@@ -4743,7 +4753,9 @@ CREATE TABLE public.user_calorie_rule_history (
     include_bmr_in_net_calories boolean,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    adjust_macros_with_exercise boolean DEFAULT false NOT NULL
+    adjust_macros_with_exercise boolean DEFAULT false NOT NULL,
+    calorie_cycling_mode text DEFAULT 'off'::text NOT NULL,
+    calorie_cycling_offsets smallint[] DEFAULT '{0,0,0,0,0,0,0}'::smallint[] NOT NULL
 );
 
 
@@ -5175,10 +5187,14 @@ CREATE TABLE public.user_preferences (
     use_move_ring_active_calories boolean DEFAULT false NOT NULL,
     default_temperature_unit text DEFAULT 'celsius'::text NOT NULL,
     default_glucose_unit text DEFAULT 'mmol/L'::text NOT NULL,
+    calorie_cycling_mode text DEFAULT 'off'::text NOT NULL,
+    calorie_cycling_offsets smallint[] DEFAULT '{0,0,0,0,0,0,0}'::smallint[] NOT NULL,
     CONSTRAINT check_energy_unit CHECK (((energy_unit)::text = ANY ((ARRAY['kcal'::character varying, 'kJ'::character varying])::text[]))),
     CONSTRAINT chk_user_preferences_glucose_unit CHECK ((default_glucose_unit = ANY (ARRAY['mmol/L'::text, 'mg/dL'::text]))),
     CONSTRAINT logging_level_check CHECK ((logging_level = ANY (ARRAY['DEBUG'::text, 'INFO'::text, 'WARN'::text, 'ERROR'::text, 'SILENT'::text]))),
     CONSTRAINT user_preferences_caffeine_half_life_range CHECK (((caffeine_half_life_hours >= 2.0) AND (caffeine_half_life_hours <= 8.0))),
+    CONSTRAINT user_preferences_calorie_cycling_mode_check CHECK ((calorie_cycling_mode = ANY (ARRAY['off'::text, 'training_rest'::text, 'custom'::text]))),
+    CONSTRAINT user_preferences_calorie_cycling_offsets_check CHECK (((cardinality(calorie_cycling_offsets) = 7) AND ('-40'::integer <= ALL (calorie_cycling_offsets)) AND (40 >= ALL (calorie_cycling_offsets)))),
     CONSTRAINT user_preferences_calorie_safety_floor_mode_check CHECK ((calorie_safety_floor_mode = ANY (ARRAY['standard'::text, 'custom'::text, 'disabled'::text]))),
     CONSTRAINT user_preferences_calorie_safety_floor_value_check CHECK (((calorie_safety_floor_value >= 800) AND (calorie_safety_floor_value <= 5000))),
     CONSTRAINT user_preferences_chart_scale_mode_check CHECK ((chart_scale_mode = ANY (ARRAY['time'::text, 'point'::text]))),
@@ -8931,7 +8947,7 @@ COMMENT ON TRIGGER on_public_user_created ON public."user" IS 'Initializes onboa
 -- Name: user_preferences record_calorie_rule_change; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER record_calorie_rule_change AFTER UPDATE ON public.user_preferences FOR EACH ROW WHEN (((((((((((((((((old.goal_mode)::text IS DISTINCT FROM (new.goal_mode)::text) OR ((old.goal_mode_calculation_method)::text IS DISTINCT FROM (new.goal_mode_calculation_method)::text)) OR (old.goal_mode_custom_percentage IS DISTINCT FROM new.goal_mode_custom_percentage)) OR (old.goal_mode_weekly_change_kg IS DISTINCT FROM new.goal_mode_weekly_change_kg)) OR (old.calorie_goal_adjustment_mode IS DISTINCT FROM new.calorie_goal_adjustment_mode)) OR (old.exercise_calorie_percentage IS DISTINCT FROM new.exercise_calorie_percentage)) OR (old.tdee_allow_negative_adjustment IS DISTINCT FROM new.tdee_allow_negative_adjustment)) OR (old.calorie_safety_floor_mode IS DISTINCT FROM new.calorie_safety_floor_mode)) OR (old.calorie_safety_floor_value IS DISTINCT FROM new.calorie_safety_floor_value)) OR (old.adaptive_activity_separate IS DISTINCT FROM new.adaptive_activity_separate)) OR (old.bmr_algorithm IS DISTINCT FROM new.bmr_algorithm)) OR ((old.activity_level)::text IS DISTINCT FROM (new.activity_level)::text)) OR (old.use_external_bmr IS DISTINCT FROM new.use_external_bmr)) OR (old.include_bmr_in_net_calories IS DISTINCT FROM new.include_bmr_in_net_calories)) OR (old.adjust_macros_with_exercise IS DISTINCT FROM new.adjust_macros_with_exercise))) EXECUTE FUNCTION public.record_calorie_rule_change();
+CREATE TRIGGER record_calorie_rule_change AFTER UPDATE ON public.user_preferences FOR EACH ROW WHEN (((((((((((((((((((old.goal_mode)::text IS DISTINCT FROM (new.goal_mode)::text) OR ((old.goal_mode_calculation_method)::text IS DISTINCT FROM (new.goal_mode_calculation_method)::text)) OR (old.goal_mode_custom_percentage IS DISTINCT FROM new.goal_mode_custom_percentage)) OR (old.goal_mode_weekly_change_kg IS DISTINCT FROM new.goal_mode_weekly_change_kg)) OR (old.calorie_goal_adjustment_mode IS DISTINCT FROM new.calorie_goal_adjustment_mode)) OR (old.exercise_calorie_percentage IS DISTINCT FROM new.exercise_calorie_percentage)) OR (old.tdee_allow_negative_adjustment IS DISTINCT FROM new.tdee_allow_negative_adjustment)) OR (old.calorie_safety_floor_mode IS DISTINCT FROM new.calorie_safety_floor_mode)) OR (old.calorie_safety_floor_value IS DISTINCT FROM new.calorie_safety_floor_value)) OR (old.adaptive_activity_separate IS DISTINCT FROM new.adaptive_activity_separate)) OR (old.bmr_algorithm IS DISTINCT FROM new.bmr_algorithm)) OR ((old.activity_level)::text IS DISTINCT FROM (new.activity_level)::text)) OR (old.use_external_bmr IS DISTINCT FROM new.use_external_bmr)) OR (old.include_bmr_in_net_calories IS DISTINCT FROM new.include_bmr_in_net_calories)) OR (old.adjust_macros_with_exercise IS DISTINCT FROM new.adjust_macros_with_exercise)) OR (old.calorie_cycling_mode IS DISTINCT FROM new.calorie_cycling_mode)) OR (old.calorie_cycling_offsets IS DISTINCT FROM new.calorie_cycling_offsets))) EXECUTE FUNCTION public.record_calorie_rule_change();
 
 
 --
