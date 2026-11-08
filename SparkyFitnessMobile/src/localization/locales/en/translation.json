@@ -310,7 +310,8 @@
       "workoutTimer": "Workout timer",
       "fasting": "Fasting",
       "hydration": "Hydration reminders",
-      "moodCheckin": "Mood check-ins"
+      "moodCheckin": "Mood check-ins",
+      "oralCare": "Brushing reminders"
     },
     "moodCheckin": {
       "title": "How are you feeling?",
@@ -353,6 +354,14 @@
     "hydration": {
       "title": "Time to hydrate 💧",
       "body": "You haven't logged any water in a while."
+    },
+    "oralCare": {
+      "title": "Time to brush",
+      "body": "Two minutes for your teeth, then log it."
+    },
+    "brushingTimer": {
+      "title": "Brushing done",
+      "body": "Open SparkyFitness to save the brush."
     }
   },
   "activeWorkout": {
@@ -615,7 +624,9 @@
     "recordActivity": "Record Activity",
     "recordActivityHint": "Track a walk, run or ride with GPS",
     "checkIn": "Daily Check-In",
-    "checkInHint": "Habits"
+    "checkInHint": "Habits",
+    "oralCare": "Oral care",
+    "oralCareHint": "Brush, floss"
   },
   "screens": {
     "foods": "Foods",
@@ -850,7 +861,8 @@
     "appleMoveTime": "Apple Move Time",
     "appleExerciseTime": "Apple Exercise Time",
     "appleStandTime": "Apple Stand Time",
-    "unknown": "Health metric"
+    "unknown": "Health metric",
+    "toothbrushing": "Toothbrushing"
   },
   "healthCategories": {
     "Common": "Common",
@@ -864,7 +876,8 @@
     "Cycling": "Cycling",
     "Environment": "Environment",
     "Apple": "Apple",
-    "unknown": "Other"
+    "unknown": "Other",
+    "Hygiene": "Hygiene"
   },
   "healthSync": {
     "appleHealth": "Apple Health",
@@ -1325,7 +1338,9 @@
     "trainingLoad": "Training Load",
     "trainingLoadSubtitle": "Show this week against your usual training, with a nudge to rest",
     "labResults": "Lab Results",
-    "labResultsSubtitle": "Show your latest lab results and which are out of range"
+    "labResultsSubtitle": "Show your latest lab results and which are out of range",
+    "oralCare": "Oral care",
+    "oralCareSubtitle": "Show brushing against your goal and your streak"
   },
   "diarySettings": {
     "updateFailed": "Failed to update setting.",
@@ -1397,7 +1412,14 @@
     "openSettings": "Open Settings",
     "permissionTitle": "Grant permissions",
     "permissionBody": "SparkyFitness alerts (rest timers, fasting goals, medication and hydration reminders) won't fire.",
-    "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}."
+    "permissionWarningAccessibility": "{{title}}. {{body}} {{action}}.",
+    "oralCare": "Oral care",
+    "oralCareReminders": "Brushing reminders",
+    "oralCareRemindersSubtitle": "A daily nudge to brush your teeth",
+    "oralCareReminderTime": "Reminder {{number}}",
+    "oralCareReminderTimeAccessibility": "Brushing reminder {{number}}, {{time}}",
+    "oralCareRemoveReminder": "Remove brushing reminder {{number}}",
+    "oralCareAddReminder": "Add reminder"
   },
   "workoutSettings": {
     "title": "Workout Settings",
@@ -6771,7 +6793,9 @@
     "workouts_one": "{{count}} workout",
     "workouts_other": "{{count}} workouts",
     "records_one": "{{count}} record",
-    "records_other": "{{count}} records"
+    "records_other": "{{count}} records",
+    "brushes_one": "{{count}} brush",
+    "brushes_other": "{{count}} brushes"
   },
   "sleep": {
     "wakeUp": "Wake Up",
@@ -8284,7 +8308,9 @@
     "heartRateSummary": "Heart Rate Summary",
     "heartRateInsights": "Resting Heart Rate Insights",
     "insightAthletic": "Your average resting heart rate is in the athletic range (<60 bpm), reflecting strong cardiovascular efficiency.",
-    "insightNormal": "A typical healthy adult resting heart rate ranges from 60 to 100 bpm. Lower rates generally reflect higher cardiovascular fitness."
+    "insightNormal": "A typical healthy adult resting heart rate ranges from 60 to 100 bpm. Lower rates generally reflect higher cardiovascular fitness.",
+    "oralCare": "Oral care",
+    "oralCareSubtitle": "Brushing against your goal, streaks and time"
   },
   "nutritionReport": {
     "title": "Nutrition",
@@ -8474,7 +8500,10 @@
       "heartRateRangeTimeline": "Average heart rate by day",
       "heartRateDayTimeline": "Heart rate through the day",
       "heartRateZones": "Intensity zones",
-      "measurementTimeline": "Measurement timeline"
+      "measurementTimeline": "Measurement timeline",
+      "oralCareBrushesChart": "Brushes per day chart",
+      "oralCareMinutesChart": "Minutes brushing chart",
+      "oralCareSummary": "Streaks and other care"
     },
     "hydrationSections": "Hydration report",
     "measurementsSections": "Measurements report",
@@ -8483,7 +8512,8 @@
     "nutrientReorderHint": "Changes where this nutrient sits in the report",
     "substancesSections": "Caffeine and alcohol report",
     "exerciseSections": "Exercise report",
-    "heartRateSections": "Heart rate report"
+    "heartRateSections": "Heart rate report",
+    "oralCareSections": "Oral care report"
   },
   "hydrationReport": {
     "title": "Hydration",
@@ -10021,5 +10051,117 @@
     "events": "Event details",
     "eventsInView": "Events in view",
     "noEventsInView": "No timed events in this window."
+  },
+  "oralCare": {
+    "title": "Oral care",
+    "loading": "Loading oral care...",
+    "loadFailed": "Could not load oral care",
+    "sessions": "Sessions",
+    "empty": "Nothing logged for this day",
+    "coveredBySync": "Also recorded by Apple Health · counted once",
+    "types": {
+      "brushing": "Brushing",
+      "flossing": "Flossing",
+      "mouthwash": "Mouthwash",
+      "tongueCleaning": "Tongue cleaning",
+      "other": "Other"
+    },
+    "actions": {
+      "log": "Log",
+      "startTimer": "Start timer"
+    },
+    "card": {
+      "a11y": "Oral care, brushed {{brushed}} of {{target}}"
+    },
+    "delete": {
+      "title": "Delete this session?",
+      "synced": "It comes back on the next sync unless you delete it in the Health app too."
+    },
+    "errors": {
+      "save": "Could not save the session.",
+      "delete": "Could not delete the session.",
+      "goal": "Could not save the goal."
+    },
+    "goal": {
+      "title": "Brushing goal",
+      "dailyTarget": "Brushes per day",
+      "targetTime": "Time per brush",
+      "hint": "Dentists usually recommend brushing twice a day for 2 minutes.",
+      "perDay_one": "{{count}} time a day",
+      "perDay_other": "{{count}} times a day"
+    },
+    "log": {
+      "addTitle": "Log oral care",
+      "editTitle": "Edit session",
+      "type": "Type",
+      "name": "Name",
+      "namePlaceholder": "e.g. Water flosser",
+      "time": "Time",
+      "duration": "Duration (optional)",
+      "minutes": "Minutes",
+      "minutesShort": "min",
+      "seconds": "Seconds",
+      "secondsShort": "sec",
+      "tooLong": "A session can be at most 60 minutes.",
+      "notes": "Notes (optional)",
+      "notesA11y": "Notes",
+      "timerHint": "{{time}}, a quarter of your mouth at a time. Saves the brush for you.",
+      "timerTitle": "Brush with the timer",
+      "startTimerA11y": "Start the {{time}} brushing timer"
+    },
+    "source": {
+      "timer": "Timer",
+      "health": "Apple Health"
+    },
+    "stats": {
+      "brushed": "Brushed",
+      "ofTarget": "{{brushed}} of {{target}}",
+      "time": "Time brushing",
+      "streak_one": "Streak: {{count}} day",
+      "streak_other": "Streak: {{count}} days",
+      "best_one": "Best: {{count}} day",
+      "best_other": "Best: {{count}} days",
+      "weekA11y_one": "Goal met on {{count}} of the last 7 days",
+      "weekA11y_other": "Goal met on {{count}} of the last 7 days"
+    },
+    "timer": {
+      "title": "Brushing timer",
+      "subtitle": "{{time}}, a quarter of your mouth at a time",
+      "upperLeft": "Upper left",
+      "upperRight": "Upper right",
+      "lowerRight": "Lower right",
+      "lowerLeft": "Lower left",
+      "done": "Done! Tap Save",
+      "ready": "Ready",
+      "start": "Start",
+      "pause": "Pause",
+      "resume": "Resume",
+      "save": "Save",
+      "doneShort": "Done!",
+      "paused": "Paused"
+    }
+  },
+  "oralCareReport": {
+    "title": "Oral care",
+    "loadFailed": "Failed to load oral care data",
+    "empty": "No oral care logged in this period",
+    "brushesTooltip_one": "{{count}} brush · {{date}}",
+    "brushesTooltip_other": "{{count}} brushes · {{date}}",
+    "minutesTooltip": "{{time}} · {{date}}",
+    "goalDays": "Goal met",
+    "goalDaysValue": "{{met}} of {{total}} days",
+    "brushesPerDay": "Brushes per day",
+    "minutesPerDay": "Brushing per day",
+    "insightGoal": "You brushed {{target}} times a day on {{percent}}% of days.",
+    "insightStreak_one": "Your longest streak is {{count}} day.",
+    "insightStreak_other": "Your longest streak is {{count}} days.",
+    "brushesChart": "Brushes per day",
+    "minutesChart": "Minutes brushing per day",
+    "summaryTitle": "Streaks and other care",
+    "currentStreak": "Current streak",
+    "longestStreak": "Longest streak",
+    "daysCount_one": "{{count}} day",
+    "daysCount_other": "{{count}} days",
+    "otherCare": "Flossing, mouthwash and other"
   }
 }

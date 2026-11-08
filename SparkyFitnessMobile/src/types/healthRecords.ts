@@ -331,13 +331,28 @@ export interface TransformedMindfulnessSession extends RecordTimezoneMetadata {
   notes?: string;
 }
 
+/** One brush from Apple Health's ToothbrushingEvent (#1862). */
+export interface TransformedToothbrushingSession extends RecordTimezoneMetadata {
+  type: 'Toothbrushing';
+  source: typeof HEALTHKIT_SOURCE;
+  /** The sample uuid, used for idempotent re-sync. */
+  source_id: string;
+  timestamp: string;
+  startTime: string;
+  endTime: string;
+  duration_seconds: number;
+  /** Duration in minutes; required by the server's field check. */
+  value: number;
+}
+
 /** Union type for all possible transform outputs */
 export type TransformOutput =
   | TransformedRecord
   | AggregatedSleepSession
   | TransformedExerciseSession
   | TransformedNutritionEntry
-  | TransformedMindfulnessSession;
+  | TransformedMindfulnessSession
+  | TransformedToothbrushingSession;
 
 // ==========================================
 // SYNC RESULT TYPES (Phase 5)

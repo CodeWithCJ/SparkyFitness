@@ -333,6 +333,11 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     navigateFromSheet('MindfulnessLog', { date });
   }, [getActiveDiaryDate, navigateFromSheet]);
 
+  const handleAddOralCare = useCallback(() => {
+    const date = getActiveDiaryDate();
+    navigateFromSheet('OralCareLog', { date });
+  }, [getActiveDiaryDate, navigateFromSheet]);
+
   const handleRecordActivity = useCallback(() => {
     navigateFromSheet('RecordActivity');
   }, [navigateFromSheet]);
@@ -418,6 +423,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     handleAddMood,
     handleStartCheckIn,
     handleAddMindfulness,
+    handleAddOralCare,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,

@@ -1,7 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   DEFAULT_CHECKIN_REMINDER_TIME,
+  DEFAULT_ORAL_CARE_REMINDER_TIMES,
   normalizeCheckinReminderTimes,
+  normalizeOralCareReminderTimes,
 } from '../utils/checkinReminderTimes';
 import {
   clampGuidedCountdownSec,
@@ -118,6 +120,7 @@ export const PREFERENCE_DEFAULTS = {
   onDeviceLabelScanEnabled: true,
   healthTrendsCardVisible: true,
   mindfulnessCardVisible: true,
+  oralCareCardVisible: false,
   labResultsCardVisible: true,
   trainingLoadCardVisible: true,
   dashboardCardOrder: [...DASHBOARD_CARD_KEYS] as DashboardCardKey[],
@@ -132,6 +135,8 @@ export const PREFERENCE_DEFAULTS = {
   waterReminderWindowEnd: '22:00' as string,
   checkinRemindersEnabled: false,
   checkinReminderTimes: [DEFAULT_CHECKIN_REMINDER_TIME] as string[],
+  oralCareRemindersEnabled: false,
+  oralCareReminderTimes: [...DEFAULT_ORAL_CARE_REMINDER_TIMES] as string[],
   liquidGlassTabBarEnabled: false,
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
   diarySummaryVisible: false,
@@ -211,6 +216,7 @@ export type AppPreferencesData = {
   onDeviceLabelScanEnabled: boolean;
   healthTrendsCardVisible: boolean;
   mindfulnessCardVisible: boolean;
+  oralCareCardVisible: boolean;
   labResultsCardVisible: boolean;
   trainingLoadCardVisible: boolean;
   dashboardCardOrder: DashboardCardKey[];
@@ -225,6 +231,8 @@ export type AppPreferencesData = {
   waterReminderWindowEnd: string;
   checkinRemindersEnabled: boolean;
   checkinReminderTimes: string[];
+  oralCareRemindersEnabled: boolean;
+  oralCareReminderTimes: string[];
   liquidGlassTabBarEnabled: boolean;
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
   diarySummaryVisible: boolean;
@@ -359,6 +367,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setOnDeviceLabelScanEnabled: (value: boolean) => void;
   setHealthTrendsCardVisible: (value: boolean) => void;
   setMindfulnessCardVisible: (value: boolean) => void;
+  setOralCareCardVisible: (value: boolean) => void;
   setLabResultsCardVisible: (value: boolean) => void;
   setTrainingLoadCardVisible: (value: boolean) => void;
   setDashboardCardOrder: (order: DashboardCardKey[]) => void;
@@ -374,6 +383,8 @@ export interface AppPreferencesState extends AppPreferencesData {
   setWaterReminderWindow: (start: string, end: string) => void;
   setCheckinRemindersEnabled: (enabled: boolean) => void;
   setCheckinReminderTimes: (times: string[]) => void;
+  setOralCareRemindersEnabled: (enabled: boolean) => void;
+  setOralCareReminderTimes: (times: string[]) => void;
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
   setDiarySummaryVisible: (value: boolean) => void;
@@ -514,6 +525,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ healthTrendsCardVisible: value }),
       setMindfulnessCardVisible: (value) =>
         set({ mindfulnessCardVisible: value }),
+      setOralCareCardVisible: (value) => set({ oralCareCardVisible: value }),
       setLabResultsCardVisible: (value) =>
         set({ labResultsCardVisible: value }),
       setTrainingLoadCardVisible: (value) =>
@@ -538,6 +550,10 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ checkinRemindersEnabled: enabled }),
       setCheckinReminderTimes: (times) =>
         set({ checkinReminderTimes: normalizeCheckinReminderTimes(times) }),
+      setOralCareRemindersEnabled: (enabled) =>
+        set({ oralCareRemindersEnabled: enabled }),
+      setOralCareReminderTimes: (times) =>
+        set({ oralCareReminderTimes: normalizeOralCareReminderTimes(times) }),
       setLiquidGlassTabBarEnabled: (value) =>
         set({ liquidGlassTabBarEnabled: value }),
       setActiveWorkoutMetricColumn: (value) =>
@@ -736,6 +752,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         onDeviceLabelScanEnabled: state.onDeviceLabelScanEnabled,
         healthTrendsCardVisible: state.healthTrendsCardVisible,
         mindfulnessCardVisible: state.mindfulnessCardVisible,
+        oralCareCardVisible: state.oralCareCardVisible,
         labResultsCardVisible: state.labResultsCardVisible,
         trainingLoadCardVisible: state.trainingLoadCardVisible,
         dashboardCardOrder: state.dashboardCardOrder,
@@ -750,6 +767,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         waterReminderWindowEnd: state.waterReminderWindowEnd,
         checkinRemindersEnabled: state.checkinRemindersEnabled,
         checkinReminderTimes: state.checkinReminderTimes,
+        oralCareRemindersEnabled: state.oralCareRemindersEnabled,
+        oralCareReminderTimes: state.oralCareReminderTimes,
         liquidGlassTabBarEnabled: state.liquidGlassTabBarEnabled,
         // Older persisted blobs without these keys backfill via the default
         // shallow merge — no version bump needed.

@@ -1,11 +1,12 @@
 import {
+  saveCategorySample,
   saveCorrelationSample,
   saveQuantitySample,
   deleteObjects,
   authorizationStatusFor,
+  type CategoryValueForIdentifier,
   type CorrelationSample,
   type QuantitySample,
-  type QuantityTypeIdentifierWriteable,
   type ObjectTypeIdentifier,
   type SampleTypeIdentifierWriteable,
 } from '@kingstinct/react-native-healthkit';
@@ -13,6 +14,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addLog } from '../LogService';
 import { fetchDailySummary } from '../api/dailySummaryApi';
 import { fetchWaterIntakeLog } from '../api/measurementsApi';
+import { fetchOralCareSessions } from '../api/oralCareApi';
+import { isSparkyOralCareProvider } from '@workspace/shared';
 import { resolveCollapsedFoodEntries } from '../../utils/loggedMealCollapse';
 import {
   loadHealthPreference,
@@ -83,6 +86,18 @@ const nutritionSigKey = (date: string): string =>
   `writebackNutritionSig:${date}`;
 const hydrationSigKey = (date: string): string =>
   `writebackHydrationSig:${date}`;
+const toothbrushingUuidsKey = (date: string): string =>
+  `writebackToothbrushingUuids:${date}`;
+const toothbrushingSigKey = (date: string): string =>
+  `writebackToothbrushingSig:${date}`;
+
+// Apple Health's toothbrushing type (#1862). Its value is always "not applicable";
+// the sample's start and end carry the brush.
+const TOOTHBRUSHING_IDENTIFIER =
+  'HKCategoryTypeIdentifierToothbrushingEvent' as const;
+const TOOTHBRUSHING_NOT_APPLICABLE = 0 as CategoryValueForIdentifier<
+  typeof TOOTHBRUSHING_IDENTIFIER
+>;
 
 // Order-independent djb2 content signature (shared formula with Android), so an
 // unchanged day can be skipped without any HealthKit writes. Excludes UUID/version —
@@ -447,6 +462,111 @@ const writeHydrationForDate = async (
   );
 };
 
+interface BrushDescriptor {
+  start: Date;
+  end: Date;
+}
+
+/**
+ * The day's brushes logged in Sparky (by hand or with the timer) that have a time
+ * and a duration. Brushes that came from Apple Health are never written back,
+ * and the read side skips Sparky's own samples, so nothing loops.
+ */
+const buildBrushDescriptors = async (
+  date: string
+): Promise<BrushDescriptor[]> => {
+  const sessions = await fetchOralCareSessions(date, date);
+  const descriptors: BrushDescriptor[] = [];
+  for (const session of sessions) {
+    if (session.care_type !== 'brushing') continue;
+    if (!isSparkyOralCareProvider(session.provider)) continue;
+    if (!session.start_time || !session.duration_seconds) continue;
+    const start = new Date(session.start_time);
+    if (Number.isNaN(start.getTime())) continue;
+    descriptors.push({
+      start,
+      end: new Date(start.getTime() + session.duration_seconds * 1000),
+    });
+  }
+  return descriptors;
+};
+
+const brushSignature = (descriptors: BrushDescriptor[]): string =>
+  hashString(
+    descriptors
+      .map((d) => `${d.start.toISOString()}~${d.end.toISOString()}`)
+      .sort()
+      .join('|')
+  );
+
+const writeToothbrushingForDate = async (
+  date: string,
+  version: number
+): Promise<void> => {
+  let descriptors: BrushDescriptor[];
+  try {
+    descriptors = await buildBrushDescriptors(date);
+  } catch (error) {
+    addLog(
+      `[Writeback] Failed to load brushes for ${date}: ${message(error)}`,
+      'ERROR'
+    );
+    return;
+  }
+
+  const signature = brushSignature(descriptors);
+  if (
+    signature ===
+    (await loadHealthPreference<string>(toothbrushingSigKey(date)))
+  ) {
+    addLog(`[Writeback] Toothbrushing ${date}: unchanged — skipped`, 'DEBUG');
+    return;
+  }
+
+  const previous =
+    (await loadHealthPreference<string[]>(toothbrushingUuidsKey(date))) ?? [];
+  const tracked: string[] = [];
+  let allSucceeded = true;
+  if (previous.length > 0) {
+    try {
+      await deleteObjects(TOOTHBRUSHING_IDENTIFIER, { uuids: previous });
+    } catch (error) {
+      addLog(
+        `[Writeback] Failed to delete previous brushes for ${date}: ${message(error)}`,
+        'WARNING'
+      );
+      tracked.push(...previous);
+      allSucceeded = false;
+    }
+  }
+
+  for (const descriptor of descriptors) {
+    try {
+      const saved = await saveCategorySample(
+        TOOTHBRUSHING_IDENTIFIER,
+        TOOTHBRUSHING_NOT_APPLICABLE,
+        descriptor.start,
+        descriptor.end,
+        { SparkyWritebackVersion: version }
+      );
+      if (saved) tracked.push(saved.uuid);
+      else allSucceeded = false;
+    } catch (error) {
+      addLog(`[Writeback] Failed to save a brush: ${message(error)}`, 'ERROR');
+      allSucceeded = false;
+    }
+  }
+
+  await saveHealthPreference(toothbrushingUuidsKey(date), tracked);
+  if (allSucceeded) {
+    await saveHealthPreference(toothbrushingSigKey(date), signature);
+  }
+  addLog(
+    `[Writeback] Toothbrushing ${date}: ${descriptors.length} brush(es) -> tracking ${tracked.length} record(s)`,
+    'INFO'
+  );
+};
+
 // Active metrics that also hold a granted write permission. Hydration gates on
 // DietaryWater; nutrition gates on DietaryEnergyConsumed (individual denied nutrients
 // are handled by the per-type filter in writeNutritionForDate, not by gating here). A
@@ -454,10 +574,12 @@ const writeHydrationForDate = async (
 // Android does — so it doesn't retry forever.
 const writableMetrics = (metrics: WritebackMetric[]): WritebackMetric[] =>
   metrics.filter((m) => {
-    const gate: QuantityTypeIdentifierWriteable =
-      m.id === 'hydration'
-        ? DIETARY_WATER_IDENTIFIER
-        : DIETARY_ENERGY_IDENTIFIER;
+    const gate: ObjectTypeIdentifier =
+      m.id === 'toothbrushing'
+        ? TOOTHBRUSHING_IDENTIFIER
+        : m.id === 'hydration'
+          ? DIETARY_WATER_IDENTIFIER
+          : DIETARY_ENERGY_IDENTIFIER;
     const ok = isAuthorized(gate);
     if (!ok)
       addLog(
@@ -493,6 +615,20 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
   // distinct dates run concurrently. Each worker swallows its own errors so one failed
   // date never aborts the others.
   const writeForDate = async (date: string): Promise<void> => {
+    // Toothbrushing reads its own sessions, not the daily summary, so a failed
+    // summary load never holds it back.
+    if (writable.some((m) => m.id === 'toothbrushing')) {
+      try {
+        await writeToothbrushingForDate(date, version);
+      } catch (error) {
+        addLog(
+          `[Writeback] Failed Toothbrushing for ${date}: ${message(error)}`,
+          'ERROR'
+        );
+      }
+    }
+    const diaryMetrics = writable.filter((m) => m.id !== 'toothbrushing');
+    if (diaryMetrics.length === 0) return;
     let summary: DailySummary;
     try {
       summary = await fetchDailySummary(date); // once per date, shared by both metrics
@@ -503,7 +639,7 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
       );
       return;
     }
-    for (const metric of writable) {
+    for (const metric of diaryMetrics) {
       try {
         if (metric.id === 'nutrition') {
           await writeNutritionForDate(date, summary, version);
@@ -541,6 +677,7 @@ const WRITEBACK_DELETE_TYPES: SampleTypeIdentifierWriteable[] = [
     ...DIETARY_WRITE_IDENTIFIERS,
     DIETARY_WATER_IDENTIFIER,
     FOOD_CORRELATION_TYPE as SampleTypeIdentifierWriteable,
+    TOOTHBRUSHING_IDENTIFIER,
   ]),
 ];
 

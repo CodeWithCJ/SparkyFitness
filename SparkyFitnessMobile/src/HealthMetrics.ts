@@ -207,6 +207,25 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
     rollingLookbackDays: 2,
   },
   {
+    // iOS only: Health Connect has no toothbrushing record. Smart brushes
+    // (Oral-B, Philips, Colgate) write HKCategoryTypeIdentifierToothbrushingEvent;
+    // each brush is sent as Toothbrushing and upserted by its uuid into
+    // oral_care_sessions (#1862).
+    id: 'toothbrushing',
+    labelKey: 'healthMetrics.toothbrushing',
+    defaultLabel: 'Toothbrushing',
+    stateKey: 'isToothbrushingSyncEnabled',
+    preferenceKey: 'syncToothbrushingEnabled',
+    recordType: 'Toothbrushing',
+    unit: 'min',
+    icon: require('../assets/icons/health-metrics/stress.png'),
+    permissions: [{ accessType: 'read', recordType: 'Toothbrushing' }],
+    type: 'toothbrushing',
+    platforms: ['ios'],
+    category: 'Hygiene',
+    rollingLookbackDays: 2,
+  },
+  {
     id: 'basalBodyTemperature',
     labelKey: 'healthMetrics.basalBodyTemperature',
     defaultLabel: 'Basal Body Temperature',
@@ -1152,6 +1171,7 @@ export const CATEGORY_ORDER = [
   'Nutrition',
   'Reproductive',
   'Mobility',
+  'Hygiene',
   'Running',
   'Cycling',
   'Environment',
@@ -1189,6 +1209,10 @@ export function getHealthMetricLabel(
       return t('healthMetrics.stress', { defaultValue: 'Stress' });
     case 'mindfulness':
       return t('healthMetrics.mindfulness', { defaultValue: 'Mindfulness' });
+    case 'toothbrushing':
+      return t('healthMetrics.toothbrushing', {
+        defaultValue: 'Toothbrushing',
+      });
     case 'basalBodyTemperature':
       return t('healthMetrics.basalBodyTemperature', {
         defaultValue: 'Basal Body Temperature',
@@ -1407,6 +1431,8 @@ export function getHealthCategoryLabel(
       return t('healthCategories.Environment', { defaultValue: 'Environment' });
     case 'Apple':
       return t('healthCategories.Apple', { defaultValue: 'Apple' });
+    case 'Hygiene':
+      return t('healthCategories.Hygiene', { defaultValue: 'Hygiene' });
     default:
       return t('healthCategories.unknown', { defaultValue: 'Other' });
   }

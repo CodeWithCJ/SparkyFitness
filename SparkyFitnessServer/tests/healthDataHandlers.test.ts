@@ -12,6 +12,7 @@ import measurementRepository from '../models/measurementRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
 import * as genericHealthRepository from '../models/genericHealthRepository.js';
 import * as mindfulnessRepository from '../models/mindfulnessRepository.js';
+import * as oralCareRepository from '../models/oralCareRepository.js';
 import moodRepository from '../models/moodRepository.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { upsertSamplesByDay } from '../services/healthMetricSampleWriter.js';
@@ -46,6 +47,9 @@ vi.mock('../utils/timezoneLoader.js', () => ({
 }));
 vi.mock('../models/mindfulnessRepository.js', () => ({
   createMindfulnessSession: vi.fn(),
+}));
+vi.mock('../models/oralCareRepository.js', () => ({
+  upsertOralCareSession: vi.fn(),
 }));
 vi.mock('../services/healthMetricSampleWriter.js', () => ({
   upsertSamplesByDay: vi.fn(),
@@ -1164,5 +1168,92 @@ describe('skinTemperatureHandler', () => {
       status: 'error',
       error: 'Failed to store skin temperature: db down',
     });
+  });
+});
+
+describe('toothbrushingHandler', () => {
+  const handler = HEALTH_TYPE_HANDLERS.Toothbrushing!;
+  const ctx = {
+    userId: 'user-123',
+    actingUserId: 'acting-456',
+    parsedDate: '2026-11-08',
+    entryTimestamp: '2026-11-08T08:00:00.000Z',
+    entryHour: 8,
+    resolveCategory: vi.fn(),
+  } as unknown as HealthEntryContext;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(oralCareRepository.upsertOralCareSession).mockResolvedValue(
+      {} as never
+    );
+  });
+
+  it.each([
+    'Toothbrushing',
+    'ToothbrushingEvent',
+    'HKCategoryTypeIdentifierToothbrushingEvent',
+    'toothbrushing',
+  ])("resolves '%s' to the toothbrushing handler", (type) => {
+    expect(resolveHandler(type)).toBe(handler);
+  });
+
+  it('stores a synced brush keyed by its sample id, with the duration from its times', async () => {
+    const result = await handler.handle(
+      {
+        type: 'Toothbrushing',
+        startTime: '2026-11-08T08:00:00.000Z',
+        endTime: '2026-11-08T08:02:10.000Z',
+        source: 'HealthKit',
+        source_id: 'hk-uuid-1',
+      },
+      ctx
+    );
+    expect(result.status).toBe('success');
+    expect(oralCareRepository.upsertOralCareSession).toHaveBeenCalledWith(
+      'user-123',
+      {
+        entry_date: '2026-11-08',
+        start_time: '2026-11-08T08:00:00.000Z',
+        end_time: '2026-11-08T08:02:10.000Z',
+        duration_seconds: 130,
+        care_type: 'brushing',
+        custom_label: null,
+        provider: 'HealthKit',
+        external_id: 'hk-uuid-1',
+        notes: null,
+      },
+      'acting-456'
+    );
+  });
+
+  it('refuses an end time before the start time', async () => {
+    const result = await handler.handle(
+      {
+        type: 'Toothbrushing',
+        startTime: '2026-11-08T08:02:00.000Z',
+        endTime: '2026-11-08T08:00:00.000Z',
+        source_id: 'hk-uuid-2',
+      },
+      ctx
+    );
+    expect(result.status).toBe('error');
+    expect(oralCareRepository.upsertOralCareSession).not.toHaveBeenCalled();
+  });
+
+  it('drops an implausible duration but keeps the brush', async () => {
+    await handler.handle(
+      {
+        type: 'Toothbrushing',
+        startTime: '2026-11-08T08:00:00.000Z',
+        endTime: '2026-11-08T10:00:00.000Z',
+        source_id: 'hk-uuid-3',
+      },
+      ctx
+    );
+    expect(
+      vi.mocked(oralCareRepository.upsertOralCareSession).mock.calls[0]![1]
+        .duration_seconds
+    ).toBeNull();
   });
 });

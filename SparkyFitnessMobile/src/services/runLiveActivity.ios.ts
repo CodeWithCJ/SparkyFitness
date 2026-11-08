@@ -1,5 +1,3 @@
-import { Asset } from 'expo-asset';
-import { File, Paths } from 'expo-file-system';
 import { addUserInteractionListener } from 'expo-widgets';
 import type { LiveActivity, UserInteractionEvent } from 'expo-widgets';
 import type { TFunction } from 'i18next';
@@ -16,6 +14,7 @@ import {
 } from './gpsRecordingService';
 import { sendRunControl } from './watchRunControl';
 import { addLog } from './LogService';
+import { copyLiveActivityIcon } from './liveActivityAppIcon';
 import { useLiveHeartRateStore } from '../stores/liveHeartRateStore';
 import {
   useWatchRunLiveStore,
@@ -327,17 +326,7 @@ function propsEqual(a: RunLiveActivityProps, b: RunLiveActivityProps): boolean {
 
 async function resolveAppIcon(): Promise<void> {
   try {
-    const container = Object.values(Paths.appleSharedContainers)[0];
-    if (container == null) return;
-    const asset = Asset.fromModule(
-      require('../../assets/icons/live-activity-icon.png')
-    );
-    await asset.downloadAsync();
-    if (asset.localUri == null) return;
-    const destination = new File(container, 'run-live-activity-icon.png');
-    if (destination.exists) destination.delete();
-    new File(asset.localUri).copy(destination);
-    appIconUri = destination.uri;
+    appIconUri = await copyLiveActivityIcon('run-live-activity-icon.png');
   } catch (error) {
     logError('app icon resolve failed', error);
   }
