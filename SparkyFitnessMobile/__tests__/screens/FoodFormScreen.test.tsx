@@ -177,6 +177,23 @@ jest.mock('../../src/components/CalendarSheet', () => {
   };
 });
 
+jest.mock('../../src/components/TimeSheet', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const MockTimeSheet = React.forwardRef((_props: any, ref: any) => {
+    React.useImperativeHandle(ref, () => ({
+      present: jest.fn(),
+      dismiss: jest.fn(),
+    }));
+    return <View testID="time-sheet" />;
+  });
+  MockTimeSheet.displayName = 'MockTimeSheet';
+  return {
+    __esModule: true,
+    default: MockTimeSheet,
+  };
+});
+
 let mockSubmittedFoodFormData: any;
 let mockUnitSelectionResult: any;
 let mockEquivalentDraft: EquivalentUnit[] = [];
@@ -2334,6 +2351,7 @@ describe('FoodFormScreen', () => {
           quantity: 100,
           unit: 'g',
           entry_date: '2026-04-23',
+          entry_time: null,
         },
       });
     });
@@ -2365,12 +2383,125 @@ describe('FoodFormScreen', () => {
 
     expect(screen.getByText('Date')).toBeTruthy();
     expect(screen.getByText('Meal')).toBeTruthy();
+    expect(screen.getByText('Time')).toBeTruthy();
     expect(screen.getByText('Save to Database')).toBeTruthy();
     expect(screen.getByText('Barcode')).toBeTruthy();
     expect(screen.getByText('Scan with camera')).toBeTruthy();
     expect(screen.getByDisplayValue('0123456789')).toBeTruthy();
     expect(screen.getByText(/100 g per serving/)).toBeTruthy();
     expect(screen.getByTestId('calendar-sheet')).toBeTruthy();
+    expect(screen.getByTestId('time-sheet')).toBeTruthy();
+  });
+
+  it('pre-fills entry time for today and passes it when logging a new food', async () => {
+    const screen = renderScreen({
+      mode: 'create-food',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            entry_time: expect.stringMatching(/^([01]\d|2[0-3]):[0-5]\d$/),
+          }),
+        })
+      );
+    });
+  });
+
+  it('respects mealTypeId passed in navigation params', async () => {
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [
+        {
+          id: 'meal-1',
+          name: 'Breakfast',
+          default_time: '08:00',
+          user_id: null,
+          is_visible: true,
+          created_at: '',
+          updated_at: '',
+          display_order: 1,
+        },
+        {
+          id: 'meal-2',
+          name: 'Lunch',
+          default_time: '12:30',
+          user_id: null,
+          is_visible: true,
+          created_at: '',
+          updated_at: '',
+          display_order: 2,
+        },
+      ],
+      defaultMealTypeId: 'meal-1',
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      mealTypeId: 'meal-2',
+      date: '2026-04-23',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            meal_type_id: 'meal-2',
+            entry_time: '12:30',
+          }),
+        })
+      );
+    });
+  });
+
+  it('clears entry time when Clear is pressed', async () => {
+    const screen = renderScreen({
+      mode: 'create-food',
+      entryTime: '14:30',
+      date: '2026-04-23',
+    });
+
+    expect(screen.getByText('Clear')).toBeTruthy();
+    fireEvent.press(screen.getByText('Clear'));
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            entry_time: null,
+          }),
+        })
+      );
+    });
+  });
+
+  it('sets entry time to now when Now is pressed', async () => {
+    const screen = renderScreen({
+      mode: 'create-food',
+      date: '2026-04-23',
+    });
+
+    fireEvent.press(screen.getByText('Now'));
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            entry_time: expect.stringMatching(/^([01]\d|2[0-3]):[0-5]\d$/),
+          }),
+        })
+      );
+    });
   });
 
   it('renders the barcode field in library mode without the logging controls', () => {
