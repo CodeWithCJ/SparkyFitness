@@ -2530,7 +2530,7 @@ describe('FoodFormScreen', () => {
     expect(mockAddEntry).not.toHaveBeenCalled();
   });
 
-  it('preserves route-provided mealTypeId when meal types lookup fails', async () => {
+  it('notifies user and blocks save when meal types lookup fails', async () => {
     mockUseMealTypes.mockReturnValue({
       mealTypes: [],
       defaultMealTypeId: null,
@@ -2548,15 +2548,13 @@ describe('FoodFormScreen', () => {
 
     fireEvent.press(screen.getByText('Add Food'));
 
-    await waitFor(() => {
-      expect(mockAddEntry).toHaveBeenCalledWith(
-        expect.objectContaining({
-          createEntryPayload: expect.objectContaining({
-            meal_type_id: 'meal-2',
-          }),
-        })
-      );
-    });
+    expect(mockToast.show).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        text1: 'Error',
+      })
+    );
+    expect(mockAddEntry).not.toHaveBeenCalled();
   });
 
   it('clears entry time when Clear is pressed', async () => {

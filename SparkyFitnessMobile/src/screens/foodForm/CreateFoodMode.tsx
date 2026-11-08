@@ -226,14 +226,26 @@ export function CreateFoodMode({
   );
   const effectiveMealId =
     selectedMealId &&
-    (isMealTypesLoading ||
-      isMealTypesError ||
-      mealTypes.some((mt) => mt.id === selectedMealId))
+    (isMealTypesLoading || mealTypes.some((mt) => mt.id === selectedMealId))
       ? selectedMealId
       : isMealTypesLoading
         ? undefined
         : (defaultMealTypeId ?? undefined);
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
+
+  useEffect(() => {
+    if (isMealTypesLoading || isMealTypesError || mealTypes.length === 0)
+      return;
+    if (selectedMealId && !mealTypes.some((mt) => mt.id === selectedMealId)) {
+      setSelectedMealId(defaultMealTypeId ?? undefined);
+    }
+  }, [
+    isMealTypesLoading,
+    isMealTypesError,
+    mealTypes,
+    selectedMealId,
+    defaultMealTypeId,
+  ]);
 
   const [entryTime, setEntryTime] = useState(params.entryTime ?? '');
   const entryTimeTouched = useRef(params.entryTime !== undefined);
@@ -870,6 +882,16 @@ export function CreateFoodMode({
         text2: t('createFood.errors.loadingMealTypes', {
           defaultValue:
             'Meal types are still loading. Please try again in a moment.',
+        }),
+      });
+      return;
+    }
+    if (isMealTypesError) {
+      Toast.show({
+        type: 'error',
+        text1: t('common.error', { defaultValue: 'Error' }),
+        text2: t('createFood.errors.mealTypesLoadFailed', {
+          defaultValue: 'Failed to load meal types. Please try again.',
         }),
       });
       return;
