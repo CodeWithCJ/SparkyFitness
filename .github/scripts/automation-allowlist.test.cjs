@@ -130,6 +130,7 @@ test("server email templates must be plain text without HTML tags", () => {
     comparison:
       "Thresholds: x<y and duration < 5 minutes and x<y and z> and x<y and z=1>.",
     comparisonTime: "x<time and y>0",
+    spacedComparisonTime: "x <time and y>0",
   });
   assert.deepEqual(serverValuesWithTags(valid), []);
 
@@ -138,6 +139,8 @@ test("server email templates must be plain text without HTML tags", () => {
     tag: "<p>Hello</p>",
     adjacentTag: "Hello<p>World",
     adjacentTagWithAttr: "Hello<img src=x>",
+    paramTag: "<param name=x>",
+    mathTag: "<math>",
     legacyTag: "<font color=red>Font</font>",
     customTag: "<custom-element>Custom</custom-element>",
     customUnderscore: "<my-widget_name>Warning</my-widget_name>",
@@ -159,6 +162,8 @@ test("server email templates must be plain text without HTML tags", () => {
     "tag",
     "adjacentTag",
     "adjacentTagWithAttr",
+    "paramTag",
+    "mathTag",
     "legacyTag",
     "customTag",
     "customUnderscore",
