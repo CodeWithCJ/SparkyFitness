@@ -2503,7 +2503,7 @@ describe('FoodFormScreen', () => {
     });
   });
 
-  it('preserves route-provided mealTypeId and waits while meal types are loading', async () => {
+  it('preserves route-provided mealTypeId and notifies user while meal types are loading', async () => {
     mockUseMealTypes.mockReturnValue({
       mealTypes: [],
       defaultMealTypeId: null,
@@ -2521,12 +2521,42 @@ describe('FoodFormScreen', () => {
 
     fireEvent.press(screen.getByText('Add Food'));
 
-    expect(mockToast.show).not.toHaveBeenCalledWith(
+    expect(mockToast.show).toHaveBeenCalledWith(
       expect.objectContaining({
-        text1: 'No meal type',
+        type: 'info',
+        text1: 'Loading...',
       })
     );
     expect(mockAddEntry).not.toHaveBeenCalled();
+  });
+
+  it('preserves route-provided mealTypeId when meal types lookup fails', async () => {
+    mockUseMealTypes.mockReturnValue({
+      mealTypes: [],
+      defaultMealTypeId: null,
+      isLoading: false,
+      isError: true,
+      error: new Error('Network error'),
+      refetch: jest.fn(),
+    });
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      mealTypeId: 'meal-2',
+      date: '2000-01-01',
+    });
+
+    fireEvent.press(screen.getByText('Add Food'));
+
+    await waitFor(() => {
+      expect(mockAddEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          createEntryPayload: expect.objectContaining({
+            meal_type_id: 'meal-2',
+          }),
+        })
+      );
+    });
   });
 
   it('clears entry time when Clear is pressed', async () => {

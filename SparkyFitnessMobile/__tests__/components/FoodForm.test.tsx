@@ -1262,8 +1262,8 @@ describe('FoodForm', () => {
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('100')).toBeTruthy();
+      expect(screen.getByText('cup')).toBeTruthy();
     });
-    expect(screen.getByText('cup')).toBeTruthy();
     expect(screen.getAllByDisplayValue('0').length).toBeGreaterThanOrEqual(4);
   });
 

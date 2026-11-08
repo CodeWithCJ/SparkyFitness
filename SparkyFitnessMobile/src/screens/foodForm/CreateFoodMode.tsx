@@ -219,13 +219,16 @@ export function CreateFoodMode({
     mealTypes,
     defaultMealTypeId,
     isLoading: isMealTypesLoading,
+    isError: isMealTypesError,
   } = useMealTypes();
   const [selectedMealId, setSelectedMealId] = useState<string | undefined>(
     params.mealTypeId
   );
   const effectiveMealId =
     selectedMealId &&
-    (isMealTypesLoading || mealTypes.some((mt) => mt.id === selectedMealId))
+    (isMealTypesLoading ||
+      isMealTypesError ||
+      mealTypes.some((mt) => mt.id === selectedMealId))
       ? selectedMealId
       : isMealTypesLoading
         ? undefined
@@ -861,6 +864,14 @@ export function CreateFoodMode({
       return;
     }
     if (isMealTypesLoading) {
+      Toast.show({
+        type: 'info',
+        text1: t('common.loading', { defaultValue: 'Loading...' }),
+        text2: t('createFood.errors.loadingMealTypes', {
+          defaultValue:
+            'Meal types are still loading. Please try again in a moment.',
+        }),
+      });
       return;
     }
     if (!effectiveMealId) {

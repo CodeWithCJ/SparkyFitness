@@ -4583,7 +4583,8 @@
       "invalidAmount": "Invalid amount",
       "amountRequired": "Amount must be greater than zero.",
       "noMealType": "No meal type",
-      "noMealTypesAvailable": "No meal types are available. Please check your account settings."
+      "noMealTypesAvailable": "No meal types are available. Please check your account settings.",
+      "loadingMealTypes": "Meal types are still loading. Please try again in a moment."
     }
   },
   "foodDetail": {
