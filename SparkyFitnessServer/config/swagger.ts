@@ -1812,7 +1812,7 @@ const options = {
             bestTimeSeconds: {
               type: 'number',
               description:
-                'Time for the standard distance itself, never a longer activity total. A time faster than the sport allows (12 m/s running, 7 walking, 30 cycling, 5 swimming) is never reported: it comes from a wrong duration or distance.',
+                'Time for the standard distance itself, never a longer activity total. A time faster than the sport allows (12 m/s running, 7 walking, 30 cycling, 5 swimming) never holds a record: it comes from a wrong duration or distance.',
             },
             formattedTime: {
               type: 'string',
