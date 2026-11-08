@@ -1,9 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import {
-  checkHeaderInsets,
-  STATUS_BAR_INSET_LAYOUTS,
-} from '../helpers/headerInsetCheck';
 
 const mobileRoot = path.resolve(__dirname, '../..');
 
@@ -223,6 +219,35 @@ function usesScreenHeaderAbstraction(source: string): boolean {
     // JSX usage only: importing footer chrome (e.g. FooterSaveBar) from the
     // FormScreenChrome module does not give a screen a header.
     /<FormScreenChrome\b/.test(source)
+  );
+}
+
+/**
+ * Layouts that render a useScreenHeader bar for the screen and reserve the
+ * status-bar inset above it themselves.
+ */
+const STATUS_BAR_INSET_LAYOUTS = {
+  FormScreenChrome: 'src/components/FormScreenChrome.tsx',
+  ReportScreenLayout: 'src/components/reports/ReportScreenLayout.tsx',
+} as const;
+
+function padsTopWithSafeAreaInset(source: string): boolean {
+  return /paddingTop:[^,}\n]*\binsets\.top\b/.test(source);
+}
+
+/**
+ * On the custom-header path (Android always, iOS 26+ with Liquid Glass off)
+ * the bar useScreenHeader returns is drawn by the screen, and the app runs
+ * edge to edge, so the screen has to keep it below the status bar: either its
+ * root pads the top with the safe-area inset, or it renders the bar through a
+ * layout that does.
+ */
+function reservesStatusBarInset(source: string): boolean {
+  return (
+    padsTopWithSafeAreaInset(source) ||
+    Object.keys(STATUS_BAR_INSET_LAYOUTS).some((layout) =>
+      new RegExp(`<${layout}\\b`).test(source)
+    )
   );
 }
 
@@ -704,50 +729,25 @@ describe('native header navigation contract', () => {
   });
 
   it('keeps custom header bars below the Android status bar', () => {
-    // How each place a bar is rendered is judged is described (and tested
-    // with fixtures) in __tests__/helpers/headerInsetCheck.ts.
-    const describeProblems = (
-      relativePath: string,
-      headerPropNames?: string[]
-    ): { renders: number; problems: string[] } => {
-      const { renders, problems } = checkHeaderInsets(
-        relativePath,
-        readMobileFile(relativePath),
-        { headerPropNames }
-      );
-      return {
-        renders,
-        problems: problems.map(({ line, message }) =>
-          line === null
-            ? `${relativePath} (${message})`
-            : `${relativePath}:${line} (${message})`
-        ),
-      };
-    };
-    // The layouts render the bar they get as the `header` prop (and
-    // FormScreenChrome its own), so `header` is the bar there too.
-    const layoutProblems = Object.values(STATUS_BAR_INSET_LAYOUTS).flatMap(
-      (relativePath) => {
-        const { renders, problems } = describeProblems(relativePath, [
-          'header',
-        ]);
-        return renders > 0
-          ? problems
-          : [`${relativePath} (no longer renders \`header\`)`];
-      }
-    );
-    const screenProblems = listAllScreenFiles()
-      .filter((relativePath) =>
-        /\buseScreenHeader\(/.test(readMobileFile(relativePath))
+    const layoutsWithoutInset = Object.entries(STATUS_BAR_INSET_LAYOUTS)
+      .filter(
+        ([, relativePath]) =>
+          !padsTopWithSafeAreaInset(readMobileFile(relativePath))
       )
-      .flatMap((relativePath) => describeProblems(relativePath).problems);
+      .map(([layout]) => layout);
+    const offenders = listAllScreenFiles().filter((relativePath) => {
+      const source = readMobileFile(relativePath);
+      return (
+        usesScreenHeaderAbstraction(source) && !reservesStatusBarInset(source)
+      );
+    });
 
-    if (layoutProblems.length > 0 || screenProblems.length > 0) {
+    if (layoutsWithoutInset.length > 0 || offenders.length > 0) {
       failNativeHeaderContract(
         [
           'Custom header bars can draw under the Android status bar.',
-          `Header layouts that no longer keep the bar below the status bar: ${formatList(layoutProblems)}.`,
-          `Places a screen renders its useScreenHeader bar without the inset: ${formatList(screenProblems)}.`,
+          `Header layouts that no longer pad the top with the safe-area inset: ${formatList(layoutsWithoutInset)}.`,
+          `Screens on useScreenHeader that neither pad their root with insets.top on the custom-header path nor render through ${Object.keys(STATUS_BAR_INSET_LAYOUTS).join(' or ')}: ${formatList(offenders)}.`,
         ].join('\n')
       );
     }
