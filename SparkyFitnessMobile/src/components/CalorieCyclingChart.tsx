@@ -73,6 +73,10 @@ interface CalorieCyclingChartProps {
  * the rest of the bar only selects, so the screen still scrolls. In Training
  * vs rest the day under a bar switches it.
  */
+// Baseline offset captured when a bar drag begins, so draft re-renders during
+// the gesture do not compound translation over an already-moved draft value.
+const dragSession = { startOffset: 0 };
+
 const CalorieCyclingChart: React.FC<CalorieCyclingChartProps> = ({
   mode,
   week,
@@ -91,7 +95,10 @@ const CalorieCyclingChart: React.FC<CalorieCyclingChartProps> = ({
   onCommitOffset,
 }) => {
   const { t } = useTranslation();
-  const [accent] = useCSSVariable(['--color-accent-primary']) as [string];
+  const [accent, textSecondary] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-secondary',
+  ]) as [string, string];
   const [plotHeight, setPlotHeight] = useState(PLOT_HEIGHT);
   const [draggingDay, setDraggingDay] = useState<number | null>(null);
 
@@ -107,15 +114,19 @@ const CalorieCyclingChart: React.FC<CalorieCyclingChartProps> = ({
   const floorShown = floor !== null && floor > low && floor < high;
 
   const handleGesture = (day: number) => {
-    const start = offsets[day] ?? 0;
+    // The offsets here follow the draft while dragging, so the start is
+    // captured once per gesture; reading it from props would add the
+    // cumulative translation onto an already moved value.
     const valueAt = (translationY: number) =>
       clampCyclingOffset(
-        start + (-translationY / plotHeight) * DRAG_RANGE_POINTS
+        dragSession.startOffset +
+          (-translationY / plotHeight) * DRAG_RANGE_POINTS
       );
     return Gesture.Pan()
       .runOnJS(true)
       .activeOffsetY([-3, 3])
       .onStart(() => {
+        dragSession.startOffset = offsets[day] ?? 0;
         onSelectDay(day);
         setDraggingDay(day);
       })
@@ -130,7 +141,7 @@ const CalorieCyclingChart: React.FC<CalorieCyclingChartProps> = ({
       })
       .onEnd((event) => {
         const value = valueAt(event.translationY);
-        if (value !== start) onCommitOffset(day, value);
+        if (value !== dragSession.startOffset) onCommitOffset(day, value);
       })
       .onFinalize(() => {
         setDraggingDay(null);
@@ -296,7 +307,7 @@ const CalorieCyclingChart: React.FC<CalorieCyclingChartProps> = ({
               <Icon
                 name={training ? 'cycling-training' : 'cycling-rest'}
                 size={15}
-                color={isSelected ? accent : undefined}
+                color={isSelected ? accent : textSecondary}
               />
               <Text
                 numberOfLines={1}

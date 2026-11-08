@@ -8,6 +8,7 @@ import {
   type CalorieCyclingMode,
 } from '@workspace/shared';
 import { Minus, Plus } from 'lucide-react';
+import * as RadioGroupPrimitive from '@radix-ui/react-radio-group';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
@@ -186,6 +187,7 @@ export const CalorieCyclingSettings = ({
     Math.round(convertEnergy(kcal, 'kcal', energyUnit)).toLocaleString();
 
   const { trainingDays, percent } = trainingRestFromOffsets(offsets);
+  const selectedIsTrainingDay = trainingDays.includes(selectedDay);
   const [lastCustomOffsets, setLastCustomOffsets] = useState<number[] | null>(
     null
   );
@@ -213,17 +215,17 @@ export const CalorieCyclingSettings = ({
       : (selectedCycled?.delta ?? 0) > 0;
 
   const changeMode = (value: string) => {
-    if (!isCyclingMode(value)) return;
+    if (!isCyclingMode(value) || value === mode) return;
+    // Leaving Custom (for Off too, since Training / rest may follow) keeps
+    // the latest custom pattern so switching back restores it.
+    if (mode === 'custom') setLastCustomOffsets(offsets);
     if (value === 'training_rest') {
-      // Training / rest overwrites the offsets; keep a custom pattern so
-      // switching back to Custom restores it.
-      if (mode === 'custom') setLastCustomOffsets(offsets);
       const days = trainingDays.length ? trainingDays : DEFAULT_TRAINING_DAYS;
       const pct = percent > 0 ? percent : DEFAULT_TRAINING_PERCENT;
       onChange({ mode: value, offsets: trainingRestOffsets(days, pct) });
       return;
     }
-    if (value === 'custom' && mode !== 'custom' && lastCustomOffsets) {
+    if (value === 'custom' && lastCustomOffsets) {
       onChange({ mode: value, offsets: lastCustomOffsets });
       return;
     }
@@ -304,19 +306,17 @@ export const CalorieCyclingSettings = ({
         </p>
       )}
 
-      <div
-        role="radiogroup"
+      <RadioGroupPrimitive.Root
+        value={mode}
+        onValueChange={changeMode}
+        disabled={!available}
         aria-label={t('settings.calorieCycling.title', 'Calorie cycling')}
         className="inline-grid grid-cols-3 rounded-full bg-muted p-1 text-sm"
       >
         {CYCLING_MODE_OPTIONS.map((option) => (
-          <button
+          <RadioGroupPrimitive.Item
             key={option.mode}
-            type="button"
-            role="radio"
-            aria-checked={mode === option.mode}
-            disabled={!available}
-            onClick={() => changeMode(option.mode)}
+            value={option.mode}
             className={cn(
               'whitespace-nowrap rounded-full px-4 py-1.5 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
               mode === option.mode
@@ -325,9 +325,9 @@ export const CalorieCyclingSettings = ({
             )}
           >
             {t(option.key, option.label)}
-          </button>
+          </RadioGroupPrimitive.Item>
         ))}
-      </div>
+      </RadioGroupPrimitive.Root>
       <p className="text-sm text-muted-foreground">
         {mode === 'off'
           ? t(
@@ -393,23 +393,22 @@ export const CalorieCyclingSettings = ({
                   <span className="text-sm font-semibold">
                     {dayName(selectedDay)}
                   </span>
-                  <div
-                    role="radiogroup"
+                  <RadioGroupPrimitive.Root
+                    value={selectedIsTrainingDay ? 'training' : 'rest'}
+                    onValueChange={(value) => {
+                      if ((value === 'training') !== selectedIsTrainingDay) {
+                        toggleTrainingDay(selectedDay);
+                      }
+                    }}
                     aria-label={dayName(selectedDay)}
                     className="inline-grid grid-cols-2 rounded-full bg-background p-1 text-xs"
                   >
                     {[true, false].map((training) => {
-                      const checked =
-                        trainingDays.includes(selectedDay) === training;
+                      const checked = selectedIsTrainingDay === training;
                       return (
-                        <button
+                        <RadioGroupPrimitive.Item
                           key={String(training)}
-                          type="button"
-                          role="radio"
-                          aria-checked={checked}
-                          onClick={() => {
-                            if (!checked) toggleTrainingDay(selectedDay);
-                          }}
+                          value={training ? 'training' : 'rest'}
                           className={cn(
                             'rounded-full px-3 py-1 font-semibold',
                             checked
@@ -423,10 +422,10 @@ export const CalorieCyclingSettings = ({
                                 'Training'
                               )
                             : t('settings.calorieCycling.restDay', 'Rest')}
-                        </button>
+                        </RadioGroupPrimitive.Item>
                       );
                     })}
-                  </div>
+                  </RadioGroupPrimitive.Root>
                 </div>
                 <div className="space-y-2">
                   <PercentStepper

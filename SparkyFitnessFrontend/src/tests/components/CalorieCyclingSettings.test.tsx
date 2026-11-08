@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { CalorieCyclingSettings } from '@/components/CalorieCyclingSettings';
 
@@ -45,6 +45,24 @@ describe('CalorieCyclingSettings', () => {
     expect(screen.getByTestId('calorie-cycling-week-total')).toHaveTextContent(
       // Whole-kcal rounding: 3 x 2,809 + 4 x 2,443.
       'Week: 18,199 of 18,200 kcal (your daily target 2,600 × 7)'
+    );
+  });
+
+  it('moves the mode with the arrow keys as one radio group', async () => {
+    const { onChange } = renderSettings({ mode: 'off' });
+    const off = screen.getByRole('radio', { name: 'Off' });
+    // One tab stop for the group: the other options are skipped by Tab.
+    expect(screen.getByRole('radio', { name: /Custom/ })).toHaveAttribute(
+      'tabindex',
+      '-1'
+    );
+    off.focus();
+    fireEvent.keyDown(off, { key: 'ArrowRight' });
+    // Radix moves focus on the next tick and selects the focused radio.
+    await waitFor(() =>
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: 'training_rest' })
+      )
     );
   });
 

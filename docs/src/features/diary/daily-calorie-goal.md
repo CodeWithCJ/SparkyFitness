@@ -9,7 +9,7 @@ Calorie goals can be configured under the goals section:
 
 ## Training and rest days
 
-With [calorie cycling](/features/settings/calculation-settings#calorie-cycling) on, the goal changes by weekday: the Diary shows **High day +210** or **Low day −160** next to it, and **How today's target is calculated** includes the cycling step. Carbs take the change and protein stays the same.
+With [calorie cycling](/features/settings/calculation-settings#calorie-cycling) active, the goal changes by weekday: when a day's target differs from your baseline, the Diary shows **High day +210** or **Low day −160** next to it, and **How today's target is calculated** includes the cycling step. If your cycling pattern has equal offsets across all days (or zero offsets), the baseline is unchanged and the label is omitted. If an active weekly goal plan assigns a preset to the day, cycling is paused and no cycling label is shown. Carbs take the change; if a low day reduction exceeds your carb target, the remaining deficit comes from fat (and only beyond fat from protein).
 
 ## How today's target is calculated
 

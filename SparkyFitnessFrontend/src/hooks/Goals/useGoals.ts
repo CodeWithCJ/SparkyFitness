@@ -180,6 +180,8 @@ const invalidateResolvedGoals = (
     queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all }),
     queryClient.invalidateQueries({ queryKey: reportKeys.all }),
     queryClient.invalidateQueries({ queryKey: waterIntakeKeys.all }),
+    // The resolved water goal sits outside waterIntakeKeys.all.
+    queryClient.invalidateQueries({ queryKey: ['goals', 'water'] }),
   ]);
 
 // --- WEEKLY GOAL PLANS ---

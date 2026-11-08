@@ -1258,6 +1258,7 @@
       "replaceCustomTitle": "Replace your custom days?",
       "replaceCustomMessage": "Training / rest sets every day from the training days and one percentage, so your custom percentages are replaced.",
       "replaceCustomConfirm": "Replace",
+      "waitingForTarget": "Your days show here once today's calorie target has loaded.",
       "baseAtFloorWithUnit": "Your daily target ({{target}} {{unit}}) is at or below your safety floor ({{floor}} {{unit}}), so no day can go lower and every day stays the same. Cycling starts working once your target is above the floor, or with a lower custom floor.",
       "weekTotalWithBase": "Week: {{total}} of {{budget}} {{unit}} (your daily target {{target}} × 7)",
       "decrease": "Lower by 1%",

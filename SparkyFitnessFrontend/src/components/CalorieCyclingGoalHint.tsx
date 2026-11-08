@@ -39,7 +39,35 @@ export const CalorieCyclingGoalHint = ({
       </p>
     );
   }
-  if (!cycling.active || !(calories > 0)) return null;
+  if (!cycling.active) return null;
+  const unit = getEnergyUnitString(energyUnit);
+
+  // With an adaptive target the typed calories are not the base, so show the
+  // day as the server cycled it instead of cycling the typed number.
+  if (!cycling.typedIsBase) {
+    const server = cycling.serverTarget;
+    if (!server || server.delta === 0) return null;
+    const amount = Math.round(convertEnergy(server.target, 'kcal', energyUnit));
+    return (
+      <p
+        className="text-xs text-muted-foreground"
+        data-testid="calorie-cycling-goal-hint"
+      >
+        {server.delta > 0
+          ? t(
+              'goals.calorieCycling.hintAdaptiveHigh',
+              'Calorie cycling is on. With your adaptive target this day is about {{amount}} {{unit}} (high day).',
+              { amount, unit }
+            )
+          : t(
+              'goals.calorieCycling.hintAdaptiveLow',
+              'Calorie cycling is on. With your adaptive target this day is about {{amount}} {{unit}} (low day).',
+              { amount, unit }
+            )}
+      </p>
+    );
+  }
+  if (!(calories > 0)) return null;
 
   const cycled = cycleDayTarget({
     baseTarget: calories,
@@ -48,7 +76,6 @@ export const CalorieCyclingGoalHint = ({
     floor: cycling.floor,
   });
   const amount = Math.round(convertEnergy(cycled.target, 'kcal', energyUnit));
-  const unit = getEnergyUnitString(energyUnit);
 
   return (
     <p

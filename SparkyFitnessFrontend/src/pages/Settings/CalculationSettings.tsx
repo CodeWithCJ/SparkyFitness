@@ -34,6 +34,7 @@ import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { ActivityLevel } from '@/contexts/PreferencesContext';
 import { error as logError } from '@/utils/logging';
+import * as RadioGroupPrimitive from '@radix-ui/react-radio-group';
 import { Trans, useTranslation } from 'react-i18next';
 import {
   FatBreakdownAlgorithm,
@@ -693,6 +694,10 @@ const CalculationSettings = () => {
         }).map((day) => day.target)
       )
     : previewResult.finalTarget;
+  // Maintain hides the callouts, but a cycled low day can still fall below
+  // RMR or the clinical minimum with a custom or disabled floor.
+  const showSafetyCallouts =
+    shouldShowCalorieSafetyWarning(goalMode) || todayCycled !== null;
   // Only a day cycling actually moves gets a step in the preview.
   const cyclingToday =
     todayCycled && todayCycled.delta !== 0 ? todayCycled : null;
@@ -1085,8 +1090,13 @@ const CalculationSettings = () => {
             'Daily Calorie Goal Adjustment'
           )}
         </Label>
-        <div
-          role="radiogroup"
+        {/* Radix radios: arrow keys move the choice, one tab stop. */}
+        <RadioGroupPrimitive.Root
+          value={calorieGoalAdjustmentMode}
+          onValueChange={(value) => {
+            const card = ADJUSTMENT_MODE_CARDS.find((c) => c.mode === value);
+            if (card) setCalorieGoalAdjustmentMode(card.mode);
+          }}
           aria-label={t(
             'settings.calorieGoalAdjustment.title',
             'Daily Calorie Goal Adjustment'
@@ -1097,12 +1107,9 @@ const CalculationSettings = () => {
             const CardIcon = card.icon;
             const checked = calorieGoalAdjustmentMode === card.mode;
             return (
-              <button
+              <RadioGroupPrimitive.Item
                 key={card.mode}
-                type="button"
-                role="radio"
-                aria-checked={checked}
-                onClick={() => setCalorieGoalAdjustmentMode(card.mode)}
+                value={card.mode}
                 className={cn(
                   'flex items-start gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                   checked
@@ -1125,10 +1132,10 @@ const CalculationSettings = () => {
                     {t(card.summaryKey, card.summary)}
                   </span>
                 </span>
-              </button>
+              </RadioGroupPrimitive.Item>
             );
           })}
-        </div>
+        </RadioGroupPrimitive.Root>
         <p
           className="mt-3 text-sm text-muted-foreground"
           data-testid="adjustment-mode-description"
@@ -2147,7 +2154,7 @@ const CalculationSettings = () => {
           )}
 
           {/* Warning callouts */}
-          {shouldShowCalorieSafetyWarning(goalMode) &&
+          {showSafetyCallouts &&
             safetyCheckTarget < previewResult.rmr &&
             safetyCheckTarget >= previewResult.absoluteFloorValue && (
               <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl flex gap-3 text-sm text-amber-800 dark:text-amber-300">
@@ -2170,7 +2177,7 @@ const CalculationSettings = () => {
             )}
 
           {/* Absolute Floor Danger Callout */}
-          {shouldShowCalorieSafetyWarning(goalMode) &&
+          {showSafetyCallouts &&
             safetyCheckTarget < previewResult.absoluteFloorValue && (
               <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-xl flex gap-3 text-sm text-red-800 dark:text-red-300">
                 <ShieldAlert className="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />

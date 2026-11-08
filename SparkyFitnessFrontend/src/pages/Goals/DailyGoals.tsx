@@ -211,7 +211,7 @@ export const DailyGoals = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
             <div className="space-y-1.5">
               <Label htmlFor="calories">
-                {calorieCycling.active
+                {calorieCycling.typedIsBase
                   ? t(
                       'goals.calorieCycling.baseCalories',
                       'Base calories ({{energyUnitString}})',

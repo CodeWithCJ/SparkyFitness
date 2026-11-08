@@ -618,11 +618,13 @@ async function getUserGoalsForRange(
     ) {
       const cycledMacros = applyCalorieCyclingMacroDelta(
         {
+          protein: Number(processedGoals.protein),
           carbs: Number(processedGoals.carbs),
           fat: Number(processedGoals.fat),
         },
         cyclingDeltaKcal
       );
+      processedGoals.protein = cycledMacros.protein;
       processedGoals.carbs = cycledMacros.carbs;
       processedGoals.fat = cycledMacros.fat;
     }

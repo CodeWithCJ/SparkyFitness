@@ -190,20 +190,29 @@ describe('calorie cycling settings', () => {
     expect(calorieCyclingDayType(120)).toBe('high');
     expect(calorieCyclingDayType(-80)).toBe('low');
     expect(calorieCyclingDayType(0)).toBe('even');
-    expect(applyCalorieCyclingMacroDelta({ carbs: 250, fat: 60 }, 200)).toEqual(
-      { carbs: 300, fat: 60 }
+    const day = (carbs: number, fat: number, protein = 150) => ({
+      protein,
+      carbs,
+      fat,
+    });
+    expect(applyCalorieCyclingMacroDelta(day(250, 60), 200)).toEqual(
+      day(300, 60)
     );
-    expect(
-      applyCalorieCyclingMacroDelta({ carbs: 250, fat: 60 }, -100)
-    ).toEqual({ carbs: 225, fat: 60 });
+    expect(applyCalorieCyclingMacroDelta(day(250, 60), -100)).toEqual(
+      day(225, 60)
+    );
     // 500 kcal off a day with 20 g of carbs: carbs cover 80 kcal, the other
     // 420 kcal come off fat (46.7 g), so the macros still fit the calories.
-    expect(applyCalorieCyclingMacroDelta({ carbs: 20, fat: 70 }, -500)).toEqual(
-      { carbs: 0, fat: 23.3 }
+    expect(applyCalorieCyclingMacroDelta(day(20, 70), -500)).toEqual(
+      day(0, 23.3)
     );
-    expect(applyCalorieCyclingMacroDelta({ carbs: 0, fat: 10 }, -500)).toEqual({
-      carbs: 0,
-      fat: 0,
-    });
+    // Past carbs and fat, the rest comes off protein: 0 g carbs and 10 g fat
+    // cover 90 kcal, the other 410 kcal take 102.5 g of protein.
+    expect(applyCalorieCyclingMacroDelta(day(0, 10), -500)).toEqual(
+      day(0, 0, 47.5)
+    );
+    expect(applyCalorieCyclingMacroDelta(day(0, 0, 50), -500)).toEqual(
+      day(0, 0, 0)
+    );
   });
 });

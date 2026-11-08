@@ -241,7 +241,7 @@ const EditGoalsForm = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end">
         <div className="space-y-1.5">
           <Label>
-            {calorieCycling.active
+            {calorieCycling.typedIsBase
               ? t(
                   'goals.calorieCycling.baseCalories',
                   'Base calories ({{energyUnitString}})',

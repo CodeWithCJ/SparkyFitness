@@ -21,7 +21,7 @@ import type { MealType } from '../types/mealTypes';
 import { useLatestMeasurementsOnOrBefore } from '../hooks/useMeasurements';
 import { useCustomNutrients } from '../hooks/useCustomNutrients';
 import {
-  useAdjustedCalorieGoal,
+  useAdjustedDailyGoal,
   useGoalPresetMutations,
   useGoalPresets,
   useGoalsQuery,
@@ -44,6 +44,8 @@ import {
   calculateAge,
   calculateSingleNutrientAutoValue,
   calorieCyclingPattern,
+  cycleDayTarget,
+  dayOfWeek,
   getAutoCalculateFamily,
   isCalorieCyclingAvailable,
   type AlgorithmBundle,
@@ -278,23 +280,23 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
   const { preferences } = usePreferences();
   const isAdaptive =
     !isPresetMode && preferences?.calorie_goal_adjustment_mode === 'adaptive';
-  // Calorie cycling (#2327) makes the typed calories a base the day's goal is
-  // worked out from, the same as adaptive mode.
+  const cyclingOffsets = calorieCyclingPattern({
+    calorie_cycling_mode: preferences?.calorie_cycling_mode,
+    calorie_cycling_offsets: preferences?.calorie_cycling_offsets,
+  });
   const isCycling =
     !isPresetMode &&
-    calorieCyclingPattern({
-      calorie_cycling_mode: preferences?.calorie_cycling_mode,
-      calorie_cycling_offsets: preferences?.calorie_cycling_offsets,
-    }) !== null &&
+    cyclingOffsets !== null &&
     isCalorieCyclingAvailable({
       calorie_goal_adjustment_mode: preferences?.calorie_goal_adjustment_mode,
       goal_mode_calculation_method: preferences?.goal_mode_calculation_method,
       adaptive_activity_separate: preferences?.adaptive_activity_separate,
     });
-  const adjustedCalories = useAdjustedCalorieGoal(
-    date,
-    isAdaptive || isCycling
-  );
+  const adjustedGoal = useAdjustedDailyGoal(date, !isPresetMode);
+  const adjustedCalories = adjustedGoal?.calories;
+  const cyclingDay = adjustedGoal?.calorie_cycling;
+  const cyclingActiveOnDay =
+    cyclingDay !== undefined ? cyclingDay.status === 'active' : isCycling;
   const waterUnit = preferences?.water_display_unit ?? 'ml';
   const energyUnit = normalizeEnergyUnit(preferences?.energy_unit);
   const { profile } = useProfile();
@@ -345,16 +347,19 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
   const typedCalories = Number.isFinite(calcCalories) ? calcCalories : 0;
   const savedCalories = Number(goals.calories);
   // Meal shares follow the day's goal. Adaptive replaces the typed number;
-  // cycling scales it, so an unsaved base edit moves the preview by the same
-  // ratio the server applied to the saved base today.
-  const mealPreviewCalories =
-    adjustedCalories === undefined
-      ? typedCalories
-      : isAdaptive
+  // cycling recalculates from the typed base using the day's rules and floor.
+  const mealPreviewCalories = isAdaptive
+    ? (adjustedCalories ?? typedCalories)
+    : cyclingActiveOnDay && cyclingOffsets
+      ? typedCalories === savedCalories && adjustedCalories !== undefined
         ? adjustedCalories
-        : isCycling && savedCalories > 0
-          ? Math.round((typedCalories * adjustedCalories) / savedCalories)
-          : typedCalories;
+        : cycleDayTarget({
+            baseTarget: typedCalories,
+            offsets: cyclingOffsets,
+            weekday: dayOfWeek(date),
+            floor: cyclingDay?.floor ?? null,
+          }).target
+      : typedCalories;
   const userData: UserNutrientData | null = useMemo(() => {
     if (profile?.gender !== 'male' && profile?.gender !== 'female') return null;
     const activity = ACTIVITY_LEVELS.find(

@@ -3630,6 +3630,8 @@
       "hintHigh": "Calorie cycling is on, so this is your base target. This day becomes about {{amount}} {{unit}} (high day).",
       "hintLow": "Calorie cycling is on, so this is your base target. This day becomes about {{amount}} {{unit}} (low day).",
       "hintEven": "Calorie cycling is on, so this is your base target. This day stays the same.",
+      "hintAdaptiveHigh": "Calorie cycling is on. With your adaptive target this day is about {{amount}} {{unit}} (high day).",
+      "hintAdaptiveLow": "Calorie cycling is on. With your adaptive target this day is about {{amount}} {{unit}} (low day).",
       "hintPausedBySave": "Saving this calorie goal switches to a manual goal, which adds exercise calories back and pauses calorie cycling."
     }
   },

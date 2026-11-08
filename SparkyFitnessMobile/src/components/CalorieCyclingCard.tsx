@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Platform, Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useCSSVariable } from 'uniwind';
 import {
   CALORIE_CYCLING_MAX_OFFSET,
   cycleWeekTargets,
@@ -17,6 +18,7 @@ import CalorieCyclingChart, {
   formatCyclingPercent,
   signedCyclingAmount,
 } from './CalorieCyclingChart';
+import { getAppLocale } from '../localization/i18n';
 import { localizedWeekdayLabels } from '../utils/medicationScheduleLocalization';
 import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
 
@@ -39,7 +41,19 @@ interface CalorieCyclingCardProps {
   /** Today's weekday in the profile zone, 0 = Sunday. */
   todayWeekday: number;
   energyUnit: EnergyUnit;
+  /** The summary carries the server's cycling base and floor for today. */
+  previewReady: boolean;
 }
+
+/** Whether the app locale writes the percent sign first (e.g. Turkish "%15"). */
+const percentSignFirst = () => {
+  const parts = new Intl.NumberFormat(getAppLocale(), {
+    style: 'percent',
+  }).formatToParts(0.15);
+  const sign = parts.findIndex((part) => part.type === 'percentSign');
+  const number = parts.findIndex((part) => part.type === 'integer');
+  return sign !== -1 && number !== -1 && sign < number;
+};
 
 /** A whole percentage with − and + buttons and a box to type it. */
 const PercentField = ({
@@ -56,16 +70,30 @@ const PercentField = ({
   testID: string;
 }) => {
   const { t } = useTranslation();
+  const iconColor = String(useCSSVariable('--color-text-primary'));
+  const percentFirst = percentSignFirst();
   const [text, setText] = useState(String(value));
   const [synced, setSynced] = useState(value);
   if (synced !== value) {
     setSynced(value);
     setText(String(value));
   }
-  const commit = (next: number) =>
-    onChange(Math.max(min, clampCyclingOffset(next)));
+  const commit = (next: number) => {
+    const clamped = Math.max(min, clampCyclingOffset(next));
+    // An out-of-range entry that clamps to the current value would not
+    // change `value`, so the box is put right here too.
+    setText(String(clamped));
+    onChange(clamped);
+  };
+  const percentSign = (
+    <Text
+      className={`text-text-secondary text-sm ${percentFirst ? 'ml-1.5' : 'mr-1.5'}`}
+    >
+      %
+    </Text>
+  );
   return (
-    <View className="flex-row items-center">
+    <View className="flex-row items-center gap-1">
       <Pressable
         onPress={() => commit(value - 1)}
         disabled={value <= min}
@@ -73,12 +101,14 @@ const PercentField = ({
         accessibilityLabel={t('calorieSettings.cycling.decrease', {
           defaultValue: 'Lower by 1%',
         })}
+        hitSlop={8}
         className="w-9 h-9 rounded-full bg-raised items-center justify-center"
         style={{ opacity: value <= min ? 0.4 : 1 }}
         testID={`${testID}-down`}
       >
-        <Icon name="remove" size={16} />
+        <Icon name="remove" size={16} color={iconColor} />
       </Pressable>
+      {percentFirst && percentSign}
       <View className="w-16 mx-1.5">
         <FormInput
           value={text}
@@ -98,7 +128,7 @@ const PercentField = ({
           testID={`${testID}-input`}
         />
       </View>
-      <Text className="text-text-secondary text-sm mr-1.5">%</Text>
+      {!percentFirst && percentSign}
       <Pressable
         onPress={() => commit(value + 1)}
         disabled={value >= CALORIE_CYCLING_MAX_OFFSET}
@@ -106,11 +136,12 @@ const PercentField = ({
         accessibilityLabel={t('calorieSettings.cycling.increase', {
           defaultValue: 'Raise by 1%',
         })}
+        hitSlop={8}
         className="w-9 h-9 rounded-full bg-raised items-center justify-center"
         style={{ opacity: value >= CALORIE_CYCLING_MAX_OFFSET ? 0.4 : 1 }}
         testID={`${testID}-up`}
       >
-        <Icon name="add" size={16} />
+        <Icon name="add" size={16} color={iconColor} />
       </Pressable>
     </View>
   );
@@ -127,9 +158,13 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
   firstDayOfWeek,
   todayWeekday,
   energyUnit,
+  previewReady,
 }) => {
   const { t } = useTranslation();
-  const [selectedDay, setSelectedDay] = useState(todayWeekday);
+  // Today until a day is picked, so a profile day that loads later still
+  // moves the default selection.
+  const [pickedDay, setSelectedDay] = useState<number | null>(null);
+  const selectedDay = pickedDay ?? todayWeekday;
   // Offsets while a bar is being dragged; saved once the finger lifts.
   const [draftOffsets, setDraftOffsets] = useState<number[] | null>(null);
   const shownOffsets = draftOffsets ?? offsets;
@@ -166,8 +201,14 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
       ? usefulTrainingPattern
       : offsets.some((offset) => offset !== offsets[0]));
 
+  // The week's numbers wait for a cycling-aware summary (an older cached
+  // one has no floor); the day controls below do not.
   const showResults =
-    mode !== 'off' && useful && baseTarget > 0 && !atOrBelowFloor;
+    mode !== 'off' &&
+    useful &&
+    previewReady &&
+    baseTarget > 0 &&
+    !atOrBelowFloor;
   // The chart stays up while a pattern is edited, even when it changes
   // nothing yet or the target sits on the floor, so days can still be set.
   const showChart = mode !== 'off' && baseTarget > 0;
@@ -185,6 +226,9 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
     });
 
   const applyMode = (next: CalorieCyclingMode) => {
+    // Leaving Custom (for Off too, since Training / rest may follow) keeps
+    // the latest custom pattern so switching back restores it.
+    if (mode === 'custom') setLastCustomOffsets(offsets);
     if (next === 'off') {
       onSave({ mode: next, offsets });
       return;
@@ -194,7 +238,6 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
       return;
     }
     if (next === 'training_rest' || offsets.every((o) => o === 0)) {
-      if (mode === 'custom') setLastCustomOffsets(offsets);
       const days = trainingDays.length ? trainingDays : DEFAULT_TRAINING_DAYS;
       const pct = percent > 0 ? percent : DEFAULT_TRAINING_PERCENT;
       onSave({ mode: next, offsets: trainingRestOffsets(days, pct) });
@@ -207,9 +250,11 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
     if (next === mode) return;
     // Training / rest rewrites the offsets; a custom pattern it can't express
     // would be lost once this screen closes, so ask first.
+    // Off keeps the stored offsets, so a custom pattern can sit under it.
     const replacesCustom =
-      mode === 'custom' &&
+      (mode === 'custom' || mode === 'off') &&
       next === 'training_rest' &&
+      offsets.some((offset) => offset !== 0) &&
       trainingRestOffsets(trainingDays, percent).some(
         (offset, index) => offset !== offsets[index]
       );
@@ -311,6 +356,17 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
             </Text>
           )}
 
+          {mode !== 'off' && !(baseTarget > 0) && (
+            <Text
+              className="text-text-secondary text-sm mt-3"
+              testID="calorie-cycling-waiting"
+            >
+              {t('calorieSettings.cycling.waitingForTarget', {
+                defaultValue:
+                  "Your days show here once today's calorie target has loaded.",
+              })}
+            </Text>
+          )}
           {showChart && (
             <CalorieCyclingChart
               mode={mode}
@@ -339,6 +395,9 @@ const CalorieCyclingCard: React.FC<CalorieCyclingCardProps> = ({
                     {weekdayNames[selectedDay]}
                   </Text>
                   <PercentField
+                    // One field per day: a draft typed for one day is
+                    // dropped, never saved to another, when the day changes.
+                    key={selectedDay}
                     value={offsets[selectedDay] ?? 0}
                     min={-CALORIE_CYCLING_MAX_OFFSET}
                     label={t('calorieSettings.cycling.dayPercent', {

@@ -208,26 +208,34 @@ export function calorieCyclingDayType(delta: number): CalorieCyclingDayType {
 }
 
 /**
- * Moves a cycled day's macros with its calories (4 kcal per gram of carbs,
- * 9 per gram of fat). Carbs take the change and protein never moves; only a
- * low day bigger than all of the day's carbs takes the rest from fat, so the
- * macros never add up to more than the day's calories. Never below zero.
+ * Moves a cycled day's macros with its calories (4 kcal per gram of carbs and
+ * protein, 9 per gram of fat). Carbs take the change; a low day bigger than
+ * all of the day's carbs takes the rest from fat, and only past fat from
+ * protein, so the macros never add up to more than the day's calories.
+ * Protein is otherwise left alone. Never below zero.
  */
 export function applyCalorieCyclingMacroDelta(
-  macros: { carbs: number; fat: number },
+  macros: { protein: number; carbs: number; fat: number },
   deltaKcal: number
-): { carbs: number; fat: number } {
+): { protein: number; carbs: number; fat: number } {
+  const protein = Number(macros.protein);
   const carbs = Number(macros.carbs);
   const fat = Number(macros.fat);
   const round = (value: number) => Math.round(value * 10) / 10;
-  if (!Number.isFinite(carbs)) return { carbs, fat };
+  if (!Number.isFinite(carbs)) return { protein, carbs, fat };
   const carbsAfter = carbs + deltaKcal / 4;
   if (carbsAfter >= 0 || !Number.isFinite(fat)) {
-    return { carbs: Math.max(0, round(carbsAfter)), fat };
+    return { protein, carbs: Math.max(0, round(carbsAfter)), fat };
   }
   // The part of a low day carbs could not cover, in kcal, comes off fat.
-  const uncoveredKcal = -carbsAfter * 4;
-  return { carbs: 0, fat: Math.max(0, round(fat - uncoveredKcal / 9)) };
+  const fatAfter = fat + (carbsAfter * 4) / 9;
+  if (fatAfter >= 0 || !Number.isFinite(protein)) {
+    return { protein, carbs: 0, fat: Math.max(0, round(fatAfter)) };
+  }
+  // A low day bigger than carbs and fat together (a very high protein split
+  // with no safety floor) takes the remainder from protein.
+  const proteinAfter = protein + (fatAfter * 9) / 4;
+  return { protein: Math.max(0, round(proteinAfter)), carbs: 0, fat: 0 };
 }
 
 /** The stored pattern for training vs rest: training days +pct, rest days 0. */

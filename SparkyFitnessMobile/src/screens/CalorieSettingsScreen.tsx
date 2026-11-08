@@ -1060,10 +1060,14 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
             pausedByWeeklyPlan={
               summary?.calorieCycling?.status === 'paused_weekly_plan'
             }
-            // Only a cycling-aware summary carries the base and floor the
-            // server cycles from; until it arrives the chart stays hidden.
-            baseTarget={summary?.calorieCycling?.baseTarget ?? 0}
+            // The cycling summary carries the base and floor the server
+            // cycles from. A pattern that changes nothing has none, so the
+            // day's goal (the uncycled base then) keeps the day controls up.
+            baseTarget={
+              summary?.calorieCycling?.baseTarget ?? summary?.calorieGoal ?? 0
+            }
             floor={summary?.calorieCycling?.floor ?? null}
+            previewReady={summary?.calorieCycling !== undefined}
             firstDayOfWeek={normalized.firstDayOfWeek}
             todayWeekday={todayWeekday}
             energyUnit={normalized.energyUnit}

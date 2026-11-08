@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import CalorieCyclingCard from '../../src/components/CalorieCyclingCard';
 
 type Props = React.ComponentProps<typeof CalorieCyclingCard>;
@@ -18,6 +18,7 @@ function renderCard(props: Partial<Props> = {}) {
       firstDayOfWeek={1}
       todayWeekday={1}
       energyUnit="kcal"
+      previewReady
       {...props}
     />
   );
@@ -120,6 +121,26 @@ describe('CalorieCyclingCard', () => {
     expect(queryByTestId('calorie-cycling-week-total')).toBeNull();
     // The chart stays so a day can still be switched to training.
     expect(getByTestId('calorie-cycling-toggle-1')).toBeTruthy();
+  });
+});
+
+describe('CalorieCyclingCard without a cycling summary', () => {
+  it('keeps the days editable when no training day is left', () => {
+    // A pattern that changes nothing has no cycling summary on the server.
+    renderCard({
+      mode: 'training_rest',
+      offsets: [0, 0, 0, 0, 0, 0, 0],
+      baseTarget: 2000,
+      floor: null,
+      previewReady: false,
+    });
+    expect(screen.getByTestId('calorie-cycling-chart')).toBeTruthy();
+    expect(screen.queryByTestId('calorie-cycling-preview')).toBeNull();
+  });
+
+  it('says it is waiting while no target has loaded', () => {
+    renderCard({ ...training, baseTarget: 0, previewReady: false });
+    expect(screen.getByTestId('calorie-cycling-waiting')).toBeTruthy();
   });
 });
 
