@@ -962,6 +962,7 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
         </Text>
       )}
       {isCycling &&
+        cyclingActiveOnDay &&
         !isAdaptive &&
         !cyclingPausedByPlan &&
         adjustedCalories !== undefined &&
