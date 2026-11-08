@@ -99,6 +99,38 @@ const valuesWithAttributes = (json) => {
   return found;
 };
 
+/** Whether a catalogue is a server email template catalogue. */
+const isServerCatalogue = (path) => /^SparkyFitnessServer\//.test(path || "");
+
+// Server email translations are 100% plain text. The HTML skeleton and link tags
+// are built in server code, so server translation strings must contain no HTML tags.
+// Matches HTML elements (standard, legacy, or custom elements with attributes),
+// declarations, and comments, while allowing plain-text comparisons (e.g. x<y, x<time and y>0).
+const HTML_TAG_NAMES =
+  "a|abbr|address|applet|area|article|aside|audio|b|base|basefont|bdi|bdo|big|blockquote|body|br|button|canvas|caption|center|cite|code|col|colgroup|data|datalist|dd|del|details|dfn|dialog|dir|div|dl|dt|em|embed|fieldset|figcaption|figure|font|footer|form|frame|frameset|h[1-6]|head|header|hgroup|hr|html|i|iframe|img|input|ins|kbd|label|legend|li|link|main|map|mark|marquee|math|menu|meta|meter|nav|noframes|noscript|object|ol|optgroup|option|output|p|param|picture|portal|pre|progress|q|rp|rt|ruby|s|samp|script|search|section|select|slot|small|source|span|strike|strong|style|sub|summary|sup|table|tbody|td|template|textarea|tfoot|th|thead|time|title|tr|track|tt|u|ul|var|video|wbr|svg|path";
+const CUSTOM_ELEMENT_NAME = "[a-zA-Z][a-zA-Z0-9._-]*-[a-zA-Z0-9._-]*";
+const BOOLEAN_ATTRS =
+  "allowfullscreen|async|autofocus|autoplay|checked|controls|default|defer|disabled|formnovalidate|hidden|inert|ismap|itemscope|loop|multiple|muted|nomodule|novalidate|open|playsinline|readonly|required|reversed|selected";
+const TAG_IN_SERVER = new RegExp(
+  `<!--[\\s\\S]*?-->|<![a-zA-Z]+(?:\\s+[^>]*)?>|<\\/(?:${HTML_TAG_NAMES}|${CUSTOM_ELEMENT_NAME})\\s*>|<(?:${HTML_TAG_NAMES}|${CUSTOM_ELEMENT_NAME})\\s*\\/?>|<(?:${HTML_TAG_NAMES})\\s+[^>]*(?:=|\\b(?:${BOOLEAN_ATTRS})\\b)[^>]*\\/?>|<${CUSTOM_ELEMENT_NAME}(?:\\s+[^>]*)?\\s*\\/?>`,
+  "i",
+);
+
+/** Dotted keys of string values in a server JSON catalogue that contain HTML tags. */
+const serverValuesWithTags = (json) => {
+  const found = [];
+  const walk = (value, key) => {
+    if (typeof value === "string") {
+      if (TAG_IN_SERVER.test(value)) found.push(key);
+    } else if (value && typeof value === "object") {
+      for (const [k, v] of Object.entries(value))
+        walk(v, key ? `${key}.${k}` : k);
+    }
+  };
+  walk(JSON.parse(json), "");
+  return found;
+};
+
 // Links. A translation may repeat the links its English text has, or keep the
 // ones it already had on main, but a new link, web address or email holds the
 // PR for a maintainer: translated text reaches main without review, and a link
@@ -323,27 +355,34 @@ module.exports = {
   ALLOWED_FILES,
   allowedFor,
   englishPathFor,
+  isServerCatalogue,
   linksIn,
   newLinks,
   outsideAllowlist,
   rendersMarkup,
+  serverValuesWithTags,
   valuesWithAttributes,
 };
 
 // CLI for shell steps. `<branch>` reads paths on stdin, one per line, and prints
 // the ones the branch may not change. `--values <file>...` prints the keys of
-// web catalogues, given as repo-relative paths, that put attributes in a tag.
+// catalogues, given as repo-relative paths, that put attributes in a tag or HTML tags in server catalogues.
 // Either exits 1 on any finding.
 if (require.main === module && process.argv[2] === "--values") {
   const fs = require("node:fs");
   const found = process.argv
     .slice(3)
-    .filter(rendersMarkup)
-    .flatMap((file) =>
-      valuesWithAttributes(fs.readFileSync(file, "utf8")).map(
-        (key) => `${file}: ${key}`,
-      ),
-    );
+    .filter((file) => rendersMarkup(file) || isServerCatalogue(file))
+    .flatMap((file) => {
+      const text = fs.readFileSync(file, "utf8");
+      if (rendersMarkup(file)) {
+        return valuesWithAttributes(text).map((key) => `${file}: ${key}`);
+      }
+      if (isServerCatalogue(file)) {
+        return serverValuesWithTags(text).map((key) => `${file}: ${key}`);
+      }
+      return [];
+    });
   if (found.length > 0) {
     console.log(found.join("\n"));
     process.exit(1);

@@ -1,14 +1,16 @@
 const assert = require("node:assert/strict");
 const { execFileSync } = require("node:child_process");
-const { resolve } = require("node:path");
+const { join, relative, resolve } = require("node:path");
 const { test } = require("node:test");
 const {
   allowedFor,
   englishPathFor,
+  isServerCatalogue,
   linksIn,
   newLinks,
   outsideAllowlist,
   rendersMarkup,
+  serverValuesWithTags,
   valuesWithAttributes,
 } = require("./automation-allowlist.cjs");
 const { readFileSync } = require("node:fs");
@@ -104,6 +106,102 @@ test("no web catalogue in the repo puts attributes in a tag", () => {
     ),
   );
   assert.deepEqual(found, []);
+});
+
+test("no server email catalogue in the repo contains HTML tags", () => {
+  const json = catalogues.filter(
+    (p) => p.endsWith(".json") && isServerCatalogue(p),
+  );
+  assert.ok(json.length > 0, "expected server catalogues to be found");
+  const found = json.flatMap((p) =>
+    serverValuesWithTags(readFileSync(resolve(root, p), "utf8")).map(
+      (k) => `${p}: ${k}`,
+    ),
+  );
+  assert.deepEqual(found, []);
+});
+
+test("server email templates must be plain text without HTML tags", () => {
+  const valid = JSON.stringify({
+    reset: "You have requested a password reset for your account.",
+    mfa: "Your code is {{code}}.",
+    magic: "Please click on the link to log in.",
+    expiry: "This link will expire in {{expiresInMinutes}} minutes.",
+    comparison:
+      "Thresholds: x<y and duration < 5 minutes and x<y and z> and x<y and z=1>.",
+    comparisonTime: "x<time and y>0",
+    spacedComparisonTime: "x <time and y>0",
+  });
+  assert.deepEqual(serverValuesWithTags(valid), []);
+
+  const invalid = JSON.stringify({
+    link: '<a href="https://evil.com">Reset</a>',
+    tag: "<p>Hello</p>",
+    adjacentTag: "Hello<p>World",
+    adjacentTagWithAttr: "Hello<img src=x>",
+    paramTag: "<param name=x>",
+    mathTag: "<math>",
+    legacyTag: "<font color=red>Font</font>",
+    customTag: "<custom-element>Custom</custom-element>",
+    customUnderscore: "<my-widget_name>Warning</my-widget_name>",
+    bareAttr: "<custom-element active>",
+    booleanAttr: "<input disabled>",
+    compactSelfClosing: "Line<br/>break",
+    compactComment: "<!--comment-->",
+    script: "<script>alert(1)</script>",
+    img: '<img src="https://tracker.com">',
+    comment: "<!-- comment -->",
+    email: {
+      reset: '<a href="https://evil.com">Nested reset</a>',
+      safe: "Safe text",
+    },
+    validText: "Regular text without tags",
+  });
+  assert.deepEqual(serverValuesWithTags(invalid), [
+    "link",
+    "tag",
+    "adjacentTag",
+    "adjacentTagWithAttr",
+    "paramTag",
+    "mathTag",
+    "legacyTag",
+    "customTag",
+    "customUnderscore",
+    "bareAttr",
+    "booleanAttr",
+    "compactSelfClosing",
+    "compactComment",
+    "script",
+    "img",
+    "comment",
+    "email.reset",
+  ]);
+
+  // CLI test: passing a server catalogue with tags through --values exits 1 and prints the offending key
+  const { mkdtempSync, rmSync, writeFileSync } = require("node:fs");
+  const tempDir = mkdtempSync(
+    resolve(root, "SparkyFitnessServer/.tmp-allowlist-test-"),
+  );
+  const tempTestFile = join(tempDir, "catalogue.json");
+  const relPath = relative(root, tempTestFile).replace(/\\/g, "/");
+  try {
+    writeFileSync(tempTestFile, invalid, "utf8");
+    assert.throws(
+      () =>
+        execFileSync(
+          process.execPath,
+          [resolve(__dirname, "automation-allowlist.cjs"), "--values", relPath],
+          { cwd: root, encoding: "utf8" },
+        ),
+      (err) => {
+        assert.equal(err.status, 1);
+        assert.match(err.stdout, new RegExp(`${relPath}: email\\.reset`));
+        return true;
+      },
+    );
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("values may carry tags but not attributes", () => {

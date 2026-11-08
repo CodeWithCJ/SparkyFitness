@@ -32,14 +32,13 @@ const germanCatalog = {
   email: {
     passwordReset: {
       subject: 'SparkyFitness: Passwort zurücksetzen',
-      bodyHtml:
-        '<p>Passwort zurücksetzen:</p><p><a href="{{resetUrl}}">{{resetUrl}}</a></p>',
-      bodyText: 'Passwort zurücksetzen:\n\n{{resetUrl}}',
+      intro: 'Sie haben das Zurücksetzen Ihres Passworts angefordert.',
+      actionPrompt:
+        'Bitte klicken Sie auf den Link, um Ihr Passwort zurückzusetzen:',
     },
     mfaCode: {
       subject: 'Dein SparkyFitness-Code',
-      bodyHtml: '<p>Dein Code:</p><h3>{{code}}</h3>',
-      // bodyText left out on purpose: falls back to English on its own
+      // intro left out on purpose: falls back to English on its own
     },
   },
 };
@@ -319,8 +318,26 @@ describe('emailService', () => {
       expect(mail.html).toContain(
         '<a href="https://example.com/reset?token=xyz">'
       );
-      expect(mail.text).toBe(
-        'Passwort zurücksetzen:\n\nhttps://example.com/reset?token=xyz'
+      expect(mail.html).toContain(
+        'Sie haben das Zurücksetzen Ihres Passworts angefordert.'
+      );
+      expect(mail.html).toContain(
+        'Bitte klicken Sie auf den Link, um Ihr Passwort zurückzusetzen:'
+      );
+      expect(mail.html).toContain('This link will expire in 1 hour.');
+      expect(mail.html).toContain(
+        'If you did not request a password reset, please ignore this email.'
+      );
+      expect(mail.text).toContain('https://example.com/reset?token=xyz');
+      expect(mail.text).toContain(
+        'Sie haben das Zurücksetzen Ihres Passworts angefordert.'
+      );
+      expect(mail.text).toContain(
+        'Bitte klicken Sie auf den Link, um Ihr Passwort zurückzusetzen:'
+      );
+      expect(mail.text).toContain('This link will expire in 1 hour.');
+      expect(mail.text).toContain(
+        'If you did not request a password reset, please ignore this email.'
       );
     });
 
