@@ -136,6 +136,8 @@ test("server email templates must be plain text without HTML tags", () => {
   const invalid = JSON.stringify({
     link: '<a href="https://evil.com">Reset</a>',
     tag: "<p>Hello</p>",
+    adjacentTag: "Hello<p>World",
+    adjacentTagWithAttr: "Hello<img src=x>",
     legacyTag: "<font color=red>Font</font>",
     customTag: "<custom-element>Custom</custom-element>",
     customUnderscore: "<my-widget_name>Warning</my-widget_name>",
@@ -155,6 +157,8 @@ test("server email templates must be plain text without HTML tags", () => {
   assert.deepEqual(serverValuesWithTags(invalid), [
     "link",
     "tag",
+    "adjacentTag",
+    "adjacentTagWithAttr",
     "legacyTag",
     "customTag",
     "customUnderscore",

@@ -104,13 +104,15 @@ const isServerCatalogue = (path) => /^SparkyFitnessServer\//.test(path || "");
 
 // Server email translations are 100% plain text. The HTML skeleton and link tags
 // are built in server code, so server translation strings must contain no HTML tags.
-// Matches HTML elements (standard, legacy, or custom elements with any attributes),
+// Matches HTML elements (standard, legacy, or custom elements with attributes),
 // declarations, and comments, while allowing plain-text comparisons (e.g. x<y, x<time and y>0).
 const HTML_TAG_NAMES =
   "a|abbr|address|applet|area|article|aside|audio|b|base|basefont|bdi|bdo|big|blockquote|body|br|button|canvas|caption|center|cite|code|col|colgroup|data|datalist|dd|del|details|dfn|dialog|dir|div|dl|dt|em|embed|fieldset|figcaption|figure|font|footer|form|frame|frameset|h[1-6]|head|header|hgroup|hr|html|i|iframe|img|input|ins|kbd|label|legend|li|link|main|map|mark|marquee|menu|meta|meter|nav|noframes|noscript|object|ol|optgroup|option|output|p|picture|portal|pre|progress|q|rp|rt|ruby|s|samp|script|search|section|select|slot|small|source|span|strike|strong|style|sub|summary|sup|table|tbody|td|template|textarea|tfoot|th|thead|time|title|tr|track|tt|u|ul|var|video|wbr|svg|path";
 const CUSTOM_ELEMENT_NAME = "[a-zA-Z][a-zA-Z0-9._-]*-[a-zA-Z0-9._-]*";
+const BOOLEAN_ATTRS =
+  "allowfullscreen|async|autofocus|autoplay|checked|controls|default|defer|disabled|formnovalidate|hidden|inert|ismap|itemscope|loop|multiple|muted|nomodule|novalidate|open|playsinline|readonly|required|reversed|selected";
 const TAG_IN_SERVER = new RegExp(
-  `<!--[\\s\\S]*?-->|<![a-zA-Z]+(?:\\s+[^>]*)?>|<\\/(?:${HTML_TAG_NAMES}|${CUSTOM_ELEMENT_NAME})\\s*>|<(?:br|hr|wbr)\\s*\\/?>|(?<![a-zA-Z0-9])<(?:${HTML_TAG_NAMES}|${CUSTOM_ELEMENT_NAME})(?:\\s+[^>]*)?\\s*\\/?>`,
+  `<!--[\\s\\S]*?-->|<![a-zA-Z]+(?:\\s+[^>]*)?>|<\\/(?:${HTML_TAG_NAMES}|${CUSTOM_ELEMENT_NAME})\\s*>|<(?:${HTML_TAG_NAMES}|${CUSTOM_ELEMENT_NAME})\\s*\\/?>|<(?:${HTML_TAG_NAMES})\\s+[^>]*(?:=|\\b(?:${BOOLEAN_ATTRS})\\b)[^>]*\\/?>|<${CUSTOM_ELEMENT_NAME}(?:\\s+[^>]*)?\\s*\\/?>`,
   "i",
 );
 
