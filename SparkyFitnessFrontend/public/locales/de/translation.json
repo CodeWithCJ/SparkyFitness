@@ -13,7 +13,8 @@
     "foodLog": "Ernährungsprotokoll",
     "wellness": "Wellness",
     "symptoms": "Symptome",
-    "sparkyFitnessV": "SparkyFitness v{{version}}"
+    "sparkyFitnessV": "SparkyFitness v{{version}}",
+    "labs": "Laborergebnisse"
   },
   "settings": {
     "profileInformation": {
@@ -103,7 +104,10 @@
       "wednesday": "Mittwoch",
       "thursday": "Donnerstag",
       "friday": "Freitag",
-      "saturday": "Samstag"
+      "saturday": "Samstag",
+      "temperatureUnit": "Temperatureinheit",
+      "celsius": "Celsius (°C)",
+      "fahrenheit": "Fahrenheit (°F)"
     },
     "waterTracking": {
       "title": "Wassererfassung",
@@ -350,7 +354,10 @@
         "allowPrivateNetworkAiDescription": "Erlaubt die Verbindung zu KI-Endpunkten, die auf privaten IP-Adressen gehostet werden (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, localhost).",
         "supportsAudioInput": "Diese Konfiguration in der Liste „Spracheingabe“ anzeigen",
         "supportsAudioInputDescription": "Aktiviere dies nur, wenn das ausgewählte Modell Audiodateien akzeptiert. Ist diese Konfiguration für die Spracheingabe ausgewählt, werden Audioaufnahmen zur Transkription an dieses Modell gesendet.",
-        "audioInputProviderUnsupported": "Die Sprachtranskription wird für diesen Diensttyp noch nicht unterstützt."
+        "audioInputProviderUnsupported": "Die Sprachtranskription wird für diesen Diensttyp noch nicht unterstützt.",
+        "loadModels": "Modelle laden",
+        "loadingModels": "Lade Modelle",
+        "openCodeGoModelsLoadFailed": "Die OpenCode Go-Modelle konnten nicht geladen werden. Überprüfen Sie den API-Schlüssel und versuchen Sie es erneut."
       },
       "userSettings": {
         "title": "KI-Dienst",
@@ -457,7 +464,10 @@
         "supportsAudioInputDescription": "Aktiviere dies nur, wenn das ausgewählte Modell Audiodateien akzeptiert. Ist diese Konfiguration für die Spracheingabe ausgewählt, werden Audioaufnahmen zur Transkription an dieses Modell gesendet.",
         "audioInputProviderUnsupported": "Die Sprachtranskription wird für diesen Diensttyp noch nicht unterstützt.",
         "activeVoiceProvider": "Konfiguration für Spracheingabe",
-        "systemVoiceFree": "Systemerkennung (kostenlos)"
+        "systemVoiceFree": "Systemerkennung (kostenlos)",
+        "loadModels": "Modelle laden",
+        "loadingModels": "Modelle werden geladen…",
+        "openCodeGoModelsLoadFailed": "Die OpenCode Go-Modelle konnten nicht geladen werden. Überprüfen Sie den API-Schlüssel und versuchen Sie es erneut."
       },
       "serviceTypes": {
         "openai": "OpenAI",
@@ -471,7 +481,8 @@
         "custom": "Benutzerdefiniert",
         "xai": "xAI (Grok)",
         "meta": "Meta",
-        "perplexity": "Perplexity AI"
+        "perplexity": "Perplexity AI",
+        "opencodeGo": "OpenCode Go"
       },
       "test": {
         "successTitle": "Erfolg",
@@ -1199,7 +1210,11 @@
       "europeMcpeuCorosComNot": "Europa (mcpeu.coros.com) <span>(noch nicht getestet)</span>",
       "mainlandChinaMcpcnCorosCom": "Festlandchina (mcpcn.coros.com) <span>(noch nicht getestet)</span>",
       "ensureLocalUrl": "Prüfe beim lokalen Testen außerdem, ob deine lokale URL stimmt.",
-      "stravaCallbackNote": "Hinweis: Die Strava-Callback-URL ist auf dem Server konfiguriert als: <strong>{{value}}</strong>"
+      "stravaCallbackNote": "Hinweis: Die Strava-Callback-URL ist auf dem Server konfiguriert als: <strong>{{value}}</strong>",
+      "garminServiceUnreachable": "Garmin-Dienst nicht erreichbar",
+      "garminServiceUnreachableDescription": "SparkyFitness kann keine Verbindung zum Garmin-Dienst herstellen, daher können die Garmin-Daten nicht synchronisiert werden. Überprüfen Sie, ob der Garmin-Mikroservice läuft.",
+      "hevyDaily": "Täglich um 21:00 Uhr",
+      "hevyDailyHelp": "Die tägliche Hevy-Synchronisierung findet um 21:00 Uhr oder später in Ihrer SparkyFitness-Zeitzone statt. Nur eine erfolgreiche Synchronisierung um 21:00 Uhr oder später zählt für diesen Abend. Für die automatische Synchronisierung ist ein aktiver Anbieter erforderlich."
     },
     "externalProviderList": {
       "dragToReorderProvider": "Ziehen, um den Anbieter neu anzuordnen",
@@ -1289,7 +1304,9 @@
       "urlLabel": "URL:",
       "appIdLabel": "App-ID:",
       "appKeyLabel": "App-Schlüssel:",
-      "syncLabel": "Synchronisierung:"
+      "syncLabel": "Synchronisierung:",
+      "neverSynced": "Letzte Synchronisierung: noch nie",
+      "garminServiceUnreachable": "Der Garmin-Dienst ist nicht erreichbar. Eine Synchronisierung ist nicht möglich."
     },
     "providerSpecificFields": {
       "appURL": "App-URL",
@@ -2465,7 +2482,9 @@
         "enforceMfaForAllUsers": "MFA für alle Benutzer erzwingen",
         "enablePasskeyLogin": "Passkey-Anmeldung aktivieren",
         "emergencyFailSafePasskeyDescription": "Falls die Passkey-Anmeldung deaktiviert wurde und du dich nicht mehr anmelden kannst, erzwinge die Reaktivierung mit:",
-        "emergencyFailSafeIfYou": "<strong>Notfall-Absicherung:</strong> Wenn du einmal aus deinem Konto ausgesperrt bist, kannst du die Anmeldung per E-Mail/Passwort erzwingen, indem du auf deinem Server die folgende Umgebungsvariable setzt und ihn neu startest:"
+        "emergencyFailSafeIfYou": "<strong>Notfall-Absicherung:</strong> Wenn du einmal aus deinem Konto ausgesperrt bist, kannst du die Anmeldung per E-Mail/Passwort erzwingen, indem du auf deinem Server die folgende Umgebungsvariable setzt und ihn neu startest:",
+        "enableMagicLinkLogin": "„Magic Link“-Anmeldung aktivieren",
+        "emergencyFailSafeMagicLinkDescription": "Falls die Anmeldung über „Magic Link“ deaktiviert wurde und Sie sich nicht mehr anmelden können, aktivieren Sie sie mit folgendem Befehl wieder:"
       },
       "oidcProviderManagement": {
         "description": "Konfiguriere deine OpenID-Connect-Anbieter (OIDC).",
@@ -4880,7 +4899,9 @@
       "oxford": "Oxford"
     },
     "useExternalBmr": "Verwende den gemessenen Grundumsatz (BMR) aus Check-ins und synchronisierten Geräten",
-    "useExternalBmrHint": "Standardmäßig deaktiviert – die von dir gewählte Formel wird so lange verwendet, bis du diese Funktion einschaltest. Ist sie aktiviert, ersetzt ein bei einem Check-in erfasster oder von einer smarten Waage bzw. einem Gesundheitsdaten-Anbieter synchronisierter BMR-Wert für den jeweiligen Tag die Formel, sofern der Wert für dich physiologisch plausibel ist. Da manche Geräte den BMR als laufende Tagessumme statt als Rate angeben, muss diese Funktion bewusst aktiviert werden."
+    "useExternalBmrHint": "Standardmäßig deaktiviert – die von dir gewählte Formel wird so lange verwendet, bis du diese Funktion einschaltest. Ist sie aktiviert, ersetzt ein bei einem Check-in erfasster oder von einer smarten Waage bzw. einem Gesundheitsdaten-Anbieter synchronisierter BMR-Wert für den jeweiligen Tag die Formel, sofern der Wert für dich physiologisch plausibel ist. Da manche Geräte den BMR als laufende Tagessumme statt als Rate angeben, muss diese Funktion bewusst aktiviert werden.",
+    "adjustMacrosWithExercise": "Prozentuale Makroziele anhand des Kalorienverbrauchs beim Training anpassen",
+    "adjustMacrosWithExerciseHint": "Erhöhen Sie die Zielwerte für Eiweiß, Kohlenhydrate und Fett anhand Ihrer gespeicherten Prozentsätze, wenn Sie durch sportliche Aktivitäten Kalorien zu Ihrem Tagesbudget hinzufügen. Die Einstellungen für den Kalorienausgleich durch Sport werden berücksichtigt. In Gramm eingegebene Zielwerte bleiben unverändert. Die Änderungen gelten ab heute; für frühere Tage bleiben die bisherigen Einstellungen bestehen."
   },
   "sync": {
     "syncAll": "Synchronisiere alle aktiven Anbieter",
@@ -6993,7 +7014,14 @@
     "intervalsAthleteId": "Athleten-ID",
     "intervalsAthleteIdPlaceholder": "Athleten-ID eingeben (i12345)",
     "intervalsApiKeyPlaceholder": "API-Schlüssel eingeben",
-    "intervalsDisconnectConfirm": "Willst du die Verbindung zu Intervals.icu wirklich trennen? Die Integration bleibt deaktiviert, bis du sie wieder aktivierst."
+    "intervalsDisconnectConfirm": "Willst du die Verbindung zu Intervals.icu wirklich trennen? Die Integration bleibt deaktiviert, bis du sie wieder aktivierst.",
+    "garminServiceUnreachableTitle": "Garmin nicht erreichbar",
+    "garminServiceUnreachable": "Der Garmin-Dienst ist nicht erreichbar. Überprüfen Sie, ob der Garmin-Mikroservice läuft.",
+    "garminSyncIncompleteTitle": "Garmin-Synchronisierung unvollständig",
+    "garminSyncPhaseHealth": "Gesundheit",
+    "garminSyncPhaseActivities": "Aktivitäten",
+    "garminSyncPhaseNutrition": "Ernährung",
+    "garminSyncIncomplete": "Einige Garmin-Daten konnten nicht synchronisiert werden ({{phases}}). Versuchen Sie es später erneut."
   },
   "mealCreation": {
     "convertToMeal": "Mahlzeit aus Tagebuch erstellen",
@@ -8403,7 +8431,8 @@
         "relief": "Linderung",
         "slept": "Schlafdauer",
         "food": "Vortag",
-        "water": "Wasser"
+        "water": "Wasser",
+        "impact": "Auswirkungen am Tag"
       },
       "factorsTitle": "Was davor geschah",
       "factorsHint": "Wie viele deiner letzten {{n}} Episoden jeden dieser Faktoren aufwiesen. Das beschreibt, was passiert ist; es belegt keine Ursache.",
@@ -10066,5 +10095,91 @@
     "legendElevated": "Erhöht außerhalb des Trainings",
     "vsSevenDayAvg": "{{diff}} bpm ggü. 7-Tage-Ø",
     "minIntoWorkout": "{{min}} min nach Trainingsbeginn"
+  },
+  "labs": {
+    "add": "Laborergebnis hinzufügen",
+    "changeMarker": "ändern",
+    "chartEmpty": "Noch keine Ergebnisse",
+    "chartOtherUnits_one": "{{count}} Ergebnis in einer anderen Einheit wird nicht dargestellt.",
+    "chartOtherUnits_other": "{{count}} Ergebnisse in anderen Einheiten werden nicht dargestellt.",
+    "createCustom": "„{{name}}“ als neuen Marker hinzufügen",
+    "date": "Prüfungsdatum",
+    "dateFuture": "Das Prüfungsdatum darf nicht in der Zukunft liegen.",
+    "deleteFailed": "Das Ergebnis konnte nicht gelöscht werden",
+    "deleteMessage": "Dieses Laborergebnis löschen?",
+    "deleteTitle": "Ergebnis löschen",
+    "empty": "Es liegen noch keine Laborergebnisse vor. Fügen Sie ein Ergebnis wie HbA1c, LDL oder Vitamin D hinzu und verfolgen Sie dessen Entwicklung im Zeitverlauf.",
+    "latest": "Aktuelles",
+    "loadFailed": "Ihre Laborergebnisse konnten nicht geladen werden.",
+    "noMatches": "Keine übereinstimmenden Marker",
+    "noResults": "Keine Ergebnisse",
+    "notesPlaceholder": "Notiz hinzufügen (optional)",
+    "rangeHigh": "Hoch",
+    "rangeInvalid": "Geben Sie Zahlen ein, wobei der niedrigere Wert nicht größer sein darf als der höhere Wert.",
+    "rangeLow": "Niedrig",
+    "rangeOptional": "Referenzbereich (optional)",
+    "referenceRange": "Referenzbereich:{{range}}",
+    "saveFailed": "Das Laborergebnis konnte nicht gespeichert werden",
+    "searchPlaceholder": "Suchmarker (HbA1c, LDL, …)",
+    "status": {
+      "high": "Hoch",
+      "inRange": "Im Normbereich",
+      "low": "Niedrig"
+    },
+    "unit": "Einheit",
+    "value": "Ergebnis",
+    "markers": {
+      "hba1c": "HbA1c",
+      "fasting_glucose": "Nüchternblutzucker",
+      "total_cholesterol": "Gesamtcholesterin",
+      "hdl": "HDL-Cholesterin",
+      "ldl": "LDL-Cholesterin",
+      "triglycerides": "Triglyceride",
+      "vitamin_d": "Vitamin D (25-OH)",
+      "tsh": "TSH",
+      "ferritin": "Ferritin",
+      "vitamin_b12": "Vitamin B12",
+      "creatinine": "Kreatinin",
+      "egfr": "eGFR",
+      "alt": "ALT",
+      "ast": "AST",
+      "non_hdl": "Nicht-HDL-Cholesterin",
+      "apob": "Apolipoprotein B",
+      "vldl": "VLDL-Cholesterin",
+      "fasting_insulin": "Nüchterninsulin",
+      "wbc": "Weiße Blutkörperchen",
+      "rbc": "Rote Blutkörperchen",
+      "hemoglobin": "Hämoglobin",
+      "hematocrit": "Hämatokrit",
+      "platelets": "Thrombozyten",
+      "sodium": "Natrium",
+      "potassium": "Kalium",
+      "mcv": "MCV",
+      "chloride": "Chlorid",
+      "bicarbonate": "Bikarbonat (CO₂)",
+      "calcium": "Kalzium",
+      "magnesium": "Magnesium",
+      "phosphorus": "Phosphor",
+      "bun": "BUN",
+      "uric_acid": "Harnsäure",
+      "albumin": "Albumin",
+      "total_protein": "Gesamtprotein",
+      "alp": "Alkalische Phosphatase",
+      "total_bilirubin": "Gesamtbilirubin",
+      "ggt": "GGT",
+      "free_t4": "Freies T4",
+      "free_t3": "Freies T3",
+      "iron": "Eisen",
+      "tibc": "TIBC",
+      "transferrin_saturation": "Transferrin-Sättigung",
+      "folate": "Folsäure",
+      "crp": "hs-CRP",
+      "esr": "ESR",
+      "homocysteine": "Homocystein",
+      "cortisol": "Cortisol (morgens)",
+      "psa": "PSA",
+      "testosterone": "Testosteron (Gesamt)",
+      "estradiol": "Östradiol"
+    }
   }
 }
