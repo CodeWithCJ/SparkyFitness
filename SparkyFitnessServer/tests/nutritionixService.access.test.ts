@@ -70,7 +70,11 @@ describe('Nutritionix provider access', () => {
 
   it('sends the provider keys when the caller has access', async () => {
     checkAccess.mockResolvedValue(true);
-    getProvider.mockResolvedValue({ app_id: 'id', app_key: 'key' } as never);
+    getProvider.mockResolvedValue({
+      provider_type: 'nutritionix',
+      app_id: 'id',
+      app_key: 'key',
+    } as never);
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ common: [], branded: [] }),
@@ -83,5 +87,19 @@ describe('Nutritionix provider access', () => {
       'x-app-id': 'id',
       'x-app-key': 'key',
     });
+  });
+
+  it('refuses a provider of another type without calling Nutritionix', async () => {
+    checkAccess.mockResolvedValue(true);
+    getProvider.mockResolvedValue({
+      provider_type: 'fatsecret',
+      app_id: 'id',
+      app_key: 'key',
+    } as never);
+
+    await expect(
+      searchNutritionixFoods('bob', 'banana', 'p1')
+    ).rejects.toMatchObject({ statusCode: 400 });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -534,21 +534,42 @@ router.get('/profiles/avatar/:filename', authenticate, (req, res, next) => {
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - enabled
  *             properties:
  *               enabled:
  *                 type: boolean
+ *               currentPassword:
+ *                 type: string
+ *                 format: password
+ *                 description: Required when disabling, unless the account has no local password (SSO only).
  *     responses:
  *       200:
  *         description: MFA settings updated successfully.
+ *       400:
+ *         description: enabled is missing or not a boolean.
+ *       401:
+ *         description: Current password is incorrect.
  */
 router.post(
   '/mfa/email-toggle',
   authenticate,
   demoGuard,
   async (req, res, next) => {
-    const { enabled } = req.body;
+    const { enabled, currentPassword } = req.body;
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ error: 'enabled must be a boolean.' });
+    }
     try {
       // Security: MFA settings must apply to the authenticated user
+      // Turning email MFA off needs the current password, like Better Auth's
+      // two-factor/disable does for TOTP.
+      if (!enabled) {
+        await authService.verifyCurrentPassword(
+          req.authenticatedUserId,
+          currentPassword
+        );
+      }
 
       const user = await authService.getUser(req.authenticatedUserId);
       const totpEnabled = !!user.mfa_totp_enabled;

@@ -167,6 +167,29 @@ async function switchUserContext(authenticatedUserId: any, targetUserId: any) {
     throw error;
   }
 }
+/**
+ * Re-verify the account password before an identity or sign-in setting
+ * changes. SSO-only accounts have no local password and pass on their
+ * authenticated session alone. Throws a 401 error when the password is wrong
+ * or missing.
+ */
+async function verifyCurrentPassword(
+  authenticatedUserId: string,
+  currentPassword: unknown
+): Promise<void> {
+  const passwordHash =
+    await userRepository.getCredentialPasswordHash(authenticatedUserId);
+  if (!passwordHash) return;
+  const verified =
+    typeof currentPassword === 'string' &&
+    currentPassword.length > 0 &&
+    (await bcrypt.compare(currentPassword, passwordHash));
+  if (!verified) {
+    throw Object.assign(new Error('Current password is incorrect.'), {
+      statusCode: 401,
+    });
+  }
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateUserEmail(
   authenticatedUserId: any,
@@ -185,22 +208,7 @@ async function updateUserEmail(
         statusCode: 400,
       });
     }
-    // Step-up: re-verify the current password before changing this identity
-    // field. SSO-only accounts have no local password and change email on their
-    // authenticated session alone.
-    const passwordHash =
-      await userRepository.getCredentialPasswordHash(authenticatedUserId);
-    if (passwordHash) {
-      const verified =
-        typeof currentPassword === 'string' &&
-        currentPassword.length > 0 &&
-        (await bcrypt.compare(currentPassword, passwordHash));
-      if (!verified) {
-        throw Object.assign(new Error('Current password is incorrect.'), {
-          statusCode: 401,
-        });
-      }
-    }
+    await verifyCurrentPassword(authenticatedUserId, currentPassword);
     const existingUser = await userRepository.findUserByEmail(newEmail);
     if (existingUser && existingUser.id !== authenticatedUserId) {
       throw new Error('Email already in use by another account.');
@@ -413,6 +421,7 @@ export { getUserProfile };
 export { updateUserProfile };
 export { getUserApiKeys };
 export { switchUserContext };
+export { verifyCurrentPassword };
 export { updateUserEmail };
 export { canAccessUserData };
 export { checkFamilyAccess };
@@ -434,6 +443,7 @@ export default {
   updateUserProfile,
   getUserApiKeys,
   switchUserContext,
+  verifyCurrentPassword,
   updateUserEmail,
   canAccessUserData,
   checkFamilyAccess,

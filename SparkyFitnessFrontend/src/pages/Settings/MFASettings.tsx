@@ -118,6 +118,21 @@ const MFASettings = () => {
           queryClient.refetchQueries({ queryKey: ['users'], type: 'all' });
           break;
         }
+        case 'disableEmail': {
+          await toggleEmailMfa({
+            enabled: false,
+            currentPassword: confirmPassword,
+          });
+          toast({
+            title: t('common.success', 'Success'),
+            description: t(
+              'settings.mfaSettings.emailMFADisabled',
+              'Email MFA disabled.'
+            ),
+          });
+          await refetch();
+          break;
+        }
         case 'generateBackup': {
           const backupRes = await authClient.twoFactor.generateBackupCodes({
             password: confirmPassword,
@@ -199,7 +214,7 @@ const MFASettings = () => {
   const handleEnableEmailMfa = async () => {
     setEmailLoading(true);
     try {
-      await toggleEmailMfa(true);
+      await toggleEmailMfa({ enabled: true });
       toast({
         title: t('common.success', 'Success'),
         description: t(
@@ -217,35 +232,6 @@ const MFASettings = () => {
           t(
             'settings.mfaSettings.failedToEnableEmailMFA',
             'Failed to enable Email MFA'
-          ),
-        variant: 'destructive',
-      });
-    } finally {
-      setEmailLoading(false);
-    }
-  };
-
-  const handleDisableEmailMfa = async () => {
-    setEmailLoading(true);
-    try {
-      await toggleEmailMfa(false);
-      toast({
-        title: t('common.success', 'Success'),
-        description: t(
-          'settings.mfaSettings.emailMFADisabled',
-          'Email MFA disabled.'
-        ),
-      });
-      await refetch();
-    } catch (error: unknown) {
-      const message = getErrorMessage(error);
-      toast({
-        title: t('common.error', 'Error'),
-        description:
-          message ||
-          t(
-            'settings.mfaSettings.failedToDisableEmailMFA',
-            'Failed to disable Email MFA'
           ),
         variant: 'destructive',
       });
@@ -443,8 +429,11 @@ const MFASettings = () => {
               {emailMfaEnabled ? (
                 <Button
                   variant="destructive"
-                  onClick={handleDisableEmailMfa}
-                  disabled={emailLoading}
+                  onClick={() => {
+                    setPendingAction('disableEmail');
+                    setShowPasswordPrompt(true);
+                  }}
+                  disabled={emailLoading || showPasswordPrompt}
                 >
                   {emailLoading ? (
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />

@@ -39,7 +39,12 @@ async function getNutritionixHeaders(
   }
   const providerData =
     await externalProviderRepository.getExternalDataProviderById(providerId);
-  if (!providerData || !providerData.app_id || !providerData.app_key) {
+  if (providerData?.provider_type !== 'nutritionix') {
+    throw Object.assign(new Error('Provider is not a Nutritionix provider.'), {
+      statusCode: 400,
+    });
+  }
+  if (!providerData.app_id || !providerData.app_key) {
     throw new Error('Nutritionix provider not configured or keys missing.');
   }
   return {
