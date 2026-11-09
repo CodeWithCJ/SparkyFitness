@@ -65,10 +65,20 @@ export const MAX_FEATURE_CHOICES = 64;
 // its choices on a server that predates them.
 const featureChoiceKeySchema = z.string().regex(/^[a-z][A-Za-z0-9]{0,39}$/);
 
+// Registry features switched somewhere else (cycle: `cycle_settings.enabled`).
+// The column's CHECK keeps them out, so the stored schema refuses them too.
+const featuresStoredElsewhere = FEATURE_KEYS.filter(
+  (key) => featureStorage(key) !== 'choices'
+);
+
 /** Explicit choices as stored: a missing key means the registry default. */
 export const featureChoicesSchema = z
   .record(featureChoiceKeySchema, z.boolean())
-  .refine((choices) => Object.keys(choices).length <= MAX_FEATURE_CHOICES);
+  .refine(
+    (choices) =>
+      Object.keys(choices).length <= MAX_FEATURE_CHOICES &&
+      !featuresStoredElsewhere.some((key) => Object.hasOwn(choices, key))
+  );
 export type FeatureChoices = z.infer<typeof featureChoicesSchema>;
 
 /** A change to the stored choices: true or false sets a key, null resets it to

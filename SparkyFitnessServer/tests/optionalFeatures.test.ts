@@ -109,6 +109,17 @@ describe('featureChoicesSchema', () => {
     }
   );
 
+  it('rejects cycle, which is stored in cycle_settings and never here', () => {
+    expect(featureChoicesSchema.safeParse({ cycle: true }).success).toBe(false);
+    expect(featureChoicesSchema.safeParse({ cycle: false }).success).toBe(
+      false
+    );
+    expect(
+      featureChoicesSchema.safeParse({ labResults: false, cycle: false })
+        .success
+    ).toBe(false);
+  });
+
   it('rejects values that are not booleans', () => {
     expect(featureChoicesSchema.safeParse({ labResults: 'off' }).success).toBe(
       false
@@ -129,6 +140,7 @@ describe('featureChoicesSchema', () => {
     expect(field.safeParse(undefined).success).toBe(true);
     expect(field.safeParse({ labResults: false }).success).toBe(true);
     expect(field.safeParse({ labResults: 'no' }).success).toBe(false);
+    expect(field.safeParse({ cycle: true }).success).toBe(false);
   });
 });
 
