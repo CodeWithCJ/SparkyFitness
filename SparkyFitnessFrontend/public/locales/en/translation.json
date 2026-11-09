@@ -1991,7 +1991,7 @@
     "editFoodDetailsDescription": "Adjust the food details before adding it to your custom database.",
     "addNewFood": "Add New Food",
     "addNewFoodDescription": "Enter the details for a new food item to add to your database.",
-    "scanBarcodeDescription": "Position the product barcode in front of your camera.",
+    "scanBarcodeDescription": "Position the product barcode in front of your camera, or use a picture of it.",
     "importFromCSVDescription": "Import a CSV file to add multiple foods at once.",
     "allProviders": "All Providers",
     "topMatches": "Top Matches",
@@ -9554,6 +9554,14 @@
     "barcodeScannerDialog": {
       "noActiveProvidersFound": "No active providers found",
       "loadingCameraModule": "Loading camera module..."
+    },
+    "barcodeImage": {
+      "upload": "Upload barcode image",
+      "notFound": "No barcode found in this image. Try a sharper picture with the whole barcode in view.",
+      "unreadable": "This image could not be opened. Try a JPEG or PNG file."
+    },
+    "imageSourceInput": {
+      "dropOrPaste": "or drop an image here, or paste a screenshot"
     },
     "foodResultCard": {
       "gi": "GI: {{glycemic_index}}"

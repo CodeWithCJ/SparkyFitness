@@ -20,7 +20,7 @@ Most search screens share these building blocks:
 - **Favorites / Frequent**: foods you've marked as favorites and the ones you log most often
 - **Ownership filter**: narrow results to **All**, **My Foods** (or **My Exercises**), **Family**, or **Public**
 - **Provider selector**: choose which data source to search, or **All Providers** to search everything at once
-- **Barcode scan**: on the food search, the **Scan Barcode** button opens your camera and looks up the product's barcode (see below)
+- **Barcode scan**: on the food search, the **Scan Barcode** button reads the product's barcode with your camera or from a picture, and looks it up (see below)
 
 ## Searching online vs. your library
 
@@ -34,7 +34,11 @@ See [External Providers](/features/settings/external-providers) for setup, and [
 
 ## Barcode scanning
 
-On the food search, press **Scan Barcode**, point your camera at the product barcode, and SparkyFitness looks it up:
+On the food search, press **Scan Barcode**, point your camera at the product barcode, and SparkyFitness looks it up.
+
+On the web app you can also use a picture of the barcode, which helps on a computer without a camera. In the **Scan Barcode** window, press **Upload barcode image**, drop an image file on the window, or paste a screenshot with Ctrl+V (Cmd+V on a Mac). The picture is read in your browser and is not uploaded. Product barcodes (EAN-13, EAN-8, UPC-A and UPC-E) are recognized.
+
+For each lookup:
 
 - You can pick which provider performs the lookup
 - The default lookup provider is set under **Settings → Developer & Integrations → Food & Exercise Data Providers** as the **Default Barcode Provider**

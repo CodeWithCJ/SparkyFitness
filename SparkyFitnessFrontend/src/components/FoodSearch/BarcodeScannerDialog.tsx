@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { DataProvider } from '@/types/settings.ts';
 import { Database } from 'lucide-react';
 import { lazyWithChunkRecovery } from '@/utils/chunkRecovery';
+import { BarcodeImageInput } from './BarcodeImageInput';
 
 const BarcodeScanner = lazyWithChunkRecovery(
   () => import('./BarcodeScanner.tsx')
@@ -62,7 +63,7 @@ export const BarcodeScannerDialog = ({
           <DialogDescription>
             {t(
               'enhancedFoodSearch.scanBarcodeDescription',
-              'Position the product barcode in front of your camera.'
+              'Position the product barcode in front of your camera, or use a picture of it.'
             )}
           </DialogDescription>
         </DialogHeader>
@@ -106,6 +107,10 @@ export const BarcodeScannerDialog = ({
             </Select>
           </div>
         )}
+
+        <div className="mb-4">
+          <BarcodeImageInput onBarcodeDetected={onBarcodeDetected} />
+        </div>
 
         <Suspense
           fallback={
