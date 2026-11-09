@@ -248,6 +248,7 @@ const FoodUnitSelector = ({
     cancelConversion,
     resetConversionState,
   } = useUnitConversion({
+    preserveUnknownNutrition: preserveInitialAmountUnit,
     variants,
     selectedVariant,
     onVariantSelect: (_variantId, variant) => {
@@ -257,6 +258,12 @@ const FoodUnitSelector = ({
   });
   const selectedAiConfidence = getValidAiConfidence(
     selectedVariant?.ai_confidence
+  );
+
+  const optionalNutrient = useCallback(
+    (value: number | undefined) =>
+      preserveInitialAmountUnit ? (value ?? undefined) : value || 0,
+    [preserveInitialAmountUnit]
   );
 
   const loadVariantsData = useCallback(async () => {
@@ -282,22 +289,26 @@ const FoodUnitSelector = ({
         fat: preserveInitialAmountUnit
           ? (food.default_variant?.fat ?? Number.NaN)
           : food.default_variant?.fat || 0,
-        saturated_fat: food.default_variant?.saturated_fat || 0,
-        polyunsaturated_fat: food.default_variant?.polyunsaturated_fat || 0,
-        monounsaturated_fat: food.default_variant?.monounsaturated_fat || 0,
-        trans_fat: food.default_variant?.trans_fat || 0,
-        cholesterol: food.default_variant?.cholesterol || 0,
-        sodium: food.default_variant?.sodium || 0,
-        potassium: food.default_variant?.potassium || 0,
-        dietary_fiber: food.default_variant?.dietary_fiber || 0,
-        sugars: food.default_variant?.sugars || 0,
-        vitamin_a: food.default_variant?.vitamin_a || 0,
-        vitamin_c: food.default_variant?.vitamin_c || 0,
-        calcium: food.default_variant?.calcium || 0,
-        iron: food.default_variant?.iron || 0,
-        caffeine_mg: food.default_variant?.caffeine_mg || 0,
-        water_ml: food.default_variant?.water_ml || 0,
-        alcohol_g: food.default_variant?.alcohol_g || 0,
+        saturated_fat: optionalNutrient(food.default_variant?.saturated_fat),
+        polyunsaturated_fat: optionalNutrient(
+          food.default_variant?.polyunsaturated_fat
+        ),
+        monounsaturated_fat: optionalNutrient(
+          food.default_variant?.monounsaturated_fat
+        ),
+        trans_fat: optionalNutrient(food.default_variant?.trans_fat),
+        cholesterol: optionalNutrient(food.default_variant?.cholesterol),
+        sodium: optionalNutrient(food.default_variant?.sodium),
+        potassium: optionalNutrient(food.default_variant?.potassium),
+        dietary_fiber: optionalNutrient(food.default_variant?.dietary_fiber),
+        sugars: optionalNutrient(food.default_variant?.sugars),
+        vitamin_a: optionalNutrient(food.default_variant?.vitamin_a),
+        vitamin_c: optionalNutrient(food.default_variant?.vitamin_c),
+        calcium: optionalNutrient(food.default_variant?.calcium),
+        iron: optionalNutrient(food.default_variant?.iron),
+        caffeine_mg: optionalNutrient(food.default_variant?.caffeine_mg),
+        water_ml: optionalNutrient(food.default_variant?.water_ml),
+        alcohol_g: optionalNutrient(food.default_variant?.alcohol_g),
         abv_percent: food.default_variant?.abv_percent,
         custom_nutrients: food.default_variant?.custom_nutrients,
         source: food.default_variant?.source,
@@ -321,22 +332,22 @@ const FoodUnitSelector = ({
             : variant.protein || 0,
           carbs: preserveInitialAmountUnit ? variant.carbs : variant.carbs || 0,
           fat: preserveInitialAmountUnit ? variant.fat : variant.fat || 0,
-          saturated_fat: variant.saturated_fat || 0,
-          polyunsaturated_fat: variant.polyunsaturated_fat || 0,
-          monounsaturated_fat: variant.monounsaturated_fat || 0,
-          trans_fat: variant.trans_fat || 0,
-          cholesterol: variant.cholesterol || 0,
-          sodium: variant.sodium || 0,
-          potassium: variant.potassium || 0,
-          dietary_fiber: variant.dietary_fiber || 0,
-          sugars: variant.sugars || 0,
-          vitamin_a: variant.vitamin_a || 0,
-          vitamin_c: variant.vitamin_c || 0,
-          calcium: variant.calcium || 0,
-          iron: variant.iron || 0,
-          caffeine_mg: variant.caffeine_mg || 0,
-          water_ml: variant.water_ml || 0,
-          alcohol_g: variant.alcohol_g || 0,
+          saturated_fat: optionalNutrient(variant.saturated_fat),
+          polyunsaturated_fat: optionalNutrient(variant.polyunsaturated_fat),
+          monounsaturated_fat: optionalNutrient(variant.monounsaturated_fat),
+          trans_fat: optionalNutrient(variant.trans_fat),
+          cholesterol: optionalNutrient(variant.cholesterol),
+          sodium: optionalNutrient(variant.sodium),
+          potassium: optionalNutrient(variant.potassium),
+          dietary_fiber: optionalNutrient(variant.dietary_fiber),
+          sugars: optionalNutrient(variant.sugars),
+          vitamin_a: optionalNutrient(variant.vitamin_a),
+          vitamin_c: optionalNutrient(variant.vitamin_c),
+          calcium: optionalNutrient(variant.calcium),
+          iron: optionalNutrient(variant.iron),
+          caffeine_mg: optionalNutrient(variant.caffeine_mg),
+          water_ml: optionalNutrient(variant.water_ml),
+          alcohol_g: optionalNutrient(variant.alcohol_g),
           abv_percent: variant.abv_percent,
           custom_nutrients: variant.custom_nutrients,
           // Preserve AI provenance so the dropdown can badge AI-source variants.
@@ -384,22 +395,26 @@ const FoodUnitSelector = ({
         fat: preserveInitialAmountUnit
           ? (food.default_variant?.fat ?? Number.NaN)
           : food.default_variant?.fat || 0,
-        saturated_fat: food.default_variant?.saturated_fat || 0,
-        polyunsaturated_fat: food.default_variant?.polyunsaturated_fat || 0,
-        monounsaturated_fat: food.default_variant?.monounsaturated_fat || 0,
-        trans_fat: food.default_variant?.trans_fat || 0,
-        cholesterol: food.default_variant?.cholesterol || 0,
-        sodium: food.default_variant?.sodium || 0,
-        potassium: food.default_variant?.potassium || 0,
-        dietary_fiber: food.default_variant?.dietary_fiber || 0,
-        sugars: food.default_variant?.sugars || 0,
-        vitamin_a: food.default_variant?.vitamin_a || 0,
-        vitamin_c: food.default_variant?.vitamin_c || 0,
-        calcium: food.default_variant?.calcium || 0,
-        iron: food.default_variant?.iron || 0,
-        caffeine_mg: food.default_variant?.caffeine_mg || 0,
-        water_ml: food.default_variant?.water_ml || 0,
-        alcohol_g: food.default_variant?.alcohol_g || 0,
+        saturated_fat: optionalNutrient(food.default_variant?.saturated_fat),
+        polyunsaturated_fat: optionalNutrient(
+          food.default_variant?.polyunsaturated_fat
+        ),
+        monounsaturated_fat: optionalNutrient(
+          food.default_variant?.monounsaturated_fat
+        ),
+        trans_fat: optionalNutrient(food.default_variant?.trans_fat),
+        cholesterol: optionalNutrient(food.default_variant?.cholesterol),
+        sodium: optionalNutrient(food.default_variant?.sodium),
+        potassium: optionalNutrient(food.default_variant?.potassium),
+        dietary_fiber: optionalNutrient(food.default_variant?.dietary_fiber),
+        sugars: optionalNutrient(food.default_variant?.sugars),
+        vitamin_a: optionalNutrient(food.default_variant?.vitamin_a),
+        vitamin_c: optionalNutrient(food.default_variant?.vitamin_c),
+        calcium: optionalNutrient(food.default_variant?.calcium),
+        iron: optionalNutrient(food.default_variant?.iron),
+        caffeine_mg: optionalNutrient(food.default_variant?.caffeine_mg),
+        water_ml: optionalNutrient(food.default_variant?.water_ml),
+        alcohol_g: optionalNutrient(food.default_variant?.alcohol_g),
         abv_percent: food.default_variant?.abv_percent,
         custom_nutrients: food.default_variant?.custom_nutrients,
         source: food.default_variant?.source,
@@ -416,6 +431,7 @@ const FoodUnitSelector = ({
     loggingLevel,
     initialVariantId,
     preserveInitialAmountUnit,
+    optionalNutrient,
   ]);
 
   useEffect(() => {
@@ -448,22 +464,26 @@ const FoodUnitSelector = ({
           fat: preserveInitialAmountUnit
             ? (food.default_variant?.fat ?? Number.NaN)
             : food.default_variant?.fat || 0,
-          saturated_fat: food.default_variant?.saturated_fat || 0,
-          polyunsaturated_fat: food.default_variant?.polyunsaturated_fat || 0,
-          monounsaturated_fat: food.default_variant?.monounsaturated_fat || 0,
-          trans_fat: food.default_variant?.trans_fat || 0,
-          cholesterol: food.default_variant?.cholesterol || 0,
-          sodium: food.default_variant?.sodium || 0,
-          potassium: food.default_variant?.potassium || 0,
-          dietary_fiber: food.default_variant?.dietary_fiber || 0,
-          sugars: food.default_variant?.sugars || 0,
-          vitamin_a: food.default_variant?.vitamin_a || 0,
-          vitamin_c: food.default_variant?.vitamin_c || 0,
-          calcium: food.default_variant?.calcium || 0,
-          iron: food.default_variant?.iron || 0,
-          caffeine_mg: food.default_variant?.caffeine_mg || 0,
-          water_ml: food.default_variant?.water_ml || 0,
-          alcohol_g: food.default_variant?.alcohol_g || 0,
+          saturated_fat: optionalNutrient(food.default_variant?.saturated_fat),
+          polyunsaturated_fat: optionalNutrient(
+            food.default_variant?.polyunsaturated_fat
+          ),
+          monounsaturated_fat: optionalNutrient(
+            food.default_variant?.monounsaturated_fat
+          ),
+          trans_fat: optionalNutrient(food.default_variant?.trans_fat),
+          cholesterol: optionalNutrient(food.default_variant?.cholesterol),
+          sodium: optionalNutrient(food.default_variant?.sodium),
+          potassium: optionalNutrient(food.default_variant?.potassium),
+          dietary_fiber: optionalNutrient(food.default_variant?.dietary_fiber),
+          sugars: optionalNutrient(food.default_variant?.sugars),
+          vitamin_a: optionalNutrient(food.default_variant?.vitamin_a),
+          vitamin_c: optionalNutrient(food.default_variant?.vitamin_c),
+          calcium: optionalNutrient(food.default_variant?.calcium),
+          iron: optionalNutrient(food.default_variant?.iron),
+          caffeine_mg: optionalNutrient(food.default_variant?.caffeine_mg),
+          water_ml: optionalNutrient(food.default_variant?.water_ml),
+          alcohol_g: optionalNutrient(food.default_variant?.alcohol_g),
           abv_percent: food.default_variant?.abv_percent,
           custom_nutrients: food.default_variant?.custom_nutrients,
           source: food.default_variant?.source,
@@ -499,6 +519,7 @@ const FoodUnitSelector = ({
     loggingLevel,
     resetConversionState,
     preserveInitialAmountUnit,
+    optionalNutrient,
   ]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
