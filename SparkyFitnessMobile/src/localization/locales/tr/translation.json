@@ -209,7 +209,6 @@
     "emptyForDate": "Bu tarih için besin kaydı yok",
     "diaryForDate": "Aile günlüğü · {{date}}",
     "openMeal": "{{meal}} öğününü aç",
-    "mealCalories": "{{calories}} kcal",
     "unnamedFood": "Adsız besin",
     "selectAll": "Tümünü seç",
     "deselectAll": "Tüm seçimleri kaldır",
@@ -217,15 +216,12 @@
     "selectFood": "{{food}} seç",
     "deselectFood": "{{food}} seçimini kaldır",
     "continue": "Devam",
-    "nutritionSummary": "{{calories}} kcal · P {{protein}} g · K {{carbs}} g · Y {{fat}} g",
-    "selectedNutrition": "Seçilen: {{calories}} kcal · P {{protein}} g · K {{carbs}} g · Y {{fat}} g",
     "copyReview": "Kopyalamayı incele",
     "copyFrom": "{{name}} kişisinden kopyalanıyor",
     "copyMealTitle": "{{meal}} öğünü",
     "quantityForFood": "{{food}} için miktar",
     "quantityMustBePositive": "Sıfırdan büyük bir miktar girin.",
     "copyNutrition": "Besin değerlerini kopyala",
-    "copyCalories": "{{calories}} kcal",
     "copyProtein": "{{protein}} g protein",
     "copyCarbs": "{{carbs}} g karbonhidrat",
     "copyFat": "{{fat}} g yağ",
@@ -464,7 +460,6 @@
       "changeMetric": "Metrik sütununu değiştir",
       "notesForSet": "{{number}}. set notları",
       "addSet": "{{name}} egzersizine set ekle",
-      "caloriesUnit": "kcal",
       "addSetLabel": "Set ekle",
       "heartRateFor": "{{name}} için ortalama nabız",
       "liveHeartRateFor": "{{name}} için anlık nabız",
@@ -789,7 +784,6 @@
     "healthTrends": "Sağlık Eğilimleri",
     "consumed": "Tüketilen",
     "remaining": "kalan",
-    "ofCalories": "/ {{value}} kcal",
     "burned": "Yakılan",
     "hydration": "Sıvı Alımı",
     "ofVolume": "/ {{value}} {{unit}}",
@@ -925,7 +919,6 @@
     "exerciseCaloriesDescription": "Egzersiz kalorilerinizin ne kadarının günlük hedefinize geri ekleneceği.",
     "activityLevel": "Aktivite Düzeyi",
     "activityBaseline": "TDEE için temel olarak kullanılır.",
-    "adaptiveFallback": "Yeterli takip verisi olana kadar kullanılan yedek tahmin — sonrasında da makullük sınırlarını belirlemeye devam eder. Ölçülen TDEE'niz BMH × bu çarpanın ±500 kcal aralığıyla sınırlanır.",
     "allowNegative": "Daha Düşük Yedek Tahmine İzin Ver",
     "negativeDescription": "Cihaz toplamı olmadığında BMH + aktif kalori yedeğinin hedefinizi düşürmesine izin verin.",
     "includeResting": "Dinlenme Kalorilerini Dahil Et",
@@ -1758,7 +1751,6 @@
     "forceStatic": "Statik",
     "mechanicCompound": "Bileşik",
     "mechanicIsolation": "izolasyon",
-    "caloriesPerHour": "Saatlik Kalori",
     "muscles": "Kaslar",
     "classification": "Sınıflandırma",
     "selectValue": "Seç…",
@@ -1839,7 +1831,6 @@
     "setCount_one": "{{formattedCount}} set",
     "setCount_other": "{{formattedCount}} set",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Kal",
     "unknownExercise": "Bilinmeyen egzersiz",
     "addNotePlaceholder": "Not ekle…",
     "setOf_one": "Set {{number}} / {{count}}",
@@ -2089,8 +2080,6 @@
     "protein": "protein",
     "carbs": "karbonhidratlar",
     "fat": "yağ",
-    "caloriesShort": "kcal",
-    "caloriesUnit": "Kal",
     "proteinAmount": "protein",
     "carbsAmount": "karbonhidratlar",
     "fatAmount": "yağ",
@@ -2104,7 +2093,6 @@
   "foodSummary": {
     "tapToAddFood": "Besin eklemek için dokunun",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Kal",
     "nutritionBreakdown": "{{label}} besin değeri dağılımı"
   },
   "exerciseSummary": {
@@ -2124,7 +2112,6 @@
     "unknownFood": "Bilinmeyen besin",
     "adjustServing": "Porsiyonu ayarla",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Kal",
     "deleteFood": "Yiyecekleri sil"
   },
   "exerciseRow": {
@@ -2238,7 +2225,6 @@
       "weightWithUnit": "Ağırlık ({{unit}})",
       "muscleMassWithUnit": "Kas kütlesi ({{unit}})",
       "boneMassWithUnit": "Kemik kütlesi ({{unit}})",
-      "bmrWithUnit": "BMH (kcal)",
       "weightStones": "Stone cinsinden kilo",
       "weightPounds": "Pound cinsinden kilo",
       "heightFeet": "Fit cinsinden boy",
@@ -2256,8 +2242,7 @@
       "invalidHeight": "Geçersiz boy",
       "feetInchesNumber": "Fit ve inç için bir sayı girin.",
       "bodyFatRange": "Vücut yağı % değeri 0 ile 100 arasında olmalıdır.",
-      "bodyWaterRange": "Vücut suyu % değeri 0 ile 100 arasında olmalıdır.",
-      "bmrRange": "BMH 600 ile 6000 kcal arasında olmalıdır."
+      "bodyWaterRange": "Vücut suyu % değeri 0 ile 100 arasında olmalıdır."
     },
     "nothingToSave": "Kaydedilecek bir şey yok",
     "enterValue": "En az bir değer girin veya temizleyin.",
@@ -2610,8 +2595,6 @@
     "remaining": "kalan",
     "over": "fazla",
     "title": "Özet",
-    "projectedTdee": "Tahmini TDEE: {{value}} kcal",
-    "goalModeTarget": "Hedef Modu hedefi: {{value}} kcal",
     "healthConnectProjectionSource": "Health Connect toplam kalori",
     "fallbackProjectionSource": "BMH + aktif kalori (yedek)",
     "legacyProjectionSource": "Cihaz tahmini",
@@ -2646,7 +2629,6 @@
     "servingSize": "Porsiyon Boyutu",
     "servingUnit": "Porsiyon Birimi",
     "autoScaleNutrition": "Besin Değerlerini Otomatik Ölçekle",
-    "caloriesRequired": "Kalori (kcal) *",
     "ai": {
       "couldNotEstimate": "Tahmin edilemedi",
       "noTrustedDefault": "Besinin ölçeklendirilebilecek güvenilir bir varsayılanı yok.",
@@ -3117,7 +3099,6 @@
     "showMore": "Daha fazla göster",
     "best": "En İyi ({{unit}})",
     "last": "Son ({{unit}})",
-    "caloriesPerHour": "Kal / saat",
     "equipment": "Ekipman (virgülle ayrılmış)",
     "primaryMuscles": "Birincil kaslar",
     "secondaryMuscles": "İkincil kaslar",
@@ -3237,11 +3218,8 @@
     "proteinLabel": "Protein",
     "carbsLabel": "Karbonhidrat",
     "fatLabel": "Yağ",
-    "nutritionLine": "{{calories}} kcal · {{protein}} g P · {{carbs}} g K · {{fat}} g Y",
     "dailyNutritionAccessibility": "Günlük {{nutrient}} {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "{{mealType}} toplamı {{calories}} kcal, {{protein}} g protein, {{carbs}} g karbonhidrat, {{fat}} g yağ",
     "mealTypeMacros": "{{protein}} g P · {{carbs}} g K · {{fat}} g Y",
-    "caloriesValue": "{{value}} kcal",
     "nutritionLoading": "Eksik besin değeri ayrıntıları yükleniyor. Toplamlar eksik olabilir.",
     "nutritionLoadFailed": "Bazı besin değeri ayrıntıları yüklenemedi. Toplamlar eksik olabilir.",
     "assignmentRequired": "En az bir eksiksiz öğün ataması ekleyin.",
@@ -3289,7 +3267,6 @@
     "protein": "protein",
     "carbs": "karbonhidratlar",
     "fat": "yağ",
-    "calories": "kal",
     "viewLinkedMeal": "Bağlı öğün {{name}} görüntüle",
     "logMeal": "Öğünü Kaydet",
     "planMeal": "Öğünü Planla",
@@ -3561,7 +3538,6 @@
     },
     "labels": {
       "caloriesShort": "kcal",
-      "caloriesUnit": "kal",
       "foods": "besin",
       "meals": "öğün",
       "meal": "Yemek",
@@ -4146,11 +4122,8 @@
       "count_one": "{{count}} malzeme",
       "count_other": "{{count}} malzeme",
       "totals": "Toplam",
-      "rowSummary": "{{grams}} g · {{calories}} kcal",
-      "macroSummary": "{{calories}} kcal · {{protein}}P · {{carbs}}K · {{fat}}Y",
       "addFood": "Yiyecek Ekle",
       "addedFood": "Besin",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} kcal",
       "pickedFoodNote": "Besinlerinizden eklendi. Miktarı değiştirmek için kaldırıp yeniden ekleyin."
     },
     "match": {
@@ -4212,7 +4185,6 @@
       "activity": "Aktivite",
       "duration": "Süre (dk)",
       "distance": "Mesafe ({{unit}})",
-      "calories": "Kalori",
       "avgHeartRate": "Ort. Nabız (atım/dk)",
       "notes": "Notlar",
       "notesPlaceholder": "İsteğe bağlı notlar..."
@@ -4255,8 +4227,7 @@
     "accessibility": {
       "addFood": "Yiyecek Ekle",
       "copyMeal": "Öğünü başka bir güne kopyala"
-    },
-    "targetCalories": "Hedef: {{calories}} kcal"
+    }
   },
   "nutrientTrends": {
     "title": "{{nutrient}} Eğilimleri",
@@ -4538,11 +4509,9 @@
       "title": "Kalori",
       "loadFailed": "Kalori verileri yüklenemedi",
       "empty": "Bu dönem için kalori verisi yok",
-      "tooltip": "{{formattedCount}} kcal alındı",
       "tooltipMacro": "%{{percent}} {{macroLabel}}",
       "otherMacro": "Diğer",
       "avgCalories": "Ort.",
-      "avgCaloriesValue": "{{formattedCount}} kcal",
       "noAverage": "—"
     },
     "loading": "Grafik yükleniyor...",
@@ -5446,7 +5415,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} km",
-    "kcal": "{{value}} kcal",
     "bpm": "{{value}} atım/dk",
     "kg": "{{value}} kg",
     "percent": "%{{value}}",
@@ -5805,7 +5773,6 @@
       "olderSessions": "Daha eski seanslar",
       "unitKm": "km",
       "unitMi": "mil",
-      "calories": "{{value}} Kal",
       "minutes_one": "{{formattedCount}} dk",
       "minutes_other": "{{formattedCount}} dk",
       "bpm": "{{value}} atım/dk",

@@ -186,7 +186,6 @@
     "emptyForDate": "Nenhum alimento registrado nesta data",
     "diaryForDate": "Diário da família · {{date}}",
     "openMeal": "Abrir refeição {{meal}}",
-    "mealCalories": "{{calories}} kcal",
     "unnamedFood": "Alimento sem nome",
     "selectAll": "Selecionar todos",
     "deselectAll": "Desmarcar todos",
@@ -194,15 +193,12 @@
     "selectFood": "Selecionar {{food}}",
     "deselectFood": "Desmarcar {{food}}",
     "continue": "Continuar",
-    "nutritionSummary": "{{calories}} kcal · P {{protein}} g · C {{carbs}} g · G {{fat}} g",
-    "selectedNutrition": "Selecionado: {{calories}} kcal · P {{protein}} g · C {{carbs}} g · G {{fat}} g",
     "copyReview": "Revisar cópia",
     "copyFrom": "Copiando de {{name}}",
     "copyMealTitle": "Refeição {{meal}}",
     "quantityForFood": "Quantidade de {{food}}",
     "quantityMustBePositive": "Informe uma quantidade maior que zero.",
     "copyNutrition": "Nutrientes copiados",
-    "copyCalories": "{{calories}} kcal",
     "copyProtein": "{{protein}} g de proteína",
     "copyCarbs": "{{carbs}} g de carboidratos",
     "copyFat": "{{fat}} g de gordura",
@@ -1748,7 +1744,6 @@
       "changeMetric": "Trocar a coluna de métrica",
       "notesForSet": "Notas da série {{number}}",
       "addSet": "Adicionar série a {{name}}",
-      "caloriesUnit": "kcal",
       "addSetLabel": "Adicionar série",
       "heartRateFor": "Frequência cardíaca média em {{name}}",
       "liveHeartRateFor": "Frequência cardíaca atual em {{name}}",
@@ -2085,7 +2080,6 @@
     "healthTrends": "Tendências de saúde",
     "consumed": "Consumido",
     "remaining": "restante",
-    "ofCalories": "de {{value}} kcal",
     "burned": "Gastas",
     "hydration": "Hidratação",
     "ofVolume": "de {{value}} {{unit}}",
@@ -2225,7 +2219,6 @@
     "exerciseCaloriesDescription": "Quanto das calorias gastas em exercício volta para a sua meta diária.",
     "activityLevel": "Nível de atividade",
     "activityBaseline": "Usado como base para o GET.",
-    "adaptiveFallback": "A estimativa alternativa até haver dados suficientes — e depois continua definindo os limites de plausibilidade. O GET medido fica limitado a ±500 kcal de TMB × este fator.",
     "allowNegative": "Permitir que a projeção alternativa reduza a meta",
     "negativeDescription": "Quando não há total do dispositivo, deixa a alternativa TMB + calorias ativas reduzir sua meta.",
     "includeResting": "Incluir calorias em repouso",
@@ -2849,7 +2842,6 @@
     "forceStatic": "Estático",
     "mechanicCompound": "Composto",
     "mechanicIsolation": "Isolado",
-    "caloriesPerHour": "Calorias por hora",
     "muscles": "Músculos",
     "classification": "Classificação",
     "selectValue": "Selecionar…",
@@ -2933,7 +2925,6 @@
     "setCount_many": "{{formattedCount}} séries",
     "setCount_other": "{{formattedCount}} séries",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "unknownExercise": "Exercício desconhecido",
     "addNotePlaceholder": "Adicione uma observação…",
     "setOf_one": "Série {{number}} de {{count}}",
@@ -3144,8 +3135,6 @@
     "protein": "proteína",
     "carbs": "carboidratos",
     "fat": "gordura",
-    "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "proteinAmount": "proteína",
     "carbsAmount": "carboidratos",
     "fatAmount": "gordura",
@@ -3159,7 +3148,6 @@
   "foodSummary": {
     "tapToAddFood": "Toque para adicionar um alimento",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "nutritionBreakdown": "Detalhamento nutricional de {{label}}"
   },
   "exerciseSummary": {
@@ -3179,7 +3167,6 @@
     "unknownFood": "Alimento desconhecido",
     "adjustServing": "Ajustar porção",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "deleteFood": "Excluir alimento"
   },
   "exerciseRow": {
@@ -3293,7 +3280,6 @@
       "weightWithUnit": "Peso ({{unit}})",
       "muscleMassWithUnit": "Massa muscular ({{unit}})",
       "boneMassWithUnit": "Massa óssea ({{unit}})",
-      "bmrWithUnit": "TMB (kcal)",
       "weightStones": "Peso em stones",
       "weightPounds": "Peso em libras",
       "heightFeet": "Altura em pés",
@@ -3311,8 +3297,7 @@
       "invalidHeight": "Altura inválida",
       "feetInchesNumber": "Informe um número para pés e polegadas.",
       "bodyFatRange": "O % de gordura corporal precisa estar entre 0 e 100.",
-      "bodyWaterRange": "O % de água corporal precisa estar entre 0 e 100.",
-      "bmrRange": "A TMB precisa estar entre 600 e 6000 kcal."
+      "bodyWaterRange": "O % de água corporal precisa estar entre 0 e 100."
     },
     "nothingToSave": "Nada para salvar",
     "enterValue": "Informe ou limpe pelo menos um valor.",
@@ -3674,8 +3659,6 @@
     "remaining": "restante",
     "over": "acima",
     "title": "Resumo",
-    "projectedTdee": "GET projetado: {{value}} kcal",
-    "goalModeTarget": "Meta pelo modo de objetivo: {{value}} kcal",
     "healthConnectProjectionSource": "Calorias totais do dispositivo",
     "fallbackProjectionSource": "Alternativa: TMB + calorias ativas",
     "legacyProjectionSource": "Projeção do dispositivo",
@@ -3710,7 +3693,6 @@
     "servingSize": "Tamanho da porção",
     "servingUnit": "Unidade da porção",
     "autoScaleNutrition": "Ajustar nutrientes automaticamente",
-    "caloriesRequired": "Calorias (kcal) *",
     "ai": {
       "couldNotEstimate": "Não foi possível estimar",
       "noTrustedDefault": "O alimento não tem uma porção de referência confiável para calcular.",
@@ -4299,7 +4281,6 @@
     "showMore": "Mostrar mais",
     "best": "Melhor ({{unit}})",
     "last": "Último ({{unit}})",
-    "caloriesPerHour": "Cal / hora",
     "equipment": "Equipamento",
     "primaryMuscles": "Músculos principais",
     "secondaryMuscles": "Músculos secundários",
@@ -4420,11 +4401,8 @@
     "proteinLabel": "Proteína",
     "carbsLabel": "Carboidratos",
     "fatLabel": "Gordura",
-    "nutritionLine": "{{calories}} kcal · {{protein}} g P · {{carbs}} g C · {{fat}} g G",
     "dailyNutritionAccessibility": "{{nutrient}} do dia: {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "{{mealType}}: total de {{calories}} kcal, {{protein}} g de proteína, {{carbs}} g de carboidratos, {{fat}} g de gordura",
     "mealTypeMacros": "{{protein}} g P · {{carbs}} g C · {{fat}} g G",
-    "caloriesValue": "{{value}} kcal",
     "nutritionLoading": "Carregando os detalhes nutricionais que faltam. Os totais podem estar incompletos.",
     "nutritionLoadFailed": "Alguns detalhes nutricionais não carregaram. Os totais podem estar incompletos.",
     "assignmentRequired": "Adicione pelo menos uma refeição agendada completa.",
@@ -4474,7 +4452,6 @@
     "protein": "proteína",
     "carbs": "carboidratos",
     "fat": "gordura",
-    "calories": "cal",
     "viewLinkedMeal": "Ver refeição vinculada {{name}}",
     "logMeal": "Registrar refeição",
     "planMeal": "Planejar refeição",
@@ -4756,7 +4733,6 @@
     },
     "labels": {
       "caloriesShort": "kcal",
-      "caloriesUnit": "cal",
       "foods": "alimentos",
       "meals": "refeições",
       "meal": "Refeição",
@@ -5339,11 +5315,8 @@
       "count_many": "{{count}} ingredientes",
       "count_other": "{{count}} ingredientes",
       "totals": "Total",
-      "rowSummary": "{{grams}} g · {{calories}} kcal",
-      "macroSummary": "{{calories}} kcal · {{protein}}P · {{carbs}}C · {{fat}}G",
       "addFood": "Adicionar alimento",
       "addedFood": "Alimento",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} kcal",
       "pickedFoodNote": "Adicionado dos seus alimentos. Remova e adicione de novo para mudar a quantidade."
     },
     "match": {
@@ -5407,7 +5380,6 @@
       "activity": "Atividade",
       "duration": "Duração (min)",
       "distance": "Distância ({{unit}})",
-      "calories": "Calorias",
       "avgHeartRate": "Frequência cardíaca média (bpm)",
       "notes": "Notas",
       "notesPlaceholder": "Observações (opcional)..."
@@ -5450,8 +5422,7 @@
     "accessibility": {
       "addFood": "Adicionar alimento",
       "copyMeal": "Copiar a refeição para outro dia"
-    },
-    "targetCalories": "Meta: {{calories}} kcal"
+    }
   },
   "nutrientTrends": {
     "title": "Tendências de {{nutrient}}",
@@ -5770,11 +5741,9 @@
       "title": "Calorias",
       "loadFailed": "Falha ao carregar os dados de calorias",
       "empty": "Nenhum dado de calorias neste período",
-      "tooltip": "{{formattedCount}} kcal consumidas",
       "tooltipMacro": "{{percent}}% {{macroLabel}}",
       "otherMacro": "Outros",
       "avgCalories": "Média",
-      "avgCaloriesValue": "{{formattedCount}} kcal",
       "noAverage": "—"
     },
     "loading": "Carregando gráfico...",
@@ -6569,7 +6538,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} km",
-    "kcal": "{{value}} kcal",
     "bpm": "{{value}} bpm",
     "kg": "{{value}} kg",
     "percent": "{{value}}%",
@@ -6867,7 +6835,6 @@
       "olderSessions": "Sessões mais antigas",
       "unitKm": "km",
       "unitMi": "mi",
-      "calories": "{{value}} Cal",
       "minutes_one": "{{formattedCount}} min",
       "minutes_many": "{{formattedCount}} min",
       "minutes_other": "{{formattedCount}} min",
@@ -7333,9 +7300,7 @@
     "targetEatingHours": "Meta de horas de alimentação",
     "fastingHoursRange": "Digite de 0,5 a 168 horas.",
     "eatingHoursRange": "Digite de 0 a 24 horas.",
-    "calorieThreshold": "Limite de calorias (kcal)",
     "calorieThresholdHint": "Lanches ou bebidas abaixo deste valor (café preto, água, eletrólitos) não quebram o jejum.",
-    "calorieThresholdRange": "Digite um número inteiro de 0 a 500.",
     "preEndAlert": "Aviso antes da meta (minutos)",
     "preEndAlertHint": "Quanto tempo antes da meta de jejum enviar um lembrete. Use 0 para desligar.",
     "preEndAlertRange": "Digite um número inteiro de 0 a 180.",
@@ -7818,12 +7783,9 @@
     "invalidValue": "Digite um número válido em todas as metas.",
     "fields": {
       "water": "Água ({{unit}})",
-      "exerciseCalories": "Calorias de exercício (kcal)",
       "exerciseMinutes": "Duração do exercício (min)",
-      "steps": "Passos por dia",
-      "baselineCalories": "Calorias de referência (kcal)"
+      "steps": "Passos por dia"
     },
-    "adaptiveNoteToday": "O modo adaptativo está ligado, então a meta de calorias muda todo dia. Hoje ela é {{calories}} kcal. A referência abaixo define quanto acima ou abaixo da sua manutenção estimada você quer ficar; não é uma meta diária fixa.",
     "adaptiveNote": "O modo adaptativo está ligado, então a meta de calorias muda todo dia. A referência abaixo define quanto acima ou abaixo da sua manutenção estimada você quer ficar; não é uma meta diária fixa.",
     "customNutrients": {
       "notSet": "Sem meta"
@@ -7841,7 +7803,6 @@
       "mustBe100": "As porcentagens das refeições precisam somar 100%.",
       "total": "Total: {{total}}% (precisa ser 100% para salvar)",
       "totalOk": "Total: {{total}}%",
-      "mealCalories": "{{meal}} ({{calories}} kcal)",
       "distributeRemaining": "Distribuir o restante igualmente",
       "lock": "Travar {{meal}}",
       "unlock": "Destravar {{meal}}",
@@ -7910,7 +7871,6 @@
       "description": "Uma meta predefinida é um conjunto salvo de metas. Aplicar preenche o formulário acima com ela (toque em Salvar para torná-las suas metas); Editar altera a própria predefinição.",
       "namePlaceholder": "Nome da predefinição",
       "empty": "Nenhuma meta predefinida ainda.",
-      "summary": "{{calories}} kcal, {{protein}}g P, {{carbs}}g C, {{fat}}g G",
       "apply": "Aplicar",
       "deleteTitle": "Excluir predefinição?",
       "deleteMessage": "Excluir \"{{name}}\"? Os dias de planos semanais que a usam ficarão sem predefinição.",
@@ -8014,7 +7974,6 @@
     "dailyAverages": "Médias diárias",
     "loadFailed": "Falha ao carregar os dados de nutrição",
     "empty": "Nenhum alimento registrado neste período",
-    "kcal": "{{value}} kcal",
     "grams": "{{value}} g",
     "changeHint": "{{change}} vs. os {{days}} dias anteriores",
     "onTarget": "Até 10% da meta",
@@ -8773,7 +8732,6 @@
     "running": "Correndo com o relógio",
     "next": "A seguir: {{step}}",
     "calories": "Calorias",
-    "kcal": "kcal",
     "ended": "O treino no relógio terminou ou está fora de alcance. Um treino concluído é adicionado ao diário.",
     "indoorNote": "Em ambiente fechado, a distância é a estimativa do relógio. Ao terminar, dá para corrigir para o valor da esteira.",
     "starting": "Iniciando no relógio…",
@@ -9372,7 +9330,6 @@
     "providerError": "Fonte indisponível",
     "noMatch": "Nenhuma correspondência",
     "basis": "Por {{size}} {{unit}}",
-    "macros": "{{calories}} kcal · Proteína {{protein}} g · Carboidratos {{carbs}} g · Gordura {{fat}} g",
     "unknown": "—"
   },
   "addMenuSettings": {
@@ -9410,7 +9367,6 @@
     "none": "Nenhum treino sincronizado encontrado neste dia.",
     "workoutFallback": "Treino",
     "minutes": "{{value}} min",
-    "calories": "{{value}} cal",
     "sameSession": "Mesma sessão",
     "sameTime": "Horários se sobrepõem",
     "countHeading": "Contar no total do dia",
@@ -9420,7 +9376,6 @@
     "lower": "O menor dos dois ({{value}})",
     "average": "A média ({{value}})",
     "custom": "Um total personalizado",
-    "customLabel": "Total da sessão (cal)",
     "link": "Vincular treinos",
     "unlink": "Desvincular",
     "linkError": "Falha ao vincular os treinos.",

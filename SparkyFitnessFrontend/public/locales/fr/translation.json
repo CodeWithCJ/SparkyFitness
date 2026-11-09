@@ -1471,8 +1471,6 @@
       "categoryStrength": "Force",
       "categoryCardio": "Cardio",
       "categoryYoga": "Yoga",
-      "caloriesPerHourLabel": "Calories/heure",
-      "caloriesPerHourHint": "Laisser vide pour utiliser les calories par heures automatiques ({{newExerciseCalories}} cal/h).",
       "descriptionLabel": "Description",
       "sourceLabel": "Source",
       "forceLabel": "Effort",
@@ -1601,7 +1599,6 @@
       "exerciseLabel": "Exercice",
       "unknownExercise": "Exercice inconnu",
       "addSetButton": "Ajouter une série",
-      "caloriesBurnedOptionalLabel": "Calories brulées (optionnel)",
       "caloriesBurnedPlaceholder": "Entrez les calories brulées pour remplacer la valeur calculée",
       "caloriesBurnedHint": "Si ce champs est laissé vide, les calories vont être automatiquement calculées lors de la sauvegarde.",
       "distanceLabel": "Distance",
@@ -1615,7 +1612,6 @@
       "customActivityDetailsLabel": "Détails de l'activité personnalisée",
       "syncedProviderBackup": "Sauvegarde synchronisée du fournisseur (protégée)",
       "telemetryHeader": "Télémétrie et métriques d'activité",
-      "caloriesAppliedLabel": "Calories comptées dans le total du jour (facultatif)",
       "caloriesAppliedPlaceholder": "Vide = les calories brûlées ci-dessus",
       "caloriesAppliedHint": "Mettez 0 si une séance de montre compte déjà cette séance. L'estimation des calories brûlées est conservée.",
       "caloriesAppliedLinkedHint": "Les calories comptées viennent du lien entre séances. Gérez ce lien depuis la séance saisie manuellement."
@@ -2954,8 +2950,6 @@
       "timeCalorieBreakdown": "Détail du temps et des calories",
       "movingTimeSec": "Temps en mouvement (s)",
       "elapsedTimeSec": "Temps écoulé (s)",
-      "activeCaloriesKcal": "Calories actives (kcal)",
-      "restingCaloriesKcal": "Calories au repos (kcal)",
       "trainingLoadPerformance": "Charge d'entraînement et performance",
       "trainingLoad": "Charge d'entraînement",
       "aerobicEffect05": "Effet aérobie (0-5)",
@@ -3678,7 +3672,6 @@
     "pProteing": "P : {{protein}} g",
     "cCarbsg": "G : {{carbs}} g",
     "fFatg": "L : {{fat}} g",
-    "totalKcalPGC": "<strong>Total :</strong> {{totalCalories}} kcal | P : {{totalProtein}} g | G : {{totalCarbs}} g | L : {{totalFat}} g",
     "pTotalProteing": "P : {{totalProtein}} g",
     "cTotalCarbsg": "G : {{totalCarbs}} g",
     "fTotalFatg": "L : {{totalFat}} g"
@@ -5442,7 +5435,6 @@
       "servingUnit": "portion",
       "startDateRequired": "Date de début (Obligatoire)",
       "weekdays": "Sélectionner des jours",
-      "supplementDoseScalingCalories": "Chaque bûche compte {{dose}} portions : {{dose}} x {{perDose}} kcal = {{total}} kcal.",
       "supplementDoseScaling": "Chaque entrée correspond à {{dose}} portions ; les valeurs nutritionnelles saisies par portion sont donc multipliées par {{dose}}.",
       "servingsPerLog": "Portions par bûche",
       "cycleOff": "Jours de congé",
@@ -6645,8 +6637,7 @@
     "reviewDescription": "Vérifiez chaque ingrédient avant l'enregistrement. Modifier les grammes recalcule cette ligne.",
     "weightHint": "C'est au niveau des portions que les estimations basées sur les photos sont les moins précises. Peser l'assiette rend les chiffres beaucoup plus fiables.",
     "captureDescription": "Ajoutez une ou plusieurs photos du repas. Un deuxième angle aide avec des plats empilés ou mélangés.",
-    "title": "Estimation à partir d'une photo",
-    "kcalPGCG": "{{calories_kcal}} kcal · P : {{protein_g}} g · G : {{carbs_g}} g · L : {{fat_g}} g"
+    "title": "Estimation à partir d'une photo"
   },
   "workout": {
     "weight": "poids",
@@ -7385,7 +7376,6 @@
       "targetHoursDesc": "Durée visée, en heures, avant la fin du jeûne.",
       "targetEatingHours": "Heures d'alimentation visées",
       "targetEatingHoursDesc": "Durée, en heures, de votre fenêtre alimentaire.",
-      "calorieThreshold": "Seuil calorique (kcal)",
       "calorieThresholdHint": "Les en-cas ou boissons sous cette valeur (ex. café noir, eau, électrolytes) n'interrompent pas votre jeûne et ne le relancent pas.",
       "preEndAlert": "Alerte avant l'objectif (minutes)",
       "preEndAlertHint": "Combien de minutes avant d'atteindre votre objectif de jeûne recevoir une notification de rappel.",

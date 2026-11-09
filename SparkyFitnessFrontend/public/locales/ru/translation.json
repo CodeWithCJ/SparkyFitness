@@ -61,8 +61,6 @@
       "categoryStrength": "Сила",
       "categoryCardio": "Кардио",
       "categoryYoga": "Йога",
-      "caloriesPerHourLabel": "Калории/Час",
-      "caloriesPerHourHint": "Оставьте пустой для использования системы расчета калорий в час ({{newExerciseCalories}} кал/час).",
       "descriptionLabel": "Описание",
       "sourceLabel": "Источник",
       "addError": "Не удалось добавить упражнения",
@@ -123,7 +121,6 @@
       "title": "Редактировать запись об упражнении",
       "description": "Внесите изменения в запись об упражнении здесь. Нажмите «Сохранить», когда закончите.",
       "addSetButton": "Добавить подход",
-      "caloriesBurnedOptionalLabel": "Сожженные калории (необязательно)",
       "caloriesBurnedPlaceholder": "Введите количество сожженных калорий, чтобы изменить расчет",
       "caloriesBurnedHint": "Если поле не заполнено, количество калорий будет автоматически рассчитано при сохранении.",
       "customActivityDetailsLabel": "Подробная информация о пользовательской активности",
@@ -132,7 +129,6 @@
       "updateError": "Не удалось обновить запись об упражнении.",
       "syncedProviderBackup": "Синхронизированная резервная копия поставщика данных (защищена)",
       "telemetryHeader": "Телеметрия и показатели активности",
-      "caloriesAppliedLabel": "Калории в дневном итоге (необязательно)",
       "caloriesAppliedPlaceholder": "Если пусто, учитываются потраченные калории из поля выше",
       "caloriesAppliedHint": "Укажите 0, если тренировка с часов уже учитывает это занятие. Оценка потраченных калорий сохранится.",
       "caloriesAppliedLinkedHint": "Учитываемые калории определяются связью тренировок. Управляйте этой связью из тренировки, добавленной вручную."
@@ -2998,8 +2994,6 @@
       "timeCalorieBreakdown": "Время и калории",
       "movingTimeSec": "Время в движении (с)",
       "elapsedTimeSec": "Общее время (с)",
-      "activeCaloriesKcal": "Активные калории (ккал)",
-      "restingCaloriesKcal": "Калории покоя (ккал)",
       "trainingLoadPerformance": "Тренировочная нагрузка и результативность",
       "trainingLoad": "Тренировочная нагрузка",
       "aerobicEffect05": "Аэробный эффект (0-5)",
@@ -3700,7 +3694,6 @@
     "pProteing": "Б: {{protein}} г",
     "cCarbsg": "У: {{carbs}} г",
     "fFatg": "Ж: {{fat}} г",
-    "totalKcalPGC": "<strong>Всего:</strong> {{totalCalories}} ккал | Б: {{totalProtein}} г | У: {{totalCarbs}} г | Ж: {{totalFat}} г",
     "pTotalProteing": "Б: {{totalProtein}} г",
     "cTotalCarbsg": "У: {{totalCarbs}} г",
     "fTotalFatg": "Ж: {{totalFat}} г"
@@ -5428,7 +5421,6 @@
       "afterMeal": "После приёма пищи",
       "startDate": "Дата начала (необязательно)",
       "endDate": "Дата окончания (необязательно)",
-      "supplementDoseScalingCalories": "Каждая запись учитывает {{dose}} порций: {{dose}} x {{perDose}} ккал = {{total}} ккал.",
       "supplementDoseScaling": "Каждая запись учитывает {{dose}} порций, поэтому введенное количество питательных веществ умножается на {{dose}}.",
       "servingUnit": "порция",
       "servingsPerLog": "Количество порций в записи",
@@ -6797,7 +6789,6 @@
       "targetHoursDesc": "Длительность в часах, после которой цель голодания считается достигнутой.",
       "targetEatingHours": "Целевая длительность окна питания",
       "targetEatingHoursDesc": "Длительность окна питания в часах.",
-      "calorieThreshold": "Порог калорийности (ккал)",
       "calorieThresholdHint": "Перекусы и напитки с калорийностью ниже этого порога (например, чёрный кофе, вода, электролиты) не прерывают и не перезапускают голодание.",
       "preEndAlert": "Напоминание до достижения цели (минуты)",
       "preEndAlertHint": "За сколько минут до достижения цели голодания отправить напоминание.",
@@ -7307,8 +7298,7 @@
     "analyzingHint": "Определение ингредиентов, граммов и макроэлементов",
     "editInMealBuilder": "Редактировать в конструкторе приёмов пищи",
     "loggedSuccess": "Приём пищи успешно записан в ваш дневник.",
-    "openInMealBuilder": "Открыть в конструкторе приёмов пищи",
-    "kcalPGCG": "{{calories_kcal}} ккал · Б: {{protein_g}} г · У: {{carbs_g}} г · Ж: {{fat_g}} г"
+    "openInMealBuilder": "Открыть в конструкторе приёмов пищи"
   },
   "healthMetrics": {
     "heartRate": "Пульс",
