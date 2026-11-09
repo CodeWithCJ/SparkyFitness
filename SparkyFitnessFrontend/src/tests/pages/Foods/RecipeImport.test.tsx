@@ -19,13 +19,19 @@ import RecipeImportSourcePanel from '@/pages/Foods/RecipeImportSourcePanel';
 import RecipeImportIngredientRow from '@/pages/Foods/RecipeImportIngredientRow';
 import RecipeImportNutritionPreview from '@/pages/Foods/RecipeImportNutritionPreview';
 import * as service from '@/api/Foods/recipeImportService';
+import { HttpApiError } from '@/api/api';
+import { useMeals } from '@/hooks/Foods/useMeals';
+import { getMeals } from '@/api/Foods/meals';
 import { useMealInvalidation } from '@/hooks/useInvalidateKeys';
 import { useRecipeImport } from '@/hooks/Foods/useRecipeImport';
+import { useRecipeImportFoodAccess } from '@/hooks/Foods/useRecipeImportQueries';
 import { getFoodById, getFoodDetailsV2 } from '@/api/Foods/foodService';
 
 let mockActing = false;
 let mockOwner = 'owner';
 let mockRealSelector = false;
+let mockEnergyUnit: 'kcal' | 'kJ' = 'kcal';
+let mockChosenVariant: FoodVariant | undefined;
 let mockVariants: FoodVariant[] = [mockFoodVariant()];
 function mockFoodVariant() {
   return {
@@ -45,6 +51,7 @@ jest.mock('@/contexts/ActiveUserContext', () => ({
   }),
 }));
 jest.mock('@/api/Foods/recipeImportService');
+jest.mock('@/api/Foods/meals', () => ({ getMeals: jest.fn() }));
 jest.mock('@/api/Settings/externalProviderService', () => ({
   getExternalDataProviders: jest.fn(async () => [
     {
@@ -78,8 +85,10 @@ jest.mock('@/api/Foods/foodService', () => ({
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     loggingLevel: 'ERROR',
-    energyUnit: 'kcal',
-    convertEnergy: (value: number) => value,
+    energyUnit: mockEnergyUnit,
+    convertEnergy: (value: number) =>
+      mockEnergyUnit === 'kJ' ? value * 4.184 : value,
+    getEnergyUnitString: (unit: string) => unit,
     aiAssistedConversions: false,
     timezone: 'UTC',
   }),
@@ -131,7 +140,12 @@ jest.mock('@/components/FoodUnitSelector', () => ({
     return props.open ? (
       <button
         onClick={() =>
-          props.onSelect(mockFood, 600, 'g', mockFood.default_variant!)
+          props.onSelect(
+            props.food,
+            600,
+            mockChosenVariant?.serving_unit ?? 'g',
+            mockChosenVariant ?? props.food.default_variant!
+          )
         }
       >
         Confirm 600 g
@@ -230,6 +244,8 @@ beforeEach(() => {
   mockActing = false;
   mockOwner = 'owner';
   mockRealSelector = false;
+  mockEnergyUnit = 'kcal';
+  mockChosenVariant = undefined;
   mockVariants = [mockFoodVariant()];
   jest.mocked(getFoodById).mockResolvedValue(mockFood);
   api.browseRecipes.mockResolvedValue({
@@ -1025,5 +1041,336 @@ it.each(['owner', 'draft'] as const)(
         'meal',
       ])
     ).toBeUndefined();
+  }
+);
+
+it.each([null, undefined, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+  'blocks save for invalid selected core nutrition while keeping mappings editable (%s)',
+  async (protein) => {
+    const incomplete = {
+      ...mockFoodVariant(),
+      protein,
+    } as unknown as FoodVariant;
+    mockVariants = [incomplete];
+    jest
+      .mocked(getFoodById)
+      .mockResolvedValue({ ...mockFood, default_variant: incomplete });
+    api.previewRecipe.mockResolvedValue({
+      ...preview,
+      ingredients: [{ ...preview.ingredients[0]!, mapping: reviewedMapping }],
+    });
+    setup();
+    await selectRecipe();
+    await screen.findByText(/P \? g/);
+    expect(screen.getByRole('button', { name: 'Save meal' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Choose food for Rice' })
+    ).toBeEnabled();
+    expect(
+      screen.getByText(/Unknown values are not counted as zero/)
+    ).toBeInTheDocument();
+    expect(api.saveRecipe).not.toHaveBeenCalled();
+  }
+);
+
+it('waits for selected variant nutrition to load before enabling save and accepts measured zero', async () => {
+  let finish!: (food: Food) => void;
+  mockVariants = [{ ...mockFoodVariant(), protein: 0 }];
+  jest.mocked(getFoodById).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    })
+  );
+  api.previewRecipe.mockResolvedValue({
+    ...preview,
+    ingredients: [{ ...preview.ingredients[0]!, mapping: reviewedMapping }],
+  });
+  setup();
+  await selectRecipe();
+  expect(screen.getByRole('button', { name: 'Save meal' })).toBeDisabled();
+  mockVariants = [{ ...mockFoodVariant(), protein: 0 }];
+  await act(async () => finish(mockFood));
+  expect(await screen.findAllByText(/P 0 g/)).toHaveLength(2);
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Save meal' })).toBeEnabled()
+  );
+});
+
+it('retains a confirmed newly created variant and existing variants when a refetch fails', async () => {
+  const { client } = setup();
+  await selectRecipe();
+  await mapRice();
+  mockChosenVariant = {
+    ...mockFoodVariant(),
+    id: 'created',
+    serving_size: 200,
+    serving_description: 'Created portion',
+  };
+  jest
+    .mocked(getFoodById)
+    .mockResolvedValueOnce(mockFood)
+    .mockRejectedValue(new Error('refetch unavailable'));
+  fireEvent.click(screen.getByRole('button', { name: 'Choose food for Rice' }));
+  fireEvent.click(screen.getByText('Choose dry rice'));
+  fireEvent.click(await screen.findByText('Confirm 600 g'));
+  expect(
+    await screen.findByText('600 g · Created portion')
+  ).toBeInTheDocument();
+  expect(
+    client
+      .getQueryData<Food>(['foods', 'recipe-import', 'owner', 'food'])
+      ?.variants?.map((v) => v.id)
+  ).toEqual(expect.arrayContaining(['variant', 'created']));
+  expect(screen.getByRole('button', { name: 'Save meal' })).toBeEnabled();
+  expect(
+    await screen.findByText(
+      `${(1200).toLocaleString()} kcal · P 30 g · C 180 g · F 30 g`
+    )
+  ).toBeInTheDocument();
+});
+
+it('renders candidate, mapped, total and saved nutrition in kJ while saving canonical mappings', async () => {
+  mockEnergyUnit = 'kJ';
+  api.suggestRecipe.mockResolvedValue({
+    ingredients: [
+      {
+        ingredientId: 'rice',
+        candidates: [
+          {
+            candidateId: 'local',
+            source: 'local',
+            foodId: 'food',
+            variantId: 'variant',
+            name: 'Dry rice',
+            brand: null,
+            servingSize: 100,
+            servingUnit: 'g',
+            nutrition: { calories: 400, protein: 10, carbs: 60, fat: 10 },
+            nutritionComplete: true,
+            unitCompatible: true,
+          },
+        ],
+        suggestedCandidateId: 'local',
+      },
+    ],
+    aiUsed: false,
+    warnings: [],
+  });
+  setup();
+  await selectRecipe();
+  fireEvent.click(screen.getByRole('button', { name: 'Find food candidates' }));
+  expect(
+    await screen.findByText(
+      `${(1673.6).toLocaleString()} kJ · P 10 g · C 60 g · F 10 g per serving`
+    )
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Review Dry rice' }));
+  fireEvent.click(await screen.findByText('Confirm 600 g'));
+  expect(
+    await screen.findByText(
+      `100 g: ${(1673.6).toLocaleString()} kJ · P 10 g · C 60 g · F 10 g`
+    )
+  ).toBeInTheDocument();
+  expect(
+    await screen.findByText(
+      `${(10041.6).toLocaleString()} kJ · P 60 g · C 360 g · F 60 g`
+    )
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Save meal' }));
+  expect(
+    await screen.findByText(
+      `Whole recipe: ${(10041.6).toLocaleString()} kJ. 4 servings of 450 g.`
+    )
+  ).toBeInTheDocument();
+  expect(api.saveRecipe).toHaveBeenCalledWith(
+    expect.objectContaining({ mappings: [reviewedMapping] })
+  );
+});
+
+it.each([new Error('connection lost'), new HttpApiError('server error', 500)])(
+  'locks ambiguous saves against duplicate retries: %s',
+  async (error) => {
+    api.saveRecipe.mockRejectedValueOnce(error);
+    const { client } = setup();
+    await selectRecipe();
+    await mapRice();
+    fireEvent.click(screen.getByRole('button', { name: 'Save meal' }));
+    await screen.findByText(
+      /Check your meals library before starting another import/
+    );
+    expect(
+      client
+        .getQueryCache()
+        .findAll({ queryKey: ['recipe-import-pending-save'] })
+    ).toHaveLength(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Save meal' }));
+    expect(screen.getByRole('button', { name: 'Save meal' })).toBeDisabled();
+    expect(api.saveRecipe).toHaveBeenCalledTimes(1);
+  }
+);
+
+it('leaves a validation-rejected save editable and allows a corrected retry', async () => {
+  api.saveRecipe.mockRejectedValueOnce(new HttpApiError('invalid amount', 400));
+  setup();
+  await selectRecipe();
+  await mapRice();
+  fireEvent.click(screen.getByRole('button', { name: 'Save meal' }));
+  await screen.findByText('invalid amount');
+  expect(
+    screen.getByRole('button', { name: 'Choose food for Rice' })
+  ).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Save meal' })).toBeEnabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Save meal' }));
+  await screen.findByText('Meal saved. You can log portions from your diary.');
+  expect(api.saveRecipe).toHaveBeenCalledTimes(2);
+});
+
+it.each(['closed', 'new-filter', 'profile', 'account'] as const)(
+  'refreshes the retained owner library after a deferred save (%s) without writing private source caches',
+  async (change) => {
+    let finish!: (value: RecipeImportSaveResponse) => void;
+    api.saveRecipe.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    const client = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false },
+        mutations: { retry: false },
+      },
+    });
+    let libraryReads = 0;
+    let committed = false;
+    jest.mocked(getMeals).mockImplementation(async () => {
+      libraryReads += 1;
+      return committed ? [{ id: 'meal', name: 'Rice batch', foods: [] }] : [];
+    });
+    function Library({ filter }: { filter: string }) {
+      const { data } = useMeals('all', filter);
+      return (
+        <div>
+          {data?.map((meal) => (
+            <p key={meal.id}>Library meal: {meal.name}</p>
+          ))}
+        </div>
+      );
+    }
+    const view = (open: boolean, filter = 'all') => (
+      <QueryClientProvider client={client}>
+        <Library filter={filter} />
+        <RecipeImportDialog
+          open={open}
+          onOpenChange={jest.fn()}
+          onOpenMeal={jest.fn()}
+        />
+      </QueryClientProvider>
+    );
+    const panel = render(view(true));
+    await selectRecipe();
+    await mapRice();
+    fireEvent.click(screen.getByRole('button', { name: 'Save meal' }));
+    await waitFor(() => expect(api.saveRecipe).toHaveBeenCalledTimes(1));
+    if (change === 'profile') mockActing = true;
+    if (change === 'account') mockOwner = 'next-owner';
+    if (change === 'profile' || change === 'account') {
+      // Real sign-out/profile changes clear unscoped library caches.
+      client.clear();
+      client.setQueryData(['meals', 'filter', 'all', 'all'], []);
+    }
+    panel.rerender(
+      view(
+        change === 'profile' || change === 'account',
+        change === 'new-filter' ? 'mine' : 'all'
+      )
+    );
+    await waitFor(() => expect(client.isFetching()).toBe(0));
+    const families = [
+      ['foods', 'list'],
+      ['mealPlans', 'owner'],
+      ['v2', 'foods'],
+      ['dailyProgress'],
+    ];
+    families.forEach((key) => client.setQueryData(key, ['retained']));
+    const readsBefore = libraryReads;
+    committed = true;
+    await act(async () => finish(saved));
+    if (change === 'closed' || change === 'new-filter')
+      await waitFor(() => expect(libraryReads).toBeGreaterThan(readsBefore));
+    else expect(libraryReads).toBe(readsBefore);
+    if (change === 'closed' || change === 'new-filter')
+      expect(
+        await screen.findByText('Library meal: Rice batch')
+      ).toBeInTheDocument();
+    else
+      expect(
+        screen.queryByText('Library meal: Rice batch')
+      ).not.toBeInTheDocument();
+    if (change === 'closed' || change === 'new-filter')
+      families.forEach((key) =>
+        expect(client.getQueryState(key)?.isInvalidated).toBe(true)
+      );
+    expect(
+      client
+        .getQueryCache()
+        .findAll({ queryKey: ['recipe-import-pending-save'] })
+    ).toHaveLength(0);
+    expect(
+      client.getQueryData(['meals', 'recipe-import-source', 'owner', 'meal'])
+    ).toBeUndefined();
+    expect(
+      client.getQueryData([
+        'meals',
+        'recipe-import-source',
+        'next-owner',
+        'meal',
+      ])
+    ).toBeUndefined();
+  }
+);
+
+it.each(['unmount', 'owner', 'replaced'] as const)(
+  'rejects a retained private food-cache callback after %s',
+  async (change) => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const hook = renderHook(() => useRecipeImportFoodAccess(), {
+      wrapper: ({ children }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      ),
+    });
+    const retained = hook.result.current.cacheFood;
+    if (change === 'unmount') hook.unmount();
+    if (change === 'owner') {
+      mockOwner = 'next-owner';
+      hook.rerender();
+    }
+    if (change === 'replaced') {
+      // Auth clears caches before the new profile render. Reusing the exact
+      // old key must still not permit a pending selector callback to write.
+      client.clear();
+      client.setQueryData(['foods', 'recipe-import', 'owner', undefined], {
+        replacementScope: true,
+      });
+    }
+    act(() => retained(mockFood, mockFoodVariant()));
+    expect(
+      client.getQueryData(['foods', 'recipe-import', 'owner', 'food'])
+    ).toBeUndefined();
+    expect(
+      client.getQueryData(['foods', 'recipe-import', 'next-owner', 'food'])
+    ).toBeUndefined();
+    if (change === 'owner') {
+      act(() => hook.result.current.cacheFood(mockFood, mockFoodVariant()));
+      expect(
+        client.getQueryData<Food>([
+          'foods',
+          'recipe-import',
+          'next-owner',
+          'food',
+        ])?.variants?.[0]?.id
+      ).toBe('variant');
+    }
   }
 );

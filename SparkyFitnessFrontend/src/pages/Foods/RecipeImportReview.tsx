@@ -5,6 +5,8 @@ import {
   isUncertainRecipeSave,
   useRecipeImport,
 } from '@/hooks/Foods/useRecipeImport';
+import { useRecipeImportNutrition } from '@/hooks/Foods/useRecipeImportQueries';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { NumericInput } from '@/components/NumericInput';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +26,7 @@ export default function RecipeImportReview({
 }) {
   const { t } = useTranslation();
   const flow = useRecipeImport(preview);
+  const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
   const [name, setName] = useState(preview.name);
   const [servings, setServings] = useState<number | undefined>(
     preview.recipeServings ?? undefined
@@ -36,7 +39,9 @@ export default function RecipeImportReview({
   const mappings = preview.ingredients.flatMap((row) =>
     flow.mappings[row.ingredientId] ? [flow.mappings[row.ingredientId]!] : []
   );
+  const { complete: nutritionComplete } = useRecipeImportNutrition(mappings);
   const ready =
+    nutritionComplete &&
     mappings.length === preview.ingredients.length &&
     mappings.length > 0 &&
     !preview.ingredients.some((row) => row.issues.includes('linked_recipe')) &&
@@ -84,10 +89,18 @@ export default function RecipeImportReview({
         </p>
         <p>
           {t(
-            'recipeImport.savedNutrition',
-            'Whole recipe: {{calories}} kcal. {{servings}} servings of {{size}} {{unit}}.',
+            'recipeImport.savedEnergyNutrition',
+            'Whole recipe: {{calories}} {{energyUnit}}. {{servings}} servings of {{size}} {{unit}}.',
             {
-              calories: saved.nutrition['calories']?.toLocaleString(),
+              calories:
+                saved.nutrition['calories'] == null
+                  ? '?'
+                  : convertEnergy(
+                      saved.nutrition['calories'],
+                      'kcal',
+                      energyUnit
+                    ).toLocaleString(undefined, { maximumFractionDigits: 2 }),
+              energyUnit: getEnergyUnitString(energyUnit),
               servings: saved.totalServings.toLocaleString(),
               size: saved.servingSize.toLocaleString(undefined, {
                 maximumFractionDigits: 2,

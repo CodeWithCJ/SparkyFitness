@@ -96,6 +96,7 @@ const MealManagement: React.FC = () => {
   const [editingMealId, setEditingMealId] = useState<string | undefined>(
     undefined
   );
+  const [ingredientsDirty, setIngredientsDirty] = useState(false);
   const [showMealBuilderDialog, setShowMealBuilderDialog] = useState(false);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [duplicatingMealId, setDuplicatingMealId] = useState<string | null>(
@@ -204,11 +205,13 @@ const MealManagement: React.FC = () => {
   };
 
   const handleCreateNewMeal = () => {
+    setIngredientsDirty(false);
     setEditingMealId(undefined);
     setShowMealBuilderDialog(true);
   };
 
   const handleEditMeal = React.useCallback((mealId: string) => {
+    setIngredientsDirty(true);
     setEditingMealId(mealId);
     setShowMealBuilderDialog(true);
   }, []);
@@ -248,11 +251,13 @@ const MealManagement: React.FC = () => {
   );
 
   const handleMealSave = () => {
+    setIngredientsDirty(false);
     setShowMealBuilderDialog(false);
     invalidateMeals();
   };
 
   const handleMealCancel = () => {
+    setIngredientsDirty(false);
     setShowMealBuilderDialog(false);
   };
 
@@ -797,10 +802,14 @@ const MealManagement: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           {editingMealId && !isActingOnBehalf && (
-            <RecipeImportSourcePanel mealId={editingMealId} />
+            <RecipeImportSourcePanel
+              mealId={editingMealId}
+              ingredientsDirty={ingredientsDirty}
+            />
           )}
           <MealBuilder
             mealId={editingMealId}
+            onIngredientsDirtyChange={setIngredientsDirty}
             onSave={handleMealSave}
             onCancel={handleMealCancel}
           />

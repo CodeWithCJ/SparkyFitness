@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useId, useRef, useState } from 'react';
+import {
+  useMutation,
+  useQueryClient,
+  type QueryKey,
+} from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   mergeRecipeImportSuggestions,
@@ -75,6 +79,12 @@ export function useRecipeImport(preview: RecipeImportPreview) {
   const invalidateMeals = useMealInvalidation();
   const invalidateFoods = useFoodEntryInvalidation();
   const client = useQueryClient();
+  const saveScopeId = useId();
+  const pendingSaveKey: QueryKey = [
+    'recipe-import-pending-save',
+    activeUserId,
+    saveScopeId,
+  ];
 
   function confirm(mapping: RecipeImportMapping) {
     if (!alive.current || !allowed.current) return;
@@ -155,7 +165,17 @@ export function useRecipeImport(preview: RecipeImportPreview) {
   }
 
   const save = useMutation({
-    onMutate: () => ({ identity, ownerId: activeUserId }),
+    onMutate: () => ({
+      identity,
+      ownerId: activeUserId,
+      // Library keys predate owner-scoped caches. An empty, mutation-local
+      // marker survives dialog unmount, but auth/profile cache.clear() removes
+      // it. This also covers library queries created while save is pending.
+      scopeQuery: client.getQueryCache().build(client, {
+        queryKey: pendingSaveKey,
+        gcTime: Infinity,
+      }),
+    }),
     mutationFn: (request: RecipeImportSaveRequest) => {
       if (!allowed.current)
         throw new Error(
@@ -169,19 +189,29 @@ export function useRecipeImport(preview: RecipeImportPreview) {
     retry: false,
     onSuccess: (result, _request, context) => {
       if (
-        !alive.current ||
-        !allowed.current ||
-        currentIdentity.current !== context?.identity
+        !context ||
+        !client.getQueryCache().getAll().includes(context.scopeQuery)
       )
         return;
       invalidateMeals();
       invalidateFoods();
       client.invalidateQueries({ queryKey: ['mealPlans'] });
       client.invalidateQueries({ queryKey: ['v2', 'foods'] });
+      if (
+        !alive.current ||
+        !allowed.current ||
+        currentIdentity.current !== context?.identity
+      )
+        return;
       client.setQueryData(
         ['meals', 'recipe-import-source', context.ownerId, result.mealId],
         result.source
       );
+    },
+    onSettled: (_result, _error, _request, context) => {
+      client.removeQueries({
+        predicate: (query) => query === context?.scopeQuery,
+      });
     },
   });
 

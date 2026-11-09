@@ -12,6 +12,7 @@ import { useRecipeImportFoodAccess } from '@/hooks/Foods/useRecipeImportQueries'
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
 import { FoodFormDialog } from '@/components/FoodSearch/FoodFormDialog';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,7 @@ export default function RecipeImportIngredientRow({
 }: Props) {
   const { t } = useTranslation();
   const { isActingOnBehalf } = useActiveUser();
+  const { energyUnit, convertEnergy, getEnergyUnitString } = usePreferences();
   const [searchOpen, setSearchOpen] = useState(false);
   const [selected, setSelected] = useState<{
     food: Food;
@@ -171,7 +173,7 @@ export default function RecipeImportIngredientRow({
       unit,
       confirmed: true,
     });
-    cacheFood(food);
+    cacheFood(food, chosenVariant);
     setSelected(null);
   }
 
@@ -258,12 +260,18 @@ export default function RecipeImportIngredientRow({
           {variant && (
             <p>
               {t(
-                'recipeImport.variantNutrition',
-                '{{size}} {{unit}}: {{calories}} kcal · P {{protein}} g · C {{carbs}} g · F {{fat}} g',
+                'recipeImport.variantEnergyNutrition',
+                '{{size}} {{unit}}: {{calories}} {{energyUnit}} · P {{protein}} g · C {{carbs}} g · F {{fat}} g',
                 {
                   size: number(variant.serving_size),
                   unit: variant.serving_unit,
-                  calories: number(variant.calories),
+                  calories:
+                    variant.calories == null || variant.calories < 0
+                      ? '?'
+                      : number(
+                          convertEnergy(variant.calories, 'kcal', energyUnit)
+                        ),
+                  energyUnit: getEnergyUnitString(energyUnit),
                   protein: number(variant.protein),
                   carbs: number(variant.carbs),
                   fat: number(variant.fat),
@@ -333,13 +341,22 @@ export default function RecipeImportIngredientRow({
               )}
               <p>
                 {t(
-                  'recipeImport.candidateNutrition',
-                  '{{calories}} kcal · P {{protein}} g · C {{carbs}} g · F {{fat}} g per serving',
+                  'recipeImport.candidateEnergyNutrition',
+                  '{{calories}} {{energyUnit}} · P {{protein}} g · C {{carbs}} g · F {{fat}} g per serving',
                   {
                     calories:
                       candidate.nutrition['calories'] == null
                         ? '?'
-                        : number(candidate.nutrition['calories']),
+                        : candidate.nutrition['calories'] < 0
+                          ? '?'
+                          : number(
+                              convertEnergy(
+                                candidate.nutrition['calories'],
+                                'kcal',
+                                energyUnit
+                              )
+                            ),
+                    energyUnit: getEnergyUnitString(energyUnit),
                     protein:
                       candidate.nutrition['protein'] == null
                         ? '?'

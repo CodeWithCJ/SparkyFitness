@@ -39,12 +39,14 @@ export const saveRecipe = async (body: RecipeImportSaveRequest) =>
   );
 export const getRecipeSource = async (mealId: string) => {
   try {
-    return recipeImportSourceSchema.parse(
-      await apiCall(`${root}/${encodeURIComponent(mealId)}/source`, {
+    const source = await apiCall<unknown>(
+      `${root}/${encodeURIComponent(mealId)}/source`,
+      {
         ...quiet,
         suppress404Toast: true,
-      })
+      }
     );
+    return source === null ? null : recipeImportSourceSchema.parse(source);
   } catch (error) {
     if (error instanceof HttpApiError && error.status === 404) return null;
     throw error;

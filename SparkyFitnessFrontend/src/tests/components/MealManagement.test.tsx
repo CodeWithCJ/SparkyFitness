@@ -1,5 +1,11 @@
-import { screen, waitFor } from '@testing-library/react';
+import type { ComponentProps } from 'react';
+import { screen, waitFor, fireEvent, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { getMealById, updateMeal } from '@/api/Foods/meals';
+import {
+  getRecipeSource,
+  syncRecipeNutrition,
+} from '@/api/Foods/recipeImportService';
 import MealManagement from '@/pages/Foods/MealManagement';
 import { renderWithClient } from '../test-utils';
 
@@ -73,9 +79,55 @@ jest.mock('@/api/Foods/meals', () => ({
   updateMeal: jest.fn(),
 }));
 
+let mockRealBuilder = false;
+jest.mock('@/api/Foods/recipeImportService', () => ({
+  getRecipeSource: jest.fn(),
+  syncRecipeNutrition: jest.fn(),
+}));
+jest.mock('@/hooks/Foods/useCustomNutrients', () => ({
+  useCustomNutrients: () => ({ data: [] }),
+}));
+jest.mock('@/components/FoodUnitSelector', () => ({
+  __esModule: true,
+  default: (
+    props: ComponentProps<
+      typeof import('@/components/FoodUnitSelector').default
+    >
+  ) =>
+    props.open ? (
+      <div>
+        <button
+          onClick={() =>
+            props.onSelect(props.food, 2, 'piece', props.food.default_variant!)
+          }
+        >
+          Change ingredient quantity
+        </button>
+        <button
+          onClick={() =>
+            props.onSelect(props.food, 1, 'piece', {
+              ...props.food.default_variant!,
+              id: 'another-variant',
+            })
+          }
+        >
+          Change ingredient variant
+        </button>
+      </div>
+    ) : null,
+}));
+
 // Mock MealBuilder sub-component
 jest.mock('@/components/MealBuilder', () => {
-  return function MockMealBuilder() {
+  const Actual = jest.requireActual<typeof import('@/components/MealBuilder')>(
+    '@/components/MealBuilder'
+  ).default;
+  return function MockMealBuilder(
+    props: ComponentProps<typeof import('@/components/MealBuilder').default>
+  ) {
+    if (mockRealBuilder) {
+      return <Actual {...props} />;
+    }
     return <div data-testid="meal-builder">MealBuilder</div>;
   };
 });
@@ -92,6 +144,7 @@ jest.mock('@/api/Foods/favoritesService', () => ({
 describe('MealManagement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRealBuilder = false;
   });
 
   it('renders title and empty state when no meals exist', async () => {
@@ -168,3 +221,108 @@ describe('MealManagement', () => {
     ).toBeNull();
   });
 });
+
+it.each([
+  ['quantity', 'discard'],
+  ['quantity', 'save'],
+  ['variant', 'discard'],
+  ['variant', 'save'],
+] as const)(
+  'blocks source sync beside unsaved real meal %s edits and restores eligibility after %s',
+  async (edit, outcome) => {
+    jest.clearAllMocks();
+    mockRealBuilder = true;
+    let currentMeal = {
+      id: 'meal1',
+      name: 'Apple meal',
+      is_public: false,
+      serving_size: 1,
+      serving_unit: 'serving',
+      total_servings: 1,
+      foods: [
+        {
+          food_id: 'apple',
+          food_name: 'Apple',
+          variant_id: 'original',
+          quantity: 1,
+          unit: 'piece',
+          serving_size: 1,
+          serving_unit: 'piece',
+          calories: 95,
+          protein: 0.5,
+          carbs: 25,
+          fat: 0.3,
+        },
+      ],
+    };
+    mockGetMeals.mockResolvedValue([currentMeal]);
+    jest.mocked(getMealById).mockImplementation(async () => currentMeal);
+    jest.mocked(updateMeal).mockImplementation(async (_id, payload) => {
+      currentMeal = {
+        ...currentMeal,
+        foods: payload.foods as typeof currentMeal.foods,
+      };
+      return currentMeal;
+    });
+    jest.mocked(getRecipeSource).mockResolvedValue({
+      name: 'Original source',
+      syncEligible: true,
+    } as Awaited<ReturnType<typeof getRecipeSource>>);
+    renderWithClient(<MealManagement />);
+    async function openEditor() {
+      const menu = await screen.findAllByRole('button', { name: 'Open menu' });
+      fireEvent.pointerDown(menu[0]!, {
+        button: 0,
+        ctrlKey: false,
+        pointerType: 'mouse',
+      });
+      fireEvent.click(
+        await screen.findByRole('menuitem', { name: 'Edit Meal' })
+      );
+      await screen.findByText('Apple');
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Sync nutrition to Mealie' })
+        ).toBeEnabled()
+      );
+    }
+    async function changeIngredient() {
+      const row = screen.getByText('Apple').parentElement!.parentElement!;
+      fireEvent.click(within(row).getAllByRole('button')[0]!);
+      fireEvent.click(
+        await screen.findByRole('button', { name: `Change ingredient ${edit}` })
+      );
+      expect(
+        screen.getByRole('button', { name: 'Sync nutrition to Mealie' })
+      ).toBeDisabled();
+      expect(
+        screen.getByText(
+          'Save or discard ingredient changes before syncing nutrition to Mealie.'
+        )
+      ).toBeInTheDocument();
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Sync nutrition to Mealie' })
+      );
+      expect(syncRecipeNutrition).not.toHaveBeenCalled();
+    }
+    await openEditor();
+    await changeIngredient();
+    if (outcome === 'discard') {
+      fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    } else {
+      fireEvent.click(screen.getByRole('button', { name: 'Save Meal' }));
+      await waitFor(() => expect(updateMeal).toHaveBeenCalledTimes(1));
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('button', { name: 'Save Meal' })
+        ).not.toBeInTheDocument()
+      );
+    }
+    await openEditor();
+    expect(
+      screen.queryByText(
+        'Save or discard ingredient changes before syncing nutrition to Mealie.'
+      )
+    ).not.toBeInTheDocument();
+  }
+);

@@ -69,6 +69,7 @@ interface MealBuilderProps {
   mealId?: string; // Optional: if editing an existing meal template
   duplicateFromMealId?: string; // Optional: seed a NEW meal from an existing one (Duplicate action)
   onCancel?: () => void;
+  onIngredientsDirtyChange?: (dirty: boolean) => void;
   initialFoods?: MealFood[]; // New prop for food diary entries
   initialMealName?: string;
   initialDescription?: string;
@@ -129,10 +130,24 @@ const ALL_NUTRIENT_KEYS = [
   'alcohol_g',
 ] as const;
 
+// Only ingredient identities and amounts govern source nutrition sync. Keep
+// ordinary meal metadata and diary serving controls outside this comparison.
+const ingredientSignature = (foods: MealFood[]) =>
+  JSON.stringify(
+    foods.map((food) => ({
+      foodId: food.food_id ?? null,
+      variantId: food.variant_id ?? null,
+      childMealId: food.child_meal_id ?? null,
+      quantity: food.quantity,
+      unit: food.unit,
+    }))
+  );
+
 const MealBuilder: React.FC<MealBuilderProps> = ({
   mealId,
   duplicateFromMealId,
   onCancel,
+  onIngredientsDirtyChange,
   initialFoods,
   initialMealName,
   initialDescription,
@@ -237,6 +252,22 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
     'logged' | 'perServing' | 'total'
   >(source === 'food-diary' ? 'logged' : 'perServing');
   const [mealFoods, setMealFoods] = useState<MealFood[]>(initialFoods || []);
+  const [savedIngredientSignature, setSavedIngredientSignature] = useState<
+    string | null
+  >(null);
+  const currentIngredientSignature = ingredientSignature(mealFoods);
+  useEffect(() => {
+    onIngredientsDirtyChange?.(
+      !!mealId &&
+        (savedIngredientSignature === null ||
+          currentIngredientSignature !== savedIngredientSignature)
+    );
+  }, [
+    mealId,
+    savedIngredientSignature,
+    currentIngredientSignature,
+    onIngredientsDirtyChange,
+  ]);
   const [isFoodUnitSelectorOpen, setIsFoodUnitSelectorOpen] = useState(false);
   const [showFoodSearchDialog, setShowFoodSearchDialog] = useState(false);
   const [selectedFoodForUnitSelection, setSelectedFoodForUnitSelection] =
@@ -332,6 +363,10 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               ).toString()
             );
             setMealFoods(meal.foods || []);
+            if (mealId)
+              setSavedIngredientSignature(
+                ingredientSignature(meal.foods || [])
+              );
           }
         } catch (err) {
           error(loggingLevel, 'Failed to fetch meal for editing:', err);

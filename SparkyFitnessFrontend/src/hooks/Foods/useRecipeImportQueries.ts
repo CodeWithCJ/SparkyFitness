@@ -6,6 +6,10 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import {
+  getConversionFactor,
+  recipeImportNutritionGaps,
+} from '@workspace/shared';
 import type {
   RecipeImportMapping,
   RecipeImportSource,
@@ -19,7 +23,7 @@ import {
 import { getFoodById, getFoodDetailsV2 } from '@/api/Foods/foodService';
 import { getExternalDataProviders } from '@/api/Settings/externalProviderService';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
-import type { Food } from '@/types/food';
+import type { Food, FoodVariant } from '@/types/food';
 import { foodVariantsOptions } from './useFoodVariants';
 
 async function loadRecipeFood(foodId: string): Promise<Food> {
@@ -63,27 +67,58 @@ export function useRecipeImportBrowserQueries(
 export function useRecipeImportFoodAccess(foodId?: string) {
   const { activeUserId, isActingOnBehalf } = useActiveUser();
   const client = useQueryClient();
+  const ownerScope = !isActingOnBehalf ? activeUserId : null;
+  const currentScope = useRef(ownerScope);
+  useEffect(() => {
+    currentScope.current = ownerScope;
+    return () => {
+      currentScope.current = null;
+    };
+  }, [ownerScope]);
+  const detailsKey = foodKey(activeUserId, foodId);
   const details = useQuery({
-    queryKey: foodKey(activeUserId, foodId),
+    queryKey: detailsKey,
     queryFn: () => loadRecipeFood(foodId!),
     enabled: !!foodId && !!activeUserId && !isActingOnBehalf,
     retry: false,
   });
+  // Retain the observed query identity: auth can clear/rebuild this key
+  // before a new owner render, while a unit-creation callback is still pending.
+  const scopeQuery = client
+    .getQueryCache()
+    .find({ queryKey: detailsKey, exact: true });
   return {
     details,
     loadFood: getFoodById,
     loadExternalFood: getFoodDetailsV2,
-    cacheFood: (food: Food) =>
-      client.setQueryData<Food>(foodKey(activeUserId, food.id), (previous) => ({
-        ...food,
-        variants: food.variants ?? previous?.variants,
-      })),
+    cacheFood: (food: Food, chosenVariant: FoodVariant) => {
+      if (
+        !ownerScope ||
+        currentScope.current !== ownerScope ||
+        !scopeQuery ||
+        client.getQueryCache().find({ queryKey: detailsKey, exact: true }) !==
+          scopeQuery
+      )
+        return;
+      return client.setQueryData<Food>(
+        foodKey(activeUserId, food.id),
+        (previous) => {
+          const variants = new Map(
+            [...(previous?.variants ?? []), ...(food.variants ?? [])].map(
+              (variant) => [variant.id, variant]
+            )
+          );
+          variants.set(chosenVariant.id, chosenVariant);
+          return { ...food, variants: [...variants.values()] };
+        }
+      );
+    },
   };
 }
 
-export function useRecipeImportNutritionFoods(mappings: RecipeImportMapping[]) {
+export function useRecipeImportNutrition(mappings: RecipeImportMapping[]) {
   const { activeUserId, isActingOnBehalf } = useActiveUser();
-  return useQueries({
+  const foods = useQueries({
     queries: mappings.map((mapping) => ({
       queryKey: foodKey(activeUserId, mapping.foodId),
       queryFn: () => loadRecipeFood(mapping.foodId),
@@ -91,6 +126,39 @@ export function useRecipeImportNutritionFoods(mappings: RecipeImportMapping[]) {
       retry: false,
     })),
   });
+  const totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+  let resolved = 0;
+  mappings.forEach((mapping, index) => {
+    const food = foods[index]?.data;
+    const variant =
+      food?.variants?.find((item) => item.id === mapping.variantId) ??
+      (food?.default_variant?.id === mapping.variantId
+        ? food.default_variant
+        : undefined);
+    if (!variant || recipeImportNutritionGaps(variant, []).missingCore) return;
+    const factor = getConversionFactor(variant.serving_unit, mapping.unit);
+    if (
+      factor === null ||
+      !Number.isFinite(variant.serving_size) ||
+      !(variant.serving_size > 0) ||
+      !Number.isFinite(mapping.quantity) ||
+      !(mapping.quantity > 0)
+    )
+      return;
+    const scale = (mapping.quantity * factor) / variant.serving_size;
+    (Object.keys(totals) as (keyof typeof totals)[]).forEach((key) => {
+      totals[key] += variant[key] * scale;
+    });
+    resolved += 1;
+  });
+  return {
+    totals,
+    resolved,
+    complete:
+      mappings.length > 0 &&
+      resolved === mappings.length &&
+      Object.values(totals).every(Number.isFinite),
+  };
 }
 
 export function useRecipeImportSource(

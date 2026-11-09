@@ -43,6 +43,7 @@ import {
   defaultMealTypeForTime,
   getConversionFactor,
   recipeImportInitialQuantity,
+  recipeImportNutritionGaps,
   toHourMinute,
   type AiConfidence,
   type ConfidenceTone,
@@ -134,6 +135,7 @@ const FoodUnitSelector = ({
     loggingLevel,
     energyUnit,
     convertEnergy,
+    getEnergyUnitString,
     aiAssistedConversions,
     timezone,
   } = usePreferences();
@@ -148,15 +150,15 @@ const FoodUnitSelector = ({
     userAiConfigAllowed &&
     !!activeAiServiceQuery.data;
 
-  const getEnergyUnitString = (unit: 'kcal' | 'kJ'): string => {
-    return unit === 'kcal' ? 'kcal' : 'kJ';
-  };
-
   const [variants, setVariants] = useState<FoodVariant[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<FoodVariant | null>(
     null
   );
   const [quantity, setQuantity] = useState<number | undefined>(1);
+  const recipeAmount = useRef<{
+    quantity: number | undefined;
+    unit: string | undefined;
+  } | null>(null);
   const [entryTime, setEntryTime] = useState('');
   // The note for THIS diary entry. Separate from the food's own note, which is
   // shown read-only above and never copied into the entry.
@@ -250,7 +252,7 @@ const FoodUnitSelector = ({
     selectedVariant,
     onVariantSelect: (_variantId, variant) => {
       setSelectedVariant(variant);
-      setQuantity(variant.serving_size);
+      if (!preserveInitialAmountUnit) setQuantity(variant.serving_size);
     },
   });
   const selectedAiConfidence = getValidAiConfidence(
@@ -268,10 +270,18 @@ const FoodUnitSelector = ({
         serving_size: food.default_variant?.serving_size || 100,
         serving_unit: food.default_variant?.serving_unit || 'g',
         serving_description: food.default_variant?.serving_description,
-        calories: food.default_variant?.calories || 0,
-        protein: food.default_variant?.protein || 0,
-        carbs: food.default_variant?.carbs || 0,
-        fat: food.default_variant?.fat || 0,
+        calories: preserveInitialAmountUnit
+          ? (food.default_variant?.calories ?? Number.NaN)
+          : food.default_variant?.calories || 0,
+        protein: preserveInitialAmountUnit
+          ? (food.default_variant?.protein ?? Number.NaN)
+          : food.default_variant?.protein || 0,
+        carbs: preserveInitialAmountUnit
+          ? (food.default_variant?.carbs ?? Number.NaN)
+          : food.default_variant?.carbs || 0,
+        fat: preserveInitialAmountUnit
+          ? (food.default_variant?.fat ?? Number.NaN)
+          : food.default_variant?.fat || 0,
         saturated_fat: food.default_variant?.saturated_fat || 0,
         polyunsaturated_fat: food.default_variant?.polyunsaturated_fat || 0,
         monounsaturated_fat: food.default_variant?.monounsaturated_fat || 0,
@@ -303,10 +313,14 @@ const FoodUnitSelector = ({
           serving_size: variant.serving_size,
           serving_unit: variant.serving_unit,
           serving_description: variant.serving_description,
-          calories: variant.calories || 0,
-          protein: variant.protein || 0,
-          carbs: variant.carbs || 0,
-          fat: variant.fat || 0,
+          calories: preserveInitialAmountUnit
+            ? variant.calories
+            : variant.calories || 0,
+          protein: preserveInitialAmountUnit
+            ? variant.protein
+            : variant.protein || 0,
+          carbs: preserveInitialAmountUnit ? variant.carbs : variant.carbs || 0,
+          fat: preserveInitialAmountUnit ? variant.fat : variant.fat || 0,
           saturated_fat: variant.saturated_fat || 0,
           polyunsaturated_fat: variant.polyunsaturated_fat || 0,
           monounsaturated_fat: variant.monounsaturated_fat || 0,
@@ -358,10 +372,18 @@ const FoodUnitSelector = ({
         serving_size: food.default_variant?.serving_size || 100,
         serving_unit: food.default_variant?.serving_unit || 'g',
         serving_description: food.default_variant?.serving_description,
-        calories: food.default_variant?.calories || 0,
-        protein: food.default_variant?.protein || 0,
-        carbs: food.default_variant?.carbs || 0,
-        fat: food.default_variant?.fat || 0,
+        calories: preserveInitialAmountUnit
+          ? (food.default_variant?.calories ?? Number.NaN)
+          : food.default_variant?.calories || 0,
+        protein: preserveInitialAmountUnit
+          ? (food.default_variant?.protein ?? Number.NaN)
+          : food.default_variant?.protein || 0,
+        carbs: preserveInitialAmountUnit
+          ? (food.default_variant?.carbs ?? Number.NaN)
+          : food.default_variant?.carbs || 0,
+        fat: preserveInitialAmountUnit
+          ? (food.default_variant?.fat ?? Number.NaN)
+          : food.default_variant?.fat || 0,
         saturated_fat: food.default_variant?.saturated_fat || 0,
         polyunsaturated_fat: food.default_variant?.polyunsaturated_fat || 0,
         monounsaturated_fat: food.default_variant?.monounsaturated_fat || 0,
@@ -388,7 +410,13 @@ const FoodUnitSelector = ({
     } finally {
       setLoading(false);
     }
-  }, [food, queryClient, loggingLevel, initialVariantId]);
+  }, [
+    food,
+    queryClient,
+    loggingLevel,
+    initialVariantId,
+    preserveInitialAmountUnit,
+  ]);
 
   useEffect(() => {
     debug(loggingLevel, 'FoodUnitSelector open/food useEffect triggered.', {
@@ -399,6 +427,7 @@ const FoodUnitSelector = ({
       initialVariantId,
     });
     if (open && food) {
+      recipeAmount.current = null;
       if (food.id && !food.id.startsWith('temp-')) {
         loadVariantsData();
       } else {
@@ -407,10 +436,18 @@ const FoodUnitSelector = ({
           serving_size: food.default_variant?.serving_size || 100,
           serving_unit: food.default_variant?.serving_unit || 'g',
           serving_description: food.default_variant?.serving_description,
-          calories: food.default_variant?.calories || 0,
-          protein: food.default_variant?.protein || 0,
-          carbs: food.default_variant?.carbs || 0,
-          fat: food.default_variant?.fat || 0,
+          calories: preserveInitialAmountUnit
+            ? (food.default_variant?.calories ?? Number.NaN)
+            : food.default_variant?.calories || 0,
+          protein: preserveInitialAmountUnit
+            ? (food.default_variant?.protein ?? Number.NaN)
+            : food.default_variant?.protein || 0,
+          carbs: preserveInitialAmountUnit
+            ? (food.default_variant?.carbs ?? Number.NaN)
+            : food.default_variant?.carbs || 0,
+          fat: preserveInitialAmountUnit
+            ? (food.default_variant?.fat ?? Number.NaN)
+            : food.default_variant?.fat || 0,
           saturated_fat: food.default_variant?.saturated_fat || 0,
           polyunsaturated_fat: food.default_variant?.polyunsaturated_fat || 0,
           monounsaturated_fat: food.default_variant?.monounsaturated_fat || 0,
@@ -461,13 +498,14 @@ const FoodUnitSelector = ({
     loadVariantsData,
     loggingLevel,
     resetConversionState,
+    preserveInitialAmountUnit,
   ]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     debug(loggingLevel, 'Handling submit.');
 
-    if (quantity === undefined) return;
+    if (quantity === undefined || recipeMissingCore) return;
 
     if (isConverting) {
       const convertedVariant = buildConvertedVariant();
@@ -545,14 +583,26 @@ const FoodUnitSelector = ({
     [foodImagePaths]
   );
 
+  const nutritionGaps = recipeImportNutritionGaps(
+    isConverting
+      ? (conversionBaseVariant ?? undefined)
+      : (activeVariant ?? undefined),
+    []
+  );
+  const recipeMissingCore =
+    preserveInitialAmountUnit && nutritionGaps.missingCore;
   const nutrition = (() => {
     if (!activeVariant || quantity === undefined) return null;
     const ratio = quantity / (activeVariant.serving_size || 1);
+    const amount = (key: 'calories' | 'protein' | 'carbs' | 'fat') =>
+      preserveInitialAmountUnit && nutritionGaps.missingNutrients.includes(key)
+        ? null
+        : (activeVariant[key] || 0) * ratio;
     return {
-      calories: (activeVariant.calories || 0) * ratio,
-      protein: (activeVariant.protein || 0) * ratio,
-      carbs: (activeVariant.carbs || 0) * ratio,
-      fat: (activeVariant.fat || 0) * ratio,
+      calories: amount('calories'),
+      protein: amount('protein'),
+      carbs: amount('carbs'),
+      fat: amount('fat'),
     };
   })();
 
@@ -575,19 +625,54 @@ const FoodUnitSelector = ({
     ? getConversionFactor(displayUnit, initialUnit)
     : null;
   useEffect(() => {
-    if (!open || !preserveInitialAmountUnit || loading) return;
-    setQuantity(
-      recipeImportInitialQuantity(initialQuantity, initialUnit, displayUnit)
+    if (
+      !open ||
+      !preserveInitialAmountUnit ||
+      loading ||
+      !displayUnit ||
+      displayUnit === '?'
+    )
+      return;
+    const amount = recipeAmount.current ?? {
+      quantity: initialQuantity,
+      unit: initialUnit,
+    };
+    let converted = recipeImportInitialQuantity(
+      amount.quantity,
+      amount.unit,
+      displayUnit
     );
+    const explicitFactor = autoConversionFactor ?? conversionFactor;
+    if (
+      converted === undefined &&
+      amount.quantity != null &&
+      amount.unit &&
+      isConverting &&
+      conversionBaseVariant &&
+      typeof explicitFactor === 'number' &&
+      Number.isFinite(explicitFactor) &&
+      explicitFactor > 0
+    ) {
+      const toBase = getConversionFactor(
+        conversionBaseVariant.serving_unit,
+        amount.unit
+      );
+      if (toBase !== null)
+        converted = (amount.quantity * toBase) / explicitFactor;
+    }
+    setQuantity(converted);
   }, [
     open,
     preserveInitialAmountUnit,
     loading,
     initialQuantity,
     initialUnit,
-    initialAmountFactor,
     displayUnit,
     selectedVariant?.id,
+    isConverting,
+    conversionBaseVariant,
+    conversionFactor,
+    autoConversionFactor,
   ]);
   const displayServing =
     quantity === undefined
@@ -658,6 +743,11 @@ const FoodUnitSelector = ({
                     value={quantity}
                     onValueChange={(newQuantity) => {
                       debug(loggingLevel, 'Quantity changed:', newQuantity);
+                      if (preserveInitialAmountUnit && newQuantity !== quantity)
+                        recipeAmount.current = {
+                          quantity: newQuantity,
+                          unit: displayUnit,
+                        };
                       setQuantity(newQuantity);
                     }}
                   />
@@ -1022,27 +1112,42 @@ const FoodUnitSelector = ({
                   </h4>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      {Math.round(
-                        convertEnergy(nutrition.calories, 'kcal', energyUnit)
-                      )}{' '}
+                      {nutrition.calories === null
+                        ? '?'
+                        : Math.round(
+                            convertEnergy(
+                              nutrition.calories,
+                              'kcal',
+                              energyUnit
+                            )
+                          )}{' '}
                       {getEnergyUnitString(energyUnit)}
                     </div>
                     <div>
                       {t('foodUnitSelector.proteinAmount', {
                         defaultValue: '{{amount}}g protein',
-                        amount: nutrition.protein.toFixed(1),
+                        amount:
+                          nutrition.protein === null
+                            ? '?'
+                            : nutrition.protein.toFixed(1),
                       })}
                     </div>
                     <div>
                       {t('foodUnitSelector.carbsAmount', {
                         defaultValue: '{{amount}}g carbs',
-                        amount: nutrition.carbs.toFixed(1),
+                        amount:
+                          nutrition.carbs === null
+                            ? '?'
+                            : nutrition.carbs.toFixed(1),
                       })}
                     </div>
                     <div>
                       {t('foodUnitSelector.fatAmount', {
                         defaultValue: '{{amount}}g fat',
-                        amount: nutrition.fat.toFixed(1),
+                        amount:
+                          nutrition.fat === null
+                            ? '?'
+                            : nutrition.fat.toFixed(1),
                       })}
                     </div>
                   </div>
@@ -1103,6 +1208,7 @@ const FoodUnitSelector = ({
                   type="submit"
                   disabled={
                     createFoodVariantMutation.isPending ||
+                    recipeMissingCore ||
                     (preserveInitialAmountUnit &&
                       (quantity === undefined ||
                         !Number.isFinite(quantity) ||
