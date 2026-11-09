@@ -630,31 +630,34 @@ async function prepareChatContext(
   heldBackTools: readonly string[] = []
 ) {
   const switched = userId !== authenticatedUserId;
-  // Keyed by both people: what a family member can read depends on their grant.
-  const { chatTz, customCategoriesList, accountName } =
-    await chatContextInputsCache.getOrLoad(
-      `${userId}|${authenticatedUserId}`,
-      async () => {
-        const [customCategories, tz, profile] = await Promise.all([
-          measurementRepository.getCustomCategories(userId),
-          loadUserTimezone(userId),
-          switched ? userRepository.getUserProfile(userId) : null,
-        ]);
-        return {
-          accountName: switched ? (profile?.full_name ?? null) : null,
-          chatTz: tz,
-          customCategoriesList:
-            customCategories.length > 0
-              ? customCategories
-                  .map(
-                    (cat: DatabaseCustomCategories) =>
-                      `- ${cat.name} (${cat.measurement_type}, ${cat.frequency})`
-                  )
-                  .join('\n')
-              : 'None',
-        };
-      }
-    );
+  const loadContextInputs = async () => {
+    const [customCategories, tz, profile] = await Promise.all([
+      measurementRepository.getCustomCategories(userId),
+      loadUserTimezone(userId),
+      switched ? userRepository.getUserProfile(userId) : null,
+    ]);
+    return {
+      accountName: switched ? (profile?.full_name ?? null) : null,
+      chatTz: tz,
+      customCategoriesList:
+        customCategories.length > 0
+          ? customCategories
+              .map(
+                (cat: DatabaseCustomCategories) =>
+                  `- ${cat.name} (${cat.measurement_type}, ${cat.frequency})`
+              )
+              .join('\n')
+          : 'None',
+    };
+  };
+  // In a family member's account what the signed-in person can read depends
+  // on a grant the owner can change at any time, so it is read every turn.
+  const { chatTz, customCategoriesList, accountName } = switched
+    ? await loadContextInputs()
+    : await chatContextInputsCache.getOrLoad(
+        authenticatedUserId,
+        loadContextInputs
+      );
 
   // Per-service chat tool profile. 'core' trims the tool surface for small/local
   // models and is honored for every self-hosted service type (ollama,
