@@ -292,11 +292,25 @@ describe('Fasting Routes', () => {
     it('rejects ending an eating window as a fast', async () => {
       const res = await request(app).post('/fasting/end').send({
         id: 'auto-eating-window-2026-07-18T00:00:00.000Z',
+        start_time: '2026-07-18T00:00:00.000Z',
         end_time: endTime,
       });
 
       expect(res.statusCode).toEqual(400);
       expect(res.body.error).toContain('Cannot end an eating window');
+      expect(fastingRepository.createCompletedFast).not.toHaveBeenCalled();
+    });
+
+    it('rejects invalid timestamp dates in fast end request', async () => {
+      const res = await request(app).post('/fasting/end').send({
+        id: 'auto-current',
+        start_time: 'not-a-date',
+        end_time: endTime,
+      });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('Valid start_time and end_time');
+      expect(fastingRepository.createCompletedFast).not.toHaveBeenCalled();
     });
 
     it('rejects a non-string fast id', async () => {

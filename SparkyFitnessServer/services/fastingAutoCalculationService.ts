@@ -280,7 +280,10 @@ export async function getCurrentAutoFast(
       const eatingWindowEnd = new Date(
         fastEndTime.getTime() + targetEatingHours * 60 * 60 * 1000
       );
-      if (now.getTime() < eatingWindowEnd.getTime()) {
+      if (
+        now.getTime() >= fastEndTime.getTime() &&
+        now.getTime() < eatingWindowEnd.getTime()
+      ) {
         const remainingMinutes = Math.max(
           0,
           Math.floor((eatingWindowEnd.getTime() - now.getTime()) / 60000)
@@ -305,6 +308,8 @@ export async function getCurrentAutoFast(
           eating_window_remaining_minutes: remainingMinutes,
         };
       }
+      // The fast from fastStartTime was already completed; do not resurrect it as active.
+      return null;
     }
 
     const elapsedMinutes = Math.floor(
@@ -352,7 +357,10 @@ export async function getCurrentAutoFast(
       fastEndTime.getTime() + targetEatingHours * 60 * 60 * 1000
     );
 
-    if (now.getTime() < eatingWindowEnd.getTime()) {
+    if (
+      now.getTime() >= fastEndTime.getTime() &&
+      now.getTime() < eatingWindowEnd.getTime()
+    ) {
       const remainingMinutes = Math.max(
         0,
         Math.floor((eatingWindowEnd.getTime() - now.getTime()) / 60000)
@@ -377,6 +385,8 @@ export async function getCurrentAutoFast(
         eating_window_remaining_minutes: remainingMinutes,
       };
     }
+    // The fast from fastStartTime was already completed; do not resurrect it as active.
+    return null;
   }
 
   const elapsedMinutes = Math.floor(

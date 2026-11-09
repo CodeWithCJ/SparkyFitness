@@ -193,6 +193,13 @@ router.post('/start', async (req, res) => {
  *                 type: string
  *                 format: date-time
  *                 description: Optional start time to override.
+ *               target_end_time:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Optional target end time of the fast.
+ *               fasting_type:
+ *                 type: string
+ *                 description: Optional fasting protocol (e.g. 16:8).
  *               end_time:
  *                 type: string
  *                 format: date-time
@@ -264,7 +271,14 @@ router.post('/end', async (req, res) => {
       if (!startUsed) {
         return res.status(400).json({ error: 'Start time is required' });
       }
-      if (new Date(startUsed) > new Date(end_time)) {
+      const startTimeMs = new Date(startUsed).getTime();
+      const endTimeMs = new Date(end_time).getTime();
+      if (isNaN(startTimeMs) || isNaN(endTimeMs)) {
+        return res
+          .status(400)
+          .json({ error: 'Valid start_time and end_time are required' });
+      }
+      if (startTimeMs > endTimeMs) {
         return res
           .status(400)
           .json({ error: 'start_time must be before end_time' });
@@ -272,9 +286,7 @@ router.post('/end', async (req, res) => {
 
       const durationMinutes = Math.max(
         0,
-        Math.round(
-          (new Date(end_time).getTime() - new Date(startUsed).getTime()) / 60000
-        )
+        Math.round((endTimeMs - startTimeMs) / 60000)
       );
       const targetEnd = target_end_time || activeAuto?.target_end_time || null;
       const fastingType = fasting_type || activeAuto?.fasting_type || '16:8';
@@ -295,13 +307,26 @@ router.post('/end', async (req, res) => {
         mood?.notes,
         end_time
       );
-      const resultFast =
-        completed ||
-        (await fastingRepository.findFastNearStartTime(
+      let resultFast = completed;
+      if (!resultFast) {
+        const existing = await fastingRepository.findFastNearStartTime(
           userId,
           new Date(startUsed),
           60
-        ));
+        );
+        if (existing) {
+          if (existing.status === 'ACTIVE') {
+            resultFast = await fastingRepository.endFast(
+              existing.id,
+              userId,
+              end_time,
+              durationMinutes
+            );
+          } else {
+            resultFast = existing;
+          }
+        }
+      }
       return res.json(resultFast);
     }
 
