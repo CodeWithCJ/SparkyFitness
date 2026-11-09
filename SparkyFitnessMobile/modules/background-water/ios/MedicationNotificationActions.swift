@@ -435,10 +435,14 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
             if isSnooze {
                 await self.snooze(content, data, notificationId)
             } else if let login {
+                let status = actionId == takenAction ? "taken" : "skipped"
+                // Recorded right after the claim and before waiting for any other
+                // write, so a press iOS ends while it is queued is still retried.
+                let (ledgerId, base) = self.recordPress(status, data, notificationId)
                 // One write at a time: two reminders for the same dose acted on
                 // together would otherwise both see it unlogged and both log it.
                 await MedicationWriteQueue.shared.run {
-                    await self.log(login, actionId == takenAction ? "taken" : "skipped", data, notificationId)
+                    await self.log(login, status, data, notificationId, ledgerId, base)
                 }
             }
             await MainActor.run {
@@ -450,15 +454,13 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
 
     // MARK: Taken / Skip
 
-    private func log(
-        _ login: MedicationLogin,
+    /// Writes the press to the ledger with every dose still to do, before any
+    /// network work. `log` replaces it with the outcome.
+    private func recordPress(
         _ status: String,
         _ data: MedicationReminderData,
         _ notificationId: String
-    ) async {
-        let takenAt = status == "taken" ? isoString(Date()) : nil
-        await removeDelivered([notificationId])
-
+    ) -> (String, [String: Any]) {
         var base: [String: Any] = [
             "kind": "action",
             "status": status,
@@ -468,13 +470,24 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
             "userId": data.userId ?? NSNull(),
             "doses": data.doses.map { $0.json },
         ]
-        if let takenAt { base["takenAt"] = takenAt }
-        // Recorded before any network work, with every dose still to do, so a
-        // press iOS cuts short is retried by JavaScript on the next run.
+        if status == "taken" { base["takenAt"] = isoString(Date()) }
         var pendingResult = base
         pendingResult["failedDoses"] = data.doses.map { $0.json }
         pendingResult["loggedCount"] = 0
-        let ledgerId = MedicationActionStore.begin(pendingResult)
+        return (MedicationActionStore.begin(pendingResult), base)
+    }
+
+    private func log(
+        _ login: MedicationLogin,
+        _ status: String,
+        _ data: MedicationReminderData,
+        _ notificationId: String,
+        _ ledgerId: String,
+        _ pressed: [String: Any]
+    ) async {
+        var base = pressed
+        let takenAt = pressed["takenAt"] as? String
+        await removeDelivered([notificationId])
 
         var failed: [MedicationDose] = []
         var logged = 0
