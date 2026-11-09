@@ -105,7 +105,7 @@ describe('AdaptiveTdeeService', () => {
       calculationDateStr
     );
     expect(result.isFallback).toBe(true);
-    expect(result.fallbackReason).toContain('Insufficient weight entries');
+    expect(result.fallbackReason).toContain('Insufficient weight history');
   });
 
   test('should compute TDEE from data synchronously using computeAdaptiveTdeeFromData', () => {
@@ -117,16 +117,10 @@ describe('AdaptiveTdeeService', () => {
         use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
-      checkInMeasurements: [
-        {
-          entry_date: format(subDays(calculationDate, 20), 'yyyy-MM-dd'),
-          weight: 80,
-        },
-        {
-          entry_date: format(subDays(calculationDate, 1), 'yyyy-MM-dd'),
-          weight: 79,
-        },
-      ],
+      checkInMeasurements: Array.from({ length: 90 }, (_, i) => ({
+        entry_date: format(subDays(calculationDate, 90 - i), 'yyyy-MM-dd'),
+        weight: 80 - i / 27,
+      })),
       nutritionData: Array.from({ length: 91 }, (_, i) => ({
         date: format(subDays(calculationDate, i), 'yyyy-MM-dd'),
         calories: 2500,
@@ -215,16 +209,10 @@ describe('AdaptiveTdeeService', () => {
         use_external_bmr: true,
       },
       latestMeasurement: { weight: 80, height: 180 },
-      checkInMeasurements: [
-        {
-          entry_date: format(subDays(calculationDate, 20), 'yyyy-MM-dd'),
-          weight: 80,
-        },
-        {
-          entry_date: format(subDays(calculationDate, 1), 'yyyy-MM-dd'),
-          weight: 80,
-        },
-      ],
+      checkInMeasurements: Array.from({ length: 90 }, (_, i) => ({
+        entry_date: format(subDays(calculationDate, 90 - i), 'yyyy-MM-dd'),
+        weight: 80,
+      })),
       nutritionData: Array.from({ length: 91 }, (_, i) => ({
         date: format(subDays(calculationDate, i), 'yyyy-MM-dd'),
         calories: 4000,
@@ -320,7 +308,7 @@ describe('AdaptiveTdeeService', () => {
     expect(result.confidence).toBe('MEDIUM');
   });
 
-  test('should downgrade confidence for consecutive weight gaps (>= 3 days) in the calculation window', () => {
+  test('does not automatically downgrade adequately supported multi-day gaps', () => {
     // @ts-expect-error
     bmrService.calculateBmr.mockReturnValue(1800);
     bmrService.ActivityMultiplier = { moderate: 1.55 };
@@ -329,7 +317,7 @@ describe('AdaptiveTdeeService', () => {
     // But has a 4-day weight log gap in the last 28 days.
     // Basic criteria met: calorieDays = 24 >= 21, weightEntriesCount = 20 >= 8, daySpan = 70 >= 21.
     // Base confidence is HIGH.
-    // Due to the gap, confidence should be downgraded to MEDIUM.
+    // A gap alone does not erase ample actual observations and a fresh reading.
     const checkInMeasurements = [
       {
         entry_date: format(subDays(calculationDate, 70), 'yyyy-MM-dd'),
@@ -364,7 +352,7 @@ describe('AdaptiveTdeeService', () => {
       gapTrackerData,
       calculationDateStr
     );
-    expect(result.confidence).toBe('MEDIUM');
+    expect(result.confidence).toBe('HIGH');
   });
 
   test('should return HIGH confidence for seasoned user with consistent tracking', () => {
@@ -443,8 +431,12 @@ describe('AdaptiveTdeeService', () => {
     };
 
     const result = computeAdaptiveTdeeFromData(testData, calculationDateStr);
-    // 2000 kcal intake + (~0.89 kg smoothed weight loss * 6000) / 27 = ~2198 kcal
-    expect(result.tdee).toBe(2198);
+    // Actual-date regression preserves the 1kg /27day slope. The separate
+    // history adjustment may still be converging from the earlier flat period.
+    expect(result.rawTdee).toBe(2222);
+    expect(result.dailyWeightChangeKg).toBeCloseTo(-1 / 27, 4);
+    expect(result.tdee).toBeGreaterThanOrEqual(1670);
+    expect(result.tdee).toBeLessThanOrEqual(2670);
   });
 
   describe('window and checklist counts (#3142)', () => {
@@ -489,33 +481,36 @@ describe('AdaptiveTdeeService', () => {
       expect(result.daysOfData).toBe(7);
     });
 
-    test('reports calorie days when weights span less than 7 days', () => {
+    test('reports qualifying calorie days when observations span less than seven days', () => {
       const result = run(
         [
           { entry_date: day(7), weight: 80 },
           { entry_date: day(1), weight: 80 },
         ],
-        [...calories(1, 7), { date: day(8), calories: 150 }]
+        [...calories(1, 14), { date: day(15), calories: 150 }]
       );
       expect(result.isFallback).toBe(true);
-      expect(result.fallbackReason).toMatch(/less than 7 days/i);
+      expect(result.fallbackReason).toMatch(/spanning 7 days/i);
       // The sub-200 kcal day is not counted.
-      expect(result.daysOfData).toBe(7);
+      expect(result.daysOfData).toBe(14);
     });
 
     test('does not count the calculation day itself', () => {
-      const weights = [
-        { entry_date: day(20), weight: 80 },
-        { entry_date: day(1), weight: 80 },
-      ];
+      const weights = [28, 21, 14, 7].map((ago) => ({
+        entry_date: day(ago),
+        weight: 80,
+      }));
       const closed = run(weights, calories(1, 28));
       const withToday = run(weights, [
         { date: day(0), calories: 6000 },
         ...calories(1, 28),
       ]);
       expect(withToday.tdee).toBe(closed.tdee);
-      expect(withToday.daysOfData).toBe(28);
-      expect(closed.windowEndDate).toBe(day(1));
+      expect(withToday.daysOfData).toBe(closed.daysOfData);
+      expect(withToday.avgIntake).toBe(2000);
+      // Held candidate evidence ends at the last closed observation, not today.
+      expect(closed.windowEndDate).toBe(day(7));
+      expect(closed.candidateDate).toBe(day(6));
     });
 
     test('a weight logged on the calculation day does not satisfy the weight rule', () => {
@@ -527,7 +522,7 @@ describe('AdaptiveTdeeService', () => {
         calories(1, 28)
       );
       expect(result.isFallback).toBe(true);
-      expect(result.fallbackReason).toMatch(/at least 2/i);
+      expect(result.fallbackReason).toMatch(/spanning 7 days/i);
     });
 
     test('weights older than the 28-day window do not satisfy the weight rule', () => {
@@ -539,24 +534,24 @@ describe('AdaptiveTdeeService', () => {
         calories(1, 28)
       );
       expect(result.isFallback).toBe(true);
-      expect(result.fallbackReason).toMatch(/at least 2/i);
+      expect(result.fallbackReason).toMatch(/spanning 7 days/i);
     });
 
     test('divides the weight change by the 27 gaps in a 28-day window', () => {
       const result = run(
-        [
-          { entry_date: day(28), weight: 90 },
-          { entry_date: day(1), weight: 80 },
-        ],
+        Array.from({ length: 28 }, (_, i) => ({
+          entry_date: day(28 - i),
+          weight: 90 - (10 * i) / 27,
+        })),
         calories(1, 28)
       );
       expect(result.daysInWindow).toBe(28);
-      // About -8.9 kg: dividing by 28 instead would land 0.012 away.
-      expect(result.weightChangeKg).toBeLessThan(-5);
+      expect(result.weightChangeKg).toBe(-10);
       expect(result.dailyWeightChangeKg).toBeCloseTo(
         (result.weightChangeKg ?? 0) / 27,
         3
       );
+      expect(result.weightObservationSpanDays).toBe(27);
     });
   });
 

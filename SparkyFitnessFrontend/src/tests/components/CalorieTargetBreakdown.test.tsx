@@ -2,6 +2,302 @@ import { render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { CalorieTargetBreakdown } from '@/components/CalorieTargetBreakdown';
 
+describe('CalorieTargetBreakdown gradual expenditure estimate (#3485)', () => {
+  const boundedData = () => ({
+    ...defaultProps.adaptiveTdeeData,
+    tdee: 2470,
+    rawTdee: 2480,
+    avgIntake: 2600,
+    daysOfData: 28,
+    startWeightTrend: 70,
+    endWeightTrend: 70.42,
+    weightChangeKg: 0.42,
+    daysInWindow: 28,
+    windowStartDate: '2026-10-10',
+    windowEndDate: '2026-11-06',
+    dailyWeightChangeKg: 0.02,
+    weightChangeCalories: -120,
+    weightTrendMethod: 'bounded_daily' as const,
+    observedWeightDays: 3,
+    weightObservationSpanDays: 21,
+    lastWeightDate: '2026-11-06',
+    candidateDate: '2026-11-06',
+    daysSinceLastWeight: 1,
+    daysSinceEstimate: 1,
+    estimateStatus: 'learning' as const,
+    stabilizationDays: 12,
+    stabilizationWindowDays: 40,
+    dailyChangeLimitKcal: 25,
+    stabilityAdjustmentKcal: -10,
+    clampMin: 1660,
+    clampMax: 2660,
+    wasClamped: false,
+  });
+
+  it('uses fitted weights over actual observation dates without treating missing days as observations', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        adaptiveTdeeData={boundedData()}
+      />
+    );
+    expect(screen.getByText(/Fitted weight trend:/)).toHaveTextContent(
+      '70.0 kg → 70.4 kg (0.42 kg over 21 days) = 0.0200 kg/day'
+    );
+    expect(screen.getByText(/Observed weights:/)).toHaveTextContent(
+      '3 measured days spanning 21 days'
+    );
+    expect(
+      screen.getByText(/actual measurement dates; missing days are not filled/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/median weekly rate|7-day averages/)).toBeNull();
+  });
+
+  it('keeps the observed rate arithmetic separate from the history adjustment', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        adaptiveTdeeData={boundedData()}
+      />
+    );
+    expect(screen.getByText(/Raw expenditure candidate:/)).toHaveTextContent(
+      '2480 kcal (2600 − 120)'
+    );
+    expect(screen.getByText(/History adjustment:/)).toHaveTextContent(
+      '2480 − 10 = 2470 kcal'
+    );
+    expect(
+      screen.getByText(/Energy from the observed weight rate:/)
+    ).toHaveTextContent('−(0.0200 kg/day × 6000 kcal/kg) ≈ −120 kcal');
+  });
+
+  it('applies the plausibility cap before the history adjustment', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        adaptiveTdeeData={{
+          ...boundedData(),
+          rawTdee: 2800,
+          avgIntake: 2920,
+          tdee: 2520,
+          wasClamped: true,
+          stabilityAdjustmentKcal: -140,
+        }}
+      />
+    );
+    expect(
+      screen.getByText(/Raw estimate of 2800 kcal was capped/)
+    ).toHaveTextContent('capped to 2660 kcal');
+    expect(screen.getByText(/History adjustment:/)).toHaveTextContent(
+      '2660 − 140 = 2520 kcal'
+    );
+  });
+
+  it('reconciles converted history arithmetic in kJ and fitted weight rates in pounds', () => {
+    mockUsePreferences.mockReturnValue({
+      energyUnit: 'kJ',
+      convertEnergy: (value: number) => value * 4.184,
+      weightUnit: 'lbs',
+    });
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        adaptiveTdeeData={boundedData()}
+      />
+    );
+    expect(screen.getByText(/Fitted weight trend:/)).toHaveTextContent(
+      '0.93 lbs over 21 days) = 0.0441 lbs/day'
+    );
+    expect(screen.getByText(/Raw expenditure candidate:/)).toHaveTextContent(
+      '10376 kJ (10878 − 502)'
+    );
+    expect(screen.getByText(/History adjustment:/)).toHaveTextContent(
+      '10376 − 42 = 10334 kJ'
+    );
+  });
+
+  it('shows a separate activity-baseline cap and history adjustment without subtracting current activity twice', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        adaptiveActivitySeparate
+        adaptiveTdeeData={{
+          ...boundedData(),
+          rawTdee: 2800,
+          avgIntake: 2920,
+          tdee: 2520,
+          wasClamped: true,
+          stabilityAdjustmentKcal: -140,
+          rawActivityAdjustedTdee: 2300,
+          activityAdjustedTdee: 2270,
+          averageActivityCalories: 500,
+          activityDaysOfData: 28,
+          activityStabilityAdjustmentKcal: -30,
+        }}
+      />
+    );
+    expect(screen.getByText(/2800 − 500 = 2300 kcal/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Activity-baseline history adjustment:/)
+    ).toHaveTextContent('2300 − 30 = 2270 kcal');
+    expect(
+      screen.getByText(
+        /Today's steps and workouts are credited separately once/
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('reconciles the independent activity-baseline history adjustment in kJ', () => {
+    mockUsePreferences.mockReturnValue({
+      energyUnit: 'kJ',
+      convertEnergy: (value: number) => value * 4.184,
+      weightUnit: 'kg',
+    });
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        adaptiveActivitySeparate
+        adaptiveTdeeData={{
+          ...boundedData(),
+          rawTdee: 2800,
+          avgIntake: 2920,
+          tdee: 2520,
+          wasClamped: true,
+          stabilityAdjustmentKcal: -140,
+          rawActivityAdjustedTdee: 2300,
+          activityAdjustedTdee: 2270,
+          averageActivityCalories: 500,
+          activityDaysOfData: 28,
+          activityStabilityAdjustmentKcal: -30,
+        }}
+      />
+    );
+    expect(screen.getByText(/11715 − 2092 = 9623 kJ/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Activity-baseline history adjustment:/)
+    ).toHaveTextContent('9623 − 125 = 9498 kJ');
+  });
+
+  it.each([
+    { status: 'learning' as const, want: /Status: Learning.*12\/40/ },
+    { status: 'adaptive' as const, want: /Status: Adaptive/ },
+    {
+      status: 'held' as const,
+      want: /Status: Holding the latest complete estimate/,
+    },
+    {
+      status: 'fading' as const,
+      want: /Status: Gradually returning to the formula baseline/,
+    },
+  ])(
+    'explains the $status estimate state and its evidence age',
+    ({ status, want }) => {
+      render(
+        <CalorieTargetBreakdown
+          {...defaultProps}
+          adaptiveTdeeData={{
+            ...boundedData(),
+            estimateStatus: status,
+            daysSinceEstimate: 9,
+          }}
+        />
+      );
+      expect(screen.getByText(want)).toBeInTheDocument();
+      expect(screen.getByText(/Latest complete evidence:/)).toHaveTextContent(
+        '2026-11-06 (9 days ago)'
+      );
+      expect(
+        screen.getByText(/displayed average can continue moving/i)
+      ).toBeInTheDocument();
+      expect(screen.getByText(/25 kcal\/day/)).toHaveTextContent(
+        'With an unchanged formula baseline and unchanged past records'
+      );
+      expect(screen.getByText(/25 kcal\/day/)).toHaveTextContent(
+        'Birthdays, changes in measured BMR, or profile/settings changes can change the baseline'
+      );
+    }
+  );
+
+  it('explains fallback evidence with measured dates and the same calorie requirement as automatic goals', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        previewResult={{
+          ...defaultProps.previewResult,
+          insufficientHistory: true,
+        }}
+        adaptiveTdeeData={{
+          ...boundedData(),
+          isFallback: true,
+          estimateStatus: 'fallback',
+          fallbackReason: 'Insufficient weight coverage',
+          observedWeightDays: 1,
+          weightObservationSpanDays: 0,
+        }}
+      />
+    );
+    expect(screen.getByText(/Status: Formula fallback/)).toBeInTheDocument();
+    expect(screen.getByText(/Weight Logs/)).toHaveTextContent(
+      '2+ measured days spanning 7+ days'
+    );
+    expect(
+      screen.getByText(/Calorie Logs for TDEE calculation/)
+    ).toHaveTextContent('14+ days');
+    expect(screen.getByText(/Observed weights:/)).toHaveTextContent(
+      '1 measured days spanning 0 days'
+    );
+    expect(
+      screen.getByText(
+        /No learned evidence currently contributes to this baseline/
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/raw calculation of.*bypassed/)).toBeNull();
+  });
+
+  it('does not present under-logged intake as inflating expenditure', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        adaptiveTdeeData={{ ...boundedData(), confidence: 'LOW' }}
+      />
+    );
+    expect(screen.getByText(/Under-logging intake/i)).toHaveTextContent(
+      /too low/i
+    );
+  });
+
+  it('explains the need for a new complete observed period even when both checklist counts are met', () => {
+    render(
+      <CalorieTargetBreakdown
+        {...defaultProps}
+        previewResult={{
+          ...defaultProps.previewResult,
+          insufficientHistory: true,
+        }}
+        adaptiveTdeeData={{
+          ...boundedData(),
+          isFallback: true,
+          estimateStatus: 'fallback',
+          candidateDate: undefined,
+          daysOfData: 14,
+          observedWeightDays: 2,
+          weightObservationSpanDays: 7,
+          fallbackReason:
+            'Insufficient overlapping history: the latest observed period needs 14 qualifying calorie days',
+        }}
+      />
+    );
+    expect(screen.getByText('✓ Met (14/14 days logged)')).toBeInTheDocument();
+    expect(screen.getByText('✓ Met')).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        /latest weight-observation period.*14.*new completed weight day/i
+      ).length
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/❌ Missing/)).toBeNull();
+  });
+});
+
 const mockUsePreferences = jest.fn();
 const mockT = jest.fn(
   (
@@ -614,19 +910,16 @@ describe('CalorieTargetBreakdown adaptive checklist', () => {
     );
 
   it('shows the real calorie-day count as met when only the weight rule fails (#3142)', () => {
-    renderFallback(7, 'Insufficient weight entries (need at least 2)');
-    expect(screen.getByText('✓ Met (7/7 days logged)')).toBeInTheDocument();
-    expect(
-      screen.getByText('⚠️ Missing (7/14 days logged)')
-    ).toBeInTheDocument();
+    renderFallback(14, 'Insufficient weight entries (need at least 2)');
+    expect(screen.getByText('✓ Met (14/14 days logged)')).toBeInTheDocument();
   });
 
   it('does not mark the calorie rule met below the required days', () => {
     renderFallback(3, 'Weight entries span less than 7 days');
     expect(
-      screen.getByText('❌ Missing (3/7 days logged)')
+      screen.getByText('❌ Missing (3/14 days logged)')
     ).toBeInTheDocument();
-    expect(screen.queryByText(/Met \(3\/7/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Met \(3\/14/)).not.toBeInTheDocument();
   });
 });
 

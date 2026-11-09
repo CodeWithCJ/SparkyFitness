@@ -79,15 +79,16 @@ Uses height, weight, and age to estimate body fat:
 
 This setting determines **how physical activity changes your calorie budget** throughout the day. On the web each option is a card; the full explanation of the one you pick, and any settings that belong to it (the earn-back percentage, activity level, Device Projection options), appear under the cards.
 
-- **Adaptive TDEE:** Dynamically computes your metabolic expenditure by correlating your actual weight changes with your historical calorie intake over the last 28 completed days. _(Best for high-precision tracking)._ The window ends the day before the date you are viewing, so food or a weigh-in logged today counts from tomorrow and your target does not move while you eat. Viewing a past day shows the estimate as it stood then.
+- **Adaptive TDEE:** Estimates expenditure from logged food and measured weights, then introduces changes gradually. Only completed calendar days count, so today's food and weigh-in first affect tomorrow's estimate. Historical dates are reconstructed using the settings saved for each day.
   - **Expenditure (Adaptive TDEE):** On the Diary page, "Expenditure" represents your calculated Total Daily Energy Expenditure (TDEE). This is the baseline number from which your deficit/surplus is subtracted.
-  - **Fallback Behavior:** If you have insufficient history (less than 14 days of weight and calorie data, or fewer than 7 days of calorie entries ≥ 200 kcal), the system will use a fallback estimate based on the standard `BMR × Activity Multiplier` formula until enough data is collected.
-  - **The formula:** `TDEE = Average Daily Calories - (Daily Weight Change in kg × 6,000 kcal/kg)`. The average covers only days with at least 200 kcal logged — unlogged days are skipped, not counted as zero — while the weight change spans the whole 28-day window.
-  - **Plausibility cap:** the result is capped to within ±500 kcal of `BMR × Activity Multiplier`. Your **Activity Level** therefore keeps mattering after Adaptive goes live: it does not feed the estimate, but it sets the window the estimate is allowed to land in. A level set well below your real activity can hold a genuinely higher measured expenditure down, and the Diary's calculation breakdown says so when the cap binds.
+  - **Evidence needed:** A complete estimate needs at least 2 measured weight days spanning 7 days, plus 14 days with ≥200 kcal logged, within a 28-day window ending on a completed weight day. Weight change is fitted to the actual measurement dates; missing days are not filled or counted. Regular weekly weigh-ins can qualify, although minimal evidence has LOW confidence. Before usable evidence exists, the baseline is `BMR × Activity Multiplier`.
+  - **The formula:** `Raw TDEE = Average Daily Calories - (Observed Daily Weight Change in kg × 6,000 kcal/kg)`. The average covers only days with at least 200 kcal logged — unlogged days are skipped, not counted as zero. A qualifying day does not mean its food log is complete; under-logging intake can underestimate expenditure. A new complete estimate is learned only when another completed weight day supplies enough evidence.
+  - **Plausibility cap and gradual changes:** Each complete estimate is capped to within ±500 kcal of `BMR × Activity Multiplier`. The last estimate is held for 14 days, then its difference from the formula baseline fades over 7 days. The displayed expenditure averages the last 40 daily estimate, hold, fade or formula inputs. The held evidence stays the same, but the displayed average can continue converging. The breakdown shows the observed rate, raw arithmetic, cap and history adjustment separately, with the dates of the evidence used.
+  - **Daily movement:** With an unchanged formula baseline and unchanged past records, advancing one day changes the displayed estimate by at most 25 kcal. A birthday, a change in the availability or value of measured BMR, profile/settings changes, or corrected/backfilled records can recalculate the result and are outside that bound. Historical formula baselines and plausibility limits use the latest profile weight/height snapshot, so later measurements can change them. **Activity Level** sets both the formula baseline and plausibility band, and can therefore hold an estimate down if set too low.
 
-    The `6,000 kcal/kg` term is an energy density — how many calories a kilogram of body weight represents — which is what lets a weight trend be converted into calories. If you ate 2,000 kcal/day and lost 0.5 kg over 14 days, that lost weight represents about 3,000 kcal your body burned beyond what you ate, or ~214 kcal/day, so your true expenditure was ~2,214 kcal/day.
+    This is a stability policy, not a water or tissue detector. The `6,000 kcal/kg` term remains an assumption for sustained tissue change; water, glycogen, digestive contents and tissue composition affect scale weight differently. Averaging can attenuate a sudden scale-weight shift but cannot eliminate its temporary effect, and adds about 20 days of lag. The 2/7/14/40-day thresholds are engineering choices, not clinically validated cutoffs.
 
-    Weight lost or gained is never pure fat. Fat carries ~9,441 kcal/kg and lean tissue and water only ~1,816 kcal/kg; 6,000 reflects a typical blend of roughly 55% fat to 45% lean and water. This is a modelling constant and is not user-configurable — it is not something you can observe about yourself without a body composition scan, and a wrong value would skew every calorie target with no visible symptom.
+    [Shiose et al. (2016)](https://pubmed.ncbi.nlm.nih.gov/27231310/) measured increased body water after carbohydrate loading. [Hall & Chow (2011)](https://pmc.ncbi.nlm.nih.gov/articles/PMC3127505/) discuss uncertainty when inferring energy intake changes from weight measurements; their model does not validate this expenditure calculation. [Bhutani et al. (2017)](https://pmc.ncbi.nlm.nih.gov/articles/PMC5506524/) found that two-week fluctuations in participants not deliberately changing weight were predominantly fat-free mass, mainly water. The [NIDDK Body Weight Planner research](https://www.niddk.nih.gov/research-funding/at-niddk/labs-branches/laboratory-biological-modeling/integrative-physiology-section/research/body-weight-planner) uses a separate dynamic model of body-weight change. These sources support caution, not certainty about an individual's weight change or the app's thresholds.
 
 - **Dynamic Goal:** Increases your budget as you burn active calories or take steps (adds exercise directly back to your budget).
 - **Fixed Goal:** Your calorie target remains completely static, ignoring daily exercise.
@@ -187,8 +188,10 @@ remain in use.
 **Dynamic Goal + Adaptive Method** offers an optional **Count activity calories
 separately** switch. It is off by default. When enabled, SparkyFitness subtracts
 average historical activity calories from the raw full-day adaptive estimate,
-then applies the BMR-based plausibility limits to that baseline. Goal Mode and
-the selected safety floor apply to this baseline. Today's activity calories from
+then applies the BMR-based plausibility limits and the same hold, fade and
+40-day averaging policy independently to that baseline. Its history adjustment
+can differ from the full-day estimate's adjustment. Goal Mode and
+the selected safety floor apply to the filtered baseline. Today's activity calories from
 steps and workouts are then credited once; BMR is not credited again, even when
 **Include Resting Calories** is enabled for net-energy reporting.
 
@@ -197,7 +200,7 @@ Multiplier**. Choose the activity level to describe activity outside the steps
 and workouts you credit separately. Consistent food, weight, step and workout
 history matters: missing or exaggerated historical activity changes the learned
 baseline. Days without recorded activity contribute zero to the historical
-average rather than being omitted. The measured full-day Adaptive TDEE remains
+average rather than being omitted. The estimated full-day Adaptive TDEE remains
 visible for reference; it is distinct from the baseline used for this option.
 
 On the web, press **Save Preferences** to apply a change; server-derived preview
@@ -275,9 +278,9 @@ With [calorie cycling](#calorie-cycling) on, the floor also applies to each cycl
 Under the Adaptive method the floor applies whenever the calculated target falls below it. That is almost always a deficit, but a surplus can trip it too: if your entire maintenance sits below the clinical minimum, even a gain goal is raised to that minimum.
 
 > [!TIP]
-> If a goal mode appears to have no effect, the Standard floor is binding. That is usually about your **activity level**, not your body size. With the fallback estimate (TDEE = RMR × activity multiplier) and RMR as the binding half, the floor bites once your deficit exceeds roughly `1 - 1/activityMultiplier` — about 17% at **Sedentary** (×1.2), and 0% at **None** (×1.0), where every deficit mode returns the same target. Once Adaptive has enough history it uses your _measured_ TDEE, so the real limit is how far your expenditure sits above your RMR. A sedentary man and a sedentary woman of very different sizes hit the same ceiling.
+> If a goal mode appears to have no effect, the Standard floor is binding. With the fallback estimate (TDEE = RMR × activity multiplier) and RMR as the binding half, the floor bites once your deficit exceeds roughly `1 - 1/activityMultiplier` — about 17% at **Sedentary** (×1.2), and 0% at **None** (×1.0), where every deficit mode returns the same target. Once Adaptive learns from your logs, the limit depends on how far its gradual expenditure estimate sits above your RMR.
 >
-> If you are still on the fallback estimate, check your **Activity Level** and profile data first, since they set the ceiling there and are the most common things to have understated. Once Adaptive is using measured TDEE the setting no longer feeds the estimate itself, and the ceiling reflects your real expenditure — but it still sets the ±500 kcal plausibility cap around `BMR × Activity Multiplier`, so an understated level can still hold your measured TDEE down. If your target has been agreed with a qualified clinician and still falls below the Standard floor, choose a **Custom minimum** or **Disabled**. Very small adults may find the clinical minimum sits above their own maintenance, in which case those two options are the only way to set a deficit at all. Very low calorie targets can carry health risks and may require medical supervision.
+> Check your **Activity Level** and profile data: they set the formula baseline and the ±500 kcal plausibility band used throughout Adaptive's gradual calculation. An understated level can hold the estimate down. If your target has been agreed with a qualified clinician and still falls below the Standard floor, choose a **Custom minimum** or **Disabled**. Very small adults may find the clinical minimum sits above their own maintenance. Very low calorie targets can carry health risks and may require medical supervision.
 
 ---
 

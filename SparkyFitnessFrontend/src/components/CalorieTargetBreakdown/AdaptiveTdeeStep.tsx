@@ -72,7 +72,7 @@ export const AdaptiveTdeeStep = ({
         <p className="text-muted-foreground">
           {t('settings.breakdown.adaptiveFormulaExplainer', {
             defaultValue:
-              '{{kcalPerUnit}} kcal/{{massUnit}} is how much energy a {{unitName}} of body weight represents, so your weight trend can be converted into calories. Body weight lost or gained is a mix of fat (~{{fatPerUnit}} kcal/{{massUnit}}) and lean tissue and water (~{{leanPerUnit}} kcal/{{massUnit}}), and {{kcalPerUnit}} reflects a typical blend.',
+              'The calculation assumes {{kcalPerUnit}} kcal/{{massUnit}} for sustained tissue change. A {{unitName}} of scale weight can also include water, glycogen and digestive contents; this estimate cannot measure their energy or your body composition. Fat (~{{fatPerUnit}} kcal/{{massUnit}}) and lean tissue (~{{leanPerUnit}} kcal/{{massUnit}}) have different energy densities.',
             kcalPerKg: ENERGY_DENSITY_KCAL_PER_KG,
             kcalPerUnit: kcalPerTrendUnit,
             massUnit: trendMassUnit,

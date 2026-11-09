@@ -15,6 +15,7 @@ export * from './schemas/api/CheckInPhotos.api.zod.ts';
 export * from './schemas/api/DailyGoals.api.zod.ts';
 export * from './schemas/api/NutrientGoalPreferences.api.zod.ts';
 export * from './schemas/api/DailySummary.api.zod.ts';
+export * from './schemas/api/AdaptiveTdee.api.zod.ts';
 export * from './schemas/api/ExerciseEntries.api.zod.ts';
 export * from './schemas/api/ExerciseStats.api.zod.ts';
 export * from './schemas/api/ExerciseDashboard.api.zod.ts';

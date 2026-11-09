@@ -1284,7 +1284,7 @@ const CalculationSettings = () => {
                 <p className="text-sm text-muted-foreground italic mt-[-4px]">
                   {t(
                     'settings.goalMode.inAdaptiveModeThisIs',
-                    '💡 In Adaptive mode this is the fallback estimate until you have enough tracking data — and it keeps setting the plausibility limits afterwards. Your measured TDEE is capped to within ±500 kcal of BMR × this multiplier, so a level set too low can hold a genuinely higher expenditure down.'
+                    '💡 In Adaptive mode this sets the formula baseline and the ±500 kcal plausibility band for each complete estimate. The displayed estimate changes gradually and returns toward the formula baseline when evidence ages, so an understated activity level can hold it down.'
                   )}
                 </p>
               )}
@@ -1561,10 +1561,8 @@ const CalculationSettings = () => {
             </Select>
             {deficitCeilingPercent != null && (
               <p className="text-xs text-muted-foreground mt-1.5">
-                {/* Name the lever that actually sets the ceiling. Activity level
-                    only feeds the baseline while history is insufficient; once
-                    adaptive is calibrated the baseline is measured expenditure
-                    and the setting no longer enters the calculation. */}
+                {/* Name the baseline the goal uses. Activity level also sets the
+                    formula inputs and plausibility band of the gradual estimate. */}
                 {goalMode === 'weekly'
                   ? t('settings.goalMode.weeklyCeilingHintWithUnit', {
                       defaultValue:
@@ -1586,7 +1584,7 @@ const CalculationSettings = () => {
                       )
                     : t(
                         'settings.goalMode.deficitCeilingHintMeasured',
-                        'Based on your measured TDEE, the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
+                        'Based on your estimated TDEE, the deepest reachable deficit is about {{percent}}%. Deeper modes are raised to your safety floor.',
                         { percent: deficitCeilingPercent.toFixed(0) }
                       )}
               </p>
@@ -2273,11 +2271,11 @@ const CalculationSettings = () => {
                       {previewResult.insufficientHistory
                         ? t(
                             'settings.goalMode.clampAdviceEstimated',
-                            '. To lose faster than that, raise your expenditure through activity, or check that your Activity Level is not understated — it sets this ceiling until you have enough history for a measured baseline.'
+                            '. Check that your Activity Level is not understated: it sets the formula baseline and plausibility limits used throughout Adaptive TDEE’s gradual calculation.'
                           )
                         : t(
                             'settings.goalMode.clampAdviceMeasured',
-                            '. To lose faster than that, raise your actual expenditure rather than cutting intake further; your baseline is measured, so the Activity Level setting no longer affects it.'
+                            '. With Adaptive TDEE, Activity Level still sets the formula baseline and plausibility limits and affects the gradual return to that baseline as evidence ages.'
                           )}
                     </>
                   )}

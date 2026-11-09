@@ -3,6 +3,7 @@ import {
   isAdaptiveTdeeMature,
   reviewCalorieTarget,
   todayInZone,
+  ADAPTIVE_TDEE_STABILITY_DAYS,
 } from '@workspace/shared';
 import type { CalorieTargetReview } from '@workspace/shared';
 import userRepository from '../models/userRepository.js';
@@ -35,11 +36,15 @@ async function getCalorieTargetReview(
     profile?.gender?.toLowerCase() === 'female' ? 'female' : 'male';
   return reviewCalorieTarget({
     maintenanceKcal: tdee.tdee,
-    // A clamped estimate was pulled to a plausible range, so it is not the
-    // maintenance the weight trend implies and cannot judge a followed target.
+    // Sparse/stale evidence and an unfinished learning window cannot reliably
+    // judge a target. Ordinary filtering and weekly logging are not failures.
     maintenanceReliable:
       isAdaptiveTdeeMature(tdee.tdee, tdee.isFallback, tdee.daysOfData) &&
-      !tdee.wasClamped,
+      !tdee.wasClamped &&
+      tdee.confidence !== 'LOW' &&
+      (tdee.stabilizationDays === undefined ||
+        tdee.stabilizationDays >=
+          (tdee.stabilizationWindowDays ?? ADAPTIVE_TDEE_STABILITY_DAYS)),
     daysLogged: tdee.daysOfData,
     windowDays: tdee.daysInWindow ?? 28,
     averageIntakeKcal: tdee.avgIntake ?? null,
