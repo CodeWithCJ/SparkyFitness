@@ -547,6 +547,8 @@ const auth = betterAuth({
         required: false,
         defaultValue: false,
         returned: true,
+        // Written only by the server; never accepted from update-user.
+        input: false,
       },
       mfaEmailEnabled: {
         type: 'boolean',
@@ -554,12 +556,16 @@ const auth = betterAuth({
         required: false,
         defaultValue: false,
         returned: true,
+        // Written only by the server; never accepted from update-user.
+        input: false,
       },
       lastLoginAt: {
         type: 'date',
         fieldName: 'last_login_at',
         required: false,
         returned: true,
+        // Written only by the server; never accepted from update-user.
+        input: false,
       },
     },
   },

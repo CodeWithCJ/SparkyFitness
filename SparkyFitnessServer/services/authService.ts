@@ -168,24 +168,6 @@ async function switchUserContext(authenticatedUserId: any, targetUserId: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function updateUserPassword(authenticatedUserId: any, newPassword: any) {
-  try {
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-    const success = await userRepository.updateUserPassword(
-      authenticatedUserId,
-      hashedPassword
-    );
-    if (!success) {
-      throw new Error('User not found.');
-    }
-    return true;
-  } catch (error) {
-    log('error', 'Error updating password in authService:', error);
-    throw error;
-  }
-}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function updateUserEmail(
   authenticatedUserId: any,
   newEmail: any,
@@ -431,7 +413,6 @@ export { getUserProfile };
 export { updateUserProfile };
 export { getUserApiKeys };
 export { switchUserContext };
-export { updateUserPassword };
 export { updateUserEmail };
 export { canAccessUserData };
 export { checkFamilyAccess };
@@ -453,7 +434,6 @@ export default {
   updateUserProfile,
   getUserApiKeys,
   switchUserContext,
-  updateUserPassword,
   updateUserEmail,
   canAccessUserData,
   checkFamilyAccess,

@@ -627,7 +627,7 @@ router.get('/search-external', authenticate, async (req, res, next) => {
 
   try {
     const result = await exerciseService.searchExternalExercises(
-      req.userId,
+      req.authenticatedUserId,
       query ?? '',
       providerId,
       providerType as ExternalProviderType,

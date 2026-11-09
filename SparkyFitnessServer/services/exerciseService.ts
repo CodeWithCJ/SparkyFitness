@@ -1025,7 +1025,7 @@ function wgerDescriptionToInstructions(rawDescription: string): string[] {
 }
 
 async function searchExternalExercises(
-  _authenticatedUserId: string,
+  authenticatedUserId: string,
   query: string,
   providerId: string,
   providerType: ExternalProviderType,
@@ -1131,7 +1131,11 @@ async function searchExternalExercises(
       });
     } else if (providerType === 'nutritionix') {
       const nutritionixSearchResults =
-        await nutritionixService.searchNutritionixExercises(query, providerId);
+        await nutritionixService.searchNutritionixExercises(
+          authenticatedUserId,
+          query,
+          providerId
+        );
       totalCount = nutritionixSearchResults.length;
       items = nutritionixSearchResults.slice(offset, offset + pageSize);
     } else if (providerType === 'free-exercise-db') {
