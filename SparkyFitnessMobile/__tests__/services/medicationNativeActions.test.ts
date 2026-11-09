@@ -38,6 +38,15 @@ jest.mock('../../src/services/api/medicationsApi', () => ({
   listEntries: jest.fn(),
   listMedications: jest.fn(),
 }));
+let mockNetworkListener:
+  | ((state: { isConnected: boolean; isInternetReachable: boolean }) => void)
+  | undefined;
+jest.mock('expo-network', () => ({
+  addNetworkStateListener: (fn: typeof mockNetworkListener) => {
+    mockNetworkListener = fn;
+    return { remove: jest.fn() };
+  },
+}));
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,10 +55,12 @@ import {
   initMedicationNotificationActions,
   PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY,
   processMedicationNotificationResponse,
+  retryPendingMedicationActions,
 } from '../../src/services/medicationNotificationHandler';
 import {
   createEntry,
   listEntries,
+  listMedications,
 } from '../../src/services/api/medicationsApi';
 import { queryClient } from '../../src/hooks/queryClient';
 
@@ -76,6 +87,7 @@ describe('iOS native medication reminder handler', () => {
     mockRead.mockReset().mockReturnValue('[]');
     mockAck.mockReset();
     (createEntry as jest.Mock).mockReset();
+    (listMedications as jest.Mock).mockReset();
     (listEntries as jest.Mock).mockReset().mockResolvedValue([]);
     await AsyncStorage.clear();
   });
@@ -98,6 +110,39 @@ describe('iOS native medication reminder handler', () => {
     initMedicationNotificationActions();
     expect(mockSetSnooze).toHaveBeenCalledWith(30);
     expect(mockListener).toBeDefined();
+  });
+
+  it('replays the queue when the connection returns', async () => {
+    initMedicationNotificationActions();
+    const queued = {
+      key: null,
+      notificationId: 'n-offline',
+      status: 'taken',
+      doses: [dose],
+      entryDate: DATE,
+      userId: null,
+    };
+    await AsyncStorage.setItem(
+      PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY,
+      JSON.stringify([queued])
+    );
+    (listMedications as jest.Mock).mockResolvedValue([
+      { id: 'm1', user_id: 'u1' },
+    ]);
+    (listEntries as jest.Mock).mockResolvedValue([]);
+    (createEntry as jest.Mock).mockResolvedValue({});
+
+    mockNetworkListener?.({ isConnected: false, isInternetReachable: false });
+    await Promise.resolve();
+    expect(createEntry).not.toHaveBeenCalled();
+
+    mockNetworkListener?.({ isConnected: true, isInternetReachable: true });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await retryPendingMedicationActions();
+    expect(createEntry).toHaveBeenCalledTimes(1);
+    expect(
+      await AsyncStorage.getItem(PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY)
+    ).toBeNull();
   });
 
   it('refreshes caches and clears only the matching queued action', async () => {

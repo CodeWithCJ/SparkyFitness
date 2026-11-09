@@ -1,4 +1,5 @@
 import { AppState } from 'react-native';
+import * as Network from 'expo-network';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
@@ -910,9 +911,27 @@ async function applyNativeResultsOnce(): Promise<boolean> {
   // Replay what was just queued now, rather than waiting for the next
   // reconcile: it stays queued if the server is still unreachable.
   if (queuedRetry) {
-    await flushPendingMedicationNotificationActions().catch(() => false);
+    await retryPendingMedicationActions();
   }
   return done.length > 0;
+}
+
+let retryingPending: Promise<boolean> | null = null;
+
+/**
+ * Replays the queued dose writes (see `flushPendingMedicationNotificationActions`),
+ * one run at a time. It does nothing when the queue is empty and leaves the
+ * queue alone when the server is still unreachable.
+ */
+export function retryPendingMedicationActions(): Promise<boolean> {
+  if (!retryingPending) {
+    retryingPending = flushPendingMedicationNotificationActions()
+      .catch(() => false)
+      .finally(() => {
+        retryingPending = null;
+      });
+  }
+  return retryingPending;
 }
 
 export function initMedicationNotificationActions(): void {
@@ -925,8 +944,22 @@ export function initMedicationNotificationActions(): void {
     void applyNativeMedicationActionResults();
   });
   AppState.addEventListener('change', (state) => {
-    if (state === 'active') void applyNativeMedicationActionResults();
+    if (state !== 'active') return;
+    void applyNativeMedicationActionResults();
+    void retryPendingMedicationActions();
   });
+  // A dose that could not be written while offline is replayed when the
+  // connection returns, not only at the next reconcile (which does not run on
+  // reconnect). A missing native module just means no reconnect retries.
+  try {
+    Network.addNetworkStateListener((state) => {
+      if (state.isConnected && state.isInternetReachable !== false) {
+        void retryPendingMedicationActions();
+      }
+    });
+  } catch {
+    // Foreground return still retries.
+  }
 
   if (typeof Notifications.registerTaskAsync === 'function') {
     void Notifications.registerTaskAsync(
