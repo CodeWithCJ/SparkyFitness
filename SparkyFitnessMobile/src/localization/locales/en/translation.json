@@ -2922,6 +2922,17 @@
     },
     "label": {
       "analyzing": "Analyzing label...",
+      "cropHelp": "Drag the corners to frame the nutrition label.",
+      "cropPhoto": "Nutrition label photo",
+      "cropMove": "Move label crop",
+      "cropTopLeft": "Top left crop handle",
+      "cropTopRight": "Top right crop handle",
+      "cropBottomLeft": "Bottom left crop handle",
+      "cropBottomRight": "Bottom right crop handle",
+      "cropLeft": "Move left",
+      "cropRight": "Move right",
+      "cropUp": "Move up",
+      "cropDown": "Move down",
       "retake": "Retake",
       "usePhoto": "Use Photo"
     },

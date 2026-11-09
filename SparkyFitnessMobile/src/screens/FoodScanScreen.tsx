@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
 import SegmentedControl from '../components/SegmentedControl';
+import LabelPhotoCropper from '../components/LabelPhotoCropper';
 import type { RootStackScreenProps } from '../types/navigation';
 import { barcodeResultToFoodInfo } from '../utils/barcodeFoods';
 import { getActiveServerConfig } from '../services/storage';
@@ -49,7 +50,12 @@ import {
   isOnDeviceLabelScanAvailable,
   scanLabelOnDevice,
 } from '../services/onDeviceLabelScan';
-import { prepareLabelPhoto } from '../utils/labelPhoto';
+import {
+  LABEL_MAX_DIMENSION,
+  prepareLabelPhoto,
+  type PreparedLabelPhoto,
+} from '../utils/labelPhoto';
+import { labelCropPixels, type LabelCrop } from '../utils/labelCrop';
 import { downscaleFoodPhoto } from '../utils/pickImage';
 import {
   rememberLabelScan,
@@ -69,6 +75,9 @@ import { isFoodSelectionMode } from '../utils/foodPickerMode';
 type FoodScanScreenProps = RootStackScreenProps<'FoodScan'>;
 
 type ScanMode = 'barcode' | 'label' | 'photo';
+type CapturedLabelPhoto =
+  | { kind: 'camera'; uri: string; width: number; height: number }
+  | ({ kind: 'prepared' } & PreparedLabelPhoto);
 
 const SCAN_SEGMENTS: ScanMode[] = ['barcode', 'label', 'photo'];
 const BARCODE_SCANNER_SETTINGS: BarcodeSettings = {
@@ -111,6 +120,8 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   const [cameraSession, setCameraSession] = useState(0);
   const cameraSessionRef = useRef(0);
   const [cameraFailed, setCameraFailed] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [labelCapturing, setLabelCapturing] = useState(false);
   const barcodeRequestId = useRef(0);
   const barcodeAbortController = useRef<AbortController | null>(null);
   const lookupPending = useRef(false);
@@ -166,10 +177,15 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
     message: string;
   } | null>(null);
   const [labelProcessing, setLabelProcessing] = useState(false);
-  const [capturedPhoto, setCapturedPhoto] = useState<{
-    base64: string;
-    uri: string;
-  } | null>(null);
+  const [capturedPhoto, setCapturedPhoto] = useState<CapturedLabelPhoto | null>(
+    null
+  );
+  const [labelCrop, setLabelCrop] = useState<LabelCrop>({
+    x: 0,
+    y: 0,
+    width: 1,
+    height: 1,
+  });
   const [manualEntryVisible, setManualEntryVisible] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
   const [photoGateVisible, setPhotoGateVisible] = useState(false);
@@ -194,6 +210,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   }, [abortBarcodeRequest]);
 
   const restartCamera = useCallback(() => {
+    setCameraReady(false);
     cameraSessionRef.current += 1;
     setCameraSession(cameraSessionRef.current);
     setCameraFailed(false);
@@ -442,51 +459,41 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
     navigation.goBack();
   };
 
-  // Both label paths share one shape: get an image (system camera or library),
-  // let the user crop it to the label with the system editor's adjustable
-  // handles, downscale (`prepareLabelPhoto`), scan. Vision models misread labels
-  // that occupy a small share of the frame, so the crop step is what makes
-  // results reliable.
+  // Capture the camera already on screen. Crop in the review step before
+  // downscaling so a small label keeps its detail without a second camera UI.
   const handleLabelCapture = async () => {
-    if (pickerLock.current) return;
+    if (!cameraRef.current || !cameraReady || pickerLock.current) return;
     pickerLock.current = true;
+    setLabelCapturing(true);
+    const session = cameraSessionRef.current;
     try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: 'images',
-        allowsEditing: true,
+      const photo = await cameraRef.current.takePictureAsync({
+        base64: false,
         quality: 1,
-        base64: true,
+        shutterSound: soundsEnabled,
       });
-      if (result.canceled) {
-        returnToLabelEditor();
+      if (
+        !labelScanActive.current ||
+        !navigation.isFocused() ||
+        session !== cameraSessionRef.current
+      )
         return;
-      }
-      const asset = result.assets?.[0];
-      if (!asset?.uri) {
-        Toast.show({
-          type: 'error',
-          text1: t('common.error', { defaultValue: 'Error' }),
-          text2: t('foodScan.errors.capturePhoto', {
-            defaultValue: 'Failed to capture photo.',
-          }),
-        });
-        returnToLabelEditor();
-        return;
-      }
-      const prepared = await prepareLabelPhoto(asset);
-      if (!prepared) {
-        Toast.show({
-          type: 'error',
-          text1: t('common.error', { defaultValue: 'Error' }),
-          text2: t('foodScan.errors.processPhoto', {
-            defaultValue: 'Failed to process photo.',
-          }),
-        });
-        returnToLabelEditor();
-        return;
-      }
-      setCapturedPhoto(prepared);
+      if (!photo?.uri || !photo.width || !photo.height)
+        throw new Error('No label photo returned by camera');
+      setLabelCrop({ x: 0, y: 0, width: 1, height: 1 });
+      setCapturedPhoto({
+        kind: 'camera',
+        uri: photo.uri,
+        width: photo.width,
+        height: photo.height,
+      });
     } catch (error) {
+      if (
+        !labelScanActive.current ||
+        !navigation.isFocused() ||
+        session !== cameraSessionRef.current
+      )
+        return;
       addLog(
         `[Food Scan] Label camera capture failed: ${error instanceof Error ? error.message : String(error)}`,
         'ERROR'
@@ -498,9 +505,9 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
           defaultValue: 'Failed to capture photo.',
         }),
       });
-      returnToLabelEditor();
     } finally {
       pickerLock.current = false;
+      setLabelCapturing(false);
     }
   };
 
@@ -545,7 +552,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
         returnToLabelEditor();
         return;
       }
-      setCapturedPhoto(prepared);
+      setCapturedPhoto({ kind: 'prepared', ...prepared });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(`[Food Scan] Label pick from library failed: ${message}`, 'ERROR');
@@ -574,15 +581,25 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
     labelRequestLock.current = true;
     setLabelProcessing(true);
     try {
-      const onDeviceResult = await scanLabelOnDevice(capturedPhoto.base64);
+      const photo =
+        capturedPhoto.kind === 'prepared'
+          ? capturedPhoto
+          : await prepareLabelPhoto(
+              capturedPhoto,
+              LABEL_MAX_DIMENSION,
+              labelCropPixels(labelCrop, capturedPhoto)
+            );
+      if (!photo) throw new Error('Failed to prepare label photo');
+      if (!labelScanActive.current || !navigation.isFocused()) return;
+      const onDeviceResult = await scanLabelOnDevice(photo.base64);
       const result =
         onDeviceResult ??
-        (await scanNutritionLabel(capturedPhoto.base64, 'image/jpeg'));
+        (await scanNutritionLabel(photo.base64, 'image/jpeg'));
       if (!result || typeof result !== 'object' || Array.isArray(result)) {
         throw new Error('Invalid nutrition label result');
       }
+      if (!labelScanActive.current || !navigation.isFocused()) return;
       if (labelCaptureParams) {
-        if (!labelScanActive.current || !navigation.isFocused()) return;
         navigation.dispatch({
           ...CommonActions.setParams({
             pendingNutritionLabelScan: { result, nonce: Date.now() },
@@ -593,7 +610,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
         return;
       }
       const source: LabelScanSource = onDeviceResult ? 'device' : 'server';
-      rememberLabelScan(capturedPhoto.base64, source);
+      rememberLabelScan(photo.base64, source);
       // The toast survives the navigation below, so it shows on the form. The
       // server reading is only news when the on-device scan was tried first;
       // otherwise it is the normal path and the form's banner says enough.
@@ -642,6 +659,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   };
 
   const handleRetake = () => {
+    setCameraReady(false);
     setCapturedPhoto(null);
   };
 
@@ -859,12 +877,21 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
           ref={cameraRef}
           facing="back"
           autofocus="on"
+          onCameraReady={() => {
+            if (
+              appActiveRef.current &&
+              cameraSession === cameraSessionRef.current &&
+              navigation.isFocused()
+            )
+              setCameraReady(true);
+          }}
           onMountError={() => {
             if (
               appActiveRef.current &&
               cameraSession === cameraSessionRef.current &&
               navigation.isFocused()
             ) {
+              setCameraReady(false);
               setCameraFailed(true);
             }
           }}
@@ -1095,11 +1122,33 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
 
       {capturedPhoto && !labelProcessing ? (
         <View className="absolute inset-0 bg-black">
-          <Image
-            source={{ uri: capturedPhoto.uri }}
-            style={StyleSheet.absoluteFill}
-            resizeMode="contain"
-          />
+          {capturedPhoto.kind === 'camera' ? (
+            <View
+              className="flex-1"
+              style={{
+                paddingTop: insets.top + 16,
+                paddingBottom: insets.bottom + 136,
+              }}
+            >
+              <Text className="text-white text-sm text-center px-6">
+                {t('foodScan.label.cropHelp', {
+                  defaultValue:
+                    'Drag the corners to frame the nutrition label.',
+                })}
+              </Text>
+              <LabelPhotoCropper
+                photo={capturedPhoto}
+                crop={labelCrop}
+                onCropChange={setLabelCrop}
+              />
+            </View>
+          ) : (
+            <Image
+              source={{ uri: capturedPhoto.uri }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="contain"
+            />
+          )}
           <View
             className="absolute bottom-12 left-4 right-4 flex-row gap-3"
             style={{ paddingBottom: insets.bottom }}
@@ -1348,11 +1397,17 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
                       'foodScan.accessibility.takeLabelPhoto',
                       { defaultValue: 'Take nutrition label photo' }
                     )}
-                    disabled={!permission.granted}
-                    className={`w-20 h-20 rounded-full border-4 border-white items-center justify-center ${permission.granted ? '' : 'opacity-40'}`}
+                    disabled={
+                      !permission.granted || !cameraReady || labelCapturing
+                    }
+                    className={`w-20 h-20 rounded-full border-4 border-white items-center justify-center ${permission.granted && cameraReady && !labelCapturing ? '' : 'opacity-40'}`}
                     activeOpacity={0.7}
                   >
-                    <View className="w-16 h-16 rounded-full bg-white" />
+                    {labelCapturing ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <View className="w-16 h-16 rounded-full bg-white" />
+                    )}
                   </TouchableOpacity>
                   {/* Same placement as photo mode's library button. */}
                   <TouchableOpacity
@@ -1365,6 +1420,7 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
                       { defaultValue: 'Choose label photo from library' }
                     )}
                     accessibilityRole="button"
+                    disabled={labelCapturing}
                     className="bg-black/50 rounded-full items-center justify-center"
                     style={{
                       position: 'absolute',

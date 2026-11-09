@@ -24,28 +24,21 @@ export interface PreparedLabelPhoto {
  */
 export async function prepareLabelPhoto(
   asset: PickedLabelAsset,
-  maxDimension: number = LABEL_MAX_DIMENSION
+  maxDimension: number = LABEL_MAX_DIMENSION,
+  crop?: ImageManipulator.ActionCrop['crop']
 ): Promise<PreparedLabelPhoto | null> {
-  const longEdge = Math.max(asset.width ?? 0, asset.height ?? 0);
-  if (longEdge > maxDimension && asset.width && asset.height) {
+  const width = crop?.width ?? asset.width;
+  const height = crop?.height ?? asset.height;
+  const actions: ImageManipulator.Action[] = crop ? [{ crop }] : [];
+  const longEdge = Math.max(width ?? 0, height ?? 0);
+  if (longEdge > maxDimension && width && height) {
     const scaleTo =
-      asset.width >= asset.height
-        ? { width: maxDimension }
-        : { height: maxDimension };
-    const processed = await ImageManipulator.manipulateAsync(
-      asset.uri,
-      [{ resize: scaleTo }],
-      {
-        compress: 0.85,
-        format: ImageManipulator.SaveFormat.JPEG,
-        base64: true,
-      }
-    );
-    if (processed.base64)
-      return { base64: processed.base64, uri: processed.uri };
+      width >= height ? { width: maxDimension } : { height: maxDimension };
+    actions.push({ resize: scaleTo });
   }
-  if (asset.base64) return { base64: asset.base64, uri: asset.uri };
-  const reencoded = await ImageManipulator.manipulateAsync(asset.uri, [], {
+  if (actions.length === 0 && asset.base64)
+    return { base64: asset.base64, uri: asset.uri };
+  const reencoded = await ImageManipulator.manipulateAsync(asset.uri, actions, {
     compress: 0.85,
     format: ImageManipulator.SaveFormat.JPEG,
     base64: true,
