@@ -3532,9 +3532,29 @@
       "weeklyGoal": "Weekly goal",
       "weeklyRate": "−0.5 kg",
       "dailyTarget": "Daily target",
-      "dailyAdjustment": "≈ −550 kcal"
+      "dailyAdjustment": "≈ −550 kcal",
+      "vitaminD": "Vitamin D",
+      "labLow": "Low",
+      "labValue": "18 ng/mL",
+      "labRange": "Range 30–100",
+      "deskTag": "Desk tag",
+      "tapped": "Tapped",
+      "tagWater": "Water • 500 mL",
+      "logged": "Logged"
     },
     "features": {
+      "labResults": {
+        "eyebrow": "LAB RESULTS",
+        "headline": "Keep your lab results in one place",
+        "body": "Add blood test results by hand or import a lab report from a PDF or photo. See each marker against its reference range, chart it over time, and spot what is out of range from the dashboard.",
+        "cta": "Open lab results"
+      },
+      "nfcTags": {
+        "eyebrow": "NFC TAGS",
+        "headline": "Log with a tap",
+        "body": "Stick an NFC tag on your water bottle, desk or kitchen cupboard and set it to log a drink, a food or a saved meal. Tap your phone on it to log, with Undo if you did not mean to.",
+        "cta": "Set up NFC tags"
+      },
       "running": {
         "eyebrow": "RUNNING",
         "headline": "Train with run programs",
