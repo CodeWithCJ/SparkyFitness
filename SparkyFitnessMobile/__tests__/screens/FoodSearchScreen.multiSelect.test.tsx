@@ -1,5 +1,16 @@
 import React from 'react';
+import { QueryClient } from '@tanstack/react-query';
+const mockIdentityClient = new QueryClient();
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual<typeof import('@tanstack/react-query')>(
+    '@tanstack/react-query'
+  ),
+  useQueryClient: () => mockIdentityClient,
+}));
 jest.mock('../../src/hooks/useRecipeImport', () => ({
+  ...jest.requireActual<typeof import('../../src/hooks/useRecipeImport')>(
+    '../../src/hooks/useRecipeImport'
+  ),
   useRecipeImportAccess: () => 'owner-server',
 }));
 import { fireEvent, render } from '@testing-library/react-native';
@@ -157,6 +168,11 @@ describe('FoodSearchScreen multi-select', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIdentityClient.clear();
+    mockIdentityClient.setQueryData(['userProfile'], { id: 'user-1' });
+    mockIdentityClient.setQueryData(['serverConfigs'], {
+      activeConfig: { id: 'server-1', url: 'https://example.test' },
+    });
     __resetAppPreferencesStoreForTests();
     __resetFoodSearchSelectionStoreForTests();
     useAppPreferencesStore.setState({ foodSearchOwnershipFilter: 'all' });

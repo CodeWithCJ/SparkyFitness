@@ -1,5 +1,16 @@
 import React from 'react';
+import { QueryClient } from '@tanstack/react-query';
+const mockIdentityClient = new QueryClient();
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual<typeof import('@tanstack/react-query')>(
+    '@tanstack/react-query'
+  ),
+  useQueryClient: () => mockIdentityClient,
+}));
 jest.mock('../../src/hooks/useRecipeImport', () => ({
+  ...jest.requireActual<typeof import('../../src/hooks/useRecipeImport')>(
+    '../../src/hooks/useRecipeImport'
+  ),
   useRecipeImportAccess: () => 'owner-server',
 }));
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
@@ -224,6 +235,11 @@ describe('FoodSearchScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIdentityClient.clear();
+    mockIdentityClient.setQueryData(['userProfile'], { id: 'user-1' });
+    mockIdentityClient.setQueryData(['serverConfigs'], {
+      activeConfig: { id: 'server-1', url: 'https://example.test' },
+    });
     jest.mocked(useNativeIOSHeadersActive).mockReturnValue(true);
     __resetAppPreferencesStoreForTests();
     mockUseServerConnection.mockReturnValue({ isConnected: true } as any);
@@ -705,6 +721,198 @@ describe('FoodSearchScreen', () => {
     expect(mockToastShow).not.toHaveBeenCalled();
   });
 
+  it.each(
+    ['clear', 'profile', 'server'].flatMap((change) =>
+      [false, true].flatMap((recipe) =>
+        ['success', 'error'].map((outcome) => ({ change, recipe, outcome }))
+      )
+    )
+  )(
+    'discards $outcome details after identity $change before owner rerender (recipe=$recipe)',
+    async ({ change, recipe, outcome }) => {
+      mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({ searchResults: [externalItem] })
+      );
+      let finish: (
+        value: Awaited<ReturnType<typeof fetchExternalFoodDetails>>
+      ) => void = () => {};
+      let fail: (error: Error) => void = () => {};
+      mockFetchExternalFoodDetails.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            finish = resolve;
+            fail = reject;
+          })
+      );
+      const target = {
+        draftKey: 'recipe-draft',
+        ingredientId: 'cheese',
+        quantity: 600,
+        unit: 'g',
+      };
+      const screen = renderSearching(
+        recipe
+          ? {
+              ...route,
+              params: {
+                pickerMode: 'meal-builder',
+                recipeImportTarget: target,
+              },
+            }
+          : route
+      );
+      fireEvent.press(screen.getByText('Cheddar Cheese'));
+      expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(1);
+      // Real native identity-cache events; the mocked owner props deliberately stay A.
+      act(() => {
+        if (change === 'clear') mockIdentityClient.clear();
+        else if (change === 'profile')
+          mockIdentityClient.setQueryData(['userProfile'], { id: 'user-2' });
+        else
+          mockIdentityClient.setQueryData(['serverConfigs'], {
+            activeConfig: { id: 'server-2', url: 'https://other.example.test' },
+          });
+      });
+      expect(navigation.isFocused()).toBe(true);
+      await act(async () => {
+        if (outcome === 'success') finish(externalItem);
+        else fail(new Error('obsolete owner response'));
+      });
+      expect(navigation.navigate).not.toHaveBeenCalled();
+      expect(mockToastShow).not.toHaveBeenCalled();
+      screen.unmount();
+      expect(mockIdentityClient.getQueryCache().hasListeners()).toBe(false);
+    }
+  );
+  it.each(
+    [false, true].flatMap((recipe) =>
+      ['success', 'error'].map((outcome) => ({ recipe, outcome }))
+    )
+  )(
+    'retains current $outcome details after same-owner refetch (recipe=$recipe)',
+    async ({ recipe, outcome }) => {
+      mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({
+          searchResults: [
+            { ...externalItem, image_url: 'https://example.test/cheddar.jpg' },
+          ],
+        })
+      );
+      let finish: (
+        value: Awaited<ReturnType<typeof fetchExternalFoodDetails>>
+      ) => void = () => {};
+      let fail: (error: Error) => void = () => {};
+      mockFetchExternalFoodDetails.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            finish = resolve;
+            fail = reject;
+          })
+      );
+      const target = {
+        draftKey: 'recipe-draft',
+        ingredientId: 'cheese',
+        quantity: 600,
+        unit: 'g',
+      };
+      const screen = renderSearching(
+        recipe
+          ? {
+              ...route,
+              params: {
+                pickerMode: 'meal-builder',
+                recipeImportTarget: target,
+              },
+            }
+          : route
+      );
+      fireEvent.press(screen.getByText('Cheddar Cheese'));
+      act(() => {
+        mockIdentityClient.setQueryData(['userProfile'], {
+          id: 'user-1',
+          name: 'Updated profile',
+        });
+        mockIdentityClient.setQueryData(['serverConfigs'], {
+          activeConfig: {
+            id: 'server-1',
+            url: 'https://example.test',
+            name: 'Updated server label',
+          },
+        });
+      });
+      await act(async () => {
+        if (outcome === 'success') finish(externalItem);
+        else fail(new Error('current provider failure'));
+      });
+      if (outcome === 'success') {
+        expect(mockToastShow).not.toHaveBeenCalled();
+        expect(navigation.navigate).toHaveBeenCalledWith(
+          'FoodEntryAdd',
+          expect.objectContaining({
+            item: expect.objectContaining({
+              servingSize: 100,
+              servingUnit: 'g',
+              image_url: 'https://example.test/cheddar.jpg',
+            }),
+            ...(recipe ? { recipeImportTarget: target } : {}),
+          })
+        );
+      } else {
+        expect(mockToastShow).toHaveBeenCalledTimes(1);
+        expect(navigation.navigate).toHaveBeenCalledTimes(recipe ? 0 : 1);
+      }
+      screen.unmount();
+      expect(mockIdentityClient.getQueryCache().hasListeners()).toBe(false);
+    }
+  );
+  it.each(['success', 'error'])(
+    'releases same-scope detail loading after reauthentication and ignores old %s',
+    async (outcome) => {
+      mockUseExternalProviders.mockReturnValue(fatSecretProvider);
+      mockUseExternalFoodSearch.mockReturnValue(
+        activeExternalSearch({ searchResults: [externalItem] })
+      );
+      let finishOld: (
+        value: Awaited<ReturnType<typeof fetchExternalFoodDetails>>
+      ) => void = () => {};
+      let failOld: (error: Error) => void = () => {};
+      mockFetchExternalFoodDetails
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve, reject) => {
+              finishOld = resolve;
+              failOld = reject;
+            })
+        )
+        .mockResolvedValueOnce(externalItem);
+      const screen = renderSearching();
+      fireEvent.press(screen.getByText('Cheddar Cheese'));
+      expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(1);
+      act(() => {
+        mockIdentityClient.clear();
+        mockIdentityClient.setQueryData(['userProfile'], { id: 'user-1' });
+        mockIdentityClient.setQueryData(['serverConfigs'], {
+          activeConfig: { id: 'server-1', url: 'https://example.test' },
+        });
+      });
+      // No blur/prop change; the textual owner/request scope remains exactly A.
+      fireEvent.press(screen.getByText('Cheddar Cheese'));
+      await waitFor(() =>
+        expect(mockFetchExternalFoodDetails).toHaveBeenCalledTimes(2)
+      );
+      await waitFor(() => expect(navigation.navigate).toHaveBeenCalledTimes(1));
+      await act(async () => {
+        if (outcome === 'success') finishOld(externalItem);
+        else failOld(new Error('obsolete previous session'));
+      });
+      expect(navigation.navigate).toHaveBeenCalledTimes(1);
+      expect(mockToastShow).not.toHaveBeenCalled();
+      screen.unmount();
+      expect(mockIdentityClient.getQueryCache().hasListeners()).toBe(false);
+    }
+  );
   it('releases detail loading on a search-scope change and accepts only the new request', async () => {
     mockUseExternalProviders.mockReturnValue(fatSecretProvider);
     mockUseExternalFoodSearch.mockReturnValue(

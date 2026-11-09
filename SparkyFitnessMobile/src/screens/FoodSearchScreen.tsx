@@ -6,7 +6,11 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useRecipeImportAccess } from '../hooks/useRecipeImport';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  observeRecipeImportOwner,
+  useRecipeImportAccess,
+} from '../hooks/useRecipeImport';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -110,6 +114,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   }, [navigation]);
   const recipeImportTarget = route.params?.recipeImportTarget;
   const ownerScope = useRecipeImportAccess();
+  const queryClient = useQueryClient();
   const pickerMode =
     route.params?.pickerMode ??
     (recipeImportTarget ? 'meal-builder' : 'log-entry');
@@ -696,6 +701,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   ]);
   const loadingFoodId =
     loadingFood?.scope === detailScope ? loadingFood.id : null;
+  useEffect(() => {
+    const owner = observeRecipeImportOwner(queryClient, () => {
+      detailGeneration.current += 1;
+      setLoadingFood(null);
+    });
+    return owner.unsubscribe;
+  }, [queryClient, ownerScope]);
   useEffect(() => {
     const stop = navigation.addListener('blur', () => {
       detailGeneration.current += 1;
