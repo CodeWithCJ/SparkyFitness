@@ -7152,6 +7152,8 @@
     "readyToStart": "Ready to start a new fast?",
     "startFast": "Start Fast",
     "endFast": "End Fast",
+    "logMealToEnd": "Log Meal to End Fast",
+    "autoFastEndsWithMeal": "Your fast is auto-calculated from meals and will end when you log food.",
     "totalFasts": "Total Fasts",
     "avgDuration": "Avg Duration",
     "hoursShort": "{{count}}h",

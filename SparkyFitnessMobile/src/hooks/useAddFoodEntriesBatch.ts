@@ -12,11 +12,7 @@ import {
   partitionDrafts,
   type MultiAddDraft,
 } from '../utils/multiAddFoodEntries';
-import {
-  dailySummaryQueryKey,
-  foodEntriesRangeRootQueryKey,
-  foodsQueryKey,
-} from './queryKeys';
+import { invalidateFoodCache } from './invalidateFoodCache';
 import { useFoodSearchSelectionStore } from '../stores/foodSearchSelectionStore';
 import type { RowOutcomeStatus } from './useFoodSearchSelection';
 
@@ -167,16 +163,7 @@ export function useAddFoodEntriesBatch() {
 
         // Invalidate even with zero confirmed successes: an unknown outcome
         // (timeout/network/5xx) may still have committed server-side.
-        if (date) {
-          queryClient.invalidateQueries({
-            queryKey: dailySummaryQueryKey(date),
-          });
-        }
-        queryClient.invalidateQueries({ queryKey: [...foodsQueryKey] });
-        queryClient.invalidateQueries({
-          queryKey: foodEntriesRangeRootQueryKey,
-          refetchType: 'all',
-        });
+        invalidateFoodCache(queryClient, date);
 
         if (succeededKeys.length > 0) {
           Toast.show({

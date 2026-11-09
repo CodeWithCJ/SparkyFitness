@@ -540,5 +540,254 @@ describe('fastingAutoCalculationService', () => {
         vi.useRealTimers();
       }
     });
+
+    it('returns eating window status if the overnight fast was manually ended today before any meals are logged', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-10-04T13:00:00Z'));
+      try {
+        const dinnerTime = new Date('2026-10-03T20:00:00Z');
+        const mockClient = {
+          query: vi.fn().mockResolvedValue({
+            rows: [
+              {
+                id: 'food-dinner',
+                entry_date: '2026-10-03',
+                entry_time: '20:00',
+                meal_default_time: null,
+                meal_timestamp: dinnerTime,
+                calories: 700,
+                food_name: 'Steak and Veggies',
+                meal_type_name: 'Dinner',
+              },
+            ],
+          }),
+          release: vi.fn(),
+        };
+        vi.mocked(getClient).mockResolvedValue(
+          mockClient as unknown as Awaited<ReturnType<typeof getClient>>
+        );
+
+        vi.mocked(
+          fastingPreferencesRepository.getFastingPreferences
+        ).mockResolvedValue({
+          id: 'pref-1',
+          user_id: 'user-123',
+          auto_calculate: true,
+          default_protocol: '16-8',
+          target_fasting_hours: 16.0,
+          target_eating_hours: 8.0,
+          calorie_threshold: 10,
+          pre_end_alert_minutes: 30,
+          eating_window_alert: false,
+          created_at: new Date(),
+          updated_at: new Date(),
+        });
+
+        // The user ended this fast at 12:00 PM today (16 hours in)
+        vi.mocked(
+          fastingRepository.findFastNearStartTime
+        ).mockResolvedValueOnce({
+          id: 'completed-fast-id',
+          start_time: dinnerTime.toISOString(),
+          end_time: '2026-10-04T12:00:00.000Z',
+          status: 'COMPLETED',
+        });
+
+        const fast = await getCurrentAutoFast('user-123', 'UTC');
+        expect(fast).not.toBeNull();
+        expect(fast?.is_eating_window).toBe(true);
+        expect(fast?.eating_window_remaining_minutes).toBe(420); // 7 hours left of 8
+        expect(fast?.start_time).toBe('2026-10-04T12:00:00.000Z');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('does not resurrect an auto fast as active after its eating window has expired', async () => {
+      vi.useFakeTimers();
+      // Server clock is 21:00 PM (9 hours after 12:00 fast end, eating window was 8 hours)
+      vi.setSystemTime(new Date('2026-10-04T21:00:00Z'));
+      try {
+        const dinnerTime = new Date('2026-10-03T20:00:00Z');
+        const mockClient = {
+          query: vi.fn().mockResolvedValue({
+            rows: [
+              {
+                id: 'food-dinner',
+                entry_date: '2026-10-03',
+                entry_time: '20:00',
+                meal_default_time: null,
+                meal_timestamp: dinnerTime,
+                calories: 700,
+                food_name: 'Steak and Veggies',
+                meal_type_name: 'Dinner',
+              },
+            ],
+          }),
+          release: vi.fn(),
+        };
+        vi.mocked(getClient).mockResolvedValue(
+          mockClient as unknown as Awaited<ReturnType<typeof getClient>>
+        );
+
+        vi.mocked(
+          fastingPreferencesRepository.getFastingPreferences
+        ).mockResolvedValue({
+          id: 'pref-1',
+          user_id: 'user-123',
+          auto_calculate: true,
+          default_protocol: '16-8',
+          target_fasting_hours: 16.0,
+          target_eating_hours: 8.0,
+          calorie_threshold: 10,
+          pre_end_alert_minutes: 30,
+          eating_window_alert: false,
+          created_at: new Date(),
+          updated_at: new Date(),
+        });
+
+        // The user ended this fast at 12:00 PM today (16 hours in)
+        vi.mocked(
+          fastingRepository.findFastNearStartTime
+        ).mockResolvedValueOnce({
+          id: 'completed-fast-id',
+          start_time: dinnerTime.toISOString(),
+          end_time: '2026-10-04T12:00:00.000Z',
+          status: 'COMPLETED',
+        });
+
+        const fast = await getCurrentAutoFast('user-123', 'UTC');
+        expect(fast).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('preserves eating window timer when fastEndTime is slightly in future due to clock skew', async () => {
+      vi.useFakeTimers();
+      // Server clock is 12:00:00 PM
+      vi.setSystemTime(new Date('2026-10-04T12:00:00Z'));
+      try {
+        const dinnerTime = new Date('2026-10-03T20:00:00Z');
+        const mockClient = {
+          query: vi.fn().mockResolvedValue({
+            rows: [
+              {
+                id: 'food-dinner',
+                entry_date: '2026-10-03',
+                entry_time: '20:00',
+                meal_default_time: null,
+                meal_timestamp: dinnerTime,
+                calories: 700,
+                food_name: 'Steak and Veggies',
+                meal_type_name: 'Dinner',
+              },
+            ],
+          }),
+          release: vi.fn(),
+        };
+        vi.mocked(getClient).mockResolvedValue(
+          mockClient as unknown as Awaited<ReturnType<typeof getClient>>
+        );
+
+        vi.mocked(
+          fastingPreferencesRepository.getFastingPreferences
+        ).mockResolvedValue({
+          id: 'pref-1',
+          user_id: 'user-123',
+          auto_calculate: true,
+          default_protocol: '16-8',
+          target_fasting_hours: 16.0,
+          target_eating_hours: 8.0,
+          calorie_threshold: 10,
+          pre_end_alert_minutes: 30,
+          eating_window_alert: false,
+          created_at: new Date(),
+          updated_at: new Date(),
+        });
+
+        // Fast was ended with timestamp 2 minutes in the future (12:02 PM) due to device skew
+        vi.mocked(
+          fastingRepository.findFastNearStartTime
+        ).mockResolvedValueOnce({
+          id: 'completed-fast-id',
+          start_time: dinnerTime.toISOString(),
+          end_time: '2026-10-04T12:02:00.000Z',
+          status: 'COMPLETED',
+        });
+
+        const fast = await getCurrentAutoFast('user-123', 'UTC');
+        expect(fast).not.toBeNull();
+        expect(fast?.is_eating_window).toBe(true);
+        expect(fast?.duration_minutes).toBe(0); // Clamped, not negative
+        expect(fast?.eating_window_remaining_minutes).toBeGreaterThan(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('tolerates clock skew when meal was logged with timestamp slightly ahead of server time', async () => {
+      vi.useFakeTimers();
+      // Server clock is 12:00:00 PM
+      vi.setSystemTime(new Date('2026-10-04T12:00:00.000Z'));
+      try {
+        const mockClient = {
+          query: vi.fn().mockResolvedValue({
+            rows: [
+              {
+                id: 'food-yesterday',
+                entry_date: '2026-10-03',
+                entry_time: '20:00',
+                meal_default_time: null,
+                meal_timestamp: new Date('2026-10-03T20:00:00.000Z'),
+                calories: 600,
+                food_name: 'Dinner',
+                meal_type_name: 'Dinner',
+              },
+              {
+                id: 'food-skewed-today',
+                entry_date: '2026-10-04',
+                entry_time: '12:01', // 1 minute ahead due to device clock / minute rounding
+                meal_default_time: null,
+                meal_timestamp: new Date('2026-10-04T12:01:00.000Z'),
+                calories: 450,
+                food_name: 'Lunch',
+                meal_type_name: 'Lunch',
+              },
+            ],
+          }),
+          release: vi.fn(),
+        };
+        vi.mocked(getClient).mockResolvedValue(
+          mockClient as unknown as Awaited<ReturnType<typeof getClient>>
+        );
+
+        vi.mocked(
+          fastingPreferencesRepository.getFastingPreferences
+        ).mockResolvedValue({
+          id: 'pref-1',
+          user_id: 'user-123',
+          auto_calculate: true,
+          default_protocol: '16-8',
+          target_fasting_hours: 16.0,
+          target_eating_hours: 8.0,
+          calorie_threshold: 10,
+          pre_end_alert_minutes: 30,
+          eating_window_alert: false,
+          created_at: new Date(),
+          updated_at: new Date(),
+        });
+
+        const fast = await getCurrentAutoFast('user-123', 'UTC');
+        expect(fast).not.toBeNull();
+        expect(fast?.is_eating_window).toBe(true);
+        expect(fast?.status).toBe('ACTIVE');
+        // Skewed start is clamped to server now, so elapsed minutes is 0 and full eating window remains
+        expect(fast?.duration_minutes).toBe(0);
+        expect(fast?.eating_window_remaining_minutes).toBe(480);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 });

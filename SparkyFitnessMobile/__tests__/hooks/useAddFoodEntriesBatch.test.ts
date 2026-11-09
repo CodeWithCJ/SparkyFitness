@@ -232,8 +232,13 @@ describe('useAddFoodEntriesBatch', () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ['dailySummary', '2026-09-16'],
+      refetchType: 'all',
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['foods'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: ['fasting'],
+      refetchType: 'all',
+    });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ['foodEntriesRange'],
       refetchType: 'all',
