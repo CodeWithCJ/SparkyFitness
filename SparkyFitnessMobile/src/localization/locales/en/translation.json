@@ -10042,6 +10042,7 @@
     "loadingFood": "Loading selected food…",
     "variantNutritionEnergy": "{{size}} {{unit}}: {{calories}} {{energyUnit}} · P {{protein}} g · C {{carbs}} g · F {{fat}} g",
     "foodUnavailable": "Food details could not be loaded. Try again.",
+    "reopenReview": "Reopen the recipe import review and choose this ingredient again.",
     "chooseFoodFor": "Choose food for {{name}}",
     "chooseFood": "Choose food or amount",
     "reviewSuggestions": "Review candidates, then confirm the food, variant and whole-recipe amount.",

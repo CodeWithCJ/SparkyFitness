@@ -234,19 +234,23 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const recipeImportTarget = route.params?.recipeImportTarget;
   const recipeOwnerScope = useRecipeImportAccess();
   const recipeClient = useQueryClient();
-  const recipeTargetOwner = useRef(recipeOwnerScope);
+  const [recipeTargetOwner, setRecipeTargetOwner] = useState(recipeOwnerScope);
   const recipeOwnerRetained = useRef(true);
   const recipeOperation = useRef(0);
   const recipeIdentity = `${recipeOwnerScope}:${route.key}:${item.source}:${item.id}:${JSON.stringify(recipeImportTarget)}`;
   const recipeIdentityRef = useRef(recipeIdentity);
   recipeIdentityRef.current = recipeIdentity;
   const isRecipeImportSelection = !!recipeImportTarget;
+  const recipeSelectionAvailable =
+    !isRecipeImportSelection ||
+    (!!recipeTargetOwner && recipeOwnerScope === recipeTargetOwner);
   useEffect(() => {
     if (isRecipeImportSelection) recipeOperation.current += 1;
   }, [recipeIdentity, isRecipeImportSelection]);
   useEffect(() => {
     const owner = observeRecipeImportOwner(recipeClient, () => {
       recipeOwnerRetained.current = false;
+      setRecipeTargetOwner(null);
       recipeOperation.current += 1;
     });
     return owner.unsubscribe;
@@ -958,6 +962,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   };
 
   const adjustQuantity = (delta: number) => {
+    quantityEditedRef.current = true;
     setQuantityText(
       String(nextQuantity(quantity, delta, displayValues.servingSize))
     );
@@ -1339,9 +1344,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     const identity = recipeIdentity;
     const recipeSelectionCurrent = () =>
       !recipeImportTarget ||
-      (!!recipeTargetOwner.current &&
+      (!!recipeTargetOwner &&
         recipeOwnerRetained.current &&
-        recipeOwnerScope === recipeTargetOwner.current &&
+        recipeOwnerScope === recipeTargetOwner &&
         navigation.isFocused() &&
         recipeOperation.current === operation &&
         recipeIdentityRef.current === identity);
@@ -1869,6 +1874,14 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             })}
           </Text>
         )}
+        {!recipeSelectionAvailable && (
+          <Text accessibilityRole="alert" className="text-danger">
+            {t('recipeImport.reopenReview', {
+              defaultValue:
+                'Reopen the recipe import review and choose this ingredient again.',
+            })}
+          </Text>
+        )}
         <AllergenWarning
           allergens={activeItem.allergens}
           traces={activeItem.traces}
@@ -2188,6 +2201,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         busy={isActionPending}
         disabled={
           isActionPending ||
+          !recipeSelectionAvailable ||
           (!isSelectionMode && !effectiveMealId) ||
           quantity <= 0
         }

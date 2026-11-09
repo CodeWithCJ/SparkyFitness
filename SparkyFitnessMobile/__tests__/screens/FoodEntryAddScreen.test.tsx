@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type ComponentProps } from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import {
   findHeaderItemByAccessibilityLabel,
@@ -7,6 +7,7 @@ import {
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import FoodEntryAddScreen from '../../src/screens/FoodEntryAddScreen';
+import { FooterSaveBar } from '../../src/components/FormScreenChrome';
 import { useMealTypes, useToggleFavorite } from '../../src/hooks';
 import {
   useCreateFoodVariant,
@@ -36,7 +37,8 @@ jest.mock('../../src/hooks/useRecipeImport', () => ({
   ...jest.requireActual('../../src/hooks/useRecipeImport'),
   useRecipeImportAccess: () => mockRecipeScope,
 }));
-let mockRecipeScope = 'owner-server';
+let mockRecipeScope: string | null = 'owner-server';
+let mockUseRealStepperInput = false;
 const mockRecipeClient = new (jest.requireActual(
   '@tanstack/react-query'
 ).QueryClient)();
@@ -179,16 +181,29 @@ jest.mock('../../src/components/ui/Button', () => {
 jest.mock('../../src/components/StepperInput', () => {
   const React = require('react');
   const { TextInput } = require('react-native');
+  const ActualStepperInput = jest.requireActual<
+    typeof import('../../src/components/StepperInput')
+  >('../../src/components/StepperInput').default;
   return {
     __esModule: true,
-    default: ({ value, onChangeText, onBlur }: any) => (
-      <TextInput
-        testID="quantity-input"
-        value={value}
-        onChangeText={onChangeText}
-        onBlur={onBlur}
-      />
-    ),
+    default: (
+      props: ComponentProps<
+        typeof import('../../src/components/StepperInput').default
+      >
+    ) =>
+      mockUseRealStepperInput ? (
+        <ActualStepperInput
+          {...props}
+          inputProps={{ ...props.inputProps, testID: 'quantity-input' }}
+        />
+      ) : (
+        <TextInput
+          testID="quantity-input"
+          value={props.value}
+          onChangeText={props.onChangeText}
+          onBlur={props.onBlur}
+        />
+      ),
   };
 });
 
@@ -423,6 +438,7 @@ describe('FoodEntryAddScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockRecipeScope = 'owner-server';
+    mockUseRealStepperInput = false;
     mockNavigation.isFocused.mockReturnValue(true);
     mockRecipeClient.clear();
     mockRecipeClient.setQueryData(['userProfile'], { id: 'owner' });
@@ -795,6 +811,251 @@ describe('FoodEntryAddScreen', () => {
     }
   );
 
+  it.each(['owner-server', 'replacement-owner-server'])(
+    'explains how to recover a recipe picker mounted without an owner before %s loads',
+    (loadedScope) => {
+      consumePendingRecipeImportSelection();
+      mockRecipeScope = null;
+      mockRecipeClient.clear();
+      const params = {
+        item: baseExternalItem,
+        pickerMode: 'meal-builder' as const,
+        recipeImportTarget: {
+          draftKey: 'draft',
+          ingredientId: 'bar',
+          quantity: 2,
+          unit: 'bar',
+        },
+      };
+      const screen = renderScreen(params);
+      const recovery =
+        'Reopen the recipe import review and choose this ingredient again.';
+      expect(screen.getByText(recovery)).toBeTruthy();
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(true);
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+      act(() => {
+        mockRecipeClient.setQueryData(['userProfile'], {
+          id: loadedScope === 'owner-server' ? 'owner' : 'replacement-owner',
+        });
+        mockRecipeClient.setQueryData(['serverConfigs'], {
+          activeConfig: { id: 'server', url: 'https://example.test' },
+        });
+      });
+      mockRecipeScope = loadedScope;
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryAddScreen
+            navigation={navigation}
+            route={{ key: 'FoodEntryAdd-key', name: 'FoodEntryAdd', params }}
+          />
+        </SafeAreaProvider>
+      );
+      expect(screen.getByText(recovery)).toBeTruthy();
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(true);
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingRecipeImportSelection()).toBeNull();
+    }
+  );
+
+  it.each(['same-owner-reauthentication', 'replacement-profile'] as const)(
+    'renders recipe recovery and rejects a captured Add callback synchronously after %s',
+    (change) => {
+      consumePendingRecipeImportSelection();
+      const screen = renderScreen({
+        item: baseExternalItem,
+        pickerMode: 'meal-builder',
+        recipeImportTarget: {
+          draftKey: 'draft',
+          ingredientId: 'bar',
+          quantity: 2,
+          unit: 'bar',
+        },
+      });
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(false);
+      const addBeforeIdentityChange = screen.UNSAFE_getByType(FooterSaveBar)
+        .props.onPress as () => void;
+      act(() => {
+        if (change === 'same-owner-reauthentication') mockRecipeClient.clear();
+        mockRecipeClient.setQueryData(['userProfile'], {
+          id:
+            change === 'same-owner-reauthentication' ? 'owner' : 'other-owner',
+        });
+        addBeforeIdentityChange();
+      });
+      expect(mockSaveFoodAsync).not.toHaveBeenCalled();
+      expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(true);
+      expect(
+        screen.getByText(
+          'Reopen the recipe import review and choose this ingredient again.'
+        )
+      ).toBeTruthy();
+      expect(navigation.dispatch).not.toHaveBeenCalled();
+      expect(consumePendingRecipeImportSelection()).toBeNull();
+    }
+  );
+
+  it('keeps an ordinary external food selection available without recipe identity', async () => {
+    mockRecipeScope = null;
+    mockSaveFoodAsync.mockResolvedValue({
+      id: 'saved',
+      default_variant: { id: 'saved-variant' },
+    });
+    const screen = renderScreen({
+      item: baseExternalItem,
+      pickerMode: 'meal-builder',
+    });
+    expect(screen.UNSAFE_getByType(FooterSaveBar).props.disabled).toBe(false);
+    expect(
+      screen.queryByText(
+        'Reopen the recipe import review and choose this ingredient again.'
+      )
+    ).toBeNull();
+    fireEvent.press(screen.getByText('Add Food'));
+    await waitFor(() =>
+      expect(mockSetPendingMealIngredientSelection).toHaveBeenCalledTimes(1)
+    );
+    expect(mockSaveFoodAsync).toHaveBeenCalledTimes(1);
+    mockSaveFoodAsync.mockReset();
+  });
+
+  it.each([
+    {
+      action: 'add',
+      sourceUnit: 'g',
+      quantity: 200,
+      servingSize: 100,
+      initialUnit: 'g',
+      before: '250',
+      after: '250',
+    },
+    {
+      action: 'remove',
+      sourceUnit: 'g',
+      quantity: 200,
+      servingSize: 100,
+      initialUnit: 'g',
+      before: '150',
+      after: '150',
+    },
+    {
+      action: 'add',
+      sourceUnit: null,
+      quantity: null,
+      servingSize: 100,
+      initialUnit: 'g',
+      before: '50',
+      after: '50',
+    },
+    {
+      action: 'remove',
+      sourceUnit: null,
+      quantity: null,
+      servingSize: 100,
+      initialUnit: 'g',
+      before: '50',
+      after: '50',
+    },
+    {
+      action: 'add',
+      sourceUnit: 'kg',
+      quantity: 0.6,
+      servingSize: 1,
+      initialUnit: 'kg',
+      before: '1',
+      after: '1000',
+    },
+    {
+      action: 'remove',
+      sourceUnit: 'kg',
+      quantity: 0.6,
+      servingSize: 1,
+      initialUnit: 'kg',
+      before: '0.5',
+      after: '500',
+    },
+  ])(
+    'preserves an actual $action stepper edit while the first recipe variant loads ($sourceUnit)',
+    ({
+      action,
+      sourceUnit,
+      quantity,
+      servingSize,
+      initialUnit,
+      before,
+      after,
+    }) => {
+      mockUseRealStepperInput = true;
+      mockUseFoodVariants.mockReturnValue({
+        variants: undefined,
+        isLoading: true,
+        isError: false,
+      });
+      const params = {
+        item: {
+          ...baseLocalItem,
+          variantId: undefined,
+          servingSize,
+          servingUnit: initialUnit,
+        },
+        recipeImportTarget: {
+          draftKey: 'draft',
+          ingredientId: 'rice',
+          quantity,
+          unit: sourceUnit,
+        },
+      };
+      const screen = renderScreen(params);
+      fireEvent.press(screen.getByTestId(`icon-${action}`));
+      expect(screen.getByTestId('quantity-input').props.value).toBe(before);
+      mockUseFoodVariants.mockReturnValue({
+        variants: [
+          {
+            id: 'grams',
+            food_id: 'food-1',
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 400,
+            protein: 8,
+            carbs: 80,
+            fat: 2,
+          },
+        ],
+        isLoading: false,
+        isError: false,
+      });
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryAddScreen
+            navigation={navigation}
+            route={{ key: 'FoodEntryAdd-key', name: 'FoodEntryAdd', params }}
+          />
+        </SafeAreaProvider>
+      );
+      expect(screen.getByTestId('quantity-input').props.value).toBe(after);
+    }
+  );
+
+  it('retains the ordinary actual stepper amount through food selection', () => {
+    mockUseRealStepperInput = true;
+    const screen = renderScreen({
+      item: baseLocalItem,
+      pickerMode: 'meal-builder',
+    });
+    fireEvent.press(screen.getByTestId('icon-add'));
+    expect(screen.getByTestId('quantity-input').props.value).toBe('1.5');
+    fireEvent.press(screen.getByTestId('icon-remove'));
+    expect(screen.getByTestId('quantity-input').props.value).toBe('1');
+    fireEvent.press(screen.getByText('Add Food'));
+    expect(mockSetPendingMealIngredientSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ingredient: expect.objectContaining({ quantity: 1, unit: 'cup' }),
+      })
+    );
+  });
+
   it.each(['meal-builder', undefined] as const)(
     'returns the recipe ingredient to its draft without diary or NFC writes (%s)',
     async (pickerMode) => {
@@ -1056,8 +1317,10 @@ describe('FoodEntryAddScreen', () => {
       }
       if (departure === 'unmount') screen.unmount();
       if (departure === 'cache-clear') {
-        mockNavigation.isFocused.mockReturnValue(true);
-        mockRecipeClient.clear();
+        act(() => {
+          mockNavigation.isFocused.mockReturnValue(true);
+          mockRecipeClient.clear();
+        });
       }
       await act(async () => {
         finish({ id: 'saved', default_variant: { id: 'saved-variant' } });
