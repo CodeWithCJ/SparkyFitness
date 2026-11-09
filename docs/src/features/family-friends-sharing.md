@@ -50,6 +50,7 @@ When you switch to someone's profile on the web, the AI assistant works in their
 - It logs with foods that already exist. Only the account owner can add new foods to their library.
 - Profile and settings, run programs, fitness tests, the Compare report and the assistant's saved food preferences are personal, so they aren't available while you're switched.
 - The conversation is yours: it is saved in your own chat history, not theirs, and kept apart from your chats in your own profile.
+- It uses your own AI service, as do label scans and other AI features. To change which one, switch back to your own profile.
 
 ---
 

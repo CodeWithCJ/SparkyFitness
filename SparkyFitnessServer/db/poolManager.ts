@@ -268,7 +268,15 @@ function actorUserIdFor(userId: string): string {
   const store = dbContextStorage.getStore();
   return store?.actorIsFixed ? store.authenticatedUserId : userId;
 }
-export { withFixedActor, actorUserIdFor };
+/**
+ * The signed-in person behind the current request (inside withFixedActor, the
+ * fixed actor), or `userId` outside any request. For what stays with whoever is
+ * signed in after a Profile Switcher switch, such as their AI services.
+ */
+function signedInUserIdOr(userId: string): string {
+  return dbContextStorage.getStore()?.authenticatedUserId ?? userId;
+}
+export { withFixedActor, actorUserIdFor, signedInUserIdOr };
 export { getSystemClient };
 export { getPoolStats };
 export { _getRawOwnerPool as getRawOwnerPool };

@@ -8,6 +8,7 @@ import { decrypt } from '../security/encryption.js';
 vi.mock('../db/poolManager', () => ({
   getClient: vi.fn(),
   getSystemClient: vi.fn(),
+  signedInUserIdOr: (userId: string) => userId,
 }));
 vi.mock('../security/encryption', () => ({
   encrypt: vi.fn(),

@@ -1,4 +1,8 @@
-import { getClient, getSystemClient } from '../db/poolManager.js';
+import {
+  getClient,
+  getSystemClient,
+  signedInUserIdOr,
+} from '../db/poolManager.js';
 import { encrypt, decrypt, ENCRYPTION_KEY } from '../security/encryption.js';
 import { log } from '../config/logging.js';
 import {
@@ -202,7 +206,12 @@ async function deleteAiServiceSetting(id: string, userId: string) {
     client.release();
   }
 }
-async function getAiServiceSettingsByUserId(userId: string) {
+// AI services and the choice between them belong to the signed-in person, so
+// after a Profile Switcher switch these three resolve theirs, not the account's.
+// The account's own are private to it (RLS), so asking for them would come back
+// empty or fall through to the admin's global service.
+async function getAiServiceSettingsByUserId(accountUserId: string) {
+  const userId = signedInUserIdOr(accountUserId);
   const client = await getClient(userId); // User-specific operation
   try {
     // Get user-specific settings
@@ -229,7 +238,8 @@ async function getAiServiceSettingsByUserId(userId: string) {
     client.release();
   }
 }
-async function getActiveAiServiceSetting(userId: string) {
+async function getActiveAiServiceSetting(accountUserId: string) {
+  const userId = signedInUserIdOr(accountUserId);
   const client = await getClient(userId); // User-specific operation
   try {
     // Priority 0: check if user has active_ai_service_id in user_preferences
@@ -293,7 +303,8 @@ async function getActiveAiServiceSetting(userId: string) {
 // The existing active/default service is the text default; vision falls back to
 // it unless the user (or admin, for defaulted users) points vision elsewhere.
 // See models/chatRepository getActiveAiServiceSetting for the text counterpart.
-async function getActiveVisionAiServiceSetting(userId: string) {
+async function getActiveVisionAiServiceSetting(accountUserId: string) {
+  const userId = signedInUserIdOr(accountUserId);
   const client = await getClient(userId); // User-specific operation
   try {
     // Read both pointers up front: step 1 needs the vision pointer, and step 3

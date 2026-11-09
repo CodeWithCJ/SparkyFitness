@@ -3,6 +3,7 @@ import {
   actorUserIdFor,
   dbContextStorage,
   getClient,
+  signedInUserIdOr,
   withFixedActor,
 } from '../db/poolManager.js';
 
@@ -94,6 +95,19 @@ describe('getClient', () => {
     await dbContextStorage.run({ authenticatedUserId: 'delegate' }, () =>
       expect(actorUserIdFor('owner')).toBe('owner')
     );
+  });
+
+  it('names the signed-in person of a request, also after a switch', async () => {
+    await dbContextStorage.run({ authenticatedUserId: 'delegate' }, () =>
+      expect(signedInUserIdOr('owner')).toBe('delegate')
+    );
+    expect(withFixedActor('delegate', () => signedInUserIdOr('owner'))).toBe(
+      'delegate'
+    );
+  });
+
+  it('falls back to the given user outside a request', () => {
+    expect(signedInUserIdOr('owner')).toBe('owner');
   });
 
   it('does not borrow a client without a user ID', async () => {

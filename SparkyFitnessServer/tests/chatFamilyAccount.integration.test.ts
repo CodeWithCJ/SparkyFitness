@@ -53,6 +53,7 @@ const REPORTS = '00000000-0000-4000-b100-000000000002';
 const ALL_IDS = [OWNER, DIARY, REPORTS];
 
 let foodId: string;
+let diaryServiceId: string;
 
 // What chat does after a switch: the request runs as the signed-in person and
 // the tools are built for the account being worked in.
@@ -145,6 +146,16 @@ describe.runIf(RUN)("chat in a family member's account", () => {
          VALUES ($1, 100, 'g', 380, true)`,
         [foodId]
       );
+      // One AI service each, so the test can tell whose is picked.
+      for (const id of [OWNER, DIARY]) {
+        const service = await sys.query(
+          `INSERT INTO public.ai_service_settings
+             (user_id, service_type, service_name, is_active, is_public)
+           VALUES ($1, 'openai', $2, true, false) RETURNING id`,
+          [id, `chat-family-ai-${id}`]
+        );
+        if (id === DIARY) diaryServiceId = service.rows[0].id;
+      }
     } finally {
       sys.release();
     }
@@ -223,6 +234,18 @@ describe.runIf(RUN)("chat in a family member's account", () => {
     );
     expect(await history(OWNER)).toEqual([]);
     expect(await history()).toEqual(['in my own profile']);
+  });
+
+  it("uses the delegate's own AI service in the owner's account", async () => {
+    const active = await signedInAs(DIARY, () =>
+      chatRepository.getActiveAiServiceSetting(OWNER)
+    );
+    const listed = await signedInAs(DIARY, () =>
+      chatRepository.getAiServiceSettingsByUserId(OWNER)
+    );
+
+    expect(active?.id).toBe(diaryServiceId);
+    expect(listed.map((s: { id: string }) => s.id)).toEqual([diaryServiceId]);
   });
 
   it("keeps run programs out of a family member's account", async () => {
