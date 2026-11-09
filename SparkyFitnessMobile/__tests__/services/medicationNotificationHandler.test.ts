@@ -426,6 +426,10 @@ describe('logging a dose from a notification action', () => {
     it('retains queued doses for another account during an account switch and replays them when the owning account is active again', async () => {
       const baseKey = 'med_2026-08-12_med-of-A_sched-A_09:00';
       (createEntry as jest.Mock).mockRejectedValueOnce(new Error('offline'));
+      // The live press checks ownership first: account A owns med-of-A.
+      (listMedications as jest.Mock).mockResolvedValueOnce([
+        { id: 'med-of-A', user_id: 'user-A' },
+      ]);
 
       if (!registeredTaskExecutor) {
         throw new Error('background notification task executor not registered');
@@ -597,6 +601,30 @@ describe('logging a dose from a notification action', () => {
         })
       );
     });
+  });
+
+  it('ignores a press for a medication the signed-in account does not own', async () => {
+    (listMedications as jest.Mock).mockResolvedValueOnce([
+      { id: 'other', user_id: 'user-B' },
+    ]);
+    listener({
+      ...takenResponse(),
+      notification: {
+        request: {
+          identifier: 'notif-old',
+          content: {
+            data: {
+              medicationId: 'm1',
+              scheduleId: 's1',
+              userId: 'user-A',
+              entryDate: DATE,
+            },
+          },
+        },
+      },
+    });
+    await new Promise(process.nextTick);
+    expect(createEntry).not.toHaveBeenCalled();
   });
 
   describe('Android background notification task (dataString payload)', () => {

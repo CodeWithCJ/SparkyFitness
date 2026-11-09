@@ -102,6 +102,7 @@ describe('iOS native medication reminder handler', () => {
 
   it('still logs a press the native handler did not claim', async () => {
     (createEntry as jest.Mock).mockResolvedValue({});
+    (listMedications as jest.Mock).mockResolvedValue([{ id: 'm1' }]);
     expect(await processMedicationNotificationResponse(response())).toBe(true);
     expect(createEntry).toHaveBeenCalledTimes(1);
   });
@@ -140,6 +141,44 @@ describe('iOS native medication reminder handler', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await retryPendingMedicationActions();
     expect(createEntry).toHaveBeenCalledTimes(1);
+    expect(
+      await AsyncStorage.getItem(PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY)
+    ).toBeNull();
+  });
+
+  it('picks up a dose queued while a retry is already running', async () => {
+    const queued = (id: string) => ({
+      key: null,
+      notificationId: id,
+      status: 'taken',
+      doses: [dose],
+      entryDate: DATE,
+      userId: null,
+    });
+    await AsyncStorage.setItem(
+      PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY,
+      JSON.stringify([queued('first')])
+    );
+    let release!: (value: unknown) => void;
+    (listMedications as jest.Mock).mockImplementationOnce(
+      () => new Promise((resolve) => (release = resolve))
+    );
+    (listMedications as jest.Mock).mockResolvedValue([{ id: 'm1' }]);
+    (listEntries as jest.Mock).mockResolvedValue([]);
+    (createEntry as jest.Mock).mockResolvedValue({});
+
+    const running = retryPendingMedicationActions();
+    // Let the running pass read the queue and reach its ownership check.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // The running pass has not read the queue yet; a dose is queued, then a
+    // second caller arrives and joins the run.
+    await AsyncStorage.setItem(
+      PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY,
+      JSON.stringify([queued('first'), queued('second')])
+    );
+    const joined = retryPendingMedicationActions();
+    release([{ id: 'm1' }]);
+    await Promise.all([running, joined]);
     expect(
       await AsyncStorage.getItem(PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY)
     ).toBeNull();

@@ -917,6 +917,7 @@ async function applyNativeResultsOnce(): Promise<boolean> {
 }
 
 let retryingPending: Promise<boolean> | null = null;
+let retryAgain = false;
 
 /**
  * Replays the queued dose writes (see `flushPendingMedicationNotificationActions`),
@@ -924,14 +925,27 @@ let retryingPending: Promise<boolean> | null = null;
  * queue alone when the server is still unreachable.
  */
 export function retryPendingMedicationActions(): Promise<boolean> {
-  if (!retryingPending) {
-    retryingPending = flushPendingMedicationNotificationActions()
-      .catch(() => false)
-      .finally(() => {
-        retryingPending = null;
-      });
+  if (retryingPending) {
+    // A run already in progress may have read the queue before this caller's
+    // dose was added: have it go round once more.
+    retryAgain = true;
+    return retryingPending;
   }
-  return retryingPending;
+  const run = (async () => {
+    let any = false;
+    do {
+      retryAgain = false;
+      any =
+        (await flushPendingMedicationNotificationActions().catch(
+          () => false
+        )) || any;
+    } while (retryAgain);
+    return any;
+  })().finally(() => {
+    retryingPending = null;
+  });
+  retryingPending = run;
+  return run;
 }
 
 export function initMedicationNotificationActions(): void {
@@ -1039,6 +1053,31 @@ async function handleNotificationAction(
     // the interacted reminder right away. Sibling delivered and scheduled repeat
     // reminders are cleared only after the entry is confirmed or written.
     await dismissDeliveredNotification(notificationId);
+
+    // A reminder can outlive an account switch. Write only doses of medications
+    // the signed-in account owns, whether or not the reminder carries identity
+    // fields; if ownership cannot be checked (offline) the press is queued, and
+    // the replay checks it the same way.
+    const medications = await listMedications();
+    const ownedIds = new Set(medications.map((m) => m.id));
+    const activeUserIds = new Set(
+      medications
+        .map((m) => m.user_id)
+        .filter((id): id is string => Boolean(id))
+    );
+    const otherAccount =
+      userId !== null && activeUserIds.size > 0 && !activeUserIds.has(userId);
+    const ownDoses = otherAccount
+      ? []
+      : doses.filter((d) => ownedIds.has(d.medicationId));
+    if (ownDoses.length === 0) {
+      addLog(
+        '[MedicationNotificationAction] Ignored a reminder press for another account',
+        'WARNING'
+      );
+      return true;
+    }
+    doses = ownDoses;
 
     const existing = await listEntries({
       fromDate: entryDate,

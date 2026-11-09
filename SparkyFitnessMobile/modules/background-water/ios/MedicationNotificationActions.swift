@@ -442,14 +442,15 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
             UIApplication.shared.endBackgroundTask(task)
             task = .invalid
         }
+        // Recorded here, synchronously with the claim and before the Task or any
+        // wait for another write, so a press iOS ends at any later point still
+        // has a ledger entry for JavaScript to retry.
+        let status = actionId == takenAction ? "taken" : "skipped"
+        let pressed = isSnooze ? nil : recordPress(status, data, notificationId)
         Task {
             if isSnooze {
                 await self.snooze(content, data, notificationId)
-            } else if let login {
-                let status = actionId == takenAction ? "taken" : "skipped"
-                // Recorded right after the claim and before waiting for any other
-                // write, so a press iOS ends while it is queued is still retried.
-                let (ledgerId, base) = self.recordPress(status, data, notificationId)
+            } else if let login, let (ledgerId, base) = pressed {
                 // One write at a time: two reminders for the same dose acted on
                 // together would otherwise both see it unlogged and both log it.
                 await MedicationWriteQueue.shared.run {
