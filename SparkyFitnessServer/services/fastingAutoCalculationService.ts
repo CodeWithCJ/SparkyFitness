@@ -281,7 +281,7 @@ export async function getCurrentAutoFast(
         fastEndTime.getTime() + targetEatingHours * 60 * 60 * 1000
       );
       if (
-        now.getTime() >= fastEndTime.getTime() &&
+        now.getTime() >= fastEndTime.getTime() - CLOCK_SKEW_TOLERANCE_MS &&
         now.getTime() < eatingWindowEnd.getTime()
       ) {
         const remainingMinutes = Math.max(
@@ -308,7 +308,28 @@ export async function getCurrentAutoFast(
           eating_window_remaining_minutes: remainingMinutes,
         };
       }
-      // The fast from fastStartTime was already completed; do not resurrect it as active.
+      if (now.getTime() >= eatingWindowEnd.getTime()) {
+        const nextFastStart = eatingWindowEnd;
+        const elapsedMinutes = Math.max(
+          0,
+          Math.floor((now.getTime() - nextFastStart.getTime()) / 60000)
+        );
+        const targetEndTime = new Date(
+          nextFastStart.getTime() + targetFastHours * 60 * 60 * 1000
+        );
+        return {
+          id: `auto-${nextFastStart.toISOString()}`,
+          user_id: userId,
+          start_time: nextFastStart.toISOString(),
+          end_time: null,
+          target_end_time: targetEndTime.toISOString(),
+          duration_minutes: elapsedMinutes,
+          fasting_type: prefs.default_protocol || '16-8',
+          status: 'ACTIVE',
+          is_auto_calculated: true,
+          start_meal_name: lastMealToday.description,
+        };
+      }
       return null;
     }
 
@@ -358,7 +379,7 @@ export async function getCurrentAutoFast(
     );
 
     if (
-      now.getTime() >= fastEndTime.getTime() &&
+      now.getTime() >= fastEndTime.getTime() - CLOCK_SKEW_TOLERANCE_MS &&
       now.getTime() < eatingWindowEnd.getTime()
     ) {
       const remainingMinutes = Math.max(
@@ -385,7 +406,28 @@ export async function getCurrentAutoFast(
         eating_window_remaining_minutes: remainingMinutes,
       };
     }
-    // The fast from fastStartTime was already completed; do not resurrect it as active.
+    if (now.getTime() >= eatingWindowEnd.getTime()) {
+      const nextFastStart = eatingWindowEnd;
+      const elapsedMinutes = Math.max(
+        0,
+        Math.floor((now.getTime() - nextFastStart.getTime()) / 60000)
+      );
+      const targetEndTime = new Date(
+        nextFastStart.getTime() + targetFastHours * 60 * 60 * 1000
+      );
+      return {
+        id: `auto-${nextFastStart.toISOString()}`,
+        user_id: userId,
+        start_time: nextFastStart.toISOString(),
+        end_time: null,
+        target_end_time: targetEndTime.toISOString(),
+        duration_minutes: elapsedMinutes,
+        fasting_type: prefs.default_protocol || '16-8',
+        status: 'ACTIVE',
+        is_auto_calculated: true,
+        start_meal_name: lastEvent.description,
+      };
+    }
     return null;
   }
 
