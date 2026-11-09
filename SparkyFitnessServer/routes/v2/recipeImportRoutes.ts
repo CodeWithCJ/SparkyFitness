@@ -63,6 +63,11 @@ const actor = (req: Request) =>
  *     description: Never creates foods or meals. External matches must use the existing provider detail and food import flow before saving local mappings. Shared RecipeImportSuggestionRequest is the complete request contract.
  *     tags: [Foods & Nutrition]
  *     security: [{cookieAuth: []}]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: {$ref: '#/components/schemas/RecipeImportSuggestionRequest'}
  *     responses:
  *       200: {description: Actual candidate identities, nutrition and optional selected candidate IDs}
  *       409: {description: Source changed; preview again}
@@ -73,6 +78,11 @@ const actor = (req: Request) =>
  *     description: RecipeImportSaveRequest accepts confirmed local foodId/variantId quantities only. The server reads authoritative nutrition. Optional finishedWeightGrams changes the meal serving denominator, never ingredient nutrition.
  *     tags: [Foods & Nutrition]
  *     security: [{cookieAuth: []}]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: {$ref: '#/components/schemas/RecipeImportSaveRequest'}
  *     responses:
  *       201: {description: Meal ID, source provenance, batch nutrition and portion denominator}
  *       409: {description: Mealie recipe changed}

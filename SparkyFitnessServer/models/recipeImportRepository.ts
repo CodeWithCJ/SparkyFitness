@@ -2,8 +2,8 @@ import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import mealRepository from './mealRepository.js';
 import {
-  recipeImportSourceSchema,
-  type RecipeImportSource,
+  recipeImportStoredSourceSchema,
+  type RecipeImportStoredSource,
   type RecipeFoodMappings,
 } from '@workspace/shared';
 import { mealFingerprint } from '../services/recipeImportMealSnapshot.js';
@@ -17,7 +17,7 @@ export type MappingWrite = Pick<
   | 'unit'
 >;
 export type SourceWrite = Omit<
-  RecipeImportSource,
+  RecipeImportStoredSource,
   'mealId' | 'mealFingerprint' | 'lastSyncedAt'
 >;
 async function getMappings(
@@ -38,14 +38,16 @@ async function getMappings(
 async function getSource(
   userId: string,
   mealId: string
-): Promise<RecipeImportSource | null> {
+): Promise<RecipeImportStoredSource | null> {
   const client: PoolClient = await getClient(userId, userId);
   try {
     const r = await client.query<{ source: unknown }>(
       'SELECT source FROM recipe_imports WHERE user_id = $1 AND meal_id = $2',
       [userId, mealId]
     );
-    return r.rows[0] ? recipeImportSourceSchema.parse(r.rows[0].source) : null;
+    return r.rows[0]
+      ? recipeImportStoredSourceSchema.parse(r.rows[0].source)
+      : null;
   } finally {
     client.release();
   }
@@ -55,7 +57,7 @@ async function save(
   meal: MealInput,
   source: SourceWrite,
   mappings: MappingWrite[]
-): Promise<RecipeImportSource> {
+): Promise<RecipeImportStoredSource> {
   const client: PoolClient = await getClient(userId, userId);
   try {
     await client.query('BEGIN');
@@ -68,7 +70,7 @@ async function save(
       userId,
       client
     );
-    const provenance: RecipeImportSource = {
+    const provenance: RecipeImportStoredSource = {
       ...source,
       mealId: created.id,
       mealFingerprint: mealFingerprint(savedMeal),
@@ -102,7 +104,7 @@ async function save(
 }
 async function markSynced(
   userId: string,
-  source: RecipeImportSource
+  source: RecipeImportStoredSource
 ): Promise<void> {
   const client: PoolClient = await getClient(userId, userId);
   try {

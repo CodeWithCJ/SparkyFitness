@@ -44,15 +44,25 @@ Mealie recipes can be imported as editable meals with separate ingredients. The 
 
 Missing amounts, incompatible units and linked sub-recipes are shown for review. SparkyFitness does not guess a volume-to-weight conversion. Recipes containing a linked sub-recipe require its ingredients to be listed explicitly in Mealie before import. Missing optional nutrients remain unknown rather than becoming zero.
 
+Every selected food variant needs known **calories, protein, carbohydrates and fat** before saving; a measured zero is valid. Incomplete mappings stay editable: choose a complete variant or correct the food's nutrition, then review it again. Unknown optional nutrients do not prevent import or sync and are not written as zero.
+
+Remembered matches include the source's original preparation text. A change from cooked to dry requires fresh confirmation; changes only to the structured quantity can reuse an unchanged context. Older matches that did not record this context require one fresh review. Repeated rows with indistinguishable food, unit and preparation context always require individual confirmation, because they may use different food variants; those ambiguous contexts are not learned for later automatic reuse.
+
+If saving times out or returns an uncertain server error, check the meals library before starting again. Retry is blocked within that review, but reopening starts a new import and can create another meal. Deliberate repeated imports remain supported; imports do not have an exactly-once guarantee across reopened reviews.
+
 ### Updating nutrition in Mealie
 
 Saving or editing a meal does not write to Mealie. After importing, use the separate nutrition-sync action to update the original recipe's nutrition. Your Mealie token must permit recipe updates.
 
-Sync is available only when all ingredients are confirmed, the amounts still match the original recipe, and neither the source recipe nor the imported meal has changed since import. SparkyFitness updates only the supported, known nutrition fields, calculated per original recipe serving. Other nutrition fields and recipe content are preserved.
+Sync is available only when all ingredients are confirmed, the amounts still match the original recipe, the imported meal's ingredients and nutrition are unchanged, and the source matches its imported or last successfully synced version. A successful sync records the new baseline, so another unchanged sync is allowed. For new imports, comments and update timestamps do not count as recipe edits; ingredient, serving, preparation, instruction and nutrition changes do. Older imports without the stable baseline retain the stricter full-source check and may need a fresh import after metadata changes.
+
+SparkyFitness updates only supported, known nutrition fields, calculated per original recipe serving, and includes existing optional nutrient values to preserve them. **Avoid editing the recipe in Mealie while syncing.** Mealie's nutrition update replaces the nested nutrition object and provides no verified atomic conflict check in this integration: another client's edit between the read and write can be overwritten despite the before/after checks. Ingredient amounts and other recipe content are not sent in the update.
 
 If you substitute an ingredient or change an amount for one cooking session, keep that variation in your SparkyFitness meal. For a permanent alternative recipe, duplicate and edit the recipe in Mealie, then import that copy. Import and sync use your own provider connection and are unavailable while managing another person's profile.
 
 A source conflict requires a fresh import and review. If the remote result cannot be confirmed, inspect the recipe in Mealie before trying again: a timed-out update may already have reached it. The saved SparkyFitness meal remains available even when sync fails.
+
+If Mealie confirms the update but SparkyFitness cannot record the successful sync, the action reports that partial outcome rather than success. Check Mealie and import its current unchanged recipe as a new base meal. The old baseline is not silently replaced with unverified remote edits to make a retry pass.
 
 ::: details Android example with a test recipe
 

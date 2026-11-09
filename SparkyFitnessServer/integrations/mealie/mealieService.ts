@@ -243,14 +243,19 @@ class MealieService {
     }
   }
 
-  private async ingredientRequest(
-    slug: string,
+  private async ingredientRequest<T>(
+    url: string | URL,
+    operation: 'recipe read' | 'recipe search' | 'nutrition update',
+    schema: z.ZodType<T>,
     init: RequestInit = {}
-  ): Promise<unknown> {
-    if (!this.accessToken) throw new Error('Mealie API key not provided.');
-    const response = await resolveFoodFetch(this.networkPolicy)(
-      this.baseUrl + '/api/recipes/' + encodeURIComponent(slug),
-      {
+  ): Promise<T> {
+    let status: number | null = null;
+    let failure: 'credentials' | 'transport' | 'http' | 'schema' =
+      'credentials';
+    try {
+      if (!this.accessToken) throw new Error('Missing credentials');
+      failure = 'transport';
+      const response = await resolveFoodFetch(this.networkPolicy)(url, {
         ...init,
         signal: AbortSignal.timeout(30000),
         headers: {
@@ -259,38 +264,43 @@ class MealieService {
           'Content-Type': 'application/json',
           ...init.headers,
         },
-      }
-    );
-    if (!response.ok)
+      });
+      status = response.status;
+      failure = 'http';
+      if (!response.ok) throw new Error('Upstream rejected request');
+      failure = 'schema';
+      return schema.parse(await response.json());
+    } catch {
+      // Never log arbitrary transport/schema errors, URLs, credentials or bodies.
+      log('error', 'Mealie ingredient request failed', {
+        operation,
+        status,
+        failure,
+      });
       throw new Error(
-        init.method === 'PATCH'
-          ? 'Mealie nutrition update failed (' + response.status + ')'
-          : 'Mealie recipe read failed (' + response.status + ')'
+        'Mealie ' +
+          operation +
+          ' failed' +
+          (failure === 'http' ? ' (' + status + ')' : '')
       );
-    return response.json();
+    }
   }
   async readIngredientRecipe(slug: string): Promise<MealieIngredientRecipe> {
-    return mealieIngredientRecipeSchema.parse(
-      await this.ingredientRequest(slug)
+    return this.ingredientRequest(
+      this.baseUrl + '/api/recipes/' + encodeURIComponent(slug),
+      'recipe read',
+      mealieIngredientRecipeSchema
     );
   }
   async browseIngredientRecipes(search: string, page: number) {
-    if (!this.accessToken) throw new Error('Mealie API key not provided.');
     const url = new URL(this.baseUrl + '/api/recipes');
     url.searchParams.set('search', search);
     url.searchParams.set('page', String(page));
     url.searchParams.set('perPage', '10');
-    const response = await resolveFoodFetch(this.networkPolicy)(url, {
-      signal: AbortSignal.timeout(30000),
-      headers: {
-        Authorization: 'Bearer ' + this.accessToken,
-        Accept: 'application/json',
-      },
-    });
-    if (!response.ok)
-      throw new Error('Mealie recipe search failed (' + response.status + ')');
-    const data = z
-      .object({
+    const data = await this.ingredientRequest(
+      url,
+      'recipe search',
+      z.object({
         items: z.array(
           z.object({
             id: z.string().nullish(),
@@ -301,7 +311,7 @@ class MealieService {
         ),
         total: z.number(),
       })
-      .parse(await response.json());
+    );
     return {
       items: data.items.map((row) => ({
         id: row.id ?? null,
@@ -323,11 +333,14 @@ class MealieService {
     patch: Record<string, string>,
     existing: Record<string, string | number | null>
   ): Promise<MealieIngredientRecipe> {
-    return mealieIngredientRecipeSchema.parse(
-      await this.ingredientRequest(slug, {
+    return this.ingredientRequest(
+      this.baseUrl + '/api/recipes/' + encodeURIComponent(slug),
+      'nutrition update',
+      mealieIngredientRecipeSchema,
+      {
         method: 'PATCH',
         body: JSON.stringify({ nutrition: { ...existing, ...patch } }),
-      })
+      }
     );
   }
 

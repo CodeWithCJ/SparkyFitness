@@ -62,6 +62,22 @@ describe('ingredient recipe calculations', () => {
       fatContent: '15',
     });
   });
+  it('keeps blank nutrients unknown while accepting measured zero', () => {
+    expect(() =>
+      calculateRecipeNutrition([
+        { quantity: 100, unit: 'g', variant: { ...variant, protein: '   ' } },
+      ])
+    ).toThrow(/nutrition/i);
+    const totals = calculateRecipeNutrition([
+      {
+        quantity: 100,
+        unit: 'g',
+        variant: { ...variant, protein: 0, sodium: '   ' },
+      },
+    ]);
+    expect(totals.protein).toBe(0);
+    expect(totals.sodium).toBeNull();
+  });
   it('detects remote changes while ignoring object property order', () => {
     expect(recipeFingerprint({ name: 'A', recipeServings: 4 })).toBe(
       recipeFingerprint({ recipeServings: 4, name: 'A' })

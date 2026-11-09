@@ -23,7 +23,12 @@ export const RECIPE_NUTRIENTS = [
 ] as const;
 const REQUIRED = ['calories', 'protein', 'carbs', 'fat'] as const;
 export function nutrientNumber(value: NutrientValue): number | null {
-  if (value === null || value === undefined || value === '') return null;
+  if (
+    value === null ||
+    value === undefined ||
+    (typeof value === 'string' && value.trim() === '')
+  )
+    return null;
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
@@ -105,8 +110,11 @@ export function mealServingFields(
   if (
     !Number.isFinite(servings) ||
     servings <= 0 ||
+    servings > 1e9 ||
     (finishedWeightGrams !== undefined &&
-      (!Number.isFinite(finishedWeightGrams) || finishedWeightGrams <= 0))
+      (!Number.isFinite(finishedWeightGrams) ||
+        finishedWeightGrams <= 0 ||
+        finishedWeightGrams > 1e9))
   )
     throw new RecipeImportError(
       422,
@@ -117,6 +125,12 @@ export function mealServingFields(
     finishedWeightGrams === undefined
       ? 1
       : roundMealServingValue(finishedWeightGrams / servings);
+  if (!Number.isFinite(size) || size > 1e9)
+    throw new RecipeImportError(
+      422,
+      'INCOMPLETE_MAPPING',
+      'The finished amount per serving exceeds the supported range. Review the weight and servings.'
+    );
   if (size <= 0)
     throw new RecipeImportError(
       422,

@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import MealieService from '../integrations/mealie/mealieService.js';
+import { log } from '../config/logging.js';
+vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 afterEach(() => vi.unstubAllGlobals());
 describe('Mealie targeted ingredient transport', () => {
   it('writes only nutrition and preserves unrelated nutrient fields', async () => {
@@ -43,7 +45,9 @@ describe('Mealie targeted ingredient transport', () => {
         'https://recipe.example',
         'fixture'
       ).patchRecipeNutrition('recipe', { calories: '600' }, {})
-    ).rejects.toThrow('Mealie nutrition update failed (403)');
+    ).rejects.toMatchObject({
+      message: 'Mealie nutrition update failed (403)',
+    });
   });
   it('does not turn a recipe read failure into an empty recipe', async () => {
     vi.stubGlobal(
@@ -57,4 +61,63 @@ describe('Mealie targeted ingredient transport', () => {
       ).readIngredientRecipe('recipe')
     ).rejects.toThrow(/Mealie recipe read failed/);
   });
+});
+describe('sanitized ingredient operation failures', () => {
+  const operations = [
+    {
+      operation: 'recipe read',
+      call: (adapter: MealieService) =>
+        adapter.readIngredientRecipe('private-slug'),
+    },
+    {
+      operation: 'recipe search',
+      call: (adapter: MealieService) =>
+        adapter.browseIngredientRecipes('private-search', 1),
+    },
+    {
+      operation: 'nutrition update',
+      call: (adapter: MealieService) =>
+        adapter.patchRecipeNutrition('private-slug', { calories: '600' }, {}),
+    },
+  ];
+  for (const operation of operations) {
+    it.each(['transport', 'http', 'schema'] as const)(
+      `${operation.operation} reports only safe %s failure details`,
+      async (failure) => {
+        vi.mocked(log).mockClear();
+        const fetcher = vi.fn();
+        if (failure === 'transport')
+          fetcher.mockRejectedValue(
+            new Error('private-token https://private.example/?key=secret')
+          );
+        else
+          fetcher.mockResolvedValue(
+            new Response(
+              failure === 'http'
+                ? 'private-body'
+                : JSON.stringify({ private: 'private-body' }),
+              { status: failure === 'http' ? 403 : 200 }
+            )
+          );
+        vi.stubGlobal('fetch', fetcher);
+        await expect(
+          operation.call(
+            new MealieService('https://private.example', 'private-token')
+          )
+        ).rejects.toMatchObject({
+          message: `Mealie ${operation.operation} failed${failure === 'http' ? ' (403)' : ''}`,
+        });
+        expect(log).toHaveBeenCalledExactlyOnceWith(
+          'error',
+          'Mealie ingredient request failed',
+          {
+            operation: operation.operation,
+            status:
+              failure === 'transport' ? null : failure === 'http' ? 403 : 200,
+            failure,
+          }
+        );
+      }
+    );
+  }
 });

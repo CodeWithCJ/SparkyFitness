@@ -5,6 +5,7 @@ import {
   type RecipeImportSaveRequest,
   type RecipeImportSaveResponse,
   type RecipeImportSource,
+  type RecipeImportStoredSource,
   type RecipeImportSuggestionRequest,
   type RecipeImportSuggestionResponse,
   type RecipeImportCandidate,
@@ -164,6 +165,14 @@ function normalizedIngredientContext(value: string | null | undefined): string {
 function ingredientRows(
   recipe: MealieIngredientRecipe
 ): RecipeImportIngredient[] {
+  const referenceCounts = new Map<string, number>();
+  for (const row of recipe.recipeIngredient) {
+    if (row.referenceId)
+      referenceCounts.set(
+        row.referenceId,
+        (referenceCounts.get(row.referenceId) ?? 0) + 1
+      );
+  }
   return recipe.recipeIngredient.map((row, index) => {
     const quantity = positiveSource(row.quantity);
     const unit = unitName(row.unit);
@@ -175,15 +184,25 @@ function ingredientRows(
     if (!row.food?.name) issues.push('unstructured_food');
     if (row.referencedRecipe) issues.push('linked_recipe');
     return {
-      ingredientId: row.referenceId || 'ingredient-' + index,
+      // Reserve our generated namespace so provider IDs cannot collide with it.
+      ingredientId:
+        row.referenceId &&
+        row.referenceId.length <= 300 &&
+        !row.referenceId.startsWith('ingredient:') &&
+        referenceCounts.get(row.referenceId) === 1
+          ? row.referenceId
+          : 'ingredient:' + index,
       // Quantity is deliberately excluded: a reviewed food/preparation can scale to another batch.
       sourceFoodKey:
-        'context-v1:' +
+        'context-v2:' +
         recipeFingerprint({
           foodId: row.food?.id ?? null,
           foodName: normalizedIngredientContext(row.food?.name),
           unit: unit ?? null,
           preparation: normalizedIngredientContext(row.note),
+          originalText: normalizedIngredientContext(
+            row.originalText || row.display
+          ),
         }),
       name,
       originalText: row.originalText || row.display || row.note || name,
@@ -197,6 +216,14 @@ function ingredientRows(
       mappingOrigin: null,
     };
   });
+}
+function uniqueContextKeys(ingredients: RecipeImportIngredient[]): Set<string> {
+  const counts = new Map<string, number>();
+  for (const row of ingredients)
+    counts.set(row.sourceFoodKey, (counts.get(row.sourceFoodKey) ?? 0) + 1);
+  return new Set(
+    [...counts].filter(([, count]) => count === 1).map(([key]) => key)
+  );
 }
 async function accessibleVariant(
   userId: string,
@@ -219,6 +246,7 @@ async function buildPreview(
   recipe: MealieIngredientRecipe
 ): Promise<RecipeImportPreview> {
   const ingredients = ingredientRows(recipe);
+  const uniqueContexts = uniqueContextKeys(ingredients);
   const mappings = await repository.getMappings(userId, input.providerId);
   for (const ingredient of ingredients) {
     const saved = mappings.find(
@@ -226,6 +254,7 @@ async function buildPreview(
     );
     if (
       !saved ||
+      !uniqueContexts.has(ingredient.sourceFoodKey) ||
       !ingredient.quantity ||
       !ingredient.unit ||
       ingredient.issues.includes('linked_recipe') ||
@@ -312,16 +341,29 @@ async function save(
   actorId: string,
   input: RecipeImportSaveRequest
 ): Promise<RecipeImportSaveResponse> {
-  const current = await preview(userId, actorId, {
-    providerId: input.providerId,
-    recipeSlug: input.recipeSlug,
-  });
+  requireOwner(userId, actorId);
+  const client = await adapter(userId, input.providerId);
+  const recipe = await readRecipe(client, input.recipeSlug);
+  const current = await buildPreview(
+    userId,
+    {
+      providerId: input.providerId,
+      recipeSlug: input.recipeSlug,
+    },
+    recipe
+  );
   checkFingerprint(current.sourceFingerprint, input.sourceFingerprint);
   if (
     !current.ingredients.length ||
     current.ingredients.length !== input.mappings.length ||
     new Set(input.mappings.map((row) => row.ingredientId)).size !==
-      input.mappings.length
+      input.mappings.length ||
+    input.mappings.some(
+      (mapping) =>
+        !current.ingredients.some(
+          (row) => row.ingredientId === mapping.ingredientId
+        )
+    )
   )
     throw new RecipeImportError(
       422,
@@ -343,6 +385,7 @@ async function save(
   }> = [];
   const foods: MealFoodInput[] = [];
   const remembered: MappingWrite[] = [];
+  const uniqueContexts = uniqueContextKeys(current.ingredients);
   let syncEligible = current.recipeServings === servings;
   for (const ingredient of current.ingredients) {
     if (ingredient.issues.includes('linked_recipe'))
@@ -403,7 +446,11 @@ async function save(
         mapping.unit
       ) && !ingredient.issues.includes('unstructured_food');
     syncEligible = syncEligible && unchanged;
-    if (unchanged && ingredient.quantity)
+    if (
+      unchanged &&
+      ingredient.quantity &&
+      uniqueContexts.has(ingredient.sourceFoodKey)
+    )
       remembered.push({
         source_food_key: ingredient.sourceFoodKey,
         food_id: mapping.foodId,
@@ -420,12 +467,17 @@ async function save(
   const source = await repository.save(
     userId,
     { name: input.name || current.name, is_public: false, ...serving, foods },
-    { ...current, mappings: input.mappings, syncEligible },
+    {
+      ...current,
+      mappings: input.mappings,
+      syncEligible,
+      syncBaseline: syncBaseline(recipe),
+    },
     remembered
   );
   return {
     mealId: source.mealId,
-    source,
+    source: publicSource(source),
     nutrition,
     servingSize: serving.serving_size,
     servingUnit: serving.serving_unit,
@@ -436,7 +488,7 @@ async function storedSource(
   userId: string,
   actorId: string,
   mealId: string
-): Promise<RecipeImportSource> {
+): Promise<RecipeImportStoredSource> {
   requireOwner(userId, actorId);
   const source = await repository.getSource(userId, mealId);
   if (!source)
@@ -462,49 +514,57 @@ async function getSource(
   mealId: string
 ): Promise<RecipeImportSource> {
   const source = await storedSource(userId, actorId, mealId);
-  if (!source.syncEligible) return source;
+  if (!source.syncEligible) return publicSource(source);
   const meal: unknown = await mealRepository.getMealById(mealId, userId);
   return {
-    ...source,
+    ...publicSource(source),
     syncEligible: localMealMatchesSource(meal, userId, source.mealFingerprint),
   };
 }
-/** Stable recipe content: update timestamps and regenerated instruction IDs are not source edits. */
+/** Project every wire response explicitly: old clients reject unknown source fields. */
+function publicSource(source: RecipeImportStoredSource): RecipeImportSource {
+  return {
+    providerId: source.providerId,
+    recipeSlug: source.recipeSlug,
+    recipeId: source.recipeId,
+    name: source.name,
+    recipeServings: source.recipeServings,
+    sourceFingerprint: source.sourceFingerprint,
+    ingredients: source.ingredients,
+    syncWarnings: source.syncWarnings,
+    mealId: source.mealId,
+    mappings: source.mappings,
+    mealFingerprint: source.mealFingerprint,
+    syncEligible: source.syncEligible,
+    lastSyncedAt: source.lastSyncedAt,
+  };
+}
+/** Ignore only known non-content metadata; retain unrecognized recipe content. */
 function sourceContentFingerprint(recipe: MealieIngredientRecipe): string {
+  const {
+    nutrition: _nutrition,
+    comments: _comments,
+    updatedAt: _updatedAt,
+    dateUpdated: _dateUpdated,
+    ...content
+  } = recipe;
   const instructions = Array.isArray(recipe.recipeInstructions)
     ? recipe.recipeInstructions.map((step: unknown) => {
         if (!step || typeof step !== 'object') return step;
-        const content = step as Record<string, unknown>;
-        return { title: content.title ?? null, text: content.text ?? null };
+        const { id: _id, ...instruction } = step as Record<string, unknown>;
+        return instruction;
       })
     : (recipe.recipeInstructions ?? []);
-  return recipeFingerprint({
-    id: recipe.id ?? null,
-    slug: recipe.slug,
-    name: recipe.name,
-    recipeServings: positiveSource(recipe.recipeServings),
-    ingredients: recipe.recipeIngredient.map((row) => ({
-      referenceId: row.referenceId ?? null,
-      quantity: positiveSource(row.quantity),
-      food: row.food
-        ? { id: row.food.id ?? null, name: row.food.name ?? null }
-        : null,
-      unit: row.unit
-        ? {
-            id: row.unit.id ?? null,
-            name: row.unit.name ?? null,
-            abbreviation: row.unit.abbreviation ?? null,
-            standardUnit: row.unit.standardUnit ?? null,
-            standardQuantity: row.unit.standardQuantity ?? null,
-          }
-        : null,
-      note: row.note ?? '',
-      originalText: row.originalText ?? '',
-      title: row.title ?? null,
-      referencedRecipe: row.referencedRecipe ?? null,
-    })),
-    instructions,
-  });
+  return recipeFingerprint({ ...content, recipeInstructions: instructions });
+}
+function syncBaseline(
+  recipe: MealieIngredientRecipe
+): NonNullable<RecipeImportStoredSource['syncBaseline']> {
+  return {
+    version: 1,
+    contentFingerprint: sourceContentFingerprint(recipe),
+    nutritionFingerprint: recipeFingerprint(recipe.nutrition ?? {}),
+  };
 }
 async function syncNutrition(
   userId: string,
@@ -514,7 +574,20 @@ async function syncNutrition(
   const source = await storedSource(userId, actorId, mealId);
   const client = await adapter(userId, source.providerId);
   const recipe = await readRecipe(client, source.recipeSlug);
-  checkFingerprint(recipeFingerprint(recipe), source.sourceFingerprint);
+  if (source.syncBaseline) {
+    const current = syncBaseline(recipe);
+    checkFingerprint(
+      current.contentFingerprint,
+      source.syncBaseline.contentFingerprint
+    );
+    checkFingerprint(
+      current.nutritionFingerprint,
+      source.syncBaseline.nutritionFingerprint
+    );
+  } else {
+    // Old provenance cannot prove a stable baseline from its partial normalized preview.
+    checkFingerprint(recipeFingerprint(recipe), source.sourceFingerprint);
+  }
   const meal: unknown = await mealRepository.getMealById(mealId, userId);
   const record =
     meal && typeof meal === 'object' ? (meal as Record<string, unknown>) : {};
@@ -575,14 +648,12 @@ async function syncNutrition(
     );
   if (
     Object.entries(patch).some(([key, value]) => {
-      const actual = updated.nutrition?.[key];
-      return (
-        actual === null ||
-        actual === undefined ||
-        !Number.isFinite(Number(actual)) ||
-        Math.abs(Number(actual) - Number(value)) > 1e-6
-      );
-    })
+      const actual = nutrientNumber(updated.nutrition?.[key]);
+      return actual === null || Math.abs(actual - Number(value)) > 1e-6;
+    }) ||
+    Object.entries(recipe.nutrition ?? {}).some(
+      ([key, value]) => !(key in patch) && updated.nutrition?.[key] !== value
+    )
   )
     throw new RecipeImportError(
       502,
@@ -592,10 +663,19 @@ async function syncNutrition(
   const synced = {
     ...source,
     sourceFingerprint: recipeFingerprint(updated),
+    syncBaseline: syncBaseline(updated),
     lastSyncedAt: new Date().toISOString(),
   };
-  await repository.markSynced(userId, synced);
-  return { status: 'synced', source: synced };
+  try {
+    await repository.markSynced(userId, synced);
+  } catch {
+    throw new RecipeImportError(
+      502,
+      'SYNC_RECORD_FAILED',
+      'Mealie confirmed the nutrition update, but SparkyFitness could not record it. Check Mealie and import its current unchanged recipe as a new base meal before syncing again.'
+    );
+  }
+  return { status: 'synced', source: publicSource(synced) };
 }
 
 function candidate(

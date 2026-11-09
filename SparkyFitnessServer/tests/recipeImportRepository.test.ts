@@ -11,6 +11,7 @@ vi.mock('../models/mealRepository.js', () => ({
   default: { createMeal: m.createMeal, getMealById: m.getMealById },
 }));
 import repository from '../models/recipeImportRepository.js';
+import { recipeImportSourceSchema } from '@workspace/shared';
 beforeEach(() => {
   vi.clearAllMocks();
   m.getClient.mockResolvedValue({ query: m.query, release: m.release });
@@ -19,6 +20,41 @@ beforeEach(() => {
   m.getMealById.mockResolvedValue({ id: 'meal', foods: [] });
 });
 describe('recipe import persistence', () => {
+  it.each([false, true])(
+    'reads compatible provenance with private baseline present: %s',
+    async (withBaseline) => {
+      const id = '00000000-0000-4000-a000-000000000001';
+      const source = {
+        providerId: id,
+        recipeSlug: 'rice',
+        recipeId: 'recipe',
+        name: 'Rice',
+        sourceFingerprint: 'a'.repeat(64),
+        recipeServings: 4,
+        ingredients: [],
+        syncWarnings: [],
+        mealId: id,
+        mappings: [],
+        mealFingerprint: 'b'.repeat(64),
+        syncEligible: true,
+        lastSyncedAt: null,
+        ...(withBaseline
+          ? {
+              syncBaseline: {
+                version: 1,
+                contentFingerprint: 'c'.repeat(64),
+                nutritionFingerprint: 'd'.repeat(64),
+              },
+            }
+          : {}),
+      };
+      m.query.mockResolvedValue({ rows: [{ source }] });
+      expect(await repository.getSource(id, id)).toEqual(source);
+      expect(recipeImportSourceSchema.safeParse(source).success).toBe(
+        !withBaseline
+      );
+    }
+  );
   it('rolls back the meal when provenance persistence fails', async () => {
     m.query.mockImplementation(async (sql: string) => {
       if (sql.includes('INSERT INTO recipe_imports'))
@@ -45,6 +81,13 @@ describe('recipe import persistence', () => {
       )
     ).rejects.toThrow('write failed');
     expect(m.query).toHaveBeenCalledWith('ROLLBACK');
+    const client = await m.getClient.mock.results[0].value;
+    expect(m.createMeal).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'owner' }),
+      client
+    );
+    expect(m.getMealById).toHaveBeenCalledWith('meal', 'owner', client);
+    expect(m.getClient).toHaveBeenCalledOnce();
     expect(m.query).not.toHaveBeenCalledWith('COMMIT');
     expect(m.release).toHaveBeenCalledOnce();
   });

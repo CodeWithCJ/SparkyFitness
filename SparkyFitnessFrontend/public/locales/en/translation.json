@@ -60,7 +60,7 @@
     "ownerOnly": "Switch to your own profile to import or sync recipes.",
     "checkingSource": "Checking recipe source…",
     "source": "Mealie recipe source",
-    "syncExplanation": "Explicitly update nutrition in the original Mealie recipe, per original recipe serving. Ingredient amounts and recipe content are preserved.",
+    "syncExplanation": "Update nutrition per original Mealie recipe serving. Avoid editing the recipe in Mealie while syncing: simultaneous nutrition edits can be overwritten. Ingredient amounts are not sent.",
     "syncUnavailable": "This meal is available for tracking. Source amounts, units, servings or mappings do not support safe sync; correct the source and import a new base meal.",
     "sync": "Sync nutrition to Mealie",
     "syncing": "Syncing nutrition…",

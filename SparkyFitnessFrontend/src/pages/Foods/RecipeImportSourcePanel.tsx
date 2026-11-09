@@ -55,7 +55,7 @@ function OwnerSourcePanel({
       <p className="text-sm text-muted-foreground">
         {t(
           'recipeImport.syncExplanation',
-          'Explicitly update nutrition in the original Mealie recipe, per original recipe serving. Ingredient amounts and recipe content are preserved.'
+          'Update nutrition per original Mealie recipe serving. Avoid editing the recipe in Mealie while syncing: simultaneous nutrition edits can be overwritten. Ingredient amounts are not sent.'
         )}
       </p>
       {!source.data.syncEligible && (

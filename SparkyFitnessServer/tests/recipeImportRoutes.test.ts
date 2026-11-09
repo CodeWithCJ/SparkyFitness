@@ -46,7 +46,7 @@ describe('recipe import route boundary', () => {
     }
     expect(state.preview).not.toHaveBeenCalled();
   });
-  it('rejects invalid and extra client-provided nutrient fields', async () => {
+  it('rejects empty mappings', async () => {
     const response = await request(app)
       .post('/api/v2/recipe-imports/mealie/save')
       .send({
@@ -54,11 +54,42 @@ describe('recipe import route boundary', () => {
         recipeSlug: 'rice',
         sourceFingerprint: 'a'.repeat(64),
         mappings: [],
-        calories: 2400,
       });
     expect(response.status).toBe(400);
     expect(state.save).not.toHaveBeenCalled();
   });
+  it.each(['calories', 'syncBaseline'])(
+    'rejects client-provided %s with otherwise valid mappings',
+    async (field) => {
+      const response = await request(app)
+        .post('/api/v2/recipe-imports/mealie/save')
+        .send({
+          providerId: '00000000-0000-4000-a000-000000000001',
+          recipeSlug: 'rice',
+          sourceFingerprint: 'a'.repeat(64),
+          mappings: [
+            {
+              ingredientId: 'rice',
+              foodId: '00000000-0000-4000-a000-000000000001',
+              variantId: '00000000-0000-4000-a000-000000000002',
+              quantity: 1,
+              unit: 'g',
+              confirmed: true,
+            },
+          ],
+          [field]:
+            field === 'calories'
+              ? 2400
+              : {
+                  version: 1,
+                  contentFingerprint: 'a'.repeat(64),
+                  nutritionFingerprint: 'a'.repeat(64),
+                },
+        });
+      expect(response.status).toBe(400);
+      expect(state.save).not.toHaveBeenCalled();
+    }
+  );
   it('accepts valid owner preview requests', async () => {
     const response = await request(app)
       .post('/api/v2/recipe-imports/mealie/preview')

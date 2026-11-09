@@ -2,12 +2,15 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { z } from 'zod';
 import {
   CALORIE_CYCLING_MAX_OFFSET,
   CALORIE_CYCLING_MODES,
   CHART_SCALE_MODES,
   MAX_CALORIE_SAFETY_FLOOR,
   MIN_CALORIE_SAFETY_FLOOR,
+  recipeImportSaveRequestSchema,
+  recipeImportSuggestionRequestSchema,
   MAX_GOAL_MODE_WEEKLY_CHANGE_KG,
 } from '@workspace/shared';
 
@@ -56,6 +59,14 @@ const options = {
         },
       },
       schemas: {
+        RecipeImportSaveRequest: z.toJSONSchema(recipeImportSaveRequestSchema, {
+          target: 'openapi-3.0',
+          io: 'input',
+        }),
+        RecipeImportSuggestionRequest: z.toJSONSchema(
+          recipeImportSuggestionRequestSchema,
+          { target: 'openapi-3.0', io: 'input' }
+        ),
         LabMarker: {
           type: 'object',
           additionalProperties: false,

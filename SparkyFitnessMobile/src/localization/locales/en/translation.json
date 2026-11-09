@@ -10076,7 +10076,7 @@
     "checkLibrary": "Check your meals library before trying again. The save outcome is uncertain.",
     "save": "Save reusable meal",
     "sourceTitle": "Mealie source",
-    "syncExplanation": "Send the unchanged base recipe nutrition per original serving. Source ingredients and unrelated fields are preserved.",
+    "syncExplanation": "Update nutrition per original Mealie recipe serving. Avoid editing the recipe in Mealie while syncing: simultaneous nutrition edits can be overwritten. Ingredient amounts are not sent.",
     "syncUnavailable": "This meal is for tracking only. Reimport the original recipe with complete, unchanged amounts to enable nutrition sync.",
     "lastSynced": "Last synced: {{date}}",
     "synced": "Nutrition synced to Mealie.",

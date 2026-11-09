@@ -37,7 +37,7 @@ function ScopedSourcePanel({ mealId, scope }: SourcePanelProps) {
       <Text className="text-text-secondary">
         {t('recipeImport.syncExplanation', {
           defaultValue:
-            'Send the unchanged base recipe nutrition per original serving. Source ingredients and unrelated fields are preserved.',
+            'Update nutrition per original Mealie recipe serving. Avoid editing the recipe in Mealie while syncing: simultaneous nutrition edits can be overwritten. Ingredient amounts are not sent.',
         })}
       </Text>
       {!source.data.syncEligible && (
