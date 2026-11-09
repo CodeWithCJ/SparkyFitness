@@ -30,7 +30,7 @@ services:
       start_period: 30s
 
   server:
-    image: codewithcj/sparkyfitness_server:v1.11.0@sha256:51a2d7c19bd99b50ea17e579fe8d9d4febed895595356b1ddafe0fa808caf75e
+    image: codewithcj/sparkyfitness_server:v1.12.0@sha256:926f986286ffdfe27fa5ce7a0c20cdb7ec753fa5af782d89bda40b1b416551b5
     restart: on-failure
     # Longer than the server's 15 s shutdown limit, so running work can finish on stop.
     stop_grace_period: 20s
@@ -110,7 +110,7 @@ services:
       start_period: 120s
 
   frontend:
-    image: codewithcj/sparkyfitness:v1.11.0@sha256:5eb77135ccd8e58492ee9bd19b8714ea4a73a99623b863a9287ccecb0557cd17
+    image: codewithcj/sparkyfitness:v1.12.0@sha256:3419ebaf4ba8340b99b3637899f330375743ae1758b80808e9a364e8185ed617
     restart: on-failure
     depends_on:
       server:
@@ -130,7 +130,7 @@ services:
       NGINX_RATE_LIMIT: 20r/s
 
   garmin:
-    image: codewithcj/sparkyfitness_garmin:v1.11.0@sha256:7f4c69b0c7e4090a66c79f0580f49a55792206a38a66e09c1ca84150fda9ee74
+    image: codewithcj/sparkyfitness_garmin:v1.12.0@sha256:a108a14d8d11aacc83f62025909ee5a868f6f13e6b2517e1b635512a0888923e
     restart: on-failure
     # Stateless: no bind mount, and GARMIN_SERVICE_PORT / GARMIN_SERVICE_IS_CN
     # both default sanely (8000 / false) when unset.
