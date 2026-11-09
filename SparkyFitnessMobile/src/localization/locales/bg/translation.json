@@ -1241,7 +1241,6 @@
     "forceStatic": "Статично",
     "mechanicCompound": "Многоставно",
     "mechanicIsolation": "Изолиращо",
-    "caloriesPerHour": "Калории на час",
     "muscles": "Мускули",
     "classification": "Класификация",
     "selectValue": "Избери…",
@@ -1321,7 +1320,6 @@
     "setCount_one": "{{formattedCount}} серия",
     "setCount_other": "{{formattedCount}} серии",
     "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "unknownExercise": "Неизвестно упражнение",
     "addNotePlaceholder": "Добави бележка…",
     "setOf_one": "Серия {{number}} от {{count}}",
@@ -2395,7 +2393,6 @@
     "providerError": "Източникът е недостъпен",
     "noMatch": "Няма съвпадение",
     "basis": "На {{size}} {{unit}}",
-    "macros": "{{calories}} ккал · Протеин {{protein}} г · Въглехидрати {{carbs}} г · Мазнини {{fat}} г",
     "unknown": "—"
   },
   "settings": {
@@ -2517,7 +2514,6 @@
     "emptyForDate": "Няма записи за храна за тази дата",
     "diaryForDate": "Семеен дневник · {{date}}",
     "openMeal": "Отвори хранене {{meal}}",
-    "mealCalories": "{{calories}} ккал",
     "unnamedFood": "Неименувана храна",
     "selectAll": "Избери всички",
     "deselectAll": "Размаркирай всички",
@@ -2525,8 +2521,6 @@
     "selectFood": "Избери {{food}}",
     "deselectFood": "Размаркирай {{food}}",
     "continue": "Продължи",
-    "nutritionSummary": "{{calories}} ккал · П {{protein}} г · В {{carbs}} г · М {{fat}} г",
-    "selectedNutrition": "Избрано: {{calories}} ккал · П {{protein}} г · В {{carbs}} г · М {{fat}} г",
     "copyReview": "Преглед на копирането",
     "copyFrom": "Копиране от {{name}}",
     "copyTo": "Копиране към {{name}}",
@@ -2547,7 +2541,6 @@
     "quantityForFood": "Количество за {{food}}",
     "quantityMustBePositive": "Въведете количество, по-голямо от нула.",
     "copyNutrition": "Хранителни стойности за копиране",
-    "copyCalories": "{{calories}} ккал",
     "copyProtein": "{{protein}} г протеин",
     "copyCarbs": "{{carbs}} г въглехидрати",
     "copyFat": "{{fat}} г мазнини",
@@ -2803,7 +2796,6 @@
       "changeMetric": "Промени колоната за показател",
       "notesForSet": "Бележки за серия {{number}}",
       "addSet": "Добави серия към {{name}}",
-      "caloriesUnit": "ккал",
       "addSetLabel": "Добави серия",
       "heartRateFor": "Среден пулс за {{name}}",
       "liveHeartRateFor": "Текущ пулс за {{name}}",
@@ -3129,7 +3121,6 @@
     "healthTrends": "Здравни тенденции",
     "consumed": "Приети",
     "remaining": "остават",
-    "ofCalories": "от {{value}} ккал",
     "burned": "Изгорени",
     "hydration": "Хидратация",
     "ofVolume": "от {{value}} {{unit}}",
@@ -3271,7 +3262,6 @@
     "exerciseCaloriesDescription": "Каква част от изгорените при упражнения калории се добавя обратно към дневната ви цел.",
     "activityLevel": "Ниво на активност",
     "activityBaseline": "Използва се като базова линия за TDEE.",
-    "adaptiveFallback": "Резервната оценка, докато натрупате достатъчно данни от проследяване — а след това продължава да задава границите на правдоподобност. Измереният ви TDEE е ограничен в рамките на ±500 ккал от BMR × този множител.",
     "allowNegative": "Разреши по-ниска резервна прогноза",
     "negativeDescription": "Когато общите калории от устройството не са налични, позволи на резервния вариант (BMR + активни калории) да намали целта ви.",
     "includeResting": "Включи калориите в покой",
@@ -3864,8 +3854,6 @@
     "protein": "протеин",
     "carbs": "въглехидрати",
     "fat": "мазнини",
-    "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "proteinAmount": "протеин",
     "carbsAmount": "въглехидрати",
     "fatAmount": "мазнини",
@@ -3879,7 +3867,6 @@
   "foodSummary": {
     "tapToAddFood": "Докоснете, за да добавите храна",
     "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "nutritionBreakdown": "Хранителна разбивка за {{label}}"
   },
   "exerciseSummary": {
@@ -3899,7 +3886,6 @@
     "unknownFood": "Неизвестна храна",
     "adjustServing": "Коригирай порцията",
     "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "deleteFood": "Изтрий храната"
   },
   "exerciseRow": {
@@ -4013,7 +3999,6 @@
       "weightWithUnit": "Тегло ({{unit}})",
       "muscleMassWithUnit": "Мускулна маса ({{unit}})",
       "boneMassWithUnit": "Костна маса ({{unit}})",
-      "bmrWithUnit": "BMR (ккал)",
       "weightStones": "Тегло в стоунове",
       "weightPounds": "Тегло в паундове",
       "heightFeet": "Ръст във футове",
@@ -4031,8 +4016,7 @@
       "invalidHeight": "Невалиден ръст",
       "feetInchesNumber": "Въведете число за футове и инчове.",
       "bodyFatRange": "Процентът телесни мазнини трябва да е между 0 и 100.",
-      "bodyWaterRange": "Процентът вода в тялото трябва да е между 0 и 100.",
-      "bmrRange": "BMR трябва да е между 600 и 6000 ккал."
+      "bodyWaterRange": "Процентът вода в тялото трябва да е между 0 и 100."
     },
     "nothingToSave": "Няма нищо за запазване",
     "enterValue": "Въведете или изчистете поне една стойност.",
@@ -4394,8 +4378,6 @@
     "remaining": "остават",
     "over": "над целта",
     "title": "Обобщение",
-    "projectedTdee": "Прогнозен TDEE: {{value}} ккал",
-    "goalModeTarget": "Цел според режима: {{value}} ккал",
     "healthConnectProjectionSource": "Общо калории от устройството",
     "fallbackProjectionSource": "Резервен вариант: BMR + активни калории",
     "legacyProjectionSource": "Прогноза от устройството",
@@ -4445,7 +4427,6 @@
     "servingSize": "Размер на порцията",
     "servingUnit": "Мерна единица на порцията",
     "autoScaleNutrition": "Автоматично преизчисляване на хранителните стойности",
-    "caloriesRequired": "Калории (ккал) *",
     "saltG": "Сол (g)",
     "sodiumEntryUnit": "Въвеждане на натрий като",
     "sodiumShort": "натрий",
@@ -5023,7 +5004,6 @@
     "showMore": "Покажи повече",
     "best": "Най-добро ({{unit}})",
     "last": "Последно ({{unit}})",
-    "caloriesPerHour": "Ккал / час",
     "equipment": "Оборудване",
     "primaryMuscles": "Основни мускули",
     "secondaryMuscles": "Вторични мускули",
@@ -5232,11 +5212,8 @@
     "proteinLabel": "Протеин",
     "carbsLabel": "Въглехидрати",
     "fatLabel": "Мазнини",
-    "nutritionLine": "{{calories}} ккал · {{protein}} g П · {{carbs}} g В · {{fat}} g М",
     "dailyNutritionAccessibility": "Дневно {{nutrient}} {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "{{mealType}} общо {{calories}} ккал, {{protein}} g протеин, {{carbs}} g въглехидрати, {{fat}} g мазнини",
     "mealTypeMacros": "{{protein}} g П · {{carbs}} g В · {{fat}} g М",
-    "caloriesValue": "{{value}} ккал",
     "nutritionLoading": "Зареждане на липсващите хранителни детайли. Общите стойности може да са непълни.",
     "nutritionLoadFailed": "Някои хранителни детайли не можаха да се заредят. Общите стойности може да са непълни.",
     "assignmentRequired": "Добавете поне едно пълно разпределение на хранене.",
@@ -5284,7 +5261,6 @@
     "protein": "протеин",
     "carbs": "въглехидрати",
     "fat": "мазнини",
-    "calories": "ккал",
     "viewLinkedMeal": "Преглед на свързаното ястие {{name}}",
     "logMeal": "Запиши ястие",
     "planMeal": "Планирай ястие",
@@ -5558,7 +5534,6 @@
     },
     "labels": {
       "caloriesShort": "ккал",
-      "caloriesUnit": "ккал",
       "foods": "храни",
       "meals": "ястия",
       "meal": "Ястие",
@@ -5650,7 +5625,6 @@
     "none": "Няма намерени синхронизирани тренировки за този ден.",
     "workoutFallback": "Тренировка",
     "minutes": "{{value}} мин",
-    "calories": "{{value}} ккал",
     "sameSession": "Същата сесия",
     "sameTime": "Застъпва се по време",
     "countHeading": "Отчитане в дневния сбор",
@@ -5660,7 +5634,6 @@
     "lower": "По-ниската от двете ({{value}})",
     "average": "Средната стойност ({{value}})",
     "custom": "Потребителска стойност",
-    "customLabel": "Общо за сесията (ккал)",
     "link": "Свържи тренировките",
     "unlink": "Прекъсни връзката",
     "linkError": "Неуспешно свързване на тренировките.",
@@ -6105,11 +6078,8 @@
       "count_one": "{{count}} съставка",
       "count_other": "{{count}} съставки",
       "totals": "Общо",
-      "rowSummary": "{{grams}} g · {{calories}} ккал",
-      "macroSummary": "{{calories}} ккал · {{protein}}П · {{carbs}}В · {{fat}}М",
       "addFood": "Добави храна",
       "addedFood": "Храна",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} ккал",
       "pickedFoodNote": "Добавено от вашите храни. Премахнете го и го добавете отново, за да промените количеството."
     },
     "match": {
@@ -6171,7 +6141,6 @@
       "activity": "Активност",
       "duration": "Продължителност (мин)",
       "distance": "Разстояние ({{unit}})",
-      "calories": "Калории",
       "avgHeartRate": "Среден пулс (уд./мин)",
       "notes": "Бележки",
       "notesPlaceholder": "Бележки (по избор)..."
@@ -6214,8 +6183,7 @@
     "accessibility": {
       "addFood": "Добави храна",
       "copyMeal": "Копирай храненето в друг ден"
-    },
-    "targetCalories": "Цел: {{calories}} ккал"
+    }
   },
   "nutrientTrends": {
     "title": "Тенденции за {{nutrient}}",
@@ -6512,11 +6480,9 @@
       "title": "Калории",
       "loadFailed": "Неуспешно зареждане на данните за калории",
       "empty": "Няма данни за калории за този период",
-      "tooltip": "{{formattedCount}} приети ккал",
       "tooltipMacro": "{{percent}}% {{macroLabel}}",
       "otherMacro": "Други",
       "avgCalories": "Средно",
-      "avgCaloriesValue": "{{formattedCount}} ккал",
       "noAverage": "—"
     },
     "loading": "Зареждане на графиката...",
@@ -7442,7 +7408,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} km",
-    "kcal": "{{value}} ккал",
     "bpm": "{{value}} уд./мин",
     "kg": "{{value}} kg",
     "percent": "{{value}}%",
@@ -7761,7 +7726,6 @@
       "cadence": "Среден каденс",
       "spm": "{{value}} кр./мин",
       "strideLength": "Дължина на крачката",
-      "calories": "{{value}} ккал",
       "minutes_one": "{{formattedCount}} мин",
       "minutes_other": "{{formattedCount}} мин",
       "bpm": "{{value}} уд./мин",
@@ -8041,9 +8005,7 @@
     "targetEatingHours": "Целеви часове за хранене",
     "fastingHoursRange": "Въведете от 0.5 до 168 часа.",
     "eatingHoursRange": "Въведете от 0 до 24 часа.",
-    "calorieThreshold": "Калориен праг (ккал)",
     "calorieThresholdHint": "Междинни хранения или напитки под тази стойност (черно кафе, вода, електролити) няма да прекъснат вашия фастинг.",
-    "calorieThresholdRange": "Въведете цяло число от 0 до 500.",
     "preEndAlert": "Предупреждение преди целта (минути)",
     "preEndAlertHint": "Колко време преди достигане на целта за фастинг да се изпрати напомняне. Въведете 0, за да го изключите.",
     "preEndAlertRange": "Въведете цяло число от 0 до 180.",
@@ -8517,12 +8479,9 @@
     "invalidValue": "Въведете валидно число за всяка цел.",
     "fields": {
       "water": "Вода ({{unit}})",
-      "exerciseCalories": "Калории от тренировки (ккал)",
       "exerciseMinutes": "Продължителност на тренировките (мин)",
-      "steps": "Дневни крачки",
-      "baselineCalories": "Базови калории (ккал)"
+      "steps": "Дневни крачки"
     },
-    "adaptiveNoteToday": "Адаптивният режим е включен, така че вашата цел за калории се променя ежедневно. Днес тя е {{calories}} ккал. Базовата стойност по-долу определя с колко над или под прогнозното ви ниво на поддържане се стремите да бъдете; тя не е фиксирана дневна цел.",
     "adaptiveNote": "Адаптивният режим е включен, така че вашата цел за калории се променя ежедневно. Базовата стойност по-долу определя с колко над или под прогнозното ви ниво на поддържане се стремите да бъдете; тя не е фиксирана дневна цел.",
     "customNutrients": {
       "notSet": "Няма цел"
@@ -8540,7 +8499,6 @@
       "mustBe100": "Процентите на храненията трябва да правят общо 100%.",
       "total": "Общо: {{total}}% (трябва да е 100%, за да запазите)",
       "totalOk": "Общо: {{total}}%",
-      "mealCalories": "{{meal}} ({{calories}} ккал)",
       "distributeRemaining": "Разпредели остатъка равномерно",
       "lock": "Заключи {{meal}}",
       "unlock": "Отключи {{meal}}",
@@ -8609,7 +8567,6 @@
       "description": "Шаблонът е запазен набор от цели. „Приложи“ попълва формуляра по-горе с него (докоснете „Запази“, за да ги направите ваши цели); „Редактирай“ променя самия шаблон.",
       "namePlaceholder": "Име на шаблона",
       "empty": "Все още няма шаблони за цели.",
-      "summary": "{{calories}} ккал, {{protein}}g П, {{carbs}}g В, {{fat}}g М",
       "apply": "Приложи",
       "deleteTitle": "Изтриване на шаблона?",
       "deleteMessage": "Изтриване на „{{name}}“? Дните от седмичния план, които го използват, ще останат без шаблон.",
@@ -8734,7 +8691,6 @@
     "dailyAverages": "Среднодневни стойности",
     "loadFailed": "Неуспешно зареждане на данните за хранене",
     "empty": "Няма записана храна през този период",
-    "kcal": "{{value}} ккал",
     "grams": "{{value}} g",
     "changeHint": "{{change}} спрямо предходните {{days}} дни",
     "onTarget": "В рамките на 10% от целта",
@@ -9464,7 +9420,6 @@
     "jumpingRope": "Скачане на въже на часовника ви",
     "next": "Следва: {{step}}",
     "calories": "Калории",
-    "kcal": "ккал",
     "ended": "Тренировката на часовника ви приключи или е извън обхват. Завършената тренировка се добавя в дневника ви.",
     "indoorNote": "На закрито дистанцията е приблизителна оценка на часовника. Можете да я коригирате според показанията на пътеката, когато приключите.",
     "starting": "Стартиране на часовника ви…",

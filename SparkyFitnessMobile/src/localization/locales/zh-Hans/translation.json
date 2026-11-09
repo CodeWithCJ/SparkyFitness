@@ -684,7 +684,6 @@
     "forceStatic": "静态",
     "mechanicCompound": "复合",
     "mechanicIsolation": "孤立",
-    "caloriesPerHour": "每小时卡路里",
     "muscles": "肌群",
     "classification": "分类",
     "selectValue": "选择…",
@@ -759,7 +758,6 @@
     "km": "公里",
     "setCount_other": "{{formattedCount}} 组",
     "caloriesShort": "千卡",
-    "caloriesUnit": "卡",
     "unknownExercise": "未知动作",
     "addNotePlaceholder": "添加备注…",
     "setOf_other": "第 {{number}} 组，共 {{count}} 组",
@@ -956,7 +954,6 @@
     "emptyForDate": "此日期没有食物记录",
     "diaryForDate": "家庭日记 · {{date}}",
     "openMeal": "打开 {{meal}} 餐",
-    "mealCalories": "{{calories}} 千卡",
     "unnamedFood": "未命名食物",
     "selectAll": "全选",
     "deselectAll": "取消全选",
@@ -964,15 +961,12 @@
     "selectFood": "选择 {{food}}",
     "deselectFood": "取消选择 {{food}}",
     "continue": "继续",
-    "nutritionSummary": "{{calories}} 千卡 · P {{protein}} 克 · C {{carbs}} 克 · F {{fat}} 克",
-    "selectedNutrition": "已选择：{{calories}} 千卡 · P {{protein}} 克 · C {{carbs}} 克 · F {{fat}} 克",
     "copyReview": "查看复制",
     "copyFrom": "正在从 {{name}} 复制",
     "copyMealTitle": "{{meal}} 餐",
     "quantityForFood": "{{food}} 的数量",
     "quantityMustBePositive": "请输入大于零的数量。",
     "copyNutrition": "复制营养",
-    "copyCalories": "{{calories}} 千卡",
     "copyProtein": "{{protein}} 克蛋白质",
     "copyCarbs": "{{carbs}} 克碳水",
     "copyFat": "{{fat}} 克脂肪",
@@ -1191,7 +1185,6 @@
       "changeMetric": "更改指标列",
       "notesForSet": "第 {{number}} 组的备注",
       "addSet": "向 {{name}} 添加组",
-      "caloriesUnit": "千卡",
       "addSetLabel": "添加组",
       "viewImages": "查看 {{name}} 的图片",
       "heartRateFor": "{{name}} 的平均心率",
@@ -1525,7 +1518,6 @@
     "healthTrends": "健康趋势",
     "consumed": "已摄入",
     "remaining": "剩余",
-    "ofCalories": "（共 {{value}} 千卡）",
     "burned": "已消耗",
     "hydration": "饮水",
     "ofVolume": "（共 {{value}} {{unit}}）",
@@ -1660,7 +1652,6 @@
     "exerciseCaloriesDescription": "你的运动卡路里中有多少被加回每日目标。",
     "activityLevel": "活动水平",
     "activityBaseline": "用作 TDEE 的基线。",
-    "adaptiveFallback": "在你积累足够追踪数据之前的备用估算，之后也会继续用于设定合理性上限。你测得的 TDEE 会被限制在 BMR × 此倍数的 ±500 kcal 范围内。",
     "allowNegative": "允许较低的回退预测",
     "negativeDescription": "当设备总量不可用时，允许 BMR + 活动卡路里回退降低你的目标。",
     "includeResting": "包含静息卡路里",
@@ -2246,8 +2237,6 @@
     "protein": "蛋白质",
     "carbs": "碳水",
     "fat": "脂肪",
-    "caloriesShort": "千卡",
-    "caloriesUnit": "卡",
     "proteinAmount": "蛋白质",
     "carbsAmount": "碳水",
     "fatAmount": "脂肪",
@@ -2261,7 +2250,6 @@
   "foodSummary": {
     "tapToAddFood": "点按以添加食物",
     "caloriesShort": "千卡",
-    "caloriesUnit": "卡",
     "nutritionBreakdown": "{{label}} 营养明细"
   },
   "exerciseSummary": {
@@ -2281,7 +2269,6 @@
     "unknownFood": "未知食物",
     "adjustServing": "调整份量",
     "caloriesShort": "千卡",
-    "caloriesUnit": "卡",
     "deleteFood": "删除食物"
   },
   "exerciseRow": {
@@ -2395,7 +2382,6 @@
       "weightWithUnit": "体重（{{unit}}）",
       "muscleMassWithUnit": "肌肉量（{{unit}}）",
       "boneMassWithUnit": "骨量（{{unit}}）",
-      "bmrWithUnit": "BMR（千卡）",
       "weightStones": "以英石计的体重",
       "weightPounds": "以磅计的体重",
       "heightFeet": "以英尺计的身高",
@@ -2413,8 +2399,7 @@
       "invalidHeight": "无效的身高",
       "feetInchesNumber": "请为英尺和英寸输入数字。",
       "bodyFatRange": "体脂率必须在 0 到 100 之间。",
-      "bodyWaterRange": "体水率必须在 0 到 100 之间。",
-      "bmrRange": "BMR 必须在 3600 到 6000 千卡之间。"
+      "bodyWaterRange": "体水率必须在 0 到 100 之间。"
     },
     "nothingToSave": "没有可保存的内容",
     "enterValue": "请至少输入或清除一个数值。",
@@ -2760,8 +2745,6 @@
     "remaining": "剩余",
     "over": "超出",
     "title": "摘要",
-    "projectedTdee": "预计 TDEE：{{value}} 千卡",
-    "goalModeTarget": "目标模式目标：{{value}} 千卡",
     "healthConnectProjectionSource": "Health Connect 总卡路里",
     "fallbackProjectionSource": "BMR + 活动卡路里回退",
     "legacyProjectionSource": "设备预测",
@@ -2796,7 +2779,6 @@
     "servingSize": "每份大小",
     "servingUnit": "每份单位",
     "autoScaleNutrition": "自动缩放营养",
-    "caloriesRequired": "卡路里（千卡）*",
     "ai": {
       "couldNotEstimate": "无法估算",
       "noTrustedDefault": "该食物没有可信的默认值可缩放。",
@@ -3286,7 +3268,6 @@
     "showMore": "显示更多",
     "best": "最佳（{{unit}}）",
     "last": "上次（{{unit}}）",
-    "caloriesPerHour": "卡/小时",
     "equipment": "器械",
     "primaryMuscles": "主要肌群",
     "secondaryMuscles": "次要肌群",
@@ -3408,11 +3389,8 @@
     "proteinLabel": "蛋白质",
     "carbsLabel": "碳水",
     "fatLabel": "脂肪",
-    "nutritionLine": "{{calories}} 千卡 · {{protein}} 克蛋白质 · {{carbs}} 克碳水 · {{fat}} 克脂肪",
     "dailyNutritionAccessibility": "每日 {{nutrient}} {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "{{mealType}} 总计 {{calories}} 千卡、{{protein}} 克蛋白质、{{carbs}} 克碳水、{{fat}} 克脂肪",
     "mealTypeMacros": "{{protein}} 克蛋白质 · {{carbs}} 克碳水 · {{fat}} 克脂肪",
-    "caloriesValue": "{{value}} 千卡",
     "nutritionLoading": "正在加载缺失的营养详情。总计可能不完整。",
     "nutritionLoadFailed": "部分营养详情无法加载。总计可能不完整。",
     "assignmentRequired": "请至少添加一个完整的餐食分配。",
@@ -3458,7 +3436,6 @@
     "protein": "蛋白质",
     "carbs": "碳水",
     "fat": "脂肪",
-    "calories": "卡",
     "viewLinkedMeal": "查看关联餐食 {{name}}",
     "logMeal": "记录餐食",
     "planMeal": "计划餐食",
@@ -3672,7 +3649,6 @@
     },
     "labels": {
       "caloriesShort": "千卡",
-      "caloriesUnit": "卡",
       "foods": "个食物",
       "meals": "份餐食",
       "meal": "餐食",
@@ -4262,11 +4238,8 @@
       "empty": "所有食材均已被移除。请添加一个，或切换到单份食物。",
       "count_other": "{{count}} 种食材",
       "totals": "总计",
-      "rowSummary": "{{grams}} 克 · {{calories}} 千卡",
-      "macroSummary": "{{calories}} 千卡 · {{protein}} 蛋白质 · {{carbs}} 碳水 · {{fat}} 脂肪",
       "addFood": "添加食物",
       "addedFood": "食物",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} 千卡",
       "pickedFoodNote": "从你的食物中添加。移除并重新添加以更改数量。"
     },
     "match": {
@@ -4326,7 +4299,6 @@
       "activity": "活动",
       "duration": "时长（分钟）",
       "distance": "距离（{{unit}}）",
-      "calories": "卡路里",
       "avgHeartRate": "平均心率（bpm）",
       "notes": "备注",
       "notesPlaceholder": "可选备注..."
@@ -4369,8 +4341,7 @@
     "accessibility": {
       "addFood": "添加食物",
       "copyMeal": "将餐食复制到另一天"
-    },
-    "targetCalories": "目标：{{calories}} 千卡"
+    }
   },
   "nutrientTrends": {
     "title": "{{nutrient}} 趋势",
@@ -4662,11 +4633,9 @@
       "title": "热量",
       "loadFailed": "无法加载热量数据",
       "empty": "此期间没有热量数据",
-      "tooltip": "已摄入 {{formattedCount}} 千卡",
       "tooltipMacro": "{{percent}}% {{macroLabel}}",
       "otherMacro": "其他",
       "avgCalories": "平均",
-      "avgCaloriesValue": "{{formattedCount}} 千卡",
       "noAverage": "—"
     },
     "noTrendData": "无足够数据显示趋势。",
@@ -5656,7 +5625,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} 公里",
-    "kcal": "{{value}} 千卡",
     "bpm": "{{value}} bpm",
     "kg": "{{value}} 千克",
     "percent": "{{value}}%",
@@ -6174,7 +6142,6 @@
       "olderSessions": "较早的时段",
       "unitKm": "km",
       "unitMi": "mi",
-      "calories": "{{value}} 卡路里",
       "minutes_other": "{{formattedCount}} 分钟",
       "bpm": "{{value}} 次/分钟",
       "distance": "距离",
@@ -6670,9 +6637,7 @@
     "targetEatingHours": "目标进食时数",
     "fastingHoursRange": "输入 0.5 至 168 小时。",
     "eatingHoursRange": "输入 0 至 24 小时。",
-    "calorieThreshold": "热量阈值（kcal）",
     "calorieThresholdHint": "低于此值的点心或饮品（黑咖啡、水、电解质）不会打断你的断食。",
-    "calorieThresholdRange": "输入 0 至 500 的整数。",
     "preEndAlert": "目标前提醒（分钟）",
     "preEndAlertHint": "在断食目标前多久发送提醒。输入 0 以关闭。",
     "preEndAlertRange": "输入 0 至 180 的整数。",
@@ -7099,12 +7064,9 @@
     "invalidValue": "为每个目标输入有效数字。",
     "fields": {
       "water": "水分（{{unit}}）",
-      "exerciseCalories": "运动热量（kcal）",
       "exerciseMinutes": "运动时长（分钟）",
-      "steps": "每日步数",
-      "baselineCalories": "基准热量（kcal）"
+      "steps": "每日步数"
     },
-    "adaptiveNoteToday": "自适应模式已开启，因此你的热量目标每日变化。今日为 {{calories}} kcal。下方的基准设置你目标与估算维持热量的偏离幅度；它不是固定每日目标。",
     "adaptiveNote": "自适应模式已开启，因此你的热量目标每日变化。下方的基准设置你目标与估算维持热量的偏离幅度；它不是固定每日目标。",
     "customNutrients": {
       "notSet": "无目标"
@@ -7122,7 +7084,6 @@
       "mustBe100": "餐点百分比总和必须为 100%。",
       "total": "总计：{{total}}%（必须为 100% 才能保存）",
       "totalOk": "总计：{{total}}%",
-      "mealCalories": "{{meal}}（{{calories}} kcal）",
       "distributeRemaining": "平均分配剩余",
       "lock": "锁定 {{meal}}",
       "unlock": "解锁 {{meal}}",
@@ -7191,7 +7152,6 @@
       "description": "预设是一组已保存的目标。应用会将上方的表单填入该组目标（点击“保存”使其成为你的目标）；编辑则修改预设本身。",
       "namePlaceholder": "预设名称",
       "empty": "暂无目标预设。",
-      "summary": "{{calories}} kcal、蛋白质 {{protein}}g、碳水 {{carbs}}g、脂肪 {{fat}}g",
       "apply": "应用",
       "deleteTitle": "删除预设？",
       "deleteMessage": "删除“{{name}}”？使用它的每周计划天数将没有预设。",
@@ -7270,7 +7230,6 @@
     "dailyAverages": "每日平均",
     "loadFailed": "无法加载营养数据",
     "empty": "此期间没有记录食物",
-    "kcal": "{{value}} 千卡",
     "grams": "{{value}} g",
     "changeHint": "{{change}}，相比前 {{days}} 天",
     "onTarget": "在目标的 10% 以内",
@@ -7879,7 +7838,6 @@
     "running": "正在你的手表上跑步",
     "next": "下一个：{{step}}",
     "calories": "热量",
-    "kcal": "千卡",
     "ended": "你手表上的训练已结束或超出范围。完成的训练会加入你的日记。",
     "indoorNote": "室内距离是手表的估算。你可以在结束时更正为跑步机的数字。",
     "starting": "正在你的手表上开始…",

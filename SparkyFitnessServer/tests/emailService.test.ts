@@ -26,8 +26,8 @@ vi.mock('../models/userRepository.js', () => ({
   findUserIdByEmail: vi.fn(),
 }));
 
-// A German catalog that exists only for these tests. Non-English locale files
-// come from Weblate and are never committed by hand.
+// Synthetic German catalog used in the tests below. Server translations
+// come from Weblate.
 const germanCatalog = {
   email: {
     passwordReset: {
@@ -46,13 +46,18 @@ const germanCatalog = {
 function mockLocaleFiles(files: Record<string, unknown>) {
   const realExists = fs.existsSync;
   const realRead = fs.readFileSync;
+  const isLocaleCatalog = (file: fs.PathLike | number) =>
+    /[/\\]locales[/\\][^/\\]+[/\\]translation\.json$/.test(String(file));
   const find = (file: fs.PathLike | number) =>
     Object.entries(files).find(([language]) =>
       String(file).endsWith(path.join('locales', language, 'translation.json'))
     );
-  vi.spyOn(fs, 'existsSync').mockImplementation((file) =>
-    find(file as fs.PathLike) ? true : realExists(file)
-  );
+  vi.spyOn(fs, 'existsSync').mockImplementation((file) => {
+    if (isLocaleCatalog(file)) {
+      return Boolean(find(file as fs.PathLike));
+    }
+    return realExists(file);
+  });
   vi.spyOn(fs, 'readFileSync').mockImplementation(((
     file: fs.PathOrFileDescriptor,
     options?: unknown

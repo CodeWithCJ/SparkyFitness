@@ -675,7 +675,6 @@
     "forceStatic": "Статика",
     "mechanicCompound": "Базовые",
     "mechanicIsolation": "Изоляция",
-    "caloriesPerHour": "Калории в час",
     "muscles": "Мышцы",
     "classification": "Классификация",
     "selectValue": "Выберите…",
@@ -757,7 +756,6 @@
     "setCount_few": "{{formattedCount}} подхода",
     "setCount_many": "{{formattedCount}} подходов",
     "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "unknownExercise": "Неизвестное упражнение",
     "addNotePlaceholder": "Добавить примечание…",
     "setOf_one": "Подход {{number}} из {{count}}",
@@ -888,7 +886,6 @@
     "emptyForDate": "Для этой даты нет данных о продуктах питания",
     "diaryForDate": "Семейный дневник · {{date}}",
     "openMeal": "Открыть {{meal}}",
-    "mealCalories": "{{calories}} ккал",
     "unnamedFood": "Продукт без названия",
     "selectAll": "Выберите все",
     "deselectAll": "Снять выделение со всего",
@@ -896,15 +893,12 @@
     "selectFood": "Выберите {{food}}",
     "deselectFood": "Снимите выделение с {{food}}",
     "continue": "Продолжить",
-    "nutritionSummary": "{{calories}} ккал · Б {{protein}} г · У {{carbs}} г · Ж {{fat}} г",
-    "selectedNutrition": "Выбрано: {{calories}} ккал · Б {{protein}} г · У {{carbs}} г · Ж {{fat}} г",
     "copyReview": "Тестовая копия",
     "copyFrom": "Копирование из {{name}}",
     "copyMealTitle": "{{meal}} приём пищи",
     "quantityForFood": "Количество {{food}}",
     "quantityMustBePositive": "Введите количество, превышающее ноль.",
     "copyNutrition": "Скопировать данные о питании",
-    "copyCalories": "{{calories}} ккал",
     "copyProtein": "{{protein}} г протеина",
     "copyCarbs": "{{carbs}} г углеводов",
     "copyFat": "{{fat}} г жира",
@@ -1150,7 +1144,6 @@
       "changeMetric": "Изменить столбец метрик",
       "notesForSet": "Заметки для подхода {{number}}",
       "addSet": "Добавить подход к {{name}}",
-      "caloriesUnit": "ккал",
       "addSetLabel": "Добавить подход",
       "viewImages": "Посмотреть изображения {{name}}",
       "heartRateFor": "Средний пульс: {{name}}",
@@ -1578,7 +1571,6 @@
     "healthTrends": "Тенденции в состоянии здоровья",
     "consumed": "Потреблено",
     "remaining": "осталось",
-    "ofCalories": "из {{value}} ккал",
     "burned": "Сожжено",
     "hydration": "Уровень гидратации",
     "ofVolume": "из {{value}} {{unit}}",
@@ -1709,7 +1701,6 @@
     "exerciseCaloriesDescription": "Какая часть калорий, потраченных во время упражнения, добавляется к вашей ежедневной цели.",
     "activityLevel": "Уровень активности",
     "activityBaseline": "Используется в качестве базового значения для расчета суточной потребности в энергии (TDEE).",
-    "adaptiveFallback": "Это предварительная оценка, которая используется до тех пор, пока не будет собрано достаточно данных для отслеживания, и она продолжает использоваться для определения пределов достоверности. Ваше измеренное значение TDEE ограничено диапазоном ±500 ккал от значения BMR, умноженного на этот множитель.",
     "allowNegative": "Разрешить использование более низкой альтернативной проекции",
     "negativeDescription": "Когда общая информация об устройстве недоступна, пусть значения BMR и активных калорий, используемые в качестве резервных, снизят вашу целевую величину.",
     "includeResting": "Учитывать расход калорий в состоянии покоя",
@@ -2254,8 +2245,6 @@
     "protein": "белок",
     "carbs": "углеводы",
     "fat": "жиры",
-    "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "proteinAmount": "белок",
     "carbsAmount": "углеводы",
     "fatAmount": "жиры",
@@ -2269,7 +2258,6 @@
   "foodSummary": {
     "tapToAddFood": "Нажмите, чтобы добавить продукт",
     "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "nutritionBreakdown": "Подробная информация о питательных веществах {{label}}"
   },
   "exerciseSummary": {
@@ -2289,7 +2277,6 @@
     "unknownFood": "Неизвестный продукт",
     "adjustServing": "Настроить порцию",
     "caloriesShort": "ккал",
-    "caloriesUnit": "Кал",
     "deleteFood": "Удалить продукт"
   },
   "exerciseRow": {
@@ -2403,7 +2390,6 @@
       "weightWithUnit": "Вес ({{unit}})",
       "muscleMassWithUnit": "Масса мышц ({{unit}})",
       "boneMassWithUnit": "Костная масса ({{unit}})",
-      "bmrWithUnit": "BMR (ккал)",
       "weightStones": "Вес в стоунах",
       "weightPounds": "Вес в фунтах",
       "heightFeet": "Рост в футах",
@@ -2421,8 +2407,7 @@
       "invalidHeight": "Недопустимое значение роста",
       "feetInchesNumber": "Введите число для футов и дюймов.",
       "bodyFatRange": "Процент жира в организме должен быть в диапазоне от 0 до 100.",
-      "bodyWaterRange": "Процентное содержание воды в организме должно быть в диапазоне от 0 до 100.",
-      "bmrRange": "BMR должен быть в диапазоне от 600 до 6000 ккал."
+      "bodyWaterRange": "Процентное содержание воды в организме должно быть в диапазоне от 0 до 100."
     },
     "nothingToSave": "Нечего сохранять",
     "enterValue": "Введите или удалите хотя бы одно значение.",
@@ -2784,8 +2769,6 @@
     "remaining": "осталось",
     "over": "выше",
     "title": "Сводка",
-    "projectedTdee": "Прогнозируемая суточная потребность в энергии: {{value}} ккал",
-    "goalModeTarget": "Целевое значение в режиме цели: {{value}} ккал",
     "healthConnectProjectionSource": "Общее количество калорий в Health Connect",
     "fallbackProjectionSource": "Резервный расчёт: базовый метаболизм + активные калории",
     "legacyProjectionSource": "Проецирование данных с устройства",
@@ -2820,7 +2803,6 @@
     "servingSize": "Размер порции",
     "servingUnit": "Единица измерения порции",
     "autoScaleNutrition": "Автоматическое масштабирование данных о питании",
-    "caloriesRequired": "Калории (ккал) *",
     "ai": {
       "couldNotEstimate": "Не удалось оценить",
       "noTrustedDefault": "Для данного продукта не заданы надежные значения по умолчанию, на основе которых можно рассчитать его параметры.",
@@ -3328,7 +3310,6 @@
     "showMore": "Показать больше",
     "best": "Лучший результат ({{unit}})",
     "last": "Последний ({{unit}})",
-    "caloriesPerHour": "Кал/час",
     "equipment": "Оборудование",
     "primaryMuscles": "Основные мышцы",
     "secondaryMuscles": "Вторичные мышцы",
@@ -3399,7 +3380,6 @@
     "protein": "белок",
     "carbs": "углеводы",
     "fat": "жиры",
-    "calories": "кал",
     "viewLinkedMeal": "Просмотреть связанный приём пищи {{name}}",
     "logMeal": "Записать приём пищи",
     "deleting": "Удаление…",
@@ -3627,7 +3607,6 @@
     },
     "labels": {
       "caloriesShort": "ккал",
-      "caloriesUnit": "кал",
       "foods": "продукты",
       "meals": "приёмы пищи",
       "meal": "Приём пищи",
@@ -4246,11 +4225,8 @@
       "count_few": "{{count}} ингредиента",
       "count_many": "{{count}} ингредиентов",
       "totals": "Всего",
-      "rowSummary": "{{grams}} г · {{calories}} ккал",
-      "macroSummary": "{{calories}} ккал · {{protein}}Б · {{carbs}}У · {{fat}}Ж",
       "addFood": "Добавить продукт",
       "addedFood": "Продукт",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} ккал",
       "pickedFoodNote": "Добавлено из списка ваших продуктов. Чтобы изменить количество, удалите его и добавьте снова."
     },
     "match": {
@@ -4314,7 +4290,6 @@
       "activity": "Активность",
       "duration": "Продолжительность (мин.)",
       "distance": "Расстояние ({{unit}})",
-      "calories": "Калории",
       "avgHeartRate": "Средняя частота сердечных сокращений (ударов в минуту)",
       "notes": "Заметки",
       "notesPlaceholder": "Необязательные заметки…"
@@ -4357,8 +4332,7 @@
     "accessibility": {
       "addFood": "Добавить продукт",
       "copyMeal": "Скопировать приём пищи в другой день"
-    },
-    "targetCalories": "Цель: {{calories}} ккал"
+    }
   },
   "nutrientTrends": {
     "title": "Тенденции для {{nutrient}}",
@@ -4696,10 +4670,8 @@
       "noAverage": "—",
       "loadFailed": "Не удалось загрузить данные о калориях",
       "empty": "Нет данных о калориях за этот период",
-      "tooltip": "Потреблено {{formattedCount}} ккал",
       "tooltipMacro": "{{percent}}% {{macroLabel}}",
-      "otherMacro": "Другое",
-      "avgCaloriesValue": "{{formattedCount}} ккал"
+      "otherMacro": "Другое"
     },
     "heartRate": {
       "title": "Пульс в состоянии покоя",
@@ -5470,7 +5442,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} км",
-    "kcal": "{{value}} ккал",
     "bpm": "{{value}} уд./мин",
     "kg": "{{value}} кг",
     "percent": "{{value}}%",
@@ -5579,11 +5550,8 @@
     "proteinLabel": "Белок",
     "carbsLabel": "Углеводы",
     "fatLabel": "Жиры",
-    "nutritionLine": "{{calories}} ккал · {{protein}} г Б · {{carbs}} г У · {{fat}} г Ж",
     "dailyNutritionAccessibility": "Ежедневное потребление {{nutrient}}: {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "Всего для {{mealType}}: {{calories}} ккал, {{protein}} г протеина, {{carbs}} г углеводов, {{fat}} г жира",
     "mealTypeMacros": "{{protein}} г Б · {{carbs}} г У · {{fat}} г Ж",
-    "caloriesValue": "{{value}} ккал",
     "nutritionLoading": "Загружаются недостающие данные о питании. Итоговые значения могут быть неполными.",
     "nutritionLoadFailed": "Не удалось загрузить некоторые данные о питании. Итоговые значения могут быть неполными.",
     "assignmentRequired": "Добавьте как минимум один полный приём пищи.",
@@ -6440,8 +6408,7 @@
     "retry": "Не удалось загрузить источники. Нажмите, чтобы повторить.",
     "providerError": "Источник недоступен",
     "noMatch": "Совпадений нет",
-    "basis": "На {{size}} {{unit}}",
-    "macros": "{{calories}} ккал · Белки {{protein}} г · Углеводы {{carbs}} г · Жиры {{fat}} г"
+    "basis": "На {{size}} {{unit}}"
   },
   "activityShare": {
     "takePhoto": "Сделать фото",
@@ -6761,7 +6728,6 @@
       "cadence": "Средний каденс",
       "spm": "{{value}} шаг/мин",
       "strideLength": "Длина шага",
-      "calories": "{{value}} ккал",
       "avgHeartRate": "Средняя ЧСС",
       "route": "Маршрут",
       "routeA11y": "Маршрут этой тренировки от зелёной точки до красного кольца",
@@ -7155,7 +7121,6 @@
       "needsProfile": "Укажите пол в профиле веб-версии для расчёта рекомендуемых целей по нутриентам."
     },
     "presets": {
-      "summary": "{{calories}} ккал, {{protein}} г белка, {{carbs}} г углеводов, {{fat}} г жиров",
       "description": "Шаблон — сохранённый набор целей. «Применить» заполняет им форму выше. Нажмите «Сохранить», чтобы сохранить эти цели. «Изменить» меняет сам шаблон.",
       "namePlaceholder": "Название шаблона",
       "empty": "Шаблонов целей пока нет.",
@@ -7219,12 +7184,9 @@
     "invalidValue": "Введите корректное число для каждой цели.",
     "fields": {
       "water": "Вода ({{unit}})",
-      "exerciseCalories": "Калории тренировок (ккал)",
       "exerciseMinutes": "Длительность тренировок (мин)",
-      "steps": "Шаги за день",
-      "baselineCalories": "Базовая калорийность (ккал)"
+      "steps": "Шаги за день"
     },
-    "adaptiveNoteToday": "Включён адаптивный режим, поэтому цель по калориям меняется ежедневно. Сегодня она составляет {{calories}} ккал. Базовое значение ниже задаёт желаемый избыток или дефицит относительно расчётного уровня поддержания веса; это не фиксированная дневная цель.",
     "adaptiveNote": "Включён адаптивный режим, поэтому цель по калориям меняется ежедневно. Базовое значение ниже задаёт желаемый избыток или дефицит относительно расчётного уровня поддержания веса; это не фиксированная дневная цель.",
     "customNutrients": {
       "notSet": "Без цели"
@@ -7242,7 +7204,6 @@
       "mustBe100": "Сумма долей приёмов пищи должна составлять 100%.",
       "total": "Итого: {{total}}% (для сохранения нужно 100%)",
       "totalOk": "Итого: {{total}}%",
-      "mealCalories": "{{meal}} ({{calories}} ккал)",
       "distributeRemaining": "Распределить остаток поровну",
       "lock": "Зафиксировать {{meal}}",
       "unlock": "Снять фиксацию: {{meal}}",
@@ -7294,7 +7255,6 @@
   "nutritionReport": {
     "title": "Питание",
     "calories": "Калории",
-    "kcal": "{{value}} ккал",
     "grams": "{{value}} г",
     "daysCount_one": "{{count}} день",
     "daysCount_few": "{{count}} дня",
@@ -7667,8 +7627,7 @@
     "rowA11y": "{{distance}}, {{time}}, {{pace}}, {{date}}"
   },
   "watchRunLive": {
-    "calories": "Калории",
-    "kcal": "ккал"
+    "calories": "Калории"
   },
   "trainingLoadCard": {
     "details": "Подробности",

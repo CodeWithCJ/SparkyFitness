@@ -1942,7 +1942,6 @@
   },
   "activityAdd": {
     "fields": {
-      "calories": "Kalorier",
       "notes": "Notater",
       "activity": "Aktivitet"
     },

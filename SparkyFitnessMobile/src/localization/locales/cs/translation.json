@@ -210,7 +210,6 @@
     "emptyForDate": "Pro toto datum nejsou žádné záznamy potravin",
     "diaryForDate": "Rodinný deník · {{date}}",
     "openMeal": "Otevřít jídlo {{meal}}",
-    "mealCalories": "{{calories}} kcal",
     "unnamedFood": "Nepojmenovaná potravina",
     "selectAll": "Vybrat vše",
     "deselectAll": "Zrušit výběr všeho",
@@ -218,15 +217,12 @@
     "selectFood": "Vybrat {{food}}",
     "deselectFood": "Zrušit výběr {{food}}",
     "continue": "Pokračovat",
-    "nutritionSummary": "{{calories}} kcal · B {{protein}} g · S {{carbs}} g · T {{fat}} g",
-    "selectedNutrition": "Vybráno: {{calories}} kcal · B {{protein}} g · S {{carbs}} g · T {{fat}} g",
     "copyReview": "Zkontrolovat kopii",
     "copyFrom": "Kopírování od {{name}}",
     "copyMealTitle": "Jídlo {{meal}}",
     "quantityForFood": "Množství pro {{food}}",
     "quantityMustBePositive": "Zadejte množství větší než nula.",
     "copyNutrition": "Kopírovat výživu",
-    "copyCalories": "{{calories}} kcal",
     "copyProtein": "{{protein}} g bílkovin",
     "copyCarbs": "{{carbs}} g sacharidů",
     "copyFat": "{{fat}} g tuků",
@@ -468,7 +464,6 @@
       "changeMetric": "Změnit sloupec metriky",
       "notesForSet": "Poznámky k sérii {{number}}",
       "addSet": "Přidat sérii ke cviku {{name}}",
-      "caloriesUnit": "kcal",
       "addSetLabel": "Přidat sérii",
       "heartRateFor": "Průměrná tepová frekvence pro {{name}}",
       "liveHeartRateFor": "Aktuální tepová frekvence pro {{name}}",
@@ -793,7 +788,6 @@
     "healthTrends": "Zdravotní trendy",
     "consumed": "Snědeno",
     "remaining": "zbývající",
-    "ofCalories": "z {{value}} kcal",
     "burned": "Spáleno",
     "hydration": "Hydratace",
     "ofVolume": "z {{value}} {{unit}}",
@@ -931,7 +925,6 @@
     "exerciseCaloriesDescription": "Kolik z kalorií spálených cvičením se přičte zpět k vašemu dennímu cíli.",
     "activityLevel": "Úroveň aktivity",
     "activityBaseline": "Používá se jako základ pro TDEE.",
-    "adaptiveFallback": "Záložní odhad, dokud nemáte dostatek sledovaných dat — a poté nadále určuje meze věrohodnosti. Váš naměřený TDEE je omezen na ±500 kcal od BMR × tento násobitel.",
     "allowNegative": "Povolit nižší záložní projekci",
     "negativeDescription": "Když součet ze zařízení není k dispozici, nechat záložní řešení BMR + aktivní kalorie snížit váš cíl.",
     "includeResting": "Zahrnout klidové kalorie",
@@ -1778,7 +1771,6 @@
     "forceStatic": "Statický",
     "mechanicCompound": "Vícekloubový",
     "mechanicIsolation": "Izolace",
-    "caloriesPerHour": "Kalorie za hodinu",
     "muscles": "Svaly",
     "classification": "Klasifikace",
     "selectValue": "Vybrat…",
@@ -1862,7 +1854,6 @@
     "setCount_few": "{{formattedCount}} série",
     "setCount_other": "{{formattedCount}} sérií",
     "caloriesShort": "kcal",
-    "caloriesUnit": "kcal",
     "unknownExercise": "Neznámý cvik",
     "addNotePlaceholder": "Přidat poznámku…",
     "setOf_one": "Série {{number}} z {{count}}",
@@ -2118,8 +2109,6 @@
     "protein": "bílkoviny",
     "carbs": "sacharidy",
     "fat": "tuky",
-    "caloriesShort": "kcal",
-    "caloriesUnit": "kcal",
     "proteinAmount": "bílkoviny",
     "carbsAmount": "sacharidy",
     "fatAmount": "tuky",
@@ -2133,7 +2122,6 @@
   "foodSummary": {
     "tapToAddFood": "Klepnutím přidáte potravinu",
     "caloriesShort": "kcal",
-    "caloriesUnit": "kcal",
     "nutritionBreakdown": "Rozpis výživy: {{label}}"
   },
   "exerciseSummary": {
@@ -2153,7 +2141,6 @@
     "unknownFood": "Neznámá potravina",
     "adjustServing": "Upravit porci",
     "caloriesShort": "kcal",
-    "caloriesUnit": "kcal",
     "deleteFood": "Smazat potravinu"
   },
   "exerciseRow": {
@@ -2267,7 +2254,6 @@
       "weightWithUnit": "Hmotnost ({{unit}})",
       "muscleMassWithUnit": "Svalová hmota ({{unit}})",
       "boneMassWithUnit": "Kostní hmota ({{unit}})",
-      "bmrWithUnit": "BMR (kcal)",
       "weightStones": "Hmotnost v stonech",
       "weightPounds": "Hmotnost v librách",
       "heightFeet": "Výška ve stopách",
@@ -2285,8 +2271,7 @@
       "invalidHeight": "Neplatná výška",
       "feetInchesNumber": "Zadejte číslo pro stopy a palce.",
       "bodyFatRange": "Tělesný tuk (%) musí být mezi 0 a 100.",
-      "bodyWaterRange": "Voda v těle (%) musí být mezi 0 a 100.",
-      "bmrRange": "BMR musí být mezi 600 a 6000 kcal."
+      "bodyWaterRange": "Voda v těle (%) musí být mezi 0 a 100."
     },
     "nothingToSave": "Není co ukládat",
     "enterValue": "Zadejte nebo vymažte alespoň jednu hodnotu.",
@@ -2647,8 +2632,6 @@
     "remaining": "zbývající",
     "over": "nad",
     "title": "Souhrn",
-    "projectedTdee": "Promítnuté TDEE: {{value}} kcal",
-    "goalModeTarget": "Cíl v režimu cíle: {{value}} kcal",
     "healthConnectProjectionSource": "Celkový energetický výdej z Health Connect",
     "fallbackProjectionSource": "Náhradní výpočet: BMR + aktivní kalorie",
     "legacyProjectionSource": "Odhad zařízení",
@@ -2683,7 +2666,6 @@
     "servingSize": "Velikost porce",
     "servingUnit": "Jednotka porce",
     "autoScaleNutrition": "Automaticky přepočítat výživu",
-    "caloriesRequired": "Kalorie (kcal) *",
     "ai": {
       "couldNotEstimate": "Odhad se nepodařil",
       "noTrustedDefault": "Potravina nemá důvěryhodnou výchozí hodnotu, ze které by se dalo přepočítat.",
@@ -3159,7 +3141,6 @@
     "showMore": "Zobrazit více",
     "best": "Nejlepší ({{unit}})",
     "last": "Poslední ({{unit}})",
-    "caloriesPerHour": "kcal / hod.",
     "equipment": "Vybavení",
     "primaryMuscles": "Hlavní svaly",
     "secondaryMuscles": "Vedlejší svaly",
@@ -3280,11 +3261,8 @@
     "proteinLabel": "Bílkoviny",
     "carbsLabel": "Sacharidy",
     "fatLabel": "Tuky",
-    "nutritionLine": "{{calories}} kcal · {{protein}} g B · {{carbs}} g S · {{fat}} g T",
     "dailyNutritionAccessibility": "Denně {{nutrient}} {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "{{mealType}} celkem {{calories}} kcal, {{protein}} g bílkovin, {{carbs}} g sacharidů, {{fat}} g tuků",
     "mealTypeMacros": "{{protein}} g B · {{carbs}} g S · {{fat}} g T",
-    "caloriesValue": "{{value}} kcal",
     "nutritionLoading": "Načítají se chybějící nutriční údaje. Součty mohou být neúplné.",
     "nutritionLoadFailed": "Některé nutriční údaje se nepodařilo načíst. Součty mohou být neúplné.",
     "assignmentRequired": "Přidejte alespoň jedno úplné přiřazení jídla.",
@@ -3334,7 +3312,6 @@
     "protein": "bílkoviny",
     "carbs": "sacharidy",
     "fat": "tuky",
-    "calories": "kcal",
     "viewLinkedMeal": "Zobrazit propojené jídlo {{name}}",
     "logMeal": "Zaznamenat jídlo",
     "planMeal": "Naplánovat jídlo",
@@ -3616,7 +3593,6 @@
     },
     "labels": {
       "caloriesShort": "kcal",
-      "caloriesUnit": "kcal",
       "foods": "potraviny",
       "meals": "jídla",
       "meal": "Jídlo",
@@ -4209,11 +4185,8 @@
       "count_few": "{{count}} ingredience",
       "count_other": "{{count}} ingrediencí",
       "totals": "Celkem",
-      "rowSummary": "{{grams}} g · {{calories}} kcal",
-      "macroSummary": "{{calories}} kcal · {{protein}} B · {{carbs}} S · {{fat}} T",
       "addFood": "Přidat potravinu",
       "addedFood": "Potravina",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} kcal",
       "pickedFoodNote": "Přidáno z vašich potravin. Chcete-li změnit množství, odeberte ji a přidejte znovu."
     },
     "match": {
@@ -4277,7 +4250,6 @@
       "activity": "Aktivita",
       "duration": "Doba trvání (min)",
       "distance": "Vzdálenost ({{unit}})",
-      "calories": "Kalorie",
       "avgHeartRate": "Prům. tepová frekvence (tepů/min)",
       "notes": "Poznámky",
       "notesPlaceholder": "Volitelné poznámky..."
@@ -4320,8 +4292,7 @@
     "accessibility": {
       "addFood": "Přidat potravinu",
       "copyMeal": "Zkopírovat jídlo na jiný den"
-    },
-    "targetCalories": "Cíl: {{calories}} kcal"
+    }
   },
   "nutrientTrends": {
     "title": "Trendy: {{nutrient}}",
@@ -4625,11 +4596,9 @@
       "title": "Kalorie",
       "loadFailed": "Data o kaloriích se nepodařilo načíst",
       "empty": "Žádná data o kaloriích za toto období",
-      "tooltip": "Přijato {{formattedCount}} kcal",
       "tooltipMacro": "{{percent}} % {{macroLabel}}",
       "otherMacro": "Ostatní",
       "avgCalories": "Průměr",
-      "avgCaloriesValue": "{{formattedCount}} kcal",
       "noAverage": "—"
     },
     "loading": "Načítání grafu...",
@@ -5539,7 +5508,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} km",
-    "kcal": "{{value}} kcal",
     "bpm": "{{value}} tepů/min",
     "kg": "{{value}} kg",
     "percent": "{{value}} %",
@@ -5912,7 +5880,6 @@
       "olderSessions": "Starší relace",
       "unitKm": "km",
       "unitMi": "mi",
-      "calories": "{{value}} kcal",
       "minutes_one": "{{formattedCount}} min",
       "minutes_few": "{{formattedCount}} min",
       "minutes_other": "{{formattedCount}} min",
