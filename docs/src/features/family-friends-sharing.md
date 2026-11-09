@@ -54,6 +54,10 @@ When you switch to someone's profile on the web, the AI assistant works in their
 
 ---
 
+## Adaptive Calorie Details
+
+Weight trends in the adaptive calorie breakdown require check-in or report access. Diary-only access can receive a fallback estimate when measurements are unavailable. Removing measurement access takes effect on the next calculation.
+
 ## Privilege Matrix by Permission Level
 
 SparkyFitness uses 7 granular permissions to determine exactly what a connected user can read or write in your profile:

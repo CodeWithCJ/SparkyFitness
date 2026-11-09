@@ -267,7 +267,7 @@
       "fri": "Пет",
       "sat": "Съб",
       "loggedCount_one": "{{count}} записан симптом",
-      "loggedCount_other": "",
+      "loggedCount_other": "{{count}} записани симптоми",
       "maxSeverity": "Макс. тежест: {{n}}",
       "skipped": "Пропуснато"
     },
@@ -651,7 +651,7 @@
       "createAndAddShort": "Добави",
       "multivitaminPanel": "Мултивитаминен панел",
       "nutrientCount_one": "{{count}} хранително вещество",
-      "nutrientCount_other": "",
+      "nutrientCount_other": "{{count}} хранителни вещества",
       "reason": "Причина / състояние (по желание)",
       "reasonPlaceholder": "напр. Контрол на теглото, Диабет тип 2",
       "prescriber": "Предписано от (по желание)",
@@ -951,7 +951,7 @@
     "bmrAlgorithmHint": "Изберете формулата, използвана за изчисляване на вашата базална скорост на метаболизма (BMR).",
     "bodyFatAlgorithm": "Алгоритъм за телесни мазнини",
     "bodyFatAlgorithmOptions": {
-      "usNavy": "Военноморски сили на САЩ (U.S. Navy)",
+      "usNavy": "U.S. Navy",
       "bmiMethod": "Метод по ИТМ (BMI)"
     },
     "bodyFatAlgorithmHint": "Изберете формулата, използвана за оценка на процента телесни мазнини от измерванията.",
