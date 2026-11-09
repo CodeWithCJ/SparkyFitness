@@ -90,6 +90,42 @@ describe('editedSyncFields', () => {
       )
     ).toEqual([]);
   });
+
+  it('protects the aggregate derived from edited set distances', () => {
+    expect(
+      editedSyncFields(
+        { sets: [{ set_number: 1, distance: 2.5 }] },
+        { distance: 1, sets: [{ set_number: 1, distance: 1 }] }
+      )
+    ).toEqual(['distance', 'sets']);
+  });
+
+  it('keeps a derived aggregate tied to a changed set list even when its total is unchanged', () => {
+    expect(
+      editedSyncFields(
+        { sets: [{ set_number: 1, distance: 2.5, reps: 9 }] },
+        { distance: 2.5, sets: [{ set_number: 1, distance: 2.5, reps: 8 }] }
+      )
+    ).toEqual(['distance', 'sets']);
+  });
+
+  it('does not freeze a derived distance when the set list is unchanged', () => {
+    expect(
+      editedSyncFields(
+        { sets: [{ set_number: 1, distance: 2.5 }] },
+        { distance: 2.5, sets: [{ set_number: '1', distance: '2.5' }] }
+      )
+    ).toEqual([]);
+  });
+
+  it('does not derive a distance override when the edit explicitly supplies one', () => {
+    expect(
+      editedSyncFields(
+        { distance: 1, sets: [{ set_number: 1, distance: 2.5 }] },
+        { distance: 1, sets: [{ set_number: 1, distance: 1 }] }
+      )
+    ).toEqual(['sets']);
+  });
 });
 
 describe('manual_fields helpers', () => {

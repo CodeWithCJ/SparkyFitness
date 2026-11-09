@@ -109,7 +109,7 @@ async function processHevyWorkouts(
       seenWorkoutIds.add(workout.id);
     }
     try {
-      await syncHevyWorkout(userId, createdByUserId, (client) =>
+      await syncHevyWorkout(userId, createdByUserId, workout.id, (client) =>
         prepareSingleWorkout(userId, client, workout, timezone, templatesById)
       );
     } catch (error) {

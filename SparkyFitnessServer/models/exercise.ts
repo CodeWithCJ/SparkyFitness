@@ -1094,7 +1094,7 @@ async function deleteExerciseAndDependencies(
       );
       const presetEntryIds = presetEntriesResult.rows
         .map(
-          (r: { exercise_preset_entry_id: number | string }) =>
+          (r: { exercise_preset_entry_id: string }) =>
             r.exercise_preset_entry_id
         )
         .filter(Boolean);
@@ -1119,7 +1119,7 @@ async function deleteExerciseAndDependencies(
         await client.query(
           `
           DELETE FROM exercise_preset_entries
-          WHERE id = ANY($1::int[])
+          WHERE id = ANY($1::uuid[])
             AND user_id = $2
             AND NOT EXISTS (
               SELECT 1 FROM exercise_entries WHERE exercise_preset_entry_id = exercise_preset_entries.id
@@ -1148,7 +1148,7 @@ async function deleteExerciseAndDependencies(
       );
       const presetEntryIds = presetEntriesResult.rows
         .map(
-          (r: { exercise_preset_entry_id: number | string }) =>
+          (r: { exercise_preset_entry_id: string }) =>
             r.exercise_preset_entry_id
         )
         .filter(Boolean);
@@ -1168,7 +1168,7 @@ async function deleteExerciseAndDependencies(
         await client.query(
           `
           DELETE FROM exercise_preset_entries
-          WHERE id = ANY($1::int[])
+          WHERE id = ANY($1::uuid[])
             AND user_id = $2
             AND NOT EXISTS (
               SELECT 1 FROM exercise_entries WHERE exercise_preset_entry_id = exercise_preset_entries.id

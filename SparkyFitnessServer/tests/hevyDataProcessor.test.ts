@@ -13,6 +13,7 @@ vi.mock('../integrations/hevy/hevyWorkoutRepository.js', () => ({
     async (
       _userId: string,
       _actorId: string,
+      _sourceId: string,
       prepare: (client: typeof preparationClient) => Promise<HevyWorkoutImport>
     ) => {
       captureWorkout(await prepare(preparationClient));

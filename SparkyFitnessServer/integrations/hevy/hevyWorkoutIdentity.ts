@@ -74,6 +74,26 @@ export function matchHevyWorkoutEntries<T extends StoredHevyExerciseIdentity>(
     );
     if (competing.length === 1) assign(index, row);
   }
+  // A partial cross-match can be an edit, not a reorder: 8/12 reps becoming
+  // 12/15 must not move the second occurrence's corrections onto the first.
+  // Complete matches still identify reorders, removals and new occurrences.
+  for (const [index, item] of incoming.entries()) {
+    const row = matches[index];
+    if (!row) continue;
+    const previousGroup = previous.filter((other) => compatible(item, other));
+    const incomingIndexes = incoming.flatMap((other, otherIndex) =>
+      compatible(other, row) ? [otherIndex] : []
+    );
+    if (
+      previousGroup.indexOf(row) !== incomingIndexes.indexOf(index) &&
+      previousGroup.some((other) => unmatched.has(other)) &&
+      incomingIndexes.some((otherIndex) => !matches[otherIndex])
+    ) {
+      throw new Error(
+        'Ambiguous Hevy exercise identities; existing workout retained.'
+      );
+    }
+  }
   // An ordinal is insufficient when an indistinguishable occurrence vanished,
   // or an old replay lost the IDs of different templates sharing one title.
   // Roll back this workout rather than transferring or deleting corrections.

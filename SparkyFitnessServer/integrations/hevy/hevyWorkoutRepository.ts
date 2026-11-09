@@ -90,20 +90,39 @@ async function findSession(
 export async function syncHevyWorkout(
   userId: string,
   actingUserId: string,
+  sourceId: string,
   prepare: (client: PoolClient) => Promise<HevyWorkoutImport>
 ): Promise<void> {
   const client: PoolClient = await getClient(userId, actingUserId);
   try {
     await client.query('BEGIN');
     await acquireExerciseEntrySyncLockWithClient(client, userId, 'Hevy');
+    if (!sourceId) throw new Error('Hevy workout has no provider identity.');
+    let sessionId = await findSession(client, userId, sourceId);
+    const previous = await client.query<{ id: string }>(
+      `SELECT id FROM exercise_entries
+       WHERE user_id = $1 AND source = 'Hevy'
+         AND (exercise_preset_entry_id = $2
+           OR left(source_id, length($3) + 1) = $3 || '_')`,
+      [userId, sessionId, sourceId]
+    );
+    // Library deletion locks the session and calorie participants before its
+    // library rows. Preparation must follow that order when it fills metadata.
+    await lockCalorieLinkParticipantsWithClient(
+      client,
+      userId,
+      previous.rows.map((row) => row.id)
+    );
     const { session, entries } = await prepare(client);
     const sourceIds = entries.map((entry) => entry.data.source_id);
-    if (!session.source_id || new Set(sourceIds).size !== entries.length) {
+    if (
+      session.source_id !== sourceId ||
+      new Set(sourceIds).size !== entries.length
+    ) {
       throw new Error(
         'Hevy workout has a missing or duplicate provider identity.'
       );
     }
-    let sessionId = await findSession(client, userId, session.source_id);
     if (sessionId) {
       await client.query(
         `UPDATE exercise_preset_entries
@@ -142,19 +161,6 @@ export async function syncHevyWorkout(
       sessionId = inserted.rows[0]!.id;
     }
 
-    const previous = await client.query<{ id: string }>(
-      `SELECT id
-       FROM exercise_entries
-       WHERE user_id = $1 AND source = 'Hevy'
-         AND (exercise_preset_entry_id = $2
-           OR left(source_id, length($3) + 1) = $3 || '_')`,
-      [userId, sessionId, session.source_id]
-    );
-    await lockCalorieLinkParticipantsWithClient(
-      client,
-      userId,
-      previous.rows.map((row) => row.id)
-    );
     // Re-read after the allocation lock: a concurrent link may have committed.
     const linked = await client.query<ExistingEntry>(
       `SELECT e.id, e.exercise_id, e.source_id, e.calorie_link_id,

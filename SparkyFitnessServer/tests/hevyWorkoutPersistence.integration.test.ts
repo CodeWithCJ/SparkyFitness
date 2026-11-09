@@ -12,6 +12,7 @@ import {
 } from 'vitest';
 import { endPool, getClient, getRawAppPool } from '../db/poolManager.js';
 import { processHevyWorkouts } from '../integrations/hevy/hevyDataProcessor.js';
+import hevyExerciseRepository from '../integrations/hevy/hevyExerciseRepository.js';
 import type { HevyWorkout } from '../integrations/hevy/hevyTypes.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import exerciseRepository from '../models/exercise.js';
@@ -409,6 +410,190 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
     expect(await entries()).toEqual(before);
   });
 
+  it('retains repeated occurrences when provider edits overlap another occurrence signature', async () => {
+    const repeated = workout();
+    const first = repeated.exercises![0]!;
+    repeated.exercises = [
+      first,
+      {
+        ...first,
+        index: 1,
+        sets: first.sets!.map((set) => ({ ...set, reps: 12 })),
+      },
+    ];
+    await sync([repeated]);
+    for (const [index, entry] of (await entries()).entries()) {
+      await updateExerciseEntry(userId, userId, entry.id, {
+        notes: `Correction for occurrence ${index}`,
+      });
+    }
+    const before = await entries();
+    const beforeSets = await sets();
+    const edited = {
+      ...repeated,
+      exercises: repeated.exercises.map((exercise, index) => ({
+        ...exercise,
+        sets: exercise.sets!.map((set) => ({
+          ...set,
+          reps: index === 0 ? 12 : 15,
+        })),
+      })),
+    };
+
+    await expect(sync([edited])).rejects.toThrow('Failed to import');
+    expect(await entries()).toEqual(before);
+    expect(await sets()).toEqual(beforeSets);
+  });
+
+  it.each([
+    { reps: [10, 12], originalOrder: [0, 1] },
+    { reps: [12, 8], originalOrder: [1, 0] },
+  ])(
+    'accepts distinguishable repeated-exercise edits or a complete reorder: $reps',
+    async ({ reps, originalOrder }) => {
+      const repeated = workout();
+      const first = repeated.exercises![0]!;
+      repeated.exercises = [
+        first,
+        {
+          ...first,
+          index: 1,
+          sets: first.sets!.map((set) => ({ ...set, reps: 12 })),
+        },
+      ];
+      await sync([repeated]);
+      const original = await entries();
+      const changed = {
+        ...repeated,
+        exercises: repeated.exercises.map((exercise, index) => ({
+          ...exercise,
+          sets: exercise.sets!.map((set) => ({ ...set, reps: reps[index]! })),
+        })),
+      };
+      await sync([changed]);
+      const saved = await db.query<{ id: string; reps: number }>(
+        `SELECT e.id, s.reps FROM exercise_entries e
+         JOIN exercise_entry_sets s ON s.exercise_entry_id = e.id
+         WHERE e.user_id = $1 ORDER BY e.sort_order, s.set_number`,
+        [userId]
+      );
+      expect(saved.rows).toEqual(
+        originalOrder.map((originalIndex, index) => ({
+          id: original[originalIndex]!.id,
+          reps: reps[index],
+        }))
+      );
+    }
+  );
+
+  it('completes metadata sync and history deletion without a lock-order cycle', async () => {
+    const imported = workout();
+    await sync([imported]);
+    const original = await entries();
+    const target = original[0]!;
+    const library = await db.query<{ exercise_id: string }>(
+      'SELECT exercise_id FROM exercise_entries WHERE id = $1',
+      [target.id]
+    );
+    const fillMuscles = hevyExerciseRepository.fillMissingMuscles;
+    const lockParticipants =
+      calorieLinkService.lockCalorieLinkParticipantsWithClient;
+    let releasePreparation!: () => void;
+    let signalMetadata!: () => void;
+    let signalDeletion!: (pid: number) => void;
+    const preparationReleased = new Promise<void>((resolve) => {
+      releasePreparation = resolve;
+    });
+    const metadataWritten = new Promise<void>((resolve) => {
+      signalMetadata = resolve;
+    });
+    const deletionStarted = new Promise<number>((resolve) => {
+      signalDeletion = resolve;
+    });
+    vi.spyOn(
+      hevyExerciseRepository,
+      'fillMissingMuscles'
+    ).mockImplementationOnce(async (...args) => {
+      await fillMuscles(...args);
+      signalMetadata();
+      await preparationReleased;
+    });
+    vi.spyOn(
+      calorieLinkService,
+      'lockCalorieLinkParticipantsWithClient'
+    ).mockImplementation(async (client, ownerId, ids) => {
+      if (ids.length === 1 && ids[0] === target.id) {
+        const backend = await client.query<{ pid: number }>(
+          'SELECT pg_backend_pid() AS pid'
+        );
+        signalDeletion(backend.rows[0]!.pid);
+      }
+      await lockParticipants(client, ownerId, ids);
+    });
+    const importing = Promise.allSettled([
+      processHevyWorkouts(userId, userId, [imported], 'Europe/Berlin', [
+        { id: 'synthetic-bench', primary_muscle_group: 'chest' },
+      ]),
+    ]);
+    let deletion: Promise<PromiseSettledResult<unknown>[]> | undefined;
+    try {
+      await metadataWritten;
+      deletion = Promise.allSettled([
+        exerciseRepository.deleteExerciseAndDependencies(
+          library.rows[0]!.exercise_id,
+          userId,
+          undefined,
+          { deleteHistory: true }
+        ),
+      ]);
+      const deletingPid = await deletionStarted;
+      await vi.waitFor(async () => {
+        const blocked = await db.query<{ waiting: boolean }>(
+          'SELECT cardinality(pg_blocking_pids($1)) > 0 AS waiting',
+          [deletingPid]
+        );
+        expect(blocked.rows[0]!.waiting).toBe(true);
+      });
+    } finally {
+      releasePreparation();
+      const outcomes = (
+        await Promise.all([importing, ...(deletion ? [deletion] : [])])
+      ).flat();
+      expect(outcomes.map((outcome) => outcome.status)).toEqual([
+        'fulfilled',
+        'fulfilled',
+      ]);
+    }
+    expect((await entries()).map((entry) => entry.id)).toEqual([
+      original[1]!.id,
+    ]);
+  });
+
+  it('deletes grouped Hevy history and its empty UUID session when explicitly requested', async () => {
+    const imported = workout();
+    imported.exercises = [imported.exercises![0]!];
+    await sync([imported]);
+    const original = (await entries())[0]!;
+    const library = await db.query<{ exercise_id: string }>(
+      'SELECT exercise_id FROM exercise_entries WHERE id = $1',
+      [original.id]
+    );
+    await expect(
+      exerciseRepository.deleteExerciseAndDependencies(
+        library.rows[0]!.exercise_id,
+        userId,
+        undefined,
+        { deleteHistory: true }
+      )
+    ).resolves.toEqual({ success: true, deletedEntries: 1 });
+    expect(await entries()).toEqual([]);
+    const sessions = await db.query<{ id: string }>(
+      'SELECT id FROM exercise_preset_entries WHERE user_id = $1',
+      [userId]
+    );
+    expect(sessions.rows).toEqual([]);
+  });
+
   it.each([false, true])(
     'retains deleted-library template identities during an older replay (same title: %s)',
     async (sameTitle) => {
@@ -437,8 +622,34 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
             exercise_template_id: null,
           })),
       };
-      await sync([older]);
-      await sync([older]);
+      const providerExercises = async () =>
+        (
+          await db.query<{ id: string; reps: number }>(
+            `SELECT e.id, (d.detail_data #>> '{exercise,sets,0,reps}')::int AS reps
+             FROM exercise_entries e
+             JOIN exercise_entry_activity_details d ON d.exercise_entry_id = e.id
+             WHERE e.user_id = $1 AND d.provider_name = 'Hevy'
+               AND d.detail_type = 'full_activity_data'
+             ORDER BY e.source_id`,
+            [userId]
+          )
+        ).rows;
+      const expectedProviderExercises = original.map((row, index) => ({
+        id: row.id,
+        reps: index === 0 ? 8 : 10,
+      }));
+      for (let replay = 0; replay < 2; replay++) {
+        await sync([older]);
+        expect(await providerExercises()).toEqual(expectedProviderExercises);
+        const saved = await entries();
+        expect(saved.map((row) => row.id)).toEqual(
+          original.map((row) => row.id)
+        );
+        for (const [index, row] of original.entries())
+          expect(saved.find((entry) => entry.id === row.id)?.notes).toBe(
+            `Preserved ${index}`
+          );
+      }
       await sync([imported]);
       const saved = await entries();
       expect(new Set(saved.map((row) => row.id))).toEqual(
@@ -596,6 +807,47 @@ describe.runIf(RUN)('persistent Hevy workouts', () => {
       (await sets()).find((row) => row.source_id === bench.source_id)
     ).toMatchObject({ weight: 45 });
   });
+
+  it.each([
+    { distance: undefined, expected: 2.5 },
+    { distance: 7.5, expected: 7.5 },
+    { distance: null, expected: null },
+  ])(
+    'retains edited set distance and the aggregate override $distance after re-sync',
+    async ({ distance, expected }) => {
+      const imported = workout();
+      imported.exercises![0]!.sets![0]!.distance_meters = 1000;
+      await sync([imported]);
+      const bench = (await entries()).find(
+        (entry) => entry.exercise_name === 'Synthetic bench press'
+      )!;
+      await updateExerciseEntry(userId, userId, bench.id, {
+        sets: [
+          {
+            set_number: 1,
+            set_type: 'Working Set',
+            reps: 8,
+            weight: 40,
+            distance: 2.5,
+          },
+        ],
+        distance,
+      });
+      imported.exercises![0]!.sets![0]!.distance_meters = 2000;
+      await sync([imported]);
+      const saved = await db.query<{
+        distance: number | null;
+        set_distance: number;
+      }>(
+        `SELECT e.distance::float8 AS distance, s.distance::float8 AS set_distance
+         FROM exercise_entries e
+         JOIN exercise_entry_sets s ON s.exercise_entry_id = e.id
+         WHERE e.id = $1`,
+        [bench.id]
+      );
+      expect(saved.rows).toEqual([{ distance: expected, set_distance: 2.5 }]);
+    }
+  );
 
   it('allocates untimed workout duration once after a corrected exercise is reordered', async () => {
     await sync([workout()]);

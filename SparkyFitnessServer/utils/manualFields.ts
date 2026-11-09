@@ -1,3 +1,5 @@
+import { setsDistanceKm } from '@workspace/shared';
+
 /**
  * Fields of a synced exercise entry that a user can correct in the diary and
  * that a re-sent provider workout would otherwise overwrite. Only these names
@@ -86,19 +88,38 @@ const sameValue = (
 };
 
 /**
- * The protected fields an edit actually changes: present in the request and
- * different from the stored value. Re-saving an unchanged value does not mark
- * the field.
+ * Explicitly corrected fields, plus the distance derived from an edited set
+ * list. Re-saving unchanged sets does not freeze them or their derived total.
  */
 export function editedSyncFields(
   updateData: Record<string, unknown>,
   currentEntry: Record<string, unknown>
 ): SyncProtectedField[] {
-  return SYNC_PROTECTED_FIELDS.filter(
+  const fields = SYNC_PROTECTED_FIELDS.filter(
     (field) =>
       updateData[field] !== undefined &&
       !sameValue(field, updateData[field], currentEntry[field])
   );
+  if (
+    fields.includes('sets') &&
+    updateData.distance === undefined &&
+    Array.isArray(updateData.sets)
+  ) {
+    const distance = setsDistanceKm(
+      (updateData.sets as unknown[]).map((set) => ({
+        distance:
+          typeof set === 'object' &&
+          set !== null &&
+          'distance' in set &&
+          set.distance !== null &&
+          set.distance !== undefined
+            ? Number(set.distance)
+            : null,
+      }))
+    );
+    if (distance !== null) return mergeManualFields(fields, ['distance']);
+  }
+  return fields;
 }
 
 /** Stored manual_fields value, limited to known names. */
