@@ -52,6 +52,9 @@ interface ExistingEntry {
   id: string;
   exercise_id: string | null;
   template_id: string | null;
+  exercise_title: string | null;
+  duration_minutes: number;
+  manual_fields: string[];
   source_id: string | null;
   calorie_link_id: string | null;
   calorie_link_resolution: CalorieLinkResolution | null;
@@ -88,13 +91,13 @@ async function findSession(
 export async function syncHevyWorkout(
   userId: string,
   actingUserId: string,
-  prepare: () => Promise<HevyWorkoutImport>
+  prepare: (client: PoolClient) => Promise<HevyWorkoutImport>
 ): Promise<void> {
   const client: PoolClient = await getClient(userId, actingUserId);
   try {
     await client.query('BEGIN');
     await acquireExerciseEntrySyncLockWithClient(client, userId, 'Hevy');
-    const { session, entries } = await prepare();
+    const { session, entries } = await prepare(client);
     const sourceIds = entries.map((entry) => entry.data.source_id);
     if (!session.source_id || new Set(sourceIds).size !== entries.length) {
       throw new Error(
@@ -157,6 +160,14 @@ export async function syncHevyWorkout(
     const linked = await client.query<ExistingEntry>(
       `SELECT e.id, e.exercise_id, e.source_id, e.calorie_link_id,
               e.calorie_link_resolution, e.calories_applied::float8 AS calories_applied,
+              e.duration_minutes::float8 AS duration_minutes, e.manual_fields,
+              COALESCE((
+                SELECT d.detail_data #>> '{exercise,title}'
+                FROM exercise_entry_activity_details d
+                WHERE d.exercise_entry_id = e.id AND d.provider_name = 'Hevy'
+                  AND d.detail_type = 'full_activity_data'
+                ORDER BY d.created_at DESC, d.id LIMIT 1
+              ), e.exercise_name) AS exercise_title,
               COALESCE((
                 SELECT d.detail_data #>> '{exercise,exercise_template_id}'
                 FROM exercise_entry_activity_details d
@@ -186,9 +197,17 @@ export async function syncHevyWorkout(
       row: ExistingEntry
     ): boolean => {
       const templateId = item.detail.exercise.exercise_template_id;
-      return templateId && row.template_id
-        ? templateId === row.template_id
-        : item.data.exercise_id === row.exercise_id;
+      if (templateId && row.template_id) return templateId === row.template_id;
+      if (item.data.exercise_id === row.exercise_id) return true;
+      // Deleting a library item keeps the diary snapshot with exercise_id NULL.
+      // A template-less provider entry still has its own stored title, and
+      // repeated occurrences are reserved/matched in their previous order.
+      return (
+        !templateId &&
+        !row.template_id &&
+        row.exercise_id === null &&
+        item.detail.exercise.title === row.exercise_title
+      );
     };
     // Reserve exact occurrence matches first. An earlier fallback must not
     // consume a surviving occurrence that a later incoming entry identifies.
@@ -203,6 +222,30 @@ export async function syncHevyWorkout(
       if (matches[index]) continue;
       const candidate = unmatched.findIndex((row) => sameExercise(item, row));
       if (candidate >= 0) matches[index] = unmatched.splice(candidate, 1)[0];
+    }
+    const isUntimed = (item: HevyWorkoutEntry) =>
+      !item.detail.exercise.sets?.some(
+        (set) => (set.duration_seconds ?? 0) > 0
+      );
+    const untimedDuration = entries.reduce(
+      (sum, item) => sum + (isUntimed(item) ? item.data.duration_minutes : 0),
+      0
+    );
+    let durationOwner = matches.findIndex(
+      (row, index) =>
+        row?.manual_fields?.includes('duration_minutes') &&
+        isUntimed(entries[index]!)
+    );
+    if (durationOwner < 0) {
+      durationOwner = matches.findIndex(
+        (row, index) =>
+          (row?.duration_minutes ?? 0) > 0 && isUntimed(entries[index]!)
+      );
+    }
+    if (durationOwner < 0) {
+      durationOwner = entries.findIndex(
+        (item) => isUntimed(item) && item.data.duration_minutes > 0
+      );
     }
     const reservedIds = new Set(
       linked.rows.flatMap((row) => (row.source_id ? [row.source_id] : []))
@@ -236,7 +279,18 @@ export async function syncHevyWorkout(
         await exerciseEntryRepository._createExerciseEntryWithClient(
           client,
           userId,
-          { ...snapshot.rows[0], ...item.data, source_id: sourceId },
+          {
+            ...snapshot.rows[0],
+            ...item.data,
+            source_id: sourceId,
+            // A correction stays with its exercise; reordering must not also
+            // allocate the full workout duration to the new first exercise.
+            duration_minutes: isUntimed(item)
+              ? index === durationOwner
+                ? untimedDuration
+                : 0
+              : item.data.duration_minutes,
+          },
           actingUserId,
           'Hevy',
           sessionId

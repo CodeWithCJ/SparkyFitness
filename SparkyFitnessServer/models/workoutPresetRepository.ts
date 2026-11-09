@@ -3,6 +3,10 @@ import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-format'
 import format from 'pg-format';
 import type { PoolClient } from 'pg';
+import type {
+  WorkoutPresetCreateRequest,
+  WorkoutPresetSetRequest,
+} from '@workspace/shared';
 import { assertSetWeightSign } from '../utils/setWeightSign.js';
 import {
   buildSqlSearch,
@@ -35,12 +39,25 @@ async function assertPresetExerciseSetWeights(
   assertSetWeightSign(sets, result.rows[0]?.modality ?? null);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function createWorkoutPreset(presetData: any) {
-  const client = await getClient(presetData.user_id); // User-specific operation
+type CreateWorkoutPresetData = Omit<
+  WorkoutPresetCreateRequest,
+  'exercises' | 'workout_format'
+> &
+  Partial<Pick<WorkoutPresetCreateRequest, 'exercises' | 'workout_format'>> & {
+    user_id: string;
+  };
+
+async function createWorkoutPreset(
+  presetData: CreateWorkoutPresetData,
+  existingClient?: PoolClient
+) {
+  const client: PoolClient =
+    existingClient ?? (await getClient(presetData.user_id));
   try {
-    await client.query('BEGIN');
-    const presetResult = await client.query(
+    await client.query(
+      existingClient ? 'SAVEPOINT create_workout_preset' : 'BEGIN'
+    );
+    const presetResult = await client.query<{ id: number }>(
       `INSERT INTO workout_presets (user_id, name, description, is_public, workout_format, time_cap_seconds)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, user_id, name, description, is_public, workout_format, time_cap_seconds`,
       [
@@ -52,10 +69,10 @@ async function createWorkoutPreset(presetData: any) {
         presetData.time_cap_seconds ?? null,
       ]
     );
-    const newPreset = { ...presetResult.rows[0], isNew: true };
+    const newPreset = { ...presetResult.rows[0]!, isNew: true };
     if (presetData.exercises && presetData.exercises.length > 0) {
       for (const exercise of presetData.exercises) {
-        const exerciseResult = await client.query(
+        const exerciseResult = await client.query<{ id: number }>(
           `INSERT INTO workout_preset_exercises (
             workout_preset_id,
             exercise_id,
@@ -91,8 +108,7 @@ async function createWorkoutPreset(presetData: any) {
             exercise.exercise_id,
             exercise.sets
           );
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const setsValues = exercise.sets.map((set: any) => [
+          const setsValues = exercise.sets.map((set) => [
             newExerciseId,
             set.set_number,
             set.set_type,
@@ -111,21 +127,37 @@ async function createWorkoutPreset(presetData: any) {
         }
       }
     }
-    await client.query('COMMIT');
-    // Refetch the created preset to get the full nested structure
-    return getWorkoutPresetById(newPreset.id, presetData.user_id);
+    // Reuse this connection for the nested read even outside a caller's transaction.
+    const created = await getWorkoutPresetById(
+      newPreset.id,
+      presetData.user_id,
+      client
+    );
+    await client.query(
+      existingClient ? 'RELEASE SAVEPOINT create_workout_preset' : 'COMMIT'
+    );
+    return created;
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query(
+      existingClient
+        ? 'ROLLBACK TO SAVEPOINT create_workout_preset'
+        : 'ROLLBACK'
+    );
+    if (existingClient)
+      await client.query('RELEASE SAVEPOINT create_workout_preset');
     log('error', 'Error creating workout preset:', error);
     throw error;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWorkoutPresetByName(userId: any, name: any) {
-  const client = await getClient(userId);
+async function getWorkoutPresetByName(
+  userId: string,
+  name: string,
+  existingClient?: PoolClient
+) {
+  const client: PoolClient = existingClient ?? (await getClient(userId));
   try {
     // Owner first, then family-shared via can_view_exercise_library. Do not
     // rely on RLS alone: has_library_access_with_public also allows every
@@ -186,7 +218,7 @@ async function getWorkoutPresetByName(userId: any, name: any) {
       ? { ...parsePresetExerciseEquipment(result.rows[0]), isNew: false }
       : null;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 
@@ -257,9 +289,12 @@ async function getWorkoutPresets(userId: any, page = 1, limit = 10) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function getWorkoutPresetById(presetId: any, userId: any) {
-  const client = await getClient(userId); // User-specific operation (RLS will handle access)
+async function getWorkoutPresetById(
+  presetId: number | string,
+  userId: string,
+  existingClient?: PoolClient
+) {
+  const client: PoolClient = existingClient ?? (await getClient(userId));
   try {
     const result = await client.query(
       `SELECT
@@ -306,7 +341,7 @@ async function getWorkoutPresetById(presetId: any, userId: any) {
     );
     return parsePresetExerciseEquipment(result.rows[0]);
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 
@@ -454,27 +489,25 @@ async function getWorkoutPresetOwnerId(userId: any, presetId: any) {
 }
 
 async function addExerciseToWorkoutPreset(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  workoutPresetId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  exerciseId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  imageUrl: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  sets: any,
+  userId: string,
+  workoutPresetId: number | string,
+  exerciseId: string,
+  imageUrl: string | null | undefined,
+  sets: readonly WorkoutPresetSetRequest[],
   sortOrder = 0,
   progressionMode = 'rep_goal',
   repGoal: number | null = null,
   incrementType: 'weight' | 'reps' = 'weight',
   incrementValue: number = 5.0,
-  equipmentBrand: string | null = null
-) {
-  const client = await getClient(userId); // User-specific operation
+  equipmentBrand: string | null = null,
+  existingClient?: PoolClient
+): Promise<number | string> {
+  const client: PoolClient = existingClient ?? (await getClient(userId));
   try {
-    await client.query('BEGIN');
-    const existingExerciseResult = await client.query(
+    await client.query(
+      existingClient ? 'SAVEPOINT add_preset_exercise' : 'BEGIN'
+    );
+    const existingExerciseResult = await client.query<{ id: number }>(
       `SELECT id
        FROM workout_preset_exercises
        WHERE workout_preset_id = $1 AND exercise_id = $2
@@ -483,21 +516,23 @@ async function addExerciseToWorkoutPreset(
       [workoutPresetId, exerciseId]
     );
 
-    let exercisePresetId;
+    let exercisePresetId: number | string;
     if (existingExerciseResult.rows.length > 0) {
-      exercisePresetId = existingExerciseResult.rows[0].id;
+      exercisePresetId = existingExerciseResult.rows[0]!.id;
       // Check if it already has sets
-      const setsCountResult = await client.query(
+      const setsCountResult = await client.query<{ count: string }>(
         'SELECT COUNT(*) FROM workout_preset_exercise_sets WHERE workout_preset_exercise_id = $1',
         [exercisePresetId]
       );
       if (parseInt(setsCountResult.rows[0].count, 10) > 0) {
-        await client.query('COMMIT');
+        await client.query(
+          existingClient ? 'RELEASE SAVEPOINT add_preset_exercise' : 'COMMIT'
+        );
         return exercisePresetId;
       }
       // If no sets, proceed to add them below
     } else {
-      const exerciseResult = await client.query(
+      const exerciseResult = await client.query<{ id: number }>(
         `INSERT INTO workout_preset_exercises (
           workout_preset_id,
           exercise_id,
@@ -522,13 +557,12 @@ async function addExerciseToWorkoutPreset(
           equipmentBrand,
         ]
       );
-      exercisePresetId = exerciseResult.rows[0].id;
+      exercisePresetId = exerciseResult.rows[0]!.id;
     }
 
     if (sets && sets.length > 0) {
       await assertPresetExerciseSetWeights(client, exerciseId, sets);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const setsValues = sets.map((set: any) => [
+      const setsValues = sets.map((set) => [
         exercisePresetId,
         set.set_number,
         set.set_type,
@@ -545,10 +579,16 @@ async function addExerciseToWorkoutPreset(
       );
       await client.query(setsQuery);
     }
-    await client.query('COMMIT');
+    await client.query(
+      existingClient ? 'RELEASE SAVEPOINT add_preset_exercise' : 'COMMIT'
+    );
     return exercisePresetId;
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query(
+      existingClient ? 'ROLLBACK TO SAVEPOINT add_preset_exercise' : 'ROLLBACK'
+    );
+    if (existingClient)
+      await client.query('RELEASE SAVEPOINT add_preset_exercise');
     log(
       'error',
       `Error adding exercise to workout preset ${workoutPresetId}:`,
@@ -556,7 +596,7 @@ async function addExerciseToWorkoutPreset(
     );
     throw error;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 

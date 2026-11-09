@@ -329,14 +329,16 @@ describe('processHevyWorkouts — workout-preset grouping', () => {
     await processHevyWorkouts(UID, CID, [sampleWorkout()], 'UTC');
     expect(workoutPresetRepository.getWorkoutPresetByName).toHaveBeenCalledWith(
       UID,
-      'Vid plan A'
+      'Vid plan A',
+      undefined
     );
     expect(workoutPresetRepository.createWorkoutPreset).toHaveBeenCalledWith(
       expect.objectContaining({
         user_id: UID,
         name: 'Vid plan A',
         is_public: false,
-      })
+      }),
+      undefined
     );
   });
 
@@ -372,7 +374,13 @@ describe('processHevyWorkouts — workout-preset grouping', () => {
       'exercise-Bulgarian Split Squat',
       null,
       expect.any(Array),
-      0
+      0,
+      'rep_goal',
+      null,
+      'weight',
+      5,
+      null,
+      undefined
     );
   });
 });

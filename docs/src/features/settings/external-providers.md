@@ -55,6 +55,10 @@ Repeated Hevy syncs update the existing session and exercise entries instead of 
 
 Exercises are matched by their Hevy template rather than their position, so moving a different exercise earlier in the workout does not transfer its corrections. If the same template appears several times, occurrences are matched in order; Hevy does not provide separate IDs for otherwise identical occurrences.
 
+Deleting a library exercise while keeping its diary history also preserves template-less Hevy entries and their corrections on the next sync. A corrected workout duration stays allocated to its exercise when the order changes.
+
+Linked Health Connect and HealthKit recordings survive incomplete same-day reads, keeping your chosen calorie total intact. If a linked recording was removed at its source, unlink or explicitly delete it in SparkyFitness to remove that saved recording.
+
 ## Canadian Nutrient File (Health Canada)
 
 The Canadian Nutrient File (CNF) is Health Canada's official food composition database containing ~5,700 items with complete macronutrient, micronutrient, and household portion profiles. It is completely free, public, and requires no API keys or accounts.

@@ -876,12 +876,13 @@ async function _updateExerciseEntryWithClient(
   };
   // If exercise_id is explicitly updated, re-fetch snapshot data from the exercise
   if (
-    updateData.exercise_id &&
+    typeof updateData.exercise_id === 'string' &&
     updateData.exercise_id !== currentEntry.exercise_id
   ) {
     const exercise = await exerciseRepository.getExerciseById(
       updateData.exercise_id,
-      userId
+      userId,
+      client
     );
     if (!exercise) {
       throw Object.assign(new Error('Exercise not found.'), { status: 404 });
@@ -2179,19 +2180,24 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
   // the enriched-session reuse cache makes every sync do once a session has
   // been collected once (#2191, #2300).
   //
-  // Everything else in the span is still deleted, so a workout removed upstream
-  // still disappears here. The client splits workout chunks on day boundaries,
-  // so one request always carries every workout for the days it covers and this
-  // exclusion cannot strand another chunk's rows.
+  // Health reads can be incomplete despite day-boundary chunking. Keep a
+  // manually linked health recording until it is explicitly unlinked/deleted:
+  // absence from one read is not proof of deletion and must not erase the
+  // person's calorie resolution. Other unlisted records retain range cleanup.
   keepSourceIds?: string[]
 ) {
   await acquireExerciseEntrySyncLockWithClient(client, userId, entrySource);
   // Get IDs of exercise entries to be deleted
-  const entryIdsResult = await client.query(
-    `SELECT id FROM exercise_entries
+  const readCleanupCandidates = () =>
+    client.query<{ id: string }>(
+      `SELECT id FROM exercise_entries
      WHERE user_id = $1
        AND entry_date BETWEEN $2 AND $3
        AND source = $4
+       AND NOT (
+         lower(trim(source)) IN ('health connect', 'healthkit')
+         AND source_id IS NOT NULL AND calorie_link_id IS NOT NULL
+       )
        AND (
          $5::text IS NULL
          OR NOT EXISTS (
@@ -2206,20 +2212,32 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
          OR source_id IS NULL
          OR NOT (source_id = ANY($6::text[]))
        )`,
-    [
-      userId,
-      startDate,
-      endDate,
-      entrySource,
-      excludedExerciseName ?? null,
-      keepSourceIds && keepSourceIds.length > 0 ? keepSourceIds : null,
-    ]
-  );
-  const entryIds = entryIdsResult.rows.map((row: { id: string }) => row.id);
+      [
+        userId,
+        startDate,
+        endDate,
+        entrySource,
+        excludedExerciseName ?? null,
+        keepSourceIds && keepSourceIds.length > 0 ? keepSourceIds : null,
+      ]
+    );
+  const entryIdsResult = await readCleanupCandidates();
+  let entryIds = entryIdsResult.rows.map((row) => row.id);
   if (entryIds.length > 0) {
     // A resync deletes the synced side in bulk. Clear the link first so the
     // logged workout that stays behind counts its own estimate again.
     await lockCalorieLinkParticipantsWithClient(client, userId, entryIds);
+    if (
+      ['health connect', 'healthkit'].includes(entrySource.trim().toLowerCase())
+    ) {
+      // A link can commit while cleanup waits for its allocation lock. Apply
+      // the same protection again once the selected participants are locked.
+      const lockedIds = new Set(entryIds);
+      entryIds = (await readCleanupCandidates()).rows
+        .map((row) => row.id)
+        .filter((id) => lockedIds.has(id));
+      if (entryIds.length === 0) return 0;
+    }
     await clearCalorieLinksOfEntriesWithClient(client, userId, entryIds);
     // Delete associated activity details
     await client.query(

@@ -1,4 +1,5 @@
 import exerciseRepository from '../../models/exercise.js';
+import type { PoolClient } from 'pg';
 import measurementRepository from '../../models/measurementRepository.js';
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
 import hevyExerciseRepository from './hevyExerciseRepository.js';
@@ -108,8 +109,8 @@ async function processHevyWorkouts(
       seenWorkoutIds.add(workout.id);
     }
     try {
-      await syncHevyWorkout(userId, createdByUserId, () =>
-        prepareSingleWorkout(userId, workout, timezone, templatesById)
+      await syncHevyWorkout(userId, createdByUserId, (client) =>
+        prepareSingleWorkout(userId, workout, timezone, templatesById, client)
       );
     } catch (error) {
       failures++;
@@ -131,7 +132,8 @@ async function prepareSingleWorkout(
   userId: string,
   workout: HevyWorkout,
   timezone = 'UTC',
-  templatesById: ReadonlyMap<string, HevyExerciseTemplate> = new Map()
+  templatesById: ReadonlyMap<string, HevyExerciseTemplate> = new Map(),
+  client?: PoolClient
 ): Promise<HevyWorkoutImport> {
   const startTime = new Date(workout.start_time);
   const endTime = new Date(workout.end_time);
@@ -151,15 +153,22 @@ async function prepareSingleWorkout(
   // name. Session persistence uses the workout's provider ID, independently
   // of the title, so renamed routines do not recreate logged workouts.
   let workoutPreset: WorkoutPresetRow | null =
-    await workoutPresetRepository.getWorkoutPresetByName(userId, workout.title);
+    await workoutPresetRepository.getWorkoutPresetByName(
+      userId,
+      workout.title,
+      client
+    );
   if (!workoutPreset) {
-    workoutPreset = await workoutPresetRepository.createWorkoutPreset({
-      user_id: userId,
-      name: workout.title,
-      description:
-        workout.description || `Workout session from Hevy: ${workout.title}`,
-      is_public: false,
-    });
+    workoutPreset = await workoutPresetRepository.createWorkoutPreset(
+      {
+        user_id: userId,
+        name: workout.title,
+        description:
+          workout.description || `Workout session from Hevy: ${workout.title}`,
+        is_public: false,
+      },
+      client
+    );
   }
   if (!workoutPreset) {
     throw new Error(
@@ -200,21 +209,27 @@ async function prepareSingleWorkout(
     ).filter((muscle) => !primaryMuscles.includes(muscle));
     // 1. Find or create exercise template
     let exercise: ExerciseRow | null = templateId
-      ? await hevyExerciseRepository.findByTemplateId(userId, templateId)
+      ? await hevyExerciseRepository.findByTemplateId(
+          userId,
+          templateId,
+          client
+        )
       : null;
     if (!exercise) {
       // Filter legacy records in the query itself: an unrelated public row
       // returned first by a general name search must not hide the owned row.
       exercise = await hevyExerciseRepository.findLegacyByName(
         userId,
-        hevyExercise.title
+        hevyExercise.title,
+        client
       );
     }
     if (!exercise) {
       exercise = await hevyExerciseRepository.findOwnedByName(
         userId,
         hevyExercise.title,
-        !templateId
+        !templateId,
+        client
       );
     }
     if (exercise?.source === 'Hevy' && templateId && template) {
@@ -224,7 +239,8 @@ async function prepareSingleWorkout(
           exercise.id,
           templateId,
           primaryMuscles,
-          secondaryMuscles
+          secondaryMuscles,
+          client
         );
       } catch (error) {
         log(
@@ -234,16 +250,19 @@ async function prepareSingleWorkout(
       }
     }
     if (!exercise) {
-      exercise = await exerciseRepository.createExercise({
-        user_id: userId,
-        name: hevyExercise.title,
-        source: 'Hevy',
-        source_id: templateId,
-        primary_muscles: primaryMuscles,
-        secondary_muscles: secondaryMuscles,
-        is_custom: true,
-        shared_with_public: false,
-      });
+      exercise = await exerciseRepository.createExercise(
+        {
+          user_id: userId,
+          name: hevyExercise.title,
+          source: 'Hevy',
+          source_id: templateId,
+          primary_muscles: primaryMuscles,
+          secondary_muscles: secondaryMuscles,
+          is_custom: true,
+          shared_with_public: false,
+        },
+        client
+      );
     }
     if (!exercise) {
       throw new Error(
@@ -346,7 +365,13 @@ async function prepareSingleWorkout(
         exercise.id,
         null,
         entryData.sets,
-        hevyExercise.index
+        hevyExercise.index,
+        'rep_goal',
+        null,
+        'weight',
+        5,
+        null,
+        client
       );
     } catch (error) {
       log(
