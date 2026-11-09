@@ -31,7 +31,7 @@ import { Exercise, ExerciseEntry, PresetSessionEntry } from '@/types/exercises';
 import {
   earliestEntryTime,
   entryCaloriesCounted,
-  isAppLoggedWorkoutSource,
+  isCalorieLinkWorkoutSource,
   setsDurationMinutes,
 } from '@workspace/shared';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
@@ -82,7 +82,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   // Linking works on the whole session, so any of its exercises will do.
   const linkableEntry = presetEntry.exercises?.[0];
   const linkableEntryId =
-    linkableEntry && isAppLoggedWorkoutSource(linkableEntry.source)
+    linkableEntry && isCalorieLinkWorkoutSource(linkableEntry.source)
       ? linkableEntry.id
       : null;
 
@@ -270,6 +270,10 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label={t(
+                        'exercise.calorieLink.action',
+                        'Link a synced workout'
+                      )}
                       onClick={() => onLink(linkableEntryId)}
                       className="flex-shrink-0 h-8 w-8 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
                     >

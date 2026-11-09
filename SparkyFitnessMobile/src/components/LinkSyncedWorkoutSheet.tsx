@@ -101,7 +101,10 @@ const LinkSyncedWorkoutSheet = forwardRef<
     setSeededFrom(data);
     const best = data.candidates.find((c) => c.match !== null);
     setSelectedId(data.link?.synced_entry_id ?? best?.id ?? '');
-    setResolution(data.link?.resolution ?? 'sparkyfitness');
+    setResolution(
+      data.link?.resolution ??
+        (data.manual_total_calories === 0 ? 'synced' : 'sparkyfitness')
+    );
   }
 
   const selected = data?.candidates.find((c) => c.id === selectedId);

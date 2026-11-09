@@ -890,7 +890,10 @@ async function _updateExerciseEntryWithClient(
     mergedData.calories_per_hour = exercise.calories_per_hour;
     mergedData.category = exercise.category;
     mergedData.modality = exercise.modality;
-    mergedData.source_id = exercise.source_id;
+    // The exercise's provider ID identifies a library template, whereas an
+    // entry's source_id identifies this particular imported workout instance.
+    mergedData.source_id =
+      updateData.source_id || currentEntry.source_id || exercise.source_id;
     mergedData.force = exercise.force;
     mergedData.level = exercise.level;
     mergedData.mechanic = exercise.mechanic;
@@ -1025,8 +1028,8 @@ async function _updateExerciseEntryWithClient(
     );
     if (Array.isArray(updateData.sets) && updateData.sets.length > 0) {
       assertSetWeightSign(updateData.sets, mergedData.modality);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const setsValues = updateData.sets.map((set: any) => [
+      const sets = updateData.sets as Record<string, unknown>[];
+      const setsValues = sets.map((set) => [
         id,
         set.set_number,
         set.set_type,
@@ -2563,6 +2566,7 @@ async function getExistingSourceIds(
 
 export { upsertExerciseEntryData };
 export { _createExerciseEntryWithClient };
+export { acquireExerciseEntrySyncLockWithClient };
 export { createExerciseEntry };
 export { getExerciseEntryById };
 export { getExerciseEntryOwnerId };

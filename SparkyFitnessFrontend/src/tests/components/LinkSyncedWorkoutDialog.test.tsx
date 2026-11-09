@@ -62,6 +62,20 @@ beforeEach(() => {
 });
 
 describe('LinkSyncedWorkoutDialog', () => {
+  it('defaults to measured calories when the imported workout has zero calories', async () => {
+    mockSuggestions = {
+      manual_total_calories: 0,
+      link: null,
+      candidates: [candidate({ source: 'Health Connect' })],
+    };
+    renderDialog();
+
+    fireEvent.click(screen.getByText('Link workouts'));
+
+    await waitFor(() => expect(mockSetLink).toHaveBeenCalledTimes(1));
+    expect(mockSetLink.mock.calls[0][0].body.resolution).toBe('synced');
+  });
+
   it('preselects the workout that matches the set times and links it', async () => {
     renderDialog();
 

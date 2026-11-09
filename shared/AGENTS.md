@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-08_
+_Last updated: 2026-11-09_
 
 `@workspace/shared` is a source-first TypeScript workspace library package for schemas, constants, and timezone/day helpers consumed by SparkyFitnessServer, SparkyFitnessFrontend, and SparkyFitnessMobile.
 
@@ -40,6 +40,8 @@ _Last updated: 2026-11-08_
 - `src/symptoms/` - generic symptom tracking: constants and enums (scales, templates, sections, option kinds), template section resolution (`resolveSections`), built-in symptoms and pick-lists, head/body region ids for the location maps, custom-field validation, and `symptomEntryDays` (`entryDays.ts`: the days of a window an entry covers, its `entry_date` plus, for an episode, every day from its start to its end or to today in the profile timezone; the web and mobile symptom calendars use it with the list endpoint's `overlapping` flag, so an episode shows on each of its days). The API contract is `src/schemas/api/Symptoms.api.zod.ts`.
 
 ## Naming Convention
+
+Calorie-link eligibility is shared by server, web and mobile: `isCalorieLinkWorkoutSource` allows app-logged and Hevy workouts. `isAppLoggedWorkoutSource` still identifies only app-logged workouts; do not use it to split a link's workout and health-recording sides.
 
 - `X.api.zod.ts` = API request/response schema
 - `X.zod.ts` = database table schema

@@ -71,7 +71,10 @@ const LinkSyncedWorkoutDialog: React.FC<LinkSyncedWorkoutDialogProps> = ({
     const linked = data.link?.synced_entry_id;
     const best = data.candidates.find((c) => c.match !== null);
     setSelectedId(linked ?? best?.id ?? '');
-    setResolution(data.link?.resolution ?? 'sparkyfitness');
+    setResolution(
+      data.link?.resolution ??
+        (data.manual_total_calories === 0 ? 'synced' : 'sparkyfitness')
+    );
   }, [data]);
 
   const unit = getEnergyUnitString(energyUnit);

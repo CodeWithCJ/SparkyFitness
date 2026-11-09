@@ -3,6 +3,7 @@ import type { PoolClient } from 'pg';
 import {
   distributeCountedCalories,
   isAppLoggedWorkoutSource,
+  isCalorieLinkWorkoutSource,
   localDateTimeToUtc,
   matchCalorieLink,
   resolveLinkedCalories,
@@ -19,7 +20,7 @@ import { getClient } from '../db/poolManager.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 
 /**
- * Links a workout logged in SparkyFitness to the same session synced from a
+ * Links a workout logged in SparkyFitness or imported from Hevy to a session synced from a
  * watch or health platform, so its calories count once (#2353).
  *
  * Nothing is ever deleted or re-estimated: each side keeps `calories_burned`,
@@ -49,6 +50,8 @@ interface LinkEntryRow {
   calorie_link_id: string | null;
   calorie_link_resolution: CalorieLinkResolution | null;
   source: string | null;
+  source_id: string | null;
+  exercise_preset_entry_id: string | null;
   exercise_name: string | null;
 }
 
@@ -63,6 +66,8 @@ const ENTRY_COLUMNS = `
   calorie_link_id,
   calorie_link_resolution,
   source,
+  source_id,
+  exercise_preset_entry_id,
   exercise_name`;
 
 /** The anchor entry plus, for a strength session, the rest of its preset entry. */
@@ -88,9 +93,15 @@ async function loadWorkoutEntries(
   if (result.rows.length === 0) {
     throw new CalorieLinkError('Exercise entry not found.', 404);
   }
-  if (result.rows.some((row) => !isAppLoggedWorkoutSource(row.source))) {
+  if (
+    result.rows.some(
+      (row) =>
+        !isCalorieLinkWorkoutSource(row.source) ||
+        (!isAppLoggedWorkoutSource(row.source) && !row.source_id)
+    )
+  ) {
     throw new CalorieLinkError(
-      'Only workouts logged in SparkyFitness can be linked.',
+      'Only workouts logged in SparkyFitness or imported from Hevy can be linked.',
       400
     );
   }
@@ -168,7 +179,7 @@ async function getCalorieLinkSuggestions(
        FROM exercise_entries
        WHERE user_id = $1
          AND entry_date = $2::date
-         AND source IS NOT NULL AND lower(source) NOT IN ('manual', 'sparky')
+         AND source IS NOT NULL AND lower(trim(source)) NOT IN ('manual', 'sparky', 'hevy')
          AND source_id IS NOT NULL
          AND exercise_preset_entry_id IS NULL
          AND exercise_name IS DISTINCT FROM 'Active Calories'
@@ -362,7 +373,8 @@ export async function lockCalorieLinkParticipantsWithClient(
 export async function reapplyCalorieLinkWithClient(
   client: PoolClient,
   userId: string,
-  linkId: string
+  linkId: string,
+  customCalories?: number
 ): Promise<void> {
   const result = await client.query<LinkedCalorieRow>(
     `SELECT id,
@@ -381,8 +393,8 @@ export async function reapplyCalorieLinkWithClient(
     (row) => row.calorie_link_resolution
   )?.calorie_link_resolution;
   if (!resolution) return;
-  const manual = rows.filter((row) => isAppLoggedWorkoutSource(row.source));
-  const synced = rows.filter((row) => !isAppLoggedWorkoutSource(row.source));
+  const manual = rows.filter((row) => isCalorieLinkWorkoutSource(row.source));
+  const synced = rows.filter((row) => !isCalorieLinkWorkoutSource(row.source));
   if (manual.length === 0 || synced.length === 0) return;
 
   const estimates = manual.map((row) => Number(row.calories_burned) || 0);
@@ -393,10 +405,9 @@ export async function reapplyCalorieLinkWithClient(
       0
     ),
     resolution,
-    customCalories: manual.reduce(
-      (sum, row) => sum + (Number(row.calories_applied) || 0),
-      0
-    ),
+    customCalories:
+      customCalories ??
+      manual.reduce((sum, row) => sum + (Number(row.calories_applied) || 0), 0),
   });
   const applied =
     resolved.manualCounted === null
@@ -510,7 +521,7 @@ async function setCalorieLink(
     )?.calorie_link_id;
 
     const syncedResult = await client.query(
-      `SELECT ${ENTRY_COLUMNS}, source_id
+      `SELECT ${ENTRY_COLUMNS}
        FROM exercise_entries
        WHERE id = $1 AND user_id = $2 FOR UPDATE`,
       [body.synced_entry_id, userId]
@@ -522,9 +533,11 @@ async function setCalorieLink(
       throw new CalorieLinkError('Synced workout not found.', 404);
     }
     if (
-      isAppLoggedWorkoutSource(synced.source) ||
+      isCalorieLinkWorkoutSource(synced.source) ||
       !synced.source ||
       !synced.source_id ||
+      synced.exercise_preset_entry_id ||
+      synced.exercise_name === 'Active Calories' ||
       workout.some((row) => row.id === synced.id)
     ) {
       throw new CalorieLinkError(

@@ -41,9 +41,19 @@ When adding or editing a Hevy provider, choose **Manual**, **Hourly**, or **Dail
 
 **Hourly** keeps the existing hourly schedule. You can still use **Sync** manually with any frequency.
 
-Hevy exercise templates also supply the primary and secondary muscle groups used in exercise reports. The importer matches templates by their Hevy ID and fills missing muscle information on your Hevy exercises while preserving populated fields. To add muscle information to workouts imported by an older version, run a full-history sync once so their diary snapshots are rebuilt with the exercise metadata.
+Hevy exercise templates also supply the primary and secondary muscle groups used in exercise reports. The importer matches templates by their Hevy ID and fills missing muscle information on your Hevy exercises while preserving populated fields. To add muscle information to workouts imported by an older version, run a full-history sync once so their existing diary snapshots receive the exercise metadata.
 
 Muscle metadata is best effort: if Hevy's template catalogue or a muscle update is unavailable, the workouts still import. Later syncs can fill missing muscles. The catalogue is skipped when all referenced Hevy exercises already have primary muscles, and unchanged library rows are not rewritten. An existing exercise of your own with the same name can be reused without changing its source or muscle fields; global public exercises and other users' exercises are not reused by this importer.
+
+### Link a Hevy workout to its health recording
+
+Hevy supplies exercises and sets, while a matching Health Connect or Apple Health recording can supply measured calories. In the web diary or the mobile workout details, open **Link a synced workout**, select the recording, and choose which calories count. A Hevy workout with no calorie estimate initially selects the synced recording's calories. You can choose another total or unlink at any time.
+
+Both entries and their original estimates remain available. The link controls their contribution to the daily calorie total; it does not copy heart-rate samples or zones between entries. Matching suggestions help you choose, and linking always requires your confirmation.
+
+Repeated Hevy syncs update the existing session and exercise entries instead of deleting a date range. Their IDs, calorie links, and your calorie, heart-rate, distance, duration and note corrections survive. Older Hevy sessions are adopted on their next sync. Sets and imported exercise metadata follow the latest Hevy workout. A failed workout write rolls back that workout's diary changes. Workouts absent from a response are left in place; exercises removed from an included workout are removed from that session. If all its exercises are removed, its calorie link is cleared and the health recording counts its own calories again.
+
+Exercises are matched by their Hevy template rather than their position, so moving a different exercise earlier in the workout does not transfer its corrections. If the same template appears several times, occurrences are matched in order; Hevy does not provide separate IDs for otherwise identical occurrences.
 
 ## Canadian Nutrient File (Health Canada)
 

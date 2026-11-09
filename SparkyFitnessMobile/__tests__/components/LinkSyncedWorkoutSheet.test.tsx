@@ -86,6 +86,20 @@ describe('LinkSyncedWorkoutSheet', () => {
     );
   });
 
+  it('defaults to measured calories for a zero-calorie imported workout', async () => {
+    mockSuggestions = {
+      manual_total_calories: 0,
+      link: null,
+      candidates: [candidate({ source: 'Health Connect' })],
+    };
+    const { view } = renderSheet();
+
+    fireEvent.press(view.getByText('Link workouts'));
+
+    await waitFor(() => expect(mockSetLink).toHaveBeenCalledTimes(1));
+    expect(mockSetLink.mock.calls[0][0].resolution).toBe('synced');
+  });
+
   it('shows what each choice would count and sends the chosen one', async () => {
     const { view } = renderSheet();
 
