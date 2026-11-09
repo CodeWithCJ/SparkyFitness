@@ -91,21 +91,41 @@ jest.mock('@/components/FoodSearch/FoodResultCard', () => ({
   default: () => null,
 }));
 jest.mock('@/components/FoodSearch/FoodFormDialog', () => ({
-  FoodFormDialog: () => null,
+  FoodFormDialog: ({
+    isOpen,
+    mode,
+    editingProduct,
+  }: {
+    isOpen: boolean;
+    mode: string;
+    editingProduct?: { name: string } | null;
+  }) =>
+    isOpen ? (
+      <div role="dialog" aria-label={`food form ${mode}`}>
+        {editingProduct?.name}
+      </div>
+    ) : null,
 }));
 // Replace the camera boundary; search state and All Providers fan-out stay real.
 jest.mock('@/components/FoodSearch/BarcodeScannerDialog', () => ({
   BarcodeScannerDialog: ({
     isOpen,
     onBarcodeDetected,
+    onLabelScanned,
   }: {
     isOpen: boolean;
     onBarcodeDetected: (barcode: string) => void;
+    onLabelScanned?: (food: { id: string; name: string }) => void;
   }) =>
     isOpen ? (
-      <button onClick={() => onBarcodeDetected('1234567890123')}>
-        Detect barcode
-      </button>
+      <>
+        <button onClick={() => onBarcodeDetected('1234567890123')}>
+          Detect barcode
+        </button>
+        <button onClick={() => onLabelScanned?.({ id: '', name: 'Oat Bar' })}>
+          Scan label
+        </button>
+      </>
     ) : null,
 }));
 
@@ -130,7 +150,9 @@ it('clears barcode loading when typed All Providers results replace a pending sc
   );
   try {
     expect(screen.getByText('All Providers')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Scan Barcode' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Scan Barcode or Label' })
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Detect barcode' }));
     await waitFor(() => expect(searchBarcodeV2).toHaveBeenCalledTimes(1));
     expect(container.querySelector('svg.animate-spin')).not.toBeNull();
@@ -152,6 +174,38 @@ it('clears barcode loading when typed All Providers results replace a pending sc
       'yogurt'
     );
     expect(container.querySelector('svg.animate-spin')).toBeNull();
+  } finally {
+    client.clear();
+  }
+});
+
+it('opens the food form with a scanned nutrition label', async () => {
+  jest.mocked(searchBarcodeV2).mockClear();
+  jest.mocked(searchFoodsV2).mockResolvedValue({
+    foods: [],
+    pagination: { page: 1, pageSize: 10, totalCount: 0, hasMore: false },
+  });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <FoodSearch onFoodSelect={jest.fn()} hideMealTab />
+    </QueryClientProvider>
+  );
+  try {
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Scan Barcode or Label' })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Scan label' }));
+
+    expect(
+      await screen.findByRole('dialog', { name: 'food form edit' })
+    ).toHaveTextContent('Oat Bar');
+    expect(
+      screen.queryByRole('button', { name: 'Scan label' })
+    ).not.toBeInTheDocument();
+    expect(searchBarcodeV2).not.toHaveBeenCalled();
   } finally {
     client.clear();
   }

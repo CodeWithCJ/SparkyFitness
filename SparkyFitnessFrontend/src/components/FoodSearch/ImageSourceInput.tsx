@@ -12,11 +12,6 @@ interface ImageSourceInputProps {
   buttonLabel: string;
   /** Shows a spinner and ignores new images while the last one is processed. */
   busy?: boolean;
-  /**
-   * Whether a pasted image goes to this input. The listener is on the whole
-   * document, so a screen with more than one input enables only one at a time.
-   */
-  pasteEnabled?: boolean;
   /** Shown under the input, for example when nothing was found in the image. */
   error?: string | null;
 }
@@ -32,13 +27,13 @@ function firstImageFile(files: Iterable<File>): File | null {
  * Takes one image from a file picker, a drag and drop, or the clipboard
  * (Ctrl+V / Cmd+V anywhere on the page, which is how a copied screenshot
  * arrives). Pasting text is left alone, so text inputs on the same screen
- * still work.
+ * still work. The paste listener is on the whole document, so a screen shows
+ * at most one of these at a time.
  */
 export function ImageSourceInput({
   onImage,
   buttonLabel,
   busy = false,
-  pasteEnabled = true,
   error,
 }: ImageSourceInputProps) {
   const { t } = useTranslation();
@@ -53,7 +48,6 @@ export function ImageSourceInput({
   );
 
   useEffect(() => {
-    if (!pasteEnabled) return;
     const handlePaste = (event: ClipboardEvent) => {
       const image = firstImageFile(event.clipboardData?.files ?? []);
       if (!image) return;
@@ -62,7 +56,7 @@ export function ImageSourceInput({
     };
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
-  }, [pasteEnabled, takeImage]);
+  }, [takeImage]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     takeImage(firstImageFile(event.target.files ?? []));

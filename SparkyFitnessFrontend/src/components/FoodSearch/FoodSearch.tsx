@@ -1294,7 +1294,7 @@ const EnhancedFoodSearch = ({
           className="whitespace-nowrap"
         >
           <Camera className="w-4 h-4 mr-2" />{' '}
-          {t('enhancedFoodSearch.scanBarcode', 'Scan Barcode')}
+          {t('enhancedFoodSearch.scanBarcodeOrLabel', 'Scan Barcode or Label')}
         </Button>
       </div>
 
@@ -1777,6 +1777,11 @@ const EnhancedFoodSearch = ({
         selectedProviderId={selectedBarcodeProvider}
         onProviderChange={setBarcodeProviderId}
         providers={foodDataProviders}
+        onLabelScanned={(food) => {
+          setShowBarcodeScanner(false);
+          setEditingProduct(food);
+          setShowEditDialog(true);
+        }}
       />
     </div>
   );

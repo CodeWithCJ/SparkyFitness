@@ -29,6 +29,7 @@ export * from './schemas/api/FoodEntryCopy.api.zod.ts';
 export * from './schemas/api/FoodPhotoEstimate.api.zod.ts';
 export * from './schemas/api/SupplementLookup.api.zod.ts';
 export * from './schemas/api/SupplementLabelScan.api.zod.ts';
+export * from './schemas/api/NutritionLabelScan.api.zod.ts';
 export * from './schemas/api/FoodPhotoLog.api.zod.ts';
 export * from './schemas/api/HealthMetricSamples.api.zod.ts';
 export * from './schemas/api/HeartRateZones.api.zod.ts';
