@@ -24,7 +24,7 @@ import UserNotifications
 // unclaimed and JavaScript handles it as before.
 //
 // What happened is left in a small ledger in UserDefaults for JavaScript to
-// apply when it next runs (`drainMedicationActionResults`): the snooze record,
+// apply when it next runs (`readMedicationActionResults`, confirmed with `acknowledgeMedicationActionResults`): the snooze record,
 // cache invalidation, and any write that failed, which goes onto the existing
 // pending-actions queue and is replayed when the app opens. Keep the category
 // ids, action ids and data keys in step with src/services/notifications.ts and
@@ -47,6 +47,7 @@ private let resultsKey = "sparky.medication.actionResults"
 private let defaultSnoozeMinutes = 30
 private let claimLifetime: TimeInterval = 2 * 24 * 60 * 60
 private let resultsLimit = 50
+private let activeUserKey = "sparky.medication.activeUserId"
 
 let medicationActionResultNotification = Notification.Name("SparkyMedicationActionResult")
 
@@ -88,23 +89,126 @@ enum MedicationActionStore {
         return true
     }
 
-    static func appendResult(_ result: [String: Any]) {
+    /// The account the reminders on this device belong to, pushed by JavaScript
+    /// once it knows it. Taken and Skip are only handled natively for a
+    /// reminder that names this account, so a reminder left over from another
+    /// account is never logged into the current one.
+    static func setActiveUserId(_ userId: String?) {
+        if let userId, !userId.isEmpty {
+            defaults.set(userId, forKey: activeUserKey)
+        } else {
+            defaults.removeObject(forKey: activeUserKey)
+        }
+    }
+
+    static var activeUserId: String? { defaults.string(forKey: activeUserKey) }
+
+    /// Gives a claim back, so a press that could not be carried out (a snooze
+    /// that failed to schedule) can be tried again.
+    static func release(_ notificationId: String, _ actionId: String) {
+        lock.lock(); defer { lock.unlock() }
+        var claims = defaults.dictionary(forKey: claimsKey) as? [String: Double] ?? [:]
+        claims.removeValue(forKey: claimKey(notificationId, actionId))
+        defaults.set(claims, forKey: claimsKey)
+    }
+
+    // The ledger is stored as one JSON blob: UserDefaults rejects the NSNull a
+    // missing user, key or schedule id leaves in a result.
+    private static var inFlight = Set<String>()
+
+    private static func readLedger() -> [[String: Any]] {
+        guard let data = defaults.data(forKey: resultsKey),
+              let results = (try? JSONSerialization.jsonObject(with: data)) as? [[String: Any]]
+        else { return [] }
+        return results
+    }
+
+    private static func writeLedger(_ results: [[String: Any]]) {
+        if results.isEmpty {
+            defaults.removeObject(forKey: resultsKey)
+        } else if let data = try? JSONSerialization.data(withJSONObject: results) {
+            defaults.set(data, forKey: resultsKey)
+        }
+    }
+
+    /// Past the limit, results that carry nothing to retry go first: a failed
+    /// dose is never dropped before JavaScript has queued it.
+    private static func trim(_ results: [[String: Any]]) -> [[String: Any]] {
+        var results = results
+        while results.count > resultsLimit {
+            if let index = results.firstIndex(where: { !carriesRetry($0) }) {
+                results.remove(at: index)
+            } else {
+                break
+            }
+        }
+        return results
+    }
+
+    private static func carriesRetry(_ result: [String: Any]) -> Bool {
+        guard result["kind"] as? String == "action" else { return false }
+        return !((result["failedDoses"] as? [[String: Any]]) ?? []).isEmpty
+    }
+
+    /// Records the press before any network work starts, as a result that
+    /// still has every dose to do. If iOS ends the app mid-request, the next
+    /// run reads it and retries (the retry lists the day first, so doses that
+    /// were written are not written again). `finish` replaces it.
+    static func begin(_ result: [String: Any]) -> String {
+        let id = UUID().uuidString
+        var entry = result
+        entry["id"] = id
         lock.lock()
-        var results = defaults.array(forKey: resultsKey) as? [[String: Any]] ?? []
-        results.append(result)
-        if results.count > resultsLimit { results.removeFirst(results.count - resultsLimit) }
-        defaults.set(results, forKey: resultsKey)
+        inFlight.insert(id)
+        writeLedger(trim(readLedger() + [entry]))
         lock.unlock()
+        return id
+    }
+
+    static func finish(_ id: String, _ result: [String: Any]) {
+        var entry = result
+        entry["id"] = id
+        lock.lock()
+        var results = readLedger()
+        if let index = results.firstIndex(where: { $0["id"] as? String == id }) {
+            results[index] = entry
+        } else {
+            results.append(entry)
+        }
+        writeLedger(trim(results))
+        inFlight.remove(id)
+        lock.unlock()
+        notifyResultAvailable()
+    }
+
+    static func append(_ result: [String: Any]) {
+        var entry = result
+        entry["id"] = UUID().uuidString
+        lock.lock()
+        writeLedger(trim(readLedger() + [entry]))
+        lock.unlock()
+        notifyResultAvailable()
+    }
+
+    private static func notifyResultAvailable() {
         DispatchQueue.main.async {
             NotificationCenter.default.post(name: medicationActionResultNotification, object: nil)
         }
     }
 
-    static func drainResults() -> [[String: Any]] {
+    /// Everything not still being worked on in this process. Nothing is
+    /// removed until JavaScript acknowledges it, so a result survives a
+    /// failed write on the JavaScript side.
+    static func readResults() -> [[String: Any]] {
         lock.lock(); defer { lock.unlock() }
-        let results = defaults.array(forKey: resultsKey) as? [[String: Any]] ?? []
-        if !results.isEmpty { defaults.removeObject(forKey: resultsKey) }
-        return results
+        return readLedger().filter { !inFlight.contains($0["id"] as? String ?? "") }
+    }
+
+    static func acknowledge(_ ids: [String]) {
+        guard !ids.isEmpty else { return }
+        lock.lock(); defer { lock.unlock() }
+        let done = Set(ids)
+        writeLedger(readLedger().filter { !done.contains($0["id"] as? String ?? "") })
     }
 }
 
@@ -267,6 +371,23 @@ private func isDoseLogged(_ entries: [[String: Any]], _ dose: MedicationDose) ->
     }
 }
 
+/// Runs the native dose writes one after another, so a second press waits for
+/// the first to finish and then lists the day again, seeing what it wrote.
+private actor MedicationWriteQueue {
+    static let shared = MedicationWriteQueue()
+    private var tail: Task<Void, Never>?
+
+    func run(_ work: @escaping @Sendable () async -> Void) async {
+        let previous = tail
+        let next = Task {
+            await previous?.value
+            await work()
+        }
+        tail = next
+        await next.value
+    }
+}
+
 // MARK: - Delegate
 
 public final class MedicationNotificationActions: NSObject, NotificationDelegate {
@@ -287,6 +408,14 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
         let login = isSnooze ? nil : MedicationLogin.load()
         // Taken and Skip need the stored login; without it JavaScript logs the dose.
         if !isSnooze && login == nil { return false }
+        // Taken and Skip also need the reminder to belong to the account this
+        // device is signed in to. One that does not (left over from another
+        // account, or from before the account was known) is left to
+        // JavaScript, which checks ownership against the account's medications.
+        if !isSnooze {
+            guard let active = MedicationActionStore.activeUserId,
+                  let owner = data.userId, owner == active else { return false }
+        }
 
         let notificationId = response.notification.request.identifier
         // A second delivery of the same tap is ours, already done or running.
@@ -303,7 +432,11 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
             if isSnooze {
                 await self.snooze(content, data, notificationId)
             } else if let login {
-                await self.log(login, actionId == takenAction ? "taken" : "skipped", data, notificationId)
+                // One write at a time: two reminders for the same dose acted on
+                // together would otherwise both see it unlogged and both log it.
+                await MedicationWriteQueue.shared.run {
+                    await self.log(login, actionId == takenAction ? "taken" : "skipped", data, notificationId)
+                }
             }
             await MainActor.run {
                 if task != .invalid { UIApplication.shared.endBackgroundTask(task) }
@@ -323,6 +456,23 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
         let takenAt = status == "taken" ? isoString(Date()) : nil
         await removeDelivered([notificationId])
 
+        var base: [String: Any] = [
+            "kind": "action",
+            "status": status,
+            "notificationId": notificationId,
+            "key": data.baseKey ?? NSNull(),
+            "entryDate": data.entryDate,
+            "userId": data.userId ?? NSNull(),
+            "doses": data.doses.map { $0.json },
+        ]
+        if let takenAt { base["takenAt"] = takenAt }
+        // Recorded before any network work, with every dose still to do, so a
+        // press iOS cuts short is retried by JavaScript on the next run.
+        var pendingResult = base
+        pendingResult["failedDoses"] = data.doses.map { $0.json }
+        pendingResult["loggedCount"] = 0
+        let ledgerId = MedicationActionStore.begin(pendingResult)
+
         var failed: [MedicationDose] = []
         var logged = 0
         do {
@@ -330,8 +480,10 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
             if data.doses.count == 1 {
                 path += "&medicationId=\(data.doses[0].medicationId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? data.doses[0].medicationId)"
             }
-            let existing = (try? JSONSerialization.jsonObject(
-                with: try await MedicationApi.send(login, method: "GET", path: path))) as? [[String: Any]] ?? []
+            // A failed list must not read as "nothing logged yet": the error goes
+            // to the catch below, which leaves every dose to the retry queue.
+            let listed = try await MedicationApi.send(login, method: "GET", path: path)
+            let existing = try JSONSerialization.jsonObject(with: listed) as? [[String: Any]] ?? []
             for dose in data.doses where !isDoseLogged(existing, dose) {
                 var body: [String: Any] = [
                     "medication_id": dose.medicationId,
@@ -356,19 +508,9 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
             await clearMatching(
                 except: notificationId, key: data.baseKey, doses: data.doses, entryDate: data.entryDate)
         }
-        var result: [String: Any] = [
-            "kind": "action",
-            "status": status,
-            "notificationId": notificationId,
-            "key": data.baseKey ?? NSNull(),
-            "entryDate": data.entryDate,
-            "userId": data.userId ?? NSNull(),
-            "doses": data.doses.map { $0.json },
-            "failedDoses": failed.map { $0.json },
-            "loggedCount": logged,
-        ]
-        if let takenAt { result["takenAt"] = takenAt }
-        MedicationActionStore.appendResult(result)
+        base["failedDoses"] = failed.map { $0.json }
+        base["loggedCount"] = logged
+        MedicationActionStore.finish(ledgerId, base)
     }
 
     // MARK: Snooze
@@ -402,7 +544,8 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
             try await center.add(request)
         } catch {
             // The original stays on screen so the dose is not lost; JavaScript is not told it was snoozed.
-            MedicationActionStore.appendResult([
+            MedicationActionStore.release(notificationId, snoozeAction)
+            MedicationActionStore.append([
                 "kind": "snoozeFailed", "notificationId": notificationId, "entryDate": data.entryDate,
             ])
             return
@@ -410,7 +553,7 @@ public final class MedicationNotificationActions: NSObject, NotificationDelegate
         await removeDelivered([notificationId])
         await clearMatching(
             except: identifier, exceptKey: snoozeKey, key: baseKey, doses: data.doses, entryDate: data.entryDate)
-        MedicationActionStore.appendResult([
+        MedicationActionStore.append([
             "kind": "snooze",
             "baseKey": baseKey,
             "entryDate": data.entryDate,

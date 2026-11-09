@@ -1,5 +1,6 @@
 const mockClaimed = jest.fn();
-const mockDrain = jest.fn();
+const mockRead = jest.fn();
+const mockAck = jest.fn();
 const mockSetSnooze = jest.fn();
 let mockListener: (() => void) | undefined;
 
@@ -12,7 +13,8 @@ jest.mock('../../modules/background-water', () => ({
   default: {
     isMedicationActionClaimed: (id: string, action: string) =>
       mockClaimed(id, action),
-    drainMedicationActionResults: () => mockDrain(),
+    readMedicationActionResults: () => mockRead(),
+    acknowledgeMedicationActionResults: (ids: string[]) => mockAck(ids),
     setMedicationSnoozeMinutes: (m: number) => mockSetSnooze(m),
     addListener: (_name: string, fn: () => void) => {
       mockListener = fn;
@@ -71,7 +73,8 @@ function response(actionIdentifier = 'medication-taken') {
 describe('iOS native medication reminder handler', () => {
   beforeEach(async () => {
     mockClaimed.mockReset().mockReturnValue(false);
-    mockDrain.mockReset().mockReturnValue('[]');
+    mockRead.mockReset().mockReturnValue('[]');
+    mockAck.mockReset();
     (createEntry as jest.Mock).mockReset();
     (listEntries as jest.Mock).mockReset().mockResolvedValue([]);
     await AsyncStorage.clear();
@@ -97,11 +100,32 @@ describe('iOS native medication reminder handler', () => {
     expect(mockListener).toBeDefined();
   });
 
-  it('refreshes caches for a dose the native handler logged', async () => {
+  it('refreshes caches and clears only the matching queued action', async () => {
+    const unrelated = {
+      key: 'other',
+      notificationId: 'n-other',
+      status: 'taken',
+      doses: [{ medicationId: 'm9', scheduleId: null }],
+      entryDate: DATE,
+      userId: null,
+    };
+    const matching = {
+      key: null,
+      notificationId: 'notif-1',
+      status: 'taken',
+      doses: [dose],
+      entryDate: DATE,
+      userId: null,
+    };
+    await AsyncStorage.setItem(
+      PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY,
+      JSON.stringify([matching, unrelated])
+    );
     const spy = jest.spyOn(queryClient, 'invalidateQueries');
-    mockDrain.mockReturnValue(
+    mockRead.mockReturnValue(
       JSON.stringify([
         {
+          id: 'r1',
           kind: 'action',
           status: 'taken',
           notificationId: 'notif-1',
@@ -116,17 +140,49 @@ describe('iOS native medication reminder handler', () => {
     );
     expect(await applyNativeMedicationActionResults()).toBe(true);
     expect(spy).toHaveBeenCalled();
-    expect(
-      await AsyncStorage.getItem(PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY)
-    ).toBeNull();
+    expect(mockAck).toHaveBeenCalledWith(['r1']);
+    const left = JSON.parse(
+      (await AsyncStorage.getItem(
+        PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY
+      )) ?? '[]'
+    );
+    expect(left).toEqual([unrelated]);
     spy.mockRestore();
+  });
+
+  it('keeps a failed dose natively when the retry queue cannot be written', async () => {
+    const failed = { medicationId: 'm2', scheduleId: null };
+    mockRead.mockReturnValue(
+      JSON.stringify([
+        {
+          id: 'r9',
+          kind: 'action',
+          status: 'taken',
+          notificationId: 'notif-9',
+          key: null,
+          entryDate: DATE,
+          userId: null,
+          doses: [failed],
+          failedDoses: [failed],
+          loggedCount: 0,
+        },
+      ])
+    );
+    // AsyncStorage is already a jest mock here; spyOn + mockRestore would
+    // reset its implementation for every later test.
+    (AsyncStorage.setItem as jest.Mock).mockRejectedValueOnce(
+      new Error('disk full')
+    );
+    await applyNativeMedicationActionResults();
+    expect(mockAck).not.toHaveBeenCalled();
   });
 
   it('queues only the doses the native write failed for', async () => {
     const failed = { medicationId: 'm2', scheduleId: null };
-    mockDrain.mockReturnValue(
+    mockRead.mockReturnValue(
       JSON.stringify([
         {
+          id: 'r2',
           kind: 'action',
           status: 'skipped',
           notificationId: 'notif-2',
@@ -140,6 +196,7 @@ describe('iOS native medication reminder handler', () => {
       ])
     );
     await applyNativeMedicationActionResults();
+    expect(mockAck).toHaveBeenCalledWith(['r2']);
     const queued = JSON.parse(
       (await AsyncStorage.getItem(
         PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY
@@ -154,7 +211,7 @@ describe('iOS native medication reminder handler', () => {
   });
 
   it('records a native snooze so it is kept until the dose is logged', async () => {
-    mockDrain.mockReturnValue(
+    mockRead.mockReturnValue(
       JSON.stringify([
         {
           kind: 'snooze',

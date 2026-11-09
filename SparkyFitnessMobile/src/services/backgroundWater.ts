@@ -9,6 +9,7 @@ import {
   volumeFromMl,
 } from '../utils/unitConversions';
 import { addLog } from './LogService';
+import { setNativeMedicationActiveUser } from './medicationNativeBridge';
 import { getAuthHeaders } from './api/authService';
 import { getActiveServerConfig, proxyHeadersToRecord } from './storage';
 
@@ -130,7 +131,11 @@ export function syncBackgroundWater(
 
 /** Erases the native copy, e.g. when the user signs out or removes the server. */
 export function clearBackgroundWater(): Promise<void> {
-  return enqueue(() => store(null));
+  // The native medication reminder handler also forgets whose reminders it may log.
+  return enqueue(() => {
+    setNativeMedicationActiveUser(null);
+    return store(null);
+  });
 }
 
 /**

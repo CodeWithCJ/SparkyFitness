@@ -9,7 +9,8 @@ import {
   maybePromptForExactAlarmPermission,
   registerLocalizedNotificationPresentation,
 } from '../services/notifications';
-import { setNativeMedicationSnoozeMinutes } from '../services/medicationNativeBridge';
+import { setNativeMedicationActiveUser } from '../services/medicationNativeBridge';
+import { syncNativeMedicationSnoozeMinutes } from '../services/medicationNativeSync';
 import { addLog } from '../services/LogService';
 import i18n from '../localization/i18n';
 
@@ -53,8 +54,16 @@ const MedicationReminderReconciler: React.FC = () => {
   });
 
   useEffect(() => {
-    setNativeMedicationSnoozeMinutes(medicationReminderSnoozeMinutes);
+    syncNativeMedicationSnoozeMinutes();
   }, [medicationReminderSnoozeMinutes]);
+
+  // The iOS native handler logs a reminder's Taken / Skip only for the account
+  // the device is signed in to; the medications' owner is the only identity
+  // available here.
+  const activeUserId = medications?.find((m) => m.user_id)?.user_id ?? null;
+  useEffect(() => {
+    if (activeUserId) setNativeMedicationActiveUser(activeUserId);
+  }, [activeUserId]);
 
   useEffect(() => {
     void registerLocalizedNotificationPresentation().catch((error) => {

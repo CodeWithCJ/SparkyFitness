@@ -26,11 +26,12 @@ import { addDays } from '../utils/dateUtils';
 import { isDoseLogged } from '../utils/medications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
+  acknowledgeNativeMedicationActionResults,
   addNativeMedicationResultListener,
-  drainNativeMedicationActionResults,
+  readNativeMedicationActionResults,
   isNativeMedicationActionClaimed,
-  setNativeMedicationSnoozeMinutes,
 } from './medicationNativeBridge';
+import { syncNativeMedicationSnoozeMinutes } from './medicationNativeSync';
 import i18n, {
   getDeviceLanguage,
   initializeI18n,
@@ -208,7 +209,7 @@ async function readPendingActions(): Promise<
 
 async function writePendingActions(
   actions: PendingMedicationNotificationAction[]
-): Promise<void> {
+): Promise<boolean> {
   try {
     if (actions.length === 0) {
       await AsyncStorage.removeItem(
@@ -220,20 +221,22 @@ async function writePendingActions(
         JSON.stringify(actions)
       );
     }
+    return true;
   } catch {
-    // ignore storage errors
+    // The caller decides whether a failed write matters.
+    return false;
   }
 }
 
 async function enqueuePendingAction(
   record: PendingMedicationNotificationAction
-): Promise<void> {
-  await withPendingActionsLock(async () => {
+): Promise<boolean> {
+  return withPendingActionsLock(async () => {
     const existing = await readPendingActions();
     const id = actionDedupeId(record);
     const filtered = existing.filter((item) => actionDedupeId(item) !== id);
     filtered.push(record);
-    await writePendingActions(filtered);
+    return writePendingActions(filtered);
   });
 }
 
@@ -797,15 +800,42 @@ TaskManager.defineTask<Notifications.NotificationTaskPayload>(
   }
 );
 
+let applyingNativeResults: Promise<boolean> | null = null;
+let applyNativeResultsAgain = false;
+
 /**
  * Applies what the iOS native handler did while JavaScript was not looking:
- * records snoozes, retries writes that failed, and refreshes the caches.
+ * records snoozes, retries writes that failed, and refreshes the caches. A
+ * result is acknowledged (and so forgotten natively) only once it has been
+ * stored, so a failed write here leaves it to be applied again. Applying is
+ * safe to repeat: queue records dedupe, and the retry lists the day first.
  */
-export async function applyNativeMedicationActionResults(): Promise<boolean> {
-  const results = drainNativeMedicationActionResults();
+export function applyNativeMedicationActionResults(): Promise<boolean> {
+  if (applyingNativeResults) {
+    applyNativeResultsAgain = true;
+    return applyingNativeResults;
+  }
+  const run = (async () => {
+    let appliedAny = false;
+    do {
+      applyNativeResultsAgain = false;
+      appliedAny = (await applyNativeResultsOnce()) || appliedAny;
+    } while (applyNativeResultsAgain);
+    return appliedAny;
+  })().finally(() => {
+    applyingNativeResults = null;
+  });
+  applyingNativeResults = run;
+  return run;
+}
+
+async function applyNativeResultsOnce(): Promise<boolean> {
+  const results = readNativeMedicationActionResults();
   if (results.length === 0) return false;
 
+  const done: string[] = [];
   let refresh = false;
+  let queuedRetry = false;
   for (const result of results) {
     if (result.kind === 'snooze') {
       await recordSnoozedReminder(
@@ -817,13 +847,15 @@ export async function applyNativeMedicationActionResults(): Promise<boolean> {
         `[MedicationNotificationAction] Snoozed ${result.doses.length} medication(s) for ${result.minutes}m (native)`,
         'DEBUG'
       );
+      done.push(result.id);
     } else if (result.kind === 'snoozeFailed') {
       addLog(
         '[MedicationNotificationAction] Native snooze could not be scheduled',
         'WARNING'
       );
+      done.push(result.id);
     } else if (result.failedDoses.length > 0) {
-      await enqueuePendingAction({
+      const stored = await enqueuePendingAction({
         key: result.key,
         notificationId: result.notificationId,
         status: result.status,
@@ -832,11 +864,21 @@ export async function applyNativeMedicationActionResults(): Promise<boolean> {
         userId: result.userId,
         takenAt: result.takenAt,
       });
+      if (!stored) {
+        // Keep it natively until it can be stored.
+        addLog(
+          '[MedicationNotificationAction] Could not queue a failed native dose; keeping it to retry',
+          'WARNING'
+        );
+        continue;
+      }
       addLog(
         `[MedicationNotificationAction] Native handler could not log ${result.failedDoses.length} medication(s); queued to retry`,
         'WARNING'
       );
+      queuedRetry = true;
       refresh = refresh || result.loggedCount > 0;
+      done.push(result.id);
     } else {
       await removePendingAction({
         key: result.key,
@@ -850,19 +892,24 @@ export async function applyNativeMedicationActionResults(): Promise<boolean> {
         'DEBUG'
       );
       refresh = true;
+      done.push(result.id);
     }
   }
+  acknowledgeNativeMedicationActionResults(done);
   if (refresh) invalidateMedicationEntryCaches(queryClient);
-  return true;
+  // Replay what was just queued now, rather than waiting for the next
+  // reconcile: it stays queued if the server is still unreachable.
+  if (queuedRetry) {
+    await flushPendingMedicationNotificationActions().catch(() => false);
+  }
+  return done.length > 0;
 }
 
 export function initMedicationNotificationActions(): void {
   if (initialized) return;
   initialized = true;
 
-  setNativeMedicationSnoozeMinutes(
-    useAppPreferencesStore.getState()?.medicationReminderSnoozeMinutes ?? 30
-  );
+  syncNativeMedicationSnoozeMinutes();
   void applyNativeMedicationActionResults();
   addNativeMedicationResultListener(() => {
     void applyNativeMedicationActionResults();

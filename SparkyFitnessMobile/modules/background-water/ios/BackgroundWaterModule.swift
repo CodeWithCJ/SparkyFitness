@@ -57,12 +57,24 @@ public class BackgroundWaterModule: Module {
             MedicationActionStore.isClaimed(notificationId, actionId)
         }
 
-        /// What the native handler did since JavaScript last asked, as JSON.
-        Function("drainMedicationActionResults") { () -> String in
-            let results = MedicationActionStore.drainResults()
+        /// The account the reminders belong to, or nil when signed out. Taken
+        /// and Skip are handled natively only for this account's reminders.
+        Function("setMedicationActiveUser") { (userId: String?) in
+            MedicationActionStore.setActiveUserId(userId)
+        }
+
+        /// What the native handler did and JavaScript has not yet confirmed,
+        /// as JSON. Nothing is removed until `acknowledgeMedicationActionResults`.
+        Function("readMedicationActionResults") { () -> String in
+            let results = MedicationActionStore.readResults()
             guard let data = try? JSONSerialization.data(withJSONObject: results),
                   let json = String(data: data, encoding: .utf8) else { return "[]" }
             return json
+        }
+
+        /// Forgets results JavaScript has stored or applied.
+        Function("acknowledgeMedicationActionResults") { (ids: [String]) in
+            MedicationActionStore.acknowledge(ids)
         }
 
         Function("setConfig") { (json: String?) -> Bool in

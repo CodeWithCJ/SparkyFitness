@@ -24,8 +24,18 @@ export interface BackgroundWaterNativeModule {
    * press (it logs or snoozes with the app closed), so JavaScript must not.
    */
   isMedicationActionClaimed?(notificationId: string, actionId: string): boolean;
-  /** iOS only: what the native handler did since the last call, as JSON. */
-  drainMedicationActionResults?(): string;
+  /**
+   * iOS only: the account the reminders belong to (null when signed out).
+   * Taken and Skip are handled natively only for that account's reminders.
+   */
+  setMedicationActiveUser?(userId: string | null): void;
+  /**
+   * iOS only: what the native handler did and JavaScript has not confirmed,
+   * as JSON. Reading removes nothing.
+   */
+  readMedicationActionResults?(): string;
+  /** iOS only: forgets results JavaScript has stored or applied. */
+  acknowledgeMedicationActionResults?(ids: string[]): void;
   /** iOS only: fires when the native handler leaves a result to drain. */
   addListener?(
     eventName: 'onMedicationActionResult',

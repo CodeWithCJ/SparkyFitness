@@ -8,7 +8,7 @@ import BackgroundWaterModule from '../../modules/background-water';
 // is a no-op, so JavaScript keeps handling the buttons as it always did.
 
 /** What the native handler leaves for JavaScript to apply. */
-export type NativeMedicationActionResult =
+export type NativeMedicationActionResult = { id: string } & (
   | {
       kind: 'action';
       status: 'taken' | 'skipped';
@@ -29,7 +29,8 @@ export type NativeMedicationActionResult =
       doses: { medicationId: string; scheduleId: string | null }[];
       minutes: number;
     }
-  | { kind: 'snoozeFailed'; notificationId: string; entryDate: string };
+  | { kind: 'snoozeFailed'; notificationId: string; entryDate: string }
+);
 
 export function isNativeMedicationActionClaimed(
   notificationId: string,
@@ -57,10 +58,20 @@ export function setNativeMedicationSnoozeMinutes(minutes: number): void {
   }
 }
 
-export function drainNativeMedicationActionResults(): NativeMedicationActionResult[] {
+export function setNativeMedicationActiveUser(userId: string | null): void {
+  if (Platform.OS !== 'ios') return;
+  try {
+    BackgroundWaterModule?.setMedicationActiveUser?.(userId);
+  } catch {
+    // An older native build; Taken and Skip are then handled by JavaScript.
+  }
+}
+
+/** Reads what the native handler left. Nothing is removed until acknowledged. */
+export function readNativeMedicationActionResults(): NativeMedicationActionResult[] {
   if (Platform.OS !== 'ios') return [];
   try {
-    const json = BackgroundWaterModule?.drainMedicationActionResults?.();
+    const json = BackgroundWaterModule?.readMedicationActionResults?.();
     if (!json) return [];
     const parsed: unknown = JSON.parse(json);
     return Array.isArray(parsed)
@@ -68,6 +79,15 @@ export function drainNativeMedicationActionResults(): NativeMedicationActionResu
       : [];
   } catch {
     return [];
+  }
+}
+
+export function acknowledgeNativeMedicationActionResults(ids: string[]): void {
+  if (Platform.OS !== 'ios' || ids.length === 0) return;
+  try {
+    BackgroundWaterModule?.acknowledgeMedicationActionResults?.(ids);
+  } catch {
+    // The results stay in the native ledger and are applied again, which is safe.
   }
 }
 
